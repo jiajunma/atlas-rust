@@ -1,0 +1,1 @@
+{"fixture":"negative/unterminated_string","oracle":"atlas","stage":"lexer","expected_diagnostic":"lexical","reference_status":"待在HPC冻结","rust_status":"未实现"}

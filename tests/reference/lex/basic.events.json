@@ -1,0 +1,21 @@
+{
+  "schema": "atlas-lexer-events-v0",
+  "fixture": "lex/basic",
+  "status": "pending_hpc_reference",
+  "tokens": [
+    {"kind":"Keyword","lexeme":"set","start":[1,1],"end":[1,4]},
+    {"kind":"Identifier","lexeme":"verbose","start":[1,5],"end":[1,12]},
+    {"kind":"Newline","lexeme":"\n","start":[1,12],"end":[2,1]},
+    {"kind":"Keyword","lexeme":"let","start":[2,1],"end":[2,4]},
+    {"kind":"Identifier","lexeme":"x","start":[2,5],"end":[2,6]},
+    {"kind":"Operator","lexeme":":=","start":[2,7],"end":[2,9]},
+    {"kind":"Integer","lexeme":"42","start":[2,10],"end":[2,12]},
+    {"kind":"Keyword","lexeme":"in","start":[2,13],"end":[2,15]},
+    {"kind":"Identifier","lexeme":"x","start":[2,16],"end":[2,17]},
+    {"kind":"Operator","lexeme":"+","start":[2,18],"end":[2,19]},
+    {"kind":"Integer","lexeme":"1","start":[2,20],"end":[2,21]},
+    {"kind":"Newline","lexeme":"\n","start":[2,21],"end":[3,1]},
+    {"kind":"String","lexeme":"\"a\"\"b\"","start":[3,1],"end":[3,8]},
+    {"kind":"Eof","lexeme":"","start":[3,20],"end":[3,20]}
+  ]
+}
