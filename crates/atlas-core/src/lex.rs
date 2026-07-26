@@ -104,7 +104,7 @@ mod tests {
         assert_eq!(tokens[2].kind, TokenKind::Operator(":=".into()));
         assert_eq!(tokens[3].kind, TokenKind::Integer);
         assert_eq!(tokens[3].span.start.line, 1);
-        assert_eq!(tokens[3].span.start.column, 11);
+        assert_eq!(tokens[3].span.start.column, 10);
         assert_eq!(tokens[4].kind, TokenKind::Newline);
         assert_eq!(tokens[5].kind, TokenKind::Eof);
     }

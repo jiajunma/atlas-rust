@@ -39,5 +39,13 @@ Job scripts must fail on a mismatch and write a machine-readable report under
 rsync -az majj@10.26.14.64:/public/home/majj/atlas-rust/results/ ./results/
 ```
 
+SLURM opens `#SBATCH --output` before the script body runs, so the output path
+must not require a directory that the script creates itself. Create the report
+directory inside the job and use a root-level output filename, or pre-create
+the directory before submission.
+
+Compute-node jobs should also set `PATH="$HOME/.cargo/bin:$PATH"` explicitly;
+the login-node shell environment is not guaranteed to be inherited.
+
 The repository does not yet claim that `differential.sbatch` exists; adding it
 is the first HPC implementation task after the reference corpus is frozen.
