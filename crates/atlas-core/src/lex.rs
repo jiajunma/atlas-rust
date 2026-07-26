@@ -1,6 +1,14 @@
-//! Atlas lexical tokens. This module intentionally exposes no parser policy.
+//! Atlas lexical tokens.
+//!
+//! The scanner is intentionally stateful.  Atlas comments can be nested and
+//! an input may be consumed a token at a time by a parser or a REPL.  The
+//! [`tokenize`] function remains as a compatibility convenience for callers
+//! that want the complete token stream in one operation.
 
-use crate::{diagnostic::{Diagnostic, ErrorKind}, source::SourceText};
+use crate::{
+    diagnostic::{Diagnostic, ErrorKind},
+    source::SourceText,
+};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TokenKind {
@@ -17,7 +25,9 @@ pub enum TokenKind {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Token {
     pub kind: TokenKind,
+    /// The exact source spelling, including quotes for string literals.
     pub lexeme: String,
+    /// The decoded value where the lexical form has one (currently strings).
     pub value: Option<String>,
     pub span: crate::diagnostic::SourceSpan,
 }
@@ -29,65 +39,294 @@ const KEYWORDS: &[&str] = &[
     "any_type", "whattype", "showall", "forget",
 ];
 
-pub fn tokenize(source: &SourceText) -> Result<Vec<Token>, Vec<Diagnostic>> {
-    let text = source.as_str().as_bytes();
-    let mut tokens = Vec::new();
-    let mut errors = Vec::new();
-    let mut i = 0;
-    while i < text.len() {
-        let start = i;
-        match text[i] {
-            b' ' | b'\t' | b'\r' => { i += 1; }
-            b'\n' => { i += 1; tokens.push(token(source, TokenKind::Newline, start, i)); }
-            b'{' => {
-                i += 1;
-                let mut depth = 1;
-                while i < text.len() && depth > 0 {
-                    match text[i] { b'{' => depth += 1, b'}' => depth -= 1, _ => {} }
-                    i += 1;
-                }
-                if depth != 0 {
-                    errors.push(Diagnostic::new(ErrorKind::Lexical, "unterminated comment", Some(source.span(start, i))));
-                    break;
-                }
-            }
-            b'0'..=b'9' => {
-                i += 1; while i < text.len() && text[i].is_ascii_digit() { i += 1; }
-                tokens.push(token(source, TokenKind::Integer, start, i));
-            }
-            b'_' | b'a'..=b'z' | b'A'..=b'Z' => {
-                i += 1; while i < text.len() && (text[i].is_ascii_alphanumeric() || text[i] == b'_') { i += 1; }
-                let word = &source.as_str()[start..i];
-                let kind = if KEYWORDS.contains(&word) { TokenKind::Keyword(word.to_owned()) } else { TokenKind::Identifier };
-                tokens.push(token(source, kind, start, i));
-            }
-            b'"' => {
-                i += 1; let mut closed = false;
-                while i < text.len() {
-                    match text[i] { b'"' if i + 1 < text.len() && text[i + 1] == b'"' => i += 2,
-                        b'"' => { i += 1; closed = true; break }, b'\n' => break, _ => i += 1 }
-                }
-                if closed {
-                    let raw = &source.as_str()[start + 1..i - 1];
-                    tokens.push(Token { kind: TokenKind::String, lexeme: source.as_str()[start..i].to_owned(), value: Some(raw.replace("\"\"", "\"")), span: source.span(start, i) });
-                }
-                else { errors.push(Diagnostic::new(ErrorKind::Lexical, "unterminated string", Some(source.span(start, i)))); break; }
-            }
-            b':' if text.get(i + 1) == Some(&b'=') => { i += 2; tokens.push(token(source, TokenKind::Operator(":=".into()), start, i)); }
-            b'-' if text.get(i + 1) == Some(&b'>') => { i += 2; tokens.push(token(source, TokenKind::Operator("->".into()), start, i)); }
-            b'~' if text.get(i + 1) == Some(&b'[') => { i += 2; tokens.push(token(source, TokenKind::Operator("~[".into()), start, i)); }
-            b'+' | b'-' | b'*' | b'/' | b'=' | b'!' | b'<' | b'>' | b'&' | b'|' | b'@' => {
-                i += 1; tokens.push(token(source, TokenKind::Operator(source.as_str()[start..i].into()), start, i));
-            }
-            c if b"()[]{};,?.~".contains(&c) => { i += 1; tokens.push(token(source, TokenKind::Punctuation(c as char), start, i)); }
-            _ => { i += 1; errors.push(Diagnostic::new(ErrorKind::Lexical, "invalid character", Some(source.span(start, i)))); }
+/// A stateful Atlas scanner.
+///
+/// `next_token` consumes one token.  Whitespace and comments are consumed
+/// internally, while newlines are observable tokens.  After end of input (or
+/// a fatal unterminated string/comment error), subsequent calls return EOF.
+pub struct Lexer<'a> {
+    source: &'a SourceText,
+    offset: usize,
+    ended: bool,
+}
+
+impl<'a> Lexer<'a> {
+    pub fn new(source: &'a SourceText) -> Self {
+        Self {
+            source,
+            offset: 0,
+            ended: false,
         }
     }
-    if errors.is_empty() { tokens.push(Token { kind: TokenKind::Eof, lexeme: String::new(), value: None, span: source.span(i, i) }); Ok(tokens) } else { Err(errors) }
+
+    pub fn source(&self) -> &'a SourceText {
+        self.source
+    }
+
+    /// Current byte offset in the source.  This is useful for diagnostics and
+    /// for parser integrations that need to identify the point of failure.
+    pub fn offset(&self) -> usize {
+        self.offset
+    }
+
+    /// Alias used by streaming consumers that treat the lexer as a cursor.
+    pub fn next(&mut self) -> Result<Token, Diagnostic> {
+        self.next_token()
+    }
+
+    pub fn next_token(&mut self) -> Result<Token, Diagnostic> {
+        if self.ended {
+            return Ok(self.eof_token());
+        }
+
+        // Copy the reference out of `self` so scanning can update `offset`
+        // and call the nested scanners without borrowing the whole lexer.
+        let source = self.source;
+        let bytes = source.as_str().as_bytes();
+        loop {
+            if self.offset >= bytes.len() {
+                self.ended = true;
+                return Ok(self.eof_token());
+            }
+
+            let start = self.offset;
+            match bytes[self.offset] {
+                b' ' | b'\t' | b'\r' => {
+                    self.offset += 1;
+                }
+                b'\n' => {
+                    self.offset += 1;
+                    return Ok(token(source, TokenKind::Newline, start, self.offset));
+                }
+                b'{' => {
+                    self.consume_comment(start)?;
+                }
+                b'0'..=b'9' => {
+                    self.offset += 1;
+                    while self.offset < bytes.len() && bytes[self.offset].is_ascii_digit() {
+                        self.offset += 1;
+                    }
+                    return Ok(token(source, TokenKind::Integer, start, self.offset));
+                }
+                b'_' | b'a'..=b'z' | b'A'..=b'Z' => {
+                    self.offset += 1;
+                    while self.offset < bytes.len()
+                        && (bytes[self.offset].is_ascii_alphanumeric() || bytes[self.offset] == b'_')
+                    {
+                        self.offset += 1;
+                    }
+                    let word = &source.as_str()[start..self.offset];
+                    let kind = if KEYWORDS.contains(&word) {
+                        TokenKind::Keyword(word.to_owned())
+                    } else {
+                        TokenKind::Identifier
+                    };
+                    return Ok(token(source, kind, start, self.offset));
+                }
+                b'"' => return self.consume_string(start),
+                b':' if bytes.get(self.offset + 1) == Some(&b'=') => {
+                    self.offset += 2;
+                    return Ok(token(
+                        source,
+                        TokenKind::Operator(":=".into()),
+                        start,
+                        self.offset,
+                    ));
+                }
+                b'-' if bytes.get(self.offset + 1) == Some(&b'>') => {
+                    self.offset += 2;
+                    return Ok(token(
+                        source,
+                        TokenKind::Operator("->".into()),
+                        start,
+                        self.offset,
+                    ));
+                }
+                b'~' if bytes.get(self.offset + 1) == Some(&b'[') => {
+                    self.offset += 2;
+                    return Ok(token(
+                        source,
+                        TokenKind::Operator("~[".into()),
+                        start,
+                        self.offset,
+                    ));
+                }
+                b'+' | b'-' | b'*' | b'/' | b'=' | b'!' | b'<' | b'>' | b'&' | b'|' | b'@' => {
+                    self.offset += 1;
+                    return Ok(token(
+                        source,
+                        TokenKind::Operator(source.as_str()[start..self.offset].into()),
+                        start,
+                        self.offset,
+                    ));
+                }
+                c if b"()[]{};,?.~".contains(&c) => {
+                    self.offset += 1;
+                    return Ok(token(
+                        source,
+                        TokenKind::Punctuation(c as char),
+                        start,
+                        self.offset,
+                    ));
+                }
+                _ => {
+                    self.offset += 1;
+                    return Err(Diagnostic::new(
+                        ErrorKind::Lexical,
+                        "invalid character",
+                        Some(source.span(start, self.offset)),
+                    ));
+                }
+            }
+        }
+    }
+
+    fn eof_token(&self) -> Token {
+        Token {
+            kind: TokenKind::Eof,
+            lexeme: String::new(),
+            value: None,
+            span: self.source.span(self.offset, self.offset),
+        }
+    }
+
+    fn consume_comment(&mut self, start: usize) -> Result<(), Diagnostic> {
+        let bytes = self.source.as_str().as_bytes();
+        self.offset += 1;
+        let mut depth = 1usize;
+        while self.offset < bytes.len() && depth > 0 {
+            match bytes[self.offset] {
+                b'{' => depth += 1,
+                b'}' => depth -= 1,
+                _ => {}
+            }
+            self.offset += 1;
+        }
+        if depth == 0 {
+            Ok(())
+        } else {
+            self.ended = true;
+            Err(Diagnostic::new(
+                ErrorKind::Lexical,
+                "unterminated comment",
+                Some(self.source.span(start, self.offset)),
+            ))
+        }
+    }
+
+    fn consume_string(&mut self, start: usize) -> Result<Token, Diagnostic> {
+        let bytes = self.source.as_str().as_bytes();
+        self.offset += 1;
+        let mut closed = false;
+        while self.offset < bytes.len() {
+            match bytes[self.offset] {
+                // Atlas escapes a quote by doubling it.
+                b'"' if self.offset + 1 < bytes.len() && bytes[self.offset + 1] == b'"' => {
+                    self.offset += 2;
+                }
+                b'"' => {
+                    self.offset += 1;
+                    closed = true;
+                    break;
+                }
+                b'\n' => break,
+                _ => self.offset += 1,
+            }
+        }
+        if !closed {
+            self.ended = true;
+            return Err(Diagnostic::new(
+                ErrorKind::Lexical,
+                "unterminated string",
+                Some(self.source.span(start, self.offset)),
+            ));
+        }
+        let raw = &self.source.as_str()[start + 1..self.offset - 1];
+        Ok(Token {
+            kind: TokenKind::String,
+            lexeme: self.source.as_str()[start..self.offset].to_owned(),
+            value: Some(raw.replace("\"\"", "\"")),
+            span: self.source.span(start, self.offset),
+        })
+    }
+}
+
+/// A small lookahead cursor for parsers that need to inspect one token before
+/// consuming it.  Lexical errors are cached just like tokens, so `peek` and
+/// `bump` observe the same result.
+pub struct TokenCursor<'a> {
+    lexer: Lexer<'a>,
+    lookahead: Option<Result<Token, Diagnostic>>,
+}
+
+impl<'a> TokenCursor<'a> {
+    pub fn new(source: &'a SourceText) -> Self {
+        Self {
+            lexer: Lexer::new(source),
+            lookahead: None,
+        }
+    }
+
+    pub fn peek(&mut self) -> Result<&Token, &Diagnostic> {
+        if self.lookahead.is_none() {
+            self.lookahead = Some(self.lexer.next_token());
+        }
+        match self.lookahead.as_ref().expect("lookahead was filled") {
+            Ok(token) => Ok(token),
+            Err(error) => Err(error),
+        }
+    }
+
+    pub fn bump(&mut self) -> Result<Token, Diagnostic> {
+        self.lookahead
+            .take()
+            .unwrap_or_else(|| self.lexer.next_token())
+    }
+
+    pub fn next(&mut self) -> Result<Token, Diagnostic> {
+        self.bump()
+    }
+
+    pub fn offset(&self) -> usize {
+        self.lexer.offset()
+    }
+}
+
+/// Consume a complete source while retaining the original all-or-nothing API.
+pub fn tokenize(source: &SourceText) -> Result<Vec<Token>, Vec<Diagnostic>> {
+    let mut lexer = Lexer::new(source);
+    let mut tokens = Vec::new();
+    let mut errors = Vec::new();
+    loop {
+        match lexer.next_token() {
+            Ok(token) if token.kind == TokenKind::Eof => {
+                if errors.is_empty() {
+                    tokens.push(token);
+                    return Ok(tokens);
+                }
+                return Err(errors);
+            }
+            Ok(token) => tokens.push(token),
+            Err(error) => {
+                errors.push(error);
+                // Unterminated strings/comments are fatal and leave the
+                // cursor at EOF.  Invalid characters are recoverable, so the
+                // next call continues scanning after the offending byte.
+                if lexer.ended {
+                    return Err(errors);
+                }
+            }
+        }
+    }
 }
 
 fn token(source: &SourceText, kind: TokenKind, start: usize, end: usize) -> Token {
-    Token { kind, lexeme: source.as_str()[start..end].to_owned(), value: None, span: source.span(start, end) }
+    Token {
+        kind,
+        lexeme: source.as_str()[start..end].to_owned(),
+        value: None,
+        span: source.span(start, end),
+    }
 }
 
 #[cfg(test)]
@@ -110,17 +349,96 @@ mod tests {
     }
 
     #[test]
-    fn doubled_quotes_are_one_string_token() {
-        let tokens = tokenize(&SourceText::new("\"a\"\"b\"")).expect("valid string");
-        assert_eq!(tokens[0].kind, TokenKind::String);
-        assert_eq!(tokens[0].lexeme, "\"a\"\"b\"");
-        assert_eq!(tokens[0].value.as_deref(), Some("a\"b"));
+    fn lexer_consumes_one_token_and_stays_at_eof() {
+        let source = SourceText::new("x\n");
+        let mut lexer = Lexer::new(&source);
+        assert_eq!(lexer.next_token().expect("identifier").kind, TokenKind::Identifier);
+        assert_eq!(lexer.next_token().expect("newline").kind, TokenKind::Newline);
+        assert_eq!(lexer.next_token().expect("eof").kind, TokenKind::Eof);
+        assert_eq!(lexer.next_token().expect("stable eof").kind, TokenKind::Eof);
     }
 
     #[test]
-    fn unterminated_string_is_lexical_error() {
-        let errors = tokenize(&SourceText::new("\"oops\n")).expect_err("must reject");
-        assert_eq!(errors[0].kind, ErrorKind::Lexical);
+    fn cursor_peek_does_not_consume() {
+        let source = SourceText::new("x -> y");
+        let mut cursor = TokenCursor::new(&source);
+        assert_eq!(cursor.peek().expect("peek").kind, TokenKind::Identifier);
+        assert_eq!(cursor.bump().expect("bump").kind, TokenKind::Identifier);
+        assert_eq!(cursor.bump().expect("arrow").kind, TokenKind::Operator("->".into()));
+    }
+
+    #[test]
+    fn nested_comments_are_skipped_and_newline_after_comment_survives() {
+        let source = SourceText::new("a { outer { inner } outer }\nb");
+        let tokens = tokenize(&source).expect("valid comments");
+        assert_eq!(tokens[0].kind, TokenKind::Identifier);
+        assert_eq!(tokens[1].kind, TokenKind::Newline);
+        assert_eq!(tokens[2].kind, TokenKind::Identifier);
+        assert_eq!(tokens[3].kind, TokenKind::Eof);
+    }
+
+    #[test]
+    fn strings_and_multi_character_operators_keep_raw_lexemes() {
+        let source = SourceText::new("\"a\"\"b\" := x -> y ~[ z");
+        let tokens = tokenize(&source).expect("valid fixture");
+        assert_eq!(tokens[0].kind, TokenKind::String);
+        assert_eq!(tokens[0].lexeme, "\"a\"\"b\"");
+        assert_eq!(tokens[0].value.as_deref(), Some("a\"b"));
+        assert_eq!(tokens[1].kind, TokenKind::Operator(":=".into()));
+        assert_eq!(tokens[2].kind, TokenKind::Identifier);
+        assert_eq!(tokens[3].kind, TokenKind::Operator("->".into()));
+        assert_eq!(tokens[5].kind, TokenKind::Operator("~[".into()));
+    }
+
+    #[test]
+    fn punctuation_is_emitted_individually() {
+        let tokens = tokenize(&SourceText::new("( ) [ ] ; , ? . ~"))
+            .expect("valid punctuation");
+        let punctuation: Vec<_> = tokens
+            .iter()
+            .take(9)
+            .map(|token| token.kind.clone())
+            .collect();
+        assert_eq!(
+            punctuation,
+            vec![
+                TokenKind::Punctuation('('),
+                TokenKind::Punctuation(')'),
+                TokenKind::Punctuation('['),
+                TokenKind::Punctuation(']'),
+                TokenKind::Punctuation(';'),
+                TokenKind::Punctuation(','),
+                TokenKind::Punctuation('?'),
+                TokenKind::Punctuation('.'),
+                TokenKind::Punctuation('~'),
+            ]
+        );
+    }
+
+    #[test]
+    fn unterminated_string_and_comment_are_fatal_cursor_errors() {
+        for input in ["\"oops\n", "{oops"] {
+            let source = SourceText::new(input);
+            let mut lexer = Lexer::new(&source);
+            let error = lexer.next_token().expect_err("must reject");
+            assert_eq!(error.kind, ErrorKind::Lexical);
+            assert_eq!(lexer.next_token().expect("eof").kind, TokenKind::Eof);
+        }
+    }
+
+    #[test]
+    fn invalid_characters_are_recoverable() {
+        let source = SourceText::new("a#b");
+        let mut lexer = Lexer::new(&source);
+        assert_eq!(lexer.next_token().expect("a").kind, TokenKind::Identifier);
+        assert_eq!(lexer.next_token().expect_err("# is invalid").kind, ErrorKind::Lexical);
+        assert_eq!(lexer.next_token().expect("b").kind, TokenKind::Identifier);
+    }
+
+    #[test]
+    fn unicode_invalid_byte_does_not_break_source_positions() {
+        let source = SourceText::new("é");
+        let errors = tokenize(&source).expect_err("non-ASCII identifiers are not yet supported");
         assert_eq!(errors[0].span.expect("span").start.column, 1);
     }
 }

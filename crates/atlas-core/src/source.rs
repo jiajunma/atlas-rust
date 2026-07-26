@@ -24,9 +24,18 @@ impl SourceText {
         let byte = byte.min(self.text.len());
         let line = self.line_starts.partition_point(|&start| start <= byte);
         let line_index = line.saturating_sub(1);
+        let line_start = self.line_starts[line_index];
+        // Lexical errors can point at the first byte of a non-ASCII scalar.
+        // Count character starts rather than slicing at `byte`, which may be
+        // in the middle of a UTF-8 sequence.
+        let column = self.text[line_start..]
+            .char_indices()
+            .take_while(|(offset, _)| line_start + *offset < byte)
+            .count()
+            + 1;
         crate::diagnostic::SourcePosition {
             line: line_index + 1,
-            column: self.text[self.line_starts[line_index]..byte].chars().count() + 1,
+            column,
         }
     }
 
