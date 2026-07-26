@@ -1,0 +1,12 @@
+{
+  "schema": "atlas-differential-v0",
+  "stage": "lexer",
+  "commit": "42d7d54",
+  "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)",
+  "slurm_job_id": "3444159",
+  "fixtures": [
+    "tests/fixtures/lex/basic.atlas"
+  ],
+  "rust_status": "passed",
+  "reference_status": "pending_reference_token_adapter"
+}
