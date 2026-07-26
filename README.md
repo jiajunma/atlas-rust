@@ -10,10 +10,12 @@ and file-format boundaries.
 
 ## Current status
 
-Project bootstrap. The compatibility contract and migration plan are recorded
-in [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md) and
-[`docs/MIGRATION.md`](docs/MIGRATION.md). No local Rust execution is permitted;
-builds and tests run on the XMU HPC according to [`hpc/README.md`](hpc/README.md).
+Project bootstrap. The compatibility contract is in
+[`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md), the language support matrix is
+in [`docs/LANGUAGE.md`](docs/LANGUAGE.md), and the implementation design is in
+[`docs/DESIGN.md`](docs/DESIGN.md). Contributor and agent rules are in
+[`AGENTS.md`](AGENTS.md). No local Rust execution is permitted; builds and tests
+run on the XMU HPC according to [`hpc/README.md`](hpc/README.md).
 
 ## Scope
 
@@ -22,9 +24,10 @@ builds and tests run on the XMU HPC according to [`hpc/README.md`](hpc/README.md
 - `atlas-cli`: command-line interface and interactive session behavior.
 - `hpc`: reproducible build, test, and oracle-comparison jobs for XMU SLURM.
 
-The original CWEB sources remain the behavioral reference. The PyCox and Atlas
-outputs are treated as external oracles; generated artifacts are never edited
-by hand.
+The original CWEB sources remain the behavioral reference for Atlas behavior.
+The Rust implementation is organized by language boundaries, not by CWEB file
+names. Generated C/C++ files are inspected and run only on HPC; they are not
+copied into this repository as Rust source.
 
 ## License
 

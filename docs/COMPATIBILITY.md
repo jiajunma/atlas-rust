@@ -27,6 +27,23 @@ feature gets a corpus of source snippets and expected structured results. Text
 goldens are retained for CLI compatibility, while semantic goldens compare a
 normalized event stream (values, diagnostics, file writes, and exit status).
 
+## What "fully compatible" means
+
+The target is source compatibility at the Atlas language level. A program that
+is accepted by the reference must be accepted by Rust Atlas with equivalent
+evaluation and observable effects; a reference-rejected program must remain
+rejected with the same diagnostic category and exit behavior. Exact prose is
+tracked separately from semantic equality.
+
+Compatibility includes batch files, command sequencing, mutation, evaluation
+order, deterministic collection/file ordering, domain operation results, and
+documented persistent formats. It does not include C++ ABI, object addresses,
+allocator order, compiler diagnostics, or undocumented timing.
+
+The complete surface and its current status are maintained in
+[`LANGUAGE.md`](LANGUAGE.md). No language row is supported until an HPC
+differential report exists.
+
 ## Non-goals for the first release
 
 - Preserving C++ object layout or ABI.

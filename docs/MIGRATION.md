@@ -16,9 +16,14 @@ are added behind explicit traits so the parser and evaluator do not depend on
 the CLI. `atlas-cli` owns readline, batch execution, output formatting, and
 process exit behavior.
 
+The upstream `.w` files are the behavioral reference, not the Rust package
+boundaries. `rustcox` can supply a future Coxeter/KL adapter, but Atlas values,
+commands, diagnostics, and mutable interpreter state remain Atlas-Rust code.
+
 ## Stages
 
-1. Freeze a reference corpus and event schema on HPC.
+1. Freeze a reference corpus and event schema on HPC, including the upstream
+   parser grammar and representative batch programs.
 2. Implement lexer and source spans; differential-test token streams.
 3. Implement parser and diagnostics; differential-test accepted/rejected
    programs.
@@ -29,6 +34,10 @@ process exit behavior.
 7. Expand the corpus until the complete Atlas language surface is covered.
 8. Run full regression and large-domain jobs on HPC; publish artifacts and
    compatibility reports.
+
+Each stage has a separate acceptance report. A green Rust build without a
+reference comparison is an intermediate engineering result, not language
+compatibility.
 
 ## Risk register
 

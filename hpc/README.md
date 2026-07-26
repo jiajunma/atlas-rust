@@ -1,15 +1,43 @@
 # HPC-only verification
 
 Local execution is intentionally prohibited. Use the XMU login node for
-checkout and build preparation, then run tests and oracle comparisons through
-SLURM on a compute node.
+checkout, source synchronization, and dependency/build preparation only. Run
+Rust tests, the reference Atlas executable, CWEB expansion, differential
+comparisons, and benchmarks through SLURM on a compute node.
+
+## Repository location and toolchain
+
+The shared project directory is `/public/home/majj/atlas-rust` on XMU. The
+login node has internet access for initial dependency acquisition; compute
+nodes do not. Build binaries and cache dependencies on the login node before
+submitting jobs. Every job records the commit, dirty-tree state, Rust
+toolchain, reference Atlas revision, CWEB version, SLURM job/node, fixture
+manifest, exit status, and report checksums.
+
+Never put tokens, credentials, or large generated outputs in Git.
 
 Typical workflow:
 
 ```bash
-rsync -az --exclude=.git --exclude=target ./ majj@10.26.14.64:/public/home/majj/atlas-rust/
-ssh majj@10.26.14.64 'cd atlas-rust && export PATH=$HOME/.cargo/bin:$PATH && cargo test --workspace'
+rsync -az --exclude=.git --exclude=target --exclude=results ./ \
+  majj@10.26.14.64:/public/home/majj/atlas-rust/
+ssh majj@10.26.14.64 \
+  'cd atlas-rust && export PATH=$HOME/.cargo/bin:$PATH && cargo build --workspace --release'
 ```
 
-Heavy differential jobs must use `sbatch`. Job scripts must record the commit,
-toolchain, host, input corpus, exit status, and output artifact checksums.
+Then submit a versioned job script:
+
+```bash
+ssh majj@10.26.14.64 'cd atlas-rust && sbatch hpc/differential.sbatch'
+```
+
+Heavy differential jobs must use `sbatch`; do not run them on the login node.
+Job scripts must fail on a mismatch and write a machine-readable report under
+`results/<commit>/<job-id>/`. Pull only summaries and checksums back:
+
+```bash
+rsync -az majj@10.26.14.64:/public/home/majj/atlas-rust/results/ ./results/
+```
+
+The repository does not yet claim that `differential.sbatch` exists; adding it
+is the first HPC implementation task after the reference corpus is frozen.
