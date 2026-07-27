@@ -107,6 +107,7 @@ impl<'a> Lexer<'a> {
     }
 
     /// Alias used by streaming consumers that treat the lexer as a cursor.
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> Result<Token, Diagnostic> {
         self.next_token()
     }
@@ -448,6 +449,7 @@ impl<'a> TokenCursor<'a> {
             .unwrap_or_else(|| self.lexer.next_token())
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> Result<Token, Diagnostic> {
         self.bump()
     }

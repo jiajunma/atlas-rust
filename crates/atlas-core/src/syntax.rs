@@ -19,7 +19,10 @@ use crate::{
     source::SourceText,
 };
 
-lalrpop_util::lalrpop_mod!(grammar);
+lalrpop_util::lalrpop_mod!(
+    #[allow(clippy::result_large_err)]
+    grammar
+);
 
 /// A syntax tree for the expression slice currently covered by the parser.
 #[derive(Clone, Debug, Eq, PartialEq)]

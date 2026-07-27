@@ -500,9 +500,7 @@ fn infer_operator_type(
 }
 
 fn has_unknown(arguments: &[ScalarType]) -> bool {
-    arguments
-        .iter()
-        .any(|argument| *argument == ScalarType::Unknown)
+    arguments.contains(&ScalarType::Unknown)
 }
 
 fn result_with_unknown(arguments: &[ScalarType], known_result: ScalarType) -> ScalarType {
