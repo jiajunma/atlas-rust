@@ -1,0 +1,1 @@
+{"fixture":"parse/negative_trailing_token","oracle":"atlas","stage":"parser","expected_diagnostic":"syntax","reference_status":"pending_hpc_reference","rust_status":"pending"}

@@ -1,0 +1,1 @@
+{"fixture":"commands/invalid_token_continues","oracle":"atlas","stage":"command-stream","expected_events":["syntax-diagnostic","value"],"reference_status":"待在HPC冻结","rust_status":"测试先行"}

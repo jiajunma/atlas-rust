@@ -22,7 +22,7 @@ Typical workflow:
 rsync -az --exclude=.git --exclude=target --exclude=results ./ \
   majj@10.26.14.64:/public/home/majj/atlas-rust/
 ssh majj@10.26.14.64 \
-  'cd atlas-rust && export PATH=$HOME/.cargo/bin:$PATH && cargo build --workspace --release'
+  'cd atlas-rust && export PATH=$HOME/.cargo/bin:$PATH && cargo build --workspace --release --locked'
 ```
 
 Then submit a versioned job script:

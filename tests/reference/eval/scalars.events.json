@@ -1,0 +1,13 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "eval/scalars",
+  "status": "pending_local_reference",
+  "events": [
+    {"kind":"Value","value":{"type":"integer","value":42}},
+    {"kind":"Value","value":{"type":"boolean","value":true}},
+    {"kind":"Value","value":{"type":"string","value":"atlas"}},
+    {"kind":"Value","value":{"type":"rational","numerator":"7","denominator":"1"}},
+    {"kind":"Value","value":{"type":"boolean","value":true}},
+    {"kind":"Value","value":{"type":"boolean","value":true}}
+  ]
+}

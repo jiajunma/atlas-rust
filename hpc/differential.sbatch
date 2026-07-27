@@ -9,7 +9,7 @@ commit="${ATLAS_COMMIT:-$(git rev-parse HEAD)}"
 mkdir -p "results/$commit/$SLURM_JOB_ID"
 report="results/$commit/$SLURM_JOB_ID/lexer.json"
 rustc_version="$(rustc --version)"
-cargo test --workspace
+cargo test --workspace --locked
 python3 - "$report" "$commit" "$rustc_version" "$SLURM_JOB_ID" <<'PY'
 import json, pathlib, sys
 report, commit, rustc_version, job_id = sys.argv[1:]

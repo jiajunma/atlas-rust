@@ -1,0 +1,1 @@
+{"fixtures":["eval/negative_undefined","eval/negative_type"],"oracle":"atlas","stage":"evaluator","expected_diagnostics":["name","type"],"reference_status":"pending_hpc_reference","rust_status":"pending"}
