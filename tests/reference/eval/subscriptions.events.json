@@ -1,0 +1,13 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "eval/subscriptions",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind":"Value","type":"integer","value":10},
+    {"kind":"Value","type":"integer","value":30},
+    {"kind":"Value","type":"integer","value":30},
+    {"kind":"Value","type":"integer","value":10},
+    {"kind":"Value","type":"integer","value":3},
+    {"kind":"Value","type":"rational","numerator":1,"denominator":1}
+  ]
+}

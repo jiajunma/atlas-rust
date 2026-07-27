@@ -479,6 +479,95 @@ mod tests {
     }
 
     #[test]
+    fn subscription_errors_recover_at_command_boundaries() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/commands/subscription_errors.atlas"
+        ));
+        let events = run_source(&source);
+
+        assert_eq!(events.len(), 12);
+        for index in [0, 2, 4, 10] {
+            assert!(matches!(
+                events[index],
+                SessionEvent::Diagnostic(ref diagnostic)
+                    if diagnostic.kind == ErrorKind::Runtime
+            ));
+        }
+        for index in [6, 8] {
+            assert!(matches!(
+                events[index],
+                SessionEvent::Diagnostic(ref diagnostic)
+                    if diagnostic.kind == ErrorKind::Type
+            ));
+        }
+        for (index, expected) in [(1, 7), (3, 8), (5, 9), (7, 10), (9, 11), (11, 6)] {
+            assert!(matches!(
+                events[index],
+                SessionEvent::Value { value: Value::Integer(ref value), .. }
+                    if value == &malachite::Integer::from(expected)
+            ));
+        }
+    }
+
+    #[test]
+    fn subscription_evaluates_index_before_row_expression() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/commands/subscription_order.atlas"
+        ));
+        let events = run_source(&source);
+
+        assert_eq!(events.len(), 3);
+        assert!(matches!(
+            events[1],
+            SessionEvent::Value { value: Value::Integer(ref value), .. }
+                if value == &malachite::Integer::from(1)
+        ));
+        assert!(matches!(
+            events[2],
+            SessionEvent::Value { value: Value::Integer(ref value), .. }
+                if value == &malachite::Integer::from(2)
+        ));
+    }
+
+    #[test]
+    fn empty_row_subscription_flows_through_typed_assignment() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/commands/subscription_context.atlas"
+        ));
+        let events = run_source(&source);
+
+        assert_eq!(events.len(), 6);
+        assert!(matches!(
+            events[0],
+            SessionEvent::Output { ref text, .. } if text == "Declaring identifier 'x': int\n"
+        ));
+        assert!(matches!(
+            events[1],
+            SessionEvent::Diagnostic(ref diagnostic)
+                if diagnostic.kind == ErrorKind::Runtime
+        ));
+        assert!(matches!(
+            events[2],
+            SessionEvent::Value { value: Value::Integer(ref value), .. }
+                if value == &malachite::Integer::from(1)
+        ));
+        assert!(matches!(
+            events[3],
+            SessionEvent::Output { ref text, .. } if text == "Declaring identifier 'y': string\n"
+        ));
+        assert!(matches!(
+            events[4],
+            SessionEvent::Diagnostic(ref diagnostic)
+                if diagnostic.kind == ErrorKind::Type
+        ));
+        assert!(matches!(
+            events[5],
+            SessionEvent::Value { value: Value::Integer(ref value), .. }
+                if value == &malachite::Integer::from(2)
+        ));
+    }
+
+    #[test]
     fn malformed_container_commands_recover_without_swallowing_closed_lines() {
         let source = SourceText::new(include_str!(
             "../../../tests/fixtures/commands/container_syntax_errors.atlas"

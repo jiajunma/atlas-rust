@@ -248,6 +248,7 @@ pub fn validate_names(expression: &Expr, context: &EvalContext) -> Result<(), Di
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum ScalarType {
+    Unknown,
     Integer,
     Rational,
     Boolean,
@@ -287,6 +288,19 @@ fn infer_scalar_type(expression: &Expr, context: &EvalContext) -> Result<ScalarT
             })?;
             Ok(ScalarType::List(element_type.map(Box::new)))
         }
+        Expr::Subscription {
+            array, index, span, ..
+        } => {
+            let array_type = infer_scalar_type(array, context)?;
+            let index_type = infer_scalar_type(index, context)?;
+            match (&array_type, &index_type) {
+                (ScalarType::List(Some(element_type)), ScalarType::Integer) => {
+                    Ok((**element_type).clone())
+                }
+                (ScalarType::List(None), ScalarType::Integer) => Ok(ScalarType::Unknown),
+                _ => Err(subscription_type_error(&array_type, &index_type, *span)),
+            }
+        }
         Expr::Assignment {
             name,
             target_span,
@@ -323,7 +337,7 @@ fn infer_scalar_type(expression: &Expr, context: &EvalContext) -> Result<ScalarT
         Expr::Group { inner, .. } => infer_scalar_type(inner, context),
         Expr::Unary { operand, span, .. } => {
             let operand_type = infer_scalar_type(operand, context)?;
-            if operand_type == ScalarType::Boolean {
+            if operand_type == ScalarType::Boolean || operand_type == ScalarType::Unknown {
                 Ok(ScalarType::Boolean)
             } else {
                 Err(static_type_error("not", "boolean", &operand_type, *span))
@@ -336,11 +350,11 @@ fn infer_scalar_type(expression: &Expr, context: &EvalContext) -> Result<ScalarT
             span,
         } => {
             let left = infer_scalar_type(lhs, context)?;
-            if left != ScalarType::Boolean {
+            if left != ScalarType::Boolean && left != ScalarType::Unknown {
                 return Err(static_type_error(binary_name(*op), "boolean", &left, *span));
             }
             let right = infer_scalar_type(rhs, context)?;
-            if right != ScalarType::Boolean {
+            if right != ScalarType::Boolean && right != ScalarType::Unknown {
                 return Err(static_type_error(
                     binary_name(*op),
                     "boolean",
@@ -407,41 +421,88 @@ fn infer_operator_type(
 ) -> Result<ScalarType, Diagnostic> {
     let symbol = operator.symbol.as_str();
     match (symbol, arguments) {
-        ("-" | "+", [value]) if is_numeric(value) => Ok(value.clone()),
+        ("-" | "+", [value]) if is_numeric_or_unknown(value) => {
+            Ok(result_with_unknown(arguments, value.clone()))
+        }
         ("-" | "+", [value]) => Err(static_type_error(symbol, "numeric", value, span)),
-        ("+" | "-" | "*", [left, right]) if is_numeric(left) && is_numeric(right) => {
+        ("+" | "-" | "*", [left, right])
+            if is_numeric_or_unknown(left) && is_numeric_or_unknown(right) =>
+        {
             Ok(promoted_numeric_type(left, right))
         }
-        ("/", [left, right]) if is_numeric(left) && is_numeric(right) => Ok(ScalarType::Rational),
-        ("%" | "\\", [ScalarType::Integer, ScalarType::Integer]) => Ok(ScalarType::Integer),
-        ("\\%", [ScalarType::Integer, ScalarType::Integer]) => Ok(ScalarType::Tuple(vec![
-            ScalarType::Integer,
-            ScalarType::Integer,
-        ])),
-        ("^", [ScalarType::Integer, ScalarType::Integer]) => Ok(ScalarType::Integer),
-        ("&", [ScalarType::Integer, ScalarType::Integer]) => Ok(ScalarType::Integer),
+        ("/", [left, right]) if is_numeric_or_unknown(left) && is_numeric_or_unknown(right) => {
+            Ok(ScalarType::Rational)
+        }
+        ("%" | "\\", [left, right])
+            if is_integer_or_unknown(left) && is_integer_or_unknown(right) =>
+        {
+            Ok(ScalarType::Integer)
+        }
+        ("\\%", [left, right]) if is_integer_or_unknown(left) && is_integer_or_unknown(right) => {
+            Ok(ScalarType::Tuple(vec![
+                ScalarType::Integer,
+                ScalarType::Integer,
+            ]))
+        }
+        ("^" | "&", [left, right])
+            if is_integer_or_unknown(left) && is_integer_or_unknown(right) =>
+        {
+            Ok(ScalarType::Integer)
+        }
         ("=", [left, right]) | ("!=", [left, right])
-            if (is_numeric(left) && is_numeric(right))
-                || matches!(
-                    (left, right),
-                    (ScalarType::Boolean, ScalarType::Boolean)
-                        | (ScalarType::String, ScalarType::String)
-                ) =>
+            if (is_numeric_or_unknown(left) && is_numeric_or_unknown(right))
+                || (is_boolean_or_unknown(left) && is_boolean_or_unknown(right))
+                || (is_string_or_unknown(left) && is_string_or_unknown(right)) =>
         {
             Ok(ScalarType::Boolean)
         }
         ("<" | "<=" | ">" | ">=", [left, right])
-            if (is_numeric(left) && is_numeric(right))
-                || matches!((left, right), (ScalarType::String, ScalarType::String)) =>
+            if (is_numeric_or_unknown(left) && is_numeric_or_unknown(right))
+                || (is_string_or_unknown(left) && is_string_or_unknown(right)) =>
         {
             Ok(ScalarType::Boolean)
         }
-        ("##", [ScalarType::String, ScalarType::String]) => Ok(ScalarType::String),
+        ("##", [left, right]) if is_string_or_unknown(left) && is_string_or_unknown(right) => {
+            Ok(ScalarType::String)
+        }
         _ => Err(operator_type_error(operator, arguments, span)),
     }
 }
 
+fn has_unknown(arguments: &[ScalarType]) -> bool {
+    arguments
+        .iter()
+        .any(|argument| *argument == ScalarType::Unknown)
+}
+
+fn result_with_unknown(arguments: &[ScalarType], known_result: ScalarType) -> ScalarType {
+    if has_unknown(arguments) {
+        ScalarType::Unknown
+    } else {
+        known_result
+    }
+}
+
+fn is_numeric_or_unknown(value_type: &ScalarType) -> bool {
+    *value_type == ScalarType::Unknown || is_numeric(value_type)
+}
+
+fn is_integer_or_unknown(value_type: &ScalarType) -> bool {
+    *value_type == ScalarType::Unknown || *value_type == ScalarType::Integer
+}
+
+fn is_boolean_or_unknown(value_type: &ScalarType) -> bool {
+    *value_type == ScalarType::Unknown || *value_type == ScalarType::Boolean
+}
+
+fn is_string_or_unknown(value_type: &ScalarType) -> bool {
+    *value_type == ScalarType::Unknown || *value_type == ScalarType::String
+}
+
 fn promoted_numeric_type(left: &ScalarType, right: &ScalarType) -> ScalarType {
+    if *left == ScalarType::Unknown && *right == ScalarType::Unknown {
+        return ScalarType::Unknown;
+    }
     if *left == ScalarType::Rational || *right == ScalarType::Rational {
         ScalarType::Rational
     } else {
@@ -464,6 +525,12 @@ fn common_list_element_type(types: &[ScalarType]) -> Option<Option<ScalarType>> 
 }
 
 fn common_type(left: &ScalarType, right: &ScalarType) -> Option<ScalarType> {
+    if *left == ScalarType::Unknown {
+        return Some(right.clone());
+    }
+    if *right == ScalarType::Unknown {
+        return Some(left.clone());
+    }
     if left == right {
         return Some(left.clone());
     }
@@ -489,7 +556,9 @@ fn common_type(left: &ScalarType, right: &ScalarType) -> Option<ScalarType> {
 }
 
 fn assignment_compatible(target: &ScalarType, value: &ScalarType) -> bool {
-    target == value
+    *target == ScalarType::Unknown
+        || *value == ScalarType::Unknown
+        || target == value
         || matches!((target, value), (ScalarType::Rational, ScalarType::Integer))
         || match (target, value) {
             (ScalarType::Tuple(target), ScalarType::Tuple(value))
@@ -511,6 +580,7 @@ fn assignment_compatible(target: &ScalarType, value: &ScalarType) -> bool {
 
 fn atlas_type_name(value_type: &ScalarType) -> String {
     match value_type {
+        ScalarType::Unknown => "*".into(),
         ScalarType::Integer => "int".into(),
         ScalarType::Rational => "rat".into(),
         ScalarType::Boolean => "bool".into(),
@@ -582,6 +652,7 @@ fn operator_type_error(
 
 fn scalar_type_name(value_type: &ScalarType) -> String {
     match value_type {
+        ScalarType::Unknown => "unknown".into(),
         ScalarType::Integer => "integer".into(),
         ScalarType::Rational => "rational".into(),
         ScalarType::Boolean => "boolean".into(),
@@ -611,6 +682,12 @@ fn eval_expr(expression: &Expr, context: &mut EvalContext) -> Result<Value, Diag
             .collect::<Result<Vec<_>, _>>()
             .map(Value::Tuple),
         Expr::List { elements, span } => eval_list(elements, *span, context),
+        Expr::Subscription {
+            array,
+            index,
+            reversed,
+            span,
+        } => eval_subscription(array, index, *reversed, *span, context),
         Expr::Identifier { name, span } => match context.binding_type(name) {
             None => Err(Diagnostic::new(
                 ErrorKind::Name,
@@ -715,6 +792,49 @@ fn eval_list(
         .map(|value| coerce_value_to_type(&element_type, value, span))
         .collect::<Result<Vec<_>, _>>()
         .map(Value::List)
+}
+
+fn eval_subscription(
+    array: &Expr,
+    index: &Expr,
+    reversed: bool,
+    span: SourceSpan,
+    context: &mut EvalContext,
+) -> Result<Value, Diagnostic> {
+    let index = eval_expr(index, context)?;
+    let Value::Integer(index) = index else {
+        return Err(Diagnostic::new(
+            ErrorKind::Type,
+            "subscription index must be an integer",
+            Some(span),
+        ));
+    };
+    let array = eval_expr(array, context)?;
+    let Value::List(values) = array else {
+        return Err(Diagnostic::new(
+            ErrorKind::Type,
+            "subscription requires a list",
+            Some(span),
+        ));
+    };
+
+    if index < 0 || !usize::convertible_from(&index) {
+        return Err(subscription_range_error(&index, values.len(), span));
+    }
+    let index = usize::wrapping_from(&index);
+    if index >= values.len() {
+        return Err(subscription_range_error(
+            &BigInt::from(index),
+            values.len(),
+            span,
+        ));
+    }
+    let position = if reversed {
+        values.len() - 1 - index
+    } else {
+        index
+    };
+    Ok(values[position].clone())
 }
 
 fn eval_let(
@@ -997,6 +1117,30 @@ fn type_error(operator: &str, expected: &[&str], actual: &Value, span: SourceSpa
             expected.join(" or "),
             type_name(actual)
         ),
+        Some(span),
+    )
+}
+
+fn subscription_type_error(
+    array_type: &ScalarType,
+    index_type: &ScalarType,
+    span: SourceSpan,
+) -> Diagnostic {
+    Diagnostic::new(
+        ErrorKind::Type,
+        format!(
+            "Cannot subscript value of type {} with index of type {}",
+            atlas_type_name(array_type),
+            atlas_type_name(index_type)
+        ),
+        Some(span),
+    )
+}
+
+fn subscription_range_error(index: &BigInt, length: usize, span: SourceSpan) -> Diagnostic {
+    Diagnostic::new(
+        ErrorKind::Runtime,
+        format!("index {index} out of range (0<= . <{length}) in subscription"),
         Some(span),
     )
 }
@@ -1354,6 +1498,72 @@ mod tests {
                 value: Value::Tuple(values), ..
             } if values == &vec![integer(0), integer(1)]
         ));
+    }
+
+    #[test]
+    fn evaluates_row_subscription_fixture_in_source_order() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/eval/subscriptions.atlas"
+        ));
+        let program = parse(&source).expect("subscription fixture parses");
+        let events = evaluate(&program).expect("subscription fixture evaluates");
+        let values = events
+            .into_iter()
+            .map(|event| match event {
+                EvalEvent::Value { value, .. } => value,
+                EvalEvent::Output { .. } => unreachable!("program evaluation emits values only"),
+            })
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            values,
+            vec![
+                integer(10),
+                integer(30),
+                integer(30),
+                integer(10),
+                integer(3),
+                rational(1, 1),
+            ]
+        );
+    }
+
+    #[test]
+    fn empty_row_subscription_flows_through_enclosing_types() {
+        for source in ["[][0] + 1", "[[][0], 1]"] {
+            let source = SourceText::new(source);
+            let program = parse(&source).expect("contextual empty-row source parses");
+            let error = evaluate(&program).expect_err("empty-row subscription reaches runtime");
+            assert_eq!(error.kind, ErrorKind::Runtime);
+        }
+    }
+
+    #[test]
+    fn unknown_subscription_does_not_mask_incompatible_operator_operands() {
+        for source in ["[][0] + true", "[][0] % (1 / 2)"] {
+            let source = SourceText::new(source);
+            let program = parse(&source).expect("operator source parses");
+            let error = evaluate(&program).expect_err("incompatible overload is rejected");
+            assert_eq!(error.kind, ErrorKind::Type);
+        }
+    }
+
+    #[test]
+    fn boolean_results_do_not_remain_unknown_after_subscription_input() {
+        for source in ["(not [][0]) + 1", "([][0] and true) + 1"] {
+            let source = SourceText::new(source);
+            let program = parse(&source).expect("boolean source parses");
+            let error = evaluate(&program).expect_err("boolean result rejects numeric addition");
+            assert_eq!(error.kind, ErrorKind::Type);
+        }
+    }
+
+    #[test]
+    fn fixed_operator_results_remain_type_checked_after_subscription_input() {
+        let source = SourceText::new("([][0] % 1) + true");
+        let program = parse(&source).expect("fixed-result operator source parses");
+        let error = evaluate(&program).expect_err("integer result rejects boolean addition");
+        assert_eq!(error.kind, ErrorKind::Type);
     }
 
     #[test]

@@ -44,6 +44,12 @@ pub enum Expr {
         elements: Vec<Expr>,
         span: SourceSpan,
     },
+    Subscription {
+        array: Box<Expr>,
+        index: Box<Expr>,
+        reversed: bool,
+        span: SourceSpan,
+    },
     Identifier {
         name: String,
         span: SourceSpan,
@@ -102,6 +108,7 @@ impl Expr {
             | Self::String { span, .. }
             | Self::Tuple { span, .. }
             | Self::List { span, .. }
+            | Self::Subscription { span, .. }
             | Self::Identifier { span, .. }
             | Self::Assignment { span, .. }
             | Self::Let { span, .. }
@@ -190,6 +197,7 @@ pub enum ParserToken {
     Colon(SourceSpan),
     Comma(SourceSpan),
     LBracket(SourceSpan),
+    ReverseLBracket(SourceSpan),
     RBracket(SourceSpan),
     Let(SourceSpan),
     In(SourceSpan),
@@ -218,6 +226,7 @@ impl ParserToken {
             | Self::Colon(span)
             | Self::Comma(span)
             | Self::LBracket(span)
+            | Self::ReverseLBracket(span)
             | Self::RBracket(span)
             | Self::Let(span)
             | Self::In(span)
@@ -246,6 +255,7 @@ impl fmt::Display for ParserToken {
             Self::Colon(_) => ":",
             Self::Comma(_) => ",",
             Self::LBracket(_) => "[",
+            Self::ReverseLBracket(_) => "~[",
             Self::RBracket(_) => "]",
             Self::Let(_) => "let",
             Self::In(_) => "in",
@@ -354,6 +364,7 @@ fn parser_tokens_from_tokens(
                     let token = match operator.as_str() {
                         ":=" => ParserToken::Becomes(span),
                         "=" => ParserToken::Equals(span),
+                        "~[" => ParserToken::ReverseLBracket(span),
                         _ => parser_operator(operator, span).unwrap_or_else(|operator| {
                             ParserToken::Unsupported(SpannedValue {
                                 value: operator,
@@ -523,6 +534,15 @@ fn list_expression(open: SourceSpan, elements: Vec<Expr>, close: SourceSpan) -> 
     }
 }
 
+fn subscription(array: Expr, index: Expr, reversed: bool, close: SourceSpan) -> Expr {
+    Expr::Subscription {
+        span: join_span(array.span(), close),
+        array: Box::new(array),
+        index: Box::new(index),
+        reversed,
+    }
+}
+
 fn expression_list(first: Expr, rest: Vec<Expr>) -> Vec<Expr> {
     let mut elements = Vec::with_capacity(rest.len() + 1);
     elements.push(first);
@@ -661,6 +681,17 @@ mod tests {
                     .collect::<Vec<_>>()
                     .join(",")
             ),
+            Expr::Subscription {
+                array,
+                index,
+                reversed,
+                ..
+            } => format!(
+                "sub({},{},{})",
+                expression_shape(array),
+                expression_shape(index),
+                reversed
+            ),
             Expr::Identifier { name, .. } => name.clone(),
             Expr::Assignment { name, value, .. } => {
                 format!("assign({name},{})", expression_shape(value))
@@ -756,6 +787,18 @@ mod tests {
         assert_eq!(expression_shape(&parse_one("(1,2)")), "tuple(1,2)");
         assert_eq!(expression_shape(&parse_one("[1,2]")), "list(1,2)");
         assert_eq!(expression_shape(&parse_one("[]")), "list()");
+    }
+
+    #[test]
+    fn parses_forward_reverse_and_chained_subscriptions() {
+        assert_eq!(
+            expression_shape(&parse_one("[1,2][0]")),
+            "sub(list(1,2),0,false)"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("rows~[0][1]")),
+            "sub(sub(rows,0,true),1,false)"
+        );
     }
 
     #[test]

@@ -1,0 +1,19 @@
+{
+  "schema": "atlas-session-events-v0",
+  "fixture": "commands/subscription_errors",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind":"Diagnostic","category":"runtime"},
+    {"kind":"Value","type":"integer","value":7},
+    {"kind":"Diagnostic","category":"runtime"},
+    {"kind":"Value","type":"integer","value":8},
+    {"kind":"Diagnostic","category":"runtime"},
+    {"kind":"Value","type":"integer","value":9},
+    {"kind":"Diagnostic","category":"type"},
+    {"kind":"Value","type":"integer","value":10},
+    {"kind":"Diagnostic","category":"type"},
+    {"kind":"Value","type":"integer","value":11},
+    {"kind":"Diagnostic","category":"runtime"},
+    {"kind":"Value","type":"integer","value":6}
+  ]
+}

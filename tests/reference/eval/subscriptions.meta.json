@@ -1,0 +1,8 @@
+{
+  "fixture": "eval/subscriptions",
+  "oracle": "atlas",
+  "stage": "expression-evaluation",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "implemented_pending_hpc",
+  "notes": "Checks forward and reverse row subscription, chaining, and promoted element types."
+}

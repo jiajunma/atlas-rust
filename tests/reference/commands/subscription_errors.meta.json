@@ -1,0 +1,8 @@
+{
+  "fixture": "commands/subscription_errors",
+  "oracle": "atlas",
+  "stage": "command-stream",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "implemented_pending_hpc",
+  "notes": "Checks negative and upper-bound indices, empty rows, non-row and non-integer subscriptions, and command recovery."
+}

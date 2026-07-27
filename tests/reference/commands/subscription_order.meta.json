@@ -1,0 +1,8 @@
+{
+  "fixture": "commands/subscription_order",
+  "oracle": "atlas",
+  "stage": "command-stream",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "implemented_pending_hpc",
+  "notes": "Checks Atlas runtime order: evaluate the index before evaluating the row expression."
+}

@@ -1,0 +1,8 @@
+{
+  "fixture": "commands/subscription_context",
+  "oracle": "atlas",
+  "stage": "command-stream",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "implemented_pending_hpc",
+  "notes": "Checks empty-row element type flowing through arithmetic and typed assignment before runtime bounds failure."
+}

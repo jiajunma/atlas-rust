@@ -1,0 +1,13 @@
+{
+  "schema": "atlas-session-events-v0",
+  "fixture": "commands/subscription_context",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind":"Output","text":"Declaring identifier 'x': int\n"},
+    {"kind":"Diagnostic","category":"runtime"},
+    {"kind":"Value","type":"integer","value":1},
+    {"kind":"Output","text":"Declaring identifier 'y': string\n"},
+    {"kind":"Diagnostic","category":"type"},
+    {"kind":"Value","type":"integer","value":2}
+  ]
+}

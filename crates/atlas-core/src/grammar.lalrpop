@@ -3,7 +3,7 @@ use super::{
     expression_list, finish_operator_formula, join_span, let_binding, let_bindings,
     let_expression, list_expression, tuple_expression,
     prepend_let_group,
-    prefix_operator_call, start_binary_formula, start_prefix_formula, unary,
+    prefix_operator_call, start_binary_formula, start_prefix_formula, subscription, unary,
     BinaryOp, Command, Expr, LetBinding, ParsedLet, ParserToken, PrimitiveType, Program,
     SpannedValue, UnaryOp,
 };
@@ -70,7 +70,7 @@ NotExpr: Expr = {
 
 Secondary: Expr = {
     <formula:Formula> => formula,
-    <atom:Atom> => atom,
+    <postfix:Postfix> => postfix,
 };
 
 // This mirrors Atlas's deliberately flat Bison grammar. FormulaStack performs
@@ -81,7 +81,7 @@ Formula: Expr = {
 
 FormulaStart: FormulaStack<Expr> = {
     <operator:Operator> => start_prefix_formula(operator),
-    <atom:Atom> <operator:Operator> => start_binary_formula(atom, operator),
+    <postfix:Postfix> <operator:Operator> => start_binary_formula(postfix, operator),
     <stack:FormulaStart> <operand:Operand> <operator:Operator> => {
         extend_operator_formula(stack, operand, operator)
     },
@@ -91,12 +91,25 @@ FormulaStart: FormulaStack<Expr> = {
 // the reference parser's `operand : operator operand` rule requires.
 Operand: Expr = {
     <operator:Operator> <operand:Operand> => prefix_operator_call(operator, operand),
-    <atom:Atom> => atom,
+    <postfix:Postfix> => postfix,
 };
 
 Operator: FormulaOperator = {
     <operator:"operator"> => operator.value,
     <span:"="> => FormulaOperator::new("=", 2).with_span(span),
+};
+
+Postfix: Expr = {
+    <base:Atom> <suffixes:SubscriptionSuffix*> => suffixes
+        .into_iter()
+        .fold(base, |array, (index, reversed, close)| {
+            subscription(array, index, reversed, close)
+        }),
+};
+
+SubscriptionSuffix: (Expr, bool, SourceSpan) = {
+    <_open:"["> <index:Expr> <close:"]"> => (index, false, close),
+    <_open:"~["> <index:Expr> <close:"]"> => (index, true, close),
 };
 
 Atom: Expr = {
@@ -140,6 +153,7 @@ extern {
         ":" => ParserToken::Colon(<SourceSpan>),
         "," => ParserToken::Comma(<SourceSpan>),
         "[" => ParserToken::LBracket(<SourceSpan>),
+        "~[" => ParserToken::ReverseLBracket(<SourceSpan>),
         "]" => ParserToken::RBracket(<SourceSpan>),
         "let" => ParserToken::Let(<SourceSpan>),
         "in" => ParserToken::In(<SourceSpan>),
