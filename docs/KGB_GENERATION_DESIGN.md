@@ -134,15 +134,18 @@ KgbGraph::build(
 size() / form() -> WeakRealFormId
 element(KgbId) -> Option<&TitsElement>
 involution_of(KgbId) -> Option<InvolutionId>
-length(KgbId, &InvolutionTable) -> Option<usize>       // table-derived
-cartan_of(KgbId, &InvolutionTable) -> Option<CartanId>
+length(KgbId) -> Option<usize>            // copied per-involution data
+cartan_of(KgbId) -> Option<CartanId>
 status(KgbId, generator) -> Option<KgbStatus>
 is_descent(KgbId, generator) -> Option<bool>
 cross(KgbId, generator) -> Option<KgbId>
-cayley(KgbId, generator) -> Option<Option<KgbId>>
-inverse_cayley(KgbId, generator) -> Option<(Option<KgbId>, Option<KgbId>)>
-tau_packet(involution position) / first_of_tau() accessors
-torus_factor(KgbId, &RealFormSeed?) -> ...             // exact rational
+cayley(KgbId, generator) -> Result<Option<KgbId>, ...>
+inverse_cayley(KgbId, generator)
+    -> Result<Option<(KgbId, Option<KgbId>)>, ...>
+    // outer None = generator not real; (first, None) = type II;
+    // (first, Some(second)) = type I with first < second
+tau_packet(position: usize) -> Option<(KgbId, usize)> / packet_count()
+torus_factor(KgbId, &InvolutionTable) -> Result<RationalCoweight, ...>
 ```
 
 Whether the graph stores the seed's cocharacter (making
@@ -166,17 +169,21 @@ review prefers it over the invariant) and
 - Published sizes, the gate: SL(2,R) = 3, PGL(2,R) = 2, Sp(4,R) = 11,
   SU(2,1) = 6, compact forms = 1 — via the full pipeline (seed +
   shared table), with the strong layer's `kgb_size` agreeing by
-  construction (the invariant) and the global sum over forms matching
-  `global_kgb_size` where cheap.
+  construction. `global_kgb_size` counts STRONG forms and is NOT the
+  sum of per-weak-form KGB sizes (SL(2): 3 + 1 = 4 vs 5) — no
+  global-sum test exists.
 - Structure: cross is involutive and status-consistent (real cross
   fixes, complex cross moves); every noncompact-imaginary generator
   has a Cayley link whose target's inverse pair points back; type
   I/II pair shapes on SL(2,R) (double) vs PGL(2,R) (single);
-  tau-packet sizes equal `orbitSize x fiberSize` per Cartan; lengths
-  ascend along Cayley links by one.
-- Numbering: element 0 is the seed; two builds agree; per-length
-  counts match Atlas published data for Sp(4,R) (1,2,2,...) as
-  recorded in the fixture notes.
+  each tau packet has size `fiberSize(form, cartan)` and the sum over
+  a Cartan's `orbitSize` involutions is `orbitSize x fiberSize`;
+  lengths ascend along Cayley links by one.
+- Numbering: element 0 is the seed (the identity involution is the
+  unique length-0 bucket minimum, immune to the tie-break divergence);
+  two builds agree; per-length ELEMENT counts for Sp(4,R) are
+  (4,3,3,1) and per-length involution counts (1,2,2,1) — oracle-run
+  data, requiring the simply connected C2 datum for size 11.
 - torus_factor: theta-fixedness of every value; the seed element's
   factor equals the symmetrized cocharacter.
 - The compact form: one element, all generators ImaginaryCompact, no
@@ -194,16 +201,82 @@ progression (next: stage (f) descents/Bruhat, then the language
 bridge); task #8's language-bridge design gains its first executable
 observable set.
 
-## Three independent design checks
+## Three independent design checks (returned; corrections folded)
 
-Before implementation, three fresh reviews: (1) Atlas semantics — the
-BFS status/descent assignment against kgb.cpp:553-614, the
-renumbering pipeline's two-map split and standardization stability,
-the inverse-Cayley pair shape, and the torus_factor formula; (2) Rust
-internals — the substrate fit (coset cross/cayley shapes, table
-mutation during build, BTreeMap dedup cost at split-E8 scale, the
-copied-in per-involution data), and the counting-sort port; (3) API
-and consumer fit — the build signature's five inputs and gates, the
-self-contained-graph question, accessor shapes against the crate
-idiom, and what stage (f) and the language bridge consume. Findings
-and corrections will be recorded here before source edits begin.
+The full findings live in the review archive; the deltas adopted:
+
+1. Atlas semantics (verified against the RUNNING oracle binary):
+   Sp(4,R) per-length data corrected above; the involution sort's
+   third key is the TwistedInvolution VALUE compare (the upstream
+   "internal number" comments are STALE — the port's WeylElement-Ord
+   tie-break is the right analogue), and `stable_sort`'s stability is
+   vacuous there (a strict total order) — the load-bearing stability
+   is exclusively the counting sort's. Shared within-packet discovery
+   order requires ALL of: same generator numbering, the single seed,
+   canonical reduction, and identical simple_grading decisions; and
+   Sp(4,R) itself EXERCISES the tie-break divergence (ties at
+   (1,1) and (2,2)), so exact numbering is not comparable even for
+   the primary fixture — counts, packet contents, and structure are.
+   Write-once holds by loop discipline (upstream's OR-set would
+   silently corrupt; the port's checked invariant is a strengthening;
+   descents are assignments, not ORs). torus_factor sharpenings: the
+   lift is an INTEGER 0/1 vector; the bits are the LEFT torus part;
+   symmetrise is v += v.theta (right product), halve, then normalize
+   (gcd out, positive denominator). The lc and real tests are LEFT
+   descents. New checked invariants: "inverse Cayley pair" (third
+   preimage; upstream silently overwrites) and "involution bucket"
+   (no sentinel may reach the counting sort). The persisted-shape
+   claim is corrected: the port's per-element TitsElement is a
+   SUPERSET of upstream's torus-bits-only persisted state. The
+   upward-closure precondition is vacuous in full-KGB scope; the
+   early size check is strict-greater after append plus final exact
+   equality.
+2. Rust internals: the self-contained-graph claim breaks on theta —
+   DECIDED HYBRID: the graph copies per-involution-position
+   (InvolutionId, involution length, CartanId) plus a per-element
+   position index and the cocharacter, making every accessor
+   substrate-free EXCEPT `torus_factor(KgbId, &InvolutionTable)`.
+   The per-call deep InnerClass equality gate would cost minutes at
+   E8 across millions of coset calls — the builder gates ONCE and
+   uses pub(crate) pre-gated coset entry points (a small
+   tits_element.rs addition landing with this stage). The seed-table
+   binding gate: after the add_cartan loop,
+   `table.lookup(identity) == Some(seed.element().involution())`
+   plus reduced-fixity ("seed element" invariant) — an in-bounds id
+   from a DIFFERENT same-inner-class table is otherwise a silently
+   wrong graph. Cayley edges are memoized per (generator, involution)
+   in the builder (the table edge re-multiplies per call). Storage is
+   FLAT strided (`x * rank + s`) — the nested-Vec layout wastes
+   ~60-90 MB and ~1.9M allocations at E8; the dedup BTreeMap is
+   build-local and dropped. Statuses classify from
+   `simple_root_kind` as primary with the length-change
+   reconstruction demoted to an invariant cross-check; write-once
+   slots are free via 1-byte `Option<KgbStatus>` niches. The
+   counting-sort port snapshots `first_of_tau` BEFORE the placement
+   loop (the in-place post-increment trap); `inv_loc` is
+   `Vec<Option<usize>>` at full table size; `sort_unstable_by` is
+   legal (total order). Borrow discipline: nothing borrows the table
+   across the `&mut` add_cartan phase; each BFS visit clones its
+   element out of the pool first. The torus_factor helper family
+   (bit lift to rationals, integer-matrix-times-rational-vector,
+   symmetrize) is NEW code; `fractional_part` moves to the shared
+   home.
+3. API and consumer fit: the false global-sum identity deleted
+   (finding confirmed by the crate's own SL(2) test: 4 vs 5);
+   `cayley` returns `Result<Option<KgbId>>` (the two existing Cayley
+   surfaces' exact idiom); the inverse pair is
+   `Option<(KgbId, Option<KgbId>)>` so the illegal `(None, Some)`
+   state is unrepresentable; `KgbStatus` stays a public 4-variant
+   enum but the parallel descent Vec is DROPPED — `is_descent` is
+   computed O(1) from copied lengths across the stored cross link;
+   `KgbResourceLimit` is dropped (never-constructed variant; the
+   invariant covers both checks); `KgbGraph` derives
+   `Clone, Debug, Eq, PartialEq` (the two-builds test needs it);
+   `&InnerClass` stays in the signature WITH its explicit equality
+   gate stated; a public per-coordinate exact view on
+   `RationalCoweight` joins the consequential updates (the language
+   bridge cannot read pub(crate) coordinates); the meta scenarios
+   gain the compact-form shape, the seed-factor check, and status
+   multisets; and `KGB_STAGE_MAP.md`'s stage (f) is rewritten to
+   descents-consumption/Bruhat-Hasse only (inverse Cayley and tau
+   packets land HERE, faithful to upstream's constructor).
