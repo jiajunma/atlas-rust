@@ -8,6 +8,15 @@
     {"kind":"Value","type":"integer","value":1},
     {"kind":"Output","text":"Declaring identifier 'y': string\n"},
     {"kind":"Diagnostic","category":"type"},
-    {"kind":"Value","type":"integer","value":2}
+    {"kind":"Value","type":"integer","value":2},
+    {"kind":"Output","text":"Declaring identifier 'z': string\n"},
+    {"kind":"Diagnostic","category":"type"},
+    {"kind":"Value","type":"integer","value":3},
+    {"kind":"Output","text":"Declaring identifier 'w': string\n"},
+    {"kind":"Diagnostic","category":"type"},
+    {"kind":"Value","type":"integer","value":4},
+    {"kind":"Output","text":"Declaring identifier 'u': int\n"},
+    {"kind":"Diagnostic","category":"runtime"},
+    {"kind":"Value","type":"integer","value":5}
   ]
 }

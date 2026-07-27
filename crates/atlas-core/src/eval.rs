@@ -249,6 +249,7 @@ pub fn validate_names(expression: &Expr, context: &EvalContext) -> Result<(), Di
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum ScalarType {
     Unknown,
+    UnknownNumeric,
     Integer,
     Rational,
     Boolean,
@@ -477,18 +478,22 @@ fn has_unknown(arguments: &[ScalarType]) -> bool {
 
 fn result_with_unknown(arguments: &[ScalarType], known_result: ScalarType) -> ScalarType {
     if has_unknown(arguments) {
-        ScalarType::Unknown
+        ScalarType::UnknownNumeric
     } else {
         known_result
     }
 }
 
 fn is_numeric_or_unknown(value_type: &ScalarType) -> bool {
-    *value_type == ScalarType::Unknown || is_numeric(value_type)
+    *value_type == ScalarType::Unknown
+        || *value_type == ScalarType::UnknownNumeric
+        || is_numeric(value_type)
 }
 
 fn is_integer_or_unknown(value_type: &ScalarType) -> bool {
-    *value_type == ScalarType::Unknown || *value_type == ScalarType::Integer
+    *value_type == ScalarType::Unknown
+        || *value_type == ScalarType::UnknownNumeric
+        || *value_type == ScalarType::Integer
 }
 
 fn is_boolean_or_unknown(value_type: &ScalarType) -> bool {
@@ -500,8 +505,16 @@ fn is_string_or_unknown(value_type: &ScalarType) -> bool {
 }
 
 fn promoted_numeric_type(left: &ScalarType, right: &ScalarType) -> ScalarType {
-    if *left == ScalarType::Unknown && *right == ScalarType::Unknown {
-        return ScalarType::Unknown;
+    if (*left == ScalarType::Unknown || *left == ScalarType::UnknownNumeric)
+        && (*right == ScalarType::Unknown || *right == ScalarType::UnknownNumeric)
+    {
+        return ScalarType::UnknownNumeric;
+    }
+    if *left == ScalarType::UnknownNumeric || *right == ScalarType::UnknownNumeric {
+        if *left == ScalarType::Rational || *right == ScalarType::Rational {
+            return ScalarType::Rational;
+        }
+        return ScalarType::UnknownNumeric;
     }
     if *left == ScalarType::Rational || *right == ScalarType::Rational {
         ScalarType::Rational
@@ -531,6 +544,19 @@ fn common_type(left: &ScalarType, right: &ScalarType) -> Option<ScalarType> {
     if *right == ScalarType::Unknown {
         return Some(left.clone());
     }
+    if *left == ScalarType::UnknownNumeric {
+        return match right {
+            ScalarType::Integer | ScalarType::Rational => Some(right.clone()),
+            ScalarType::UnknownNumeric => Some(ScalarType::UnknownNumeric),
+            _ => None,
+        };
+    }
+    if *right == ScalarType::UnknownNumeric {
+        return match left {
+            ScalarType::Integer | ScalarType::Rational => Some(left.clone()),
+            _ => None,
+        };
+    }
     if left == right {
         return Some(left.clone());
     }
@@ -558,7 +584,10 @@ fn common_type(left: &ScalarType, right: &ScalarType) -> Option<ScalarType> {
 fn assignment_compatible(target: &ScalarType, value: &ScalarType) -> bool {
     *target == ScalarType::Unknown
         || *value == ScalarType::Unknown
+        || (*target == ScalarType::UnknownNumeric && is_numeric(value))
         || target == value
+        || (*value == ScalarType::UnknownNumeric
+            && matches!(target, ScalarType::Integer | ScalarType::Rational))
         || matches!((target, value), (ScalarType::Rational, ScalarType::Integer))
         || match (target, value) {
             (ScalarType::Tuple(target), ScalarType::Tuple(value))
@@ -581,6 +610,7 @@ fn assignment_compatible(target: &ScalarType, value: &ScalarType) -> bool {
 fn atlas_type_name(value_type: &ScalarType) -> String {
     match value_type {
         ScalarType::Unknown => "*".into(),
+        ScalarType::UnknownNumeric => "*numeric*".into(),
         ScalarType::Integer => "int".into(),
         ScalarType::Rational => "rat".into(),
         ScalarType::Boolean => "bool".into(),
@@ -653,6 +683,7 @@ fn operator_type_error(
 fn scalar_type_name(value_type: &ScalarType) -> String {
     match value_type {
         ScalarType::Unknown => "unknown".into(),
+        ScalarType::UnknownNumeric => "unknown numeric".into(),
         ScalarType::Integer => "integer".into(),
         ScalarType::Rational => "rational".into(),
         ScalarType::Boolean => "boolean".into(),

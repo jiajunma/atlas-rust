@@ -536,7 +536,7 @@ mod tests {
         ));
         let events = run_source(&source);
 
-        assert_eq!(events.len(), 6);
+        assert_eq!(events.len(), 15);
         assert!(matches!(
             events[0],
             SessionEvent::Output { ref text, .. } if text == "Declaring identifier 'x': int\n"
@@ -564,6 +564,48 @@ mod tests {
             events[5],
             SessionEvent::Value { value: Value::Integer(ref value), .. }
                 if value == &malachite::Integer::from(2)
+        ));
+        assert!(matches!(
+            events[6],
+            SessionEvent::Output { ref text, .. } if text == "Declaring identifier 'z': string\n"
+        ));
+        assert!(matches!(
+            events[7],
+            SessionEvent::Diagnostic(ref diagnostic)
+                if diagnostic.kind == ErrorKind::Type
+        ));
+        assert!(matches!(
+            events[8],
+            SessionEvent::Value { value: Value::Integer(ref value), .. }
+                if value == &malachite::Integer::from(3)
+        ));
+        assert!(matches!(
+            events[9],
+            SessionEvent::Output { ref text, .. } if text == "Declaring identifier 'w': string\n"
+        ));
+        assert!(matches!(
+            events[10],
+            SessionEvent::Diagnostic(ref diagnostic)
+                if diagnostic.kind == ErrorKind::Type
+        ));
+        assert!(matches!(
+            events[11],
+            SessionEvent::Value { value: Value::Integer(ref value), .. }
+                if value == &malachite::Integer::from(4)
+        ));
+        assert!(matches!(
+            events[12],
+            SessionEvent::Output { ref text, .. } if text == "Declaring identifier 'u': int\n"
+        ));
+        assert!(matches!(
+            events[13],
+            SessionEvent::Diagnostic(ref diagnostic)
+                if diagnostic.kind == ErrorKind::Runtime
+        ));
+        assert!(matches!(
+            events[14],
+            SessionEvent::Value { value: Value::Integer(ref value), .. }
+                if value == &malachite::Integer::from(5)
         ));
     }
 
