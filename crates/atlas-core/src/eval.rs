@@ -8,7 +8,7 @@ use num_rational::BigRational;
 use crate::{
     diagnostic::{Diagnostic, ErrorKind, SourceSpan},
     formula::FormulaOperator,
-    syntax::{BinaryOp, Command, Expr, Program},
+    syntax::{BinaryOp, Command, Expr, PrimitiveType, Program},
     value::Value,
 };
 
@@ -34,7 +34,8 @@ struct BindingId(usize);
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct Binding {
-    value: Value,
+    value: Option<Value>,
+    value_type: ScalarType,
 }
 
 impl EvalContext {
@@ -52,22 +53,45 @@ impl EvalContext {
 
     pub fn get(&self, name: &str) -> Option<&Value> {
         let id = self.names.get(name)?;
-        self.bindings.get(id.0).map(|binding| &binding.value)
+        self.bindings.get(id.0)?.value.as_ref()
+    }
+
+    fn binding_type(&self, name: &str) -> Option<ScalarType> {
+        let id = self.names.get(name)?;
+        self.bindings.get(id.0).map(|binding| binding.value_type)
     }
 
     pub fn insert(&mut self, name: impl Into<String>, value: Value) -> Option<Value> {
         let name = name.into();
         let previous = self.get(&name).cloned();
         let id = BindingId(self.bindings.len());
-        self.bindings.push(Binding { value });
+        let value_type = value_type(&value);
+        self.bindings.push(Binding {
+            value: Some(value),
+            value_type,
+        });
         self.names.insert(name, id);
         previous
     }
 
-    fn replace(&mut self, name: &str, value: Value) -> Option<Value> {
-        let id = *self.names.get(name)?;
-        let binding = self.bindings.get_mut(id.0)?;
-        Some(std::mem::replace(&mut binding.value, value))
+    fn declare(&mut self, name: impl Into<String>, value_type: ScalarType) {
+        let id = BindingId(self.bindings.len());
+        self.bindings.push(Binding {
+            value: None,
+            value_type,
+        });
+        self.names.insert(name.into(), id);
+    }
+
+    fn assign(&mut self, name: &str, value: Value) -> bool {
+        let Some(id) = self.names.get(name).copied() else {
+            return false;
+        };
+        let Some(binding) = self.bindings.get_mut(id.0) else {
+            return false;
+        };
+        binding.value = Some(value);
+        true
     }
 
     #[cfg(test)]
@@ -118,7 +142,7 @@ pub fn execute_command(
         } => {
             let value = evaluate_expression_with_context(value, context)?;
             let new_type = value_type(&value);
-            let previous_type = context.get(name).map(value_type);
+            let previous_type = context.binding_type(name);
             context.insert(name.clone(), value);
 
             let mut text = format!("Variable {name}: {}", atlas_type_name(new_type));
@@ -131,6 +155,22 @@ pub fn execute_command(
             text.push('\n');
             Ok(vec![EvalEvent::Output { text, span: *span }])
         }
+        Command::Declare {
+            name,
+            value_type,
+            span,
+            ..
+        } => {
+            let value_type = scalar_type(*value_type);
+            context.declare(name.clone(), value_type);
+            Ok(vec![EvalEvent::Output {
+                text: format!(
+                    "Declaring identifier '{name}': {}\n",
+                    atlas_type_name(value_type)
+                ),
+                span: *span,
+            }])
+        }
     }
 }
 
@@ -140,6 +180,15 @@ fn evaluate_expression_with_context(
 ) -> Result<Value, Diagnostic> {
     validate_names(expression, context)?;
     eval_expr(expression, context)
+}
+
+fn scalar_type(value_type: PrimitiveType) -> ScalarType {
+    match value_type {
+        PrimitiveType::Integer => ScalarType::Integer,
+        PrimitiveType::Rational => ScalarType::Rational,
+        PrimitiveType::String => ScalarType::String,
+        PrimitiveType::Boolean => ScalarType::Boolean,
+    }
 }
 
 /// Resolve and type-check every subexpression before evaluation. Atlas lowers
@@ -159,7 +208,7 @@ pub(crate) enum ScalarType {
 
 fn infer_scalar_type(expression: &Expr, context: &EvalContext) -> Result<ScalarType, Diagnostic> {
     match expression {
-        Expr::Identifier { name, span } => context.get(name).map(value_type).ok_or_else(|| {
+        Expr::Identifier { name, span } => context.binding_type(name).ok_or_else(|| {
             Diagnostic::new(
                 ErrorKind::Name,
                 format!("undefined identifier `{name}`"),
@@ -175,7 +224,7 @@ fn infer_scalar_type(expression: &Expr, context: &EvalContext) -> Result<ScalarT
             value,
             span,
         } => {
-            let target_type = context.get(name).map(value_type).ok_or_else(|| {
+            let target_type = context.binding_type(name).ok_or_else(|| {
                 Diagnostic::new(
                     ErrorKind::Name,
                     format!("undefined identifier `{name}` in assignment"),
@@ -353,17 +402,24 @@ fn eval_expr(expression: &Expr, context: &mut EvalContext) -> Result<Value, Diag
         Expr::Integer { value, .. } => Ok(Value::Integer(value.clone())),
         Expr::Boolean { value, .. } => Ok(Value::Boolean(*value)),
         Expr::String { value, .. } => Ok(Value::String(value.clone())),
-        Expr::Identifier { name, span } => context.get(name).cloned().ok_or_else(|| {
-            Diagnostic::new(
+        Expr::Identifier { name, span } => match context.binding_type(name) {
+            None => Err(Diagnostic::new(
                 ErrorKind::Name,
                 format!("undefined identifier `{name}`"),
                 Some(*span),
-            )
-        }),
+            )),
+            Some(_) => context.get(name).cloned().ok_or_else(|| {
+                Diagnostic::new(
+                    ErrorKind::Runtime,
+                    format!("Taking value of uninitialized variable '{name}'"),
+                    Some(*span),
+                )
+            }),
+        },
         Expr::Assignment {
             name, value, span, ..
         } => {
-            let target_type = context.get(name).map(value_type).ok_or_else(|| {
+            let target_type = context.binding_type(name).ok_or_else(|| {
                 Diagnostic::new(
                     ErrorKind::Name,
                     format!("undefined identifier `{name}` in assignment"),
@@ -372,7 +428,7 @@ fn eval_expr(expression: &Expr, context: &mut EvalContext) -> Result<Value, Diag
             })?;
             let value = eval_expr(value, context)?;
             let value = coerce_assignment_value(target_type, value, *span)?;
-            debug_assert!(context.replace(name, value.clone()).is_some());
+            debug_assert!(context.assign(name, value.clone()));
             Ok(value)
         }
         Expr::Group { inner, .. } => eval_expr(inner, context),

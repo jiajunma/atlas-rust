@@ -257,4 +257,69 @@ mod tests {
             SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &4.into()
         ));
     }
+
+    #[test]
+    fn primitive_declarations_are_uninitialized_until_assignment() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/commands/declarations.atlas"
+        ));
+        let events = run_source(&source);
+
+        assert_eq!(events.len(), 13);
+        assert!(matches!(
+            events[0],
+            SessionEvent::Output { ref text, .. } if text == "Declaring identifier 'x': int\n"
+        ));
+        assert!(
+            matches!(events[1], SessionEvent::Diagnostic(ref d) if d.kind == ErrorKind::Runtime)
+        );
+        assert!(matches!(
+            events[2],
+            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &3.into()
+        ));
+        assert!(matches!(
+            events[4],
+            SessionEvent::Output { ref text, .. } if text == "Declaring identifier 'r': rat\n"
+        ));
+        assert!(matches!(
+            events[5],
+            SessionEvent::Value { value: Value::Rational(ref value), .. }
+                if value == &num_rational::BigRational::from_integer(2.into())
+        ));
+        assert!(matches!(
+            events[7],
+            SessionEvent::Output { ref text, .. }
+                if text == "Declaring identifier 's': string\n"
+        ));
+        assert!(matches!(
+            events[8],
+            SessionEvent::Value { value: Value::String(ref value), .. } if value == "atlas"
+        ));
+        assert!(matches!(
+            events[10],
+            SessionEvent::Output { ref text, .. }
+                if text == "Declaring identifier 'b': bool\n"
+        ));
+        assert!(matches!(
+            events[11],
+            SessionEvent::Value {
+                value: Value::Boolean(true),
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn failed_assignment_leaves_a_declaration_uninitialized() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/commands/declaration_errors.atlas"
+        ));
+        let events = run_source(&source);
+
+        assert_eq!(events.len(), 3);
+        assert!(matches!(events[1], SessionEvent::Diagnostic(ref d) if d.kind == ErrorKind::Type));
+        assert!(
+            matches!(events[2], SessionEvent::Diagnostic(ref d) if d.kind == ErrorKind::Runtime)
+        );
+    }
 }

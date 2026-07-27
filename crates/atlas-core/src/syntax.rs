@@ -97,15 +97,29 @@ pub enum Command {
         value: Expr,
         span: SourceSpan,
     },
+    Declare {
+        name: String,
+        name_span: SourceSpan,
+        value_type: PrimitiveType,
+        span: SourceSpan,
+    },
 }
 
 impl Command {
     pub fn span(&self) -> SourceSpan {
         match self {
             Self::Expression(expression) => expression.span(),
-            Self::Define { span, .. } => *span,
+            Self::Define { span, .. } | Self::Declare { span, .. } => *span,
         }
     }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PrimitiveType {
+    Integer,
+    Rational,
+    String,
+    Boolean,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -141,6 +155,7 @@ pub enum ParserToken {
     String(SpannedValue<String>),
     Identifier(SpannedValue<String>),
     Operator(SpannedValue<FormulaOperator>),
+    PrimitiveType(SpannedValue<PrimitiveType>),
     Becomes(SourceSpan),
     Colon(SourceSpan),
     And(SourceSpan),
@@ -160,6 +175,7 @@ impl ParserToken {
             Self::String(value) => value.span,
             Self::Identifier(value) => value.span,
             Self::Operator(value) => value.span,
+            Self::PrimitiveType(value) => value.span,
             Self::Unsupported(value) => value.span,
             Self::Becomes(span)
             | Self::Colon(span)
@@ -181,6 +197,7 @@ impl fmt::Display for ParserToken {
             Self::String(_) => "string",
             Self::Identifier(_) => "identifier",
             Self::Operator(operator) => operator.value.symbol.as_str(),
+            Self::PrimitiveType(_) => "primitive type",
             Self::Becomes(_) => ":=",
             Self::Colon(_) => ":",
             Self::And(_) => "and",
@@ -248,6 +265,20 @@ fn parser_tokens_from_tokens(
                     }),
                     span,
                 ))),
+                TokenKind::PrimitiveType(name) => {
+                    let value = match name.as_str() {
+                        "int" => Some(PrimitiveType::Integer),
+                        "rat" => Some(PrimitiveType::Rational),
+                        "string" => Some(PrimitiveType::String),
+                        "bool" => Some(PrimitiveType::Boolean),
+                        _ => None,
+                    };
+                    let token = value.map_or_else(
+                        || ParserToken::Unsupported(SpannedValue { value: name, span }),
+                        |value| ParserToken::PrimitiveType(SpannedValue { value, span }),
+                    );
+                    Some(Ok((token, span)))
+                }
                 TokenKind::Identifier => Some(Ok((
                     ParserToken::Identifier(SpannedValue {
                         value: token.lexeme,
@@ -420,6 +451,15 @@ fn definition(target: SpannedValue<String>, value: Expr) -> Command {
         name_span: target.span,
         span: join_span(target.span, value.span()),
         value,
+    }
+}
+
+fn declaration(target: SpannedValue<String>, value_type: SpannedValue<PrimitiveType>) -> Command {
+    Command::Declare {
+        name: target.value,
+        name_span: target.span,
+        span: join_span(target.span, value_type.span),
+        value_type: value_type.value,
     }
 }
 

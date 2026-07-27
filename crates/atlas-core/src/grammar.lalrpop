@@ -1,7 +1,8 @@
 use super::{
-    assignment, binary, definition, extend_operator_formula, finish_operator_formula, join_span,
+    assignment, binary, declaration, definition, extend_operator_formula, finish_operator_formula,
+    join_span,
     prefix_operator_call, start_binary_formula, start_prefix_formula, unary,
-    BinaryOp, Command, Expr, ParserToken, Program, SpannedValue, UnaryOp,
+    BinaryOp, Command, Expr, ParserToken, PrimitiveType, Program, SpannedValue, UnaryOp,
 };
 use crate::diagnostic::SourceSpan;
 use crate::formula::{FormulaOperator, FormulaStack};
@@ -21,6 +22,7 @@ pub Program: Program = {
 // separate from Program prevents a syntax error in a later command from
 // discarding values already produced by earlier commands.
 pub Command: Command = {
+    <name:"identifier"> <_colon:":"> <value_type:"primitive_type"> => declaration(name, value_type),
     <name:"identifier"> <_colon:":"> <value:Expr> => definition(name, value),
     <expression:Expr> => Command::Expression(expression),
 };
@@ -100,6 +102,7 @@ extern {
         "string" => ParserToken::String(<SpannedValue<String>>),
         "identifier" => ParserToken::Identifier(<SpannedValue<String>>),
         "operator" => ParserToken::Operator(<SpannedValue<FormulaOperator>>),
+        "primitive_type" => ParserToken::PrimitiveType(<SpannedValue<PrimitiveType>>),
         ":=" => ParserToken::Becomes(<SourceSpan>),
         ":" => ParserToken::Colon(<SourceSpan>),
         "and" => ParserToken::And(<SourceSpan>),

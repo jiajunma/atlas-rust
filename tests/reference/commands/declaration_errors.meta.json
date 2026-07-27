@@ -1,0 +1,8 @@
+{
+  "fixture": "commands/declaration_errors",
+  "oracle": "atlas",
+  "stage": "command-stream",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "implemented_pending_hpc",
+  "notes": "Checks a failed assignment leaves a declared binding uninitialized."
+}

@@ -1,0 +1,13 @@
+x : int
+x
+x := 3
+x
+r : rat
+r := 2
+r
+s : string
+s := "atlas"
+s
+b : bool
+b := true
+b

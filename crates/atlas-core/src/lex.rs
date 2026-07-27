@@ -13,6 +13,7 @@ use crate::{
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TokenKind {
     Keyword(String),
+    PrimitiveType(String),
     Identifier,
     Integer,
     String,
@@ -38,6 +39,8 @@ const KEYWORDS: &[&str] = &[
     "not", "next", "do", "dont", "from", "downto", "while", "for", "od", "case", "esac", "rec_fun",
     "true", "false", "die", "break", "return", "set_type", "whattype", "showall", "forget",
 ];
+
+const PRIMITIVE_TYPES: &[&str] = &["int", "rat", "string", "bool"];
 
 /// A stateful Atlas scanner.
 ///
@@ -149,6 +152,8 @@ impl<'a> Lexer<'a> {
                 let kind = if KEYWORDS.contains(&word) {
                     self.apply_keyword(word);
                     TokenKind::Keyword(word.to_owned())
+                } else if PRIMITIVE_TYPES.contains(&word) {
+                    TokenKind::PrimitiveType(word.to_owned())
                 } else {
                     TokenKind::Identifier
                 };
@@ -525,6 +530,17 @@ mod tests {
     fn oracle_non_keyword_is_scanned_as_an_identifier() {
         let tokens = tokenize(&SourceText::new("any_type\n")).expect("valid identifier");
         assert_eq!(tokens[0].kind, TokenKind::Identifier);
+    }
+
+    #[test]
+    fn scans_oracle_primitive_type_names_as_their_own_token_class() {
+        let tokens = tokenize(&SourceText::new("int rat string bool value\n"))
+            .expect("valid primitive type names");
+        assert_eq!(tokens[0].kind, TokenKind::PrimitiveType("int".into()));
+        assert_eq!(tokens[1].kind, TokenKind::PrimitiveType("rat".into()));
+        assert_eq!(tokens[2].kind, TokenKind::PrimitiveType("string".into()));
+        assert_eq!(tokens[3].kind, TokenKind::PrimitiveType("bool".into()));
+        assert_eq!(tokens[4].kind, TokenKind::Identifier);
     }
 
     #[test]

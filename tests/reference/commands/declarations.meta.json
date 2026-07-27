@@ -1,0 +1,8 @@
+{
+  "fixture": "commands/declarations",
+  "oracle": "atlas",
+  "stage": "command-stream",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "implemented_pending_hpc",
+  "notes": "Checks primitive declaration output, uninitialized reads, assignment initialization, and int-to-rat coercion."
+}

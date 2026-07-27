@@ -1,0 +1,20 @@
+{
+  "schema": "atlas-session-events-v0",
+  "fixture": "commands/declarations",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind":"Output","text":"Declaring identifier 'x': int\n"},
+    {"kind":"Diagnostic","category":"runtime"},
+    {"kind":"Value","type":"integer","value":3},
+    {"kind":"Value","type":"integer","value":3},
+    {"kind":"Output","text":"Declaring identifier 'r': rat\n"},
+    {"kind":"Value","type":"rational","numerator":2,"denominator":1},
+    {"kind":"Value","type":"rational","numerator":2,"denominator":1},
+    {"kind":"Output","text":"Declaring identifier 's': string\n"},
+    {"kind":"Value","type":"string","value":"atlas"},
+    {"kind":"Value","type":"string","value":"atlas"},
+    {"kind":"Output","text":"Declaring identifier 'b': bool\n"},
+    {"kind":"Value","type":"boolean","value":true},
+    {"kind":"Value","type":"boolean","value":true}
+  ]
+}
