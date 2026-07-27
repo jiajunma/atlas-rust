@@ -122,9 +122,9 @@ The public `CartanFiber` computes the exact denominator first under a
 caller-owned `IntegerLatticeBudget`, then exposes opaque elements with
 deterministic ambient representatives. It itself deliberately stops before
 the C++ `Fiber` object's higher state; adjoint maps live in
-`AdjointCartanFiber`/`FiberToAdjoint` and gradings in `CartanGradingData`,
-while weak real forms, central-square classes, and strong real forms remain
-unimplemented.
+`AdjointCartanFiber`/`FiberToAdjoint`, gradings in `CartanGradingData`, and
+the weak-real-form partition in `WeakRealFormPartition`, while central-square
+classes and strong real forms remain unimplemented.
 
 The internal `integer_lattice` layer performs this exact prerequisite. It uses
 a Smith-style diagonal reduction with tracked unimodular column operations,

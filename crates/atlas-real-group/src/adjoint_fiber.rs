@@ -379,6 +379,15 @@ impl AdjointCartanFiber {
             .map(AdjointFiberElement)
     }
 
+    /// The element's coordinates on the adjoint subquotient basis, delegated
+    /// to the inner ambient-side machinery with the same provenance check.
+    pub fn coordinates<'e>(
+        &self,
+        element: &'e AdjointFiberElement,
+    ) -> Result<&'e ModTwoVector, StructureError> {
+        self.fiber.coordinates(&element.0)
+    }
+
     pub fn canonical_representative(
         &self,
         element: &AdjointFiberElement,

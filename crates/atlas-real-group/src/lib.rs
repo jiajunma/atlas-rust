@@ -22,6 +22,7 @@ mod root_datum;
 mod root_involution;
 mod root_system;
 mod twisted_involution;
+mod weak_real_form;
 mod weyl;
 
 pub use adjoint_fiber::{
@@ -42,6 +43,7 @@ pub use root_datum::BasedRootDatum;
 pub use root_involution::{RootInvolutionData, RootKind};
 pub use root_system::{RootId, RootSystem, RootSystemBudget};
 pub use twisted_involution::TwistedInvolution;
+pub use weak_real_form::{WeakRealFormId, WeakRealFormPartition};
 pub use weyl::{WeylAction, WeylGroup};
 
 /// Legacy untyped coordinate vector used only by the A1 migration prototype.

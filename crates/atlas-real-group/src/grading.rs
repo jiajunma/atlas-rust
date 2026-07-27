@@ -54,8 +54,9 @@ impl Grading {
 /// root noncompact by the quasisplit normalization; every other element's
 /// grading is the affine-linear evaluation against its canonical ambient
 /// representative. Construction rejects a nonfaithful shift matrix, so the
-/// grading-to-element inverse is unique. Weak and strong real forms and
-/// `W_im` orbits are later layers.
+/// grading-to-element inverse is unique. `W_im` orbits live in
+/// [`crate::WeakRealFormPartition`]; real-form labels and strong real forms
+/// are later layers.
 #[derive(Clone, Debug)]
 pub struct CartanGradingData {
     imaginary_simple_roots: Vec<RootId>,
@@ -281,7 +282,7 @@ fn ensure_faithful_shifts(imaginary_rank: usize, shifts: &[Grading]) -> Result<(
     Ok(())
 }
 
-fn try_capacity<T>(capacity: usize) -> Result<Vec<T>, StructureError> {
+pub(crate) fn try_capacity<T>(capacity: usize) -> Result<Vec<T>, StructureError> {
     let mut values = Vec::new();
     values
         .try_reserve_exact(capacity)

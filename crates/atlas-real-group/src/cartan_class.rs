@@ -4,7 +4,8 @@ use crate::TwistedInvolution;
 ///
 /// The representative is the first action in this crate's deterministic Weyl
 /// enumeration, not Atlas's `canonicalize` representative. Fiber groups,
-/// weak/strong real forms, and real Cartan component data are later additions.
+/// real-form attribution, and real Cartan component data are later additions
+/// to this type.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TwistedConjugacyClass {
     representative: TwistedInvolution,

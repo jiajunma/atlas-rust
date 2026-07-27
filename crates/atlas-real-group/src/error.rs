@@ -41,6 +41,10 @@ pub enum StructureError {
     },
     GradingShiftsNotFaithful,
     ImpossibleGrading,
+    WeakRealFormResourceLimit {
+        resource: &'static str,
+        limit: usize,
+    },
     ModTwoSubquotientInvariantViolation,
     NotInModTwoSubspace,
     CartanFiberMismatch,
@@ -123,6 +127,9 @@ impl fmt::Display for StructureError {
             }
             Self::ImpossibleGrading => {
                 write!(f, "no fiber element has the requested grading")
+            }
+            Self::WeakRealFormResourceLimit { resource, limit } => {
+                write!(f, "weak-real-form {resource} exceeded its limit of {limit}")
             }
             Self::ModTwoSubquotientInvariantViolation => {
                 write!(f, "mod-two subquotient invariant was violated")

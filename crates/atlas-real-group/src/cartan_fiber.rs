@@ -18,9 +18,10 @@ use crate::{
 ///
 /// The abstract quotient `Y^theta / (I + theta_Y)Y` is isomorphic, but it has
 /// different natural coordinates.  Adjoint maps live in
-/// [`crate::AdjointCartanFiber`] and [`crate::FiberToAdjoint`], and gradings
-/// in [`crate::CartanGradingData`]; weak real forms, strong real forms, and
-/// KGB data still belong to later layers.
+/// [`crate::AdjointCartanFiber`] and [`crate::FiberToAdjoint`], gradings in
+/// [`crate::CartanGradingData`], and the weak-real-form partition in
+/// [`crate::WeakRealFormPartition`]; strong real forms and KGB data still
+/// belong to later layers.
 #[derive(Clone, Debug)]
 pub struct CartanFiber {
     model: Arc<CartanFiberModel>,
@@ -36,7 +37,9 @@ struct CartanFiberModel {
 ///
 /// Coordinates are retained in the fiber's canonical basis.  The shared model
 /// prevents accidentally combining equal-rank elements that came from
-/// different Cartan involutions.
+/// different Cartan involutions.  Opacity means provenance, not secrecy:
+/// coordinate views (`canonical_representative`, `coordinates`) are served
+/// only by the owning fiber, against its documented basis convention.
 #[derive(Clone, Debug)]
 pub struct CartanFiberElement {
     model: Arc<CartanFiberModel>,
@@ -152,6 +155,20 @@ impl CartanFiber {
         self.model
             .quotient
             .ambient_representative(&element.coordinates)
+    }
+
+    /// The element's coordinates on this fiber's canonical subquotient basis.
+    ///
+    /// Bit `j` selects `basis_representatives()[j]`; the XOR of the selected
+    /// representatives is exactly [`Self::canonical_representative`]. This
+    /// exposes the same documented low-pivot basis data that representative
+    /// already determines — no new coordinate commitment.
+    pub fn coordinates<'e>(
+        &self,
+        element: &'e CartanFiberElement,
+    ) -> Result<&'e ModTwoVector, StructureError> {
+        self.ensure_member(element)?;
+        Ok(&element.coordinates)
     }
 
     /// Add two fiber elements in canonical coordinates.
