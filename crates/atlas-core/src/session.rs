@@ -5,16 +5,17 @@
 
 use crate::{
     diagnostic::{Diagnostic, SourceSpan},
-    eval::{evaluate_with_context, EvalContext, EvalEvent},
+    eval::{execute_command as evaluate_command, EvalContext, EvalEvent},
     lex::{Lexer, Token, TokenKind},
     source::SourceText,
-    syntax::{parse_command, Program},
+    syntax::parse_command,
     value::Value,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SessionEvent {
     Value { value: Value, span: SourceSpan },
+    Output { text: String, span: SourceSpan },
     Diagnostic(Diagnostic),
 }
 
@@ -34,10 +35,10 @@ pub fn run_source_with_context(
     loop {
         match lexer.next_token() {
             Ok(token) if token.kind == TokenKind::Newline => {
-                execute_command(&mut command, source, context, &mut events);
+                execute_tokens(&mut command, source, context, &mut events);
             }
             Ok(token) if token.kind == TokenKind::Eof => {
-                execute_command(&mut command, source, context, &mut events);
+                execute_tokens(&mut command, source, context, &mut events);
                 break;
             }
             Ok(token) if matches!(token.kind, TokenKind::Unsupported(_)) => {
@@ -57,7 +58,7 @@ pub fn run_source_with_context(
     events
 }
 
-fn execute_command(
+fn execute_tokens(
     tokens: &mut Vec<Token>,
     source: &SourceText,
     context: &mut EvalContext,
@@ -67,8 +68,8 @@ fn execute_command(
         return;
     }
 
-    let expression = match parse_command(tokens, source) {
-        Ok(expression) => expression,
+    let command = match parse_command(tokens, source) {
+        Ok(command) => command,
         Err(diagnostic) => {
             events.push(SessionEvent::Diagnostic(diagnostic));
             tokens.clear();
@@ -77,13 +78,11 @@ fn execute_command(
     };
     tokens.clear();
 
-    let program = Program {
-        expressions: vec![expression],
-    };
-    match evaluate_with_context(&program, context) {
+    match evaluate_command(&command, context) {
         Ok(command_events) => {
             events.extend(command_events.into_iter().map(|event| match event {
                 EvalEvent::Value { value, span } => SessionEvent::Value { value, span },
+                EvalEvent::Output { text, span } => SessionEvent::Output { text, span },
             }));
         }
         Err(diagnostic) => events.push(SessionEvent::Diagnostic(diagnostic)),
@@ -176,6 +175,86 @@ mod tests {
                 value: Value::Integer(_),
                 ..
             }
+        ));
+    }
+
+    #[test]
+    fn definitions_and_assignments_persist_across_commands() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/commands/assignments.atlas"
+        ));
+        let events = run_source(&source);
+
+        assert_eq!(events.len(), 6);
+        assert!(matches!(
+            events[0],
+            SessionEvent::Output { ref text, .. } if text == "Variable x: int\n"
+        ));
+        let values: Vec<_> = events
+            .iter()
+            .filter_map(|event| match event {
+                SessionEvent::Value { value, .. } => Some(value.clone()),
+                SessionEvent::Output { .. } | SessionEvent::Diagnostic(_) => None,
+            })
+            .collect();
+        assert_eq!(
+            values,
+            vec![
+                Value::Integer(41.into()),
+                Value::Integer(42.into()),
+                Value::Integer(42.into()),
+                Value::Integer(9.into()),
+                Value::Integer(9.into()),
+            ]
+        );
+    }
+
+    #[test]
+    fn failed_assignments_leave_existing_bindings_unchanged() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/commands/assignment_errors.atlas"
+        ));
+        let events = run_source(&source);
+
+        assert_eq!(events.len(), 5);
+        assert!(matches!(events[1], SessionEvent::Diagnostic(ref d) if d.kind == ErrorKind::Type));
+        assert!(matches!(
+            events[2],
+            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &10.into()
+        ));
+        assert!(matches!(events[3], SessionEvent::Diagnostic(ref d) if d.kind == ErrorKind::Name));
+        assert!(matches!(
+            events[4],
+            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &10.into()
+        ));
+    }
+
+    #[test]
+    fn nested_assignment_side_effects_follow_atlas_evaluation_order() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/commands/assignment_order.atlas"
+        ));
+        let events = run_source(&source);
+
+        assert_eq!(events.len(), 7);
+        assert!(matches!(
+            events[2],
+            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &3.into()
+        ));
+        assert!(matches!(
+            events[3],
+            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &6.into()
+        ));
+        assert!(
+            matches!(events[4], SessionEvent::Diagnostic(ref d) if d.kind == ErrorKind::Runtime)
+        );
+        assert!(matches!(
+            events[5],
+            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &3.into()
+        ));
+        assert!(matches!(
+            events[6],
+            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &4.into()
         ));
     }
 }

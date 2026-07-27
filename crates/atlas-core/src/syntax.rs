@@ -40,6 +40,12 @@ pub enum Expr {
         name: String,
         span: SourceSpan,
     },
+    Assignment {
+        name: String,
+        target_span: SourceSpan,
+        value: Box<Expr>,
+        span: SourceSpan,
+    },
     Unary {
         op: UnaryOp,
         operand: Box<Expr>,
@@ -69,10 +75,35 @@ impl Expr {
             | Self::Boolean { span, .. }
             | Self::String { span, .. }
             | Self::Identifier { span, .. }
+            | Self::Assignment { span, .. }
             | Self::Unary { span, .. }
             | Self::Binary { span, .. }
             | Self::OperatorCall { span, .. }
             | Self::Group { span, .. } => *span,
+        }
+    }
+}
+
+/// A top-level Atlas command.
+///
+/// Global definitions use command syntax and produce definition output;
+/// assignments remain expressions and return their assigned value.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Command {
+    Expression(Expr),
+    Define {
+        name: String,
+        name_span: SourceSpan,
+        value: Expr,
+        span: SourceSpan,
+    },
+}
+
+impl Command {
+    pub fn span(&self) -> SourceSpan {
+        match self {
+            Self::Expression(expression) => expression.span(),
+            Self::Define { span, .. } => *span,
         }
     }
 }
@@ -110,6 +141,8 @@ pub enum ParserToken {
     String(SpannedValue<String>),
     Identifier(SpannedValue<String>),
     Operator(SpannedValue<FormulaOperator>),
+    Becomes(SourceSpan),
+    Colon(SourceSpan),
     And(SourceSpan),
     Or(SourceSpan),
     Not(SourceSpan),
@@ -128,7 +161,9 @@ impl ParserToken {
             Self::Identifier(value) => value.span,
             Self::Operator(value) => value.span,
             Self::Unsupported(value) => value.span,
-            Self::And(span)
+            Self::Becomes(span)
+            | Self::Colon(span)
+            | Self::And(span)
             | Self::Or(span)
             | Self::Not(span)
             | Self::LParen(span)
@@ -146,6 +181,8 @@ impl fmt::Display for ParserToken {
             Self::String(_) => "string",
             Self::Identifier(_) => "identifier",
             Self::Operator(operator) => operator.value.symbol.as_str(),
+            Self::Becomes(_) => ":=",
+            Self::Colon(_) => ":",
             Self::And(_) => "and",
             Self::Or(_) => "or",
             Self::Not(_) => "not",
@@ -230,18 +267,23 @@ fn parser_tokens_from_tokens(
                     Some(Ok((token, span)))
                 }
                 TokenKind::Operator(operator) => {
-                    let token = parser_operator(operator, span).unwrap_or_else(|operator| {
-                        ParserToken::Unsupported(SpannedValue {
-                            value: operator,
-                            span,
+                    let token = if operator == ":=" {
+                        ParserToken::Becomes(span)
+                    } else {
+                        parser_operator(operator, span).unwrap_or_else(|operator| {
+                            ParserToken::Unsupported(SpannedValue {
+                                value: operator,
+                                span,
+                            })
                         })
-                    });
+                    };
                     Some(Ok((token, span)))
                 }
                 TokenKind::Punctuation(punctuation) => {
                     let token = match punctuation {
                         '(' => ParserToken::LParen(span),
                         ')' => ParserToken::RParen(span),
+                        ':' => ParserToken::Colon(span),
                         '~' => parser_operator("~".to_owned(), span)
                             .expect("tilde has a fixed Atlas priority"),
                         _ => ParserToken::Unsupported(SpannedValue {
@@ -291,7 +333,7 @@ pub fn parse(source: &SourceText) -> Result<Program, ParseError> {
 /// Parse one already-delimited Atlas command. The lexer remains responsible
 /// for command boundaries; this adapter deliberately does not tokenize the
 /// rest of the source, so session state can change before the next command.
-pub fn parse_command(tokens: &[Token], source: &SourceText) -> Result<Expr, ParseError> {
+pub fn parse_command(tokens: &[Token], source: &SourceText) -> Result<Command, ParseError> {
     let parsed = parser_tokens_from_tokens(tokens.iter().cloned())?;
     let spans: Vec<SourceSpan> = parsed.iter().map(|(_, span)| *span).collect();
     grammar::CommandParser::new()
@@ -360,6 +402,24 @@ fn binary(op: BinaryOp, lhs: Expr, rhs: Expr) -> Expr {
         span,
         lhs: Box::new(lhs),
         rhs: Box::new(rhs),
+    }
+}
+
+fn assignment(target: SpannedValue<String>, value: Expr) -> Expr {
+    Expr::Assignment {
+        name: target.value,
+        target_span: target.span,
+        span: join_span(target.span, value.span()),
+        value: Box::new(value),
+    }
+}
+
+fn definition(target: SpannedValue<String>, value: Expr) -> Command {
+    Command::Define {
+        name: target.value,
+        name_span: target.span,
+        span: join_span(target.span, value.span()),
+        value,
     }
 }
 
@@ -434,6 +494,9 @@ mod tests {
             Expr::Boolean { value, .. } => value.to_string(),
             Expr::String { value, .. } => format!("\"{value}\""),
             Expr::Identifier { name, .. } => name.clone(),
+            Expr::Assignment { name, value, .. } => {
+                format!("assign({name},{})", expression_shape(value))
+            }
             Expr::Unary {
                 op: UnaryOp::Not,
                 operand,
@@ -477,6 +540,12 @@ mod tests {
             .expressions;
         assert_eq!(expressions.len(), 1);
         expressions.remove(0)
+    }
+
+    #[test]
+    fn parses_assignment_as_a_right_associative_expression() {
+        let expression = parse_one("x := y := 1");
+        assert_eq!(expression_shape(&expression), "assign(x,assign(y,1))");
     }
 
     #[test]

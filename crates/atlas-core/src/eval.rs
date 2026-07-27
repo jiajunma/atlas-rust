@@ -1,4 +1,4 @@
-//! Ordered, side-effect-free evaluation of the scalar Atlas expression slice.
+//! Ordered evaluation of the scalar Atlas expression and command slice.
 
 use std::{cmp::Ordering, collections::BTreeMap};
 
@@ -8,7 +8,7 @@ use num_rational::BigRational;
 use crate::{
     diagnostic::{Diagnostic, ErrorKind, SourceSpan},
     formula::FormulaOperator,
-    syntax::{BinaryOp, Expr, Program},
+    syntax::{BinaryOp, Command, Expr, Program},
     value::Value,
 };
 
@@ -19,15 +19,22 @@ use crate::{
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum EvalEvent {
     Value { value: Value, span: SourceSpan },
+    Output { text: String, span: SourceSpan },
 }
 
-/// Mutable bindings for a future command/evaluator layer.
-///
-/// The current expression grammar has no assignment form, but keeping
-/// bindings explicit now avoids introducing global mutable state later.
+/// Mutable bindings for one explicit Atlas interpreter session.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct EvalContext {
-    bindings: BTreeMap<String, Value>,
+    names: BTreeMap<String, BindingId>,
+    bindings: Vec<Binding>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+struct BindingId(usize);
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct Binding {
+    value: Value,
 }
 
 impl EvalContext {
@@ -36,17 +43,36 @@ impl EvalContext {
     }
 
     pub fn with_bindings(bindings: impl IntoIterator<Item = (String, Value)>) -> Self {
-        Self {
-            bindings: bindings.into_iter().collect(),
+        let mut context = Self::new();
+        for (name, value) in bindings {
+            context.insert(name, value);
         }
+        context
     }
 
     pub fn get(&self, name: &str) -> Option<&Value> {
-        self.bindings.get(name)
+        let id = self.names.get(name)?;
+        self.bindings.get(id.0).map(|binding| &binding.value)
     }
 
     pub fn insert(&mut self, name: impl Into<String>, value: Value) -> Option<Value> {
-        self.bindings.insert(name.into(), value)
+        let name = name.into();
+        let previous = self.get(&name).cloned();
+        let id = BindingId(self.bindings.len());
+        self.bindings.push(Binding { value });
+        self.names.insert(name, id);
+        previous
+    }
+
+    fn replace(&mut self, name: &str, value: Value) -> Option<Value> {
+        let id = *self.names.get(name)?;
+        let binding = self.bindings.get_mut(id.0)?;
+        Some(std::mem::replace(&mut binding.value, value))
+    }
+
+    #[cfg(test)]
+    fn binding_id(&self, name: &str) -> Option<BindingId> {
+        self.names.get(name).copied()
     }
 }
 
@@ -65,14 +91,55 @@ pub fn evaluate_with_context(
         .expressions
         .iter()
         .map(|expression| {
-            validate_names(expression, context)?;
-            let value = eval_expr(expression, context)?;
+            let value = evaluate_expression_with_context(expression, context)?;
             Ok(EvalEvent::Value {
                 value,
                 span: expression.span(),
             })
         })
         .collect()
+}
+
+/// Execute one parsed top-level command against persistent interpreter state.
+pub fn execute_command(
+    command: &Command,
+    context: &mut EvalContext,
+) -> Result<Vec<EvalEvent>, Diagnostic> {
+    match command {
+        Command::Expression(expression) => {
+            let value = evaluate_expression_with_context(expression, context)?;
+            Ok(vec![EvalEvent::Value {
+                value,
+                span: expression.span(),
+            }])
+        }
+        Command::Define {
+            name, value, span, ..
+        } => {
+            let value = evaluate_expression_with_context(value, context)?;
+            let new_type = value_type(&value);
+            let previous_type = context.get(name).map(value_type);
+            context.insert(name.clone(), value);
+
+            let mut text = format!("Variable {name}: {}", atlas_type_name(new_type));
+            if let Some(previous_type) = previous_type {
+                text.push_str(&format!(
+                    " (overriding previous instance, which had type {})",
+                    atlas_type_name(previous_type)
+                ));
+            }
+            text.push('\n');
+            Ok(vec![EvalEvent::Output { text, span: *span }])
+        }
+    }
+}
+
+fn evaluate_expression_with_context(
+    expression: &Expr,
+    context: &mut EvalContext,
+) -> Result<Value, Diagnostic> {
+    validate_names(expression, context)?;
+    eval_expr(expression, context)
 }
 
 /// Resolve and type-check every subexpression before evaluation. Atlas lowers
@@ -83,7 +150,7 @@ pub fn validate_names(expression: &Expr, context: &EvalContext) -> Result<(), Di
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum ScalarType {
+pub(crate) enum ScalarType {
     Integer,
     Rational,
     Boolean,
@@ -102,6 +169,34 @@ fn infer_scalar_type(expression: &Expr, context: &EvalContext) -> Result<ScalarT
         Expr::Integer { .. } => Ok(ScalarType::Integer),
         Expr::Boolean { .. } => Ok(ScalarType::Boolean),
         Expr::String { .. } => Ok(ScalarType::String),
+        Expr::Assignment {
+            name,
+            target_span,
+            value,
+            span,
+        } => {
+            let target_type = context.get(name).map(value_type).ok_or_else(|| {
+                Diagnostic::new(
+                    ErrorKind::Name,
+                    format!("undefined identifier `{name}` in assignment"),
+                    Some(*target_span),
+                )
+            })?;
+            let rhs_type = infer_scalar_type(value, context)?;
+            if assignment_compatible(target_type, rhs_type) {
+                Ok(target_type)
+            } else {
+                Err(Diagnostic::new(
+                    ErrorKind::Type,
+                    format!(
+                        "cannot assign {} to `{name}` of type {}",
+                        scalar_type_name(rhs_type),
+                        scalar_type_name(target_type)
+                    ),
+                    Some(*span),
+                ))
+            }
+        }
         Expr::Group { inner, .. } => infer_scalar_type(inner, context),
         Expr::Unary { operand, span, .. } => {
             let operand_type = infer_scalar_type(operand, context)?;
@@ -185,6 +280,19 @@ fn is_numeric(value_type: ScalarType) -> bool {
     matches!(value_type, ScalarType::Integer | ScalarType::Rational)
 }
 
+fn assignment_compatible(target: ScalarType, value: ScalarType) -> bool {
+    target == value || (target == ScalarType::Rational && value == ScalarType::Integer)
+}
+
+fn atlas_type_name(value_type: ScalarType) -> &'static str {
+    match value_type {
+        ScalarType::Integer => "int",
+        ScalarType::Rational => "rat",
+        ScalarType::Boolean => "bool",
+        ScalarType::String => "string",
+    }
+}
+
 fn value_type(value: &Value) -> ScalarType {
     match value {
         Value::Integer(_) => ScalarType::Integer,
@@ -240,7 +348,7 @@ fn scalar_type_name(value_type: ScalarType) -> &'static str {
 }
 
 /// Evaluate one expression against an explicit context.
-fn eval_expr(expression: &Expr, context: &EvalContext) -> Result<Value, Diagnostic> {
+fn eval_expr(expression: &Expr, context: &mut EvalContext) -> Result<Value, Diagnostic> {
     match expression {
         Expr::Integer { value, .. } => Ok(Value::Integer(value.clone())),
         Expr::Boolean { value, .. } => Ok(Value::Boolean(*value)),
@@ -252,6 +360,21 @@ fn eval_expr(expression: &Expr, context: &EvalContext) -> Result<Value, Diagnost
                 Some(*span),
             )
         }),
+        Expr::Assignment {
+            name, value, span, ..
+        } => {
+            let target_type = context.get(name).map(value_type).ok_or_else(|| {
+                Diagnostic::new(
+                    ErrorKind::Name,
+                    format!("undefined identifier `{name}` in assignment"),
+                    Some(*span),
+                )
+            })?;
+            let value = eval_expr(value, context)?;
+            let value = coerce_assignment_value(target_type, value, *span)?;
+            debug_assert!(context.replace(name, value.clone()).is_some());
+            Ok(value)
+        }
         Expr::Group { inner, .. } => eval_expr(inner, context),
         Expr::Unary { operand, span, .. } => {
             let value = eval_expr(operand, context)?;
@@ -294,6 +417,31 @@ fn eval_expr(expression: &Expr, context: &EvalContext) -> Result<Value, Diagnost
             }
             eval_operator_call(operator, values, *span)
         }
+    }
+}
+
+fn coerce_assignment_value(
+    target_type: ScalarType,
+    value: Value,
+    span: SourceSpan,
+) -> Result<Value, Diagnostic> {
+    match (target_type, value) {
+        (ScalarType::Rational, Value::Integer(value)) => {
+            Ok(Value::Rational(BigRational::from_integer(value)))
+        }
+        (ScalarType::Integer, Value::Integer(value)) => Ok(Value::Integer(value)),
+        (ScalarType::Rational, Value::Rational(value)) => Ok(Value::Rational(value)),
+        (ScalarType::Boolean, Value::Boolean(value)) => Ok(Value::Boolean(value)),
+        (ScalarType::String, Value::String(value)) => Ok(Value::String(value)),
+        (target_type, value) => Err(Diagnostic::new(
+            ErrorKind::Type,
+            format!(
+                "cannot assign {} to a {}",
+                type_name(&value),
+                scalar_type_name(target_type)
+            ),
+            Some(span),
+        )),
     }
 }
 
@@ -551,6 +699,7 @@ mod tests {
             .into_iter()
             .map(|event| match event {
                 EvalEvent::Value { value, .. } => value,
+                EvalEvent::Output { .. } => unreachable!("program evaluation emits values only"),
             })
             .collect();
         assert_eq!(
@@ -585,6 +734,33 @@ mod tests {
                 },
             ]
         );
+    }
+
+    #[test]
+    fn assignment_updates_a_binding_cell_but_definition_rebinds_the_name() {
+        let mut context = EvalContext::with_bindings([(String::from("x"), integer(1))]);
+        let original = context.binding_id("x").expect("initial binding");
+        let assignment = parse(&SourceText::new("x := 2"))
+            .expect("assignment parses")
+            .expressions
+            .remove(0);
+        evaluate_with_context(
+            &Program {
+                expressions: vec![assignment],
+            },
+            &mut context,
+        )
+        .expect("assignment evaluates");
+        assert_eq!(context.binding_id("x"), Some(original));
+        assert_eq!(context.get("x"), Some(&integer(2)));
+
+        let definition = parse(&SourceText::new("x"))
+            .expect("identifier parses")
+            .expressions
+            .remove(0);
+        let value = eval_expr(&definition, &mut context).expect("read evaluates");
+        context.insert("x", value);
+        assert_ne!(context.binding_id("x"), Some(original));
     }
 
     #[test]
@@ -679,6 +855,7 @@ mod tests {
             .into_iter()
             .map(|event| match event {
                 EvalEvent::Value { value, .. } => value,
+                EvalEvent::Output { .. } => unreachable!("program evaluation emits values only"),
             })
             .collect();
 
@@ -721,6 +898,7 @@ mod tests {
             .into_iter()
             .map(|event| match event {
                 EvalEvent::Value { value, .. } => value,
+                EvalEvent::Output { .. } => unreachable!("program evaluation emits values only"),
             })
             .collect();
         assert_eq!(
@@ -752,6 +930,7 @@ mod tests {
             .into_iter()
             .map(|event| match event {
                 EvalEvent::Value { value, .. } => value,
+                EvalEvent::Output { .. } => unreachable!("program evaluation emits values only"),
             })
             .collect();
         assert_eq!(
@@ -783,6 +962,7 @@ mod tests {
             .into_iter()
             .map(|event| match event {
                 EvalEvent::Value { value, .. } => value,
+                EvalEvent::Output { .. } => unreachable!("program evaluation emits values only"),
             })
             .collect();
         assert_eq!(
@@ -817,6 +997,7 @@ mod tests {
             .into_iter()
             .map(|event| match event {
                 EvalEvent::Value { value, .. } => value,
+                EvalEvent::Output { .. } => unreachable!("program evaluation emits values only"),
             })
             .collect();
         assert_eq!(

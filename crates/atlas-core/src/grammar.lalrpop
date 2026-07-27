@@ -1,7 +1,7 @@
 use super::{
-    binary, extend_operator_formula, finish_operator_formula, join_span,
+    assignment, binary, definition, extend_operator_formula, finish_operator_formula, join_span,
     prefix_operator_call, start_binary_formula, start_prefix_formula, unary,
-    BinaryOp, Expr, ParserToken, Program, SpannedValue, UnaryOp,
+    BinaryOp, Command, Expr, ParserToken, Program, SpannedValue, UnaryOp,
 };
 use crate::diagnostic::SourceSpan;
 use crate::formula::{FormulaOperator, FormulaStack};
@@ -20,11 +20,17 @@ pub Program: Program = {
 // The runtime feeds one Atlas command at a time. Keeping this start symbol
 // separate from Program prevents a syntax error in a later command from
 // discarding values already produced by earlier commands.
-pub Command: Expr = {
-    <expression:Expr> => expression,
+pub Command: Command = {
+    <name:"identifier"> <_colon:":"> <value:Expr> => definition(name, value),
+    <expression:Expr> => Command::Expression(expression),
 };
 
 pub Expr: Expr = {
+    <expression:AssignmentExpr> => expression,
+};
+
+AssignmentExpr: Expr = {
+    <name:"identifier"> <_becomes:":="> <value:AssignmentExpr> => assignment(name, value),
     <expression:OrExpr> => expression,
 };
 
@@ -94,6 +100,8 @@ extern {
         "string" => ParserToken::String(<SpannedValue<String>>),
         "identifier" => ParserToken::Identifier(<SpannedValue<String>>),
         "operator" => ParserToken::Operator(<SpannedValue<FormulaOperator>>),
+        ":=" => ParserToken::Becomes(<SourceSpan>),
+        ":" => ParserToken::Colon(<SourceSpan>),
         "and" => ParserToken::And(<SourceSpan>),
         "or" => ParserToken::Or(<SourceSpan>),
         "not" => ParserToken::Not(<SourceSpan>),

@@ -1,0 +1,8 @@
+{
+  "fixture": "commands/assignment_order",
+  "oracle": "atlas",
+  "stage": "command-stream",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "implemented_pending_hpc",
+  "notes": "Checks right-associated assignment and Atlas evaluation order when a nested RHS side effect precedes an outer runtime failure."
+}
