@@ -85,6 +85,9 @@ pub enum StructureError {
     SeedInvariantViolation {
         invariant: &'static str,
     },
+    KgbInvariantViolation {
+        invariant: &'static str,
+    },
     DistinguishedInvolutionMismatch,
     ModTwoSubquotientInvariantViolation,
     NotInModTwoSubspace,
@@ -213,6 +216,9 @@ impl fmt::Display for StructureError {
             }
             Self::SeedInvariantViolation { invariant } => {
                 write!(f, "seed {invariant} invariant was violated")
+            }
+            Self::KgbInvariantViolation { invariant } => {
+                write!(f, "KGB {invariant} invariant was violated")
             }
             Self::DistinguishedInvolutionMismatch => {
                 write!(

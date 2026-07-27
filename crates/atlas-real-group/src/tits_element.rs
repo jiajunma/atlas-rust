@@ -167,6 +167,17 @@ impl TitsCoset {
         generator: usize,
     ) -> Result<bool, StructureError> {
         self.gate(table)?;
+        self.simple_grading_pregated(element, generator)
+    }
+
+    /// [`Self::simple_grading`] without the per-call inner-class gate, for
+    /// callers that gated ONCE (the stage-(e) BFS issues millions of calls;
+    /// the deep equality per call would dominate the whole build).
+    pub(crate) fn simple_grading_pregated(
+        &self,
+        element: &TitsElement,
+        generator: usize,
+    ) -> Result<bool, StructureError> {
         self.check_generator(generator)?;
         Ok(self.grading_offset[generator] != self.dual_m_alpha[generator].dot(&element.torus)?)
     }
@@ -182,6 +193,17 @@ impl TitsCoset {
         element: &TitsElement,
     ) -> Result<TitsElement, StructureError> {
         self.gate(table)?;
+        self.cross_pregated(table, generator, element)
+    }
+
+    /// [`Self::cross`] without the per-call inner-class gate (see
+    /// [`Self::simple_grading_pregated`]).
+    pub(crate) fn cross_pregated(
+        &self,
+        table: &InvolutionTable,
+        generator: usize,
+        element: &TitsElement,
+    ) -> Result<TitsElement, StructureError> {
         self.check_generator(generator)?;
         let record = required_record(table, element.involution)?;
         let target_id = table.cross(generator, element.involution)?;
@@ -234,6 +256,17 @@ impl TitsCoset {
         element: &TitsElement,
     ) -> Result<Option<TitsElement>, StructureError> {
         self.gate(table)?;
+        self.cayley_pregated(table, generator, element)
+    }
+
+    /// [`Self::cayley`] without the per-call inner-class gate (see
+    /// [`Self::simple_grading_pregated`]).
+    pub(crate) fn cayley_pregated(
+        &self,
+        table: &InvolutionTable,
+        generator: usize,
+        element: &TitsElement,
+    ) -> Result<Option<TitsElement>, StructureError> {
         self.check_generator(generator)?;
         let record = required_record(table, element.involution)?;
         let Some(target_id) = table.cayley(generator, element.involution)? else {
