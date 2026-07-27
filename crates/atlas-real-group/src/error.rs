@@ -75,6 +75,9 @@ pub enum StructureError {
     InvolutionTableInvariantViolation {
         invariant: &'static str,
     },
+    TitsCosetInvariantViolation {
+        invariant: &'static str,
+    },
     DistinguishedInvolutionMismatch,
     ModTwoSubquotientInvariantViolation,
     NotInModTwoSubspace,
@@ -194,6 +197,9 @@ impl fmt::Display for StructureError {
             }
             Self::InvolutionTableInvariantViolation { invariant } => {
                 write!(f, "involution-table {invariant} invariant was violated")
+            }
+            Self::TitsCosetInvariantViolation { invariant } => {
+                write!(f, "Tits-coset {invariant} invariant was violated")
             }
             Self::DistinguishedInvolutionMismatch => {
                 write!(

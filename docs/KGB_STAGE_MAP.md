@@ -58,11 +58,15 @@ packet boundaries; the size must equal the strong layer's
   deferred to the parameter layer), per-Cartan contiguous slices, O(1)
   stored cross links, and the Cayley edge. Cross-checked: per-Cartan
   orbit sizes against the classification.
-- (c) **Torus parts and Tits operations**: `reflect`, push/pull, the four
-  sigma multiplications, based cross action, gradings, Cayley. The
-  genuinely new algebra is the `sigma_w` lift relations
-  (`sigma_s^2 = m_s`). Cross-checks: gradings against the strong layer's
-  fundamental fiber.
+- (c) **Torus parts and Tits operations** (`TITS_OPERATIONS_DESIGN.md`,
+  LANDED as `tits_element.rs`): `TitsElement` as `(InvolutionId, mod-2
+  bits)` from the start; the based cross action as one closed-form map
+  (verified bit-for-bit against the four sigma multiplications), Cayley
+  with target-side reduction, blind `simple_grading`,
+  conjugate-to-simple general gradings, and the public `reduce` normal
+  form. Word walks replaced by mod-2 matrix transport from the
+  stage-(b) records' `WeylAction`s. Inverse Cayley deferred beyond
+  stage (f) with its repair invariance recorded.
 - (d) **Seed x0**: `some_coch`, `grading_of_simples`, the binary section
   solve, central-fiber minimization. Consumes the strong layer's
   representatives and the `toAdjoint` machinery.

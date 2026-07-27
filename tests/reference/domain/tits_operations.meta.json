@@ -1,16 +1,16 @@
 {
   "fixture": "domain/tits_operations.atlas",
-  "status": "design_reviewed_corrections_folded",
+  "status": "implemented_locally_6_tests_pending_hpc",
   "oracle": "traced_tits_h_cpp_4d3e9449",
-  "rust_status": "not_implemented",
+  "rust_status": "implemented_tits_element_rs",
   "reference_status": "pending_atlas_constructor_and_event_adapter",
   "scenarios": [
     "SL(2,R): type-I cross SWAP on the fundamental fiber, split fixed, Cayley to split, distinct reduced states",
-    "compact SU(2): all-compact grading, no Cayley",
-    "Sp(4,R): closed-form cross vs word-level four-step sigma recipe, bit-for-bit before reduction, all involutions",
-    "SU(2,1): conjugate-to-simple grading on the non-simple simple-imaginary root",
-    "PGL(2,R): type-II cross fixes the fundamental fiber (anchors the deferred inverse-Cayley repair)",
-    "offset RankMismatch and twist-invariance, same-datum different-delta provenance rejection"
+    "compact SU(2): all-compact grading",
+    "Sp(4,R): closed-form cross vs word-level four-step sigma recipe, bit-for-bit before reduction, all 6 involutions x 4 bit patterns x 2 generators, plus the simple-root grading degeneracy",
+    "SU(2,1): conjugate-to-simple grading on the non-simple simple-imaginary root; complex simples decline",
+    "PGL(2,R): type-II cross fixes the fundamental fiber",
+    "offset RankMismatch and twist-invariance, same-datum different-delta provenance, TitsElement::new gates, public reduce idempotence"
   ],
-  "notes": "Stage (c) of the KGB map: TitsElement as (InvolutionId, mod-2 torus bits) with word walks replaced by mod-2 matrix transport from the stage-(b) records' WeylActions. Three reviews returned: closed-form cross action VERIFIED step-for-step; torus_factor annihilation argument REFUTED and replaced by the convention-coincidence statement (comparable because both sides use the same low-pivot RREF; invariant content is the class mod (1+theta^T)X_*); SL(2,R) test oracle corrected to the type-I swap; inverse Cayley deferred beyond stage (f) with its repair invariance upgraded to provable. Corrections folded before implementation."
+  "notes": "Stage (c) of the KGB map. Implemented after the three-review workflow: closed-form cross VERIFIED step-for-step; torus_factor comparability re-grounded on convention coincidence (recorded in KGB_STAGE_MAP observables); SL(2,R) oracle corrected to the type-I swap; inverse Cayley deferred beyond stage (f). Local suite 153 green (147 + 6) under rustc 1.90 with clippy -D warnings and fmt --check clean; HPC preflight pending cluster reachability."
 }
