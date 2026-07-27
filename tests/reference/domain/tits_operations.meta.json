@@ -1,0 +1,16 @@
+{
+  "fixture": "domain/tits_operations.atlas",
+  "status": "design_recorded_review_pending",
+  "oracle": "traced_tits_h_cpp_4d3e9449",
+  "rust_status": "not_implemented",
+  "reference_status": "pending_atlas_constructor_and_event_adapter",
+  "scenarios": [
+    "SL(2,R): noncompact grading, Cayley to the split involution, distinct reduced states",
+    "compact SU(2): all-compact grading, no Cayley",
+    "Sp(4,R): closed-form cross action vs word-level sigma-recipe recomputation, bit-for-bit",
+    "imaginary grading by conjugation vs the simple-imaginary sum formula",
+    "inverse Cayley round-trip with the repair path",
+    "offset validation and foreign-table provenance"
+  ],
+  "notes": "Stage (c) of the KGB map: TitsElt as (InvolutionId, mod-2 torus bits) from the start — the persisted upstream shape — with word walks replaced by mod-2 matrix transport from the stage-(b) records' stored WeylActions (the sophistication upstream's own comment names at tits.cpp:425-432). Open review question: whether torus_factor's (1+theta^T) symmetrization makes it normal-form-independent. Reserved before implementation."
+}
