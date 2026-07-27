@@ -1,0 +1,17 @@
+{
+  "fixture": "domain/cartan_aggregation.atlas",
+  "status": "design_recorded_review_pending",
+  "oracle": "pending_domain_adapter",
+  "rust_status": "not_implemented",
+  "reference_status": "pending_atlas_constructor_and_event_adapter",
+  "scenarios": [
+    "A1 identity: two sites, split form spans both Cartans",
+    "A2 identity: sizes (1,3), su(3) confined to the fundamental site",
+    "B2 identity: four sites, graded Cayley poset",
+    "A1 x A1 identity and swap: four sites versus one",
+    "fundamental-site anchor with identity labels",
+    "order-free most-split via the trivial-grading test",
+    "budget and provenance pass-through rejections"
+  ],
+  "notes": "This fixture is reserved before implementation. It is not executable Atlas evidence until the language-level constructors and both oracle adapters exist."
+}
