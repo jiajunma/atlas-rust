@@ -1,0 +1,15 @@
+{
+  "fixture": "domain/kgb_generation.atlas",
+  "status": "design_recorded_review_pending",
+  "oracle": "traced_kgb_cpp_permutations_4d3e9449",
+  "rust_status": "not_implemented",
+  "reference_status": "pending_atlas_constructor_and_event_adapter",
+  "scenarios": [
+    "published KGB sizes: SL(2,R)=3, PGL(2,R)=2, Sp(4,R)=11, SU(2,1)=6, compact=1",
+    "cross involutivity, Cayley/inverse-Cayley pair shapes (type I vs II)",
+    "tau packets equal orbitSize x fiberSize; lengths ascend by one along Cayley",
+    "deterministic numbering, seed at element 0, per-length counts",
+    "torus_factor theta-fixedness"
+  ],
+  "notes": "Stage (e) of the KGB map: the per-form generation loop assembling every landed substrate. Key ported mechanics: statuses write-once at each element's visit, inverse Cayley as a pure post-pass, length as involution-table data (never per-element), the counting-sort standardization whose cumulative counts ARE first_of_tau, and the two-map renumbering split (records by the inverse, link targets by the forward map). Reserved before implementation."
+}
