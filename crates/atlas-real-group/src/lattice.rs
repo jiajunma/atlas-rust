@@ -126,7 +126,6 @@ impl RationalCoweight {
         self.coordinates.len()
     }
 
-    #[allow(dead_code)] // The stage-(e)/torus_factor consumer arrives next.
     pub(crate) fn coordinates(&self) -> &[Rational] {
         &self.coordinates
     }

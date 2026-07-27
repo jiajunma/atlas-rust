@@ -76,11 +76,18 @@ packet boundaries; the size must equal the strong layer's
   audit proved the crate's weak-real-form/square-class numbering EQUALS
   upstream's internal one; the interpreter's external FormNumberMap
   order is a recorded language-adapter obligation.
-- (e) **KGB generation** for one real form: BFS, reduction, hashing,
-  statuses, sort and numbering. Size check against `kgb_size`; packet
-  sizes against `orbitSize x fiberSize`.
-- (f) **Descents and Bruhat data**: inverse Cayley installation, tau
-  packets, Richardson-Springer Hasse when blocks need it.
+- (e) **KGB generation** (`KGB_GENERATION_DESIGN.md`, LANDED as
+  `kgb_graph.rs`): the per-form BFS with reduce-and-dedup, statuses
+  classified from the table, the counting-sort standardization with
+  the crate tie-break, inverse-Cayley pairs by the ascending
+  post-pass, tau packets, and exact `torus_factor` rationals. Sizes
+  verified against `kgb_size` and the oracle binary: SL(2,R)=3
+  (type-I pair), PGL(2,R)=2 (type II), Sp(4,R)=11 with per-length
+  (4,3,3,1), SU(2,1)=6 (equal-rank A2), compact forms=1.
+- (f) **Bruhat data**: descent-set consumption and the
+  Richardson-Springer Hasse construction when blocks need it (inverse
+  Cayley and tau packets landed with stage (e), faithful to
+  upstream's constructor).
 
 Deferred indefinitely: global KGB fingerprints, `EnrichedTitsGroup`
 backtrack seeding (partial KGB only), the external distinguished twist.

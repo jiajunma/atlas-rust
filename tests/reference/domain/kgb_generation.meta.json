@@ -1,15 +1,14 @@
 {
   "fixture": "domain/kgb_generation.atlas",
-  "status": "design_recorded_review_pending",
+  "status": "implemented_locally_4_tests_pending_hpc",
   "oracle": "traced_kgb_cpp_permutations_4d3e9449",
-  "rust_status": "not_implemented",
+  "rust_status": "implemented_kgb_graph_rs",
   "reference_status": "pending_atlas_constructor_and_event_adapter",
   "scenarios": [
-    "published KGB sizes: SL(2,R)=3, PGL(2,R)=2, Sp(4,R)=11, SU(2,1)=6, compact=1",
-    "cross involutivity, Cayley/inverse-Cayley pair shapes (type I vs II)",
-    "tau packets equal orbitSize x fiberSize; lengths ascend by one along Cayley",
-    "deterministic numbering, seed at element 0, per-length counts",
-    "torus_factor theta-fixedness"
+    "SL(2,R)=3: type-I swap, inverse-Cayley pair (0, Some(1)), torus_factor theta-fixed at every element",
+    "PGL(2,R)=2: type-II pair (0, None)",
+    "Sp(4,R)=11 (simply connected C2): per-length elements (4,3,3,1), tau packets sum to orbitSize x fiberSize, deterministic",
+    "SU(2,1)=6 (equal-rank A2; the flipped class is sl(3,R)); compact form = 1, all ImaginaryCompact, self-cross"
   ],
-  "notes": "Stage (e) of the KGB map: the per-form generation loop assembling every landed substrate. Key ported mechanics: statuses write-once at each element's visit, inverse Cayley as a pure post-pass, length as involution-table data (never per-element), the counting-sort standardization whose cumulative counts ARE first_of_tau, and the two-map renumbering split (records by the inverse, link targets by the forward map). Reserved before implementation."
+  "notes": "Stage (e) LANDED: the full pipeline datum -> inner class -> classification -> strong layer -> involution table -> seed -> KgbGraph runs end to end with sizes matching the oracle binary. Hybrid self-containment (torus_factor takes the table), flat strided storage, once-gated coset entry points, counting-sort standardization with first_of_tau snapshot, inverse Cayley as the ascending post-pass. Local suite 168 green under rustc 1.90 with clippy -D warnings and fmt clean; HPC preflight pending."
 }

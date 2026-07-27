@@ -18,6 +18,7 @@ mod inner_class;
 mod integer_lattice;
 mod involution;
 mod involution_table;
+mod kgb_graph;
 mod lattice;
 mod mod_two;
 mod real_form_labels;
@@ -49,6 +50,7 @@ pub use involution::LatticeInvolution;
 pub use involution_table::{
     InvolutionId, InvolutionRecord, InvolutionTable, InvolutionTableBudget,
 };
+pub use kgb_graph::{KgbGraph, KgbId, KgbStatus};
 pub use lattice::{pair, Coweight, RationalCoweight, Weight};
 pub use mod_two::{ModTwoSubspace, ModTwoVector};
 pub use real_form_labels::RealFormLabels;

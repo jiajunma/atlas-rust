@@ -1,0 +1,806 @@
+//! The KGB graph for one weak real form (KGB stage e).
+//!
+//! BFS from the stage-(d) seed over based cross actions and Cayley
+//! transforms with reduce-and-dedup, statuses classified from the
+//! involution table, the (involution length, Weyl length, `WeylElement`
+//! `Ord`) sorted numbering via the stable counting-sort standardization,
+//! and inverse-Cayley links installed by the ascending post-pass. The
+//! graph is HYBRID self-contained: per-involution-position data and the
+//! cocharacter are copied in, so every accessor except
+//! [`KgbGraph::torus_factor`] (which needs theta from the table) is
+//! substrate-free. Element numbering within equal-length groups uses the
+//! crate's documented tie-break; exact upstream numbering is adapter
+//! territory (Sp(4,R) itself exercises the divergence).
+
+use std::collections::BTreeMap;
+
+use malachite::Rational;
+
+use crate::grading::try_capacity;
+use crate::{
+    CartanClassification, CartanId, InnerClass, InvolutionId, InvolutionTable, RationalCoweight,
+    RealFormSeed, RootKind, StrongRealClassification, StructureError, TitsCoset, TitsElement,
+    WeakRealFormId, WeylElement,
+};
+
+/// Stable identifier of one KGB element in one graph's numbering.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct KgbId(pub(crate) usize);
+
+/// The status of one simple generator at one KGB element.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum KgbStatus {
+    Complex,
+    ImaginaryCompact,
+    Real,
+    ImaginaryNoncompact,
+}
+
+/// One weak real form's KGB graph.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct KgbGraph {
+    form: WeakRealFormId,
+    rank: usize,
+    cocharacter: RationalCoweight,
+    elements: Vec<TitsElement>,
+    /// Sorted involution position per element.
+    element_position: Vec<usize>,
+    /// Flat `x * rank + s`.
+    statuses: Vec<KgbStatus>,
+    cross: Vec<KgbId>,
+    cayley: Vec<Option<KgbId>>,
+    inverse_cayley: Vec<Option<(KgbId, Option<KgbId>)>>,
+    /// Per sorted involution position: (id, involution length, Cartan).
+    positions: Vec<(InvolutionId, usize, CartanId)>,
+    /// Cumulative counts; length `positions.len() + 1`.
+    first_of_tau: Vec<usize>,
+}
+
+impl KgbGraph {
+    /// Generate the KGB graph for the seed's weak real form.
+    pub fn build(
+        inner_class: &InnerClass,
+        classification: &CartanClassification,
+        strong: &StrongRealClassification,
+        table: &mut InvolutionTable,
+        seed: &RealFormSeed,
+    ) -> Result<Self, StructureError> {
+        if table.inner_class() != inner_class {
+            return Err(StructureError::DatumMismatch);
+        }
+        let form = seed.form();
+        let expected = strong
+            .kgb_size(form)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: form.0,
+                upper_bound: strong.strong_real_data(CartanId(0)).map_or(0, |_| form.0),
+            })?;
+        let cartan_set =
+            classification
+                .cartan_set(form)
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: form.0,
+                    upper_bound: classification.weak_real_form_count(),
+                })?;
+        // Mutation phase: the form's ascending, idempotent Cartan additions.
+        for &cartan in cartan_set {
+            table.add_cartan(classification, cartan)?;
+        }
+        // Seed-table binding: the seed is definitionally at THIS table's
+        // fundamental involution, with reduced bits.
+        let identity = WeylElement::identity(table.root_system())?;
+        if table.lookup(&identity) != Some(seed.element().involution()) {
+            return Err(StructureError::KgbInvariantViolation {
+                invariant: "seed element",
+            });
+        }
+        let fundamental_record = table.record(seed.element().involution()).ok_or(
+            StructureError::KgbInvariantViolation {
+                invariant: "seed element",
+            },
+        )?;
+        if fundamental_record
+            .mod_space()
+            .quotient_representative(seed.element().torus_bits().clone())?
+            != *seed.element().torus_bits()
+        {
+            return Err(StructureError::KgbInvariantViolation {
+                invariant: "seed element",
+            });
+        }
+        // One gate here covers the whole BFS: the coset is built from the
+        // SAME inner class the table was gated against.
+        let coset = TitsCoset::new(inner_class, seed.grading_offset().to_vec())?;
+        let rank = inner_class.datum().semisimple_rank();
+
+        // BFS.
+        let mut elements: Vec<TitsElement> = try_capacity(expected)?;
+        let mut index: BTreeMap<TitsElement, usize> = BTreeMap::new();
+        let mut statuses: Vec<Option<KgbStatus>> = try_capacity(expected * rank.max(1))?;
+        let mut cross_raw: Vec<Option<usize>> = try_capacity(expected * rank.max(1))?;
+        let mut cayley_raw: Vec<Option<usize>> = try_capacity(expected * rank.max(1))?;
+        intern(
+            seed.element().clone(),
+            expected,
+            rank,
+            &mut elements,
+            &mut index,
+            &mut statuses,
+            &mut cross_raw,
+            &mut cayley_raw,
+        )?;
+        let mut cursor = 0_usize;
+        while cursor < elements.len() {
+            let current = elements[cursor].clone();
+            let source_length = table
+                .record(current.involution())
+                .ok_or(StructureError::KgbInvariantViolation {
+                    invariant: "status classification",
+                })?
+                .involution_length();
+            for generator in 0..rank {
+                let kind = table
+                    .simple_root_kind(current.involution(), generator)
+                    .ok_or(StructureError::KgbInvariantViolation {
+                        invariant: "status classification",
+                    })?;
+                let crossed = coset.cross_pregated(table, generator, &current)?;
+                let status = match kind {
+                    RootKind::Complex => {
+                        if crossed.involution() == current.involution() {
+                            return Err(StructureError::KgbInvariantViolation {
+                                invariant: "status classification",
+                            });
+                        }
+                        KgbStatus::Complex
+                    }
+                    RootKind::Real => {
+                        if crossed != current {
+                            return Err(StructureError::KgbInvariantViolation {
+                                invariant: "real cross fixed",
+                            });
+                        }
+                        KgbStatus::Real
+                    }
+                    RootKind::Imaginary => {
+                        if coset.simple_grading_pregated(&current, generator)? {
+                            KgbStatus::ImaginaryNoncompact
+                        } else {
+                            KgbStatus::ImaginaryCompact
+                        }
+                    }
+                };
+                let slot = cursor * rank + generator;
+                if statuses[slot].is_some() {
+                    return Err(StructureError::KgbInvariantViolation {
+                        invariant: "status write-once",
+                    });
+                }
+                statuses[slot] = Some(status);
+                let cross_target = intern(
+                    crossed,
+                    expected,
+                    rank,
+                    &mut elements,
+                    &mut index,
+                    &mut statuses,
+                    &mut cross_raw,
+                    &mut cayley_raw,
+                )?;
+                cross_raw[slot] = Some(cross_target);
+                if status == KgbStatus::ImaginaryNoncompact {
+                    let cayleyed = coset.cayley_pregated(table, generator, &current)?.ok_or(
+                        StructureError::KgbInvariantViolation {
+                            invariant: "cayley target missing",
+                        },
+                    )?;
+                    let target_length = table
+                        .record(cayleyed.involution())
+                        .ok_or(StructureError::KgbInvariantViolation {
+                            invariant: "Cayley length step",
+                        })?
+                        .involution_length();
+                    if target_length != source_length + 1 {
+                        return Err(StructureError::KgbInvariantViolation {
+                            invariant: "Cayley length step",
+                        });
+                    }
+                    let cayley_target = intern(
+                        cayleyed,
+                        expected,
+                        rank,
+                        &mut elements,
+                        &mut index,
+                        &mut statuses,
+                        &mut cross_raw,
+                        &mut cayley_raw,
+                    )?;
+                    cayley_raw[slot] = Some(cayley_target);
+                }
+            }
+            cursor += 1;
+        }
+        drop(index);
+        if elements.len() != expected {
+            return Err(StructureError::KgbInvariantViolation {
+                invariant: "kgb size",
+            });
+        }
+
+        // The form's involutions, sorted by the documented key.
+        let mut involutions: Vec<InvolutionId> = Vec::new();
+        for &cartan in cartan_set {
+            let (start, slice) =
+                table
+                    .orbit_slice(cartan)
+                    .ok_or(StructureError::KgbInvariantViolation {
+                        invariant: "involution bucket",
+                    })?;
+            for offset in 0..slice.len() {
+                involutions.push(InvolutionId(start.0 + offset));
+            }
+        }
+        involutions.sort_unstable_by(|left, right| {
+            let a = table.record(*left).expect("sorted involutions exist");
+            let b = table.record(*right).expect("sorted involutions exist");
+            (a.involution_length(), a.weyl_length(), a.weyl_element()).cmp(&(
+                b.involution_length(),
+                b.weyl_length(),
+                b.weyl_element(),
+            ))
+        });
+        let buckets = involutions.len();
+        let mut involution_bucket: Vec<Option<usize>> = try_capacity(table.involution_count())?;
+        involution_bucket.resize(table.involution_count(), None);
+        for (position, id) in involutions.iter().enumerate() {
+            involution_bucket[id.0] = Some(position);
+        }
+        let mut positions = try_capacity(buckets)?;
+        for id in &involutions {
+            let record = table
+                .record(*id)
+                .ok_or(StructureError::KgbInvariantViolation {
+                    invariant: "involution bucket",
+                })?;
+            let cartan = table
+                .cartan_of(*id)
+                .ok_or(StructureError::KgbInvariantViolation {
+                    invariant: "involution bucket",
+                })?;
+            positions.push((*id, record.involution_length(), cartan));
+        }
+
+        // Counting-sort standardization: snapshot first_of_tau BEFORE the
+        // placement loop.
+        let mut buckets_of: Vec<usize> = try_capacity(elements.len())?;
+        for element in &elements {
+            buckets_of.push(involution_bucket[element.involution().0].ok_or(
+                StructureError::KgbInvariantViolation {
+                    invariant: "involution bucket",
+                },
+            )?);
+        }
+        let mut counts: Vec<usize> = try_capacity(buckets + 1)?;
+        counts.resize(buckets + 1, 0);
+        for &bucket in &buckets_of {
+            counts[bucket + 1] = counts[bucket + 1]
+                .checked_add(1)
+                .ok_or(StructureError::ArithmeticOverflow)?;
+        }
+        for position in 0..buckets {
+            counts[position + 1] = counts[position + 1]
+                .checked_add(counts[position])
+                .ok_or(StructureError::ArithmeticOverflow)?;
+        }
+        let first_of_tau = counts.clone();
+        let mut cursor_counts = counts;
+        let mut forward: Vec<usize> = try_capacity(elements.len())?;
+        for &bucket in &buckets_of {
+            forward.push(cursor_counts[bucket]);
+            cursor_counts[bucket] += 1;
+        }
+
+        // Permute records by the inverse map; renumber link targets by the
+        // forward map.
+        let size = elements.len();
+        let mut new_elements: Vec<Option<TitsElement>> = try_capacity(size)?;
+        new_elements.resize(size, None);
+        let mut element_position: Vec<usize> = try_capacity(size)?;
+        element_position.resize(size, 0);
+        let mut new_statuses: Vec<Option<KgbStatus>> = try_capacity(size * rank.max(1))?;
+        new_statuses.resize(size * rank.max(1), None);
+        let mut new_cross: Vec<Option<KgbId>> = try_capacity(size * rank.max(1))?;
+        new_cross.resize(size * rank.max(1), None);
+        let mut new_cayley: Vec<Option<KgbId>> = try_capacity(size * rank.max(1))?;
+        new_cayley.resize(size * rank.max(1), None);
+        for (old, element) in elements.into_iter().enumerate() {
+            let new = forward[old];
+            new_elements[new] = Some(element);
+            element_position[new] = buckets_of[old];
+            for generator in 0..rank {
+                let old_slot = old * rank + generator;
+                let new_slot = new * rank + generator;
+                new_statuses[new_slot] = statuses[old_slot];
+                new_cross[new_slot] = cross_raw[old_slot].map(|target| KgbId(forward[target]));
+                new_cayley[new_slot] = cayley_raw[old_slot].map(|target| KgbId(forward[target]));
+            }
+        }
+        let elements = new_elements.into_iter().collect::<Option<Vec<_>>>().ok_or(
+            StructureError::KgbInvariantViolation {
+                invariant: "kgb size",
+            },
+        )?;
+        let statuses = new_statuses.into_iter().collect::<Option<Vec<_>>>().ok_or(
+            StructureError::KgbInvariantViolation {
+                invariant: "status write-once",
+            },
+        )?;
+        let cross = new_cross.into_iter().collect::<Option<Vec<_>>>().ok_or(
+            StructureError::KgbInvariantViolation {
+                invariant: "kgb size",
+            },
+        )?;
+        let cayley = new_cayley;
+
+        // Inverse-Cayley installation, ascending over the sorted numbering.
+        let mut inverse_cayley: Vec<Option<(KgbId, Option<KgbId>)>> =
+            try_capacity(size * rank.max(1))?;
+        inverse_cayley.resize(size * rank.max(1), None);
+        for source in 0..size {
+            for generator in 0..rank {
+                if let Some(target) = cayley[source * rank + generator] {
+                    let slot = &mut inverse_cayley[target.0 * rank + generator];
+                    match slot {
+                        None => *slot = Some((KgbId(source), None)),
+                        Some((_, second @ None)) => *second = Some(KgbId(source)),
+                        Some((_, Some(_))) => {
+                            return Err(StructureError::KgbInvariantViolation {
+                                invariant: "inverse Cayley pair",
+                            })
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(Self {
+            form,
+            rank,
+            cocharacter: seed.square_class_cocharacter().clone(),
+            elements,
+            element_position,
+            statuses,
+            cross,
+            cayley,
+            inverse_cayley,
+            positions,
+            first_of_tau,
+        })
+    }
+
+    pub fn size(&self) -> usize {
+        self.elements.len()
+    }
+
+    pub fn form(&self) -> WeakRealFormId {
+        self.form
+    }
+
+    pub fn semisimple_rank(&self) -> usize {
+        self.rank
+    }
+
+    pub fn element(&self, id: KgbId) -> Option<&TitsElement> {
+        self.elements.get(id.0)
+    }
+
+    pub fn involution_of(&self, id: KgbId) -> Option<InvolutionId> {
+        let position = *self.element_position.get(id.0)?;
+        Some(self.positions[position].0)
+    }
+
+    /// Involution length of the element's involution (upstream parity:
+    /// never per-element state).
+    pub fn length(&self, id: KgbId) -> Option<usize> {
+        let position = *self.element_position.get(id.0)?;
+        Some(self.positions[position].1)
+    }
+
+    pub fn cartan_of(&self, id: KgbId) -> Option<CartanId> {
+        let position = *self.element_position.get(id.0)?;
+        Some(self.positions[position].2)
+    }
+
+    pub fn status(&self, id: KgbId, generator: usize) -> Option<KgbStatus> {
+        if generator >= self.rank {
+            return None;
+        }
+        self.statuses.get(id.0 * self.rank + generator).copied()
+    }
+
+    /// Real generators are always descents, imaginary never, complex by the
+    /// involution-length drop across the stored cross link.
+    pub fn is_descent(&self, id: KgbId, generator: usize) -> Option<bool> {
+        match self.status(id, generator)? {
+            KgbStatus::Real => Some(true),
+            KgbStatus::ImaginaryCompact | KgbStatus::ImaginaryNoncompact => Some(false),
+            KgbStatus::Complex => {
+                let target = self.cross(id, generator)?;
+                Some(self.length(target)? < self.length(id)?)
+            }
+        }
+    }
+
+    pub fn cross(&self, id: KgbId, generator: usize) -> Option<KgbId> {
+        if generator >= self.rank {
+            return None;
+        }
+        self.cross.get(id.0 * self.rank + generator).copied()
+    }
+
+    /// `Ok(None)` = the generator is not noncompact imaginary at this
+    /// element (no Cayley link).
+    pub fn cayley(&self, id: KgbId, generator: usize) -> Result<Option<KgbId>, StructureError> {
+        self.check_indices(id, generator)?;
+        Ok(self.cayley[id.0 * self.rank + generator])
+    }
+
+    /// `Ok(None)` = the generator is not real at this element; otherwise
+    /// `(first, None)` is type II and `(first, Some(second))` type I with
+    /// `first < second`.
+    pub fn inverse_cayley(
+        &self,
+        id: KgbId,
+        generator: usize,
+    ) -> Result<Option<(KgbId, Option<KgbId>)>, StructureError> {
+        self.check_indices(id, generator)?;
+        Ok(self.inverse_cayley[id.0 * self.rank + generator])
+    }
+
+    pub fn packet_count(&self) -> usize {
+        self.positions.len()
+    }
+
+    /// The tau packet at one sorted involution position: its first element
+    /// and size.
+    pub fn tau_packet(&self, position: usize) -> Option<(KgbId, usize)> {
+        if position >= self.positions.len() {
+            return None;
+        }
+        let start = self.first_of_tau[position];
+        let end = self.first_of_tau[position + 1];
+        Some((KgbId(start), end - start))
+    }
+
+    pub fn packet_involution(&self, position: usize) -> Option<InvolutionId> {
+        self.positions.get(position).map(|entry| entry.0)
+    }
+
+    /// `(g_rho_check - lift(bits) + theta^T applied) / 2`, exact rational —
+    /// the one accessor that still needs the table (theta is per-involution
+    /// table data).
+    pub fn torus_factor(
+        &self,
+        id: KgbId,
+        table: &InvolutionTable,
+    ) -> Result<RationalCoweight, StructureError> {
+        let element = self
+            .elements
+            .get(id.0)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: id.0,
+                upper_bound: self.elements.len(),
+            })?;
+        let record =
+            table
+                .record(element.involution())
+                .ok_or(StructureError::KgbInvariantViolation {
+                    invariant: "involution bucket",
+                })?;
+        let coordinates = self.cocharacter.coordinates();
+        let dimension = coordinates.len();
+        let mut difference = try_capacity(dimension)?;
+        for (index, value) in coordinates.iter().enumerate() {
+            let bit = element.torus_bits().bit(index).unwrap_or(false);
+            let lifted = if bit {
+                Rational::from(1)
+            } else {
+                Rational::from(0)
+            };
+            difference.push(value - lifted);
+        }
+        let matrix = record.theta().coweight_matrix();
+        let mut result = try_capacity(dimension)?;
+        for (row_index, row) in matrix.iter().enumerate() {
+            let mut transported = Rational::from(0);
+            for (column, &entry) in row.iter().enumerate() {
+                transported += Rational::from(entry) * &difference[column];
+            }
+            result.push((&difference[row_index] + transported) / Rational::from(2));
+        }
+        Ok(RationalCoweight::from_coordinates(result))
+    }
+
+    fn check_indices(&self, id: KgbId, generator: usize) -> Result<(), StructureError> {
+        if id.0 >= self.elements.len() {
+            return Err(StructureError::IndexOutOfRange {
+                index: id.0,
+                upper_bound: self.elements.len(),
+            });
+        }
+        if generator >= self.rank {
+            return Err(StructureError::IndexOutOfRange {
+                index: generator,
+                upper_bound: self.rank,
+            });
+        }
+        Ok(())
+    }
+}
+
+/// Insert-or-lookup against the a-priori size bound; new elements extend the
+/// flat per-generator slots.
+#[allow(clippy::too_many_arguments)]
+fn intern(
+    element: TitsElement,
+    expected: usize,
+    rank: usize,
+    elements: &mut Vec<TitsElement>,
+    index: &mut BTreeMap<TitsElement, usize>,
+    statuses: &mut Vec<Option<KgbStatus>>,
+    cross_raw: &mut Vec<Option<usize>>,
+    cayley_raw: &mut Vec<Option<usize>>,
+) -> Result<usize, StructureError> {
+    if let Some(&existing) = index.get(&element) {
+        return Ok(existing);
+    }
+    if elements.len() == expected {
+        return Err(StructureError::KgbInvariantViolation {
+            invariant: "kgb size",
+        });
+    }
+    let id = elements.len();
+    index.insert(element.clone(), id);
+    elements.push(element);
+    for _ in 0..rank {
+        statuses.push(None);
+        cross_raw.push(None);
+        cayley_raw.push(None);
+    }
+    Ok(id)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        AdjointFiberBudget, BasedRootDatum, CartanClassificationBudget, Coweight,
+        IntegerLatticeBudget, InvolutionTableBudget, LatticeInvolution, Weight,
+    };
+
+    use super::*;
+
+    fn class_budget(weyl: usize) -> CartanClassificationBudget {
+        CartanClassificationBudget::new(
+            IntegerLatticeBudget::new(64, 100_000, 100_000, 128),
+            AdjointFiberBudget::new(
+                IntegerLatticeBudget::new(64, 100_000, 100_000, 128),
+                50_000,
+                100_000,
+            ),
+            weyl,
+            64,
+            64,
+        )
+    }
+
+    struct Pipeline {
+        inner_class: InnerClass,
+        classification: CartanClassification,
+        strong: StrongRealClassification,
+        table: InvolutionTable,
+    }
+
+    fn pipeline(
+        datum: BasedRootDatum,
+        distinguished: Option<Vec<Vec<i32>>>,
+        roots: usize,
+        weyl: usize,
+    ) -> Pipeline {
+        let distinguished = match distinguished {
+            Some(matrix) => LatticeInvolution::new(&datum, matrix.clone(), matrix).unwrap(),
+            None => LatticeInvolution::identity(&datum).unwrap(),
+        };
+        let inner_class = InnerClass::new(datum, distinguished, roots).unwrap();
+        let classification =
+            CartanClassification::build(&inner_class, &class_budget(weyl)).unwrap();
+        let strong = StrongRealClassification::build(&classification, 4_096).unwrap();
+        let table = InvolutionTable::new(
+            &inner_class,
+            InvolutionTableBudget::new(64, IntegerLatticeBudget::new(64, 100_000, 100_000, 128)),
+        )
+        .unwrap();
+        Pipeline {
+            inner_class,
+            classification,
+            strong,
+            table,
+        }
+    }
+
+    fn build_graph(pipeline: &mut Pipeline, form: usize) -> KgbGraph {
+        let seed = RealFormSeed::build(
+            &pipeline.inner_class,
+            &pipeline.classification,
+            &pipeline.strong,
+            &pipeline.table,
+            WeakRealFormId(form),
+            &IntegerLatticeBudget::new(64, 100_000, 100_000, 128),
+            4_096,
+        )
+        .unwrap();
+        KgbGraph::build(
+            &pipeline.inner_class,
+            &pipeline.classification,
+            &pipeline.strong,
+            &mut pipeline.table,
+            &seed,
+        )
+        .unwrap()
+    }
+
+    fn sl2_datum() -> BasedRootDatum {
+        BasedRootDatum::from_simple_data(
+            1,
+            vec![vec![2]],
+            vec![Weight::new(vec![2])],
+            vec![Coweight::new(vec![1])],
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn sl2r_kgb_has_three_elements_with_the_type_one_pair() {
+        let mut pipeline = pipeline(sl2_datum(), None, 2, 2);
+        // The seed needs the fundamental Cartan in the table first.
+        pipeline
+            .table
+            .add_cartan(&pipeline.classification, CartanId(0))
+            .unwrap();
+        let graph = build_graph(&mut pipeline, 0);
+        assert_eq!(graph.size(), 3);
+        assert!(graph.element(KgbId(0)).unwrap().torus_bits().is_zero());
+        assert_eq!(graph.length(KgbId(0)), Some(0));
+        assert_eq!(graph.length(KgbId(2)), Some(1));
+        assert_eq!(
+            graph.status(KgbId(0), 0),
+            Some(KgbStatus::ImaginaryNoncompact)
+        );
+        assert_eq!(
+            graph.status(KgbId(1), 0),
+            Some(KgbStatus::ImaginaryNoncompact)
+        );
+        assert_eq!(graph.status(KgbId(2), 0), Some(KgbStatus::Real));
+        // Type-I fiber swap; the split element is cross-fixed.
+        assert_eq!(graph.cross(KgbId(0), 0), Some(KgbId(1)));
+        assert_eq!(graph.cross(KgbId(1), 0), Some(KgbId(0)));
+        assert_eq!(graph.cross(KgbId(2), 0), Some(KgbId(2)));
+        assert_eq!(graph.cayley(KgbId(0), 0).unwrap(), Some(KgbId(2)));
+        assert_eq!(graph.cayley(KgbId(1), 0).unwrap(), Some(KgbId(2)));
+        assert_eq!(
+            graph.inverse_cayley(KgbId(2), 0).unwrap(),
+            Some((KgbId(0), Some(KgbId(1))))
+        );
+        assert_eq!(graph.is_descent(KgbId(2), 0), Some(true));
+        assert_eq!(graph.is_descent(KgbId(0), 0), Some(false));
+        // torus_factor is theta-fixed at every element.
+        for id in 0..3 {
+            let factor = graph.torus_factor(KgbId(id), &pipeline.table).unwrap();
+            let record = pipeline
+                .table
+                .record(graph.involution_of(KgbId(id)).unwrap())
+                .unwrap();
+            let matrix = record.theta().coweight_matrix();
+            let coordinates = factor.coordinates();
+            for (row_index, row) in matrix.iter().enumerate() {
+                let mut transported = malachite::Rational::from(0);
+                for (column, &entry) in row.iter().enumerate() {
+                    transported += malachite::Rational::from(entry) * &coordinates[column];
+                }
+                assert_eq!(transported, coordinates[row_index]);
+            }
+        }
+    }
+
+    #[test]
+    fn pgl2r_kgb_has_two_elements_with_the_type_two_pair() {
+        let datum = BasedRootDatum::standard(vec![vec![2]]).unwrap();
+        let mut pipeline = pipeline(datum, None, 2, 2);
+        pipeline
+            .table
+            .add_cartan(&pipeline.classification, CartanId(0))
+            .unwrap();
+        let graph = build_graph(&mut pipeline, 0);
+        assert_eq!(graph.size(), 2);
+        assert_eq!(graph.cross(KgbId(0), 0), Some(KgbId(0)));
+        assert_eq!(
+            graph.inverse_cayley(KgbId(1), 0).unwrap(),
+            Some((KgbId(0), None))
+        );
+    }
+
+    #[test]
+    fn sp4r_kgb_has_eleven_elements_with_oracle_length_counts() {
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2, -2], vec![-1, 2]],
+            vec![Weight::new(vec![2, -2]), Weight::new(vec![-1, 2])],
+            vec![Coweight::new(vec![1, 0]), Coweight::new(vec![0, 1])],
+        )
+        .unwrap();
+        let mut pipeline = pipeline(datum, None, 8, 8);
+        pipeline
+            .table
+            .add_cartan(&pipeline.classification, CartanId(0))
+            .unwrap();
+        let graph = build_graph(&mut pipeline, 0);
+        assert_eq!(graph.size(), 11);
+        let mut per_length = vec![0_usize; 4];
+        for id in 0..graph.size() {
+            per_length[graph.length(KgbId(id)).unwrap()] += 1;
+        }
+        assert_eq!(per_length, vec![4, 3, 3, 1]);
+        // Tau packets per Cartan sum to orbitSize x fiberSize.
+        for (index, class) in pipeline.classification.cartan_classes().iter().enumerate() {
+            let fiber = pipeline
+                .strong
+                .fiber_size(WeakRealFormId(0), CartanId(index))
+                .unwrap();
+            let mut total = 0_usize;
+            for position in 0..graph.packet_count() {
+                let involution = graph.packet_involution(position).unwrap();
+                if pipeline.table.cartan_of(involution) == Some(CartanId(index)) {
+                    total += graph.tau_packet(position).unwrap().1;
+                }
+            }
+            assert_eq!(total, class.twisted_involution_count() * fiber);
+        }
+        // Determinism.
+        let again = build_graph(&mut pipeline, 0);
+        assert_eq!(graph, again);
+    }
+
+    #[test]
+    fn su21_kgb_has_six_elements_and_compact_forms_have_one() {
+        // su(2,1) is the quasisplit form of the EQUAL-RANK A2 inner class
+        // (delta = identity, root-lattice datum) — the flipped class holds
+        // sl(3,R) instead, whose quasisplit KGB is 4.
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let mut pipeline = pipeline(datum, None, 6, 6);
+        pipeline
+            .table
+            .add_cartan(&pipeline.classification, CartanId(0))
+            .unwrap();
+        let graph = build_graph(&mut pipeline, 0);
+        assert_eq!(graph.size(), 6);
+
+        // The compact form of SL(2): one element, all-compact, self-cross.
+        let mut compact_pipeline = pipeline_sl2_for_compact();
+        let compact = build_graph(&mut compact_pipeline, 1);
+        assert_eq!(compact.size(), 1);
+        assert_eq!(
+            compact.status(KgbId(0), 0),
+            Some(KgbStatus::ImaginaryCompact)
+        );
+        assert_eq!(compact.cross(KgbId(0), 0), Some(KgbId(0)));
+        assert_eq!(compact.cayley(KgbId(0), 0).unwrap(), None);
+    }
+
+    fn pipeline_sl2_for_compact() -> Pipeline {
+        let mut result = pipeline(sl2_datum(), None, 2, 2);
+        result
+            .table
+            .add_cartan(&result.classification, CartanId(0))
+            .unwrap();
+        result
+    }
+}

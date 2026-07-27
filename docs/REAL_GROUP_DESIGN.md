@@ -236,6 +236,10 @@ cross action, Cayley, gradings, and the reduction normal form per
 `TITS_OPERATIONS_DESIGN.md` — is implemented, and stage (d) — the
 seed `x0`: `RealFormSeed` with the elected stable_log cocharacter,
 parity offset, grading-shift solve, and central-fiber minimization per
-`SEED_X0_DESIGN.md` — is implemented. Next: stage (e), the KGB
-generation loop (BFS over cross and Cayley with reduce-and-dedup,
-statuses, and the final sort against `kgb_size`).
+`SEED_X0_DESIGN.md` — is implemented, and stage (e) — `KgbGraph` per
+`KGB_GENERATION_DESIGN.md`, the full per-form KGB graph with published
+sizes verified against the running oracle binary — is implemented. The
+structural chain from a based root datum to KGB graphs is COMPLETE at
+small rank. Next: stage (f) Bruhat data when blocks need it, and the
+language bridge (the KGB observables are the first structurally
+complete language-level surface).
