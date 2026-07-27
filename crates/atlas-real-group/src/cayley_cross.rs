@@ -1,4 +1,5 @@
 use crate::grading::try_capacity;
+use crate::root_system::combine_roots;
 use crate::twisted_involution::compose_matrices;
 use crate::{
     InnerClass, RootId, RootKind, RootSystem, StructureError, TwistedInvolution, Weight, WeylAction,
@@ -292,38 +293,6 @@ fn long_orthogonalize(
         }
         return Ok(roots);
     }
-}
-
-/// The id of `left + right` (or `left - right`), when that vector is a root.
-fn combine_roots(
-    root_system: &RootSystem,
-    left: RootId,
-    right: RootId,
-    subtract: bool,
-) -> Result<Option<RootId>, StructureError> {
-    let left_weight = root_system
-        .root(left)
-        .ok_or(StructureError::IndexOutOfRange {
-            index: left.0,
-            upper_bound: root_system.roots().len(),
-        })?;
-    let right_weight = root_system
-        .root(right)
-        .ok_or(StructureError::IndexOutOfRange {
-            index: right.0,
-            upper_bound: root_system.roots().len(),
-        })?;
-    let mut coordinates = try_capacity(left_weight.as_slice().len())?;
-    for (&a, &b) in left_weight.as_slice().iter().zip(right_weight.as_slice()) {
-        let value = if subtract {
-            a.checked_sub(b)
-        } else {
-            a.checked_add(b)
-        }
-        .ok_or(StructureError::ArithmeticOverflow)?;
-        coordinates.push(value);
-    }
-    Ok(root_system.id_of(&Weight::new(coordinates)))
 }
 
 /// The positive root in `{root, -root}`.

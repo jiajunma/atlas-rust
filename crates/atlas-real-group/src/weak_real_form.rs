@@ -16,7 +16,9 @@ const MAX_MASK_BITS: usize = 63;
 /// canonical-coordinate integer order, so they are deterministic for this
 /// crate but not Atlas numbering; the standing compatibility-adapter deferral
 /// recorded in the root and grading designs covers them. Class 0 is the orbit
-/// of the identity element, the quasisplit normalization.
+/// of the identity element, the quasisplit normalization. Ids minted by the
+/// fundamental Cartan's partition additionally serve as the crate's global
+/// real-form numbers, carried by [`crate::RealFormLabels`].
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct WeakRealFormId(pub(crate) usize);
 
@@ -24,8 +26,9 @@ pub struct WeakRealFormId(pub(crate) usize);
 ///
 /// Orbits correspond to the weak real forms of the inner class at this
 /// Cartan involution. The partition owns its class table and one
-/// deterministic representative element per class; real-form labels, central
-/// square classes, and strong real forms are later layers.
+/// deterministic representative element per class; real-form labels live in
+/// [`crate::RealFormLabels`], while central square classes and strong real
+/// forms are later layers.
 #[derive(Clone, Debug)]
 pub struct WeakRealFormPartition {
     adjoint: AdjointCartanFiber,

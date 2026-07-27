@@ -4,10 +4,10 @@ use crate::TwistedInvolution;
 ///
 /// The representative is the first action in this crate's deterministic Weyl
 /// enumeration, not Atlas's `canonicalize` representative; it decomposes
-/// through [`crate::CayleyCrossDecomposition`], and consumers must build
-/// their fiber data at the same representative they decompose. Fiber groups,
-/// real-form attribution, and real Cartan component data are later additions
-/// to this type.
+/// through [`crate::CayleyCrossDecomposition`], and real-form labels
+/// correlate through [`crate::RealFormLabels`] at that same representative.
+/// Fiber groups and real Cartan component data are later additions to this
+/// type.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TwistedConjugacyClass {
     representative: TwistedInvolution,

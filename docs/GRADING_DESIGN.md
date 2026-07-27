@@ -206,14 +206,13 @@ reduction of `i32` coordinates uses the sign-safe `% 2 != 0` parity test;
 no other arithmetic on lattice coordinates occurs, so no new overflow
 surface opens.
 
-If a later consumer needs the all-imaginary-roots extension, the exact
-integral subsystem-coordinate solve it requires must arrive with its own
-budget. The first real consumers are known and recorded: the extension
-becomes mandatory at the inner-class real-form-labeling stage
-(`InnerClass::construct` initial torus parts, `correlateForms` via
-`makeRepresentative`, `specialGrading`, `toMostSplit`) and at
-`RealReductiveGroup` construction — not at `W_im` orbit generation, which
-consumes only per-simple-imaginary data plus adjoint `m_alpha` translation
+The all-imaginary-roots extension was deferred here and has since arrived
+in its predicted budgeted form: the real-form-label stage
+(`REAL_FORM_LABELS_DESIGN.md`) implements the exact rational
+subsystem-coordinate solve as `base_grading_extension`, gated on root kind
+and consuming only its parity, exactly for the `makeRepresentative`-style
+fundamental solve. `W_im` orbit generation never needed it: it consumes
+only per-simple-imaginary data plus adjoint `m_alpha` translation
 (`FiberAction`, cartanclass.cpp:69-97, fed by makeWeakReal at 514-519).
 
 ## Tests and fixture gate

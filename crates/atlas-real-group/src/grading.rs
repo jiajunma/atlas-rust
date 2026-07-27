@@ -55,8 +55,8 @@ impl Grading {
 /// grading is the affine-linear evaluation against its canonical ambient
 /// representative. Construction rejects a nonfaithful shift matrix, so the
 /// grading-to-element inverse is unique. `W_im` orbits live in
-/// [`crate::WeakRealFormPartition`]; real-form labels and strong real forms
-/// are later layers.
+/// [`crate::WeakRealFormPartition`] and real-form labels in
+/// [`crate::RealFormLabels`]; strong real forms are a later layer.
 #[derive(Clone, Debug)]
 pub struct CartanGradingData {
     imaginary_simple_roots: Vec<RootId>,

@@ -398,6 +398,43 @@ fn saturated_to_usize(value: u128) -> usize {
     usize::try_from(value).unwrap_or(usize::MAX)
 }
 
+/// The id of `left + right` (or `left - right`), when that vector is a root.
+pub(crate) fn combine_roots(
+    root_system: &RootSystem,
+    left: RootId,
+    right: RootId,
+    subtract: bool,
+) -> Result<Option<RootId>, StructureError> {
+    let left_weight = root_system
+        .root(left)
+        .ok_or(StructureError::IndexOutOfRange {
+            index: left.0,
+            upper_bound: root_system.roots().len(),
+        })?;
+    let right_weight = root_system
+        .root(right)
+        .ok_or(StructureError::IndexOutOfRange {
+            index: right.0,
+            upper_bound: root_system.roots().len(),
+        })?;
+    let mut coordinates = Vec::new();
+    coordinates
+        .try_reserve_exact(left_weight.as_slice().len())
+        .map_err(|_| StructureError::AllocationFailed {
+            requested: left_weight.as_slice().len(),
+        })?;
+    for (&a, &b) in left_weight.as_slice().iter().zip(right_weight.as_slice()) {
+        let value = if subtract {
+            a.checked_sub(b)
+        } else {
+            a.checked_add(b)
+        }
+        .ok_or(StructureError::ArithmeticOverflow)?;
+        coordinates.push(value);
+    }
+    Ok(root_system.id_of(&Weight::new(coordinates)))
+}
+
 fn try_zero_coordinates(rank: usize) -> Result<Vec<i32>, StructureError> {
     let mut coordinates = Vec::new();
     coordinates

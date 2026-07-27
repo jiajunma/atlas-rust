@@ -52,6 +52,9 @@ pub enum StructureError {
     CayleyCrossInvariantViolation {
         invariant: &'static str,
     },
+    RealFormLabelInvariantViolation {
+        invariant: &'static str,
+    },
     DistinguishedInvolutionMismatch,
     ModTwoSubquotientInvariantViolation,
     NotInModTwoSubspace,
@@ -144,6 +147,9 @@ impl fmt::Display for StructureError {
             }
             Self::CayleyCrossInvariantViolation { invariant } => {
                 write!(f, "Cayley-cross {invariant} invariant was violated")
+            }
+            Self::RealFormLabelInvariantViolation { invariant } => {
+                write!(f, "real-form-label {invariant} invariant was violated")
             }
             Self::DistinguishedInvolutionMismatch => {
                 write!(

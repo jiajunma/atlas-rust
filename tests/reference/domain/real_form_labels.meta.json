@@ -1,0 +1,25 @@
+{
+  "fixture": "domain/real_form_labels.atlas",
+  "status": "structural_implementation_awaiting_hpc_preflight",
+  "oracle": "pending_domain_adapter",
+  "rust_status": "implemented_locally_121_tests_pending_hpc",
+  "reference_status": "pending_atlas_constructor_and_event_adapter",
+  "design_reviews": {
+    "completed_at": "2026-07-28",
+    "checks": [
+      "atlas_source_semantics",
+      "rust_ownership_and_internal_mechanics",
+      "public_api_and_consumer_integration"
+    ],
+    "recorded_in": "docs/REAL_FORM_LABELS_DESIGN.md"
+  },
+  "scenarios": [
+    "A2 identity: reflection Cartan labels only the quasisplit form",
+    "fundamental Cartan labels are the identity map",
+    "simply-connected A1: split Cartan labels quasisplit",
+    "B2 identity and twisted A2: full per-Cartan sweep with the quasisplit anchor",
+    "interleaved and foreign-provenance rejections across the six inputs",
+    "base-grading extension parities including the transposed-system B2 case and a real-root rejection"
+  ],
+  "notes": "Three fresh-context design reviews completed and folded into the design (the semantics review found no blocking corrections and settled the cross-action direction; the internals review pinned the transposed rational system and the explicit imaginarity gate). The structural implementation passes 121 local unit tests. The frozen HPC preflight is queued until the cluster is reachable. This fixture remains reserved until the language-level constructors and both oracle adapters exist."
+}

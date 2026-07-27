@@ -210,6 +210,10 @@ adjoint fiber with ascending-minimal numbering and the quasisplit class —
 is implemented as `WeakRealFormPartition` per `WEAK_REAL_FORM_DESIGN.md`,
 and the Cayley/cross factorization of twisted involutions relative to the
 distinguished involution as `CayleyCrossDecomposition` per
-`INVOLUTION_DECOMPOSITION_DESIGN.md`. Next, build the real-form-label
-correlation: per-Cartan grading pullback through the decomposition into the
-fundamental fiber's weak-real classes, then Cartan classes, then KGB data.
+`INVOLUTION_DECOMPOSITION_DESIGN.md`. The real-form-label correlation —
+per-Cartan grading pullback through the decomposition, the budgeted
+base-grading extension, and the fundamental-fiber solve with the quasisplit
+anchor — is implemented as `RealFormLabels` per
+`REAL_FORM_LABELS_DESIGN.md`, completing the structural chain from a based
+root datum to the real forms of an inner class and their per-Cartan
+attribution. Next: Cartan classes as owning values, then KGB data.
