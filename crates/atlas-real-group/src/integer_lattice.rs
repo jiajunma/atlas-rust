@@ -492,7 +492,6 @@ pub(crate) fn negative_coweight_eigenspace(
 /// column span is exactly `span{ diagonal[t] * B.column(t) }` — so the FIRST
 /// `diagonal.len()` columns of `B` span the SATURATION of that image.
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[allow(dead_code)] // Stage-(d) substrate; consumed once real_form_seed.rs lands.
 pub(crate) struct AdaptedBasis {
     pub(crate) basis: IntegerMatrix,
     pub(crate) inverse: IntegerMatrix,
@@ -508,7 +507,6 @@ pub(crate) struct AdaptedBasis {
 /// step, and the kept-rows-first reordering — because the elected basis is
 /// OBSERVABLE-BEARING: it fixes the `stable_log` representative, hence
 /// `g_rho_check` and every `torus_factor` rational downstream.
-#[allow(dead_code)] // Stage-(d) substrate; consumed once real_form_seed.rs lands.
 pub(crate) fn adapted_basis(
     rows: &[Vec<i32>],
     budget: &IntegerLatticeBudget,
@@ -617,7 +615,6 @@ pub(crate) fn adapted_basis(
 /// matrix's columns `pivot..` so no separate ops matrix is needed: makes the
 /// entry at `(row, pivot)` the positive gcd of the row's tail and zeroes the
 /// rest of that tail, by the exact upstream operation sequence.
-#[allow(dead_code)] // Stage-(d) substrate; consumed once real_form_seed.rs lands.
 fn gcd_row_to_pivot(
     matrix: &mut IntegerMatrix,
     row: usize,
@@ -693,7 +690,6 @@ fn gcd_row_to_pivot(
     Ok(minimum)
 }
 
-#[allow(dead_code)] // Stage-(d) substrate; consumed once real_form_seed.rs lands.
 fn swap_matrix_columns(matrix: &mut IntegerMatrix, left: usize, right: usize) {
     for row in 0..matrix.rows {
         let left_value = matrix.entry(row, left).clone();
@@ -705,7 +701,6 @@ fn swap_matrix_columns(matrix: &mut IntegerMatrix, left: usize, right: usize) {
 
 /// Upstream `find_small_remainder` over the pivot column below `row`: the
 /// first row whose remainder by the pivot is the smallest POSITIVE one.
-#[allow(dead_code)] // Stage-(d) substrate; consumed once real_form_seed.rs lands.
 fn find_small_remainder(matrix: &IntegerMatrix, row: usize, pivot: usize) -> Option<usize> {
     let divisor = matrix.entry(row, pivot);
     let mut best: Option<(Integer, usize)> = None;
@@ -722,7 +717,6 @@ fn find_small_remainder(matrix: &IntegerMatrix, row: usize, pivot: usize) -> Opt
     best.map(|(_, candidate)| candidate)
 }
 
-#[allow(dead_code)] // Stage-(d) substrate; consumed once real_form_seed.rs lands.
 fn count_step(steps: &mut usize, budget: &IntegerLatticeBudget) -> Result<(), StructureError> {
     if *steps == budget.max_steps {
         return Err(resource_limit("reduction steps", budget.max_steps as u64));
@@ -731,7 +725,6 @@ fn count_step(steps: &mut usize, budget: &IntegerLatticeBudget) -> Result<(), St
     Ok(())
 }
 
-#[allow(dead_code)] // Stage-(d) substrate; consumed once real_form_seed.rs lands.
 fn negate_column(matrix: &mut IntegerMatrix, column: usize) {
     for row in 0..matrix.rows {
         let value = -matrix.entry(row, column).clone();
@@ -739,7 +732,6 @@ fn negate_column(matrix: &mut IntegerMatrix, column: usize) {
     }
 }
 
-#[allow(dead_code)] // Stage-(d) substrate; consumed once real_form_seed.rs lands.
 fn permute_columns(
     matrix: &IntegerMatrix,
     order: &[usize],
@@ -754,7 +746,6 @@ fn permute_columns(
     Ok(result)
 }
 
-#[allow(dead_code)] // Stage-(d) substrate; consumed once real_form_seed.rs lands.
 fn permute_rows(
     matrix: &IntegerMatrix,
     order: &[usize],

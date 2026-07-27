@@ -1,3 +1,5 @@
+use malachite::Rational;
+
 use crate::StructureError;
 
 /// An element of the character lattice `X^*`.
@@ -102,5 +104,30 @@ mod tests {
         let weight = Weight::new(vec![2, -1]);
         let coweight = Coweight::new(vec![3, 4]);
         assert_eq!(pair(&weight, &coweight), Ok(2));
+    }
+}
+
+/// An exact rational cocharacter value (stage (d)'s `some_coch` output).
+///
+/// Storage stays private malachite data: third-party types stay out of the
+/// public API; the language adapter reads derived views when it arrives, and
+/// in-crate consumers (`torus_factor`) use the exact coordinates.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RationalCoweight {
+    coordinates: Vec<Rational>,
+}
+
+impl RationalCoweight {
+    pub(crate) fn from_coordinates(coordinates: Vec<Rational>) -> Self {
+        Self { coordinates }
+    }
+
+    pub fn dimension(&self) -> usize {
+        self.coordinates.len()
+    }
+
+    #[allow(dead_code)] // The stage-(e)/torus_factor consumer arrives next.
+    pub(crate) fn coordinates(&self) -> &[Rational] {
+        &self.coordinates
     }
 }

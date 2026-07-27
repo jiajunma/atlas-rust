@@ -24,8 +24,9 @@ layers.
 `atlas-core` has no terminal, readline, or process-exit policy. It contains:
 
 - `source`: UTF-8 input, source IDs, one-based spans, and line mapping;
-- `lex`: tokens, literals, comments, operators, and lexical diagnostics;
-- `syntax`: parser and lossless-enough AST;
+- `lex`: stateful Atlas tokens, literals, comments, operators, and lexical diagnostics;
+- `syntax`: LALRPOP-generated structural parser over the custom lexer stream, plus
+  Atlas-specific formula-priority helpers and an owned AST;
 - `resolve`: scopes, declarations, overload sets, and name diagnostics;
 - `value`: runtime values, containers, functions, domain handles, and void;
 - `eval`: interpreter context, mutation, conversions, calls, errors, and events;
@@ -33,6 +34,9 @@ layers.
 - `format`: stable text and machine-readable event/file encodings.
 
 The core must make global mutable state explicit in an `InterpreterContext`.
+The parser grammar constructs syntax only; it does not perform evaluator side
+effects. Generated parser sources are disposable build artifacts and are never
+hand-edited.
 
 ### `atlas-cli`
 
@@ -48,7 +52,11 @@ Domain implementations may be separated when dependencies differ:
 - `atlas-real-group`: real reductive group and KGB structures;
 - `atlas-io`: Atlas-specific persistent data and lookup tables.
 
-These are design slots, not claims that the crates already exist.
+The real-group crate must own root-system and real-form invariants. It must not
+accept a precomputed split rank, KGB labels, or root classifications as opaque
+C++ results. APIs expose only quantities that can be derived from the data they
+own; restricted-root multiplicities and KGB algorithms remain explicit
+follow-up modules.
 
 ## 3. Rustcox integration boundary
 
@@ -82,13 +90,23 @@ The runtime owns values through explicit handles or enums. Borrowed source text
 is used only during lexing/parsing; AST and runtime strings own their data.
 Cycles use an arena/handle design rather than pervasive interior mutability.
 
-## 6. Build and generated-source policy
+## 6. Numeric ownership and overflow
+
+The language runtime uses Malachite `Integer` and `Rational` for exact Atlas
+integer and rational values. Root-data coordinates, Cartan entries, indices,
+and packed compatibility representations remain fixed-width where their
+algorithms require compact storage. The domain layer must use checked
+intermediate arithmetic and explicit narrowing at those boundaries; it must
+not inherit C++ signed-overflow behavior. The detailed rationale, migration
+boundary, and error policy are recorded in [`NUMERICS.md`](NUMERICS.md).
+
+## 7. Build and generated-source policy
 
 Atlas-Rust does not need CWEB at runtime. CWEB is used on HPC to inspect and
 compare the reference implementation. Rust source is authoritative; generated
 C/C++ files are never copied into the Rust crate as an unreviewed source dump.
 
-## 7. Definition of done
+## 8. Definition of done
 
 A language feature is complete only when positive and negative fixtures exist,
 the reference and Rust event streams agree on HPC, CLI/file behavior is checked

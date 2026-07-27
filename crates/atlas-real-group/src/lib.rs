@@ -49,9 +49,10 @@ pub use involution::LatticeInvolution;
 pub use involution_table::{
     InvolutionId, InvolutionRecord, InvolutionTable, InvolutionTableBudget,
 };
-pub use lattice::{pair, Coweight, Weight};
+pub use lattice::{pair, Coweight, RationalCoweight, Weight};
 pub use mod_two::{ModTwoSubspace, ModTwoVector};
 pub use real_form_labels::RealFormLabels;
+pub use real_form_seed::RealFormSeed;
 pub use restricted_roots::{RestrictedRoot, RestrictedRootSystem, RestrictedWeight};
 pub use root_datum::BasedRootDatum;
 pub use root_involution::{RootInvolutionData, RootKind};

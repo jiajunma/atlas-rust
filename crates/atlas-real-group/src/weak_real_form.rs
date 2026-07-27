@@ -13,9 +13,12 @@ pub(crate) const MAX_MASK_BITS: usize = 63;
 /// Stable identifier for one weak real form of one Cartan involution.
 ///
 /// Numbers are assigned by ascending minimal element of each `W_im` orbit in
-/// canonical-coordinate integer order, so they are deterministic for this
-/// crate but not Atlas numbering; the standing compatibility-adapter deferral
-/// recorded in the root and grading designs covers them. Class 0 is the orbit
+/// canonical-coordinate integer order. The stage-(d) ordering audit
+/// (`SEED_X0_DESIGN.md`) PROVED this coincides with upstream's internal
+/// `RealFormNbr` numbering (same ascending orbit seeding, same low-pivot
+/// RREF subquotient bases, same coordinate extraction) — these ids are NOT
+/// under the adapter deferral; only the interpreter's external
+/// `FormNumberMap` order needs an adapter permutation. Class 0 is the orbit
 /// of the identity element, the quasisplit normalization. Ids minted by the
 /// fundamental Cartan's partition additionally serve as the crate's global
 /// real-form numbers, carried by [`crate::RealFormLabels`].

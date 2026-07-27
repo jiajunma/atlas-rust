@@ -67,9 +67,15 @@ packet boundaries; the size must equal the strong layer's
   form. Word walks replaced by mod-2 matrix transport from the
   stage-(b) records' `WeylAction`s. Inverse Cayley deferred beyond
   stage (f) with its repair invariance recorded.
-- (d) **Seed x0**: `some_coch`, `grading_of_simples`, the binary section
-  solve, central-fiber minimization. Consumes the strong layer's
-  representatives and the `toAdjoint` machinery.
+- (d) **Seed x0** (`SEED_X0_DESIGN.md`, LANDED as `real_form_seed.rs`
+  plus the `adapted_basis` reduction in `integer_lattice.rs`):
+  `RealFormSeed::build` — some_coch via the elected `stable_log` (exact
+  +1-eigenspace output, integrality gates), the parity offset, the
+  grading-shift solve over the DELTA-FIXED simples, and the
+  central-fiber re-walk minimizing the shifted value. The ordering
+  audit proved the crate's weak-real-form/square-class numbering EQUALS
+  upstream's internal one; the interpreter's external FormNumberMap
+  order is a recorded language-adapter obligation.
 - (e) **KGB generation** for one real form: BFS, reduction, hashing,
   statuses, sort and numbering. Size check against `kgb_size`; packet
   sizes against `orbitSize x fiberSize`.

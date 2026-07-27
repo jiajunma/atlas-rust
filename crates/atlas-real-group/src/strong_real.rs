@@ -9,10 +9,12 @@ use crate::{
 /// Stable identifier for one central square class of one Cartan's fiber.
 ///
 /// The number IS the coset coordinate integer of the class in the crate's
-/// echelon basis of (adjoint fiber group) / im(toAdjoint); it is
-/// deterministic here but basis-convention-dependent, so Atlas's numbers
-/// stay under the standing adapter deferral. The partition structure and
-/// all sizes are convention-invariant.
+/// echelon basis of (adjoint fiber group) / im(toAdjoint). The stage-(d)
+/// ordering audit (`SEED_X0_DESIGN.md`) proved the crate's basis election
+/// coincides with upstream's, so these numbers EQUAL upstream's square-class
+/// numbers today; the coincidence rides on the shared low-pivot RREF
+/// convention, and a basis change on either side would permute LABELS only
+/// (partition structure and all sizes are convention-invariant).
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct SquareClassId(pub(crate) usize);
 

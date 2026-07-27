@@ -233,6 +233,9 @@ per-Cartan orbit slices, stored cross links, and the Cayley edge,
 `InvolutionTable` per `INVOLUTION_TABLE_DESIGN.md` — is implemented,
 and stage (c) — `TitsElement`/`TitsCoset` with the closed-form based
 cross action, Cayley, gradings, and the reduction normal form per
-`TITS_OPERATIONS_DESIGN.md` — is implemented. Next: stage (d), the
-seed `x0` (square-class cocharacter, base grading, binary section
-solve, central-fiber minimization).
+`TITS_OPERATIONS_DESIGN.md` — is implemented, and stage (d) — the
+seed `x0`: `RealFormSeed` with the elected stable_log cocharacter,
+parity offset, grading-shift solve, and central-fiber minimization per
+`SEED_X0_DESIGN.md` — is implemented. Next: stage (e), the KGB
+generation loop (BFS over cross and Cayley with reduce-and-dedup,
+statuses, and the final sort against `kgb_size`).

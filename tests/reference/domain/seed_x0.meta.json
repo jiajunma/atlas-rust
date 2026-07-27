@@ -1,8 +1,8 @@
 {
   "fixture": "domain/seed_x0.atlas",
-  "status": "design_reviewed_corrections_folded",
+  "status": "implemented_locally_7_tests_pending_hpc",
   "oracle": "traced_innerclass_realredgp_4d3e9449",
-  "rust_status": "not_implemented",
+  "rust_status": "implemented_real_form_seed_rs",
   "reference_status": "pending_atlas_constructor_and_event_adapter",
   "scenarios": [
     "quasisplit seeds for SL(2,R)/PGL(2,R) with the x0-compacts invariant",
