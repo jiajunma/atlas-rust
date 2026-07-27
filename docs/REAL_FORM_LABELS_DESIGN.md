@@ -120,7 +120,8 @@ discharges the weak-real-form deferral on `InnerClass` ownership:
 remains caller-assembled until the Cartan-class stage defines its owner.
 `RealFormLabels` deliberately stores no Cartan anchor either — the
 Cartan-class stage will hold labels alongside the decomposition, which
-already carries the anchor.
+already carries the anchor. (Confirmed: `CartanClass` in
+`CARTAN_AGGREGATION_DESIGN.md` landed exactly that layout.)
 
 The `InnerClass` anchors provenance: the fundamental grading data must be
 built at its distinguished involution, the Cartan grading data at the

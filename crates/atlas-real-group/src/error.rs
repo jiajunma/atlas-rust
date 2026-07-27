@@ -55,6 +55,9 @@ pub enum StructureError {
     RealFormLabelInvariantViolation {
         invariant: &'static str,
     },
+    CartanClassificationInvariantViolation {
+        invariant: &'static str,
+    },
     DistinguishedInvolutionMismatch,
     ModTwoSubquotientInvariantViolation,
     NotInModTwoSubspace,
@@ -150,6 +153,12 @@ impl fmt::Display for StructureError {
             }
             Self::RealFormLabelInvariantViolation { invariant } => {
                 write!(f, "real-form-label {invariant} invariant was violated")
+            }
+            Self::CartanClassificationInvariantViolation { invariant } => {
+                write!(
+                    f,
+                    "Cartan-classification {invariant} invariant was violated"
+                )
             }
             Self::DistinguishedInvolutionMismatch => {
                 write!(

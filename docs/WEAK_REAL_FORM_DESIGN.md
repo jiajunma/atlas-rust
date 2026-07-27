@@ -220,8 +220,11 @@ and advance the progression paragraph to real-form labels and Cartan
 classes); and the `TwistedConjugacyClass` doc, whose "later additions"
 sentence should say "fiber groups, real-form attribution, and real Cartan
 component data are later additions to this type" so it does not read as a
-crate-wide claim. `InnerClass` deliberately gains no convenience
-constructor: the real-form-label stage will decide what `InnerClass` owns.
+crate-wide claim. (Superseded by the aggregation stage: those data live in
+the sibling owner `CartanClass`, which owns a `TwistedConjugacyClass`
+value; see `CARTAN_AGGREGATION_DESIGN.md`.) `InnerClass` deliberately gains
+no convenience constructor: the real-form-label stage will decide what
+`InnerClass` owns.
 
 ## Three independent design checks
 

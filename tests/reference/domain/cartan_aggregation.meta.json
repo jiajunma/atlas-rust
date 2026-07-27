@@ -1,17 +1,25 @@
 {
   "fixture": "domain/cartan_aggregation.atlas",
-  "status": "design_recorded_review_pending",
+  "status": "structural_implementation_awaiting_hpc_preflight",
   "oracle": "pending_domain_adapter",
-  "rust_status": "not_implemented",
+  "rust_status": "implemented_locally_126_tests_pending_hpc",
   "reference_status": "pending_atlas_constructor_and_event_adapter",
+  "design_reviews": {
+    "completed_at": "2026-07-28",
+    "checks": [
+      "atlas_source_semantics",
+      "rust_ownership_and_internal_mechanics",
+      "public_api_and_consumer_integration"
+    ],
+    "recorded_in": "docs/CARTAN_AGGREGATION_DESIGN.md"
+  },
   "scenarios": [
-    "A1 identity: two sites, split form spans both Cartans",
-    "A2 identity: sizes (1,3), su(3) confined to the fundamental site",
-    "B2 identity: four sites, graded Cayley poset",
-    "A1 x A1 identity and swap: four sites versus one",
-    "fundamental-site anchor with identity labels",
-    "order-free most-split via the trivial-grading test",
-    "budget and provenance pass-through rejections"
+    "simply-connected A1: two Cartans with split/compact attribution and most-split classes",
+    "A2 identity: fundamental-first reorder with sizes (1,3) and the one-pair poset",
+    "B2 identity: sizes (1,2,2,1), the exact five-pair graded poset, so(5) fundamental-only",
+    "A1 x A1 identity (four singletons) and swap (one class of size 2 with normalized identity representative)",
+    "partition lookup round-trips and rejects foreign datum and wrong-delta provenance",
+    "order-free most-split via the trivial-grading test with construction-time uniqueness"
   ],
-  "notes": "This fixture is reserved before implementation. It is not executable Atlas evidence until the language-level constructors and both oracle adapters exist."
+  "notes": "Three fresh-context design reviews completed and folded into the design, including the empirically discovered fundamental-class reorder and the membership-plus-normalization rule for multi-element fundamental classes. The structural implementation passes 126 local unit tests. The frozen HPC preflight is queued until the cluster is reachable. This fixture remains reserved until the language-level constructors and both oracle adapters exist."
 }

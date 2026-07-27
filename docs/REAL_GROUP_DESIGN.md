@@ -216,4 +216,10 @@ base-grading extension, and the fundamental-fiber solve with the quasisplit
 anchor — is implemented as `RealFormLabels` per
 `REAL_FORM_LABELS_DESIGN.md`, completing the structural chain from a based
 root datum to the real forms of an inner class and their per-Cartan
-attribution. Next: Cartan classes as owning values, then KGB data.
+attribution. The Cartan classes are now owning values — `CartanClass`
+bundling the full per-Cartan machinery, aggregated by
+`CartanClassification` with per-form Cartan sets, order-free most-split
+classes, and the strict Cayley poset per
+`CARTAN_AGGREGATION_DESIGN.md`. Next: the strong-real layer (square
+classes, per-square-class fiber partitions) unlocking `KGB_size`, then KGB
+data.

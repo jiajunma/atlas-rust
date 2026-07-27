@@ -124,13 +124,17 @@ must stay fiber-free. Accessors are `cartan_classes`/`cartan_class`, not
 
 Crate Cartan order: THE FUNDAMENTAL CLASS FIRST, then the remaining
 classes in `twisted_conjugacy_partition` order. The raw enumeration order
-is matrix-lexicographic and puts the identity class LAST, so `build`
-locates the class whose representative's Weyl action is the identity and
-moves it to index 0 (absence is
-`CartanClassificationInvariantViolation { invariant: "fundamental class" }`);
-site 0's labels are then the identity map by the label stage's fundamental
-theorem, and `weak_real_form_count` and the quasisplit anchor delegate to
-its partition.
+is matrix-lexicographic and puts the identity class LAST; moreover a
+multi-element fundamental class may have been SEEDED by a non-identity
+candidate (the A1 x A1 swap class is `{e, s0 s1}` with the non-identity
+member as its stored representative), so `build` locates the fundamental
+class by MEMBERSHIP — `class_of` of the identity twisted involution — and
+normalizes its stored representative to the identity, a member of the
+class. Without that normalization the fundamental chain would sit at a
+non-distinguished involution and the label gates would rightly reject it.
+Class 0's labels are then the identity map by the label stage's
+fundamental theorem, and `weak_real_form_count` and the quasisplit anchor
+delegate to its partition.
 
 `TwistedConjugacyPartition` exists so class membership is a lookup, not a
 re-enumeration: the orbit sweep already keys candidates by their root-image

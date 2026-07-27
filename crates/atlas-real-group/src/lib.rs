@@ -9,6 +9,7 @@ use std::collections::{HashSet, VecDeque};
 
 mod adjoint_fiber;
 mod cartan_class;
+mod cartan_classification;
 mod cartan_fiber;
 mod cayley_cross;
 mod error;
@@ -31,7 +32,8 @@ pub use adjoint_fiber::{
     AdjointBasedRootDatum, AdjointCartanFiber, AdjointCoweight, AdjointFiberBudget,
     AdjointFiberElement, AdjointProjection, AmbientCoweight, FiberToAdjoint,
 };
-pub use cartan_class::TwistedConjugacyClass;
+pub use cartan_class::{CartanClass, TwistedConjugacyClass, TwistedConjugacyPartition};
+pub use cartan_classification::{CartanClassification, CartanClassificationBudget, CartanId};
 pub use cartan_fiber::{CartanFiber, CartanFiberElement};
 pub use cayley_cross::CayleyCrossDecomposition;
 pub use error::StructureError;

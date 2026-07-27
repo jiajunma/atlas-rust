@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::{
     BasedRootDatum, LatticeInvolution, RootId, RootInvolutionData, RootSystem, StructureError,
-    TwistedConjugacyClass, TwistedInvolution, WeylAction, WeylGroup,
+    TwistedConjugacyClass, TwistedConjugacyPartition, TwistedInvolution, WeylAction, WeylGroup,
 };
 
 /// Shared structural data at the beginning of an Atlas inner-class computation.
@@ -77,21 +77,36 @@ impl InnerClass {
         &self,
         weyl_budget: usize,
     ) -> Result<Vec<TwistedConjugacyClass>, StructureError> {
+        Ok(self
+            .twisted_conjugacy_partition(weyl_budget)?
+            .classes()
+            .to_vec())
+    }
+
+    /// The full twisted-conjugacy partition with a membership lookup.
+    ///
+    /// This is the single orbit implementation;
+    /// [`Self::twisted_conjugacy_classes`] is a thin wrapper over it.
+    pub fn twisted_conjugacy_partition(
+        &self,
+        weyl_budget: usize,
+    ) -> Result<TwistedConjugacyPartition, StructureError> {
         let (weyl_actions, candidates) = self.enumerated_twisted_involutions(weyl_budget)?;
-        let candidate_by_permutation = candidates
+        let permutations = candidates
+            .iter()
+            .map(|candidate| {
+                candidate
+                    .root_involution()
+                    .image_permutation()
+                    .iter()
+                    .map(|id| id.0)
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+        let candidate_by_permutation = permutations
             .iter()
             .enumerate()
-            .map(|(index, candidate)| {
-                (
-                    candidate
-                        .root_involution()
-                        .image_permutation()
-                        .iter()
-                        .map(|id| id.0)
-                        .collect::<Vec<_>>(),
-                    index,
-                )
-            })
+            .map(|(index, permutation)| (permutation.clone(), index))
             .collect::<BTreeMap<_, _>>();
         let weyl_permutations = weyl_actions
             .iter()
@@ -99,6 +114,7 @@ impl InnerClass {
             .collect::<Result<Vec<_>, _>>()?;
         let mut visited = vec![false; candidates.len()];
         let mut classes = Vec::new();
+        let mut class_by_permutation = BTreeMap::new();
         for (index, candidate) in candidates.iter().enumerate() {
             if visited[index] {
                 continue;
@@ -121,10 +137,16 @@ impl InnerClass {
                     })?;
             for member in &orbit {
                 visited[*member] = true;
+                class_by_permutation.insert(permutations[*member].clone(), classes.len());
             }
             classes.push(TwistedConjugacyClass::new(candidate.clone(), orbit.len()));
         }
-        Ok(classes)
+        Ok(TwistedConjugacyPartition::new(
+            self.datum.clone(),
+            self.distinguished_involution.clone(),
+            classes,
+            class_by_permutation,
+        ))
     }
 
     fn enumerated_twisted_involutions(
