@@ -1,6 +1,6 @@
 use malachite::{
     base::num::{
-        arithmetic::traits::{DivExact, DivisibleBy, ExtendedGcd},
+        arithmetic::traits::{Abs, DivExact, DivMod, DivisibleBy, ExtendedGcd},
         basic::traits::{One, Zero},
         logic::traits::SignificantBits,
     },
@@ -487,6 +487,288 @@ pub(crate) fn negative_coweight_eigenspace(
     saturated_kernel(&matrix, budget)
 }
 
+/// The result of [`adapted_basis`]: a unimodular basis `B` of the ambient
+/// lattice, its inverse, and positive diagonal factors such that the input's
+/// column span is exactly `span{ diagonal[t] * B.column(t) }` — so the FIRST
+/// `diagonal.len()` columns of `B` span the SATURATION of that image.
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[allow(dead_code)] // Stage-(d) substrate; consumed once real_form_seed.rs lands.
+pub(crate) struct AdaptedBasis {
+    pub(crate) basis: IntegerMatrix,
+    pub(crate) inverse: IntegerMatrix,
+    pub(crate) diagonal: Vec<Integer>,
+}
+
+/// Faithful port of upstream `matreduc::adapted_basis` (matreduc.cpp:262-336
+/// with its `gcd` helper, matreduc.h:70-122), tracking the LEFT transform's
+/// inverse alongside instead of inverting afterwards.
+///
+/// The pivot strategy is replicated exactly — "minimal use of row
+/// operations", the first-minimal gcd seed, `find_small_remainder`'s rotate
+/// step, and the kept-rows-first reordering — because the elected basis is
+/// OBSERVABLE-BEARING: it fixes the `stable_log` representative, hence
+/// `g_rho_check` and every `torus_factor` rational downstream.
+#[allow(dead_code)] // Stage-(d) substrate; consumed once real_form_seed.rs lands.
+pub(crate) fn adapted_basis(
+    rows: &[Vec<i32>],
+    budget: &IntegerLatticeBudget,
+) -> Result<AdaptedBasis, StructureError> {
+    let mut matrix = IntegerMatrix::from_i32_rows(rows, budget)?;
+    let height = matrix.rows;
+    let width = matrix.columns;
+    let mut basis = IntegerMatrix::identity(height, budget)?;
+    let mut inverse = IntegerMatrix::identity(height, budget)?;
+    let mut diagonal = Vec::new();
+    diagonal.try_reserve_exact(width.min(height)).map_err(|_| {
+        StructureError::AllocationFailed {
+            requested: width.min(height),
+        }
+    })?;
+    let mut kept = vec![false; height];
+    let mut steps = 0_usize;
+    let mut pivot_column = 0_usize;
+
+    for (row, kept_flag) in kept.iter_mut().enumerate() {
+        let mut d = gcd_row_to_pivot(&mut matrix, row, pivot_column, budget, &mut steps)?;
+        if d == Integer::ZERO {
+            continue;
+        }
+        *kept_flag = true;
+        while let Some(other) = find_small_remainder(&matrix, row, pivot_column) {
+            let (quotient, _) = matrix
+                .entry(other, pivot_column)
+                .div_mod(matrix.entry(row, pivot_column));
+            count_step(&mut steps, budget)?;
+            for column in pivot_column..width {
+                let current = matrix.entry(row, column).clone();
+                let replacement = matrix.entry(other, column) - &quotient * &current;
+                matrix.set(row, column, replacement);
+                matrix.set(other, column, current);
+            }
+            for column in 0..height {
+                let current = inverse.entry(row, column).clone();
+                let replacement = inverse.entry(other, column) - &quotient * &current;
+                inverse.set(row, column, replacement);
+                inverse.set(other, column, current);
+            }
+            for target in 0..height {
+                let current = basis.entry(target, other).clone();
+                let replacement = basis.entry(target, row) + &quotient * &current;
+                basis.set(target, other, replacement);
+                basis.set(target, row, current);
+            }
+            d = gcd_row_to_pivot(&mut matrix, row, pivot_column, budget, &mut steps)?;
+            if d == Integer::ZERO {
+                return Err(StructureError::IntegerLatticeInvariantViolation);
+            }
+        }
+        for other in (row + 1)..height {
+            if *matrix.entry(other, pivot_column) == Integer::ZERO {
+                continue;
+            }
+            if !matrix
+                .entry(other, pivot_column)
+                .divisible_by(matrix.entry(row, pivot_column))
+            {
+                return Err(StructureError::IntegerLatticeInvariantViolation);
+            }
+            let quotient = matrix
+                .entry(other, pivot_column)
+                .div_exact(matrix.entry(row, pivot_column));
+            count_step(&mut steps, budget)?;
+            // Conceptual row op `row_other -= q * row_row` on the matrix is
+            // skipped (upstream ignores that column below the pivot), but
+            // BOTH transforms must record it.
+            for column in 0..height {
+                let update = inverse.entry(other, column) - &quotient * inverse.entry(row, column);
+                inverse.set(other, column, update);
+            }
+            for target in 0..height {
+                let update = basis.entry(target, row) + &quotient * basis.entry(target, other);
+                basis.set(target, row, update);
+            }
+        }
+        diagonal.push(d);
+        pivot_column += 1;
+        matrix.check_against(budget)?;
+        basis.check_against(budget)?;
+        inverse.check_against(budget)?;
+    }
+
+    if kept.iter().any(|&flag| !flag) {
+        let mut order = Vec::new();
+        order
+            .try_reserve_exact(height)
+            .map_err(|_| StructureError::AllocationFailed { requested: height })?;
+        order.extend((0..height).filter(|&index| kept[index]));
+        order.extend((0..height).filter(|&index| !kept[index]));
+        basis = permute_columns(&basis, &order, budget)?;
+        inverse = permute_rows(&inverse, &order, budget)?;
+    }
+
+    Ok(AdaptedBasis {
+        basis,
+        inverse,
+        diagonal,
+    })
+}
+
+/// Upstream `matreduc::gcd` with `dest = 0`, operating directly on the
+/// matrix's columns `pivot..` so no separate ops matrix is needed: makes the
+/// entry at `(row, pivot)` the positive gcd of the row's tail and zeroes the
+/// rest of that tail, by the exact upstream operation sequence.
+#[allow(dead_code)] // Stage-(d) substrate; consumed once real_form_seed.rs lands.
+fn gcd_row_to_pivot(
+    matrix: &mut IntegerMatrix,
+    row: usize,
+    pivot: usize,
+    budget: &IntegerLatticeBudget,
+    steps: &mut usize,
+) -> Result<Integer, StructureError> {
+    let width = matrix.columns;
+    let mut active = Vec::new();
+    active
+        .try_reserve_exact(width - pivot)
+        .map_err(|_| StructureError::AllocationFailed {
+            requested: width - pivot,
+        })?;
+    let mut minimum = Integer::ZERO;
+    let mut minimum_column = pivot;
+    for column in pivot..width {
+        let value = matrix.entry(row, column);
+        if *value != Integer::ZERO {
+            active.push(column);
+            let magnitude = value.clone().abs();
+            if minimum == Integer::ZERO || magnitude < minimum {
+                minimum = magnitude;
+                minimum_column = column;
+            }
+        }
+    }
+    if active.is_empty() {
+        return Ok(Integer::ZERO);
+    }
+    if *matrix.entry(row, minimum_column) < Integer::ZERO {
+        count_step(steps, budget)?;
+        negate_column(matrix, minimum_column);
+    }
+    while active.len() > 1 {
+        let current = minimum_column;
+        let divisor = matrix.entry(row, current).clone();
+        let mut survivors = Vec::new();
+        survivors.try_reserve_exact(active.len()).map_err(|_| {
+            StructureError::AllocationFailed {
+                requested: active.len(),
+            }
+        })?;
+        for &column in &active {
+            if column == current {
+                survivors.push(column);
+                continue;
+            }
+            let (quotient, remainder) = matrix.entry(row, column).div_mod(&divisor);
+            if quotient != Integer::ZERO {
+                count_step(steps, budget)?;
+                for target in 0..matrix.rows {
+                    let update =
+                        matrix.entry(target, column) - &quotient * matrix.entry(target, current);
+                    matrix.set(target, column, update);
+                }
+            }
+            if remainder == Integer::ZERO {
+                continue;
+            }
+            if remainder < minimum {
+                minimum = remainder;
+                minimum_column = column;
+            }
+            survivors.push(column);
+        }
+        active = survivors;
+    }
+    if minimum_column != pivot {
+        count_step(steps, budget)?;
+        swap_matrix_columns(matrix, minimum_column, pivot);
+    }
+    Ok(minimum)
+}
+
+#[allow(dead_code)] // Stage-(d) substrate; consumed once real_form_seed.rs lands.
+fn swap_matrix_columns(matrix: &mut IntegerMatrix, left: usize, right: usize) {
+    for row in 0..matrix.rows {
+        let left_value = matrix.entry(row, left).clone();
+        let right_value = matrix.entry(row, right).clone();
+        matrix.set(row, left, right_value);
+        matrix.set(row, right, left_value);
+    }
+}
+
+/// Upstream `find_small_remainder` over the pivot column below `row`: the
+/// first row whose remainder by the pivot is the smallest POSITIVE one.
+#[allow(dead_code)] // Stage-(d) substrate; consumed once real_form_seed.rs lands.
+fn find_small_remainder(matrix: &IntegerMatrix, row: usize, pivot: usize) -> Option<usize> {
+    let divisor = matrix.entry(row, pivot);
+    let mut best: Option<(Integer, usize)> = None;
+    for candidate in (row + 1)..matrix.rows {
+        let (_, remainder) = matrix.entry(candidate, pivot).div_mod(divisor);
+        if remainder == Integer::ZERO {
+            continue;
+        }
+        match &best {
+            Some((minimum, _)) if remainder >= *minimum => {}
+            _ => best = Some((remainder, candidate)),
+        }
+    }
+    best.map(|(_, candidate)| candidate)
+}
+
+#[allow(dead_code)] // Stage-(d) substrate; consumed once real_form_seed.rs lands.
+fn count_step(steps: &mut usize, budget: &IntegerLatticeBudget) -> Result<(), StructureError> {
+    if *steps == budget.max_steps {
+        return Err(resource_limit("reduction steps", budget.max_steps as u64));
+    }
+    *steps += 1;
+    Ok(())
+}
+
+#[allow(dead_code)] // Stage-(d) substrate; consumed once real_form_seed.rs lands.
+fn negate_column(matrix: &mut IntegerMatrix, column: usize) {
+    for row in 0..matrix.rows {
+        let value = -matrix.entry(row, column).clone();
+        matrix.set(row, column, value);
+    }
+}
+
+#[allow(dead_code)] // Stage-(d) substrate; consumed once real_form_seed.rs lands.
+fn permute_columns(
+    matrix: &IntegerMatrix,
+    order: &[usize],
+    budget: &IntegerLatticeBudget,
+) -> Result<IntegerMatrix, StructureError> {
+    let mut result = IntegerMatrix::zero(matrix.rows, matrix.columns, budget)?;
+    for (target, &source) in order.iter().enumerate() {
+        for row in 0..matrix.rows {
+            result.set(row, target, matrix.entry(row, source).clone());
+        }
+    }
+    Ok(result)
+}
+
+#[allow(dead_code)] // Stage-(d) substrate; consumed once real_form_seed.rs lands.
+fn permute_rows(
+    matrix: &IntegerMatrix,
+    order: &[usize],
+    budget: &IntegerLatticeBudget,
+) -> Result<IntegerMatrix, StructureError> {
+    let mut result = IntegerMatrix::zero(matrix.rows, matrix.columns, budget)?;
+    for (target, &source) in order.iter().enumerate() {
+        for column in 0..matrix.columns {
+            result.set(target, column, matrix.entry(source, column).clone());
+        }
+    }
+    Ok(result)
+}
+
 struct ReductionState<'a> {
     source_entries: usize,
     matrix: IntegerMatrix,
@@ -766,6 +1048,91 @@ mod tests {
 
     fn budget() -> IntegerLatticeBudget {
         IntegerLatticeBudget::new(16, 256, 1_000, 128)
+    }
+
+    fn multiply(left: &IntegerMatrix, right: &IntegerMatrix) -> Vec<Vec<Integer>> {
+        (0..left.rows)
+            .map(|row| {
+                (0..right.columns)
+                    .map(|column| {
+                        (0..left.columns).fold(Integer::ZERO, |sum, middle| {
+                            sum + left.entry(row, middle) * right.entry(middle, column)
+                        })
+                    })
+                    .collect()
+            })
+            .collect()
+    }
+
+    fn assert_identity(product: &[Vec<Integer>]) {
+        for (row_index, row) in product.iter().enumerate() {
+            for (column_index, value) in row.iter().enumerate() {
+                let expected = if row_index == column_index {
+                    Integer::ONE
+                } else {
+                    Integer::ZERO
+                };
+                assert_eq!(*value, expected, "at ({row_index},{column_index})");
+            }
+        }
+    }
+
+    #[test]
+    fn adapted_basis_of_the_swap_involution_spans_the_fixed_lattice() {
+        // xi = swap, so xi + 1 = [[1,1],[1,1]]: image Z(1,1), saturation Z(1,1).
+        let budget = IntegerLatticeBudget::new(16, 256, 1_000, 128);
+        let adapted = adapted_basis(&[vec![1, 1], vec![1, 1]], &budget).unwrap();
+        assert_eq!(adapted.diagonal, vec![Integer::ONE]);
+        assert_eq!(*adapted.basis.entry(0, 0), Integer::ONE);
+        assert_eq!(*adapted.basis.entry(1, 0), Integer::ONE);
+        assert_identity(&multiply(&adapted.basis, &adapted.inverse));
+    }
+
+    #[test]
+    fn adapted_basis_handles_doubling_and_zero_maps() {
+        let budget = IntegerLatticeBudget::new(16, 256, 1_000, 128);
+        // xi = identity: xi + 1 = 2I — full rank, diagonal all 2.
+        let doubling = adapted_basis(&[vec![2, 0], vec![0, 2]], &budget).unwrap();
+        assert_eq!(doubling.diagonal, vec![Integer::from(2), Integer::from(2)]);
+        assert_identity(&multiply(&doubling.basis, &doubling.inverse));
+        // xi = -identity: xi + 1 = 0 — empty diagonal, identity transforms.
+        let zero = adapted_basis(&[vec![0, 0], vec![0, 0]], &budget).unwrap();
+        assert!(zero.diagonal.is_empty());
+        assert_identity(&multiply(&zero.basis, &zero.inverse));
+    }
+
+    #[test]
+    fn adapted_basis_reproduces_the_image_span_for_a_mixed_matrix() {
+        let budget = IntegerLatticeBudget::new(16, 256, 1_000, 128);
+        let rows = vec![vec![2, 4, 0], vec![0, 6, 0], vec![2, 10, 0]];
+        let adapted = adapted_basis(&rows, &budget).unwrap();
+        assert_identity(&multiply(&adapted.basis, &adapted.inverse));
+        // B^{-1} * M must have row t divisible by diagonal[t] for t < d and
+        // zero rows below — the exact image-span certificate.
+        let original = matrix(&[&[2, 4, 0], &[0, 6, 0], &[2, 10, 0]]);
+        let transformed = multiply(&adapted.inverse, &original);
+        let rank = adapted.diagonal.len();
+        for (row_index, row) in transformed.iter().enumerate() {
+            for value in row {
+                if row_index < rank {
+                    assert!(value.divisible_by(&adapted.diagonal[row_index]));
+                } else {
+                    assert_eq!(*value, Integer::ZERO);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn adapted_basis_respects_the_step_budget() {
+        let starved = IntegerLatticeBudget::new(16, 256, 1, 128);
+        assert_eq!(
+            adapted_basis(&[vec![3, 5], vec![7, 11]], &starved),
+            Err(StructureError::IntegerLatticeResourceLimit {
+                resource: "reduction steps",
+                limit: 1,
+            })
+        );
     }
 
     fn matrix(rows: &[&[i32]]) -> IntegerMatrix {
