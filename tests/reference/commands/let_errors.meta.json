@@ -1,0 +1,8 @@
+{
+  "fixture": "commands/let_errors",
+  "oracle": "atlas",
+  "stage": "command-stream",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "implemented_pending_hpc",
+  "notes": "Checks parallel initializer visibility, duplicate bindings, initializer name errors, local assignment type errors, error recovery, and non-leaking shadowed state."
+}

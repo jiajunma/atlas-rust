@@ -46,6 +46,11 @@ pub enum Expr {
         value: Box<Expr>,
         span: SourceSpan,
     },
+    Let {
+        binding_groups: Vec<Vec<LetBinding>>,
+        body: Box<Expr>,
+        span: SourceSpan,
+    },
     Unary {
         op: UnaryOp,
         operand: Box<Expr>,
@@ -68,6 +73,19 @@ pub enum Expr {
     },
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LetBinding {
+    pub name: String,
+    pub name_span: SourceSpan,
+    pub initializer: Expr,
+}
+
+#[derive(Debug)]
+pub struct ParsedLet {
+    pub binding_groups: Vec<Vec<LetBinding>>,
+    pub body: Expr,
+}
+
 impl Expr {
     pub fn span(&self) -> SourceSpan {
         match self {
@@ -76,6 +94,7 @@ impl Expr {
             | Self::String { span, .. }
             | Self::Identifier { span, .. }
             | Self::Assignment { span, .. }
+            | Self::Let { span, .. }
             | Self::Unary { span, .. }
             | Self::Binary { span, .. }
             | Self::OperatorCall { span, .. }
@@ -157,7 +176,12 @@ pub enum ParserToken {
     Operator(SpannedValue<FormulaOperator>),
     PrimitiveType(SpannedValue<PrimitiveType>),
     Becomes(SourceSpan),
+    Equals(SourceSpan),
     Colon(SourceSpan),
+    Comma(SourceSpan),
+    Let(SourceSpan),
+    In(SourceSpan),
+    Then(SourceSpan),
     And(SourceSpan),
     Or(SourceSpan),
     Not(SourceSpan),
@@ -178,7 +202,12 @@ impl ParserToken {
             Self::PrimitiveType(value) => value.span,
             Self::Unsupported(value) => value.span,
             Self::Becomes(span)
+            | Self::Equals(span)
             | Self::Colon(span)
+            | Self::Comma(span)
+            | Self::Let(span)
+            | Self::In(span)
+            | Self::Then(span)
             | Self::And(span)
             | Self::Or(span)
             | Self::Not(span)
@@ -199,7 +228,12 @@ impl fmt::Display for ParserToken {
             Self::Operator(operator) => operator.value.symbol.as_str(),
             Self::PrimitiveType(_) => "primitive type",
             Self::Becomes(_) => ":=",
+            Self::Equals(_) => "=",
             Self::Colon(_) => ":",
+            Self::Comma(_) => ",",
+            Self::Let(_) => "let",
+            Self::In(_) => "in",
+            Self::Then(_) => "then",
             Self::And(_) => "and",
             Self::Or(_) => "or",
             Self::Not(_) => "not",
@@ -293,20 +327,23 @@ fn parser_tokens_from_tokens(
                         "and" => ParserToken::And(span),
                         "or" => ParserToken::Or(span),
                         "not" => ParserToken::Not(span),
+                        "let" => ParserToken::Let(span),
+                        "in" => ParserToken::In(span),
+                        "then" => ParserToken::Then(span),
                         _ => ParserToken::Unsupported(SpannedValue { value: word, span }),
                     };
                     Some(Ok((token, span)))
                 }
                 TokenKind::Operator(operator) => {
-                    let token = if operator == ":=" {
-                        ParserToken::Becomes(span)
-                    } else {
-                        parser_operator(operator, span).unwrap_or_else(|operator| {
+                    let token = match operator.as_str() {
+                        ":=" => ParserToken::Becomes(span),
+                        "=" => ParserToken::Equals(span),
+                        _ => parser_operator(operator, span).unwrap_or_else(|operator| {
                             ParserToken::Unsupported(SpannedValue {
                                 value: operator,
                                 span,
                             })
-                        })
+                        }),
                     };
                     Some(Ok((token, span)))
                 }
@@ -315,6 +352,7 @@ fn parser_tokens_from_tokens(
                         '(' => ParserToken::LParen(span),
                         ')' => ParserToken::RParen(span),
                         ':' => ParserToken::Colon(span),
+                        ',' => ParserToken::Comma(span),
                         '~' => parser_operator("~".to_owned(), span)
                             .expect("tilde has a fixed Atlas priority"),
                         _ => ParserToken::Unsupported(SpannedValue {
@@ -445,6 +483,41 @@ fn assignment(target: SpannedValue<String>, value: Expr) -> Expr {
     }
 }
 
+fn let_expression(let_span: SourceSpan, parsed: ParsedLet) -> Expr {
+    Expr::Let {
+        binding_groups: parsed.binding_groups,
+        span: join_span(let_span, parsed.body.span()),
+        body: Box::new(parsed.body),
+    }
+}
+
+fn let_binding(target: SpannedValue<String>, initializer: Expr) -> LetBinding {
+    LetBinding {
+        name: target.value,
+        name_span: target.span,
+        initializer,
+    }
+}
+
+fn let_bindings(first: LetBinding, rest: Vec<LetBinding>) -> Vec<LetBinding> {
+    let mut bindings = Vec::with_capacity(rest.len() + 1);
+    bindings.push(first);
+    bindings.extend(rest);
+    bindings
+}
+
+fn finish_let(binding_group: Vec<LetBinding>, body: Expr) -> ParsedLet {
+    ParsedLet {
+        binding_groups: vec![binding_group],
+        body,
+    }
+}
+
+fn prepend_let_group(binding_group: Vec<LetBinding>, mut tail: ParsedLet) -> ParsedLet {
+    tail.binding_groups.insert(0, binding_group);
+    tail
+}
+
 fn definition(target: SpannedValue<String>, value: Expr) -> Command {
     Command::Define {
         name: target.value,
@@ -537,6 +610,30 @@ mod tests {
             Expr::Assignment { name, value, .. } => {
                 format!("assign({name},{})", expression_shape(value))
             }
+            Expr::Let {
+                binding_groups,
+                body,
+                ..
+            } => {
+                let groups = binding_groups
+                    .iter()
+                    .map(|bindings| {
+                        bindings
+                            .iter()
+                            .map(|binding| {
+                                format!(
+                                    "{}={}",
+                                    binding.name,
+                                    expression_shape(&binding.initializer)
+                                )
+                            })
+                            .collect::<Vec<_>>()
+                            .join(",")
+                    })
+                    .collect::<Vec<_>>()
+                    .join(";");
+                format!("let({groups},{})", expression_shape(body))
+            }
             Expr::Unary {
                 op: UnaryOp::Not,
                 operand,
@@ -586,6 +683,27 @@ mod tests {
     fn parses_assignment_as_a_right_associative_expression() {
         let expression = parse_one("x := y := 1");
         assert_eq!(expression_shape(&expression), "assign(x,assign(y,1))");
+    }
+
+    #[test]
+    fn parses_nested_let_with_assignment_in_the_body() {
+        let expression = parse_one("let x = 1 in let y = x + 1 in y := y + 1");
+        assert_eq!(
+            expression_shape(&expression),
+            "let(x=1,let(y=+@4(x,1),assign(y,+@4(y,1))))"
+        );
+    }
+
+    #[test]
+    fn distinguishes_parallel_and_sequential_let_groups() {
+        assert_eq!(
+            expression_shape(&parse_one("let x = 1, y = x in y")),
+            "let(x=1,y=x,y)"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("let x = 1 then y = x in y")),
+            "let(x=1;y=x,y)"
+        );
     }
 
     #[test]

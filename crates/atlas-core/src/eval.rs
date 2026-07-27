@@ -1,6 +1,9 @@
 //! Ordered evaluation of the scalar Atlas expression and command slice.
 
-use std::{cmp::Ordering, collections::BTreeMap};
+use std::{
+    cmp::Ordering,
+    collections::{BTreeMap, BTreeSet},
+};
 
 use num_bigint::{BigInt, Sign};
 use num_rational::BigRational;
@@ -8,7 +11,7 @@ use num_rational::BigRational;
 use crate::{
     diagnostic::{Diagnostic, ErrorKind, SourceSpan},
     formula::FormulaOperator,
-    syntax::{BinaryOp, Command, Expr, PrimitiveType, Program},
+    syntax::{BinaryOp, Command, Expr, LetBinding, PrimitiveType, Program},
     value::Value,
 };
 
@@ -27,6 +30,7 @@ pub enum EvalEvent {
 pub struct EvalContext {
     names: BTreeMap<String, BindingId>,
     bindings: Vec<Binding>,
+    scopes: Vec<LocalScope>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -36,6 +40,12 @@ struct BindingId(usize);
 struct Binding {
     value: Option<Value>,
     value_type: ScalarType,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct LocalScope {
+    names: BTreeMap<String, BindingId>,
+    binding_start: usize,
 }
 
 impl EvalContext {
@@ -52,12 +62,12 @@ impl EvalContext {
     }
 
     pub fn get(&self, name: &str) -> Option<&Value> {
-        let id = self.names.get(name)?;
+        let id = self.resolve_binding_id(name)?;
         self.bindings.get(id.0)?.value.as_ref()
     }
 
     fn binding_type(&self, name: &str) -> Option<ScalarType> {
-        let id = self.names.get(name)?;
+        let id = self.resolve_binding_id(name)?;
         self.bindings.get(id.0).map(|binding| binding.value_type)
     }
 
@@ -84,7 +94,7 @@ impl EvalContext {
     }
 
     fn assign(&mut self, name: &str, value: Value) -> bool {
-        let Some(id) = self.names.get(name).copied() else {
+        let Some(id) = self.resolve_binding_id(name) else {
             return false;
         };
         let Some(binding) = self.bindings.get_mut(id.0) else {
@@ -94,9 +104,44 @@ impl EvalContext {
         true
     }
 
+    fn push_scope(&mut self) {
+        self.scopes.push(LocalScope {
+            names: BTreeMap::new(),
+            binding_start: self.bindings.len(),
+        });
+    }
+
+    fn pop_scope(&mut self) {
+        let scope = self.scopes.pop().expect("local scope stack is balanced");
+        self.bindings.truncate(scope.binding_start);
+    }
+
+    fn bind_local(
+        &mut self,
+        name: impl Into<String>,
+        value_type: ScalarType,
+        value: Option<Value>,
+    ) {
+        let id = BindingId(self.bindings.len());
+        self.bindings.push(Binding { value, value_type });
+        self.scopes
+            .last_mut()
+            .expect("a local binding requires an active scope")
+            .names
+            .insert(name.into(), id);
+    }
+
+    fn resolve_binding_id(&self, name: &str) -> Option<BindingId> {
+        self.scopes
+            .iter()
+            .rev()
+            .find_map(|scope| scope.names.get(name).copied())
+            .or_else(|| self.names.get(name).copied())
+    }
+
     #[cfg(test)]
     fn binding_id(&self, name: &str) -> Option<BindingId> {
-        self.names.get(name).copied()
+        self.resolve_binding_id(name)
     }
 }
 
@@ -246,6 +291,11 @@ fn infer_scalar_type(expression: &Expr, context: &EvalContext) -> Result<ScalarT
                 ))
             }
         }
+        Expr::Let {
+            binding_groups,
+            body,
+            ..
+        } => infer_let_type(binding_groups, body, context),
         Expr::Group { inner, .. } => infer_scalar_type(inner, context),
         Expr::Unary { operand, span, .. } => {
             let operand_type = infer_scalar_type(operand, context)?;
@@ -283,6 +333,42 @@ fn infer_scalar_type(expression: &Expr, context: &EvalContext) -> Result<ScalarT
             infer_operator_type(operator, &argument_types, *span)
         }
     }
+}
+
+fn infer_let_type(
+    binding_groups: &[Vec<LetBinding>],
+    body: &Expr,
+    context: &EvalContext,
+) -> Result<ScalarType, Diagnostic> {
+    let Some((bindings, remaining)) = binding_groups.split_first() else {
+        return infer_scalar_type(body, context);
+    };
+    // Every initializer in one comma group sees only the enclosing scopes.
+    let binding_types = bindings
+        .iter()
+        .map(|binding| infer_scalar_type(&binding.initializer, context))
+        .collect::<Result<Vec<_>, _>>()?;
+    reject_duplicate_let_bindings(bindings)?;
+    let mut local_context = context.clone();
+    local_context.push_scope();
+    for (binding, value_type) in bindings.iter().zip(binding_types) {
+        local_context.bind_local(binding.name.clone(), value_type, None);
+    }
+    infer_let_type(remaining, body, &local_context)
+}
+
+fn reject_duplicate_let_bindings(bindings: &[LetBinding]) -> Result<(), Diagnostic> {
+    let mut names = BTreeSet::new();
+    for binding in bindings {
+        if !names.insert(binding.name.as_str()) {
+            return Err(Diagnostic::new(
+                ErrorKind::Name,
+                format!("Multiple binding of '{}' in same scope", binding.name),
+                Some(binding.name_span),
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn infer_operator_type(
@@ -431,6 +517,11 @@ fn eval_expr(expression: &Expr, context: &mut EvalContext) -> Result<Value, Diag
             debug_assert!(context.assign(name, value.clone()));
             Ok(value)
         }
+        Expr::Let {
+            binding_groups,
+            body,
+            ..
+        } => eval_let(binding_groups, body, context),
         Expr::Group { inner, .. } => eval_expr(inner, context),
         Expr::Unary { operand, span, .. } => {
             let value = eval_expr(operand, context)?;
@@ -474,6 +565,28 @@ fn eval_expr(expression: &Expr, context: &mut EvalContext) -> Result<Value, Diag
             eval_operator_call(operator, values, *span)
         }
     }
+}
+
+fn eval_let(
+    binding_groups: &[Vec<LetBinding>],
+    body: &Expr,
+    context: &mut EvalContext,
+) -> Result<Value, Diagnostic> {
+    let Some((bindings, remaining)) = binding_groups.split_first() else {
+        return eval_expr(body, context);
+    };
+
+    let values = bindings
+        .iter()
+        .map(|binding| eval_expr(&binding.initializer, context))
+        .collect::<Result<Vec<_>, _>>()?;
+    context.push_scope();
+    for (binding, value) in bindings.iter().zip(values) {
+        context.bind_local(binding.name.clone(), value_type(&value), Some(value));
+    }
+    let result = eval_let(remaining, body, context);
+    context.pop_scope();
+    result
 }
 
 fn coerce_assignment_value(

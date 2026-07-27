@@ -1,0 +1,8 @@
+{
+  "schema": "atlas-session-events-v0",
+  "fixture": "commands/let_error_order",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind":"Diagnostic","category":"name"}
+  ]
+}

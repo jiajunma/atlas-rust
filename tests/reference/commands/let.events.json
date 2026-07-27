@@ -1,0 +1,19 @@
+{
+  "schema": "atlas-session-events-v0",
+  "fixture": "commands/let",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind":"Output","text":"Variable x: int\n"},
+    {"kind":"Value","type":"integer","value":3},
+    {"kind":"Value","type":"integer","value":10},
+    {"kind":"Value","type":"integer","value":4},
+    {"kind":"Value","type":"integer","value":11},
+    {"kind":"Value","type":"integer","value":10},
+    {"kind":"Value","type":"integer","value":3},
+    {"kind":"Value","type":"integer","value":7},
+    {"kind":"Value","type":"integer","value":11},
+    {"kind":"Value","type":"integer","value":2},
+    {"kind":"Value","type":"integer","value":2},
+    {"kind":"Value","type":"integer","value":10}
+  ]
+}

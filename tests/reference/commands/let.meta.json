@@ -1,0 +1,8 @@
+{
+  "fixture": "commands/let",
+  "oracle": "atlas",
+  "stage": "command-stream",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "implemented_pending_hpc",
+  "notes": "Checks scalar let bindings, parallel comma groups, sequential then groups, lexical shadowing, initializer lookup, local assignment, nested scopes, and multiline commands."
+}

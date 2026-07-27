@@ -1,8 +1,10 @@
 use super::{
-    assignment, binary, declaration, definition, extend_operator_formula, finish_operator_formula,
-    join_span,
+    assignment, binary, declaration, definition, extend_operator_formula, finish_let,
+    finish_operator_formula, join_span, let_binding, let_bindings, let_expression,
+    prepend_let_group,
     prefix_operator_call, start_binary_formula, start_prefix_formula, unary,
-    BinaryOp, Command, Expr, ParserToken, PrimitiveType, Program, SpannedValue, UnaryOp,
+    BinaryOp, Command, Expr, LetBinding, ParsedLet, ParserToken, PrimitiveType, Program,
+    SpannedValue, UnaryOp,
 };
 use crate::diagnostic::SourceSpan;
 use crate::formula::{FormulaOperator, FormulaStack};
@@ -28,7 +30,21 @@ pub Command: Command = {
 };
 
 pub Expr: Expr = {
+    <let_span:"let"> <tail:LetTail> => let_expression(let_span, tail),
     <expression:AssignmentExpr> => expression,
+};
+
+LetTail: ParsedLet = {
+    <bindings:LetBindings> <_in:"in"> <body:Expr> => finish_let(bindings, body),
+    <bindings:LetBindings> <_then:"then"> <tail:LetTail> => prepend_let_group(bindings, tail),
+};
+
+LetBindings: Vec<LetBinding> = {
+    <first:LetBinding> <rest:("," <LetBinding>)*> => let_bindings(first, rest),
+};
+
+LetBinding: LetBinding = {
+    <name:"identifier"> <_equals:"="> <initializer:Expr> => let_binding(name, initializer),
 };
 
 AssignmentExpr: Expr = {
@@ -79,6 +95,7 @@ Operand: Expr = {
 
 Operator: FormulaOperator = {
     <operator:"operator"> => operator.value,
+    <span:"="> => FormulaOperator::new("=", 2).with_span(span),
 };
 
 Atom: Expr = {
@@ -104,7 +121,12 @@ extern {
         "operator" => ParserToken::Operator(<SpannedValue<FormulaOperator>>),
         "primitive_type" => ParserToken::PrimitiveType(<SpannedValue<PrimitiveType>>),
         ":=" => ParserToken::Becomes(<SourceSpan>),
+        "=" => ParserToken::Equals(<SourceSpan>),
         ":" => ParserToken::Colon(<SourceSpan>),
+        "," => ParserToken::Comma(<SourceSpan>),
+        "let" => ParserToken::Let(<SourceSpan>),
+        "in" => ParserToken::In(<SourceSpan>),
+        "then" => ParserToken::Then(<SourceSpan>),
         "and" => ParserToken::And(<SourceSpan>),
         "or" => ParserToken::Or(<SourceSpan>),
         "not" => ParserToken::Not(<SourceSpan>),

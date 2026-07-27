@@ -322,4 +322,89 @@ mod tests {
             matches!(events[2], SessionEvent::Diagnostic(ref d) if d.kind == ErrorKind::Runtime)
         );
     }
+
+    #[test]
+    fn let_bindings_shadow_without_leaking_local_assignments() {
+        let source = SourceText::new(include_str!("../../../tests/fixtures/commands/let.atlas"));
+        let events = run_source(&source);
+
+        assert_eq!(events.len(), 12);
+        assert!(matches!(
+            events[0],
+            SessionEvent::Output { ref text, .. } if text == "Variable x: int\n"
+        ));
+        let values = events
+            .iter()
+            .filter_map(|event| match event {
+                SessionEvent::Value { value, .. } => Some(value.clone()),
+                SessionEvent::Output { .. } | SessionEvent::Diagnostic(_) => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            values,
+            vec![
+                Value::Integer(3.into()),
+                Value::Integer(10.into()),
+                Value::Integer(4.into()),
+                Value::Integer(11.into()),
+                Value::Integer(10.into()),
+                Value::Integer(3.into()),
+                Value::Integer(7.into()),
+                Value::Integer(11.into()),
+                Value::Integer(2.into()),
+                Value::Integer(2.into()),
+                Value::Integer(10.into()),
+            ]
+        );
+    }
+
+    #[test]
+    fn let_errors_do_not_create_or_mutate_global_bindings() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/commands/let_errors.atlas"
+        ));
+        let events = run_source(&source);
+
+        assert_eq!(events.len(), 10);
+        assert!(matches!(events[0], SessionEvent::Diagnostic(ref d) if d.kind == ErrorKind::Name));
+        assert!(matches!(events[1], SessionEvent::Diagnostic(ref d) if d.kind == ErrorKind::Name));
+        assert!(matches!(events[2], SessionEvent::Diagnostic(ref d) if d.kind == ErrorKind::Name));
+        assert!(matches!(events[3], SessionEvent::Diagnostic(ref d) if d.kind == ErrorKind::Type));
+        assert!(matches!(
+            events[4],
+            SessionEvent::Output { ref text, .. } if text == "Variable x: int\n"
+        ));
+        assert!(matches!(
+            events[5],
+            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &3.into()
+        ));
+        assert!(matches!(
+            events[6],
+            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &10.into()
+        ));
+        assert!(
+            matches!(events[7], SessionEvent::Diagnostic(ref d) if d.kind == ErrorKind::Runtime)
+        );
+        assert!(matches!(events[8], SessionEvent::Diagnostic(ref d) if d.kind == ErrorKind::Name));
+        assert!(matches!(
+            events[9],
+            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &10.into()
+        ));
+    }
+
+    #[test]
+    fn let_validates_initializers_before_duplicate_binding_errors() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/commands/let_error_order.atlas"
+        ));
+        let events = run_source(&source);
+
+        assert_eq!(events.len(), 1);
+        let SessionEvent::Diagnostic(diagnostic) = &events[0] else {
+            panic!("expected a diagnostic");
+        };
+        assert_eq!(diagnostic.kind, ErrorKind::Name);
+        assert_eq!(diagnostic.message, "undefined identifier `missing`");
+        assert_eq!(diagnostic.span.map(|span| span.start.column), Some(9));
+    }
 }

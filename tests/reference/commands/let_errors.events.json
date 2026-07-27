@@ -1,0 +1,17 @@
+{
+  "schema": "atlas-session-events-v0",
+  "fixture": "commands/let_errors",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind":"Diagnostic","category":"name"},
+    {"kind":"Diagnostic","category":"name"},
+    {"kind":"Diagnostic","category":"name"},
+    {"kind":"Diagnostic","category":"type"},
+    {"kind":"Output","text":"Variable x: int\n"},
+    {"kind":"Value","type":"integer","value":3},
+    {"kind":"Value","type":"integer","value":10},
+    {"kind":"Diagnostic","category":"runtime"},
+    {"kind":"Diagnostic","category":"name"},
+    {"kind":"Value","type":"integer","value":10}
+  ]
+}

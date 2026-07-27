@@ -1,0 +1,10 @@
+let x = 1, y = x in y
+let x = 1, x = 2 in x
+let missing = x in missing
+let x = 1 in x := "bad"
+x : 10
+let x = 2 in x := 3
+x
+let y = 1 in 1 / 0
+y
+x
