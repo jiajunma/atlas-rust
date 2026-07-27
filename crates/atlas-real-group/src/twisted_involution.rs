@@ -7,8 +7,10 @@ use crate::{
 ///
 /// Atlas Cartan classes are ultimately indexed by canonical representatives of
 /// their twisted-conjugacy orbits. This value only establishes the
-/// root-theoretic condition `w theta` squared equals one; Atlas
-/// canonicalization and the Cayley graph are later layers.
+/// root-theoretic condition `w theta` squared equals one; the Cayley/cross
+/// decomposition relative to the distinguished involution lives in
+/// [`crate::CayleyCrossDecomposition`], and Atlas canonicalization remains
+/// unimplemented.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TwistedInvolution {
     weyl_action: WeylAction,
@@ -80,7 +82,7 @@ impl TwistedInvolution {
     }
 }
 
-fn compose_matrices(
+pub(crate) fn compose_matrices(
     left: &[Vec<i32>],
     right: &[Vec<i32>],
 ) -> Result<Vec<Vec<i32>>, StructureError> {

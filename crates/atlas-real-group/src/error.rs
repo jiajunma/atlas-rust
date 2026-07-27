@@ -45,6 +45,14 @@ pub enum StructureError {
         resource: &'static str,
         limit: usize,
     },
+    CayleyCrossResourceLimit {
+        resource: &'static str,
+        limit: usize,
+    },
+    CayleyCrossInvariantViolation {
+        invariant: &'static str,
+    },
+    DistinguishedInvolutionMismatch,
     ModTwoSubquotientInvariantViolation,
     NotInModTwoSubspace,
     CartanFiberMismatch,
@@ -130,6 +138,18 @@ impl fmt::Display for StructureError {
             }
             Self::WeakRealFormResourceLimit { resource, limit } => {
                 write!(f, "weak-real-form {resource} exceeded its limit of {limit}")
+            }
+            Self::CayleyCrossResourceLimit { resource, limit } => {
+                write!(f, "Cayley-cross {resource} exceeded its limit of {limit}")
+            }
+            Self::CayleyCrossInvariantViolation { invariant } => {
+                write!(f, "Cayley-cross {invariant} invariant was violated")
+            }
+            Self::DistinguishedInvolutionMismatch => {
+                write!(
+                    f,
+                    "twisted involution does not factor through this inner class's distinguished involution"
+                )
             }
             Self::ModTwoSubquotientInvariantViolation => {
                 write!(f, "mod-two subquotient invariant was violated")

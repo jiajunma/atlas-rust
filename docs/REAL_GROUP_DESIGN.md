@@ -205,6 +205,11 @@ is implemented per `ROOT_COROOT_DESIGN.md`. The grading layer — `m_alpha`,
 adjoint `m_alpha`, the all-ones base grading, grading shifts with the
 unconditional faithfulness gate, and the unique grading-to-element inverse —
 is implemented as `CartanGradingData` with the `Grading` value type per
-`GRADING_DESIGN.md`. Next, build the weak-real-form layer: the `W_im` orbit
-partition of the adjoint fiber through the `FiberAction` translation
-machinery, then real-form labels and Cartan classes, then KGB data.
+`GRADING_DESIGN.md`. The weak-real-form partition — `W_im` orbits of the
+adjoint fiber with ascending-minimal numbering and the quasisplit class —
+is implemented as `WeakRealFormPartition` per `WEAK_REAL_FORM_DESIGN.md`,
+and the Cayley/cross factorization of twisted involutions relative to the
+distinguished involution as `CayleyCrossDecomposition` per
+`INVOLUTION_DECOMPOSITION_DESIGN.md`. Next, build the real-form-label
+correlation: per-Cartan grading pullback through the decomposition into the
+fundamental fiber's weak-real classes, then Cartan classes, then KGB data.

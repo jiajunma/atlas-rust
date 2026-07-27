@@ -10,6 +10,7 @@ use std::collections::{HashSet, VecDeque};
 mod adjoint_fiber;
 mod cartan_class;
 mod cartan_fiber;
+mod cayley_cross;
 mod error;
 mod grading;
 mod inner_class;
@@ -31,6 +32,7 @@ pub use adjoint_fiber::{
 };
 pub use cartan_class::TwistedConjugacyClass;
 pub use cartan_fiber::{CartanFiber, CartanFiberElement};
+pub use cayley_cross::CayleyCrossDecomposition;
 pub use error::StructureError;
 pub use grading::{CartanGradingData, Grading};
 pub use inner_class::InnerClass;

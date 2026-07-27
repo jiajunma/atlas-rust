@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, VecDeque};
 
-use crate::{BasedRootDatum, Coweight, StructureError, Weight};
+use crate::{BasedRootDatum, Coweight, RootId, RootSystem, StructureError, Weight};
 
 /// A canonical Weyl-group action on the full character/cocharacter lattices.
 ///
@@ -48,6 +48,40 @@ impl WeylAction {
             datum: datum.clone(),
             weight_matrix,
             coweight_matrix,
+        })
+    }
+
+    /// The reflection in an arbitrary enumerated root, acting on both
+    /// lattices.
+    ///
+    /// [`Self::simple_reflection`] covers only simple roots; replaying a
+    /// Cayley/cross decomposition needs reflections in arbitrary strongly
+    /// orthogonal roots. Sign is irrelevant: a root and its negative define
+    /// the same reflection.
+    pub fn root_reflection(
+        datum: &BasedRootDatum,
+        root_system: &RootSystem,
+        root: RootId,
+    ) -> Result<Self, StructureError> {
+        if root_system.datum() != datum {
+            return Err(StructureError::DatumMismatch);
+        }
+        let weight = root_system
+            .root(root)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: root.0,
+                upper_bound: root_system.roots().len(),
+            })?;
+        let coroot = root_system
+            .coroot(root)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: root.0,
+                upper_bound: root_system.roots().len(),
+            })?;
+        Ok(Self {
+            datum: datum.clone(),
+            weight_matrix: reflection_matrix(weight.as_slice(), coroot.as_slice())?,
+            coweight_matrix: reflection_matrix(coroot.as_slice(), weight.as_slice())?,
         })
     }
 

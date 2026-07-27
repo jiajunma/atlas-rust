@@ -9,9 +9,11 @@ use crate::{
 ///
 /// This is intentionally a partial implementation: it owns a validated based
 /// root datum, its finite ordinary root system, and a distinguished root
-/// involution. It can enumerate root-theoretic twisted-conjugacy orbits, but
-/// does not yet build Atlas Cartan-class fibers or real forms, nor does it
-/// contain the torus data required to construct a KGB graph.
+/// involution. It can enumerate root-theoretic twisted-conjugacy orbits and
+/// supplies the distinguished-involution context for
+/// [`crate::CayleyCrossDecomposition`], but does not yet build Atlas
+/// Cartan-class fibers or real forms, nor does it contain the torus data
+/// required to construct a KGB graph.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InnerClass {
     datum: BasedRootDatum,

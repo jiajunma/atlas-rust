@@ -3,7 +3,9 @@ use crate::TwistedInvolution;
 /// One deterministic orbit under Weyl twisted conjugacy.
 ///
 /// The representative is the first action in this crate's deterministic Weyl
-/// enumeration, not Atlas's `canonicalize` representative. Fiber groups,
+/// enumeration, not Atlas's `canonicalize` representative; it decomposes
+/// through [`crate::CayleyCrossDecomposition`], and consumers must build
+/// their fiber data at the same representative they decompose. Fiber groups,
 /// real-form attribution, and real Cartan component data are later additions
 /// to this type.
 #[derive(Clone, Debug, Eq, PartialEq)]
