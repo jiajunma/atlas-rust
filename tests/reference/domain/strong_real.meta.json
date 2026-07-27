@@ -1,0 +1,16 @@
+{
+  "fixture": "domain/strong_real.atlas",
+  "status": "design_recorded_review_pending",
+  "oracle": "pending_domain_adapter",
+  "rust_status": "not_implemented",
+  "reference_status": "pending_atlas_constructor_and_event_adapter",
+  "scenarios": [
+    "SL(2): KGB sizes 3 and 1, global 5",
+    "A2 identity: KGB sizes 6 and 1, global 7",
+    "B2 identity: KGB sizes 11, 4, 1, global 17 with two strong forms over so(5)",
+    "A1 x A1: product multiplicativity cross-check",
+    "square-class structure and fiber partitions per Cartan",
+    "budget and invariant handling"
+  ],
+  "notes": "This fixture is reserved before implementation. KGB sizes are the flagship differential targets once the language-level constructors and both oracle adapters exist."
+}
