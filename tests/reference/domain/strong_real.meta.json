@@ -1,16 +1,25 @@
 {
   "fixture": "domain/strong_real.atlas",
-  "status": "design_recorded_review_pending",
+  "status": "structural_implementation_awaiting_hpc_preflight",
   "oracle": "pending_domain_adapter",
-  "rust_status": "not_implemented",
+  "rust_status": "implemented_locally_131_tests_pending_hpc",
   "reference_status": "pending_atlas_constructor_and_event_adapter",
+  "design_reviews": {
+    "completed_at": "2026-07-28",
+    "checks": [
+      "atlas_source_semantics",
+      "rust_ownership_and_internal_mechanics",
+      "public_api_and_consumer_integration"
+    ],
+    "recorded_in": "docs/STRONG_REAL_DESIGN.md"
+  },
   "scenarios": [
-    "SL(2): KGB sizes 3 and 1, global 5",
-    "A2 identity: KGB sizes 6 and 1, global 7",
-    "B2 identity: KGB sizes 11, 4, 1, global 17 with two strong forms over so(5)",
-    "A1 x A1: product multiplicativity cross-check",
-    "square-class structure and fiber partitions per Cartan",
-    "budget and invariant handling"
+    "SL(2): KGB sizes 3 and 1, global 5, two square classes at the fundamental Cartan",
+    "A2 identity: KGB sizes 6 and 1, global 7, invertible toAdjoint",
+    "simply connected B2: KGB sizes 11 (the published Sp(4,R) value), 4, 1; global 17; two strong forms over so(5)",
+    "simply connected A1 x A1: multiplicative 9 and 25",
+    "the adjoint-isogeny standard B2 datum gives smaller sizes, confirming isogeny sensitivity",
+    "undersized budgets reject with the strong stage's own named error"
   ],
-  "notes": "This fixture is reserved before implementation. KGB sizes are the flagship differential targets once the language-level constructors and both oracle adapters exist."
+  "notes": "Three fresh-context design reviews completed and folded into the design, including the square-class-independent shift-column correction. The structural implementation passes 131 local unit tests; the KGB sizes match hand-verified published Atlas values. The frozen HPC preflight is queued until the cluster is reachable."
 }

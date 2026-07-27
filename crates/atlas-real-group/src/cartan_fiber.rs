@@ -19,9 +19,10 @@ use crate::{
 /// The abstract quotient `Y^theta / (I + theta_Y)Y` is isomorphic, but it has
 /// different natural coordinates.  Adjoint maps live in
 /// [`crate::AdjointCartanFiber`] and [`crate::FiberToAdjoint`], gradings in
-/// [`crate::CartanGradingData`], and the weak-real-form partition in
-/// [`crate::WeakRealFormPartition`]; strong real forms and KGB data still
-/// belong to later layers.
+/// [`crate::CartanGradingData`], the weak-real-form partition in
+/// [`crate::WeakRealFormPartition`], and the strong-real layer in
+/// [`crate::StrongRealClassification`]; KGB data still belongs to later
+/// layers.
 #[derive(Clone, Debug)]
 pub struct CartanFiber {
     model: Arc<CartanFiberModel>,

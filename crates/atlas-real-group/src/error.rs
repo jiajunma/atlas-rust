@@ -58,6 +58,13 @@ pub enum StructureError {
     CartanClassificationInvariantViolation {
         invariant: &'static str,
     },
+    StrongRealResourceLimit {
+        resource: &'static str,
+        limit: usize,
+    },
+    StrongRealInvariantViolation {
+        invariant: &'static str,
+    },
     DistinguishedInvolutionMismatch,
     ModTwoSubquotientInvariantViolation,
     NotInModTwoSubspace,
@@ -159,6 +166,12 @@ impl fmt::Display for StructureError {
                     f,
                     "Cartan-classification {invariant} invariant was violated"
                 )
+            }
+            Self::StrongRealResourceLimit { resource, limit } => {
+                write!(f, "strong-real {resource} exceeded its limit of {limit}")
+            }
+            Self::StrongRealInvariantViolation { invariant } => {
+                write!(f, "strong-real {invariant} invariant was violated")
             }
             Self::DistinguishedInvolutionMismatch => {
                 write!(

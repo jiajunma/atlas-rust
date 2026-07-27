@@ -8,7 +8,7 @@ const CLASS_SENTINEL: u32 = u32::MAX;
 
 /// Masks are `u64`, so the adjoint fiber dimension must fit below the sign of
 /// no bit at all — 63 keeps every `1 << dimension` shift in range.
-const MAX_MASK_BITS: usize = 63;
+pub(crate) const MAX_MASK_BITS: usize = 63;
 
 /// Stable identifier for one weak real form of one Cartan involution.
 ///
@@ -27,8 +27,8 @@ pub struct WeakRealFormId(pub(crate) usize);
 /// Orbits correspond to the weak real forms of the inner class at this
 /// Cartan involution. The partition owns its class table and one
 /// deterministic representative element per class; real-form labels live in
-/// [`crate::RealFormLabels`], while central square classes and strong real
-/// forms are later layers.
+/// [`crate::RealFormLabels`] and the square-class/strong-real layer in
+/// [`crate::StrongRealClassification`].
 #[derive(Clone, Debug)]
 pub struct WeakRealFormPartition {
     adjoint: AdjointCartanFiber,
@@ -51,18 +51,6 @@ impl WeakRealFormPartition {
                 limit: MAX_MASK_BITS,
             });
         }
-        // The mask-bits gate above keeps this shift in range; the comparison
-        // is deliberately unsaturated so `dimension == 64` cannot slip past
-        // a `usize::MAX` limit on a 64-bit host.
-        let required = 1_u128 << dimension;
-        if required > widened(max_elements) {
-            return Err(StructureError::WeakRealFormResourceLimit {
-                resource: "fiber elements",
-                limit: max_elements,
-            });
-        }
-        let element_count =
-            usize::try_from(required).map_err(|_| StructureError::ArithmeticOverflow)?;
 
         let imaginary_rank = grading.imaginary_rank();
         let mut base = try_capacity::<bool>(imaginary_rank)?;
@@ -97,58 +85,26 @@ impl WeakRealFormPartition {
                 },
             )?;
             let translation = mask_of(adjoint, element)?;
-            // Involutivity of the generator is `<alpha_s, alpha_s_vee> = 2`
-            // read mod two through validated grading tables; upstream only
-            // ever assumes each generator permutes the fiber.
-            debug_assert_eq!((translation & column).count_ones() % 2, 0);
             alpha_columns.push(column);
             m_alpha_masks.push(translation);
         }
 
-        let mut class_of_by_mask = try_capacity::<u32>(element_count)?;
-        class_of_by_mask.resize(element_count, CLASS_SENTINEL);
-        let mut pending = try_capacity::<u64>(element_count)?;
-        let mut class_count: usize = 0;
-        for seed_index in 0..element_count {
-            if class_of_by_mask[seed_index] != CLASS_SENTINEL {
-                continue;
-            }
-            let class = seeded_class(class_count)?;
-            class_of_by_mask[seed_index] = class;
-            pending.push(mask_from_index(seed_index)?);
-            while let Some(mask) = pending.pop() {
-                for imaginary_index in 0..imaginary_rank {
-                    let paired = (mask & alpha_columns[imaginary_index]).count_ones() & 1 == 1;
-                    if base[imaginary_index] != paired {
-                        // Noncompact at this root: translate by its m_alpha.
-                        let image = mask ^ m_alpha_masks[imaginary_index];
-                        let image_index = index_from_mask(image)?;
-                        if class_of_by_mask[image_index] == CLASS_SENTINEL {
-                            class_of_by_mask[image_index] = class;
-                            pending.push(image);
-                        }
-                    }
-                }
-            }
-            class_count = class_count
-                .checked_add(1)
-                .ok_or(StructureError::ArithmeticOverflow)?;
+        let orbits = walk_mask_orbits(
+            dimension,
+            max_elements,
+            &base,
+            &alpha_columns,
+            &m_alpha_masks,
+            weak_limit_error,
+        )?;
+        let mut representatives = try_capacity(orbits.representative_masks.len())?;
+        for &mask in &orbits.representative_masks {
+            representatives.push(element_of(adjoint, mask)?);
         }
-
-        // Classes are numbered by ascending minimal mask, so the first
-        // ascending occurrence of each class number is its representative.
-        let mut representatives = try_capacity(class_count)?;
-        for (index, &class) in class_of_by_mask.iter().enumerate() {
-            let class = usize::try_from(class).map_err(|_| StructureError::ArithmeticOverflow)?;
-            if class == representatives.len() {
-                representatives.push(element_of(adjoint, mask_from_index(index)?)?);
-            }
-        }
-        debug_assert_eq!(representatives.len(), class_count);
 
         Ok(Self {
             adjoint: adjoint.clone(),
-            class_of_by_mask,
+            class_of_by_mask: orbits.class_of_by_mask,
             representatives,
         })
     }
@@ -201,16 +157,108 @@ impl WeakRealFormPartition {
     }
 }
 
+fn weak_limit_error(resource: &'static str, limit: usize) -> StructureError {
+    StructureError::WeakRealFormResourceLimit { resource, limit }
+}
+
+/// The shared `W_im` mask-orbit walk over a `2^dimension` mod-two group.
+///
+/// The transition rule is `FiberAction`: at imaginary index `i`, a mask
+/// whose grading bit (`base[i] XOR parity(mask AND alpha_columns[i])`) is
+/// noncompact translates by `m_alpha_masks[i]`. Classes are numbered by
+/// ascending minimal mask; `representative_masks[c]` is class `c`'s minimal
+/// mask. The caller supplies the resource-limit constructor so error
+/// attribution names the stage whose walk tripped.
+pub(crate) struct MaskOrbits {
+    pub(crate) class_of_by_mask: Vec<u32>,
+    pub(crate) representative_masks: Vec<u64>,
+}
+
+pub(crate) fn walk_mask_orbits(
+    dimension: usize,
+    max_elements: usize,
+    base: &[bool],
+    alpha_columns: &[u64],
+    m_alpha_masks: &[u64],
+    limit_error: fn(&'static str, usize) -> StructureError,
+) -> Result<MaskOrbits, StructureError> {
+    if dimension > MAX_MASK_BITS {
+        return Err(limit_error("mask bits", MAX_MASK_BITS));
+    }
+    // The mask-bits gate above keeps this shift in range; the comparison is
+    // deliberately unsaturated so `dimension == 64` cannot slip past a
+    // `usize::MAX` limit on a 64-bit host.
+    let required = 1_u128 << dimension;
+    if required > widened(max_elements) {
+        return Err(limit_error("fiber elements", max_elements));
+    }
+    let element_count =
+        usize::try_from(required).map_err(|_| StructureError::ArithmeticOverflow)?;
+    let imaginary_rank = base.len();
+    // Involutivity of each generator is `<alpha_s, alpha_s_vee> = 2` read
+    // mod two through validated grading tables; upstream only ever assumes
+    // each generator permutes the group.
+    for (column, translation) in alpha_columns.iter().zip(m_alpha_masks) {
+        debug_assert_eq!((translation & column).count_ones() % 2, 0);
+    }
+
+    let mut class_of_by_mask = try_capacity::<u32>(element_count)?;
+    class_of_by_mask.resize(element_count, CLASS_SENTINEL);
+    let mut pending = try_capacity::<u64>(element_count)?;
+    let mut class_count: usize = 0;
+    for seed_index in 0..element_count {
+        if class_of_by_mask[seed_index] != CLASS_SENTINEL {
+            continue;
+        }
+        let class = seeded_class(class_count, limit_error)?;
+        class_of_by_mask[seed_index] = class;
+        pending.push(mask_from_index(seed_index)?);
+        while let Some(mask) = pending.pop() {
+            for imaginary_index in 0..imaginary_rank {
+                let paired = (mask & alpha_columns[imaginary_index]).count_ones() & 1 == 1;
+                if base[imaginary_index] != paired {
+                    // Noncompact at this root: translate by its m_alpha.
+                    let image = mask ^ m_alpha_masks[imaginary_index];
+                    let image_index = index_from_mask(image)?;
+                    if class_of_by_mask[image_index] == CLASS_SENTINEL {
+                        class_of_by_mask[image_index] = class;
+                        pending.push(image);
+                    }
+                }
+            }
+        }
+        class_count = class_count
+            .checked_add(1)
+            .ok_or(StructureError::ArithmeticOverflow)?;
+    }
+
+    // Classes are numbered by ascending minimal mask, so the first ascending
+    // occurrence of each class number is its representative.
+    let mut representative_masks = try_capacity(class_count)?;
+    for (index, &class) in class_of_by_mask.iter().enumerate() {
+        let class = usize::try_from(class).map_err(|_| StructureError::ArithmeticOverflow)?;
+        if class == representative_masks.len() {
+            representative_masks.push(mask_from_index(index)?);
+        }
+    }
+    debug_assert_eq!(representative_masks.len(), class_count);
+
+    Ok(MaskOrbits {
+        class_of_by_mask,
+        representative_masks,
+    })
+}
+
 /// Convert the next class ordinal into a stored class number, rejecting the
 /// sentinel. This guard is reachable in principle: a simply-connected product
 /// has zero adjoint `m_alpha` vectors, so every mask is a singleton class.
-fn seeded_class(class_count: usize) -> Result<u32, StructureError> {
+fn seeded_class(
+    class_count: usize,
+    limit_error: fn(&'static str, usize) -> StructureError,
+) -> Result<u32, StructureError> {
     match u32::try_from(class_count) {
         Ok(class) if class != CLASS_SENTINEL => Ok(class),
-        _ => Err(StructureError::WeakRealFormResourceLimit {
-            resource: "classes",
-            limit: CLASS_SENTINEL as usize,
-        }),
+        _ => Err(limit_error("classes", CLASS_SENTINEL as usize)),
     }
 }
 
@@ -454,9 +502,9 @@ mod tests {
 
     #[test]
     fn the_class_number_guard_rejects_the_sentinel_ordinal() {
-        assert_eq!(seeded_class(5), Ok(5));
+        assert_eq!(seeded_class(5, weak_limit_error), Ok(5));
         assert_eq!(
-            seeded_class(usize::try_from(u32::MAX).unwrap()),
+            seeded_class(usize::try_from(u32::MAX).unwrap(), weak_limit_error),
             Err(StructureError::WeakRealFormResourceLimit {
                 resource: "classes",
                 limit: usize::try_from(u32::MAX).unwrap(),

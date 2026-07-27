@@ -106,10 +106,11 @@ impl TwistedConjugacyPartition {
 /// One Cartan class as an owning value: the twisted-conjugacy class plus the
 /// full validated per-Cartan machinery built at its representative.
 ///
-/// This is the crate's partial port of Atlas `CartanClass`: the dual fiber,
-/// `simpleComplex`, and the strong-real layer are later additions. All
-/// components are built at the SAME representative, so every layer's
-/// provenance gates hold by construction.
+/// This is the crate's partial port of Atlas `CartanClass`: the dual fiber
+/// and `simpleComplex` are later additions, while the strong-real layer
+/// lives in the sibling [`crate::StrongRealClassification`]. All components
+/// are built at the SAME representative, so every layer's provenance gates
+/// hold by construction.
 #[derive(Clone, Debug)]
 pub struct CartanClass {
     class_info: TwistedConjugacyClass,
