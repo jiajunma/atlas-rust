@@ -1,0 +1,11 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "eval/container_errors",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind":"Diagnostic","category":"type"},
+    {"kind":"Diagnostic","category":"type"},
+    {"kind":"Diagnostic","category":"type"},
+    {"kind":"Diagnostic","category":"runtime"}
+  ]
+}

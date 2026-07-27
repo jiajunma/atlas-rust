@@ -1,0 +1,8 @@
+{
+  "fixture": "commands/container_assignments",
+  "oracle": "atlas",
+  "stage": "command-stream",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "implemented_pending_hpc",
+  "notes": "Checks recursive integer-to-rational coercion when assigning nested lists and tuple rows."
+}

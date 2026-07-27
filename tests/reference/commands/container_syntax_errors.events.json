@@ -1,0 +1,14 @@
+{
+  "schema": "atlas-session-events-v0",
+  "fixture": "commands/container_syntax_errors",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind":"Diagnostic","category":"syntax"},
+    {"kind":"Value","type":"integer","value":1},
+    {"kind":"Diagnostic","category":"syntax"},
+    {"kind":"Value","type":"integer","value":2},
+    {"kind":"Diagnostic","category":"syntax"},
+    {"kind":"Value","type":"integer","value":3},
+    {"kind":"Diagnostic","category":"syntax"}
+  ]
+}

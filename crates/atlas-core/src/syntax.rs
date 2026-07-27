@@ -7,7 +7,7 @@
 
 use std::fmt;
 
-use num_bigint::BigInt;
+use malachite::Integer as BigInt;
 
 use crate::{
     diagnostic::{Diagnostic, ErrorKind, SourceSpan},
@@ -34,6 +34,14 @@ pub enum Expr {
     },
     String {
         value: String,
+        span: SourceSpan,
+    },
+    Tuple {
+        elements: Vec<Expr>,
+        span: SourceSpan,
+    },
+    List {
+        elements: Vec<Expr>,
         span: SourceSpan,
     },
     Identifier {
@@ -92,6 +100,8 @@ impl Expr {
             Self::Integer { span, .. }
             | Self::Boolean { span, .. }
             | Self::String { span, .. }
+            | Self::Tuple { span, .. }
+            | Self::List { span, .. }
             | Self::Identifier { span, .. }
             | Self::Assignment { span, .. }
             | Self::Let { span, .. }
@@ -179,6 +189,8 @@ pub enum ParserToken {
     Equals(SourceSpan),
     Colon(SourceSpan),
     Comma(SourceSpan),
+    LBracket(SourceSpan),
+    RBracket(SourceSpan),
     Let(SourceSpan),
     In(SourceSpan),
     Then(SourceSpan),
@@ -205,6 +217,8 @@ impl ParserToken {
             | Self::Equals(span)
             | Self::Colon(span)
             | Self::Comma(span)
+            | Self::LBracket(span)
+            | Self::RBracket(span)
             | Self::Let(span)
             | Self::In(span)
             | Self::Then(span)
@@ -231,6 +245,8 @@ impl fmt::Display for ParserToken {
             Self::Equals(_) => "=",
             Self::Colon(_) => ":",
             Self::Comma(_) => ",",
+            Self::LBracket(_) => "[",
+            Self::RBracket(_) => "]",
             Self::Let(_) => "let",
             Self::In(_) => "in",
             Self::Then(_) => "then",
@@ -353,6 +369,8 @@ fn parser_tokens_from_tokens(
                         ')' => ParserToken::RParen(span),
                         ':' => ParserToken::Colon(span),
                         ',' => ParserToken::Comma(span),
+                        '[' => ParserToken::LBracket(span),
+                        ']' => ParserToken::RBracket(span),
                         '~' => parser_operator("~".to_owned(), span)
                             .expect("tilde has a fixed Atlas priority"),
                         _ => ParserToken::Unsupported(SpannedValue {
@@ -491,6 +509,27 @@ fn let_expression(let_span: SourceSpan, parsed: ParsedLet) -> Expr {
     }
 }
 
+fn tuple_expression(open: SourceSpan, elements: Vec<Expr>, close: SourceSpan) -> Expr {
+    Expr::Tuple {
+        elements,
+        span: join_span(open, close),
+    }
+}
+
+fn list_expression(open: SourceSpan, elements: Vec<Expr>, close: SourceSpan) -> Expr {
+    Expr::List {
+        elements,
+        span: join_span(open, close),
+    }
+}
+
+fn expression_list(first: Expr, rest: Vec<Expr>) -> Vec<Expr> {
+    let mut elements = Vec::with_capacity(rest.len() + 1);
+    elements.push(first);
+    elements.extend(rest);
+    elements
+}
+
 fn let_binding(target: SpannedValue<String>, initializer: Expr) -> LetBinding {
     LetBinding {
         name: target.value,
@@ -599,13 +638,29 @@ fn operator_call(operator: FormulaOperator, arguments: Vec<Expr>) -> Expr {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use num_bigint::BigInt;
+    use malachite::Integer as BigInt;
 
     fn expression_shape(expression: &Expr) -> String {
         match expression {
             Expr::Integer { value, .. } => value.to_string(),
             Expr::Boolean { value, .. } => value.to_string(),
             Expr::String { value, .. } => format!("\"{value}\""),
+            Expr::Tuple { elements, .. } => format!(
+                "tuple({})",
+                elements
+                    .iter()
+                    .map(expression_shape)
+                    .collect::<Vec<_>>()
+                    .join(",")
+            ),
+            Expr::List { elements, .. } => format!(
+                "list({})",
+                elements
+                    .iter()
+                    .map(expression_shape)
+                    .collect::<Vec<_>>()
+                    .join(",")
+            ),
             Expr::Identifier { name, .. } => name.clone(),
             Expr::Assignment { name, value, .. } => {
                 format!("assign({name},{})", expression_shape(value))
@@ -692,6 +747,15 @@ mod tests {
             expression_shape(&expression),
             "let(x=1,let(y=+@4(x,1),assign(y,+@4(y,1))))"
         );
+    }
+
+    #[test]
+    fn parses_tuple_list_and_group_atoms_distinctly() {
+        assert_eq!(expression_shape(&parse_one("()")), "tuple()");
+        assert_eq!(expression_shape(&parse_one("(1)")), "group(1)");
+        assert_eq!(expression_shape(&parse_one("(1,2)")), "tuple(1,2)");
+        assert_eq!(expression_shape(&parse_one("[1,2]")), "list(1,2)");
+        assert_eq!(expression_shape(&parse_one("[]")), "list()");
     }
 
     #[test]

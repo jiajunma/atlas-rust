@@ -1,0 +1,14 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "eval/containers",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind":"Value","type":"tuple","values":[1,"a",true]},
+    {"kind":"Value","type":"list","values":[1,2,3]},
+    {"kind":"Value","type":"list","values":[]},
+    {"kind":"Value","type":"list","values":[{"type":"rational","numerator":1,"denominator":1},{"type":"rational","numerator":1,"denominator":2}]},
+    {"kind":"Value","type":"list","values":[[{"type":"rational","numerator":1,"denominator":1}],[{"type":"rational","numerator":1,"denominator":2}]]},
+    {"kind":"Value","type":"list","values":[[1,{"type":"rational","numerator":2,"denominator":1}],[3,{"type":"rational","numerator":1,"denominator":2}]]},
+    {"kind":"Value","type":"tuple","values":[0,1]}
+  ]
+}

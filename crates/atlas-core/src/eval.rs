@@ -5,8 +5,9 @@ use std::{
     collections::{BTreeMap, BTreeSet},
 };
 
-use num_bigint::{BigInt, Sign};
-use num_rational::BigRational;
+use malachite::base::num::arithmetic::traits::Pow;
+use malachite::base::num::conversion::traits::{ConvertibleFrom, WrappingFrom};
+use malachite::{Integer as BigInt, Rational as BigRational};
 
 use crate::{
     diagnostic::{Diagnostic, ErrorKind, SourceSpan},
@@ -68,7 +69,9 @@ impl EvalContext {
 
     fn binding_type(&self, name: &str) -> Option<ScalarType> {
         let id = self.resolve_binding_id(name)?;
-        self.bindings.get(id.0).map(|binding| binding.value_type)
+        self.bindings
+            .get(id.0)
+            .map(|binding| binding.value_type.clone())
     }
 
     pub fn insert(&mut self, name: impl Into<String>, value: Value) -> Option<Value> {
@@ -190,11 +193,11 @@ pub fn execute_command(
             let previous_type = context.binding_type(name);
             context.insert(name.clone(), value);
 
-            let mut text = format!("Variable {name}: {}", atlas_type_name(new_type));
+            let mut text = format!("Variable {name}: {}", atlas_type_name(&new_type));
             if let Some(previous_type) = previous_type {
                 text.push_str(&format!(
                     " (overriding previous instance, which had type {})",
-                    atlas_type_name(previous_type)
+                    atlas_type_name(&previous_type)
                 ));
             }
             text.push('\n');
@@ -207,11 +210,11 @@ pub fn execute_command(
             ..
         } => {
             let value_type = scalar_type(*value_type);
-            context.declare(name.clone(), value_type);
+            context.declare(name.clone(), value_type.clone());
             Ok(vec![EvalEvent::Output {
                 text: format!(
                     "Declaring identifier '{name}': {}\n",
-                    atlas_type_name(value_type)
+                    atlas_type_name(&value_type)
                 ),
                 span: *span,
             }])
@@ -243,12 +246,14 @@ pub fn validate_names(expression: &Expr, context: &EvalContext) -> Result<(), Di
     infer_scalar_type(expression, context).map(|_| ())
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum ScalarType {
     Integer,
     Rational,
     Boolean,
     String,
+    Tuple(Vec<ScalarType>),
+    List(Option<Box<ScalarType>>),
 }
 
 fn infer_scalar_type(expression: &Expr, context: &EvalContext) -> Result<ScalarType, Diagnostic> {
@@ -263,6 +268,25 @@ fn infer_scalar_type(expression: &Expr, context: &EvalContext) -> Result<ScalarT
         Expr::Integer { .. } => Ok(ScalarType::Integer),
         Expr::Boolean { .. } => Ok(ScalarType::Boolean),
         Expr::String { .. } => Ok(ScalarType::String),
+        Expr::Tuple { elements, .. } => elements
+            .iter()
+            .map(|element| infer_scalar_type(element, context))
+            .collect::<Result<Vec<_>, _>>()
+            .map(ScalarType::Tuple),
+        Expr::List { elements, span } => {
+            let element_types = elements
+                .iter()
+                .map(|element| infer_scalar_type(element, context))
+                .collect::<Result<Vec<_>, _>>()?;
+            let element_type = common_list_element_type(&element_types).ok_or_else(|| {
+                Diagnostic::new(
+                    ErrorKind::Type,
+                    "list elements must have a common type",
+                    Some(*span),
+                )
+            })?;
+            Ok(ScalarType::List(element_type.map(Box::new)))
+        }
         Expr::Assignment {
             name,
             target_span,
@@ -277,15 +301,15 @@ fn infer_scalar_type(expression: &Expr, context: &EvalContext) -> Result<ScalarT
                 )
             })?;
             let rhs_type = infer_scalar_type(value, context)?;
-            if assignment_compatible(target_type, rhs_type) {
+            if assignment_compatible(&target_type, &rhs_type) {
                 Ok(target_type)
             } else {
                 Err(Diagnostic::new(
                     ErrorKind::Type,
                     format!(
                         "cannot assign {} to `{name}` of type {}",
-                        scalar_type_name(rhs_type),
-                        scalar_type_name(target_type)
+                        scalar_type_name(&rhs_type),
+                        scalar_type_name(&target_type)
                     ),
                     Some(*span),
                 ))
@@ -302,7 +326,7 @@ fn infer_scalar_type(expression: &Expr, context: &EvalContext) -> Result<ScalarT
             if operand_type == ScalarType::Boolean {
                 Ok(ScalarType::Boolean)
             } else {
-                Err(static_type_error("not", "boolean", operand_type, *span))
+                Err(static_type_error("not", "boolean", &operand_type, *span))
             }
         }
         Expr::Binary {
@@ -313,11 +337,16 @@ fn infer_scalar_type(expression: &Expr, context: &EvalContext) -> Result<ScalarT
         } => {
             let left = infer_scalar_type(lhs, context)?;
             if left != ScalarType::Boolean {
-                return Err(static_type_error(binary_name(*op), "boolean", left, *span));
+                return Err(static_type_error(binary_name(*op), "boolean", &left, *span));
             }
             let right = infer_scalar_type(rhs, context)?;
             if right != ScalarType::Boolean {
-                return Err(static_type_error(binary_name(*op), "boolean", right, *span));
+                return Err(static_type_error(
+                    binary_name(*op),
+                    "boolean",
+                    &right,
+                    *span,
+                ));
             }
             Ok(ScalarType::Boolean)
         }
@@ -378,23 +407,32 @@ fn infer_operator_type(
 ) -> Result<ScalarType, Diagnostic> {
     let symbol = operator.symbol.as_str();
     match (symbol, arguments) {
-        ("-" | "+", [value]) if is_numeric(*value) => Ok(*value),
-        ("-" | "+", [value]) => Err(static_type_error(symbol, "numeric", *value, span)),
-        ("+" | "-" | "*", [left, right]) if is_numeric(*left) && is_numeric(*right) => {
-            Ok(promoted_numeric_type(*left, *right))
+        ("-" | "+", [value]) if is_numeric(value) => Ok(value.clone()),
+        ("-" | "+", [value]) => Err(static_type_error(symbol, "numeric", value, span)),
+        ("+" | "-" | "*", [left, right]) if is_numeric(left) && is_numeric(right) => {
+            Ok(promoted_numeric_type(left, right))
         }
-        ("/", [left, right]) if is_numeric(*left) && is_numeric(*right) => Ok(ScalarType::Rational),
+        ("/", [left, right]) if is_numeric(left) && is_numeric(right) => Ok(ScalarType::Rational),
         ("%" | "\\", [ScalarType::Integer, ScalarType::Integer]) => Ok(ScalarType::Integer),
+        ("\\%", [ScalarType::Integer, ScalarType::Integer]) => Ok(ScalarType::Tuple(vec![
+            ScalarType::Integer,
+            ScalarType::Integer,
+        ])),
         ("^", [ScalarType::Integer, ScalarType::Integer]) => Ok(ScalarType::Integer),
         ("&", [ScalarType::Integer, ScalarType::Integer]) => Ok(ScalarType::Integer),
         ("=", [left, right]) | ("!=", [left, right])
-            if left == right || (is_numeric(*left) && is_numeric(*right)) =>
+            if (is_numeric(left) && is_numeric(right))
+                || matches!(
+                    (left, right),
+                    (ScalarType::Boolean, ScalarType::Boolean)
+                        | (ScalarType::String, ScalarType::String)
+                ) =>
         {
             Ok(ScalarType::Boolean)
         }
         ("<" | "<=" | ">" | ">=", [left, right])
-            if (is_numeric(*left) && is_numeric(*right))
-                || (*left == ScalarType::String && *right == ScalarType::String) =>
+            if (is_numeric(left) && is_numeric(right))
+                || matches!((left, right), (ScalarType::String, ScalarType::String)) =>
         {
             Ok(ScalarType::Boolean)
         }
@@ -403,28 +441,90 @@ fn infer_operator_type(
     }
 }
 
-fn promoted_numeric_type(left: ScalarType, right: ScalarType) -> ScalarType {
-    if left == ScalarType::Rational || right == ScalarType::Rational {
+fn promoted_numeric_type(left: &ScalarType, right: &ScalarType) -> ScalarType {
+    if *left == ScalarType::Rational || *right == ScalarType::Rational {
         ScalarType::Rational
     } else {
         ScalarType::Integer
     }
 }
 
-fn is_numeric(value_type: ScalarType) -> bool {
+fn is_numeric(value_type: &ScalarType) -> bool {
     matches!(value_type, ScalarType::Integer | ScalarType::Rational)
 }
 
-fn assignment_compatible(target: ScalarType, value: ScalarType) -> bool {
-    target == value || (target == ScalarType::Rational && value == ScalarType::Integer)
+fn common_list_element_type(types: &[ScalarType]) -> Option<Option<ScalarType>> {
+    let Some((first, rest)) = types.split_first() else {
+        return Some(None);
+    };
+    let common = rest.iter().try_fold(first.clone(), |common, value_type| {
+        common_type(&common, value_type)
+    })?;
+    Some(Some(common))
 }
 
-fn atlas_type_name(value_type: ScalarType) -> &'static str {
+fn common_type(left: &ScalarType, right: &ScalarType) -> Option<ScalarType> {
+    if left == right {
+        return Some(left.clone());
+    }
+    if is_numeric(left) && is_numeric(right) {
+        return Some(ScalarType::Rational);
+    }
+    match (left, right) {
+        (ScalarType::Tuple(left), ScalarType::Tuple(right)) if left.len() == right.len() => left
+            .iter()
+            .zip(right)
+            .map(|(left, right)| common_type(left, right))
+            .collect::<Option<Vec<_>>>()
+            .map(ScalarType::Tuple),
+        (ScalarType::List(None), ScalarType::List(element))
+        | (ScalarType::List(element), ScalarType::List(None)) => {
+            Some(ScalarType::List(element.clone()))
+        }
+        (ScalarType::List(Some(left)), ScalarType::List(Some(right))) => {
+            common_type(left, right).map(|element| ScalarType::List(Some(Box::new(element))))
+        }
+        _ => None,
+    }
+}
+
+fn assignment_compatible(target: &ScalarType, value: &ScalarType) -> bool {
+    target == value
+        || matches!((target, value), (ScalarType::Rational, ScalarType::Integer))
+        || match (target, value) {
+            (ScalarType::Tuple(target), ScalarType::Tuple(value))
+                if target.len() == value.len() =>
+            {
+                target
+                    .iter()
+                    .zip(value)
+                    .all(|(target, value)| assignment_compatible(target, value))
+            }
+            (ScalarType::List(None), ScalarType::List(_))
+            | (ScalarType::List(Some(_)), ScalarType::List(None)) => true,
+            (ScalarType::List(Some(target)), ScalarType::List(Some(value))) => {
+                assignment_compatible(target, value)
+            }
+            _ => false,
+        }
+}
+
+fn atlas_type_name(value_type: &ScalarType) -> String {
     match value_type {
-        ScalarType::Integer => "int",
-        ScalarType::Rational => "rat",
-        ScalarType::Boolean => "bool",
-        ScalarType::String => "string",
+        ScalarType::Integer => "int".into(),
+        ScalarType::Rational => "rat".into(),
+        ScalarType::Boolean => "bool".into(),
+        ScalarType::String => "string".into(),
+        ScalarType::Tuple(elements) => format!(
+            "({})",
+            elements
+                .iter()
+                .map(atlas_type_name)
+                .collect::<Vec<_>>()
+                .join(",")
+        ),
+        ScalarType::List(Some(element)) => format!("[{}]", atlas_type_name(element)),
+        ScalarType::List(None) => "[*]".into(),
     }
 }
 
@@ -434,13 +534,20 @@ fn value_type(value: &Value) -> ScalarType {
         Value::Rational(_) => ScalarType::Rational,
         Value::Boolean(_) => ScalarType::Boolean,
         Value::String(_) => ScalarType::String,
+        Value::Tuple(values) => ScalarType::Tuple(values.iter().map(value_type).collect()),
+        Value::List(values) => {
+            let types = values.iter().map(value_type).collect::<Vec<_>>();
+            let element_type = common_list_element_type(&types)
+                .and_then(|element_type| element_type.map(Box::new));
+            ScalarType::List(element_type)
+        }
     }
 }
 
 fn static_type_error(
     operator: &str,
     expected: &str,
-    actual: ScalarType,
+    actual: &ScalarType,
     span: SourceSpan,
 ) -> Diagnostic {
     Diagnostic::new(
@@ -460,7 +567,7 @@ fn operator_type_error(
 ) -> Diagnostic {
     let actual = arguments
         .iter()
-        .map(|argument| scalar_type_name(*argument))
+        .map(scalar_type_name)
         .collect::<Vec<_>>()
         .join(", ");
     Diagnostic::new(
@@ -473,12 +580,22 @@ fn operator_type_error(
     )
 }
 
-fn scalar_type_name(value_type: ScalarType) -> &'static str {
+fn scalar_type_name(value_type: &ScalarType) -> String {
     match value_type {
-        ScalarType::Integer => "integer",
-        ScalarType::Rational => "rational",
-        ScalarType::Boolean => "boolean",
-        ScalarType::String => "string",
+        ScalarType::Integer => "integer".into(),
+        ScalarType::Rational => "rational".into(),
+        ScalarType::Boolean => "boolean".into(),
+        ScalarType::String => "string".into(),
+        ScalarType::Tuple(elements) => format!(
+            "({})",
+            elements
+                .iter()
+                .map(scalar_type_name)
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        ScalarType::List(Some(element)) => format!("list of {}", scalar_type_name(element)),
+        ScalarType::List(None) => "empty list".into(),
     }
 }
 
@@ -488,6 +605,12 @@ fn eval_expr(expression: &Expr, context: &mut EvalContext) -> Result<Value, Diag
         Expr::Integer { value, .. } => Ok(Value::Integer(value.clone())),
         Expr::Boolean { value, .. } => Ok(Value::Boolean(*value)),
         Expr::String { value, .. } => Ok(Value::String(value.clone())),
+        Expr::Tuple { elements, .. } => elements
+            .iter()
+            .map(|element| eval_expr(element, context))
+            .collect::<Result<Vec<_>, _>>()
+            .map(Value::Tuple),
+        Expr::List { elements, span } => eval_list(elements, *span, context),
         Expr::Identifier { name, span } => match context.binding_type(name) {
             None => Err(Diagnostic::new(
                 ErrorKind::Name,
@@ -567,6 +690,33 @@ fn eval_expr(expression: &Expr, context: &mut EvalContext) -> Result<Value, Diag
     }
 }
 
+fn eval_list(
+    elements: &[Expr],
+    span: SourceSpan,
+    context: &mut EvalContext,
+) -> Result<Value, Diagnostic> {
+    let values = elements
+        .iter()
+        .map(|element| eval_expr(element, context))
+        .collect::<Result<Vec<_>, _>>()?;
+    let types = values.iter().map(value_type).collect::<Vec<_>>();
+    let Some(element_type) = common_list_element_type(&types) else {
+        return Err(Diagnostic::new(
+            ErrorKind::Type,
+            "list elements must have a common type",
+            Some(span),
+        ));
+    };
+    let Some(element_type) = element_type else {
+        return Ok(Value::List(values));
+    };
+    values
+        .into_iter()
+        .map(|value| coerce_value_to_type(&element_type, value, span))
+        .collect::<Result<Vec<_>, _>>()
+        .map(Value::List)
+}
+
 fn eval_let(
     binding_groups: &[Vec<LetBinding>],
     body: &Expr,
@@ -594,14 +744,34 @@ fn coerce_assignment_value(
     value: Value,
     span: SourceSpan,
 ) -> Result<Value, Diagnostic> {
+    coerce_value_to_type(&target_type, value, span)
+}
+
+fn coerce_value_to_type(
+    target_type: &ScalarType,
+    value: Value,
+    span: SourceSpan,
+) -> Result<Value, Diagnostic> {
     match (target_type, value) {
         (ScalarType::Rational, Value::Integer(value)) => {
-            Ok(Value::Rational(BigRational::from_integer(value)))
+            Ok(Value::Rational(BigRational::from(value)))
         }
         (ScalarType::Integer, Value::Integer(value)) => Ok(Value::Integer(value)),
         (ScalarType::Rational, Value::Rational(value)) => Ok(Value::Rational(value)),
         (ScalarType::Boolean, Value::Boolean(value)) => Ok(Value::Boolean(value)),
         (ScalarType::String, Value::String(value)) => Ok(Value::String(value)),
+        (ScalarType::Tuple(types), Value::Tuple(values)) if types.len() == values.len() => types
+            .iter()
+            .zip(values)
+            .map(|(value_type, value)| coerce_value_to_type(value_type, value, span))
+            .collect::<Result<Vec<_>, _>>()
+            .map(Value::Tuple),
+        (ScalarType::List(None), Value::List(values)) => Ok(Value::List(values)),
+        (ScalarType::List(Some(element_type)), Value::List(values)) => values
+            .into_iter()
+            .map(|value| coerce_value_to_type(element_type, value, span))
+            .collect::<Result<Vec<_>, _>>()
+            .map(Value::List),
         (target_type, value) => Err(Diagnostic::new(
             ErrorKind::Type,
             format!(
@@ -666,18 +836,33 @@ fn eval_operator_call(
             if right == &BigInt::from(0) {
                 Err(Diagnostic::new(
                     ErrorKind::Runtime,
-                    "division by zero",
+                    "Modulo zero",
                     Some(span),
                 ))
             } else {
                 Ok(Value::Integer(euclidean_divmod(left, right).1))
             }
         }
+        ("\\%", [Value::Integer(left), Value::Integer(right)]) => {
+            if right == &BigInt::from(0) {
+                Err(Diagnostic::new(
+                    ErrorKind::Runtime,
+                    "DivMod by zero",
+                    Some(span),
+                ))
+            } else {
+                let (quotient, remainder) = euclidean_divmod(left, right);
+                Ok(Value::Tuple(vec![
+                    Value::Integer(quotient),
+                    Value::Integer(remainder),
+                ]))
+            }
+        }
         ("\\", [Value::Integer(left), Value::Integer(right)]) => {
             if right == &BigInt::from(0) {
                 Err(Diagnostic::new(
                     ErrorKind::Runtime,
-                    "division by zero",
+                    "Division by zero",
                     Some(span),
                 ))
             } else {
@@ -686,13 +871,14 @@ fn eval_operator_call(
         }
         ("&", [Value::Integer(left), Value::Integer(right)]) => Ok(Value::Integer(left & right)),
         ("^", [Value::Integer(left), Value::Integer(right)]) => {
-            let Ok(exponent) = right.clone().try_into() else {
+            if !u64::convertible_from(right) {
                 return Err(Diagnostic::new(
                     ErrorKind::Type,
                     "exponent must be a non-negative machine-sized integer",
                     Some(span),
                 ));
-            };
+            }
+            let exponent = u64::wrapping_from(right);
             Ok(Value::Integer(left.pow(exponent)))
         }
         _ => {
@@ -707,12 +893,9 @@ fn eval_operator_call(
 fn euclidean_divmod(left: &BigInt, right: &BigInt) -> (BigInt, BigInt) {
     let mut quotient = left / right;
     let mut remainder = left % right;
-    let opposite_signs = matches!(
-        (remainder.sign(), right.sign()),
-        (Sign::Minus, Sign::Plus) | (Sign::Plus, Sign::Minus)
-    );
-    if remainder != BigInt::from(0) && opposite_signs {
-        quotient -= 1;
+    let opposite_signs = (remainder < 0) != (*right < 0);
+    if remainder != 0 && opposite_signs {
+        quotient -= BigInt::from(1);
         remainder += right;
     }
     (quotient, remainder)
@@ -732,7 +915,7 @@ fn eval_exact_arithmetic(
             _ => unreachable!("only exact arithmetic operators reach this helper"),
         }),
         (Value::Integer(left), Value::Rational(right)) => {
-            let left = BigRational::from_integer(left);
+            let left = BigRational::from(left);
             Value::Rational(match op {
                 "+" => left + right,
                 "-" => left - right,
@@ -741,7 +924,7 @@ fn eval_exact_arithmetic(
             })
         }
         (Value::Rational(left), Value::Integer(right)) => {
-            let right = BigRational::from_integer(right);
+            let right = BigRational::from(right);
             Value::Rational(match op {
                 "+" => left + right,
                 "-" => left - right,
@@ -762,19 +945,18 @@ fn eval_exact_arithmetic(
 
 fn eval_exact_division(left: Value, right: Value, span: SourceSpan) -> Result<Value, Diagnostic> {
     let (left, right) = match (left, right) {
-        (Value::Integer(left), Value::Integer(right)) => (
-            BigRational::from_integer(left),
-            BigRational::from_integer(right),
-        ),
-        (Value::Integer(left), Value::Rational(right)) => (BigRational::from_integer(left), right),
-        (Value::Rational(left), Value::Integer(right)) => (left, BigRational::from_integer(right)),
+        (Value::Integer(left), Value::Integer(right)) => {
+            (BigRational::from(left), BigRational::from(right))
+        }
+        (Value::Integer(left), Value::Rational(right)) => (BigRational::from(left), right),
+        (Value::Rational(left), Value::Integer(right)) => (left, BigRational::from(right)),
         (Value::Rational(left), Value::Rational(right)) => (left, right),
         (left, right) => {
             return Err(numeric_type_error("/", &left, &right, span));
         }
     };
 
-    if right.numer() == &BigInt::from(0) {
+    if right == 0 {
         return Err(Diagnostic::new(
             ErrorKind::Runtime,
             "division by zero",
@@ -787,12 +969,8 @@ fn eval_exact_division(left: Value, right: Value, span: SourceSpan) -> Result<Va
 fn numeric_cmp(left: &Value, right: &Value) -> Option<Ordering> {
     match (left, right) {
         (Value::Integer(left), Value::Integer(right)) => Some(left.cmp(right)),
-        (Value::Integer(left), Value::Rational(right)) => {
-            Some(BigRational::from_integer(left.clone()).cmp(right))
-        }
-        (Value::Rational(left), Value::Integer(right)) => {
-            Some(left.cmp(&BigRational::from_integer(right.clone())))
-        }
+        (Value::Integer(left), Value::Rational(right)) => Some(BigRational::from(left).cmp(right)),
+        (Value::Rational(left), Value::Integer(right)) => Some(left.cmp(&BigRational::from(right))),
         (Value::Rational(left), Value::Rational(right)) => Some(left.cmp(right)),
         _ => None,
     }
@@ -836,6 +1014,8 @@ fn type_name(value: &Value) -> &'static str {
         Value::Rational(_) => "rational",
         Value::Boolean(_) => "boolean",
         Value::String(_) => "string",
+        Value::Tuple(_) => "tuple",
+        Value::List(_) => "list",
     }
 }
 
@@ -843,15 +1023,17 @@ fn type_name(value: &Value) -> &'static str {
 mod tests {
     use super::*;
     use crate::{source::SourceText, syntax::parse};
-    use num_bigint::BigInt;
-    use num_rational::BigRational;
+    use malachite::{Integer as BigInt, Rational as BigRational};
 
     fn integer(value: impl Into<BigInt>) -> Value {
         Value::Integer(value.into())
     }
 
     fn rational(numerator: impl Into<BigInt>, denominator: impl Into<BigInt>) -> Value {
-        Value::Rational(BigRational::new(numerator.into(), denominator.into()))
+        Value::Rational(BigRational::from_integers(
+            numerator.into(),
+            denominator.into(),
+        ))
     }
 
     fn run(source: &str) -> Result<Vec<EvalEvent>, Diagnostic> {
@@ -1084,10 +1266,101 @@ mod tests {
     }
 
     #[test]
-    fn rejects_divmod_until_tuple_values_are_available() {
-        let source = SourceText::new("1 \\% 2");
-        let program = parse(&source).expect("divmod parses");
-        let error = evaluate(&program).expect_err("tuple-valued divmod is not scalar");
+    fn evaluates_tuple_valued_divmod() {
+        let events = run("1 \\% 2").expect("divmod evaluates");
+        let span = match &events[0] {
+            EvalEvent::Value { span, .. } => *span,
+            EvalEvent::Output { .. } => unreachable!("program evaluation emits values only"),
+        };
+        assert_eq!(
+            events,
+            vec![EvalEvent::Value {
+                value: Value::Tuple(vec![integer(0), integer(1)]),
+                span,
+            }]
+        );
+    }
+
+    #[test]
+    fn distinguishes_integer_zero_division_diagnostics() {
+        let cases = [
+            (r"1 \ 0", "Division by zero"),
+            ("1 % 0", "Modulo zero"),
+            (r"1 \% 0", "DivMod by zero"),
+        ];
+
+        for (source, expected_message) in cases {
+            let source = SourceText::new(source);
+            let program = parse(&source).expect("integer division source parses");
+            let error = evaluate(&program).expect_err("zero divisor is rejected");
+            assert_eq!(error.kind, ErrorKind::Runtime);
+            assert_eq!(error.message, expected_message);
+        }
+    }
+
+    #[test]
+    fn evaluates_tuple_and_list_fixture_in_source_order() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/eval/containers.atlas"
+        ));
+        let program = parse(&source).expect("container fixture parses");
+        let events = evaluate(&program).expect("container fixture evaluates");
+        assert_eq!(events.len(), 7);
+        assert!(matches!(
+            &events[0],
+            EvalEvent::Value {
+                value: Value::Tuple(values), ..
+            } if values == &vec![integer(1), Value::String("a".into()), Value::Boolean(true)]
+        ));
+        assert!(matches!(
+            &events[1],
+            EvalEvent::Value {
+                value: Value::List(values), ..
+            } if values == &vec![integer(1), integer(2), integer(3)]
+        ));
+        assert!(matches!(
+            &events[2],
+            EvalEvent::Value {
+                value: Value::List(values), ..
+            } if values.is_empty()
+        ));
+        assert!(matches!(
+            &events[3],
+            EvalEvent::Value {
+                value: Value::List(values), ..
+            } if values == &vec![rational(1, 1), rational(1, 2)]
+        ));
+        assert!(matches!(
+            &events[4],
+            EvalEvent::Value {
+                value: Value::List(values), ..
+            } if values == &vec![
+                Value::List(vec![rational(1, 1)]),
+                Value::List(vec![rational(1, 2)])
+            ]
+        ));
+        assert!(matches!(
+            &events[5],
+            EvalEvent::Value {
+                value: Value::List(values), ..
+            } if values == &vec![
+                Value::Tuple(vec![integer(1), rational(2, 1)]),
+                Value::Tuple(vec![integer(3), rational(1, 2)])
+            ]
+        ));
+        assert!(matches!(
+            &events[6],
+            EvalEvent::Value {
+                value: Value::Tuple(values), ..
+            } if values == &vec![integer(0), integer(1)]
+        ));
+    }
+
+    #[test]
+    fn rejects_heterogeneous_lists_before_runtime_evaluation() {
+        let source = SourceText::new("[1, \"bad\"]");
+        let program = parse(&source).expect("heterogeneous list parses");
+        let error = evaluate(&program).expect_err("heterogeneous list is not a row");
         assert_eq!(error.kind, ErrorKind::Type);
     }
 

@@ -9,8 +9,7 @@ path = "src/lib.rs"
 
 [dependencies]
 lalrpop-util = { version = "=0.22.2", default-features = false }
-num-bigint = "=0.4.6"
-num-rational = "=0.4.2"
+malachite = { version = "=0.10.0", default-features = false, features = ["std", "naturals_and_integers", "rationals"] }
 
 [build-dependencies]
 lalrpop = { version = "=0.22.2", default-features = false }

@@ -1,0 +1,6 @@
+nested: [[1 / 2]]
+nested := [[1]]
+nested
+pairs: [(1, 1 / 2)]
+pairs := [(2, 3)]
+pairs

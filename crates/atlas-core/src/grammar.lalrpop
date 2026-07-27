@@ -1,6 +1,7 @@
 use super::{
     assignment, binary, declaration, definition, extend_operator_formula, finish_let,
-    finish_operator_formula, join_span, let_binding, let_bindings, let_expression,
+    expression_list, finish_operator_formula, join_span, let_binding, let_bindings,
+    let_expression, list_expression, tuple_expression,
     prepend_let_group,
     prefix_operator_call, start_binary_formula, start_prefix_formula, unary,
     BinaryOp, Command, Expr, LetBinding, ParsedLet, ParserToken, PrimitiveType, Program,
@@ -8,7 +9,7 @@ use super::{
 };
 use crate::diagnostic::SourceSpan;
 use crate::formula::{FormulaOperator, FormulaStack};
-use num_bigint::BigInt;
+use malachite::Integer as BigInt;
 
 grammar;
 
@@ -103,10 +104,24 @@ Atom: Expr = {
     <boolean:"boolean"> => Expr::Boolean { value: boolean.value, span: boolean.span },
     <string:"string"> => Expr::String { value: string.value, span: string.span },
     <identifier:"identifier"> => Expr::Identifier { name: identifier.value, span: identifier.span },
+    <open:"["> <elements:ListElements> <close:"]"> => list_expression(open, elements, close),
+    <open:"("> <close:")"> => tuple_expression(open, Vec::new(), close),
+    <open:"("> <first:Expr> <rest:TupleTail> <close:")"> => {
+        tuple_expression(open, expression_list(first, rest), close)
+    },
     <open:"("> <inner:Expr> <close:")"> => Expr::Group {
         span: join_span(open, close),
         inner: Box::new(inner),
     },
+};
+
+TupleTail: Vec<Expr> = {
+    <_comma:","> <first:Expr> <rest:("," <Expr>)*> => expression_list(first, rest),
+};
+
+ListElements: Vec<Expr> = {
+    => Vec::new(),
+    <first:Expr> <rest:("," <Expr>)*> => expression_list(first, rest),
 };
 
 extern {
@@ -124,6 +139,8 @@ extern {
         "=" => ParserToken::Equals(<SourceSpan>),
         ":" => ParserToken::Colon(<SourceSpan>),
         "," => ParserToken::Comma(<SourceSpan>),
+        "[" => ParserToken::LBracket(<SourceSpan>),
+        "]" => ParserToken::RBracket(<SourceSpan>),
         "let" => ParserToken::Let(<SourceSpan>),
         "in" => ParserToken::In(<SourceSpan>),
         "then" => ParserToken::Then(<SourceSpan>),

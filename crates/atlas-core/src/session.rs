@@ -220,12 +220,12 @@ mod tests {
         assert!(matches!(events[1], SessionEvent::Diagnostic(ref d) if d.kind == ErrorKind::Type));
         assert!(matches!(
             events[2],
-            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &10.into()
+            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &malachite::Integer::from(10)
         ));
         assert!(matches!(events[3], SessionEvent::Diagnostic(ref d) if d.kind == ErrorKind::Name));
         assert!(matches!(
             events[4],
-            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &10.into()
+            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &malachite::Integer::from(10)
         ));
     }
 
@@ -239,22 +239,22 @@ mod tests {
         assert_eq!(events.len(), 7);
         assert!(matches!(
             events[2],
-            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &3.into()
+            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &malachite::Integer::from(3)
         ));
         assert!(matches!(
             events[3],
-            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &6.into()
+            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &malachite::Integer::from(6)
         ));
         assert!(
             matches!(events[4], SessionEvent::Diagnostic(ref d) if d.kind == ErrorKind::Runtime)
         );
         assert!(matches!(
             events[5],
-            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &3.into()
+            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &malachite::Integer::from(3)
         ));
         assert!(matches!(
             events[6],
-            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &4.into()
+            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &malachite::Integer::from(4)
         ));
     }
 
@@ -275,7 +275,7 @@ mod tests {
         );
         assert!(matches!(
             events[2],
-            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &3.into()
+            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &malachite::Integer::from(3)
         ));
         assert!(matches!(
             events[4],
@@ -284,7 +284,7 @@ mod tests {
         assert!(matches!(
             events[5],
             SessionEvent::Value { value: Value::Rational(ref value), .. }
-                if value == &num_rational::BigRational::from_integer(2.into())
+                if value == &malachite::Rational::from(2)
         ));
         assert!(matches!(
             events[7],
@@ -376,11 +376,11 @@ mod tests {
         ));
         assert!(matches!(
             events[5],
-            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &3.into()
+            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &malachite::Integer::from(3)
         ));
         assert!(matches!(
             events[6],
-            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &10.into()
+            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &malachite::Integer::from(10)
         ));
         assert!(
             matches!(events[7], SessionEvent::Diagnostic(ref d) if d.kind == ErrorKind::Runtime)
@@ -388,7 +388,7 @@ mod tests {
         assert!(matches!(events[8], SessionEvent::Diagnostic(ref d) if d.kind == ErrorKind::Name));
         assert!(matches!(
             events[9],
-            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &10.into()
+            SessionEvent::Value { value: Value::Integer(ref value), .. } if value == &malachite::Integer::from(10)
         ));
     }
 
@@ -406,5 +406,112 @@ mod tests {
         assert_eq!(diagnostic.kind, ErrorKind::Name);
         assert_eq!(diagnostic.message, "undefined identifier `missing`");
         assert_eq!(diagnostic.span.map(|span| span.start.column), Some(9));
+    }
+
+    #[test]
+    fn container_errors_recover_at_command_boundaries() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/eval/container_errors.atlas"
+        ));
+        let events = run_source(&source);
+
+        assert_eq!(events.len(), 4);
+        assert!(matches!(
+            events[0],
+            SessionEvent::Diagnostic(ref d) if d.kind == ErrorKind::Type
+        ));
+        assert!(matches!(
+            events[1],
+            SessionEvent::Diagnostic(ref d) if d.kind == ErrorKind::Type
+        ));
+        assert!(matches!(
+            events[2],
+            SessionEvent::Diagnostic(ref d) if d.kind == ErrorKind::Type
+        ));
+        assert!(matches!(
+            events[3],
+            SessionEvent::Diagnostic(ref d) if d.kind == ErrorKind::Runtime
+        ));
+    }
+
+    #[test]
+    fn nested_container_assignments_coerce_recursively() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/commands/container_assignments.atlas"
+        ));
+        let events = run_source(&source);
+
+        assert_eq!(events.len(), 6);
+        assert!(matches!(
+            events[0],
+            SessionEvent::Output { ref text, .. } if text == "Variable nested: [[rat]]\n"
+        ));
+        assert!(matches!(
+            events[1],
+            SessionEvent::Value { value: Value::List(ref values), .. }
+                if values == &vec![Value::List(vec![Value::Rational(malachite::Rational::from(1))])]
+        ));
+        assert!(matches!(
+            events[2],
+            SessionEvent::Value { value: Value::List(ref values), .. }
+                if values == &vec![Value::List(vec![Value::Rational(malachite::Rational::from(1))])]
+        ));
+        assert!(matches!(
+            events[3],
+            SessionEvent::Output { ref text, .. } if text == "Variable pairs: [(int,rat)]\n"
+        ));
+        assert!(matches!(
+            events[4],
+            SessionEvent::Value { value: Value::List(ref values), .. }
+                if values == &vec![Value::Tuple(vec![
+                    Value::Integer(malachite::Integer::from(2)),
+                    Value::Rational(malachite::Rational::from(3)),
+                ])]
+        ));
+        assert!(matches!(
+            events[5],
+            SessionEvent::Value { value: Value::List(ref values), .. }
+                if values == &vec![Value::Tuple(vec![
+                    Value::Integer(malachite::Integer::from(2)),
+                    Value::Rational(malachite::Rational::from(3)),
+                ])]
+        ));
+    }
+
+    #[test]
+    fn malformed_container_commands_recover_without_swallowing_closed_lines() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/commands/container_syntax_errors.atlas"
+        ));
+        let events = run_source(&source);
+
+        assert_eq!(events.len(), 7);
+        assert!(
+            matches!(events[0], SessionEvent::Diagnostic(ref d) if d.kind == ErrorKind::Syntax)
+        );
+        assert!(matches!(
+            events[1],
+            SessionEvent::Value { value: Value::Integer(ref value), .. }
+                if value == &malachite::Integer::from(1)
+        ));
+        assert!(
+            matches!(events[2], SessionEvent::Diagnostic(ref d) if d.kind == ErrorKind::Syntax)
+        );
+        assert!(matches!(
+            events[3],
+            SessionEvent::Value { value: Value::Integer(ref value), .. }
+                if value == &malachite::Integer::from(2)
+        ));
+        assert!(
+            matches!(events[4], SessionEvent::Diagnostic(ref d) if d.kind == ErrorKind::Syntax)
+        );
+        assert!(matches!(
+            events[5],
+            SessionEvent::Value { value: Value::Integer(ref value), .. }
+                if value == &malachite::Integer::from(3)
+        ));
+        assert!(
+            matches!(events[6], SessionEvent::Diagnostic(ref d) if d.kind == ErrorKind::Syntax)
+        );
     }
 }

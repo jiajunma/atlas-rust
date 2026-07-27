@@ -1,0 +1,8 @@
+{
+  "fixture": "eval/container_errors",
+  "oracle": "atlas",
+  "stage": "expression-evaluation",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "implemented_pending_hpc",
+  "notes": "Checks homogeneous list validation and divmod-by-zero recovery."
+}
