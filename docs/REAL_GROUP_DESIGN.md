@@ -227,5 +227,8 @@ matching published Atlas values (Sp(4,R) = 11) — is implemented as
 construction proceeds by the stage map in `KGB_STAGE_MAP.md`; stage (a) —
 the word-level Weyl substrate on the root-permutation representation,
 `WeylElement` per `WEYL_ELEMENT_DESIGN.md`, with the `RootSystem`
-positivity slice and simple-root IDs it required — is implemented. Next:
-stage (b), the involution table.
+positivity slice and simple-root IDs it required — is implemented, and
+stage (b) — the involution table with canonical-from-theta records,
+per-Cartan orbit slices, stored cross links, and the Cayley edge,
+`InvolutionTable` per `INVOLUTION_TABLE_DESIGN.md` — is implemented.
+Next: stage (c), torus parts and the Tits operations.

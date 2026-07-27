@@ -184,10 +184,11 @@ InvolutionRecord {                // derives Clone, Debug, Eq, PartialEq
     weyl_length()        -> usize
     theta_plus_one_rho() -> &Weight
 }
-InvolutionTable::new(&InnerClass, &RootSystem, InvolutionTableBudget) -> Result<...>
-    // datum-equality provenance gate; stores clones; derives once: the
-    // simple-root IDs, the validated simple twist, and the rank
-    // simple-reflection WeylElements
+InvolutionTable::new(&InnerClass, InvolutionTableBudget) -> Result<...>
+    // stores a clone (the inner class owns datum, root system, and
+    // distinguished involution together, so no cross-gate is needed);
+    // derives once: the validated simple twist, the rank
+    // simple-reflection WeylElements, and 2rho from the positivity slice
 add_cartan(&mut self, &CartanClassification, CartanId)
     -> Result<(InvolutionId, usize), ...>        // idempotent; typed start
 lookup(&WeylElement) -> Option<InvolutionId>

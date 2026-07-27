@@ -50,10 +50,14 @@ packet boundaries; the size must equal the strong layer's
   multiplication with length change, reduced words by descent peeling,
   twisted conjugation. Pure Coxeter; drops the transducer tie-break into
   the adapter deferral.
-- (b) **Involution table**: hashed twisted involutions with theta, root
+- (b) **Involution table** (`INVOLUTION_TABLE_DESIGN.md`, LANDED as
+  `involution_table.rs`): twisted involutions with theta, root
   classification, mod-space, involution length `(W_length + #Cayley)/2`,
-  and `add_cross` propagation (involutions.cpp:186-258, 362-379).
-  Cross-checks: per-Cartan orbit sizes against the classification.
+  and cross propagation (involutions.cpp:186-258, 362-379) — one
+  canonical entry path (no transported fields; `M_real`/`lift_mat`
+  deferred to the parameter layer), per-Cartan contiguous slices, O(1)
+  stored cross links, and the Cayley edge. Cross-checked: per-Cartan
+  orbit sizes against the classification.
 - (c) **Torus parts and Tits operations**: `reflect`, push/pull, the four
   sigma multiplications, based cross action, gradings, Cayley. The
   genuinely new algebra is the `sigma_w` lift relations

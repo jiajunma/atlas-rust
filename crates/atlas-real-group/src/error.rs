@@ -68,6 +68,13 @@ pub enum StructureError {
     WeylElementInvariantViolation {
         invariant: &'static str,
     },
+    InvolutionTableResourceLimit {
+        resource: &'static str,
+        limit: usize,
+    },
+    InvolutionTableInvariantViolation {
+        invariant: &'static str,
+    },
     DistinguishedInvolutionMismatch,
     ModTwoSubquotientInvariantViolation,
     NotInModTwoSubspace,
@@ -178,6 +185,15 @@ impl fmt::Display for StructureError {
             }
             Self::WeylElementInvariantViolation { invariant } => {
                 write!(f, "Weyl-element {invariant} invariant was violated")
+            }
+            Self::InvolutionTableResourceLimit { resource, limit } => {
+                write!(
+                    f,
+                    "involution-table {resource} exceeded its limit of {limit}"
+                )
+            }
+            Self::InvolutionTableInvariantViolation { invariant } => {
+                write!(f, "involution-table {invariant} invariant was violated")
             }
             Self::DistinguishedInvolutionMismatch => {
                 write!(

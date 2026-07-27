@@ -17,6 +17,7 @@ mod grading;
 mod inner_class;
 mod integer_lattice;
 mod involution;
+mod involution_table;
 mod lattice;
 mod mod_two;
 mod real_form_labels;
@@ -43,6 +44,9 @@ pub use grading::{CartanGradingData, Grading};
 pub use inner_class::InnerClass;
 pub use integer_lattice::IntegerLatticeBudget;
 pub use involution::LatticeInvolution;
+pub use involution_table::{
+    InvolutionId, InvolutionRecord, InvolutionTable, InvolutionTableBudget,
+};
 pub use lattice::{pair, Coweight, Weight};
 pub use mod_two::{ModTwoSubspace, ModTwoVector};
 pub use real_form_labels::RealFormLabels;

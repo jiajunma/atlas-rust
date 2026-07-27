@@ -1,15 +1,16 @@
 {
   "fixture": "domain/involution_table.atlas",
-  "status": "design_recorded_review_pending",
+  "status": "implemented_locally_6_tests_pending_hpc",
   "oracle": "traced_involutions_h_cpp_4d3e9449",
-  "rust_status": "not_implemented",
+  "rust_status": "implemented_involution_table_rs",
   "reference_status": "pending_atlas_constructor_and_event_adapter",
   "scenarios": [
-    "A1 split: two singleton orbits, cross fixes both involutions",
-    "A2 swap twist and B2 split: orbit sizes match the classification",
-    "record canonicality: BFS recurrence vs fresh decomposition on every entry",
-    "mod-space coset reduction for SL(2,R) and Sp(4,R)",
-    "budget rejection and provenance gates"
+    "A1 split: two singleton orbits, cross fixes both, idempotent re-add",
+    "B2 split: orbit sizes match the classification, reproducible numbering",
+    "record canonicality: theta/lengths/th1_rho/mod-space fresh cross-checks on every entry",
+    "Cayley edge None before target Cartan added, resolves after",
+    "twisted A2: orbit sizes {1,3}",
+    "budget rejection, out-of-range, and foreign-element lookup"
   ],
-  "notes": "Stage (b) of the KGB map: the twisted-involution table with canonical-from-theta records (one entry path, no path-dependent fields — a documented divergence from upstream's transported M_real/lift_mat), per-Cartan contiguous orbit slices, and (length, W_length, WeylElement Ord) as the documented sort order. Reserved before implementation."
+  "notes": "Stage (b) of the KGB map. Implemented after all three design reviews returned (workflow, no BLOCKING findings); corrections folded into INVOLUTION_TABLE_DESIGN.md: M_real/lift_mat deferral ruled safe through stage (f) with the revisit point at the parameter layer, mod-space ordered-basis requirement for inverse Cayley, precomputed reflection elements for the BFS edge, forward-permutation-only BTreeMap key, nested IntegerLatticeBudget, E7/E8 conditional on task #9. Local suite 147 green (141 + 6) under rustc 1.90 with clippy -D warnings and fmt --check clean; HPC preflight pending cluster reachability."
 }
