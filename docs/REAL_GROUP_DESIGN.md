@@ -220,6 +220,7 @@ attribution. The Cartan classes are now owning values — `CartanClass`
 bundling the full per-Cartan machinery, aggregated by
 `CartanClassification` with per-form Cartan sets, order-free most-split
 classes, and the strict Cayley poset per
-`CARTAN_AGGREGATION_DESIGN.md`. Next: the strong-real layer (square
-classes, per-square-class fiber partitions) unlocking `KGB_size`, then KGB
-data.
+`CARTAN_AGGREGATION_DESIGN.md`. The strong-real layer — square classes,
+per-square-class fiber partitions, strong representatives, and KGB sizes
+matching published Atlas values (Sp(4,R) = 11) — is implemented as
+`StrongRealClassification` per `STRONG_REAL_DESIGN.md`. Next: KGB data.

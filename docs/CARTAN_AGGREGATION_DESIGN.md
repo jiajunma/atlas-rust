@@ -182,7 +182,8 @@ existence checks (`"most-split uniqueness"`) fire at construction and the
 accessors are pure `Option` lookups afterward, per the crate's
 out-of-range convention.
 
-The strong-real stage's reach path needs no new accessors:
+The strong-real stage's reach path needs no new accessors (confirmed: the
+stage landed without touching `CartanClass` or any fiber accessor):
 `grading().adjoint_fiber()` exposes `ambient_fiber()` and `fiber_map()`,
 and the ambient `CartanFiber` exposes dimension, coordinates, basis
 representatives, and element construction — enough to enumerate the fiber
