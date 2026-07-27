@@ -78,16 +78,21 @@ backtrack seeding (partial KGB only), the external distinguished twist.
 ## Observables
 
 Directly differential-comparable: KGB size, per-length counts, status
-multisets, per-Cartan packet sizes AS MULTISETS keyed by involution (the
-tie-break reorders packets within equal-length groups, so the raw packet
-sequence is not comparable), and `torus_factor` (kgb.cpp:705-712) as the
-canonical per-element invariant given the elected cocharacter.
+multisets, and per-Cartan packet sizes AS MULTISETS keyed by involution
+(the tie-break reorders packets within equal-length groups, so the raw
+packet sequence is not comparable). `torus_factor` (kgb.cpp:705-712)
+and raw torus-part bit patterns are comparable by CONVENTION
+COINCIDENCE, not convention independence (stage-(c) review): both
+implementations canonicalize by the same low-pivot RREF over the same
+X_* coordinates, and the harness must pin that coincidence with a
+fixture test; the convention-independent content is only the class
+modulo the integral lattice `(1+theta^T)X_*` (the torus element), so
+if either convention ever changes, comparison drops to that class.
 Adapter-dependent: element numbering (on the full-KGB path the sort
 tie-break at involutions.cpp:427 is the only transducer leak; the
 deferred partial/global seeding paths additionally leak `leftDescent`'s
 internal order through `involution_expr`), cross/Cayley tables as index
-arrays, raw torus-part bit patterns (echelon-basis-dependent), packet
-boundaries.
+arrays, packet boundaries.
 
 ## Scale
 
