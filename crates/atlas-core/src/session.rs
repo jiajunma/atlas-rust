@@ -530,6 +530,57 @@ mod tests {
     }
 
     #[test]
+    fn slice_errors_recover_at_command_boundaries() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/commands/slice_errors.atlas"
+        ));
+        let events = run_source(&source);
+
+        assert_eq!(events.len(), 12);
+        for index in [0, 2, 4] {
+            assert!(matches!(
+                events[index],
+                SessionEvent::Diagnostic(ref diagnostic)
+                    if diagnostic.kind == ErrorKind::Runtime
+            ));
+        }
+        for index in [6, 8, 10] {
+            assert!(matches!(
+                events[index],
+                SessionEvent::Diagnostic(ref diagnostic)
+                    if diagnostic.kind == ErrorKind::Type
+            ));
+        }
+        for (index, expected) in [(1, 1), (3, 2), (5, 3), (7, 4), (9, 5), (11, 6)] {
+            assert!(matches!(
+                events[index],
+                SessionEvent::Value { value: Value::Integer(ref value), .. }
+                    if value == &malachite::Integer::from(expected)
+            ));
+        }
+    }
+
+    #[test]
+    fn slice_evaluates_upper_then_lower_then_row_expression() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/commands/slice_order.atlas"
+        ));
+        let events = run_source(&source);
+
+        assert_eq!(events.len(), 3);
+        assert!(matches!(
+            events[1],
+            SessionEvent::Value { value: Value::List(ref values), .. }
+                if values.is_empty()
+        ));
+        assert!(matches!(
+            events[2],
+            SessionEvent::Value { value: Value::Integer(ref value), .. }
+                if value == &malachite::Integer::from(2034)
+        ));
+    }
+
+    #[test]
     fn empty_row_subscription_flows_through_typed_assignment() {
         let source = SourceText::new(include_str!(
             "../../../tests/fixtures/commands/subscription_context.atlas"

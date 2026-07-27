@@ -1,0 +1,10 @@
+{
+  "schema": "atlas-session-events-v0",
+  "fixture": "commands/slice_order",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind":"Output","text":"Variable i: int\n"},
+    {"kind":"Value","type":"list","values":[]},
+    {"kind":"Value","type":"integer","value":2034}
+  ]
+}

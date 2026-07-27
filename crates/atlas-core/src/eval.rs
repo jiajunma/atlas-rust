@@ -12,7 +12,7 @@ use malachite::{Integer as BigInt, Rational as BigRational};
 use crate::{
     diagnostic::{Diagnostic, ErrorKind, SourceSpan},
     formula::FormulaOperator,
-    syntax::{BinaryOp, Command, Expr, LetBinding, PrimitiveType, Program},
+    syntax::{BinaryOp, Command, Expr, LetBinding, PrimitiveType, Program, SliceFlags},
     value::Value,
 };
 
@@ -300,6 +300,35 @@ fn infer_scalar_type(expression: &Expr, context: &EvalContext) -> Result<ScalarT
                 }
                 (ScalarType::List(None), ScalarType::Integer) => Ok(ScalarType::Unknown),
                 _ => Err(subscription_type_error(&array_type, &index_type, *span)),
+            }
+        }
+        Expr::Slice {
+            array,
+            lower,
+            upper,
+            span,
+            ..
+        } => {
+            let array_type = infer_scalar_type(array, context)?;
+            let lower_type = infer_scalar_type(lower, context)?;
+            let upper_type = infer_scalar_type(upper, context)?;
+            if !is_integer_or_unknown(&lower_type) || !is_integer_or_unknown(&upper_type) {
+                return Err(slice_type_error(
+                    &array_type,
+                    &lower_type,
+                    &upper_type,
+                    *span,
+                ));
+            }
+            if matches!(&array_type, ScalarType::List(_)) {
+                Ok(array_type)
+            } else {
+                Err(slice_type_error(
+                    &array_type,
+                    &lower_type,
+                    &upper_type,
+                    *span,
+                ))
             }
         }
         Expr::Assignment {
@@ -719,6 +748,13 @@ fn eval_expr(expression: &Expr, context: &mut EvalContext) -> Result<Value, Diag
             reversed,
             span,
         } => eval_subscription(array, index, *reversed, *span, context),
+        Expr::Slice {
+            array,
+            lower,
+            upper,
+            flags,
+            span,
+        } => eval_slice(array, lower, upper, *flags, *span, context),
         Expr::Identifier { name, span } => match context.binding_type(name) {
             None => Err(Diagnostic::new(
                 ErrorKind::Name,
@@ -866,6 +902,79 @@ fn eval_subscription(
         index
     };
     Ok(values[position].clone())
+}
+
+fn eval_slice(
+    array: &Expr,
+    lower: &Expr,
+    upper: &Expr,
+    flags: SliceFlags,
+    span: SourceSpan,
+    context: &mut EvalContext,
+) -> Result<Value, Diagnostic> {
+    let upper = eval_slice_bound(upper, "upper", span, context)?;
+    let lower = eval_slice_bound(lower, "lower", span, context)?;
+    let array = eval_expr(array, context)?;
+    let Value::List(values) = array else {
+        return Err(Diagnostic::new(
+            ErrorKind::Type,
+            "slice requires a list",
+            Some(span),
+        ));
+    };
+
+    let length = BigInt::from(values.len());
+    let lower = adjust_slice_bound(lower, flags.lower_from_end, &length);
+    let upper = adjust_slice_bound(upper, flags.upper_from_end, &length);
+    let lower_out_of_range = lower < 0;
+    let upper_out_of_range = upper > length;
+    if lower_out_of_range || upper_out_of_range {
+        return Err(slice_range_error(
+            &lower,
+            &upper,
+            values.len(),
+            lower_out_of_range,
+            upper_out_of_range,
+            span,
+        ));
+    }
+    if lower >= upper {
+        return Ok(Value::List(Vec::new()));
+    }
+
+    debug_assert!(usize::convertible_from(&lower));
+    debug_assert!(usize::convertible_from(&upper));
+    let lower = usize::wrapping_from(&lower);
+    let upper = usize::wrapping_from(&upper);
+    let mut result = values[lower..upper].to_vec();
+    if flags.reverse_output {
+        result.reverse();
+    }
+    Ok(Value::List(result))
+}
+
+fn eval_slice_bound(
+    expression: &Expr,
+    name: &str,
+    span: SourceSpan,
+    context: &mut EvalContext,
+) -> Result<BigInt, Diagnostic> {
+    match eval_expr(expression, context)? {
+        Value::Integer(value) => Ok(value),
+        _ => Err(Diagnostic::new(
+            ErrorKind::Type,
+            format!("slice {name} bound must be an integer"),
+            Some(span),
+        )),
+    }
+}
+
+fn adjust_slice_bound(bound: BigInt, from_end: bool, length: &BigInt) -> BigInt {
+    if from_end {
+        length - bound
+    } else {
+        bound
+    }
 }
 
 fn eval_let(
@@ -1174,6 +1283,47 @@ fn subscription_range_error(index: &BigInt, length: usize, span: SourceSpan) -> 
         format!("index {index} out of range (0<= . <{length}) in subscription"),
         Some(span),
     )
+}
+
+fn slice_type_error(
+    array_type: &ScalarType,
+    lower_type: &ScalarType,
+    upper_type: &ScalarType,
+    span: SourceSpan,
+) -> Diagnostic {
+    Diagnostic::new(
+        ErrorKind::Type,
+        format!(
+            "Cannot slice value of type {} with bounds of type {} and {}",
+            atlas_type_name(array_type),
+            atlas_type_name(lower_type),
+            atlas_type_name(upper_type)
+        ),
+        Some(span),
+    )
+}
+
+fn slice_range_error(
+    lower: &BigInt,
+    upper: &BigInt,
+    length: usize,
+    lower_out_of_range: bool,
+    upper_out_of_range: bool,
+    span: SourceSpan,
+) -> Diagnostic {
+    let message = match (lower_out_of_range, upper_out_of_range) {
+        (true, true) => format!(
+            "both bounds {lower}:{upper} out of range (should be >=0 respectively <= {length}) in slice"
+        ),
+        (true, false) => {
+            format!("lower bound {lower} out of range (should be >=0) in slice")
+        }
+        (false, true) => {
+            format!("upper bound {upper} out of range (should be <= {length}) in slice")
+        }
+        (false, false) => unreachable!("slice range error requires an invalid bound"),
+    };
+    Diagnostic::new(ErrorKind::Runtime, message, Some(span))
 }
 
 fn binary_name(op: BinaryOp) -> &'static str {
@@ -1555,6 +1705,34 @@ mod tests {
                 integer(10),
                 integer(3),
                 rational(1, 1),
+            ]
+        );
+    }
+
+    #[test]
+    fn evaluates_forward_row_slice_fixture() {
+        let source = SourceText::new(include_str!("../../../tests/fixtures/eval/slices.atlas"));
+        let program = parse(&source).expect("slice fixture parses");
+        let events = evaluate(&program).expect("slice fixture evaluates");
+        let values = events
+            .into_iter()
+            .map(|event| match event {
+                EvalEvent::Value { value, .. } => value,
+                EvalEvent::Output { .. } => unreachable!("program evaluation emits values only"),
+            })
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            values,
+            vec![
+                Value::List(vec![integer(20), integer(30)]),
+                Value::List(vec![integer(10), integer(20)]),
+                Value::List(vec![integer(30), integer(40)]),
+                Value::List(vec![integer(10), integer(20), integer(30), integer(40)]),
+                Value::List(Vec::new()),
+                Value::List(Vec::new()),
+                Value::List(Vec::new()),
+                Value::List(Vec::new()),
             ]
         );
     }

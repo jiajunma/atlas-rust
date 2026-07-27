@@ -50,6 +50,13 @@ pub enum Expr {
         reversed: bool,
         span: SourceSpan,
     },
+    Slice {
+        array: Box<Expr>,
+        lower: Box<Expr>,
+        upper: Box<Expr>,
+        flags: SliceFlags,
+        span: SourceSpan,
+    },
     Identifier {
         name: String,
         span: SourceSpan,
@@ -109,6 +116,7 @@ impl Expr {
             | Self::Tuple { span, .. }
             | Self::List { span, .. }
             | Self::Subscription { span, .. }
+            | Self::Slice { span, .. }
             | Self::Identifier { span, .. }
             | Self::Assignment { span, .. }
             | Self::Let { span, .. }
@@ -118,6 +126,38 @@ impl Expr {
             | Self::Group { span, .. } => *span,
         }
     }
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct SliceFlags {
+    pub reverse_output: bool,
+    pub lower_from_end: bool,
+    pub upper_from_end: bool,
+}
+
+impl SliceFlags {
+    const fn forward(upper_from_end: bool) -> Self {
+        Self {
+            reverse_output: false,
+            lower_from_end: false,
+            upper_from_end,
+        }
+    }
+}
+
+#[derive(Debug)]
+enum PostfixSuffix {
+    Subscription {
+        index: Expr,
+        reversed: bool,
+        close: SourceSpan,
+    },
+    Slice {
+        lower: Expr,
+        upper: Expr,
+        flags: SliceFlags,
+        close: SourceSpan,
+    },
 }
 
 /// A top-level Atlas command.
@@ -543,6 +583,58 @@ fn subscription(array: Expr, index: Expr, reversed: bool, close: SourceSpan) -> 
     }
 }
 
+fn postfix(array: Expr, suffix: PostfixSuffix) -> Expr {
+    match suffix {
+        PostfixSuffix::Subscription {
+            index,
+            reversed,
+            close,
+        } => subscription(array, index, reversed, close),
+        PostfixSuffix::Slice {
+            lower,
+            upper,
+            flags,
+            close,
+        } => Expr::Slice {
+            span: join_span(array.span(), close),
+            array: Box::new(array),
+            lower: Box::new(lower),
+            upper: Box::new(upper),
+            flags,
+        },
+    }
+}
+
+fn subscription_suffix(index: Expr, reversed: bool, close: SourceSpan) -> PostfixSuffix {
+    PostfixSuffix::Subscription {
+        index,
+        reversed,
+        close,
+    }
+}
+
+fn slice_suffix(
+    lower: Option<Expr>,
+    upper: Option<Expr>,
+    colon: SourceSpan,
+    close: SourceSpan,
+) -> PostfixSuffix {
+    let upper_from_end = upper.is_none();
+    PostfixSuffix::Slice {
+        lower: lower.unwrap_or_else(|| zero_expression(colon)),
+        upper: upper.unwrap_or_else(|| zero_expression(close)),
+        flags: SliceFlags::forward(upper_from_end),
+        close,
+    }
+}
+
+fn zero_expression(span: SourceSpan) -> Expr {
+    Expr::Integer {
+        value: BigInt::from(0),
+        span,
+    }
+}
+
 fn expression_list(first: Expr, rest: Vec<Expr>) -> Vec<Expr> {
     let mut elements = Vec::with_capacity(rest.len() + 1);
     elements.push(first);
@@ -692,6 +784,21 @@ mod tests {
                 expression_shape(index),
                 reversed
             ),
+            Expr::Slice {
+                array,
+                lower,
+                upper,
+                flags,
+                ..
+            } => format!(
+                "slice({},{},{},{}{}{})",
+                expression_shape(array),
+                expression_shape(lower),
+                expression_shape(upper),
+                u8::from(flags.reverse_output),
+                u8::from(flags.lower_from_end),
+                u8::from(flags.upper_from_end)
+            ),
             Expr::Identifier { name, .. } => name.clone(),
             Expr::Assignment { name, value, .. } => {
                 format!("assign({name},{})", expression_shape(value))
@@ -798,6 +905,26 @@ mod tests {
         assert_eq!(
             expression_shape(&parse_one("rows~[0][1]")),
             "sub(sub(rows,0,true),1,false)"
+        );
+    }
+
+    #[test]
+    fn parses_and_normalizes_forward_slice_bounds() {
+        assert_eq!(
+            expression_shape(&parse_one("rows[1:3]")),
+            "slice(rows,1,3,000)"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("rows[:3]")),
+            "slice(rows,0,3,000)"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("rows[1:]")),
+            "slice(rows,1,0,001)"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("rows[:]")),
+            "slice(rows,0,0,001)"
         );
     }
 
