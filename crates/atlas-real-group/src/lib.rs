@@ -21,6 +21,7 @@ mod involution_table;
 mod lattice;
 mod mod_two;
 mod real_form_labels;
+mod real_form_seed;
 mod restricted_roots;
 mod root_datum;
 mod root_involution;

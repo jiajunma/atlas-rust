@@ -78,6 +78,13 @@ pub enum StructureError {
     TitsCosetInvariantViolation {
         invariant: &'static str,
     },
+    SeedResourceLimit {
+        resource: &'static str,
+        limit: usize,
+    },
+    SeedInvariantViolation {
+        invariant: &'static str,
+    },
     DistinguishedInvolutionMismatch,
     ModTwoSubquotientInvariantViolation,
     NotInModTwoSubspace,
@@ -200,6 +207,12 @@ impl fmt::Display for StructureError {
             }
             Self::TitsCosetInvariantViolation { invariant } => {
                 write!(f, "Tits-coset {invariant} invariant was violated")
+            }
+            Self::SeedResourceLimit { resource, limit } => {
+                write!(f, "seed {resource} exceeded its limit of {limit}")
+            }
+            Self::SeedInvariantViolation { invariant } => {
+                write!(f, "seed {invariant} invariant was violated")
             }
             Self::DistinguishedInvolutionMismatch => {
                 write!(
