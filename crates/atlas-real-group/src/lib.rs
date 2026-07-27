@@ -28,6 +28,7 @@ mod strong_real;
 mod twisted_involution;
 mod weak_real_form;
 mod weyl;
+mod weyl_element;
 
 pub use adjoint_fiber::{
     AdjointBasedRootDatum, AdjointCartanFiber, AdjointCoweight, AdjointFiberBudget,
@@ -53,6 +54,7 @@ pub use strong_real::{SquareClassId, StrongRealClassification, StrongRealData, S
 pub use twisted_involution::TwistedInvolution;
 pub use weak_real_form::{WeakRealFormId, WeakRealFormPartition};
 pub use weyl::{WeylAction, WeylGroup};
+pub use weyl_element::WeylElement;
 
 /// Legacy untyped coordinate vector used only by the A1 migration prototype.
 ///
@@ -264,7 +266,7 @@ impl RootDatum {
 
 /// A Weyl group element represented by a word in the simple reflections.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub(crate) struct WeylElement {
+pub(crate) struct PrototypeWeylElement {
     word: Vec<usize>,
 }
 
@@ -272,21 +274,21 @@ pub(crate) struct WeylElement {
 #[derive(Clone, Debug)]
 pub(crate) struct PrototypeWeylGroup {
     datum: RootDatum,
-    elements: Vec<WeylElement>,
+    elements: Vec<PrototypeWeylElement>,
 }
 
 #[allow(dead_code)] // Crate-private A1 prototype pending canonical Weyl actions.
 impl PrototypeWeylGroup {
     pub fn new(datum: RootDatum) -> Result<Self, StructureError> {
         datum.roots()?;
-        let mut elements = vec![WeylElement::identity()];
+        let mut elements = vec![PrototypeWeylElement::identity()];
         let mut seen = HashSet::new();
         seen.insert(Self::element_key(&datum, &elements[0])?);
         let mut cursor = 0;
         while cursor < elements.len() {
             let current = elements[cursor].clone();
             for generator in 0..datum.rank() {
-                let candidate = current.multiply(&WeylElement {
+                let candidate = current.multiply(&PrototypeWeylElement {
                     word: vec![generator],
                 });
                 if seen.insert(Self::element_key(&datum, &candidate)?) {
@@ -303,7 +305,7 @@ impl PrototypeWeylGroup {
 
     fn element_key(
         datum: &RootDatum,
-        element: &WeylElement,
+        element: &PrototypeWeylElement,
     ) -> Result<Vec<Vec<i32>>, StructureError> {
         datum
             .simple_roots()
@@ -318,7 +320,7 @@ impl PrototypeWeylGroup {
     pub fn order(&self) -> usize {
         self.elements.len()
     }
-    pub fn elements(&self) -> &[WeylElement] {
+    pub fn elements(&self) -> &[PrototypeWeylElement] {
         &self.elements
     }
     pub fn datum(&self) -> &RootDatum {
@@ -327,7 +329,7 @@ impl PrototypeWeylGroup {
 }
 
 #[allow(dead_code)] // Crate-private A1 prototype pending canonical Weyl actions.
-impl WeylElement {
+impl PrototypeWeylElement {
     pub fn identity() -> Self {
         Self { word: Vec::new() }
     }
@@ -560,7 +562,7 @@ mod tests {
     #[test]
     fn a1_simple_reflection_negates_the_root() {
         let datum = RootDatum::new(vec![vec![2]]).unwrap();
-        let reflection = WeylElement::from_word(vec![0], 1).unwrap();
+        let reflection = PrototypeWeylElement::from_word(vec![0], 1).unwrap();
         assert_eq!(
             reflection
                 .act_on_root(&datum, &LatticeVector::new(vec![1]))

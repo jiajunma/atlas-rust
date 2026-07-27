@@ -292,10 +292,8 @@ fn is_finite_type(cartan: &[Vec<i32>]) -> bool {
     let mut diagonal = vec![Rational::from(0); rank];
     for column in 0..rank {
         let mut pivot = scales[column].clone() * Rational::from(cartan[column][column]);
-        for previous in 0..column {
-            pivot -= lower[column][previous].clone()
-                * lower[column][previous].clone()
-                * diagonal[previous].clone();
+        for (factor, diag) in lower[column][..column].iter().zip(&diagonal[..column]) {
+            pivot -= factor.clone() * factor.clone() * diag.clone();
         }
         if pivot <= 0 {
             return false;
@@ -304,10 +302,12 @@ fn is_finite_type(cartan: &[Vec<i32>]) -> bool {
         lower[column][column] = Rational::from(1);
         for row in (column + 1)..rank {
             let mut entry = scales[row].clone() * Rational::from(cartan[row][column]);
-            for previous in 0..column {
-                entry -= lower[row][previous].clone()
-                    * lower[column][previous].clone()
-                    * diagonal[previous].clone();
+            for ((row_factor, column_factor), diag) in lower[row][..column]
+                .iter()
+                .zip(&lower[column][..column])
+                .zip(&diagonal[..column])
+            {
+                entry -= row_factor.clone() * column_factor.clone() * diag.clone();
             }
             lower[row][column] = entry / diagonal[column].clone();
         }

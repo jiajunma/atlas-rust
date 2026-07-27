@@ -1,15 +1,16 @@
 {
   "fixture": "domain/weyl_element.atlas",
-  "status": "design_recorded_review_pending",
+  "status": "implemented_locally_10_tests_pending_hpc",
   "oracle": "pending_domain_adapter",
-  "rust_status": "not_implemented",
+  "rust_status": "implemented_weyl_element_rs",
   "reference_status": "pending_atlas_constructor_and_event_adapter",
   "scenarios": [
     "A2 closure, lengths, longest element, reduced words",
-    "B2 braid relation and length-change contracts",
-    "cross-validation against the matrix Weyl layer",
-    "A1 x A1 swap twisted conjugation",
-    "provenance and degenerate-rank handling"
+    "B2 braid relation, inverse maintenance, unit length steps",
+    "cross-validation against the matrix Weyl layer (round-trip + inversion counts)",
+    "A1 x A1 swap twisted involutions {e, s0 s1}",
+    "provenance, twist validation, and degenerate-rank handling",
+    "RootSystem positivity slice and simple-root IDs"
   ],
-  "notes": "Stage (a) of the KGB map: the word-level Weyl substrate on the root-permutation representation, dropping Atlas's transducer order into the standing adapter deferral. Reserved before implementation."
+  "notes": "Stage (a) of the KGB map: the word-level Weyl substrate on the root-permutation representation, dropping Atlas's transducer order into the standing adapter deferral. Implemented after all three design reviews returned; corrections recorded in WEYL_ELEMENT_DESIGN.md. Local suite 141 green (131 + 10 new: 9 weyl_element + 1 root_system) under rustc 1.90 with clippy -D warnings and fmt --check clean; HPC preflight pending cluster reachability."
 }

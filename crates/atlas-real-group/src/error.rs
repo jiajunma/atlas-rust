@@ -65,6 +65,9 @@ pub enum StructureError {
     StrongRealInvariantViolation {
         invariant: &'static str,
     },
+    WeylElementInvariantViolation {
+        invariant: &'static str,
+    },
     DistinguishedInvolutionMismatch,
     ModTwoSubquotientInvariantViolation,
     NotInModTwoSubspace,
@@ -172,6 +175,9 @@ impl fmt::Display for StructureError {
             }
             Self::StrongRealInvariantViolation { invariant } => {
                 write!(f, "strong-real {invariant} invariant was violated")
+            }
+            Self::WeylElementInvariantViolation { invariant } => {
+                write!(f, "Weyl-element {invariant} invariant was violated")
             }
             Self::DistinguishedInvolutionMismatch => {
                 write!(

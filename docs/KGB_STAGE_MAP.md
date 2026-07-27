@@ -14,7 +14,10 @@ FULL rank, stored left) times the canonical braid-lift `sigma_w`
 (tits.h:441-468). Core primitive `reflect(x, s)`: add `m_alpha_s` when
 `<alpha_s mod 2, x> = 1` (tits.h:523-526); `push_across`/`pull_across`
 apply it along a reduced word left-to-right / right-to-left
-(tits.cpp:434-451; braid-invariant, so ANY reduced word serves).
+(tits.cpp:434-451). They depend only on the group element — the defining
+equation is in `w` itself and `reflect` is conjugation by `sigma_s` in an
+honest mod-2 W-representation (tits.cpp:425-432, tits.h:516-526) — so
+ANY word for `w` serves, reduced or not.
 Sigma multiplications correct by `m_alpha` on length change:
 `sigma_mult` on decrease, `sigma_inv_mult` on increase, `mult_sigma` /
 `mult_sigma_inv` mirrored on the right (tits.cpp:469-503). The based
@@ -70,12 +73,17 @@ backtrack seeding (partial KGB only), the external distinguished twist.
 
 ## Observables
 
-Directly differential-comparable: KGB size, per-length counts, per-Cartan
-packet sizes, status multisets, and `torus_factor` (kgb.cpp:705-712) as
-the canonical per-element invariant given the elected cocharacter.
-Adapter-dependent: element numbering (the sort tie-break leaks transducer
-order), cross/Cayley tables as index arrays, raw torus-part bit patterns
-(echelon-basis-dependent), packet boundaries.
+Directly differential-comparable: KGB size, per-length counts, status
+multisets, per-Cartan packet sizes AS MULTISETS keyed by involution (the
+tie-break reorders packets within equal-length groups, so the raw packet
+sequence is not comparable), and `torus_factor` (kgb.cpp:705-712) as the
+canonical per-element invariant given the elected cocharacter.
+Adapter-dependent: element numbering (on the full-KGB path the sort
+tie-break at involutions.cpp:427 is the only transducer leak; the
+deferred partial/global seeding paths additionally leak `leftDescent`'s
+internal order through `involution_expr`), cross/Cayley tables as index
+arrays, raw torus-part bit patterns (echelon-basis-dependent), packet
+boundaries.
 
 ## Scale
 

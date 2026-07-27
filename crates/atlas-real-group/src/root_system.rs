@@ -72,6 +72,13 @@ pub struct RootSystem {
     roots: Vec<Weight>,
     coroots: Vec<Coweight>,
     simple_coordinates: Vec<Vec<i32>>,
+    /// Positivity per root, precomputed because `roots` sorts by AMBIENT
+    /// coordinates: positivity lives in the simple-coordinate basis, so no
+    /// half-split shortcut exists.
+    positive: Vec<bool>,
+    /// Stable IDs of the simple roots in generator order, so descent
+    /// queries need no per-call binary search.
+    simple_ids: Vec<RootId>,
 }
 
 impl RootSystem {
@@ -154,11 +161,37 @@ impl RootSystem {
         }
         debug_assert_eq!(roots.len(), coroots.len());
         debug_assert_eq!(roots.len(), simple_coordinates.len());
+        let mut positive = Vec::new();
+        positive
+            .try_reserve_exact(count)
+            .map_err(|_| StructureError::AllocationFailed { requested: count })?;
+        for coordinates in &simple_coordinates {
+            positive.push(coordinates.iter().any(|&value| value > 0));
+        }
+        let semisimple_rank = datum.semisimple_rank();
+        let mut simple_ids = Vec::new();
+        simple_ids.try_reserve_exact(semisimple_rank).map_err(|_| {
+            StructureError::AllocationFailed {
+                requested: semisimple_rank,
+            }
+        })?;
+        for simple_root in datum.simple_roots() {
+            let id = roots
+                .binary_search_by(|candidate| candidate.as_slice().cmp(simple_root.as_slice()))
+                .ok()
+                .map(RootId)
+                .ok_or(StructureError::RootSystemInvariantViolation {
+                    invariant: "simple-root membership",
+                })?;
+            simple_ids.push(id);
+        }
         Ok(Self {
             datum,
             roots,
             coroots,
             simple_coordinates,
+            positive,
+            simple_ids,
         })
     }
 
@@ -229,6 +262,21 @@ impl RootSystem {
                     .ok_or(StructureError::InvalidRootAutomorphism)
             })
             .collect()
+    }
+
+    /// Positivity per root, index-aligned under [`RootId`].
+    pub(crate) fn positivity(&self) -> &[bool] {
+        &self.positive
+    }
+
+    /// Whether a root is positive in the simple-root basis.
+    pub fn is_positive(&self, id: RootId) -> Option<bool> {
+        self.positive.get(id.0).copied()
+    }
+
+    /// Stable IDs of the simple roots, in generator order.
+    pub(crate) fn simple_root_ids(&self) -> &[RootId] {
+        &self.simple_ids
     }
 
     pub fn id_of(&self, root: &Weight) -> Option<RootId> {
@@ -490,6 +538,27 @@ mod tests {
             roots.simple_coordinates(roots.id_of(&Weight::new(vec![1, 1])).unwrap()),
             Some(&[1, 1][..])
         );
+    }
+
+    #[test]
+    fn positivity_and_simple_ids_are_precomputed() {
+        let roots = RootSystem::enumerate(&a2(), 6).unwrap();
+        let positive_count = roots.positivity().iter().filter(|&&flag| flag).count();
+        assert_eq!(positive_count, 3);
+        assert_eq!(roots.simple_root_ids().len(), 2);
+        for (index, id) in roots.simple_root_ids().iter().enumerate() {
+            let mut expected = [0; 2];
+            expected[index] = 1;
+            assert_eq!(roots.simple_coordinates(*id), Some(&expected[..]));
+            assert_eq!(roots.is_positive(*id), Some(true));
+        }
+        for (id, _, _) in roots.entries() {
+            let coordinates = roots.simple_coordinates(id).unwrap();
+            assert_eq!(
+                roots.is_positive(id),
+                Some(coordinates.iter().any(|&value| value > 0))
+            );
+        }
     }
 
     #[test]

@@ -1,3 +1,12 @@
+//! Matrix-level Weyl actions on the full character/cocharacter lattices.
+//!
+//! This is the provenance-bearing action representation: every
+//! [`WeylAction`] carries its datum and acts on both lattices at once. The
+//! word-level combinatorial substrate — elements with cached lengths,
+//! descents, and reduced words on the root-permutation representation —
+//! lives in `weyl_element.rs`; the two layers are mutually checkable
+//! through [`RootSystem::action_permutation`].
+
 use std::collections::{BTreeMap, VecDeque};
 
 use crate::{BasedRootDatum, Coweight, RootId, RootSystem, StructureError, Weight};

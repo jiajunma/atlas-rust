@@ -223,4 +223,9 @@ classes, and the strict Cayley poset per
 `CARTAN_AGGREGATION_DESIGN.md`. The strong-real layer — square classes,
 per-square-class fiber partitions, strong representatives, and KGB sizes
 matching published Atlas values (Sp(4,R) = 11) — is implemented as
-`StrongRealClassification` per `STRONG_REAL_DESIGN.md`. Next: KGB data.
+`StrongRealClassification` per `STRONG_REAL_DESIGN.md`. The KGB
+construction proceeds by the stage map in `KGB_STAGE_MAP.md`; stage (a) —
+the word-level Weyl substrate on the root-permutation representation,
+`WeylElement` per `WEYL_ELEMENT_DESIGN.md`, with the `RootSystem`
+positivity slice and simple-root IDs it required — is implemented. Next:
+stage (b), the involution table.
