@@ -1,0 +1,36 @@
+{
+  "fixture": "domain/root_coroot.atlas",
+  "status": "structural_preflight_passed_not_differential",
+  "oracle": "pending_domain_adapter",
+  "rust_status": "hpc_preflight_passed",
+  "reference_status": "pending_atlas_constructor_and_event_adapter",
+  "design_reviews": {
+    "completed_at": "2026-07-27",
+    "checks": [
+      "atlas_source_semantics_and_pairing_orientation",
+      "rust_ownership_resource_overflow",
+      "public_api_and_consumer_integration"
+    ],
+    "recorded_in": "docs/ROOT_COROOT_DESIGN.md"
+  },
+  "hpc_preflight": {
+    "job_id": "3464542",
+    "completed_at": "2026-07-27T16:38:04+08:00",
+    "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)",
+    "unit_tests": 93,
+    "source_snapshot_sha256": "f951905d998b0d500b7963e653de15e7887f06fe558e29b615cd717bffb2e218",
+    "report_sha256": "5894bb2c50ec53b6f504f6b45d3cde5fe675c82a2361fdcbccadf9e6efe795fc"
+  },
+  "scenarios": [
+    "A2 paired ordinary roots and coroots in the stable order",
+    "B2 non-simply-laced ordinary coroots",
+    "A1 with a central coweight coordinate and a pure torus",
+    "self-bracket two and Weyl transport of stored pairs",
+    "injected closure-invariant rejection",
+    "named lattice-rank, root, entry, and step budget rejections",
+    "checked coweight-reflection and seed-negation overflow",
+    "byte-identical compatibility wrapper",
+    "dynamic product of 33 A1 factors"
+  ],
+  "notes": "Three fresh-context design reviews were folded into the design before implementation, and the frozen HPC preflight passed format, warnings-denied Clippy, and 93 Rust unit tests. This fixture is not executable Atlas evidence until the language-level root-data constructor and both oracle adapters exist."
+}

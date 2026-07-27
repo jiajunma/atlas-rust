@@ -1,0 +1,24 @@
+{
+  "fixture": "domain/adjoint_fiber.atlas",
+  "status": "structural_preflight_passed_not_differential",
+  "oracle": "pending_domain_adapter",
+  "rust_status": "hpc_preflight_passed",
+  "reference_status": "pending_atlas_constructor_and_event_adapter",
+  "hpc_preflight": {
+    "job_id": "3463683",
+    "completed_at": "2026-07-27T15:53:56+08:00",
+    "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)",
+    "unit_tests": 77,
+    "source_snapshot_sha256": "e5fbb4e9841172e25383a75868e6d218eb18ee0376e4c3750b0964e1de61b1e8",
+    "report_sha256": "18a98a2016e36de688558c90978dd2622f2a05c568eb6a7a52f583ca85325f80"
+  },
+  "scenarios": [
+    "A1 identity adjoint fiber",
+    "A1 x A2 non-symmetric Weyl-reflection action and fiber-map intertwining",
+    "central-torus kernel of the ambient-to-adjoint fiber map",
+    "source-fiber and projection-coordinate provenance mismatch",
+    "dynamic adjoint rank 33 above the legacy packed boundary",
+    "adjoint storage and projection-work budget rejection"
+  ],
+  "notes": "HPC structural preflight passed, including format, warnings-denied Clippy, and 77 Rust unit tests. This fixture is not executable Atlas evidence until the language-level constructor and both oracle adapters exist."
+}

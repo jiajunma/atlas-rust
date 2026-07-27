@@ -1,0 +1,11 @@
+[package]
+name = "atlas-real-group"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+malachite = { version = "=0.10.0", default-features = false, features = ["std", "naturals_and_integers", "rationals"] }

@@ -1,0 +1,3 @@
+// Reserved for the Atlas/Rust adjoint-fiber differential harness.
+// The interpreter-side constructor syntax and event adapter are not exposed.
+adjoint_fiber_fixture;
