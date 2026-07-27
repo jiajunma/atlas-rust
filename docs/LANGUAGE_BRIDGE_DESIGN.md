@@ -136,3 +136,65 @@ the dispatch/inference extensions, the events serializer); (3) API
 and consumer fit (the context-bundle shape, budgets, Display
 renderings, fixture activation). Findings fold here before source
 edits.
+
+## Three independent design checks (returned; decisive corrections)
+
+Full findings: the review archive (workflow wf_8d3d300d-f77 journal;
+key excerpts below are normative). Fold status: recorded here, to be
+applied during implementation.
+
+1. BLOCKING, the external-order tiebreak spec (semantics): the
+   tiebreak uses the PARTITION overload of specialGrading
+   (cartanclass.cpp:929-948): scan adjoint-fiber indices ascending,
+   keep the HIGHEST index attaining maximal popcount within the
+   form's class (>= replacement, seeded with classRep); the grading
+   is that index's COMPLEMENT within adjointFiberRank bits, unsliced
+   onto the TWIST-FIXED simple generators, compared as unsigned with
+   simple root 0 = LSB. Valid because the fundamental base grading is
+   all-ones and shifts are the standard basis — the adapter must
+   VERIFY that coordinate parity against the port's grading layer or
+   the order silently diverges. Depth needs NEW machinery: the FULL
+   noncompact imaginary root set per form (not just simple positions)
+   plus the gradings.cpp:51-76 greedy (positive roots, lowest-index
+   pick, orthogonality filter, short-root compactness FLIP when the
+   sum is a root) — cardinality only, representative-invariant.
+   upstream sorts with UNSTABLE std::sort: assert strict (depth,
+   grading) ordering so any tie is a loud error.
+2. BLOCKING, the context bundle (internals): "lazy KgbGraph in an
+   Arc" is unimplementable (build needs &mut table; Value is
+   immutable and cloned freely). Corrected: BUILD-THEN-FREEZE —
+   real_form(ic, n) eagerly runs seed + KgbGraph::build on a
+   PER-FORM CLONE of the pipeline, then wraps the finished six-piece
+   bundle in Arc<RealFormContext>. DomainValue implements Eq BY HAND
+   as Arc::ptr_eq + payload (the domain aggregates mostly do not
+   derive PartialEq); upstream additionally MEMOIZES handles per
+   constructor arguments (weak-pointer tables) so
+   real_form(ic,0) = real_form(ic,0) holds across calls — the bridge
+   memoizes per inner-class handle (structural equality =
+   (inner-class Arc, internal form number)).
+3. HIGH, exhaustive-match inventory (internals): Expr::Call also
+   forces Expr::span, infer_scalar_type, eval_expr, and the test
+   helper expression_shape; coerce_value_to_type NEEDS a Domain arm
+   (lists coerce every element); assignment_compatible/common_type/
+   the two operator matches need NO edits (equality arms + catch-alls
+   cover them). Value's Display is where decision 7's renderings
+   land.
+4. HIGH, events corpus (internals): exactly 3 nested-shape files
+   (eval/{scalars,context,exact_numerics}) regenerate to flat; the
+   flat corpus must pick an integer encoding that survives big
+   integers (decimal strings recommended) before regeneration.
+5. HIGH, Display strings (semantics): byte-identical upstream forms —
+   `KGB element #n` (NO suffix), `Lie type 'A1.T1'`,
+   `[simply connected |adjoint ]root datum of Lie type '...'`, the
+   multi-line inner-class print, and real-form prints REQUIRE the
+   form-name machinery (deferred: phase 1 may print a documented
+   stable placeholder, flagged adapter-sensitive).
+6. MEDIUM quirks pinned (semantics): one shared index scheme for
+   cross/Cayley/status with the SIGN DISCARDED (status(-1-i,x) ==
+   status(i,x) — do not flip C+/C-); Ccesu: 'C' needs two identical
+   CONSECUTIVE factors, 'u' legal for A_{n>=2}/any D/E6/T and
+   rewritten to 's' except D_even; the string covers EVERY factor
+   including expanded T1s; torus_factor SUBTRACTS (the .w prose
+   claiming addition lies; the code subtracts); "first" of a double
+   inverse Cayley = numerically smallest final KGB number (the
+   port's (0, Some(1)) matches).
