@@ -1,0 +1,15 @@
+{
+  "fixture": "domain/seed_x0.atlas",
+  "status": "design_recorded_review_pending",
+  "oracle": "traced_innerclass_realredgp_4d3e9449",
+  "rust_status": "not_implemented",
+  "reference_status": "pending_atlas_constructor_and_event_adapter",
+  "scenarios": [
+    "quasisplit seeds for SL(2,R)/PGL(2,R) with the x0-compacts invariant",
+    "all weak real forms of Sp(4,R) and SU(2,1), deterministic",
+    "compact-form all-compact seed grading",
+    "central-fiber minimization electing the minimal shifted value",
+    "weak-real-form numbering pinned against the upstream convention"
+  ],
+  "notes": "Stage (d) of the KGB map: some_coch (elected stable_log of the square-class cocharacter), grading_of_simples offset, the fiber-group grading-shift solve, and the bits+c central-fiber minimization. The design puts the numbering-normalization question front and center: every election flows through upstream's weak-real-form order (minimal adjoint-fiber representative, quasisplit = 0), and the reviews must audit the port's orderings — coincide (record proof) or reindex at the seed boundary; crate-order elections are refused because they would downgrade torus_factor comparability. Reserved before implementation."
+}
