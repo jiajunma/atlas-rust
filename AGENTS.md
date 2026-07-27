@@ -6,12 +6,13 @@ not a source-level C++ translation.
 
 ## Hard rules
 
-1. **No local program execution.** This machine is for reading, editing, and
-   Git operations only. Do not run `cargo`, Rust binaries, C/C++ binaries,
-   CWEB generators, Atlas, PyCox, benchmarks, or third-party test tools here.
-   All builds, tests, differential runs, and performance work happen on the
-   XMU HPC. GitHub Actions is allowed only when its workflow is the requested
-   verification environment.
+1. **Use local execution for small checks; use HPC for heavy work.** Small,
+   bounded local checks such as `cargo check -p <crate>`, focused unit tests,
+   formatting, and static analysis are allowed. Do not run long builds,
+   full-workspace or large test suites, Atlas/CWEB differential jobs,
+   benchmarks, or other resource-heavy work locally; submit those to XMU HPC.
+   The original Atlas executable remains an HPC oracle. GitHub Actions is
+   allowed only when its workflow is the requested verification environment.
 2. **The original Atlas executable is the language oracle.** The upstream
    repository and its generated CWEB output define reference behavior. Do not
    infer undocumented semantics from what is convenient to implement.
@@ -46,6 +47,17 @@ not a source-level C++ translation.
 5. Run the stage's HPC test and inspect its report.
 6. Commit source, fixtures, and report metadata; never commit unverified local
    output.
+
+## Verified repair guard
+
+### Owned `LatticeInvolution` builders
+
+- Root cause: a migration from borrowed to owned involution input left a
+  read-only helper call unborrowed, which failed only at Rust type checking.
+- Diagnostic: use the frozen `real_group_preflight.sbatch` package compile;
+  job `3463647` reported the concrete mismatch before tests ran.
+- Prevention: audit every helper call before the final move into the fiber
+  model, then require a passing HPC preflight such as job `3463683`.
 
 ## Rustcox reuse
 

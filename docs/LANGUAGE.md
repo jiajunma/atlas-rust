@@ -35,7 +35,7 @@ or CWEB preprocessing.
 | exceptions and runtime errors | planned | diagnostic/exit tests |
 | Atlas commands and batch files | planned | event stream and exit tests |
 | interactive input and completion | planned | pseudo-terminal HPC tests |
-| domain objects and mathematical operations | planned | per-domain differential suites |
+| domain objects and mathematical operations | planned | per-domain differential suites; `atlas-real-group` provides an initial structural API |
 | KL and file formats | planned | byte/semantic comparisons |
 
 No row moves to `supported` merely because Rust compiles. It needs a reference

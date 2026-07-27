@@ -12,16 +12,22 @@ and file-format boundaries.
 
 Project bootstrap. The compatibility contract is in
 [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md), the language support matrix is
-in [`docs/LANGUAGE.md`](docs/LANGUAGE.md), and the implementation design is in
-[`docs/DESIGN.md`](docs/DESIGN.md). Contributor and agent rules are in
-[`AGENTS.md`](AGENTS.md). No local Rust execution is permitted; builds and tests
-run on the XMU HPC according to [`hpc/README.md`](hpc/README.md).
+in [`docs/LANGUAGE.md`](docs/LANGUAGE.md), the implementation design is in
+[`docs/DESIGN.md`](docs/DESIGN.md), and the numeric model is in
+[`docs/NUMERICS.md`](docs/NUMERICS.md). Contributor and agent rules are in
+[`AGENTS.md`](AGENTS.md). Small focused checks may run locally; differential
+tests and resource-heavy verification run on the XMU HPC according to
+[`hpc/README.md`](hpc/README.md). Rust 1.90 or newer is required; the
+repository follows the installed stable toolchain.
 
 ## Scope
 
 - `atlas-core`: lexer, parser, values, evaluator, diagnostics, and compatible
   serialization primitives.
 - `atlas-cli`: command-line interface and interactive session behavior.
+- `atlas-real-group`: structural root-data, Weyl-action, and real-form APIs;
+  differential domain compatibility remains planned; its staged design is in
+  [`docs/REAL_GROUP_DESIGN.md`](docs/REAL_GROUP_DESIGN.md).
 - `hpc`: reproducible build, test, and oracle-comparison jobs for XMU SLURM.
 
 The original CWEB sources remain the behavioral reference for Atlas behavior.
