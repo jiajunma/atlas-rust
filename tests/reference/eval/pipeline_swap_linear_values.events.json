@@ -1,0 +1,10 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "eval/pipeline_swap_linear_values",
+  "status": "verified_hpc_reference",
+  "events": [
+    {"kind":"Value","value":{"type":"matrix","display":"\n| 2 |\n"}},
+    {"kind":"Value","value":{"type":"matrix","display":"\n| 1 |\n"}},
+    {"kind":"Value","value":{"type":"ratvec","display":"[ 0 ]/1"}}
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "fixture":"eval/pipeline_swap_constructors",
+  "oracle":"atlas",
+  "stage":"typed-pipeline-swap",
+  "reference_status":"verified_hpc_reference",
+  "reference_atlas_revision":"4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256":"b627b3922391bf95483d621499079a744a566d81e08412f0f7c8cc535b6f5d55",
+  "reference_job":"3496440",
+  "build_job":"3496427",
+  "source_archive_sha256":"09a8a91c159d79e0ad33b81c42b8c98d4fa505b35a7e127d22c8163c10a40257",
+  "fixture_sha256":"8811744c10e6eaf1a5bd5404519b6451b60eaa0669046e3cd570f452ea8e5aa4",
+  "oracle_exit_status":0,
+  "oracle_stdout_sha256":"1b5f32af0df362259ba82cfe3b5c62c46ba7bf5d233d812bb9b59f436770aeb4",
+  "oracle_stderr_sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256":"a846ab5315892d251d6b9cee16b98b573f280da8a2c42fd55f42b69c5a35d2b0",
+  "rust_status":"pending"
+}

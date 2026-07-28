@@ -1,0 +1,13 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "eval/pipeline_swap_constructors",
+  "status": "verified_hpc_reference",
+  "events": [
+    {"kind":"Value","value":{"type":"domain","domain":"LieType","display":"Lie type 'A1'"}},
+    {"kind":"Value","value":{"type":"domain","domain":"RootDatum","display":"simply connected root datum of Lie type 'A1'"}},
+    {"kind":"Value","value":{"type":"boolean","value":true}},
+    {"kind":"Value","value":{"type":"domain","domain":"RootDatum","display":"adjoint root datum of Lie type 'A1'"}},
+    {"kind":"Value","value":{"type":"boolean","value":false}},
+    {"kind":"Value","value":{"type":"domain","domain":"RootDatum","display":"simply connected root datum of Lie type 'A1'"}}
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "eval/pipeline_swap_rejected",
+  "status": "verified_hpc_reference",
+  "events": [
+    {"kind":"Diagnostic","category":"type","message":"found string while (LieType,bool) was needed."},
+    {"kind":"Diagnostic","category":"type","message":"found string while (LieType,bool) was needed."},
+    {"kind":"Diagnostic","category":"type","message":"Failed to match 'Lie_type' with argument type int"},
+    {"kind":"Diagnostic","category":"type","message":"Failed to match 'inner_class' with argument type (string,[[int]])"},
+    {"kind":"Diagnostic","category":"type","message":"found LieType while (LieType,bool) was needed."}
+  ]
+}

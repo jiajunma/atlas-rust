@@ -1,0 +1,13 @@
+{
+  "schema": "atlas-session-events-v0",
+  "fixture": "eval/pipeline_swap_void_reports",
+  "status": "verified_hpc_reference",
+  "events": [
+    {"kind":"ReportLine","text":"Declaring identifier 'n': int\n"},
+    {"kind":"Value","value":{"type":"integer","value":"3"}},
+    {"kind":"Value","value":{"type":"integer","value":"3"}},
+    {"kind":"ReportLine","text":"Declaring identifier 'rd': RootDatum\n"},
+    {"kind":"Value","value":{"type":"domain","domain":"RootDatum","display":"simply connected root datum of Lie type 'A1'"}},
+    {"kind":"Value","value":{"type":"boolean","value":true}}
+  ]
+}

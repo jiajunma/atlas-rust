@@ -1,0 +1,5 @@
+simply_connected("A1")
+adjoint("A1")
+Lie_type(1)
+inner_class("A1",[[1]])
+simply_connected(Lie_type("A1"))

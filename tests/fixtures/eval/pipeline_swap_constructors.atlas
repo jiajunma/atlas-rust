@@ -1,0 +1,6 @@
+Lie_type("A1")
+simply_connected(Lie_type("A1"),true)
+prefers_coroots(simply_connected(Lie_type("A1"),true))
+adjoint(Lie_type("A1"),false)
+prefers_coroots(adjoint(Lie_type("A1"),false))
+root_datum(Lie_type("A1"),[[1]],true)

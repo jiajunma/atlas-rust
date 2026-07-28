@@ -1,0 +1,3 @@
+Cartan_matrix(simply_connected(Lie_type("A1"),true))
+involution(KGB(real_form(inner_class(simply_connected(Lie_type("A1"),true),[[1]]),1),0))
+torus_factor(KGB(real_form(inner_class(simply_connected(Lie_type("A1"),true),[[1]]),1),0))

@@ -1,0 +1,6 @@
+n : int
+n := 3
+n
+rd : RootDatum
+rd := simply_connected(Lie_type("A1"),true)
+prefers_coroots(rd)

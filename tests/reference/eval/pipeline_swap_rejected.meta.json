@@ -1,0 +1,18 @@
+{
+  "fixture":"eval/pipeline_swap_rejected",
+  "oracle":"atlas",
+  "stage":"typed-pipeline-swap",
+  "reference_status":"verified_hpc_reference",
+  "reference_atlas_revision":"4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256":"b627b3922391bf95483d621499079a744a566d81e08412f0f7c8cc535b6f5d55",
+  "reference_job":"3496440",
+  "build_job":"3496427",
+  "source_archive_sha256":"09a8a91c159d79e0ad33b81c42b8c98d4fa505b35a7e127d22c8163c10a40257",
+  "fixture_sha256":"fc351395d29ea61f2e4295c3ac00123740f237e3d7213859e251ada0ddd0d86d",
+  "oracle_exit_status":1,
+  "oracle_stdout_sha256":"209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
+  "oracle_stderr_sha256":"723f4cf63995e8e23a3a9d0af1bdb6c9a2dcdf4fb5cc917a0e7ff645bf57d91d",
+  "capture_artifacts_sha256":"a846ab5315892d251d6b9cee16b98b573f280da8a2c42fd55f42b69c5a35d2b0",
+  "rust_status":"pending",
+  "notes":"The event messages retain the stable type-analysis tails; source-location and recovery framing remain covered by oracle_stderr_sha256."
+}
