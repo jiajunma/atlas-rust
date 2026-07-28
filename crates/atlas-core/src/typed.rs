@@ -10,6 +10,7 @@
 //! evaluate the registered conversion functions; integer narrowing uses
 //! the EXACT upstream error text (typo included, bigint.cpp:142-162).
 
+use malachite::base::num::arithmetic::traits::{Floor, Mod, Pow};
 use malachite::{Integer as BigInt, Rational as BigRational};
 
 use crate::coercions::{coercion_between, row_coercion};
@@ -20,6 +21,7 @@ use crate::syntax::{Command, Expr};
 use crate::types::{Prim, Type, TypeTable};
 use crate::value::Value;
 use std::cell::RefCell;
+use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 use std::sync::OnceLock;
@@ -656,7 +658,6 @@ pub fn convert_expr(
             }
             let a_priori_type = Type::tuple(a_priori.clone());
             let variants = overload_variants(&operator.symbol);
-            let mut inexact = None;
             let mut chosen = None;
             for &index in variants {
                 let builtin = &builtin_registry()[index];
@@ -664,15 +665,15 @@ pub fn convert_expr(
                     chosen = Some(index);
                     break;
                 }
-                if inexact.is_none()
-                    && crate::coercions::is_close(&a_priori_type, &builtin.arg_type, analysis.types)
-                        & 0x1
-                        != 0
+                if crate::coercions::is_close(&a_priori_type, &builtin.arg_type, analysis.types)
+                    & 0x1
+                    != 0
                 {
-                    inexact = Some(index);
+                    chosen = Some(index);
+                    break;
                 }
             }
-            let index = match chosen.or(inexact) {
+            let index = match chosen {
                 Some(index) => index,
                 None => {
                     return Err(type_error(
@@ -854,7 +855,69 @@ pub struct Builtin {
     pub name: &'static str,
     pub arg_type: Type,
     pub result: Type,
-    pub run: fn(Vec<Value>, SourceSpan) -> Result<Value, Control>,
+    pub hunger: u8,
+    implementation: BuiltinImpl,
+}
+
+#[derive(Clone, Copy)]
+enum BuiltinImpl {
+    Scalar(ScalarOp),
+}
+
+#[derive(Clone, Copy)]
+enum ScalarOp {
+    IntNegate,
+    IntAdd,
+    IntSubtract,
+    IntMultiply,
+    IntComplement,
+    IntQuotient,
+    IntModulo,
+    IntDivMod,
+    IntPower,
+    IntInverse,
+    IntFraction,
+    RatUnfraction,
+    RatAddInt,
+    RatSubtractInt,
+    RatMultiplyInt,
+    RatDivideInt,
+    RatQuotientInt,
+    RatModuloInt,
+    RatAdd,
+    RatSubtract,
+    RatMultiply,
+    RatDivide,
+    RatModulo,
+    RatNegate,
+    RatInverse,
+    RatPower,
+    UnaryRelation(Relation),
+    BinaryRelation(Relation),
+    StringConcat,
+}
+
+#[derive(Clone, Copy)]
+enum Relation {
+    Equal,
+    NotEqual,
+    Less,
+    LessEqual,
+    Greater,
+    GreaterEqual,
+}
+
+impl Builtin {
+    fn run(
+        &self,
+        arguments: Vec<Value>,
+        span: SourceSpan,
+        level: Level,
+    ) -> Result<Option<Value>, Control> {
+        match self.implementation {
+            BuiltinImpl::Scalar(operation) => run_scalar(operation, arguments, span, level),
+        }
+    }
 }
 
 fn int_type() -> Type {
@@ -863,6 +926,51 @@ fn int_type() -> Type {
 
 fn int_pair() -> Type {
     Type::tuple(vec![int_type(), int_type()])
+}
+
+fn rat_type() -> Type {
+    Type::Primitive(Prim::Rat)
+}
+
+fn bool_type() -> Type {
+    Type::Primitive(Prim::Bool)
+}
+
+fn string_type() -> Type {
+    Type::Primitive(Prim::String)
+}
+
+fn pair(type_: Type) -> Type {
+    Type::tuple(vec![type_.clone(), type_])
+}
+
+fn scalar_builtin(
+    name: &'static str,
+    arg_type: Type,
+    result: Type,
+    hunger: u8,
+    op: ScalarOp,
+) -> Builtin {
+    Builtin {
+        name,
+        arg_type,
+        result,
+        hunger,
+        implementation: BuiltinImpl::Scalar(op),
+    }
+}
+
+fn at_builtin_level(level: Level, value: impl FnOnce() -> Value) -> Option<Value> {
+    match level {
+        Level::NoValue => None,
+        Level::SingleValue => Some(value()),
+    }
+}
+
+fn expect_unary(mut arguments: Vec<Value>) -> Value {
+    let value = arguments.pop().expect("unary builtin has one argument");
+    assert!(arguments.is_empty(), "unary builtin saw extra arguments");
+    value
 }
 
 fn expect_ints(mut arguments: Vec<Value>) -> (BigInt, BigInt) {
@@ -874,71 +982,666 @@ fn expect_ints(mut arguments: Vec<Value>) -> (BigInt, BigInt) {
     }
 }
 
+fn expect_rationals(mut arguments: Vec<Value>) -> (BigRational, BigRational) {
+    let second = arguments.pop();
+    let first = arguments.pop();
+    match (first, second) {
+        (Some(Value::Rational(first)), Some(Value::Rational(second))) => (first, second),
+        other => panic!("rat builtin saw {other:?}"),
+    }
+}
+
+fn expect_rat_int(mut arguments: Vec<Value>) -> (BigRational, BigInt) {
+    let second = arguments.pop();
+    let first = arguments.pop();
+    match (first, second) {
+        (Some(Value::Rational(first)), Some(Value::Integer(second))) => (first, second),
+        other => panic!("rat-int builtin saw {other:?}"),
+    }
+}
+
+fn expect_pair(mut arguments: Vec<Value>) -> (Value, Value) {
+    let second = arguments.pop();
+    let first = arguments.pop();
+    match (first, second) {
+        (Some(first), Some(second)) => (first, second),
+        other => panic!("binary builtin saw {other:?}"),
+    }
+}
+
+fn euclidean_divmod(left: &BigInt, right: &BigInt) -> (BigInt, BigInt) {
+    let mut quotient = left / right;
+    let mut remainder = left % right;
+    if remainder != 0 && ((remainder < 0) != (*right < 0)) {
+        quotient -= BigInt::from(1);
+        remainder += right;
+    }
+    (quotient, remainder)
+}
+
+fn run_scalar(
+    operation: ScalarOp,
+    arguments: Vec<Value>,
+    span: SourceSpan,
+    level: Level,
+) -> Result<Option<Value>, Control> {
+    match operation {
+        ScalarOp::IntNegate => match expect_unary(arguments) {
+            Value::Integer(value) => Ok(at_builtin_level(level, || Value::Integer(-value))),
+            other => panic!("integer negation saw {other:?}"),
+        },
+        ScalarOp::IntAdd | ScalarOp::IntSubtract | ScalarOp::IntMultiply => {
+            let (first, second) = expect_ints(arguments);
+            Ok(at_builtin_level(level, || {
+                Value::Integer(match operation {
+                    ScalarOp::IntAdd => first + second,
+                    ScalarOp::IntSubtract => first - second,
+                    ScalarOp::IntMultiply => first * second,
+                    _ => unreachable!(),
+                })
+            }))
+        }
+        ScalarOp::IntComplement => match expect_unary(arguments) {
+            Value::Integer(value) => Ok(at_builtin_level(level, || Value::Integer(!value))),
+            other => panic!("integer complement saw {other:?}"),
+        },
+        ScalarOp::IntQuotient | ScalarOp::IntModulo | ScalarOp::IntDivMod => {
+            let (first, second) = expect_ints(arguments);
+            if second == 0 {
+                let message = match operation {
+                    ScalarOp::IntQuotient => "Division by zero",
+                    ScalarOp::IntModulo => "Modulo zero",
+                    ScalarOp::IntDivMod => "DivMod by zero",
+                    _ => unreachable!(),
+                };
+                return Err(runtime(message, span));
+            }
+            Ok(at_builtin_level(level, || {
+                let (quotient, remainder) = euclidean_divmod(&first, &second);
+                match operation {
+                    ScalarOp::IntQuotient => Value::Integer(quotient),
+                    ScalarOp::IntModulo => Value::Integer(remainder),
+                    ScalarOp::IntDivMod => {
+                        Value::Tuple(vec![Value::Integer(quotient), Value::Integer(remainder)])
+                    }
+                    _ => unreachable!(),
+                }
+            }))
+        }
+        ScalarOp::IntPower => {
+            let (base, exponent) = expect_ints(arguments);
+            let unit_base = base == 1 || base == -1;
+            if !unit_base && exponent < 0 {
+                return Err(runtime("Negative power of integer", span));
+            }
+            if !unit_base && base != 0 && i32::try_from(&exponent).is_err() {
+                return Err(runtime("Exponent too large in power of integer", span));
+            }
+            Ok(at_builtin_level(level, || {
+                if unit_base {
+                    if &exponent % BigInt::from(2) != 0 {
+                        Value::Integer(base)
+                    } else {
+                        Value::Integer(BigInt::from(1))
+                    }
+                } else if base == 0 {
+                    Value::Integer(if exponent == 0 { BigInt::from(1) } else { base })
+                } else {
+                    Value::Integer(
+                        base.pow(u64::from(
+                            u32::try_from(i32::try_from(&exponent).expect("validated exponent"))
+                                .expect("validated exponent is nonnegative"),
+                        )),
+                    )
+                }
+            }))
+        }
+        ScalarOp::IntInverse => match expect_unary(arguments) {
+            Value::Integer(value) => {
+                if value == 0 {
+                    return Err(runtime("Inverse of zero", span));
+                }
+                Ok(at_builtin_level(level, || {
+                    Value::Rational(BigRational::from_integers(BigInt::from(1), value))
+                }))
+            }
+            other => panic!("integer inverse saw {other:?}"),
+        },
+        ScalarOp::IntFraction => {
+            let (numerator, denominator) = expect_ints(arguments);
+            if denominator == 0 {
+                return Err(runtime("fraction with zero denominator", span));
+            }
+            Ok(at_builtin_level(level, || {
+                Value::Rational(BigRational::from_integers(numerator, denominator))
+            }))
+        }
+        ScalarOp::RatUnfraction => match expect_unary(arguments) {
+            Value::Rational(value) => Ok(at_builtin_level(level, || {
+                let negative = value < 0;
+                let (numerator, denominator) = value.into_numerator_and_denominator();
+                let numerator = BigInt::from(numerator);
+                Value::Tuple(vec![
+                    Value::Integer(if negative { -numerator } else { numerator }),
+                    Value::Integer(BigInt::from(denominator)),
+                ])
+            })),
+            other => panic!("rational unfraction saw {other:?}"),
+        },
+        ScalarOp::RatAddInt
+        | ScalarOp::RatSubtractInt
+        | ScalarOp::RatMultiplyInt
+        | ScalarOp::RatDivideInt
+        | ScalarOp::RatQuotientInt
+        | ScalarOp::RatModuloInt => {
+            let (rational, integer) = expect_rat_int(arguments);
+            if integer == 0 {
+                match operation {
+                    ScalarOp::RatQuotientInt => {
+                        return Err(runtime("Rational quotient by zero", span));
+                    }
+                    ScalarOp::RatDivideInt if level == Level::SingleValue => {
+                        return Err(runtime("Division of rational by integer zero", span));
+                    }
+                    ScalarOp::RatModuloInt if level == Level::SingleValue => {
+                        return Err(runtime("Division by zero", span));
+                    }
+                    _ => {}
+                }
+            }
+            Ok(at_builtin_level(level, || {
+                let integer_as_rational = BigRational::from(integer);
+                match operation {
+                    ScalarOp::RatAddInt => Value::Rational(rational + integer_as_rational),
+                    ScalarOp::RatSubtractInt => Value::Rational(rational - integer_as_rational),
+                    ScalarOp::RatMultiplyInt => Value::Rational(rational * integer_as_rational),
+                    ScalarOp::RatDivideInt => Value::Rational(rational / integer_as_rational),
+                    ScalarOp::RatQuotientInt => {
+                        Value::Integer((rational / integer_as_rational).floor())
+                    }
+                    ScalarOp::RatModuloInt => Value::Rational(rational.mod_op(integer_as_rational)),
+                    _ => unreachable!(),
+                }
+            }))
+        }
+        ScalarOp::RatAdd
+        | ScalarOp::RatSubtract
+        | ScalarOp::RatMultiply
+        | ScalarOp::RatDivide
+        | ScalarOp::RatModulo => {
+            let (first, second) = expect_rationals(arguments);
+            if second == 0 {
+                let message = match operation {
+                    ScalarOp::RatDivide => "Rational division by zero",
+                    ScalarOp::RatModulo => "Rational modulo zero",
+                    _ => "",
+                };
+                if !message.is_empty() {
+                    return Err(runtime(message, span));
+                }
+            }
+            Ok(at_builtin_level(level, || {
+                Value::Rational(match operation {
+                    ScalarOp::RatAdd => first + second,
+                    ScalarOp::RatSubtract => first - second,
+                    ScalarOp::RatMultiply => first * second,
+                    ScalarOp::RatDivide => first / second,
+                    ScalarOp::RatModulo => first.mod_op(second),
+                    _ => unreachable!(),
+                })
+            }))
+        }
+        ScalarOp::RatNegate => match expect_unary(arguments) {
+            Value::Rational(value) => Ok(at_builtin_level(level, || Value::Rational(-value))),
+            other => panic!("rational negation saw {other:?}"),
+        },
+        ScalarOp::RatInverse => match expect_unary(arguments) {
+            Value::Rational(value) => {
+                if value == 0 {
+                    return Err(runtime("Inverse of zero", span));
+                }
+                Ok(at_builtin_level(level, || {
+                    Value::Rational(BigRational::from(1) / value)
+                }))
+            }
+            other => panic!("rational inverse saw {other:?}"),
+        },
+        ScalarOp::RatPower => {
+            let (base, exponent) = expect_rat_int(arguments);
+            let unit_base = base == 1 || base == -1;
+            if base == 0 && exponent < 0 {
+                return Err(runtime("Negative power of rational zero", span));
+            }
+            if base != 0 && !unit_base && i32::try_from(&exponent).is_err() {
+                return Err(runtime(
+                    "Exponent too large in power of rational number",
+                    span,
+                ));
+            }
+            if level == Level::NoValue {
+                return Ok(None);
+            }
+            if base != 0 && !unit_base && exponent < 0 {
+                return Err(runtime("Negative integer where unsigned is required", span));
+            }
+            Ok(Some({
+                if unit_base {
+                    if &exponent % BigInt::from(2) != 0 {
+                        Value::Rational(base)
+                    } else {
+                        Value::Rational(BigRational::from(1))
+                    }
+                } else if base == 0 {
+                    Value::Rational(if exponent == 0 {
+                        BigRational::from(1)
+                    } else {
+                        base
+                    })
+                } else {
+                    Value::Rational(base.pow(i64::from(
+                        i32::try_from(&exponent).expect("validated exponent"),
+                    )))
+                }
+            }))
+        }
+        ScalarOp::UnaryRelation(relation) => {
+            let value = expect_unary(arguments);
+            Ok(at_builtin_level(level, || {
+                let ordering = match value {
+                    Value::Integer(value) => value.cmp(&BigInt::from(0)),
+                    Value::Rational(value) => value.cmp(&BigRational::from(0)),
+                    Value::String(value) => value.as_str().cmp(""),
+                    other => panic!("unary relation saw {other:?}"),
+                };
+                Value::Boolean(relation_matches(relation, ordering))
+            }))
+        }
+        ScalarOp::BinaryRelation(relation) => {
+            let (first, second) = expect_pair(arguments);
+            Ok(at_builtin_level(level, || {
+                let ordering = match (first, second) {
+                    (Value::Integer(first), Value::Integer(second)) => first.cmp(&second),
+                    (Value::Rational(first), Value::Rational(second)) => first.cmp(&second),
+                    (Value::Boolean(first), Value::Boolean(second)) => first.cmp(&second),
+                    (Value::String(first), Value::String(second)) => first.cmp(&second),
+                    other => panic!("binary relation saw {other:?}"),
+                };
+                Value::Boolean(relation_matches(relation, ordering))
+            }))
+        }
+        ScalarOp::StringConcat => {
+            let (first, second) = expect_pair(arguments);
+            match (first, second) {
+                (Value::String(first), Value::String(second)) => {
+                    Ok(at_builtin_level(level, || {
+                        Value::String(format!("{first}{second}"))
+                    }))
+                }
+                other => panic!("string concatenation saw {other:?}"),
+            }
+        }
+    }
+}
+
+fn relation_matches(relation: Relation, ordering: Ordering) -> bool {
+    match relation {
+        Relation::Equal => ordering == Ordering::Equal,
+        Relation::NotEqual => ordering != Ordering::Equal,
+        Relation::Less => ordering == Ordering::Less,
+        Relation::LessEqual => ordering != Ordering::Greater,
+        Relation::Greater => ordering == Ordering::Greater,
+        Relation::GreaterEqual => ordering != Ordering::Less,
+    }
+}
+
 /// The startup builtin registry (growing toward the traced inventory).
 pub fn builtin_registry() -> &'static Vec<Builtin> {
     static REGISTRY: OnceLock<Vec<Builtin>> = OnceLock::new();
     REGISTRY.get_or_init(|| {
         vec![
-            Builtin {
-                name: "+",
-                arg_type: int_pair(),
-                result: int_type(),
-                run: |arguments, _span| {
-                    let (first, second) = expect_ints(arguments);
-                    Ok(Value::Integer(first + second))
-                },
-            },
-            Builtin {
-                name: "-",
-                arg_type: int_pair(),
-                result: int_type(),
-                run: |arguments, _span| {
-                    let (first, second) = expect_ints(arguments);
-                    Ok(Value::Integer(first - second))
-                },
-            },
-            Builtin {
-                name: "*",
-                arg_type: int_pair(),
-                result: int_type(),
-                run: |arguments, _span| {
-                    let (first, second) = expect_ints(arguments);
-                    Ok(Value::Integer(first * second))
-                },
-            },
-            Builtin {
-                name: "-",
-                arg_type: int_type(),
-                result: int_type(),
-                run: |mut arguments, _span| match arguments.pop() {
-                    Some(Value::Integer(value)) => Ok(Value::Integer(-value)),
-                    other => panic!("unary minus saw {other:?}"),
-                },
-            },
-            Builtin {
-                name: "/",
-                arg_type: int_pair(),
-                result: Type::Primitive(Prim::Rat),
-                run: |arguments, span| {
-                    let (first, second) = expect_ints(arguments);
-                    if second == 0 {
-                        return Err(runtime("Division by zero", span));
-                    }
-                    Ok(Value::Rational(BigRational::from_integers(first, second)))
-                },
-            },
+            scalar_builtin("-", int_type(), int_type(), 3, ScalarOp::IntNegate),
+            scalar_builtin("+", int_pair(), int_type(), 1, ScalarOp::IntAdd),
+            scalar_builtin("-", int_pair(), int_type(), 1, ScalarOp::IntSubtract),
+            scalar_builtin("~", int_type(), int_type(), 3, ScalarOp::IntComplement),
+            scalar_builtin("*", int_pair(), int_type(), 0, ScalarOp::IntMultiply),
+            scalar_builtin("\\", int_pair(), int_type(), 1, ScalarOp::IntQuotient),
+            scalar_builtin("%", int_pair(), int_type(), 1, ScalarOp::IntModulo),
+            scalar_builtin("\\%", int_pair(), int_pair(), 1, ScalarOp::IntDivMod),
+            scalar_builtin("^", int_pair(), int_type(), 0, ScalarOp::IntPower),
+            scalar_builtin("/", int_type(), rat_type(), 0, ScalarOp::IntInverse),
+            scalar_builtin("/", int_pair(), rat_type(), 0, ScalarOp::IntFraction),
+            scalar_builtin("%", rat_type(), int_pair(), 0, ScalarOp::RatUnfraction),
+            scalar_builtin(
+                "+",
+                Type::tuple(vec![rat_type(), int_type()]),
+                rat_type(),
+                1,
+                ScalarOp::RatAddInt,
+            ),
+            scalar_builtin(
+                "-",
+                Type::tuple(vec![rat_type(), int_type()]),
+                rat_type(),
+                1,
+                ScalarOp::RatSubtractInt,
+            ),
+            scalar_builtin(
+                "*",
+                Type::tuple(vec![rat_type(), int_type()]),
+                rat_type(),
+                1,
+                ScalarOp::RatMultiplyInt,
+            ),
+            scalar_builtin(
+                "/",
+                Type::tuple(vec![rat_type(), int_type()]),
+                rat_type(),
+                0,
+                ScalarOp::RatDivideInt,
+            ),
+            scalar_builtin(
+                "\\",
+                Type::tuple(vec![rat_type(), int_type()]),
+                int_type(),
+                0,
+                ScalarOp::RatQuotientInt,
+            ),
+            scalar_builtin(
+                "%",
+                Type::tuple(vec![rat_type(), int_type()]),
+                rat_type(),
+                1,
+                ScalarOp::RatModuloInt,
+            ),
+            scalar_builtin("+", pair(rat_type()), rat_type(), 1, ScalarOp::RatAdd),
+            scalar_builtin("-", pair(rat_type()), rat_type(), 1, ScalarOp::RatSubtract),
+            scalar_builtin("*", pair(rat_type()), rat_type(), 1, ScalarOp::RatMultiply),
+            scalar_builtin("/", pair(rat_type()), rat_type(), 1, ScalarOp::RatDivide),
+            scalar_builtin("%", pair(rat_type()), rat_type(), 1, ScalarOp::RatModulo),
+            scalar_builtin("-", rat_type(), rat_type(), 3, ScalarOp::RatNegate),
+            scalar_builtin("/", rat_type(), rat_type(), 3, ScalarOp::RatInverse),
+            scalar_builtin(
+                "^",
+                Type::tuple(vec![rat_type(), int_type()]),
+                rat_type(),
+                1,
+                ScalarOp::RatPower,
+            ),
+            scalar_builtin(
+                "=",
+                int_type(),
+                bool_type(),
+                0,
+                ScalarOp::UnaryRelation(Relation::Equal),
+            ),
+            scalar_builtin(
+                "!=",
+                int_type(),
+                bool_type(),
+                0,
+                ScalarOp::UnaryRelation(Relation::NotEqual),
+            ),
+            scalar_builtin(
+                ">=",
+                int_type(),
+                bool_type(),
+                0,
+                ScalarOp::UnaryRelation(Relation::GreaterEqual),
+            ),
+            scalar_builtin(
+                ">",
+                int_type(),
+                bool_type(),
+                0,
+                ScalarOp::UnaryRelation(Relation::Greater),
+            ),
+            scalar_builtin(
+                "<=",
+                int_type(),
+                bool_type(),
+                0,
+                ScalarOp::UnaryRelation(Relation::LessEqual),
+            ),
+            scalar_builtin(
+                "<",
+                int_type(),
+                bool_type(),
+                0,
+                ScalarOp::UnaryRelation(Relation::Less),
+            ),
+            scalar_builtin(
+                "=",
+                int_pair(),
+                bool_type(),
+                0,
+                ScalarOp::BinaryRelation(Relation::Equal),
+            ),
+            scalar_builtin(
+                "!=",
+                int_pair(),
+                bool_type(),
+                0,
+                ScalarOp::BinaryRelation(Relation::NotEqual),
+            ),
+            scalar_builtin(
+                "<",
+                int_pair(),
+                bool_type(),
+                0,
+                ScalarOp::BinaryRelation(Relation::Less),
+            ),
+            scalar_builtin(
+                "<=",
+                int_pair(),
+                bool_type(),
+                0,
+                ScalarOp::BinaryRelation(Relation::LessEqual),
+            ),
+            scalar_builtin(
+                ">",
+                int_pair(),
+                bool_type(),
+                0,
+                ScalarOp::BinaryRelation(Relation::Greater),
+            ),
+            scalar_builtin(
+                ">=",
+                int_pair(),
+                bool_type(),
+                0,
+                ScalarOp::BinaryRelation(Relation::GreaterEqual),
+            ),
+            scalar_builtin(
+                "=",
+                rat_type(),
+                bool_type(),
+                0,
+                ScalarOp::UnaryRelation(Relation::Equal),
+            ),
+            scalar_builtin(
+                "!=",
+                rat_type(),
+                bool_type(),
+                0,
+                ScalarOp::UnaryRelation(Relation::NotEqual),
+            ),
+            scalar_builtin(
+                ">=",
+                rat_type(),
+                bool_type(),
+                0,
+                ScalarOp::UnaryRelation(Relation::GreaterEqual),
+            ),
+            scalar_builtin(
+                ">",
+                rat_type(),
+                bool_type(),
+                0,
+                ScalarOp::UnaryRelation(Relation::Greater),
+            ),
+            scalar_builtin(
+                "<=",
+                rat_type(),
+                bool_type(),
+                0,
+                ScalarOp::UnaryRelation(Relation::LessEqual),
+            ),
+            scalar_builtin(
+                "<",
+                rat_type(),
+                bool_type(),
+                0,
+                ScalarOp::UnaryRelation(Relation::Less),
+            ),
+            scalar_builtin(
+                "=",
+                pair(rat_type()),
+                bool_type(),
+                0,
+                ScalarOp::BinaryRelation(Relation::Equal),
+            ),
+            scalar_builtin(
+                "!=",
+                pair(rat_type()),
+                bool_type(),
+                0,
+                ScalarOp::BinaryRelation(Relation::NotEqual),
+            ),
+            scalar_builtin(
+                "<",
+                pair(rat_type()),
+                bool_type(),
+                0,
+                ScalarOp::BinaryRelation(Relation::Less),
+            ),
+            scalar_builtin(
+                "<=",
+                pair(rat_type()),
+                bool_type(),
+                0,
+                ScalarOp::BinaryRelation(Relation::LessEqual),
+            ),
+            scalar_builtin(
+                ">",
+                pair(rat_type()),
+                bool_type(),
+                0,
+                ScalarOp::BinaryRelation(Relation::Greater),
+            ),
+            scalar_builtin(
+                ">=",
+                pair(rat_type()),
+                bool_type(),
+                0,
+                ScalarOp::BinaryRelation(Relation::GreaterEqual),
+            ),
+            scalar_builtin(
+                "=",
+                pair(bool_type()),
+                bool_type(),
+                0,
+                ScalarOp::BinaryRelation(Relation::Equal),
+            ),
+            scalar_builtin(
+                "!=",
+                pair(bool_type()),
+                bool_type(),
+                0,
+                ScalarOp::BinaryRelation(Relation::NotEqual),
+            ),
+            scalar_builtin(
+                "=",
+                string_type(),
+                bool_type(),
+                0,
+                ScalarOp::UnaryRelation(Relation::Equal),
+            ),
+            scalar_builtin(
+                "!=",
+                string_type(),
+                bool_type(),
+                0,
+                ScalarOp::UnaryRelation(Relation::NotEqual),
+            ),
+            scalar_builtin(
+                "=",
+                pair(string_type()),
+                bool_type(),
+                0,
+                ScalarOp::BinaryRelation(Relation::Equal),
+            ),
+            scalar_builtin(
+                "!=",
+                pair(string_type()),
+                bool_type(),
+                0,
+                ScalarOp::BinaryRelation(Relation::NotEqual),
+            ),
+            scalar_builtin(
+                "<",
+                pair(string_type()),
+                bool_type(),
+                0,
+                ScalarOp::BinaryRelation(Relation::Less),
+            ),
+            scalar_builtin(
+                "<=",
+                pair(string_type()),
+                bool_type(),
+                0,
+                ScalarOp::BinaryRelation(Relation::LessEqual),
+            ),
+            scalar_builtin(
+                ">",
+                pair(string_type()),
+                bool_type(),
+                0,
+                ScalarOp::BinaryRelation(Relation::Greater),
+            ),
+            scalar_builtin(
+                ">=",
+                pair(string_type()),
+                bool_type(),
+                0,
+                ScalarOp::BinaryRelation(Relation::GreaterEqual),
+            ),
+            scalar_builtin(
+                "##",
+                pair(string_type()),
+                string_type(),
+                1,
+                ScalarOp::StringConcat,
+            ),
         ]
     })
 }
 
-/// Variant indices for `name`, in registration order.
+/// Variant indices for `name`, most-specific first as in `locate_overload`.
 fn overload_variants(name: &str) -> &'static [usize] {
     static INDEX: OnceLock<BTreeMap<&'static str, Vec<usize>>> = OnceLock::new();
     INDEX
         .get_or_init(|| {
             let mut index: BTreeMap<&'static str, Vec<usize>> = BTreeMap::new();
+            let table = TypeTable::new();
             for (position, builtin) in builtin_registry().iter().enumerate() {
-                index.entry(builtin.name).or_default().push(position);
+                let variants = index.entry(builtin.name).or_default();
+                let mut lower = 0;
+                let mut upper = variants.len();
+                for (slot, &existing) in variants.iter().enumerate() {
+                    let existing = &builtin_registry()[existing];
+                    match crate::coercions::is_close(&builtin.arg_type, &existing.arg_type, &table)
+                    {
+                        0x6 => lower = slot + 1,
+                        0x5 => upper = upper.min(slot),
+                        0x7 if builtin.arg_type == existing.arg_type => {
+                            panic!("duplicate startup overload for {}", builtin.name)
+                        }
+                        0x4 | 0x7 => panic!("ambiguous startup overload for {}", builtin.name),
+                        _ => {}
+                    }
+                }
+                assert!(lower <= upper, "conflicting startup overload order");
+                variants.insert(upper, position);
             }
             index
         })
@@ -1069,8 +1772,7 @@ impl TypedExpr {
                     .iter()
                     .map(|argument| force(argument, context))
                     .collect::<Result<Vec<_>, _>>()?;
-                let result = (builtin_registry()[*builtin].run)(values, *span)?;
-                Ok(at_level(level, || result.clone()))
+                builtin_registry()[*builtin].run(values, *span, level)
             }
         }
     }
@@ -1345,7 +2047,8 @@ mod tests {
 
     fn convert_and_run_with(source: &str, globals: &IdTable) -> Result<(Type, Value), Diagnostic> {
         let source = SourceText::new(source);
-        let program = parse(&source).expect("test source parses");
+        let program = parse(&source)
+            .unwrap_or_else(|error| panic!("test source {source:?} parses: {error:?}"));
         assert_eq!(program.expressions.len(), 1);
         let table = TypeTable::new();
         let analysis = Analysis::new(&table, globals);
@@ -1622,7 +2325,155 @@ mod tests {
         let error = convert_and_run("1 + true").expect_err("no such overload");
         assert!(error.message.contains("no instance of operator '+'"));
         let error = convert_and_run("1 / 0").expect_err("division by zero");
-        assert_eq!(error.message, "Division by zero");
+        assert_eq!(error.message, "fraction with zero denominator");
+    }
+
+    #[test]
+    fn scalar_registry_matches_the_upstream_operator_surface() {
+        let cases = [
+            ("/2", "1/2"),
+            ("%(5/2)", "(5,2)"),
+            ("1 + 1/2", "3/2"),
+            ("1/2 * 2", "1/1"),
+            ("(5/2) / 2", "5/4"),
+            ("(5/2) \\ 2", "1"),
+            ("(5/2) % 2", "1/2"),
+            ("(5/2) % (2/3)", "1/2"),
+            ("(2/3) ^ 2", "4/9"),
+            ("(-7) \\ 3", "-3"),
+            ("(-7) % 3", "2"),
+            ("7 \\% 3", "(2,1)"),
+            ("2 ^ 10", "1024"),
+            ("(-1) ^ -2147483649", "-1"),
+            ("0 ^ 2147483648", "0"),
+            ("1 = 1/1", "true"),
+            ("1 < 3/2", "true"),
+            ("=0", "true"),
+            ("!=(1/2)", "true"),
+            ("(>=(-1/2))", "false"),
+            ("\"a\" < \"b\"", "true"),
+            ("true != false", "true"),
+            ("~1", "-2"),
+            ("\"a\" ## \"b\"", "\"ab\""),
+        ];
+        for (source, expected) in cases {
+            let (_, value) = convert_and_run(source)
+                .unwrap_or_else(|error| panic!("{source} should convert and run: {error:?}"));
+            assert_eq!(value.to_string(), expected, "source: {source}");
+        }
+
+        let error = convert_and_run("2 ^ -1").expect_err("negative exponent");
+        assert_eq!(error.message, "Negative power of integer");
+        assert_eq!(
+            convert_and_run("2 ^ 2147483648")
+                .expect_err("large exponent")
+                .message,
+            "Exponent too large in power of integer"
+        );
+        assert_eq!(
+            convert_and_run("1 % 0").expect_err("mod zero").message,
+            "Modulo zero"
+        );
+        for (source, expected) in [
+            ("(1/2) / 0", "Division of rational by integer zero"),
+            ("(1/2) \\ 0", "Rational quotient by zero"),
+            ("(1/2) % 0", "Division by zero"),
+        ] {
+            match convert_and_run(source) {
+                Err(error) => assert_eq!(error.message, expected, "source: {source}"),
+                Ok(value) => panic!("{source} unexpectedly succeeded with {value:?}"),
+            }
+        }
+        assert!(convert_and_run("+ 1")
+            .expect_err("unary plus is not installed")
+            .message
+            .contains("no instance of operator '+'"));
+        assert!(convert_and_run("6 & 3")
+            .expect_err("symbolic bit-and is not installed")
+            .message
+            .contains("no instance of operator '&'"));
+    }
+
+    #[test]
+    fn overloads_are_sorted_most_specific_first_and_carry_hunger() {
+        let plus = overload_variants("+");
+        let argument_types = plus
+            .iter()
+            .map(|&index| builtin_registry()[index].arg_type.clone())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            argument_types,
+            vec![
+                int_pair(),
+                Type::tuple(vec![rat_type(), int_type()]),
+                pair(rat_type()),
+            ]
+        );
+        assert_eq!(
+            plus.iter()
+                .map(|&index| builtin_registry()[index].hunger)
+                .collect::<Vec<_>>(),
+            vec![1, 1, 1]
+        );
+    }
+
+    #[test]
+    fn no_value_builtins_validate_without_constructing_results() {
+        let source = SourceText::new("0 ^ 999999999999999999999999999999999999");
+        let program = parse(&source).expect("power parses");
+        let table = TypeTable::new();
+        let globals = IdTable::new();
+        let analysis = Analysis::new(&table, &globals);
+        let mut required = Type::Undetermined;
+        let typed = convert_expr(&program.expressions[0], &mut required, &analysis)
+            .expect("power converts");
+        assert_eq!(
+            typed
+                .evaluate(&mut EvaluationContext::new(), Level::NoValue)
+                .expect("zero power validates"),
+            None
+        );
+
+        for source_text in ["(1/2) / 0", "(1/2) % 0"] {
+            let source = SourceText::new(source_text);
+            let program = parse(&source).expect("rational zero operation parses");
+            let mut required = Type::Undetermined;
+            let typed = convert_expr(&program.expressions[0], &mut required, &analysis)
+                .expect("rational zero operation converts");
+            assert_eq!(
+                typed
+                    .evaluate(&mut EvaluationContext::new(), Level::NoValue)
+                    .expect("no-value skips the underlying rational operation"),
+                None,
+                "source: {source_text}"
+            );
+        }
+
+        let source = SourceText::new("(2/3) ^ -2");
+        let program = parse(&source).expect("negative rational power parses");
+        let mut required = Type::Undetermined;
+        let typed = convert_expr(&program.expressions[0], &mut required, &analysis)
+            .expect("negative rational power converts");
+        assert_eq!(
+            typed
+                .evaluate(&mut EvaluationContext::new(), Level::NoValue)
+                .expect("no-value skips the unsigned exponent conversion"),
+            None
+        );
+
+        let source = SourceText::new("1 / 0");
+        let program = parse(&source).expect("fraction parses");
+        let mut required = Type::Undetermined;
+        let typed = convert_expr(&program.expressions[0], &mut required, &analysis)
+            .expect("fraction converts");
+        let error = typed
+            .evaluate(&mut EvaluationContext::new(), Level::NoValue)
+            .expect_err("no-value still checks the denominator");
+        assert!(matches!(
+            error,
+            Control::Runtime(Diagnostic { message, .. })
+                if message == "fraction with zero denominator"
+        ));
     }
 
     #[test]
