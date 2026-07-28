@@ -8,6 +8,7 @@ pub mod diagnostic;
 pub mod domain_builtins;
 pub mod eval;
 pub mod formula;
+pub mod frames;
 pub mod lex;
 pub mod linear_values;
 pub mod session;
