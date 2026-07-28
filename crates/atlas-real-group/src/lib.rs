@@ -34,6 +34,7 @@ mod twisted_involution;
 mod weak_real_form;
 mod weyl;
 mod weyl_element;
+mod weyl_size;
 
 pub use adjoint_fiber::{
     AdjointBasedRootDatum, AdjointCartanFiber, AdjointCoweight, AdjointFiberBudget,
