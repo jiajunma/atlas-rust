@@ -68,6 +68,7 @@ const KEYWORDS: &[&str] = &[
 /// through the `Prim::ALL` order) — reserved positionally even before a
 /// primitive's value layer exists, exactly like upstream.
 const PRIMITIVE_TYPES: &[&str] = &[
+    "void",
     "int",
     "rat",
     "string",

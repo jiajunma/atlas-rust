@@ -100,6 +100,83 @@ pub enum Expr {
         inner: Box<Expr>,
         span: SourceSpan,
     },
+    /// `type: expr` — context-typing per upstream `make_cast` (parser.y:240).
+    Cast {
+        target: TypeExpr,
+        body: Box<Expr>,
+        span: SourceSpan,
+    },
+}
+
+/// A parsed type expression (upstream parser.y:792-818), spanned; length-1
+/// tuples and unions are collapsed by the grammar helpers, mirroring
+/// [`crate::types::Type`]. `TYPE_ID` mentions arrive with typedefs (B5).
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum TypeExpr {
+    Primitive {
+        value: Prim,
+        span: SourceSpan,
+    },
+    /// `[T]`.
+    Row {
+        component: Box<TypeExpr>,
+        span: SourceSpan,
+    },
+    /// `[*]` — row of as-yet-undetermined component type.
+    WildRow {
+        span: SourceSpan,
+    },
+    /// `void` written as an empty variant slot; also the empty arrow sides.
+    Void {
+        span: SourceSpan,
+    },
+    Tuple {
+        components: Vec<TypeExpr>,
+        span: SourceSpan,
+    },
+    Union {
+        variants: Vec<TypeExpr>,
+        span: SourceSpan,
+    },
+    Function {
+        argument: Box<TypeExpr>,
+        result: Box<TypeExpr>,
+        span: SourceSpan,
+    },
+}
+
+impl TypeExpr {
+    pub fn span(&self) -> SourceSpan {
+        match self {
+            Self::Primitive { span, .. }
+            | Self::Row { span, .. }
+            | Self::WildRow { span }
+            | Self::Void { span }
+            | Self::Tuple { span, .. }
+            | Self::Union { span, .. }
+            | Self::Function { span, .. } => *span,
+        }
+    }
+
+    /// The structural type this expression denotes (no typedefs yet).
+    pub fn resolve(&self) -> crate::types::Type {
+        use crate::types::Type;
+        match self {
+            Self::Primitive { value, .. } => Type::Primitive(*value),
+            Self::Row { component, .. } => Type::row(component.resolve()),
+            Self::WildRow { .. } => Type::row(Type::Undetermined),
+            Self::Void { .. } => Type::void(),
+            Self::Tuple { components, .. } => {
+                Type::tuple(components.iter().map(Self::resolve).collect())
+            }
+            Self::Union { variants, .. } => {
+                Type::union_of(variants.iter().map(Self::resolve).collect())
+            }
+            Self::Function {
+                argument, result, ..
+            } => Type::function(argument.resolve(), result.resolve()),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -132,7 +209,8 @@ impl Expr {
             | Self::Binary { span, .. }
             | Self::OperatorCall { span, .. }
             | Self::Call { span, .. }
-            | Self::Group { span, .. } => *span,
+            | Self::Group { span, .. }
+            | Self::Cast { span, .. } => *span,
         }
     }
 }
@@ -241,6 +319,10 @@ pub enum ParserToken {
     PrimitiveType(SpannedValue<Prim>),
     Becomes(SourceSpan),
     Equals(SourceSpan),
+    Star(SourceSpan),
+    Bar(SourceSpan),
+    Arrow(SourceSpan),
+    VoidType(SourceSpan),
     Colon(SourceSpan),
     Comma(SourceSpan),
     LBracket(SourceSpan),
@@ -270,6 +352,10 @@ impl ParserToken {
             Self::Unsupported(value) => value.span,
             Self::Becomes(span)
             | Self::Equals(span)
+            | Self::Star(span)
+            | Self::Bar(span)
+            | Self::Arrow(span)
+            | Self::VoidType(span)
             | Self::Colon(span)
             | Self::Comma(span)
             | Self::LBracket(span)
@@ -299,6 +385,10 @@ impl fmt::Display for ParserToken {
             Self::PrimitiveType(_) => "primitive type",
             Self::Becomes(_) => ":=",
             Self::Equals(_) => "=",
+            Self::Star(_) => "*",
+            Self::Bar(_) => "|",
+            Self::Arrow(_) => "->",
+            Self::VoidType(_) => "void",
             Self::Colon(_) => ":",
             Self::Comma(_) => ",",
             Self::LBracket(_) => "[",
@@ -373,6 +463,10 @@ fn parser_tokens_from_tokens(
                     span,
                 ))),
                 TokenKind::PrimitiveType(name) => {
+                    if name == "void" {
+                        // Upstream maps the name to the empty tuple type.
+                        return Some(Ok((ParserToken::VoidType(span), span)));
+                    }
                     let value = Prim::ALL
                         .into_iter()
                         .find(|prim| prim.name() == name.as_str());
@@ -407,6 +501,8 @@ fn parser_tokens_from_tokens(
                     let token = match operator.as_str() {
                         ":=" => ParserToken::Becomes(span),
                         "=" => ParserToken::Equals(span),
+                        "*" => ParserToken::Star(span),
+                        "->" => ParserToken::Arrow(span),
                         "~[" => ParserToken::ReverseLBracket(span),
                         _ => parser_operator(operator, span).unwrap_or_else(|operator| {
                             ParserToken::Unsupported(SpannedValue {
@@ -425,6 +521,7 @@ fn parser_tokens_from_tokens(
                         ',' => ParserToken::Comma(span),
                         '[' => ParserToken::LBracket(span),
                         ']' => ParserToken::RBracket(span),
+                        '|' => ParserToken::Bar(span),
                         '~' => parser_operator("~".to_owned(), span)
                             .expect("tilde has a fixed Atlas priority"),
                         _ => ParserToken::Unsupported(SpannedValue {
@@ -708,6 +805,119 @@ fn definition(target: SpannedValue<String>, value: Expr) -> Command {
     }
 }
 
+fn cast_expression(target: TypeExpr, body: Expr) -> Expr {
+    let span = SourceSpan::new(
+        target.span().source_id(),
+        target.span().byte_start(),
+        body.span().byte_end(),
+        target.span().start,
+        body.span().end,
+    );
+    Expr::Cast {
+        target,
+        body: Box::new(body),
+        span,
+    }
+}
+
+fn type_primitive(prim: SpannedValue<Prim>) -> TypeExpr {
+    TypeExpr::Primitive {
+        value: prim.value,
+        span: prim.span,
+    }
+}
+
+/// One `|`-separated slot of a union list: `None` is an empty (void) slot.
+type TypeVariantSlot = Option<Vec<TypeExpr>>;
+
+fn type_variant(first: TypeExpr, rest: Vec<TypeExpr>) -> Vec<TypeExpr> {
+    let mut components = vec![first];
+    components.extend(rest);
+    components
+}
+
+/// Assemble a comma-joined variant into a single type at `span`: empty is
+/// void, one component is itself, more make a tuple.
+fn variant_type(components: TypeVariantSlot, span: SourceSpan) -> TypeExpr {
+    match components {
+        None => TypeExpr::Void { span },
+        Some(mut components) if components.len() == 1 => {
+            components.pop().expect("length was checked")
+        }
+        Some(components) => TypeExpr::Tuple { components, span },
+    }
+}
+
+/// Assemble the `|`-separated variant slots into a single type at `span`.
+fn union_type(variants: Vec<TypeVariantSlot>, span: SourceSpan) -> TypeExpr {
+    let mut resolved: Vec<TypeExpr> = variants
+        .into_iter()
+        .map(|variant| variant_type(variant, span))
+        .collect();
+    if resolved.len() == 1 {
+        resolved.pop().expect("length was checked")
+    } else {
+        TypeExpr::Union {
+            variants: resolved,
+            span,
+        }
+    }
+}
+
+fn type_union_start(variant: TypeVariantSlot, leading_empty: bool) -> Vec<TypeVariantSlot> {
+    if leading_empty {
+        vec![None, variant]
+    } else {
+        vec![variant]
+    }
+}
+
+fn type_union_append(
+    mut variants: Vec<TypeVariantSlot>,
+    variant: TypeVariantSlot,
+) -> Vec<TypeVariantSlot> {
+    variants.push(variant);
+    variants
+}
+
+fn type_row(open: SourceSpan, inner: Vec<TypeVariantSlot>, close: SourceSpan) -> TypeExpr {
+    let span = join_span(open, close);
+    TypeExpr::Row {
+        component: Box::new(union_type(inner, span)),
+        span,
+    }
+}
+
+fn type_wild_row(open: SourceSpan, close: SourceSpan) -> TypeExpr {
+    TypeExpr::WildRow {
+        span: join_span(open, close),
+    }
+}
+
+fn type_group(open: SourceSpan, inner: Vec<TypeVariantSlot>, close: SourceSpan) -> TypeExpr {
+    // Parenthesised type lists have no extra wrapper: the parens only
+    // delimit, exactly as upstream builds the tuple/union directly.
+    union_type(inner, join_span(open, close))
+}
+
+fn type_function(
+    open: SourceSpan,
+    argument: Option<Vec<TypeVariantSlot>>,
+    result: Option<Vec<TypeVariantSlot>>,
+    close: SourceSpan,
+) -> TypeExpr {
+    let span = join_span(open, close);
+    let side = |list: Option<Vec<TypeVariantSlot>>| match list {
+        None => TypeExpr::Void { span },
+        Some(variants) => union_type(variants, span),
+    };
+    TypeExpr::Function {
+        argument: Box::new(side(argument)),
+        result: Box::new(side(result)),
+        span,
+    }
+}
+
 fn declaration(target: SpannedValue<String>, value_type: SpannedValue<Prim>) -> Command {
     Command::Declare {
         name: target.value,
@@ -891,6 +1101,11 @@ mod tests {
                     .join(",")
             ),
             Expr::Group { inner, .. } => format!("group({})", expression_shape(inner)),
+            Expr::Cast { target, body, .. } => format!(
+                "cast({};{})",
+                target.resolve().display(&crate::types::TypeTable::new()),
+                expression_shape(body)
+            ),
             Expr::Call {
                 callee, arguments, ..
             } => format!(
@@ -917,6 +1132,57 @@ mod tests {
     fn parses_assignment_as_a_right_associative_expression() {
         let expression = parse_one("x := y := 1");
         assert_eq!(expression_shape(&expression), "assign(x,assign(y,1))");
+    }
+
+    #[test]
+    fn parses_casts_with_the_upstream_type_grammar() {
+        assert_eq!(expression_shape(&parse_one("int: 3")), "cast(int;3)");
+        // The cast greedily takes the rest of the expression.
+        assert_eq!(
+            expression_shape(&parse_one("rat: 1 + 2")),
+            "cast(rat;+@4(1,2))"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("[int]: []")),
+            "cast([int];list())"
+        );
+        assert_eq!(expression_shape(&parse_one("[*]: []")), "cast([*];list())");
+        assert_eq!(
+            expression_shape(&parse_one("(int,bool): (1,true)")),
+            "cast((int,bool);tuple(1,true))"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("[int,rat]: []")),
+            "cast([(int,rat)];list())"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("(int|string): 3")),
+            "cast((int|string);3)"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("(void|vec): x")),
+            "cast((void|vec);x)"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("(int,int->int): f")),
+            "cast((int,int->int);f)"
+        );
+        assert_eq!(expression_shape(&parse_one("(->): f")), "cast((->);f)");
+        assert_eq!(
+            expression_shape(&parse_one("((int->bool)->bool): g")),
+            "cast(((int->bool)->bool);g)"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("mat: [[1]]")),
+            "cast(mat;list(list(1)))"
+        );
+        // A trailing empty union slot is a void variant.
+        assert_eq!(
+            expression_shape(&parse_one("(int|): 3")),
+            "cast((int|void);3)"
+        );
+        // `*` keeps working as the multiplication operator.
+        assert_eq!(expression_shape(&parse_one("2 * 3")), "*@6(2,3)");
     }
 
     #[test]

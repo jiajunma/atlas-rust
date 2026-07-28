@@ -259,6 +259,79 @@ pub fn validate_names(expression: &Expr, context: &EvalContext) -> Result<(), Di
     infer_scalar_type(expression, context).map(|_| ())
 }
 
+/// This evaluator's view of a structural type — a lossy bridge that retires
+/// with the typed pipeline (phase B stage B2).
+fn scalar_view_of_type(target: &crate::types::Type) -> ScalarType {
+    use crate::types::Type;
+    match target {
+        Type::Primitive(Prim::Int) => ScalarType::Integer,
+        Type::Primitive(Prim::Rat) => ScalarType::Rational,
+        Type::Primitive(Prim::String) => ScalarType::String,
+        Type::Primitive(Prim::Bool) => ScalarType::Boolean,
+        Type::Row(component) => {
+            let inner = scalar_view_of_type(component);
+            if inner == ScalarType::Unknown {
+                ScalarType::List(None)
+            } else {
+                ScalarType::List(Some(Box::new(inner)))
+            }
+        }
+        Type::Tuple(components) => {
+            ScalarType::Tuple(components.iter().map(scalar_view_of_type).collect())
+        }
+        _ => ScalarType::Unknown,
+    }
+}
+
+/// Dynamic cast semantics until the typed pipeline lands: check the value
+/// against the target structurally, applying the int-to-rat promotion that
+/// upstream reaches through its coercion table.
+fn cast_value(
+    value: Value,
+    target: &crate::types::Type,
+    span: SourceSpan,
+) -> Result<Value, Diagnostic> {
+    use crate::types::Type;
+    let mismatch = |value: &Value| {
+        Diagnostic::new(
+            ErrorKind::Type,
+            format!("cannot cast value {value} to the requested type"),
+            Some(span),
+        )
+    };
+    match (target, value) {
+        (Type::Undetermined, value) => Ok(value),
+        (Type::Primitive(Prim::Int), Value::Integer(value)) => Ok(Value::Integer(value)),
+        (Type::Primitive(Prim::Rat), Value::Integer(value)) => {
+            Ok(Value::Rational(BigRational::from(value)))
+        }
+        (Type::Primitive(Prim::Rat), Value::Rational(value)) => Ok(Value::Rational(value)),
+        (Type::Primitive(Prim::String), Value::String(value)) => Ok(Value::String(value)),
+        (Type::Primitive(Prim::Bool), Value::Boolean(value)) => Ok(Value::Boolean(value)),
+        (Type::Row(component), Value::List(elements)) => Ok(Value::List(
+            elements
+                .into_iter()
+                .map(|element| cast_value(element, component, span))
+                .collect::<Result<Vec<_>, _>>()?,
+        )),
+        (Type::Tuple(components), Value::Tuple(elements)) if components.len() == elements.len() => {
+            Ok(Value::Tuple(
+                elements
+                    .into_iter()
+                    .zip(components)
+                    .map(|(element, component)| cast_value(element, component, span))
+                    .collect::<Result<Vec<_>, _>>()?,
+            ))
+        }
+        (Type::Primitive(_) | Type::Row(_) | Type::Tuple(_), value) => Err(mismatch(&value)),
+        (_, value) => Err(Diagnostic::new(
+            ErrorKind::Type,
+            format!("cast target is not yet supported by this evaluator (value {value})"),
+            Some(span),
+        )),
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum ScalarType {
     Unknown,
@@ -275,6 +348,12 @@ pub(crate) enum ScalarType {
 
 fn infer_scalar_type(expression: &Expr, context: &EvalContext) -> Result<ScalarType, Diagnostic> {
     match expression {
+        Expr::Cast { target, body, .. } => {
+            // Validate the body, then report the cast's own type as far as
+            // this evaluator can express it.
+            infer_scalar_type(body, context)?;
+            Ok(scalar_view_of_type(&target.resolve()))
+        }
         Expr::Call { callee, span, .. } => match callee.as_ref() {
             Expr::Identifier { .. } => Ok(ScalarType::Unknown),
             _ => Err(Diagnostic::new(
@@ -779,6 +858,10 @@ fn eval_call(
 /// Evaluate one expression against an explicit context.
 fn eval_expr(expression: &Expr, context: &mut EvalContext) -> Result<Value, Diagnostic> {
     match expression {
+        Expr::Cast { target, body, span } => {
+            let value = eval_expr(body, context)?;
+            cast_value(value, &target.resolve(), *span)
+        }
         Expr::Call {
             callee,
             arguments,
@@ -1417,6 +1500,26 @@ mod tests {
         let source = SourceText::new(source);
         let program = parse(&source).expect("test source parses");
         evaluate(&program)
+    }
+
+    #[test]
+    fn casts_check_and_promote_dynamically() {
+        let events = run("rat: 2").expect("int promotes to rat");
+        assert!(matches!(
+            &events[0],
+            EvalEvent::Value { value, .. } if *value == rational(2, 1)
+        ));
+        let empty = run("[int]: []").expect("empty list casts to any row");
+        assert!(matches!(
+            &empty[0],
+            EvalEvent::Value { value, .. } if *value == Value::List(Vec::new())
+        ));
+        let wild = run("[*]: [1,2]").expect("wild row accepts any components");
+        assert!(matches!(&wild[0], EvalEvent::Value { .. }));
+        let mismatch = run("int: \"x\"").expect_err("string is not an int");
+        assert_eq!(mismatch.kind, ErrorKind::Type);
+        let unsupported = run("(int->int): 3").expect_err("function casts wait for B3");
+        assert_eq!(unsupported.kind, ErrorKind::Type);
     }
 
     #[test]

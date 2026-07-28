@@ -1,11 +1,13 @@
 use super::{
-    assignment, binary, declaration, definition, extend_operator_formula, finish_let,
-    expression_list, finish_operator_formula, join_span, let_binding, let_bindings,
+    assignment, binary, cast_expression, declaration, definition, extend_operator_formula,
+    finish_let, expression_list, finish_operator_formula, join_span, let_binding, let_bindings,
     let_expression, list_expression, tuple_expression,
     prepend_let_group,
     call_suffix, postfix, prefix_operator_call, slice_suffix, start_binary_formula, start_prefix_formula,
-    subscription_suffix, unary, BinaryOp, Command, Expr, LetBinding, ParsedLet, ParserToken,
-    PostfixSuffix, Prim, Program, SpannedValue, UnaryOp,
+    subscription_suffix, type_group, type_function, type_primitive, type_row, type_union_append,
+    type_union_start, type_variant, type_wild_row, unary, BinaryOp, Command, Expr, LetBinding,
+    ParsedLet, ParserToken, PostfixSuffix, Prim, Program, SpannedValue, TypeExpr, TypeVariantSlot,
+    UnaryOp,
 };
 use crate::diagnostic::SourceSpan;
 use crate::formula::{FormulaOperator, FormulaStack};
@@ -32,7 +34,37 @@ pub Command: Command = {
 
 pub Expr: Expr = {
     <let_span:"let"> <tail:LetTail> => let_expression(let_span, tail),
+    <cast:Cast> => cast,
     <expression:AssignmentExpr> => expression,
+};
+
+// `type: expr` sits at the top expression level and greedily takes the rest,
+// exactly as upstream (parser.y:224-240).
+Cast: Expr = {
+    <target:TypeExprNode> <_colon:":"> <body:Expr> => cast_expression(target, body),
+};
+
+TypeExprNode: TypeExpr = {
+    <prim:"primitive_type"> => type_primitive(prim),
+    <span:"void"> => TypeExpr::Void { span },
+    <open:"["> <inner:TypeUnionList> <close:"]"> => type_row(open, inner, close),
+    <open:"["> <_star:"*"> <close:"]"> => type_wild_row(open, close),
+    <open:"("> <inner:TypeUnionList> <close:")"> => type_group(open, inner, close),
+    <open:"("> <argument:TypeUnionList?> <_arrow:"->"> <result:TypeUnionList?> <close:")"> => {
+        type_function(open, argument, result, close)
+    },
+};
+
+// `|`-separated variant slots; a missing slot is a void variant. Mirrors
+// upstream union_list/types (parser.y:806-818).
+TypeUnionList: Vec<TypeVariantSlot> = {
+    <variant:TypeVariant> => type_union_start(Some(variant), false),
+    <_bar:"|"> <variant:TypeVariant?> => type_union_start(variant, true),
+    <list:TypeUnionList> <_bar:"|"> <variant:TypeVariant?> => type_union_append(list, variant),
+};
+
+TypeVariant: Vec<TypeExpr> = {
+    <first:TypeExprNode> <rest:("," <TypeExprNode>)*> => type_variant(first, rest),
 };
 
 LetTail: ParsedLet = {
@@ -97,6 +129,7 @@ Operand: Expr = {
 Operator: FormulaOperator = {
     <operator:"operator"> => operator.value,
     <span:"="> => FormulaOperator::new("=", 2).with_span(span),
+    <span:"*"> => FormulaOperator::new("*", 6).with_span(span),
 };
 
 Postfix: Expr = {
@@ -162,6 +195,10 @@ extern {
         "primitive_type" => ParserToken::PrimitiveType(<SpannedValue<Prim>>),
         ":=" => ParserToken::Becomes(<SourceSpan>),
         "=" => ParserToken::Equals(<SourceSpan>),
+        "*" => ParserToken::Star(<SourceSpan>),
+        "void" => ParserToken::VoidType(<SourceSpan>),
+        "|" => ParserToken::Bar(<SourceSpan>),
+        "->" => ParserToken::Arrow(<SourceSpan>),
         ":" => ParserToken::Colon(<SourceSpan>),
         "," => ParserToken::Comma(<SourceSpan>),
         "[" => ParserToken::LBracket(<SourceSpan>),
