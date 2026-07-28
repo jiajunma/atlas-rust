@@ -19,7 +19,9 @@ use crate::linear_values::{Matrix, RatVec, Vec32};
 use crate::syntax::Expr;
 use crate::types::{Prim, Type, TypeTable};
 use crate::value::Value;
-use std::collections::BTreeMap;
+use std::cell::RefCell;
+use std::collections::{BTreeMap, BTreeSet};
+use std::rc::Rc;
 use std::sync::OnceLock;
 
 /// Why evaluation stopped early. Loops consume `Break(0)` and rethrow
@@ -52,11 +54,45 @@ pub enum TypedExpr {
         inner: Box<TypedExpr>,
         span: SourceSpan,
     },
+    /// Evaluate `inner` for effects and replace its value with void.
+    Void(Box<TypedExpr>),
     /// A global read through the cell captured at analysis time.
     GlobalIdent {
         name: String,
         cell: GlobalCell,
         span: SourceSpan,
+    },
+    LocalIdent {
+        name: String,
+        depth: usize,
+        offset: usize,
+        span: SourceSpan,
+    },
+    GlobalAssignment {
+        cell: GlobalCell,
+        value: Box<TypedExpr>,
+    },
+    LocalAssignment {
+        depth: usize,
+        offset: usize,
+        value: Box<TypedExpr>,
+    },
+    Subscription {
+        array: Box<TypedExpr>,
+        index: Box<TypedExpr>,
+        reversed: bool,
+        span: SourceSpan,
+    },
+    Slice {
+        array: Box<TypedExpr>,
+        lower: Box<TypedExpr>,
+        upper: Box<TypedExpr>,
+        flags: crate::syntax::SliceFlags,
+        span: SourceSpan,
+    },
+    LetGroup {
+        initializers: Vec<TypedExpr>,
+        body: Box<TypedExpr>,
     },
     /// `if c then t else e fi` after balancing.
     Conditional {
@@ -76,6 +112,17 @@ pub enum TypedExpr {
 pub struct Analysis<'a> {
     pub types: &'a TypeTable,
     pub globals: &'a IdTable,
+    locals: BTreeMap<String, (TypeCell, usize, usize)>,
+}
+
+impl<'a> Analysis<'a> {
+    pub fn new(types: &'a TypeTable, globals: &'a IdTable) -> Self {
+        Self {
+            types,
+            globals,
+            locals: BTreeMap::new(),
+        }
+    }
 }
 
 /// The global identifier table: one binding per name, each definition
@@ -83,8 +130,10 @@ pub struct Analysis<'a> {
 /// captured; re-definition rebinds the name only).
 #[derive(Default)]
 pub struct IdTable {
-    entries: BTreeMap<String, (Type, GlobalCell)>,
+    entries: BTreeMap<String, (TypeCell, GlobalCell)>,
 }
+
+pub type TypeCell = Rc<RefCell<Type>>;
 
 impl IdTable {
     pub fn new() -> Self {
@@ -92,10 +141,11 @@ impl IdTable {
     }
 
     pub fn define(&mut self, name: impl Into<String>, type_: Type, cell: GlobalCell) {
-        self.entries.insert(name.into(), (type_, cell));
+        self.entries
+            .insert(name.into(), (Rc::new(RefCell::new(type_)), cell));
     }
 
-    pub fn lookup(&self, name: &str) -> Option<&(Type, GlobalCell)> {
+    pub fn lookup(&self, name: &str) -> Option<&(TypeCell, GlobalCell)> {
         self.entries.get(name)
     }
 }
@@ -119,7 +169,11 @@ fn conform_types(
         return Ok(converted);
     }
     if required.is_void() {
-        return Ok(converted);
+        return Ok(if found.is_void() {
+            converted
+        } else {
+            TypedExpr::Void(Box::new(converted))
+        });
     }
     if let Some(coercion) = coercion_between(found, required, analysis.types) {
         return Ok(TypedExpr::Conversion {
@@ -257,6 +311,21 @@ pub fn convert_expr(
             }
         }
         Expr::Identifier { name, span } => {
+            if let Some((type_, depth, offset)) = analysis.locals.get(name) {
+                let found = type_.borrow().clone();
+                return conform_types(
+                    &found,
+                    required,
+                    TypedExpr::LocalIdent {
+                        name: name.clone(),
+                        depth: *depth,
+                        offset: *offset,
+                        span: *span,
+                    },
+                    *span,
+                    analysis,
+                );
+            }
             let Some((type_, cell)) = analysis.globals.lookup(name) else {
                 return Err(Diagnostic::new(
                     ErrorKind::Name,
@@ -264,7 +333,7 @@ pub fn convert_expr(
                     Some(*span),
                 ));
             };
-            let found = type_.clone();
+            let found = type_.borrow().clone();
             conform_types(
                 &found,
                 required,
@@ -276,6 +345,184 @@ pub fn convert_expr(
                 *span,
                 analysis,
             )
+        }
+        Expr::Assignment {
+            name,
+            target_span,
+            value,
+            span,
+        } => {
+            if let Some((target, depth, offset)) = analysis.locals.get(name) {
+                let mut required_value = target.borrow().clone();
+                let converted = convert_expr(value, &mut required_value, analysis)?;
+                *target.borrow_mut() = required_value.clone();
+                return conform_types(
+                    &required_value,
+                    required,
+                    TypedExpr::LocalAssignment {
+                        depth: *depth,
+                        offset: *offset,
+                        value: Box::new(converted),
+                    },
+                    *span,
+                    analysis,
+                );
+            }
+            let Some((target, cell)) = analysis.globals.lookup(name) else {
+                return Err(Diagnostic::new(
+                    ErrorKind::Name,
+                    format!("undefined identifier `{name}` in assignment"),
+                    Some(*target_span),
+                ));
+            };
+            let mut required_value = target.borrow().clone();
+            let converted = convert_expr(value, &mut required_value, analysis)?;
+            *target.borrow_mut() = required_value.clone();
+            conform_types(
+                &required_value,
+                required,
+                TypedExpr::GlobalAssignment {
+                    cell: cell.clone(),
+                    value: Box::new(converted),
+                },
+                *span,
+                analysis,
+            )
+        }
+        Expr::Subscription {
+            array,
+            index,
+            reversed,
+            span,
+        } => {
+            let mut array_type = Type::Undetermined;
+            let converted_array = convert_expr(array, &mut array_type, analysis)?;
+            let mut index_type = Type::Primitive(Prim::Int);
+            let converted_index = convert_expr(index, &mut index_type, analysis)?;
+            let Type::Row(component) = array_type else {
+                return Err(type_error(
+                    format!(
+                        "subscription requires a row, found {}",
+                        array_type.display(analysis.types)
+                    ),
+                    *span,
+                ));
+            };
+            let found = (*component).clone();
+            conform_types(
+                &found,
+                required,
+                TypedExpr::Subscription {
+                    array: Box::new(converted_array),
+                    index: Box::new(converted_index),
+                    reversed: *reversed,
+                    span: *span,
+                },
+                *span,
+                analysis,
+            )
+        }
+        Expr::Slice {
+            array,
+            lower,
+            upper,
+            flags,
+            span,
+        } => {
+            let mut array_type = Type::Undetermined;
+            let converted_array = convert_expr(array, &mut array_type, analysis)?;
+            let Type::Row(component) = array_type else {
+                return Err(type_error(
+                    format!(
+                        "slice requires a row, found {}",
+                        array_type.display(analysis.types)
+                    ),
+                    *span,
+                ));
+            };
+            let mut bound_type = Type::Primitive(Prim::Int);
+            let converted_lower = convert_expr(lower, &mut bound_type, analysis)?;
+            let mut bound_type = Type::Primitive(Prim::Int);
+            let converted_upper = convert_expr(upper, &mut bound_type, analysis)?;
+            let found = Type::row((*component).clone());
+            conform_types(
+                &found,
+                required,
+                TypedExpr::Slice {
+                    array: Box::new(converted_array),
+                    lower: Box::new(converted_lower),
+                    upper: Box::new(converted_upper),
+                    flags: *flags,
+                    span: *span,
+                },
+                *span,
+                analysis,
+            )
+        }
+        Expr::Let {
+            binding_groups,
+            body,
+            span: _,
+        } => {
+            let mut locals = analysis.locals.clone();
+            let mut groups = Vec::with_capacity(binding_groups.len());
+            for bindings in binding_groups {
+                let mut names = BTreeSet::new();
+                for binding in bindings {
+                    if !names.insert(binding.name.as_str()) {
+                        return Err(Diagnostic::new(
+                            ErrorKind::Name,
+                            format!("Multiple binding of '{}' in same scope", binding.name),
+                            Some(binding.name_span),
+                        ));
+                    }
+                }
+                let mut pending = Vec::with_capacity(bindings.len());
+                for binding in bindings {
+                    let mut binding_type = Type::Undetermined;
+                    let converted = convert_expr(
+                        &binding.initializer,
+                        &mut binding_type,
+                        &Analysis {
+                            types: analysis.types,
+                            globals: analysis.globals,
+                            locals: locals.clone(),
+                        },
+                    )?;
+                    pending.push((binding.name.clone(), binding_type, converted));
+                }
+                for (_, depth, _) in locals.values_mut() {
+                    *depth += 1;
+                }
+                for (offset, (name, binding_type, _)) in pending.iter().enumerate() {
+                    locals.insert(
+                        name.clone(),
+                        (Rc::new(RefCell::new(binding_type.clone())), 0, offset),
+                    );
+                }
+                groups.push(
+                    pending
+                        .into_iter()
+                        .map(|(_, _, converted)| converted)
+                        .collect::<Vec<_>>(),
+                );
+            }
+            let mut converted = convert_expr(
+                body,
+                required,
+                &Analysis {
+                    types: analysis.types,
+                    globals: analysis.globals,
+                    locals,
+                },
+            )?;
+            for initializers in groups.into_iter().rev() {
+                converted = TypedExpr::LetGroup {
+                    initializers,
+                    body: Box::new(converted),
+                };
+            }
+            Ok(converted)
         }
         Expr::OperatorCall {
             operator,
@@ -616,6 +863,10 @@ impl TypedExpr {
                 let converted = apply_conversion(tag, value, *span)?;
                 Ok(at_level(level, || converted.clone()))
             }
+            Self::Void(inner) => {
+                inner.evaluate(context, Level::NoValue)?;
+                Ok(at_level(level, || Value::Tuple(Vec::new())))
+            }
             Self::GlobalIdent { name, cell, span } => {
                 let value = cell.borrow().clone();
                 match value {
@@ -625,6 +876,67 @@ impl TypedExpr {
                         *span,
                     )),
                 }
+            }
+            Self::LocalIdent {
+                name,
+                depth,
+                offset,
+                span,
+            } => match context.local(*depth, *offset) {
+                Some(value) => Ok(at_level(level, || value.as_ref().clone())),
+                None => Err(runtime(
+                    format!("Taking value of uninitialized variable '{name}'"),
+                    *span,
+                )),
+            },
+            Self::GlobalAssignment { cell, value } => {
+                let value = force(value, context)?;
+                *cell.borrow_mut() = Some(std::rc::Rc::new(value.clone()));
+                Ok(at_level(level, || value.clone()))
+            }
+            Self::LocalAssignment {
+                depth,
+                offset,
+                value,
+            } => {
+                let value = force(value, context)?;
+                let updated = context.set_local(*depth, *offset, std::rc::Rc::new(value.clone()));
+                assert!(
+                    updated,
+                    "analysis emitted an invalid local assignment address"
+                );
+                Ok(at_level(level, || value.clone()))
+            }
+            Self::Subscription {
+                array,
+                index,
+                reversed,
+                span,
+            } => {
+                let index = expect_integer(force(index, context)?, *span, "subscription index")?;
+                let values = expect_typed_list(force(array, context)?, *span, "subscription")?;
+                let position = checked_index(&index, values.len(), *reversed, *span)?;
+                Ok(at_level(level, || values[position].clone()))
+            }
+            Self::Slice {
+                array,
+                lower,
+                upper,
+                flags,
+                span,
+            } => {
+                let upper = expect_integer(force(upper, context)?, *span, "slice upper bound")?;
+                let lower = expect_integer(force(lower, context)?, *span, "slice lower bound")?;
+                let values = expect_typed_list(force(array, context)?, *span, "slice")?;
+                let sliced = evaluate_slice(values, lower, upper, *flags, *span)?;
+                Ok(at_level(level, || Value::List(sliced.clone())))
+            }
+            Self::LetGroup { initializers, body } => {
+                let values = initializers
+                    .iter()
+                    .map(|initializer| force(initializer, context).map(std::rc::Rc::new))
+                    .collect::<Result<Vec<_>, _>>()?;
+                context.with_frame(values, |context| body.evaluate(context, level))
             }
             Self::Conditional {
                 condition,
@@ -682,6 +994,101 @@ fn expect_list(value: Value) -> Vec<Value> {
         Value::List(values) => values,
         other => panic!("conversion applied to non-list value {other}"),
     }
+}
+
+fn expect_typed_list(
+    value: Value,
+    span: SourceSpan,
+    operation: &str,
+) -> Result<Vec<Value>, Control> {
+    match value {
+        Value::List(values) => Ok(values),
+        _ => Err(runtime(format!("{operation} requires a list"), span)),
+    }
+}
+
+fn expect_integer(value: Value, span: SourceSpan, operation: &str) -> Result<BigInt, Control> {
+    match value {
+        Value::Integer(value) => Ok(value),
+        _ => Err(Control::Runtime(Diagnostic::new(
+            ErrorKind::Type,
+            format!("{operation} must be an integer"),
+            Some(span),
+        ))),
+    }
+}
+
+fn checked_index(
+    index: &BigInt,
+    length: usize,
+    reversed: bool,
+    span: SourceSpan,
+) -> Result<usize, Control> {
+    let original = index.clone();
+    let index = usize::try_from(index).map_err(|_| {
+        runtime(
+            format!("index {original} out of range (0<= . <{length}) in subscription"),
+            span,
+        )
+    })?;
+    if index >= length {
+        return Err(runtime(
+            format!("index {original} out of range (0<= . <{length}) in subscription"),
+            span,
+        ));
+    }
+    Ok(if reversed { length - 1 - index } else { index })
+}
+
+fn evaluate_slice(
+    values: Vec<Value>,
+    lower: BigInt,
+    upper: BigInt,
+    flags: crate::syntax::SliceFlags,
+    span: SourceSpan,
+) -> Result<Vec<Value>, Control> {
+    let length = BigInt::from(values.len());
+    let lower = if flags.lower_from_end {
+        &length - lower
+    } else {
+        lower
+    };
+    let upper = if flags.upper_from_end {
+        &length - upper
+    } else {
+        upper
+    };
+    let lower_out_of_range = lower < 0;
+    let upper_out_of_range = upper > length;
+    if lower_out_of_range || upper_out_of_range {
+        let message = match (lower_out_of_range, upper_out_of_range) {
+            (true, true) => format!(
+                "both bounds {lower}:{upper} out of range (should be >=0 respectively <= {}) in slice",
+                values.len()
+            ),
+            (true, false) => {
+                format!("lower bound {lower} out of range (should be >=0) in slice")
+            }
+            (false, true) => format!(
+                "upper bound {upper} out of range (should be <= {}) in slice",
+                values.len()
+            ),
+            (false, false) => unreachable!(),
+        };
+        return Err(runtime(message, span));
+    }
+    let lower_index = usize::try_from(&lower)
+        .map_err(|_| runtime("slice lower bound is not a machine index", span))?;
+    let upper_index = usize::try_from(&upper)
+        .map_err(|_| runtime("slice upper bound is not a machine index", span))?;
+    if lower_index >= upper_index {
+        return Ok(Vec::new());
+    }
+    let mut result = values[lower_index..upper_index].to_vec();
+    if flags.reverse_output {
+        result.reverse();
+    }
+    Ok(result)
 }
 
 fn list_to_vec32(values: Vec<Value>, span: SourceSpan) -> Result<Vec32, Control> {
@@ -827,10 +1234,7 @@ mod tests {
         let program = parse(&source).expect("test source parses");
         assert_eq!(program.expressions.len(), 1);
         let table = TypeTable::new();
-        let analysis = Analysis {
-            types: &table,
-            globals,
-        };
+        let analysis = Analysis::new(&table, globals);
         let mut required = Type::Undetermined;
         let typed = convert_expr(&program.expressions[0], &mut required, &analysis)?;
         let mut context = EvaluationContext::new();
@@ -868,6 +1272,143 @@ mod tests {
         assert!(error.message.contains("uninitialized variable 'y'"));
         let error = convert_and_run_with("z", &globals).expect_err("unknown name");
         assert!(error.message.contains("undefined identifier"));
+    }
+
+    #[test]
+    fn assignment_writes_through_the_captured_cell() {
+        let cell = crate::frames::global_with(Rc::new(Value::Integer(1.into())));
+        let mut globals = IdTable::new();
+        globals.define("x", Type::Primitive(Prim::Rat), cell.clone());
+
+        let (type_, value) = convert_and_run_with("x := 2", &globals).expect("assignment");
+        assert_eq!(type_, Type::Primitive(Prim::Rat));
+        assert_eq!(value.to_string(), "2/1");
+        assert_eq!(
+            cell.borrow().as_ref().map(|value| value.to_string()),
+            Some("2/1".into())
+        );
+
+        let error = convert_and_run("missing := 2").expect_err("unknown assignment target");
+        assert!(error
+            .message
+            .contains("undefined identifier `missing` in assignment"));
+    }
+
+    #[test]
+    fn assignment_voids_values_and_specialises_binding_types() {
+        let void_cell = crate::frames::global_with(Rc::new(Value::Tuple(Vec::new())));
+        let mut globals = IdTable::new();
+        globals.define("sink", Type::void(), void_cell.clone());
+        let (type_, value) = convert_and_run_with("sink := 7", &globals).expect("void assignment");
+        assert_eq!(type_, Type::void());
+        assert_eq!(value, Value::Tuple(Vec::new()));
+        assert_eq!(
+            void_cell
+                .borrow()
+                .as_ref()
+                .map(|value| value.as_ref().clone()),
+            Some(Value::Tuple(Vec::new()))
+        );
+
+        let row_cell = crate::frames::unset_global();
+        globals.define("row", Type::row(Type::Undetermined), row_cell.clone());
+        convert_and_run_with("row := [1,2]", &globals).expect("specialising assignment");
+        let (type_cell, _) = globals.lookup("row").expect("row remains bound");
+        assert_eq!(*type_cell.borrow(), Type::row(Type::Primitive(Prim::Int)));
+    }
+
+    #[test]
+    fn row_subscription_and_slices_preserve_direction_flags() {
+        let (_, value) = convert_and_run("[10,20,30]~[0]").expect("reverse subscription");
+        assert_eq!(value, Value::Integer(30.into()));
+
+        let (_, value) = convert_and_run("[10,20,30,40][1:3]").expect("forward slice");
+        assert_eq!(
+            value,
+            Value::List(vec![Value::Integer(20.into()), Value::Integer(30.into())])
+        );
+
+        let (_, value) = convert_and_run("[10,20,30,40][2:]").expect("open upper slice");
+        assert_eq!(
+            value,
+            Value::List(vec![Value::Integer(30.into()), Value::Integer(40.into())])
+        );
+
+        let (_, value) = convert_and_run("[10,20,30,40]~[1:3]").expect("reverse subject");
+        assert_eq!(
+            value,
+            Value::List(vec![Value::Integer(30.into()), Value::Integer(20.into())])
+        );
+        let (_, value) = convert_and_run("[10,20,30,40][3~:4]").expect("reverse lower");
+        assert_eq!(
+            value,
+            Value::List(vec![
+                Value::Integer(20.into()),
+                Value::Integer(30.into()),
+                Value::Integer(40.into())
+            ])
+        );
+        let (_, value) = convert_and_run("[10,20,30,40][0:1~]").expect("reverse upper");
+        assert_eq!(
+            value,
+            Value::List(vec![
+                Value::Integer(10.into()),
+                Value::Integer(20.into()),
+                Value::Integer(30.into())
+            ])
+        );
+    }
+
+    #[test]
+    fn patternless_let_uses_parallel_groups_and_supports_assignment() {
+        let (_, value) = convert_and_run("let x = 1 then x = x + 1 in x").expect("groups");
+        assert_eq!(value, Value::Integer(2.into()));
+
+        let (_, value) = convert_and_run("let x = 3 in x := x + 1").expect("local assignment");
+        assert_eq!(value, Value::Integer(4.into()));
+
+        let error = convert_and_run("let x = 1, y = x in y").expect_err("parallel group");
+        assert!(error.message.contains("undefined identifier `x`"));
+        let error = convert_and_run("let x = 1, x = 2 in x").expect_err("duplicate binding");
+        assert!(error.message.contains("Multiple binding of 'x'"));
+
+        let (_, value) = convert_and_run("let x = 1 then y = 2 then z = 3 in x := y + z")
+            .expect("assignment reaches a depth-two local");
+        assert_eq!(value, Value::Integer(5.into()));
+    }
+
+    #[test]
+    fn subscription_and_slice_follow_upstream_evaluation_order() {
+        let cell = crate::frames::global_with(Rc::new(Value::Integer(9.into())));
+        let mut globals = IdTable::new();
+        globals.define("i", Type::Primitive(Prim::Int), cell.clone());
+
+        let (_, value) = convert_and_run_with("[(i := 1),(i := 2)][i := 0]", &globals)
+            .expect("subscription order");
+        assert_eq!(value, Value::Integer(1.into()));
+        assert_eq!(
+            cell.borrow().as_ref().map(|value| value.as_ref().clone()),
+            Some(Value::Integer(2.into()))
+        );
+
+        *cell.borrow_mut() = Some(Rc::new(Value::Integer(0.into())));
+        let (_, value) = convert_and_run_with(
+            "[(i := i * 10 + 3),(i := i * 10 + 4)][(i := i * 10):(i := i * 10 + 2)]",
+            &globals,
+        )
+        .expect("slice order");
+        assert_eq!(value, Value::List(Vec::new()));
+        assert_eq!(
+            cell.borrow().as_ref().map(|value| value.as_ref().clone()),
+            Some(Value::Integer(2034.into()))
+        );
+    }
+
+    #[test]
+    fn begin_end_groups_like_parentheses() {
+        let (type_, value) = convert_and_run("begin 1 + 2 end").expect("begin/end group");
+        assert_eq!(type_, Type::Primitive(Prim::Int));
+        assert_eq!(value, Value::Integer(3.into()));
     }
 
     #[test]

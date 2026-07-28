@@ -231,16 +231,6 @@ pub struct SliceFlags {
     pub upper_from_end: bool,
 }
 
-impl SliceFlags {
-    const fn forward(upper_from_end: bool) -> Self {
-        Self {
-            reverse_output: false,
-            lower_from_end: false,
-            upper_from_end,
-        }
-    }
-}
-
 #[derive(Debug)]
 enum PostfixSuffix {
     Subscription {
@@ -337,8 +327,11 @@ pub enum ParserToken {
     LBracket(SourceSpan),
     ReverseLBracket(SourceSpan),
     RBracket(SourceSpan),
+    Tilde(SourceSpan),
     Let(SourceSpan),
     In(SourceSpan),
+    Begin(SourceSpan),
+    End(SourceSpan),
     Then(SourceSpan),
     If(SourceSpan),
     Else(SourceSpan),
@@ -374,8 +367,11 @@ impl ParserToken {
             | Self::LBracket(span)
             | Self::ReverseLBracket(span)
             | Self::RBracket(span)
+            | Self::Tilde(span)
             | Self::Let(span)
             | Self::In(span)
+            | Self::Begin(span)
+            | Self::End(span)
             | Self::Then(span)
             | Self::If(span)
             | Self::Else(span)
@@ -411,8 +407,11 @@ impl fmt::Display for ParserToken {
             Self::LBracket(_) => "[",
             Self::ReverseLBracket(_) => "~[",
             Self::RBracket(_) => "]",
+            Self::Tilde(_) => "~",
             Self::Let(_) => "let",
             Self::In(_) => "in",
+            Self::Begin(_) => "begin",
+            Self::End(_) => "end",
             Self::Then(_) => "then",
             Self::If(_) => "if",
             Self::Else(_) => "else",
@@ -459,9 +458,27 @@ impl Iterator for TokenStream {
 fn parser_tokens_from_tokens(
     tokens: impl IntoIterator<Item = Token>,
 ) -> Result<Vec<(ParserToken, SourceSpan)>, ParseError> {
+    let tokens = tokens.into_iter().collect::<Vec<_>>();
+    let reversal_tildes = tokens
+        .iter()
+        .enumerate()
+        .map(|(index, token)| {
+            if !matches!(token.kind, TokenKind::Punctuation('~')) {
+                return false;
+            }
+            match tokens.get(index + 1).map(|next| &next.kind) {
+                Some(TokenKind::Punctuation(':' | ']' | ',')) => true,
+                Some(TokenKind::Keyword(word)) => {
+                    matches!(word.as_str(), "do" | "od" | "if" | "for")
+                }
+                _ => false,
+            }
+        })
+        .collect::<Vec<_>>();
     tokens
         .into_iter()
-        .filter_map(|token| {
+        .zip(reversal_tildes)
+        .filter_map(|(token, reversal_tilde)| {
             let span = token.span;
             match token.kind {
                 TokenKind::Eof => None,
@@ -513,6 +530,8 @@ fn parser_tokens_from_tokens(
                         "not" => ParserToken::Not(span),
                         "let" => ParserToken::Let(span),
                         "in" => ParserToken::In(span),
+                        "begin" => ParserToken::Begin(span),
+                        "end" => ParserToken::End(span),
                         "then" => ParserToken::Then(span),
                         "if" => ParserToken::If(span),
                         "else" => ParserToken::Else(span),
@@ -547,6 +566,7 @@ fn parser_tokens_from_tokens(
                         '[' => ParserToken::LBracket(span),
                         ']' => ParserToken::RBracket(span),
                         '|' => ParserToken::Bar(span),
+                        '~' if reversal_tilde => ParserToken::Tilde(span),
                         '~' => parser_operator("~".to_owned(), span)
                             .expect("tilde has a fixed Atlas priority"),
                         _ => ParserToken::Unsupported(SpannedValue {
@@ -768,14 +788,22 @@ fn subscription_suffix(index: Expr, reversed: bool, close: SourceSpan) -> Postfi
 fn slice_suffix(
     lower: Option<Expr>,
     upper: Option<Expr>,
+    reverse_output: bool,
+    lower_from_end: bool,
+    upper_from_end: bool,
     colon: SourceSpan,
     close: SourceSpan,
 ) -> PostfixSuffix {
-    let upper_from_end = upper.is_none();
+    let lower_from_end = lower.is_some() && lower_from_end;
+    let upper_from_end = upper.is_none() || upper_from_end;
     PostfixSuffix::Slice {
         lower: lower.unwrap_or_else(|| zero_expression(colon)),
         upper: upper.unwrap_or_else(|| zero_expression(close)),
-        flags: SliceFlags::forward(upper_from_end),
+        flags: SliceFlags {
+            reverse_output,
+            lower_from_end,
+            upper_from_end,
+        },
         close,
     }
 }

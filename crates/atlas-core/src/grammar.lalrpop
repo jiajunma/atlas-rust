@@ -140,17 +140,31 @@ Postfix: Expr = {
 PostfixSuffix: PostfixSuffix = {
     <_open:"["> <index:Expr> <close:"]"> => subscription_suffix(index, false, close),
     <_open:"~["> <index:Expr> <close:"]"> => subscription_suffix(index, true, close),
-    <_open:"["> <lower:Expr> <colon:":"> <upper:Expr> <close:"]"> => {
-        slice_suffix(Some(lower), Some(upper), colon, close)
+    <subject_reversed:SliceOpen> <lower:Expr?> <lower_reversed:TildeOpt>
+        <colon:":"> <upper:Expr?> <upper_reversed:TildeOpt> <close:"]"> => {
+        slice_suffix(
+            lower,
+            upper,
+            subject_reversed,
+            lower_reversed,
+            upper_reversed,
+            colon,
+            close,
+        )
     },
-    <_open:"["> <colon:":"> <upper:Expr> <close:"]"> => {
-        slice_suffix(None, Some(upper), colon, close)
-    },
-    <_open:"["> <lower:Expr> <colon:":"> <close:"]"> => {
-        slice_suffix(Some(lower), None, colon, close)
-    },
-    <_open:"["> <colon:":"> <close:"]"> => slice_suffix(None, None, colon, close),
     <_open:"("> <arguments:CallArguments> <close:")"> => call_suffix(arguments, close),
+};
+
+#[inline]
+SliceOpen: bool = {
+    "[" => false,
+    "~[" => true,
+};
+
+#[inline]
+TildeOpt: bool = {
+    => false,
+    "~" => true,
 };
 
 CallArguments: Vec<Expr> = {
@@ -170,6 +184,10 @@ Atom: Expr = {
         tuple_expression(open, expression_list(first, rest), close)
     },
     <open:"("> <inner:Expr> <close:")"> => Expr::Group {
+        span: join_span(open, close),
+        inner: Box::new(inner),
+    },
+    <open:"begin"> <inner:Expr> <close:"end"> => Expr::Group {
         span: join_span(open, close),
         inner: Box::new(inner),
     },
@@ -222,8 +240,11 @@ extern {
         "[" => ParserToken::LBracket(<SourceSpan>),
         "~[" => ParserToken::ReverseLBracket(<SourceSpan>),
         "]" => ParserToken::RBracket(<SourceSpan>),
+        "~" => ParserToken::Tilde(<SourceSpan>),
         "let" => ParserToken::Let(<SourceSpan>),
         "in" => ParserToken::In(<SourceSpan>),
+        "begin" => ParserToken::Begin(<SourceSpan>),
+        "end" => ParserToken::End(<SourceSpan>),
         "then" => ParserToken::Then(<SourceSpan>),
         "if" => ParserToken::If(<SourceSpan>),
         "else" => ParserToken::Else(<SourceSpan>),
