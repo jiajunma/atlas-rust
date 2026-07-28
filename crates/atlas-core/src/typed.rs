@@ -20,7 +20,6 @@ use crate::syntax::Expr;
 use crate::types::{Prim, Type, TypeTable};
 use crate::value::Value;
 use std::collections::BTreeMap;
-use std::rc::Rc;
 use std::sync::OnceLock;
 
 /// Why evaluation stopped early. Loops consume `Break(0)` and rethrow
@@ -681,6 +680,7 @@ mod tests {
     use super::*;
     use crate::source::SourceText;
     use crate::syntax::parse;
+    use std::rc::Rc;
 
     fn convert_and_run_with(source: &str, globals: &IdTable) -> Result<(Type, Value), Diagnostic> {
         let source = SourceText::new(source);
