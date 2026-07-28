@@ -3,6 +3,7 @@
 //! Public modules are intentionally small and map to observable language
 //! boundaries. Implementation work follows the contracts in `docs/`.
 
+pub mod coercions;
 pub mod diagnostic;
 pub mod domain_builtins;
 pub mod eval;
