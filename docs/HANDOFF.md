@@ -1,9 +1,10 @@
 # Session handoff — 2026-07-28 evening
 
-State record for the next agent. Everything below is committed and
-pushed through `89450ff` on `main` (git@github.com:jiajunma/atlas-rust).
-The working tree is clean; the full workspace suite (303 tests) is
-green and clippy-clean under BOTH rustc 1.90 (local) and 1.96 (HPC).
+State record for the next agent. This handoff is current through
+`2921da5` on `main` (git@github.com:jiajunma/atlas-rust), and the
+working tree is clean. Scalar reference capture is verified by HPC
+job `3496383`; Rust structural preflight is verified by HPC job
+`3496382`.
 
 ## Standing directives from the user (in force)
 
@@ -69,6 +70,15 @@ found ~20-28 real corrections per design; do not skip it.
     with BALANCING, and/or/not desugared to conditionals. Conversion
     functions implemented: QI V[I] Qv[Q] Qv[I] QvV M[V] M[[I]] [I]V
     [Q][I], with the exact upstream narrowing error text.
+  - Typed scalar registry is implemented and locally/HPC verified:
+    integer/rational arithmetic, divmod, powers, complement, relations,
+    string concatenation, hunger levels, and exact current-oracle errors.
+    Scalar fixtures and capture harness are in `317e1a8`; typed
+    implementation is `5fdfa7d`.
+  - Domain adapter foundation is in `2921da5`: RootDatum provenance and
+    `prefers_coroots`, Matrix/RatVec crossings, and square-matrix checks.
+    The pre-typed dynamic evaluator retains one-argument constructor and
+    nested-list compatibility until the pipeline swap.
 
 ### EXACTLY where work stopped
 
