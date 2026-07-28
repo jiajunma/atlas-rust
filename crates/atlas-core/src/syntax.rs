@@ -448,6 +448,15 @@ fn parser_tokens_from_tokens(
                     ParserToken::Unsupported(SpannedValue { value, span }),
                     span,
                 ))),
+                // Directives are intercepted by the session frame; one that
+                // reaches the expression parser is a plain syntax error.
+                TokenKind::Directive(_) => Some(Ok((
+                    ParserToken::Unsupported(SpannedValue {
+                        value: token.lexeme,
+                        span,
+                    }),
+                    span,
+                ))),
                 TokenKind::Newline => Some(Ok((ParserToken::Newline(span), span))),
             }
         })

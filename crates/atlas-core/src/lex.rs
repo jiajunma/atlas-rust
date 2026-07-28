@@ -19,10 +19,31 @@ pub enum TokenKind {
     String,
     Operator(String),
     Punctuation(char),
+    /// An input/output directive (`<`, `<<`, `>`, `>>`) recognized only as
+    /// the first token of a command, mirroring the upstream lexer's
+    /// initial-state rule. The token's `value` carries the scanned filename.
+    Directive(DirectiveKind),
     Unsupported(String),
     Newline,
     Eof,
 }
+
+/// The four upstream input/output directives.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DirectiveKind {
+    /// `<file`: include once (skipped when already completely read).
+    Include,
+    /// `<<file`: forced re-include.
+    ForceInclude,
+    /// `>file expr`: redirect one command's output, truncating.
+    ToFile,
+    /// `>>file expr`: redirect one command's output, appending.
+    AddToFile,
+}
+
+/// The exact unquoted-filename alphabet of the upstream lexer: alphanumerics
+/// plus these characters, no slash (subdirectory paths need quotes).
+const FILE_NAME_CHARS: &[u8] = b".-+~_=!?@#$%&|";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Token {
@@ -56,6 +77,7 @@ pub struct Lexer<'a> {
     nesting: Vec<NestingKind>,
     prevent_termination: Option<char>,
     previous_termination: Option<char>,
+    at_command_start: bool,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -75,6 +97,7 @@ impl<'a> Lexer<'a> {
             nesting: Vec::new(),
             prevent_termination: None,
             previous_termination: None,
+            at_command_start: true,
         }
     }
 
@@ -103,6 +126,7 @@ impl<'a> Lexer<'a> {
         self.nesting.clear();
         self.prevent_termination = None;
         self.previous_termination = None;
+        self.at_command_start = true;
         self.ended = self.offset >= bytes.len();
     }
 
@@ -130,9 +154,14 @@ impl<'a> Lexer<'a> {
 
         let start = self.offset;
         self.previous_termination = self.prevent_termination.take();
+        if self.at_command_start && matches!(bytes[self.offset], b'<' | b'>') {
+            return self.consume_directive(start);
+        }
+        self.at_command_start = false;
         match bytes[self.offset] {
             b'\n' => {
                 self.offset += 1;
+                self.at_command_start = true;
                 Ok(token(source, TokenKind::Newline, start, self.offset))
             }
             b'0'..=b'9' => {
@@ -270,6 +299,57 @@ impl<'a> Lexer<'a> {
                 ))
             }
         }
+    }
+
+    /// Scan an input/output directive at command start: `<`, `<<`, `>`, or
+    /// `>>` followed by a filename (quoted, or an unquoted run over the
+    /// upstream filename alphabet — possibly empty). The rest of the line is
+    /// NOT consumed; the session frame validates what follows.
+    fn consume_directive(&mut self, start: usize) -> Result<Token, Diagnostic> {
+        let bytes = self.source.as_str().as_bytes();
+        let first = bytes[self.offset];
+        self.offset += 1;
+        let doubled = bytes.get(self.offset) == Some(&first);
+        if doubled {
+            self.offset += 1;
+        }
+        let kind = match (first, doubled) {
+            (b'<', false) => DirectiveKind::Include,
+            (b'<', true) => DirectiveKind::ForceInclude,
+            (b'>', false) => DirectiveKind::ToFile,
+            _ => DirectiveKind::AddToFile,
+        };
+        // Upstream skips whitespace AND comments before the name; a newline
+        // here means an empty filename.
+        loop {
+            match bytes.get(self.offset) {
+                Some(b' ' | b'\t' | b'\r') => self.offset += 1,
+                Some(b'{') => {
+                    let comment_start = self.offset;
+                    self.consume_comment(comment_start)?;
+                }
+                _ => break,
+            }
+        }
+        let name = if bytes.get(self.offset) == Some(&b'"') {
+            let string = self.consume_string(self.offset)?;
+            string.value.unwrap_or_default()
+        } else {
+            let name_start = self.offset;
+            while bytes.get(self.offset).is_some_and(|&byte| {
+                byte.is_ascii_alphanumeric() || FILE_NAME_CHARS.contains(&byte)
+            }) {
+                self.offset += 1;
+            }
+            self.source.as_str()[name_start..self.offset].to_owned()
+        };
+        self.at_command_start = false;
+        Ok(Token {
+            kind: TokenKind::Directive(kind),
+            lexeme: self.source.as_str()[start..self.offset].to_owned(),
+            value: Some(name),
+            span: self.source.span(start, self.offset),
+        })
     }
 
     fn skip_space(&mut self) -> Result<(), Diagnostic> {

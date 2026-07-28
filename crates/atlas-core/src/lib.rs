@@ -9,6 +9,7 @@ pub mod eval;
 pub mod formula;
 pub mod lex;
 pub mod session;
+pub mod session_frame;
 pub mod source;
 pub mod syntax;
 pub mod value;

@@ -50,6 +50,15 @@ pub fn run_source_with_context(
                 command.clear();
                 lexer.recover_command();
             }
+            Ok(token) if matches!(token.kind, TokenKind::Directive(_)) => {
+                events.push(SessionEvent::Diagnostic(Diagnostic::new(
+                    crate::diagnostic::ErrorKind::Io,
+                    "file inclusion is only available through a session frame",
+                    Some(token.span),
+                )));
+                command.clear();
+                lexer.recover_command();
+            }
             Ok(token) => command.push(token),
             Err(diagnostic) => events.push(SessionEvent::Diagnostic(diagnostic)),
         }
@@ -58,7 +67,7 @@ pub fn run_source_with_context(
     events
 }
 
-fn execute_tokens(
+pub(crate) fn execute_tokens(
     tokens: &mut Vec<Token>,
     source: &SourceText,
     context: &mut EvalContext,

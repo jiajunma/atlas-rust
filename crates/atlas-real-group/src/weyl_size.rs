@@ -151,9 +151,7 @@ fn branch_lengths(
         let mut current = neighbor;
         loop {
             let next = nodes.iter().enumerate().find(|&(candidate, &c_node)| {
-                candidate != previous
-                    && candidate != current
-                    && matrix[nodes[current]][c_node] != 0
+                candidate != previous && candidate != current && matrix[nodes[current]][c_node] != 0
             });
             match next {
                 Some((candidate, _)) => {

@@ -78,11 +78,14 @@ def run_corpus(atlas_bin, cli_bin, files, size_cap, timeout):
 
         start = time.monotonic()
         try:
+            # Mirror the C++ invocation: cwd = atlas-scripts so `<basic.at`
+            # resolves (and prints) the same cwd-relative spelling.
             rust = subprocess.run(
-                [cli_bin, path],
+                [cli_bin, os.path.abspath(path)],
                 text=True,
                 capture_output=True,
                 timeout=timeout,
+                cwd=scripts_dir,
             )
         except subprocess.TimeoutExpired:
             entry["category"] = "RUST_EVAL_FAIL"
