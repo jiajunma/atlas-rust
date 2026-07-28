@@ -1,10 +1,10 @@
 # Session handoff — 2026-07-28 evening
 
 State record for the next agent. This handoff is current through
-`2921da5` on `main` (git@github.com:jiajunma/atlas-rust), and the
+`b6abace` on `main` (git@github.com:jiajunma/atlas-rust), and the
 working tree is clean. Scalar reference capture is verified by HPC
-job `3496383`; Rust structural preflight is verified by HPC job
-`3496382`.
+job `3496383`; the latest Rust structural preflight is verified by HPC
+job `3496399`.
 
 ## Standing directives from the user (in force)
 
@@ -74,7 +74,8 @@ found ~20-28 real corrections per design; do not skip it.
     integer/rational arithmetic, divmod, powers, complement, relations,
     string concatenation, hunger levels, and exact current-oracle errors.
     Scalar fixtures and capture harness are in `317e1a8`; typed
-    implementation is `5fdfa7d`.
+    implementation is `5fdfa7d`, with the literal-one inverse rewrite
+    corrected in `b6abace` (`1 / 0` -> `Inverse of zero`).
   - Domain adapter foundation is in `2921da5`: RootDatum provenance and
     `prefers_coroots`, Matrix/RatVec crossings, and square-matrix checks.
     The pre-typed dynamic evaluator retains one-argument constructor and
