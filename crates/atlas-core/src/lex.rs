@@ -61,7 +61,31 @@ const KEYWORDS: &[&str] = &[
     "true", "false", "die", "break", "return", "set_type", "whattype", "showall", "forget",
 ];
 
-const PRIMITIVE_TYPES: &[&str] = &["int", "rat", "string", "bool"];
+/// All twenty upstream primitive type names (axis-types.w prim_names,
+/// through the `Prim::ALL` order) — reserved positionally even before a
+/// primitive's value layer exists, exactly like upstream.
+const PRIMITIVE_TYPES: &[&str] = &[
+    "int",
+    "rat",
+    "string",
+    "bool",
+    "vec",
+    "mat",
+    "ratvec",
+    "LieType",
+    "RootDatum",
+    "WeylElt",
+    "InnerClass",
+    "RealForm",
+    "CartanClass",
+    "KGBElt",
+    "Block",
+    "Split",
+    "KType",
+    "KTypePol",
+    "Param",
+    "ParamPol",
+];
 
 /// A stateful Atlas scanner.
 ///

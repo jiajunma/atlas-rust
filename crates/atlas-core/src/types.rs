@@ -11,9 +11,10 @@
 
 use std::fmt;
 
-/// Primitive types, staged: the value-layer seven plus the landed domain
-/// handles; the remaining upstream primitives (WeylElt, CartanClass, Block,
-/// Split, KType, KTypePol, Param, ParamPol) join with their layers.
+/// All twenty upstream primitive types, in the upstream prim_names order
+/// (axis-types.w:295-315). Every name is load-bearing from B1 on: the lexer
+/// reserves them all positionally, even before a primitive's value layer
+/// exists.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Prim {
     Int,
@@ -25,9 +26,17 @@ pub enum Prim {
     RatVec,
     LieType,
     RootDatum,
+    WeylElt,
     InnerClass,
     RealForm,
+    CartanClass,
     KgbElt,
+    Block,
+    Split,
+    KType,
+    KTypePol,
+    Param,
+    ParamPol,
 }
 
 impl Prim {
@@ -43,11 +52,43 @@ impl Prim {
             Self::RatVec => "ratvec",
             Self::LieType => "LieType",
             Self::RootDatum => "RootDatum",
+            Self::WeylElt => "WeylElt",
             Self::InnerClass => "InnerClass",
             Self::RealForm => "RealForm",
+            Self::CartanClass => "CartanClass",
             Self::KgbElt => "KGBElt",
+            Self::Block => "Block",
+            Self::Split => "Split",
+            Self::KType => "KType",
+            Self::KTypePol => "KTypePol",
+            Self::Param => "Param",
+            Self::ParamPol => "ParamPol",
         }
     }
+
+    /// Every primitive, in upstream order — the lexer's PRIMTYPE list.
+    pub const ALL: [Prim; 20] = [
+        Self::Int,
+        Self::Rat,
+        Self::String,
+        Self::Bool,
+        Self::Vec,
+        Self::Mat,
+        Self::RatVec,
+        Self::LieType,
+        Self::RootDatum,
+        Self::WeylElt,
+        Self::InnerClass,
+        Self::RealForm,
+        Self::CartanClass,
+        Self::KgbElt,
+        Self::Block,
+        Self::Split,
+        Self::KType,
+        Self::KTypePol,
+        Self::Param,
+        Self::ParamPol,
+    ];
 }
 
 /// Index into the typedef table.
