@@ -14,7 +14,7 @@
 use std::fmt;
 use std::sync::Arc;
 
-use malachite::Integer as BigInt;
+use malachite::{Integer as BigInt, Rational as BigRational};
 
 use atlas_real_group::{
     AdjointFiberBudget, BasedRootDatum, CartanClassification, CartanClassificationBudget, Coweight,
@@ -24,7 +24,7 @@ use atlas_real_group::{
 };
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
-use crate::value::Value;
+use crate::value::{RatVec, Value};
 
 /// Upstream Lie-type letter bounds (atlas-types.w:165-211) and RANK_MAX.
 const RANK_MAX: usize = 32;
@@ -70,7 +70,42 @@ impl LieTypeValue {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RootDatumHandle {
     datum: Arc<BasedRootDatum>,
-    description: String,
+    lie_type: LieTypeValue,
+    isogeny: DatumIsogeny,
+    prefers_coroots: bool,
+}
+
+impl RootDatumHandle {
+    pub(crate) fn lie_type(&self) -> &LieTypeValue {
+        &self.lie_type
+    }
+
+    pub(crate) fn prefers_coroots(&self) -> bool {
+        self.prefers_coroots
+    }
+
+    fn description(&self) -> String {
+        format!(
+            "{} root datum of Lie type '{}'",
+            self.isogeny.label(),
+            self.lie_type.render()
+        )
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum DatumIsogeny {
+    SimplyConnected,
+    Adjoint,
+}
+
+impl DatumIsogeny {
+    fn label(self) -> &'static str {
+        match self {
+            Self::SimplyConnected => "simply connected",
+            Self::Adjoint => "adjoint",
+        }
+    }
 }
 
 /// The per-inner-class pipeline shared by every real form of the class.
@@ -138,7 +173,7 @@ impl fmt::Display for DomainValue {
                     write!(formatter, "Lie type '{}'", value.render())
                 }
             }
-            Self::RootDatum(handle) => write!(formatter, "{}", handle.description),
+            Self::RootDatum(handle) => write!(formatter, "{}", handle.description()),
             Self::InnerClass(context) => write!(
                 formatter,
                 "inner class with {} real forms",
@@ -303,6 +338,7 @@ fn block_cartan(lie_type: &LieTypeValue) -> Vec<Vec<i32>> {
 fn build_datum(
     lie_type: &LieTypeValue,
     simply: bool,
+    prefers_coroots: bool,
     span: SourceSpan,
 ) -> Result<RootDatumHandle, Diagnostic> {
     let cartan = block_cartan(lie_type);
@@ -335,14 +371,16 @@ fn build_datum(
     };
     let datum = BasedRootDatum::from_simple_data(lattice_rank, cartan, roots, coroots)
         .map_err(|error| runtime(span, error.to_string()))?;
-    let flavour = if simply {
-        "simply connected "
+    let isogeny = if simply {
+        DatumIsogeny::SimplyConnected
     } else {
-        "adjoint "
+        DatumIsogeny::Adjoint
     };
     Ok(RootDatumHandle {
         datum: Arc::new(datum),
-        description: format!("{flavour}root datum of Lie type '{}'", lie_type.render()),
+        lie_type: lie_type.clone(),
+        isogeny,
+        prefers_coroots,
     })
 }
 
@@ -461,14 +499,37 @@ fn as_usize(value: &Value, span: SourceSpan) -> Result<usize, Diagnostic> {
 }
 
 fn as_matrix(value: &Value, span: SourceSpan) -> Result<Vec<Vec<i32>>, Diagnostic> {
-    let Value::List(rows) = value else {
-        return Err(type_error(span, "expected a matrix as a list of int lists"));
+    let rows = match value {
+        Value::Matrix(matrix) => {
+            if matrix.rows() != matrix.cols() {
+                return Err(type_error(span, "expected a square mat"));
+            }
+            return Ok((0..matrix.rows())
+                .map(|row| {
+                    (0..matrix.cols())
+                        .map(|column| {
+                            matrix
+                                .entry(row, column)
+                                .expect("matrix dimensions guarantee in-range entries")
+                        })
+                        .collect()
+                })
+                .collect());
+        }
+        // The pre-typed dynamic evaluator still constructs nested lists.
+        Value::List(rows) => rows,
+        _ => return Err(type_error(span, "expected a mat")),
     };
-    rows.iter()
-        .map(|row| {
-            let Value::List(entries) = row else {
-                return Err(type_error(span, "expected a matrix as a list of int lists"));
-            };
+    let row_count = rows.len();
+    let mut converted = Vec::with_capacity(row_count);
+    for row in rows {
+        let Value::List(entries) = row else {
+            return Err(type_error(span, "expected a square mat"));
+        };
+        if entries.len() != row_count {
+            return Err(type_error(span, "expected a square mat"));
+        }
+        converted.push(
             entries
                 .iter()
                 .map(|entry| match entry {
@@ -476,9 +537,64 @@ fn as_matrix(value: &Value, span: SourceSpan) -> Result<Vec<Vec<i32>>, Diagnosti
                         .map_err(|_| type_error(span, "matrix entry out of range")),
                     _ => Err(type_error(span, "expected integer matrix entries")),
                 })
-                .collect()
+                .collect::<Result<Vec<_>, _>>()?,
+        );
+    }
+    Ok(converted)
+}
+
+fn datum_preference(name: &str, arguments: &[Value], span: SourceSpan) -> Result<bool, Diagnostic> {
+    match arguments {
+        [_] => Ok(false), // Temporary compatibility for the pre-typed evaluator.
+        [_, Value::Boolean(preference)] => Ok(*preference),
+        [_, other] => Err(type_error(
+            span,
+            format!("{name} expects a bool preference, found {other}"),
+        )),
+        _ => Err(type_error(
+            span,
+            format!("{name} expects 2 argument(s), found {}", arguments.len()),
+        )),
+    }
+}
+
+fn ratvec_from_rationals(
+    rationals: Vec<BigRational>,
+    span: SourceSpan,
+) -> Result<RatVec, Diagnostic> {
+    let mut denominator = BigInt::from(1);
+    for rational in &rationals {
+        let entry_denominator = BigInt::from(rational.denominator_ref().clone());
+        let divisor = gcd_big(denominator.clone(), entry_denominator.clone());
+        denominator = denominator * entry_denominator / divisor;
+    }
+    let numerators = rationals
+        .iter()
+        .map(|rational| {
+            let scaled = BigRational::from(denominator.clone()) * rational.clone();
+            let numerator = BigInt::try_from(scaled)
+                .expect("scaling by the common denominator yields an integer");
+            i64::try_from(&numerator)
+                .map_err(|_| runtime(span, "Integer value to big for conversion"))
         })
-        .collect()
+        .collect::<Result<Vec<_>, _>>()?;
+    let denominator = u64::try_from(&denominator)
+        .map_err(|_| runtime(span, "Integer value to big for conversion"))?;
+    RatVec::new(numerators, denominator)
+        .ok_or_else(|| runtime(span, "ratvec denominator must be nonzero"))
+}
+
+fn gcd_big(mut left: BigInt, mut right: BigInt) -> BigInt {
+    while right != 0 {
+        let remainder = left % right.clone();
+        left = right;
+        right = remainder;
+    }
+    if left < 0 {
+        -left
+    } else {
+        left
+    }
 }
 
 fn as_real_form(value: &Value, span: SourceSpan) -> Result<&Arc<RealFormContext>, Diagnostic> {
@@ -584,15 +700,23 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
     match name {
         "Lie_type" => {
             arity(name, arguments, 1, span)?;
-            Ok(Value::Domain(DomainValue::LieType(as_lie_type(
-                &arguments[0],
-                span,
-            )?)))
+            let lie_type = match &arguments[0] {
+                Value::Domain(DomainValue::RootDatum(handle)) => handle.lie_type().clone(),
+                value => as_lie_type(value, span)?,
+            };
+            Ok(Value::Domain(DomainValue::LieType(lie_type)))
+        }
+        "prefers_coroots" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::RootDatum(handle)) = &arguments[0] else {
+                return Err(type_error(span, "expected a RootDatum"));
+            };
+            Ok(Value::Boolean(handle.prefers_coroots()))
         }
         "simply_connected" | "adjoint" => {
-            arity(name, arguments, 1, span)?;
+            let prefers_coroots = datum_preference(name, arguments, span)?;
             let lie_type = as_lie_type(&arguments[0], span)?;
-            let handle = build_datum(&lie_type, name == "simply_connected", span)?;
+            let handle = build_datum(&lie_type, name == "simply_connected", prefers_coroots, span)?;
             Ok(Value::Domain(DomainValue::RootDatum(handle)))
         }
         "inner_class" => {
@@ -703,18 +827,114 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 .graph
                 .torus_factor(id, &context.table)
                 .map_err(|error| runtime(span, error.to_string()))?;
-            Ok(Value::List(
-                factor
-                    .to_rationals()
-                    .into_iter()
-                    .map(Value::Rational)
-                    .collect(),
-            ))
+            Ok(Value::RatVector(ratvec_from_rationals(
+                factor.to_rationals(),
+                span,
+            )?))
         }
         unknown => Err(Diagnostic::new(
             ErrorKind::Name,
             format!("undefined function `{unknown}`"),
             Some(span),
         )),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::diagnostic::{SourceId, SourcePosition};
+    use crate::value::Matrix;
+
+    fn span() -> SourceSpan {
+        SourceSpan::new(
+            SourceId::anonymous(),
+            0,
+            0,
+            SourcePosition { line: 1, column: 1 },
+            SourcePosition { line: 1, column: 1 },
+        )
+    }
+
+    #[test]
+    fn matrix_adapter_consumes_column_major_mat_values_as_rows() {
+        let matrix = Matrix::from_columns(2, 2, vec![1, 3, 2, 4]).expect("valid matrix");
+        assert_eq!(
+            as_matrix(&Value::Matrix(matrix), span()).expect("mat value"),
+            vec![vec![1, 2], vec![3, 4]]
+        );
+        let error = as_matrix(
+            &Value::List(vec![Value::List(vec![
+                Value::Integer(1.into()),
+                Value::Integer(0.into()),
+            ])]),
+            span(),
+        )
+        .expect_err("rectangular legacy list");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(error.message, "expected a square mat");
+    }
+
+    #[test]
+    fn root_datum_retains_type_isogeny_and_coroot_preference() {
+        let lie_type = call("Lie_type", &[Value::String("A1".into())], span()).expect("Lie type");
+        let datum = call(
+            "simply_connected",
+            &[lie_type, Value::Boolean(true)],
+            span(),
+        )
+        .expect("root datum");
+        assert_eq!(
+            call("Lie_type", std::slice::from_ref(&datum), span())
+                .expect("type attribute")
+                .to_string(),
+            "Lie type 'A1'"
+        );
+        assert_eq!(
+            call("prefers_coroots", std::slice::from_ref(&datum), span()),
+            Ok(Value::Boolean(true))
+        );
+        assert_eq!(
+            datum.to_string(),
+            "simply connected root datum of Lie type 'A1'"
+        );
+    }
+
+    #[test]
+    fn rational_coordinates_normalise_to_one_ratvec_denominator() {
+        let factor = ratvec_from_rationals(
+            vec![
+                BigRational::from_signeds(1i64, 2),
+                BigRational::from_signeds(1i64, 3),
+            ],
+            span(),
+        )
+        .expect("small rational coordinates");
+        assert_eq!(factor.numerators(), &[3, 2]);
+        assert_eq!(factor.denominator(), 6);
+    }
+
+    #[test]
+    fn torus_factor_crosses_the_adapter_as_a_ratvec() {
+        let lie_type = call("Lie_type", &[Value::String("A1".into())], span()).expect("Lie type");
+        let datum = call(
+            "simply_connected",
+            &[lie_type, Value::Boolean(false)],
+            span(),
+        )
+        .expect("root datum");
+        let matrix =
+            Value::Matrix(Matrix::from_columns(1, 1, vec![1]).expect("identity involution matrix"));
+        let inner_class = call("inner_class", &[datum, matrix], span()).expect("inner class");
+        let real_form = call(
+            "quasisplit_form",
+            std::slice::from_ref(&inner_class),
+            span(),
+        )
+        .expect("quasisplit form");
+        let element = call("KGB", &[real_form, Value::Integer(BigInt::from(0))], span())
+            .expect("KGB element");
+        let factor = call("torus_factor", &[element], span()).expect("torus factor");
+        assert!(matches!(factor, Value::RatVector(_)));
     }
 }
