@@ -108,7 +108,8 @@ def run_corpus(atlas_bin, cli_bin, files, size_cap, timeout):
 
 
 def main() -> int:
-    atlas_bin, cli_bin = sys.argv[1], sys.argv[2]
+    # The Rust CLI runs with cwd=scripts_dir, so its path must be absolute.
+    atlas_bin, cli_bin = sys.argv[1], os.path.abspath(sys.argv[2])
     patterns = sys.argv[3:] or [
         os.path.join(
             os.path.dirname(atlas_bin) or ".", "atlas-scripts", "*.at"
