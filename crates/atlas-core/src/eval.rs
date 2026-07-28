@@ -354,6 +354,21 @@ fn infer_scalar_type(expression: &Expr, context: &EvalContext) -> Result<ScalarT
             infer_scalar_type(body, context)?;
             Ok(scalar_view_of_type(&target.resolve()))
         }
+        Expr::Conditional {
+            condition,
+            then_branch,
+            else_branch,
+            ..
+        } => {
+            infer_scalar_type(condition, context)?;
+            let then_type = infer_scalar_type(then_branch, context)?;
+            let else_type = infer_scalar_type(else_branch, context)?;
+            Ok(if then_type == else_type {
+                then_type
+            } else {
+                ScalarType::Unknown
+            })
+        }
         Expr::Call { callee, span, .. } => match callee.as_ref() {
             Expr::Identifier { .. } => Ok(ScalarType::Unknown),
             _ => Err(Diagnostic::new(
@@ -866,6 +881,20 @@ fn eval_expr(expression: &Expr, context: &mut EvalContext) -> Result<Value, Diag
             let value = eval_expr(body, context)?;
             cast_value(value, &target.resolve(), *span)
         }
+        Expr::Conditional {
+            condition,
+            then_branch,
+            else_branch,
+            span,
+        } => match eval_expr(condition, context)? {
+            Value::Boolean(true) => eval_expr(then_branch, context),
+            Value::Boolean(false) => eval_expr(else_branch, context),
+            other => Err(Diagnostic::new(
+                ErrorKind::Type,
+                format!("condition must be boolean, found {}", type_name(&other)),
+                Some(*span),
+            )),
+        },
         Expr::Call {
             callee,
             arguments,

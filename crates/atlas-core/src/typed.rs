@@ -58,6 +58,12 @@ pub enum TypedExpr {
         cell: GlobalCell,
         span: SourceSpan,
     },
+    /// `if c then t else e fi` after balancing.
+    Conditional {
+        condition: Box<TypedExpr>,
+        then_branch: Box<TypedExpr>,
+        else_branch: Box<TypedExpr>,
+    },
     /// A statically resolved builtin call (index into the registry).
     BuiltinCall {
         builtin: usize,
@@ -351,11 +357,136 @@ pub fn convert_expr(
                 analysis,
             )
         }
+        Expr::Conditional {
+            condition,
+            then_branch,
+            else_branch,
+            span,
+        } => {
+            let mut bool_type = Type::Primitive(Prim::Bool);
+            let condition = convert_expr(condition, &mut bool_type, analysis)?;
+            let branches = balance(
+                &[then_branch.as_ref(), else_branch.as_ref()],
+                required,
+                *span,
+                analysis,
+            )?;
+            let mut branches = branches.into_iter();
+            Ok(TypedExpr::Conditional {
+                condition: Box::new(condition),
+                then_branch: Box::new(branches.next().expect("two branches")),
+                else_branch: Box::new(branches.next().expect("two branches")),
+            })
+        }
+        // Upstream desugars the boolean connectives into conditionals at
+        // parse time (parser.y:280-294); this port does it at conversion.
+        Expr::Binary { op, lhs, rhs, span } => {
+            let (condition, then_branch, else_branch) = match op {
+                crate::syntax::BinaryOp::And => (
+                    lhs.as_ref().clone(),
+                    rhs.as_ref().clone(),
+                    Expr::Boolean {
+                        value: false,
+                        span: *span,
+                    },
+                ),
+                crate::syntax::BinaryOp::Or => (
+                    lhs.as_ref().clone(),
+                    Expr::Boolean {
+                        value: true,
+                        span: *span,
+                    },
+                    rhs.as_ref().clone(),
+                ),
+            };
+            convert_expr(
+                &Expr::Conditional {
+                    condition: Box::new(condition),
+                    then_branch: Box::new(then_branch),
+                    else_branch: Box::new(else_branch),
+                    span: *span,
+                },
+                required,
+                analysis,
+            )
+        }
+        Expr::Unary { op, operand, span } => match op {
+            crate::syntax::UnaryOp::Not => convert_expr(
+                &Expr::Conditional {
+                    condition: operand.clone(),
+                    then_branch: Box::new(Expr::Boolean {
+                        value: false,
+                        span: *span,
+                    }),
+                    else_branch: Box::new(Expr::Boolean {
+                        value: true,
+                        span: *span,
+                    }),
+                    span: *span,
+                },
+                required,
+                analysis,
+            ),
+        },
         unsupported => Err(type_error(
             "this expression form is not yet in the typed pipeline".into(),
             unsupported.span(),
         )),
     }
+}
+
+/// Balance branch expressions to a common type (upstream `balance`,
+/// axis.w:1022-1122, two-branch simplification): convert each against a
+/// copy of the target, keep the broadest type under `broader_eq`, then
+/// re-convert every branch whose type diverges from the winner.
+fn balance(
+    branches: &[&Expr],
+    target: &mut Type,
+    span: SourceSpan,
+    analysis: &Analysis<'_>,
+) -> Result<Vec<TypedExpr>, Diagnostic> {
+    let mut converted = Vec::new();
+    let mut types = Vec::new();
+    for branch in branches {
+        let mut slot = target.clone();
+        converted.push(convert_expr(branch, &mut slot, analysis)?);
+        types.push(slot);
+    }
+    let mut common = types.first().cloned().unwrap_or(Type::Undetermined);
+    for type_ in &types[1..] {
+        if crate::coercions::broader_eq(&common, type_, analysis.types) {
+            continue;
+        }
+        if crate::coercions::broader_eq(type_, &common, analysis.types) {
+            common = type_.clone();
+            continue;
+        }
+        return Err(type_error(
+            format!(
+                "branches have incompatible types {} and {}",
+                common.display(analysis.types),
+                type_.display(analysis.types),
+            ),
+            span,
+        ));
+    }
+    if !target.specialise(&common, analysis.types) {
+        return Err(type_error(
+            format!(
+                "balanced type {} does not match required pattern {}",
+                common.display(analysis.types),
+                target.display(analysis.types),
+            ),
+            span,
+        ));
+    }
+    for (index, type_) in types.iter().enumerate() {
+        if type_ != &common {
+            let mut slot = common.clone();
+            converted[index] = convert_expr(branches[index], &mut slot, analysis)?;
+        }
+    }
+    Ok(converted)
 }
 
 /// One registered builtin overload.
@@ -495,6 +626,15 @@ impl TypedExpr {
                     )),
                 }
             }
+            Self::Conditional {
+                condition,
+                then_branch,
+                else_branch,
+            } => match force(condition, context)? {
+                Value::Boolean(true) => then_branch.evaluate(context, level),
+                Value::Boolean(false) => else_branch.evaluate(context, level),
+                other => panic!("analysis let a non-boolean condition through: {other}"),
+            },
             Self::BuiltinCall {
                 builtin,
                 arguments,
@@ -728,6 +868,40 @@ mod tests {
         assert!(error.message.contains("uninitialized variable 'y'"));
         let error = convert_and_run_with("z", &globals).expect_err("unknown name");
         assert!(error.message.contains("undefined identifier"));
+    }
+
+    #[test]
+    fn conditionals_balance_their_branches() {
+        let (type_, value) = convert_and_run("if true then 1 else 2 fi").expect("simple if");
+        assert_eq!(type_, Type::Primitive(Prim::Int));
+        assert_eq!(value, Value::Integer(1.into()));
+        // Balancing: the int branch is re-converted to rat.
+        let (type_, value) = convert_and_run("if false then 1 else 1/2 fi").expect("balanced");
+        assert_eq!(type_, Type::Primitive(Prim::Rat));
+        assert_eq!(value.to_string(), "1/2");
+        // A missing else branch makes the whole conditional void (the
+        // void branch is broadest under balancing).
+        let (type_, _) = convert_and_run("if false then 1 fi").expect("void conditional");
+        assert_eq!(type_, Type::void());
+        // elif nests; the inverted form parses.
+        let (_, value) =
+            convert_and_run("if false then 1 elif true then 2 else 3 fi").expect("elif");
+        assert_eq!(value, Value::Integer(2.into()));
+        let (_, value) = convert_and_run("if false else 9 then 8 fi").expect("inverted");
+        assert_eq!(value, Value::Integer(9.into()));
+        // Boolean connectives desugar to conditionals.
+        let (_, value) = convert_and_run("true and false").expect("and");
+        assert_eq!(value, Value::Boolean(false));
+        let (_, value) = convert_and_run("false or true").expect("or");
+        assert_eq!(value, Value::Boolean(true));
+        let (_, value) = convert_and_run("not false").expect("not");
+        assert_eq!(value, Value::Boolean(true));
+        // Mismatched branches fail balancing.
+        let error = convert_and_run("if true then 1 else \"x\" fi").expect_err("mismatch");
+        assert!(error.message.contains("incompatible types"));
+        // Non-boolean condition is a type error.
+        let error = convert_and_run("if 1 then 2 else 3 fi").expect_err("condition type");
+        assert!(error.message.contains("does not match"));
     }
 
     #[test]

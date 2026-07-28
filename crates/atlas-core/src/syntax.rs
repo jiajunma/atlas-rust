@@ -100,6 +100,14 @@ pub enum Expr {
         inner: Box<Expr>,
         span: SourceSpan,
     },
+    /// `if c then t [else e] fi` (elif desugars to nesting at parse;
+    /// a missing else branch is the void value, parser.y:415).
+    Conditional {
+        condition: Box<Expr>,
+        then_branch: Box<Expr>,
+        else_branch: Box<Expr>,
+        span: SourceSpan,
+    },
     /// `type: expr` — context-typing per upstream `make_cast` (parser.y:240).
     Cast {
         target: TypeExpr,
@@ -210,6 +218,7 @@ impl Expr {
             | Self::OperatorCall { span, .. }
             | Self::Call { span, .. }
             | Self::Group { span, .. }
+            | Self::Conditional { span, .. }
             | Self::Cast { span, .. } => *span,
         }
     }
@@ -331,6 +340,10 @@ pub enum ParserToken {
     Let(SourceSpan),
     In(SourceSpan),
     Then(SourceSpan),
+    If(SourceSpan),
+    Else(SourceSpan),
+    Elif(SourceSpan),
+    Fi(SourceSpan),
     And(SourceSpan),
     Or(SourceSpan),
     Not(SourceSpan),
@@ -364,6 +377,10 @@ impl ParserToken {
             | Self::Let(span)
             | Self::In(span)
             | Self::Then(span)
+            | Self::If(span)
+            | Self::Else(span)
+            | Self::Elif(span)
+            | Self::Fi(span)
             | Self::And(span)
             | Self::Or(span)
             | Self::Not(span)
@@ -397,6 +414,10 @@ impl fmt::Display for ParserToken {
             Self::Let(_) => "let",
             Self::In(_) => "in",
             Self::Then(_) => "then",
+            Self::If(_) => "if",
+            Self::Else(_) => "else",
+            Self::Elif(_) => "elif",
+            Self::Fi(_) => "fi",
             Self::And(_) => "and",
             Self::Or(_) => "or",
             Self::Not(_) => "not",
@@ -493,6 +514,10 @@ fn parser_tokens_from_tokens(
                         "let" => ParserToken::Let(span),
                         "in" => ParserToken::In(span),
                         "then" => ParserToken::Then(span),
+                        "if" => ParserToken::If(span),
+                        "else" => ParserToken::Else(span),
+                        "elif" => ParserToken::Elif(span),
+                        "fi" => ParserToken::Fi(span),
                         _ => ParserToken::Unsupported(SpannedValue { value: word, span }),
                     };
                     Some(Ok((token, span)))
@@ -805,6 +830,54 @@ fn definition(target: SpannedValue<String>, value: Expr) -> Command {
     }
 }
 
+/// The pieces of an `if` tail, before the opening span is known.
+pub(crate) struct ParsedIf {
+    condition: Expr,
+    then_branch: Expr,
+    else_branch: Option<Expr>,
+    close: SourceSpan,
+}
+
+fn if_tail(
+    condition: Expr,
+    then_branch: Expr,
+    else_branch: Option<Expr>,
+    close: SourceSpan,
+) -> ParsedIf {
+    ParsedIf {
+        condition,
+        then_branch,
+        else_branch,
+        close,
+    }
+}
+
+/// `elif` nests: the tail becomes this level's else branch.
+fn elif_tail(condition: Expr, then_branch: Expr, tail: ParsedIf) -> ParsedIf {
+    let close = tail.close;
+    let nested = finish_conditional(condition.span(), tail);
+    ParsedIf {
+        condition,
+        then_branch,
+        else_branch: Some(nested),
+        close,
+    }
+}
+
+fn finish_conditional(open: SourceSpan, tail: ParsedIf) -> Expr {
+    let span = join_span(open, tail.close);
+    let else_branch = tail.else_branch.unwrap_or(Expr::Tuple {
+        elements: Vec::new(),
+        span: tail.close,
+    });
+    Expr::Conditional {
+        condition: Box::new(tail.condition),
+        then_branch: Box::new(tail.then_branch),
+        else_branch: Box::new(else_branch),
+        span,
+    }
+}
+
 fn cast_expression(target: TypeExpr, body: Expr) -> Expr {
     let span = SourceSpan::new(
         target.span().source_id(),
@@ -1101,6 +1174,17 @@ mod tests {
                     .join(",")
             ),
             Expr::Group { inner, .. } => format!("group({})", expression_shape(inner)),
+            Expr::Conditional {
+                condition,
+                then_branch,
+                else_branch,
+                ..
+            } => format!(
+                "if({};{};{})",
+                expression_shape(condition),
+                expression_shape(then_branch),
+                expression_shape(else_branch)
+            ),
             Expr::Cast { target, body, .. } => format!(
                 "cast({};{})",
                 target.resolve().display(&crate::types::TypeTable::new()),
