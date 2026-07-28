@@ -34,6 +34,9 @@ mod twisted_involution;
 mod weak_real_form;
 mod weyl;
 mod weyl_element;
+// Consumer is the parked task #9 (docs/ON_DEMAND_PARTITION_DESIGN.md);
+// the allow lifts when the on-demand partition lands.
+#[allow(dead_code)]
 mod weyl_size;
 
 pub use adjoint_fiber::{
