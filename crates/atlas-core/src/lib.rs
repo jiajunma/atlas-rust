@@ -12,6 +12,7 @@ pub mod session;
 pub mod session_frame;
 pub mod source;
 pub mod syntax;
+pub mod types;
 pub mod value;
 
 /// Version of the language compatibility contract implemented by this crate.
