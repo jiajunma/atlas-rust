@@ -5,7 +5,7 @@ use super::{
     prepend_let_group,
     call_suffix, postfix, prefix_operator_call, slice_suffix, start_binary_formula, start_prefix_formula,
     subscription_suffix, unary, BinaryOp, Command, Expr, LetBinding, ParsedLet, ParserToken,
-    PostfixSuffix, PrimitiveType, Program, SpannedValue, UnaryOp,
+    PostfixSuffix, Prim, Program, SpannedValue, UnaryOp,
 };
 use crate::diagnostic::SourceSpan;
 use crate::formula::{FormulaOperator, FormulaStack};
@@ -159,7 +159,7 @@ extern {
         "string" => ParserToken::String(<SpannedValue<String>>),
         "identifier" => ParserToken::Identifier(<SpannedValue<String>>),
         "operator" => ParserToken::Operator(<SpannedValue<FormulaOperator>>),
-        "primitive_type" => ParserToken::PrimitiveType(<SpannedValue<PrimitiveType>>),
+        "primitive_type" => ParserToken::PrimitiveType(<SpannedValue<Prim>>),
         ":=" => ParserToken::Becomes(<SourceSpan>),
         "=" => ParserToken::Equals(<SourceSpan>),
         ":" => ParserToken::Colon(<SourceSpan>),

@@ -189,7 +189,7 @@ pub enum Command {
     Declare {
         name: String,
         name_span: SourceSpan,
-        value_type: PrimitiveType,
+        value_type: Prim,
         span: SourceSpan,
     },
 }
@@ -203,13 +203,7 @@ impl Command {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum PrimitiveType {
-    Integer,
-    Rational,
-    String,
-    Boolean,
-}
+pub use crate::types::Prim;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum UnaryOp {
@@ -244,7 +238,7 @@ pub enum ParserToken {
     String(SpannedValue<String>),
     Identifier(SpannedValue<String>),
     Operator(SpannedValue<FormulaOperator>),
-    PrimitiveType(SpannedValue<PrimitiveType>),
+    PrimitiveType(SpannedValue<Prim>),
     Becomes(SourceSpan),
     Equals(SourceSpan),
     Colon(SourceSpan),
@@ -379,13 +373,9 @@ fn parser_tokens_from_tokens(
                     span,
                 ))),
                 TokenKind::PrimitiveType(name) => {
-                    let value = match name.as_str() {
-                        "int" => Some(PrimitiveType::Integer),
-                        "rat" => Some(PrimitiveType::Rational),
-                        "string" => Some(PrimitiveType::String),
-                        "bool" => Some(PrimitiveType::Boolean),
-                        _ => None,
-                    };
+                    let value = Prim::ALL
+                        .into_iter()
+                        .find(|prim| prim.name() == name.as_str());
                     let token = value.map_or_else(
                         || ParserToken::Unsupported(SpannedValue { value: name, span }),
                         |value| ParserToken::PrimitiveType(SpannedValue { value, span }),
@@ -718,7 +708,7 @@ fn definition(target: SpannedValue<String>, value: Expr) -> Command {
     }
 }
 
-fn declaration(target: SpannedValue<String>, value_type: SpannedValue<PrimitiveType>) -> Command {
+fn declaration(target: SpannedValue<String>, value_type: SpannedValue<Prim>) -> Command {
     Command::Declare {
         name: target.value,
         name_span: target.span,

@@ -12,7 +12,7 @@ use malachite::{Integer as BigInt, Rational as BigRational};
 use crate::{
     diagnostic::{Diagnostic, ErrorKind, SourceSpan},
     formula::FormulaOperator,
-    syntax::{BinaryOp, Command, Expr, LetBinding, PrimitiveType, Program, SliceFlags},
+    syntax::{BinaryOp, Command, Expr, LetBinding, Prim, Program, SliceFlags},
     value::Value,
 };
 
@@ -209,7 +209,16 @@ pub fn execute_command(
             span,
             ..
         } => {
-            let value_type = scalar_type(*value_type);
+            let Some(value_type) = scalar_type(*value_type) else {
+                return Err(Diagnostic::new(
+                    ErrorKind::Type,
+                    format!(
+                        "declared type '{}' is not yet supported by this evaluator",
+                        value_type.name()
+                    ),
+                    Some(*span),
+                ));
+            };
             context.declare(name.clone(), value_type.clone());
             Ok(vec![EvalEvent::Output {
                 text: format!(
@@ -230,12 +239,16 @@ fn evaluate_expression_with_context(
     eval_expr(expression, context)
 }
 
-fn scalar_type(value_type: PrimitiveType) -> ScalarType {
+/// The dynamic-evaluator view of a declared primitive. Only the scalar four
+/// are checkable here; the rest wait for the typed pipeline (phase B stage
+/// B2), and a declaration using them reports a clear diagnostic instead.
+fn scalar_type(value_type: Prim) -> Option<ScalarType> {
     match value_type {
-        PrimitiveType::Integer => ScalarType::Integer,
-        PrimitiveType::Rational => ScalarType::Rational,
-        PrimitiveType::String => ScalarType::String,
-        PrimitiveType::Boolean => ScalarType::Boolean,
+        Prim::Int => Some(ScalarType::Integer),
+        Prim::Rat => Some(ScalarType::Rational),
+        Prim::String => Some(ScalarType::String),
+        Prim::Bool => Some(ScalarType::Boolean),
+        _ => None,
     }
 }
 
