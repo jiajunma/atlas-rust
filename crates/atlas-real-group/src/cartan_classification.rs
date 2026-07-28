@@ -286,6 +286,12 @@ impl CartanClassification {
         &self.cartan_classes
     }
 
+    /// The class ids in ascending order, for external consumers that cannot
+    /// construct [`CartanId`] values directly.
+    pub fn cartan_ids(&self) -> impl ExactSizeIterator<Item = CartanId> {
+        (0..self.cartan_classes.len()).map(CartanId)
+    }
+
     /// Bounded by the class count.
     pub fn cartan_class(&self, id: CartanId) -> Option<&CartanClass> {
         self.cartan_classes.get(id.0)

@@ -382,6 +382,12 @@ impl KgbGraph {
         self.elements.len()
     }
 
+    /// The element ids in ascending (sorted-numbering) order, for external
+    /// consumers that cannot construct [`KgbId`] values directly.
+    pub fn ids(&self) -> impl ExactSizeIterator<Item = KgbId> {
+        (0..self.elements.len()).map(KgbId)
+    }
+
     pub fn form(&self) -> WeakRealFormId {
         self.form
     }
