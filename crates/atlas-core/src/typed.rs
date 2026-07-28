@@ -14,11 +14,14 @@ use malachite::{Integer as BigInt, Rational as BigRational};
 
 use crate::coercions::{coercion_between, row_coercion};
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
-use crate::frames::EvaluationContext;
+use crate::frames::{EvaluationContext, GlobalCell};
 use crate::linear_values::{Matrix, RatVec, Vec32};
 use crate::syntax::Expr;
 use crate::types::{Prim, Type, TypeTable};
 use crate::value::Value;
+use std::collections::BTreeMap;
+use std::rc::Rc;
+use std::sync::OnceLock;
 
 /// Why evaluation stopped early. Loops consume `Break(0)` and rethrow
 /// decremented; closure application consumes `Return`; runtime errors
@@ -50,11 +53,46 @@ pub enum TypedExpr {
         inner: Box<TypedExpr>,
         span: SourceSpan,
     },
+    /// A global read through the cell captured at analysis time.
+    GlobalIdent {
+        name: String,
+        cell: GlobalCell,
+        span: SourceSpan,
+    },
+    /// A statically resolved builtin call (index into the registry).
+    BuiltinCall {
+        builtin: usize,
+        arguments: Vec<TypedExpr>,
+        span: SourceSpan,
+    },
 }
 
-/// Conversion-time context (grows globals/locals in later stages).
+/// Conversion-time context (locals arrive with lambdas in B3).
 pub struct Analysis<'a> {
     pub types: &'a TypeTable,
+    pub globals: &'a IdTable,
+}
+
+/// The global identifier table: one binding per name, each definition
+/// holding the FRESH cell it allocated (converted code keeps the cell it
+/// captured; re-definition rebinds the name only).
+#[derive(Default)]
+pub struct IdTable {
+    entries: BTreeMap<String, (Type, GlobalCell)>,
+}
+
+impl IdTable {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn define(&mut self, name: impl Into<String>, type_: Type, cell: GlobalCell) {
+        self.entries.insert(name.into(), (type_, cell));
+    }
+
+    pub fn lookup(&self, name: &str) -> Option<&(Type, GlobalCell)> {
+        self.entries.get(name)
+    }
 }
 
 fn type_error(message: String, span: SourceSpan) -> Diagnostic {
@@ -213,11 +251,210 @@ pub fn convert_expr(
                 None => conform_types(&Type::row(component), required, display, *span, analysis),
             }
         }
+        Expr::Identifier { name, span } => {
+            let Some((type_, cell)) = analysis.globals.lookup(name) else {
+                return Err(Diagnostic::new(
+                    ErrorKind::Name,
+                    format!("undefined identifier `{name}`"),
+                    Some(*span),
+                ));
+            };
+            let found = type_.clone();
+            conform_types(
+                &found,
+                required,
+                TypedExpr::GlobalIdent {
+                    name: name.clone(),
+                    cell: cell.clone(),
+                    span: *span,
+                },
+                *span,
+                analysis,
+            )
+        }
+        Expr::OperatorCall {
+            operator,
+            arguments,
+            span,
+        } => {
+            // The a-priori-type design (axis.w:1552-1599): convert each
+            // argument once in undetermined context, then one pass over the
+            // variants — exact match wins immediately, else the FIRST
+            // variant the a-priori type coerces into is taken, with each
+            // divergent argument re-converted against its expected type.
+            let mut converted = Vec::new();
+            let mut a_priori = Vec::new();
+            for argument in arguments {
+                let mut slot = Type::Undetermined;
+                converted.push(convert_expr(argument, &mut slot, analysis)?);
+                a_priori.push(slot);
+            }
+            let a_priori_type = Type::tuple(a_priori.clone());
+            let variants = overload_variants(&operator.symbol);
+            let mut inexact = None;
+            let mut chosen = None;
+            for &index in variants {
+                let builtin = &builtin_registry()[index];
+                if builtin.arg_type == a_priori_type {
+                    chosen = Some(index);
+                    break;
+                }
+                if inexact.is_none()
+                    && crate::coercions::is_close(&a_priori_type, &builtin.arg_type, analysis.types)
+                        & 0x1
+                        != 0
+                {
+                    inexact = Some(index);
+                }
+            }
+            let index = match chosen.or(inexact) {
+                Some(index) => index,
+                None => {
+                    return Err(type_error(
+                        format!(
+                            "no instance of operator '{}' matches argument type {}",
+                            operator.symbol,
+                            a_priori_type.display(analysis.types),
+                        ),
+                        *span,
+                    ))
+                }
+            };
+            let builtin = &builtin_registry()[index];
+            // Re-convert divergent arguments against the expected components.
+            let expected: Vec<Type> = match &builtin.arg_type {
+                Type::Tuple(components) => components.clone(),
+                single => vec![single.clone()],
+            };
+            let arguments = converted
+                .into_iter()
+                .zip(a_priori)
+                .zip(expected)
+                .zip(arguments)
+                .map(|(((converted, found), mut expected), original)| {
+                    if expected.specialise(&found, analysis.types) {
+                        Ok(converted)
+                    } else {
+                        convert_expr(original, &mut expected, analysis)
+                    }
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            let found = builtin.result.clone();
+            conform_types(
+                &found,
+                required,
+                TypedExpr::BuiltinCall {
+                    builtin: index,
+                    arguments,
+                    span: *span,
+                },
+                *span,
+                analysis,
+            )
+        }
         unsupported => Err(type_error(
             "this expression form is not yet in the typed pipeline".into(),
             unsupported.span(),
         )),
     }
+}
+
+/// One registered builtin overload.
+pub struct Builtin {
+    pub name: &'static str,
+    pub arg_type: Type,
+    pub result: Type,
+    pub run: fn(Vec<Value>, SourceSpan) -> Result<Value, Control>,
+}
+
+fn int_type() -> Type {
+    Type::Primitive(Prim::Int)
+}
+
+fn int_pair() -> Type {
+    Type::tuple(vec![int_type(), int_type()])
+}
+
+fn expect_ints(mut arguments: Vec<Value>) -> (BigInt, BigInt) {
+    let second = arguments.pop();
+    let first = arguments.pop();
+    match (first, second) {
+        (Some(Value::Integer(first)), Some(Value::Integer(second))) => (first, second),
+        other => panic!("int builtin saw {other:?}"),
+    }
+}
+
+/// The startup builtin registry (growing toward the traced inventory).
+pub fn builtin_registry() -> &'static Vec<Builtin> {
+    static REGISTRY: OnceLock<Vec<Builtin>> = OnceLock::new();
+    REGISTRY.get_or_init(|| {
+        vec![
+            Builtin {
+                name: "+",
+                arg_type: int_pair(),
+                result: int_type(),
+                run: |arguments, _span| {
+                    let (first, second) = expect_ints(arguments);
+                    Ok(Value::Integer(first + second))
+                },
+            },
+            Builtin {
+                name: "-",
+                arg_type: int_pair(),
+                result: int_type(),
+                run: |arguments, _span| {
+                    let (first, second) = expect_ints(arguments);
+                    Ok(Value::Integer(first - second))
+                },
+            },
+            Builtin {
+                name: "*",
+                arg_type: int_pair(),
+                result: int_type(),
+                run: |arguments, _span| {
+                    let (first, second) = expect_ints(arguments);
+                    Ok(Value::Integer(first * second))
+                },
+            },
+            Builtin {
+                name: "-",
+                arg_type: int_type(),
+                result: int_type(),
+                run: |mut arguments, _span| match arguments.pop() {
+                    Some(Value::Integer(value)) => Ok(Value::Integer(-value)),
+                    other => panic!("unary minus saw {other:?}"),
+                },
+            },
+            Builtin {
+                name: "/",
+                arg_type: int_pair(),
+                result: Type::Primitive(Prim::Rat),
+                run: |arguments, span| {
+                    let (first, second) = expect_ints(arguments);
+                    if second == 0 {
+                        return Err(runtime("Division by zero", span));
+                    }
+                    Ok(Value::Rational(BigRational::from_integers(first, second)))
+                },
+            },
+        ]
+    })
+}
+
+/// Variant indices for `name`, in registration order.
+fn overload_variants(name: &str) -> &'static [usize] {
+    static INDEX: OnceLock<BTreeMap<&'static str, Vec<usize>>> = OnceLock::new();
+    INDEX
+        .get_or_init(|| {
+            let mut index: BTreeMap<&'static str, Vec<usize>> = BTreeMap::new();
+            for (position, builtin) in builtin_registry().iter().enumerate() {
+                index.entry(builtin.name).or_default().push(position);
+            }
+            index
+        })
+        .get(name)
+        .map(Vec::as_slice)
+        .unwrap_or(&[])
 }
 
 impl TypedExpr {
@@ -248,6 +485,28 @@ impl TypedExpr {
                 let value = force(inner, context)?;
                 let converted = apply_conversion(tag, value, *span)?;
                 Ok(at_level(level, || converted.clone()))
+            }
+            Self::GlobalIdent { name, cell, span } => {
+                let value = cell.borrow().clone();
+                match value {
+                    Some(value) => Ok(at_level(level, || value.as_ref().clone())),
+                    None => Err(runtime(
+                        format!("Taking value of uninitialized variable '{name}'"),
+                        *span,
+                    )),
+                }
+            }
+            Self::BuiltinCall {
+                builtin,
+                arguments,
+                span,
+            } => {
+                let values = arguments
+                    .iter()
+                    .map(|argument| force(argument, context))
+                    .collect::<Result<Vec<_>, _>>()?;
+                let result = (builtin_registry()[*builtin].run)(values, *span)?;
+                Ok(at_level(level, || result.clone()))
             }
         }
     }
@@ -423,12 +682,15 @@ mod tests {
     use crate::source::SourceText;
     use crate::syntax::parse;
 
-    fn convert_and_run(source: &str) -> Result<(Type, Value), Diagnostic> {
+    fn convert_and_run_with(source: &str, globals: &IdTable) -> Result<(Type, Value), Diagnostic> {
         let source = SourceText::new(source);
         let program = parse(&source).expect("test source parses");
         assert_eq!(program.expressions.len(), 1);
         let table = TypeTable::new();
-        let analysis = Analysis { types: &table };
+        let analysis = Analysis {
+            types: &table,
+            globals,
+        };
         let mut required = Type::Undetermined;
         let typed = convert_expr(&program.expressions[0], &mut required, &analysis)?;
         let mut context = EvaluationContext::new();
@@ -440,6 +702,48 @@ mod tests {
             })?
             .expect("single value");
         Ok((required, value))
+    }
+
+    fn convert_and_run(source: &str) -> Result<(Type, Value), Diagnostic> {
+        convert_and_run_with(source, &IdTable::new())
+    }
+
+    #[test]
+    fn globals_read_through_captured_cells_and_report_unset() {
+        let mut globals = IdTable::new();
+        globals.define(
+            "x",
+            Type::Primitive(Prim::Int),
+            crate::frames::global_with(Rc::new(Value::Integer(7.into()))),
+        );
+        globals.define(
+            "y",
+            Type::Primitive(Prim::Int),
+            crate::frames::unset_global(),
+        );
+        let (type_, value) = convert_and_run_with("x", &globals).expect("defined global");
+        assert_eq!(type_, Type::Primitive(Prim::Int));
+        assert_eq!(value, Value::Integer(7.into()));
+        let error = convert_and_run_with("y", &globals).expect_err("unset global");
+        assert!(error.message.contains("uninitialized variable 'y'"));
+        let error = convert_and_run_with("z", &globals).expect_err("unknown name");
+        assert!(error.message.contains("undefined identifier"));
+    }
+
+    #[test]
+    fn operator_calls_resolve_through_the_overload_registry() {
+        let (type_, value) = convert_and_run("1 + 2 * 3").expect("int arithmetic");
+        assert_eq!(type_, Type::Primitive(Prim::Int));
+        assert_eq!(value, Value::Integer(7.into()));
+        let (type_, value) = convert_and_run("1 / 2").expect("int division is rational");
+        assert_eq!(type_, Type::Primitive(Prim::Rat));
+        assert_eq!(value.to_string(), "1/2");
+        let (_, value) = convert_and_run("- 3").expect("unary minus");
+        assert_eq!(value, Value::Integer((-3).into()));
+        let error = convert_and_run("1 + true").expect_err("no such overload");
+        assert!(error.message.contains("no instance of operator '+'"));
+        let error = convert_and_run("1 / 0").expect_err("division by zero");
+        assert_eq!(error.message, "Division by zero");
     }
 
     #[test]
