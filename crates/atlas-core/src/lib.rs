@@ -15,6 +15,7 @@ pub mod session;
 pub mod session_frame;
 pub mod source;
 pub mod syntax;
+pub mod typed;
 pub mod types;
 pub mod value;
 
