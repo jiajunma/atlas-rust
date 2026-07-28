@@ -133,21 +133,25 @@ impl fmt::Display for Matrix {
             return write!(formatter, "The {}x{} matrix", self.rows, self.cols);
         }
         // Per-column widths; entries right-aligned in width[col] + 1.
-        let mut widths = vec![0_usize; self.cols];
-        for col in 0..self.cols {
-            for row in 0..self.rows {
-                let rendered = self.data[col * self.rows + row].to_string().len();
-                widths[col] = widths[col].max(rendered);
-            }
-        }
+        let widths: Vec<usize> = self
+            .data
+            .chunks_exact(self.rows)
+            .map(|column| {
+                column
+                    .iter()
+                    .map(|entry| entry.to_string().len())
+                    .max()
+                    .unwrap_or(0)
+            })
+            .collect();
         writeln!(formatter)?;
         for row in 0..self.rows {
             write!(formatter, "|")?;
-            for col in 0..self.cols {
+            for (col, column_width) in widths.iter().enumerate() {
                 if col > 0 {
                     write!(formatter, ",")?;
                 }
-                let width = widths[col] + 1;
+                let width = column_width + 1;
                 let entry = self.data[col * self.rows + row];
                 write!(formatter, "{entry:>width$}")?;
             }
