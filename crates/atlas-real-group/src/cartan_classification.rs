@@ -212,9 +212,10 @@ impl CartanClassification {
         for k in 0..class_count {
             for t in 0..class_count {
                 if below[t][k] {
-                    for s in 0..class_count {
-                        if below[k][s] {
-                            below[t][s] = true;
+                    let source = below[k].clone();
+                    for (slot, &flag) in below[t].iter_mut().zip(&source) {
+                        if flag {
+                            *slot = true;
                         }
                     }
                 }

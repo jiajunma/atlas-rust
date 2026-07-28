@@ -76,7 +76,7 @@ impl ExternalFormOrder {
             let tiebreak = special_grading_key(grading, weak, internal, &generator_of_bit)?;
             keys.push((depth, tiebreak, internal));
         }
-        keys.sort_by(|left, right| (left.0, left.1).cmp(&(right.0, right.1)));
+        keys.sort_by_key(|left| (left.0, left.1));
         for window in keys.windows(2) {
             if (window[0].0, window[0].1) == (window[1].0, window[1].1) {
                 return Err(StructureError::RealFormOrderInvariantViolation {
@@ -218,14 +218,11 @@ impl DepthTables {
 
         let mut working = self.positive_imaginary.clone();
         let mut count = 0_usize;
-        loop {
-            let Some(pick) = working
-                .iter()
-                .copied()
-                .find(|candidate| noncompact.contains(candidate))
-            else {
-                break;
-            };
+        while let Some(pick) = working
+            .iter()
+            .copied()
+            .find(|candidate| noncompact.contains(candidate))
+        {
             count = count
                 .checked_add(1)
                 .ok_or(StructureError::ArithmeticOverflow)?;

@@ -355,6 +355,9 @@ impl StrongRealClassification {
             local_of_form.push(row);
         }
         let mut kgb_sizes = try_capacity(form_count)?;
+        // form_index also names the form and its error payloads; iterating
+        // local_of_form would invert its cartan-major layout.
+        #[allow(clippy::needless_range_loop)]
         for form_index in 0..form_count {
             let form = WeakRealFormId(form_index);
             let cartan_set =

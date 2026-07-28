@@ -13,16 +13,17 @@
 #SBATCH --time=01:00:00
 #SBATCH --output=atlas-kgb-diff-%j.out
 
+# The upstream binary was built with a newer gcc than the node baseline;
+# profile/module setup runs before strict mode (set -u breaks profile.d).
+source /etc/profile >/dev/null 2>&1 || true
+module load misc/gcc/12.1 >/dev/null 2>&1 || true
+gcc_lib="$(dirname "$(gcc -print-file-name=libstdc++.so.6)")"
+export LD_LIBRARY_PATH="$gcc_lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
 set -euo pipefail
 submit_dir="${SLURM_SUBMIT_DIR:?SLURM_SUBMIT_DIR is required}"
 cd "$submit_dir"
 export PATH="$HOME/.cargo/bin:$PATH"
-
-# The upstream binary was built with a newer gcc than the node baseline.
-source /etc/profile 2>/dev/null || true
-module load misc/gcc/12.1 2>/dev/null || true
-gcc_lib="$(dirname "$(gcc -print-file-name=libstdc++.so.6)")"
-export LD_LIBRARY_PATH="$gcc_lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
 atlas_bin="${ATLAS_BIN:-$HOME/atlasofliegroups/atlas}"
 test -x "$atlas_bin" || { echo "missing atlas binary at $atlas_bin"; exit 2; }

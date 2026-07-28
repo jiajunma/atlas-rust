@@ -4,6 +4,7 @@
 //! boundaries. Implementation work follows the contracts in `docs/`.
 
 pub mod diagnostic;
+pub mod domain_builtins;
 pub mod eval;
 pub mod formula;
 pub mod lex;

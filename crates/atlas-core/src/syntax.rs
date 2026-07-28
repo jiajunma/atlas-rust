@@ -91,6 +91,11 @@ pub enum Expr {
         arguments: Vec<Expr>,
         span: SourceSpan,
     },
+    Call {
+        callee: Box<Expr>,
+        arguments: Vec<Expr>,
+        span: SourceSpan,
+    },
     Group {
         inner: Box<Expr>,
         span: SourceSpan,
@@ -126,6 +131,7 @@ impl Expr {
             | Self::Unary { span, .. }
             | Self::Binary { span, .. }
             | Self::OperatorCall { span, .. }
+            | Self::Call { span, .. }
             | Self::Group { span, .. } => *span,
         }
     }
@@ -159,6 +165,10 @@ enum PostfixSuffix {
         lower: Expr,
         upper: Expr,
         flags: SliceFlags,
+        close: SourceSpan,
+    },
+    Call {
+        arguments: Vec<Expr>,
         close: SourceSpan,
     },
 }
@@ -605,7 +615,16 @@ fn postfix(array: Expr, suffix: PostfixSuffix) -> Expr {
             upper: Box::new(upper),
             flags,
         },
+        PostfixSuffix::Call { arguments, close } => Expr::Call {
+            span: join_span(array.span(), close),
+            callee: Box::new(array),
+            arguments,
+        },
     }
+}
+
+fn call_suffix(arguments: Vec<Expr>, close: SourceSpan) -> PostfixSuffix {
+    PostfixSuffix::Call { arguments, close }
 }
 
 fn subscription_suffix(index: Expr, reversed: bool, close: SourceSpan) -> PostfixSuffix {
@@ -864,6 +883,17 @@ mod tests {
                     .join(",")
             ),
             Expr::Group { inner, .. } => format!("group({})", expression_shape(inner)),
+            Expr::Call {
+                callee, arguments, ..
+            } => format!(
+                "call({};{})",
+                expression_shape(callee),
+                arguments
+                    .iter()
+                    .map(expression_shape)
+                    .collect::<Vec<_>>()
+                    .join(",")
+            ),
         }
     }
 

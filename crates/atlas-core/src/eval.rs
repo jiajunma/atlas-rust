@@ -256,10 +256,20 @@ pub(crate) enum ScalarType {
     String,
     Tuple(Vec<ScalarType>),
     List(Option<Box<ScalarType>>),
+    /// An opaque domain handle, named by its language-facing kind.
+    Domain(&'static str),
 }
 
 fn infer_scalar_type(expression: &Expr, context: &EvalContext) -> Result<ScalarType, Diagnostic> {
     match expression {
+        Expr::Call { callee, span, .. } => match callee.as_ref() {
+            Expr::Identifier { .. } => Ok(ScalarType::Unknown),
+            _ => Err(Diagnostic::new(
+                ErrorKind::Type,
+                "only named functions can be applied".to_string(),
+                Some(*span),
+            )),
+        },
         Expr::Identifier { name, span } => context.binding_type(name).ok_or_else(|| {
             Diagnostic::new(
                 ErrorKind::Name,
@@ -652,6 +662,7 @@ fn atlas_type_name(value_type: &ScalarType) -> String {
         ),
         ScalarType::List(Some(element)) => format!("[{}]", atlas_type_name(element)),
         ScalarType::List(None) => "[*]".into(),
+        ScalarType::Domain(kind) => (*kind).into(),
     }
 }
 
@@ -668,6 +679,7 @@ fn value_type(value: &Value) -> ScalarType {
                 .and_then(|element_type| element_type.map(Box::new));
             ScalarType::List(element_type)
         }
+        Value::Domain(value) => ScalarType::Domain(crate::domain_builtins::kind_name(value)),
     }
 }
 
@@ -725,12 +737,40 @@ fn scalar_type_name(value_type: &ScalarType) -> String {
         ),
         ScalarType::List(Some(element)) => format!("list of {}", scalar_type_name(element)),
         ScalarType::List(None) => "empty list".into(),
+        ScalarType::Domain(kind) => (*kind).into(),
     }
+}
+
+/// Evaluate a named-function application. Only identifier heads are
+/// callable; the name set is the domain-builtin registry.
+fn eval_call(
+    callee: &Expr,
+    arguments: &[Expr],
+    span: crate::diagnostic::SourceSpan,
+    context: &mut EvalContext,
+) -> Result<Value, Diagnostic> {
+    let Expr::Identifier { name, .. } = callee else {
+        return Err(Diagnostic::new(
+            ErrorKind::Type,
+            "only named functions can be applied".to_string(),
+            Some(span),
+        ));
+    };
+    let mut values = Vec::with_capacity(arguments.len());
+    for argument in arguments {
+        values.push(eval_expr(argument, context)?);
+    }
+    crate::domain_builtins::call(name, &values, span)
 }
 
 /// Evaluate one expression against an explicit context.
 fn eval_expr(expression: &Expr, context: &mut EvalContext) -> Result<Value, Diagnostic> {
     match expression {
+        Expr::Call {
+            callee,
+            arguments,
+            span,
+        } => eval_call(callee, arguments, *span, context),
         Expr::Integer { value, .. } => Ok(Value::Integer(value.clone())),
         Expr::Boolean { value, .. } => Ok(Value::Boolean(*value)),
         Expr::String { value, .. } => Ok(Value::String(value.clone())),
@@ -1339,6 +1379,7 @@ fn type_name(value: &Value) -> &'static str {
         Value::String(_) => "string",
         Value::Tuple(_) => "tuple",
         Value::List(_) => "list",
+        Value::Domain(value) => crate::domain_builtins::kind_name(value),
     }
 }
 

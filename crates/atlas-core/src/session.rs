@@ -95,6 +95,56 @@ mod tests {
     use crate::{diagnostic::ErrorKind, source::SourceText, value::Value};
 
     #[test]
+    fn kgb_pipeline_is_scriptable_end_to_end() {
+        // The phase-1 gate: simply connected A1, equal-rank inner class,
+        // external form order (compact = 0, split = 1), KGB observables.
+        let source = SourceText::new(concat!(
+            "ic : inner_class(simply_connected(\"A1\"), [[1]])\n",
+            "nr_of_real_forms(ic)\n",
+            "KGB_size(real_form(ic, 0))\n",
+            "KGB_size(real_form(ic, 1))\n",
+            "status(0, KGB(real_form(ic, 1), 0))\n",
+        ));
+        let events = run_source(&source);
+        let values: Vec<&Value> = events
+            .iter()
+            .filter_map(|event| match event {
+                SessionEvent::Value { value, .. } => Some(value),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(values[0], &Value::Integer(2.into()));
+        assert_eq!(values[1], &Value::Integer(1.into()));
+        assert_eq!(values[2], &Value::Integer(3.into()));
+        // Element 0 of the split form is noncompact imaginary: status 3.
+        assert_eq!(values[3], &Value::Integer(3.into()));
+    }
+
+    #[test]
+    fn sp4r_kgb_sizes_match_the_oracle_through_the_language() {
+        let source = SourceText::new(concat!(
+            "ic : inner_class(simply_connected(\"B2\"), [[1,0],[0,1]])\n",
+            "KGB_size(real_form(ic, 0))\n",
+            "KGB_size(real_form(ic, 1))\n",
+            "KGB_size(real_form(ic, 2))\n",
+            "KGB(real_form(ic, 2), 10)\n",
+            "Cayley(0, KGB(real_form(ic, 2), 0))\n",
+        ));
+        let events = run_source(&source);
+        let mut values = events.iter().filter_map(|event| match event {
+            SessionEvent::Value { value, .. } => Some(value),
+            _ => None,
+        });
+        assert_eq!(values.next(), Some(&Value::Integer(1.into())));
+        assert_eq!(values.next(), Some(&Value::Integer(4.into())));
+        assert_eq!(values.next(), Some(&Value::Integer(11.into())));
+        let element = values.next().expect("element value");
+        assert_eq!(element.to_string(), "KGB element #10");
+        let cayleyed = values.next().expect("cayley value");
+        assert!(cayleyed.to_string().starts_with("KGB element #"));
+    }
+
+    #[test]
     fn preserves_events_and_continues_after_command_errors() {
         let source = SourceText::new(include_str!(
             "../../../tests/fixtures/commands/ordered_events.atlas"

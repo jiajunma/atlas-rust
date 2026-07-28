@@ -635,9 +635,10 @@ pub(crate) fn invert_rational(
                 continue;
             }
             let factor = work[row][pivot].clone();
-            for column in 0..2 * size {
-                let subtrahend = &factor * &work[pivot][column];
-                work[row][column] -= subtrahend;
+            let pivot_row = work[pivot].clone();
+            for (slot, pivot_value) in work[row].iter_mut().zip(&pivot_row) {
+                let subtrahend = &factor * pivot_value;
+                *slot -= subtrahend;
             }
         }
     }

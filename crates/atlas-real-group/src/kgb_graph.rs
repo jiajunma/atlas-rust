@@ -27,6 +27,13 @@ use crate::{
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct KgbId(pub(crate) usize);
 
+impl KgbId {
+    /// The element's position in the graph's sorted numbering.
+    pub fn index(&self) -> usize {
+        self.0
+    }
+}
+
 /// The status of one simple generator at one KGB element.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum KgbStatus {

@@ -3,7 +3,7 @@ use super::{
     expression_list, finish_operator_formula, join_span, let_binding, let_bindings,
     let_expression, list_expression, tuple_expression,
     prepend_let_group,
-    postfix, prefix_operator_call, slice_suffix, start_binary_formula, start_prefix_formula,
+    call_suffix, postfix, prefix_operator_call, slice_suffix, start_binary_formula, start_prefix_formula,
     subscription_suffix, unary, BinaryOp, Command, Expr, LetBinding, ParsedLet, ParserToken,
     PostfixSuffix, PrimitiveType, Program, SpannedValue, UnaryOp,
 };
@@ -116,6 +116,12 @@ PostfixSuffix: PostfixSuffix = {
         slice_suffix(Some(lower), None, colon, close)
     },
     <_open:"["> <colon:":"> <close:"]"> => slice_suffix(None, None, colon, close),
+    <_open:"("> <arguments:CallArguments> <close:")"> => call_suffix(arguments, close),
+};
+
+CallArguments: Vec<Expr> = {
+    => Vec::new(),
+    <first:Expr> <rest:("," <Expr>)*> => expression_list(first, rest),
 };
 
 Atom: Expr = {

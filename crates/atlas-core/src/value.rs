@@ -4,6 +4,8 @@ use std::fmt;
 
 use malachite::{Integer as BigInt, Rational as BigRational};
 
+pub use crate::domain_builtins::DomainValue;
+
 /// The Atlas value model currently covered by the evaluator.
 ///
 /// Functions and domain handles will be added as separate variants once their
@@ -16,6 +18,7 @@ pub enum Value {
     String(String),
     Tuple(Vec<Value>),
     List(Vec<Value>),
+    Domain(DomainValue),
 }
 
 /// Descriptive alias for callers that prefer the language-level name.
@@ -56,6 +59,7 @@ impl fmt::Display for Value {
                 }
                 write!(formatter, ")")
             }
+            Self::Domain(value) => write!(formatter, "{value}"),
             Self::List(values) => {
                 write!(formatter, "[")?;
                 for (index, value) in values.iter().enumerate() {

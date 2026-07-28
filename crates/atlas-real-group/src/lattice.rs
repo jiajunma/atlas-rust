@@ -126,6 +126,12 @@ impl RationalCoweight {
         self.coordinates.len()
     }
 
+    /// Exact coordinate view for workspace consumers (the interpreter's
+    /// value layer already speaks malachite rationals publicly).
+    pub fn to_rationals(&self) -> Vec<Rational> {
+        self.coordinates.clone()
+    }
+
     pub(crate) fn coordinates(&self) -> &[Rational] {
         &self.coordinates
     }
