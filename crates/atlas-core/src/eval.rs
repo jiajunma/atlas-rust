@@ -771,6 +771,10 @@ fn value_type(value: &Value) -> ScalarType {
                 .and_then(|element_type| element_type.map(Box::new));
             ScalarType::List(element_type)
         }
+        Value::Vector(_) => ScalarType::Domain("vec"),
+        Value::Matrix(_) => ScalarType::Domain("mat"),
+        Value::RatVector(_) => ScalarType::Domain("ratvec"),
+        Value::Union { .. } => ScalarType::Unknown,
         Value::Domain(value) => ScalarType::Domain(crate::domain_builtins::kind_name(value)),
     }
 }
@@ -1475,6 +1479,10 @@ fn type_name(value: &Value) -> &'static str {
         Value::String(_) => "string",
         Value::Tuple(_) => "tuple",
         Value::List(_) => "list",
+        Value::Vector(_) => "vec",
+        Value::Matrix(_) => "mat",
+        Value::RatVector(_) => "ratvec",
+        Value::Union { .. } => "union",
         Value::Domain(value) => crate::domain_builtins::kind_name(value),
     }
 }
