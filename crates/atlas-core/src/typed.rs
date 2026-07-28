@@ -644,6 +644,40 @@ pub fn convert_expr(
             arguments,
             span,
         } => {
+            // Atlas installs a special `(int->rat)` inverse overload whose
+            // parser-side rewrite takes precedence for literal `1 / x`.
+            // This is observable at zero (`Inverse of zero` vs fraction's
+            // denominator diagnostic), so preserve it before normal lookup.
+            if operator.symbol == "/"
+                && arguments.len() == 2
+                && matches!(&arguments[0], Expr::Integer { value, .. } if value == &BigInt::from(1))
+            {
+                let inverse = builtin_registry()
+                    .iter()
+                    .position(|builtin| {
+                        builtin.name == "/"
+                            && builtin.arg_type == int_type()
+                            && builtin.result == rat_type()
+                            && matches!(
+                                builtin.implementation,
+                                BuiltinImpl::Scalar(ScalarOp::IntInverse)
+                            )
+                    })
+                    .expect("integer inverse overload is registered");
+                let mut argument_type = int_type();
+                let argument = convert_expr(&arguments[1], &mut argument_type, analysis)?;
+                return conform_types(
+                    &rat_type(),
+                    required,
+                    TypedExpr::BuiltinCall {
+                        builtin: inverse,
+                        arguments: vec![argument],
+                        span: *span,
+                    },
+                    *span,
+                    analysis,
+                );
+            }
             // The a-priori-type design (axis.w:1552-1599): convert each
             // argument once in undetermined context, then one pass over the
             // variants — exact match wins immediately, else the FIRST
@@ -2325,7 +2359,7 @@ mod tests {
         let error = convert_and_run("1 + true").expect_err("no such overload");
         assert!(error.message.contains("no instance of operator '+'"));
         let error = convert_and_run("1 / 0").expect_err("division by zero");
-        assert_eq!(error.message, "fraction with zero denominator");
+        assert_eq!(error.message, "Inverse of zero");
     }
 
     #[test]
@@ -2472,7 +2506,7 @@ mod tests {
         assert!(matches!(
             error,
             Control::Runtime(Diagnostic { message, .. })
-                if message == "fraction with zero denominator"
+                if message == "Inverse of zero"
         ));
     }
 
