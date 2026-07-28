@@ -16,7 +16,7 @@ use crate::coercions::{coercion_between, row_coercion};
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
 use crate::frames::{EvaluationContext, GlobalCell};
 use crate::linear_values::{Matrix, RatVec, Vec32};
-use crate::syntax::Expr;
+use crate::syntax::{Command, Expr};
 use crate::types::{Prim, Type, TypeTable};
 use crate::value::Value;
 use std::cell::RefCell;
@@ -148,6 +148,119 @@ impl IdTable {
     pub fn lookup(&self, name: &str) -> Option<&(TypeCell, GlobalCell)> {
         self.entries.get(name)
     }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum TypedCommandEvent {
+    Value {
+        value: Value,
+        type_: Type,
+        span: SourceSpan,
+    },
+    ReportLine {
+        text: String,
+        span: SourceSpan,
+    },
+}
+
+/// Persistent state for command-at-a-time typed execution.
+#[derive(Default)]
+pub struct TypedContext {
+    types: TypeTable,
+    globals: IdTable,
+    evaluation: EvaluationContext,
+}
+
+impl TypedContext {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn globals(&self) -> &IdTable {
+        &self.globals
+    }
+
+    pub fn execute(&mut self, command: &Command) -> Result<Vec<TypedCommandEvent>, Diagnostic> {
+        match command {
+            Command::Expression(expression) => {
+                let mut type_ = Type::Undetermined;
+                let typed = convert_expr(
+                    expression,
+                    &mut type_,
+                    &Analysis::new(&self.types, &self.globals),
+                )?;
+                let value = evaluate_command_expr(&typed, &mut self.evaluation)?;
+                Ok(vec![TypedCommandEvent::Value {
+                    value,
+                    type_,
+                    span: expression.span(),
+                }])
+            }
+            Command::Define {
+                name, value, span, ..
+            } => {
+                let mut type_ = Type::Undetermined;
+                let typed = convert_expr(
+                    value,
+                    &mut type_,
+                    &Analysis::new(&self.types, &self.globals),
+                )?;
+                let value = evaluate_command_expr(&typed, &mut self.evaluation)?;
+                let previous = self
+                    .globals
+                    .lookup(name)
+                    .map(|(type_, _)| type_.borrow().display(&self.types).to_string());
+                self.globals.define(
+                    name.clone(),
+                    type_.clone(),
+                    crate::frames::global_with(Rc::new(value)),
+                );
+
+                let mut text = format!("Variable {name}: {}", type_.display(&self.types));
+                if let Some(previous) = previous {
+                    text.push_str(&format!(
+                        " (overriding previous instance, which had type {previous})"
+                    ));
+                }
+                text.push('\n');
+                Ok(vec![TypedCommandEvent::ReportLine { text, span: *span }])
+            }
+            Command::Declare {
+                name,
+                value_type,
+                span,
+                ..
+            } => {
+                let type_ = Type::Primitive(*value_type);
+                self.globals
+                    .define(name.clone(), type_.clone(), crate::frames::unset_global());
+                Ok(vec![TypedCommandEvent::ReportLine {
+                    text: format!(
+                        "Declaring identifier '{name}': {}\n",
+                        type_.display(&self.types)
+                    ),
+                    span: *span,
+                }])
+            }
+        }
+    }
+}
+
+fn evaluate_command_expr(
+    expression: &TypedExpr,
+    context: &mut EvaluationContext,
+) -> Result<Value, Diagnostic> {
+    expression
+        .evaluate(context, Level::SingleValue)
+        .map_err(|control| match control {
+            Control::Runtime(diagnostic) => diagnostic,
+            Control::Break(_) | Control::Return(_) => Diagnostic::new(
+                ErrorKind::Runtime,
+                "illegal control flow at top level",
+                None,
+            ),
+        })
+        .map(|value| value.expect("single-value command evaluation yields a value"))
 }
 
 fn type_error(message: String, span: SourceSpan) -> Diagnostic {
@@ -1225,8 +1338,9 @@ fn apply_conversion(tag: &str, value: Value, span: SourceSpan) -> Result<Value, 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::lex::{tokenize, TokenKind};
     use crate::source::SourceText;
-    use crate::syntax::parse;
+    use crate::syntax::{parse, parse_command};
     use std::rc::Rc;
 
     fn convert_and_run_with(source: &str, globals: &IdTable) -> Result<(Type, Value), Diagnostic> {
@@ -1250,6 +1364,56 @@ mod tests {
 
     fn convert_and_run(source: &str) -> Result<(Type, Value), Diagnostic> {
         convert_and_run_with(source, &IdTable::new())
+    }
+
+    fn command(source: &str) -> Command {
+        let source = SourceText::new(source);
+        let tokens = tokenize(&source)
+            .expect("command tokenizes")
+            .into_iter()
+            .filter(|token| !matches!(token.kind, TokenKind::Newline | TokenKind::Eof))
+            .collect::<Vec<_>>();
+        parse_command(&tokens, &source).expect("command parses")
+    }
+
+    #[test]
+    fn typed_context_executes_definitions_declarations_and_expressions() {
+        let mut context = TypedContext::new();
+        assert_eq!(
+            context.execute(&command("x: 1")).expect("definition"),
+            vec![TypedCommandEvent::ReportLine {
+                text: "Variable x: int\n".into(),
+                span: command("x: 1").span(),
+            }]
+        );
+
+        let events = context.execute(&command("x")).expect("global read");
+        assert!(matches!(
+            &events[..],
+            [TypedCommandEvent::Value {
+                value: Value::Integer(value),
+                type_: Type::Primitive(Prim::Int),
+                ..
+            }] if value == &BigInt::from(1)
+        ));
+
+        let events = context.execute(&command("x: \"new\"")).expect("override");
+        assert!(matches!(
+            &events[..],
+            [TypedCommandEvent::ReportLine { text, .. }]
+                if text == "Variable x: string (overriding previous instance, which had type int)\n"
+        ));
+
+        context.execute(&command("r: rat")).expect("declaration");
+        let events = context.execute(&command("r := 2")).expect("assignment");
+        assert!(matches!(
+            &events[..],
+            [TypedCommandEvent::Value {
+                value: Value::Rational(value),
+                type_: Type::Primitive(Prim::Rat),
+                ..
+            }] if value == &BigRational::from(2)
+        ));
     }
 
     #[test]
