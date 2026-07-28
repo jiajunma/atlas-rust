@@ -596,7 +596,9 @@ fn fractional_part(value: &Rational) -> Rational {
 /// Exact inverse of a square rational matrix by Gaussian elimination with
 /// the first-nonzero pivot (deterministic; Cartan matrices of finite type
 /// are invertible). Returns the inverse's COLUMNS.
-fn invert_rational(matrix: &[Vec<Rational>]) -> Result<Vec<Vec<Rational>>, StructureError> {
+pub(crate) fn invert_rational(
+    matrix: &[Vec<Rational>],
+) -> Result<Vec<Vec<Rational>>, StructureError> {
     let size = matrix.len();
     let mut work = try_capacity(size)?;
     for (index, row) in matrix.iter().enumerate() {
