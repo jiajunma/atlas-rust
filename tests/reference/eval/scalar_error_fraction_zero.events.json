@@ -1,0 +1,1 @@
+{"schema":"atlas-eval-events-v0","fixture":"eval/scalar_error_fraction_zero","status":"verified_hpc_reference","events":[{"kind":"Diagnostic","category":"runtime","message":"Inverse of zero"}]}

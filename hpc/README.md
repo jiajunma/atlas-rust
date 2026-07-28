@@ -53,6 +53,26 @@ ssh majj@10.26.14.64 \
   "cd atlas-rust && ATLAS_COMMIT=$atlas_commit ATLAS_DIRTY_TREE=$atlas_dirty sbatch hpc/real_group_preflight.sbatch"
 ```
 
+For the typed scalar operator stage, first capture the upstream oracle only.
+The job writes raw output for each scalar fixture, per-stream checksums, exit
+statuses, the Atlas revision, and a compact validation report. It deliberately
+does not invoke Rust, so it is valid evidence for freezing the reference before
+the implementation stage:
+
+```bash
+ssh majj@10.26.14.64 \
+  "cd atlas-rust && ATLAS_COMMIT=$atlas_commit ATLAS_DIRTY_TREE=$atlas_dirty sbatch hpc/scalar_reference.sbatch"
+```
+
+The report is `results/<commit>/<job-id>/scalar_reference_report.json`; its
+SHA-256 sidecar covers the manifest, while the manifest covers every captured
+stdout/stderr artifact.
+
+The scalar event expectations assert values and diagnostic text only. The
+capture records the oracle exit status but does not infer an exit-code policy
+from a diagnostic fixture unless that policy is explicitly added to the event
+schema.
+
 Heavy differential jobs must use `sbatch`; do not run them on the login node.
 Job scripts must fail on a mismatch and write a machine-readable report under
 `results/<commit>/<job-id>/`. Pull only summaries and checksums back:
