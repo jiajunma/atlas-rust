@@ -18,6 +18,9 @@ pub enum TokenKind {
     Integer,
     String,
     Operator(String),
+    /// An operate-assign spelling like `+:=` — one token, with spaces and
+    /// comments allowed between the operator and the `:=` (lexer.w:507-516).
+    OperatorBecomes(String),
     Punctuation(char),
     /// An input/output directive (`<`, `<<`, `>`, `>>`) recognized only as
     /// the first token of a command, mirroring the upstream lexer's
@@ -226,24 +229,13 @@ impl<'a> Lexer<'a> {
             }
             b'!' if bytes.get(self.offset + 1) == Some(&b'=') => {
                 self.offset += 2;
-                self.operator_termination('=');
-                Ok(token(
-                    source,
-                    TokenKind::Operator("!=".into()),
-                    start,
-                    self.offset,
-                ))
+                self.finish_operator(start, "!=", '=')
             }
             b'<' | b'>' if bytes.get(self.offset + 1) == Some(&b'=') => {
                 let operator = source.as_str()[start..self.offset + 2].to_owned();
                 self.offset += 2;
-                self.operator_termination(operator.as_bytes()[0] as char);
-                Ok(token(
-                    source,
-                    TokenKind::Operator(operator),
-                    start,
-                    self.offset,
-                ))
+                let symbol = operator.chars().next().expect("two-character operator");
+                self.finish_operator(start, &operator, symbol)
             }
             b'-' if bytes.get(self.offset + 1) == Some(&b'>') => {
                 self.offset += 2;
@@ -267,39 +259,30 @@ impl<'a> Lexer<'a> {
             }
             b'\\' if bytes.get(self.offset + 1) == Some(&b'%') => {
                 self.offset += 2;
-                self.operator_termination('%');
-                Ok(token(
-                    source,
-                    TokenKind::Operator("\\%".into()),
-                    start,
-                    self.offset,
-                ))
+                self.finish_operator(start, "\\%", '%')
             }
             b'#' if bytes.get(self.offset + 1) == Some(&b'#') => {
                 self.offset += 2;
-                self.operator_termination('#');
-                Ok(token(
-                    source,
-                    TokenKind::Operator("##".into()),
-                    start,
-                    self.offset,
-                ))
+                self.finish_operator(start, "##", '#')
             }
-            b'+' | b'-' | b'*' | b'/' | b'=' | b'!' | b'<' | b'>' | b'&' | b'|' | b'@' | b'%'
-            | b'^' | b'#' | b'\\' => {
+            b'+' | b'-' | b'*' | b'/' | b'=' | b'!' | b'<' | b'>' | b'&' | b'%' | b'^' | b'#'
+            | b'\\' => {
                 self.offset += 1;
                 let operator = source.as_str()[start..self.offset].to_owned();
-                if operator != "!" {
-                    self.operator_termination(operator.chars().next().unwrap_or('~'));
+                if operator == "!" {
+                    // Bare `!` is the const-pattern marker, never a formula
+                    // operator and never an operate-assign head.
+                    return Ok(token(
+                        source,
+                        TokenKind::Operator(operator),
+                        start,
+                        self.offset,
+                    ));
                 }
-                Ok(token(
-                    source,
-                    TokenKind::Operator(operator),
-                    start,
-                    self.offset,
-                ))
+                let symbol = operator.chars().next().expect("one-character operator");
+                self.finish_operator(start, &operator, symbol)
             }
-            c if b"()[]{};,?.~:".contains(&c) => {
+            c if b"()[]{};,?.~:|@$".contains(&c) => {
                 self.offset += 1;
                 self.apply_punctuation(c as char);
                 Ok(token(
@@ -440,6 +423,50 @@ impl<'a> Lexer<'a> {
         } else {
             Some(symbol)
         };
+    }
+
+    /// Finish a scanned operator: if `:=` follows (across spaces, tabs, and
+    /// comments), fuse into one operate-assign token; otherwise emit the
+    /// plain operator with its continuation symbol.
+    fn finish_operator(
+        &mut self,
+        start: usize,
+        operator: &str,
+        symbol: char,
+    ) -> Result<Token, Diagnostic> {
+        let bytes = self.source.as_str().as_bytes();
+        let saved = self.offset;
+        loop {
+            match bytes.get(self.offset) {
+                Some(b' ' | b'\t' | b'\r') => self.offset += 1,
+                Some(b'{') => {
+                    let comment_start = self.offset;
+                    if self.consume_comment(comment_start).is_err() {
+                        self.offset = saved;
+                        break;
+                    }
+                }
+                _ => break,
+            }
+        }
+        if bytes.get(self.offset) == Some(&b':') && bytes.get(self.offset + 1) == Some(&b'=') {
+            self.offset += 2;
+            self.prevent_termination = Some(':');
+            return Ok(Token {
+                kind: TokenKind::OperatorBecomes(operator.to_owned()),
+                lexeme: self.source.as_str()[start..self.offset].to_owned(),
+                value: None,
+                span: self.source.span(start, self.offset),
+            });
+        }
+        self.offset = saved;
+        self.operator_termination(symbol);
+        Ok(token(
+            self.source,
+            TokenKind::Operator(operator.to_owned()),
+            start,
+            saved,
+        ))
     }
 
     fn eof_token(&self) -> Token {
@@ -780,6 +807,52 @@ mod tests {
     }
 
     #[test]
+    fn operate_assign_spellings_fuse_into_one_token() {
+        let tokens = tokenize(&SourceText::new("x +:= 1\n")).expect("operate-assign");
+        assert_eq!(tokens[1].kind, TokenKind::OperatorBecomes("+".into()));
+        // Spaces and comments are allowed between operator and `:=`.
+        let spaced = tokenize(&SourceText::new("x ## {join} := y\n")).expect("spaced form");
+        assert_eq!(spaced[1].kind, TokenKind::OperatorBecomes("##".into()));
+        // A plain operator is unaffected, as is plain assignment.
+        let plain = tokenize(&SourceText::new("x + 1\n")).expect("plain operator");
+        assert_eq!(plain[1].kind, TokenKind::Operator("+".into()));
+        let becomes = tokenize(&SourceText::new("x := 1\n")).expect("plain becomes");
+        assert_eq!(becomes[1].kind, TokenKind::Operator(":=".into()));
+        // The fused token continues the command across a newline.
+        let continued = tokenize(&SourceText::new("x +:=\n1\n")).expect("continued");
+        assert_eq!(
+            continued
+                .iter()
+                .filter(|token| token.kind == TokenKind::Newline)
+                .count(),
+            1
+        );
+    }
+
+    #[test]
+    fn dollar_bar_and_at_are_single_punctuation_tokens() {
+        let tokens = tokenize(&SourceText::new("$ | @")).expect("punctuation");
+        assert_eq!(tokens[0].kind, TokenKind::Punctuation('$'));
+        assert_eq!(tokens[1].kind, TokenKind::Punctuation('|'));
+        assert_eq!(tokens[2].kind, TokenKind::Punctuation('@'));
+    }
+
+    #[test]
+    fn all_twenty_primitive_names_scan_as_primtype() {
+        let source = SourceText::new(concat!(
+            "int rat string bool vec mat ratvec LieType RootDatum WeylElt ",
+            "InnerClass RealForm CartanClass KGBElt Block Split KType ",
+            "KTypePol Param ParamPol\n"
+        ));
+        let tokens = tokenize(&source).expect("primitive names");
+        let primitives = tokens
+            .iter()
+            .filter(|token| matches!(token.kind, TokenKind::PrimitiveType(_)))
+            .count();
+        assert_eq!(primitives, 20);
+    }
+
+    #[test]
     fn operator_after_dot_may_end_a_command() {
         let tokens = tokenize(&SourceText::new("x.+\n")).expect("operator member access");
         assert_eq!(tokens[tokens.len() - 2].kind, TokenKind::Newline);
@@ -867,12 +940,12 @@ mod tests {
 
     #[test]
     fn unrecognized_characters_are_preserved_for_the_parser() {
-        let source = SourceText::new("a$b");
+        let source = SourceText::new("a`b");
         let mut lexer = Lexer::new(&source);
         assert_eq!(lexer.next_token().expect("a").kind, TokenKind::Identifier);
         assert_eq!(
             lexer.next_token().expect("raw token").kind,
-            TokenKind::Unsupported("$".into())
+            TokenKind::Unsupported("`".into())
         );
         assert_eq!(lexer.next_token().expect("b").kind, TokenKind::Identifier);
     }

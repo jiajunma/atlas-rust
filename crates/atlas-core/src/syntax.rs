@@ -457,6 +457,15 @@ fn parser_tokens_from_tokens(
                     }),
                     span,
                 ))),
+                // Operate-assign enters the grammar with the assignment
+                // family (phase B stage B4); a syntax error until then.
+                TokenKind::OperatorBecomes(_) => Some(Ok((
+                    ParserToken::Unsupported(SpannedValue {
+                        value: token.lexeme,
+                        span,
+                    }),
+                    span,
+                ))),
                 TokenKind::Newline => Some(Ok((ParserToken::Newline(span), span))),
             }
         })
