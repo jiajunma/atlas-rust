@@ -2,7 +2,8 @@
   "fixture": "eval/settype_probe",
   "oracle": "atlas",
   "stage": "probe",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
+  "reference_job": "3498819",
   "rust_status": "not_implemented",
   "notes": "Exploratory probe for the B5 set_type slice: type alias via set_type on a plain type, named-field tuple (struct) types, whattype on a type name and on expressions, type ascription of tuple values, named-field projection through selector syntax, and named-case union types with case construction. Lines will be split into accepted and rejected fixtures from the oracle behavior; this probe file is not a differential fixture."
 }
