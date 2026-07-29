@@ -1,0 +1,12 @@
+{
+  "fixture": "eval/selectors_b3d_rejected",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "fixture_sha256": "ba4b164f70e5ac878bdc0fbb640a0b8d03ef106cb67354eddeaa0c67db920bf6",
+  "upstream_evidence": [
+    "sources/interpreter/parser.y:321-337"
+  ],
+  "notes": "Rejected selector forms split from the selectors_probe oracle exploration: the unary-plus operator selector has no matching overload, and an integer selector is not callable. No expected output is asserted until the raw HPC oracle capture is normalized."
+}

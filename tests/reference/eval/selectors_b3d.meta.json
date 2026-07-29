@@ -1,0 +1,12 @@
+{
+  "fixture": "eval/selectors_b3d",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "fixture_sha256": "0774c9937548552af152e3dc8c11a309c9c31d4c98c5793106f3b9019b36b7a4",
+  "upstream_evidence": [
+    "sources/interpreter/parser.y:321-337"
+  ],
+  "notes": "Accepted selector forms split from the selectors_probe oracle exploration: unit selector application ().f, chained identifier selectors 2.f.g, and the unary-minus operator selector 2.-. No expected output is asserted until the raw HPC oracle capture is normalized."
+}
