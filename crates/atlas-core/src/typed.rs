@@ -18,9 +18,9 @@ use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
 use crate::domain_builtins;
 use crate::frames::{EvaluationContext, GlobalCell};
 use crate::linear_values::{Matrix, RatVec, Vec32};
-use crate::syntax::{Command, Expr, LambdaParam};
+use crate::syntax::{compact_expression, Command, Expr, LambdaParam, Pattern};
 use crate::types::{Prim, Type, TypeTable};
-use crate::value::{Closure, Value};
+use crate::value::{Closure, SlotShape, Value};
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
@@ -94,7 +94,9 @@ pub enum TypedExpr {
         span: SourceSpan,
     },
     LetGroup {
-        initializers: Vec<TypedExpr>,
+        /// One (shape, initializer) pair per binding in the group; each
+        /// value distributes into the frame slots its shape describes.
+        initializers: Vec<(SlotShape, TypedExpr)>,
         body: Box<TypedExpr>,
     },
     /// `if c then t else e fi` after balancing.
@@ -114,6 +116,8 @@ pub enum TypedExpr {
     Closure {
         /// Number of argument slots a call binds; 0 pushes no frame.
         parameters: usize,
+        /// How each argument value distributes into frame slots.
+        shapes: Rc<[SlotShape]>,
         /// A recursive closure additionally binds itself at slot 0.
         recursive: bool,
         body: Rc<TypedExpr>,
@@ -136,6 +140,10 @@ pub struct Analysis<'a> {
     pub types: &'a TypeTable,
     pub globals: &'a IdTable,
     locals: BTreeMap<String, (TypeCell, usize, usize)>,
+    /// Names bound by a const `!x` pattern; assignment to them is an
+    /// analysis error. Entries shadow outward like `locals` does: a
+    /// non-const rebinding removes the name.
+    constant_locals: BTreeSet<String>,
     /// Set while converting a function body: `return` is legal only there
     /// (the axis layer's return_type marker).
     in_function: bool,
@@ -147,6 +155,7 @@ impl<'a> Analysis<'a> {
             types,
             globals,
             locals: BTreeMap::new(),
+            constant_locals: BTreeSet::new(),
             in_function: false,
         }
     }
@@ -622,6 +631,18 @@ pub fn convert_expr(
             span,
         } => {
             if let Some((target, depth, offset)) = analysis.locals.get(name) {
+                // A const `!x` binding rejects assignment during analysis,
+                // before anything evaluates (upstream `is_constant`).
+                if analysis.constant_locals.contains(name.as_str()) {
+                    return Err(Diagnostic::new(
+                        ErrorKind::Name,
+                        format!(
+                            "Name '{name}' is constant in assignment {name}:={}",
+                            compact_expression(value)
+                        ),
+                        Some(*target_span),
+                    ));
+                }
                 let mut required_value = target.borrow().clone();
                 let converted = convert_expr(value, &mut required_value, analysis)?;
                 *target.borrow_mut() = required_value.clone();
@@ -734,6 +755,7 @@ pub fn convert_expr(
             span: _,
         } => {
             let mut locals = analysis.locals.clone();
+            let mut constant_locals = analysis.constant_locals.clone();
             let mut groups = Vec::with_capacity(binding_groups.len());
             for bindings in binding_groups {
                 let mut pending = Vec::with_capacity(bindings.len());
@@ -746,34 +768,55 @@ pub fn convert_expr(
                             types: analysis.types,
                             globals: analysis.globals,
                             locals: locals.clone(),
+                            constant_locals: constant_locals.clone(),
                             in_function: analysis.in_function,
                         },
                     )?;
-                    pending.push((binding.name.clone(), binding_type, converted));
+                    // The initializer converts freely; the pattern then
+                    // claims the resulting type (upstream `bind_pattern`).
+                    let leaves =
+                        bind_pattern_leaves(&binding.pattern, &binding_type, analysis.types)?;
+                    pending.push((pattern_slot_shape(&binding.pattern), leaves, converted));
                 }
                 let mut names = BTreeSet::new();
-                for binding in bindings {
-                    if !names.insert(binding.name.as_str()) {
-                        return Err(Diagnostic::new(
-                            ErrorKind::Name,
-                            format!("Multiple binding of '{}' in same scope", binding.name),
-                            Some(binding.name_span),
-                        ));
+                for (_, leaves, _) in &pending {
+                    for (name, name_span, _, _) in leaves {
+                        if !names.insert(name.as_str()) {
+                            return Err(Diagnostic::new(
+                                ErrorKind::Name,
+                                format!("Multiple binding of '{name}' in same scope"),
+                                Some(*name_span),
+                            ));
+                        }
                     }
                 }
-                for (_, depth, _) in locals.values_mut() {
-                    *depth += 1;
+                // A group of pure discards claims no frame (empty-layer
+                // rule), so depths shift only when it binds a slot.
+                let group_slots: usize = pending.iter().map(|(_, leaves, _)| leaves.len()).sum();
+                if group_slots > 0 {
+                    for (_, depth, _) in locals.values_mut() {
+                        *depth += 1;
+                    }
                 }
-                for (offset, (name, binding_type, _)) in pending.iter().enumerate() {
-                    locals.insert(
-                        name.clone(),
-                        (Rc::new(RefCell::new(binding_type.clone())), 0, offset),
-                    );
+                let mut offset = 0;
+                for (_, leaves, _) in &pending {
+                    for (name, _, constant, binding_type) in leaves {
+                        locals.insert(
+                            name.clone(),
+                            (Rc::new(RefCell::new(binding_type.clone())), 0, offset),
+                        );
+                        if *constant {
+                            constant_locals.insert(name.clone());
+                        } else {
+                            constant_locals.remove(name);
+                        }
+                        offset += 1;
+                    }
                 }
                 groups.push(
                     pending
                         .into_iter()
-                        .map(|(_, _, converted)| converted)
+                        .map(|(shape, _, converted)| (shape, converted))
                         .collect::<Vec<_>>(),
                 );
             }
@@ -784,6 +827,7 @@ pub fn convert_expr(
                     types: analysis.types,
                     globals: analysis.globals,
                     locals,
+                    constant_locals,
                     in_function: analysis.in_function,
                 },
             )?;
@@ -1003,6 +1047,120 @@ pub fn convert_expr(
 /// required pattern's result hole so a context type reaches the body (and
 /// any `return`) directly. A void context converts the body against a
 /// dummy result and discards the closure.
+/// The frame-slot layout one bound value distributes into (upstream
+/// `bind_pattern`'s variable list): the whole-value name of a `(a, b): t`
+/// pattern takes the first slot, then elements left-to-right.
+fn pattern_slot_shape(pattern: &Pattern) -> SlotShape {
+    match pattern {
+        Pattern::Discard { .. } => SlotShape::Discard,
+        Pattern::Name { .. } => SlotShape::Leaf,
+        Pattern::Tuple {
+            elements, whole, ..
+        } => SlotShape::Tuple {
+            elements: elements.iter().map(pattern_slot_shape).collect(),
+            whole: whole.is_some(),
+        },
+    }
+}
+
+/// The undetermined structure a pattern requires of a value's type,
+/// rendered in mismatch messages (`(*,*)` for a 2-tuple pattern).
+fn pattern_type(pattern: &Pattern) -> Type {
+    match pattern {
+        Pattern::Discard { .. } | Pattern::Name { .. } => Type::Undetermined,
+        Pattern::Tuple { elements, .. } => Type::tuple(elements.iter().map(pattern_type).collect()),
+    }
+}
+
+/// One bound name of a pattern, in slot order: the name, its span for
+/// duplicate diagnostics, constness, and the claimed component type.
+type PatternLeaf = (String, SourceSpan, bool, Type);
+
+/// The names a pattern binds, in slot order (whole-value name first), each
+/// with the component type claimed from `found`. A structural mismatch is
+/// the upstream `found … while … was needed.` error (`bind_pattern`).
+fn bind_pattern_leaves(
+    pattern: &Pattern,
+    found: &Type,
+    types: &TypeTable,
+) -> Result<Vec<PatternLeaf>, Diagnostic> {
+    match pattern {
+        Pattern::Discard { .. } => Ok(Vec::new()),
+        Pattern::Name {
+            name,
+            name_span,
+            constant,
+            ..
+        } => Ok(vec![(name.clone(), *name_span, *constant, found.clone())]),
+        Pattern::Tuple {
+            elements,
+            whole,
+            span,
+        } => {
+            let mismatch = || {
+                type_error(
+                    format!(
+                        "found {} while {} was needed.",
+                        found.display(types),
+                        pattern_type(pattern).display(types)
+                    ),
+                    *span,
+                )
+            };
+            let Type::Tuple(components) = found else {
+                return Err(mismatch());
+            };
+            if components.len() != elements.len() {
+                return Err(mismatch());
+            }
+            let mut leaves = Vec::new();
+            if let Some(whole) = whole {
+                leaves.extend(bind_pattern_leaves(whole, found, types)?);
+            }
+            for (element, component) in elements.iter().zip(components) {
+                leaves.extend(bind_pattern_leaves(element, component, types)?);
+            }
+            Ok(leaves)
+        }
+    }
+}
+
+/// One lambda parameter (parser.y `id_spec`): the declared argument type,
+/// the slot shape, and the bound leaves in slot order. A tuple parameter
+/// composes its specs; `type pattern` claims the pattern's leaves from the
+/// declared type.
+fn convert_parameter(
+    parameter: &LambdaParam,
+    types: &TypeTable,
+) -> Result<(Type, SlotShape, Vec<PatternLeaf>), Diagnostic> {
+    match parameter {
+        LambdaParam::Typed(typed) => {
+            let declared = typed.type_expr.resolve();
+            let leaves = bind_pattern_leaves(&typed.pattern, &declared, types)?;
+            Ok((declared, pattern_slot_shape(&typed.pattern), leaves))
+        }
+        LambdaParam::Tuple { elements, .. } => {
+            let mut element_types = Vec::with_capacity(elements.len());
+            let mut shapes = Vec::with_capacity(elements.len());
+            let mut leaves = Vec::new();
+            for element in elements {
+                let (element_type, shape, element_leaves) = convert_parameter(element, types)?;
+                element_types.push(element_type);
+                shapes.push(shape);
+                leaves.extend(element_leaves);
+            }
+            Ok((
+                Type::tuple(element_types),
+                SlotShape::Tuple {
+                    elements: shapes,
+                    whole: false,
+                },
+                leaves,
+            ))
+        }
+    }
+}
+
 fn convert_lambda_expression(
     parameters: &[LambdaParam],
     body: &Expr,
@@ -1010,41 +1168,62 @@ fn convert_lambda_expression(
     required: &mut Type,
     analysis: &Analysis<'_>,
 ) -> Result<TypedExpr, Diagnostic> {
-    let mut names = BTreeSet::new();
+    let mut converted_parameters = Vec::with_capacity(parameters.len());
     for parameter in parameters {
-        if !names.insert(parameter.name.as_str()) {
-            return Err(Diagnostic::new(
-                ErrorKind::Name,
-                format!("Multiple binding of '{}' in same scope", parameter.name),
-                Some(parameter.name_span),
-            ));
+        converted_parameters.push(convert_parameter(parameter, analysis.types)?);
+    }
+    let mut names = BTreeSet::new();
+    for (_, _, leaves) in &converted_parameters {
+        for (name, name_span, _, _) in leaves {
+            if !names.insert(name.as_str()) {
+                return Err(Diagnostic::new(
+                    ErrorKind::Name,
+                    format!("Multiple binding of '{name}' in same scope"),
+                    Some(*name_span),
+                ));
+            }
         }
     }
     let mut locals = analysis.locals.clone();
-    // Parameterless functions push no frame at call time, so depths only
-    // shift when the new layer is non-empty (the empty-layer rule).
-    if !parameters.is_empty() {
+    let mut constant_locals = analysis.constant_locals.clone();
+    // Functions whose parameters bind nothing push no frame at call time,
+    // so depths only shift when the new layer holds a slot (the
+    // empty-layer rule).
+    let layer_slots: usize = converted_parameters
+        .iter()
+        .map(|(_, _, leaves)| leaves.len())
+        .sum();
+    if layer_slots > 0 {
         for (_, depth, _) in locals.values_mut() {
             *depth += 1;
         }
     }
     let mut parameter_types = Vec::with_capacity(parameters.len());
-    for (offset, parameter) in parameters.iter().enumerate() {
-        let parameter_type = parameter.type_expr.resolve();
-        locals.insert(
-            parameter.name.clone(),
-            (Rc::new(RefCell::new(parameter_type.clone())), 0, offset),
-        );
+    let mut shapes = Vec::with_capacity(parameters.len());
+    let mut offset = 0;
+    for (parameter_type, shape, leaves) in converted_parameters {
         parameter_types.push(parameter_type);
+        shapes.push(shape);
+        for (name, _, constant, leaf_type) in leaves {
+            locals.insert(name.clone(), (Rc::new(RefCell::new(leaf_type)), 0, offset));
+            if constant {
+                constant_locals.insert(name.clone());
+            } else {
+                constant_locals.remove(&name);
+            }
+            offset += 1;
+        }
     }
     let body_analysis = Analysis {
         types: analysis.types,
         globals: analysis.globals,
         locals,
+        constant_locals,
         in_function: true,
     };
     let closure = |body: TypedExpr| TypedExpr::Closure {
         parameters: parameters.len(),
+        shapes: Rc::from(shapes),
         recursive: false,
         body: Rc::new(body),
     };
@@ -1094,24 +1273,30 @@ fn convert_rec_lambda_expression(
     };
     let mut names = BTreeSet::new();
     names.insert(self_name.as_str());
+    let mut converted_parameters = Vec::with_capacity(parameters.len());
     for parameter in parameters {
-        if !names.insert(parameter.name.as_str()) {
-            return Err(Diagnostic::new(
-                ErrorKind::Name,
-                format!("Multiple binding of '{}' in same scope", parameter.name),
-                Some(parameter.name_span),
-            ));
+        converted_parameters.push(convert_parameter(parameter, analysis.types)?);
+    }
+    for (_, _, leaves) in &converted_parameters {
+        for (name, name_span, _, _) in leaves {
+            if !names.insert(name.as_str()) {
+                return Err(Diagnostic::new(
+                    ErrorKind::Name,
+                    format!("Multiple binding of '{name}' in same scope"),
+                    Some(*name_span),
+                ));
+            }
         }
     }
     let mut parameter_types = Vec::with_capacity(parameters.len());
-    let mut typed_parameters = Vec::with_capacity(parameters.len());
-    for parameter in parameters {
-        let parameter_type = parameter.type_expr.resolve();
+    let mut shapes = Vec::with_capacity(parameters.len());
+    for (parameter_type, shape, _) in &converted_parameters {
         parameter_types.push(parameter_type.clone());
-        typed_parameters.push((parameter.name.clone(), parameter_type));
+        shapes.push(shape.clone());
     }
     let function_type = Type::function(Type::tuple(parameter_types), result_type.resolve());
     let mut locals = analysis.locals.clone();
+    let mut constant_locals = analysis.constant_locals.clone();
     // The call frame always holds the self binding, so depths shift by one
     // even for a parameterless recursive function.
     for (_, depth, _) in locals.values_mut() {
@@ -1121,17 +1306,28 @@ fn convert_rec_lambda_expression(
         self_name.clone(),
         (Rc::new(RefCell::new(function_type.clone())), 0, 0),
     );
-    for (offset, (name, parameter_type)) in typed_parameters.into_iter().enumerate() {
-        locals.insert(name, (Rc::new(RefCell::new(parameter_type)), 0, offset + 1));
+    let mut offset = 1;
+    for (_, _, leaves) in converted_parameters {
+        for (name, _, constant, leaf_type) in leaves {
+            locals.insert(name.clone(), (Rc::new(RefCell::new(leaf_type)), 0, offset));
+            if constant {
+                constant_locals.insert(name.clone());
+            } else {
+                constant_locals.remove(&name);
+            }
+            offset += 1;
+        }
     }
     let body_analysis = Analysis {
         types: analysis.types,
         globals: analysis.globals,
         locals,
+        constant_locals,
         in_function: true,
     };
     let closure = |body: TypedExpr| TypedExpr::Closure {
         parameters: parameters.len(),
+        shapes: Rc::from(shapes),
         recursive: true,
         body: Rc::new(body),
     };
@@ -2529,11 +2725,18 @@ impl TypedExpr {
                 Ok(at_level(level, || Value::List(sliced.clone())))
             }
             Self::LetGroup { initializers, body } => {
-                let values = initializers
-                    .iter()
-                    .map(|initializer| force(initializer, context).map(std::rc::Rc::new))
-                    .collect::<Result<Vec<_>, _>>()?;
-                context.with_frame(values, |context| body.evaluate(context, level))
+                let mut slots = Vec::new();
+                for (shape, initializer) in initializers {
+                    let value = force(initializer, context)?;
+                    distribute(value, shape, &mut slots);
+                }
+                // A group of pure discards claims no frame (empty-layer
+                // rule), exactly as analysis counted no layer for it.
+                if slots.is_empty() {
+                    body.evaluate(context, level)
+                } else {
+                    context.with_frame(slots, |context| body.evaluate(context, level))
+                }
             }
             Self::Conditional {
                 condition,
@@ -2557,11 +2760,13 @@ impl TypedExpr {
             }
             Self::Closure {
                 parameters,
+                shapes,
                 recursive,
                 body,
             } => Ok(at_level(level, || {
                 Value::Closure(Rc::new(Closure {
                     parameters: *parameters,
+                    shapes: shapes.clone(),
                     recursive: *recursive,
                     body: Rc::clone(body),
                     frame: context.capture(),
@@ -2579,17 +2784,40 @@ impl TypedExpr {
                     panic!("analysis let a non-function callee through: {closure}")
                 };
                 let argument = force(argument, context)?;
-                // The argument is one value: a tuple destructures into the
-                // frame slots, anything else binds the single parameter; a
-                // parameterless call pushes no frame (empty-layer rule).
+                // The argument is one value: several parameters split it as
+                // a tuple, a single parameter takes it whole; each value
+                // then distributes into the frame slots its pattern shape
+                // describes. A parameterless call pushes no frame
+                // (empty-layer rule).
                 let mut slots = match closure.parameters {
                     0 => None,
-                    1 => Some(vec![Rc::new(argument)]),
+                    1 => {
+                        let mut slots = Vec::new();
+                        distribute(argument, &closure.shapes[0], &mut slots);
+                        Some(slots)
+                    }
                     _ => match argument {
-                        Value::Tuple(values) => Some(values.into_iter().map(Rc::new).collect()),
+                        Value::Tuple(values) => {
+                            assert_eq!(
+                                values.len(),
+                                closure.parameters,
+                                "analysis let an argument arity mismatch through"
+                            );
+                            let mut slots = Vec::new();
+                            for (value, shape) in values.into_iter().zip(closure.shapes.iter()) {
+                                distribute(value, shape, &mut slots);
+                            }
+                            Some(slots)
+                        }
                         other => panic!("multi-parameter call saw non-tuple argument {other}"),
                     },
                 };
+                // All-anonymous parameter lists claim no frame, matching
+                // the analysis-time layer rule; a recursive closure still
+                // gains one for its self slot below.
+                if !closure.recursive {
+                    slots = slots.filter(|slots| !slots.is_empty());
+                }
                 // A recursive closure binds itself at slot 0, ahead of the
                 // argument slots (upstream `maybe_push`, axis.w:3548-3560);
                 // the new frame is not part of the captured chain, so the
@@ -2629,6 +2857,31 @@ fn force(expression: &TypedExpr, context: &mut EvaluationContext) -> Result<Valu
     expression
         .evaluate(context, Level::SingleValue)
         .map(|value| value.expect("single-value evaluation yields a value"))
+}
+
+/// Bind one value against a slot shape, pushing leaves left-to-right
+/// (upstream `bind_pattern` at evaluation time).
+fn distribute(value: Value, shape: &SlotShape, slots: &mut Vec<Rc<Value>>) {
+    match shape {
+        SlotShape::Leaf => slots.push(Rc::new(value)),
+        SlotShape::Discard => {}
+        SlotShape::Tuple { elements, whole } => {
+            if *whole {
+                slots.push(Rc::new(value.clone()));
+            }
+            let Value::Tuple(values) = value else {
+                panic!("analysis let a non-tuple value reach a tuple pattern: {value}")
+            };
+            assert_eq!(
+                values.len(),
+                elements.len(),
+                "analysis let a tuple arity mismatch through"
+            );
+            for (value, element) in values.into_iter().zip(elements) {
+                distribute(value, element, slots);
+            }
+        }
+    }
 }
 
 fn runtime(message: impl Into<String>, span: SourceSpan) -> Control {
@@ -3931,5 +4184,58 @@ mod tests {
         let error = convert_and_run("rec_fun f(int f) int: f").expect_err("self shadows parameter");
         assert_eq!(error.kind, ErrorKind::Name);
         assert!(error.message.contains("Multiple binding of 'f'"));
+    }
+
+    #[test]
+    fn binding_patterns_evaluate() {
+        // The B3c fixture shapes against the frozen reference events.
+        for (source, expected) in [
+            ("let (a, b) = (1, 2) in a + b", 3),
+            ("let !x = 41 in x + 1", 42),
+            ("let (a, (b, c)) = (1, (2, 3)) in a + b + c", 6),
+            ("let f = ((int a, int b)): a + b in f(3, 4)", 7),
+            ("let (a, b): t = (20, 22) in a + b", 42),
+            // An empty slot binds nothing; `type .` takes the argument
+            // anonymously.
+            ("let (a, , c) = (1, 2, 3) in a + c", 4),
+            ("let f(int x, int .) = x in f(3, 4)", 3),
+        ] {
+            let (type_, value) = convert_and_run(source)
+                .unwrap_or_else(|error| panic!("{source} should convert and run: {error:?}"));
+            assert_eq!(type_, Type::Primitive(Prim::Int), "source: {source}");
+            assert_eq!(value, Value::Integer(expected.into()), "source: {source}");
+        }
+
+        // The whole-value name sees the undestructured tuple.
+        let (_, value) = convert_and_run("let (a, b): t = (20, 22) in t").expect("whole binding");
+        assert_eq!(
+            value,
+            Value::Tuple(vec![Value::Integer(20.into()), Value::Integer(22.into())])
+        );
+    }
+
+    #[test]
+    fn pattern_rejections_are_analysis_errors() {
+        // The three frozen oracle diagnostics of patterns_b3c_rejected.
+        let error = convert_and_run("let !x = 41 in x := 2").expect_err("const assignment");
+        assert_eq!(error.kind, ErrorKind::Name);
+        assert_eq!(error.message, "Name 'x' is constant in assignment x:=2");
+
+        let error = convert_and_run("let (a, b) = (1, 2, 3) in a").expect_err("arity mismatch");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(error.message, "found (int,int,int) while (*,*) was needed.");
+
+        let error = convert_and_run("let (a, b) = 1 in a").expect_err("non-tuple destructure");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(error.message, "found int while (*,*) was needed.");
+
+        // Duplicate names inside one pattern reuse the scope error, and a
+        // non-const rebinding shadows a const one outward.
+        let error = convert_and_run("let (a, a) = (1, 2) in a").expect_err("duplicate");
+        assert_eq!(error.kind, ErrorKind::Name);
+        assert!(error.message.contains("Multiple binding of 'a'"));
+        let (_, value) =
+            convert_and_run("let !x = 1 in let x = 2 in x := 3").expect("non-const shadow rebinds");
+        assert_eq!(value, Value::Integer(3.into()));
     }
 }

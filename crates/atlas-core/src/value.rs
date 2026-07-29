@@ -49,6 +49,9 @@ pub struct Closure {
     /// Number of argument slots a call binds; 0 means parameterless, and
     /// the call pushes no frame beyond the self slot below.
     pub parameters: usize,
+    /// How each argument value distributes into frame slots (one entry per
+    /// parameter; upstream `bind_pattern`).
+    pub shapes: Rc<[SlotShape]>,
     /// A recursive closure: a call binds the closure itself at slot 0 of
     /// the call frame, ahead of the argument slots (upstream `maybe_push`).
     pub recursive: bool,
@@ -56,11 +59,30 @@ pub struct Closure {
     pub frame: Option<Rc<Frame>>,
 }
 
+/// How one bound value distributes into frame slots (upstream
+/// `bind_pattern`): a leaf takes one slot, a discard none, a tuple
+/// destructures its value per element. The whole-value name of a
+/// `(a, b): t` pattern occupies the first slot.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum SlotShape {
+    /// Bind the value to one frame slot.
+    Leaf,
+    /// Bind nothing (a `()` or empty pat_list slot, an anonymous `type .`).
+    Discard,
+    /// Destructure a tuple value per element; `whole` additionally binds
+    /// the undestructured value ahead of the element slots.
+    Tuple {
+        elements: Vec<SlotShape>,
+        whole: bool,
+    },
+}
+
 impl fmt::Debug for Closure {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter
             .debug_struct("Closure")
             .field("parameters", &self.parameters)
+            .field("shapes", &self.shapes)
             .field("recursive", &self.recursive)
             .field("body", &self.body)
             .field("frame", &self.frame.as_ref().map(Rc::as_ptr))

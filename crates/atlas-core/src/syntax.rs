@@ -144,13 +144,56 @@ pub enum Expr {
     },
 }
 
-/// A simple named lambda parameter (`type name`). Destructuring, anonymous,
-/// and const patterns remain outside the B3a parser slice.
+/// A binding pattern (parser.y:708-749): `x`, const `!x`, tuple
+/// destructuring with empty (discard) slots, the `()` throw-away, and a
+/// destructuring that also names the whole value (`(a, b): t`).
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct LambdaParam {
-    pub name: String,
-    pub name_span: SourceSpan,
+pub enum Pattern {
+    /// An empty position: `()` or an empty pat_list slot; binds nothing.
+    Discard { span: SourceSpan },
+    /// `x` or const `!x`.
+    Name {
+        name: String,
+        name_span: SourceSpan,
+        constant: bool,
+        span: SourceSpan,
+    },
+    /// `(p, …)` destructuring; `: t` / `: !t` also binds the whole value
+    /// (the `whole` pattern is then always a `Name`, per the grammar).
+    Tuple {
+        elements: Vec<Pattern>,
+        whole: Option<Box<Pattern>>,
+        span: SourceSpan,
+    },
+}
+
+impl Pattern {
+    pub fn span(&self) -> SourceSpan {
+        match self {
+            Self::Discard { span } | Self::Name { span, .. } | Self::Tuple { span, .. } => *span,
+        }
+    }
+}
+
+/// A lambda parameter (parser.y `id_spec`): `type pattern`, the anonymous
+/// `type .`, or `(id_spec, …)` destructuring of one argument value.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum LambdaParam {
+    /// Boxed to keep the enum small (a `TypeExpr` plus `Pattern` payload
+    /// would dwarf the tuple variant).
+    Typed(Box<TypedParam>),
+    Tuple {
+        elements: Vec<LambdaParam>,
+        span: SourceSpan,
+    },
+}
+
+/// A `type pattern` parameter; the pattern is a discard for the anonymous
+/// `type .` form.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TypedParam {
     pub type_expr: TypeExpr,
+    pub pattern: Pattern,
     pub span: SourceSpan,
 }
 
@@ -227,8 +270,7 @@ impl TypeExpr {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LetBinding {
-    pub name: String,
-    pub name_span: SourceSpan,
+    pub pattern: Pattern,
     pub initializer: Expr,
 }
 
@@ -385,6 +427,8 @@ pub enum ParserToken {
     Not(SourceSpan),
     Return(SourceSpan),
     RecFun(SourceSpan),
+    /// `!` — the const-binding marker in patterns, never a formula operator.
+    Bang(SourceSpan),
     At(SourceSpan),
     Dot(SourceSpan),
     LParen(SourceSpan),
@@ -429,6 +473,7 @@ impl ParserToken {
             | Self::Not(span)
             | Self::Return(span)
             | Self::RecFun(span)
+            | Self::Bang(span)
             | Self::At(span)
             | Self::Dot(span)
             | Self::LParen(span)
@@ -473,6 +518,7 @@ impl fmt::Display for ParserToken {
             Self::Not(_) => "not",
             Self::Return(_) => "return",
             Self::RecFun(_) => "rec_fun",
+            Self::Bang(_) => "!",
             Self::At(_) => "@",
             Self::Dot(_) => ".",
             Self::LParen(_) => "(",
@@ -605,6 +651,8 @@ fn parser_tokens_from_tokens(
                         "*" => ParserToken::Star(span),
                         "->" => ParserToken::Arrow(span),
                         "~[" => ParserToken::ReverseLBracket(span),
+                        // Bare `!` is the const-binding marker in patterns.
+                        "!" => ParserToken::Bang(span),
                         _ => parser_operator(operator, span).unwrap_or_else(|operator| {
                             ParserToken::Unsupported(SpannedValue {
                                 value: operator,
@@ -901,12 +949,38 @@ fn lambda(open: SourceSpan, parameters: Vec<LambdaParam>, body: Expr) -> Expr {
     }
 }
 
-fn lambda_parameter(type_expr: TypeExpr, name: SpannedValue<String>) -> LambdaParam {
-    LambdaParam {
-        span: join_span(type_expr.span(), name.span),
-        name: name.value,
-        name_span: name.span,
+fn lambda_parameter(type_expr: TypeExpr, pattern: Pattern) -> LambdaParam {
+    LambdaParam::Typed(Box::new(TypedParam {
+        span: join_span(type_expr.span(), pattern.span()),
         type_expr,
+        pattern,
+    }))
+}
+
+/// The anonymous `type .` parameter: the argument converts against the
+/// type but binds no name (parser.y `id_spec: type '.'`).
+fn anonymous_parameter(type_expr: TypeExpr, dot: SourceSpan) -> LambdaParam {
+    LambdaParam::Typed(Box::new(TypedParam {
+        span: join_span(type_expr.span(), dot),
+        type_expr,
+        pattern: Pattern::Discard { span: dot },
+    }))
+}
+
+/// `(id_spec, …)` destructures one argument value per position. A single
+/// spec in parentheses is plain grouping and collapses, mirroring the
+/// length-1 tuple collapse in [`TypeExpr`].
+fn tuple_parameter(
+    open: SourceSpan,
+    mut elements: Vec<LambdaParam>,
+    close: SourceSpan,
+) -> LambdaParam {
+    if elements.len() == 1 {
+        return elements.pop().expect("one element");
+    }
+    LambdaParam::Tuple {
+        span: join_span(open, close),
+        elements,
     }
 }
 
@@ -915,6 +989,98 @@ fn lambda_parameters(first: LambdaParam, rest: Vec<LambdaParam>) -> Vec<LambdaPa
     parameters.push(first);
     parameters.extend(rest);
     parameters
+}
+
+/// `x` in pattern position.
+fn pattern_name(name: SpannedValue<String>) -> Pattern {
+    Pattern::Name {
+        span: name.span,
+        name: name.value,
+        name_span: name.span,
+        constant: false,
+    }
+}
+
+/// `!x` in pattern position: a constant binding (parser.y `pattern: '!' IDENT`).
+fn const_pattern_name(bang: SourceSpan, name: SpannedValue<String>) -> Pattern {
+    Pattern::Name {
+        span: join_span(bang, name.span),
+        name: name.value,
+        name_span: name.span,
+        constant: true,
+    }
+}
+
+/// The `()` throw-away pattern.
+fn pattern_discard(open: SourceSpan, close: SourceSpan) -> Pattern {
+    Pattern::Discard {
+        span: join_span(open, close),
+    }
+}
+
+/// What follows the first slot of a parenthesised pattern: `)` makes it
+/// grouping (collapses), a comma makes it a destructuring slot list that
+/// may name the whole value (parser.y:708-749).
+pub(crate) enum PatternTail {
+    Group,
+    Slots(Box<SlotTail>),
+}
+
+pub(crate) struct SlotTail {
+    pub comma: SourceSpan,
+    pub second: Option<Pattern>,
+    pub rest: Vec<Option<Pattern>>,
+    pub close: SourceSpan,
+    pub whole: Option<Pattern>,
+}
+
+fn finish_pattern(open: SourceSpan, first: Pattern, tail: PatternTail) -> Pattern {
+    match tail {
+        PatternTail::Group => first,
+        PatternTail::Slots(slots) => {
+            let slots = *slots;
+            pattern_tuple(
+                open,
+                pattern_slots(Some(first), slots.comma, slots.second, slots.rest),
+                slots.close,
+                slots.whole,
+            )
+        }
+    }
+}
+
+/// `(p, …)` tuple destructuring, optionally naming the whole value with
+/// `: t` or const `: !t`.
+fn pattern_tuple(
+    open: SourceSpan,
+    elements: Vec<Pattern>,
+    close: SourceSpan,
+    whole: Option<Pattern>,
+) -> Pattern {
+    Pattern::Tuple {
+        span: join_span(open, close),
+        elements,
+        whole: whole.map(Box::new),
+    }
+}
+
+/// The slots of a `pat_list`: an empty slot is a discard. Gap spans borrow
+/// the nearest comma (the first one for leading slots); discard spans never
+/// surface in diagnostics since a discard binds nothing.
+fn pattern_slots(
+    first: Option<Pattern>,
+    comma: SourceSpan,
+    second: Option<Pattern>,
+    rest: Vec<Option<Pattern>>,
+) -> Vec<Pattern> {
+    let mut slots = Vec::with_capacity(rest.len() + 2);
+    slots.push(first.unwrap_or(Pattern::Discard { span: comma }));
+    slots.push(second.unwrap_or(Pattern::Discard { span: comma }));
+    slots.extend(
+        rest.into_iter()
+            .map(|slot| slot.unwrap_or(Pattern::Discard { span: comma })),
+    );
+    slots
 }
 
 fn return_expression(return_span: SourceSpan, value: Expr) -> Expr {
@@ -1013,8 +1179,15 @@ fn expression_list(first: Expr, rest: Vec<Expr>) -> Vec<Expr> {
 
 fn let_binding(target: SpannedValue<String>, initializer: Expr) -> LetBinding {
     LetBinding {
-        name: target.value,
-        name_span: target.span,
+        pattern: pattern_name(target),
+        initializer,
+    }
+}
+
+/// `pattern = expr` in a let declaration (parser.y:247).
+fn pattern_binding(pattern: Pattern, initializer: Expr) -> LetBinding {
+    LetBinding {
+        pattern,
         initializer,
     }
 }
@@ -1277,10 +1450,240 @@ fn operator_call(operator: FormulaOperator, arguments: Vec<Expr>) -> Expr {
     }
 }
 
+/// Compact rendering of an expression, without the source's spacing; the
+/// oracle's expression printer produces the same shape in diagnostics that
+/// quote an expression (`x:=2` in the constant-assignment error).
+pub(crate) fn compact_expression(expression: &Expr) -> String {
+    match expression {
+        Expr::Integer { value, .. } => value.to_string(),
+        Expr::Boolean { value, .. } => value.to_string(),
+        Expr::String { value, .. } => format!("\"{value}\""),
+        Expr::Tuple { elements, .. } => format!("({})", compact_expressions(elements)),
+        Expr::List { elements, .. } => format!("[{}]", compact_expressions(elements)),
+        Expr::Subscription {
+            array,
+            index,
+            reversed,
+            ..
+        } => format!(
+            "{}{}{}]",
+            compact_expression(array),
+            if *reversed { "~[" } else { "[" },
+            compact_expression(index)
+        ),
+        Expr::Slice {
+            array,
+            lower,
+            upper,
+            ..
+        } => format!(
+            "{}[{}:{}]",
+            compact_expression(array),
+            compact_expression(lower),
+            compact_expression(upper)
+        ),
+        Expr::Identifier { name, .. } => name.clone(),
+        Expr::Assignment { name, value, .. } => {
+            format!("{name}:={}", compact_expression(value))
+        }
+        Expr::Let {
+            binding_groups,
+            body,
+            ..
+        } => {
+            let groups = binding_groups
+                .iter()
+                .map(|bindings| {
+                    bindings
+                        .iter()
+                        .map(|binding| {
+                            format!(
+                                "{} = {}",
+                                compact_pattern(&binding.pattern),
+                                compact_expression(&binding.initializer)
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                })
+                .collect::<Vec<_>>()
+                .join(" then ");
+            format!("let {groups} in {}", compact_expression(body))
+        }
+        Expr::Unary {
+            op: UnaryOp::Not,
+            operand,
+            ..
+        } => format!("not {}", compact_expression(operand)),
+        Expr::Binary { op, lhs, rhs, .. } => {
+            let keyword = match op {
+                BinaryOp::And => "and",
+                BinaryOp::Or => "or",
+            };
+            format!(
+                "{} {keyword} {}",
+                compact_expression(lhs),
+                compact_expression(rhs)
+            )
+        }
+        Expr::OperatorCall {
+            operator,
+            arguments,
+            ..
+        } => match arguments.as_slice() {
+            [operand] => format!("{}{}", operator.symbol, compact_expression(operand)),
+            [lhs, rhs] => format!(
+                "{}{}{}",
+                compact_expression(lhs),
+                operator.symbol,
+                compact_expression(rhs)
+            ),
+            _ => format!("{}({})", operator.symbol, compact_expressions(arguments)),
+        },
+        Expr::Call {
+            callee, arguments, ..
+        } => format!(
+            "{}({})",
+            compact_expression(callee),
+            compact_expressions(arguments)
+        ),
+        Expr::Lambda {
+            parameters, body, ..
+        } => format!(
+            "({}): {}",
+            parameters
+                .iter()
+                .map(compact_parameter)
+                .collect::<Vec<_>>()
+                .join(","),
+            compact_expression(body)
+        ),
+        Expr::RecLambda {
+            self_name,
+            parameters,
+            result_type,
+            body,
+            ..
+        } => format!(
+            "rec_fun {self_name}({}) {}: {}",
+            parameters
+                .iter()
+                .map(compact_parameter)
+                .collect::<Vec<_>>()
+                .join(","),
+            compact_type(result_type),
+            compact_expression(body)
+        ),
+        Expr::Return { value, .. } => format!("return {}", compact_expression(value)),
+        Expr::Group { inner, .. } => format!("({})", compact_expression(inner)),
+        Expr::Conditional {
+            condition,
+            then_branch,
+            else_branch,
+            ..
+        } => format!(
+            "if {} then {} else {} fi",
+            compact_expression(condition),
+            compact_expression(then_branch),
+            compact_expression(else_branch)
+        ),
+        Expr::Cast { target, body, .. } => {
+            format!("{}: {}", compact_type(target), compact_expression(body))
+        }
+    }
+}
+
+fn compact_expressions(expressions: &[Expr]) -> String {
+    expressions
+        .iter()
+        .map(compact_expression)
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
+fn compact_type(type_expr: &TypeExpr) -> String {
+    type_expr
+        .resolve()
+        .display(&crate::types::TypeTable::new())
+        .to_string()
+}
+
+fn compact_parameter(parameter: &LambdaParam) -> String {
+    match parameter {
+        LambdaParam::Typed(typed) => {
+            format!(
+                "{} {}",
+                compact_type(&typed.type_expr),
+                compact_pattern(&typed.pattern)
+            )
+        }
+        LambdaParam::Tuple { elements, .. } => format!(
+            "({})",
+            elements
+                .iter()
+                .map(compact_parameter)
+                .collect::<Vec<_>>()
+                .join(",")
+        ),
+    }
+}
+
+fn compact_pattern(pattern: &Pattern) -> String {
+    match pattern {
+        Pattern::Discard { .. } => "()".to_string(),
+        Pattern::Name { name, constant, .. } => {
+            if *constant {
+                format!("!{name}")
+            } else {
+                name.clone()
+            }
+        }
+        Pattern::Tuple {
+            elements, whole, ..
+        } => {
+            let elements = elements
+                .iter()
+                .map(compact_pattern)
+                .collect::<Vec<_>>()
+                .join(",");
+            match whole {
+                Some(whole) => format!("({elements}): {}", compact_pattern(whole)),
+                None => format!("({elements})"),
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use malachite::Integer as BigInt;
+
+    fn pattern_shape(pattern: &Pattern) -> String {
+        match pattern {
+            Pattern::Discard { .. } => "_".to_string(),
+            Pattern::Name { name, constant, .. } => {
+                if *constant {
+                    format!("!{name}")
+                } else {
+                    name.clone()
+                }
+            }
+            Pattern::Tuple {
+                elements, whole, ..
+            } => {
+                let elements = elements
+                    .iter()
+                    .map(pattern_shape)
+                    .collect::<Vec<_>>()
+                    .join(",");
+                match whole {
+                    Some(whole) => format!("({elements}):{}", pattern_shape(whole)),
+                    None => format!("({elements})"),
+                }
+            }
+        }
+    }
 
     fn expression_shape(expression: &Expr) -> String {
         match expression {
@@ -1346,7 +1749,7 @@ mod tests {
                             .map(|binding| {
                                 format!(
                                     "{}={}",
-                                    binding.name,
+                                    pattern_shape(&binding.pattern),
                                     expression_shape(&binding.initializer)
                                 )
                             })
@@ -1763,5 +2166,76 @@ mod tests {
         ))
         .expect_err("the result type is mandatory in the sugar");
         assert_eq!(error.kind, ErrorKind::Syntax);
+    }
+
+    #[test]
+    fn parses_binding_patterns() {
+        // Tuple destructuring, const, nesting, and whole-value naming.
+        assert_eq!(
+            expression_shape(&parse_one("let (a, b) = (1, 2) in a + b")),
+            "let((a,b)=tuple(1,2),+@4(a,b))"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("let !x = 41 in x + 1")),
+            "let(!x=41,+@4(x,1))"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("let (a, (b, c)) = (1, (2, 3)) in a + b + c")),
+            "let((a,(b,c))=tuple(1,tuple(2,3)),+@4(+@4(a,b),c))"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("let (a, b): t = (20, 22) in a + b")),
+            "let((a,b):t=tuple(20,22),+@4(a,b))"
+        );
+        // An empty slot discards, `()` throws away, `(p)` groups.
+        assert_eq!(
+            expression_shape(&parse_one("let (a, , c) = (1, 2, 3) in a")),
+            "let((a,_,c)=tuple(1,2,3),a)"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("let () = 1 in 2")),
+            "let(_=1,2)"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("let ((a)) = 1 in a")),
+            "let(a=1,a)"
+        );
+    }
+
+    #[test]
+    fn parses_parameter_patterns() {
+        // `((int a, int b))` is ONE destructuring parameter, while
+        // `(int a, int b)` is a two-parameter list.
+        let Expr::Lambda { parameters, .. } = parse_one("((int a, int b)): a + b") else {
+            panic!("destructuring lambda parses")
+        };
+        assert_eq!(parameters.len(), 1);
+        assert!(matches!(&parameters[0], LambdaParam::Tuple { .. }));
+        let Expr::Lambda { parameters, .. } = parse_one("(int a, int b): a + b") else {
+            panic!("two-parameter lambda parses")
+        };
+        assert_eq!(parameters.len(), 2);
+        // The anonymous `type .` parameter binds nothing.
+        let Expr::Lambda {
+            parameters, body, ..
+        } = parse_one("(int x, int .): x")
+        else {
+            panic!("anonymous-parameter lambda parses")
+        };
+        assert_eq!(parameters.len(), 2);
+        assert!(matches!(
+            &parameters[1],
+            LambdaParam::Typed(typed) if matches!(&typed.pattern, Pattern::Discard { .. })
+        ));
+        assert_eq!(expression_shape(&body), "x");
+    }
+
+    #[test]
+    fn parses_b3c_pattern_fixture() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/eval/patterns_b3c.atlas"
+        ));
+        let program = parse(&source).expect("B3c pattern fixture parses");
+        assert_eq!(program.expressions.len(), 5);
     }
 }
