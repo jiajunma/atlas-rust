@@ -96,6 +96,12 @@ FIXTURE_PLANS = (
     # B3b recursive functions and let-declaration definition sugar.
     FixturePlan(name="functions_b3b"),
     FixturePlan(name="functions_b3b_rejected"),
+    # B3c parameter patterns: tuple destructuring, discard, and const patterns.
+    FixturePlan(name="patterns_b3c"),
+    FixturePlan(name="patterns_b3c_rejected"),
+    # B3d selectors: unit selector and operator selectors.
+    FixturePlan(name="selectors_b3d"),
+    FixturePlan(name="selectors_b3d_rejected"),
 )
 
 
