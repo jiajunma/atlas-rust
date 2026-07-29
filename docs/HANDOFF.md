@@ -1,4 +1,4 @@
-# Atlas-Rust handoff - 2026-07-29 (B3a verified)
+# Atlas-Rust handoff - 2026-07-29 (B3b verified)
 
 This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
@@ -7,8 +7,11 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 ## Current state
 
 - Branch: `main`.
-- The B3a non-recursive function stage is implemented and differentially
-  verified. The exact commit is shown by `git log -1 --oneline`.
+- The B3a non-recursive function stage and the B3b recursive-function /
+  definition-sugar stage are implemented and differentially verified. The
+  exact commit is shown by `git log -1 --oneline`.
+- B3c parameter patterns and B3d selectors have frozen reference events
+  (captures `3498578` and `3498619`); their implementations are in progress.
 - No uncommitted repository changes should remain after the handoff commit.
 
 The typed session pipeline is active: `session.rs` and `session_frame.rs`
@@ -18,13 +21,15 @@ one-dimensional slices, matrix/vector/ratvec crossings, RootDatum/Cartan
 constructors, the exposed KGB constructor adapter, and now non-recursive
 functions: typed lambda literals `(int n): body`, parameterless `@: body`
 closures with frame capture (including escaped captures), `return` intercepted
-at the call boundary and rejected at analysis outside a function body, and
-identifier selector postfix `receiver.name` lowered to `name(receiver)`. This
-is not a claim of full Atlas compatibility: InnerClass/RealForm/KGB rendering
-and numbering, relations, primitive `involution` constructors, recursive
-functions, parameter patterns beyond a simple typed name, operator selectors,
-loops, `set_type`, and later math overloads remain pending differential
-evidence.
+at the call boundary and rejected at analysis outside a function body,
+identifier selector postfix `receiver.name` lowered to `name(receiver)`,
+function-definition sugar `f(params): body` in `let`/`set` declarations, and
+`rec_fun` recursive functions in declaration and expression form with explicit
+result types (the self binding lives in the argument frame). This is not a
+claim of full Atlas compatibility: InnerClass/RealForm/KGB rendering and
+numbering, relations, primitive `involution` constructors, parameter patterns
+beyond a simple typed name, operator selectors, loops, `set_type`, and later
+math overloads remain pending differential evidence.
 
 ## Verified stage: B3a non-recursive functions
 
@@ -55,6 +60,31 @@ Only bounded local checks are appropriate here. The project policy puts full
 workspace tests, Atlas/CWEB execution, differential jobs, and benchmarks on
 XMU HPC.
 
+## Verified stage: B3b recursive functions and definition sugar
+
+- `tests/fixtures/eval/functions_b3b.atlas` (6 accepted lines: single- and
+  multi-parameter definition sugar, `rec_fun` in declaration and expression
+  form with explicit result types, parameterless sugar, recursive closures
+  capturing their `let` scope) and
+  `tests/fixtures/eval/functions_b3b_rejected.atlas` (3 rejected lines: body
+  type error under sugar, recursive call with mismatched argument type,
+  recursive declaration missing its result type).
+- Oracle capture: HPC job `3498562`, PASS against the frozen oracle.
+- Differential: `pipeline_swap_diff` job `3498653` at commit `f773695`
+  reports both fixtures PASS.
+- Reference metadata: `tests/reference/eval/functions_b3b{,_rejected}.meta.json`
+  carry `rust_status: verified_hpc` with `differential_job: 3498653`.
+- The bison expecting-list after `syntax error, unexpected IF` is not
+  asserted; only the offending token is (see `docs/DESIGN.md` on diagnostic
+  wording vs semantic equality).
+
+The bounded local checks for this stage:
+
+- `cargo test -p atlas-core --lib`: 160 passed, 0 failed;
+- `cargo clippy -p atlas-core --lib -- -D warnings`;
+- `cargo fmt --all -- --check`, JSON validation of the reference files, and
+  `python3 hpc/test_pipeline_swap_diff.py`.
+
 ## HPC operations notes (verified this stage)
 
 - The submit checkout must be clean at the declared commit. A previous job's
@@ -70,18 +100,21 @@ XMU HPC.
 - `reference_capture.sbatch` fails before the harness when declared and
   detected source state differ; the FAIL fallback report names the phase.
 
-## Next implementation slice (B3b candidates)
+## Next implementation slice (B3c/B3d in flight, then B4 loops)
 
 In rough dependency order, each with its own fixture + HPC capture first:
 
-1. Function-definition sugar `f(x): ...` / `set f = ...` forms and
-   `REC_FUN IDENT '(' id_specs_opt ')' type ':' expr` recursive functions
-   (parser.y:231, 251-255); recursion wraps closure+arguments (axis.w:3294-3297).
-2. Parameter patterns: destructuring `'(' id_specs ')'`, discard `type .`,
-   const patterns (parser.y:725-790 `id_spec`/`pattern` rules).
-3. Operator selectors (`.+` etc., parser.y:321-337 `selector: operator`) and
-   unit selector `().name`.
-4. Loops (`while`/`for`) and `set_type` syntax.
+1. B3c parameter patterns: destructuring `'(' id_specs ')'`, discard
+   `type .`, const patterns (parser.y:708-790 `id_spec`/`pattern` rules).
+   Reference events frozen (capture `3498578`).
+2. B3d selectors: operator selectors (`.+`, `2.-`, parser.y:321-337
+   `selector: operator`) and unit selector `().name`. Reference events frozen
+   (capture `3498619`).
+3. B4 loops (`while`/`for`, `break` without value) and `set_type` syntax.
+   Oracle probes: `loops_probe` (capture `3498630`, PASS) established that
+   `while`/`for` collect per-iteration body values into a row and that
+   `break <value>` is a syntax error; `loops_probe2` (capture pending) probes
+   value-less `break`, non-bool conditions, and non-row iteration.
 
 Before continuing, run the smallest local parser/core check with the project
 toolchain, then sync a clean committed tree to HPC and submit the relevant
