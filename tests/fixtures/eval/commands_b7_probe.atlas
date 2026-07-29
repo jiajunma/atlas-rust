@@ -1,8 +1,0 @@
-whattype + ?
-let x = 40 + 2 in x
-forget x
-x
-die
-7 * 6
-forget + @ (int,int)
-1 + 2

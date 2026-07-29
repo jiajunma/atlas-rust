@@ -1,9 +1,0 @@
-{
-  "fixture": "eval/commands_b7_probe",
-  "oracle": "atlas",
-  "stage": "probe",
-  "reference_status": "verified_hpc_reference",
-  "reference_job": "3499638",
-  "rust_status": "not_implemented",
-  "notes": "Exploratory probe for the B7 misc-commands slice: 'whattype id_op ?' overload listing (parser.y:187, show_overloads), 'forget IDENT' removal and subsequent undefined-identifier error (parser.y:141-142), 'die' runtime abort and batch continuation after it (parser.y:383), and 'forget operator @ type' overload removal (parser.y:155-157) with the resulting failed-match error. Lines will be split into accepted and rejected fixtures from the oracle behavior; this probe file is not a differential fixture."
-}
