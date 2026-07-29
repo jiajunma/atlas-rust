@@ -1,7 +1,9 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "eval/selectors_b3d_rejected",
-  "status": "pending_hpc_reference",
-  "events": [],
-  "capture_required": "Freeze normalized Atlas events only after an HPC raw capture of every fixture line."
+  "status": "verified_hpc_reference",
+  "events": [
+    {"kind":"Diagnostic","category":"type","message":"Failed to match '+' with argument type int"},
+    {"kind":"Diagnostic","category":"type","message":"found int while (*->*) was needed."}
+  ]
 }

@@ -2,11 +2,19 @@
   "fixture": "eval/selectors_b3d_rejected",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
-  "rust_status": "not_implemented",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3498619",
+  "source_archive_sha256": "b68f3fc229a44dfbdb9aa534f85eb8a2797a4b5a9149d7fd1e258c62d0c83b62",
   "fixture_sha256": "ba4b164f70e5ac878bdc0fbb640a0b8d03ef106cb67354eddeaa0c67db920bf6",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
+  "oracle_stderr_sha256": "6ed3114353275778f8e2819a56d9b1714c9f6db5acd02f246200fe301d40e80f",
+  "capture_artifacts_sha256": "c8f5b486d5615d9f337cbeb3d381d8ca4745c20e2a987ea2061c2c24a0daf1a9",
+  "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/parser.y:321-337"
   ],
-  "notes": "Rejected selector forms split from the selectors_probe oracle exploration: the unary-plus operator selector has no matching overload, and an integer selector is not callable. No expected output is asserted until the raw HPC oracle capture is normalized."
+  "notes": "Rejected selector forms split from the selectors_probe oracle exploration (job 3498606): the unary-plus operator selector has no matching overload, and an integer selector is not callable. Reference captured by HPC job 3498619 against the frozen atlasofliegroups-4d3e9449 oracle; raw stderr normalized to two Diagnostic events. Differential evidence remains pending until the implementation and pipeline_swap_diff run."
 }

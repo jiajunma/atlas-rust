@@ -1,5 +1,0 @@
-let f() = 42 in ().f
-let f(int n) = n * 2 in let g(int n) = n + 1 in 2.f.g
-2.-
-2.+
-2.3

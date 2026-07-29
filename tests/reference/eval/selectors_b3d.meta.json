@@ -2,11 +2,19 @@
   "fixture": "eval/selectors_b3d",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
-  "rust_status": "not_implemented",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3498619",
+  "source_archive_sha256": "b68f3fc229a44dfbdb9aa534f85eb8a2797a4b5a9149d7fd1e258c62d0c83b62",
   "fixture_sha256": "0774c9937548552af152e3dc8c11a309c9c31d4c98c5793106f3b9019b36b7a4",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "d9e4ae9a1aa504ea3dff22f25511eee37c7f50c967e9bd0594d764e8dc9e4b10",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "3e2dc2a100c6ce7423c54b85864efa97f357913db3d2d3f905ea009f9064bd09",
+  "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/parser.y:321-337"
   ],
-  "notes": "Accepted selector forms split from the selectors_probe oracle exploration: unit selector application ().f, chained identifier selectors 2.f.g, and the unary-minus operator selector 2.-. No expected output is asserted until the raw HPC oracle capture is normalized."
+  "notes": "Accepted selector forms split from the selectors_probe oracle exploration (job 3498606): unit selector application ().f, chained identifier selectors 2.f.g, and the unary-minus operator selector 2.-. Reference captured by HPC job 3498619 against the frozen atlasofliegroups-4d3e9449 oracle; raw stdout normalized to three integer Value events. Differential evidence remains pending until the implementation and pipeline_swap_diff run."
 }
