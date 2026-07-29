@@ -1,0 +1,15 @@
+{
+  "fixture": "eval/functions_b3b",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "fixture_sha256": "c55ec4104a98a452c72e6a1069cc9482a3050a74d4a6b418044ff1b873e64a26",
+  "upstream_evidence": [
+    "sources/interpreter/parser.y:231",
+    "sources/interpreter/parser.y:246-257",
+    "sources/interpreter/main.w:258-265",
+    "sources/interpreter/axis.w:3290-3310"
+  ],
+  "notes": "Covers let-declaration function-definition sugar (single and multi parameter), recursive functions in declaration and expression form with explicit result types, parameterless sugar, and recursive closures capturing their let scope. Closure printing is deliberately unexercised: the Rust closure value carries no source location yet. No expected output is asserted until the raw HPC oracle capture is normalized."
+}

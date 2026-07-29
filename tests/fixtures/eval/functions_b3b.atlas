@@ -1,0 +1,6 @@
+let f(int n) = n + 1 in f(2)
+let add(int a, int b) = a + b in add(20, 22)
+let rec_fun f(int n) = int: if n=0 then 1 else n*f(n-1) fi in f(5)
+let f = rec_fun g(int n) int: if n=0 then 1 else n*g(n-1) fi in f(5)
+let x = 41 in let f() = x + 1 in f()
+let x = 2 in let rec_fun f(int n) = int: if n=0 then 1 else x*f(n-1) fi in f(4)

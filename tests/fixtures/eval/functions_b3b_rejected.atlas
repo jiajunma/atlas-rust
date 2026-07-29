@@ -1,0 +1,3 @@
+let f(int n) = n + "x" in f(2)
+let rec_fun f(int n) = int: if n=0 then 1 else n*f("x") fi in f(5)
+let rec_fun f(int n) = if n=0 then 1 else n fi in f(2)

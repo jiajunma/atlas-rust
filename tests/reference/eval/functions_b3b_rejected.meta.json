@@ -1,0 +1,13 @@
+{
+  "fixture": "eval/functions_b3b_rejected",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "fixture_sha256": "3d7fde1674cfebbaf1c9681d8469e402a0841e17fa13cae93d8e5b1a7c88832f",
+  "upstream_evidence": [
+    "sources/interpreter/parser.y:231",
+    "sources/interpreter/parser.y:246-257"
+  ],
+  "notes": "Rejected companions of eval/functions_b3b: a body type error under definition sugar, a recursive call with a mismatched argument type, and a recursive declaration missing its result type. No expected output is asserted until the raw HPC oracle capture is normalized."
+}
