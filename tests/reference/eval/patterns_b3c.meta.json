@@ -2,12 +2,20 @@
   "fixture": "eval/patterns_b3c",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
-  "rust_status": "not_implemented",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3498578",
+  "source_archive_sha256": "75f1d1ec256ab1d777d8f54161bd67e5ca6d89f5b06d90e875a664c314da5ac2",
   "fixture_sha256": "0453424a1c02e9ab980e81414fc7480910fe5169deedac6e05707ac268f3c616",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "e751f703f9c9801d98316e59a45405e62c76d6a4d970db6c5a1e675d33e1885f",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "df811c2d5b22dd89a99738342f095b4e935220a68860a8cd706b079fc8679fe1",
+  "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/parser.y:708-730",
     "sources/interpreter/parser.y:725-749"
   ],
-  "notes": "Covers untyped tuple destructuring in let declarations, const (!) bindings, nested patterns, typed tuple patterns in lambda parameters, and tuple patterns naming the whole value. No expected output is asserted until the raw HPC oracle capture is normalized."
+  "notes": "Covers untyped tuple destructuring in let declarations, const (!) bindings, nested patterns, typed tuple patterns in lambda parameters, and tuple patterns naming the whole value. Reference captured by HPC job 3498578 against the frozen atlasofliegroups-4d3e9449 oracle; raw stdout normalized to five integer Value events. Differential evidence remains pending until the implementation and pipeline_swap_diff run."
 }

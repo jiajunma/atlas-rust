@@ -2,11 +2,19 @@
   "fixture": "eval/patterns_b3c_rejected",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
-  "rust_status": "not_implemented",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3498578",
+  "source_archive_sha256": "75f1d1ec256ab1d777d8f54161bd67e5ca6d89f5b06d90e875a664c314da5ac2",
   "fixture_sha256": "f8712857a6acb6f5d978deab971cbf089fdd539a97593fc247acee2b70ffe116",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
+  "oracle_stderr_sha256": "149b286057c348469909cdaa0b51e6215bc3c18ded95bda4cbf39f3482f5170b",
+  "capture_artifacts_sha256": "3566c858318bd287f07e1351aea7f7ad93544379a4634bc5f7c5f0de7f87c3df",
+  "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/parser.y:708-730"
   ],
-  "notes": "Rejected companions of eval/patterns_b3c: assignment to a const binding, a pattern/tuple arity mismatch, and a scalar against a tuple pattern. No expected output is asserted until the raw HPC oracle capture is normalized."
+  "notes": "Rejected companions of eval/patterns_b3c: assignment to a const binding rejected at analysis, a pattern/tuple arity mismatch, and a scalar against a tuple pattern. Reference captured by HPC job 3498578 against the frozen atlasofliegroups-4d3e9449 oracle; raw stderr normalized to three Diagnostic events. Differential evidence remains pending until the implementation and pipeline_swap_diff run."
 }
