@@ -1,7 +1,7 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "eval/overloads_b8b",
-  "status": "pending_hpc_reference",
+  "status": "verified_hpc_reference",
   "events": [
     {"kind":"ReportLine","text":"Defined f: (int->int)\n"},
     {"kind":"ReportLine","text":"Redefined f: (int->int)\n"},

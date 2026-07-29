@@ -2,10 +2,19 @@
   "fixture": "eval/overloads_b8_rejected",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3499705",
+  "source_archive_sha256": "c669796a595742190b0a2b81f1c5019540947739b4a762e57be110b835fb9b5b",
+  "fixture_sha256": "042f71ae8a89741ab2397b48e2f52f1b38479fe50415623d9adcaa287ac4ed55",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "c819a59ede176b17b9af7405da97743dd5eb70d472896ba5c7e556bac0b20b16",
+  "oracle_stderr_sha256": "189de153a388b56b66893ddea3e5ca81326162fc1189dc6cf7a7c003818df6cd",
+  "capture_artifacts_sha256": "f5f38ba088500fe8933d371987c719bf73562974103c0cd5f519856af2edc087",
   "upstream_evidence": [
     "sources/interpreter/parser.y:187"
   ],
   "rust_status": "not_implemented",
-  "notes": "B8 user-overload rejected companion, split from probe overloads_b8_probe (capture 3499701): calling a single-instance user function with a tuple of the wrong arity is an analysis-time type error. The oracle's multi-line diagnostic ('Type error:\\n  Subexpression (1,2,3) ... has wrong type: found (int,int,int) while int was needed.') is normalized to its final 'found ... while ... was needed.' line. Reference capture pending on HPC."
+  "notes": "B8 user-overload rejected companion, split from probe overloads_b8_probe (capture 3499701): calling a single-instance user function with a tuple of the wrong arity is an analysis-time type error. The oracle's multi-line diagnostic ('Type error:\\n  Subexpression (1,2,3) ... has wrong type: found (int,int,int) while int was needed.') is normalized to its final 'found ... while ... was needed.' line. Reference captured by HPC job 3499705 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stderr matches the expected diagnostic. Differential evidence remains pending until the pipeline_swap_diff run."
 }

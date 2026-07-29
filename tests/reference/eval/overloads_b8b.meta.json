@@ -2,10 +2,19 @@
   "fixture": "eval/overloads_b8b",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3499705",
+  "source_archive_sha256": "c669796a595742190b0a2b81f1c5019540947739b4a762e57be110b835fb9b5b",
+  "fixture_sha256": "d929a0028a026e5981f57a087df94d2f4cf9d07e813eb8c74cb3acdd5a86dec7",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "edad2d7f4a26a235481d746cafae042e98cbc5c54da78d3da396aff9dc9a2d6d",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "72517788f1adb01dec4af03e1551db198d772b0118f4d339bf03ad96b1922852",
   "upstream_evidence": [
     "sources/interpreter/parser.y:187"
   ],
   "rust_status": "not_implemented",
-  "notes": "B8b user-overload companions, split from probe overloads_b8_probe (capture 3499701): re-defining 'set f = (int x): ...' with an already-present signature replaces the previous definition and reports 'Redefined f: T' (the overload list keeps a single instance, and calls use the new body). 'set g = 42' on an identifier that already holds a function definition is accepted ('Variable g: int') and coexists with the function: 'whattype g ?' still lists the overload and calls still resolve to it. Reference capture pending on HPC."
+  "notes": "B8b user-overload companions, split from probe overloads_b8_probe (capture 3499701): re-defining 'set f = (int x): ...' with an already-present signature replaces the previous definition and reports 'Redefined f: T' (the overload list keeps a single instance, and calls use the new body). 'set g = 42' on an identifier that already holds a function definition is accepted ('Variable g: int') and coexists with the function: 'whattype g ?' still lists the overload and calls still resolve to it. Reference captured by HPC job 3499705 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events verbatim. Differential evidence remains pending until the pipeline_swap_diff run."
 }

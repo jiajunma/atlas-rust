@@ -1,9 +1,0 @@
-set f = (int x): x
-set f = (int x): 2 * x
-whattype f ?
-f(3)
-set g = (int x): x
-set g = 42
-whattype g ?
-g(3)
-f(1, 2, 3)
