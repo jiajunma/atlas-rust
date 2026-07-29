@@ -4238,4 +4238,34 @@ mod tests {
             convert_and_run("let !x = 1 in let x = 2 in x := 3").expect("non-const shadow rebinds");
         assert_eq!(value, Value::Integer(3.into()));
     }
+
+    #[test]
+    fn unit_and_operator_selectors_evaluate() {
+        // The B3d fixture shapes against the frozen reference events.
+        for (source, expected) in [
+            ("let f() = 42 in ().f", 42),
+            ("let f(int n) = n * 2 in let g(int n) = n + 1 in 2.f.g", 5),
+            ("2.-", -2),
+            // An operator selector resolves like the prefix form, and
+            // selectors chain.
+            ("2.-.-", 2),
+        ] {
+            let (type_, value) = convert_and_run(source)
+                .unwrap_or_else(|error| panic!("{source} should convert and run: {error:?}"));
+            assert_eq!(type_, Type::Primitive(Prim::Int), "source: {source}");
+            assert_eq!(value, Value::Integer(expected.into()), "source: {source}");
+        }
+    }
+
+    #[test]
+    fn selector_rejections_are_analysis_errors() {
+        // The two frozen oracle diagnostics of selectors_b3d_rejected.
+        let error = convert_and_run("2.+").expect_err("no unary plus for int");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(error.message, "Failed to match '+' with argument type int");
+
+        let error = convert_and_run("2.3").expect_err("literal is not callable");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(error.message, "found int while (*->*) was needed.");
+    }
 }

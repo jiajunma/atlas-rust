@@ -331,8 +331,24 @@ enum PostfixSuffix {
         arguments: Vec<Expr>,
         close: SourceSpan,
     },
-    /// Identifier selector (`receiver.name`), lowered to `name(receiver)`.
-    Selector { name: String, name_span: SourceSpan },
+    /// A `.selector` suffix (parser.y:321-337), lowered to an application
+    /// of the selector to the receiver.
+    Selector {
+        callee: SelectorCallee,
+        span: SourceSpan,
+    },
+}
+
+/// What follows the dot of a selector (parser.y:321 `selector: unit |
+/// ident_expr | operator`): a name resolving through the overload table,
+/// an operator token applied like its prefix form, or a literal applied
+/// as a function (which conversion rejects unless it is callable).
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum SelectorCallee {
+    Identifier(String),
+    Operator(FormulaOperator),
+    /// Boxed to keep `PostfixSuffix` small.
+    Literal(Box<Expr>),
 }
 
 /// A top-level Atlas command.
@@ -915,14 +931,29 @@ fn postfix(array: Expr, suffix: PostfixSuffix) -> Expr {
             callee: Box::new(array),
             arguments,
         },
-        PostfixSuffix::Selector { name, name_span } => Expr::Call {
-            span: join_span(array.span(), name_span),
-            callee: Box::new(Expr::Identifier {
-                name,
-                span: name_span,
-            }),
-            arguments: vec![array],
-        },
+        PostfixSuffix::Selector { callee, span } => {
+            let call_span = join_span(array.span(), span);
+            match callee {
+                SelectorCallee::Identifier(name) => Expr::Call {
+                    span: call_span,
+                    callee: Box::new(Expr::Identifier { name, span }),
+                    arguments: vec![array],
+                },
+                // An operator selector resolves exactly like the prefix
+                // form (`2.-` is unary minus applied to 2); the span runs
+                // receiver-first, unlike a prefix call.
+                SelectorCallee::Operator(operator) => Expr::OperatorCall {
+                    span: call_span,
+                    operator,
+                    arguments: vec![array],
+                },
+                SelectorCallee::Literal(callee) => Expr::Call {
+                    span: call_span,
+                    callee,
+                    arguments: vec![array],
+                },
+            }
+        }
     }
 }
 
@@ -934,8 +965,27 @@ fn call_suffix(arguments: Vec<Expr>, close: SourceSpan) -> PostfixSuffix {
 /// (parser.y:333-337 `make_application_node`).
 fn selector_suffix(name: SpannedValue<String>) -> PostfixSuffix {
     PostfixSuffix::Selector {
-        name: name.value,
-        name_span: name.span,
+        callee: SelectorCallee::Identifier(name.value),
+        span: name.span,
+    }
+}
+
+/// `receiver.op` — the operator applies to the receiver alone
+/// (parser.y:312 `operator` as a selector), resolving like its prefix
+/// form through the overload table.
+fn operator_selector(operator: FormulaOperator) -> PostfixSuffix {
+    PostfixSuffix::Selector {
+        span: operator.span.expect("grammar operators carry spans"),
+        callee: SelectorCallee::Operator(operator),
+    }
+}
+
+/// `receiver.unit` — the literal applies as a function (parser.y:321
+/// `selector: unit`).
+fn unit_selector(callee: Expr) -> PostfixSuffix {
+    PostfixSuffix::Selector {
+        span: callee.span(),
+        callee: SelectorCallee::Literal(Box::new(callee)),
     }
 }
 
@@ -2237,5 +2287,29 @@ mod tests {
         ));
         let program = parse(&source).expect("B3c pattern fixture parses");
         assert_eq!(program.expressions.len(), 5);
+    }
+
+    #[test]
+    fn parses_unit_and_operator_selectors() {
+        // An operator selector lowers to the prefix-shaped operator call.
+        assert_eq!(expression_shape(&parse_one("2.-")), "-@4(2)");
+        assert_eq!(expression_shape(&parse_one("2.+")), "+@4(2)");
+        assert_eq!(expression_shape(&parse_one("2.=")), "=@2(2)");
+        assert_eq!(expression_shape(&parse_one("2.*")), "*@6(2)");
+        // A unit selector applies the literal as a function.
+        assert_eq!(expression_shape(&parse_one("2.3")), "call(3;2)");
+        assert_eq!(expression_shape(&parse_one("2.true")), "call(true;2)");
+        // Selectors chain like any other postfix suffix.
+        assert_eq!(expression_shape(&parse_one("2.-.-")), "-@4(-@4(2))");
+        assert_eq!(expression_shape(&parse_one("().f")), "call(f;tuple())");
+    }
+
+    #[test]
+    fn parses_b3d_selector_fixture() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/eval/selectors_b3d.atlas"
+        ));
+        let program = parse(&source).expect("B3d selector fixture parses");
+        assert_eq!(program.expressions.len(), 3);
     }
 }

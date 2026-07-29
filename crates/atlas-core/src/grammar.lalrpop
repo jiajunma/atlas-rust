@@ -3,7 +3,7 @@ use super::{
     finish_let, expression_list, finish_operator_formula, join_span, lambda, lambda_parameter,
     lambda_parameters, let_bindings,
     let_expression, list_expression, rec_function_binding, rec_lambda, return_expression,
-    selector_suffix, tuple_expression, function_binding,
+    selector_suffix, operator_selector, unit_selector, tuple_expression, function_binding,
     prepend_let_group,
     call_suffix, postfix, prefix_operator_call, slice_suffix, start_binary_formula, start_prefix_formula,
     subscription_suffix, type_group, type_function, type_primitive, type_row, type_union_append,
@@ -241,9 +241,28 @@ PostfixSuffix: PostfixSuffix = {
         )
     },
     <_open:"("> <arguments:CallArguments> <close:")"> => call_suffix(arguments, close),
-    // `receiver.name` lowers to `name(receiver)`; operator selectors are a
-    // later slice.
+    // `receiver.name` lowers to `name(receiver)`; unit and operator
+    // selectors (parser.y:312,321) apply the literal or the operator's
+    // prefix form to the receiver.
     <_dot:"."> <name:"identifier"> => selector_suffix(name),
+    <_dot:"."> <operator:Operator> => operator_selector(operator),
+    <_dot:"."> <unit:UnitSelector> => unit_selector(unit),
+};
+
+// `selector: unit` (parser.y:321) — a literal in selector position.
+UnitSelector: Expr = {
+    <integer:"integer"> => Expr::Integer {
+        value: integer.value,
+        span: integer.span,
+    },
+    <boolean:"boolean"> => Expr::Boolean {
+        value: boolean.value,
+        span: boolean.span,
+    },
+    <string:"string"> => Expr::String {
+        value: string.value,
+        span: string.span,
+    },
 };
 
 #[inline]
