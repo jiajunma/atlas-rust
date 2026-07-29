@@ -102,6 +102,9 @@ FIXTURE_PLANS = (
     # B3d selectors: unit selector and operator selectors.
     FixturePlan(name="selectors_b3d"),
     FixturePlan(name="selectors_b3d_rejected"),
+    # B4 loops: while/for value collection, break, and loop rejections.
+    FixturePlan(name="loops_b4"),
+    FixturePlan(name="loops_b4_rejected"),
 )
 
 
