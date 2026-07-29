@@ -1,15 +1,63 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "eval/loops_b4",
-  "status": "pending_hpc_reference",
+  "status": "verified_hpc_reference",
   "events": [
-    {"kind":"Value","value":{"type":"row","display":"[1,2,3,4,5]"}},
-    {"kind":"Value","value":{"type":"row","display":"[2,4,6]"}},
-    {"kind":"Value","value":{"type":"row","display":"[0,1,2]"}},
-    {"kind":"Value","value":{"type":"integer","value":5}},
-    {"kind":"Value","value":{"type":"row","display":"[(),()]"}},
-    {"kind":"Value","value":{"type":"row","display":"[1,2,3]"}},
-    {"kind":"Value","value":{"type":"row","display":"[8,6,4,2,0]"}},
-    {"kind":"Value","value":{"type":"row","display":"[10]"}}
+    {
+      "kind": "Value",
+      "value": {
+        "type": "row",
+        "display": "[1,2,3,4,5]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "row",
+        "display": "[2,4,6]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "row",
+        "display": "[0,1,2]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 5
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "row",
+        "display": "[(),()]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "row",
+        "display": "[1,2,3]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "row",
+        "display": "[8,6,4,2,0]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "row",
+        "display": "[10]"
+      }
+    }
   ]
 }

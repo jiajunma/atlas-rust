@@ -2,12 +2,21 @@
   "fixture": "eval/loops_b4",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3498786",
+  "source_archive_sha256": "b1ce999696a9d2c587b3169fd2daaed5c4850b53089b91d43439ae171951812b",
+  "fixture_sha256": "1ccb1cc0b35d18d914cad7b70f4e1e7c97361318c84bd0f03b49c4e79a49fe24",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "c3482902cd4df33c2c2edd04804620ee7401a92ffd1242ccb1699857939e3940",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "764d68c88614ff141f384392c78e6bbe0337a0666b2af3749b3823c8aad7fba0",
+  "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/parser.y:364",
     "sources/interpreter/parser.y:440-447",
     "sources/interpreter/parser.y:506-525"
   ],
-  "rust_status": "not_implemented",
-  "notes": "B4 loop slice, split from oracle probes loops_probe (capture 3498630) and loops_probe2 (capture 3498670). While and for loops collect each iteration's body value into a row; the breaking iteration contributes nothing; while-do (no condition) loops until break; for x@i binds the index; begin/end sequences with ';' yield the last value. Reference capture pending on HPC."
+  "notes": "B4 loop slice, split from oracle probes loops_probe (capture 3498630) and loops_probe2 (capture 3498670). While and for loops collect each iteration's body value into a row; the breaking iteration contributes nothing; while-do (no condition) loops until break; for x@i binds the loop index; begin/end sequences with ';' yield the last value. Reference captured by HPC job 3498786 against the frozen atlasofliegroups-4d3e9449 oracle; raw stdout normalized to eight Value events (row values compared by display). Differential evidence remains pending until the pipeline_swap_diff run."
 }

@@ -2,12 +2,21 @@
   "fixture": "eval/loops_b4_rejected",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3498786",
+  "source_archive_sha256": "b1ce999696a9d2c587b3169fd2daaed5c4850b53089b91d43439ae171951812b",
+  "fixture_sha256": "37c80dd984e8a29b3fecb1e401c75246680a7a554ca43632d16911fb5f6794f0",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
+  "oracle_stderr_sha256": "3d284a353b782754c48666cb467f80c3b92dea351c21fd517b7354203933d4df",
+  "capture_artifacts_sha256": "ee469cac2fce3776016f6b632a879808e28ae84bf308f7875df7200ba79f47d2",
+  "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/parser.y:364",
     "sources/interpreter/parser.y:440-447",
     "sources/interpreter/parser.y:506-525"
   ],
-  "rust_status": "not_implemented",
-  "notes": "Rejected companions of eval/loops_b4: top-level break outside any loop, break with a value (syntax error after 'break'), iterating a non-row value, and a non-boolean while condition. Diagnostics verified by oracle probes loops_probe (capture 3498630) and loops_probe2 (capture 3498670); only the offending token of the bison syntax error is asserted, not the expecting-list. Reference capture pending on HPC."
+  "notes": "Rejected companions of eval/loops_b4: top-level break outside any loop, break with a value (syntax error after 'break'), iterating a non-row value, and a non-boolean while condition. Reference captured by HPC job 3498786 against the frozen atlasofliegroups-4d3e9449 oracle; raw stderr normalized to four Diagnostic events. Only the offending token of the bison syntax error is asserted, not the expecting-list. Differential evidence remains pending until the pipeline_swap_diff run."
 }
