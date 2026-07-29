@@ -1,0 +1,13 @@
+{
+  "fixture": "eval/patterns_b3c",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "fixture_sha256": "0453424a1c02e9ab980e81414fc7480910fe5169deedac6e05707ac268f3c616",
+  "upstream_evidence": [
+    "sources/interpreter/parser.y:708-730",
+    "sources/interpreter/parser.y:725-749"
+  ],
+  "notes": "Covers untyped tuple destructuring in let declarations, const (!) bindings, nested patterns, typed tuple patterns in lambda parameters, and tuple patterns naming the whole value. No expected output is asserted until the raw HPC oracle capture is normalized."
+}

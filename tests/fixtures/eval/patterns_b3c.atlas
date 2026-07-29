@@ -1,0 +1,5 @@
+let (a, b) = (1, 2) in a + b
+let !x = 41 in x + 1
+let (a, (b, c)) = (1, (2, 3)) in a + b + c
+let f = ((int a, int b)): a + b in f(3, 4)
+let (a, b): t = (20, 22) in a + b

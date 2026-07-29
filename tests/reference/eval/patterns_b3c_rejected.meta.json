@@ -1,0 +1,12 @@
+{
+  "fixture": "eval/patterns_b3c_rejected",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "fixture_sha256": "f8712857a6acb6f5d978deab971cbf089fdd539a97593fc247acee2b70ffe116",
+  "upstream_evidence": [
+    "sources/interpreter/parser.y:708-730"
+  ],
+  "notes": "Rejected companions of eval/patterns_b3c: assignment to a const binding, a pattern/tuple arity mismatch, and a scalar against a tuple pattern. No expected output is asserted until the raw HPC oracle capture is normalized."
+}

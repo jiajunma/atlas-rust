@@ -2,12 +2,20 @@
   "fixture": "eval/functions_b3b_rejected",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
-  "rust_status": "not_implemented",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3498562",
+  "source_archive_sha256": "6656221a614751c8d77765a9b30acdc22e851670475dbf2e3a37c63a590f3549",
   "fixture_sha256": "3d7fde1674cfebbaf1c9681d8469e402a0841e17fa13cae93d8e5b1a7c88832f",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
+  "oracle_stderr_sha256": "b5d189ae9c0a3d856fc7c34511a95fa0487aa6c6af77a59cbac0855ecfb34509",
+  "capture_artifacts_sha256": "e957ee00adaf8e04d2929097d315d4dc50def659e73df3f835def66fe199819c",
+  "rust_status": "implemented_pending_hpc",
   "upstream_evidence": [
     "sources/interpreter/parser.y:231",
     "sources/interpreter/parser.y:246-257"
   ],
-  "notes": "Rejected companions of eval/functions_b3b: a body type error under definition sugar, a recursive call with a mismatched argument type, and a recursive declaration missing its result type. No expected output is asserted until the raw HPC oracle capture is normalized."
+  "notes": "Rejected companions of eval/functions_b3b: a body type error under definition sugar, a recursive call with a mismatched argument type, and a recursive declaration missing its result type. Reference captured by HPC job 3498562 against the frozen atlasofliegroups-4d3e9449 oracle; raw stderr normalized to three Diagnostic events. The bison expecting-list after 'unexpected IF' is not asserted: exact prose beyond the offending token is tracked separately from semantic equality. Differential evidence remains pending until the pipeline_swap_diff run."
 }

@@ -1,7 +1,10 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "eval/functions_b3b_rejected",
-  "status": "pending_hpc_reference",
-  "events": [],
-  "capture_required": "Freeze normalized Atlas events only after an HPC raw capture of every fixture line."
+  "status": "verified_hpc_reference",
+  "events": [
+    {"kind":"Diagnostic","category":"type","message":"Failed to match '+' with argument type (int,string)"},
+    {"kind":"Diagnostic","category":"type","message":"found string while int was needed."},
+    {"kind":"Diagnostic","category":"syntax","message":"syntax error, unexpected IF"}
+  ]
 }
