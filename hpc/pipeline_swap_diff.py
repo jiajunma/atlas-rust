@@ -40,6 +40,9 @@ class FixturePlan:
     runnable_lines: tuple[int, ...] | None = None
     runnable_events: tuple[int, ...] | None = None
     pending: tuple[PendingCase, ...] = ()
+    # Lines that are executed as part of the runnable input but produce no
+    # observable event (for example output redirected to a file).
+    silent_lines: tuple[int, ...] = ()
 
 
 # These overloads are present in the Atlas oracle but are intentionally not
@@ -105,6 +108,30 @@ FIXTURE_PLANS = (
     # B4 loops: while/for value collection, break, and loop rejections.
     FixturePlan(name="loops_b4"),
     FixturePlan(name="loops_b4_rejected"),
+    # B5 set_type: user-defined types, union display, and case discrimination.
+    FixturePlan(name="settype_b5"),
+    FixturePlan(name="settype_b5_rejected"),
+    # B6 case and counted for: integer case selection, union case, and
+    # from/downto loops.
+    FixturePlan(name="casefor_b6"),
+    FixturePlan(name="casefor_b6_rejected"),
+    # B7 misc commands: forget, die, and coercion after overload removal.
+    FixturePlan(name="commands_b7"),
+    FixturePlan(name="commands_b7_rejected"),
+    # B8 user overloads: definition accumulation, redefinition, listing, and
+    # wrong-arity rejection.
+    FixturePlan(name="overloads_b8"),
+    FixturePlan(name="overloads_b8b"),
+    FixturePlan(name="overloads_b8_rejected"),
+    # B9 file commands: tofile/addtofile redirection and its rejections.
+    # The two redirect lines run but produce no stdout event.
+    FixturePlan(
+        name="file_commands_b9",
+        runnable_lines=(3,),
+        runnable_events=(0,),
+        silent_lines=(1, 2),
+    ),
+    FixturePlan(name="file_commands_b9_rejected"),
 )
 
 
@@ -227,11 +254,20 @@ def validate_plan(
         errors.append("pending source lines are not unique and increasing")
     if tuple(sorted(set(pending_events))) != pending_events:
         errors.append("pending event indices are not unique and increasing")
+    silent_lines = plan.silent_lines
+    if tuple(sorted(set(silent_lines))) != silent_lines:
+        errors.append("silent source lines are not unique and increasing")
+    if any(line < 1 or line > len(source_lines) for line in silent_lines):
+        errors.append("silent source line is outside the fixture")
     if set(runnable_lines).intersection(pending_lines):
         errors.append("a source line is both runnable and pending")
+    if set(runnable_lines).intersection(silent_lines):
+        errors.append("a source line is both runnable and silent")
+    if set(silent_lines).intersection(pending_lines):
+        errors.append("a source line is both silent and pending")
     if set(runnable_events).intersection(pending_events):
         errors.append("an event is both runnable and pending")
-    if tuple(sorted(runnable_lines + pending_lines)) != nonempty_lines:
+    if tuple(sorted(runnable_lines + silent_lines + pending_lines)) != nonempty_lines:
         errors.append("source selection does not cover every nonempty fixture line")
     if tuple(sorted(runnable_events + pending_events)) != tuple(range(len(events))):
         errors.append("event selection does not cover every expected event")
@@ -281,7 +317,8 @@ def run_fixture(
 
     artifact_dir = output_dir / plan.name
     artifact_dir.mkdir(parents=True, exist_ok=True)
-    selected_source = selected_fixture_source(source, runnable_lines)
+    selected_lines = tuple(sorted(runnable_lines + plan.silent_lines))
+    selected_source = selected_fixture_source(source, selected_lines)
     selected_path = artifact_dir / "runnable.atlas"
     selected_path.write_text(selected_source, encoding="utf-8")
     expected_events = [events[index] for index in runnable_events]
@@ -369,6 +406,7 @@ def run_fixture(
         },
         "runnable": {
             "source_lines": list(runnable_lines),
+            "silent_source_lines": list(plan.silent_lines),
             "input_path": artifact_relative(selected_path),
             "input_sha256": sha256(selected_source.encode()),
         },
