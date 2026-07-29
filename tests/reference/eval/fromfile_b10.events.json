@@ -5,12 +5,12 @@
   "events": [
     {
       "kind": "Diagnostic",
-      "category": "runtime",
+      "category": "io",
       "message": "failed to open input file 'no_such_dir_b10/missing.at'."
     },
     {
       "kind": "Diagnostic",
-      "category": "runtime",
+      "category": "io",
       "message": "failed to open input file 'no_such_dir_b10/missing.at'."
     },
     {

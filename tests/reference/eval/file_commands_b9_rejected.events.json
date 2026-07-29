@@ -10,7 +10,7 @@
     },
     {
       "kind": "Diagnostic",
-      "category": "runtime",
+      "category": "io",
       "message": "Failed to open no_such_dir_fc_b9/f.out"
     },
     {
