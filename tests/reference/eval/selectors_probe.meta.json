@@ -1,0 +1,8 @@
+{
+  "fixture": "eval/selectors_probe",
+  "oracle": "atlas",
+  "stage": "probe",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "notes": "Exploratory probe for the B3d selector slice: unit selector application, chained identifier selectors, and operator selectors. Lines will be split into accepted and rejected fixtures from the oracle behavior; this probe file is not a differential fixture."
+}
