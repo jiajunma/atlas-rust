@@ -13,5 +13,6 @@
   "oracle_stdout_sha256":"1b5f32af0df362259ba82cfe3b5c62c46ba7bf5d233d812bb9b59f436770aeb4",
   "oracle_stderr_sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "capture_artifacts_sha256":"a846ab5315892d251d6b9cee16b98b573f280da8a2c42fd55f42b69c5a35d2b0",
-  "rust_status":"pending"
+  "rust_status":"verified_hpc",
+  "differential_job":"3499732"
 }

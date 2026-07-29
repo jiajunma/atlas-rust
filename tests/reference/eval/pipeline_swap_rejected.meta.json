@@ -13,6 +13,7 @@
   "oracle_stdout_sha256":"209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
   "oracle_stderr_sha256":"723f4cf63995e8e23a3a9d0af1bdb6c9a2dcdf4fb5cc917a0e7ff645bf57d91d",
   "capture_artifacts_sha256":"a846ab5315892d251d6b9cee16b98b573f280da8a2c42fd55f42b69c5a35d2b0",
-  "rust_status":"pending",
+  "rust_status":"verified_hpc",
+  "differential_job":"3499732",
   "notes":"The event messages retain the stable type-analysis tails; source-location and recovery framing remain covered by oracle_stderr_sha256."
 }
