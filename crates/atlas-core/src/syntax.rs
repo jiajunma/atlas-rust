@@ -96,6 +96,18 @@ pub enum Expr {
         arguments: Vec<Expr>,
         span: SourceSpan,
     },
+    /// A non-recursive function literal. Parameter patterns beyond a simple
+    /// typed name are intentionally deferred to the later pattern slice.
+    Lambda {
+        parameters: Vec<LambdaParam>,
+        body: Box<Expr>,
+        span: SourceSpan,
+    },
+    /// `return value`, intercepted by a function-call boundary during eval.
+    Return {
+        value: Box<Expr>,
+        span: SourceSpan,
+    },
     Group {
         inner: Box<Expr>,
         span: SourceSpan,
@@ -114,6 +126,16 @@ pub enum Expr {
         body: Box<Expr>,
         span: SourceSpan,
     },
+}
+
+/// A simple named lambda parameter (`type name`). Destructuring, anonymous,
+/// and const patterns remain outside the B3a parser slice.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LambdaParam {
+    pub name: String,
+    pub name_span: SourceSpan,
+    pub type_expr: TypeExpr,
+    pub span: SourceSpan,
 }
 
 /// A parsed type expression (upstream parser.y:792-818), spanned; length-1
@@ -217,6 +239,8 @@ impl Expr {
             | Self::Binary { span, .. }
             | Self::OperatorCall { span, .. }
             | Self::Call { span, .. }
+            | Self::Lambda { span, .. }
+            | Self::Return { span, .. }
             | Self::Group { span, .. }
             | Self::Conditional { span, .. }
             | Self::Cast { span, .. } => *span,
@@ -248,6 +272,9 @@ enum PostfixSuffix {
         arguments: Vec<Expr>,
         close: SourceSpan,
     },
+    /// Identifier selector (`receiver.name`), lowered to `name(receiver)`.
+    #[allow(dead_code)]
+    Selector { name: String, name_span: SourceSpan },
 }
 
 /// A top-level Atlas command.
@@ -340,6 +367,9 @@ pub enum ParserToken {
     And(SourceSpan),
     Or(SourceSpan),
     Not(SourceSpan),
+    Return(SourceSpan),
+    At(SourceSpan),
+    Dot(SourceSpan),
     LParen(SourceSpan),
     RParen(SourceSpan),
     Newline(SourceSpan),
@@ -380,6 +410,9 @@ impl ParserToken {
             | Self::And(span)
             | Self::Or(span)
             | Self::Not(span)
+            | Self::Return(span)
+            | Self::At(span)
+            | Self::Dot(span)
             | Self::LParen(span)
             | Self::RParen(span)
             | Self::Newline(span) => *span,
@@ -420,6 +453,9 @@ impl fmt::Display for ParserToken {
             Self::And(_) => "and",
             Self::Or(_) => "or",
             Self::Not(_) => "not",
+            Self::Return(_) => "return",
+            Self::At(_) => "@",
+            Self::Dot(_) => ".",
             Self::LParen(_) => "(",
             Self::RParen(_) => ")",
             Self::Newline(_) => "newline",
@@ -769,6 +805,14 @@ fn postfix(array: Expr, suffix: PostfixSuffix) -> Expr {
             span: join_span(array.span(), close),
             callee: Box::new(array),
             arguments,
+        },
+        PostfixSuffix::Selector { name, name_span } => Expr::Call {
+            span: join_span(array.span(), name_span),
+            callee: Box::new(Expr::Identifier {
+                name,
+                span: name_span,
+            }),
+            arguments: vec![array],
         },
     }
 }
@@ -1229,6 +1273,8 @@ mod tests {
                     .collect::<Vec<_>>()
                     .join(",")
             ),
+            Expr::Lambda { body, .. } => format!("lambda({})", expression_shape(body)),
+            Expr::Return { value, .. } => format!("return({})", expression_shape(value)),
         }
     }
 

@@ -1,0 +1,15 @@
+{
+  "fixture": "eval/functions_b3",
+  "oracle": "atlas",
+  "stage": "b3a-nonrecursive-functions",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "fixture_sha256": "828d58a00a1e493ce12fea8fd37c18220e86a87769486d5c12fd07a1ab213b8d",
+  "upstream_evidence": [
+    "sources/interpreter/parser.y:224-233",
+    "sources/interpreter/parser.y:323-337",
+    "sources/interpreter/axis.w:3290-3310",
+    "sources/interpreter/axis.w:3518-3571"
+  ],
+  "notes": "Covers typed non-recursive lambda calls, parameterless closure capture, an escaped captured closure, return interception at a closure boundary, and identifier selector application. No expected output is asserted until the raw HPC oracle capture is normalized."
+}

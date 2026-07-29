@@ -1,0 +1,5 @@
+let f = (int n): n + 1 in f(2)
+let x = 41 in let f = @: x + 1 in f()
+let make = (int x): @: x in let f = make(7) in f()
+let f = (int n): return n + 1 in f(2)
+let f = (int n): n + 1 in 2.f

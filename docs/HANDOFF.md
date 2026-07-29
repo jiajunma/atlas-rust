@@ -1,134 +1,93 @@
-# Atlas Rust session handoff - 2026-07-29
+# Atlas-Rust handoff - 2026-07-29
 
-This is the current continuation record for `/Users/hoxide/mycodes/atlas-rust`.
-The user goal is an idiomatic, safe-Rust implementation of the Atlas language;
-the upstream Atlas executable and generated CWEB sources remain the behavioral
-oracle. No `unsafe` Rust is permitted in the core.
+This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
+The goal is source-compatible Atlas language behavior, with the upstream Atlas
+executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
-## Current commits and tree
+## Current state
 
-- `c6d5d6a feat: activate typed Atlas session pipeline`
-- `14818ab test: harden typed pipeline provenance`
-- branch: `main`; the handoff update itself is the only intended change after
-  those commits until it is committed.
-- `origin/main` was behind these commits at the last local check. Push only
-  after the documentation and local checks below are complete.
+- Branch: `main`.
+- The latest committed work before this handoff is the typed session pipeline
+  series ending at `6e4d0a7 docs: refresh typed pipeline handoff`.
+- This handoff and the B3a parser fixture are committed together after local
+  checks. The exact commit is shown by `git log -1 --oneline`.
+- No uncommitted repository changes should remain after the handoff commit.
 
-The typed pipeline is user-visible now. `session.rs` and `session_frame.rs`
-convert and evaluate commands through `typed.rs`; the old dynamic `eval.rs`
-module is deleted and no code path imports it. `session_fixture_tests.rs`
-exercises the same session boundary used by the CLI.
+The typed session pipeline is active: `session.rs` and `session_frame.rs`
+convert/evaluate through `typed.rs`; the old dynamic `eval.rs` path is deleted.
+The current typed surface includes scalar and linear values, subscriptions,
+one-dimensional slices, matrix/vector/ratvec crossings, RootDatum/Cartan
+constructors, and the exposed KGB constructor adapter. This is not a claim of
+full Atlas compatibility: InnerClass/RealForm/KGB rendering and numbering,
+relations, primitive `involution` constructors, and later math overloads remain
+pending differential evidence.
 
-## Verified local state
+## This stage: B3a preparation
 
-The following checks passed with Rust 1.90 and warnings denied:
+The committed B3a slice adds syntax data structures only:
 
-- `cargo test -p atlas-core`: 145 tests passed, 0 failed.
-- `cargo check -p atlas-core --lib --tests` with `RUSTFLAGS=-D warnings`.
-- `cargo check -p atlas-cli` with `RUSTFLAGS=-D warnings`.
-- `cargo fmt --all -- --check`, `git diff --check`.
-- `PYTHONDONTWRITEBYTECODE=1 python3 -B -m unittest hpc/test_pipeline_swap_diff.py hpc/test_reference_capture.py`: 17 passed.
-- `bash -n` for both new batch jobs and `bash hpc/test_source_state.sh`.
-- `rg '\bunsafe\b' crates` returns no matches.
+- `Expr::Lambda` for a non-recursive function literal;
+- `Expr::Return` for `return value`;
+- `LambdaParam` for a simple typed named parameter;
+- selector postfix metadata for `receiver.name`, intended to lower to
+  `name(receiver)`;
+- parser token variants for `return`, `@`, and `.`;
+- `tests/fixtures/eval/functions_b3.atlas` with five representative cases;
+- pending-HPC reference metadata and an empty events placeholder.
 
-These are bounded local checks only. No full-workspace build, corpus run,
-reference executable run, benchmark, or differential job has been run locally.
+The lexer, LALRPOP grammar, typed conversion/evaluation, closure capture,
+return unwinding, and selector lowering are not implemented yet. Do not call
+B3 functions supported until the parser compiles, runtime behavior is wired,
+and both accepted and rejected cases have an HPC differential report.
 
-## What the B2 swap covers
+## Verification and evidence
 
-The typed registry and evaluator currently cover the scalar and linear-value
-surface already present in the repository: exact integers/rationals, strings,
-booleans, tuples/lists, typed assignment and context persistence, overload
-resolution, short-circuit conditionals, subscriptions, one-dimensional slices,
-matrix/vector/ratvec crossings, RootDatum constructors, Cartan matrices, and
-the exposed KGB constructor adapter. Session formatting now owns report lines,
-void-type suppression, diagnostics, and `Bye.` output.
+The bounded local checks completed for this commit are:
 
-Two semantic repairs are part of the swap:
+- `cargo test -p atlas-core --lib`: 145 passed, 0 failed;
+- `cargo clippy -p atlas-core --lib -- -D warnings`;
+- `cargo fmt --all -- --check`, `git diff --check`, and JSON validation for the
+  two B3 reference files.
 
-1. Balance accumulates conflicts and prunes earlier narrower candidates as
-   later branches broaden the common type. Nested list/conditional failures
-   retain their owner span, so only the balance that owns the offending branch
-   may salvage it into a void row.
-2. Raw Cartan inference tests all exact candidate matrices before trying a
-   simultaneous permutation. This preserves canonical B2/C2 orientation while
-   accepting non-symmetric relabelings such as B3.
+Only bounded local checks are appropriate here. The project policy puts full
+workspace tests, Atlas/CWEB execution, differential jobs, and benchmarks on
+XMU HPC. The B3 reference files intentionally remain `pending_hpc_reference`.
 
-The domain surface is intentionally incomplete. InnerClass/RealForm/KGB
-renderings and relation semantics, stable KGB external numbering, primitive
-`involution` constructors, `real_form(InnerClass,mat,ratvec)`, and later
-math-layer overloads are pending. Do not describe the current KGB values as
-compatible. The HPC pending list is explicitly limited to the selected
-RootDatum/InnerClass/RealForm/KGB typed-pipeline scope; it does not enumerate
-all future Atlas overloads.
+Before continuing, run the smallest local parser/core check with the project
+toolchain, then sync a clean committed tree to HPC and submit the relevant
+SLURM job. Record the job id, reference revision, source commit, dirty state,
+fixture manifest, exit code, and checksums in the reference metadata/report.
 
-## Differential evidence status
+## Local environment
 
-Checked-in oracle metadata and event fixtures are available under
-`tests/reference/`. The domain-equality fixture is runnable only through its
-RootDatum prefix (source lines 1-2); InnerClass/RealForm/KGB setup, displays,
-numbering, and relations (lines 3-14) are recorded as pending rather than
-being represented by placeholder Rust output. The selected constructor and
-linear-value fixtures are ready for the typed swap job.
+- `rustup` is installed through Homebrew.
+- Stable toolchain: Rust 1.96.0; project `rust-toolchain.toml` selects stable
+  and requires clippy/rustfmt.
+- Rust 1.90.0 is also installed for the repository's earlier local gate.
+- `rust-analyzer` is installed at `/opt/homebrew/bin/rust-analyzer`.
+- `~/.cargo/bin` now precedes `/opt/local/bin` in `~/.zprofile`, so new shells
+  use rustup's `rustc`, `cargo`, `clippy`, and `rustfmt` proxies. Restart the
+  shell or source `~/.zprofile` before checking versions.
 
-The provenance harness in `hpc/` now:
+## Next implementation slice
 
-- validates declared versus detected commit and dirty-tree state before and
-  after snapshot creation;
-- freezes clean versioned input with `git archive <detected-commit>`;
-- labels dirty/unversioned live-tree snapshots explicitly;
-- binds `source_state.sh` to the Git blob for clean runs, or hashes the copied
-  helper for dirty runs;
-- checks Slurm spool script bytes against the frozen snapshot and clean Git
-  blob; and
-- writes a checksummed failure report if setup aborts before a normal report.
-
-The report's snapshot scope is annotated after execution: clean runs say
-`full tracked Git archive`; dirty jobs identify their live-tree scope. A prior
-review found the stale fixed scope string in `reference_capture.py`; it was
-replaced with a neutral pre-annotation value and the batch annotator now writes
-the exact scope. This repair was verified by the 17 harness tests and shell
-checks above.
-
-The next HPC action is to sync a committed tree to XMU, verify the detached
-checkout and clean state, and submit `hpc/pipeline_swap_diff.sbatch`. The last
-attempt in this continuation timed out on direct SSH, and
-`127.0.0.1:7897` was not listening, so there is currently no Rust-vs-Atlas
-differential report for `c6d5d6a`.
-
-## Immediate next slice: B3a
-
-Follow the upstream parser and `docs/AXIS_CORE_DESIGN.md` rather than adding
-ad-hoc syntax. The recommended bounded slice is non-recursive functions:
-
-1. Add a fixture and obtain its raw upstream capture on HPC before claiming
-   semantics. Start with typed lambda parameters, a generic call, a captured
-   local, `return`, and identifier selector desugaring (`x.f` = `f(x)`).
-2. Add the smallest AST/parser vocabulary (`Lambda`, `Return`, simple named
-   parameters, and selector postfix), then typed closure creation and generic
-   calls.
-3. Represent closures with safe `Rc`/`RefCell` frame capture and manual
-   equality using identity; apply the existing context-swap guard. Reject
-   `return` outside a function during conversion.
-4. Keep recursive functions, destructuring/const/discard patterns, operator
+1. Read the upstream parser and axis references listed in
+   `tests/reference/eval/functions_b3.meta.json`.
+2. Run an HPC raw capture for every B3a fixture line and normalize only after
+   capture; retain negative/rejected cases.
+3. Complete lexer and grammar support for typed lambda parameters, `@`, `.`,
+   `return`, and the `in` expression form.
+4. Add safe closure values with frame capture and a call-boundary return signal.
+   Keep recursive functions, destructuring/const/discard patterns, operator
    selectors, definitions, loops, and full `set_type` syntax for later slices.
+5. Run focused local checks, then the HPC differential job, update this file,
+   and commit the verified stage.
 
-The exploration notes identify the likely ownership files:
-`crates/atlas-core/src/syntax.rs`, `grammar.lalrpop`, `typed.rs`, `value.rs`,
-and the existing frame implementation. Parallel work is appropriate for an
-oracle/fixture task, a parser/AST task, and an independent Rust review, but
-each worker must own disjoint files and preserve this shared tree.
+## Standing rules
 
-## Standing workflow
-
-For each substantive slice: read the upstream grammar/axis implementation,
-add or update a fixture and reference metadata, run the smallest HPC
-differential job available, implement the owning module, run bounded local
-checks, request a Rust/code review, update this handoff with evidence, then
-commit and push. Never hand-edit generated CWEB or parser output. Keep heavy
-work on HPC and never infer undocumented behavior from convenience.
-
-Historical designs and stage gates remain in `docs/AXIS_CORE_DESIGN.md`,
-`docs/AXIS_CORE_TRACE.md`, and `docs/AXIS_LANGUAGE_TRACE.md`; this file is the
-current state and should be updated whenever a verified repair or blocker is
-found.
+- Read `docs/COMPATIBILITY.md`, `docs/LANGUAGE.md`, and `docs/DESIGN.md` before
+  changing language behavior.
+- Add/update fixture and reference metadata before implementation claims.
+- Never hand-edit generated CWEB or parser output.
+- Keep root-data and real-group invariants in their owned domain layer.
+- Preserve unrelated user changes and do not commit unverified HPC output.

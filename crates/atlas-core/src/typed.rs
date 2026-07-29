@@ -475,6 +475,14 @@ pub fn convert_expr(
             *span,
             analysis,
         ),
+        Expr::Lambda { span, .. } => Err(type_error(
+            "function literals are not implemented yet".into(),
+            *span,
+        )),
+        Expr::Return { span, .. } => Err(type_error(
+            "return is not implemented outside the function slice".into(),
+            *span,
+        )),
         Expr::Group { inner, .. } => convert_expr(inner, required, analysis),
         Expr::Cast { target, body, .. } => {
             // The cast's whole effect is conversion-time: convert the body
