@@ -15,6 +15,7 @@ use malachite::{Integer as BigInt, Rational as BigRational};
 
 use crate::coercions::{coercion_between, row_coercion};
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
+use crate::domain_builtins;
 use crate::frames::{EvaluationContext, GlobalCell};
 use crate::linear_values::{Matrix, RatVec, Vec32};
 use crate::syntax::{Command, Expr};
@@ -269,6 +270,142 @@ fn type_error(message: String, span: SourceSpan) -> Diagnostic {
     Diagnostic::new(ErrorKind::Type, message, Some(span))
 }
 
+/// A balance failure is kept structured until the enclosing balance has had
+/// an opportunity to choose a broader common type.  Flattening this into a
+/// diagnostic at the inner list would make a later `void` branch unable to
+/// salvage the expression (the upstream `balance_error` behaviour).
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum BalanceContainer {
+    Unknown,
+    List,
+    Conditional,
+}
+
+#[derive(Clone, Debug)]
+struct BalanceFailure {
+    span: SourceSpan,
+    variants: Vec<Type>,
+    container: BalanceContainer,
+}
+
+#[derive(Debug)]
+enum BalanceConversionError {
+    Diagnostic(Diagnostic),
+    Balance(BalanceFailure),
+}
+
+impl BalanceConversionError {
+    fn into_diagnostic(self, analysis: &Analysis<'_>) -> Diagnostic {
+        match self {
+            Self::Diagnostic(diagnostic) => diagnostic,
+            Self::Balance(failure) => {
+                let mut displays = failure
+                    .variants
+                    .iter()
+                    .map(|type_| type_.display(analysis.types).to_string())
+                    .collect::<Vec<_>>();
+                if displays.is_empty() {
+                    displays.push(Type::Undetermined.display(analysis.types).to_string());
+                }
+                type_error(
+                    format!(
+                        "branches have incompatible types {}",
+                        displays.join(" and ")
+                    ),
+                    failure.span,
+                )
+            }
+        }
+    }
+}
+
+fn mark_balance_failure(
+    error: BalanceConversionError,
+    owner_span: SourceSpan,
+    container: BalanceContainer,
+) -> BalanceConversionError {
+    match error {
+        BalanceConversionError::Balance(mut failure) if failure.span == owner_span => {
+            failure.container = container;
+            BalanceConversionError::Balance(failure)
+        }
+        other => other,
+    }
+}
+
+/// Convert a list display while retaining a balance failure for the caller
+/// that is itself balancing branches.  The public conversion path maps that
+/// failure to a diagnostic; only this narrowly scoped path preserves it.
+fn convert_list_expression(
+    elements: &[Expr],
+    span: SourceSpan,
+    required: &mut Type,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, BalanceConversionError> {
+    // In row context (or undetermined), elements share the component pattern;
+    // in a non-row context the first row coercion for that target decides the
+    // component type (mat context -> vec).
+    if required.is_void() {
+        // Upstream still converts and evaluates a list in a void context,
+        // while discarding its resulting row value.  Keep an undetermined
+        // component pattern so nested balance errors can be resolved before
+        // the enclosing void conversion is inserted.
+        let mut component = Type::Undetermined;
+        let branches = elements.iter().collect::<Vec<_>>();
+        let display = TypedExpr::ListDisplay(balance(&branches, &mut component, span, analysis)?);
+        return conform_types(&Type::row(component), required, display, span, analysis)
+            .map_err(BalanceConversionError::Diagnostic);
+    }
+    let (mut component, coercion_tag) = match &*required {
+        Type::Undetermined => (Type::Undetermined, None),
+        Type::Row(component) => (component.as_ref().clone(), None),
+        other => match row_coercion(other, analysis.types) {
+            Some((coercion, component)) => (component.clone(), Some(coercion.tag)),
+            None => {
+                return Err(BalanceConversionError::Diagnostic(type_error(
+                    format!(
+                        "list display does not match required pattern {}",
+                        other.display(analysis.types),
+                    ),
+                    span,
+                )))
+            }
+        },
+    };
+    let branches = elements.iter().collect::<Vec<_>>();
+    let converted = balance(&branches, &mut component, span, analysis)?;
+    let display = TypedExpr::ListDisplay(converted);
+    match coercion_tag {
+        Some(tag) => Ok(TypedExpr::Conversion {
+            tag,
+            inner: Box::new(display),
+            span,
+        }),
+        None => conform_types(&Type::row(component), required, display, span, analysis)
+            .map_err(BalanceConversionError::Diagnostic),
+    }
+}
+
+fn convert_conditional_expression(
+    condition: &Expr,
+    then_branch: &Expr,
+    else_branch: &Expr,
+    span: SourceSpan,
+    required: &mut Type,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, BalanceConversionError> {
+    let mut bool_type = Type::Primitive(Prim::Bool);
+    let condition = convert_expr(condition, &mut bool_type, analysis)
+        .map_err(BalanceConversionError::Diagnostic)?;
+    let branches = balance(&[then_branch, else_branch], required, span, analysis)?;
+    let mut branches = branches.into_iter();
+    Ok(TypedExpr::Conditional {
+        condition: Box::new(condition),
+        then_branch: Box::new(branches.next().expect("two branches")),
+        else_branch: Box::new(branches.next().expect("two branches")),
+    })
+}
+
 /// specialise-else-coerce-else-error (upstream `conform_types`,
 /// axis-types.w:3095-3100). Coercion to void always succeeds without a
 /// node (the caller voids); otherwise a matching table entry wraps the
@@ -392,38 +529,8 @@ pub fn convert_expr(
             )
         }
         Expr::List { elements, span } => {
-            // In row context (or undetermined), elements share the component
-            // pattern; in a non-row context the FIRST row coercion for that
-            // target decides the component type (mat context -> vec).
-            let (mut component, coercion_tag) = match &*required {
-                Type::Undetermined => (Type::Undetermined, None),
-                Type::Row(component) => (component.as_ref().clone(), None),
-                other => match row_coercion(other, analysis.types) {
-                    Some((coercion, component)) => (component.clone(), Some(coercion.tag)),
-                    None => {
-                        return Err(type_error(
-                            format!(
-                                "list display does not match required pattern {}",
-                                other.display(analysis.types),
-                            ),
-                            *span,
-                        ))
-                    }
-                },
-            };
-            let converted = elements
-                .iter()
-                .map(|element| convert_expr(element, &mut component, analysis))
-                .collect::<Result<Vec<_>, _>>()?;
-            let display = TypedExpr::ListDisplay(converted);
-            match coercion_tag {
-                Some(tag) => Ok(TypedExpr::Conversion {
-                    tag,
-                    inner: Box::new(display),
-                    span: *span,
-                }),
-                None => conform_types(&Type::row(component), required, display, *span, analysis),
-            }
+            convert_list_expression(elements, *span, required, analysis)
+                .map_err(|error| error.into_diagnostic(analysis))
         }
         Expr::Identifier { name, span } => {
             if let Some((type_, depth, offset)) = analysis.locals.get(name) {
@@ -582,16 +689,6 @@ pub fn convert_expr(
             let mut locals = analysis.locals.clone();
             let mut groups = Vec::with_capacity(binding_groups.len());
             for bindings in binding_groups {
-                let mut names = BTreeSet::new();
-                for binding in bindings {
-                    if !names.insert(binding.name.as_str()) {
-                        return Err(Diagnostic::new(
-                            ErrorKind::Name,
-                            format!("Multiple binding of '{}' in same scope", binding.name),
-                            Some(binding.name_span),
-                        ));
-                    }
-                }
                 let mut pending = Vec::with_capacity(bindings.len());
                 for binding in bindings {
                     let mut binding_type = Type::Undetermined;
@@ -605,6 +702,16 @@ pub fn convert_expr(
                         },
                     )?;
                     pending.push((binding.name.clone(), binding_type, converted));
+                }
+                let mut names = BTreeSet::new();
+                for binding in bindings {
+                    if !names.insert(binding.name.as_str()) {
+                        return Err(Diagnostic::new(
+                            ErrorKind::Name,
+                            format!("Multiple binding of '{}' in same scope", binding.name),
+                            Some(binding.name_span),
+                        ));
+                    }
                 }
                 for (_, depth, _) in locals.values_mut() {
                     *depth += 1;
@@ -678,101 +785,42 @@ pub fn convert_expr(
                     analysis,
                 );
             }
-            // The a-priori-type design (axis.w:1552-1599): convert each
-            // argument once in undetermined context, then one pass over the
-            // variants — exact match wins immediately, else the FIRST
-            // variant the a-priori type coerces into is taken, with each
-            // divergent argument re-converted against its expected type.
-            let mut converted = Vec::new();
-            let mut a_priori = Vec::new();
-            for argument in arguments {
-                let mut slot = Type::Undetermined;
-                converted.push(convert_expr(argument, &mut slot, analysis)?);
-                a_priori.push(slot);
-            }
-            let a_priori_type = Type::tuple(a_priori.clone());
-            let variants = overload_variants(&operator.symbol);
-            let mut chosen = None;
-            for &index in variants {
-                let builtin = &builtin_registry()[index];
-                if builtin.arg_type == a_priori_type {
-                    chosen = Some(index);
-                    break;
-                }
-                if crate::coercions::is_close(&a_priori_type, &builtin.arg_type, analysis.types)
-                    & 0x1
-                    != 0
-                {
-                    chosen = Some(index);
-                    break;
-                }
-            }
-            let index = match chosen {
-                Some(index) => index,
-                None => {
-                    return Err(type_error(
-                        format!(
-                            "no instance of operator '{}' matches argument type {}",
-                            operator.symbol,
-                            a_priori_type.display(analysis.types),
-                        ),
-                        *span,
-                    ))
-                }
-            };
-            let builtin = &builtin_registry()[index];
-            // Re-convert divergent arguments against the expected components.
-            let expected: Vec<Type> = match &builtin.arg_type {
-                Type::Tuple(components) => components.clone(),
-                single => vec![single.clone()],
-            };
-            let arguments = converted
-                .into_iter()
-                .zip(a_priori)
-                .zip(expected)
-                .zip(arguments)
-                .map(|(((converted, found), mut expected), original)| {
-                    if expected.specialise(&found, analysis.types) {
-                        Ok(converted)
-                    } else {
-                        convert_expr(original, &mut expected, analysis)
-                    }
-                })
-                .collect::<Result<Vec<_>, _>>()?;
-            let found = builtin.result.clone();
-            conform_types(
-                &found,
+            convert_builtin_application(
+                &operator.symbol,
+                arguments,
                 required,
-                TypedExpr::BuiltinCall {
-                    builtin: index,
-                    arguments,
-                    span: *span,
-                },
                 *span,
                 analysis,
+                false,
             )
+        }
+        Expr::Call {
+            callee,
+            arguments,
+            span,
+        } => {
+            let Expr::Identifier { name, .. } = callee.as_ref() else {
+                return Err(type_error(
+                    "only named builtins are available before B3 functions".into(),
+                    *span,
+                ));
+            };
+            convert_builtin_application(name, arguments, required, *span, analysis, true)
         }
         Expr::Conditional {
             condition,
             then_branch,
             else_branch,
             span,
-        } => {
-            let mut bool_type = Type::Primitive(Prim::Bool);
-            let condition = convert_expr(condition, &mut bool_type, analysis)?;
-            let branches = balance(
-                &[then_branch.as_ref(), else_branch.as_ref()],
-                required,
-                *span,
-                analysis,
-            )?;
-            let mut branches = branches.into_iter();
-            Ok(TypedExpr::Conditional {
-                condition: Box::new(condition),
-                then_branch: Box::new(branches.next().expect("two branches")),
-                else_branch: Box::new(branches.next().expect("two branches")),
-            })
-        }
+        } => convert_conditional_expression(
+            condition,
+            then_branch,
+            else_branch,
+            *span,
+            required,
+            analysis,
+        )
+        .map_err(|error| error.into_diagnostic(analysis)),
         // Upstream desugars the boolean connectives into conditionals at
         // parse time (parser.y:280-294); this port does it at conversion.
         Expr::Binary { op, lhs, rhs, span } => {
@@ -823,65 +871,225 @@ pub fn convert_expr(
                 analysis,
             ),
         },
-        unsupported => Err(type_error(
-            "this expression form is not yet in the typed pipeline".into(),
-            unsupported.span(),
-        )),
     }
 }
 
+fn convert_builtin_application(
+    name: &str,
+    expressions: &[Expr],
+    required: &mut Type,
+    span: SourceSpan,
+    analysis: &Analysis<'_>,
+    resolve_name_first: bool,
+) -> Result<TypedExpr, Diagnostic> {
+    let variants = overload_variants(name);
+    if resolve_name_first && variants.is_empty() {
+        // Atlas resolves the callee before analysing its arguments.  This is
+        // observable for `foo(missing)`: the undefined function wins over an
+        // error in an argument that would never be evaluated.
+        return Err(Diagnostic::new(
+            ErrorKind::Name,
+            format!("Undefined identifier '{name}'"),
+            Some(span),
+        ));
+    }
+    // The a-priori-type design (axis.w:1552-1599): convert each argument
+    // once in undetermined context, then choose the first exact or coercible
+    // overload and re-convert divergent arguments against its signature.
+    let mut converted = Vec::new();
+    let mut a_priori = Vec::new();
+    for expression in expressions {
+        let mut slot = Type::Undetermined;
+        converted.push(convert_expr(expression, &mut slot, analysis)?);
+        a_priori.push(slot);
+    }
+    let a_priori_type = Type::tuple(a_priori.clone());
+    let mut chosen = None;
+    for &index in variants {
+        let builtin = &builtin_registry()[index];
+        if builtin.arg_type == a_priori_type {
+            chosen = Some(index);
+            break;
+        }
+        if crate::coercions::is_close(&a_priori_type, &builtin.arg_type, analysis.types) & 0x1 != 0
+        {
+            chosen = Some(index);
+            break;
+        }
+    }
+    let index = chosen.ok_or_else(|| {
+        let message = if variants.len() == 1 {
+            format!(
+                "found {} while {} was needed.",
+                a_priori_type.display(analysis.types),
+                builtin_registry()[variants[0]]
+                    .arg_type
+                    .display(analysis.types),
+            )
+        } else {
+            format!(
+                "Failed to match '{}' with argument type {}",
+                name,
+                a_priori_type.display(analysis.types),
+            )
+        };
+        type_error(message, span)
+    })?;
+    let builtin = &builtin_registry()[index];
+    let expected: Vec<Type> = match &builtin.arg_type {
+        Type::Tuple(components) => components.clone(),
+        single => vec![single.clone()],
+    };
+    let arguments = converted
+        .into_iter()
+        .zip(a_priori)
+        .zip(expected)
+        .zip(expressions)
+        .map(|(((converted, found), mut expected), original)| {
+            if expected.specialise(&found, analysis.types) {
+                Ok(converted)
+            } else {
+                convert_expr(original, &mut expected, analysis)
+            }
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    conform_types(
+        &builtin.result,
+        required,
+        TypedExpr::BuiltinCall {
+            builtin: index,
+            arguments,
+            span,
+        },
+        span,
+        analysis,
+    )
+}
+
 /// Balance branch expressions to a common type (upstream `balance`,
-/// axis.w:1022-1122, two-branch simplification): convert each against a
-/// copy of the target, keep the broadest type under `broader_eq`, then
-/// re-convert every branch whose type diverges from the winner.
+/// axis.w:1022-1122): convert each against a copy of the target, keep the
+/// broadest comparable type, defer incomparable types, then prune those
+/// conflicts if a later branch supplies a type broad enough to absorb them.
 fn balance(
     branches: &[&Expr],
     target: &mut Type,
     span: SourceSpan,
     analysis: &Analysis<'_>,
-) -> Result<Vec<TypedExpr>, Diagnostic> {
-    let mut converted = Vec::new();
+) -> Result<Vec<TypedExpr>, BalanceConversionError> {
+    let mut converted = Vec::with_capacity(branches.len());
     let mut types = Vec::new();
+    let mut common = Type::Undetermined;
+    let mut conflicts = Vec::new();
     for branch in branches {
         let mut slot = target.clone();
-        converted.push(convert_expr(branch, &mut slot, analysis)?);
+        match convert_balanced_branch(branch, &mut slot, analysis) {
+            Ok(expression) => {
+                converted.push(Some(expression));
+                if !crate::coercions::broader_eq(&common, &slot, analysis.types) {
+                    if crate::coercions::broader_eq(&slot, &common, analysis.types) {
+                        common = slot.clone();
+                    } else {
+                        conflicts.push(slot.clone());
+                    }
+                }
+            }
+            Err(BalanceConversionError::Diagnostic(diagnostic)) => {
+                return Err(BalanceConversionError::Diagnostic(diagnostic));
+            }
+            Err(BalanceConversionError::Balance(failure)) => {
+                if failure.span != branch.span() {
+                    return Err(BalanceConversionError::Balance(failure));
+                }
+                // A balance error from the branch itself is salvageable at
+                // this level.  A list adds one `row` layer to each variant,
+                // exactly as axis.w does before pruning.
+                converted.push(None);
+                let variants = failure.variants.into_iter().map(|type_| {
+                    if failure.container == BalanceContainer::List {
+                        Type::row(type_)
+                    } else {
+                        type_
+                    }
+                });
+                conflicts.extend(variants);
+            }
+        }
+        // Failed branch conversions retain the original target as their
+        // component type.  If pruning later chooses a broader common type,
+        // the final reconversion below fills their previously empty slot.
         types.push(slot);
     }
-    let mut common = types.first().cloned().unwrap_or(Type::Undetermined);
-    for type_ in &types[1..] {
-        if crate::coercions::broader_eq(&common, type_, analysis.types) {
-            continue;
+    if types.is_empty() {
+        return Ok(Vec::new());
+    }
+    conflicts.retain(|type_| !crate::coercions::broader_eq(&common, type_, analysis.types));
+    if let Some(conflict) = conflicts.first().cloned() {
+        let mut variants = Vec::with_capacity(conflicts.len() + 1);
+        if common != Type::Undetermined {
+            variants.push(common.clone());
         }
-        if crate::coercions::broader_eq(type_, &common, analysis.types) {
-            common = type_.clone();
-            continue;
-        }
-        return Err(type_error(
-            format!(
-                "branches have incompatible types {} and {}",
-                common.display(analysis.types),
-                type_.display(analysis.types),
-            ),
+        variants.extend(conflicts);
+        debug_assert!(variants.iter().any(|type_| type_ == &conflict));
+        return Err(BalanceConversionError::Balance(BalanceFailure {
             span,
-        ));
+            variants,
+            container: BalanceContainer::Unknown,
+        }));
     }
     if !target.specialise(&common, analysis.types) {
-        return Err(type_error(
+        return Err(BalanceConversionError::Diagnostic(type_error(
             format!(
                 "balanced type {} does not match required pattern {}",
                 common.display(analysis.types),
                 target.display(analysis.types),
             ),
             span,
-        ));
+        )));
     }
     for (index, type_) in types.iter().enumerate() {
         if type_ != &common {
             let mut slot = common.clone();
-            converted[index] = convert_expr(branches[index], &mut slot, analysis)?;
+            converted[index] = Some(
+                convert_expr(branches[index], &mut slot, analysis)
+                    .map_err(BalanceConversionError::Diagnostic)?,
+            );
         }
     }
-    Ok(converted)
+    Ok(converted
+        .into_iter()
+        .map(|expression| expression.expect("balanced branch must be converted"))
+        .collect())
+}
+
+/// Preserve only a balance failure owned by the branch expression itself.
+/// Other conversion diagnostics are already final and must propagate without
+/// being folded into the enclosing conflict set.
+fn convert_balanced_branch(
+    branch: &Expr,
+    required: &mut Type,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, BalanceConversionError> {
+    match branch {
+        Expr::List { elements, span } => {
+            convert_list_expression(elements, *span, required, analysis)
+                .map_err(|error| mark_balance_failure(error, *span, BalanceContainer::List))
+        }
+        Expr::Conditional {
+            condition,
+            then_branch,
+            else_branch,
+            span,
+        } => convert_conditional_expression(
+            condition,
+            then_branch,
+            else_branch,
+            *span,
+            required,
+            analysis,
+        )
+        .map_err(|error| mark_balance_failure(error, *span, BalanceContainer::Conditional)),
+        _ => convert_expr(branch, required, analysis).map_err(BalanceConversionError::Diagnostic),
+    }
 }
 
 /// One registered builtin overload.
@@ -896,6 +1104,18 @@ pub struct Builtin {
 #[derive(Clone, Copy)]
 enum BuiltinImpl {
     Scalar(ScalarOp),
+    Domain {
+        name: &'static str,
+        no_value: DomainNoValue,
+    },
+    DomainRelation(Relation),
+}
+
+#[derive(Clone, Copy)]
+enum DomainNoValue {
+    Skip,
+    Validate,
+    BuildAndDrop,
 }
 
 #[derive(Clone, Copy)]
@@ -950,6 +1170,35 @@ impl Builtin {
     ) -> Result<Option<Value>, Control> {
         match self.implementation {
             BuiltinImpl::Scalar(operation) => run_scalar(operation, arguments, span, level),
+            BuiltinImpl::Domain { name, no_value } => {
+                if level == Level::NoValue {
+                    match no_value {
+                        DomainNoValue::Skip => return Ok(None),
+                        DomainNoValue::Validate => {
+                            domain_builtins::validate(name, &arguments, span)
+                                .map_err(Control::Runtime)?;
+                            return Ok(None);
+                        }
+                        DomainNoValue::BuildAndDrop => {}
+                    }
+                }
+                domain_builtins::call(name, &arguments, span)
+                    .map(|value| at_builtin_level(level, || value))
+                    .map_err(Control::Runtime)
+            }
+            BuiltinImpl::DomainRelation(relation) => {
+                let (first, second) = expect_pair(arguments);
+                let (Value::Domain(first), Value::Domain(second)) = (first, second) else {
+                    panic!("domain relation saw non-domain arguments")
+                };
+                Ok(at_builtin_level(level, || {
+                    Value::Boolean(match relation {
+                        Relation::Equal => first == second,
+                        Relation::NotEqual => first != second,
+                        _ => panic!("ordered domain relation is not registered"),
+                    })
+                }))
+            }
         }
     }
 }
@@ -974,6 +1223,10 @@ fn string_type() -> Type {
     Type::Primitive(Prim::String)
 }
 
+fn primitive_type(primitive: Prim) -> Type {
+    Type::Primitive(primitive)
+}
+
 fn pair(type_: Type) -> Type {
     Type::tuple(vec![type_.clone(), type_])
 }
@@ -991,6 +1244,49 @@ fn scalar_builtin(
         result,
         hunger,
         implementation: BuiltinImpl::Scalar(op),
+    }
+}
+
+fn domain_builtin(name: &'static str, arg_type: Type, result: Type, hunger: u8) -> Builtin {
+    domain_builtin_with_level(name, arg_type, result, hunger, DomainNoValue::BuildAndDrop)
+}
+
+fn domain_builtin_with_level(
+    name: &'static str,
+    arg_type: Type,
+    result: Type,
+    hunger: u8,
+    no_value: DomainNoValue,
+) -> Builtin {
+    Builtin {
+        name,
+        arg_type,
+        result,
+        hunger,
+        implementation: BuiltinImpl::Domain { name, no_value },
+    }
+}
+
+fn domain_builtin_skip(name: &'static str, arg_type: Type, result: Type, hunger: u8) -> Builtin {
+    domain_builtin_with_level(name, arg_type, result, hunger, DomainNoValue::Skip)
+}
+
+fn domain_builtin_validate(
+    name: &'static str,
+    arg_type: Type,
+    result: Type,
+    hunger: u8,
+) -> Builtin {
+    domain_builtin_with_level(name, arg_type, result, hunger, DomainNoValue::Validate)
+}
+
+fn domain_relation_builtin(name: &'static str, arg_type: Type, relation: Relation) -> Builtin {
+    Builtin {
+        name,
+        arg_type,
+        result: bool_type(),
+        hunger: 0,
+        implementation: BuiltinImpl::DomainRelation(relation),
     }
 }
 
@@ -1646,6 +1942,176 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 1,
                 ScalarOp::StringConcat,
             ),
+            domain_builtin("Lie_type", string_type(), primitive_type(Prim::LieType), 0),
+            domain_builtin(
+                "Lie_type",
+                primitive_type(Prim::RootDatum),
+                primitive_type(Prim::LieType),
+                0,
+            ),
+            domain_builtin_skip(
+                "prefers_coroots",
+                primitive_type(Prim::RootDatum),
+                bool_type(),
+                0,
+            ),
+            domain_builtin_skip(
+                "simply_connected",
+                Type::tuple(vec![primitive_type(Prim::LieType), bool_type()]),
+                primitive_type(Prim::RootDatum),
+                0,
+            ),
+            domain_builtin_skip(
+                "adjoint",
+                Type::tuple(vec![primitive_type(Prim::LieType), bool_type()]),
+                primitive_type(Prim::RootDatum),
+                0,
+            ),
+            domain_builtin(
+                "root_datum",
+                Type::tuple(vec![
+                    primitive_type(Prim::Mat),
+                    primitive_type(Prim::Mat),
+                    bool_type(),
+                ]),
+                primitive_type(Prim::RootDatum),
+                0,
+            ),
+            domain_builtin(
+                "root_datum",
+                Type::tuple(vec![
+                    primitive_type(Prim::LieType),
+                    primitive_type(Prim::Mat),
+                    bool_type(),
+                ]),
+                primitive_type(Prim::RootDatum),
+                0,
+            ),
+            domain_builtin(
+                "root_datum",
+                Type::tuple(vec![
+                    primitive_type(Prim::RootDatum),
+                    primitive_type(Prim::Mat),
+                ]),
+                primitive_type(Prim::RootDatum),
+                0,
+            ),
+            domain_builtin(
+                "root_datum",
+                primitive_type(Prim::InnerClass),
+                primitive_type(Prim::RootDatum),
+                0,
+            ),
+            domain_builtin_skip(
+                "Cartan_matrix",
+                primitive_type(Prim::LieType),
+                primitive_type(Prim::Mat),
+                0,
+            ),
+            domain_builtin_skip(
+                "Cartan_matrix",
+                primitive_type(Prim::RootDatum),
+                primitive_type(Prim::Mat),
+                0,
+            ),
+            domain_builtin(
+                "inner_class",
+                Type::tuple(vec![
+                    primitive_type(Prim::RootDatum),
+                    primitive_type(Prim::Mat),
+                ]),
+                primitive_type(Prim::InnerClass),
+                0,
+            ),
+            domain_builtin_skip(
+                "inner_class",
+                primitive_type(Prim::RealForm),
+                primitive_type(Prim::InnerClass),
+                0,
+            ),
+            domain_builtin_skip(
+                "nr_of_real_forms",
+                primitive_type(Prim::InnerClass),
+                int_type(),
+                0,
+            ),
+            domain_builtin_validate(
+                "real_form",
+                Type::tuple(vec![primitive_type(Prim::InnerClass), int_type()]),
+                primitive_type(Prim::RealForm),
+                0,
+            ),
+            domain_builtin_skip(
+                "quasisplit_form",
+                primitive_type(Prim::InnerClass),
+                primitive_type(Prim::RealForm),
+                0,
+            ),
+            domain_builtin_skip("form_number", primitive_type(Prim::RealForm), int_type(), 0),
+            domain_builtin_skip("KGB_size", primitive_type(Prim::RealForm), int_type(), 0),
+            domain_builtin_validate(
+                "KGB",
+                Type::tuple(vec![primitive_type(Prim::RealForm), int_type()]),
+                primitive_type(Prim::KgbElt),
+                0,
+            ),
+            domain_builtin_validate(
+                "cross",
+                Type::tuple(vec![int_type(), primitive_type(Prim::KgbElt)]),
+                primitive_type(Prim::KgbElt),
+                2,
+            ),
+            domain_builtin_validate(
+                "Cayley",
+                Type::tuple(vec![int_type(), primitive_type(Prim::KgbElt)]),
+                primitive_type(Prim::KgbElt),
+                2,
+            ),
+            domain_builtin_validate(
+                "status",
+                Type::tuple(vec![int_type(), primitive_type(Prim::KgbElt)]),
+                int_type(),
+                0,
+            ),
+            domain_builtin_skip("length", primitive_type(Prim::KgbElt), int_type(), 0),
+            domain_builtin_skip(
+                "involution",
+                primitive_type(Prim::KgbElt),
+                primitive_type(Prim::Mat),
+                0,
+            ),
+            domain_builtin_skip(
+                "torus_factor",
+                primitive_type(Prim::KgbElt),
+                primitive_type(Prim::RatVec),
+                0,
+            ),
+            domain_relation_builtin("=", pair(primitive_type(Prim::LieType)), Relation::Equal),
+            domain_relation_builtin(
+                "!=",
+                pair(primitive_type(Prim::LieType)),
+                Relation::NotEqual,
+            ),
+            domain_relation_builtin("=", pair(primitive_type(Prim::RootDatum)), Relation::Equal),
+            domain_relation_builtin(
+                "!=",
+                pair(primitive_type(Prim::RootDatum)),
+                Relation::NotEqual,
+            ),
+            domain_relation_builtin("=", pair(primitive_type(Prim::InnerClass)), Relation::Equal),
+            domain_relation_builtin(
+                "!=",
+                pair(primitive_type(Prim::InnerClass)),
+                Relation::NotEqual,
+            ),
+            domain_relation_builtin("=", pair(primitive_type(Prim::RealForm)), Relation::Equal),
+            domain_relation_builtin(
+                "!=",
+                pair(primitive_type(Prim::RealForm)),
+                Relation::NotEqual,
+            ),
+            domain_relation_builtin("=", pair(primitive_type(Prim::KgbElt)), Relation::Equal),
+            domain_relation_builtin("!=", pair(primitive_type(Prim::KgbElt)), Relation::NotEqual),
         ]
     })
 }
@@ -1926,13 +2392,17 @@ fn evaluate_slice(
         };
         return Err(runtime(message, span));
     }
+    // Atlas treats a reversed/empty interval as an empty result before it
+    // narrows either bound to a machine index.  This matters for e.g.
+    // `[0:-1]`, whose negative upper bound is valid only because the range is
+    // already empty.
+    if lower >= upper {
+        return Ok(Vec::new());
+    }
     let lower_index = usize::try_from(&lower)
         .map_err(|_| runtime("slice lower bound is not a machine index", span))?;
     let upper_index = usize::try_from(&upper)
         .map_err(|_| runtime("slice upper bound is not a machine index", span))?;
-    if lower_index >= upper_index {
-        return Ok(Vec::new());
-    }
     let mut result = values[lower_index..upper_index].to_vec();
     if flags.reverse_output {
         result.reverse();
@@ -1996,6 +2466,12 @@ fn gcd_big(mut a: BigInt, mut b: BigInt) -> BigInt {
 }
 
 fn columns_to_matrix(columns: Vec<Vec32>, span: SourceSpan) -> Result<Matrix, Control> {
+    if columns.is_empty() {
+        return Err(runtime(
+            "Implicit conversion to matrix for an empty set of vectors",
+            span,
+        ));
+    }
     let rows = columns.first().map_or(0, |column| column.0.len());
     if columns.iter().any(|column| column.0.len() != rows) {
         return Err(runtime("matrix columns must have equal lengths", span));
@@ -2004,6 +2480,115 @@ fn columns_to_matrix(columns: Vec<Vec32>, span: SourceSpan) -> Result<Matrix, Co
     let data = columns.into_iter().flat_map(|column| column.0).collect();
     Matrix::from_columns(rows, cols, data)
         .ok_or_else(|| runtime("inconsistent matrix dimensions", span))
+}
+
+fn matrix_columns(matrix: Matrix) -> Vec<Vec<i32>> {
+    (0..matrix.cols())
+        .map(|column| {
+            (0..matrix.rows())
+                .map(|row| {
+                    matrix
+                        .entry(row, column)
+                        .expect("matrix dimensions guarantee in-range entries")
+                })
+                .collect()
+        })
+        .collect()
+}
+
+fn rational_value(numerator: impl Into<BigInt>, denominator: impl Into<BigInt>) -> Value {
+    Value::Rational(BigRational::from_integers(
+        numerator.into(),
+        denominator.into(),
+    ))
+}
+
+fn matrix_to_vectors(matrix: Matrix) -> Value {
+    Value::List(
+        matrix_columns(matrix)
+            .into_iter()
+            .map(|column| Value::Vector(Vec32(column)))
+            .collect(),
+    )
+}
+
+fn matrix_to_integer_rows(matrix: Matrix) -> Value {
+    Value::List(
+        matrix_columns(matrix)
+            .into_iter()
+            .map(|column| {
+                Value::List(
+                    column
+                        .into_iter()
+                        .map(|entry| Value::Integer(BigInt::from(entry)))
+                        .collect(),
+                )
+            })
+            .collect(),
+    )
+}
+
+fn matrix_to_ratvectors(matrix: Matrix) -> Value {
+    Value::List(
+        matrix_columns(matrix)
+            .into_iter()
+            .map(|column| {
+                Value::RatVector(
+                    RatVec::new(column.into_iter().map(i64::from).collect(), 1)
+                        .expect("unit denominator is nonzero"),
+                )
+            })
+            .collect(),
+    )
+}
+
+fn matrix_to_rational_rows(matrix: Matrix) -> Value {
+    Value::List(
+        matrix_columns(matrix)
+            .into_iter()
+            .map(|column| {
+                Value::List(
+                    column
+                        .into_iter()
+                        .map(|entry| rational_value(entry, 1))
+                        .collect(),
+                )
+            })
+            .collect(),
+    )
+}
+
+fn vectors_to_ratvectors(value: Value) -> Value {
+    Value::List(
+        expect_list(value)
+            .into_iter()
+            .map(|entry| match entry {
+                Value::Vector(vector) => Value::RatVector(
+                    RatVec::new(vector.0.into_iter().map(i64::from).collect(), 1)
+                        .expect("unit denominator is nonzero"),
+                ),
+                other => panic!("[Qv][V] conversion saw {other}"),
+            })
+            .collect(),
+    )
+}
+
+fn vectors_to_rational_rows(value: Value) -> Value {
+    Value::List(
+        expect_list(value)
+            .into_iter()
+            .map(|entry| match entry {
+                Value::Vector(vector) => Value::List(
+                    vector
+                        .0
+                        .into_iter()
+                        .map(|item| rational_value(item, 1))
+                        .collect(),
+                ),
+                other => panic!("[[Q]][V] conversion saw {other}"),
+            })
+            .collect(),
+    )
 }
 
 /// Apply a registered conversion by tag. Only the tags reachable from the
@@ -2028,6 +2613,26 @@ fn apply_conversion(tag: &str, value: Value, span: SourceSpan) -> Result<Value, 
             }
             other => panic!("QvV conversion saw {other}"),
         },
+        "[Q]Qv" => match value {
+            Value::RatVector(vector) => Ok(Value::List(
+                vector
+                    .numerators()
+                    .iter()
+                    .map(|&numerator| rational_value(numerator, BigInt::from(vector.denominator())))
+                    .collect(),
+            )),
+            other => panic!("[Q]Qv conversion saw {other}"),
+        },
+        "[Q]V" => match value {
+            Value::Vector(vector) => Ok(Value::List(
+                vector
+                    .0
+                    .into_iter()
+                    .map(|entry| rational_value(entry, 1))
+                    .collect(),
+            )),
+            other => panic!("[Q]V conversion saw {other}"),
+        },
         "M[V]" => {
             let columns = expect_list(value)
                 .into_iter()
@@ -2045,6 +2650,43 @@ fn apply_conversion(tag: &str, value: Value, span: SourceSpan) -> Result<Value, 
                 .collect::<Result<Vec<_>, _>>()?;
             Ok(Value::Matrix(columns_to_matrix(columns, span)?))
         }
+        "[V]M" => match value {
+            Value::Matrix(matrix) => Ok(matrix_to_vectors(matrix)),
+            other => panic!("[V]M conversion saw {other}"),
+        },
+        "[[I]]M" => match value {
+            Value::Matrix(matrix) => Ok(matrix_to_integer_rows(matrix)),
+            other => panic!("[[I]]M conversion saw {other}"),
+        },
+        "[Qv]M" => match value {
+            Value::Matrix(matrix) => Ok(matrix_to_ratvectors(matrix)),
+            other => panic!("[Qv]M conversion saw {other}"),
+        },
+        "[[Q]]M" => match value {
+            Value::Matrix(matrix) => Ok(matrix_to_rational_rows(matrix)),
+            other => panic!("[[Q]]M conversion saw {other}"),
+        },
+        "[V][[I]]" => Ok(Value::List(
+            expect_list(value)
+                .into_iter()
+                .map(|entry| Ok(Value::Vector(list_to_vec32(expect_list(entry), span)?)))
+                .collect::<Result<Vec<_>, _>>()?,
+        )),
+        "[[I]][V]" => Ok(Value::List(
+            expect_list(value)
+                .into_iter()
+                .map(|entry| match entry {
+                    Value::Vector(vector) => Ok(Value::List(
+                        vector
+                            .0
+                            .into_iter()
+                            .map(|item| Value::Integer(BigInt::from(item)))
+                            .collect(),
+                    )),
+                    other => panic!("[[I]][V] conversion saw {other}"),
+                })
+                .collect::<Result<Vec<_>, Control>>()?,
+        )),
         "[I]V" => match value {
             Value::Vector(vector) => Ok(Value::List(
                 vector
@@ -2064,6 +2706,37 @@ fn apply_conversion(tag: &str, value: Value, span: SourceSpan) -> Result<Value, 
                 })
                 .collect(),
         )),
+        "[Qv][V]" => Ok(vectors_to_ratvectors(value)),
+        "[[Q]][V]" => Ok(vectors_to_rational_rows(value)),
+        "[Qv][[I]]" => Ok(Value::List(
+            expect_list(value)
+                .into_iter()
+                .map(|entry| {
+                    let vector = list_to_vec32(expect_list(entry), span)?;
+                    Ok(Value::RatVector(
+                        RatVec::new(vector.0.into_iter().map(i64::from).collect(), 1)
+                            .expect("unit denominator is nonzero"),
+                    ))
+                })
+                .collect::<Result<Vec<_>, Control>>()?,
+        )),
+        "[[Q]][[I]]" => Ok(Value::List(
+            expect_list(value)
+                .into_iter()
+                .map(|entry| {
+                    Ok(Value::List(
+                        list_to_vec32(expect_list(entry), span)?
+                            .0
+                            .into_iter()
+                            .map(|item| rational_value(item, 1))
+                            .collect(),
+                    ))
+                })
+                .collect::<Result<Vec<_>, Control>>()?,
+        )),
+        "LT" | "RdIc" | "IcRf" | "RdRf" => {
+            domain_builtins::coerce(tag, value, span).map_err(Control::Runtime)
+        }
         other => Err(runtime(
             format!("conversion '{other}' is not yet implemented"),
             span,
@@ -2347,6 +3020,63 @@ mod tests {
     }
 
     #[test]
+    fn list_balancing_prunes_earlier_conflicts_after_a_broader_branch() {
+        for source in [
+            "[1,true,if true then 2 fi]",
+            "[if true then 2 fi,1,true]",
+            "[true,if true then 2 fi,1]",
+        ] {
+            let (type_, value) = convert_and_run(source).expect("void absorbs conflicts");
+            assert_eq!(type_, Type::row(Type::void()), "source: {source}");
+            assert_eq!(value.to_string(), "[(),(),()]", "source: {source}");
+        }
+    }
+
+    #[test]
+    fn nested_list_balance_failure_is_salvaged_by_outer_void_row() {
+        for source in [
+            "[[1,true],[if true then 2 fi]]",
+            "[[if true then 2 fi],[1,true]]",
+            "[[true,1],[if true then 2 fi]]",
+        ] {
+            let (type_, value) = convert_and_run(source).expect("nested void balance");
+            assert_eq!(
+                type_,
+                Type::row(Type::row(Type::void())),
+                "source: {source}"
+            );
+            assert_eq!(
+                value.to_string(),
+                if source.starts_with("[[if") {
+                    "[[()],[(),()]]"
+                } else {
+                    "[[(),()],[()]]"
+                },
+                "source: {source}"
+            );
+        }
+    }
+
+    #[test]
+    fn deeper_balance_failure_is_not_absorbed_by_outer_balance() {
+        let error = convert_and_run("[begin [1,true] end,if true then 2 fi]")
+            .expect_err("a wrapped inner balance failure must propagate");
+        assert!(error.message.contains("incompatible types int and bool"));
+
+        let error = convert_and_run("[[if true then 1 else true fi],if true then 2 fi]")
+            .expect_err("a conditional failure nested in a list must propagate");
+        assert!(error.message.contains("incompatible types int and bool"));
+    }
+
+    #[test]
+    fn list_displays_balance_before_voiding_their_result() {
+        let (type_, value) =
+            convert_and_run("if false then [if true then 1 fi] fi").expect("void list");
+        assert_eq!(type_, Type::void());
+        assert_eq!(value, Value::Tuple(Vec::new()));
+    }
+
+    #[test]
     fn operator_calls_resolve_through_the_overload_registry() {
         let (type_, value) = convert_and_run("1 + 2 * 3").expect("int arithmetic");
         assert_eq!(type_, Type::Primitive(Prim::Int));
@@ -2357,7 +3087,10 @@ mod tests {
         let (_, value) = convert_and_run("- 3").expect("unary minus");
         assert_eq!(value, Value::Integer((-3).into()));
         let error = convert_and_run("1 + true").expect_err("no such overload");
-        assert!(error.message.contains("no instance of operator '+'"));
+        assert_eq!(
+            error.message,
+            "Failed to match '+' with argument type (int,bool)"
+        );
         let error = convert_and_run("1 / 0").expect_err("division by zero");
         assert_eq!(error.message, "Inverse of zero");
     }
@@ -2418,14 +3151,113 @@ mod tests {
                 Ok(value) => panic!("{source} unexpectedly succeeded with {value:?}"),
             }
         }
-        assert!(convert_and_run("+ 1")
-            .expect_err("unary plus is not installed")
-            .message
-            .contains("no instance of operator '+'"));
-        assert!(convert_and_run("6 & 3")
-            .expect_err("symbolic bit-and is not installed")
-            .message
-            .contains("no instance of operator '&'"));
+        assert_eq!(
+            convert_and_run("+ 1")
+                .expect_err("unary plus is not installed")
+                .message,
+            "Failed to match '+' with argument type int"
+        );
+        assert_eq!(
+            convert_and_run("6 & 3")
+                .expect_err("symbolic bit-and is not installed")
+                .message,
+            "Failed to match '&' with argument type (int,int)"
+        );
+    }
+
+    #[test]
+    fn named_domain_calls_resolve_through_typed_registry() {
+        let (type_, value) =
+            convert_and_run("prefers_coroots(simply_connected(Lie_type(\"A1\"), true))")
+                .expect("formal root-datum constructor");
+        assert_eq!(type_, bool_type());
+        assert_eq!(value, Value::Boolean(true));
+
+        let (type_, value) = convert_and_run(
+            "nr_of_real_forms(inner_class(simply_connected(Lie_type(\"A1\"), true), mat: [[1]]))",
+        )
+        .expect("formal inner-class constructor");
+        assert_eq!(type_, int_type());
+        assert_eq!(value, Value::Integer(2.into()));
+
+        let (_, value) = convert_and_run(
+            "inner_class(simply_connected(Lie_type(\"A1\"), true), mat: [[1]]) = inner_class(simply_connected(Lie_type(\"A1\"), true), mat: [[1]])",
+        )
+        .expect("domain equality overload");
+        assert_eq!(value, Value::Boolean(true));
+
+        let error = convert_and_run("inner_class(\"A1\", [[1]])")
+            .expect_err("all inner_class overloads reject string input");
+        assert_eq!(
+            error.message,
+            "Failed to match 'inner_class' with argument type (string,[[int]])"
+        );
+
+        let (_, value) =
+            convert_and_run("simply_connected(\"A1\", true)").expect("string-to-LieType coercion");
+        assert_eq!(
+            value.to_string(),
+            "simply connected root datum of Lie type 'A1'"
+        );
+
+        let (_, value) =
+            convert_and_run("Lie_type(inner_class(simply_connected(\"A1\", true), mat: [[1]]))")
+                .expect("InnerClass-to-RootDatum-to-LieType coercions");
+        assert_eq!(value.to_string(), "Lie type 'A1'");
+
+        let (_, value) = convert_and_run(
+            "Lie_type(real_form(inner_class(simply_connected(\"A1\", true), mat: [[1]]), 1))",
+        )
+        .expect("RealForm-to-RootDatum-to-LieType coercions");
+        assert_eq!(value.to_string(), "Lie type 'A1'");
+
+        let (_, value) = convert_and_run("Cartan_matrix(Lie_type(\"B2\"))")
+            .expect("LieType Cartan_matrix overload");
+        assert_eq!(value.to_string(), "\n|  2, -2 |\n| -1,  2 |\n");
+
+        let (_, value) =
+            convert_and_run("simply_connected(Lie_type(\"E8\"), true)").expect("E8 root datum");
+        assert_eq!(
+            value.to_string(),
+            "simply connected adjoint root datum of Lie type 'E8'"
+        );
+
+        let (_, value) = convert_and_run("simply_connected(Lie_type(\"\"), true)")
+            .expect("empty simply connected datum");
+        assert_eq!(
+            value.to_string(),
+            "simply connected adjoint root datum of empty Lie type"
+        );
+
+        let error = convert_and_run("adjoint(Lie_type(\"A1.T1\"), false)")
+            .expect_err("Atlas rejects adjoint construction with a torus factor");
+        assert_eq!(error.message, "Sub-lattice matrix should have size 2x2");
+
+        for (source, expected) in [
+            (
+                "Lie_type(root_datum([[2,-1],[-2,2]], [[1,0],[0,1]], true))",
+                "Lie type 'C2'",
+            ),
+            (
+                "Lie_type(root_datum([[2,-2],[-1,2]], [[1,0],[0,1]], true))",
+                "Lie type 'B2'",
+            ),
+        ] {
+            let (_, value) = convert_and_run(source).expect("oriented Cartan overload");
+            assert_eq!(value.to_string(), expected, "source: {source}");
+        }
+    }
+
+    #[test]
+    fn unknown_named_calls_report_name_before_argument_errors() {
+        for source in ["foo(1)", "foo(missing)"] {
+            let error = convert_and_run(source).expect_err("unknown builtin");
+            assert_eq!(error.kind, ErrorKind::Name, "source: {source}");
+            assert_eq!(
+                error.message, "Undefined identifier 'foo'",
+                "source: {source}"
+            );
+        }
     }
 
     #[test]
@@ -2508,6 +3340,22 @@ mod tests {
             Control::Runtime(Diagnostic { message, .. })
                 if message == "Inverse of zero"
         ));
+
+        let source = SourceText::new(
+            "real_form(inner_class(simply_connected(Lie_type(\"A1\"), true), mat: [[1]]), 99)",
+        );
+        let program = parse(&source).expect("real form parses");
+        let mut required = Type::Undetermined;
+        let typed = convert_expr(&program.expressions[0], &mut required, &analysis)
+            .expect("real form converts");
+        let error = typed
+            .evaluate(&mut EvaluationContext::new(), Level::NoValue)
+            .expect_err("no-value still validates real-form indices");
+        assert!(matches!(
+            error,
+            Control::Runtime(Diagnostic { message, .. })
+                if message == "Illegal real form number"
+        ));
     }
 
     #[test]
@@ -2523,6 +3371,12 @@ mod tests {
 
         let (_, value) = convert_and_run("ratvec: [1,2]").expect("ratvec cast");
         assert_eq!(value.to_string(), "[ 1, 2 ]/1");
+
+        let error = convert_and_run("mat: []").expect_err("empty matrix conversion");
+        assert_eq!(
+            error.message,
+            "Implicit conversion to matrix for an empty set of vectors"
+        );
 
         let (_, value) = convert_and_run("rat: 2").expect("int promotes");
         assert_eq!(value.to_string(), "2/1");

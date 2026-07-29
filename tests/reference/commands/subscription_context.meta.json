@@ -4,5 +4,5 @@
   "stage": "command-stream",
   "reference_status": "pending_hpc_reference",
   "rust_status": "implemented_pending_hpc",
-  "notes": "Checks empty-row element type flowing through arithmetic and typed assignment before runtime bounds failure."
+  "notes": "Checks empty-row element type flowing through arithmetic and typed assignment. The upstream a-priori overload rule rejects the unknown operand pair before runtime bounds evaluation; HPC capture remains pending."
 }

@@ -6,19 +6,18 @@
 //! `>>file` single-command output redirection, the `Starting to read from
 //! file ...` / `Completely read file ...` framing, `Value:` printing with
 //! void suppression, the abandon cascade on errors inside includes, and the
-//! clean flag that decides the session's exit status. Definitions and their
-//! report lines are a later phase; the frame already tracks the include
-//! depth their indentation will need.
+//! clean flag that decides the session's exit status. Definition reports are
+//! indented here from the active include depth, keeping output formatting in
+//! one layer.
 
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceId};
-use crate::eval::EvalContext;
 use crate::lex::{DirectiveKind, Lexer, Token, TokenKind};
 use crate::session::{execute_tokens, SessionEvent};
 use crate::source::SourceText;
-use crate::value::Value;
+use crate::typed::TypedContext;
 
 /// Read access to included files. The CLI backs this with the filesystem
 /// (lossy UTF-8 — upstream is byte-oriented, a stray byte must not become an
@@ -66,7 +65,7 @@ pub struct SessionFrame<P: FileProvider, S: FileSink> {
     search_path: Vec<String>,
     completed: BTreeSet<String>,
     active: Vec<String>,
-    context: EvalContext,
+    context: TypedContext,
     clean: bool,
     quitting: bool,
     next_source_id: u64,
@@ -91,7 +90,7 @@ impl<P: FileProvider, S: FileSink> SessionFrame<P, S> {
             search_path,
             completed: BTreeSet::new(),
             active: Vec::new(),
-            context: EvalContext::new(),
+            context: TypedContext::new(),
             clean: true,
             quitting: false,
             next_source_id: 1,
@@ -432,13 +431,23 @@ impl<P: FileProvider, S: FileSink> SessionFrame<P, S> {
         let mut failed = false;
         for event in raw_events {
             match event {
-                SessionEvent::Value { value, span } => {
-                    if value != Value::Tuple(Vec::new()) {
+                SessionEvent::Value {
+                    value,
+                    is_void_type,
+                    span,
+                } => {
+                    if !is_void_type {
                         events.push(SessionEvent::Output {
                             text: format!("Value: {value}\n"),
                             span,
                         });
                     }
+                }
+                SessionEvent::ReportLine { text, span } => {
+                    events.push(SessionEvent::Output {
+                        text: format!("{}{text}", "  ".repeat(self.active.len())),
+                        span,
+                    });
                 }
                 SessionEvent::Diagnostic(diagnostic) => {
                     if diagnostic.kind != ErrorKind::Io {
@@ -719,6 +728,89 @@ mod tests {
             frame.sink.writes[1],
             ("out.txt".to_owned(), true, "Value: 7\n".to_owned())
         );
+    }
+
+    #[test]
+    fn definition_reports_are_indented_by_include_depth_only() {
+        let mut frame = frame(
+            &[
+                ("outer.at", "outer_value: 2\n<inner.at\n"),
+                ("inner.at", "inner_value: 3\n"),
+            ],
+            &[],
+        );
+        let events = frame.run_top_level("<stdin>", "top_value: 1\n<outer.at\n");
+        assert_eq!(
+            stdout_of(&events),
+            concat!(
+                "Variable top_value: int\n",
+                "Starting to read from file 'outer.at'.\n",
+                "  Variable outer_value: int\n",
+                "Starting to read from file 'inner.at'.\n",
+                "    Variable inner_value: int\n",
+                "Completely read file 'inner.at'.\n",
+                "Completely read file 'outer.at'.\n",
+            )
+        );
+    }
+
+    #[test]
+    fn statically_void_expressions_do_not_print_values() {
+        let mut frame = frame(&[], &[]);
+        let events = frame.run_top_level("<stdin>", "if true then 7 fi\n9\n");
+        assert_eq!(stdout_of(&events), "Value: 9\n");
+        assert!(stderr_of(&events).is_empty());
+    }
+
+    #[test]
+    fn redirected_definition_reports_keep_include_indentation() {
+        let mut frame = frame(&[("lib.at", ">out.txt x: 1\n")], &[]);
+        let events = frame.run_top_level("<stdin>", "<lib.at\n");
+        assert_eq!(
+            stdout_of(&events),
+            concat!(
+                "Starting to read from file 'lib.at'.\n",
+                "Completely read file 'lib.at'.\n",
+            )
+        );
+        assert_eq!(
+            frame.sink.writes,
+            vec![(
+                "out.txt".to_owned(),
+                false,
+                "  Variable x: int\n".to_owned(),
+            )]
+        );
+    }
+
+    #[test]
+    fn failed_redirect_evaluation_closes_sink_and_top_level_recovers() {
+        let mut frame = frame(&[], &[]);
+        let events = frame.run_top_level("<stdin>", ">bad.txt unknown_name\n>out.txt 3\n5\n");
+        assert!(frame.sink.open.is_none(), "redirect sink must be restored");
+        assert_eq!(
+            frame.sink.writes,
+            vec![("out.txt".into(), false, "Value: 3\n".into())]
+        );
+        assert_eq!(stdout_of(&events), "Value: 5\n");
+        assert_eq!(stderr_of(&events).len(), 1);
+        assert!(!frame.is_clean());
+    }
+
+    #[test]
+    fn failed_redirect_inside_include_closes_sink_before_abandoning() {
+        let mut frame = frame(&[("lib.at", ">bad.txt unknown_name\n7\n")], &[]);
+        let events = frame.run_top_level("<stdin>", "<lib.at\n5\n");
+        assert!(frame.sink.open.is_none(), "redirect sink must be restored");
+        assert!(frame.sink.writes.is_empty());
+        assert_eq!(
+            stdout_of(&events),
+            "Starting to read from file 'lib.at'.\nValue: 5\n"
+        );
+        assert!(stderr_of(&events)
+            .iter()
+            .any(|message| message == "Abandoning reading of file 'lib.at' at line 1"));
+        assert!(!frame.is_clean());
     }
 
     #[test]

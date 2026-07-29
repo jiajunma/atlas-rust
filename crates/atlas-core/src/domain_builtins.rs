@@ -24,7 +24,7 @@ use atlas_real_group::{
 };
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
-use crate::value::{RatVec, Value};
+use crate::value::{Matrix, RatVec, Value};
 
 /// Upstream Lie-type letter bounds (atlas-types.w:165-211) and RANK_MAX.
 const RANK_MAX: usize = 32;
@@ -85,11 +85,19 @@ impl RootDatumHandle {
     }
 
     fn description(&self) -> String {
-        format!(
-            "{} root datum of Lie type '{}'",
-            self.isogeny.label(),
-            self.lie_type.render()
-        )
+        let prefix = self
+            .isogeny
+            .label()
+            .map(|label| format!("{label} "))
+            .unwrap_or_default();
+        if self.lie_type.factors.is_empty() {
+            format!("{prefix}root datum of empty Lie type")
+        } else {
+            format!(
+                "{prefix}root datum of Lie type '{}'",
+                self.lie_type.render()
+            )
+        }
     }
 }
 
@@ -97,13 +105,17 @@ impl RootDatumHandle {
 enum DatumIsogeny {
     SimplyConnected,
     Adjoint,
+    Both,
+    Other,
 }
 
 impl DatumIsogeny {
-    fn label(self) -> &'static str {
+    fn label(self) -> Option<&'static str> {
         match self {
-            Self::SimplyConnected => "simply connected",
-            Self::Adjoint => "adjoint",
+            Self::SimplyConnected => Some("simply connected"),
+            Self::Adjoint => Some("adjoint"),
+            Self::Both => Some("simply connected adjoint"),
+            Self::Other => None,
         }
     }
 }
@@ -111,6 +123,7 @@ impl DatumIsogeny {
 /// The per-inner-class pipeline shared by every real form of the class.
 #[derive(Debug)]
 pub struct InnerClassContext {
+    root_datum: RootDatumHandle,
     inner_class: InnerClass,
     classification: CartanClassification,
     strong: StrongRealClassification,
@@ -371,16 +384,407 @@ fn build_datum(
     };
     let datum = BasedRootDatum::from_simple_data(lattice_rank, cartan, roots, coroots)
         .map_err(|error| runtime(span, error.to_string()))?;
-    let isogeny = if simply {
-        DatumIsogeny::SimplyConnected
+    let isogeny = if lattice_rank != semisimple {
+        DatumIsogeny::Other
     } else {
-        DatumIsogeny::Adjoint
+        classify_isogeny(&datum)
     };
     Ok(RootDatumHandle {
         datum: Arc::new(datum),
         lie_type: lie_type.clone(),
         isogeny,
         prefers_coroots,
+    })
+}
+
+fn build_quotient_datum(
+    lie_type: &LieTypeValue,
+    lattice: &[Vec<i32>],
+    prefers_coroots: bool,
+    span: SourceSpan,
+) -> Result<RootDatumHandle, Diagnostic> {
+    let rank = lie_type.total_rank();
+    if lattice.len() != rank || lattice.iter().any(|row| row.len() != rank) {
+        return Err(runtime(
+            span,
+            format!("Sub-lattice matrix should have size {rank}x{rank}"),
+        ));
+    }
+    let inverse = invert_integer_matrix(lattice)
+        .ok_or_else(|| runtime(span, "Dependent lattice generators"))?;
+    let simply_connected = build_datum(lie_type, true, prefers_coroots, span)?;
+
+    build_quotient_from_handle(&simply_connected, lattice, inverse, span)
+}
+
+fn build_quotient_from_handle(
+    source: &RootDatumHandle,
+    lattice: &[Vec<i32>],
+    inverse: Vec<Vec<BigRational>>,
+    span: SourceSpan,
+) -> Result<RootDatumHandle, Diagnostic> {
+    let rank = source.datum.lattice_rank();
+    if lattice.len() != rank || lattice.iter().any(|row| row.len() != rank) {
+        return Err(runtime(
+            span,
+            format!("Sub-lattice matrix should have size {rank}x{rank}"),
+        ));
+    }
+
+    let roots = source
+        .datum
+        .simple_roots()
+        .iter()
+        .map(|root| {
+            inverse
+                .iter()
+                .map(|row| {
+                    let coordinate = row.iter().zip(root.as_slice()).fold(
+                        BigRational::from(0),
+                        |sum, (coefficient, entry)| {
+                            sum + coefficient.clone() * BigRational::from(*entry)
+                        },
+                    );
+                    let integer = BigInt::try_from(coordinate).map_err(|_| {
+                        runtime(span, "Sub-lattice does not contain the root lattice")
+                    })?;
+                    i32::try_from(&integer)
+                        .map_err(|_| runtime(span, "Integer value to big for conversion"))
+                })
+                .collect::<Result<Vec<_>, _>>()
+                .map(Weight::new)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let coroots = source
+        .datum
+        .simple_coroots()
+        .iter()
+        .map(|coroot| {
+            (0..rank)
+                .map(|column| {
+                    let coordinate = (0..rank).try_fold(0i128, |sum, row| {
+                        sum.checked_add(
+                            i128::from(lattice[row][column])
+                                .checked_mul(i128::from(coroot.as_slice()[row]))?,
+                        )
+                    });
+                    coordinate
+                        .and_then(|value| i32::try_from(value).ok())
+                        .ok_or_else(|| runtime(span, "Integer value to big for conversion"))
+                })
+                .collect::<Result<Vec<_>, _>>()
+                .map(Coweight::new)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let datum = BasedRootDatum::from_simple_data(
+        rank,
+        source.datum.cartan_matrix().to_vec(),
+        roots,
+        coroots,
+    )
+    .map_err(|error| runtime(span, error.to_string()))?;
+    let isogeny = classify_isogeny(&datum);
+    Ok(RootDatumHandle {
+        datum: Arc::new(datum),
+        lie_type: source.lie_type.clone(),
+        isogeny,
+        prefers_coroots: source.prefers_coroots,
+    })
+}
+
+/// Build a root datum from explicit simple-root and simple-coroot matrices.
+/// Matrix columns are the basis vectors, matching Atlas's `mat` convention.
+fn build_explicit_datum(
+    simple_roots: &[Vec<i32>],
+    simple_coroots: &[Vec<i32>],
+    prefers_coroots: bool,
+    span: SourceSpan,
+) -> Result<RootDatumHandle, Diagnostic> {
+    let lattice_rank = simple_roots.len();
+    let semisimple_rank = simple_roots.first().map_or(0, Vec::len);
+    if lattice_rank == 0 || semisimple_rank == 0 {
+        return Err(runtime(
+            span,
+            "Implicit conversion to matrix for an empty set of vectors",
+        ));
+    }
+    if simple_roots.iter().any(|row| row.len() != semisimple_rank)
+        || simple_coroots.len() != lattice_rank
+        || simple_coroots
+            .iter()
+            .any(|row| row.len() != semisimple_rank)
+    {
+        let root_shape = format!("{},{}", lattice_rank, semisimple_rank);
+        let coroot_shape = format!(
+            "{},{}",
+            simple_coroots.len(),
+            simple_coroots.first().map_or(0, Vec::len)
+        );
+        return Err(runtime(
+            span,
+            format!("Sizes ({root_shape}),({coroot_shape}) of simple (co)root systems differ"),
+        ));
+    }
+
+    let roots = (0..semisimple_rank)
+        .map(|column| {
+            Weight::new(
+                simple_roots
+                    .iter()
+                    .map(|row| row[column])
+                    .collect::<Vec<_>>(),
+            )
+        })
+        .collect::<Vec<_>>();
+    let coroots = (0..semisimple_rank)
+        .map(|column| {
+            Coweight::new(
+                simple_coroots
+                    .iter()
+                    .map(|row| row[column])
+                    .collect::<Vec<_>>(),
+            )
+        })
+        .collect::<Vec<_>>();
+    let mut cartan = Vec::with_capacity(semisimple_rank);
+    for root in &roots {
+        let mut row = Vec::with_capacity(semisimple_rank);
+        for coroot in &coroots {
+            let value = root
+                .as_slice()
+                .iter()
+                .zip(coroot.as_slice())
+                .try_fold(0_i128, |sum, (&left, &right)| {
+                    sum.checked_add(i128::from(left) * i128::from(right))
+                })
+                .ok_or_else(|| runtime(span, "Integer value too big for Cartan pairing"))?;
+            row.push(
+                i32::try_from(value)
+                    .map_err(|_| runtime(span, "Integer value too big for Cartan pairing"))?,
+            );
+        }
+        cartan.push(row);
+    }
+    let lie_type = infer_lie_type(&cartan, lattice_rank, span)?;
+    let datum = BasedRootDatum::from_simple_data(lattice_rank, cartan, roots, coroots)
+        .map_err(|error| runtime(span, error.to_string()))?;
+    Ok(RootDatumHandle {
+        isogeny: classify_isogeny(&datum),
+        datum: Arc::new(datum),
+        lie_type,
+        prefers_coroots,
+    })
+}
+
+fn infer_lie_type(
+    cartan: &[Vec<i32>],
+    lattice_rank: usize,
+    span: SourceSpan,
+) -> Result<LieTypeValue, Diagnostic> {
+    let rank = cartan.len();
+    let mut seen = vec![false; rank];
+    let mut factors = Vec::new();
+    for start in 0..rank {
+        if seen[start] {
+            continue;
+        }
+        let mut component = Vec::new();
+        let mut pending = vec![start];
+        seen[start] = true;
+        while let Some(row) = pending.pop() {
+            component.push(row);
+            for column in 0..rank {
+                if !seen[column] && (cartan[row][column] != 0 || cartan[column][row] != 0) {
+                    seen[column] = true;
+                    pending.push(column);
+                }
+            }
+        }
+        component.sort_unstable();
+        let submatrix = component
+            .iter()
+            .map(|&row| {
+                component
+                    .iter()
+                    .map(|&column| cartan[row][column])
+                    .collect()
+            })
+            .collect::<Vec<Vec<_>>>();
+        let size = component.len();
+        let candidates = candidate_types(size);
+        // B2 and C2 become one another after reversing both indices.  Atlas
+        // nevertheless distinguishes their canonical ordered matrices, so an
+        // exact match must win before considering arbitrary Dynkin relabeling.
+        let candidate = candidates
+            .iter()
+            .copied()
+            .find(|&(letter, candidate_rank)| submatrix == factor_cartan(letter, candidate_rank))
+            .or_else(|| {
+                candidates
+                    .iter()
+                    .copied()
+                    .find(|&(letter, candidate_rank)| {
+                        let expected = factor_cartan(letter, candidate_rank);
+                        cartan_matches_up_to_permutation(&submatrix, &expected)
+                    })
+            });
+        let Some((letter, candidate_rank)) = candidate else {
+            return Err(runtime(
+                span,
+                "Matrices of (co)roots give an unrecognized Cartan matrix",
+            ));
+        };
+        factors.push((letter, candidate_rank));
+    }
+    for _ in rank..lattice_rank {
+        factors.push(('T', 1));
+    }
+    Ok(LieTypeValue { factors })
+}
+
+/// Cartan matrices are presentation-dependent: Atlas accepts the same root
+/// system after a simultaneous permutation of the simple-root and coroot
+/// indices. Match the invariant matrix up to that relabeling; comparing both
+/// directed entries preserves the orientation of every multiple edge.
+fn cartan_matches_up_to_permutation(actual: &[Vec<i32>], expected: &[Vec<i32>]) -> bool {
+    if actual.len() != expected.len()
+        || actual.iter().any(|row| row.len() != actual.len())
+        || expected.iter().any(|row| row.len() != expected.len())
+    {
+        return false;
+    }
+    let rank = actual.len();
+    let mut permutation = vec![usize::MAX; rank];
+    let mut used = vec![false; rank];
+
+    fn search(
+        position: usize,
+        actual: &[Vec<i32>],
+        expected: &[Vec<i32>],
+        permutation: &mut [usize],
+        used: &mut [bool],
+    ) -> bool {
+        if position == actual.len() {
+            return true;
+        }
+        for candidate in 0..expected.len() {
+            if used[candidate] || actual[position][position] != expected[candidate][candidate] {
+                continue;
+            }
+            let compatible = (0..position).all(|previous| {
+                actual[position][previous] == expected[candidate][permutation[previous]]
+                    && actual[previous][position] == expected[permutation[previous]][candidate]
+            });
+            if !compatible {
+                continue;
+            }
+            permutation[position] = candidate;
+            used[candidate] = true;
+            if search(position + 1, actual, expected, permutation, used) {
+                return true;
+            }
+            used[candidate] = false;
+            permutation[position] = usize::MAX;
+        }
+        false
+    }
+
+    search(0, actual, expected, &mut permutation, &mut used)
+}
+
+fn candidate_types(rank: usize) -> Vec<(char, usize)> {
+    let mut result = Vec::new();
+    if (1..=RANK_MAX).contains(&rank) {
+        result.push(('A', rank));
+    }
+    if (2..=RANK_MAX).contains(&rank) {
+        result.push(('B', rank));
+        result.push(('C', rank));
+    }
+    if (4..=RANK_MAX).contains(&rank) {
+        result.push(('D', rank));
+    }
+    if (6..=8).contains(&rank) {
+        result.push(('E', rank));
+    }
+    if rank == 4 {
+        result.push(('F', rank));
+    }
+    if rank == 2 {
+        result.push(('G', rank));
+    }
+    result
+}
+
+fn invert_integer_matrix(matrix: &[Vec<i32>]) -> Option<Vec<Vec<BigRational>>> {
+    let rank = matrix.len();
+    let mut augmented = (0..rank)
+        .map(|row| {
+            (0..rank)
+                .map(|column| BigRational::from(matrix[row][column]))
+                .chain((0..rank).map(|column| BigRational::from(usize::from(row == column))))
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>();
+    for column in 0..rank {
+        let pivot_row = (column..rank).find(|&row| augmented[row][column] != 0)?;
+        augmented.swap(column, pivot_row);
+        let pivot = augmented[column][column].clone();
+        for entry in &mut augmented[column] {
+            *entry = entry.clone() / pivot.clone();
+        }
+        let pivot_values = augmented[column].clone();
+        for (row, entries) in augmented.iter_mut().enumerate() {
+            if row == column {
+                continue;
+            }
+            let factor = entries[column].clone();
+            for (entry, pivot_entry) in entries.iter_mut().zip(&pivot_values) {
+                *entry = entry.clone() - factor.clone() * pivot_entry.clone();
+            }
+        }
+    }
+    Some(
+        augmented
+            .into_iter()
+            .map(|row| row.into_iter().skip(rank).collect())
+            .collect(),
+    )
+}
+
+fn classify_isogeny(datum: &BasedRootDatum) -> DatumIsogeny {
+    let rank = datum.lattice_rank();
+    if rank != datum.semisimple_rank() {
+        return DatumIsogeny::Other;
+    }
+    let coroot_lattice = datum
+        .simple_coroots()
+        .iter()
+        .map(|coroot| coroot.as_slice().to_vec())
+        .collect::<Vec<_>>();
+    let coroot_unimodular = is_unimodular(&coroot_lattice);
+    let root_lattice = datum
+        .simple_roots()
+        .iter()
+        .map(|root| root.as_slice().to_vec())
+        .collect::<Vec<_>>();
+    let root_unimodular = is_unimodular(&root_lattice);
+    match (coroot_unimodular, root_unimodular) {
+        (true, true) => DatumIsogeny::Both,
+        (true, false) => DatumIsogeny::SimplyConnected,
+        (false, true) => DatumIsogeny::Adjoint,
+        (false, false) => DatumIsogeny::Other,
+    }
+}
+
+fn is_unimodular(matrix: &[Vec<i32>]) -> bool {
+    invert_integer_matrix(matrix).is_some_and(|inverse| {
+        inverse
+            .into_iter()
+            .flatten()
+            .all(|entry| BigInt::try_from(entry).is_ok())
     })
 }
 
@@ -414,11 +818,45 @@ fn build_inner_class(
     let order = ExternalFormOrder::build(&inner_class, &classification)
         .map_err(|error| runtime(span, error.to_string()))?;
     Ok(Arc::new(InnerClassContext {
+        root_datum: handle.clone(),
         inner_class,
         classification,
         strong,
         order,
     }))
+}
+
+/// Apply the domain-owned coercions registered by the Atlas type layer.
+/// Keeping these conversions here preserves the root-datum provenance carried
+/// by the immutable handles instead of reconstructing a mathematically equal
+/// but observably different value in the evaluator.
+pub(crate) fn coerce(tag: &str, value: Value, span: SourceSpan) -> Result<Value, Diagnostic> {
+    match tag {
+        "LT" => call("Lie_type", &[value], span),
+        "IcRf" => call("inner_class", &[value], span),
+        "RdIc" => match value {
+            Value::Domain(DomainValue::InnerClass(context)) => Ok(Value::Domain(
+                DomainValue::RootDatum(context.root_datum.clone()),
+            )),
+            other => Err(type_error(
+                span,
+                format!("expected an InnerClass, found {other}"),
+            )),
+        },
+        "RdRf" => match value {
+            Value::Domain(DomainValue::RealForm(context)) => Ok(Value::Domain(
+                DomainValue::RootDatum(context.parent.root_datum.clone()),
+            )),
+            other => Err(type_error(
+                span,
+                format!("expected a RealForm, found {other}"),
+            )),
+        },
+        other => Err(runtime(
+            span,
+            format!("conversion '{other}' is not implemented"),
+        )),
+    }
 }
 
 fn build_real_form(
@@ -499,10 +937,33 @@ fn as_usize(value: &Value, span: SourceSpan) -> Result<usize, Diagnostic> {
 }
 
 fn as_matrix(value: &Value, span: SourceSpan) -> Result<Vec<Vec<i32>>, Diagnostic> {
+    if let Value::Matrix(matrix) = value {
+        if matrix.rows() != matrix.cols() {
+            return Err(type_error(
+                span,
+                format!(
+                    "expected a square mat; received a {}x{} matrix",
+                    matrix.rows(),
+                    matrix.cols()
+                ),
+            ));
+        }
+    }
+    let rows = as_matrix_rows(value, span)?;
+    if rows.iter().any(|row| row.len() != rows.len()) {
+        return Err(type_error(span, "expected a square mat"));
+    }
+    Ok(rows)
+}
+
+fn as_matrix_rows(value: &Value, span: SourceSpan) -> Result<Vec<Vec<i32>>, Diagnostic> {
     let rows = match value {
         Value::Matrix(matrix) => {
-            if matrix.rows() != matrix.cols() {
-                return Err(type_error(span, "expected a square mat"));
+            // A zero-row matrix still carries its column count.  Represent
+            // those invalid rectangular shapes as empty rows so callers that
+            // validate dimensions do not accidentally treat 0xN as 0x0.
+            if matrix.rows() == 0 && matrix.cols() > 0 {
+                return Ok((0..matrix.cols()).map(|_| Vec::new()).collect());
             }
             return Ok((0..matrix.rows())
                 .map(|row| {
@@ -520,14 +981,17 @@ fn as_matrix(value: &Value, span: SourceSpan) -> Result<Vec<Vec<i32>>, Diagnosti
         Value::List(rows) => rows,
         _ => return Err(type_error(span, "expected a mat")),
     };
-    let row_count = rows.len();
-    let mut converted = Vec::with_capacity(row_count);
+    let column_count = rows.first().map_or(0, |row| match row {
+        Value::List(entries) => entries.len(),
+        _ => 0,
+    });
+    let mut converted = Vec::with_capacity(rows.len());
     for row in rows {
         let Value::List(entries) = row else {
-            return Err(type_error(span, "expected a square mat"));
+            return Err(type_error(span, "expected a mat"));
         };
-        if entries.len() != row_count {
-            return Err(type_error(span, "expected a square mat"));
+        if entries.len() != column_count {
+            return Err(type_error(span, "expected a rectangular mat"));
         }
         converted.push(
             entries
@@ -541,6 +1005,20 @@ fn as_matrix(value: &Value, span: SourceSpan) -> Result<Vec<Vec<i32>>, Diagnosti
         );
     }
     Ok(converted)
+}
+
+fn matrix_value(rows: &[Vec<i32>], span: SourceSpan) -> Result<Value, Diagnostic> {
+    let row_count = rows.len();
+    let column_count = rows.first().map_or(0, Vec::len);
+    if rows.iter().any(|row| row.len() != column_count) {
+        return Err(runtime(span, "internal non-rectangular matrix"));
+    }
+    let data = (0..column_count)
+        .flat_map(|column| (0..row_count).map(move |row| rows[row][column]))
+        .collect();
+    Matrix::from_columns(row_count, column_count, data)
+        .map(Value::Matrix)
+        .ok_or_else(|| runtime(span, "matrix dimensions exceed machine range"))
 }
 
 fn datum_preference(name: &str, arguments: &[Value], span: SourceSpan) -> Result<bool, Diagnostic> {
@@ -695,6 +1173,55 @@ fn check_generator(
     Ok(())
 }
 
+/// Validate the cheap part of wrappers whose Atlas implementation suppresses
+/// construction in `no_value` context. The typed evaluator has already
+/// evaluated and type-checked the arguments; these checks preserve the
+/// wrapper's observable out-of-range diagnostics without building a new
+/// graph or applying a transform.
+pub(crate) fn validate(
+    name: &str,
+    arguments: &[Value],
+    span: SourceSpan,
+) -> Result<(), Diagnostic> {
+    match name {
+        "real_form" => {
+            arity(name, arguments, 2, span)?;
+            let Value::Domain(DomainValue::InnerClass(context)) = &arguments[0] else {
+                return Err(type_error(span, "expected an InnerClass"));
+            };
+            let external = as_usize(&arguments[1], span)?;
+            context
+                .order
+                .internal(external)
+                .ok_or_else(|| runtime(span, "Illegal real form number"))?;
+        }
+        "KGB" => {
+            arity(name, arguments, 2, span)?;
+            let context = as_real_form(&arguments[0], span)?;
+            let index = as_usize(&arguments[1], span)?;
+            if index >= context.graph.size() {
+                return Err(runtime(span, "Inexistent KGB element"));
+            }
+        }
+        "cross" | "Cayley" | "status" => {
+            arity(name, arguments, 2, span)?;
+            let generator = as_usize(&arguments[0], span)?;
+            let (context, id) = as_kgb_element(&arguments[1], span)?;
+            check_generator(context, generator, span)?;
+            if context.graph.element(id).is_none() {
+                return Err(runtime(span, "Inexistent KGB element"));
+            }
+        }
+        other => {
+            return Err(runtime(
+                span,
+                format!("no validation policy registered for '{other}'"),
+            ));
+        }
+    }
+    Ok(())
+}
+
 /// Dispatch one named application. Unknown names are Name errors.
 pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<Value, Diagnostic> {
     match name {
@@ -716,18 +1243,85 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
         "simply_connected" | "adjoint" => {
             let prefers_coroots = datum_preference(name, arguments, span)?;
             let lie_type = as_lie_type(&arguments[0], span)?;
+            let semisimple_rank: usize = lie_type.semisimple_factors().map(|(_, rank)| rank).sum();
+            if name == "adjoint" && semisimple_rank != lie_type.total_rank() {
+                let rank = lie_type.total_rank();
+                return Err(runtime(
+                    span,
+                    format!("Sub-lattice matrix should have size {rank}x{rank}"),
+                ));
+            }
             let handle = build_datum(&lie_type, name == "simply_connected", prefers_coroots, span)?;
             Ok(Value::Domain(DomainValue::RootDatum(handle)))
         }
-        "inner_class" => {
-            arity(name, arguments, 2, span)?;
-            let Value::Domain(DomainValue::RootDatum(handle)) = &arguments[0] else {
-                return Err(type_error(span, "expected a RootDatum"));
-            };
-            let matrix = as_matrix(&arguments[1], span)?;
-            let context = build_inner_class(handle, matrix, span)?;
-            Ok(Value::Domain(DomainValue::InnerClass(context)))
+        "root_datum" => match arguments {
+            [Value::Domain(DomainValue::LieType(lie_type)), lattice, Value::Boolean(prefers_coroots)] =>
+            {
+                let lattice = as_matrix_rows(lattice, span)?;
+                let handle = build_quotient_datum(lie_type, &lattice, *prefers_coroots, span)?;
+                Ok(Value::Domain(DomainValue::RootDatum(handle)))
+            }
+            [simple_roots, simple_coroots, Value::Boolean(prefers_coroots)] => {
+                let simple_roots = as_matrix_rows(simple_roots, span)?;
+                let simple_coroots = as_matrix_rows(simple_coroots, span)?;
+                let handle =
+                    build_explicit_datum(&simple_roots, &simple_coroots, *prefers_coroots, span)?;
+                Ok(Value::Domain(DomainValue::RootDatum(handle)))
+            }
+            [Value::Domain(DomainValue::RootDatum(source)), lattice] => {
+                let lattice = as_matrix_rows(lattice, span)?;
+                let rank = source.datum.lattice_rank();
+                if lattice.len() != rank || lattice.iter().any(|row| row.len() != rank) {
+                    return Err(runtime(
+                        span,
+                        format!("Sub-lattice matrix should have size {rank}x{rank}"),
+                    ));
+                }
+                let inverse = invert_integer_matrix(&lattice)
+                    .ok_or_else(|| runtime(span, "Dependent lattice generators"))?;
+                let handle = build_quotient_from_handle(source, &lattice, inverse, span)?;
+                Ok(Value::Domain(DomainValue::RootDatum(handle)))
+            }
+            [Value::Domain(DomainValue::InnerClass(context))] => Ok(Value::Domain(
+                DomainValue::RootDatum(context.root_datum.clone()),
+            )),
+            _ => Err(type_error(
+                span,
+                format!(
+                    "{name} has no matching overload for {} argument(s)",
+                    arguments.len()
+                ),
+            )),
+        },
+        "Cartan_matrix" => {
+            arity(name, arguments, 1, span)?;
+            match &arguments[0] {
+                Value::Domain(DomainValue::LieType(lie_type)) => {
+                    matrix_value(&block_cartan(lie_type), span)
+                }
+                Value::Domain(DomainValue::RootDatum(handle)) => {
+                    matrix_value(handle.datum.cartan_matrix(), span)
+                }
+                other => Err(type_error(
+                    span,
+                    format!("expected a LieType or RootDatum, found {other}"),
+                )),
+            }
         }
+        "inner_class" => match arguments {
+            [Value::Domain(DomainValue::RealForm(context))] => Ok(Value::Domain(
+                DomainValue::InnerClass(Arc::clone(&context.parent)),
+            )),
+            [Value::Domain(DomainValue::RootDatum(handle)), matrix] => {
+                let matrix = as_matrix(matrix, span)?;
+                let context = build_inner_class(handle, matrix, span)?;
+                Ok(Value::Domain(DomainValue::InnerClass(context)))
+            }
+            _ => Err(type_error(
+                span,
+                "inner_class expects a RealForm or (RootDatum,mat)",
+            )),
+        },
         "nr_of_real_forms" => {
             arity(name, arguments, 1, span)?;
             let Value::Domain(DomainValue::InnerClass(context)) = &arguments[0] else {
@@ -819,6 +1413,16 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 .length(id)
                 .ok_or_else(|| runtime(span, "Inexistent KGB element"))?;
             Ok(Value::Integer(BigInt::from(length)))
+        }
+        "involution" => {
+            arity(name, arguments, 1, span)?;
+            let (context, id) = as_kgb_element(&arguments[0], span)?;
+            let involution = context
+                .graph
+                .involution_of(id)
+                .and_then(|involution| context.table.record(involution))
+                .ok_or_else(|| runtime(span, "Inexistent KGB element"))?;
+            matrix_value(involution.theta().weight_matrix(), span)
         }
         "torus_factor" => {
             arity(name, arguments, 1, span)?;
@@ -912,6 +1516,226 @@ mod tests {
         .expect("small rational coordinates");
         assert_eq!(factor.numerators(), &[3, 2]);
         assert_eq!(factor.denominator(), 6);
+    }
+
+    #[test]
+    fn cartan_matrix_is_returned_as_a_column_major_mat_value() {
+        let lie_type = call("Lie_type", &[Value::String("B2".into())], span()).expect("Lie type");
+        let datum = call(
+            "simply_connected",
+            &[lie_type, Value::Boolean(false)],
+            span(),
+        )
+        .expect("root datum");
+        let matrix = call("Cartan_matrix", &[datum], span()).expect("Cartan matrix");
+        let Value::Matrix(matrix) = matrix else {
+            panic!("Cartan_matrix must return mat")
+        };
+        assert_eq!(matrix.rows(), 2);
+        assert_eq!(matrix.cols(), 2);
+        assert_eq!(matrix.entry(0, 0), Some(2));
+        assert_eq!(matrix.entry(0, 1), Some(-2));
+        assert_eq!(matrix.entry(1, 0), Some(-1));
+        assert_eq!(matrix.entry(1, 1), Some(2));
+    }
+
+    #[test]
+    fn quotient_datum_applies_the_lattice_basis_exactly() {
+        let lie_type = call("Lie_type", &[Value::String("A1".into())], span()).expect("Lie type");
+        let identity = Value::Matrix(Matrix::from_columns(1, 1, vec![1]).expect("identity"));
+        let simply_connected = call(
+            "root_datum",
+            &[lie_type.clone(), identity, Value::Boolean(true)],
+            span(),
+        )
+        .expect("weight lattice");
+        assert_eq!(
+            simply_connected.to_string(),
+            "simply connected root datum of Lie type 'A1'"
+        );
+        assert_eq!(
+            call(
+                "prefers_coroots",
+                std::slice::from_ref(&simply_connected),
+                span()
+            ),
+            Ok(Value::Boolean(true))
+        );
+
+        let root_lattice =
+            Value::Matrix(Matrix::from_columns(1, 1, vec![2]).expect("root lattice"));
+        let adjoint = call(
+            "root_datum",
+            &[lie_type.clone(), root_lattice, Value::Boolean(false)],
+            span(),
+        )
+        .expect("root lattice quotient");
+        assert_eq!(adjoint.to_string(), "adjoint root datum of Lie type 'A1'");
+
+        let dependent = Value::Matrix(Matrix::from_columns(1, 1, vec![0]).expect("zero matrix"));
+        let error = call(
+            "root_datum",
+            &[lie_type, dependent, Value::Boolean(false)],
+            span(),
+        )
+        .expect_err("dependent generators");
+        assert_eq!(error.message, "Dependent lattice generators");
+
+        let lie_type = call("Lie_type", &[Value::String("A1".into())], span()).expect("Lie type");
+        let too_small =
+            Value::Matrix(Matrix::from_columns(1, 1, vec![3]).expect("index-three lattice"));
+        let error = call(
+            "root_datum",
+            &[lie_type, too_small, Value::Boolean(false)],
+            span(),
+        )
+        .expect_err("lattice must contain the A1 root lattice");
+        assert_eq!(
+            error.message,
+            "Sub-lattice does not contain the root lattice"
+        );
+
+        let roots = Value::Matrix(Matrix::from_columns(1, 1, vec![2]).expect("A1 root"));
+        let coroots = Value::Matrix(Matrix::from_columns(1, 1, vec![1]).expect("A1 coroot"));
+        let explicit = call(
+            "root_datum",
+            &[roots, coroots, Value::Boolean(true)],
+            span(),
+        )
+        .expect("explicit root datum");
+        assert_eq!(
+            explicit.to_string(),
+            "simply connected root datum of Lie type 'A1'"
+        );
+
+        let quotient_matrix =
+            Value::Matrix(Matrix::from_columns(1, 1, vec![2]).expect("root-lattice basis"));
+        let quotient = call("root_datum", &[explicit.clone(), quotient_matrix], span())
+            .expect("existing-datum quotient");
+        assert_eq!(quotient.to_string(), "adjoint root datum of Lie type 'A1'");
+    }
+
+    #[test]
+    fn explicit_root_datum_accepts_a_simultaneous_dynkin_relabeling() {
+        let roots = Value::Matrix(
+            Matrix::from_columns(3, 3, vec![2, -1, 0, 0, -1, 2, -1, 2, -1])
+                .expect("permuted A3 roots"),
+        );
+        let coroots = Value::Matrix(
+            Matrix::from_columns(3, 3, vec![1, 0, 0, 0, 0, 1, 0, 1, 0])
+                .expect("permuted A3 coroots"),
+        );
+        let datum = call(
+            "root_datum",
+            &[roots, coroots, Value::Boolean(true)],
+            span(),
+        )
+        .expect("permuted A3 should be recognized");
+        assert_eq!(
+            datum.to_string(),
+            "simply connected root datum of Lie type 'A3'"
+        );
+    }
+
+    #[test]
+    fn cartan_inference_prefers_canonical_b2_and_c2_before_relabeling() {
+        for (letter, expected) in [('B', "B2"), ('C', "C2")] {
+            let inferred = infer_lie_type(&factor_cartan(letter, 2), 2, span())
+                .expect("canonical rank-two Cartan matrix");
+            assert_eq!(inferred.render(), expected);
+        }
+    }
+
+    #[test]
+    fn cartan_inference_accepts_a_non_symmetric_b3_relabeling() {
+        let canonical = factor_cartan('B', 3);
+        let permutation = [2, 0, 1];
+        let relabeled = permutation
+            .iter()
+            .map(|&row| {
+                permutation
+                    .iter()
+                    .map(|&column| canonical[row][column])
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+
+        assert_ne!(relabeled, canonical);
+        let inferred = infer_lie_type(&relabeled, 3, span()).expect("permuted B3 Cartan matrix");
+        assert_eq!(inferred.render(), "B3");
+    }
+
+    #[test]
+    fn zero_row_matrices_do_not_collapse_into_zero_by_zero_shapes() {
+        let matrix = Value::Matrix(Matrix::from_columns(0, 1, Vec::new()).expect("0x1 matrix"));
+        let error = call(
+            "inner_class",
+            &[
+                call(
+                    "simply_connected",
+                    &[
+                        call("Lie_type", &[Value::String("A1".into())], span()).unwrap(),
+                        Value::Boolean(true),
+                    ],
+                    span(),
+                )
+                .unwrap(),
+                matrix,
+            ],
+            span(),
+        )
+        .expect_err("a 0x1 involution is not square");
+        assert!(error.message.contains("square mat"));
+    }
+
+    #[test]
+    fn real_form_recovers_its_shared_inner_class() {
+        let lie_type = call("Lie_type", &[Value::String("A1".into())], span()).expect("Lie type");
+        let datum = call(
+            "simply_connected",
+            &[lie_type, Value::Boolean(false)],
+            span(),
+        )
+        .expect("root datum");
+        let matrix =
+            Value::Matrix(Matrix::from_columns(1, 1, vec![1]).expect("identity involution"));
+        let inner = call("inner_class", &[datum, matrix], span()).expect("inner class");
+        let real = call(
+            "real_form",
+            &[inner.clone(), Value::Integer(BigInt::from(1))],
+            span(),
+        )
+        .expect("real form");
+        assert_eq!(call("inner_class", &[real], span()), Ok(inner));
+    }
+
+    #[test]
+    fn kgb_involution_is_returned_as_a_lattice_matrix() {
+        let lie_type = call("Lie_type", &[Value::String("A1".into())], span()).expect("Lie type");
+        let datum = call(
+            "simply_connected",
+            &[lie_type, Value::Boolean(false)],
+            span(),
+        )
+        .expect("root datum");
+        let matrix =
+            Value::Matrix(Matrix::from_columns(1, 1, vec![1]).expect("identity involution"));
+        let inner = call("inner_class", &[datum, matrix], span()).expect("inner class");
+        let real = call(
+            "real_form",
+            &[inner, Value::Integer(BigInt::from(1))],
+            span(),
+        )
+        .expect("split real form");
+        let element =
+            call("KGB", &[real, Value::Integer(BigInt::from(0))], span()).expect("KGB element");
+        let involution = call("involution", &[element], span()).expect("KGB involution");
+        let Value::Matrix(involution) = involution else {
+            panic!("involution must return mat")
+        };
+        assert_eq!(involution.rows(), 1);
+        assert_eq!(involution.cols(), 1);
+        assert_eq!(involution.entry(0, 0), Some(1));
     }
 
     #[test]

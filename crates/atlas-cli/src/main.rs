@@ -68,6 +68,7 @@ fn print_events(frame: &SessionFrame<FsProvider, FsSink>, events: &[SessionEvent
     for event in events {
         match event {
             SessionEvent::Output { text, .. } => print!("{text}"),
+            SessionEvent::ReportLine { text, .. } => print!("{text}"),
             SessionEvent::Diagnostic(diagnostic) => eprintln!("{}", frame.describe(diagnostic)),
             // The frame renders values as Output text; none reach here.
             SessionEvent::Value { value, .. } => println!("Value: {value}"),

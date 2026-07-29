@@ -6,7 +6,6 @@
 pub mod coercions;
 pub mod diagnostic;
 pub mod domain_builtins;
-pub mod eval;
 pub mod formula;
 pub mod frames;
 pub mod lex;
@@ -18,6 +17,9 @@ pub mod syntax;
 pub mod typed;
 pub mod types;
 pub mod value;
+
+#[cfg(test)]
+mod session_fixture_tests;
 
 /// Version of the language compatibility contract implemented by this crate.
 pub const COMPATIBILITY_VERSION: &str = "atlas-language-v0";

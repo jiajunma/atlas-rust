@@ -5,28 +5,39 @@
 
 use crate::{
     diagnostic::{Diagnostic, SourceSpan},
-    eval::{execute_command as evaluate_command, EvalContext, EvalEvent},
     lex::{Lexer, Token, TokenKind},
     source::SourceText,
     syntax::parse_command,
+    typed::{TypedCommandEvent, TypedContext},
     value::Value,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SessionEvent {
-    Value { value: Value, span: SourceSpan },
-    Output { text: String, span: SourceSpan },
+    Value {
+        value: Value,
+        is_void_type: bool,
+        span: SourceSpan,
+    },
+    Output {
+        text: String,
+        span: SourceSpan,
+    },
+    ReportLine {
+        text: String,
+        span: SourceSpan,
+    },
     Diagnostic(Diagnostic),
 }
 
 pub fn run_source(source: &SourceText) -> Vec<SessionEvent> {
-    let mut context = EvalContext::new();
+    let mut context = TypedContext::new();
     run_source_with_context(source, &mut context)
 }
 
 pub fn run_source_with_context(
     source: &SourceText,
-    context: &mut EvalContext,
+    context: &mut TypedContext,
 ) -> Vec<SessionEvent> {
     let mut lexer = Lexer::new(source);
     let mut command = Vec::new();
@@ -70,7 +81,7 @@ pub fn run_source_with_context(
 pub(crate) fn execute_tokens(
     tokens: &mut Vec<Token>,
     source: &SourceText,
-    context: &mut EvalContext,
+    context: &mut TypedContext,
     events: &mut Vec<SessionEvent>,
 ) {
     if tokens.is_empty() {
@@ -87,13 +98,15 @@ pub(crate) fn execute_tokens(
     };
     tokens.clear();
 
-    match evaluate_command(&command, context) {
-        Ok(command_events) => {
-            events.extend(command_events.into_iter().map(|event| match event {
-                EvalEvent::Value { value, span } => SessionEvent::Value { value, span },
-                EvalEvent::Output { text, span } => SessionEvent::Output { text, span },
-            }));
-        }
+    match context.execute(&command) {
+        Ok(command_events) => events.extend(command_events.into_iter().map(|event| match event {
+            TypedCommandEvent::Value { value, type_, span } => SessionEvent::Value {
+                value,
+                is_void_type: type_.is_void(),
+                span,
+            },
+            TypedCommandEvent::ReportLine { text, span } => SessionEvent::ReportLine { text, span },
+        })),
         Err(diagnostic) => events.push(SessionEvent::Diagnostic(diagnostic)),
     }
 }
@@ -108,7 +121,7 @@ mod tests {
         // The phase-1 gate: simply connected A1, equal-rank inner class,
         // external form order (compact = 0, split = 1), KGB observables.
         let source = SourceText::new(concat!(
-            "ic : inner_class(simply_connected(\"A1\"), [[1]])\n",
+            "ic : inner_class(simply_connected(Lie_type(\"A1\"), true), mat: [[1]])\n",
             "nr_of_real_forms(ic)\n",
             "KGB_size(real_form(ic, 0))\n",
             "KGB_size(real_form(ic, 1))\n",
@@ -132,7 +145,7 @@ mod tests {
     #[test]
     fn sp4r_kgb_sizes_match_the_oracle_through_the_language() {
         let source = SourceText::new(concat!(
-            "ic : inner_class(simply_connected(\"B2\"), [[1,0],[0,1]])\n",
+            "ic : inner_class(simply_connected(Lie_type(\"B2\"), true), mat: [[1,0],[0,1]])\n",
             "KGB_size(real_form(ic, 0))\n",
             "KGB_size(real_form(ic, 1))\n",
             "KGB_size(real_form(ic, 2))\n",
@@ -247,13 +260,15 @@ mod tests {
         assert_eq!(events.len(), 6);
         assert!(matches!(
             events[0],
-            SessionEvent::Output { ref text, .. } if text == "Variable x: int\n"
+            SessionEvent::ReportLine { ref text, .. } if text == "Variable x: int\n"
         ));
         let values: Vec<_> = events
             .iter()
             .filter_map(|event| match event {
                 SessionEvent::Value { value, .. } => Some(value.clone()),
-                SessionEvent::Output { .. } | SessionEvent::Diagnostic(_) => None,
+                SessionEvent::Output { .. }
+                | SessionEvent::ReportLine { .. }
+                | SessionEvent::Diagnostic(_) => None,
             })
             .collect();
         assert_eq!(
@@ -327,7 +342,7 @@ mod tests {
         assert_eq!(events.len(), 13);
         assert!(matches!(
             events[0],
-            SessionEvent::Output { ref text, .. } if text == "Declaring identifier 'x': int\n"
+            SessionEvent::ReportLine { ref text, .. } if text == "Declaring identifier 'x': int\n"
         ));
         assert!(
             matches!(events[1], SessionEvent::Diagnostic(ref d) if d.kind == ErrorKind::Runtime)
@@ -338,7 +353,7 @@ mod tests {
         ));
         assert!(matches!(
             events[4],
-            SessionEvent::Output { ref text, .. } if text == "Declaring identifier 'r': rat\n"
+            SessionEvent::ReportLine { ref text, .. } if text == "Declaring identifier 'r': rat\n"
         ));
         assert!(matches!(
             events[5],
@@ -347,7 +362,7 @@ mod tests {
         ));
         assert!(matches!(
             events[7],
-            SessionEvent::Output { ref text, .. }
+            SessionEvent::ReportLine { ref text, .. }
                 if text == "Declaring identifier 's': string\n"
         ));
         assert!(matches!(
@@ -356,7 +371,7 @@ mod tests {
         ));
         assert!(matches!(
             events[10],
-            SessionEvent::Output { ref text, .. }
+            SessionEvent::ReportLine { ref text, .. }
                 if text == "Declaring identifier 'b': bool\n"
         ));
         assert!(matches!(
@@ -390,13 +405,15 @@ mod tests {
         assert_eq!(events.len(), 12);
         assert!(matches!(
             events[0],
-            SessionEvent::Output { ref text, .. } if text == "Variable x: int\n"
+            SessionEvent::ReportLine { ref text, .. } if text == "Variable x: int\n"
         ));
         let values = events
             .iter()
             .filter_map(|event| match event {
                 SessionEvent::Value { value, .. } => Some(value.clone()),
-                SessionEvent::Output { .. } | SessionEvent::Diagnostic(_) => None,
+                SessionEvent::Output { .. }
+                | SessionEvent::ReportLine { .. }
+                | SessionEvent::Diagnostic(_) => None,
             })
             .collect::<Vec<_>>();
         assert_eq!(
@@ -431,7 +448,7 @@ mod tests {
         assert!(matches!(events[3], SessionEvent::Diagnostic(ref d) if d.kind == ErrorKind::Type));
         assert!(matches!(
             events[4],
-            SessionEvent::Output { ref text, .. } if text == "Variable x: int\n"
+            SessionEvent::ReportLine { ref text, .. } if text == "Variable x: int\n"
         ));
         assert!(matches!(
             events[5],
@@ -503,7 +520,7 @@ mod tests {
         assert_eq!(events.len(), 6);
         assert!(matches!(
             events[0],
-            SessionEvent::Output { ref text, .. } if text == "Variable nested: [[rat]]\n"
+            SessionEvent::ReportLine { ref text, .. } if text == "Variable nested: [[rat]]\n"
         ));
         assert!(matches!(
             events[1],
@@ -517,7 +534,7 @@ mod tests {
         ));
         assert!(matches!(
             events[3],
-            SessionEvent::Output { ref text, .. } if text == "Variable pairs: [(int,rat)]\n"
+            SessionEvent::ReportLine { ref text, .. } if text == "Variable pairs: [(int,rat)]\n"
         ));
         assert!(matches!(
             events[4],
@@ -649,7 +666,7 @@ mod tests {
         assert_eq!(events.len(), 15);
         assert!(matches!(
             events[0],
-            SessionEvent::Output { ref text, .. } if text == "Declaring identifier 'x': int\n"
+            SessionEvent::ReportLine { ref text, .. } if text == "Declaring identifier 'x': int\n"
         ));
         assert!(matches!(
             events[1],
@@ -663,7 +680,7 @@ mod tests {
         ));
         assert!(matches!(
             events[3],
-            SessionEvent::Output { ref text, .. } if text == "Declaring identifier 'y': string\n"
+            SessionEvent::ReportLine { ref text, .. } if text == "Declaring identifier 'y': string\n"
         ));
         assert!(matches!(
             events[4],
@@ -677,7 +694,7 @@ mod tests {
         ));
         assert!(matches!(
             events[6],
-            SessionEvent::Output { ref text, .. } if text == "Declaring identifier 'z': string\n"
+            SessionEvent::ReportLine { ref text, .. } if text == "Declaring identifier 'z': string\n"
         ));
         assert!(matches!(
             events[7],
@@ -691,7 +708,7 @@ mod tests {
         ));
         assert!(matches!(
             events[9],
-            SessionEvent::Output { ref text, .. } if text == "Declaring identifier 'w': string\n"
+            SessionEvent::ReportLine { ref text, .. } if text == "Declaring identifier 'w': string\n"
         ));
         assert!(matches!(
             events[10],
@@ -705,12 +722,13 @@ mod tests {
         ));
         assert!(matches!(
             events[12],
-            SessionEvent::Output { ref text, .. } if text == "Declaring identifier 'u': int\n"
+            SessionEvent::ReportLine { ref text, .. } if text == "Declaring identifier 'u': int\n"
         ));
         assert!(matches!(
             events[13],
             SessionEvent::Diagnostic(ref diagnostic)
-                if diagnostic.kind == ErrorKind::Runtime
+                if diagnostic.kind == ErrorKind::Type
+                    && diagnostic.message == "Failed to match '+' with argument type (*,*)"
         ));
         assert!(matches!(
             events[14],

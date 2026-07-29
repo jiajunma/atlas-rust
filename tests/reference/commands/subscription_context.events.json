@@ -16,7 +16,7 @@
     {"kind":"Diagnostic","category":"type"},
     {"kind":"Value","type":"integer","value":4},
     {"kind":"Output","text":"Declaring identifier 'u': int\n"},
-    {"kind":"Diagnostic","category":"runtime"},
+    {"kind":"Diagnostic","category":"type"},
     {"kind":"Value","type":"integer","value":5}
   ]
 }
