@@ -1,0 +1,8 @@
+{
+  "fixture": "eval/quit_probe",
+  "oracle": "atlas",
+  "stage": "probe",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "notes": "Exploratory probe for quit semantics (parser.y:169-170, main.w:502-503): whether 'quit' mid-input terminates evaluation immediately (the 2+2 line must not produce a value), what the exit status is, and whether the closing 'Bye.' banner still prints. This probe file is not a differential fixture."
+}
