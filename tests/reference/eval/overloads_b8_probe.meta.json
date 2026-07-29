@@ -1,0 +1,8 @@
+{
+  "fixture": "eval/overloads_b8_probe",
+  "oracle": "atlas",
+  "stage": "probe",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "notes": "Exploratory probe for the B8 user-overload rejected companions: whether re-defining 'set f = (int x): ...' with an already-present signature replaces the old definition or accumulates a duplicate ('Added definition [2]'), whether 'set g = 42' on an identifier that already holds function definitions is accepted or diagnosed, and what diagnostic a call with unmatched arity ('f(1, 2, 3)') produces. Lines will be split into accepted and rejected fixtures from the oracle behavior; this probe file is not a differential fixture."
+}
