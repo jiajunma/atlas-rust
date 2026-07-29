@@ -1,0 +1,11 @@
+case 2 in 1, 2 then 10 else 20 esac
+case 3 in 1, 2 then 10 else 20 esac
+case 2 else 20 in 1, 2 esac
+set_type [ U = (int i | string s) ]
+case i(3) in 1 | 2 esac
+case s("x") in 1 | 2 esac
+for i: 3 from 0 do i od
+for i: 2 from 4 do i * 10 od
+for i: 3 downto 1 do i od
+for : 3 do 7 od
+let x = 0 in while x < 3 do x := x + 1 next x * 10 od

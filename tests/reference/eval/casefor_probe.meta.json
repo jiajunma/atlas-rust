@@ -1,0 +1,8 @@
+{
+  "fixture": "eval/casefor_probe",
+  "oracle": "atlas",
+  "stage": "probe",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "notes": "Exploratory probe for the B6 slice covering case expressions and counted for loops. Integer case: 'case e in l then a else b esac' and the else-first variant 'case e else b in l esac' (parser.y:350-355, make_int_case_node). Positional union case: 'case e in a | b esac' (parser.y:359, make_union_case_node). Counted for loops: 'for i: n from m do e od', 'for i: n downto m do e od', and identifier-less 'for : n do e od' (parser.y:550-573, make_cfor_node). Also probes 'next' as a sequence operator inside a while body (parser.y:236). Lines will be split into accepted and rejected fixtures from the oracle behavior; this probe file is not a differential fixture."
+}
