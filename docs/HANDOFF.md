@@ -99,6 +99,13 @@ The bounded local checks for this stage:
   its binary differs from every pin; do not use it for captures.
 - `reference_capture.sbatch` fails before the harness when declared and
   detected source state differ; the FAIL fallback report names the phase.
+- After any commit that touches `crates/`, a subsequent rsync that excludes
+  `crates/` (while a background agent holds uncommitted changes) leaves the
+  remote checkout dirty against its HEAD, and a capture submitted in that
+  window records `dirty_tree: true`. Repair with
+  `git archive HEAD crates | ssh ... tar -x -C <remote>` before submitting,
+  and re-capture anything taken in the dirty window (job `3499634` was
+  re-taken as `3499638`).
 
 ## Next implementation slice (B3c/B3d in flight, then B4 loops)
 
