@@ -200,8 +200,8 @@ In rough dependency order, each with its own fixture + HPC capture first:
    overloads in definition order, calls resolve by arity, and a variable can
    coexist with function definitions on one identifier; wrong-arity calls
    are analysis-time type errors.
-5. B9 file commands (probe `3499729`, file evidence `3499737`; formal
-   capture pending): `> "f" expr` / `>> "f" expr` redirect only the
+5. B9 file commands (capture `3499747`; probe `3499729`, file evidence
+   `3499737`): `> "f" expr` / `>> "f" expr` redirect only the
    `Value: ...` line (truncate/append), a failed open prints
    `Failed to open <name>` on stderr and continues, and `tofile` accepts
    only an expression (`set` there is a syntax error). `fromfile`
