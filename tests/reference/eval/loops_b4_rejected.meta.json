@@ -12,11 +12,12 @@
   "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
   "oracle_stderr_sha256": "3d284a353b782754c48666cb467f80c3b92dea351c21fd517b7354203933d4df",
   "capture_artifacts_sha256": "ee469cac2fce3776016f6b632a879808e28ae84bf308f7875df7200ba79f47d2",
-  "rust_status": "implemented_pending_hpc",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/parser.y:364",
     "sources/interpreter/parser.y:440-447",
     "sources/interpreter/parser.y:506-525"
   ],
-  "notes": "Rejected companions of eval/loops_b4: top-level break outside any loop, break with a value (syntax error after 'break'), iterating a non-row value, and a non-boolean while condition. Reference captured by HPC job 3498786 against the frozen atlasofliegroups-4d3e9449 oracle; raw stderr normalized to four Diagnostic events. Only the offending token of the bison syntax error is asserted, not the expecting-list. Differential evidence remains pending until the pipeline_swap_diff run."
+  "notes": "Rejected companions of eval/loops_b4: top-level break outside any loop, break with a value (syntax error after 'break'), iterating a non-row value, and a non-boolean while condition. Reference captured by HPC job 3498786 against the frozen atlasofliegroups-4d3e9449 oracle; raw stderr normalized to four Diagnostic events. Only the offending token of the bison syntax error is asserted, not the expecting-list. Differential PASS in HPC pipeline_swap_diff job 3499732 (report results/152138cafc877ba94e8e72c7b6edd1a1164b6d07/3499732/pipeline_swap/pipeline_swap_diff_report.json).",
+  "differential_job": "3499732"
 }

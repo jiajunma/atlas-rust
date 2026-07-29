@@ -12,11 +12,12 @@
   "oracle_stdout_sha256": "c3482902cd4df33c2c2edd04804620ee7401a92ffd1242ccb1699857939e3940",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "capture_artifacts_sha256": "764d68c88614ff141f384392c78e6bbe0337a0666b2af3749b3823c8aad7fba0",
-  "rust_status": "implemented_pending_hpc",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/parser.y:364",
     "sources/interpreter/parser.y:440-447",
     "sources/interpreter/parser.y:506-525"
   ],
-  "notes": "B4 loop slice, split from oracle probes loops_probe (capture 3498630) and loops_probe2 (capture 3498670). While and for loops collect each iteration's body value into a row; the breaking iteration contributes nothing; while-do (no condition) loops until break; for x@i binds the loop index; begin/end sequences with ';' yield the last value. Reference captured by HPC job 3498786 against the frozen atlasofliegroups-4d3e9449 oracle; raw stdout normalized to eight Value events (row values compared by display). Differential evidence remains pending until the pipeline_swap_diff run."
+  "notes": "B4 loop slice, split from oracle probes loops_probe (capture 3498630) and loops_probe2 (capture 3498670). While and for loops collect each iteration's body value into a row; the breaking iteration contributes nothing; while-do (no condition) loops until break; for x@i binds the loop index; begin/end sequences with ';' yield the last value. Reference captured by HPC job 3498786 against the frozen atlasofliegroups-4d3e9449 oracle; raw stdout normalized to eight Value events (row values compared by display). Differential PASS in HPC pipeline_swap_diff job 3499732 (report results/152138cafc877ba94e8e72c7b6edd1a1164b6d07/3499732/pipeline_swap/pipeline_swap_diff_report.json).",
+  "differential_job": "3499732"
 }

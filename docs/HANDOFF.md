@@ -1,4 +1,4 @@
-# Atlas-Rust handoff - 2026-07-29 (B3c+B3d verified)
+# Atlas-Rust handoff - 2026-07-29 (B4 loops verified)
 
 This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
@@ -8,12 +8,15 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
 - Branch: `main`.
 - B3a non-recursive functions, B3b recursive functions / definition sugar,
-  B3c parameter patterns, and B3d selectors are implemented and
+  B3c parameter patterns, B3d selectors, and B4 loops are implemented and
   differentially verified. The exact commit is shown by
   `git log -1 --oneline`.
-- B4 loops, B5 set_type, B6 case/counted-for, and B7 misc commands have
-  frozen reference events (captures `3498786`, `3499601`, `3499627`,
-  `3499657`); the B4 implementation is in progress.
+- B5 set_type, B6 case/counted-for, and B7 misc commands have frozen reference
+  events (captures `3499601`, `3499627`, `3499657`); the B5 implementation is
+  in progress.
+- B8 user overloads (`3499692`, `3499705`) and B9 file-command redirection
+  (probe `3499729`, file-content evidence `3499737`; formal capture pending)
+  have frozen or in-flight references ahead of their implementations.
 - No uncommitted repository changes should remain after the handoff commit.
 
 The typed session pipeline is active: `session.rs` and `session_frame.rs`
@@ -29,12 +32,39 @@ function-definition sugar `f(params): body` in `let`/`set` declarations,
 `rec_fun` recursive functions in declaration and expression form with explicit
 result types (the self binding lives in the argument frame), binding and
 parameter patterns (tuple destructuring, discard `type .`, const `!x`,
-whole-value `(a, b): t`) compiled to a shared `SlotShape` frame layout, and
+whole-value `(a, b): t`) compiled to a shared `SlotShape` frame layout,
 operator/unit selectors (`2.-`, `2.3`) with operator selectors resolving
-through the standard overload table. This is not a
+through the standard overload table, and loops (`while`/`for` collecting each
+iteration's body value into a row, `break` discarding the breaking iteration,
+`for x@i` index binding, `;` sequencing). This is not a
 claim of full Atlas compatibility: InnerClass/RealForm/KGB rendering and
-numbering, relations, primitive `involution` constructors, loops, `set_type`,
-and later math overloads remain pending differential evidence.
+numbering, relations, primitive `involution` constructors, `set_type`, case
+discrimination, counted `for`, user overloads, file commands, and later math
+overloads remain pending differential evidence.
+
+## Verified stage: B4 loops
+
+- `tests/fixtures/eval/loops_b4.atlas` (8 accepted lines: `while`/`for`
+  collecting each iteration's body value into a row, `break` contributing
+  nothing for the breaking iteration, condition-less `while do ... od`,
+  `for x@i` index binding, `begin`-style `;` sequencing) and
+  `tests/fixtures/eval/loops_b4_rejected.atlas` (4 rejected lines: top-level
+  `break`, `break x` syntax error, iterating a non-row, non-boolean while
+  condition). Implementation: `Sequence`/`While`/`For`/`Break` typed variants
+  with analysis-time `loop_depth` legality and `Control::Break(usize)`
+  evaluation (commit `5be00f9`).
+- Oracle capture: `3498786` (commit `a5856a1`), PASS against the frozen oracle.
+- Differential: `pipeline_swap_diff` job `3499732` at commit `152138ca`
+  reports both fixtures PASS (suite PARTIAL as long as
+  `pipeline_swap_domain_equality` keeps its pending domain lines).
+- Reference metadata: `tests/reference/eval/loops_b4{,_rejected}.meta.json`
+  carry `rust_status: verified_hpc` with `differential_job: 3499732`.
+
+The bounded local checks for this stage:
+
+- `cargo test -p atlas-core --lib`: 174 passed, 0 failed;
+- `cargo clippy -p atlas-core --lib -- -D warnings`;
+- `cargo fmt --all -- --check` and `python3 hpc/test_pipeline_swap_diff.py`.
 
 ## Verified stage: B3c parameter patterns and B3d selectors
 
@@ -143,31 +173,39 @@ The bounded local checks for this stage:
   and re-capture anything taken in the dirty window (job `3499634` was
   re-taken as `3499638`).
 
-## Next implementation slice (B4 loops in flight, then B5/B6/B7)
+## Next implementation slice (B5 set_type in flight, then B6/B7/B8/B9)
 
 In rough dependency order, each with its own fixture + HPC capture first:
 
-1. B4 loops (`while`/`for`, `break` without value). Reference events frozen
-   (capture `3498786`, commit `a5856a1`): loops collect each iteration's body
-   value into a row; the breaking iteration contributes nothing;
-   `while do ... od` loops until `break`; `for x@i` binds the loop index.
-   Implementation in progress.
-2. B5 `set_type` (capture `3499601`, commit `559f363`): the single-name form
+1. B5 `set_type` (capture `3499601`, commit `559f363`): the single-name form
    defines aliases plus projector/injector overloads but cannot support
    `case` discrimination; only the bracketed `set_type [ ... ]` form enters
    types into the tabled type map (required by discrimination and
    recursion); union values display as `value.tag`; tabled types print by
    name in `whattype`; `expr : type` ascription is a syntax error.
-3. B6 case and counted for (capture `3499627`, commit `cfdd9cc`): integer
+   Implementation in progress.
+2. B6 case and counted for (capture `3499627`, commit `cfdd9cc`): integer
    case selects in-list branches by 0-based index with remainder wrapping;
    else catches out-of-range, then catches negative; positional union case
    branches are functions; counted `for i: n from m`/`downto`; `e1 next e2`
    collects e1.
-4. B7 misc commands (capture `3499657`, commit `21ee423`): `forget` of
+3. B7 misc commands (capture `3499657`, commit `21ee423`): `forget` of
    unknown identifiers and of single overloads, `die` as a runtime
    diagnostic with batch continuation, coercion fallback after overload
    removal. The `whattype id_op ?` overload listing is deferred until the
    domain types appearing in builtin lists are ported.
+4. B8 user overloads (captures `3499692`, `3499705`): `set f = <lambda>`
+   accumulates overloads (`Defined f: T`, `Added definition [2] of f: T`,
+   `Redefined f: T` for a repeated signature), `whattype f ?` lists user
+   overloads in definition order, calls resolve by arity, and a variable can
+   coexist with function definitions on one identifier; wrong-arity calls
+   are analysis-time type errors.
+5. B9 file commands (probe `3499729`, file evidence `3499737`; formal
+   capture pending): `> "f" expr` / `>> "f" expr` redirect only the
+   `Value: ...` line (truncate/append), a failed open prints
+   `Failed to open <name>` on stderr and continues, and `tofile` accepts
+   only an expression (`set` there is a syntax error). `fromfile`
+   (`<`/`<<` inclusion) still needs its own probe.
 
 Before continuing, run the smallest local parser/core check with the project
 toolchain, then sync a clean committed tree to HPC and submit the relevant
