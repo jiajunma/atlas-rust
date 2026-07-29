@@ -135,6 +135,13 @@ FIXTURE_PLANS = (
     # B10 fromfile inclusion errors and quit semantics. The quit line and
     # the unreachable line after it run but produce no event.
     FixturePlan(name="fromfile_b10"),
+    # B10 accepted inclusion: line 3 is a silent skip (file already seen).
+    FixturePlan(
+        name="fromfile_accepted_b10",
+        runnable_lines=(1, 2, 4),
+        runnable_events=(0, 1, 2),
+        silent_lines=(3,),
+    ),
     FixturePlan(
         name="quit_b10",
         runnable_lines=(1,),

@@ -1,0 +1,10 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "eval/fromfile_accepted_b10",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind":"ReportLine","text":"Starting to read from file '/public/home/majj/atlas-rust/tests/fixtures/eval/include_b10_helper.at'.\n  Variable xb10: int\nCompletely read file '/public/home/majj/atlas-rust/tests/fixtures/eval/include_b10_helper.at'.\n"},
+    {"kind":"Value","value":{"type":"integer","value":42}},
+    {"kind":"ReportLine","text":"Starting to read from file '/public/home/majj/atlas-rust/tests/fixtures/eval/include_b10_helper.at'.\n  Variable xb10: int (overriding previous instance, which had type int)\nCompletely read file '/public/home/majj/atlas-rust/tests/fixtures/eval/include_b10_helper.at'.\n"}
+  ]
+}
