@@ -2,7 +2,8 @@
   "fixture": "eval/settype_probe4",
   "oracle": "atlas",
   "stage": "probe",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
+  "reference_job": "3498991",
   "rust_status": "not_implemented",
   "notes": "Fourth exploratory probe for the B5 set_type slice, following capture 3498932 which showed: bracketed set_type enables discrimination; branch result types must unify in order ('found string while int was needed.'); 'else' needs a preceding '|'; '()' is not a type expression (syntax error expecting -> or '|'). This probe verifies the '| else expr' default branch, the 'void' empty variant in a recursive type equation, whattype of a tabled recursive type, and construction/display of recursive union values (nil/cons). Lines will be split into accepted and rejected fixtures from the oracle behavior; this probe file is not a differential fixture."
 }
