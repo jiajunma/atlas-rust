@@ -1,0 +1,18 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "eval/file_commands_b9_rejected",
+  "status": "pending_hpc_reference",
+  "events": [
+    {
+      "kind": "Diagnostic",
+      "category": "syntax",
+      "message": "syntax error, unexpected '='"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Failed to open no_such_dir_fc_b9/f.out"
+    },
+    {"kind":"Value","value":{"type":"integer","value":17}}
+  ]
+}
