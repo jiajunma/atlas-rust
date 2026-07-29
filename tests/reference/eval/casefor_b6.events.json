@@ -1,0 +1,18 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "eval/casefor_b6",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind":"Value","value":{"type":"integer","value":20}},
+    {"kind":"Value","value":{"type":"integer","value":10}},
+    {"kind":"Value","value":{"type":"integer","value":99}},
+    {"kind":"Value","value":{"type":"integer","value":77}},
+    {"kind":"ReportLine","text":"Type name 'U' defined as (int|string)\n  with injectors: i, s.\n"},
+    {"kind":"Value","value":{"type":"integer","value":4}},
+    {"kind":"Value","value":{"type":"row","display":"[0,1,2]"}},
+    {"kind":"Value","value":{"type":"row","display":"[40,50]"}},
+    {"kind":"Value","value":{"type":"row","display":"[3,2,1]"}},
+    {"kind":"Value","value":{"type":"row","display":"[7,7,7]"}},
+    {"kind":"Value","value":{"type":"row","display":"[1,2,3]"}}
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "fixture": "eval/casefor_b6_rejected",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "upstream_evidence": [
+    "sources/interpreter/parser.y:359",
+    "sources/interpreter/axis.w:4884-4901"
+  ],
+  "rust_status": "not_implemented",
+  "notes": "Rejected companions of eval/casefor_b6: positional union case branches must be functions of the variant type ('found int while (int->*) was needed.'), and branch result types must agree in order ('found string while int was needed.'). The leading set_type line succeeds and emits its ReportLine. Reference capture pending on HPC."
+}

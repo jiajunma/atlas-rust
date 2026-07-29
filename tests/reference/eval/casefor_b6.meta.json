@@ -1,0 +1,14 @@
+{
+  "fixture": "eval/casefor_b6",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "upstream_evidence": [
+    "sources/interpreter/parser.y:350-359",
+    "sources/interpreter/parser.y:550-573",
+    "sources/interpreter/parser.y:236",
+    "sources/interpreter/axis.w:4884-4901"
+  ],
+  "rust_status": "not_implemented",
+  "notes": "B6 case and counted-for slice, split from probes casefor_probe (capture 3499619) and casefor_probe2 (capture 3499625). Integer case selects an in-list branch by 0-based index; out-of-range wraps via arithmetic::remainder without an else clause; else catches out-of-range; then catches negative selectors only. Positional union case branches are functions of the variant type. Counted for loops iterate from/downto bounds or repeat identifier-less. In loop bodies, 'e1 next e2' collects e1's value and discards e2. Reference capture pending on HPC."
+}

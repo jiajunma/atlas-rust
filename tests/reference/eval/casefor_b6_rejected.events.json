@@ -1,0 +1,10 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "eval/casefor_b6_rejected",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind":"ReportLine","text":"Type name 'U' defined as (int|string)\n  with injectors: i, s.\n"},
+    {"kind":"Diagnostic","category":"type","message":"found int while (int->*) was needed."},
+    {"kind":"Diagnostic","category":"type","message":"found string while int was needed."}
+  ]
+}

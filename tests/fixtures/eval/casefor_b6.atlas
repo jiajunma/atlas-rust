@@ -1,0 +1,11 @@
+case 1 in 10, 20, 30 esac
+case 3 in 10, 20, 30 esac
+case 5 else 99 in 10, 20, 30 esac
+case -1 then 77 in 10, 20, 30 else 99 esac
+set_type [ U = (int i | string s) ]
+case i(3) in (int x): x + 1 | (string s): 0 esac
+for i: 3 from 0 do i od
+for i: 2 from 4 do i * 10 od
+for i: 3 downto 1 do i od
+for : 3 do 7 od
+for i in [1, 2, 3] do i next i * 10 od
