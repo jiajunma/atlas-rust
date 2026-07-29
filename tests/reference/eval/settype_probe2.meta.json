@@ -1,0 +1,8 @@
+{
+  "fixture": "eval/settype_probe2",
+  "oracle": "atlas",
+  "stage": "probe",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "notes": "Second exploratory probe for the B5 set_type slice, after settype_probe (capture pending) showed that 'expr : type' ascription is a syntax error. Probes named-field projection via selector and direct call, union injector call syntax, union value display, and case discrimination with ignored and bound payloads (parser.y caselist: IDENT ':' expr, IDENT closed_pattern ':' expr, ELSE expr). Lines will be split into accepted and rejected fixtures from the oracle behavior; this probe file is not a differential fixture."
+}
