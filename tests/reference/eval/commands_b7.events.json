@@ -1,0 +1,11 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "eval/commands_b7",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind":"ReportLine","text":"Identifier 'x' not known\n"},
+    {"kind":"Value","value":{"type":"integer","value":42}},
+    {"kind":"ReportLine","text":"Definition of '+@(int,int)' forgotten\n"},
+    {"kind":"Value","value":{"type":"rational","numerator":3,"denominator":1}}
+  ]
+}

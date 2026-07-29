@@ -1,0 +1,12 @@
+{
+  "fixture": "eval/commands_b7",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "upstream_evidence": [
+    "sources/interpreter/parser.y:141-142",
+    "sources/interpreter/parser.y:155-157"
+  ],
+  "rust_status": "not_implemented",
+  "notes": "B7 misc-commands slice, split from probe commands_b7_probe (capture 3499638). Forgetting an unknown identifier prints 'Identifier 'x' not known' to stdout and continues; 'forget operator @ type' removes one overload and reports it, after which int+int resolves through int->rat coercion to (rat,rat)->rat yielding 3/1. The whattype id_op ? overload listing is deferred: the builtin operator lists reference domain types (Split/KTypePol/ParamPol) not yet ported. Reference capture pending on HPC."
+}

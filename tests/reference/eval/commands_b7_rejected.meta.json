@@ -1,0 +1,11 @@
+{
+  "fixture": "eval/commands_b7_rejected",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "upstream_evidence": [
+    "sources/interpreter/parser.y:383"
+  ],
+  "rust_status": "not_implemented",
+  "notes": "Rejected companions of eval/commands_b7, split from probe commands_b7_probe (capture 3499638): 'die' raises the runtime diagnostic 'I die' and batch processing continues with the following line; an undefined identifier is a name-category analysis error. Reference capture pending on HPC."
+}
