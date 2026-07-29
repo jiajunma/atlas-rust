@@ -12,12 +12,13 @@
   "oracle_stdout_sha256": "990df5489b71183513f40dc952961cdcaf85c3b1261a8d2a8e6aaaad2346c1a6",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "capture_artifacts_sha256": "71801705b57484588ae5d8b30d93684f40cdbf54fe8f998f3ce4233bb0c3d121",
-  "rust_status": "implemented_pending_hpc",
+  "rust_status": "verified_hpc",
+  "differential_job": "3498653",
   "upstream_evidence": [
     "sources/interpreter/parser.y:231",
     "sources/interpreter/parser.y:246-257",
     "sources/interpreter/main.w:258-265",
     "sources/interpreter/axis.w:3290-3310"
   ],
-  "notes": "Covers let-declaration function-definition sugar (single and multi parameter), recursive functions in declaration and expression form with explicit result types, parameterless sugar, and recursive closures capturing their let scope. Reference captured by HPC job 3498562 against the frozen atlasofliegroups-4d3e9449 oracle; raw stdout normalized to six integer Value events. Closure printing is deliberately unexercised: the Rust closure value carries no source location yet. Differential evidence remains pending until the pipeline_swap_diff run."
+  "notes": "Covers let-declaration function-definition sugar (single and multi parameter), recursive functions in declaration and expression form with explicit result types, parameterless sugar, and recursive closures capturing their let scope. Reference captured by HPC job 3498562 against the frozen atlasofliegroups-4d3e9449 oracle; raw stdout normalized to six integer Value events. Closure printing is deliberately unexercised: the Rust closure value carries no source location yet. Differential evidence recorded by pipeline_swap_diff job 3498653 at commit f773695: PASS."
 }

@@ -12,10 +12,11 @@
   "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
   "oracle_stderr_sha256": "b5d189ae9c0a3d856fc7c34511a95fa0487aa6c6af77a59cbac0855ecfb34509",
   "capture_artifacts_sha256": "e957ee00adaf8e04d2929097d315d4dc50def659e73df3f835def66fe199819c",
-  "rust_status": "implemented_pending_hpc",
+  "rust_status": "verified_hpc",
+  "differential_job": "3498653",
   "upstream_evidence": [
     "sources/interpreter/parser.y:231",
     "sources/interpreter/parser.y:246-257"
   ],
-  "notes": "Rejected companions of eval/functions_b3b: a body type error under definition sugar, a recursive call with a mismatched argument type, and a recursive declaration missing its result type. Reference captured by HPC job 3498562 against the frozen atlasofliegroups-4d3e9449 oracle; raw stderr normalized to three Diagnostic events. The bison expecting-list after 'unexpected IF' is not asserted: exact prose beyond the offending token is tracked separately from semantic equality. Differential evidence remains pending until the pipeline_swap_diff run."
+  "notes": "Rejected companions of eval/functions_b3b: a body type error under definition sugar, a recursive call with a mismatched argument type, and a recursive declaration missing its result type. Reference captured by HPC job 3498562 against the frozen atlasofliegroups-4d3e9449 oracle; raw stderr normalized to three Diagnostic events. The bison expecting-list after 'unexpected IF' is not asserted: exact prose beyond the offending token is tracked separately from semantic equality. Differential evidence recorded by pipeline_swap_diff job 3498653 at commit f773695: PASS."
 }
