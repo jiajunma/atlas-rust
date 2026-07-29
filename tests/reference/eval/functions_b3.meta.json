@@ -12,12 +12,13 @@
   "oracle_stdout_sha256": "c5bd847596434947bfbf19bf69fbeede4ebc37252aac7bb2e0a18e5daac4230c",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "capture_artifacts_sha256": "bbebc860b6bf60213361e883a025652474551d8ce64ef37af3c42daafd67a48f",
-  "rust_status": "implemented_pending_hpc",
+  "rust_status": "verified_hpc",
+  "differential_job": "3498527",
   "upstream_evidence": [
     "sources/interpreter/parser.y:224-233",
     "sources/interpreter/parser.y:323-337",
     "sources/interpreter/axis.w:3290-3310",
     "sources/interpreter/axis.w:3518-3571"
   ],
-  "notes": "Covers typed non-recursive lambda calls, parameterless closure capture, an escaped captured closure, return interception at a closure boundary, and identifier selector application. Reference captured by HPC job 3498312 against the frozen atlasofliegroups-4d3e9449 oracle; raw stdout normalized to five integer Value events. Differential evidence remains pending until the pipeline_swap_diff run."
+  "notes": "Covers typed non-recursive lambda calls, parameterless closure capture, an escaped captured closure, return interception at a closure boundary, and identifier selector application. Reference captured by HPC job 3498312 against the frozen atlasofliegroups-4d3e9449 oracle; raw stdout normalized to five integer Value events. Differential verified by pipeline_swap_diff job 3498527."
 }

@@ -12,11 +12,12 @@
   "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
   "oracle_stderr_sha256": "6ed5eb8f5d3b174ab6eb83cde5c5ab94e2423a8088cf0213223ef19e16075206",
   "capture_artifacts_sha256": "e4fc3b4c0c3a1fae57fb6005d9e396752edc1621511e393ec3d062dee9b39ef8",
-  "rust_status": "implemented_pending_hpc",
+  "rust_status": "verified_hpc",
+  "differential_job": "3498527",
   "upstream_evidence": [
     "sources/interpreter/parser.y:224-233",
     "sources/interpreter/parser.y:323-337",
     "sources/interpreter/axis.w:3290-3310"
   ],
-  "notes": "Rejected companions of eval/functions_b3: top-level return rejected at analysis, argument type mismatch, wrong arity reported as void against the parameter pattern, calling a non-function, a missing-colon lambda syntax error, and an undefined selector target. Reference captured by HPC job 3498466 against the frozen atlasofliegroups-4d3e9449 oracle; raw stderr normalized to six Diagnostic events. Differential evidence remains pending until the pipeline_swap_diff run."
+  "notes": "Rejected companions of eval/functions_b3: top-level return rejected at analysis, argument type mismatch, wrong arity reported as void against the parameter pattern, calling a non-function, a missing-colon lambda syntax error, and an undefined selector target. Reference captured by HPC job 3498466 against the frozen atlasofliegroups-4d3e9449 oracle; raw stderr normalized to six Diagnostic events. Differential verified by pipeline_swap_diff job 3498527."
 }
