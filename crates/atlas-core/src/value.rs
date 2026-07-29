@@ -47,8 +47,11 @@ pub enum Value {
 /// defining scope's frames alive after it pops.
 pub struct Closure {
     /// Number of argument slots a call binds; 0 means parameterless, and
-    /// the call pushes no frame (empty layers get no frame).
+    /// the call pushes no frame beyond the self slot below.
     pub parameters: usize,
+    /// A recursive closure: a call binds the closure itself at slot 0 of
+    /// the call frame, ahead of the argument slots (upstream `maybe_push`).
+    pub recursive: bool,
     pub body: Rc<TypedExpr>,
     pub frame: Option<Rc<Frame>>,
 }
@@ -58,6 +61,7 @@ impl fmt::Debug for Closure {
         formatter
             .debug_struct("Closure")
             .field("parameters", &self.parameters)
+            .field("recursive", &self.recursive)
             .field("body", &self.body)
             .field("frame", &self.frame.as_ref().map(Rc::as_ptr))
             .finish()
@@ -69,6 +73,7 @@ impl fmt::Debug for Closure {
 impl PartialEq for Closure {
     fn eq(&self, other: &Self) -> bool {
         self.parameters == other.parameters
+            && self.recursive == other.recursive
             && Rc::ptr_eq(&self.body, &other.body)
             && match (&self.frame, &other.frame) {
                 (None, None) => true,

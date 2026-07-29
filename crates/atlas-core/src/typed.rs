@@ -109,11 +109,13 @@ pub enum TypedExpr {
         arguments: Vec<TypedExpr>,
         span: SourceSpan,
     },
-    /// A non-recursive function literal; evaluation captures the current
-    /// frame chain into a closure value (upstream `lambda_expression`).
+    /// A function literal; evaluation captures the current frame chain
+    /// into a closure value (upstream `lambda_expression`).
     Closure {
         /// Number of argument slots a call binds; 0 pushes no frame.
         parameters: usize,
+        /// A recursive closure additionally binds itself at slot 0.
+        recursive: bool,
         body: Rc<TypedExpr>,
     },
     /// `return value`, unwound to the innermost call boundary.
@@ -502,6 +504,7 @@ pub fn convert_expr(
             body,
             span,
         } => convert_lambda_expression(parameters, body, *span, required, analysis),
+        Expr::RecLambda { .. } => convert_rec_lambda_expression(expression, required, analysis),
         Expr::Return { value, span } => {
             // `return` is legal only lexically inside a function body (the
             // axis layer's return_type marker); upstream rejects it during
@@ -1042,6 +1045,7 @@ fn convert_lambda_expression(
     };
     let closure = |body: TypedExpr| TypedExpr::Closure {
         parameters: parameters.len(),
+        recursive: false,
         body: Rc::new(body),
     };
     if required.is_void() {
@@ -1064,6 +1068,90 @@ fn convert_lambda_expression(
         unreachable!("specialising to a function pattern yields a function type")
     };
     let converted = convert_expr(body, &mut parts.1, &body_analysis)?;
+    Ok(closure(converted))
+}
+
+/// Convert a recursive function literal (axis.w:3137-3158): the declared
+/// result type makes the function type fully determined, the self name is
+/// bound to that type ahead of the parameters (one shared layer, so a call
+/// frame holds self at slot 0), and the body converts against the declared
+/// result type.
+fn convert_rec_lambda_expression(
+    expression: &Expr,
+    required: &mut Type,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, Diagnostic> {
+    let Expr::RecLambda {
+        self_name,
+        parameters,
+        result_type,
+        body,
+        span,
+        ..
+    } = expression
+    else {
+        unreachable!("only called for recursive lambdas")
+    };
+    let mut names = BTreeSet::new();
+    names.insert(self_name.as_str());
+    for parameter in parameters {
+        if !names.insert(parameter.name.as_str()) {
+            return Err(Diagnostic::new(
+                ErrorKind::Name,
+                format!("Multiple binding of '{}' in same scope", parameter.name),
+                Some(parameter.name_span),
+            ));
+        }
+    }
+    let mut parameter_types = Vec::with_capacity(parameters.len());
+    let mut typed_parameters = Vec::with_capacity(parameters.len());
+    for parameter in parameters {
+        let parameter_type = parameter.type_expr.resolve();
+        parameter_types.push(parameter_type.clone());
+        typed_parameters.push((parameter.name.clone(), parameter_type));
+    }
+    let function_type = Type::function(Type::tuple(parameter_types), result_type.resolve());
+    let mut locals = analysis.locals.clone();
+    // The call frame always holds the self binding, so depths shift by one
+    // even for a parameterless recursive function.
+    for (_, depth, _) in locals.values_mut() {
+        *depth += 1;
+    }
+    locals.insert(
+        self_name.clone(),
+        (Rc::new(RefCell::new(function_type.clone())), 0, 0),
+    );
+    for (offset, (name, parameter_type)) in typed_parameters.into_iter().enumerate() {
+        locals.insert(name, (Rc::new(RefCell::new(parameter_type)), 0, offset + 1));
+    }
+    let body_analysis = Analysis {
+        types: analysis.types,
+        globals: analysis.globals,
+        locals,
+        in_function: true,
+    };
+    let closure = |body: TypedExpr| TypedExpr::Closure {
+        parameters: parameters.len(),
+        recursive: true,
+        body: Rc::new(body),
+    };
+    if required.is_void() {
+        let mut dummy = result_type.resolve();
+        let converted = convert_expr(body, &mut dummy, &body_analysis)?;
+        return Ok(TypedExpr::Void(Box::new(closure(converted))));
+    }
+    if !required.specialise(&function_type, analysis.types) {
+        return Err(type_error(
+            format!(
+                "type {} does not match required pattern {}",
+                function_type.display(analysis.types),
+                required.display(analysis.types)
+            ),
+            *span,
+        ));
+    }
+    let mut result_required = result_type.resolve();
+    let converted = convert_expr(body, &mut result_required, &body_analysis)?;
     Ok(closure(converted))
 }
 
@@ -2467,9 +2555,14 @@ impl TypedExpr {
                     .collect::<Result<Vec<_>, _>>()?;
                 builtin_registry()[*builtin].run(values, *span, level)
             }
-            Self::Closure { parameters, body } => Ok(at_level(level, || {
+            Self::Closure {
+                parameters,
+                recursive,
+                body,
+            } => Ok(at_level(level, || {
                 Value::Closure(Rc::new(Closure {
                     parameters: *parameters,
+                    recursive: *recursive,
                     body: Rc::clone(body),
                     frame: context.capture(),
                 }))
@@ -2489,7 +2582,7 @@ impl TypedExpr {
                 // The argument is one value: a tuple destructures into the
                 // frame slots, anything else binds the single parameter; a
                 // parameterless call pushes no frame (empty-layer rule).
-                let slots = match closure.parameters {
+                let mut slots = match closure.parameters {
                     0 => None,
                     1 => Some(vec![Rc::new(argument)]),
                     _ => match argument {
@@ -2497,6 +2590,15 @@ impl TypedExpr {
                         other => panic!("multi-parameter call saw non-tuple argument {other}"),
                     },
                 };
+                // A recursive closure binds itself at slot 0, ahead of the
+                // argument slots (upstream `maybe_push`, axis.w:3548-3560);
+                // the new frame is not part of the captured chain, so the
+                // Rc structure stays acyclic.
+                if closure.recursive {
+                    slots
+                        .get_or_insert_with(Vec::new)
+                        .insert(0, Rc::new(Value::Closure(closure.clone())));
+                }
                 context.with_context(closure.frame.clone(), |context| {
                     let result = match slots {
                         Some(slots) => context
@@ -3768,5 +3870,66 @@ mod tests {
             .expect_err("non-function call");
         assert_eq!(error.kind, ErrorKind::Type);
         assert_eq!(error.message, "found int while (*->*) was needed.");
+    }
+
+    #[test]
+    fn let_function_sugar_and_recursion_evaluate() {
+        // The B3b fixture shapes (sanity expectations only; the oracle
+        // capture is still pending).
+        for (source, expected) in [
+            ("let f(int n) = n + 1 in f(2)", 3),
+            ("let add(int a, int b) = a + b in add(20, 22)", 42),
+            (
+                "let rec_fun f(int n) = int: if n=0 then 1 else n*f(n-1) fi in f(5)",
+                120,
+            ),
+            (
+                "let f = rec_fun g(int n) int: if n=0 then 1 else n*g(n-1) fi in f(5)",
+                120,
+            ),
+            ("let x = 41 in let f() = x + 1 in f()", 42),
+            (
+                "let x = 2 in let rec_fun f(int n) = int: if n=0 then 1 else x*f(n-1) fi in f(4)",
+                16,
+            ),
+            // `return` is legal inside a recursive body.
+            (
+                "let rec_fun f(int n) = int: if n=0 then return 1 else n*f(n-1) fi in f(5)",
+                120,
+            ),
+        ] {
+            let (type_, value) = convert_and_run(source)
+                .unwrap_or_else(|error| panic!("{source} should convert and run: {error:?}"));
+            assert_eq!(type_, Type::Primitive(Prim::Int), "source: {source}");
+            assert_eq!(value, Value::Integer(expected.into()), "source: {source}");
+        }
+
+        // A recursive closure escaping its defining scope keeps both the
+        // captured frame and its self binding.
+        let (_, value) = convert_and_run(
+            "let make = (int x): rec_fun f(int n) int: if n=0 then x else f(n-1) fi in make(7)(2)",
+        )
+        .expect("escaping recursive closure");
+        assert_eq!(value, Value::Integer(7.into()));
+    }
+
+    #[test]
+    fn recursive_and_sugar_rejections_are_analysis_errors() {
+        let error = convert_and_run("let f(int n) = n + \"x\" in f(2)").expect_err("bad body");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(
+            error.message,
+            "Failed to match '+' with argument type (int,string)"
+        );
+
+        let error =
+            convert_and_run("let rec_fun f(int n) = int: if n=0 then 1 else n*f(\"x\") fi in f(5)")
+                .expect_err("bad recursive call argument");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(error.message, "found string while int was needed.");
+
+        let error = convert_and_run("rec_fun f(int f) int: f").expect_err("self shadows parameter");
+        assert_eq!(error.kind, ErrorKind::Name);
+        assert!(error.message.contains("Multiple binding of 'f'"));
     }
 }

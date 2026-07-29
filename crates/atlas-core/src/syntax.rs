@@ -21,6 +21,9 @@ use crate::{
 
 lalrpop_util::lalrpop_mod!(
     #[allow(clippy::result_large_err)]
+    // The generated symbol enum size tracks the AST; boxing decisions in
+    // generated code are LALRPOP's, not ours.
+    #[allow(clippy::large_enum_variant)]
     grammar
 );
 
@@ -106,6 +109,19 @@ pub enum Expr {
     /// `return value`, intercepted by a function-call boundary during eval.
     Return {
         value: Box<Expr>,
+        span: SourceSpan,
+    },
+    /// A recursive function literal `rec_fun name(params) result: body`
+    /// (parser.y:231). The declared result type is the body's context
+    /// type, and `name` is bound to the closure itself inside the body.
+    RecLambda {
+        self_name: String,
+        self_span: SourceSpan,
+        parameters: Vec<LambdaParam>,
+        // Boxed to keep `Expr` small (and downstream enums under clippy's
+        // `large_enum_variant` threshold).
+        result_type: Box<TypeExpr>,
+        body: Box<Expr>,
         span: SourceSpan,
     },
     Group {
@@ -241,6 +257,7 @@ impl Expr {
             | Self::Call { span, .. }
             | Self::Lambda { span, .. }
             | Self::Return { span, .. }
+            | Self::RecLambda { span, .. }
             | Self::Group { span, .. }
             | Self::Conditional { span, .. }
             | Self::Cast { span, .. } => *span,
@@ -367,6 +384,7 @@ pub enum ParserToken {
     Or(SourceSpan),
     Not(SourceSpan),
     Return(SourceSpan),
+    RecFun(SourceSpan),
     At(SourceSpan),
     Dot(SourceSpan),
     LParen(SourceSpan),
@@ -410,6 +428,7 @@ impl ParserToken {
             | Self::Or(span)
             | Self::Not(span)
             | Self::Return(span)
+            | Self::RecFun(span)
             | Self::At(span)
             | Self::Dot(span)
             | Self::LParen(span)
@@ -453,6 +472,7 @@ impl fmt::Display for ParserToken {
             Self::Or(_) => "or",
             Self::Not(_) => "not",
             Self::Return(_) => "return",
+            Self::RecFun(_) => "rec_fun",
             Self::At(_) => "@",
             Self::Dot(_) => ".",
             Self::LParen(_) => "(",
@@ -573,6 +593,7 @@ fn parser_tokens_from_tokens(
                         "elif" => ParserToken::Elif(span),
                         "fi" => ParserToken::Fi(span),
                         "return" => ParserToken::Return(span),
+                        "rec_fun" => ParserToken::RecFun(span),
                         _ => ParserToken::Unsupported(SpannedValue { value: word, span }),
                     };
                     Some(Ok((token, span)))
@@ -690,14 +711,14 @@ fn syntax_error(
 ) -> ParseError {
     let (message, span) = match error {
         lalrpop_util::ParseError::InvalidToken { location } => (
-            "invalid token",
+            "invalid token".to_string(),
             spans
                 .get(location)
                 .copied()
                 .or_else(|| Some(source.span(source.as_str().len(), source.as_str().len()))),
         ),
         lalrpop_util::ParseError::UnrecognizedEof { location, .. } => (
-            "unexpected end of input",
+            "unexpected end of input".to_string(),
             spans
                 .get(location)
                 .copied()
@@ -710,21 +731,47 @@ fn syntax_error(
         | lalrpop_util::ParseError::ExtraToken {
             token: (start, token, _),
         } => {
-            // The oracle reports the bison token name; only identifiers get
-            // the exact wording until a fuller token table is needed.
-            let message = if matches!(token, ParserToken::Identifier(_)) {
-                "syntax error, unexpected IDENT"
-            } else {
-                "unexpected token"
+            // The oracle reports the bison token name; identifiers and the
+            // reserved-word keywords get the exact wording, everything else
+            // keeps the generic fallback until a fuller token table is needed.
+            let message = match bison_token_name(&token) {
+                Some(name) => format!("syntax error, unexpected {name}"),
+                None => "unexpected token".to_string(),
             };
             (
                 message,
                 spans.get(start).copied().or_else(|| Some(token.span())),
             )
         }
-        lalrpop_util::ParseError::User { .. } => ("parser input error", None),
+        lalrpop_util::ParseError::User { .. } => ("parser input error".to_string(), None),
     };
     Diagnostic::new(ErrorKind::Syntax, message, span)
+}
+
+/// The bison token name used by the oracle's `syntax error, unexpected X`
+/// wording, for the tokens we match exactly: identifiers and the
+/// reserved-word keywords (bison names those after their uppercase
+/// spelling). Every other token keeps the generic fallback.
+fn bison_token_name(token: &ParserToken) -> Option<&'static str> {
+    match token {
+        ParserToken::Identifier(_) => Some("IDENT"),
+        ParserToken::If(_) => Some("IF"),
+        ParserToken::Then(_) => Some("THEN"),
+        ParserToken::Else(_) => Some("ELSE"),
+        ParserToken::Elif(_) => Some("ELIF"),
+        ParserToken::Fi(_) => Some("FI"),
+        ParserToken::Let(_) => Some("LET"),
+        ParserToken::In(_) => Some("IN"),
+        ParserToken::Begin(_) => Some("BEGIN"),
+        ParserToken::End(_) => Some("END"),
+        ParserToken::And(_) => Some("AND"),
+        ParserToken::Or(_) => Some("OR"),
+        ParserToken::Not(_) => Some("NOT"),
+        ParserToken::Return(_) => Some("RETURN"),
+        ParserToken::RecFun(_) => Some("REC_FUN"),
+        ParserToken::VoidType(_) => Some("VOID"),
+        _ => None,
+    }
 }
 
 fn join_span(start: SourceSpan, end: SourceSpan) -> SourceSpan {
@@ -875,6 +922,48 @@ fn return_expression(return_span: SourceSpan, value: Expr) -> Expr {
         span: join_span(return_span, value.span()),
         value: Box::new(value),
     }
+}
+
+/// `rec_fun name(params) result: body` (parser.y:231).
+fn rec_lambda(
+    rec_span: SourceSpan,
+    self_name: SpannedValue<String>,
+    parameters: Vec<LambdaParam>,
+    result_type: TypeExpr,
+    body: Expr,
+) -> Expr {
+    Expr::RecLambda {
+        span: join_span(rec_span, body.span()),
+        self_name: self_name.value,
+        self_span: self_name.span,
+        parameters,
+        result_type: Box::new(result_type),
+        body: Box::new(body),
+    }
+}
+
+/// `name(params) = body` in a let declaration desugars to a plain lambda
+/// binding (parser.y:251-257).
+fn function_binding(
+    target: SpannedValue<String>,
+    open: SourceSpan,
+    parameters: Vec<LambdaParam>,
+    body: Expr,
+) -> LetBinding {
+    let_binding(target, lambda(open, parameters, body))
+}
+
+/// `rec_fun name(params) = result: body` in a let declaration desugars to
+/// `name = rec_fun name (params) result: body` (parser.y:256-257).
+fn rec_function_binding(
+    rec_span: SourceSpan,
+    target: SpannedValue<String>,
+    parameters: Vec<LambdaParam>,
+    result_type: TypeExpr,
+    body: Expr,
+) -> LetBinding {
+    let initializer = rec_lambda(rec_span, target.clone(), parameters, result_type, body);
+    let_binding(target, initializer)
 }
 
 fn subscription_suffix(index: Expr, reversed: bool, close: SourceSpan) -> PostfixSuffix {
@@ -1330,6 +1419,7 @@ mod tests {
                     .join(",")
             ),
             Expr::Lambda { body, .. } => format!("lambda({})", expression_shape(body)),
+            Expr::RecLambda { body, .. } => format!("rec_lambda({})", expression_shape(body)),
             Expr::Return { value, .. } => format!("return({})", expression_shape(value)),
         }
     }
@@ -1617,5 +1707,61 @@ mod tests {
         let error = parse(&SourceText::new("(int n) n + 1")).expect_err("missing lambda colon");
         assert_eq!(error.kind, ErrorKind::Syntax);
         assert_eq!(error.message, "syntax error, unexpected IDENT");
+    }
+
+    #[test]
+    fn reports_bison_wording_for_an_unexpected_keyword() {
+        // Oracle (Atlas 4d3e9449): `syntax error, unexpected IF` — the
+        // rec_fun let sugar requires a result type before the body.
+        let error = parse(&SourceText::new(
+            "let rec_fun f(int n) = if n=0 then 1 else n fi in f(2)",
+        ))
+        .expect_err("rec_fun sugar without a result type");
+        assert_eq!(error.kind, ErrorKind::Syntax);
+        assert_eq!(error.message, "syntax error, unexpected IF");
+    }
+
+    #[test]
+    fn parses_rec_fun_and_let_function_sugar() {
+        assert_eq!(
+            expression_shape(&parse_one("rec_fun g(int n) int: n * g(n - 1)")),
+            "rec_lambda(*@6(n,call(g;-@4(n,1))))"
+        );
+        // `f(params) = body` desugars to a plain lambda binding.
+        assert_eq!(
+            expression_shape(&parse_one("let f(int n) = n + 1 in f(2)")),
+            "let(f=lambda(+@4(n,1)),call(f;2))"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("let add(int a, int b) = a + b in add(1, 2)")),
+            "let(add=lambda(+@4(a,b)),call(add;1,2))"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("let f() = x + 1 in f()")),
+            "let(f=lambda(+@4(x,1)),call(f;))"
+        );
+        // The rec_fun sugar binds the same name as the self reference.
+        assert_eq!(
+            expression_shape(&parse_one("let rec_fun f(int n) = int: n in f(5)")),
+            "let(f=rec_lambda(n),call(f;5))"
+        );
+    }
+
+    #[test]
+    fn parses_b3b_function_fixture() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/eval/functions_b3b.atlas"
+        ));
+        let program = parse(&source).expect("B3b function fixture parses");
+        assert_eq!(program.expressions.len(), 6);
+    }
+
+    #[test]
+    fn rejects_rec_fun_let_sugar_without_a_result_type() {
+        let error = parse(&SourceText::new(
+            "let rec_fun f(int n) = if n=0 then 1 else n fi in f(2)",
+        ))
+        .expect_err("the result type is mandatory in the sugar");
+        assert_eq!(error.kind, ErrorKind::Syntax);
     }
 }

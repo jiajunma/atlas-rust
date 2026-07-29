@@ -2,7 +2,8 @@ use super::{
     assignment, binary, cast_expression, declaration, definition, elif_tail, extend_operator_formula,
     finish_let, expression_list, finish_operator_formula, join_span, lambda, lambda_parameter,
     lambda_parameters, let_binding, let_bindings,
-    let_expression, list_expression, return_expression, selector_suffix, tuple_expression,
+    let_expression, list_expression, rec_function_binding, rec_lambda, return_expression,
+    selector_suffix, tuple_expression, function_binding,
     prepend_let_group,
     call_suffix, postfix, prefix_operator_call, slice_suffix, start_binary_formula, start_prefix_formula,
     subscription_suffix, type_group, type_function, type_primitive, type_row, type_union_append,
@@ -42,6 +43,11 @@ pub Expr: Expr = {
     <open:"("> <parameters:LambdaParameters> <_close:")"> ":" <body:Expr> => {
         lambda(open, parameters, body)
     },
+    <rec_span:"rec_fun"> <self_name:"identifier"> <_open:"(">
+        <parameters:LambdaParametersOpt> <_close:")">
+        <result_type:TypeExprNode> ":" <body:Expr> => {
+        rec_lambda(rec_span, self_name, parameters, result_type, body)
+    },
     <at:"@"> ":" <body:Expr> => lambda(at, Vec::new(), body),
     <return_span:"return"> <value:Expr> => return_expression(return_span, value),
     <expression:AssignmentExpr> => expression,
@@ -49,6 +55,11 @@ pub Expr: Expr = {
 
 // Simple typed named parameters (`type name`); destructuring, const, and
 // discard patterns remain outside this slice.
+LambdaParametersOpt: Vec<LambdaParam> = {
+    => Vec::new(),
+    <parameters:LambdaParameters> => parameters,
+};
+
 LambdaParameters: Vec<LambdaParam> = {
     <first:LambdaParam> <rest:("," <LambdaParam>)*> => lambda_parameters(first, rest),
 };
@@ -97,6 +108,17 @@ LetBindings: Vec<LetBinding> = {
 
 LetBinding: LetBinding = {
     <name:"identifier"> <_equals:"="> <initializer:Expr> => let_binding(name, initializer),
+    // `name(params) = body` and the rec_fun variant desugar to lambda
+    // bindings (parser.y:251-257).
+    <name:"identifier"> <open:"("> <parameters:LambdaParametersOpt> <_close:")">
+        <_equals:"="> <body:Expr> => {
+        function_binding(name, open, parameters, body)
+    },
+    <rec_span:"rec_fun"> <name:"identifier"> <_open:"(">
+        <parameters:LambdaParametersOpt> <_close:")"> <_equals:"=">
+        <result_type:TypeExprNode> ":" <body:Expr> => {
+        rec_function_binding(rec_span, name, parameters, result_type, body)
+    },
 };
 
 AssignmentExpr: Expr = {
@@ -275,6 +297,7 @@ extern {
         "or" => ParserToken::Or(<SourceSpan>),
         "not" => ParserToken::Not(<SourceSpan>),
         "return" => ParserToken::Return(<SourceSpan>),
+        "rec_fun" => ParserToken::RecFun(<SourceSpan>),
         "@" => ParserToken::At(<SourceSpan>),
         "." => ParserToken::Dot(<SourceSpan>),
         "(" => ParserToken::LParen(<SourceSpan>),
