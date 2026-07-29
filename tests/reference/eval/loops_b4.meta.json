@@ -1,0 +1,13 @@
+{
+  "fixture": "eval/loops_b4",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "upstream_evidence": [
+    "sources/interpreter/parser.y:364",
+    "sources/interpreter/parser.y:440-447",
+    "sources/interpreter/parser.y:506-525"
+  ],
+  "rust_status": "not_implemented",
+  "notes": "B4 loop slice, split from oracle probes loops_probe (capture 3498630) and loops_probe2 (capture 3498670). While and for loops collect each iteration's body value into a row; the breaking iteration contributes nothing; while-do (no condition) loops until break; for x@i binds the index; begin/end sequences with ';' yield the last value. Reference capture pending on HPC."
+}

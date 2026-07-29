@@ -1,8 +1,0 @@
-{
-  "fixture": "eval/loops_probe",
-  "oracle": "atlas",
-  "stage": "probe",
-  "reference_status": "pending_hpc_reference",
-  "rust_status": "not_implemented",
-  "notes": "Exploratory probe for the B4 loop slice: while loops with assignment bodies, for-in loops over rows, index bindings, sequence expressions, and break with a value. Lines will be split into accepted and rejected fixtures from the oracle behavior; this probe file is not a differential fixture."
-}

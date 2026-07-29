@@ -1,0 +1,11 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "eval/loops_b4_rejected",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind":"Diagnostic","category":"type","message":"Using 'break' not in the reach of any loop"},
+    {"kind":"Diagnostic","category":"syntax","message":"syntax error, unexpected IDENT"},
+    {"kind":"Diagnostic","category":"type","message":"Cannot iterate over value of type int"},
+    {"kind":"Diagnostic","category":"type","message":"found int while bool was needed."}
+  ]
+}
