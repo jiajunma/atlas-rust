@@ -1,0 +1,11 @@
+{
+  "fixture": "eval/precedence_b11",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "upstream_evidence": [
+    "sources/interpreter/parser.y"
+  ],
+  "rust_status": "not_implemented",
+  "notes": "B11 precedence and associativity corpus, content-identical split from probe precedence_probe (capture 3500387): multiplicative binds over additive (14, 10), additive chains are left-associative (5), '/' on integers yields a rational and chains left (2/1), comparison yields bool, '=' binds looser than '+' (true), unary minus applies before additive (1) and can follow a multiplicative operator (2 * - 3 = -6), 'not' binds tighter than 'and' (false), and '=' binds tighter than 'and' on both sides (true). Reference capture pending on HPC."
+}

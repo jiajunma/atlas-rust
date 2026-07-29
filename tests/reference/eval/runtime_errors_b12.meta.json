@@ -1,0 +1,11 @@
+{
+  "fixture": "eval/runtime_errors_b12",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "upstream_evidence": [
+    "sources/interpreter/axis.w"
+  ],
+  "rust_status": "not_implemented",
+  "notes": "B12 runtime-error corpus, content-identical split from probe runtime_errors_probe (capture 3500387). Out-of-range subscription on a row and on a string are runtime errors ('Runtime error:\\n  index N out of range (0<= . <M) in subscription <source>', normalized to the message line; the subscription source renders without spaces for rows); modulo by zero is 'Modulo zero' and integer division by zero is 'Inverse of zero'. Subscripting a tuple with a non-constant index is an ANALYSIS error ('Cannot subscript value of type (int,int) with index of type int'), classified type. Batch evaluation continues after each failure and the process exits 1. Reference capture pending on HPC."
+}

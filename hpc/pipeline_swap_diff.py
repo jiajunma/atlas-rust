@@ -148,6 +148,9 @@ FIXTURE_PLANS = (
         runnable_events=(0,),
         silent_lines=(2, 3),
     ),
+    # B11 precedence/associativity corpus and B12 runtime-error corpus.
+    FixturePlan(name="precedence_b11"),
+    FixturePlan(name="runtime_errors_b12"),
 )
 
 

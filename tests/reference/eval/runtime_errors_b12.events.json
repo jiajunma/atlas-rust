@@ -1,0 +1,32 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "eval/runtime_errors_b12",
+  "status": "pending_hpc_reference",
+  "events": [
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "index 5 out of range (0<= . <2) in subscription [1,2][5]"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "Cannot subscript value of type (int,int) with index of type int"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "index 7 out of range (0<= . <3) in subscription \"abc\"[7]"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Modulo zero"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Inverse of zero"
+    }
+  ]
+}
