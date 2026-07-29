@@ -111,10 +111,17 @@ In rough dependency order, each with its own fixture + HPC capture first:
    `selector: operator`) and unit selector `().name`. Reference events frozen
    (capture `3498619`).
 3. B4 loops (`while`/`for`, `break` without value) and `set_type` syntax.
-   Oracle probes: `loops_probe` (capture `3498630`, PASS) established that
-   `while`/`for` collect per-iteration body values into a row and that
-   `break <value>` is a syntax error; `loops_probe2` (capture pending) probes
-   value-less `break`, non-bool conditions, and non-row iteration.
+   Reference events frozen (capture `3498786`, commit `a5856a1`): loops
+   collect each iteration's body value into a row; the breaking iteration
+   contributes nothing; `while do ... od` loops until `break`; `for x@i`
+   binds the loop index.
+4. B5 `set_type` is explored by four probes (captures `3498819`, `3498820`,
+   `3498932`, `3498991`): the single-name form defines aliases plus
+   projector/injector overloads but cannot support `case` discrimination;
+   only the bracketed `set_type [ ... ]` form enters types into the tabled
+   type map (required by discrimination and recursion); union values display
+   as `value.tag`; tabled types print by name in `whattype`; `expr : type`
+   ascription is a syntax error.
 
 Before continuing, run the smallest local parser/core check with the project
 toolchain, then sync a clean committed tree to HPC and submit the relevant
