@@ -2,13 +2,21 @@
   "fixture": "eval/functions_b3_rejected",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
-  "rust_status": "implemented_pending_hpc",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3498466",
+  "source_archive_sha256": "66da94b580b6d072ae555ab91a7af1ca43bf71f13a9a7c122e68cefd661b2bb8",
   "fixture_sha256": "9d727655913227fb30ceb25c283f95d700c2692b73f99981956131acaaba9268",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
+  "oracle_stderr_sha256": "6ed5eb8f5d3b174ab6eb83cde5c5ab94e2423a8088cf0213223ef19e16075206",
+  "capture_artifacts_sha256": "e4fc3b4c0c3a1fae57fb6005d9e396752edc1621511e393ec3d062dee9b39ef8",
+  "rust_status": "implemented_pending_hpc",
   "upstream_evidence": [
     "sources/interpreter/parser.y:224-233",
     "sources/interpreter/parser.y:323-337",
     "sources/interpreter/axis.w:3290-3310"
   ],
-  "notes": "Rejected companions of eval/functions_b3: top-level return, argument type mismatch, wrong arity, calling a non-function, a missing-colon lambda syntax error, and an undefined selector target. No expected output is asserted until the raw HPC oracle capture is normalized."
+  "notes": "Rejected companions of eval/functions_b3: top-level return rejected at analysis, argument type mismatch, wrong arity reported as void against the parameter pattern, calling a non-function, a missing-colon lambda syntax error, and an undefined selector target. Reference captured by HPC job 3498466 against the frozen atlasofliegroups-4d3e9449 oracle; raw stderr normalized to six Diagnostic events. Differential evidence remains pending until the pipeline_swap_diff run."
 }

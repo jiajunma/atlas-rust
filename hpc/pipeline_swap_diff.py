@@ -92,6 +92,7 @@ FIXTURE_PLANS = (
     # B3a non-recursive functions: typed lambdas, closure capture, return at
     # the call boundary, and identifier selectors.
     FixturePlan(name="functions_b3"),
+    FixturePlan(name="functions_b3_rejected"),
 )
 
 

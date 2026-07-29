@@ -134,6 +134,9 @@ pub struct Analysis<'a> {
     pub types: &'a TypeTable,
     pub globals: &'a IdTable,
     locals: BTreeMap<String, (TypeCell, usize, usize)>,
+    /// Set while converting a function body: `return` is legal only there
+    /// (the axis layer's return_type marker).
+    in_function: bool,
 }
 
 impl<'a> Analysis<'a> {
@@ -142,6 +145,7 @@ impl<'a> Analysis<'a> {
             types,
             globals,
             locals: BTreeMap::new(),
+            in_function: false,
         }
     }
 }
@@ -498,9 +502,17 @@ pub fn convert_expr(
             body,
             span,
         } => convert_lambda_expression(parameters, body, *span, required, analysis),
-        Expr::Return { value, .. } => {
-            // Inside a function body the enclosing context is the
-            // function's result type (the axis layer's return_type);
+        Expr::Return { value, span } => {
+            // `return` is legal only lexically inside a function body (the
+            // axis layer's return_type marker); upstream rejects it during
+            // analysis, before anything evaluates.
+            if !analysis.in_function {
+                return Err(type_error(
+                    "One can only use 'return' within a function body".into(),
+                    *span,
+                ));
+            }
+            // The enclosing context is the function's result type;
             // evaluation unwinds to the innermost call boundary.
             let converted = convert_expr(value, required, analysis)?;
             Ok(TypedExpr::Return {
@@ -731,6 +743,7 @@ pub fn convert_expr(
                             types: analysis.types,
                             globals: analysis.globals,
                             locals: locals.clone(),
+                            in_function: analysis.in_function,
                         },
                     )?;
                     pending.push((binding.name.clone(), binding_type, converted));
@@ -768,6 +781,7 @@ pub fn convert_expr(
                     types: analysis.types,
                     globals: analysis.globals,
                     locals,
+                    in_function: analysis.in_function,
                 },
             )?;
             for initializers in groups.into_iter().rev() {
@@ -848,13 +862,24 @@ pub fn convert_expr(
                     );
                 }
             }
-            // Fallback path: the callee converts against the generic
-            // function pattern (*->*), the argument against its parameter
-            // type (axis-types.w:2403-2410).
-            let mut function_type = Type::function(Type::Undetermined, Type::Undetermined);
-            let function = convert_expr(callee, &mut function_type, analysis)?;
-            let Type::Function(parts) = function_type else {
-                unreachable!("converting against (*->*) yields a function type")
+            // Fallback path: the callee must have function type and the
+            // argument converts against its parameter type; mismatches
+            // carry the upstream wording (axis-types.w:2403-2410).
+            let mut callee_type = Type::Undetermined;
+            let function = convert_expr(callee, &mut callee_type, analysis)?;
+            let mut function_pattern = Type::function(Type::Undetermined, Type::Undetermined);
+            if !function_pattern.specialise(&callee_type, analysis.types) {
+                return Err(type_error(
+                    format!(
+                        "found {} while {} was needed.",
+                        callee_type.display(analysis.types),
+                        function_pattern.display(analysis.types)
+                    ),
+                    callee.span(),
+                ));
+            }
+            let Type::Function(parts) = function_pattern else {
+                unreachable!("a specialised (*->*) pattern stays a function type")
             };
             let (argument_type, result_type) = *parts;
             // Closures take their argument as ONE value (axis.w:3222): a
@@ -867,8 +892,30 @@ pub fn convert_expr(
                     span: *span,
                 }
             };
-            let mut argument_required = argument_type;
-            let argument = convert_expr(&argument_source, &mut argument_required, analysis)?;
+            // A-priori conversion, as for overloads: convert once in
+            // undetermined context, then re-convert only when the parameter
+            // pattern needs a coercion; a genuine mismatch reports the
+            // a-priori type against the pattern.
+            let mut a_priori = Type::Undetermined;
+            let converted_argument = convert_expr(&argument_source, &mut a_priori, analysis)?;
+            let mut expected = argument_type.clone();
+            let argument = if expected.specialise(&a_priori, analysis.types) {
+                converted_argument
+            } else {
+                if crate::coercions::is_close(&a_priori, &argument_type, analysis.types) & 0x1 == 0
+                {
+                    return Err(type_error(
+                        format!(
+                            "found {} while {} was needed.",
+                            a_priori.display(analysis.types),
+                            argument_type.display(analysis.types)
+                        ),
+                        argument_source.span(),
+                    ));
+                }
+                expected = argument_type;
+                convert_expr(&argument_source, &mut expected, analysis)?
+            };
             conform_types(
                 &result_type,
                 required,
@@ -991,6 +1038,7 @@ fn convert_lambda_expression(
         types: analysis.types,
         globals: analysis.globals,
         locals,
+        in_function: true,
     };
     let closure = |body: TypedExpr| TypedExpr::Closure {
         parameters: parameters.len(),
@@ -3639,13 +3687,56 @@ mod tests {
     }
 
     #[test]
-    fn a_return_reaching_top_level_is_an_error() {
-        let mut context = TypedContext::new();
-        let error = context
-            .execute(&command("return 3"))
-            .expect_err("top-level return");
-        assert_eq!(error.kind, ErrorKind::Runtime);
-        assert_eq!(error.message, "illegal control flow at top level");
+    fn a_return_outside_a_function_body_is_rejected_at_analysis() {
+        let error = convert_and_run("return 3").expect_err("top-level return");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(
+            error.message,
+            "One can only use 'return' within a function body"
+        );
+
+        // Analysis rejects the whole expression before anything evaluates,
+        // even when the return hides behind a non-function construct.
+        let error = convert_and_run("if true then return 1 fi").expect_err("conditional return");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(
+            error.message,
+            "One can only use 'return' within a function body"
+        );
+
+        // ...while a return lexically inside a body converts and unwinds.
+        let (_, value) =
+            convert_and_run("let f = (int n): if n = 0 then return 1 else 2 fi in f(0)")
+                .expect("return inside a body");
+        assert_eq!(value, Value::Integer(1.into()));
+    }
+
+    #[test]
+    fn user_call_mismatches_use_the_oracle_wording() {
+        let error =
+            convert_and_run("let f = (int n): n + 1 in f(\"x\")").expect_err("string argument");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(error.message, "found string while int was needed.");
+
+        // The empty argument list is void matched against the pattern.
+        let error = convert_and_run("let f = (int n): n + 1 in f()").expect_err("missing argument");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(error.message, "found void while int was needed.");
+
+        let error = convert_and_run("let x = 1 in x(2)").expect_err("non-function callee");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(error.message, "found int while (*->*) was needed.");
+
+        // Coercible arguments still convert against the parameter type.
+        let (type_, value) =
+            convert_and_run("let f = (rat x): x + 1 in f(2)").expect("coerced argument");
+        assert_eq!(type_, rat_type());
+        assert_eq!(value.to_string(), "3/1");
+
+        // An undefined selector keeps the name error.
+        let error = convert_and_run("2.g").expect_err("undefined selector");
+        assert_eq!(error.kind, ErrorKind::Name);
+        assert_eq!(error.message, "Undefined identifier 'g'");
     }
 
     #[test]
@@ -3676,6 +3767,6 @@ mod tests {
             .execute(&command("x(1)"))
             .expect_err("non-function call");
         assert_eq!(error.kind, ErrorKind::Type);
-        assert!(error.message.contains("does not match required pattern"));
+        assert_eq!(error.message, "found int while (*->*) was needed.");
     }
 }

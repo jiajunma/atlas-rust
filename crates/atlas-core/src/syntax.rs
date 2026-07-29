@@ -709,10 +709,19 @@ fn syntax_error(
         }
         | lalrpop_util::ParseError::ExtraToken {
             token: (start, token, _),
-        } => (
-            "unexpected token",
-            spans.get(start).copied().or_else(|| Some(token.span())),
-        ),
+        } => {
+            // The oracle reports the bison token name; only identifiers get
+            // the exact wording until a fuller token table is needed.
+            let message = if matches!(token, ParserToken::Identifier(_)) {
+                "syntax error, unexpected IDENT"
+            } else {
+                "unexpected token"
+            };
+            (
+                message,
+                spans.get(start).copied().or_else(|| Some(token.span())),
+            )
+        }
         lalrpop_util::ParseError::User { .. } => ("parser input error", None),
     };
     Diagnostic::new(ErrorKind::Syntax, message, span)
@@ -1601,5 +1610,12 @@ mod tests {
         ));
         let program = parse(&source).expect("B3a function fixture parses");
         assert_eq!(program.expressions.len(), 5);
+    }
+
+    #[test]
+    fn reports_bison_wording_for_an_unexpected_identifier() {
+        let error = parse(&SourceText::new("(int n) n + 1")).expect_err("missing lambda colon");
+        assert_eq!(error.kind, ErrorKind::Syntax);
+        assert_eq!(error.message, "syntax error, unexpected IDENT");
     }
 }

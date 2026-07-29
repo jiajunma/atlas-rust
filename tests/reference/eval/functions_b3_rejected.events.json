@@ -1,7 +1,13 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "eval/functions_b3_rejected",
-  "status": "pending_hpc_reference",
-  "events": [],
-  "capture_required": "Freeze normalized Atlas events only after an HPC raw capture of every fixture line."
+  "status": "verified_hpc_reference",
+  "events": [
+    {"kind":"Diagnostic","category":"type","message":"One can only use 'return' within a function body"},
+    {"kind":"Diagnostic","category":"type","message":"found string while int was needed."},
+    {"kind":"Diagnostic","category":"type","message":"found void while int was needed."},
+    {"kind":"Diagnostic","category":"type","message":"found int while (*->*) was needed."},
+    {"kind":"Diagnostic","category":"syntax","message":"syntax error, unexpected IDENT"},
+    {"kind":"Diagnostic","category":"name","message":"Undefined identifier 'g'"}
+  ]
 }
