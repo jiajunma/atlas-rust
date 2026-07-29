@@ -2,12 +2,21 @@
   "fixture": "eval/file_commands_b9_rejected",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3499747",
+  "source_archive_sha256": "7098eed25795e41ca23b3b8d504ccd2ac1086a131bb7603fdf6da98349f89edc",
+  "fixture_sha256": "5b201fc126a4b340ba9efbb9b80848f394382c0fd5340e1085010b0777885b05",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "794e65b89c147da69171b5fcad659b9d7ea686a6e41ea52697ee1ae7b3df400e",
+  "oracle_stderr_sha256": "64ce96575617748bc602ddfffbb9b0620c9f811082ab968ef854e730fedfb040",
+  "capture_artifacts_sha256": "262c453e126da99ac660d582ef8f5b125e27ffedef4e74ca3da90af514f97669",
   "upstream_evidence": [
     "sources/interpreter/lexer.w:558-560",
     "sources/interpreter/parser.y:180-181",
     "sources/interpreter/main.w:504-511"
   ],
   "rust_status": "not_implemented",
-  "notes": "Rejected companions of eval/file_commands_b9, split from probe file_commands_probe (capture 3499729). A tofile command accepts only an expression: '> \"x\" set qfc = 10' is a bison syntax error whose offending token is '=' (the oracle's full line reads \"syntax error, unexpected '=', expecting :=\"; per convention only the offending token is asserted, and the oracle's caret echo line is not part of the contract). Failing to open the redirect target prints 'Failed to open <name>' directly on stderr (not via the error machinery), skips the line, and batch evaluation continues, so it is classified as a runtime diagnostic. Reference capture pending on HPC."
+  "notes": "Rejected companions of eval/file_commands_b9, split from probe file_commands_probe (capture 3499729). A tofile command accepts only an expression: '> \"x\" set qfc = 10' is a bison syntax error whose offending token is '=' (the oracle's full line reads \"syntax error, unexpected '=', expecting :=\"; per convention only the offending token is asserted, and the oracle's caret echo line is not part of the contract). Failing to open the redirect target prints 'Failed to open <name>' directly on stderr (not via the error machinery), skips the line, and batch evaluation continues, so it is classified as a runtime diagnostic. Reference captured by HPC job 3499747 against the frozen atlasofliegroups-4d3e9449 oracle (re-take of the dirty-tree capture 3499746); oracle streams match the expected events verbatim. Differential evidence remains pending until the pipeline_swap_diff run."
 }

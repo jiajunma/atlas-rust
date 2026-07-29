@@ -1,8 +1,0 @@
-{
-  "fixture": "eval/file_commands_probe",
-  "oracle": "atlas",
-  "stage": "probe",
-  "reference_status": "pending_hpc_reference",
-  "rust_status": "not_implemented",
-  "notes": "Exploratory probe for the file-command slice (lexer.w:558-560, parser.y:180-181, main.w:504-511): '> \"f\" expr' evaluates expr and writes only the 'Value: ...' line to f (truncating), '>> \"f\" expr' appends; report lines such as 'Variable qfc: int' still go to stdout and a void-valued command writes nothing to the file; failing to open the target prints 'Failed to open <name>' on stderr, skips the line, and batch evaluation continues. Also probes whether a bare '<' quoted name is required for fromfile. Lines will be split into accepted and rejected fixtures from the oracle behavior; this probe file is not a differential fixture."
-}
