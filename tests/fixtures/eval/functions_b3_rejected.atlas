@@ -1,0 +1,6 @@
+return 1
+let f = (int n): n + 1 in f("x")
+let f = (int n): n + 1 in f()
+let x = 1 in x(2)
+let f = (int n) n + 1 in f(2)
+2.g

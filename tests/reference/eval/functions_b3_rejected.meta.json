@@ -1,0 +1,14 @@
+{
+  "fixture": "eval/functions_b3_rejected",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "implemented_pending_hpc",
+  "fixture_sha256": "9d727655913227fb30ceb25c283f95d700c2692b73f99981956131acaaba9268",
+  "upstream_evidence": [
+    "sources/interpreter/parser.y:224-233",
+    "sources/interpreter/parser.y:323-337",
+    "sources/interpreter/axis.w:3290-3310"
+  ],
+  "notes": "Rejected companions of eval/functions_b3: top-level return, argument type mismatch, wrong arity, calling a non-function, a missing-colon lambda syntax error, and an undefined selector target. No expected output is asserted until the raw HPC oracle capture is normalized."
+}
