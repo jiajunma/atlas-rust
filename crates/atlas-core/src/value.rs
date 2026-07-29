@@ -1,16 +1,20 @@
 //! Values produced by the Atlas evaluator.
 
 use std::fmt;
+use std::rc::Rc;
 
 use malachite::{Integer as BigInt, Rational as BigRational};
+
+use crate::frames::Frame;
+use crate::typed::TypedExpr;
 
 pub use crate::domain_builtins::DomainValue;
 pub use crate::linear_values::{Matrix, RatVec, Vec32};
 
 /// The Atlas value model currently covered by the evaluator.
 ///
-/// Functions and domain handles will be added as separate variants once their
-/// language contracts have been frozen against Atlas.
+/// Domain handles arrived with the domain slice; closures (non-recursive
+/// functions) with the B3a function slice.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Value {
     Integer(BigInt),
@@ -33,7 +37,48 @@ pub enum Value {
         value: Box<Value>,
     },
     Domain(DomainValue),
+    /// A non-recursive closure: the shared typed body plus the captured
+    /// frame chain (upstream `closure_value`, axis.w:3209-3236).
+    Closure(Rc<Closure>),
 }
+
+/// The payload of a closure value. The body is shared between every closure
+/// created from the same lambda literal; the captured chain keeps the
+/// defining scope's frames alive after it pops.
+pub struct Closure {
+    /// Number of argument slots a call binds; 0 means parameterless, and
+    /// the call pushes no frame (empty layers get no frame).
+    pub parameters: usize,
+    pub body: Rc<TypedExpr>,
+    pub frame: Option<Rc<Frame>>,
+}
+
+impl fmt::Debug for Closure {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("Closure")
+            .field("parameters", &self.parameters)
+            .field("body", &self.body)
+            .field("frame", &self.frame.as_ref().map(Rc::as_ptr))
+            .finish()
+    }
+}
+
+// Two closures are only ever the same value when they share a body and a
+// captured chain; runtime values are otherwise unordered.
+impl PartialEq for Closure {
+    fn eq(&self, other: &Self) -> bool {
+        self.parameters == other.parameters
+            && Rc::ptr_eq(&self.body, &other.body)
+            && match (&self.frame, &other.frame) {
+                (None, None) => true,
+                (Some(own), Some(other)) => Rc::ptr_eq(own, other),
+                _ => false,
+            }
+    }
+}
+
+impl Eq for Closure {}
 
 /// Descriptive alias for callers that prefer the language-level name.
 pub type AtlasValue = Value;
@@ -82,6 +127,10 @@ impl fmt::Display for Value {
                 ..
             } => write!(formatter, "{value}.{injector_name}"),
             Self::Domain(value) => write!(formatter, "{value}"),
+            // Upstream prints `Function defined <loc>` plus the lambda text
+            // (axis.w:3254-3271); the source location is not carried yet, so
+            // only the head is printed.
+            Self::Closure(_) => write!(formatter, "Function defined"),
             Self::List(values) => {
                 write!(formatter, "[")?;
                 for (index, value) in values.iter().enumerate() {

@@ -1,12 +1,13 @@
 use super::{
     assignment, binary, cast_expression, declaration, definition, elif_tail, extend_operator_formula,
-    finish_let, expression_list, finish_operator_formula, join_span, let_binding, let_bindings,
-    let_expression, list_expression, tuple_expression,
+    finish_let, expression_list, finish_operator_formula, join_span, lambda, lambda_parameter,
+    lambda_parameters, let_binding, let_bindings,
+    let_expression, list_expression, return_expression, selector_suffix, tuple_expression,
     prepend_let_group,
     call_suffix, postfix, prefix_operator_call, slice_suffix, start_binary_formula, start_prefix_formula,
     subscription_suffix, type_group, type_function, type_primitive, type_row, type_union_append,
     type_union_start, type_variant, type_wild_row, unary, finish_conditional, if_tail,
-    BinaryOp, Command, Expr, LetBinding, ParsedIf,
+    BinaryOp, Command, Expr, LambdaParam, LetBinding, ParsedIf,
     ParsedLet, ParserToken, PostfixSuffix, Prim, Program, SpannedValue, TypeExpr, TypeVariantSlot,
     UnaryOp,
 };
@@ -36,7 +37,24 @@ pub Command: Command = {
 pub Expr: Expr = {
     <let_span:"let"> <tail:LetTail> => let_expression(let_span, tail),
     <cast:Cast> => cast,
+    // Lambda literals and `return` sit at the top expression level and
+    // greedily take the rest of the expression (parser.y:224-238).
+    <open:"("> <parameters:LambdaParameters> <_close:")"> ":" <body:Expr> => {
+        lambda(open, parameters, body)
+    },
+    <at:"@"> ":" <body:Expr> => lambda(at, Vec::new(), body),
+    <return_span:"return"> <value:Expr> => return_expression(return_span, value),
     <expression:AssignmentExpr> => expression,
+};
+
+// Simple typed named parameters (`type name`); destructuring, const, and
+// discard patterns remain outside this slice.
+LambdaParameters: Vec<LambdaParam> = {
+    <first:LambdaParam> <rest:("," <LambdaParam>)*> => lambda_parameters(first, rest),
+};
+
+LambdaParam: LambdaParam = {
+    <type_expr:TypeExprNode> <name:"identifier"> => lambda_parameter(type_expr, name),
 };
 
 // `type: expr` sits at the top expression level and greedily takes the rest,
@@ -153,6 +171,9 @@ PostfixSuffix: PostfixSuffix = {
         )
     },
     <_open:"("> <arguments:CallArguments> <close:")"> => call_suffix(arguments, close),
+    // `receiver.name` lowers to `name(receiver)`; operator selectors are a
+    // later slice.
+    <_dot:"."> <name:"identifier"> => selector_suffix(name),
 };
 
 #[inline]
@@ -253,6 +274,9 @@ extern {
         "and" => ParserToken::And(<SourceSpan>),
         "or" => ParserToken::Or(<SourceSpan>),
         "not" => ParserToken::Not(<SourceSpan>),
+        "return" => ParserToken::Return(<SourceSpan>),
+        "@" => ParserToken::At(<SourceSpan>),
+        "." => ParserToken::Dot(<SourceSpan>),
         "(" => ParserToken::LParen(<SourceSpan>),
         ")" => ParserToken::RParen(<SourceSpan>),
         "\n" => ParserToken::Newline(<SourceSpan>),

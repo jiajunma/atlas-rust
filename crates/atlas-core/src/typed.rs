@@ -18,9 +18,9 @@ use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
 use crate::domain_builtins;
 use crate::frames::{EvaluationContext, GlobalCell};
 use crate::linear_values::{Matrix, RatVec, Vec32};
-use crate::syntax::{Command, Expr};
+use crate::syntax::{Command, Expr, LambdaParam};
 use crate::types::{Prim, Type, TypeTable};
-use crate::value::Value;
+use crate::value::{Closure, Value};
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
@@ -109,9 +109,27 @@ pub enum TypedExpr {
         arguments: Vec<TypedExpr>,
         span: SourceSpan,
     },
+    /// A non-recursive function literal; evaluation captures the current
+    /// frame chain into a closure value (upstream `lambda_expression`).
+    Closure {
+        /// Number of argument slots a call binds; 0 pushes no frame.
+        parameters: usize,
+        body: Rc<TypedExpr>,
+    },
+    /// `return value`, unwound to the innermost call boundary.
+    Return {
+        value: Box<TypedExpr>,
+    },
+    /// A user-function call: the callee evaluates to a closure and the
+    /// argument is passed as one value (a tuple for several parameters).
+    FunctionCall {
+        function: Box<TypedExpr>,
+        argument: Box<TypedExpr>,
+        span: SourceSpan,
+    },
 }
 
-/// Conversion-time context (locals arrive with lambdas in B3).
+/// Conversion-time context (locals are let bindings and lambda parameters).
 pub struct Analysis<'a> {
     pub types: &'a TypeTable,
     pub globals: &'a IdTable,
@@ -475,14 +493,20 @@ pub fn convert_expr(
             *span,
             analysis,
         ),
-        Expr::Lambda { span, .. } => Err(type_error(
-            "function literals are not implemented yet".into(),
-            *span,
-        )),
-        Expr::Return { span, .. } => Err(type_error(
-            "return is not implemented outside the function slice".into(),
-            *span,
-        )),
+        Expr::Lambda {
+            parameters,
+            body,
+            span,
+        } => convert_lambda_expression(parameters, body, *span, required, analysis),
+        Expr::Return { value, .. } => {
+            // Inside a function body the enclosing context is the
+            // function's result type (the axis layer's return_type);
+            // evaluation unwinds to the innermost call boundary.
+            let converted = convert_expr(value, required, analysis)?;
+            Ok(TypedExpr::Return {
+                value: Box::new(converted),
+            })
+        }
         Expr::Group { inner, .. } => convert_expr(inner, required, analysis),
         Expr::Cast { target, body, .. } => {
             // The cast's whole effect is conversion-time: convert the body
@@ -807,13 +831,55 @@ pub fn convert_expr(
             arguments,
             span,
         } => {
-            let Expr::Identifier { name, .. } = callee.as_ref() else {
-                return Err(type_error(
-                    "only named builtins are available before B3 functions".into(),
-                    *span,
-                ));
+            // Call-head dispatch (axis-types.w:2396-2439): an applied
+            // identifier resolves through the overload table UNLESS a local
+            // function binding shadows every overload; a global function
+            // value is used only when the overload table has no variants.
+            if let Expr::Identifier { name, .. } = callee.as_ref() {
+                let local = analysis.locals.get(name);
+                let local_function = local
+                    .is_some_and(|(type_, _, _)| matches!(&*type_.borrow(), Type::Function(_)));
+                let use_overloads = !local_function
+                    && (!overload_variants(name).is_empty()
+                        || (local.is_none() && analysis.globals.lookup(name).is_none()));
+                if use_overloads {
+                    return convert_builtin_application(
+                        name, arguments, required, *span, analysis, true,
+                    );
+                }
+            }
+            // Fallback path: the callee converts against the generic
+            // function pattern (*->*), the argument against its parameter
+            // type (axis-types.w:2403-2410).
+            let mut function_type = Type::function(Type::Undetermined, Type::Undetermined);
+            let function = convert_expr(callee, &mut function_type, analysis)?;
+            let Type::Function(parts) = function_type else {
+                unreachable!("converting against (*->*) yields a function type")
             };
-            convert_builtin_application(name, arguments, required, *span, analysis, true)
+            let (argument_type, result_type) = *parts;
+            // Closures take their argument as ONE value (axis.w:3222): a
+            // bare expression for a single argument, otherwise the tuple.
+            let argument_source = if arguments.len() == 1 {
+                arguments[0].clone()
+            } else {
+                Expr::Tuple {
+                    elements: arguments.clone(),
+                    span: *span,
+                }
+            };
+            let mut argument_required = argument_type;
+            let argument = convert_expr(&argument_source, &mut argument_required, analysis)?;
+            conform_types(
+                &result_type,
+                required,
+                TypedExpr::FunctionCall {
+                    function: Box::new(function),
+                    argument: Box::new(argument),
+                    span: *span,
+                },
+                *span,
+                analysis,
+            )
         }
         Expr::Conditional {
             condition,
@@ -880,6 +946,77 @@ pub fn convert_expr(
             ),
         },
     }
+}
+
+/// Convert a non-recursive function literal (axis.w:3093-3115): bind the
+/// parameters as a new local layer, then convert the body against the
+/// required pattern's result hole so a context type reaches the body (and
+/// any `return`) directly. A void context converts the body against a
+/// dummy result and discards the closure.
+fn convert_lambda_expression(
+    parameters: &[LambdaParam],
+    body: &Expr,
+    span: SourceSpan,
+    required: &mut Type,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, Diagnostic> {
+    let mut names = BTreeSet::new();
+    for parameter in parameters {
+        if !names.insert(parameter.name.as_str()) {
+            return Err(Diagnostic::new(
+                ErrorKind::Name,
+                format!("Multiple binding of '{}' in same scope", parameter.name),
+                Some(parameter.name_span),
+            ));
+        }
+    }
+    let mut locals = analysis.locals.clone();
+    // Parameterless functions push no frame at call time, so depths only
+    // shift when the new layer is non-empty (the empty-layer rule).
+    if !parameters.is_empty() {
+        for (_, depth, _) in locals.values_mut() {
+            *depth += 1;
+        }
+    }
+    let mut parameter_types = Vec::with_capacity(parameters.len());
+    for (offset, parameter) in parameters.iter().enumerate() {
+        let parameter_type = parameter.type_expr.resolve();
+        locals.insert(
+            parameter.name.clone(),
+            (Rc::new(RefCell::new(parameter_type.clone())), 0, offset),
+        );
+        parameter_types.push(parameter_type);
+    }
+    let body_analysis = Analysis {
+        types: analysis.types,
+        globals: analysis.globals,
+        locals,
+    };
+    let closure = |body: TypedExpr| TypedExpr::Closure {
+        parameters: parameters.len(),
+        body: Rc::new(body),
+    };
+    if required.is_void() {
+        let mut dummy = Type::Undetermined;
+        let converted = convert_expr(body, &mut dummy, &body_analysis)?;
+        return Ok(TypedExpr::Void(Box::new(closure(converted))));
+    }
+    let function_pattern = Type::function(Type::tuple(parameter_types), Type::Undetermined);
+    if !required.specialise(&function_pattern, analysis.types) {
+        return Err(type_error(
+            format!(
+                "type {} does not match required pattern {}",
+                function_pattern.display(analysis.types),
+                required.display(analysis.types)
+            ),
+            span,
+        ));
+    }
+    let Type::Function(parts) = required else {
+        unreachable!("specialising to a function pattern yields a function type")
+    };
+    let converted = convert_expr(body, &mut parts.1, &body_analysis)?;
+    Ok(closure(converted))
 }
 
 fn convert_builtin_application(
@@ -2282,6 +2419,51 @@ impl TypedExpr {
                     .collect::<Result<Vec<_>, _>>()?;
                 builtin_registry()[*builtin].run(values, *span, level)
             }
+            Self::Closure { parameters, body } => Ok(at_level(level, || {
+                Value::Closure(Rc::new(Closure {
+                    parameters: *parameters,
+                    body: Rc::clone(body),
+                    frame: context.capture(),
+                }))
+            })),
+            Self::Return { value } => {
+                let value = force(value, context)?;
+                Err(Control::Return(value))
+            }
+            Self::FunctionCall {
+                function, argument, ..
+            } => {
+                let closure = force(function, context)?;
+                let Value::Closure(closure) = closure else {
+                    panic!("analysis let a non-function callee through: {closure}")
+                };
+                let argument = force(argument, context)?;
+                // The argument is one value: a tuple destructures into the
+                // frame slots, anything else binds the single parameter; a
+                // parameterless call pushes no frame (empty-layer rule).
+                let slots = match closure.parameters {
+                    0 => None,
+                    1 => Some(vec![Rc::new(argument)]),
+                    _ => match argument {
+                        Value::Tuple(values) => Some(values.into_iter().map(Rc::new).collect()),
+                        other => panic!("multi-parameter call saw non-tuple argument {other}"),
+                    },
+                };
+                context.with_context(closure.frame.clone(), |context| {
+                    let result = match slots {
+                        Some(slots) => context
+                            .with_frame(slots, |context| closure.body.evaluate(context, level)),
+                        None => closure.body.evaluate(context, level),
+                    };
+                    match result {
+                        // An explicit `return` ends the call and supplies
+                        // its value (upstream function_return caught in
+                        // apply, axis.w:3569-3571).
+                        Err(Control::Return(value)) => Ok(at_level(level, move || value.clone())),
+                        other => other,
+                    }
+                })
+            }
         }
     }
 }
@@ -3416,5 +3598,84 @@ mod tests {
 
         let error = convert_and_run("bool: (1,2)").expect_err("no tuple coercion");
         assert!(error.message.contains("does not match"));
+    }
+
+    #[test]
+    fn lambdas_convert_to_function_typed_closures() {
+        let (type_, value) = convert_and_run("(int n): n + 1").expect("lambda literal");
+        assert_eq!(type_, Type::function(int_type(), int_type()));
+        assert!(matches!(value, Value::Closure(_)));
+
+        // A parameterless lambda has the void argument type.
+        let (type_, value) = convert_and_run("@: 42").expect("parameterless lambda");
+        assert_eq!(type_, Type::function(Type::void(), int_type()));
+        assert!(matches!(value, Value::Closure(_)));
+
+        let error = convert_and_run("(int x, rat x): x").expect_err("duplicate parameter");
+        assert!(error.message.contains("Multiple binding of 'x'"));
+    }
+
+    #[test]
+    fn closure_calls_bind_arguments_and_catch_return() {
+        // The five B3a fixture shapes (sanity expectations only; the oracle
+        // capture is still pending).
+        for (source, expected) in [
+            ("let f = (int n): n + 1 in f(2)", 3),
+            ("let x = 41 in let f = @: x + 1 in f()", 42),
+            ("let make = (int x): @: x in let f = make(7) in f()", 7),
+            ("let f = (int n): return n + 1 in f(2)", 3),
+            ("let f = (int n): n + 1 in 2.f", 3),
+        ] {
+            let (type_, value) = convert_and_run(source)
+                .unwrap_or_else(|error| panic!("{source} should convert and run: {error:?}"));
+            assert_eq!(type_, Type::Primitive(Prim::Int), "source: {source}");
+            assert_eq!(value, Value::Integer(expected.into()), "source: {source}");
+        }
+
+        // A parameter body sees both its own frame and the enclosing one.
+        let (_, value) =
+            convert_and_run("let a = 10 in let f = (int n): a + n in f(2)").expect("depth shift");
+        assert_eq!(value, Value::Integer(12.into()));
+    }
+
+    #[test]
+    fn a_return_reaching_top_level_is_an_error() {
+        let mut context = TypedContext::new();
+        let error = context
+            .execute(&command("return 3"))
+            .expect_err("top-level return");
+        assert_eq!(error.kind, ErrorKind::Runtime);
+        assert_eq!(error.message, "illegal control flow at top level");
+    }
+
+    #[test]
+    fn globals_hold_closures_and_report_function_types() {
+        let mut context = TypedContext::new();
+        let events = context
+            .execute(&command("f: (int n): n + 1"))
+            .expect("define function");
+        assert!(matches!(
+            &events[..],
+            [TypedCommandEvent::ReportLine { text, .. }] if text == "Variable f: (int->int)\n"
+        ));
+
+        let events = context
+            .execute(&command("f(2)"))
+            .expect("global closure call");
+        assert!(matches!(
+            &events[..],
+            [TypedCommandEvent::Value {
+                value: Value::Integer(value),
+                ..
+            }] if value == &BigInt::from(3)
+        ));
+
+        // A non-function value is not callable.
+        context.execute(&command("x: 3")).expect("define int");
+        let error = context
+            .execute(&command("x(1)"))
+            .expect_err("non-function call");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert!(error.message.contains("does not match required pattern"));
     }
 }

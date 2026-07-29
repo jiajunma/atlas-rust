@@ -89,6 +89,9 @@ FIXTURE_PLANS = (
     FixturePlan(name="pipeline_swap_linear_values"),
     FixturePlan(name="pipeline_swap_rejected"),
     FixturePlan(name="pipeline_swap_void_reports"),
+    # B3a non-recursive functions: typed lambdas, closure capture, return at
+    # the call boundary, and identifier selectors.
+    FixturePlan(name="functions_b3"),
 )
 
 

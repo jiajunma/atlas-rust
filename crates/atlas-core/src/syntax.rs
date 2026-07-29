@@ -273,7 +273,6 @@ enum PostfixSuffix {
         close: SourceSpan,
     },
     /// Identifier selector (`receiver.name`), lowered to `name(receiver)`.
-    #[allow(dead_code)]
     Selector { name: String, name_span: SourceSpan },
 }
 
@@ -573,6 +572,7 @@ fn parser_tokens_from_tokens(
                         "else" => ParserToken::Else(span),
                         "elif" => ParserToken::Elif(span),
                         "fi" => ParserToken::Fi(span),
+                        "return" => ParserToken::Return(span),
                         _ => ParserToken::Unsupported(SpannedValue { value: word, span }),
                     };
                     Some(Ok((token, span)))
@@ -602,6 +602,11 @@ fn parser_tokens_from_tokens(
                         '[' => ParserToken::LBracket(span),
                         ']' => ParserToken::RBracket(span),
                         '|' => ParserToken::Bar(span),
+                        // `@` and `.` are expression punctuation here; the
+                        // `<file` directive scanner reads filenames before
+                        // any of these tokens exist, so they cannot clash.
+                        '@' => ParserToken::At(span),
+                        '.' => ParserToken::Dot(span),
                         '~' if reversal_tilde => ParserToken::Tilde(span),
                         '~' => parser_operator("~".to_owned(), span)
                             .expect("tilde has a fixed Atlas priority"),
@@ -819,6 +824,48 @@ fn postfix(array: Expr, suffix: PostfixSuffix) -> Expr {
 
 fn call_suffix(arguments: Vec<Expr>, close: SourceSpan) -> PostfixSuffix {
     PostfixSuffix::Call { arguments, close }
+}
+
+/// `receiver.name` — upstream lowers the selector to `name(receiver)`
+/// (parser.y:333-337 `make_application_node`).
+fn selector_suffix(name: SpannedValue<String>) -> PostfixSuffix {
+    PostfixSuffix::Selector {
+        name: name.value,
+        name_span: name.span,
+    }
+}
+
+/// A lambda literal; `open` is the `(` or `@` that starts it. The body
+/// greedily takes the rest of the expression (parser.y:224-238).
+fn lambda(open: SourceSpan, parameters: Vec<LambdaParam>, body: Expr) -> Expr {
+    Expr::Lambda {
+        parameters,
+        span: join_span(open, body.span()),
+        body: Box::new(body),
+    }
+}
+
+fn lambda_parameter(type_expr: TypeExpr, name: SpannedValue<String>) -> LambdaParam {
+    LambdaParam {
+        span: join_span(type_expr.span(), name.span),
+        name: name.value,
+        name_span: name.span,
+        type_expr,
+    }
+}
+
+fn lambda_parameters(first: LambdaParam, rest: Vec<LambdaParam>) -> Vec<LambdaParam> {
+    let mut parameters = Vec::with_capacity(rest.len() + 1);
+    parameters.push(first);
+    parameters.extend(rest);
+    parameters
+}
+
+fn return_expression(return_span: SourceSpan, value: Expr) -> Expr {
+    Expr::Return {
+        span: join_span(return_span, value.span()),
+        value: Box::new(value),
+    }
 }
 
 fn subscription_suffix(index: Expr, reversed: bool, close: SourceSpan) -> PostfixSuffix {
@@ -1516,5 +1563,43 @@ mod tests {
                 other => panic!("expected operator call for {symbol}, got {other:?}"),
             }
         }
+    }
+
+    #[test]
+    fn emits_return_at_and_dot_parser_tokens() {
+        let tokens = parser_tokens(&SourceText::new("return @ .")).expect("tokens");
+        assert!(matches!(tokens[0].0, ParserToken::Return(_)));
+        assert!(matches!(tokens[1].0, ParserToken::At(_)));
+        assert!(matches!(tokens[2].0, ParserToken::Dot(_)));
+    }
+
+    #[test]
+    fn parses_lambda_return_and_selector_forms() {
+        assert_eq!(
+            expression_shape(&parse_one("(int n): n + 1")),
+            "lambda(+@4(n,1))"
+        );
+        assert_eq!(expression_shape(&parse_one("@: x + 1")), "lambda(+@4(x,1))");
+        assert_eq!(
+            expression_shape(&parse_one("(int a, rat b): a")),
+            "lambda(a)"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("(int n): return n + 1")),
+            "lambda(return(+@4(n,1)))"
+        );
+        // Selectors lower to calls on the receiver, and chain.
+        assert_eq!(expression_shape(&parse_one("2.f")), "call(f;2)");
+        assert_eq!(expression_shape(&parse_one("().g")), "call(g;tuple())");
+        assert_eq!(expression_shape(&parse_one("x.f.g")), "call(g;call(f;x))");
+    }
+
+    #[test]
+    fn parses_b3a_function_fixture() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/eval/functions_b3.atlas"
+        ));
+        let program = parse(&source).expect("B3a function fixture parses");
+        assert_eq!(program.expressions.len(), 5);
     }
 }
