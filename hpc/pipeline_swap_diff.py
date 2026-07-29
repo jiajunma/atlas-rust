@@ -93,6 +93,9 @@ FIXTURE_PLANS = (
     # the call boundary, and identifier selectors.
     FixturePlan(name="functions_b3"),
     FixturePlan(name="functions_b3_rejected"),
+    # B3b recursive functions and let-declaration definition sugar.
+    FixturePlan(name="functions_b3b"),
+    FixturePlan(name="functions_b3b_rejected"),
 )
 
 
