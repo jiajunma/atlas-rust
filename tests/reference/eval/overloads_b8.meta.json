@@ -1,0 +1,11 @@
+{
+  "fixture": "eval/overloads_b8",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "upstream_evidence": [
+    "sources/interpreter/parser.y:187"
+  ],
+  "rust_status": "not_implemented",
+  "notes": "B8 user-overload slice, split from probe overloads_probe (capture 3499685): 'set f = <lambda>' accumulates overloads on one identifier ('Defined f: T' for the first, 'Added definition [2] of f: T' for the second), 'whattype f ?' lists user overloads in definition order, and calls resolve by arity. Rejected companions are deferred to a later probe. Reference capture pending on HPC."
+}

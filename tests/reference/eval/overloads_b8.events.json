@@ -1,0 +1,12 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "eval/overloads_b8",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind":"ReportLine","text":"Defined f: (int->int)\n"},
+    {"kind":"ReportLine","text":"Added definition [2] of f: (int,int->int)\n"},
+    {"kind":"ReportLine","text":"Overloaded instances of 'f'\n  int->int\n  (int,int)->int\n"},
+    {"kind":"Value","value":{"type":"integer","value":3}},
+    {"kind":"Value","value":{"type":"integer","value":7}}
+  ]
+}

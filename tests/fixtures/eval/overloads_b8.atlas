@@ -1,0 +1,5 @@
+set f = (int x): x
+set f = (int x, int y): x + y
+whattype f ?
+f(3)
+f(3, 4)
