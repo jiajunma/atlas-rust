@@ -1,18 +1,21 @@
 use super::{
-    assignment, binary, cast_expression, declaration, definition, elif_tail, extend_operator_formula,
+    anonymous_field, assignment, binary, case_branch, case_expression, cast_expression, declaration,
+    definition, elif_tail, else_branch, extend_operator_formula,
     finish_let, expression_list, finish_operator_formula, for_expression, join_span, lambda,
     lambda_parameter, lambda_parameters, let_bindings,
-    let_expression, list_expression, rec_function_binding, rec_lambda, return_expression,
-    selector_suffix, operator_selector, sequence, unit_selector, tuple_expression, function_binding,
+    let_expression, list_expression, named_field, rec_function_binding, rec_lambda, return_expression,
+    selector_suffix, operator_selector, sequence, set_type_command, type_definition, type_spec_span,
+    unit_selector,
+    tuple_expression, function_binding,
     prepend_let_group,
     call_suffix, postfix, prefix_operator_call, slice_suffix, start_binary_formula, start_prefix_formula,
     subscription_suffix, type_group, type_function, type_primitive, type_row, type_union_append,
     type_union_start, type_variant, type_wild_row, unary, finish_conditional, if_tail,
     anonymous_parameter, const_pattern_name, finish_pattern, pattern_binding, pattern_discard,
-    pattern_name, pattern_slots, pattern_tuple, tuple_parameter, while_expression,
-    BinaryOp, Command, Expr, LambdaParam, LetBinding, ParsedFor, ParsedIf,
+    pattern_name, pattern_slots, pattern_tuple, tuple_parameter, whattype_command, while_expression,
+    BinaryOp, CaseBranch, Command, Expr, LambdaParam, LetBinding, ParsedFor, ParsedIf,
     ParsedLet, ParserToken, PatternTail, PostfixSuffix, Prim, Program, SlotTail, SpannedValue,
-    TypeExpr, TypeVariantSlot, UnaryOp, Pattern,
+    TypeExpr, TypeField, TypeSpec, TypeVariantSlot, UnaryOp, Pattern, TypeDefinition,
 };
 use crate::diagnostic::SourceSpan;
 use crate::formula::{FormulaOperator, FormulaStack};
@@ -34,6 +37,16 @@ pub Program: Program = {
 pub Command: Command = {
     <name:"identifier"> <_colon:":"> <value_type:"primitive_type"> => declaration(name, value_type),
     <name:"identifier"> <_colon:":"> <value:Expr> => definition(name, value),
+    // set_type (parser.y:163-167): the single-name form aliases and the
+    // bracketed form enters the tabled type map.
+    <set_type:"set_type"> <name:"identifier"> <_equals:"="> <spec:TypeSpecNode> => {
+        let end = type_spec_span(&spec);
+        set_type_command(set_type, vec![type_definition(name, spec)], false, end)
+    },
+    <set_type:"set_type"> <_open:"["> <definitions:TypeEquations> <close:"]"> => {
+        set_type_command(set_type, definitions, true, close)
+    },
+    <whattype:"whattype"> <target:Expr> => whattype_command(whattype, target),
     <expression:Expr> => Command::Expression(expression),
 };
 
@@ -134,6 +147,76 @@ TypeExprNode: TypeExpr = {
     <open:"("> <argument:TypeUnionList?> <_arrow:"->"> <result:TypeUnionList?> <close:")"> => {
         type_function(open, argument, result, close)
     },
+};
+
+// A set_type right-hand side (parser.y:753-761 type_spec): a struct or
+// union spec with named fields, or a plain type alias. The named/`
+// anonymous decision is the token after a type (IDENT or `.`), so the
+// plain-type path stays unambiguous.
+TypeSpecNode: TypeSpec = {
+    <_open:"("> <first:TypeFieldNode> <second:("," <TypeFieldNode>)>
+        <rest:("," <TypeFieldNode>)*> <_close:")"> => {
+        TypeSpec::Struct({
+            let mut fields = vec![first, second];
+            fields.extend(rest);
+            fields
+        })
+    },
+    <_open:"("> <first:TypeFieldNode> <second:("|" <TypeFieldNode>)>
+        <rest:("|" <TypeFieldNode>)*> <_close:")"> => {
+        TypeSpec::Union({
+            let mut fields = vec![first, second];
+            fields.extend(rest);
+            fields
+        })
+    },
+    <type_expr:SpecTypeNode> => TypeSpec::Alias(type_expr),
+};
+
+TypeFieldNode: TypeField = {
+    <type_expr:SpecTypeNode> <name:"identifier"> => named_field(type_expr, name),
+    <type_expr:SpecTypeNode> <dot:"."> => anonymous_field(type_expr, dot),
+};
+
+// Type expressions inside a `set_type` spec additionally allow defined type
+// names (parser.y:784-796). These parallel the shared TypeExprNode rules so
+// the extra `"identifier"` alternative never leaks into expression/cast
+// contexts and perturbs their LR states.
+SpecTypeNode: TypeExpr = {
+    <prim:"primitive_type"> => type_primitive(prim),
+    <span:"void"> => TypeExpr::Void { span },
+    <name:"identifier"> => TypeExpr::Named {
+        name: name.value,
+        span: name.span,
+    },
+    <open:"["> <inner:SpecUnionList> <close:"]"> => type_row(open, inner, close),
+    <open:"["> <_star:"*"> <close:"]"> => type_wild_row(open, close),
+    <open:"("> <inner:SpecUnionList> <close:")"> => type_group(open, inner, close),
+    <open:"("> <argument:SpecUnionList?> <_arrow:"->"> <result:SpecUnionList?> <close:")"> => {
+        type_function(open, argument, result, close)
+    },
+};
+
+SpecUnionList: Vec<TypeVariantSlot> = {
+    <variant:SpecVariant> => type_union_start(Some(variant), false),
+    <_bar:"|"> <variant:SpecVariant?> => type_union_start(variant, true),
+    <list:SpecUnionList> <_bar:"|"> <variant:SpecVariant?> => type_union_append(list, variant),
+};
+
+SpecVariant: Vec<TypeExpr> = {
+    <first:SpecTypeNode> <rest:("," <SpecTypeNode>)*> => type_variant(first, rest),
+};
+
+TypeEquations: Vec<TypeDefinition> = {
+    <first:TypeEquation> <rest:("," <TypeEquation>)*> => {
+        let mut definitions = vec![first];
+        definitions.extend(rest);
+        definitions
+    },
+};
+
+TypeEquation: TypeDefinition = {
+    <name:"identifier"> <_equals:"="> <spec:TypeSpecNode> => type_definition(name, spec),
 };
 
 // `|`-separated variant slots; a missing slot is a void variant. Mirrors
@@ -308,6 +391,54 @@ Atom: Expr = {
     <while_span:"while"> <tail:WhileTail> => while_expression(while_span, tail),
     <for_span:"for"> <tail:ForTail> => for_expression(for_span, tail),
     <span:"break"> => Expr::Break { span },
+    // Case discrimination (parser.y:480-482, caselist): `case subject |
+    // tag(pattern): body | tag: body | else body esac`.
+    <case:"case"> <subject:Expr> <_bar:"|"> <branches:CaseBranches> <esac:"esac"> => {
+        case_expression(case, subject, branches, esac)
+    },
+};
+
+CaseBranches: Vec<CaseBranch> = {
+    <first:CaseBranch> <rest:("|" <CaseBranch>)*> => {
+        let mut branches = vec![first];
+        branches.extend(rest);
+        branches
+    },
+};
+
+CaseBranch: CaseBranch = {
+    <tag:"identifier"> <_colon:":"> <body:Expr> => case_branch(tag, None, body),
+    <tag:"identifier"> <pattern:CasePattern> <_colon:":"> <body:Expr> => {
+        case_branch(tag, Some(pattern), body)
+    },
+    <else_span:"else"> <body:Expr> => else_branch(else_span, body),
+};
+
+// Upstream closed_pattern (parser.y:717-720): a parenthesised pattern
+// (single patterns collapse), a tuple slot list, or the `()` throw-away.
+// Unlike a let-binding pattern it takes no `: name` whole-value tail — the
+// branch `:` would be ambiguous with it — so the tail rules are mirrored
+// here minus WholeName.
+CasePattern: Pattern = {
+    <open:"("> <close:")"> => pattern_discard(open, close),
+    <open:"("> <first:Pattern> <tail:CasePatternTail> => finish_pattern(open, first, tail),
+    <open:"("> <comma:","> <second:PatternOpt> <rest:("," <PatternOpt>)*>
+        <close:")"> => {
+        pattern_tuple(open, pattern_slots(None, comma, second, rest), close, None)
+    },
+};
+
+CasePatternTail: PatternTail = {
+    ")" => PatternTail::Group,
+    <comma:","> <second:PatternOpt> <rest:("," <PatternOpt>)*> <close:")"> => {
+        PatternTail::Slots(Box::new(SlotTail {
+            comma,
+            second,
+            rest,
+            close,
+            whole: None,
+        }))
+    },
 };
 
 // The while condition is a `tertiary` upstream (parser.y:442); a bare `do`
@@ -404,6 +535,10 @@ extern {
         "do" => ParserToken::Do(<SourceSpan>),
         "od" => ParserToken::Od(<SourceSpan>),
         "break" => ParserToken::Break(<SourceSpan>),
+        "set_type" => ParserToken::SetType(<SourceSpan>),
+        "whattype" => ParserToken::Whattype(<SourceSpan>),
+        "case" => ParserToken::Case(<SourceSpan>),
+        "esac" => ParserToken::Esac(<SourceSpan>),
         ";" => ParserToken::Semicolon(<SourceSpan>),
         "!" => ParserToken::Bang(<SourceSpan>),
         "@" => ParserToken::At(<SourceSpan>),

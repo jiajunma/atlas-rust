@@ -773,4 +773,120 @@ mod tests {
             matches!(events[6], SessionEvent::Diagnostic(ref d) if d.kind == ErrorKind::Syntax)
         );
     }
+
+    #[test]
+    fn settype_b5_fixture_matches_the_frozen_events() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/eval/settype_b5.atlas"
+        ));
+        let events = run_source(&source);
+
+        assert_eq!(events.len(), 12);
+        assert!(matches!(
+            events[0],
+            SessionEvent::ReportLine { ref text, .. }
+                if text == "Type name 'Pair' defined as (int,int)\n  with projectors: x, y.\n"
+        ));
+        assert!(matches!(
+            events[1],
+            SessionEvent::ReportLine { ref text, .. } if text == "Defined type: (int,int)\n"
+        ));
+        assert!(matches!(
+            events[2],
+            SessionEvent::ReportLine { ref text, .. } if text == "Type: (int,int)\n"
+        ));
+        assert!(matches!(
+            events[3],
+            SessionEvent::Value { value: Value::Integer(ref value), .. }
+                if value == &malachite::Integer::from(1)
+        ));
+        assert!(matches!(
+            events[4],
+            SessionEvent::ReportLine { ref text, .. }
+                if text == "Type name 'U' defined as (int|string)\n  with injectors: i, s.\n"
+        ));
+        assert!(matches!(
+            events[5],
+            SessionEvent::Value {
+                value: Value::Union { tag: 0, ref injector_name, ref value },
+                ..
+            } if injector_name == "i"
+                && matches!(value.as_ref(), Value::Integer(ref payload)
+                    if payload == &malachite::Integer::from(3))
+        ));
+        assert!(matches!(
+            events[6],
+            SessionEvent::Value { value: Value::Integer(ref value), .. }
+                if value == &malachite::Integer::from(4)
+        ));
+        assert!(matches!(
+            events[7],
+            SessionEvent::Value { value: Value::Integer(ref value), .. }
+                if value == &malachite::Integer::from(2)
+        ));
+        assert!(matches!(
+            events[8],
+            SessionEvent::ReportLine { ref text, .. }
+                if text == "Type name 'IntList' defined as (void|(int,IntList))\n  with injectors: nil, cons.\n"
+        ));
+        assert!(matches!(
+            events[9],
+            SessionEvent::ReportLine { ref text, .. }
+                if text == "Defined type: ( void nil | (int,IntList) cons )\n"
+        ));
+        assert!(matches!(
+            events[10],
+            SessionEvent::Value { value: Value::Union { tag: 1, ref injector_name, .. }, .. }
+                if injector_name == "cons"
+        ));
+        assert_eq!(
+            match &events[10] {
+                SessionEvent::Value { value, .. } => value.to_string(),
+                other => panic!("expected a value event, got {other:?}"),
+            },
+            "(1,().nil).cons"
+        );
+        assert!(matches!(
+            events[11],
+            SessionEvent::ReportLine { ref text, .. } if text == "Type: IntList\n"
+        ));
+    }
+
+    #[test]
+    fn settype_b5_rejected_fixture_matches_the_frozen_events() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/eval/settype_b5_rejected.atlas"
+        ));
+        let events = run_source(&source);
+
+        assert_eq!(events.len(), 5);
+        assert!(matches!(
+            events[0],
+            SessionEvent::Diagnostic(ref diagnostic)
+                if diagnostic.kind == ErrorKind::Syntax
+                    && diagnostic.message == "syntax error, unexpected ':'"
+        ));
+        assert!(matches!(
+            events[1],
+            SessionEvent::ReportLine { ref text, .. }
+                if text == "Type name 'U' defined as (int|string)\n  with injectors: i, s.\n"
+        ));
+        assert!(matches!(
+            events[2],
+            SessionEvent::Diagnostic(ref diagnostic)
+                if diagnostic.kind == ErrorKind::Type
+                    && diagnostic.message == "Discrimination on expression of type (int|string) requires using 'set_type' for this type, and naming injectors for it"
+        ));
+        assert!(matches!(
+            events[3],
+            SessionEvent::ReportLine { ref text, .. }
+                if text == "Type name 'V' defined as (int|string)\n  with injectors: a, b.\n"
+        ));
+        assert!(matches!(
+            events[4],
+            SessionEvent::Diagnostic(ref diagnostic)
+                if diagnostic.kind == ErrorKind::Type
+                    && diagnostic.message == "found string while int was needed."
+        ));
+    }
 }

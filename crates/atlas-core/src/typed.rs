@@ -18,8 +18,8 @@ use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
 use crate::domain_builtins;
 use crate::frames::{EvaluationContext, GlobalCell};
 use crate::linear_values::{Matrix, RatVec, Vec32};
-use crate::syntax::{compact_expression, Command, Expr, ForLoop, LambdaParam, Pattern};
-use crate::types::{Prim, Type, TypeTable};
+use crate::syntax::{compact_expression, Command, Expr, ForLoop, LambdaParam, Pattern, TypeSpec};
+use crate::types::{Prim, Type, TypeBinding, TypeNumber, TypeTable};
 use crate::value::{Closure, SlotShape, Value};
 use std::cell::RefCell;
 use std::cmp::Ordering;
@@ -156,6 +156,27 @@ pub enum TypedExpr {
     },
     /// `break`, unwound to the innermost loop boundary.
     Break,
+    /// The body of an injector closure: wraps the payload in a union value
+    /// carrying the variant tag and the injector's name.
+    UnionInject {
+        tag: u16,
+        injector_name: String,
+        payload: Box<TypedExpr>,
+    },
+    /// The body of a projector closure: extracts one component of a tuple.
+    TupleProject {
+        index: usize,
+        inner: Box<TypedExpr>,
+    },
+    /// Case discrimination on a tabled union value: the first branch whose
+    /// tag matches distributes the payload per `shape` and evaluates its
+    /// body; `fallback` is the `else` branch.
+    Case {
+        subject: Box<TypedExpr>,
+        branches: Vec<(u16, SlotShape, TypedExpr)>,
+        fallback: Option<Box<TypedExpr>>,
+        span: SourceSpan,
+    },
 }
 
 /// Conversion-time context (locals are let bindings and lambda parameters).
@@ -318,7 +339,172 @@ impl TypedContext {
                     span: *span,
                 }])
             }
+            Command::SetType {
+                definitions,
+                tabled,
+                span,
+            } => self.execute_set_type(definitions, *tabled, *span),
+            Command::Whattype { target, span } => self.execute_whattype(target, *span),
         }
+    }
+
+    /// `set_type` (axis.w:5092-5168): the bracketed form registers every
+    /// name of the group as a placeholder first so right-hand sides can be
+    /// recursive, then resolves each spec and installs the projector or
+    /// injector globals; the single-name form is a plain alias that never
+    /// enters the tabled map.
+    fn execute_set_type(
+        &mut self,
+        definitions: &[crate::syntax::TypeDefinition],
+        tabled: bool,
+        span: SourceSpan,
+    ) -> Result<Vec<TypedCommandEvent>, Diagnostic> {
+        let mut targets = Vec::with_capacity(definitions.len());
+        if tabled {
+            // Pass 1: placeholders, so every name of the group resolves.
+            let numbers: Vec<TypeNumber> = definitions
+                .iter()
+                .map(|definition| {
+                    self.types.add(TypeBinding {
+                        name: definition.name.value.clone(),
+                        definition: Type::Undetermined,
+                        fields: Vec::new(),
+                    })
+                })
+                .collect();
+            // Pass 2: resolve each spec with every group name visible.
+            for (definition, number) in definitions.iter().zip(numbers) {
+                let (expansion, fields) = resolve_type_spec(&definition.spec, &self.types)?;
+                self.types.update(number, expansion, fields);
+                targets.push(Type::Tabled(number));
+            }
+        } else {
+            let definition = definitions
+                .first()
+                .expect("the single-name set_type form holds one equation");
+            // The alias never enters the tabled map, so its field names
+            // live only in the syntax tree (define_type_members reads
+            // them from the spec).
+            let (expansion, _fields) = resolve_type_spec(&definition.spec, &self.types)?;
+            self.types
+                .add_alias(definition.name.value.clone(), expansion.clone());
+            targets.push(expansion);
+        }
+        let mut events = Vec::with_capacity(definitions.len());
+        for (definition, target) in definitions.iter().zip(&targets) {
+            let text = self.define_type_members(definition, target);
+            events.push(TypedCommandEvent::ReportLine { text, span });
+        }
+        Ok(events)
+    }
+
+    /// Install the projector (struct) or injector (union) globals of one
+    /// definition as one-argument closures, and render its report line.
+    fn define_type_members(
+        &mut self,
+        definition: &crate::syntax::TypeDefinition,
+        target: &Type,
+    ) -> String {
+        let expansion = match target {
+            Type::Tabled(number) => self.types.expansion(*number).clone(),
+            other => other.clone(),
+        };
+        let heading = format!(
+            "Type name '{}' defined as {}\n",
+            definition.name.value,
+            expansion.display(&self.types)
+        );
+        let fields = match &definition.spec {
+            TypeSpec::Alias(_) => return heading,
+            TypeSpec::Struct(fields) | TypeSpec::Union(fields) => fields,
+        };
+        let components: &[Type] = match &expansion {
+            Type::Tuple(components) | Type::Union(components) => components,
+            _ => &[],
+        };
+        let union = matches!(definition.spec, TypeSpec::Union(_));
+        let mut names = Vec::new();
+        for (index, field) in fields.iter().enumerate() {
+            let Some(field_name) = &field.name else {
+                continue;
+            };
+            let component = components.get(index).cloned().unwrap_or(Type::Undetermined);
+            let (function_type, body) = if union {
+                (
+                    Type::function(component, target.clone()),
+                    TypedExpr::UnionInject {
+                        tag: index as u16,
+                        injector_name: field_name.value.clone(),
+                        payload: Box::new(parameter_body(&field_name.value, field.span)),
+                    },
+                )
+            } else {
+                (
+                    Type::function(target.clone(), component),
+                    TypedExpr::TupleProject {
+                        index,
+                        inner: Box::new(parameter_body(&field_name.value, field.span)),
+                    },
+                )
+            };
+            self.globals.define(
+                field_name.value.clone(),
+                function_type,
+                crate::frames::global_with(Rc::new(member_closure(body))),
+            );
+            names.push(field_name.value.clone());
+        }
+        if names.is_empty() {
+            return heading;
+        }
+        let role = if union { "injectors" } else { "projectors" };
+        format!("{heading}  with {role}: {}.\n", names.join(", "))
+    }
+
+    /// `whattype` (parser.y:169-171): a defined type name prints its
+    /// definition (a tabled type as an equation naming its tags), any
+    /// other target converts unevaluated and prints its type.
+    fn execute_whattype(
+        &mut self,
+        target: &Expr,
+        span: SourceSpan,
+    ) -> Result<Vec<TypedCommandEvent>, Diagnostic> {
+        if let Expr::Identifier { name, .. } = target {
+            if let Some(resolved) = self.types.resolve_name(name) {
+                let text = match resolved {
+                    Type::Tabled(number) => {
+                        let binding = self.types.binding(number);
+                        let body = match &binding.definition {
+                            Type::Union(variants) => {
+                                type_equation(variants, &binding.fields, " | ", &self.types)
+                            }
+                            Type::Tuple(components) if !components.is_empty() => {
+                                type_equation(components, &binding.fields, ", ", &self.types)
+                            }
+                            other => {
+                                return Ok(vec![TypedCommandEvent::ReportLine {
+                                    text: format!("Defined type: {}\n", other.display(&self.types)),
+                                    span,
+                                }])
+                            }
+                        };
+                        format!("Defined type: ( {body} )\n")
+                    }
+                    other => format!("Defined type: {}\n", other.display(&self.types)),
+                };
+                return Ok(vec![TypedCommandEvent::ReportLine { text, span }]);
+            }
+        }
+        let mut type_ = Type::Undetermined;
+        convert_expr(
+            target,
+            &mut type_,
+            &Analysis::new(&self.types, &self.globals),
+        )?;
+        Ok(vec![TypedCommandEvent::ReportLine {
+            text: format!("Type: {}\n", type_.display(&self.types)),
+            span,
+        }])
     }
 }
 
@@ -341,6 +527,94 @@ fn evaluate_command_expr(
 
 fn type_error(message: String, span: SourceSpan) -> Diagnostic {
     Diagnostic::new(ErrorKind::Type, message, Some(span))
+}
+
+/// The single parameter of an injector/projector closure body.
+fn parameter_body(name: &str, span: SourceSpan) -> TypedExpr {
+    TypedExpr::LocalIdent {
+        name: name.to_string(),
+        depth: 0,
+        offset: 0,
+        span,
+    }
+}
+
+/// A one-argument closure value with no captured frame, used for the
+/// projector and injector globals a `set_type` definition installs.
+fn member_closure(body: TypedExpr) -> Value {
+    Value::Closure(Rc::new(Closure {
+        parameters: 1,
+        shapes: Rc::from(vec![SlotShape::Leaf]),
+        recursive: false,
+        body: Rc::new(body),
+        frame: None,
+    }))
+}
+
+/// Resolve a `set_type` right-hand side against the table: the expansion
+/// type plus the per-field names (projectors or injectors), positionally.
+fn resolve_type_spec(
+    spec: &TypeSpec,
+    types: &TypeTable,
+) -> Result<(Type, Vec<Option<String>>), Diagnostic> {
+    fn field_type(field: &crate::syntax::TypeField, types: &TypeTable) -> Result<Type, Diagnostic> {
+        field.type_expr.resolve_in(types).map_err(|unknown| {
+            Diagnostic::new(
+                ErrorKind::Name,
+                format!("undefined type name '{}'", unknown.value),
+                Some(unknown.span),
+            )
+        })
+    }
+    match spec {
+        TypeSpec::Alias(type_expr) => Ok((
+            type_expr.resolve_in(types).map_err(|unknown| {
+                Diagnostic::new(
+                    ErrorKind::Name,
+                    format!("undefined type name '{}'", unknown.value),
+                    Some(unknown.span),
+                )
+            })?,
+            Vec::new(),
+        )),
+        TypeSpec::Struct(fields) => {
+            let mut components = Vec::with_capacity(fields.len());
+            let mut names = Vec::with_capacity(fields.len());
+            for field in fields {
+                components.push(field_type(field, types)?);
+                names.push(field.name.as_ref().map(|name| name.value.clone()));
+            }
+            Ok((Type::tuple(components), names))
+        }
+        TypeSpec::Union(fields) => {
+            let mut variants = Vec::with_capacity(fields.len());
+            let mut names = Vec::with_capacity(fields.len());
+            for field in fields {
+                variants.push(field_type(field, types)?);
+                names.push(field.name.as_ref().map(|name| name.value.clone()));
+            }
+            Ok((Type::union_of(variants), names))
+        }
+    }
+}
+
+/// The inside of a tabled type's equation print: each component followed
+/// by its tag name, joined per kind (`( void nil | (int,IntList) cons )`).
+fn type_equation(
+    components: &[Type],
+    fields: &[Option<String>],
+    joiner: &str,
+    types: &TypeTable,
+) -> String {
+    components
+        .iter()
+        .zip(fields)
+        .map(|(component, field)| match field {
+            Some(name) => format!("{} {}", component.display(types), name),
+            None => component.display(types).to_string(),
+        })
+        .collect::<Vec<_>>()
+        .join(joiner)
 }
 
 /// A balance failure is kept structured until the enclosing balance has had
@@ -1231,6 +1505,161 @@ pub fn convert_expr(
                     index: index.is_some(),
                     iterable: Box::new(iterable),
                     body: Box::new(body),
+                },
+                *span,
+                analysis,
+            )
+        }
+        Expr::Case(case) => {
+            let crate::syntax::CaseExpr {
+                subject,
+                branches,
+                span,
+            } = case.as_ref();
+            let mut subject_type = Type::Undetermined;
+            let converted_subject = convert_expr(subject, &mut subject_type, analysis)?;
+            // Discrimination needs a tabled union with named injectors
+            // (axis-types.w:2890-2910); a structural union from the
+            // single-name form is rejected with the upstream wording.
+            let tabled_union = match &subject_type {
+                Type::Tabled(number) => match &analysis.types.binding(*number).definition {
+                    Type::Union(variants)
+                        if analysis.types.binding(*number).fields.len() == variants.len()
+                            && analysis
+                                .types
+                                .binding(*number)
+                                .fields
+                                .iter()
+                                .all(Option::is_some) =>
+                    {
+                        Some((
+                            variants.clone(),
+                            analysis.types.binding(*number).fields.clone(),
+                        ))
+                    }
+                    _ => None,
+                },
+                _ => None,
+            };
+            let Some((variants, injector_names)) = tabled_union else {
+                return Err(type_error(
+                    format!(
+                        "Discrimination on expression of type {} requires using 'set_type' for \
+                         this type, and naming injectors for it",
+                        subject_type.display(analysis.types)
+                    ),
+                    subject.span(),
+                ));
+            };
+            // Branch bodies share one type pattern, converted in source
+            // order: the first body fixes it and a later mismatch reports
+            // against what the earlier branches needed.
+            let mut common = required.clone();
+            let mut converted_branches = Vec::new();
+            let mut fallback = None;
+            for branch in branches {
+                let Some(tag) = &branch.tag else {
+                    let mut found = Type::Undetermined;
+                    let body = convert_expr(&branch.body, &mut found, analysis)?;
+                    if !common.specialise(&found, analysis.types) {
+                        return Err(type_error(
+                            format!(
+                                "found {} while {} was needed.",
+                                found.display(analysis.types),
+                                common.display(analysis.types)
+                            ),
+                            branch.body.span(),
+                        ));
+                    }
+                    fallback = Some(Box::new(body));
+                    continue;
+                };
+                let Some(index) = injector_names
+                    .iter()
+                    .position(|field| field.as_deref() == Some(tag.value.as_str()))
+                else {
+                    return Err(Diagnostic::new(
+                        ErrorKind::Name,
+                        format!(
+                            "Injector '{}' does not belong to type {}",
+                            tag.value,
+                            subject_type.display(analysis.types)
+                        ),
+                        Some(tag.span),
+                    ));
+                };
+                let payload = variants[index].clone();
+                let (shape, leaves) = match &branch.pattern {
+                    Some(pattern) => {
+                        let leaves = bind_pattern_leaves(pattern, &payload, analysis.types)?;
+                        (pattern_slot_shape(pattern), leaves)
+                    }
+                    None => (SlotShape::Discard, Vec::new()),
+                };
+                let mut names = BTreeSet::new();
+                for (name, name_span, _, _) in &leaves {
+                    if !names.insert(name.as_str()) {
+                        return Err(Diagnostic::new(
+                            ErrorKind::Name,
+                            format!("Multiple binding of '{name}' in same scope"),
+                            Some(*name_span),
+                        ));
+                    }
+                }
+                let mut locals = analysis.locals.clone();
+                let mut constant_locals = analysis.constant_locals.clone();
+                // Same layer rule as a loop pattern: a branch binding no
+                // slot claims no frame, so depths shift only when a slot
+                // exists (empty-layer rule).
+                if !leaves.is_empty() {
+                    for (_, depth, _) in locals.values_mut() {
+                        *depth += 1;
+                    }
+                }
+                for (offset, (name, _, constant, leaf_type)) in leaves.iter().enumerate() {
+                    locals.insert(
+                        name.clone(),
+                        (Rc::new(RefCell::new(leaf_type.clone())), 0, offset),
+                    );
+                    if *constant {
+                        constant_locals.insert(name.clone());
+                    } else {
+                        constant_locals.remove(name);
+                    }
+                }
+                let mut found = Type::Undetermined;
+                let body = convert_expr(
+                    &branch.body,
+                    &mut found,
+                    &Analysis {
+                        types: analysis.types,
+                        globals: analysis.globals,
+                        locals,
+                        constant_locals,
+                        in_function: analysis.in_function,
+                        loop_depth: analysis.loop_depth,
+                    },
+                )?;
+                if !common.specialise(&found, analysis.types) {
+                    return Err(type_error(
+                        format!(
+                            "found {} while {} was needed.",
+                            found.display(analysis.types),
+                            common.display(analysis.types)
+                        ),
+                        branch.body.span(),
+                    ));
+                }
+                converted_branches.push((index as u16, shape, body));
+            }
+            conform_types(
+                &common,
+                required,
+                TypedExpr::Case {
+                    subject: Box::new(converted_subject),
+                    branches: converted_branches,
+                    fallback,
+                    span: *span,
                 },
                 *span,
                 analysis,
@@ -3127,6 +3556,57 @@ impl TypedExpr {
                 Ok(at_level(level, || Value::List(collected.clone())))
             }
             Self::Break => Err(Control::Break(0)),
+            Self::UnionInject {
+                tag,
+                injector_name,
+                payload,
+            } => {
+                let value = force(payload, context)?;
+                Ok(at_level(level, || Value::Union {
+                    tag: *tag,
+                    injector_name: injector_name.clone(),
+                    value: Box::new(value.clone()),
+                }))
+            }
+            Self::TupleProject { index, inner } => {
+                let value = force(inner, context)?;
+                let Value::Tuple(components) = value else {
+                    panic!("analysis let a non-tuple projection through: {value}")
+                };
+                Ok(at_level(level, || components[*index].clone()))
+            }
+            Self::Case {
+                subject,
+                branches,
+                fallback,
+                span,
+            } => {
+                let subject = force(subject, context)?;
+                let Value::Union { tag, value, .. } = subject else {
+                    panic!("analysis let a non-union discrimination subject through: {subject}")
+                };
+                for (branch_tag, shape, body) in branches {
+                    if *branch_tag != tag {
+                        continue;
+                    }
+                    let mut slots = Vec::new();
+                    distribute(value.as_ref().clone(), shape, &mut slots);
+                    // A branch binding no slot claims no frame, exactly as
+                    // analysis counted no layer for it (empty-layer rule).
+                    return if slots.is_empty() {
+                        body.evaluate(context, level)
+                    } else {
+                        context.with_frame(slots, |context| body.evaluate(context, level))
+                    };
+                }
+                match fallback {
+                    Some(body) => body.evaluate(context, level),
+                    None => Err(runtime(
+                        "Discrimination without else branch failed to match",
+                        *span,
+                    )),
+                }
+            }
         }
     }
 }

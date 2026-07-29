@@ -224,10 +224,13 @@ pub struct TypeBinding {
     pub fields: Vec<Option<String>>,
 }
 
-/// The typedef table (upstream `type_expr::type_map`).
+/// The typedef table (upstream `type_expr::type_map`). Bracketed
+/// `set_type [ … ]` definitions live in `bindings`; the single-name form
+/// is a plain alias that never enters the map (axis.w:5146-5168).
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct TypeTable {
     bindings: Vec<TypeBinding>,
+    aliases: std::collections::BTreeMap<String, Type>,
 }
 
 impl TypeTable {
@@ -238,6 +241,15 @@ impl TypeTable {
     pub fn add(&mut self, binding: TypeBinding) -> TypeNumber {
         self.bindings.push(binding);
         TypeNumber(self.bindings.len() - 1)
+    }
+
+    /// Replace a placeholder binding with its resolved definition; used by
+    /// the two-pass bracketed `set_type`, which registers every name of a
+    /// group before resolving any right-hand side (recursion).
+    pub fn update(&mut self, number: TypeNumber, definition: Type, fields: Vec<Option<String>>) {
+        let binding = &mut self.bindings[number.0];
+        binding.definition = definition;
+        binding.fields = fields;
     }
 
     pub fn binding(&self, number: TypeNumber) -> &TypeBinding {
@@ -253,6 +265,22 @@ impl TypeTable {
             .iter()
             .position(|binding| binding.name == name)
             .map(TypeNumber)
+    }
+
+    /// Register a single-name `set_type` alias; it stays out of the tabled
+    /// map, so discrimination on it is rejected.
+    pub fn add_alias(&mut self, name: impl Into<String>, definition: Type) {
+        self.aliases.insert(name.into(), definition);
+    }
+
+    /// Resolve a type name written in a type expression: aliases first,
+    /// then the tabled map (mirroring upstream, where a redefinition
+    /// shadows outward).
+    pub fn resolve_name(&self, name: &str) -> Option<Type> {
+        self.aliases
+            .get(name)
+            .cloned()
+            .or_else(|| self.lookup(name).map(Type::Tabled))
     }
 }
 

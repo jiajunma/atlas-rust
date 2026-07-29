@@ -166,6 +166,18 @@ pub enum Expr {
     Break {
         span: SourceSpan,
     },
+    /// `case subject | tag[(pattern)]: body … [else body] esac`
+    /// (parser.y:480-482 discrimination). Boxed to keep `Expr` small.
+    Case(Box<CaseExpr>),
+}
+
+/// A case discrimination: the subject (a tabled union value) and its
+/// branches in source order.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CaseExpr {
+    pub subject: Expr,
+    pub branches: Vec<CaseBranch>,
+    pub span: SourceSpan,
 }
 
 /// The payload of a `for` loop: the element pattern (absent for the
@@ -268,6 +280,12 @@ pub enum TypeExpr {
         result: Box<TypeExpr>,
         span: SourceSpan,
     },
+    /// A typedef name (upstream `TYPE_ID`): an alias from the single-name
+    /// `set_type` form, or a tabled type from the bracketed form.
+    Named {
+        name: String,
+        span: SourceSpan,
+    },
 }
 
 impl TypeExpr {
@@ -279,28 +297,55 @@ impl TypeExpr {
             | Self::Void { span }
             | Self::Tuple { span, .. }
             | Self::Union { span, .. }
-            | Self::Function { span, .. } => *span,
+            | Self::Function { span, .. }
+            | Self::Named { span, .. } => *span,
         }
     }
 
-    /// The structural type this expression denotes (no typedefs yet).
-    pub fn resolve(&self) -> crate::types::Type {
+    /// The structural type this expression denotes, resolving typedef
+    /// names through the table; an unknown name is an error carrying its
+    /// token (upstream can only lex a defined name as `TYPE_ID`).
+    pub fn resolve_in(
+        &self,
+        table: &crate::types::TypeTable,
+    ) -> Result<crate::types::Type, SpannedValue<String>> {
         use crate::types::Type;
         match self {
-            Self::Primitive { value, .. } => Type::Primitive(*value),
-            Self::Row { component, .. } => Type::row(component.resolve()),
-            Self::WildRow { .. } => Type::row(Type::Undetermined),
-            Self::Void { .. } => Type::void(),
-            Self::Tuple { components, .. } => {
-                Type::tuple(components.iter().map(Self::resolve).collect())
-            }
-            Self::Union { variants, .. } => {
-                Type::union_of(variants.iter().map(Self::resolve).collect())
-            }
+            Self::Primitive { value, .. } => Ok(Type::Primitive(*value)),
+            Self::Row { component, .. } => Ok(Type::row(component.resolve_in(table)?)),
+            Self::WildRow { .. } => Ok(Type::row(Type::Undetermined)),
+            Self::Void { .. } => Ok(Type::void()),
+            Self::Tuple { components, .. } => Ok(Type::tuple(
+                components
+                    .iter()
+                    .map(|component| component.resolve_in(table))
+                    .collect::<Result<Vec<_>, _>>()?,
+            )),
+            Self::Union { variants, .. } => Ok(Type::union_of(
+                variants
+                    .iter()
+                    .map(|variant| variant.resolve_in(table))
+                    .collect::<Result<Vec<_>, _>>()?,
+            )),
             Self::Function {
                 argument, result, ..
-            } => Type::function(argument.resolve(), result.resolve()),
+            } => Ok(Type::function(
+                argument.resolve_in(table)?,
+                result.resolve_in(table)?,
+            )),
+            Self::Named { name, span } => table.resolve_name(name).ok_or_else(|| SpannedValue {
+                value: name.clone(),
+                span: *span,
+            }),
         }
+    }
+
+    /// The structural type this expression denotes, without any typedef
+    /// names in scope (diagnostic-rendering paths; an unexpected name
+    /// degrades to undetermined rather than panicking).
+    pub fn resolve(&self) -> crate::types::Type {
+        self.resolve_in(&crate::types::TypeTable::new())
+            .unwrap_or(crate::types::Type::Undetermined)
     }
 }
 
@@ -325,6 +370,43 @@ pub struct ParsedFor {
     pub iterable: Expr,
     pub body: Expr,
     pub od: SourceSpan,
+}
+
+/// A `set_type` right-hand side (parser.y:753-761 `type_spec`, 786-790
+/// `typedef_type`): a plain type alias, a struct whose named fields become
+/// projectors, or a union whose named variants become injectors.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum TypeSpec {
+    Alias(TypeExpr),
+    Struct(Vec<TypeField>),
+    Union(Vec<TypeField>),
+}
+
+/// One field of a struct spec or variant of a union spec: `type name` or
+/// the anonymous `type .` form.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TypeField {
+    pub type_expr: TypeExpr,
+    pub name: Option<SpannedValue<String>>,
+    pub span: SourceSpan,
+}
+
+/// One `Name = spec` equation of a `set_type` command.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TypeDefinition {
+    pub name: SpannedValue<String>,
+    pub spec: TypeSpec,
+}
+
+/// One branch of a `case … esac` discrimination (parser.y caselist):
+/// `tag(pattern): body`, `tag: body`, or the `else body` fallback.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CaseBranch {
+    /// The injector tag; `None` for the `else` branch.
+    pub tag: Option<SpannedValue<String>>,
+    pub pattern: Option<Pattern>,
+    pub body: Expr,
+    pub span: SourceSpan,
 }
 
 impl Expr {
@@ -354,6 +436,7 @@ impl Expr {
             | Self::While { span, .. }
             | Self::Break { span } => *span,
             Self::For(loop_) => loop_.span,
+            Self::Case(case) => case.span,
         }
     }
 }
@@ -421,13 +504,30 @@ pub enum Command {
         value_type: Prim,
         span: SourceSpan,
     },
+    /// `set_type Name = spec` and `set_type [ Name = spec, … ]`
+    /// (parser.y:163-167). Only the bracketed form enters the tabled
+    /// type map (enabling recursion and case discrimination).
+    SetType {
+        definitions: Vec<TypeDefinition>,
+        tabled: bool,
+        span: SourceSpan,
+    },
+    /// `whattype target` (parser.y:169-171): a type name prints its
+    /// definition, any other expression prints its converted type.
+    Whattype {
+        target: Expr,
+        span: SourceSpan,
+    },
 }
 
 impl Command {
     pub fn span(&self) -> SourceSpan {
         match self {
             Self::Expression(expression) => expression.span(),
-            Self::Define { span, .. } | Self::Declare { span, .. } => *span,
+            Self::Define { span, .. }
+            | Self::Declare { span, .. }
+            | Self::SetType { span, .. }
+            | Self::Whattype { span, .. } => *span,
         }
     }
 }
@@ -499,6 +599,10 @@ pub enum ParserToken {
     Do(SourceSpan),
     Od(SourceSpan),
     Break(SourceSpan),
+    SetType(SourceSpan),
+    Whattype(SourceSpan),
+    Case(SourceSpan),
+    Esac(SourceSpan),
     /// `!` — the const-binding marker in patterns, never a formula operator.
     Bang(SourceSpan),
     At(SourceSpan),
@@ -551,6 +655,10 @@ impl ParserToken {
             | Self::Do(span)
             | Self::Od(span)
             | Self::Break(span)
+            | Self::SetType(span)
+            | Self::Whattype(span)
+            | Self::Case(span)
+            | Self::Esac(span)
             | Self::Bang(span)
             | Self::At(span)
             | Self::Dot(span)
@@ -602,6 +710,10 @@ impl fmt::Display for ParserToken {
             Self::Do(_) => "do",
             Self::Od(_) => "od",
             Self::Break(_) => "break",
+            Self::SetType(_) => "set_type",
+            Self::Whattype(_) => "whattype",
+            Self::Case(_) => "case",
+            Self::Esac(_) => "esac",
             Self::Bang(_) => "!",
             Self::At(_) => "@",
             Self::Dot(_) => ".",
@@ -730,6 +842,10 @@ fn parser_tokens_from_tokens(
                         "do" => ParserToken::Do(span),
                         "od" => ParserToken::Od(span),
                         "break" => ParserToken::Break(span),
+                        "set_type" => ParserToken::SetType(span),
+                        "whattype" => ParserToken::Whattype(span),
+                        "case" => ParserToken::Case(span),
+                        "esac" => ParserToken::Esac(span),
                         _ => ParserToken::Unsupported(SpannedValue { value: word, span }),
                     };
                     Some(Ok((token, span)))
@@ -913,6 +1029,11 @@ fn bison_token_name(token: &ParserToken) -> Option<&'static str> {
         ParserToken::Do(_) => Some("DO"),
         ParserToken::Od(_) => Some("OD"),
         ParserToken::Break(_) => Some("BREAK"),
+        ParserToken::SetType(_) => Some("SET_TYPE"),
+        ParserToken::Whattype(_) => Some("WHATTYPE"),
+        ParserToken::Case(_) => Some("CASE"),
+        ParserToken::Esac(_) => Some("ESAC"),
+        ParserToken::Colon(_) => Some("':'"),
         ParserToken::VoidType(_) => Some("VOID"),
         _ => None,
     }
@@ -1377,6 +1498,87 @@ fn definition(target: SpannedValue<String>, value: Expr) -> Command {
     }
 }
 
+fn set_type_command(
+    set_type_span: SourceSpan,
+    definitions: Vec<TypeDefinition>,
+    tabled: bool,
+    close: SourceSpan,
+) -> Command {
+    Command::SetType {
+        definitions,
+        tabled,
+        span: join_span(set_type_span, close),
+    }
+}
+
+fn whattype_command(whattype_span: SourceSpan, target: Expr) -> Command {
+    Command::Whattype {
+        span: join_span(whattype_span, target.span()),
+        target,
+    }
+}
+
+fn type_definition(name: SpannedValue<String>, spec: TypeSpec) -> TypeDefinition {
+    TypeDefinition { name, spec }
+}
+
+fn named_field(type_expr: TypeExpr, name: SpannedValue<String>) -> TypeField {
+    TypeField {
+        span: join_span(type_expr.span(), name.span),
+        type_expr,
+        name: Some(name),
+    }
+}
+
+fn anonymous_field(type_expr: TypeExpr, dot: SourceSpan) -> TypeField {
+    TypeField {
+        span: join_span(type_expr.span(), dot),
+        type_expr,
+        name: None,
+    }
+}
+
+/// End span of a `set_type` right-hand side (diagnostics only).
+fn type_spec_span(spec: &TypeSpec) -> SourceSpan {
+    match spec {
+        TypeSpec::Alias(type_expr) => type_expr.span(),
+        TypeSpec::Struct(fields) | TypeSpec::Union(fields) => {
+            fields.last().expect("specs hold at least two fields").span
+        }
+    }
+}
+
+fn case_expression(
+    case_span: SourceSpan,
+    subject: Expr,
+    branches: Vec<CaseBranch>,
+    esac: SourceSpan,
+) -> Expr {
+    Expr::Case(Box::new(CaseExpr {
+        subject,
+        branches,
+        span: join_span(case_span, esac),
+    }))
+}
+
+fn case_branch(tag: SpannedValue<String>, pattern: Option<Pattern>, body: Expr) -> CaseBranch {
+    CaseBranch {
+        span: join_span(tag.span, body.span()),
+        tag: Some(tag),
+        pattern,
+        body,
+    }
+}
+
+fn else_branch(else_span: SourceSpan, body: Expr) -> CaseBranch {
+    CaseBranch {
+        tag: None,
+        pattern: None,
+        span: join_span(else_span, body.span()),
+        body,
+    }
+}
+
 /// The pieces of an `if` tail, before the opening span is known.
 pub(crate) struct ParsedIf {
     condition: Expr,
@@ -1781,6 +1983,29 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
             )
         }
         Expr::Break { .. } => "break".to_string(),
+        Expr::Case(case) => {
+            let branches = case
+                .branches
+                .iter()
+                .map(|branch| {
+                    let tag = match &branch.tag {
+                        Some(tag) => tag.value.clone(),
+                        None => "else".to_string(),
+                    };
+                    let pattern = branch
+                        .pattern
+                        .as_ref()
+                        .map(compact_pattern)
+                        .unwrap_or_default();
+                    format!("{tag}{pattern}: {}", compact_expression(&branch.body))
+                })
+                .collect::<Vec<_>>()
+                .join(" | ");
+            format!(
+                "case {} | {branches} esac",
+                compact_expression(&case.subject)
+            )
+        }
     }
 }
 
@@ -2048,6 +2273,26 @@ mod tests {
                 expression_shape(&loop_.body)
             ),
             Expr::Break { .. } => "break".to_string(),
+            Expr::Case(case) => {
+                let branches = case
+                    .branches
+                    .iter()
+                    .map(|branch| {
+                        let tag = match &branch.tag {
+                            Some(tag) => tag.value.clone(),
+                            None => "else".to_string(),
+                        };
+                        let pattern = branch
+                            .pattern
+                            .as_ref()
+                            .map(pattern_shape)
+                            .unwrap_or_default();
+                        format!("{tag}{pattern}:{}", expression_shape(&branch.body))
+                    })
+                    .collect::<Vec<_>>()
+                    .join("|");
+                format!("case({};{})", expression_shape(&case.subject), branches)
+            }
         }
     }
 
@@ -2540,5 +2785,94 @@ mod tests {
         let source = SourceText::new(include_str!("../../../tests/fixtures/eval/loops_b4.atlas"));
         let program = parse(&source).expect("B4 loop fixture parses");
         assert_eq!(program.expressions.len(), 8);
+    }
+
+    #[test]
+    fn parses_case_discrimination_forms() {
+        // Tag with a collapsed single pattern, and a tag-only branch.
+        assert_eq!(
+            expression_shape(&parse_one("case u | i(x): x + 1 | s(t): 0 esac")),
+            "case(u;ix:+@4(x,1)|st:0)"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("case u | i: 1 | else 2 esac")),
+            "case(u;i:1|else:2)"
+        );
+        // The `()` throw-away and tuple patterns reuse the binding grammar.
+        assert_eq!(
+            expression_shape(&parse_one("case l | nil(()): 0 | cons((h, t)): h esac")),
+            "case(l;nil_:0|cons(h,t):h)"
+        );
+    }
+
+    fn parse_one_command(source: &str) -> Command {
+        let source_text = SourceText::new(source);
+        let mut lexer = crate::lex::Lexer::new(&source_text);
+        let mut tokens = Vec::new();
+        loop {
+            let token = lexer.next_token().expect("command lexes");
+            if token.kind == crate::lex::TokenKind::Eof {
+                break;
+            }
+            tokens.push(token);
+        }
+        parse_command(&tokens, &source_text).expect("command parses")
+    }
+
+    #[test]
+    fn parses_set_type_and_whattype_commands() {
+        // The single-name form aliases; struct fields keep their names.
+        let command = parse_one_command("set_type Pair = (int x, int y)");
+        let Command::SetType {
+            definitions,
+            tabled,
+            ..
+        } = command
+        else {
+            panic!("expected a set_type command")
+        };
+        assert!(!tabled);
+        assert_eq!(definitions.len(), 1);
+        assert_eq!(definitions[0].name.value, "Pair");
+        let TypeSpec::Struct(fields) = &definitions[0].spec else {
+            panic!("expected a struct spec")
+        };
+        assert_eq!(fields.len(), 2);
+        assert!(fields[0]
+            .name
+            .as_ref()
+            .is_some_and(|name| name.value == "x"));
+        assert!(fields[1]
+            .name
+            .as_ref()
+            .is_some_and(|name| name.value == "y"));
+
+        // The bracketed form enters the tabled map; a union variant may
+        // name the type being defined (recursion).
+        let command = parse_one_command("set_type [ IntList = (void nil | (int, IntList) cons) ]");
+        let Command::SetType {
+            definitions,
+            tabled,
+            ..
+        } = command
+        else {
+            panic!("expected a set_type command")
+        };
+        assert!(tabled);
+        assert_eq!(definitions.len(), 1);
+        let TypeSpec::Union(fields) = &definitions[0].spec else {
+            panic!("expected a union spec")
+        };
+        assert_eq!(fields.len(), 2);
+        assert!(matches!(fields[0].type_expr, TypeExpr::Void { .. }));
+        let TypeExpr::Tuple { components, .. } = &fields[1].type_expr else {
+            panic!("expected a tuple variant")
+        };
+        assert!(matches!(&components[1], TypeExpr::Named { name, .. } if name == "IntList"));
+
+        let command = parse_one_command("whattype IntList");
+        assert!(
+            matches!(command, Command::Whattype { target: Expr::Identifier { ref name, .. }, .. } if name == "IntList")
+        );
     }
 }
