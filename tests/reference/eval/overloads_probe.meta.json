@@ -1,8 +1,0 @@
-{
-  "fixture": "eval/overloads_probe",
-  "oracle": "atlas",
-  "stage": "probe",
-  "reference_status": "pending_hpc_reference",
-  "rust_status": "not_implemented",
-  "notes": "Exploratory probe for a future overload-listing slice: whether 'set f = <lambda>' accumulates user overloads on one identifier, how 'whattype f ?' (parser.y:187, show_overloads) renders a user function's overload list, and that overloaded user calls resolve by arity. This avoids the builtin-operator lists that reference unported domain types (Split/KTypePol/ParamPol, seen in capture 3499638). Lines will be split into accepted and rejected fixtures from the oracle behavior; this probe file is not a differential fixture."
-}

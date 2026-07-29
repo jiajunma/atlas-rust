@@ -2,10 +2,19 @@
   "fixture": "eval/overloads_b8",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3499692",
+  "source_archive_sha256": "0138295e9e43a0645c09a6059c5d31d176ec5271290abe7ce13f1136c843e6fd",
+  "fixture_sha256": "d3a2eb52e198ee156ce17eac17ac25e66cfb39a00d5be22ac7267620a271143a",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "c2f62335b8e303e4b0b6d1e70434508f14cf7afceeac4ae110180fb43497b3b8",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "663af5f4bef56e4f3cfa87a98fafa2f9dbc75e7b89e7eee972a554efc17ae4e4",
+  "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/parser.y:187"
   ],
-  "rust_status": "not_implemented",
-  "notes": "B8 user-overload slice, split from probe overloads_probe (capture 3499685): 'set f = <lambda>' accumulates overloads on one identifier ('Defined f: T' for the first, 'Added definition [2] of f: T' for the second), 'whattype f ?' lists user overloads in definition order, and calls resolve by arity. Rejected companions are deferred to a later probe. Reference capture pending on HPC."
+  "notes": "B8 user-overload slice, split from probe overloads_probe (capture 3499685): 'set f = <lambda>' accumulates overloads on one identifier ('Defined f: T' for the first, 'Added definition [2] of f: T' for the second), 'whattype f ?' lists user overloads in definition order, and calls resolve by arity. Rejected companions are deferred to a later probe. Reference captured by HPC job 3499692 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events verbatim. Differential evidence remains pending until the pipeline_swap_diff run."
 }
