@@ -2,10 +2,19 @@
   "fixture": "eval/commands_b7_rejected",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "upstream_evidence": [
     "sources/interpreter/parser.y:383"
   ],
   "rust_status": "not_implemented",
-  "notes": "Rejected companions of eval/commands_b7, split from probe commands_b7_probe (capture 3499638): 'die' raises the runtime diagnostic 'I die' and batch processing continues with the following line; an undefined identifier is a name-category analysis error. Reference capture pending on HPC."
+  "notes": "Rejected companions of eval/commands_b7, split from probe commands_b7_probe (capture 3499638): 'die' raises the runtime diagnostic 'I die' and batch processing continues with the following line; an undefined identifier is a name-category analysis error. Reference captured by HPC job 3499657 against the frozen atlasofliegroups-4d3e9449 oracle. Differential evidence remains pending until the pipeline_swap_diff run.",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3499657",
+  "source_archive_sha256": "6110c3600600bf6cac64ce8ccf51562a24c172ee6c0cb6710e821b8c0aad6f7f",
+  "fixture_sha256": "eea4aae7c16aa1bea4d0ecbf622bf9953ebddda38fcf89ee7dfa8b0f99d528fb",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
+  "oracle_stderr_sha256": "b2de62d110ec82a0bec23914640b4e3f277dd653a36154d16e1c9864b71e90b3",
+  "capture_artifacts_sha256": "36b5767996de735cb7467f023beee1a1db37f0447a169e0e48440c5a1666f876"
 }
