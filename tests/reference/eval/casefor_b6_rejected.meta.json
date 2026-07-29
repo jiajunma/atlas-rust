@@ -2,11 +2,20 @@
   "fixture": "eval/casefor_b6_rejected",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3499627",
+  "source_archive_sha256": "a1e186d6b8d6c494f5958fe0421616ef0653bb6347f47d9d3348138603790fd1",
+  "fixture_sha256": "0872b2c518c3c9bf18da0aefb9a1f937cb10f9aacd4cd83b8a2fbe6775a1f5f5",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "385697091b4bf742d80997ce3a85af76dffb2e138b170a0cc459b7bfb6db192e",
+  "oracle_stderr_sha256": "94085f376fa6d4cbfd1876d1400bfe48912c3677275c0f944def433e214ed703",
+  "capture_artifacts_sha256": "9f093a9fa4e2bbd51b7b20aca38bb6df0a7fe1e1e9df56d9baf8b45c4fc04651",
+  "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/parser.y:359",
     "sources/interpreter/axis.w:4884-4901"
   ],
-  "rust_status": "not_implemented",
-  "notes": "Rejected companions of eval/casefor_b6: positional union case branches must be functions of the variant type ('found int while (int->*) was needed.'), and branch result types must agree in order ('found string while int was needed.'). The leading set_type line succeeds and emits its ReportLine. Reference capture pending on HPC."
+  "notes": "Rejected companions of eval/casefor_b6: positional union case branches must be functions of the variant type ('found int while (int->*) was needed.'), and branch result types must agree in order ('found string while int was needed.'). The leading set_type line succeeds and emits its ReportLine. Reference captured by HPC job 3499627 against the frozen atlasofliegroups-4d3e9449 oracle. Differential evidence remains pending until the pipeline_swap_diff run."
 }
