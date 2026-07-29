@@ -1,16 +1,16 @@
 use super::{
     assignment, binary, cast_expression, declaration, definition, elif_tail, extend_operator_formula,
-    finish_let, expression_list, finish_operator_formula, join_span, lambda, lambda_parameter,
-    lambda_parameters, let_bindings,
+    finish_let, expression_list, finish_operator_formula, for_expression, join_span, lambda,
+    lambda_parameter, lambda_parameters, let_bindings,
     let_expression, list_expression, rec_function_binding, rec_lambda, return_expression,
-    selector_suffix, operator_selector, unit_selector, tuple_expression, function_binding,
+    selector_suffix, operator_selector, sequence, unit_selector, tuple_expression, function_binding,
     prepend_let_group,
     call_suffix, postfix, prefix_operator_call, slice_suffix, start_binary_formula, start_prefix_formula,
     subscription_suffix, type_group, type_function, type_primitive, type_row, type_union_append,
     type_union_start, type_variant, type_wild_row, unary, finish_conditional, if_tail,
     anonymous_parameter, const_pattern_name, finish_pattern, pattern_binding, pattern_discard,
-    pattern_name, pattern_slots, pattern_tuple, tuple_parameter,
-    BinaryOp, Command, Expr, LambdaParam, LetBinding, ParsedIf,
+    pattern_name, pattern_slots, pattern_tuple, tuple_parameter, while_expression,
+    BinaryOp, Command, Expr, LambdaParam, LetBinding, ParsedFor, ParsedIf,
     ParsedLet, ParserToken, PatternTail, PostfixSuffix, Prim, Program, SlotTail, SpannedValue,
     TypeExpr, TypeVariantSlot, UnaryOp, Pattern,
 };
@@ -52,6 +52,9 @@ pub Expr: Expr = {
     },
     <at:"@"> ":" <body:Expr> => lambda(at, Vec::new(), body),
     <return_span:"return"> <value:Expr> => return_expression(return_span, value),
+    // Sequencing (parser.y:243): `tertiary ';' expr`, right-recursive, so
+    // `a; b; c` is `a; (b; c)`.
+    <first:AssignmentExpr> <_semicolon:";"> <rest:Expr> => sequence(first, rest),
     <expression:AssignmentExpr> => expression,
 };
 
@@ -301,6 +304,37 @@ Atom: Expr = {
         span: join_span(open, close),
         inner: Box::new(inner),
     },
+    // Loops and `break` are units upstream (parser.y:364,473-474,506-531).
+    <while_span:"while"> <tail:WhileTail> => while_expression(while_span, tail),
+    <for_span:"for"> <tail:ForTail> => for_expression(for_span, tail),
+    <span:"break"> => Expr::Break { span },
+};
+
+// The while condition is a `tertiary` upstream (parser.y:442); a bare `do`
+// is the constant-true condition (parser.y:443). The `;`-sequenced
+// do_expr conditions (parser.y:441) are deferred until a fixture needs them.
+WhileTail: (Option<Expr>, Expr, SourceSpan) = {
+    <_do:"do"> <body:Expr> <od:"od"> => (None, body, od),
+    <condition:AssignmentExpr> <_do:"do"> <body:Expr> <od:"od"> => (Some(condition), body, od),
+};
+
+// `FOR pattern_opt ['@' IDENT] IN expr DO expr OD` (parser.y:506-531); the
+// loop pattern reuses the let-binding pattern grammar, exactly like the
+// upstream pair wrap (pattern, index).
+ForTail: ParsedFor = {
+    <pattern:ForPattern> <index:ForIndex?> <_in:"in"> <iterable:Expr> <_do:"do">
+        <body:Expr> <od:"od"> => {
+        ParsedFor { pattern, index, iterable, body, od }
+    },
+};
+
+ForPattern: Option<Pattern> = {
+    => None,
+    <pattern:Pattern> => Some(pattern),
+};
+
+ForIndex: SpannedValue<String> = {
+    <_at:"@"> <name:"identifier"> => name,
 };
 
 // Upstream iftail (parser.y:412-419) plus the inverted else-first form.
@@ -365,6 +399,12 @@ extern {
         "not" => ParserToken::Not(<SourceSpan>),
         "return" => ParserToken::Return(<SourceSpan>),
         "rec_fun" => ParserToken::RecFun(<SourceSpan>),
+        "while" => ParserToken::While(<SourceSpan>),
+        "for" => ParserToken::For(<SourceSpan>),
+        "do" => ParserToken::Do(<SourceSpan>),
+        "od" => ParserToken::Od(<SourceSpan>),
+        "break" => ParserToken::Break(<SourceSpan>),
+        ";" => ParserToken::Semicolon(<SourceSpan>),
         "!" => ParserToken::Bang(<SourceSpan>),
         "@" => ParserToken::At(<SourceSpan>),
         "." => ParserToken::Dot(<SourceSpan>),

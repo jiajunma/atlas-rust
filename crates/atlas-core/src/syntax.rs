@@ -142,6 +142,42 @@ pub enum Expr {
         body: Box<Expr>,
         span: SourceSpan,
     },
+    /// `first; second` sequencing (parser.y:243): the first expression
+    /// evaluates for effects against a void context; the sequence yields
+    /// the second expression's value.
+    Sequence {
+        first: Box<Expr>,
+        second: Box<Expr>,
+        span: SourceSpan,
+    },
+    /// `while condition do body od` (parser.y:364): each iteration's body
+    /// value is collected into a row; a missing condition (`while do …`)
+    /// is the constant true (parser.y:443).
+    While {
+        condition: Option<Box<Expr>>,
+        body: Box<Expr>,
+        span: SourceSpan,
+    },
+    /// `for pattern[@index] in row do body od` (parser.y:506-531). Boxed
+    /// to keep `Expr` small, like `RecLambda`.
+    For(Box<ForLoop>),
+    /// `break` (parser.y BREAK unit): unwinds to the innermost loop, whose
+    /// breaking iteration contributes no value to the collected row.
+    Break {
+        span: SourceSpan,
+    },
+}
+
+/// The payload of a `for` loop: the element pattern (absent for the
+/// throw-away form), the optional `@`-bound 0-based index name, the row
+/// iterated over, and the body evaluated once per element.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ForLoop {
+    pub pattern: Option<Pattern>,
+    pub index: Option<SpannedValue<String>>,
+    pub iterable: Box<Expr>,
+    pub body: Box<Expr>,
+    pub span: SourceSpan,
 }
 
 /// A binding pattern (parser.y:708-749): `x`, const `!x`, tuple
@@ -280,6 +316,17 @@ pub struct ParsedLet {
     pub body: Expr,
 }
 
+/// The pieces of a `for` loop between `for` and `od` (kept off a bare
+/// tuple so the generated parser stays under clippy's complexity limit).
+#[derive(Debug)]
+pub struct ParsedFor {
+    pub pattern: Option<Pattern>,
+    pub index: Option<SpannedValue<String>>,
+    pub iterable: Expr,
+    pub body: Expr,
+    pub od: SourceSpan,
+}
+
 impl Expr {
     pub fn span(&self) -> SourceSpan {
         match self {
@@ -302,7 +349,11 @@ impl Expr {
             | Self::RecLambda { span, .. }
             | Self::Group { span, .. }
             | Self::Conditional { span, .. }
-            | Self::Cast { span, .. } => *span,
+            | Self::Cast { span, .. }
+            | Self::Sequence { span, .. }
+            | Self::While { span, .. }
+            | Self::Break { span } => *span,
+            Self::For(loop_) => loop_.span,
         }
     }
 }
@@ -443,10 +494,16 @@ pub enum ParserToken {
     Not(SourceSpan),
     Return(SourceSpan),
     RecFun(SourceSpan),
+    While(SourceSpan),
+    For(SourceSpan),
+    Do(SourceSpan),
+    Od(SourceSpan),
+    Break(SourceSpan),
     /// `!` — the const-binding marker in patterns, never a formula operator.
     Bang(SourceSpan),
     At(SourceSpan),
     Dot(SourceSpan),
+    Semicolon(SourceSpan),
     LParen(SourceSpan),
     RParen(SourceSpan),
     Newline(SourceSpan),
@@ -489,9 +546,15 @@ impl ParserToken {
             | Self::Not(span)
             | Self::Return(span)
             | Self::RecFun(span)
+            | Self::While(span)
+            | Self::For(span)
+            | Self::Do(span)
+            | Self::Od(span)
+            | Self::Break(span)
             | Self::Bang(span)
             | Self::At(span)
             | Self::Dot(span)
+            | Self::Semicolon(span)
             | Self::LParen(span)
             | Self::RParen(span)
             | Self::Newline(span) => *span,
@@ -534,9 +597,15 @@ impl fmt::Display for ParserToken {
             Self::Not(_) => "not",
             Self::Return(_) => "return",
             Self::RecFun(_) => "rec_fun",
+            Self::While(_) => "while",
+            Self::For(_) => "for",
+            Self::Do(_) => "do",
+            Self::Od(_) => "od",
+            Self::Break(_) => "break",
             Self::Bang(_) => "!",
             Self::At(_) => "@",
             Self::Dot(_) => ".",
+            Self::Semicolon(_) => ";",
             Self::LParen(_) => "(",
             Self::RParen(_) => ")",
             Self::Newline(_) => "newline",
@@ -656,6 +725,11 @@ fn parser_tokens_from_tokens(
                         "fi" => ParserToken::Fi(span),
                         "return" => ParserToken::Return(span),
                         "rec_fun" => ParserToken::RecFun(span),
+                        "while" => ParserToken::While(span),
+                        "for" => ParserToken::For(span),
+                        "do" => ParserToken::Do(span),
+                        "od" => ParserToken::Od(span),
+                        "break" => ParserToken::Break(span),
                         _ => ParserToken::Unsupported(SpannedValue { value: word, span }),
                     };
                     Some(Ok((token, span)))
@@ -692,6 +766,7 @@ fn parser_tokens_from_tokens(
                         // any of these tokens exist, so they cannot clash.
                         '@' => ParserToken::At(span),
                         '.' => ParserToken::Dot(span),
+                        ';' => ParserToken::Semicolon(span),
                         '~' if reversal_tilde => ParserToken::Tilde(span),
                         '~' => parser_operator("~".to_owned(), span)
                             .expect("tilde has a fixed Atlas priority"),
@@ -833,6 +908,11 @@ fn bison_token_name(token: &ParserToken) -> Option<&'static str> {
         ParserToken::Not(_) => Some("NOT"),
         ParserToken::Return(_) => Some("RETURN"),
         ParserToken::RecFun(_) => Some("REC_FUN"),
+        ParserToken::While(_) => Some("WHILE"),
+        ParserToken::For(_) => Some("FOR"),
+        ParserToken::Do(_) => Some("DO"),
+        ParserToken::Od(_) => Some("OD"),
+        ParserToken::Break(_) => Some("BREAK"),
         ParserToken::VoidType(_) => Some("VOID"),
         _ => None,
     }
@@ -874,6 +954,33 @@ fn assignment(target: SpannedValue<String>, value: Expr) -> Expr {
         span: join_span(target.span, value.span()),
         value: Box::new(value),
     }
+}
+
+fn sequence(first: Expr, rest: Expr) -> Expr {
+    Expr::Sequence {
+        span: join_span(first.span(), rest.span()),
+        first: Box::new(first),
+        second: Box::new(rest),
+    }
+}
+
+fn while_expression(while_span: SourceSpan, tail: (Option<Expr>, Expr, SourceSpan)) -> Expr {
+    let (condition, body, od) = tail;
+    Expr::While {
+        span: join_span(while_span, od),
+        condition: condition.map(Box::new),
+        body: Box::new(body),
+    }
+}
+
+fn for_expression(for_span: SourceSpan, parsed: ParsedFor) -> Expr {
+    Expr::For(Box::new(ForLoop {
+        pattern: parsed.pattern,
+        index: parsed.index,
+        span: join_span(for_span, parsed.od),
+        iterable: Box::new(parsed.iterable),
+        body: Box::new(parsed.body),
+    }))
 }
 
 fn let_expression(let_span: SourceSpan, parsed: ParsedLet) -> Expr {
@@ -1640,6 +1747,40 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
         Expr::Cast { target, body, .. } => {
             format!("{}: {}", compact_type(target), compact_expression(body))
         }
+        Expr::Sequence { first, second, .. } => {
+            format!(
+                "{}; {}",
+                compact_expression(first),
+                compact_expression(second)
+            )
+        }
+        Expr::While {
+            condition, body, ..
+        } => {
+            let condition = condition
+                .as_ref()
+                .map(|condition| format!("{} ", compact_expression(condition)))
+                .unwrap_or_default();
+            format!("while {condition}do {} od", compact_expression(body))
+        }
+        Expr::For(loop_) => {
+            let pattern = loop_
+                .pattern
+                .as_ref()
+                .map(compact_pattern)
+                .unwrap_or_default();
+            let index = loop_
+                .index
+                .as_ref()
+                .map(|index| format!("@{}", index.value))
+                .unwrap_or_default();
+            format!(
+                "for {pattern}{index} in {} do {} od",
+                compact_expression(&loop_.iterable),
+                compact_expression(&loop_.body)
+            )
+        }
+        Expr::Break { .. } => "break".to_string(),
     }
 }
 
@@ -1874,6 +2015,39 @@ mod tests {
             Expr::Lambda { body, .. } => format!("lambda({})", expression_shape(body)),
             Expr::RecLambda { body, .. } => format!("rec_lambda({})", expression_shape(body)),
             Expr::Return { value, .. } => format!("return({})", expression_shape(value)),
+            Expr::Sequence { first, second, .. } => {
+                format!(
+                    "seq({};{})",
+                    expression_shape(first),
+                    expression_shape(second)
+                )
+            }
+            Expr::While {
+                condition, body, ..
+            } => format!(
+                "while({};{})",
+                condition
+                    .as_ref()
+                    .map(|condition| expression_shape(condition))
+                    .unwrap_or_default(),
+                expression_shape(body)
+            ),
+            Expr::For(loop_) => format!(
+                "for({}{};{};{})",
+                loop_
+                    .pattern
+                    .as_ref()
+                    .map(pattern_shape)
+                    .unwrap_or_default(),
+                loop_
+                    .index
+                    .as_ref()
+                    .map(|index| format!("@{}", index.value))
+                    .unwrap_or_default(),
+                expression_shape(&loop_.iterable),
+                expression_shape(&loop_.body)
+            ),
+            Expr::Break { .. } => "break".to_string(),
         }
     }
 
@@ -2311,5 +2485,60 @@ mod tests {
         ));
         let program = parse(&source).expect("B3d selector fixture parses");
         assert_eq!(program.expressions.len(), 3);
+    }
+
+    #[test]
+    fn parses_loop_and_break_forms() {
+        // Sequencing is right-recursive (parser.y:243).
+        assert_eq!(
+            expression_shape(&parse_one("x := 1; x + 1")),
+            "seq(assign(x,1);+@4(x,1))"
+        );
+        // A while with a condition, and the bare-do constant-true form.
+        assert_eq!(
+            expression_shape(&parse_one("while x < 5 do x := x + 1 od")),
+            "while(<@2(x,5);assign(x,+@4(x,1)))"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("while do break od")),
+            "while(;break)"
+        );
+        // The for-loop pattern reuses the binding grammar; `@` binds the index.
+        assert_eq!(
+            expression_shape(&parse_one("for i in [1, 2, 3] do i * 2 od")),
+            "for(i;list(1,2,3);*@6(i,2))"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("for x@i in [10, 20, 30] do i od")),
+            "for(x@i;list(10,20,30);i)"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("for (a, b) in [(1, 2)] do a + b od")),
+            "for((a,b);list(tuple(1,2));+@4(a,b))"
+        );
+        // A begin/end block sequences like any other expression.
+        assert_eq!(
+            expression_shape(&parse_one("begin 1; 2 end")),
+            "group(seq(1;2))"
+        );
+    }
+
+    #[test]
+    fn break_takes_no_value() {
+        // The frozen oracle diagnostic for `break x` (loops_b4_rejected):
+        // the grammar simply does not continue after `break`.
+        let error = parse(&SourceText::new(
+            "let x = 0 in while do x := x + 1; if x = 3 then break x fi od",
+        ))
+        .expect_err("break with a value is a syntax error");
+        assert_eq!(error.kind, crate::diagnostic::ErrorKind::Syntax);
+        assert_eq!(error.message, "syntax error, unexpected IDENT");
+    }
+
+    #[test]
+    fn parses_b4_loop_fixture() {
+        let source = SourceText::new(include_str!("../../../tests/fixtures/eval/loops_b4.atlas"));
+        let program = parse(&source).expect("B4 loop fixture parses");
+        assert_eq!(program.expressions.len(), 8);
     }
 }

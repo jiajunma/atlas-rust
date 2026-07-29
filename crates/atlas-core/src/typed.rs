@@ -18,7 +18,7 @@ use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
 use crate::domain_builtins;
 use crate::frames::{EvaluationContext, GlobalCell};
 use crate::linear_values::{Matrix, RatVec, Vec32};
-use crate::syntax::{compact_expression, Command, Expr, LambdaParam, Pattern};
+use crate::syntax::{compact_expression, Command, Expr, ForLoop, LambdaParam, Pattern};
 use crate::types::{Prim, Type, TypeTable};
 use crate::value::{Closure, SlotShape, Value};
 use std::cell::RefCell;
@@ -133,6 +133,29 @@ pub enum TypedExpr {
         argument: Box<TypedExpr>,
         span: SourceSpan,
     },
+    /// `first; second`: the first half evaluates for effects at `NoValue`;
+    /// the sequence yields the second half's value.
+    Sequence {
+        first: Box<TypedExpr>,
+        second: Box<TypedExpr>,
+    },
+    /// A while loop collecting each completed iteration's body value into
+    /// a row; a missing condition is the constant true.
+    While {
+        condition: Option<Box<TypedExpr>>,
+        body: Box<TypedExpr>,
+    },
+    /// A for loop over a row value; each iteration distributes the element
+    /// per `shape`, then pushes the 0-based index slot when `index` is set
+    /// (the upstream (pattern, index) pair wrap).
+    For {
+        shape: SlotShape,
+        index: bool,
+        iterable: Box<TypedExpr>,
+        body: Box<TypedExpr>,
+    },
+    /// `break`, unwound to the innermost loop boundary.
+    Break,
 }
 
 /// Conversion-time context (locals are let bindings and lambda parameters).
@@ -147,6 +170,10 @@ pub struct Analysis<'a> {
     /// Set while converting a function body: `return` is legal only there
     /// (the axis layer's return_type marker).
     in_function: bool,
+    /// Number of enclosing loops: `break` is legal only when nonzero
+    /// (mirrors `in_function`; upstream rejects a stray `break` during
+    /// analysis, before anything evaluates).
+    loop_depth: usize,
 }
 
 impl<'a> Analysis<'a> {
@@ -157,6 +184,19 @@ impl<'a> Analysis<'a> {
             locals: BTreeMap::new(),
             constant_locals: BTreeSet::new(),
             in_function: false,
+            loop_depth: 0,
+        }
+    }
+
+    /// The context for a loop body: same bindings, one more loop level.
+    fn in_loop(&self) -> Self {
+        Self {
+            types: self.types,
+            globals: self.globals,
+            locals: self.locals.clone(),
+            constant_locals: self.constant_locals.clone(),
+            in_function: self.in_function,
+            loop_depth: self.loop_depth + 1,
         }
     }
 }
@@ -770,6 +810,7 @@ pub fn convert_expr(
                             locals: locals.clone(),
                             constant_locals: constant_locals.clone(),
                             in_function: analysis.in_function,
+                            loop_depth: analysis.loop_depth,
                         },
                     )?;
                     // The initializer converts freely; the pattern then
@@ -829,6 +870,7 @@ pub fn convert_expr(
                     locals,
                     constant_locals,
                     in_function: analysis.in_function,
+                    loop_depth: analysis.loop_depth,
                 },
             )?;
             for initializers in groups.into_iter().rev() {
@@ -1039,6 +1081,176 @@ pub fn convert_expr(
                 analysis,
             ),
         },
+        Expr::Sequence { first, second, .. } => {
+            // The first half evaluates for effects against a void context
+            // (upstream make_sequence); the sequence yields the second half.
+            let mut void = Type::void();
+            let first = convert_expr(first, &mut void, analysis)?;
+            let second = convert_expr(second, required, analysis)?;
+            Ok(TypedExpr::Sequence {
+                first: Box::new(first),
+                second: Box::new(second),
+            })
+        }
+        Expr::While {
+            condition,
+            body,
+            span,
+        } => {
+            let condition = condition
+                .as_ref()
+                .map(|condition| {
+                    // A-priori conversion, then the bool check with the
+                    // upstream `found … while … was needed.` wording.
+                    let mut found = Type::Undetermined;
+                    let converted = convert_expr(condition, &mut found, analysis)?;
+                    if !Type::Primitive(Prim::Bool).specialise(&found, analysis.types) {
+                        return Err(type_error(
+                            format!(
+                                "found {} while bool was needed.",
+                                found.display(analysis.types)
+                            ),
+                            condition.span(),
+                        ));
+                    }
+                    Ok(converted)
+                })
+                .transpose()?;
+            // The body converts against a fresh component pattern with the
+            // loop depth raised; the loop's type is a row of that pattern.
+            let mut component = Type::Undetermined;
+            let body = convert_expr(body, &mut component, &analysis.in_loop())?;
+            conform_types(
+                &Type::row(component),
+                required,
+                TypedExpr::While {
+                    condition: condition.map(Box::new),
+                    body: Box::new(body),
+                },
+                *span,
+                analysis,
+            )
+        }
+        Expr::For(loop_) => {
+            let ForLoop {
+                pattern,
+                index,
+                iterable,
+                body,
+                span,
+            } = loop_.as_ref();
+            let mut found = Type::Undetermined;
+            let iterable = convert_expr(iterable, &mut found, analysis)?;
+            let Type::Row(component) = found else {
+                return Err(type_error(
+                    format!(
+                        "Cannot iterate over value of type {}",
+                        found.display(analysis.types)
+                    ),
+                    loop_.iterable.span(),
+                ));
+            };
+            // The pattern claims the row's component; the `@` name binds
+            // the 0-based index as int (the upstream (pattern, index)
+            // pair wrap, in that slot order).
+            let leaves = match pattern {
+                Some(pattern) => bind_pattern_leaves(pattern, &component, analysis.types)?,
+                None => Vec::new(),
+            };
+            let mut names = BTreeSet::new();
+            for (name, name_span, _, _) in &leaves {
+                if !names.insert(name.as_str()) {
+                    return Err(Diagnostic::new(
+                        ErrorKind::Name,
+                        format!("Multiple binding of '{name}' in same scope"),
+                        Some(*name_span),
+                    ));
+                }
+            }
+            if let Some(index) = index {
+                if !names.insert(index.value.as_str()) {
+                    return Err(Diagnostic::new(
+                        ErrorKind::Name,
+                        format!("Multiple binding of '{}' in same scope", index.value),
+                        Some(index.span),
+                    ));
+                }
+            }
+            let mut locals = analysis.locals.clone();
+            let mut constant_locals = analysis.constant_locals.clone();
+            // Like a let group: a layer binding no slot claims no frame,
+            // so depths shift only when a slot exists (empty-layer rule).
+            let layer_slots = leaves.len() + usize::from(index.is_some());
+            if layer_slots > 0 {
+                for (_, depth, _) in locals.values_mut() {
+                    *depth += 1;
+                }
+            }
+            let mut offset = 0;
+            for (name, _, constant, leaf_type) in &leaves {
+                locals.insert(
+                    name.clone(),
+                    (Rc::new(RefCell::new(leaf_type.clone())), 0, offset),
+                );
+                if *constant {
+                    constant_locals.insert(name.clone());
+                } else {
+                    constant_locals.remove(name);
+                }
+                offset += 1;
+            }
+            if let Some(index) = index {
+                locals.insert(
+                    index.value.clone(),
+                    (Rc::new(RefCell::new(Type::Primitive(Prim::Int))), 0, offset),
+                );
+                constant_locals.remove(&index.value);
+            }
+            let shape = pattern
+                .as_ref()
+                .map(pattern_slot_shape)
+                .unwrap_or(SlotShape::Discard);
+            let mut body_type = Type::Undetermined;
+            let body = convert_expr(
+                body,
+                &mut body_type,
+                &Analysis {
+                    types: analysis.types,
+                    globals: analysis.globals,
+                    locals,
+                    constant_locals,
+                    in_function: analysis.in_function,
+                    loop_depth: analysis.loop_depth + 1,
+                },
+            )?;
+            conform_types(
+                &Type::row(body_type),
+                required,
+                TypedExpr::For {
+                    shape,
+                    index: index.is_some(),
+                    iterable: Box::new(iterable),
+                    body: Box::new(body),
+                },
+                *span,
+                analysis,
+            )
+        }
+        Expr::Break { span } => {
+            // `break` is legal only lexically inside a loop; upstream
+            // rejects it during analysis, before anything evaluates
+            // (mirroring the `return` check above).
+            if analysis.loop_depth == 0 {
+                return Err(type_error(
+                    "Using 'break' not in the reach of any loop".into(),
+                    *span,
+                ));
+            }
+            // A break yields no value and converts as void, so a
+            // `… then break fi` branch balances against the implicit
+            // void else branch.
+            conform_types(&Type::void(), required, TypedExpr::Break, *span, analysis)
+        }
     }
 }
 
@@ -1220,6 +1432,9 @@ fn convert_lambda_expression(
         locals,
         constant_locals,
         in_function: true,
+        // A closure evaluates in its captured context, not the defining
+        // loop's; `break` legality starts over at the function boundary.
+        loop_depth: 0,
     };
     let closure = |body: TypedExpr| TypedExpr::Closure {
         parameters: parameters.len(),
@@ -1324,6 +1539,9 @@ fn convert_rec_lambda_expression(
         locals,
         constant_locals,
         in_function: true,
+        // A closure evaluates in its captured context, not the defining
+        // loop's; `break` legality starts over at the function boundary.
+        loop_depth: 0,
     };
     let closure = |body: TypedExpr| TypedExpr::Closure {
         parameters: parameters.len(),
@@ -2842,6 +3060,73 @@ impl TypedExpr {
                     }
                 })
             }
+            Self::Sequence { first, second } => {
+                first.evaluate(context, Level::NoValue)?;
+                second.evaluate(context, level)
+            }
+            Self::While { condition, body } => {
+                let mut collected = Vec::new();
+                loop {
+                    if let Some(condition) = condition {
+                        match force(condition, context)? {
+                            Value::Boolean(true) => {}
+                            Value::Boolean(false) => break,
+                            other => {
+                                panic!("analysis let a non-boolean loop condition through: {other}")
+                            }
+                        }
+                    }
+                    match body.evaluate(context, Level::SingleValue) {
+                        Ok(Some(value)) => collected.push(value),
+                        Ok(None) => unreachable!("single-value loop body yields a value"),
+                        // The breaking iteration contributes no value.
+                        Err(Control::Break(0)) => break,
+                        Err(Control::Break(levels)) => {
+                            return Err(Control::Break(levels - 1));
+                        }
+                        Err(control) => return Err(control),
+                    }
+                }
+                Ok(at_level(level, || Value::List(collected.clone())))
+            }
+            Self::For {
+                shape,
+                index,
+                iterable,
+                body,
+            } => {
+                let values = match force(iterable, context)? {
+                    Value::List(values) => values,
+                    other => panic!("analysis let a non-row iterable through: {other}"),
+                };
+                let mut collected = Vec::new();
+                for (position, element) in values.into_iter().enumerate() {
+                    let mut slots = Vec::new();
+                    distribute(element, shape, &mut slots);
+                    if *index {
+                        slots.push(Rc::new(Value::Integer(BigInt::from(position))));
+                    }
+                    let result = if slots.is_empty() {
+                        // A pure-discard layer pushes no frame, matching the
+                        // analysis-time empty-layer rule.
+                        body.evaluate(context, Level::SingleValue)
+                    } else {
+                        context
+                            .with_frame(slots, |context| body.evaluate(context, Level::SingleValue))
+                    };
+                    match result {
+                        Ok(Some(value)) => collected.push(value),
+                        Ok(None) => unreachable!("single-value loop body yields a value"),
+                        Err(Control::Break(0)) => break,
+                        Err(Control::Break(levels)) => {
+                            return Err(Control::Break(levels - 1));
+                        }
+                        Err(control) => return Err(control),
+                    }
+                }
+                Ok(at_level(level, || Value::List(collected.clone())))
+            }
+            Self::Break => Err(Control::Break(0)),
         }
     }
 }
@@ -4267,5 +4552,69 @@ mod tests {
         let error = convert_and_run("2.3").expect_err("literal is not callable");
         assert_eq!(error.kind, ErrorKind::Type);
         assert_eq!(error.message, "found int while (*->*) was needed.");
+    }
+
+    #[test]
+    fn loops_evaluate_and_collect_rows() {
+        // The eight B4 fixture shapes against the frozen reference events.
+        for (source, expected) in [
+            ("let x = 0 in while x < 5 do x := x + 1 od", "[1,2,3,4,5]"),
+            ("for i in [1, 2, 3] do i * 2 od", "[2,4,6]"),
+            ("for x@i in [10, 20, 30] do i od", "[0,1,2]"),
+            (
+                "let x = 0 in begin while x < 5 do x := x + 1 od; x end",
+                "5",
+            ),
+            (
+                "let x = 0 in while do x := x + 1; if x = 3 then break fi od",
+                "[(),()]",
+            ),
+            (
+                "let x = 0 in while x < 5 do if x = 3 then break fi; x := x + 1 od",
+                "[1,2,3]",
+            ),
+            ("let x = 10 in while x > 0 do x := x - 2 od", "[8,6,4,2,0]"),
+            (
+                "for i in [1, 2, 3] do if i = 2 then break fi; i * 10 od",
+                "[10]",
+            ),
+        ] {
+            let (_, value) = convert_and_run(source)
+                .unwrap_or_else(|error| panic!("{source} should convert and run: {error:?}"));
+            assert_eq!(value.to_string(), expected, "source: {source}");
+        }
+
+        // A break in an inner loop leaves the outer loop collecting, and
+        // the loop pattern reuses the binding machinery (destructuring).
+        let (_, value) =
+            convert_and_run("let x = 0 in while x < 3 do x := x + 1; while do break od; x od")
+                .expect("nested loops");
+        assert_eq!(value.to_string(), "[1,2,3]");
+        let (_, value) =
+            convert_and_run("for (a, b) in [(1, 2), (3, 4)] do a + b od").expect("tuple pattern");
+        assert_eq!(value.to_string(), "[3,7]");
+    }
+
+    #[test]
+    fn loop_rejections_match_the_oracle() {
+        // Three of the four frozen oracle diagnostics of loops_b4_rejected
+        // (the fourth, `break x`, is a parse error covered in syntax.rs).
+        let error = convert_and_run("break").expect_err("top-level break");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(error.message, "Using 'break' not in the reach of any loop");
+
+        // Analysis rejects the whole expression before anything evaluates,
+        // even when the break hides inside a conditional.
+        let error = convert_and_run("if true then break fi").expect_err("conditional break");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(error.message, "Using 'break' not in the reach of any loop");
+
+        let error = convert_and_run("for i in 5 do i od").expect_err("non-row iterable");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(error.message, "Cannot iterate over value of type int");
+
+        let error = convert_and_run("while 1 do 2 od").expect_err("non-boolean condition");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(error.message, "found int while bool was needed.");
     }
 }
