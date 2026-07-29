@@ -1,0 +1,8 @@
+{
+  "fixture": "eval/precedence_probe",
+  "oracle": "atlas",
+  "stage": "probe",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "notes": "Exploratory probe for the precedence/associativity matrix row (docs/LANGUAGE.md): multiplicative over additive, left associativity of same-precedence additive and division chains, comparison binding, unary minus binding versus binary operators, 'not'/'and' precedence, and chained equality with 'and'. Also checks the result TYPE of '/' on integers (rational) and of comparisons (bool). Lines will be split into accepted and rejected fixtures from the oracle behavior; this probe file is not a differential fixture."
+}
