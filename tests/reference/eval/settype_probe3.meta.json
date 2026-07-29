@@ -1,0 +1,8 @@
+{
+  "fixture": "eval/settype_probe3",
+  "oracle": "atlas",
+  "stage": "probe",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "notes": "Third exploratory probe for the B5 set_type slice. Captures 3498819/3498820 showed: single-form set_type names the type and registers projectors/injectors, but case discrimination fails with 'requires using set_type for this type' because discrimination requires the union type to be present in type_expr::type_map (axis.w:5146-5168), which only the bracketed process_type_definitions form populates (global.w:1639). This probe exercises the bracketed form: union with discrimination (plain, bound-payload, string payload, else default), bracketed struct with projectors, whattype of an injector result, and a recursive type equation (IntList). Lines will be split into accepted and rejected fixtures from the oracle behavior; this probe file is not a differential fixture."
+}
