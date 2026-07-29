@@ -33,6 +33,25 @@ delivers the language plus the non-math layers (Split is pure pairs);
 the math-layer builtins land with their porting tasks, and the B7 gate
 is stated honestly below.
 
+## Implementation status (2026-07-29)
+
+The B2 typed-pipeline swap is now live in `main` at `c6d5d6a`:
+`session.rs` routes command execution through typed conversion and
+evaluation, and the former `eval.rs` implementation has been removed.
+The locally verified surface is the scalar/container/subscription/slice
+pipeline plus the currently exposed RootDatum, matrix, Cartan-matrix,
+and KGB constructor adapters. RootDatum inference checks exact Cartan
+matches before simultaneous relabeling so rank-two B/C orientation is
+preserved; list and conditional balancing follows upstream conflict
+pruning, including nested void salvage.
+
+This is not yet an Atlas-compatibility claim. The typed-swap differential
+job has not run for this commit because the XMU SSH path was unavailable;
+the checked-in HPC harness and oracle metadata remain ready for that gate.
+InnerClass/RealForm/KGB rendering and external numbering, function
+closures, definitions, loops, and the broader builtin inventory remain
+staged work below.
+
 ## Architecture (mirrors upstream axis.w / axis-types.w)
 
 New atlas-core modules; the existing eval.rs pipeline is REPLACED by
