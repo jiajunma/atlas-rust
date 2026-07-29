@@ -12,9 +12,10 @@
   "oracle_stdout_sha256": "d9e4ae9a1aa504ea3dff22f25511eee37c7f50c967e9bd0594d764e8dc9e4b10",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "capture_artifacts_sha256": "3e2dc2a100c6ce7423c54b85864efa97f357913db3d2d3f905ea009f9064bd09",
-  "rust_status": "implemented_pending_hpc",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/parser.y:321-337"
   ],
-  "notes": "Accepted selector forms split from the selectors_probe oracle exploration (job 3498606): unit selector application ().f, chained identifier selectors 2.f.g, and the unary-minus operator selector 2.-. Reference captured by HPC job 3498619 against the frozen atlasofliegroups-4d3e9449 oracle; raw stdout normalized to three integer Value events. Differential evidence remains pending until the implementation and pipeline_swap_diff run."
+  "notes": "Accepted selector forms split from the selectors_probe oracle exploration (job 3498606): unit selector application ().f, chained identifier selectors 2.f.g, and the unary-minus operator selector 2.-. Reference captured by HPC job 3498619 against the frozen atlasofliegroups-4d3e9449 oracle; raw stdout normalized to three integer Value events. Differential evidence remains pending until the implementation and pipeline_swap_diff run. Differential evidence recorded by pipeline_swap_diff job 3499673 at commit a938573: PASS.",
+  "differential_job": "3499673"
 }

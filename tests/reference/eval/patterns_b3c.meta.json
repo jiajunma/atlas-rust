@@ -12,10 +12,11 @@
   "oracle_stdout_sha256": "e751f703f9c9801d98316e59a45405e62c76d6a4d970db6c5a1e675d33e1885f",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "capture_artifacts_sha256": "df811c2d5b22dd89a99738342f095b4e935220a68860a8cd706b079fc8679fe1",
-  "rust_status": "implemented_pending_hpc",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/parser.y:708-730",
     "sources/interpreter/parser.y:725-749"
   ],
-  "notes": "Covers untyped tuple destructuring in let declarations, const (!) bindings, nested patterns, typed tuple patterns in lambda parameters, and tuple patterns naming the whole value. Reference captured by HPC job 3498578 against the frozen atlasofliegroups-4d3e9449 oracle; raw stdout normalized to five integer Value events. Differential evidence remains pending until the implementation and pipeline_swap_diff run."
+  "notes": "Covers untyped tuple destructuring in let declarations, const (!) bindings, nested patterns, typed tuple patterns in lambda parameters, and tuple patterns naming the whole value. Reference captured by HPC job 3498578 against the frozen atlasofliegroups-4d3e9449 oracle; raw stdout normalized to five integer Value events. Differential evidence remains pending until the implementation and pipeline_swap_diff run. Differential evidence recorded by pipeline_swap_diff job 3499673 at commit a938573: PASS.",
+  "differential_job": "3499673"
 }

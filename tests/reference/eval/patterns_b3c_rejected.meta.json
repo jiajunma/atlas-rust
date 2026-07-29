@@ -12,9 +12,10 @@
   "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
   "oracle_stderr_sha256": "149b286057c348469909cdaa0b51e6215bc3c18ded95bda4cbf39f3482f5170b",
   "capture_artifacts_sha256": "3566c858318bd287f07e1351aea7f7ad93544379a4634bc5f7c5f0de7f87c3df",
-  "rust_status": "implemented_pending_hpc",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/parser.y:708-730"
   ],
-  "notes": "Rejected companions of eval/patterns_b3c: assignment to a const binding rejected at analysis, a pattern/tuple arity mismatch, and a scalar against a tuple pattern. Reference captured by HPC job 3498578 against the frozen atlasofliegroups-4d3e9449 oracle; raw stderr normalized to three Diagnostic events. Differential evidence remains pending until the implementation and pipeline_swap_diff run."
+  "notes": "Rejected companions of eval/patterns_b3c: assignment to a const binding rejected at analysis, a pattern/tuple arity mismatch, and a scalar against a tuple pattern. Reference captured by HPC job 3498578 against the frozen atlasofliegroups-4d3e9449 oracle; raw stderr normalized to three Diagnostic events. Differential evidence remains pending until the implementation and pipeline_swap_diff run. Differential evidence recorded by pipeline_swap_diff job 3499673 at commit a938573: PASS.",
+  "differential_job": "3499673"
 }
