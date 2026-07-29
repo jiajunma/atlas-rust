@@ -313,6 +313,8 @@ PY
 }
 
 export CARGO_TARGET_DIR="$run_dir/target"
+workspace_dir="$run_dir/workspace"
+mkdir -p "$workspace_dir"
 cd "$snapshot_dir"
 echo "host=$(hostname) job=$job_id cpus=${SLURM_CPUS_PER_TASK:-unavailable} date=$(date)"
 echo "== build frozen atlas-cli =="
@@ -324,7 +326,7 @@ failure_phase="running_differential"
 set +e
 python3 hpc/pipeline_swap_diff.py \
   "$cli_bin" "$artifact_dir" \
-  --workspace-root "$snapshot_dir" \
+  --workspace-root "$workspace_dir" \
   --fixture-root "$snapshot_dir/tests/fixtures/eval" \
   --reference-root "$snapshot_dir/tests/reference/eval" \
   --commit "$commit" \
