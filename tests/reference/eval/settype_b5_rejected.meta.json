@@ -2,12 +2,21 @@
   "fixture": "eval/settype_b5_rejected",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3499601",
+  "source_archive_sha256": "33b1d399c974ee0d781b27fb873a4743a3c926f6aeabd751c09f85f006490d6d",
+  "fixture_sha256": "4796b3ac48e0871d19768f934283badf011d8c0e098dcce2866212b99171c91c",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "efd2951dc04d415c1eb7fb7fbcd0026a45bbb5d1448c2e95e316ce17706441c4",
+  "oracle_stderr_sha256": "6dcba513a4fe6a67222e8bbf555cc7e6805d2e8ac8f85e34d19e2684b013d980",
+  "capture_artifacts_sha256": "ba615997035d8cd7de62b4881c4913ff56da7e3133b73f8a8a5eb3658f2317c2",
+  "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/parser.y:163-167",
     "sources/interpreter/axis.w:5146-5168",
     "sources/interpreter/global.w:1639"
   ],
-  "rust_status": "not_implemented",
-  "notes": "Rejected companions of eval/settype_b5: expression type ascription 'expr : type' (syntax error), case discrimination on a union named only by the single-name set_type form (not present in the tabled type map; oracle message joined to one line for the diagnostic normalization convention), and discrimination branches whose result types disagree (first branch fixes the result type). The successful set_type lines before each failing line emit their ReportLine events. Reference capture pending on HPC."
+  "notes": "Rejected companions of eval/settype_b5: expression type ascription 'expr : type' (syntax error), case discrimination on a union named only by the single-name set_type form (not present in the tabled type map; oracle message joined to one line for the diagnostic normalization convention), and discrimination branches whose result types disagree (first branch fixes the result type). The successful set_type lines before each failing line emit their ReportLine events. Reference captured by HPC job 3499601 against the frozen atlasofliegroups-4d3e9449 oracle. Differential evidence remains pending until the pipeline_swap_diff run."
 }
