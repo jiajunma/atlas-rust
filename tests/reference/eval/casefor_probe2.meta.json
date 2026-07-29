@@ -1,8 +1,0 @@
-{
-  "fixture": "eval/casefor_probe2",
-  "oracle": "atlas",
-  "stage": "probe",
-  "reference_status": "pending_hpc_reference",
-  "rust_status": "not_implemented",
-  "notes": "Second exploratory probe for the B6 case/for slice, after capture 3499619 and axis.w:4884-4901 established: the in-list of an integer case holds branch expressions selected by 0-based index; out-of-range selectors wrap via arithmetic::remainder when no else clause exists; the else branch catches out-of-range; the then branch catches negative selectors only; positional union case branches must be functions of the variant type. This probe verifies in-range indexing, remainder wrapping, else selection, negative-then selection, lambda branches for positional union case, and the 'next' sequence operator's collected value in a for loop. Lines will be split into accepted and rejected fixtures from the oracle behavior; this probe file is not a differential fixture."
-}
