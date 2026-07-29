@@ -1,0 +1,8 @@
+{
+  "fixture": "eval/loops_probe2",
+  "oracle": "atlas",
+  "stage": "probe",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "notes": "Second exploratory probe for the B4 loop slice: break without a value inside while and for loops, void-if bodies in loop collections, countdown loops, top-level break, iterating a non-row, and a non-boolean while condition. Lines will be split into accepted and rejected fixtures from the oracle behavior; this probe file is not a differential fixture."
+}
