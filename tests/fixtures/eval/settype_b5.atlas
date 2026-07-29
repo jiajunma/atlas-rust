@@ -1,0 +1,12 @@
+set_type Pair = (int x, int y)
+whattype Pair
+whattype (1, 2)
+let p = (1, 2) in p.x
+set_type [ U = (int i | string s) ]
+i(3)
+case i(3) | i(x): x + 1 | s(t): 0 esac
+case s("ab") | i: 1 | else 2 esac
+set_type [ IntList = (void nil | (int, IntList) cons) ]
+whattype IntList
+cons((1, nil(())))
+whattype nil(())

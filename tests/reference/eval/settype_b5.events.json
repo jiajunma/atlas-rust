@@ -1,0 +1,19 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "eval/settype_b5",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind":"ReportLine","text":"Type name 'Pair' defined as (int,int)\n  with projectors: x, y.\n"},
+    {"kind":"ReportLine","text":"Defined type: (int,int)\n"},
+    {"kind":"ReportLine","text":"Type: (int,int)\n"},
+    {"kind":"Value","value":{"type":"integer","value":1}},
+    {"kind":"ReportLine","text":"Type name 'U' defined as (int|string)\n  with injectors: i, s.\n"},
+    {"kind":"Value","value":{"type":"union","display":"3.i"}},
+    {"kind":"Value","value":{"type":"integer","value":4}},
+    {"kind":"Value","value":{"type":"integer","value":2}},
+    {"kind":"ReportLine","text":"Type name 'IntList' defined as (void|(int,IntList))\n  with injectors: nil, cons.\n"},
+    {"kind":"ReportLine","text":"Defined type: ( void nil | (int,IntList) cons )\n"},
+    {"kind":"Value","value":{"type":"union","display":"(1,().nil).cons"}},
+    {"kind":"ReportLine","text":"Type: IntList\n"}
+  ]
+}

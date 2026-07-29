@@ -1,0 +1,13 @@
+{
+  "fixture": "eval/settype_b5_rejected",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "upstream_evidence": [
+    "sources/interpreter/parser.y:163-167",
+    "sources/interpreter/axis.w:5146-5168",
+    "sources/interpreter/global.w:1639"
+  ],
+  "rust_status": "not_implemented",
+  "notes": "Rejected companions of eval/settype_b5: expression type ascription 'expr : type' (syntax error), case discrimination on a union named only by the single-name set_type form (not present in the tabled type map; oracle message joined to one line for the diagnostic normalization convention), and discrimination branches whose result types disagree (first branch fixes the result type). The successful set_type lines before each failing line emit their ReportLine events. Reference capture pending on HPC."
+}

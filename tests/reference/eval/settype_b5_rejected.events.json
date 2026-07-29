@@ -1,0 +1,12 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "eval/settype_b5_rejected",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind":"Diagnostic","category":"syntax","message":"syntax error, unexpected ':'"},
+    {"kind":"ReportLine","text":"Type name 'U' defined as (int|string)\n  with injectors: i, s.\n"},
+    {"kind":"Diagnostic","category":"type","message":"Discrimination on expression of type (int|string) requires using 'set_type' for this type, and naming injectors for it"},
+    {"kind":"ReportLine","text":"Type name 'V' defined as (int|string)\n  with injectors: a, b.\n"},
+    {"kind":"Diagnostic","category":"type","message":"found string while int was needed."}
+  ]
+}

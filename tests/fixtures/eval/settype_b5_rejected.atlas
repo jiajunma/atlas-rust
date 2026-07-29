@@ -1,0 +1,5 @@
+let p = (1, 2): Pair in p
+set_type U = (int i | string s)
+case i(3) | i: 1 | s: 2 esac
+set_type [ V = (int a | string b) ]
+case a(3) | a(x): x | b(t): t esac

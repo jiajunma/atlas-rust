@@ -1,0 +1,15 @@
+{
+  "fixture": "eval/settype_b5",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "upstream_evidence": [
+    "sources/interpreter/parser.y:163-167",
+    "sources/interpreter/parser.y:753-761",
+    "sources/interpreter/parser.y:786-790",
+    "sources/interpreter/axis.w:5146-5168",
+    "sources/interpreter/global.w:1639"
+  ],
+  "rust_status": "not_implemented",
+  "notes": "B5 set_type slice, split from probes settype_probe..4 (captures 3498819, 3498820, 3498932, 3498991). Single-name set_type defines an alias with projector/injector overloads; only the bracketed form enters the type into the tabled type map, enabling case discrimination and recursion. Union values display as value.tag; whattype prints 'Defined type:' for names and 'Type:' for expressions, with tabled types shown by name. Reference capture pending on HPC."
+}
