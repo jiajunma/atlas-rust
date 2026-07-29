@@ -206,6 +206,17 @@ In rough dependency order, each with its own fixture + HPC capture first:
    `Failed to open <name>` on stderr and continues, and `tofile` accepts
    only an expression (`set` there is a syntax error). `fromfile`
    (`<`/`<<` inclusion) still needs its own probe.
+6. Domain surface, smallest first: `pipeline_swap_domain_equality` lines
+   3-14 (capture `3496440`) need oracle-exact InnerClass/RealForm rendering
+   (inner-class type letter, real-form counts, Lie-algebra naming), KGB
+   numbering (`#0` labels), and equality/inequality on domain handles; the
+   Rust constructors already exist in `domain_builtins.rs`. After that, the
+   14 `tests/fixtures/domain/*.atlas` fixtures are blocked one level deeper:
+   an Atlas-callable constructor/event adapter must exist before their
+   oracle references can even be captured. Also uncovered: `showall`,
+   `dont`, `quit` semantics, `whattype id_op ?` builtin listing, `fromfile`,
+   KL/file formats, interactive input, and the primitive domain types
+   (Split/Block/KType/KTypePol/Param/ParamPol).
 
 Before continuing, run the smallest local parser/core check with the project
 toolchain, then sync a clean committed tree to HPC and submit the relevant
