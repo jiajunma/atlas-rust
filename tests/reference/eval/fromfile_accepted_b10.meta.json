@@ -2,7 +2,16 @@
   "fixture": "eval/fromfile_accepted_b10",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3500385",
+  "source_archive_sha256": "270889eb3ce9dafc02309cb9fcf750cb5f0391c58e43fe4967d58ed99c68affb",
+  "fixture_sha256": "4c2aa7d1d777a12fe311cea13ada283af9b44123135dbd5617b9189a2c58073e",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "d33668dad212286ed6d0d015f187788311adc09d6b8b4b27a0f24dc07e6285a8",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "e2688fde1bcc649490abc8bc9e0358f4a1c3b6c53dafe310fa50fe8c56d0665f",
   "upstream_evidence": [
     "sources/interpreter/lexer.w:558-560",
     "sources/interpreter/parser.y:182-183",
@@ -10,5 +19,5 @@
     "sources/interpreter/buffer.w:770-786"
   ],
   "rust_status": "not_implemented",
-  "notes": "B10 accepted fromfile inclusion, content-identical split from probe fromfile_accepted_probe (capture 3500381). Inclusion reports 'Starting to read from file '<path>'.' and 'Completely read file '<path>'.' bracketing the included file's own output indented by two spaces; definitions persist after inclusion. A plain '<' include of an already-completed file is a SILENT skip (buffer.w:770-776 push_file with skip_seen), so fixture line 3 produces no event; '<<' force re-includes, and the re-definition inside reports 'Variable xb10: int (overriding previous instance, which had type int)'. The helper is referenced by absolute HPC path so oracle (cwd atlas-scripts) and Rust CLI (cwd workspace root) resolve identically; local runs need the same layout. Reference capture pending on HPC."
+  "notes": "B10 accepted fromfile inclusion, content-identical split from probe fromfile_accepted_probe (capture 3500381). Inclusion reports 'Starting to read from file '<path>'.' and 'Completely read file '<path>'.' bracketing the included file's own output indented by two spaces; definitions persist after inclusion. A plain '<' include of an already-completed file is a SILENT skip (buffer.w:770-776 push_file with skip_seen), so fixture line 3 produces no event; '<<' force re-includes, and the re-definition inside reports 'Variable xb10: int (overriding previous instance, which had type int)'. The helper is referenced by absolute HPC path so oracle (cwd atlas-scripts) and Rust CLI (cwd workspace root) resolve identically; local runs need the same layout. Reference captured by HPC job 3500385 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events verbatim. Differential evidence remains pending until the pipeline_swap_diff run."
 }
