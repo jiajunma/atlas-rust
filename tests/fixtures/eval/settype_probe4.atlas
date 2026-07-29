@@ -1,0 +1,8 @@
+set_type [ U = (int i | string s) ]
+case i(3) | i: 1 | else 2 esac
+case s("x") | i: 1 | else 2 esac
+set_type [ IntList = (void nil | (int, IntList) cons) ]
+whattype IntList
+nil(())
+cons((1, nil(())))
+whattype nil(())
