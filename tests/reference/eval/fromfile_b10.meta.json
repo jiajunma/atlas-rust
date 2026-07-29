@@ -1,0 +1,12 @@
+{
+  "fixture": "eval/fromfile_b10",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "upstream_evidence": [
+    "sources/interpreter/lexer.w:558-560",
+    "sources/interpreter/parser.y:182-183"
+  ],
+  "rust_status": "not_implemented",
+  "notes": "B10 fromfile inclusion slice, content-identical split from probe fromfile_probe (capture 3499775): '< \"f\"' includes a file, '<< \"f\"' force-includes it; a missing target prints 'failed to open input file '<name>'.' (lowercase, trailing period) directly on stderr, batch evaluation continues, and the process still exits 0, so these are classified as runtime diagnostics with oracle_exit_status 0. Accepted-form inclusion semantics need an HPC-absolute helper file and are probed separately. Reference capture pending on HPC."
+}

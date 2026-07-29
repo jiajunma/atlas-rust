@@ -132,6 +132,15 @@ FIXTURE_PLANS = (
         silent_lines=(1, 2),
     ),
     FixturePlan(name="file_commands_b9_rejected"),
+    # B10 fromfile inclusion errors and quit semantics. The quit line and
+    # the unreachable line after it run but produce no event.
+    FixturePlan(name="fromfile_b10"),
+    FixturePlan(
+        name="quit_b10",
+        runnable_lines=(1,),
+        runnable_events=(0,),
+        silent_lines=(2, 3),
+    ),
 )
 
 
