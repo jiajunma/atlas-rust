@@ -1,0 +1,11 @@
+{
+  "fixture": "eval/overloads_b8_rejected",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "upstream_evidence": [
+    "sources/interpreter/parser.y:187"
+  ],
+  "rust_status": "not_implemented",
+  "notes": "B8 user-overload rejected companion, split from probe overloads_b8_probe (capture 3499701): calling a single-instance user function with a tuple of the wrong arity is an analysis-time type error. The oracle's multi-line diagnostic ('Type error:\\n  Subexpression (1,2,3) ... has wrong type: found (int,int,int) while int was needed.') is normalized to its final 'found ... while ... was needed.' line. Reference capture pending on HPC."
+}

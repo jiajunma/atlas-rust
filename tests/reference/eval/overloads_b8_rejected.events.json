@@ -1,0 +1,13 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "eval/overloads_b8_rejected",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind":"ReportLine","text":"Defined f: (int->int)\n"},
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "found (int,int,int) while int was needed."
+    }
+  ]
+}

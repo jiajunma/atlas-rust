@@ -1,0 +1,11 @@
+{
+  "fixture": "eval/overloads_b8b",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "upstream_evidence": [
+    "sources/interpreter/parser.y:187"
+  ],
+  "rust_status": "not_implemented",
+  "notes": "B8b user-overload companions, split from probe overloads_b8_probe (capture 3499701): re-defining 'set f = (int x): ...' with an already-present signature replaces the previous definition and reports 'Redefined f: T' (the overload list keeps a single instance, and calls use the new body). 'set g = 42' on an identifier that already holds a function definition is accepted ('Variable g: int') and coexists with the function: 'whattype g ?' still lists the overload and calls still resolve to it. Reference capture pending on HPC."
+}
