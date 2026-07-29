@@ -2,11 +2,20 @@
   "fixture": "eval/fromfile_b10",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3500378",
+  "source_archive_sha256": "318f5ac555db4c4c5d347c553966d75d046b7c286d0f222e13eac138a55338a1",
+  "fixture_sha256": "81e76e6b39fd017292da0e9dadf6eb7c4fe30cba2f1f21f7c4794ed6320630b8",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "7362c3a8525cc7d54708a10fc486d2f860e349820cde11738aaa208ebf0f1622",
+  "oracle_stderr_sha256": "a0e552066f05b029c16ebc720cbbab4c88f61da89e1c1c9908fec6077b140bfe",
+  "capture_artifacts_sha256": "0b66ace4b7fcf62c80a524b1c2ff7fbaed12b47267d8afbade48b8a0aa668cbb",
   "upstream_evidence": [
     "sources/interpreter/lexer.w:558-560",
     "sources/interpreter/parser.y:182-183"
   ],
   "rust_status": "not_implemented",
-  "notes": "B10 fromfile inclusion slice, content-identical split from probe fromfile_probe (capture 3499775): '< \"f\"' includes a file, '<< \"f\"' force-includes it; a missing target prints 'failed to open input file '<name>'.' (lowercase, trailing period) directly on stderr, batch evaluation continues, and the process still exits 0, so these are classified as runtime diagnostics with oracle_exit_status 0. Accepted-form inclusion semantics need an HPC-absolute helper file and are probed separately. Reference capture pending on HPC."
+  "notes": "B10 fromfile inclusion slice, content-identical split from probe fromfile_probe (capture 3499775): '< \"f\"' includes a file, '<< \"f\"' force-includes it; a missing target prints 'failed to open input file '<name>'.' (lowercase, trailing period) directly on stderr, batch evaluation continues, and the process still exits 0, so these are classified as runtime diagnostics with oracle_exit_status 0. Accepted-form inclusion semantics need an HPC-absolute helper file and are probed separately. Reference captured by HPC job 3500378 against the frozen atlasofliegroups-4d3e9449 oracle; oracle streams match the expected events verbatim. Differential evidence remains pending until the pipeline_swap_diff run."
 }

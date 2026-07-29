@@ -1,7 +1,7 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "eval/fromfile_b10",
-  "status": "pending_hpc_reference",
+  "status": "verified_hpc_reference",
   "events": [
     {
       "kind": "Diagnostic",
@@ -13,6 +13,12 @@
       "category": "runtime",
       "message": "failed to open input file 'no_such_dir_b10/missing.at'."
     },
-    {"kind":"Value","value":{"type":"integer","value":7}}
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 7
+      }
+    }
   ]
 }

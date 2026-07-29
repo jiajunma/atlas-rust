@@ -1,8 +1,0 @@
-{
-  "fixture": "eval/fromfile_probe",
-  "oracle": "atlas",
-  "stage": "probe",
-  "reference_status": "pending_hpc_reference",
-  "rust_status": "not_implemented",
-  "notes": "Exploratory probe for fromfile inclusion error behavior (lexer.w:558-560, parser.y:182-183, include_file in buffer.w): what '< \"missing\"' and '<< \"missing\"' report when the target does not exist, whether the diagnostic goes to stderr, and whether batch evaluation continues afterwards (the 3+4 line). The relative missing path keeps the probe portable across working directories. Accepted-form inclusion semantics need an HPC-absolute helper file and are probed separately. This probe file is not a differential fixture."
-}
