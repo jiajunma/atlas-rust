@@ -14,9 +14,9 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 - B5 set_type, B6 case/counted-for, and B7 misc commands have frozen reference
   events (captures `3499601`, `3499627`, `3499657`); the B5 implementation is
   in progress.
-- B8 user overloads (`3499692`, `3499705`) and B9 file-command redirection
-  (probe `3499729`, file-content evidence `3499737`; formal capture pending)
-  have frozen or in-flight references ahead of their implementations.
+- B8 user overloads (`3499692`, `3499705`), B9 file-command redirection
+  (`3499747`), and B10 fromfile/quit (`3500378`) have frozen references
+  ahead of their implementations.
 - No uncommitted repository changes should remain after the handoff commit.
 
 The typed session pipeline is active: `session.rs` and `session_frame.rs`
@@ -204,9 +204,13 @@ In rough dependency order, each with its own fixture + HPC capture first:
    `3499737`): `> "f" expr` / `>> "f" expr` redirect only the
    `Value: ...` line (truncate/append), a failed open prints
    `Failed to open <name>` on stderr and continues, and `tofile` accepts
-   only an expression (`set` there is a syntax error). `fromfile`
-   (`<`/`<<` inclusion) still needs its own probe.
-6. Domain surface, smallest first: `pipeline_swap_domain_equality` lines
+   only an expression (`set` there is a syntax error).
+6. B10 fromfile/quit (capture `3500378`): `< "f"` / `<< "f"` with a missing
+   target print `failed to open input file '<name>'.` on stderr, batch
+   continues, exit stays 0; `quit` mid-input terminates evaluation
+   immediately, still prints `Bye.`, exit 0. Accepted-form inclusion
+   semantics still need an HPC-absolute helper probe.
+7. Domain surface, smallest first: `pipeline_swap_domain_equality` lines
    3-14 (capture `3496440`) need oracle-exact InnerClass/RealForm rendering
    (inner-class type letter, real-form counts, Lie-algebra naming), KGB
    numbering (`#0` labels), and equality/inequality on domain handles; the
