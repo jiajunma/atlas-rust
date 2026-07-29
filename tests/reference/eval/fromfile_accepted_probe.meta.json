@@ -1,0 +1,8 @@
+{
+  "fixture": "eval/fromfile_accepted_probe",
+  "oracle": "atlas",
+  "stage": "probe",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "notes": "Exploratory probe for accepted fromfile inclusion (lexer.w:558-560, parser.y:182-183, buffer.w include_file): whether including a file echoes its report lines to stdout, whether definitions persist after inclusion, and what happens on a second plain include of the same path versus a forced '<<' re-include (upstream tracks already-included files). The helper file tests/fixtures/eval/include_b10_helper.at is referenced by its absolute HPC path so both the oracle (cwd atlas-scripts) and the Rust CLI (cwd workspace root) resolve it identically; local runs need the same path layout. This probe file is not a differential fixture."
+}
