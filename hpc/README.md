@@ -39,6 +39,16 @@ ssh majj@10.26.14.64 \
   'cd atlas-rust && export PATH=$HOME/.cargo/bin:$PATH && cargo build --workspace --release --locked'
 ```
 
+The differential jobs now verify the submit checkout rather than trusting a
+declared commit string. After syncing a committed tree, make the remote
+checkout point at the same commit (and verify it is clean) before submission;
+an rsync that leaves a stale `.git/HEAD` is intentionally rejected:
+
+```bash
+ssh majj@10.26.14.64 \
+  "cd atlas-rust && git checkout --detach $atlas_commit && git rev-parse HEAD && git status --porcelain --untracked-files=all"
+```
+
 Then submit a versioned job script:
 
 ```bash
@@ -73,6 +83,73 @@ capture records the oracle exit status but does not infer an exit-code policy
 from a diagnostic fixture unless that policy is explicitly added to the event
 schema.
 
+For the typed pipeline swap, compare the Rust CLI against the already frozen
+Atlas event files with:
+
+```bash
+ssh majj@10.26.14.64 \
+  "cd atlas-rust && ATLAS_COMMIT=$atlas_commit ATLAS_DIRTY_TREE=$atlas_dirty sbatch hpc/pipeline_swap_diff.sbatch"
+```
+
+The report is
+`results/<commit>/<job-id>/pipeline_swap/pipeline_swap_diff_report.json`.
+The constructors and linear-value fixtures run in full, including
+`root_datum(LieType,mat,bool)`, `Cartan_matrix(RootDatum)`, and
+`involution(KGBElt)`. The domain-equality fixture currently runs only its
+RootDatum prefix: InnerClass/RealForm/KGB setup, full domain renderings, and
+relation outputs are explicit pending cases until those renderers and stable
+numbering are ported. The report also lists the three selected-stage upstream
+overloads still outside the Rust type surface as `uncovered_overload` pending
+cases: the two primitive `involution` constructors and synthetic
+`real_form(InnerClass,mat,ratvec)`. This is a selected typed-pipeline scope,
+not a claim that no later Atlas overloads exist. The suite remains `PARTIAL`
+until these pending surfaces are ported. A mismatch in any runnable fixture
+still fails the job.
+The job records both the declared `ATLAS_COMMIT`/`ATLAS_DIRTY_TREE` and the
+values detected from the submit checkout, and refuses a mismatch before and
+immediately after creating the frozen source snapshot. A clean versioned
+checkout is frozen with `git archive <detected-commit>`; a dirty or unversioned
+checkout retains the live-tree snapshot but labels that state explicitly in
+the report. Before it uses the dirty-tree helper, the job loads the clean-tree
+helper from the detected Git object or freezes and hashes a dirty helper copy.
+It also requires the Slurm spool script to match the copy in that snapshot
+and, for a clean versioned checkout, the script blob in the detected commit. After
+the safe numeric/token preflight and report-directory creation, an EXIT handler writes a
+machine-readable FAIL fallback (and checksum) if build, harness, or snapshot
+verification aborts before a normal report exists. Malformed source tokens or
+an invalid Slurm job id are rejected before a safe report path can be
+constructed.
+
+To capture an upstream fixture before editing its checked-in expectation, use
+the raw reference job. With no fixture argument it captures
+`commands/subscription_context.atlas`:
+
+```bash
+ssh majj@10.26.14.64 \
+  "cd atlas-rust && ATLAS_COMMIT=$atlas_commit ATLAS_DIRTY_TREE=$atlas_dirty sbatch hpc/reference_capture.sbatch"
+```
+
+Pass one or more paths below `tests/fixtures/` after the job script to capture
+other fixtures. The job pins and verifies the Atlas Git revision, records the
+binary checksum against the frozen pipeline-oracle binary by default, and
+stores raw stdout/stderr plus a JSON manifest under
+`results/<commit>/<job-id>/reference_capture/`. It neither consumes nor
+modifies event expectations, and its `PASS` status means only that the oracle
+capture itself is valid; it is not a Rust compatibility claim. Set
+`EXPECTED_ATLAS_BINARY_SHA256` explicitly only when intentionally using a
+separately audited rebuild of the pinned reference revision.
+The manifest also compares declared and detected submit-repository commit and
+dirty state; either mismatch makes the capture FAIL. The batch job freezes a
+clean versioned checkout from `git archive <detected-commit>` and labels a
+dirty or unversioned live-tree snapshot explicitly; it binds the source-state
+helper before use, rechecks state after freezing, and requires the Slurm spool
+script to match both the frozen copy and, for a clean versioned checkout, the
+committed script blob. Raw files retain their fixture-relative directory paths
+to avoid artifact-name collisions. The capture rechecks the upstream revision, dirty
+state, executable checksum, and `atlas-scripts` tree hash after the final
+fixture; a runtime replacement during capture therefore cannot produce a PASS
+report.
+
 Heavy differential jobs must use `sbatch`; do not run them on the login node.
 Job scripts must fail on a mismatch and write a machine-readable report under
 `results/<commit>/<job-id>/`. Pull only summaries and checksums back:
@@ -81,10 +158,11 @@ Job scripts must fail on a mismatch and write a machine-readable report under
 rsync -az majj@10.26.14.64:/public/home/majj/atlas-rust/results/ ./results/
 ```
 
-SLURM opens `#SBATCH --output` before the script body runs, so the output path
-must not require a directory that the script creates itself. Create the report
-directory inside the job and use a root-level output filename, or pre-create
-the directory before submission.
+SLURM opens `#SBATCH --output` before the script body runs. The checked-in jobs
+therefore use root-level output filenames and exclude only the current job's
+exact untracked stdout path from the submit-tree dirty check. Other Slurm logs,
+untracked files, and tracked changes still make the checkout dirty. Exercise
+that rule locally with `bash hpc/test_source_state.sh`.
 
 Compute-node jobs should also set `PATH="$HOME/.cargo/bin:$PATH"` explicitly;
 the login-node shell environment is not guaranteed to be inherited.

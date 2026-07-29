@@ -1,0 +1,525 @@
+#!/usr/bin/env python3
+"""Compare atlas-cli with the frozen typed-pipeline Atlas event fixtures.
+
+The checked-in event files are the oracle.  This driver deliberately runs
+only the Rust interpreter.  Fixture lines whose Rust builtins are not yet
+implemented are omitted from the runnable input and recorded as explicit
+pending coverage, so a partial port can never be reported as a full pass.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import pathlib
+import re
+import subprocess
+import time
+from dataclasses import dataclass
+from typing import Any
+
+
+PINNED_ATLAS_REVISION = "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+COMMIT_TOKEN = re.compile(r"^(?:[0-9a-fA-F]{40}|unversioned)$")
+DIRTY_TREE_TOKENS = {"true", "false", "unknown"}
+
+
+@dataclass(frozen=True)
+class PendingCase:
+    feature: str
+    source_line: int
+    reference_event: int
+    reason: str
+
+
+@dataclass(frozen=True)
+class FixturePlan:
+    name: str
+    runnable_lines: tuple[int, ...] | None = None
+    runnable_events: tuple[int, ...] | None = None
+    pending: tuple[PendingCase, ...] = ()
+
+
+# These overloads are present in the Atlas oracle but are intentionally not
+# registered until their owning Rust domain types and semantics are ported.
+# They are coverage gaps, not fixture failures.
+PENDING_OVERLOADS = (
+    {
+        "feature": "involution",
+        "signature": "(LieType,[int],string) -> mat",
+        "reason": "Rust overload is not implemented",
+    },
+    {
+        "feature": "involution",
+        "signature": "(LieType,mat,string) -> mat",
+        "reason": "Rust overload is not implemented",
+    },
+    {
+        "feature": "real_form",
+        "signature": "(InnerClass,mat,ratvec) -> RealForm",
+        "reason": "Rust overload is not implemented",
+    },
+)
+
+
+FIXTURE_PLANS = (
+    FixturePlan(name="pipeline_swap_constructors"),
+    FixturePlan(
+        name="pipeline_swap_domain_equality",
+        # The RootDatum prefix is compatible. InnerClass/RealForm/KGB setup,
+        # full domain renderings, and relation outputs remain pending until
+        # those domain surfaces and numbering are ported.
+        runnable_lines=(1, 2),
+        runnable_events=(0, 1),
+        pending=tuple(
+            PendingCase(
+                feature="inner_class_real_form_display_and_relations",
+                source_line=line,
+                reference_event=event,
+                reason=(
+                    "full InnerClass/RealForm/KGB display and relation surface "
+                    "is not yet ported"
+                ),
+            )
+            for line, event in zip(range(3, 15), range(2, 14))
+        ),
+    ),
+    FixturePlan(name="pipeline_swap_linear_values"),
+    FixturePlan(name="pipeline_swap_rejected"),
+    FixturePlan(name="pipeline_swap_void_reports"),
+)
+
+
+DIAGNOSTIC_HEADER = re.compile(
+    r"^(Lexical|Syntax|Name|Type|Runtime|Io) error(?: at .*?:\d+:\d+)?: (.*)$"
+)
+
+
+def sha256(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def command_output(command: list[str]) -> str:
+    try:
+        return subprocess.check_output(
+            command, text=True, stderr=subprocess.DEVNULL
+        ).strip()
+    except (OSError, subprocess.CalledProcessError):
+        return "unavailable"
+
+
+def render_value(value: dict[str, Any]) -> str:
+    if "display" in value:
+        return str(value["display"])
+    value_type = value["type"]
+    if value_type == "integer":
+        return str(value["value"])
+    if value_type == "rational":
+        return f"{value['numerator']}/{value['denominator']}"
+    if value_type == "boolean":
+        return "true" if value["value"] else "false"
+    if value_type == "string":
+        return f'"{value["value"]}"'
+    if value_type == "tuple":
+        return "(" + ",".join(render_value(item) for item in value["values"]) + ")"
+    raise ValueError(f"cannot render expected value type {value_type!r}")
+
+
+def expected_cli_observation(events: list[dict[str, Any]]) -> dict[str, Any]:
+    stdout_parts: list[str] = []
+    diagnostics: list[dict[str, str]] = []
+    for event in events:
+        kind = event.get("kind")
+        if kind == "Value":
+            stdout_parts.append(f"Value: {render_value(event['value'])}\n")
+        elif kind in ("ReportLine", "Output"):
+            stdout_parts.append(event["text"])
+        elif kind == "Diagnostic":
+            diagnostics.append(
+                {
+                    "category": event["category"].lower(),
+                    "message": event["message"],
+                }
+            )
+        else:
+            raise ValueError(f"unsupported expected event kind {kind!r}")
+    stdout_parts.append("Bye.\n")
+    return {
+        "stdout": "".join(stdout_parts),
+        "diagnostics": diagnostics,
+        "exit_status": 1 if diagnostics else 0,
+    }
+
+
+def parse_cli_diagnostics(stderr: str) -> tuple[list[dict[str, str]], list[str]]:
+    diagnostics: list[dict[str, str]] = []
+    unparsed: list[str] = []
+    for line in stderr.splitlines():
+        match = DIAGNOSTIC_HEADER.match(line)
+        if match:
+            diagnostics.append(
+                {"category": match.group(1).lower(), "message": match.group(2)}
+            )
+        elif line.startswith("  | ") or not line.strip():
+            continue
+        else:
+            unparsed.append(line)
+    return diagnostics, unparsed
+
+
+def selected_fixture_source(source: str, line_numbers: tuple[int, ...]) -> str:
+    lines = source.splitlines()
+    selected = [lines[line_number - 1] for line_number in line_numbers]
+    return "\n".join(selected) + "\n"
+
+
+def validate_plan(
+    plan: FixturePlan,
+    source: str,
+    events: list[dict[str, Any]],
+) -> tuple[tuple[int, ...], tuple[int, ...], list[str]]:
+    errors: list[str] = []
+    source_lines = source.splitlines()
+    nonempty_lines = tuple(
+        index for index, line in enumerate(source_lines, start=1) if line.strip()
+    )
+    runnable_lines = (
+        nonempty_lines if plan.runnable_lines is None else plan.runnable_lines
+    )
+    runnable_events = (
+        tuple(range(len(events)))
+        if plan.runnable_events is None
+        else plan.runnable_events
+    )
+
+    if len(runnable_lines) != len(runnable_events):
+        errors.append("runnable source/event selection lengths differ")
+    if any(line < 1 or line > len(source_lines) for line in runnable_lines):
+        errors.append("runnable source line is outside the fixture")
+    if any(index < 0 or index >= len(events) for index in runnable_events):
+        errors.append("runnable event index is outside the expectation")
+    if tuple(sorted(set(runnable_lines))) != runnable_lines:
+        errors.append("runnable source lines are not unique and increasing")
+    if tuple(sorted(set(runnable_events))) != runnable_events:
+        errors.append("runnable event indices are not unique and increasing")
+
+    pending_lines = tuple(case.source_line for case in plan.pending)
+    pending_events = tuple(case.reference_event for case in plan.pending)
+    if tuple(sorted(set(pending_lines))) != pending_lines:
+        errors.append("pending source lines are not unique and increasing")
+    if tuple(sorted(set(pending_events))) != pending_events:
+        errors.append("pending event indices are not unique and increasing")
+    if set(runnable_lines).intersection(pending_lines):
+        errors.append("a source line is both runnable and pending")
+    if set(runnable_events).intersection(pending_events):
+        errors.append("an event is both runnable and pending")
+    if tuple(sorted(runnable_lines + pending_lines)) != nonempty_lines:
+        errors.append("source selection does not cover every nonempty fixture line")
+    if tuple(sorted(runnable_events + pending_events)) != tuple(range(len(events))):
+        errors.append("event selection does not cover every expected event")
+    return runnable_lines, runnable_events, errors
+
+
+def run_fixture(
+    plan: FixturePlan,
+    cli_bin: pathlib.Path,
+    output_dir: pathlib.Path,
+    fixture_root: pathlib.Path,
+    reference_root: pathlib.Path,
+    workspace_root: pathlib.Path,
+    expected_revision: str,
+    timeout: int,
+) -> tuple[dict[str, Any], bool]:
+    fixture = fixture_root / f"{plan.name}.atlas"
+    expectation_path = reference_root / f"{plan.name}.events.json"
+    metadata_path = reference_root / f"{plan.name}.meta.json"
+    source_bytes = fixture.read_bytes()
+    source = source_bytes.decode("utf-8")
+    expectation = json.loads(expectation_path.read_text(encoding="utf-8"))
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    events = expectation.get("events", [])
+    runnable_lines, runnable_events, configuration_errors = validate_plan(
+        plan, source, events
+    )
+
+    fixture_sha = sha256(source_bytes)
+    if metadata.get("fixture_sha256") != fixture_sha:
+        configuration_errors.append("fixture checksum differs from oracle metadata")
+    expected_fixture_name = f"eval/{plan.name}"
+    if metadata.get("fixture") != expected_fixture_name:
+        configuration_errors.append("metadata names a different fixture")
+    if expectation.get("fixture") != expected_fixture_name:
+        configuration_errors.append("event expectation names a different fixture")
+    if metadata.get("reference_status") != "verified_hpc_reference":
+        configuration_errors.append("reference metadata is not HPC-verified")
+    if expectation.get("status") != "verified_hpc_reference":
+        configuration_errors.append("event expectation is not HPC-verified")
+    if metadata.get("reference_atlas_revision") != expected_revision:
+        configuration_errors.append("reference revision differs from requested revision")
+    if metadata.get("oracle") != "atlas":
+        configuration_errors.append("metadata does not name Atlas as the oracle")
+    if metadata.get("stage") != "typed-pipeline-swap":
+        configuration_errors.append("metadata belongs to a different stage")
+
+    artifact_dir = output_dir / plan.name
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    selected_source = selected_fixture_source(source, runnable_lines)
+    selected_path = artifact_dir / "runnable.atlas"
+    selected_path.write_text(selected_source, encoding="utf-8")
+    expected_events = [events[index] for index in runnable_events]
+    expected = expected_cli_observation(expected_events)
+    if not plan.pending:
+        if "oracle_exit_status" not in metadata:
+            configuration_errors.append("oracle metadata has no exit status")
+        else:
+            expected["exit_status"] = metadata["oracle_exit_status"]
+
+    timed_out = False
+    started = time.monotonic()
+    if configuration_errors:
+        stdout = b""
+        stderr = b""
+        exit_status = None
+    else:
+        try:
+            completed = subprocess.run(
+                [str(cli_bin), str(selected_path.resolve())],
+                cwd=workspace_root,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=timeout,
+            )
+            stdout = completed.stdout
+            stderr = completed.stderr
+            exit_status = completed.returncode
+        except subprocess.TimeoutExpired as error:
+            timed_out = True
+            stdout = error.stdout or b""
+            stderr = error.stderr or b""
+            exit_status = None
+    elapsed = round(time.monotonic() - started, 3)
+
+    stdout_path = artifact_dir / "rust.stdout"
+    stderr_path = artifact_dir / "rust.stderr"
+    stdout_path.write_bytes(stdout)
+    stderr_path.write_bytes(stderr)
+    stdout_text = stdout.decode("utf-8", errors="replace")
+    stderr_text = stderr.decode("utf-8", errors="replace")
+    actual_diagnostics, unparsed_stderr = parse_cli_diagnostics(stderr_text)
+    checks = {
+        "configuration_valid": not configuration_errors,
+        "completed_before_timeout": not timed_out,
+        "stdout_exact": stdout_text == expected["stdout"],
+        "diagnostics_exact": actual_diagnostics == expected["diagnostics"],
+        "stderr_fully_parsed": not unparsed_stderr,
+        "exit_status_exact": exit_status == expected["exit_status"],
+    }
+    runnable_passed = all(checks.values())
+    fixture_status = (
+        "FAIL" if not runnable_passed else "PARTIAL" if plan.pending else "PASS"
+    )
+
+    def relative(path: pathlib.Path) -> str:
+        try:
+            return path.resolve().relative_to(workspace_root).as_posix()
+        except ValueError:
+            return str(path.resolve())
+
+    def artifact_relative(path: pathlib.Path) -> str:
+        return path.resolve().relative_to(output_dir.resolve()).as_posix()
+
+    entry = {
+        "fixture": relative(fixture),
+        "fixture_sha256": fixture_sha,
+        "expectation": {
+            "path": relative(expectation_path),
+            "sha256": sha256(expectation_path.read_bytes()),
+            "event_indices": list(runnable_events),
+            "stdout": {
+                "sha256": sha256(expected["stdout"].encode()),
+                "text": expected["stdout"],
+            },
+            "diagnostics": expected["diagnostics"],
+            "exit_status": expected["exit_status"],
+        },
+        "metadata": {
+            "path": relative(metadata_path),
+            "sha256": sha256(metadata_path.read_bytes()),
+            "reference_job": metadata.get("reference_job"),
+            "reference_atlas_revision": metadata.get("reference_atlas_revision"),
+            "reference_binary_sha256": metadata.get("reference_binary_sha256"),
+        },
+        "runnable": {
+            "source_lines": list(runnable_lines),
+            "input_path": artifact_relative(selected_path),
+            "input_sha256": sha256(selected_source.encode()),
+        },
+        "pending": [
+            {
+                "feature": case.feature,
+                "source_line": case.source_line,
+                "reference_event": case.reference_event,
+                "reason": case.reason,
+            }
+            for case in plan.pending
+        ],
+        "rust": {
+            "stdout": {
+                "path": artifact_relative(stdout_path),
+                "sha256": sha256(stdout),
+                "text": stdout_text,
+            },
+            "stderr": {
+                "path": artifact_relative(stderr_path),
+                "sha256": sha256(stderr),
+                "text": stderr_text,
+            },
+            "diagnostics": actual_diagnostics,
+            "unparsed_stderr": unparsed_stderr,
+            "exit_status": exit_status,
+            "timed_out": timed_out,
+            "seconds": elapsed,
+        },
+        "configuration_errors": configuration_errors,
+        "checks": checks,
+        "runnable_status": "PASS" if runnable_passed else "FAIL",
+        "status": fixture_status,
+    }
+    return entry, runnable_passed
+
+
+def parse_dirty_tree(value: str) -> bool | str:
+    return {"true": True, "false": False}.get(value.lower(), value)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("atlas_cli", type=pathlib.Path)
+    parser.add_argument("output_dir", type=pathlib.Path)
+    parser.add_argument("--workspace-root", type=pathlib.Path, required=True)
+    parser.add_argument("--fixture-root", type=pathlib.Path, required=True)
+    parser.add_argument("--reference-root", type=pathlib.Path, required=True)
+    parser.add_argument("--commit", required=True)
+    parser.add_argument("--dirty-tree", required=True)
+    parser.add_argument("--detected-commit", required=True)
+    parser.add_argument("--detected-dirty-tree", required=True)
+    parser.add_argument("--job-id", required=True)
+    parser.add_argument("--source-snapshot-sha256", required=True)
+    parser.add_argument("--timeout", type=int, default=30)
+    parser.add_argument(
+        "--expected-reference-revision", default=PINNED_ATLAS_REVISION
+    )
+    args = parser.parse_args()
+
+    cli_bin = args.atlas_cli.resolve()
+    if not os.access(cli_bin, os.X_OK):
+        parser.error(f"atlas-cli is not executable: {cli_bin}")
+    workspace_root = args.workspace_root.resolve()
+    fixture_root = args.fixture_root.resolve()
+    reference_root = args.reference_root.resolve()
+    output_dir = args.output_dir.resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    source_state_checks = {
+        "declared_commit_valid": bool(COMMIT_TOKEN.fullmatch(args.commit)),
+        "detected_commit_valid": bool(COMMIT_TOKEN.fullmatch(args.detected_commit)),
+        "commit_exact": args.commit == args.detected_commit,
+        "declared_dirty_tree_valid": args.dirty_tree in DIRTY_TREE_TOKENS,
+        "detected_dirty_tree_valid": (
+            args.detected_dirty_tree in DIRTY_TREE_TOKENS
+        ),
+        "dirty_tree_exact": args.dirty_tree == args.detected_dirty_tree,
+    }
+    source_state_verified = all(source_state_checks.values())
+
+    entries = []
+    all_runnable_passed = True
+    for plan in FIXTURE_PLANS:
+        entry, passed = run_fixture(
+            plan,
+            cli_bin,
+            output_dir,
+            fixture_root,
+            reference_root,
+            workspace_root,
+            args.expected_reference_revision,
+            args.timeout,
+        )
+        entries.append(entry)
+        all_runnable_passed = all_runnable_passed and passed
+
+    pending = [
+        {
+            "fixture": entry["fixture"],
+            **case,
+        }
+        for entry in entries
+        for case in entry["pending"]
+    ]
+    pending.extend(
+        {"scope": "uncovered_overload", **overload}
+        for overload in PENDING_OVERLOADS
+    )
+    status = (
+        "FAIL"
+        if not source_state_verified or not all_runnable_passed
+        else "PARTIAL"
+        if pending
+        else "PASS"
+    )
+    report = {
+        "schema": "atlas-pipeline-swap-diff-v1",
+        "stage": "typed-pipeline-swap-rust-vs-frozen-atlas",
+        "status": status,
+        "runnable_status": "PASS" if all_runnable_passed else "FAIL",
+        "compatibility_claim": status == "PASS",
+        "pending_features": pending,
+        "commit": args.commit,
+        "dirty_tree": parse_dirty_tree(args.dirty_tree),
+        "source_state": {
+            "declared_commit": args.commit,
+            "detected_commit": args.detected_commit,
+            "declared_dirty_tree": parse_dirty_tree(args.dirty_tree),
+            "detected_dirty_tree": parse_dirty_tree(args.detected_dirty_tree),
+            "verified": source_state_verified,
+            "checks": source_state_checks,
+        },
+        "source_snapshot_sha256": args.source_snapshot_sha256,
+        "source_snapshot_scope": (
+            "provided snapshot (exact scope annotated by the batch job)"
+        ),
+        "harness_sha256": sha256(pathlib.Path(__file__).read_bytes()),
+        "atlas_cli": str(cli_bin),
+        "atlas_cli_sha256": sha256(cli_bin.read_bytes()),
+        "reference_atlas_revision": args.expected_reference_revision,
+        "diagnostic_comparison": {
+            "scope": "category and message only",
+            "source_path_line_column_caret_compared": False,
+            "position_context_lines_ignored": "lines beginning with '  | '",
+            "other_stderr_is_failure": True,
+        },
+        "rustc": command_output(["rustc", "--version"]),
+        "cargo": command_output(["cargo", "--version"]),
+        "slurm": {
+            "job_id": args.job_id,
+            "node_list": os.environ.get("SLURM_JOB_NODELIST", "unavailable"),
+            "hostname": command_output(["hostname"]),
+        },
+        "fixtures": entries,
+    }
+    report_path = output_dir / "pipeline_swap_diff_report.json"
+    report_path.write_text(
+        json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    print(
+        f"pipeline swap: {len(entries)} fixtures, "
+        f"{len(pending)} pending cases, {status}"
+    )
+    print(f"report: {report_path}")
+    return 0 if source_state_verified and all_runnable_passed else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
