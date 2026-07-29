@@ -1,9 +1,0 @@
-set_type [ U = (int i | string s) ]
-case i(3) | i: 1 | s: 2 esac
-case i(3) | i(x): x + 1 | s(t): 0 esac
-case s("ab") | i(x): x | s(t): t esac
-case i(3) | i: 1 else 2 esac
-set_type [ Pair2 = (int a, int b) ]
-let p = (4, 5) in p.a
-whattype i(3)
-set_type [ IntList = (() nil | (int, IntList) cons) ]

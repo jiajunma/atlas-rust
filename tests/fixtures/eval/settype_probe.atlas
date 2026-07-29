@@ -1,8 +1,0 @@
-set_type Pair = (int x, int y)
-whattype Pair
-whattype (1, 2)
-let p = (1, 2): Pair in p
-let p = (1, 2): Pair in p.x
-set_type U = (int i | string s)
-whattype U
-let u = i(3): U in u

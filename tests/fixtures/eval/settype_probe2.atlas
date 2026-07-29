@@ -1,9 +1,0 @@
-set_type Pair = (int x, int y)
-let p = (1, 2) in p.x
-let p = (1, 2) in x(p)
-set_type U = (int i | string s)
-i(3)
-let u = i(3) in u
-case i(3) | i: 1 | s: 2 esac
-case i(3) | i(x): x + 1 | s(t): 0 esac
-case s("ab") | i(x): x | s(t): t esac
