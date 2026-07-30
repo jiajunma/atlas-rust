@@ -1,0 +1,218 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/weak_real_form_a2_noncanonical_probe",
+  "status": "verified_hpc_reference",
+  "events": [
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rd': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "RootDatum",
+        "display": "simply connected root datum of Lie type 'A2'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ic': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "InnerClass",
+        "display": "Complex reductive group of type A2, with involution defining\ninner class of type 'c', with 2 real forms and 1 dual real form"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'r0': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "RealForm",
+        "display": "connected quasisplit real group with Lie algebra 'su(2,1)'"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 1
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "ratvec",
+        "display": "[ 1, 2 ]/3"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "vec",
+        "display": "[ 1, 0 ]"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'x0': KGBElt\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "KGBElt",
+        "display": "KGB element #4"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "KGBElt",
+        "display": "KGB element #4"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "ratvec",
+        "display": "[ 1, 2 ]/3"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'r1': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "RealForm",
+        "display": "connected quasisplit real group with Lie algebra 'su(2,1)'"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 1
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "ratvec",
+        "display": "[ 2, 1 ]/3"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "vec",
+        "display": "[ 0, 1 ]"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'x1': KGBElt\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "KGBElt",
+        "display": "KGB element #3"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "KGBElt",
+        "display": "KGB element #3"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "ratvec",
+        "display": "[ 2, 1 ]/3"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rp': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "RealForm",
+        "display": "connected quasisplit real group with Lie algebra 'su(2,1)'"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "boolean",
+        "value": true
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 1
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "ratvec",
+        "display": "[ 1, 2 ]/3"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "vec",
+        "display": "[ 1, 0 ]"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'xp': KGBElt\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "KGBElt",
+        "display": "KGB element #4"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "KGBElt",
+        "display": "KGB element #4"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "ratvec",
+        "display": "[ 1, 2 ]/3"
+      }
+    }
+  ]
+}

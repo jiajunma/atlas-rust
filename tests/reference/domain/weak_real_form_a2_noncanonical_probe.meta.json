@@ -1,0 +1,27 @@
+{
+  "fixture": "domain/weak_real_form_a2_noncanonical_probe",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3502479",
+  "source_archive_sha256": "3c2554e30b7925e3f4a6b7ff195ed57c3f74eea3e682b856b00669a5db6a0239",
+  "fixture_sha256": "662510ca707f9d6e08df945db069158a0de19b13480f21d5025216d1a77eae75",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "bbfe2e72f3e14745aa536ceeaf7d9a4a6be74390ce784cf3237cf71ef5ac2c67",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "8f9ea71402affea92eb1e0947de3708b691634685c6534f0cb4b441b33032fe0",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:3841-3907",
+    "sources/structure/innerclass.cpp:1305-1355",
+    "sources/structure/realredgp.h:139-149"
+  ],
+  "scenarios": [
+    "two noncanonical A2 involutions both select external form 1 but retain distinct normalized cocharacters and initial torus bits",
+    "the first representative produces KGB element #4 with [1,2]/3 while the second produces KGB element #3 with [2,1]/3",
+    "adding an integral lattice vector to the first torus factor normalizes back to [1,2]/3 and yields an equal RealForm"
+  ],
+  "notes": "Corrected noncanonical A2 behavior captured verbatim by HPC job 3502479 against the pinned Atlas oracle. Job 3502476 used stale row-oriented matrix literals, failed root preservation, and is intentionally excluded from this reference; Rust support remains unimplemented."
+}

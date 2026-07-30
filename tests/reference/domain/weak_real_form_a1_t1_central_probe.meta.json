@@ -1,0 +1,27 @@
+{
+  "fixture": "domain/weak_real_form_a1_t1_central_probe",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3502476",
+  "source_archive_sha256": "476a4dad70787c69fde640bd1388f55c1b5f9ffcf8932facd1346be82758fe02",
+  "fixture_sha256": "565692a6854ee73363f8e123eeeaccd391f6d41484a2d568ffa4c70c507edf42",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "1b8abbe3285acdac7b265097ecf8575062fecf5f66aaf4865fa5e6be99dd8694",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "8119f98b3fe0e02c799d5d834276a9fef82c0acb6f5d9b216105068538531813",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:3841-3907",
+    "sources/structure/innerclass.cpp:1305-1355",
+    "sources/structure/realredgp.cpp:212-309"
+  ],
+  "scenarios": [
+    "an A1.T1 involution negates the semisimple coordinate and fixes the central coordinate",
+    "the central factor [0,1]/2 is retained in the synthetic form's base grading while initial torus bits reduce to [0,0]",
+    "the supplied strong representative is KGB element #2 with the requested involution and torus factor"
+  ],
+  "notes": "A1.T1 central-coordinate behavior captured verbatim by HPC job 3502476 against the pinned Atlas oracle. This freezes projection and minimal-torus behavior when the lattice has a non-semisimple coordinate; Rust support remains unimplemented."
+}
