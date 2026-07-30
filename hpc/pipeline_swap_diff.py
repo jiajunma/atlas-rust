@@ -106,6 +106,13 @@ FIXTURE_PLANS = (
     FixturePlan(name="eval/overloads_b8"),
     FixturePlan(name="eval/overloads_b8b"),
     FixturePlan(name="eval/overloads_b8_rejected"),
+    FixturePlan(name="eval/overloads_ops_b8c"),
+    FixturePlan(name="eval/overloads_ops_b8c_rejected"),
+    FixturePlan(name="eval/whattype_ops_b8d"),
+    # B13 do-expression termination: `dont` is admitted only after a
+    # semicolon in a while condition, not as a plain expression after `do`.
+    FixturePlan(name="eval/dont_b13"),
+    FixturePlan(name="eval/dont_b13_rejected"),
     # B9 file commands: tofile/addtofile redirection and its rejections.
     # The two redirect lines run but produce no stdout event.
     FixturePlan(
