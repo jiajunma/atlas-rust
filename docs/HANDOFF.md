@@ -15,8 +15,9 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   events (captures `3499627`, `3499657`); the B6 implementation is
   in progress.
 - B8 user overloads (`3499692`, `3499705`), B9 file-command redirection
-  (`3499747`), and B10 fromfile/quit (`3500378`) have frozen references
-  ahead of their implementations.
+  (`3499747`), B10 fromfile/quit (`3500378`), B11 precedence (`3500488`),
+  and B12 runtime errors (`3500488`) have frozen references ahead of their
+  implementations. The B11/B12 probes are retired.
 - No uncommitted repository changes should remain after the handoff commit.
 
 The typed session pipeline is active: `session.rs` and `session_frame.rs`
