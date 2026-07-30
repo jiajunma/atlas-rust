@@ -1,0 +1,21 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "eval/split_basic",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind": "ReportLine", "text": "Declaring identifier 's': Split\n"},
+    {"kind": "Value", "value": {"type": "domain", "domain": "Split", "display": "(3+2s)"}},
+    {"kind": "Value", "value": {"type": "domain", "domain": "Split", "display": "(3+2s)"}},
+    {"kind": "ReportLine", "text": "Declaring identifier 't': Split\n"},
+    {"kind": "Value", "value": {"type": "domain", "domain": "Split", "display": "(5+0s)"}},
+    {"kind": "Value", "value": {"type": "domain", "domain": "Split", "display": "(5+0s)"}},
+    {"kind": "Value", "value": {"type": "domain", "domain": "Split", "display": "(8+2s)"}},
+    {"kind": "Value", "value": {"type": "domain", "domain": "Split", "display": "(-2+2s)"}},
+    {"kind": "Value", "value": {"type": "domain", "domain": "Split", "display": "(15+10s)"}},
+    {"kind": "Value", "value": {"type": "domain", "domain": "Split", "display": "(-3-2s)"}},
+    {"kind": "Value", "value": {"type": "boolean", "value": false}},
+    {"kind": "Value", "value": {"type": "boolean", "value": true}},
+    {"kind": "Value", "value": {"type": "tuple", "display": "(3,2)"}},
+    {"kind": "Value", "value": {"type": "domain", "domain": "Split", "display": "(4+2s)"}}
+  ]
+}

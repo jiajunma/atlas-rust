@@ -1,0 +1,11 @@
+{
+  "fixture": "eval/split_basic",
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:5100-5145"
+  ],
+  "notes": "Split integer surface: (int,int) and int coercions, (e+ss) display, +,-,unary -,*,=,!= and the % destructure back to a pair. s*t=(15+10s) anchors the s^2=1 multiplication. Drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449); verbatim HPC capture still pending."
+}

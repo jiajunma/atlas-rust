@@ -1,0 +1,11 @@
+{
+  "fixture": "eval/split_basic_rejected",
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:5137-5145"
+  ],
+  "notes": "Rejected companion of the Split surface: division is not defined for split integers, failing overload match with 'Failed to match '/' with argument type (Split,int)'. Confirmed by direct oracle probe; verbatim HPC capture still pending."
+}

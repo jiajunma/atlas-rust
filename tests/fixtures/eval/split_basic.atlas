@@ -1,0 +1,14 @@
+s : Split
+s := (3,2)
+s
+t : Split
+t := 5
+t
+s+t
+s-t
+s*t
+-s
+s=t
+s!=t
+%s
+s+1
