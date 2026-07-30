@@ -1,0 +1,7 @@
+Smith_Cartan(Lie_type("T2"))
+Smith_Cartan(Lie_type("D4"))
+ann_mod([[0,0],[0,0]],2)
+ann_mod([[1,0]],2)
+ann_mod([[1],[0]],2)
+ann_mod([[1]],-2)
+quotient_basis(Lie_type("A3"),[[1]/2,[1]/4])
