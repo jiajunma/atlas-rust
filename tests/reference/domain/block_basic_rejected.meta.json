@@ -1,11 +1,20 @@
 {
-  "fixture": "domain/block_basic_rejected.atlas",
-  "oracle": "pending_hpc_capture",
+  "fixture": "domain/block_basic_rejected",
+  "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:4995-4998"
   ],
-  "notes": "Rejected companions of the Block surface: block(rf,rf) with a non-dual second form aborts with 'Inner class mismatch between real form and dual real form'; element(B,5) aborts with 'Block element 5 out of range (<3)'. Both confirmed by direct oracle probes; verbatim HPC capture still pending."
+  "notes": "Rejected companions of the Block surface: block(rf,rf) with a non-dual second form aborts with 'Inner class mismatch between real form and dual real form'; element(B,5) aborts with 'Block element 5 out of range (<3)'. Both confirmed by direct oracle probes; verbatim HPC capture still pending. Reference captured verbatim by HPC job 3501519 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3501519",
+  "source_archive_sha256": "8a77d3755547cdb7107d4784168774265516ee84b141255573e8c417590166fa",
+  "fixture_sha256": "16adb97d49823e166afc42d1b02d09adbd9bac627afd2fc05bdd0d291e4eaa0f",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "115e896468c677a347c2980d5e7a6bda17e9195640faa3748cd9456c28d54acf",
+  "oracle_stderr_sha256": "ea95452a7838579a0723f46922e2bc2ecdfe2777b6f5700d0b14094c8c168fb4",
+  "capture_artifacts_sha256": "90b6da645a41e565b715add42e8d91dec8b4112931f401b052d0967c432b49fb"
 }

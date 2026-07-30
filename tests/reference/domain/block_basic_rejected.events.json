@@ -1,17 +1,65 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "domain/block_basic_rejected",
-  "status": "pending_hpc_reference",
+  "status": "verified_hpc_reference",
   "events": [
-    {"kind": "ReportLine", "text": "Declaring identifier 'rd': RootDatum\n"},
-    {"kind": "Value", "value": {"type": "domain", "domain": "RootDatum", "display": "simply connected root datum of Lie type 'A1'"}},
-    {"kind": "ReportLine", "text": "Declaring identifier 'ic': InnerClass\n"},
-    {"kind": "Value", "value": {"type": "domain", "domain": "InnerClass", "display": "Complex reductive group of type A1, with involution defining\ninner class of type 'c', with 2 real forms and 2 dual real forms"}},
-    {"kind": "ReportLine", "text": "Declaring identifier 'rf': RealForm\n"},
-    {"kind": "Value", "value": {"type": "domain", "domain": "RealForm", "display": "connected split real group with Lie algebra 'sl(2,R)'"}},
-    {"kind": "Diagnostic", "category": "runtime", "message": "Inner class mismatch between real form and dual real form"},
-    {"kind": "ReportLine", "text": "Declaring identifier 'B': Block\n"},
-    {"kind": "Value", "value": {"type": "domain", "domain": "Block", "display": "Block of 3 elements"}},
-    {"kind": "Diagnostic", "category": "runtime", "message": "Block element 5 out of range (<3)"}
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rd': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "RootDatum",
+        "display": "simply connected root datum of Lie type 'A1'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ic': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "InnerClass",
+        "display": "Complex reductive group of type A1, with involution defining\ninner class of type 'c', with 2 real forms and 2 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rf': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "RealForm",
+        "display": "connected split real group with Lie algebra 'sl(2,R)'"
+      }
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Inner class mismatch between real form and dual real form"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'B': Block\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "Block",
+        "display": "Block of 3 elements"
+      }
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Block element 5 out of range (<3)"
+    }
   ]
 }

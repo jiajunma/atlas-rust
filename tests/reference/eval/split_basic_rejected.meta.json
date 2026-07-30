@@ -1,11 +1,20 @@
 {
   "fixture": "eval/split_basic_rejected",
-  "oracle": "pending_hpc_capture",
+  "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:5137-5145"
   ],
-  "notes": "Rejected companion of the Split surface: division is not defined for split integers, failing overload match with 'Failed to match '/' with argument type (Split,int)'. Confirmed by direct oracle probe; verbatim HPC capture still pending."
+  "notes": "Rejected companion of the Split surface: division is not defined for split integers, failing overload match with 'Failed to match '/' with argument type (Split,int)'. Confirmed by direct oracle probe; verbatim HPC capture still pending. Reference captured verbatim by HPC job 3501519 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3501519",
+  "source_archive_sha256": "8a77d3755547cdb7107d4784168774265516ee84b141255573e8c417590166fa",
+  "fixture_sha256": "d327fa97387ae1e826fad7c994abf347521d483e3ff0bfe4293f4f33b758c5ac",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "b0d7f1743cc1d50d34c81482d5915de709077261989b415b97785d767a6f2477",
+  "oracle_stderr_sha256": "1f298468d85ca25e55f0aec74dd05193b2b4fba71b8c5a36a9e94ef0712c3c48",
+  "capture_artifacts_sha256": "07900e44a456118e42c46fad0b7e06b9025f473289b264616443e317c59ae23d"
 }

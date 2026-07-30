@@ -1,10 +1,24 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "eval/split_basic_rejected",
-  "status": "pending_hpc_reference",
+  "status": "verified_hpc_reference",
   "events": [
-    {"kind": "ReportLine", "text": "Declaring identifier 's': Split\n"},
-    {"kind": "Value", "value": {"type": "domain", "domain": "Split", "display": "(3+2s)"}},
-    {"kind": "Diagnostic", "category": "type", "message": "Failed to match '/' with argument type (Split,int)"}
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 's': Split\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "Split",
+        "display": "(3+2s)"
+      }
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "Failed to match '/' with argument type (Split,int)"
+    }
   ]
 }

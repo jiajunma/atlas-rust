@@ -1,11 +1,20 @@
 {
   "fixture": "eval/split_basic",
-  "oracle": "pending_hpc_capture",
+  "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:5100-5145"
   ],
-  "notes": "Split integer surface: (int,int) and int coercions, (e+ss) display, +,-,unary -,*,=,!= and the % destructure back to a pair. s*t=(15+10s) anchors the s^2=1 multiplication. Drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449); verbatim HPC capture still pending."
+  "notes": "Split integer surface: (int,int) and int coercions, (e+ss) display, +,-,unary -,*,=,!= and the % destructure back to a pair. s*t=(15+10s) anchors the s^2=1 multiplication. Drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449); verbatim HPC capture still pending. Reference captured verbatim by HPC job 3501519 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3501519",
+  "source_archive_sha256": "8a77d3755547cdb7107d4784168774265516ee84b141255573e8c417590166fa",
+  "fixture_sha256": "9aaf60ef38420cf30823f75406afb44d56ca5c18be5d705bf4683942cff56c19",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "f13831e1bfe2b6b7c39afe306f89aec904de5ceca860d1e997bbfe18d46842e0",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "f5fe72e71598b69dc87591f6cd935483ca297c6b28b4de12d3ac95c1aa3ebe29"
 }

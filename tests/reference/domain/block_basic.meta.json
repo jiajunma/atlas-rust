@@ -1,8 +1,8 @@
 {
-  "fixture": "domain/block_basic.atlas",
-  "oracle": "pending_hpc_capture",
+  "fixture": "domain/block_basic",
+  "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:4995-5004"
@@ -12,5 +12,14 @@
     "element(B,0) = (KGB #0, KGB #1) with independent dual numbering",
     "block cross/Cayley/inverse_Cayley and block status values (6 and 2)"
   ],
-  "notes": "Block language surface (block/#/%/element/cross/Cayley/status/inverse_Cayley), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449); verbatim HPC capture still pending."
+  "notes": "Block language surface (block/#/%/element/cross/Cayley/status/inverse_Cayley), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449); verbatim HPC capture still pending. Reference captured verbatim by HPC job 3501519 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3501519",
+  "source_archive_sha256": "8a77d3755547cdb7107d4784168774265516ee84b141255573e8c417590166fa",
+  "fixture_sha256": "6970a6a06901883435ec424f827bff8452a5e40b1db9428ee1ed794cdef17d9d",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "eb9fd845a35a4f9a58332895cc843586cbd2c74584f10163e9da51d2b4579637",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "fbc28574edabafa02ec96df2fbc0dd0122f736d605fab53ec00d3d61cd576966"
 }
