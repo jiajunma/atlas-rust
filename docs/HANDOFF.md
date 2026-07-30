@@ -165,9 +165,15 @@ diagnostic), then tori::classify (tori.cpp:189) = NO eigenspace work:
 tau1=M+I; plus_rank = integer column-echelon rank of tau1; complex_rank =
 mod-2 image rank of tau1; result (plus-complex, complex, r-plus-complex) —
 anchors: I2 -> (2,0,0), A2 opposition -> (0,1,0)) → `strong_real` (square_classes + B2
-print_strong_real — square_classes(cc): per square class, fiber_partition
-classes mapped via toWeakReal to external form numbers (atlas-types.w:4229;
-needs the CartanClass fiber partition + realFormLabels machinery)) → `split_basic` (eval/; Split operator family —
+print_strong_real — square_classes(cc) (atlas-types.w:4230): per square
+class csc, pi=fiber_partition(csc), row of rfi.out(rfl[toWeakReal(c,csc)])
+per partition class c — NOTE rfi.out can COLLAPSE distinct internal forms to
+one external number (B2 c0 anchor: [[2],[1,0,0]] has duplicate external 0);
+square_classes is already registered+verified by cartan_aggregation, so this
+slice is COVERAGE-ONLY if involution_table landed the full print_strong_real:
+B2 c2 exercises the multi-class layout ('there are 2 real form classes:\n\n'
+header, blank line after EVERY block including the last; squares
+exp(2i\pi([0,1]/2)) and exp(2i\pi([0,0]/1))) → `split_basic` (eval/; Split operator family —
 Split_integer (e,s) arithmetic with s^2=1, int and (int,int) coercions, the
 '(e+ss)' display, and `%` back to (e,s) (atlas-types.w:5079-5145)) →
 `block_basic` (block/#/%/element/cross/Cayley/status/inverse_Cayley —
