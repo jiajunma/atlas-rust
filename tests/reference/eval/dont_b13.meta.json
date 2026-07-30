@@ -1,0 +1,21 @@
+{
+  "fixture": "eval/dont_b13",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3501619",
+  "source_archive_sha256": "f543b17bb7b75845817e8f1c3b36d8eda7f18eec96869db35c85bad428094532",
+  "fixture_sha256": "e267642d8aaf803dcf9a9d6baf8f73bb80604be17484a40d15b02ea36a240466",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "4df6a9a90e3afdfec8af14e0cbdc610acf9998952cff6c3da0c351309420c3b4",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "964d565f8f40177653664ec59d0c15c9f0296c67216c542dec20fa8f3c0777c1",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/parser.y:441-444",
+    "sources/interpreter/axis.w:5472-5510"
+  ],
+  "notes": "Minimal do_expr contract: while false; dont od evaluates to an empty row without a diagnostic. Reference captured by HPC job 3501619."
+}

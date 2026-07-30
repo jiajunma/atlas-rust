@@ -1,0 +1,21 @@
+{
+  "fixture": "eval/dont_b13_rejected",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3501619",
+  "source_archive_sha256": "f543b17bb7b75845817e8f1c3b36d8eda7f18eec96869db35c85bad428094532",
+  "fixture_sha256": "c5e68ce07694d70e970630fe8b86742ebc347f4043f22c96031dabbb1ef3565e",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
+  "oracle_stderr_sha256": "6bc6ec819a7d3fb7bdddbdee73e5cd4ab271d15b275db2fdd8d9f0863b4efa1c",
+  "capture_artifacts_sha256": "b1d64bd15579d5439bf3e6ce41a72ced57d223003d26f9546436fd6f49de353b",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/parser.y:364",
+    "sources/interpreter/parser.y:441-444"
+  ],
+  "notes": "dont is a do_expr alternative, not a plain expression after DO; while true do dont od is rejected as syntax error, unexpected DONT. Reference captured by HPC job 3501619."
+}
