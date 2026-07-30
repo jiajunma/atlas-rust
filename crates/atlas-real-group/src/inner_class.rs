@@ -1,10 +1,11 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::grading::try_capacity;
+use crate::twisted_involution::compose_matrices;
 use crate::{
-    BasedRootDatum, Coweight, LatticeInvolution, RootId, RootInvolutionData, RootSystem,
-    StructureError, TwistedConjugacyClass, TwistedConjugacyPartition, TwistedInvolution, Weight,
-    WeylAction, WeylElement, WeylGroup,
+    pair, BasedRootDatum, Coweight, LatticeInvolution, RootId, RootInvolutionData, RootKind,
+    RootSystem, StructureError, TwistedConjugacyClass, TwistedConjugacyPartition,
+    TwistedInvolution, Weight, WeylAction, WeylElement, WeylGroup,
 };
 
 /// Shared structural data at the beginning of an Atlas inner-class computation.
@@ -212,6 +213,244 @@ impl InnerClass {
         Ok(twist)
     }
 
+    /// Canonicalize a twisted involution by the three-phase Atlas algorithm.
+    ///
+    /// This ports `InnerClass::canonicalize` from
+    /// `sources/structure/innerclass.cpp:740-832`: first make the sums of the
+    /// positive real and imaginary roots dominant, then restrict to simple
+    /// generators orthogonal to both sums, and finally make the actual
+    /// involution preserve positivity in the residual complex subsystem.
+    ///
+    /// The returned generators are in execution order. Repeatedly replacing
+    /// `sigma` by `s * sigma * delta(s)` for each returned `s` transports the
+    /// input to the returned canonical representative.
+    pub fn canonicalize(
+        &self,
+        involution: TwistedInvolution,
+    ) -> Result<(TwistedInvolution, Vec<usize>), StructureError> {
+        self.validate_twisted_involution(&involution)?;
+        let twist = self.generator_twist()?;
+        let mut real_sum =
+            positive_root_sum(&self.roots, involution.root_involution(), RootKind::Real)?;
+        let mut imaginary_sum = positive_root_sum(
+            &self.roots,
+            involution.root_involution(),
+            RootKind::Imaginary,
+        )?;
+        let mut action = involution.weyl_action().clone();
+        let positive_root_count = self.roots.roots().len() / 2;
+        // Phase one decreases a lexicographic pair whose coordinates each
+        // lie in 0..=positive_root_count. Phase three decreases involution
+        // length and therefore takes at most positive_root_count steps.
+        let phase_one_cap = positive_root_count
+            .checked_add(1)
+            .and_then(|bound| bound.checked_mul(bound))
+            .ok_or(StructureError::ArithmeticOverflow)?;
+        let phase_three_cap = positive_root_count;
+        // The quadratic cap detects a broken termination invariant; it is not
+        // a realistic output-size estimate. Keep eager allocation linear and
+        // grow fallibly if a valid word exceeds it.
+        let word_capacity = positive_root_count
+            .checked_mul(2)
+            .ok_or(StructureError::ArithmeticOverflow)?;
+        let mut word = try_capacity(word_capacity)?;
+
+        self.make_root_sums_dominant(
+            &mut action,
+            &twist,
+            &mut real_sum,
+            &mut imaginary_sum,
+            &mut word,
+            phase_one_cap,
+        )?;
+        let residual_generators = self.residual_generators(&real_sum, &imaginary_sum)?;
+        self.make_residual_action_positive(
+            &mut action,
+            &twist,
+            &residual_generators,
+            &mut word,
+            phase_three_cap,
+        )?;
+
+        let canonical = TwistedInvolution::new(
+            &self.datum,
+            &self.roots,
+            self.distinguished_involution.involution(),
+            action,
+        )?;
+        Ok((canonical, word))
+    }
+
+    // Phase one: lexicographically make the real sum dominant, then the
+    // imaginary sum on the walls of the real sum.
+    fn make_root_sums_dominant(
+        &self,
+        action: &mut WeylAction,
+        twist: &[usize],
+        real_sum: &mut Weight,
+        imaginary_sum: &mut Weight,
+        word: &mut Vec<usize>,
+        max_steps: usize,
+    ) -> Result<(), StructureError> {
+        let mut steps = 0_usize;
+        loop {
+            let mut changed = false;
+            for generator in 0..self.datum.semisimple_rank() {
+                let real_pairing = pair(real_sum, &self.datum.simple_coroots()[generator])?;
+                let should_reflect = real_pairing < 0
+                    || (real_pairing == 0
+                        && pair(imaginary_sum, &self.datum.simple_coroots()[generator])? < 0);
+                if should_reflect {
+                    if steps == max_steps {
+                        return Err(StructureError::CartanClassificationInvariantViolation {
+                            invariant: "canonicalize phase-one termination",
+                        });
+                    }
+                    let next_real = self.datum.reflect_weight(generator, real_sum)?;
+                    let next_imaginary = self.datum.reflect_weight(generator, imaginary_sum)?;
+                    let next_action = self.twisted_conjugate_action(action, generator, twist)?;
+                    *real_sum = next_real;
+                    *imaginary_sum = next_imaginary;
+                    *action = next_action;
+                    word.try_reserve(1)
+                        .map_err(|_| StructureError::AllocationFailed { requested: 1 })?;
+                    word.push(generator);
+                    steps += 1;
+                    changed = true;
+                    break;
+                }
+            }
+            if !changed {
+                break;
+            }
+        }
+        Ok(())
+    }
+
+    // Phase two: retain exactly the simple generators orthogonal to both
+    // dominant sums. They generate the residual complex subsystem.
+    fn residual_generators(
+        &self,
+        real_sum: &Weight,
+        imaginary_sum: &Weight,
+    ) -> Result<Vec<bool>, StructureError> {
+        let mut residual_generators = try_capacity(self.datum.semisimple_rank())?;
+        for generator in 0..self.datum.semisimple_rank() {
+            let real_pairing = pair(real_sum, &self.datum.simple_coroots()[generator])?;
+            let active = real_pairing <= 0
+                && pair(imaginary_sum, &self.datum.simple_coroots()[generator])? <= 0;
+            residual_generators.push(active);
+        }
+        Ok(residual_generators)
+    }
+
+    // Phase three: eliminate negative simple-root images in the residual
+    // subsystem, restarting the ascending scan after every conjugation.
+    fn make_residual_action_positive(
+        &self,
+        action: &mut WeylAction,
+        twist: &[usize],
+        residual_generators: &[bool],
+        word: &mut Vec<usize>,
+        max_steps: usize,
+    ) -> Result<(), StructureError> {
+        let mut steps = 0_usize;
+        loop {
+            let mut changed = false;
+            for (generator, &active) in residual_generators.iter().enumerate() {
+                if !active {
+                    continue;
+                }
+                let twisted_generator =
+                    *twist
+                        .get(generator)
+                        .ok_or(StructureError::IndexOutOfRange {
+                            index: generator,
+                            upper_bound: twist.len(),
+                        })?;
+                let twisted_simple = *self.roots.simple_root_ids().get(twisted_generator).ok_or(
+                    StructureError::IndexOutOfRange {
+                        index: twisted_generator,
+                        upper_bound: self.roots.simple_root_ids().len(),
+                    },
+                )?;
+                let root = self
+                    .roots
+                    .root(twisted_simple)
+                    .ok_or(StructureError::InvalidRootAutomorphism)?;
+                let image = action.act(root)?;
+                let image = self
+                    .roots
+                    .id_of(&image)
+                    .ok_or(StructureError::InvalidRootAutomorphism)?;
+                let is_positive = self
+                    .roots
+                    .is_positive(image)
+                    .ok_or(StructureError::InvalidRootAutomorphism)?;
+                if !is_positive {
+                    if steps == max_steps {
+                        return Err(StructureError::CartanClassificationInvariantViolation {
+                            invariant: "canonicalize phase-three termination",
+                        });
+                    }
+                    *action = self.twisted_conjugate_action(action, generator, twist)?;
+                    word.try_reserve(1)
+                        .map_err(|_| StructureError::AllocationFailed { requested: 1 })?;
+                    word.push(generator);
+                    steps += 1;
+                    changed = true;
+                    break;
+                }
+            }
+            if !changed {
+                break;
+            }
+        }
+        Ok(())
+    }
+
+    fn validate_twisted_involution(
+        &self,
+        involution: &TwistedInvolution,
+    ) -> Result<(), StructureError> {
+        if involution.weyl_action().datum() != &self.datum
+            || involution.root_involution().involution().datum() != &self.datum
+        {
+            return Err(StructureError::DatumMismatch);
+        }
+        let distinguished = self.distinguished_involution.involution();
+        let stored = involution.root_involution().involution();
+        if compose_matrices(
+            involution.weyl_action().matrix(),
+            distinguished.weight_matrix(),
+        )? != stored.weight_matrix()
+            || compose_matrices(
+                involution.weyl_action().coweight_matrix(),
+                distinguished.coweight_matrix(),
+            )? != stored.coweight_matrix()
+        {
+            return Err(StructureError::DistinguishedInvolutionMismatch);
+        }
+        Ok(())
+    }
+
+    fn twisted_conjugate_action(
+        &self,
+        action: &WeylAction,
+        generator: usize,
+        twist: &[usize],
+    ) -> Result<WeylAction, StructureError> {
+        let twisted_generator = *twist
+            .get(generator)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: generator,
+                upper_bound: twist.len(),
+            })?;
+        let left = WeylAction::simple_reflection(&self.datum, generator)?;
+        let right = WeylAction::simple_reflection(&self.datum, twisted_generator)?;
+        left.compose(action)?.compose(&right)
+    }
+
     /// Port of upstream `TwistedWeylGroup::canonical_involution_expr`
     /// (weyl.cpp:1359-1385): the reduced twisted-involution expression of a
     /// twisted involution's Weyl part, lexicographically least in the
@@ -371,6 +610,34 @@ impl InnerClass {
             .collect::<Result<Vec<_>, _>>()?;
         Ok((actions, involutions))
     }
+}
+
+fn positive_root_sum(
+    roots: &RootSystem,
+    involution: &RootInvolutionData,
+    kind: RootKind,
+) -> Result<Weight, StructureError> {
+    if involution.involution().datum() != roots.datum() {
+        return Err(StructureError::DatumMismatch);
+    }
+    let mut sum = try_capacity(roots.lattice_rank())?;
+    sum.resize(roots.lattice_rank(), 0_i32);
+    for root_id in involution.roots_of_kind(kind) {
+        match roots.is_positive(root_id) {
+            Some(true) => {}
+            Some(false) => continue,
+            None => return Err(StructureError::InvalidRootAutomorphism),
+        }
+        let root = roots
+            .root(root_id)
+            .ok_or(StructureError::InvalidRootAutomorphism)?;
+        for (total, &coordinate) in sum.iter_mut().zip(root.as_slice()) {
+            *total = total
+                .checked_add(coordinate)
+                .ok_or(StructureError::ArithmeticOverflow)?;
+        }
+    }
+    Ok(Weight::new(sum))
 }
 
 fn preserves_simple_system(
@@ -566,6 +833,77 @@ mod tests {
     use crate::{BasedRootDatum, LatticeInvolution, RootKind, StructureError};
 
     use super::*;
+
+    fn compact_a2_inner_class() -> InnerClass {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        InnerClass::new(
+            datum.clone(),
+            LatticeInvolution::identity(&datum).unwrap(),
+            6,
+        )
+        .unwrap()
+    }
+
+    fn twisted_from_action(inner_class: &InnerClass, action: WeylAction) -> TwistedInvolution {
+        TwistedInvolution::new(
+            inner_class.datum(),
+            inner_class.root_system(),
+            inner_class.distinguished_involution().involution(),
+            action,
+        )
+        .unwrap()
+    }
+
+    fn replay_twisted_conjugations(
+        inner_class: &InnerClass,
+        mut involution: TwistedInvolution,
+        word: &[usize],
+    ) -> TwistedInvolution {
+        let twist = inner_class.generator_twist().unwrap();
+        for &generator in word {
+            let left = WeylAction::simple_reflection(inner_class.datum(), generator).unwrap();
+            let right =
+                WeylAction::simple_reflection(inner_class.datum(), twist[generator]).unwrap();
+            let action = left
+                .compose(involution.weyl_action())
+                .unwrap()
+                .compose(&right)
+                .unwrap();
+            involution = twisted_from_action(inner_class, action);
+        }
+        involution
+    }
+
+    fn assert_canonicalize_is_constant_on_simple_conjugacy(
+        inner_class: &InnerClass,
+        weyl_budget: usize,
+    ) {
+        let (_, involutions) = inner_class
+            .enumerated_twisted_involutions(weyl_budget)
+            .unwrap();
+        assert!(!involutions.is_empty());
+        for involution in involutions {
+            let (canonical, word) = inner_class.canonicalize(involution.clone()).unwrap();
+            assert_eq!(
+                replay_twisted_conjugations(inner_class, involution.clone(), &word),
+                canonical
+            );
+            let (canonical_again, idempotent_word) =
+                inner_class.canonicalize(canonical.clone()).unwrap();
+            assert_eq!(canonical_again, canonical);
+            assert!(idempotent_word.is_empty());
+
+            for generator in 0..inner_class.datum().semisimple_rank() {
+                let conjugate = replay_twisted_conjugations(
+                    inner_class,
+                    involution.clone(),
+                    std::slice::from_ref(&generator),
+                );
+                let (conjugate_canonical, _) = inner_class.canonicalize(conjugate).unwrap();
+                assert_eq!(conjugate_canonical, canonical);
+            }
+        }
+    }
 
     #[test]
     fn builds_shared_state_and_derives_split_a1_from_a_weyl_translate() {
@@ -999,6 +1337,166 @@ mod tests {
         assert_eq!(
             inner_class.canonical_involution_expr(&word(&[1, 0, 1])),
             Ok(vec![!1, 0])
+        );
+    }
+
+    #[test]
+    fn canonicalize_fixes_the_identity() {
+        let inner_class = compact_a2_inner_class();
+        let identity = twisted_from_action(
+            &inner_class,
+            WeylAction::identity(inner_class.datum()).unwrap(),
+        );
+
+        let (canonical, word) = inner_class.canonicalize(identity.clone()).unwrap();
+
+        assert_eq!(canonical, identity);
+        assert!(word.is_empty());
+    }
+
+    #[test]
+    fn canonicalize_matches_the_a2_noncanonical_probe_representatives() {
+        let inner_class = compact_a2_inner_class();
+        let first = WeylAction::simple_reflection(inner_class.datum(), 0).unwrap();
+        let second = WeylAction::simple_reflection(inner_class.datum(), 1).unwrap();
+        assert_eq!(first.matrix(), &[vec![-1, 1], vec![0, 1]]);
+        assert_eq!(second.matrix(), &[vec![1, 0], vec![1, -1]]);
+        let expected = twisted_from_action(
+            &inner_class,
+            second.compose(&first).unwrap().compose(&second).unwrap(),
+        );
+
+        let first = twisted_from_action(&inner_class, first);
+        let second = twisted_from_action(&inner_class, second);
+        let (first_canonical, first_word) = inner_class.canonicalize(first.clone()).unwrap();
+        let (second_canonical, second_word) = inner_class.canonicalize(second.clone()).unwrap();
+
+        assert_eq!(first_canonical, expected);
+        assert_eq!(second_canonical, expected);
+        assert_eq!(first_word, vec![1]);
+        assert_eq!(second_word, vec![0]);
+        assert_eq!(
+            replay_twisted_conjugations(&inner_class, first, &first_word),
+            first_canonical
+        );
+        assert_eq!(
+            replay_twisted_conjugations(&inner_class, second, &second_word),
+            second_canonical
+        );
+    }
+
+    #[test]
+    fn canonicalize_is_idempotent() {
+        let inner_class = compact_a2_inner_class();
+        let first = twisted_from_action(
+            &inner_class,
+            WeylAction::simple_reflection(inner_class.datum(), 0).unwrap(),
+        );
+        let (canonical, _) = inner_class.canonicalize(first).unwrap();
+
+        let (canonical_again, word) = inner_class.canonicalize(canonical.clone()).unwrap();
+
+        assert_eq!(canonical_again, canonical);
+        assert!(word.is_empty());
+    }
+
+    #[test]
+    fn canonicalize_word_replays_forward_for_a_noncommuting_multi_step_case() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1, 0], vec![-1, 2, -1], vec![0, -1, 2]])
+            .unwrap();
+        let inner_class = InnerClass::new(
+            datum.clone(),
+            LatticeInvolution::identity(&datum).unwrap(),
+            12,
+        )
+        .unwrap();
+        let (_, involutions) = inner_class.enumerated_twisted_involutions(24).unwrap();
+        let mut witnessed = false;
+
+        for involution in involutions {
+            let (canonical, word) = inner_class.canonicalize(involution.clone()).unwrap();
+            if word.len() < 2 || !word.windows(2).any(|pair| pair[0] != pair[1]) {
+                continue;
+            }
+            let reversed = word.iter().copied().rev().collect::<Vec<_>>();
+            if replay_twisted_conjugations(&inner_class, involution.clone(), &reversed) == canonical
+            {
+                continue;
+            }
+            assert_eq!(
+                replay_twisted_conjugations(&inner_class, involution, &word),
+                canonical
+            );
+            witnessed = true;
+            break;
+        }
+
+        assert!(witnessed, "A3 must expose a noncommuting multi-step word");
+    }
+
+    #[test]
+    fn canonicalize_is_class_constant_on_b2_and_twisted_a2() {
+        let b2_datum = BasedRootDatum::standard(vec![vec![2, -2], vec![-1, 2]]).unwrap();
+        let b2 = InnerClass::new(
+            b2_datum.clone(),
+            LatticeInvolution::identity(&b2_datum).unwrap(),
+            8,
+        )
+        .unwrap();
+        assert_canonicalize_is_constant_on_simple_conjugacy(&b2, 8);
+
+        let a2_datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let diagram_swap = LatticeInvolution::new(
+            &a2_datum,
+            vec![vec![0, 1], vec![1, 0]],
+            vec![vec![0, 1], vec![1, 0]],
+        )
+        .unwrap();
+        let twisted_a2 = InnerClass::new(a2_datum, diagram_swap, 6).unwrap();
+        assert_canonicalize_is_constant_on_simple_conjugacy(&twisted_a2, 6);
+    }
+
+    #[test]
+    fn canonicalize_eliminates_negative_images_in_the_residual_complex_subsystem() {
+        let datum = BasedRootDatum::standard(vec![vec![2, 0], vec![0, 2]]).unwrap();
+        let swap = LatticeInvolution::new(
+            &datum,
+            vec![vec![0, 1], vec![1, 0]],
+            vec![vec![0, 1], vec![1, 0]],
+        )
+        .unwrap();
+        let inner_class = InnerClass::new(datum.clone(), swap, 4).unwrap();
+        let first = WeylAction::simple_reflection(&datum, 0).unwrap();
+        let second = WeylAction::simple_reflection(&datum, 1).unwrap();
+        let noncanonical = twisted_from_action(&inner_class, first.compose(&second).unwrap());
+        let expected = twisted_from_action(&inner_class, WeylAction::identity(&datum).unwrap());
+
+        let (canonical, word) = inner_class.canonicalize(noncanonical.clone()).unwrap();
+
+        assert_eq!(canonical, expected);
+        assert_eq!(word, vec![0]);
+        assert_eq!(
+            replay_twisted_conjugations(&inner_class, noncanonical, &word),
+            canonical
+        );
+    }
+
+    #[test]
+    fn canonicalize_rejects_a_different_distinguished_involution_on_the_same_datum() {
+        let compact = compact_a2_inner_class();
+        let datum = compact.datum().clone();
+        let diagram_swap = LatticeInvolution::new(
+            &datum,
+            vec![vec![0, 1], vec![1, 0]],
+            vec![vec![0, 1], vec![1, 0]],
+        )
+        .unwrap();
+        let diagram_class = InnerClass::new(datum.clone(), diagram_swap, 6).unwrap();
+        let foreign = twisted_from_action(&diagram_class, WeylAction::identity(&datum).unwrap());
+
+        assert_eq!(
+            compact.canonicalize(foreign),
+            Err(StructureError::DistinguishedInvolutionMismatch)
         );
     }
 }
