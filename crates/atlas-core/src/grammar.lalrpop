@@ -5,6 +5,7 @@ use super::{
     lambda_parameter, lambda_parameters, let_bindings, forget_overload_command,
     let_expression, list_expression, named_field, rec_function_binding, rec_lambda, return_expression,
     selector_suffix, operator_selector, sequence, set_command, set_type_command, show_overloads_command,
+    operator_function_binding,
     type_definition, type_spec_span,
     unit_selector, next_sequence, case_select_expression, counted_for_expression,
     tuple_expression, function_binding,
@@ -48,15 +49,19 @@ pub Command: Command = {
     <set_type:"set_type"> <_open:"["> <definitions:TypeEquations> <close:"]"> => {
         set_type_command(set_type, definitions, true, close)
     },
-    <whattype:"whattype"> <target:Expr> => whattype_command(whattype, target),
     // whattype id_op `?` (parser.y:187): list the overload instances of an
     // identifier or operator. The `?` cannot follow an expression or an
     // operator operand, so this never competes with the Expr form.
     <whattype:"whattype"> <name:ForgetTarget> <question:"?"> => {
         show_overloads_command(whattype, name, question)
     },
+    <whattype:"whattype"> <target:Expr> => whattype_command(whattype, target),
     // set (parser.y:140): the `let` declaration forms, bound globally and
     // in parallel; function-typed leaves enter the overload table.
+    <set:"set"> <operator:Operator> <open:"(">
+        <parameters:LambdaParametersOpt> <_close:")"> <_equals:"="> <body:Expr> => {
+        set_command(set, vec![operator_function_binding(operator, open, parameters, body)])
+    },
     <set:"set"> <bindings:LetBindings> => set_command(set, bindings),
     // forget (parser.y:141-142,155-157): an identifier drops its global
     // binding; `name @ type` (identifier or operator) removes ONE overload.
@@ -71,9 +76,9 @@ pub Command: Command = {
 // function identifier or an operator, reduced to its plain name.
 ForgetTarget: SpannedValue<String> = {
     <name:"identifier"> => name,
-    <operator:"operator"> => SpannedValue {
-        value: operator.value.symbol,
-        span: operator.span,
+    <operator:Operator> => SpannedValue {
+        value: operator.symbol,
+        span: operator.span.expect("grammar operators carry spans"),
     },
 };
 
@@ -339,8 +344,8 @@ Operand: Expr = {
 
 Operator: FormulaOperator = {
     <operator:"operator"> => operator.value,
-    <span:"="> => FormulaOperator::new("=", 2).with_span(span),
     <span:"*"> => FormulaOperator::new("*", 6).with_span(span),
+    <span:"="> => FormulaOperator::new("=", 2).with_span(span),
 };
 
 Postfix: Expr = {

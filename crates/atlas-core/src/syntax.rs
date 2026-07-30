@@ -1686,6 +1686,24 @@ fn function_binding(
     let_binding(target, lambda(open, parameters, body))
 }
 
+/// `operator(params) = body` in a global `set` declaration.  Atlas stores
+/// operators in the same overload table as named functions; representing the
+/// operator as a pattern name lets the existing binding/evaluation path keep
+/// its shared dispatch and reporting behavior.
+fn operator_function_binding(
+    target: FormulaOperator,
+    open: SourceSpan,
+    parameters: Vec<LambdaParam>,
+    body: Expr,
+) -> LetBinding {
+    let span = target.span.expect("grammar operators carry spans");
+    let name = SpannedValue {
+        value: target.symbol,
+        span,
+    };
+    function_binding(name, open, parameters, body)
+}
+
 /// `rec_fun name(params) = result: body` in a let declaration desugars to
 /// `name = rec_fun name (params) result: body` (parser.y:256-257).
 fn rec_function_binding(

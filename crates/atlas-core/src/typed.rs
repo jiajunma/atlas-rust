@@ -3503,6 +3503,144 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             scalar_builtin("+", pair(rat_type()), rat_type(), 1, ScalarOp::RatAdd),
             scalar_builtin("-", pair(rat_type()), rat_type(), 1, ScalarOp::RatSubtract),
             scalar_builtin("*", pair(rat_type()), rat_type(), 1, ScalarOp::RatMultiply),
+            // The language surface exposes these startup overloads even
+            // before their domain implementations land.  Keeping them in
+            // the registry makes `whattype * ?` and user replacement obey
+            // the reference overload table; calls still fail through the
+            // domain bridge until the owning math slice is implemented.
+            domain_builtin_skip(
+                "*",
+                Type::tuple(vec![primitive_type(Prim::Vec), int_type()]),
+                primitive_type(Prim::Vec),
+                0,
+            ),
+            domain_builtin_skip(
+                "*",
+                Type::tuple(vec![primitive_type(Prim::RatVec), int_type()]),
+                primitive_type(Prim::RatVec),
+                0,
+            ),
+            domain_builtin_skip(
+                "*",
+                Type::tuple(vec![primitive_type(Prim::RatVec), rat_type()]),
+                primitive_type(Prim::RatVec),
+                0,
+            ),
+            domain_builtin_skip("*", pair(primitive_type(Prim::Vec)), int_type(), 0),
+            domain_builtin_skip(
+                "*",
+                Type::tuple(vec![primitive_type(Prim::Mat), primitive_type(Prim::Vec)]),
+                primitive_type(Prim::Vec),
+                0,
+            ),
+            domain_builtin_skip(
+                "*",
+                Type::tuple(vec![
+                    primitive_type(Prim::Mat),
+                    primitive_type(Prim::RatVec),
+                ]),
+                primitive_type(Prim::RatVec),
+                0,
+            ),
+            domain_builtin_skip(
+                "*",
+                pair(primitive_type(Prim::Mat)),
+                primitive_type(Prim::Mat),
+                0,
+            ),
+            domain_builtin_skip(
+                "*",
+                Type::tuple(vec![primitive_type(Prim::Vec), primitive_type(Prim::Mat)]),
+                primitive_type(Prim::Vec),
+                0,
+            ),
+            domain_builtin_skip(
+                "*",
+                Type::tuple(vec![
+                    primitive_type(Prim::RatVec),
+                    primitive_type(Prim::Mat),
+                ]),
+                primitive_type(Prim::RatVec),
+                0,
+            ),
+            domain_builtin_skip(
+                "*",
+                pair(primitive_type(Prim::LieType)),
+                primitive_type(Prim::LieType),
+                0,
+            ),
+            domain_builtin_skip(
+                "*",
+                pair(primitive_type(Prim::WeylElt)),
+                primitive_type(Prim::WeylElt),
+                0,
+            ),
+            domain_builtin_skip(
+                "*",
+                Type::tuple(vec![
+                    primitive_type(Prim::WeylElt),
+                    primitive_type(Prim::Vec),
+                ]),
+                primitive_type(Prim::Vec),
+                0,
+            ),
+            domain_builtin_skip(
+                "*",
+                Type::tuple(vec![
+                    primitive_type(Prim::Vec),
+                    primitive_type(Prim::WeylElt),
+                ]),
+                primitive_type(Prim::Vec),
+                0,
+            ),
+            domain_builtin_skip(
+                "*",
+                pair(primitive_type(Prim::Split)),
+                primitive_type(Prim::Split),
+                0,
+            ),
+            domain_builtin_skip(
+                "*",
+                Type::tuple(vec![int_type(), primitive_type(Prim::KTypePol)]),
+                primitive_type(Prim::KTypePol),
+                0,
+            ),
+            domain_builtin_skip(
+                "*",
+                Type::tuple(vec![
+                    primitive_type(Prim::Split),
+                    primitive_type(Prim::KTypePol),
+                ]),
+                primitive_type(Prim::KTypePol),
+                0,
+            ),
+            domain_builtin_skip(
+                "*",
+                Type::tuple(vec![primitive_type(Prim::Param), rat_type()]),
+                primitive_type(Prim::Param),
+                0,
+            ),
+            domain_builtin_skip(
+                "*",
+                Type::tuple(vec![int_type(), primitive_type(Prim::ParamPol)]),
+                primitive_type(Prim::ParamPol),
+                0,
+            ),
+            domain_builtin_skip(
+                "*",
+                Type::tuple(vec![
+                    primitive_type(Prim::Split),
+                    primitive_type(Prim::ParamPol),
+                ]),
+                primitive_type(Prim::ParamPol),
+                0,
+            ),
+            domain_builtin_skip(
+                "*",
+                Type::tuple(vec![primitive_type(Prim::ParamPol), rat_type()]),
+                primitive_type(Prim::ParamPol),
+                0,
+            ),
             scalar_builtin("/", pair(rat_type()), rat_type(), 1, ScalarOp::RatDivide),
             scalar_builtin("%", pair(rat_type()), rat_type(), 1, ScalarOp::RatModulo),
             scalar_builtin("-", rat_type(), rat_type(), 3, ScalarOp::RatNegate),
