@@ -3645,11 +3645,11 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::LieType),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "*",
                 pair(primitive_type(Prim::WeylElt)),
                 primitive_type(Prim::WeylElt),
-                0,
+                1,
             ),
             domain_builtin_skip(
                 "*",
@@ -4217,6 +4217,43 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::KgbElt),
                 1,
             ),
+            // WeylElt surface (atlas-types.w:2629-2639): constructor,
+            // attributes, unary relations, and the product/inverse/
+            // generator-product operators. Binary =/!= are domain
+            // relations registered in the relation block below.
+            domain_builtin(
+                "W_elt",
+                Type::tuple(vec![primitive_type(Prim::RootDatum), Type::row(int_type())]),
+                primitive_type(Prim::WeylElt),
+                0,
+            ),
+            domain_builtin(
+                "word",
+                primitive_type(Prim::WeylElt),
+                Type::row(int_type()),
+                0,
+            ),
+            domain_builtin(
+                "root_datum",
+                primitive_type(Prim::WeylElt),
+                primitive_type(Prim::RootDatum),
+                0,
+            ),
+            domain_builtin("length", primitive_type(Prim::WeylElt), int_type(), 0),
+            domain_builtin("=", primitive_type(Prim::WeylElt), bool_type(), 0),
+            domain_builtin("!=", primitive_type(Prim::WeylElt), bool_type(), 0),
+            domain_builtin(
+                "/",
+                primitive_type(Prim::WeylElt),
+                primitive_type(Prim::WeylElt),
+                3,
+            ),
+            domain_builtin(
+                "#",
+                Type::tuple(vec![primitive_type(Prim::WeylElt), int_type()]),
+                primitive_type(Prim::WeylElt),
+                1,
+            ),
             domain_relation_builtin("=", pair(primitive_type(Prim::LieType)), Relation::Equal),
             domain_relation_builtin(
                 "!=",
@@ -4243,6 +4280,12 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             ),
             domain_relation_builtin("=", pair(primitive_type(Prim::KgbElt)), Relation::Equal),
             domain_relation_builtin("!=", pair(primitive_type(Prim::KgbElt)), Relation::NotEqual),
+            domain_relation_builtin("=", pair(primitive_type(Prim::WeylElt)), Relation::Equal),
+            domain_relation_builtin(
+                "!=",
+                pair(primitive_type(Prim::WeylElt)),
+                Relation::NotEqual,
+            ),
         ]
     })
 }

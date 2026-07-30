@@ -166,6 +166,22 @@ FIXTURE_PLANS = (
     # and torus_bits per KGB element, plus the RootDatum-argument rejection.
     FixturePlan(name="domain/grading"),
     FixturePlan(name="domain/grading_rejected"),
+    # WeylElt surface: W_elt canonical words (A2/B2 braid anchors), word,
+    # length, relations, product/inverse/generator-product, root_datum,
+    # plus the illegal-entry and negative-entry rejections.
+    FixturePlan(name="domain/weyl_element"),
+    FixturePlan(name="domain/weyl_element_rejected"),
+    # Early scalar-era fixtures: verified verbatim locally and included so
+    # the HPC differential upgrades their reference metadata.
+    FixturePlan(name="eval/scalars"),
+    FixturePlan(name="eval/scalar_overloads"),
+    FixturePlan(name="eval/scalar_error_fraction_zero"),
+    FixturePlan(name="eval/scalar_error_int_power_large"),
+    FixturePlan(name="eval/scalar_error_int_power_negative"),
+    FixturePlan(name="eval/scalar_error_rat_divide_zero"),
+    FixturePlan(name="eval/scalar_error_rat_modulo_zero"),
+    FixturePlan(name="eval/scalar_error_rat_power_negative"),
+    FixturePlan(name="eval/scalar_error_rat_quotient_zero"),
 )
 
 

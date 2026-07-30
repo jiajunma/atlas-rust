@@ -80,7 +80,7 @@ pub use tits_element::{TitsCoset, TitsElement};
 pub use twisted_involution::TwistedInvolution;
 pub use weak_real_form::{WeakRealFormId, WeakRealFormPartition};
 pub use weyl::{WeylAction, WeylGroup};
-pub use weyl_element::WeylElement;
+pub use weyl_element::{WeylElement, WeylInterface};
 
 /// Legacy untyped coordinate vector used only by the A1 migration prototype.
 ///

@@ -24,8 +24,8 @@ use atlas_real_group::{
     build_presentations, dual_inner_class, dual_real_form_count, AdjointFiberBudget,
     BasedRootDatum, CartanClassification, CartanClassificationBudget, Coweight, ExternalFormOrder,
     InnerClass, InnerClassLayout, IntegerLatticeBudget, InvolutionTable, InvolutionTableBudget,
-    KgbGraph, KgbId, KgbStatus, LatticeInvolution, RealFormPresentation, RealFormSeed,
-    StrongRealClassification, StructureError, WeakRealFormId, Weight,
+    KgbGraph, KgbId, KgbStatus, LatticeInvolution, RealFormPresentation, RealFormSeed, RootSystem,
+    StrongRealClassification, StructureError, WeakRealFormId, Weight, WeylElement, WeylInterface,
 };
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
@@ -148,6 +148,26 @@ pub struct RealFormContext {
     graph: KgbGraph,
 }
 
+/// The Weyl side of one root datum: the enumerated semisimple root system
+/// the word-level kernel operates on, plus the internal generator
+/// renumbering that fixes the upstream canonical-word choice.
+#[derive(Debug)]
+pub struct WeylEltContext {
+    handle: RootDatumHandle,
+    system: RootSystem,
+    interface: WeylInterface,
+}
+
+/// A WeylElt value: the element with its construction context and its
+/// canonical reduced word, frozen at construction so Display and `word`
+/// are pure reads.
+#[derive(Clone, Debug)]
+pub struct WeylEltValue {
+    context: Arc<WeylEltContext>,
+    element: WeylElement,
+    word: Vec<usize>,
+}
+
 /// The domain payload of [`Value::Domain`]. Equality is STRUCTURAL: two
 /// independently constructed handles for the same mathematical object
 /// compare equal, matching upstream's memoized handles.
@@ -158,6 +178,7 @@ pub enum DomainValue {
     InnerClass(Arc<InnerClassContext>),
     RealForm(Arc<RealFormContext>),
     KgbElement(Arc<RealFormContext>, KgbId),
+    WeylElement(WeylEltValue),
 }
 
 impl PartialEq for DomainValue {
@@ -176,6 +197,11 @@ impl PartialEq for DomainValue {
                 left.parent.inner_class == right.parent.inner_class
                     && left.internal == right.internal
                     && left_id == right_id
+            }
+            // Group equality on the canonical root-permutation
+            // representation: braid-equivalent words compare equal.
+            (Self::WeylElement(left), Self::WeylElement(right)) => {
+                left.context.handle == right.context.handle && left.element == right.element
             }
             _ => false,
         }
@@ -240,6 +266,18 @@ impl fmt::Display for DomainValue {
                 )
             }
             Self::KgbElement(_, id) => write!(formatter, "KGB element #{}", id.index()),
+            // W_elt_value::print (interpreter/atlas-types.w:2326-2333):
+            // the canonical reduced word, dot-separated in angle brackets.
+            Self::WeylElement(value) => {
+                write!(formatter, "<")?;
+                for (index, generator) in value.word.iter().enumerate() {
+                    if index > 0 {
+                        write!(formatter, ".")?;
+                    }
+                    write!(formatter, "{generator}")?;
+                }
+                write!(formatter, ">")
+            }
         }
     }
 }
@@ -252,6 +290,7 @@ pub fn kind_name(value: &DomainValue) -> &'static str {
         DomainValue::InnerClass(_) => "InnerClass",
         DomainValue::RealForm(_) => "RealForm",
         DomainValue::KgbElement(_, _) => "KGBElt",
+        DomainValue::WeylElement(_) => "WeylElt",
     }
 }
 
@@ -1766,6 +1805,79 @@ fn as_root_datum(value: &Value, span: SourceSpan) -> Result<&RootDatumHandle, Di
     }
 }
 
+fn as_weyl_elt(value: &Value, span: SourceSpan) -> Result<&WeylEltValue, Diagnostic> {
+    match value {
+        Value::Domain(DomainValue::WeylElement(element)) => Ok(element),
+        other => Err(type_error(
+            span,
+            format!("expected a WeylElt, found {other}"),
+        )),
+    }
+}
+
+/// The datum's Weyl side, built on demand: every finite root system fits
+/// the shared root budget (E8 needs 240 of the 4096 slots).
+fn build_weyl_context(
+    handle: &RootDatumHandle,
+    span: SourceSpan,
+) -> Result<Arc<WeylEltContext>, Diagnostic> {
+    let system = RootSystem::enumerate(&handle.datum, ROOT_BUDGET)
+        .map_err(|error| runtime(span, error.to_string()))?;
+    let interface = WeylInterface::new(handle.datum.cartan_matrix())
+        .map_err(|error| runtime(span, error.to_string()))?;
+    Ok(Arc::new(WeylEltContext {
+        handle: handle.clone(),
+        system,
+        interface,
+    }))
+}
+
+/// Freeze an element into a language value, computing its canonical
+/// reduced word once (upstream `WeylGroup::word`, weyl.cpp:944-957).
+fn weyl_elt_value(
+    context: Arc<WeylEltContext>,
+    element: WeylElement,
+    span: SourceSpan,
+) -> Result<Value, Diagnostic> {
+    let word = element
+        .canonical_word(&context.system, &context.interface)
+        .map_err(|error| runtime(span, error.to_string()))?;
+    Ok(Value::Domain(DomainValue::WeylElement(WeylEltValue {
+        context,
+        element,
+        word,
+    })))
+}
+
+/// `check_Weyl_word` (atlas-types.w:2344-2359): entries convert to
+/// unsigned first (`ulong_val` rejects negatives), then must lie below
+/// the semisimple rank.
+fn check_weyl_word(
+    value: &Value,
+    semisimple_rank: usize,
+    span: SourceSpan,
+) -> Result<Vec<usize>, Diagnostic> {
+    let Value::List(entries) = value else {
+        return Err(type_error(span, "expected a row of int"));
+    };
+    let mut word = Vec::with_capacity(entries.len());
+    for entry in entries {
+        let integer = as_integer(entry, span)?;
+        if integer < 0 {
+            return Err(runtime(span, "Negative integer where unsigned is required"));
+        }
+        let generator = usize::try_from(&integer).unwrap_or(usize::MAX);
+        if generator >= semisimple_rank {
+            return Err(runtime(
+                span,
+                format!("Illegal Weyl word entry {integer} (should be <{semisimple_rank})"),
+            ));
+        }
+        word.push(generator);
+    }
+    Ok(word)
+}
+
 fn check_generator(
     context: &Arc<RealFormContext>,
     generator: usize,
@@ -1901,6 +2013,9 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             }
             [Value::Domain(DomainValue::InnerClass(context))] => Ok(Value::Domain(
                 DomainValue::RootDatum(context.root_datum.clone()),
+            )),
+            [Value::Domain(DomainValue::WeylElement(value))] => Ok(Value::Domain(
+                DomainValue::RootDatum(value.context.handle.clone()),
             )),
             _ => Err(type_error(
                 span,
@@ -2108,6 +2223,10 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
         }
         "length" => {
             arity(name, arguments, 1, span)?;
+            if let Value::Domain(DomainValue::WeylElement(value)) = &arguments[0] {
+                // W_length_wrapper (atlas-types.w:2391-2394).
+                return Ok(Value::Integer(BigInt::from(value.element.length())));
+            }
             let (context, id) = as_kgb_element(&arguments[0], span)?;
             let length = context
                 .graph
@@ -2207,6 +2326,108 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                     "{name} has no matching overload for {} argument(s)",
                     arguments.len()
                 ),
+            )),
+        },
+        // W_elt_wrapper (atlas-types.w:2361-2368): the word check runs
+        // before the no_value gate upstream, so validation stays eager.
+        "W_elt" => {
+            arity(name, arguments, 2, span)?;
+            let handle = as_root_datum(&arguments[0], span)?;
+            let word = check_weyl_word(&arguments[1], handle.datum.semisimple_rank(), span)?;
+            let context = build_weyl_context(handle, span)?;
+            let mut element = WeylElement::identity(&context.system)
+                .map_err(|error| runtime(span, error.to_string()))?;
+            for generator in word {
+                let (next, _) = element
+                    .right_multiply_simple(&context.system, generator)
+                    .map_err(|error| runtime(span, error.to_string()))?;
+                element = next;
+            }
+            weyl_elt_value(context, element, span)
+        }
+        // W_word_wrapper (atlas-types.w:2373-2382): the canonical reduced
+        // word as a plain row (unpadded, unlike vec display).
+        "word" => {
+            arity(name, arguments, 1, span)?;
+            let value = as_weyl_elt(&arguments[0], span)?;
+            Ok(Value::List(
+                value
+                    .word
+                    .iter()
+                    .map(|&generator| Value::Integer(BigInt::from(generator)))
+                    .collect(),
+            ))
+        }
+        // W_elt_unary_eq/neq_wrapper (atlas-types.w:2395-2406): identity
+        // test. Binary equality is a domain relation (typed.rs), so only
+        // the unary overload dispatches here.
+        "=" | "!=" => {
+            arity(name, arguments, 1, span)?;
+            let value = as_weyl_elt(&arguments[0], span)?;
+            let identity = value.element.is_identity();
+            Ok(Value::Boolean(if name == "=" {
+                identity
+            } else {
+                !identity
+            }))
+        }
+        // W_elt_prod_wrapper (atlas-types.w:2421-2432): the group product.
+        "*" => match arguments {
+            [Value::Domain(DomainValue::WeylElement(left)), Value::Domain(DomainValue::WeylElement(right))] =>
+            {
+                if left.context.handle != right.context.handle {
+                    return Err(runtime(span, "Weyl group mismatch"));
+                }
+                let product = left
+                    .element
+                    .multiply(&left.context.system, &right.element)
+                    .map_err(|error| runtime(span, error.to_string()))?;
+                weyl_elt_value(Arc::clone(&left.context), product, span)
+            }
+            _ => Err(Diagnostic::new(
+                ErrorKind::Name,
+                format!("undefined function `{name}`"),
+                Some(span),
+            )),
+        },
+        // W_elt_invert_wrapper (atlas-types.w:2433-2440).
+        "/" => match arguments {
+            [Value::Domain(DomainValue::WeylElement(value))] => {
+                weyl_elt_value(Arc::clone(&value.context), value.element.inverse(), span)
+            }
+            _ => Err(Diagnostic::new(
+                ErrorKind::Name,
+                format!("undefined function `{name}`"),
+                Some(span),
+            )),
+        },
+        // W_elt_gen_prod_wrapper (atlas-types.w:2456-2465): right
+        // multiplication by one simple generator; check_Weyl_gen echoes
+        // the signed index on rejection (atlas-types.w:2447-2454).
+        "#" => match arguments {
+            [Value::Domain(DomainValue::WeylElement(value)), Value::Integer(generator)] => {
+                let rank = value.context.handle.datum.semisimple_rank();
+                // check_Weyl_gen rejects negative (wrapping cast) and
+                // over-rank indices alike, echoing the signed value.
+                let converted = usize::try_from(generator).ok();
+                let Some(generator) = converted.filter(|&generator| generator < rank) else {
+                    return Err(runtime(
+                        span,
+                        format!(
+                            "Generator {generator} out of range for Weyl group (should be <{rank})"
+                        ),
+                    ));
+                };
+                let (product, _) = value
+                    .element
+                    .right_multiply_simple(&value.context.system, generator)
+                    .map_err(|error| runtime(span, error.to_string()))?;
+                weyl_elt_value(Arc::clone(&value.context), product, span)
+            }
+            _ => Err(Diagnostic::new(
+                ErrorKind::Name,
+                format!("undefined function `{name}`"),
+                Some(span),
             )),
         },
         unknown => Err(Diagnostic::new(
@@ -2843,5 +3064,112 @@ mod tests {
                 "is_long_coroot at {index}"
             );
         }
+    }
+
+    fn row(entries: &[i64]) -> Value {
+        Value::List(entries.iter().map(|&entry| int(entry)).collect())
+    }
+
+    #[test]
+    fn weyl_elt_surface_matches_the_frozen_a2_b2_anchors() {
+        let a2 = fixture_datum("A2", true);
+        let w = call("W_elt", &[a2.clone(), row(&[0, 1, 0])], span()).expect("W_elt");
+        assert_eq!(w.to_string(), "<0.1.0>");
+        // The braid-equivalent word builds the same group element.
+        let v = call("W_elt", &[a2.clone(), row(&[1, 0, 1])], span()).expect("W_elt");
+        assert_eq!(v.to_string(), "<0.1.0>");
+        assert_eq!(w, v, "group equality is braid-aware");
+        assert_eq!(
+            call("word", std::slice::from_ref(&w), span())
+                .expect("word")
+                .to_string(),
+            "[0,1,0]"
+        );
+        assert_eq!(
+            call("length", std::slice::from_ref(&w), span()),
+            Ok(Value::Integer(BigInt::from(3)))
+        );
+        // w*v = identity: empty word, length zero, unary relations.
+        let product = call("*", &[w.clone(), v.clone()], span()).expect("product");
+        assert_eq!(product.to_string(), "<>");
+        assert_eq!(
+            call("word", std::slice::from_ref(&product), span())
+                .expect("word")
+                .to_string(),
+            "[]"
+        );
+        assert_eq!(
+            call("length", std::slice::from_ref(&product), span()),
+            Ok(Value::Integer(BigInt::from(0)))
+        );
+        assert_eq!(
+            call("=", std::slice::from_ref(&product), span()),
+            Ok(Value::Boolean(true))
+        );
+        assert_eq!(
+            call("!=", std::slice::from_ref(&w), span()),
+            Ok(Value::Boolean(true))
+        );
+        // The longest element of A2 is an involution.
+        assert_eq!(
+            call(
+                "word",
+                &[call("/", std::slice::from_ref(&w), span()).expect("inverse")],
+                span()
+            )
+            .expect("word")
+            .to_string(),
+            "[0,1,0]"
+        );
+        // w # 1 reduces to s1 s0.
+        let shifted = call("#", &[w.clone(), int(1)], span()).expect("generator product");
+        assert_eq!(shifted.to_string(), "<1.0>");
+
+        let b2 = fixture_datum("B2", true);
+        let a = call("W_elt", &[b2.clone(), row(&[0, 1, 0, 1])], span()).expect("W_elt");
+        assert_eq!(a.to_string(), "<1.0.1.0>");
+        let b = call("W_elt", &[b2.clone(), row(&[1, 0, 1, 0])], span()).expect("W_elt");
+        assert_eq!(a, b);
+        assert_eq!(
+            call("length", std::slice::from_ref(&a), span()),
+            Ok(Value::Integer(BigInt::from(4)))
+        );
+        assert_eq!(
+            call("root_datum", std::slice::from_ref(&a), span())
+                .expect("root_datum")
+                .to_string(),
+            "simply connected root datum of Lie type 'B2'"
+        );
+    }
+
+    #[test]
+    fn weyl_elt_rejections_echo_the_oracle_messages() {
+        let b2 = fixture_datum("B2", true);
+        let error = call("W_elt", &[b2.clone(), row(&[5])], span())
+            .expect_err("entry past the semisimple rank");
+        assert_eq!(error.kind, ErrorKind::Runtime);
+        assert_eq!(error.message, "Illegal Weyl word entry 5 (should be <2)");
+        let error =
+            call("W_elt", &[b2.clone(), row(&[0, -1])], span()).expect_err("negative entry");
+        assert_eq!(error.message, "Negative integer where unsigned is required");
+
+        let w = call("W_elt", &[b2.clone(), row(&[0, 1])], span()).expect("W_elt");
+        let error = call("#", &[w.clone(), int(2)], span()).expect_err("generator past the rank");
+        assert_eq!(
+            error.message,
+            "Generator 2 out of range for Weyl group (should be <2)"
+        );
+        let error = call("#", &[w.clone(), int(-1)], span()).expect_err("negative generator");
+        assert_eq!(
+            error.message,
+            "Generator -1 out of range for Weyl group (should be <2)"
+        );
+        // Products across different root data mismatch like upstream.
+        let other =
+            call("W_elt", &[fixture_datum("B2", true), row(&[0, 1])], span()).expect("W_elt");
+        assert_eq!(w, other, "structurally equal data share the group");
+        let a2 = call("W_elt", &[fixture_datum("A2", true), row(&[0, 1])], span()).expect("W_elt");
+        let error = call("*", &[w, a2], span()).expect_err("mismatched data");
+        assert_eq!(error.message, "Weyl group mismatch");
     }
 }

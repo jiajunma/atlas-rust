@@ -255,6 +255,111 @@ impl WeylElement {
         }
         Ok(())
     }
+
+    /// The canonical reduced word of the upstream transducer
+    /// (`WeylGroup::word`, weyl.cpp:944-957), emitted in datum generator
+    /// numbers. Upstream documents this expression as "minimal for
+    /// ShortLex" (weyl.cpp:911-926): the lexicographically smallest
+    /// reduced expression in the INTERNAL generator order carried by
+    /// [`WeylInterface`]. The greedy form below is equivalent — the
+    /// generators that can start a reduced expression are exactly the
+    /// left descents, so peeling the smallest internal left descent
+    /// minimizes each successive letter.
+    pub fn canonical_word(
+        &self,
+        system: &RootSystem,
+        interface: &WeylInterface,
+    ) -> Result<Vec<usize>, StructureError> {
+        self.check_provenance(system)?;
+        if interface.outward.len() != system.simple_root_ids().len() {
+            return Err(StructureError::WeylElementInvariantViolation {
+                invariant: "interface provenance",
+            });
+        }
+        let mut word = try_capacity(self.length)?;
+        let mut current = self.clone();
+        while !current.is_identity() {
+            let mut peeled = false;
+            for &generator in &interface.outward {
+                if current.has_left_descent(system, generator)? {
+                    let (next, change) = current.left_multiply_simple(system, generator)?;
+                    if change != -1 {
+                        return Err(StructureError::WeylElementInvariantViolation {
+                            invariant: "descent peeling",
+                        });
+                    }
+                    current = next;
+                    word.push(generator);
+                    peeled = true;
+                    break;
+                }
+            }
+            if !peeled {
+                return Err(StructureError::WeylElementInvariantViolation {
+                    invariant: "descent peeling",
+                });
+            }
+        }
+        Ok(word)
+    }
+}
+
+/// The internal generator renumbering of the upstream `WeylGroup`
+/// constructor (weyl.cpp:495-527): Dynkin components in classification
+/// order, each component's Bourbaki `position` taken straight for types
+/// A/E/F/G and reversed for types B/C/D. `outward` is upstream `d_out`:
+/// internal index -> datum (external) generator.
+///
+/// Upstream needs the renumbering to keep its transducer tables small;
+/// this port keeps only its observable effect, the canonical-word choice
+/// of [`WeylElement::canonical_word`].
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct WeylInterface {
+    outward: Vec<usize>,
+}
+
+impl WeylInterface {
+    pub fn new(cartan: &[Vec<i32>]) -> Result<Self, StructureError> {
+        let permutation_violation = |_| StructureError::WeylElementInvariantViolation {
+            invariant: "interface permutation",
+        };
+        let components = crate::dynkin::classify(cartan)?;
+        let mut outward = try_capacity(cartan.len())?;
+        outward.resize(cartan.len(), usize::MAX);
+        let mut offset = 0;
+        for component in &components {
+            let size = component.position.len();
+            let reverse = matches!(component.letter, 'B' | 'C' | 'D');
+            for (index, &external) in component.position.iter().enumerate() {
+                let internal = if reverse {
+                    offset + size - 1 - index
+                } else {
+                    offset + index
+                };
+                if external >= cartan.len() {
+                    return Err(permutation_violation(()));
+                }
+                let slot = outward
+                    .get_mut(internal)
+                    .ok_or(())
+                    .map_err(permutation_violation)?;
+                if *slot != usize::MAX {
+                    return Err(permutation_violation(()));
+                }
+                *slot = external;
+            }
+            offset += size;
+        }
+        if outward.contains(&usize::MAX) {
+            return Err(permutation_violation(()));
+        }
+        Ok(Self { outward })
+    }
+
+    /// External generator numbers in increasing internal order.
+    pub fn outward(&self) -> &[usize] {
+        &self.outward
+    }
 }
 
 fn count_length(system: &RootSystem, permutation: &[RootId]) -> usize {
@@ -561,5 +666,143 @@ mod tests {
             identity.reduced_word(&torus_system).unwrap(),
             Vec::<usize>::new()
         );
+    }
+
+    fn from_word(system: &RootSystem, word: &[usize]) -> WeylElement {
+        let mut element = WeylElement::identity(system).unwrap();
+        for &generator in word {
+            let (next, _) = element.right_multiply_simple(system, generator).unwrap();
+            element = next;
+        }
+        element
+    }
+
+    /// Every reduced expression of `element`, by right-descent recursion.
+    fn all_reduced_words(system: &RootSystem, element: &WeylElement) -> Vec<Vec<usize>> {
+        if element.is_identity() {
+            return vec![Vec::new()];
+        }
+        let mut all = Vec::new();
+        for generator in 0..system.simple_root_ids().len() {
+            if element.has_right_descent(system, generator).unwrap() {
+                let (rest, _) = element.right_multiply_simple(system, generator).unwrap();
+                for mut word in all_reduced_words(system, &rest) {
+                    word.push(generator);
+                    all.push(word);
+                }
+            }
+        }
+        all
+    }
+
+    /// The ShortLex-minimal reduced expression in the internal order:
+    /// all reduced expressions share the element's length, so the order
+    /// is plain lexicographic on internal indices.
+    fn shortlex_min(system: &RootSystem, element: &WeylElement) -> Vec<usize> {
+        let interface = WeylInterface::new(system.datum().cartan_matrix()).unwrap();
+        let internal = |generator: usize| {
+            interface
+                .outward()
+                .iter()
+                .position(|&external| external == generator)
+                .unwrap()
+        };
+        all_reduced_words(system, element)
+            .into_iter()
+            .min_by_key(|word| {
+                word.iter()
+                    .map(|&generator| internal(generator))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap()
+    }
+
+    #[test]
+    fn weyl_interface_renumbers_like_the_upstream_constructor() {
+        // Types A keep the Bourbaki (here: given) order straight.
+        let a2 = WeylInterface::new(&[vec![2, -1], vec![-1, 2]]).unwrap();
+        assert_eq!(a2.outward(), &[0, 1]);
+        // Types B and C reverse their component (weyl.cpp:517-521).
+        let b2 = WeylInterface::new(&[vec![2, -2], vec![-1, 2]]).unwrap();
+        assert_eq!(b2.outward(), &[1, 0]);
+        let c2 = WeylInterface::new(&[vec![2, -1], vec![-2, 2]]).unwrap();
+        assert_eq!(c2.outward(), &[1, 0]);
+        // Type G is not reversed, but the Dynkin classifier already
+        // swapped the component to put the short root first.
+        let g2 = WeylInterface::new(&[vec![2, -3], vec![-1, 2]]).unwrap();
+        assert_eq!(g2.outward(), &[1, 0]);
+        let g2_ordered = WeylInterface::new(&[vec![2, -1], vec![-3, 2]]).unwrap();
+        assert_eq!(g2_ordered.outward(), &[0, 1]);
+        // Type D reverses; disconnected components stay in
+        // classification order.
+        let d4 = WeylInterface::new(&[
+            vec![2, -1, 0, 0],
+            vec![-1, 2, -1, -1],
+            vec![0, -1, 2, 0],
+            vec![0, -1, 0, 2],
+        ])
+        .unwrap();
+        assert_eq!(d4.outward(), &[3, 2, 1, 0]);
+        let a1a1 = WeylInterface::new(&[vec![2, 0], vec![0, 2]]).unwrap();
+        assert_eq!(a1a1.outward(), &[0, 1]);
+        let torus = WeylInterface::new(&[]).unwrap();
+        assert_eq!(torus.outward(), &[] as &[usize]);
+    }
+
+    #[test]
+    fn canonical_word_matches_oracle_anchors() {
+        let a2 = a2();
+        let a2_interface = WeylInterface::new(a2.datum().cartan_matrix()).unwrap();
+        // A2: both braid forms of the longest element print <0.1.0>.
+        for word in [&[0, 1, 0][..], &[1, 0, 1][..]] {
+            let element = from_word(&a2, word);
+            assert_eq!(
+                element.canonical_word(&a2, &a2_interface).unwrap(),
+                [0, 1, 0]
+            );
+        }
+        let identity = WeylElement::identity(&a2).unwrap();
+        assert_eq!(
+            identity.canonical_word(&a2, &a2_interface).unwrap(),
+            Vec::<usize>::new()
+        );
+        // w0 # 1 = s1 s0 prints <1.0>.
+        let longest = from_word(&a2, &[0, 1, 0]);
+        let (product, _) = longest.right_multiply_simple(&a2, 1).unwrap();
+        assert_eq!(product.canonical_word(&a2, &a2_interface).unwrap(), [1, 0]);
+        // The longest element of A2 is an involution.
+        let inverse = longest.inverse();
+        assert_eq!(
+            inverse.canonical_word(&a2, &a2_interface).unwrap(),
+            [0, 1, 0]
+        );
+
+        // B2: the internal order is reversed, so both braid forms of the
+        // longest element print <1.0.1.0>.
+        let b2 = b2();
+        let b2_interface = WeylInterface::new(b2.datum().cartan_matrix()).unwrap();
+        for word in [&[0, 1, 0, 1][..], &[1, 0, 1, 0][..]] {
+            let element = from_word(&b2, word);
+            assert_eq!(
+                element.canonical_word(&b2, &b2_interface).unwrap(),
+                [1, 0, 1, 0]
+            );
+        }
+    }
+
+    #[test]
+    fn canonical_word_is_shortlex_minimal_in_the_internal_order() {
+        let g2 = enumerate(vec![vec![2, -3], vec![-1, 2]], 12);
+        let c2 = enumerate(vec![vec![2, -1], vec![-2, 2]], 8);
+        let a3 = enumerate(vec![vec![2, -1, 0], vec![-1, 2, -1], vec![0, -1, 2]], 12);
+        for system in [a2(), b2(), c2, g2, a3] {
+            let interface = WeylInterface::new(system.datum().cartan_matrix()).unwrap();
+            for element in closure(&system) {
+                assert_eq!(
+                    element.canonical_word(&system, &interface).unwrap(),
+                    shortlex_min(&system, &element),
+                );
+            }
+        }
     }
 }
