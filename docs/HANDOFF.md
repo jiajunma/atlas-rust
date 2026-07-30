@@ -251,10 +251,24 @@ In rough dependency order, each with its own fixture + HPC capture first:
    subscript value of type (int,int) with index of type int`, and string
    subscription must exist as a runtime-checked operation.
 6. Domain surface, smallest first: `pipeline_swap_domain_equality` lines
-   3-14 (capture `3496440`) need oracle-exact InnerClass/RealForm rendering
-   (inner-class type letter, real-form counts, Lie-algebra naming), KGB
-   numbering (`#0` labels), and equality/inequality on domain handles; the
-   Rust constructors already exist in `domain_builtins.rs`. After that, the
+   3-14 (capture `3496440`). Gap analysis (2026-07-29, measured against the
+   oracle): KGB `#0` numbering and all six equality/inequality events already
+   match; the only blockers are two Display placeholders. (a) InnerClass
+   print (`domain_builtins.rs:190-194`) needs: LieType reconstruction from
+   the Cartan matrix (Dynkin classification + Bourbaki layout, no Rust
+   module yet), inner-class type letters from the distinguished twist
+   (`c`/`s`/`u`/`C`; `InnerClass::new` currently requires a distinguished
+   involution and exposes no twist API), `numRealForms` (READY via
+   `ExternalFormOrder::form_count`), and `numDualRealForms` (needs the dual
+   root datum / dual weak-real-form partition — the largest sub-gap, no
+   dual machinery in Rust yet). (b) RealForm print
+   (`domain_builtins.rs:195-197`) needs: connected/compact/split/quasisplit
+   flags (most-split Cartan involution export + dual component group —
+   dual again) and the `printType` Lie-algebra naming module
+   (`ExternalFormOrder` sorting is ported; per-form special gradings and
+   the A/B/C/D/E/F/G/T naming branches are not). Upstream evidence:
+   `atlas-types.w:3164-3172`, `3565-3575`; `output.cpp:751-782`. After
+   those, the
    14 `tests/fixtures/domain/*.atlas` fixtures are blocked one level deeper:
    an Atlas-callable constructor/event adapter must exist before their
    oracle references can even be captured. Also uncovered: `showall`,
