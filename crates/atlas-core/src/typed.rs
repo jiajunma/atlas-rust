@@ -86,6 +86,10 @@ pub enum TypedExpr {
         array: Box<TypedExpr>,
         index: Box<TypedExpr>,
         reversed: bool,
+        /// Compact rendering of the source expression, quoted by the
+        /// out-of-range diagnostic exactly like the oracle's `range_mess`
+        /// prints the subscription node (axis.w:4188-4194).
+        source: String,
         span: SourceSpan,
     },
     Slice {
@@ -1467,16 +1471,35 @@ pub fn convert_expr(
             let converted_array = convert_expr(array, &mut array_type, analysis)?;
             let mut index_type = Type::Primitive(Prim::Int);
             let converted_index = convert_expr(index, &mut index_type, analysis)?;
-            let Type::Row(component) = array_type else {
-                return Err(type_error(
-                    format!(
-                        "subscription requires a row, found {}",
-                        array_type.display(analysis.types)
-                    ),
-                    *span,
-                ));
+            // Upstream `subscr_base::index_kind` (axis.w:3941-3973): a row
+            // subscripts to its component type, a string to a one-character
+            // string; anything unsubscriptable is the analysis-time `not_so`
+            // error (axis.w:4101-4105).
+            let found = match &array_type {
+                Type::Row(component) => (**component).clone(),
+                Type::Primitive(Prim::String) => Type::Primitive(Prim::String),
+                Type::Primitive(Prim::Vec | Prim::RatVec | Prim::Mat) => {
+                    // vec/ratvec/mat subscription is upstream-legal but not
+                    // yet implemented; keep the not-a-row diagnostic there.
+                    return Err(type_error(
+                        format!(
+                            "subscription requires a row, found {}",
+                            array_type.display(analysis.types)
+                        ),
+                        *span,
+                    ));
+                }
+                _ => {
+                    return Err(type_error(
+                        format!(
+                            "Cannot subscript value of type {} with index of type {}",
+                            array_type.display(analysis.types),
+                            index_type.display(analysis.types)
+                        ),
+                        *span,
+                    ));
+                }
             };
-            let found = (*component).clone();
             conform_types(
                 &found,
                 required,
@@ -1484,6 +1507,7 @@ pub fn convert_expr(
                     array: Box::new(converted_array),
                     index: Box::new(converted_index),
                     reversed: *reversed,
+                    source: compact_expression(expression),
                     span: *span,
                 },
                 *span,
@@ -4020,12 +4044,31 @@ impl TypedExpr {
                 array,
                 index,
                 reversed,
+                source,
                 span,
             } => {
                 let index = expect_integer(force(index, context)?, *span, "subscription index")?;
-                let values = expect_typed_list(force(array, context)?, *span, "subscription")?;
-                let position = checked_index(&index, values.len(), *reversed, *span)?;
-                Ok(at_level(level, || values[position].clone()))
+                match force(array, context)? {
+                    Value::List(values) => {
+                        let position =
+                            checked_index(&index, values.len(), *reversed, source, *span)?;
+                        Ok(at_level(level, || values[position].clone()))
+                    }
+                    // Upstream `string_subscription` (axis.w:4229-4239): the
+                    // result is the one-character string at the position.
+                    Value::String(text) => {
+                        let bytes = text.as_bytes();
+                        let position =
+                            checked_index(&index, bytes.len(), *reversed, source, *span)?;
+                        Ok(at_level(level, || {
+                            Value::String(
+                                String::from_utf8_lossy(&bytes[position..position + 1])
+                                    .into_owned(),
+                            )
+                        }))
+                    }
+                    other => panic!("analysis let a non-subscriptable value through: {other}"),
+                }
             }
             Self::Slice {
                 array,
@@ -4488,20 +4531,19 @@ fn checked_index(
     index: &BigInt,
     length: usize,
     reversed: bool,
+    source: &str,
     span: SourceSpan,
 ) -> Result<usize, Control> {
     let original = index.clone();
-    let index = usize::try_from(index).map_err(|_| {
+    let out_of_range = || {
         runtime(
-            format!("index {original} out of range (0<= . <{length}) in subscription"),
+            format!("index {original} out of range (0<= . <{length}) in subscription {source}"),
             span,
         )
-    })?;
+    };
+    let index = usize::try_from(index).map_err(|_| out_of_range())?;
     if index >= length {
-        return Err(runtime(
-            format!("index {original} out of range (0<= . <{length}) in subscription"),
-            span,
-        ));
+        return Err(out_of_range());
     }
     Ok(if reversed { length - 1 - index } else { index })
 }
@@ -5083,6 +5125,46 @@ mod tests {
                 Value::Integer(30.into())
             ])
         );
+    }
+
+    #[test]
+    fn subscription_reports_quote_the_compact_source_like_the_oracle() {
+        // B12 corpus (tests/fixtures/eval/runtime_errors_b12.atlas): the
+        // oracle's `range_mess` appends the printed subscription node
+        // (axis.w:4188-4194), and a tuple subscript is the analysis-time
+        // `not_so` type error (axis.w:4101-4105).
+        let error = convert_and_run("[1,2][5]").expect_err("row out of range");
+        assert_eq!(error.kind, ErrorKind::Runtime);
+        assert_eq!(
+            error.message,
+            "index 5 out of range (0<= . <2) in subscription [1,2][5]"
+        );
+
+        let error = convert_and_run("(1,2)[5]").expect_err("tuple subscript");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(
+            error.message,
+            "Cannot subscript value of type (int,int) with index of type int"
+        );
+
+        let error = convert_and_run("\"abc\"[7]").expect_err("string out of range");
+        assert_eq!(error.kind, ErrorKind::Runtime);
+        assert_eq!(
+            error.message,
+            "index 7 out of range (0<= . <3) in subscription \"abc\"[7]"
+        );
+    }
+
+    #[test]
+    fn string_subscription_yields_one_character_strings() {
+        // Upstream `string_subscription` (axis.w:4229-4239), including the
+        // reversed form.
+        let (found, value) = convert_and_run("\"abc\"[1]").expect("forward");
+        assert_eq!(found, Type::Primitive(Prim::String));
+        assert_eq!(value, Value::String("b".to_owned()));
+
+        let (_, value) = convert_and_run("\"abc\"~[0]").expect("reversed");
+        assert_eq!(value, Value::String("c".to_owned()));
     }
 
     #[test]
