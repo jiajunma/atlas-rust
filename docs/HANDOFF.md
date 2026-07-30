@@ -135,7 +135,13 @@ bounds' / 'Dual real form number j out of bounds' (runtime category);
 Cartan_order(rf): n=numCartan(rf) square 0/1 matrix, M(i,j)=1 iff
 innerClass.Cartan_ordering().lesseq(i,j), filled only for i<=j
 (atlas-types.w:3709 — indexes the inner-class poset DIRECTLY with 0..n-1,
-no Cartan_set remapping; replicate literally)) →
+no Cartan_set remapping; replicate literally); CRATE RECON 2026-07-30:
+orbitSize = TwistedConjugacyClass::twisted_involution_count
+(cartan_class.rs:35) ✓, Cartan sets and labels ✓, per-class fiber counts =
+enumerate masks + count by class_of_mask (small), dual equivalents exist
+(dual.rs) — the ONE real gap is the Cartan_ordering poset (closure order
+via inverse-Cayley reachability between classes, upstream innerclass.cpp;
+needs a new crate construction, the slice's main crate work)) →
 `weak_real_form` (real_form(InnerClass,mat,ratvec) —
 atlas-types.w:3851: size check 'Torus factor size mismatch';
 twisted_from_involution(theta) ('Given transformation is not an involution');
