@@ -1,3 +1,37 @@
-// Structural fixture reserved for the HPC Atlas/Rust differential harness.
-// The interpreter-side constructor syntax is not yet exposed.
-grading_fixture;
+rd : RootDatum
+rd := simply_connected(Lie_type("A1"),true)
+ic : InnerClass
+ic := inner_class(rd,[[1]])
+rf : RealForm
+rf := real_form(ic,1)
+base_grading_vector(rf)
+initial_torus_bits(rf)
+rc : RealForm
+rc := real_form(ic,0)
+base_grading_vector(rc)
+initial_torus_bits(rc)
+x : KGBElt
+x := KGB(rf,0)
+torus_bits(x)
+rd2 : RootDatum
+rd2 := simply_connected(Lie_type("C2"),true)
+ic2 : InnerClass
+ic2 := inner_class(rd2,[[1,0],[0,1]])
+s0 : RealForm
+s0 := real_form(ic2,0)
+base_grading_vector(s0)
+initial_torus_bits(s0)
+s1 : RealForm
+s1 := real_form(ic2,1)
+base_grading_vector(s1)
+initial_torus_bits(s1)
+s2 : RealForm
+s2 := real_form(ic2,2)
+base_grading_vector(s2)
+initial_torus_bits(s2)
+u : KGBElt
+u := KGB(s1,0)
+torus_bits(u)
+y : KGBElt
+y := KGB(s2,3)
+torus_bits(y)

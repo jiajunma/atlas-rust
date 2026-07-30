@@ -1,36 +1,23 @@
 {
   "fixture": "domain/grading.atlas",
-  "status": "structural_preflight_passed_not_differential",
-  "oracle": "pending_domain_adapter",
-  "rust_status": "hpc_preflight_passed",
-  "reference_status": "pending_atlas_constructor_and_event_adapter",
-  "design_reviews": {
-    "completed_at": "2026-07-28",
-    "checks": [
-      "atlas_source_semantics",
-      "rust_internals_in_session_after_infra_failures",
-      "public_api_and_consumer_integration"
-    ],
-    "recorded_in": "docs/GRADING_DESIGN.md"
-  },
-  "hpc_preflight": {
-    "job_id": "3473257",
-    "completed_at": "2026-07-27T23:36:08+08:00",
-    "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)",
-    "unit_tests": 102,
-    "source_snapshot_sha256": "db34c980ed7bb00f9fa1669733985a757d1c6f46a67c3edae08404288e2dc348",
-    "report_sha256": "1e056987efc59c4b2975697c3d92d9009045ff3deb38fe97dbc771af4659e809"
-  },
-  "scenarios": [
-    "simply-connected A1 quasisplit base grading with zero adjoint m_alpha",
-    "A2 identity involution full grading bijection",
-    "A2 diagram twist with empty shift matrix and impossible grading",
-    "A1 x A1 swap with imaginary rank zero",
-    "central-torus m_alpha versus adjoint m_alpha",
-    "B2 negative-coordinate parity safety",
-    "provenance rejections including foreign fiber elements",
-    "injected nonfaithful shift column rejection",
-    "dynamic product of 33 A1 factors"
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:3940",
+    "sources/interpreter/atlas-types.w:3953",
+    "sources/interpreter/atlas-types.w:4714"
   ],
-  "notes": "Design reviews for Atlas semantics and API integration ran in fresh contexts; the Rust-internals review ran in-session after four subagent infrastructure failures, as recorded in the design. The structural implementation passes 102 local unit tests. This fixture remains reserved: it is not executable Atlas evidence until the language-level constructors and both oracle adapters exist, and the structural claim awaits the frozen HPC preflight."
+  "scenarios": [
+    "A1 split SL(2,R): base_grading_vector [ 0 ]/1, initial_torus_bits [ 0 ]",
+    "A1 compact SU(2): base_grading_vector [ 1 ]/2 (the compact rho/2 shift)",
+    "C2 three forms: compact sp(2) [ 1, 0 ]/2 bits [ 0, 0 ]; sp(1,1) [ 1, 0 ]/2 bits [ 0, 1 ]; split sp(4,R) [ 0, 0 ]/1 bits [ 0, 0 ]",
+    "torus_bits on KGB elements: KGB(sp(1,1),0) = [ 0, 1 ], KGB(sp(4,R),3) = [ 1, 1 ]",
+    "rejected: base_grading_vector(rd) is a type error 'found RootDatum while RealForm was needed.'"
+  ],
+  "notes": "Grading observables slice (base_grading_vector/initial_torus_bits/torus_bits), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). ratvec displays as '[ ... ]/d' with the common denominator. The crate-level grading machinery and its preflight (job 3473257, 102 tests) recorded in the previous revision of this meta remain the kernel this surface binds to.",
+  "design_reviews": {
+    "recorded_in": "docs/GRADING_DESIGN.md"
+  }
 }

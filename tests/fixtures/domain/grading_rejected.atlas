@@ -1,0 +1,3 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("A1"),true)
+base_grading_vector(rd)

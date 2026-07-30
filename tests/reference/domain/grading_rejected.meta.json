@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/grading_rejected.atlas",
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:3940"
+  ],
+  "notes": "Rejected companion of the grading slice: base_grading_vector applied to a RootDatum fails analysis with 'found RootDatum while RealForm was needed.' Confirmed by direct oracle probe; verbatim HPC capture still pending."
+}
