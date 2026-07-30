@@ -72,6 +72,13 @@
         "type": "integer",
         "value": 7
       }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 7
+      }
     }
   ]
 }

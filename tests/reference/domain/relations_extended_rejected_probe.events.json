@@ -27,6 +27,11 @@
       "kind": "Diagnostic",
       "category": "runtime",
       "message": "Integer value to big for conversion"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Too many factors: 2 for 1 columns"
     }
   ]
 }
