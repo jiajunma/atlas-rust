@@ -1,0 +1,4 @@
+rb : RootDatum
+rb := simply_connected(Lie_type("B2"),true)
+root(rb,4)
+root(rb,[1,0])

@@ -1,9 +1,14 @@
 {
   "fixture": "domain/root_coroot.atlas",
-  "status": "structural_preflight_passed_not_differential",
-  "oracle": "pending_domain_adapter",
-  "rust_status": "hpc_preflight_passed",
-  "reference_status": "pending_atlas_constructor_and_event_adapter",
+  "oracle": "pending_hpc_capture",
+  "stage": "domain_root_coroot",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:2224",
+    "sources/interpreter/atlas-types.w:2228-2237"
+  ],
+  "notes": "Datum-layer root/coroot language surface, the first activation of the fourteen domain fixtures (docs/LANGUAGE_BRIDGE_DESIGN.md). Accepted events anchor: A2 paired roots/coroots in the stable enumeration order, B2 non-simply-laced long/short split with is_long_root/is_long_coroot duality, negative indices selecting the negated root/coroot, rank, and the B2 Cartan matrix. The crate-level scenarios below (central coweights, Weyl transport, budget rejections) remain covered by atlas-real-group unit tests and are outside this language fixture.",
   "design_reviews": {
     "completed_at": "2026-07-27",
     "checks": [
@@ -18,7 +23,7 @@
     "completed_at": "2026-07-27T16:38:04+08:00",
     "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)",
     "unit_tests": 93,
-    "source_snapshot_sha256": "f951905d998b0d500b7963e653de15e7887f06fe558e29b615cd717bffb2e218",
+    "source_archive_sha256": "f951905d998b0d500b7963e653de15e7887f06fe558e29b615cd717bffb2e218",
     "report_sha256": "5894bb2c50ec53b6f504f6b45d3cde5fe675c82a2361fdcbccadf9e6efe795fc"
   },
   "scenarios": [
@@ -31,6 +36,5 @@
     "checked coweight-reflection and seed-negation overflow",
     "byte-identical compatibility wrapper",
     "dynamic product of 33 A1 factors"
-  ],
-  "notes": "Three fresh-context design reviews were folded into the design before implementation, and the frozen HPC preflight passed format, warnings-denied Clippy, and 93 Rust unit tests. This fixture is not executable Atlas evidence until the language-level root-data constructor and both oracle adapters exist."
+  ]
 }

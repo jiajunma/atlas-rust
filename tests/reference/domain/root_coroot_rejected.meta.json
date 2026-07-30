@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/root_coroot_rejected.atlas",
+  "oracle": "pending_hpc_capture",
+  "stage": "domain_root_coroot",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:2228-2231"
+  ],
+  "notes": "Rejected companions of domain/root_coroot: an out-of-range root index is the runtime diagnostic 'Illegal root index 4' and the batch continues; a vector in the index position is the type error 'found (RootDatum,[int]) while (RootDatum,int) was needed.'."
+}

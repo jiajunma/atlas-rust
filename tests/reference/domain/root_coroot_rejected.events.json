@@ -1,0 +1,11 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/root_coroot_rejected",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind": "ReportLine", "text": "Declaring identifier 'rb': RootDatum\n"},
+    {"kind": "Value", "value": {"type": "domain", "domain": "RootDatum", "display": "simply connected root datum of Lie type 'B2'"}},
+    {"kind": "Diagnostic", "category": "runtime", "message": "Illegal root index 4"},
+    {"kind": "Diagnostic", "category": "type", "message": "found (RootDatum,[int]) while (RootDatum,int) was needed."}
+  ]
+}

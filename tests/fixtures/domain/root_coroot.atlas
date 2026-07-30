@@ -1,3 +1,26 @@
-// Structural fixture reserved for the HPC Atlas/Rust differential harness.
-// The interpreter-side constructor syntax is not yet exposed.
-root_coroot_fixture;
+ra : RootDatum
+ra := simply_connected(Lie_type("A2"),true)
+nr_of_posroots(ra)
+root(ra,0)
+coroot(ra,0)
+root(ra,1)
+coroot(ra,1)
+root(ra,2)
+coroot(ra,2)
+is_long_root(ra,0)
+is_long_root(ra,2)
+rb : RootDatum
+rb := simply_connected(Lie_type("B2"),true)
+nr_of_posroots(rb)
+root(rb,0)
+coroot(rb,0)
+is_long_root(rb,0)
+is_long_coroot(rb,0)
+root(rb,3)
+coroot(rb,3)
+is_long_root(rb,3)
+is_long_coroot(rb,3)
+root(rb,-1)
+coroot(rb,-4)
+rank(rb)
+Cartan_matrix(rb)
