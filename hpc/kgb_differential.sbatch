@@ -25,7 +25,7 @@ submit_dir="${SLURM_SUBMIT_DIR:?SLURM_SUBMIT_DIR is required}"
 cd "$submit_dir"
 export PATH="$HOME/.cargo/bin:$PATH"
 
-atlas_bin="${ATLAS_BIN:-$HOME/atlasofliegroups/atlas}"
+atlas_bin="${ATLAS_BIN:-$HOME/atlasofliegroups-4d3e9449/atlas}"
 test -x "$atlas_bin" || { echo "missing atlas binary at $atlas_bin"; exit 2; }
 
 commit="${ATLAS_COMMIT:-$(git rev-parse HEAD 2>/dev/null || echo unversioned)}"

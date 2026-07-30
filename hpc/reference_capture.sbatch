@@ -222,7 +222,7 @@ if [[ "$helper_dirty_tree" != "$detected_dirty_tree" ]]; then
 fi
 
 failure_phase="locating_reference_binary"
-atlas_bin="${ATLAS_BIN:-$HOME/atlasofliegroups/atlas}"
+atlas_bin="${ATLAS_BIN:-$HOME/atlasofliegroups-4d3e9449/atlas}"
 test -x "$atlas_bin" || { echo "missing Atlas executable at $atlas_bin" >&2; exit 2; }
 atlas_bin="$(realpath "$atlas_bin")"
 
