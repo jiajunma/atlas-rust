@@ -69,26 +69,9 @@ PENDING_OVERLOADS = (
 
 FIXTURE_PLANS = (
     FixturePlan(name="eval/pipeline_swap_constructors"),
-    FixturePlan(
-        name="eval/pipeline_swap_domain_equality",
-        # The RootDatum prefix is compatible. InnerClass/RealForm/KGB setup,
-        # full domain renderings, and relation outputs remain pending until
-        # those domain surfaces and numbering are ported.
-        runnable_lines=(1, 2),
-        runnable_events=(0, 1),
-        pending=tuple(
-            PendingCase(
-                feature="inner_class_real_form_display_and_relations",
-                source_line=line,
-                reference_event=event,
-                reason=(
-                    "full InnerClass/RealForm/KGB display and relation surface "
-                    "is not yet ported"
-                ),
-            )
-            for line, event in zip(range(3, 15), range(2, 14))
-        ),
-    ),
+    # RootDatum/InnerClass/RealForm construction, full domain renderings,
+    # KGBElt display, and the equality/inequality relations are all ported.
+    FixturePlan(name="eval/pipeline_swap_domain_equality"),
     FixturePlan(name="eval/pipeline_swap_linear_values"),
     FixturePlan(name="eval/pipeline_swap_rejected"),
     FixturePlan(name="eval/pipeline_swap_void_reports"),
