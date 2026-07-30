@@ -4256,6 +4256,14 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             ),
             domain_builtin_skip("form_number", primitive_type(Prim::RealForm), int_type(), 0),
             domain_builtin_skip("KGB_size", primitive_type(Prim::RealForm), int_type(), 0),
+            // central_fiber_wrapper (atlas-types.w:3915-3929): only the type
+            // layer's conform error precedes its no-value gate, so skip.
+            domain_builtin_skip(
+                "central_fiber",
+                primitive_type(Prim::RealForm),
+                Type::row(primitive_type(Prim::Vec)),
+                0,
+            ),
             // print_KGB_wrapper (atlas-types.w:8944-8957): prints
             // `kgbsize: N` then kgb_io::var_print_KGB, unconditionally —
             // the report fires at both evaluation levels. The selection

@@ -188,6 +188,11 @@ FIXTURE_PLANS = (
     # match failure on a RootDatum argument.
     FixturePlan(name="domain/involution_table"),
     FixturePlan(name="domain/involution_table_rejected"),
+    # Adjoint-fiber stabilizer: central_fiber(RealForm->[vec]) on split
+    # SL(2,R), compact SU(2), and quasisplit SU(2,1), plus the InnerClass
+    # argument conform rejection.
+    FixturePlan(name="domain/adjoint_fiber"),
+    FixturePlan(name="domain/adjoint_fiber_rejected"),
     # Early scalar-era fixtures: verified verbatim locally and included so
     # the HPC differential upgrades their reference metadata.
     FixturePlan(name="eval/scalars"),

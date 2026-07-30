@@ -22,12 +22,12 @@ use std::sync::Arc;
 use malachite::{Integer as BigInt, Rational as BigRational};
 
 use atlas_real_group::{
-    build_presentations, dual_cartan_correspondence, dual_inner_class, AdjointFiberBudget,
-    BasedRootDatum, CartanClassification, CartanClassificationBudget, CartanId, Coweight,
-    ExternalFormOrder, InnerClass, InnerClassLayout, IntegerLatticeBudget, InvolutionTable,
-    InvolutionTableBudget, KgbGraph, KgbId, KgbStatus, LatticeInvolution, RealFormPresentation,
-    RealFormSeed, RootSystem, StrongRealClassification, StructureError, WeakRealFormId, Weight,
-    WeylElement, WeylInterface,
+    build_presentations, central_fiber, dual_cartan_correspondence, dual_inner_class,
+    AdjointFiberBudget, BasedRootDatum, CartanClassification, CartanClassificationBudget, CartanId,
+    Coweight, ExternalFormOrder, InnerClass, InnerClassLayout, IntegerLatticeBudget,
+    InvolutionTable, InvolutionTableBudget, KgbGraph, KgbId, KgbStatus, LatticeInvolution,
+    RealFormPresentation, RealFormSeed, RootSystem, StrongRealClassification, StructureError,
+    WeakRealFormId, Weight, WeylElement, WeylInterface,
 };
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
@@ -2863,6 +2863,29 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             arity(name, arguments, 1, span)?;
             let context = as_real_form(&arguments[0], span)?;
             Ok(Value::Integer(BigInt::from(context.graph.size())))
+        }
+        // central_fiber_wrapper (atlas-types.w:3915-3929): the fundamental
+        // fiber's stabilizer torus parts, wrapped as a row of vec.
+        "central_fiber" => {
+            arity(name, arguments, 1, span)?;
+            let form = as_real_form(&arguments[0], span)?;
+            let parts = central_fiber(
+                &form.parent.classification,
+                &form.parent.strong,
+                form.internal,
+            )
+            .map_err(|error| runtime(span, error.to_string()))?;
+            let mut rows = Vec::with_capacity(parts.len());
+            for part in parts {
+                let mut entries = Vec::with_capacity(part.dimension());
+                for index in 0..part.dimension() {
+                    entries.push(i32::from(
+                        part.bit(index).expect("indices stay below the dimension"),
+                    ));
+                }
+                rows.push(Value::Vector(Vec32(entries)));
+            }
+            Ok(Value::List(rows))
         }
         "KGB" => {
             arity(name, arguments, 2, span)?;

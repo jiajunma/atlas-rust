@@ -76,8 +76,8 @@ pub use root_datum::BasedRootDatum;
 pub use root_involution::{RootInvolutionData, RootKind};
 pub use root_system::{RootId, RootSystem, RootSystemBudget};
 pub use strong_real::{
-    strong_real_class_prints, SquareClassId, StrongRealClassPrint, StrongRealClassification,
-    StrongRealData, StrongRealFormRep,
+    central_fiber, strong_real_class_prints, SquareClassId, StrongRealClassPrint,
+    StrongRealClassification, StrongRealData, StrongRealFormRep,
 };
 pub use tits_element::{TitsCoset, TitsElement};
 pub use twisted_involution::TwistedInvolution;

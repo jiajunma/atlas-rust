@@ -7,8 +7,8 @@ use crate::mod_two::ModTwoSubquotient;
 use crate::real_form_seed::{fractional_part, fundamental_coweights, stable_log};
 use crate::weak_real_form::{walk_mask_orbits, MAX_MASK_BITS};
 use crate::{
-    AdjointFiberElement, CartanClassification, CartanId, ExternalFormOrder, InnerClass,
-    IntegerLatticeBudget, ModTwoSubspace, ModTwoVector, StructureError, WeakRealFormId,
+    AdjointFiberElement, CartanClassification, CartanFiber, CartanId, ExternalFormOrder,
+    InnerClass, IntegerLatticeBudget, ModTwoSubspace, ModTwoVector, StructureError, WeakRealFormId,
 };
 
 /// Stable identifier for one central square class of one Cartan's fiber.
@@ -64,6 +64,7 @@ pub struct StrongRealData {
     orbit_elements: Vec<Vec<Vec<u64>>>,
     to_weak_real: Vec<Vec<usize>>,
     strong_representatives: Vec<StrongRealFormRep>,
+    wrf_preimage_masks: Vec<u64>,
 }
 
 impl StrongRealData {
@@ -128,6 +129,14 @@ impl StrongRealData {
             .get(orbit)
             .copied()
             .map(WeakRealFormId)
+    }
+
+    /// The fiber element solving `toAdjoint(y) = wrf_rep - class_base` for
+    /// one local weak class — upstream's `y = toAdjoint().section() * diff`
+    /// of `InnerClass::central_fiber` (innerclass.cpp:1050-1052), as a mask
+    /// over the ambient fiber basis. Bounded by the local weak class count.
+    pub fn wrf_preimage_mask(&self, local: WeakRealFormId) -> Option<u64> {
+        self.wrf_preimage_masks.get(local.0).copied()
     }
 
     /// The fiber size of one local weak class: the class size of its strong
@@ -369,6 +378,7 @@ impl StrongRealClassification {
                 span.insert(ModTwoVector::from_ones(augmented, ones)?)?;
             }
             let mut strong_representatives = try_capacity(local_count)?;
+            let mut wrf_preimage_masks = try_capacity(local_count)?;
             for (local_index, square) in central_square_classes.iter().enumerate() {
                 let representative = weak
                     .class_representative(WeakRealFormId(local_index))
@@ -405,6 +415,7 @@ impl StrongRealClassification {
                     fiber_orbit,
                     square_class: *square,
                 });
+                wrf_preimage_masks.push(mask);
             }
 
             // Global term: orbitSize * squareClassCount * 2^fiberRank.
@@ -430,6 +441,7 @@ impl StrongRealClassification {
                 orbit_elements,
                 to_weak_real,
                 strong_representatives,
+                wrf_preimage_masks,
             });
         }
 
@@ -736,6 +748,116 @@ pub fn strong_real_class_prints(
     Ok(result)
 }
 
+/// `InnerClass::central_fiber` (innerclass.cpp:1042-1057): the fundamental
+/// fiber's stabilizer of one real form's gradings, listed as ambient torus
+/// parts (mod-two coweight vectors of the datum's lattice rank).
+///
+/// With `csc` the form's central square class in the fundamental fiber,
+/// `diff = wrf_rep(form) - class_base(csc)`, and `y` the stored preimage
+/// solve (`toAdjoint(y) == diff`), upstream's `preimage`
+/// (innerclass.cpp:1020-1039) collects `fromBasis(fe + y)` for the members
+/// `fe` of `y`'s strong orbit whose adjoint image is `diff`, swept in
+/// ascending fiber-element order. The emitted SET is independent of the
+/// particular preimage solve: translation by `ker(toAdjoint)` commutes with
+/// the fiber action (the action's grading condition factors through
+/// `toAdjoint`), so another solution permutes the list. The crate's solve
+/// convention is the augmented-span reduction shared with the strong
+/// representatives, not upstream's `BinaryMap::section`; the frozen fixtures
+/// all have `diff == 0`, where every linear solve returns `y == 0`.
+pub fn central_fiber(
+    classification: &CartanClassification,
+    strong: &StrongRealClassification,
+    form: WeakRealFormId,
+) -> Result<Vec<ModTwoVector>, StructureError> {
+    let fundamental = classification.cartan_class(CartanId(0)).ok_or(
+        StructureError::StrongRealInvariantViolation {
+            invariant: "fundamental class",
+        },
+    )?;
+    let data = strong.strong_real_data(CartanId(0)).ok_or(
+        StructureError::StrongRealInvariantViolation {
+            invariant: "fundamental class",
+        },
+    )?;
+    // Global form numbers are minted by the fundamental partition; go
+    // through its labels anyway so a non-identity map would stay correct.
+    let local = WeakRealFormId(
+        fundamental
+            .labels()
+            .labels()
+            .iter()
+            .position(|&label| label == form)
+            .ok_or(StructureError::StrongRealInvariantViolation {
+                invariant: "fundamental real-form label",
+            })?,
+    );
+    let square =
+        data.central_square_class(local)
+            .ok_or(StructureError::StrongRealInvariantViolation {
+                invariant: "central square class",
+            })?;
+    let representative =
+        data.strong_real_form(local)
+            .ok_or(StructureError::StrongRealInvariantViolation {
+                invariant: "strong representative",
+            })?;
+    let y = data
+        .wrf_preimage_mask(local)
+        .ok_or(StructureError::StrongRealInvariantViolation {
+            invariant: "strong representative",
+        })?;
+
+    let partition = fundamental.partition();
+    let adjoint = partition.adjoint_fiber();
+    let ambient = adjoint.ambient_fiber();
+    let fiber_map = adjoint.fiber_map();
+    let target = partition.class_representative(local).ok_or(
+        StructureError::StrongRealInvariantViolation {
+            invariant: "weak class representative",
+        },
+    )?;
+    let base_local = data.square_class_representative(square).ok_or(
+        StructureError::StrongRealInvariantViolation {
+            invariant: "square class representative",
+        },
+    )?;
+    let base = partition.class_representative(base_local).ok_or(
+        StructureError::StrongRealInvariantViolation {
+            invariant: "square class representative",
+        },
+    )?;
+    let difference = adjoint.add(target, base)?;
+    let diff = adjoint.coordinates(&difference)?.clone();
+
+    let members = data
+        .orbit_elements(square, representative.fiber_orbit())
+        .ok_or(StructureError::StrongRealInvariantViolation {
+            invariant: "orbit count",
+        })?;
+    let mut result = try_capacity(members.len())?;
+    for &member in members {
+        let element = ambient.element_from_ambient(ambient_expansion(ambient, member)?)?;
+        let image = fiber_map.apply(&element)?;
+        if adjoint.coordinates(&image)? == &diff {
+            result.push(ambient_expansion(ambient, member ^ y)?);
+        }
+    }
+    Ok(result)
+}
+
+/// The ambient `Y/2Y` representative of a fiber-basis mask: the XOR of the
+/// basis representatives the mask selects, which is exactly the owning
+/// fiber's canonical representative of that element.
+fn ambient_expansion(fiber: &CartanFiber, mask: u64) -> Result<ModTwoVector, StructureError> {
+    let mut representative = ModTwoVector::zero(fiber.lattice_rank())?;
+    for (index, basis) in fiber.basis_representatives().iter().enumerate() {
+        if mask & (1_u64 << index) != 0 {
+            representative.xor_assign(basis)?;
+        }
+    }
+    Ok(representative)
+}
+
 /// `z` as one fraction — the shared denominator (lcm of the entry
 /// denominators), gcd-normalised like upstream's `RatWeight`, then each
 /// numerator reduced to its NONNEGATIVE remainder modulo the denominator
@@ -922,6 +1044,43 @@ mod tests {
 
         assert_eq!(strong.kgb_size(WeakRealFormId(0)), Some(9));
         assert_eq!(strong.global_kgb_size(), 25);
+    }
+
+    #[test]
+    fn central_fiber_matches_the_frozen_adjoint_fiber_anchors() {
+        // The domain/adjoint_fiber fixture values: simply connected A1 in
+        // the split inner class gives the split form (internal 0) two torus
+        // parts and the compact form (internal 1) one.
+        let datum = BasedRootDatum::from_simple_data(
+            1,
+            vec![vec![2]],
+            vec![Weight::new(vec![2])],
+            vec![Coweight::new(vec![1])],
+        )
+        .unwrap();
+        let a1 = classification(&datum, LatticeInvolution::identity(&datum).unwrap(), 2);
+        let strong = StrongRealClassification::build(&a1, 64).unwrap();
+        assert_eq!(
+            central_fiber(&a1, &strong, WeakRealFormId(0)).unwrap(),
+            vec![
+                ModTwoVector::zero(1).unwrap(),
+                ModTwoVector::from_ones(1, [0]).unwrap(),
+            ]
+        );
+        assert_eq!(
+            central_fiber(&a1, &strong, WeakRealFormId(1)).unwrap(),
+            vec![ModTwoVector::zero(1).unwrap()]
+        );
+
+        // Adjoint A2 (`standard` datum) in the split inner class: the
+        // quasisplit form su(2,1) has the single zero torus part.
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let a2 = classification(&datum, LatticeInvolution::identity(&datum).unwrap(), 6);
+        let strong = StrongRealClassification::build(&a2, 64).unwrap();
+        assert_eq!(
+            central_fiber(&a2, &strong, WeakRealFormId(0)).unwrap(),
+            vec![ModTwoVector::zero(2).unwrap()]
+        );
     }
 
     #[test]
