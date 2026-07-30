@@ -121,9 +121,18 @@ contract values (1,6) coincide with KGB sizes, so a KGB-based implementation
 must verify the coincidence argument or port Block::build; block_size(ic,i,j)
 bounds: 'Real form number i out of bounds' / 'Dual real form number j out of
 bounds'; Cartan_order(rf): poset matrix of the Cartan-class ordering) →
-`weak_real_form` (real_form(InnerClass,mat,ratvec)) →
+`weak_real_form` (real_form(InnerClass,mat,ratvec) —
+atlas-types.w:3851: size check 'Torus factor size mismatch';
+twisted_from_involution(theta) ('Given transformation is not an involution');
+doubled projection num += theta*num with is_central parity test then halve
+('...' wording from the projection chunk); real_form_of(G,tw,factor,coch)
+sets the cocharacter; minimal_torus_part chooses the base TorusPart; NOTE
+the compact involution + zero factor selects the QUASISPLIT form, and the
+rho/2 shift selects the compact form — see the fixture's three A1 cases) →
 `involution_decomposition` (distinguished_involution/twisted_involution/
-classify_involution) → `strong_real` (square_classes + B2
+classify_involution — twisted_involution(rd,theta) -> (WeylElt,InnerClass)
+PAIR, not the 4-arg form; classify_involution(mat) -> (int,int,int) Lie-type
+coordinates; distinguished_involution(ic) = G.distinguished()) → `strong_real` (square_classes + B2
 print_strong_real) → `split_basic` (eval/; Split operator family) →
 `block_basic` (block/#/%/element/cross/Cayley/status/inverse_Cayley) →
 `ktype_basic` (%/=/predicates/projections) → `ktypepol_basic` →
