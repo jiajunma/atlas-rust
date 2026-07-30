@@ -325,6 +325,13 @@ many replacement columns'); quotient_basis(LieType,[ratvec]->mat) =
 replace_gen(S, C*ann_mod(M,d)) with per-generator validation against the
 invariant factors ('Improper generator entry: {r} not a multiple of 1/{d}',
 'Length mismatch for generator {j}: {a}:{b}') (atlas-types.w:639-677).
+CRATE RECON 2026-07-30: LieType::Smith_basis (lietype.cpp:267) is per-block
+matreduc::adapted_basis — which the crate ALREADY ports faithfully
+(integer_lattice.rs:508, observable-bearing pivot strategy) — plus the
+D-even columnOperation(r-2,r-1,1) tweak and torus identity blocks, so
+Smith_Cartan is nearly free; the only genuinely new math is
+annihilator_modulo (lattice.cpp, mod-d kernel, small); filter/replace/
+quotient are language-level assembly; LIGHT-MEDIUM slice.
 
 Legacy scaffolding triage (2026-07-30): the pre-v0-schema fixtures under
 `tests/fixtures/commands/`, `lex/`, `parse/`, `negative/`, and the early
