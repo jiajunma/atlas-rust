@@ -117,7 +117,11 @@ fg.fromBasis(fe+y) for members fe with toAdjoint(fe)==diff — i.e. the
 fundamental-fiber stabiliser of rf's gradings; displays as a row of vecs
 e.g. [[ 0 ],[ 1 ]]; rejected case is plain conform_types wording 'found
 InnerClass while RealForm was needed.'; also anchors the
-adjoint(LieType,bool) datum display 'adjoint root datum of Lie type ...') → `real_form_labels` (occurrence_matrix/
+adjoint(LieType,bool) datum display 'adjoint root datum of Lie type ...';
+CRATE RECON 2026-07-30: strong_real.rs StrongRealData already carries
+central_square_class (line ~67), class_bases, and toAdjoint solve (line
+~305), weak_real_form.rs has class_of_mask — the gap is likely assembly of
+these into the preimage enumeration, making this a LIGHT slice) → `real_form_labels` (occurrence_matrix/
 dual_occurrence_matrix: numRealForms × numCartanClasses (resp. dual) bitmaps
 of Cartan_set membership (atlas-types.w:3361); block_sizes(ic): matrix of
 G->val.block_size(interface.in(i), dual_interface.in(j)) (atlas-types.w:3323)
