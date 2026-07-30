@@ -1,0 +1,12 @@
+{
+  "fixture": "eval/whattype_ops_b8d",
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/global.w:1790",
+    "sources/interpreter/parser.y:187"
+  ],
+  "notes": "Builtin overload listing anchor: 'whattype * ?' prints the full builtin '*' table (23 variants, arithmetic/string/vector/matrix rows) in table order. Long-term anchor for the builtin overload registry; the listing must track the registry as Split/KTypePol/Param/ParamPol rows land, so this fixture pins the current-epoch 23-row table exactly as probed from the oracle. Expected events drafted from a direct oracle probe; verbatim HPC capture still pending."
+}

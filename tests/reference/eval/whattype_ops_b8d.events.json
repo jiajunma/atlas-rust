@@ -1,0 +1,8 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "eval/whattype_ops_b8d",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind": "ReportLine", "text": "Overloaded instances of '*'\n  (int,int)->int\n  (rat,int)->rat\n  (rat,rat)->rat\n  (vec,int)->vec\n  (ratvec,int)->ratvec\n  (ratvec,rat)->ratvec\n  (vec,vec)->int\n  (mat,vec)->vec\n  (mat,ratvec)->ratvec\n  (mat,mat)->mat\n  (vec,mat)->vec\n  (ratvec,mat)->ratvec\n  (LieType,LieType)->LieType\n  (WeylElt,WeylElt)->WeylElt\n  (WeylElt,vec)->vec\n  (vec,WeylElt)->vec\n  (Split,Split)->Split\n  (int,KTypePol)->KTypePol\n  (Split,KTypePol)->KTypePol\n  (Param,rat)->Param\n  (int,ParamPol)->ParamPol\n  (Split,ParamPol)->ParamPol\n  (ParamPol,rat)->ParamPol\n"}
+  ]
+}

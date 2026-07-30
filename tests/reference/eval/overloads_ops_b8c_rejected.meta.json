@@ -1,0 +1,11 @@
+{
+  "fixture": "eval/overloads_ops_b8c_rejected",
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/parser.y:143-154"
+  ],
+  "notes": "Rejected companion of the operator-set slice: the colon form 'set * (string s, int n): s' is not valid operator-set syntax (operator definitions take '=' before the body, unlike lambda literals), so the oracle reports a syntax error 'unexpected ':'' at the colon. Expected events drafted from a direct oracle probe; verbatim HPC capture still pending."
+}

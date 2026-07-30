@@ -1,0 +1,12 @@
+{
+  "fixture": "eval/overloads_ops_b8c",
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/parser.y:143-154",
+    "sources/interpreter/global.w:1005-1020"
+  ],
+  "notes": "Operator-overload slice of B8 (parser.y operator-set form): 'set * (string s, int n) = s' adds a user overload to the builtin operator '*', reported as 'Added definition [24] of *: (string,int->string)' because the builtin table already carries 23 '*' variants; the new overload then applies ('\"ab\" * 3' yields \"ab\"). Also anchors the empty-name diagnostic: 'whattype zzz ?' prints 'No overloads for 'zzz''. Expected events drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node); verbatim HPC capture still pending."
+}
