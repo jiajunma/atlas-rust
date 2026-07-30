@@ -20,6 +20,7 @@ mod grading;
 mod inner_class;
 mod integer_lattice;
 mod involution;
+mod involution_classification;
 mod involution_table;
 mod kgb_graph;
 mod lattice;
@@ -57,9 +58,10 @@ pub use dual::{dual_cartan_correspondence, dual_inner_class, dual_real_form_coun
 pub use error::StructureError;
 pub use form_name::form_type_name;
 pub use grading::{CartanGradingData, Grading};
-pub use inner_class::InnerClass;
+pub use inner_class::{inner_class_with_twisted_involution, InnerClass};
 pub use integer_lattice::IntegerLatticeBudget;
 pub use involution::LatticeInvolution;
+pub use involution_classification::{classify_involution, InvolutionClassification};
 pub use involution_table::{
     InvolutionId, InvolutionRecord, InvolutionTable, InvolutionTableBudget,
 };
@@ -81,7 +83,7 @@ pub use strong_real::{
 };
 pub use tits_element::{TitsCoset, TitsElement};
 pub use twisted_involution::TwistedInvolution;
-pub use weak_real_form::{WeakRealFormId, WeakRealFormPartition};
+pub use weak_real_form::{weak_real_form_at_representative, WeakRealFormId, WeakRealFormPartition};
 pub use weyl::{WeylAction, WeylGroup};
 pub use weyl_element::{WeylElement, WeylInterface};
 

@@ -41,6 +41,7 @@ pub enum StructureError {
     },
     GradingShiftsNotFaithful,
     ImpossibleGrading,
+    InvalidStrongTorusFactor,
     WeakRealFormResourceLimit {
         resource: &'static str,
         limit: usize,
@@ -177,6 +178,9 @@ impl fmt::Display for StructureError {
             }
             Self::ImpossibleGrading => {
                 write!(f, "no fiber element has the requested grading")
+            }
+            Self::InvalidStrongTorusFactor => {
+                write!(f, "Torus factor does not define a valid strong involution")
             }
             Self::WeakRealFormResourceLimit { resource, limit } => {
                 write!(f, "weak-real-form {resource} exceeded its limit of {limit}")

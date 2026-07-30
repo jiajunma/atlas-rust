@@ -24,6 +24,18 @@ pub struct InnerClass {
     distinguished_involution: RootInvolutionData,
 }
 
+/// Build the inner class defined by `involution` together with its Weyl
+/// factor relative to the resulting distinguished involution.
+pub fn inner_class_with_twisted_involution(
+    datum: BasedRootDatum,
+    involution: LatticeInvolution,
+    root_budget: usize,
+) -> Result<(WeylElement, InnerClass), StructureError> {
+    let (inner_class, factor) =
+        InnerClass::from_root_involution_with_factor(datum, involution, root_budget)?;
+    Ok((factor, inner_class))
+}
+
 impl InnerClass {
     /// Build the shared root-theoretic state for an inner class.
     ///
@@ -55,11 +67,35 @@ impl InnerClass {
         involution: LatticeInvolution,
         root_budget: usize,
     ) -> Result<Self, StructureError> {
+        Ok(Self::from_root_involution_and_word(datum, involution, root_budget)?.0)
+    }
+
+    /// Owned construction path shared by the Atlas `inner_class` and
+    /// `twisted_involution` surfaces. Normalization produces the conjugating
+    /// word, so the pair-returning surface must consume it here rather than
+    /// clone the input and repeat `wrt_distinguished_word` afterward.
+    fn from_root_involution_with_factor(
+        datum: BasedRootDatum,
+        involution: LatticeInvolution,
+        root_budget: usize,
+    ) -> Result<(Self, WeylElement), StructureError> {
+        let (inner_class, word) =
+            Self::from_root_involution_and_word(datum, involution, root_budget)?;
+        let factor = inner_class.weyl_element_from_word(word)?;
+        Ok((inner_class, factor))
+    }
+
+    fn from_root_involution_and_word(
+        datum: BasedRootDatum,
+        involution: LatticeInvolution,
+        root_budget: usize,
+    ) -> Result<(Self, Vec<usize>), StructureError> {
         let roots = RootSystem::enumerate(&datum, root_budget)?;
         let involution = RootInvolutionData::new(&roots, involution)?;
-        let distinguished = wrt_distinguished(&datum, &roots, &involution)?;
+        let (distinguished, word) = wrt_distinguished_word(&datum, &roots, &involution)?;
         let distinguished = RootInvolutionData::new(&roots, distinguished)?;
-        Self::with_roots(datum, roots, distinguished)
+        let inner_class = Self::with_roots(datum, roots, distinguished)?;
+        Ok((inner_class, word))
     }
 
     fn with_roots(
@@ -138,6 +174,13 @@ impl InnerClass {
         {
             return Err(StructureError::InvalidBasedAutomorphism);
         }
+        self.weyl_element_from_word(word)
+    }
+
+    fn weyl_element_from_word(
+        &self,
+        word: impl IntoIterator<Item = usize>,
+    ) -> Result<WeylElement, StructureError> {
         // Upstream `Weyl_group().element(ww)`: right-multiply the letters
         // left to right.
         let mut element = WeylElement::identity(&self.roots)?;
@@ -378,18 +421,6 @@ fn preserves_simple_system(
 /// every one is positive, then read the conjugating Weyl word off the final
 /// images and left-compose the involution with it. The composition preserves
 /// the simple system; [`InnerClass::with_roots`] re-checks that invariant.
-fn wrt_distinguished(
-    datum: &BasedRootDatum,
-    roots: &RootSystem,
-    involution: &RootInvolutionData,
-) -> Result<LatticeInvolution, StructureError> {
-    Ok(wrt_distinguished_word(datum, roots, involution)?.0)
-}
-
-/// [`wrt_distinguished`] plus the left-conjugating Weyl word itself
-/// (upstream returns it from `wrt_distinguished`; `check_involution`
-/// reflects by it and `twisted_from_involution` exports it). Letters are in
-/// left-to-right multiplication order.
 fn wrt_distinguished_word(
     datum: &BasedRootDatum,
     roots: &RootSystem,
@@ -843,6 +874,70 @@ mod tests {
         assert_eq!(
             inner_class.twisted_from_involution(flip),
             Err(StructureError::InvalidBasedAutomorphism)
+        );
+    }
+
+    #[test]
+    fn inner_class_pair_exposes_the_fixture_weyl_factor() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let opposition = LatticeInvolution::new(
+            &datum,
+            vec![vec![0, -1], vec![-1, 0]],
+            vec![vec![0, -1], vec![-1, 0]],
+        )
+        .unwrap();
+
+        let (factor, inner_class) =
+            inner_class_with_twisted_involution(datum.clone(), opposition, 6).unwrap();
+
+        assert_eq!(factor.length(), 3);
+        assert_eq!(
+            factor.reduced_word(inner_class.root_system()).unwrap(),
+            vec![0, 1, 0]
+        );
+        assert_eq!(
+            inner_class
+                .distinguished_involution()
+                .involution()
+                .weight_matrix(),
+            &[vec![1, 0], vec![0, 1]]
+        );
+
+        let (identity, same_class) = inner_class_with_twisted_involution(
+            datum.clone(),
+            LatticeInvolution::identity(&datum).unwrap(),
+            6,
+        )
+        .unwrap();
+        assert!(identity.is_identity());
+        assert_eq!(same_class, inner_class);
+    }
+
+    #[test]
+    fn owned_inner_class_constructor_returns_factor_and_honors_root_budget() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        assert_eq!(
+            InnerClass::from_root_involution_with_factor(
+                datum.clone(),
+                LatticeInvolution::identity(&datum).unwrap(),
+                3,
+            ),
+            Err(StructureError::ResourceLimitExceeded { limit: 3 })
+        );
+
+        let opposition = LatticeInvolution::new(
+            &datum,
+            vec![vec![0, -1], vec![-1, 0]],
+            vec![vec![0, -1], vec![-1, 0]],
+        )
+        .unwrap();
+
+        let (inner_class, factor) =
+            InnerClass::from_root_involution_with_factor(datum, opposition, 6).unwrap();
+        assert_eq!(factor.length(), 3);
+        assert_eq!(
+            factor.reduced_word(inner_class.root_system()).unwrap(),
+            vec![0, 1, 0]
         );
     }
 

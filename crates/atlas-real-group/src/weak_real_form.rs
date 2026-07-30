@@ -1,6 +1,11 @@
+use malachite::base::num::arithmetic::traits::DivisibleBy;
+use malachite::{Integer, Rational};
+
 use crate::grading::try_capacity;
+use crate::twisted_involution::compose_matrices;
 use crate::{
-    AdjointCartanFiber, AdjointFiberElement, CartanGradingData, ModTwoVector, StructureError,
+    AdjointCartanFiber, AdjointFiberElement, CartanClassification, CartanGradingData, Grading,
+    InnerClass, LatticeInvolution, ModTwoVector, StructureError, TwistedInvolution, WeylAction,
 };
 
 /// Sentinel for a mask the orbit walk has not classified yet.
@@ -168,6 +173,150 @@ impl WeakRealFormPartition {
     }
 }
 
+/// Attribute a raw Atlas-language torus factor at one stored Cartan
+/// representative to its global weak real form.
+///
+/// This is the representative-level kernel of upstream `real_form_of`
+/// (`atlas-types.w:3878-3894`, `innerclass.cpp:1305-1355`): first apply the
+/// dual fixed-point projection `v -> (v + v theta) / 2` using Atlas's row-
+/// vector/right-product convention. Integral pairings of the projected value
+/// make the square central; even pairings mark noncompact simple-imaginary
+/// roots, the grading identifies a local adjoint-fiber orbit, and the Cartan's
+/// label maps that orbit to the fundamental weak-form numbering.
+///
+/// `twisted` must be exactly a representative stored by `classification`.
+/// Moving a general twisted involution to that representative also transports
+/// its torus factor through table-backed Tits cross actions; this helper does
+/// not silently build or extend that table. The later `minimal_torus_part`
+/// descent additionally needs the still-separate inverse-Cayley operation.
+pub fn weak_real_form_at_representative(
+    inner_class: &InnerClass,
+    classification: &CartanClassification,
+    twisted: &TwistedInvolution,
+    raw_torus_factor: &[Rational],
+) -> Result<WeakRealFormId, StructureError> {
+    let rank = inner_class.datum().lattice_rank();
+    if raw_torus_factor.len() != rank {
+        return Err(StructureError::RankMismatch {
+            expected: rank,
+            actual: raw_torus_factor.len(),
+        });
+    }
+
+    // CartanClassification does not retain an InnerClass handle. Its first
+    // representative is nevertheless the normalized distinguished
+    // involution, so reconstruct that value as an explicit provenance gate
+    // before any class lookup. The work is bounded by the owned datum and root
+    // system; a future retained provenance token could make this check cheap.
+    let fundamental = TwistedInvolution::new(
+        inner_class.datum(),
+        inner_class.root_system(),
+        inner_class.distinguished_involution().involution(),
+        WeylAction::identity(inner_class.datum())?,
+    )?;
+    if classification
+        .cartan_classes()
+        .first()
+        .map(|class| class.representative())
+        != Some(&fundamental)
+    {
+        return Err(StructureError::DatumMismatch);
+    }
+
+    if twisted.weyl_action().datum() != inner_class.datum() {
+        return Err(StructureError::DatumMismatch);
+    }
+    let delta = inner_class.distinguished_involution().involution();
+    let theta = twisted.root_involution().involution();
+    if compose_matrices(twisted.weyl_action().matrix(), delta.weight_matrix())?
+        != theta.weight_matrix()
+        || compose_matrices(
+            twisted.weyl_action().coweight_matrix(),
+            delta.coweight_matrix(),
+        )? != theta.coweight_matrix()
+    {
+        return Err(StructureError::DistinguishedInvolutionMismatch);
+    }
+
+    let cartan = classification
+        .cartan_classes()
+        .iter()
+        .find(|class| class.representative() == twisted)
+        .ok_or(StructureError::CartanClassificationInvariantViolation {
+            invariant: "synthetic real-form Cartan representative",
+        })?;
+    let torus_factor = project_torus_factor(theta, raw_torus_factor)?;
+
+    // Equivalently to upstream's even-pairing check on the doubled
+    // projection, the projected factor must pair integrally with every simple
+    // root. Check this before extracting the imaginary grading so a real
+    // Cartan, whose imaginary basis is empty, cannot bypass the gate.
+    for root in inner_class.datum().simple_roots() {
+        integral_pairing(&torus_factor, root.as_slice())?;
+    }
+
+    let mut noncompact = try_capacity(cartan.grading().imaginary_rank())?;
+    for (imaginary_index, &root_id) in cartan.grading().imaginary_simple_roots().iter().enumerate()
+    {
+        let root = inner_class.root_system().root(root_id).ok_or(
+            StructureError::CartanClassificationInvariantViolation {
+                invariant: "synthetic real-form imaginary root",
+            },
+        )?;
+        if integral_pairing(&torus_factor, root.as_slice())?.divisible_by(&Integer::from(2)) {
+            noncompact.push(imaginary_index);
+        }
+    }
+    let grading = Grading::from_noncompact(cartan.grading().imaginary_rank(), noncompact)?;
+    let element = cartan.grading().element_from_grading(&grading)?;
+    let local = cartan.partition().class_of(&element)?;
+    cartan
+        .labels()
+        .label(local)
+        .ok_or(StructureError::CartanClassificationInvariantViolation {
+            invariant: "synthetic real-form label",
+        })
+}
+
+fn project_torus_factor(
+    theta: &LatticeInvolution,
+    raw_torus_factor: &[Rational],
+) -> Result<Vec<Rational>, StructureError> {
+    let rank = theta.lattice_rank();
+    if raw_torus_factor.len() != rank {
+        return Err(StructureError::RankMismatch {
+            expected: rank,
+            actual: raw_torus_factor.len(),
+        });
+    }
+    let matrix = theta.weight_matrix();
+    let mut projected = try_capacity(rank)?;
+    for column in 0..rank {
+        let mut transported = Rational::from(0);
+        for (row, theta_row) in matrix.iter().enumerate() {
+            transported += &raw_torus_factor[row] * Rational::from(theta_row[column]);
+        }
+        projected.push((&raw_torus_factor[column] + transported) / Rational::from(2));
+    }
+    Ok(projected)
+}
+
+fn integral_pairing(torus_factor: &[Rational], root: &[i32]) -> Result<Integer, StructureError> {
+    if root.len() != torus_factor.len() {
+        return Err(StructureError::RankMismatch {
+            expected: root.len(),
+            actual: torus_factor.len(),
+        });
+    }
+    let pairing = torus_factor
+        .iter()
+        .zip(root)
+        .fold(Rational::from(0), |sum, (value, &coordinate)| {
+            sum + value * Rational::from(coordinate)
+        });
+    Integer::try_from(pairing).map_err(|_| StructureError::InvalidStrongTorusFactor)
+}
+
 fn weak_limit_error(resource: &'static str, limit: usize) -> StructureError {
     StructureError::WeakRealFormResourceLimit { resource, limit }
 }
@@ -317,8 +466,8 @@ fn widened(value: usize) -> u128 {
 mod tests {
     use crate::integer_lattice::IntegerLatticeBudget;
     use crate::{
-        AdjointFiberBudget, BasedRootDatum, CartanFiber, Coweight, LatticeInvolution,
-        RootInvolutionData, RootSystem, Weight,
+        AdjointFiberBudget, BasedRootDatum, CartanClassificationBudget, CartanFiber, Coweight,
+        LatticeInvolution, RootInvolutionData, RootSystem, Weight,
     };
 
     use super::*;
@@ -329,6 +478,29 @@ mod tests {
 
     fn adjoint_budget() -> AdjointFiberBudget {
         AdjointFiberBudget::new(integer_budget(), 50_000, 100_000)
+    }
+
+    fn classification_budget(weyl_budget: usize) -> CartanClassificationBudget {
+        CartanClassificationBudget::new(integer_budget(), adjoint_budget(), weyl_budget, 8, 8)
+    }
+
+    fn simply_connected_a1() -> (InnerClass, CartanClassification) {
+        let datum = BasedRootDatum::from_simple_data(
+            1,
+            vec![vec![2]],
+            vec![Weight::new(vec![2])],
+            vec![Coweight::new(vec![1])],
+        )
+        .unwrap();
+        let inner_class = InnerClass::new(
+            datum.clone(),
+            LatticeInvolution::identity(&datum).unwrap(),
+            2,
+        )
+        .unwrap();
+        let classification =
+            CartanClassification::build(&inner_class, &classification_budget(2)).unwrap();
+        (inner_class, classification)
     }
 
     fn grading_chain(
@@ -346,6 +518,145 @@ mod tests {
 
     fn ambient(rank: usize, indices: impl IntoIterator<Item = usize>) -> ModTwoVector {
         ModTwoVector::from_ones(rank, indices).unwrap()
+    }
+
+    #[test]
+    fn synthetic_a1_representatives_match_the_frozen_weak_form_anchors() {
+        let (inner_class, classification) = simply_connected_a1();
+        let compact_cartan = classification.cartan_classes()[0].representative();
+        let split_cartan = classification.cartan_classes()[1].representative();
+        let zero = Rational::from(0);
+        let half = Rational::from(1) / Rational::from(2);
+
+        assert_eq!(
+            weak_real_form_at_representative(
+                &inner_class,
+                &classification,
+                compact_cartan,
+                std::slice::from_ref(&zero),
+            ),
+            Ok(WeakRealFormId(0))
+        );
+        assert_eq!(
+            weak_real_form_at_representative(
+                &inner_class,
+                &classification,
+                split_cartan,
+                std::slice::from_ref(&zero),
+            ),
+            Ok(WeakRealFormId(0))
+        );
+        assert_eq!(
+            weak_real_form_at_representative(
+                &inner_class,
+                &classification,
+                compact_cartan,
+                std::slice::from_ref(&half),
+            ),
+            Ok(WeakRealFormId(1))
+        );
+    }
+
+    #[test]
+    fn synthetic_a1_gates_rank_and_noncentral_raw_factors() {
+        let (inner_class, classification) = simply_connected_a1();
+        let representative = classification.cartan_classes()[0].representative();
+
+        assert_eq!(
+            weak_real_form_at_representative(&inner_class, &classification, representative, &[]),
+            Err(StructureError::RankMismatch {
+                expected: 1,
+                actual: 0,
+            })
+        );
+        let quarter = Rational::from(1) / Rational::from(4);
+        assert_eq!(
+            weak_real_form_at_representative(
+                &inner_class,
+                &classification,
+                representative,
+                std::slice::from_ref(&quarter),
+            ),
+            Err(StructureError::InvalidStrongTorusFactor)
+        );
+    }
+
+    #[test]
+    fn synthetic_a1_rejects_a_foreign_same_rank_classification_first() {
+        let (inner_class, _) = simply_connected_a1();
+        let foreign_datum = BasedRootDatum::standard(vec![vec![2]]).unwrap();
+        let foreign_inner = InnerClass::new(
+            foreign_datum.clone(),
+            LatticeInvolution::identity(&foreign_datum).unwrap(),
+            2,
+        )
+        .unwrap();
+        let foreign_classification =
+            CartanClassification::build(&foreign_inner, &classification_budget(2)).unwrap();
+        let foreign_representative = foreign_classification.cartan_classes()[0].representative();
+
+        assert_eq!(
+            weak_real_form_at_representative(
+                &inner_class,
+                &foreign_classification,
+                foreign_representative,
+                &[Rational::from(0)],
+            ),
+            Err(StructureError::DatumMismatch)
+        );
+    }
+
+    #[test]
+    fn synthetic_a2_reflection_rejects_a_raw_basis_with_half_integral_projection() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let inner_class = InnerClass::new(
+            datum.clone(),
+            LatticeInvolution::identity(&datum).unwrap(),
+            6,
+        )
+        .unwrap();
+        let classification =
+            CartanClassification::build(&inner_class, &classification_budget(6)).unwrap();
+        let reflection = classification
+            .cartan_classes()
+            .iter()
+            .find(|class| {
+                class
+                    .representative()
+                    .root_involution()
+                    .roots_of_kind(crate::RootKind::Real)
+                    .count()
+                    == 2
+            })
+            .unwrap()
+            .representative();
+        let theta = reflection.root_involution().involution().weight_matrix();
+        let basis_index = (0..datum.lattice_rank())
+            .find(|&row| {
+                (0..datum.lattice_rank()).any(|column| {
+                    let identity = i32::from(row == column);
+                    (identity + theta[row][column]) % 2 != 0
+                })
+            })
+            .expect("an A2 reflection has a half-integral projected basis vector");
+        let mut raw = vec![Rational::from(0); datum.lattice_rank()];
+        raw[basis_index] = Rational::from(1);
+        let projected =
+            project_torus_factor(reflection.root_involution().involution(), raw.as_slice())
+                .unwrap();
+        assert!(projected.iter().any(|value| {
+            Integer::try_from(value).is_err()
+                && Integer::try_from(value * Rational::from(2)).is_ok()
+        }));
+
+        let error =
+            weak_real_form_at_representative(&inner_class, &classification, reflection, &raw)
+                .unwrap_err();
+        assert_eq!(error, StructureError::InvalidStrongTorusFactor);
+        assert_eq!(
+            error.to_string(),
+            "Torus factor does not define a valid strong involution"
+        );
     }
 
     #[test]

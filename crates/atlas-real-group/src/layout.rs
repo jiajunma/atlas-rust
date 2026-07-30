@@ -14,8 +14,9 @@
 use malachite::Integer;
 
 use crate::dynkin::DynkinComponent;
-use crate::integer_lattice::{adapted_basis, saturated_kernel, IntegerMatrix};
-use crate::{InnerClass, IntegerLatticeBudget, ModTwoSubspace, ModTwoVector, StructureError};
+use crate::integer_lattice::adapted_basis;
+use crate::involution_classification::classify_plus_identity;
+use crate::{InnerClass, IntegerLatticeBudget, StructureError};
 
 /// The `lietype::Layout` of one inner class: its Lie type (semisimple
 /// factors in print order, Complex pairs adjacent, then one `T1` per central
@@ -303,32 +304,7 @@ fn torus_ranks(
         tau1.push(converted);
     }
 
-    let kernel = saturated_kernel(&IntegerMatrix::from_i32_rows(&tau1, budget)?, budget)?;
-    let plus_rank = torus_rank - kernel.rank();
-
-    let mut image = ModTwoSubspace::new(torus_rank)?;
-    for row in &tau1 {
-        let mut odd = Vec::new();
-        for (column, &value) in row.iter().enumerate() {
-            if value % 2 != 0 {
-                odd.push(column);
-            }
-        }
-        image.insert(ModTwoVector::from_ones(torus_rank, odd)?)?;
-    }
-    let complex_rank = image.rank();
-    let compact_rank =
-        plus_rank
-            .checked_sub(complex_rank)
-            .ok_or(StructureError::LayoutInvariantViolation {
-                invariant: "torus compact rank",
-            })?;
-    let split_rank = torus_rank.checked_sub(plus_rank + complex_rank).ok_or(
-        StructureError::LayoutInvariantViolation {
-            invariant: "torus split rank",
-        },
-    )?;
-    Ok((compact_rank, complex_rank, split_rank))
+    Ok(classify_plus_identity(&tau1, budget)?.as_tuple())
 }
 
 #[cfg(test)]
