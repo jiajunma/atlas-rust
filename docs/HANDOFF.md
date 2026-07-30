@@ -6,25 +6,23 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
 ## Start here (next agent)
 
-HEAD at handoff: `5aa7cf6` (main). Working tree clean. All eval slices B3a-B12
-and the InnerClass/RealForm display are `verified_hpc` (differential
-`3501467`); `root_coroot` (`af6cd7b`) and `kgb_generation` (`d7cef57`) are
-implemented and awaiting the HPC differential `3501555` (submitted at
-`5aa7cf6`, report under
-`results/5aa7cf6a8425f1fcd4285b86ae2ca2dfcc3397df/3501555/pipeline_swap/pipeline_swap_diff_report.json`
-on the HPC side — check `squeue -u majj`, fetch, verify PASS, then upgrade the
-four metas `tests/reference/domain/root_coroot{,_rejected}.meta.json` and
-`kgb_generation{,_rejected}.meta.json` to `rust_status: verified_hpc` with
-`differential_job: "3501555"` and commit).
+HEAD at handoff: `c0710a1` (main). Working tree clean. Verified
+`verified_hpc`: all eval slices B3a-B13, `set_type`, operator overload
+declarations, builtin `whattype * ?`, `showall`, `quit`, basic TTY
+banner/prompt, InnerClass/RealForm display, and the domain slices
+`root_coroot` (`3501555`), `kgb_generation` (`3501555`), and `real_group`
+(`3501779`). The eval/operator/dont/showall batch was verified by
+differential `3501643`; the domain display and B8-B12 batch by `3501467`.
 
-One background subagent (agent-9) may still be implementing the `real_group`
-slice (5 missing builtins: `nr_of_dual_real_forms`, `form_names`,
-`dual_form_names`, `dual_real_form`, `dual_quasisplit_form` — everything else
-in that fixture already works). If its changes are uncommitted in the tree
+One background subagent (agent-10) may still be implementing the
+`kgb_operations` + `tits_operations` slices (3 missing builtins:
+`%`(KGBElt->RealForm,int) decompose, `twist(KGBElt->KGBElt)`, and
+`twist(KGBElt,mat->KGBElt)` outer twist with the distinguished-fiber
+check). If its changes are uncommitted in the tree
 (`crates/atlas-core/src/domain_builtins.rs`, `typed.rs`,
 `crates/atlas-real-group/`, `hpc/pipeline_swap_diff.py`), verify them
 yourself per the loop below before committing; otherwise re-do the slice
-from scratch — its contract is frozen and fully probed.
+from scratch — both contracts are frozen and fully probed.
 
 ## The per-slice loop (follow exactly)
 
@@ -68,15 +66,24 @@ from scratch — its contract is frozen and fully probed.
 ## Implementation queue (all contracts frozen, in suggested order)
 
 Domain (contracts in `tests/fixtures/domain/`, events verified):
-`real_group` (agent-9, see above) → `kgb_operations` → `grading` →
-`weyl_element` → `cartan_aggregation` → `seed_x0` → `involution_table` →
-`adjoint_fiber` → `real_form_labels` → `weak_real_form` →
-`involution_decomposition` → `tits_operations` → `strong_real` →
-`split_basic` (eval/) → `block_basic` → `ktype_basic` → `ktypepol_basic` →
-`param_basic` → `parampol_basic` → `involution_primitive` →
-`overloads_ops_b8c` + `whattype_ops_b8d` (operator-`set` form and the
-builtin `whattype * ?` listing; b8d pins the current 23-row `*` table) are
-implemented and verified in differential `3501643`.
+`kgb_operations` + `tits_operations` (agent-10, see above) → `grading`
+(base_grading_vector/initial_torus_bits/torus_bits) → `weyl_element`
+(W_elt/word/length/=,!=/*//#/root_datum) → `cartan_aggregation`
+(Cartan_class/nr_of_Cartan_classes/most_split_Cartan/involution/real_forms/
+dual_real_forms/square_classes/fiber_partition) → `seed_x0` (KGB_elt
+synthetic) → `involution_table` (print_KGB/print_strong_real) →
+`adjoint_fiber` (central_fiber) → `real_form_labels` (occurrence_matrix/
+dual_occurrence_matrix/block_sizes/block_size/Cartan_order) →
+`weak_real_form` (real_form(InnerClass,mat,ratvec)) →
+`involution_decomposition` (distinguished_involution/twisted_involution/
+classify_involution) → `strong_real` (square_classes + B2
+print_strong_real) → `split_basic` (eval/; Split operator family) →
+`block_basic` (block/#/%/element/cross/Cayley/status/inverse_Cayley) →
+`ktype_basic` (%/=/predicates/projections) → `ktypepol_basic` →
+`param_basic` → `parampol_basic` → `involution_primitive`
+(involution(LieType,[int],string) and the based form).
+`real_group`, `overloads_ops_b8c{,_rejected}`, `whattype_ops_b8d`, and
+`dont_b13{,_rejected}` are DONE (verified `3501779` / `3501643`).
 
 Uncovered matrix items needing contract design first (probe the oracle,
 then freeze): KL file formats and readline completion. `dont`, `showall`,
