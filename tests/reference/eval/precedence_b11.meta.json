@@ -2,10 +2,19 @@
   "fixture": "eval/precedence_b11",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3500488",
+  "source_archive_sha256": "d76b04fc7f465d05ea73959dc56a667c7debbb1d2eb3a09ed36cf94bcd90a32e",
+  "fixture_sha256": "b2ba52f7fb0da5ae22f7ad57598d368df6192ae0d1114bfe34de14aad238b36a",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "63fc68a5ff1e2fb625de49f0c666bb779b21db9419c35f079a06445c447d3428",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "cdcc85afac2689675fe9d77fdaa2fc8194bbacb0f5429baf2ed8a4b76c409d9c",
+  "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/parser.y"
   ],
-  "rust_status": "not_implemented",
-  "notes": "B11 precedence and associativity corpus, content-identical split from probe precedence_probe (capture 3500387): multiplicative binds over additive (14, 10), additive chains are left-associative (5), '/' on integers yields a rational and chains left (2/1), comparison yields bool, '=' binds looser than '+' (true), unary minus applies before additive (1) and can follow a multiplicative operator (2 * - 3 = -6), 'not' binds tighter than 'and' (false), and '=' binds tighter than 'and' on both sides (true). Reference capture pending on HPC."
+  "notes": "B11 precedence and associativity corpus, content-identical split from probe precedence_probe (capture 3500387): multiplicative binds over additive (14, 10), additive chains are left-associative (5), '/' on integers yields a rational and chains left (2/1), comparison yields bool, '=' binds looser than '+' (true), unary minus applies before additive (1) and can follow a multiplicative operator (2 * - 3 = -6), 'not' binds tighter than 'and' (false), and '=' binds tighter than 'and' on both sides (true). Reference captured by HPC job 3500488 (commit a0f18af) against the frozen atlasofliegroups-4d3e9449 oracle; raw output matches the pre-registered events, which this capture confirms verbatim."
 }

@@ -1,8 +1,0 @@
-{
-  "fixture": "eval/runtime_errors_probe",
-  "oracle": "atlas",
-  "stage": "probe",
-  "reference_status": "pending_hpc_reference",
-  "rust_status": "not_implemented",
-  "notes": "Exploratory probe for the runtime-error matrix row (docs/LANGUAGE.md, docs/COMPATIBILITY.md exit-status mapping): out-of-range subscription on a row, a tuple, and a string; integer modulo by zero; integer division by zero. Questions: exact oracle messages, whether these are runtime diagnostics, whether batch evaluation continues after each, and the final exit status. Lines will be split into accepted and rejected fixtures from the oracle behavior; this probe file is not a differential fixture."
-}
