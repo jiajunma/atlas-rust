@@ -91,6 +91,9 @@ pub enum StructureError {
     RealFormOrderInvariantViolation {
         invariant: &'static str,
     },
+    LayoutInvariantViolation {
+        invariant: &'static str,
+    },
     DistinguishedInvolutionMismatch,
     ModTwoSubquotientInvariantViolation,
     NotInModTwoSubspace,
@@ -225,6 +228,9 @@ impl fmt::Display for StructureError {
             }
             Self::RealFormOrderInvariantViolation { invariant } => {
                 write!(f, "real-form order {invariant} invariant was violated")
+            }
+            Self::LayoutInvariantViolation { invariant } => {
+                write!(f, "inner-class layout {invariant} invariant was violated")
             }
             Self::DistinguishedInvolutionMismatch => {
                 write!(

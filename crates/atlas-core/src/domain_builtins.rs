@@ -8,8 +8,10 @@
 //! budgets are session constants, revisited when the language exposes
 //! budget control. Display strings follow upstream byte-for-byte where the
 //! upstream form is stable (`KGB element #n`, `Lie type '...'`); the
-//! real-form and inner-class prints are documented placeholders pending the
-//! form-name machinery (adapter-sensitive, recorded in the bridge design).
+//! inner-class and real-form prints replicate `inner_class_value::print`
+//! and `real_form_value::print` (interpreter/atlas-types.w:3164-3172,
+//! 3566-3575) from the layout, dual-count, and presentation machinery of
+//! `atlas-real-group`.
 
 use std::fmt;
 use std::sync::Arc;
@@ -17,10 +19,11 @@ use std::sync::Arc;
 use malachite::{Integer as BigInt, Rational as BigRational};
 
 use atlas_real_group::{
-    AdjointFiberBudget, BasedRootDatum, CartanClassification, CartanClassificationBudget, Coweight,
-    ExternalFormOrder, InnerClass, IntegerLatticeBudget, InvolutionTable, InvolutionTableBudget,
-    KgbGraph, KgbId, KgbStatus, LatticeInvolution, RealFormSeed, StrongRealClassification,
-    WeakRealFormId, Weight,
+    build_presentations, dual_real_form_count, AdjointFiberBudget, BasedRootDatum,
+    CartanClassification, CartanClassificationBudget, Coweight, ExternalFormOrder, InnerClass,
+    InnerClassLayout, IntegerLatticeBudget, InvolutionTable, InvolutionTableBudget, KgbGraph,
+    KgbId, KgbStatus, LatticeInvolution, RealFormPresentation, RealFormSeed,
+    StrongRealClassification, WeakRealFormId, Weight,
 };
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
@@ -128,6 +131,9 @@ pub struct InnerClassContext {
     classification: CartanClassification,
     strong: StrongRealClassification,
     order: ExternalFormOrder,
+    layout: InnerClassLayout,
+    dual_form_count: usize,
+    forms: Vec<RealFormPresentation>,
 }
 
 /// One real form's frozen pipeline: seed, completed table, and KGB graph.
@@ -187,13 +193,49 @@ impl fmt::Display for DomainValue {
                 }
             }
             Self::RootDatum(handle) => write!(formatter, "{}", handle.description()),
-            Self::InnerClass(context) => write!(
-                formatter,
-                "inner class with {} real forms",
-                context.order.form_count()
-            ),
+            Self::InnerClass(context) => {
+                // inner_class_value::print (interpreter/atlas-types.w:3164-3172).
+                let real = context.order.form_count();
+                let dual = context.dual_form_count;
+                write!(
+                    formatter,
+                    "Complex reductive group of type {}, with involution defining\n\
+                     inner class of type '{}', with {} real {} and {} dual real {}",
+                    context.layout.lie_type_string(),
+                    context.layout.inner_class_string(),
+                    real,
+                    if real == 1 { "form" } else { "forms" },
+                    dual,
+                    if dual == 1 { "form" } else { "forms" },
+                )
+            }
             Self::RealForm(context) => {
-                write!(formatter, "real form #{} of inner class", context.external)
+                // real_form_value::print (interpreter/atlas-types.w:3566-3575).
+                let presentation = &context.parent.forms[context.external];
+                if presentation.compact {
+                    write!(formatter, "compact ")?;
+                }
+                write!(
+                    formatter,
+                    "{} ",
+                    if presentation.connected {
+                        "connected"
+                    } else {
+                        "disconnected"
+                    }
+                )?;
+                if presentation.quasisplit {
+                    write!(
+                        formatter,
+                        "{}split ",
+                        if presentation.split { "" } else { "quasi" }
+                    )?;
+                }
+                write!(
+                    formatter,
+                    "real group with Lie algebra '{}'",
+                    presentation.name
+                )
             }
             Self::KgbElement(_, id) => write!(formatter, "KGB element #{}", id.index()),
         }
@@ -817,12 +859,34 @@ fn build_inner_class(
         .map_err(|error| runtime(span, error.to_string()))?;
     let order = ExternalFormOrder::build(&inner_class, &classification)
         .map_err(|error| runtime(span, error.to_string()))?;
+    let layout = InnerClassLayout::build(&inner_class, &INTEGER_BUDGET)
+        .map_err(|error| runtime(span, error.to_string()))?;
+    let dual_form_count = dual_real_form_count(
+        &inner_class,
+        WEYL_BUDGET,
+        &INTEGER_BUDGET,
+        &AdjointFiberBudget::new(INTEGER_BUDGET, 1_000_000, 10_000_000),
+        FIBER_BUDGET,
+        ROOT_BUDGET,
+    )
+    .map_err(|error| runtime(span, error.to_string()))?;
+    let forms = build_presentations(
+        &inner_class,
+        &classification,
+        &order,
+        &layout,
+        &INTEGER_BUDGET,
+    )
+    .map_err(|error| runtime(span, error.to_string()))?;
     Ok(Arc::new(InnerClassContext {
         root_datum: handle.clone(),
         inner_class,
         classification,
         strong,
         order,
+        layout,
+        dual_form_count,
+        forms,
     }))
 }
 

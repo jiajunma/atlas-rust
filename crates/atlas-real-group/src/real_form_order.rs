@@ -37,6 +37,9 @@ const MAX_KEY_GENERATORS: usize = 127;
 pub struct ExternalFormOrder {
     external_to_internal: Vec<WeakRealFormId>,
     internal_to_external: Vec<usize>,
+    /// The `specialGrading` partition-overload bitset of each form, indexed
+    /// by external number; bit `g` is datum simple generator `g`.
+    gradings: Vec<u128>,
 }
 
 impl ExternalFormOrder {
@@ -96,13 +99,16 @@ impl ExternalFormOrder {
         let mut external_to_internal = try_capacity(form_count)?;
         let mut internal_to_external = try_capacity(form_count)?;
         internal_to_external.resize(form_count, 0_usize);
-        for (external, &(_, _, internal)) in keys.iter().enumerate() {
+        let mut gradings = try_capacity(form_count)?;
+        for (external, &(_, tiebreak, internal)) in keys.iter().enumerate() {
             external_to_internal.push(internal);
             internal_to_external[internal.0] = external;
+            gradings.push(tiebreak);
         }
         Ok(Self {
             external_to_internal,
             internal_to_external,
+            gradings,
         })
     }
 
@@ -123,6 +129,12 @@ impl ExternalFormOrder {
     /// The external number of the quasisplit form (always last).
     pub fn quasisplit_external(&self) -> usize {
         self.form_count().saturating_sub(1)
+    }
+
+    /// The `specialGrading` partition-overload bitset of one form, bit `g`
+    /// being datum simple generator `g` (1 = noncompact imaginary).
+    pub fn special_grading(&self, external: usize) -> Option<u128> {
+        self.gradings.get(external).copied()
     }
 }
 

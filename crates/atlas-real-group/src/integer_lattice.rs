@@ -364,12 +364,10 @@ impl IntegralBasis {
         self.ambient_rank
     }
 
-    #[cfg(test)]
     pub(crate) fn rank(&self) -> usize {
         self.columns.len()
     }
 
-    #[cfg(test)]
     pub(crate) fn columns(&self) -> &[Vec<Integer>] {
         &self.columns
     }
