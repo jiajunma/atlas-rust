@@ -589,7 +589,7 @@ pub(crate) fn solve_mod_two(
 }
 
 /// The nonnegative fractional part of a rational: `value - floor(value)`.
-fn fractional_part(value: &Rational) -> Rational {
+pub(crate) fn fractional_part(value: &Rational) -> Rational {
     value - Rational::from(value.floor())
 }
 

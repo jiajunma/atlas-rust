@@ -182,6 +182,12 @@ FIXTURE_PLANS = (
     # non-involution diagnostics.
     FixturePlan(name="domain/seed_x0"),
     FixturePlan(name="domain/seed_x0_rejected"),
+    # Involution-table printers: print_KGB's full table (statuses, crosses,
+    # Cayleys, torus parts, canonical-involution words) and
+    # print_strong_real's single-class layout on A1, plus the two-overload
+    # match failure on a RootDatum argument.
+    FixturePlan(name="domain/involution_table"),
+    FixturePlan(name="domain/involution_table_rejected"),
     # Early scalar-era fixtures: verified verbatim locally and included so
     # the HPC differential upgrades their reference metadata.
     FixturePlan(name="eval/scalars"),

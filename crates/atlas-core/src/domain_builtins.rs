@@ -16,6 +16,7 @@
 use std::cmp::Ordering;
 use std::collections::BTreeSet;
 use std::fmt;
+use std::fmt::Write as _;
 use std::sync::Arc;
 
 use malachite::{Integer as BigInt, Rational as BigRational};
@@ -2204,6 +2205,255 @@ pub(crate) fn validate(
         }
     }
     Ok(())
+}
+
+/// Printer wrappers (atlas-types.w:8944-8957, 8850-8859): the report text
+/// of one `print_*` builtin. Upstream prints unconditionally, so the text
+/// is produced at both evaluation levels; no diagnostics precede the
+/// no-value gate.
+pub(crate) fn print_text(
+    name: &str,
+    arguments: &[Value],
+    span: SourceSpan,
+) -> Result<String, Diagnostic> {
+    match name {
+        "print_KGB" => {
+            let context = as_real_form(&arguments[0], span)?;
+            if arguments.len() == 1 {
+                return Ok(print_kgb(context, None));
+            }
+            // print_KGB_selection_wrapper (atlas-types.w:8958-8973): the
+            // listed elements must belong to the SAME real form.
+            arity(name, arguments, 2, span)?;
+            let Value::List(entries) = &arguments[1] else {
+                return Err(type_error(span, "expected a row of KGBElt"));
+            };
+            let mut which = Vec::with_capacity(entries.len());
+            for entry in entries {
+                let (element_context, id) = as_kgb_element(entry, span)?;
+                if element_context.parent.inner_class != context.parent.inner_class
+                    || element_context.internal != context.internal
+                {
+                    return Err(runtime(
+                        span,
+                        "Real form mismatch when printing KGB element",
+                    ));
+                }
+                which.push(id);
+            }
+            Ok(print_kgb(context, Some(&which)))
+        }
+        "print_strong_real" => {
+            arity(name, arguments, 1, span)?;
+            let (context, id) = as_cartan_class(&arguments[0], span)?;
+            print_strong_real(context, id, span)
+        }
+        other => panic!("printer dispatch saw {other}"),
+    }
+}
+
+/// Decimal digit count with `digits(0) == 1` (ioutils.cpp:32-41).
+fn digits(mut value: usize) -> usize {
+    let mut count = 1;
+    while value >= 10 {
+        count += 1;
+        value /= 10;
+    }
+    count
+}
+
+/// kgb_io::var_print_KGB (kgb_io.cpp:140-148) and plain kgb_io::print on a
+/// selection (kgb_io.cpp:59-126, NON-traditional branch), behind the
+/// wrappers at atlas-types.w:8944-8973. `which = None` is the full table:
+/// the wrapper's `kgbsize` line and the `Base grading` header print first.
+/// `Some` is the selection variant: no header lines, the listed rows in
+/// list order; the `#` flag's inner class is present in BOTH variants.
+fn print_kgb(context: &Arc<RealFormContext>, which: Option<&[KgbId]>) -> String {
+    let graph = &context.graph;
+    let parent = &context.parent;
+    let rank = graph.semisimple_rank();
+    let size = graph.size();
+    let last = graph.ids().last().expect("a KGB graph is nonempty");
+    let width = digits(size - 1);
+    let cartan_width = digits(
+        cartan_number(
+            parent,
+            graph
+                .cartan_of(last)
+                .expect("the last element has a Cartan"),
+        )
+        .expect("the graph's Cartans are in range"),
+    );
+    let length_width = digits(graph.length(last).expect("the last element has a length"));
+
+    let mut text = String::new();
+    if which.is_none() {
+        text.push_str(&format!("kgbsize: {size}\nBase grading: ["));
+        for &bit in graph.base_grading() {
+            text.push(if bit { '1' } else { '0' });
+        }
+        text.push_str("].\n");
+    }
+    let ids: Vec<KgbId> = match which {
+        Some(selection) => selection.to_vec(),
+        None => graph.ids().collect(),
+    };
+    for id in ids {
+        let length = graph.length(id).expect("in-range element");
+        let cartan = graph.cartan_of(id).expect("in-range element");
+        let number = cartan_number(parent, cartan).expect("the graph's Cartans are in range");
+        // The '#' flag (kgb_io.cpp:109-112): the element's involution IS
+        // its Cartan class's canonical representative.
+        let flag = {
+            let representative = parent
+                .classification
+                .cartan_class(cartan)
+                .expect("the graph's Cartans are in range")
+                .representative();
+            let canonical = WeylElement::from_action(
+                parent.inner_class.root_system(),
+                representative.weyl_action(),
+            )
+            .expect("the Cartan representative realizes in the root system");
+            context.table.lookup(&canonical) == graph.involution_of(id)
+        };
+        let record = context
+            .table
+            .record(graph.involution_of(id).expect("in-range element"))
+            .expect("the graph's involutions are table records");
+        let word = parent
+            .inner_class
+            .canonical_involution_expr(record.weyl_element())
+            .expect("a KGB involution is a twisted involution of the class");
+
+        write!(text, "{:>width$}:  ", id.index()).expect("string write");
+        write!(text, "{length:>length_width$}").expect("string write");
+        text.push_str("  ");
+        text.push('[');
+        for generator in 0..rank {
+            if generator > 0 {
+                text.push(',');
+            }
+            // prettyprint::printStatus (prettyprint.cpp:284-313).
+            text.push(
+                match graph.status(id, generator).expect("in-range element") {
+                    KgbStatus::Complex => 'C',
+                    KgbStatus::ImaginaryCompact => 'c',
+                    KgbStatus::ImaginaryNoncompact => 'n',
+                    KgbStatus::Real => 'r',
+                },
+            );
+        }
+        text.push(']');
+        text.push(' ');
+        for generator in 0..rank {
+            let cross = graph.cross(id, generator).expect("in-range element");
+            write!(text, "{:>width$}", cross.index(), width = width + 2).expect("string write");
+        }
+        text.push_str("  ");
+        for generator in 0..rank {
+            match graph.cayley(id, generator).expect("in-range element") {
+                Some(cayley) => write!(text, "{:>width$}", cayley.index(), width = width + 2)
+                    .expect("string write"),
+                None => write!(text, "{:>width$}", '*', width = width + 2).expect("string write"),
+            }
+        }
+        text.push_str("  ");
+        // The element's torus part (kgb.cpp:750-754 via
+        // prettyprint.cpp:72-85): bits comma-separated in parentheses.
+        text.push('(');
+        let bits = graph.element(id).expect("in-range element").torus_bits();
+        for index in 0..bits.dimension() {
+            if index > 0 {
+                text.push(',');
+            }
+            text.push(if bits.bit(index) == Some(true) {
+                '1'
+            } else {
+                '0'
+            });
+        }
+        text.push(')');
+        text.push(if flag { '#' } else { ' ' });
+        write!(text, "{number:>cartan_width$} ").expect("string write");
+        // prettyprint::printInvolution (prettyprint.cpp:219-232): one-based
+        // generator digits, '^' for crosses, 'x' for conjugations, `e`
+        // closing (digits beyond 9 wrap through the ASCII table, as
+        // upstream's char arithmetic does).
+        for entry in word {
+            if entry >= 0 {
+                text.push(char::from(
+                    b'1' + u8::try_from(entry).expect("generator rank"),
+                ));
+                text.push('^');
+            } else {
+                text.push(char::from(
+                    b'1' + u8::try_from(!entry).expect("generator rank"),
+                ));
+                text.push('x');
+            }
+        }
+        text.push('e');
+        text.push('\n');
+    }
+    text
+}
+
+/// output::printStrongReal (output.cpp:490-540) behind
+/// print_strongreal_wrapper (atlas-types.w:8850-8859). The ioutils::foldLine
+/// wrap of overlong `real form` lines is an upstream large-orbit refinement
+/// the frozen contracts never reach.
+fn print_strong_real(
+    context: &Arc<InnerClassContext>,
+    id: CartanId,
+    span: SourceSpan,
+) -> Result<String, Diagnostic> {
+    let blocks = atlas_real_group::strong_real_class_prints(
+        &context.inner_class,
+        &context.classification,
+        &context.strong,
+        &context.order,
+        id,
+        &INTEGER_BUDGET,
+    )
+    .map_err(|error| runtime(span, error.to_string()))?;
+    let mut text = String::new();
+    if blocks.len() > 1 {
+        writeln!(text, "there are {} real form classes:\n", blocks.len()).expect("string write");
+    }
+    for block in &blocks {
+        // The RatWeight print of basic_io.cpp:138-145: the numerator as a
+        // compact seqPrint vector, then `/denominator`.
+        let (numerators, denominator) = block.square();
+        let mut square = String::from("[");
+        for (index, numerator) in numerators.iter().enumerate() {
+            if index > 0 {
+                square.push(',');
+            }
+            write!(square, "{numerator}").expect("string write");
+        }
+        square.push(']');
+        writeln!(
+            text,
+            "class #{}, possible square: exp(2i\\pi({square}/{denominator}))",
+            block.class_number()
+        )
+        .expect("string write");
+        for (external, elements) in block.real_forms() {
+            write!(text, "real form #{external}: [").expect("string write");
+            for (index, element) in elements.iter().enumerate() {
+                if index > 0 {
+                    text.push(',');
+                }
+                write!(text, "{element}").expect("string write");
+            }
+            writeln!(text, "] ({})", elements.len()).expect("string write");
+        }
+        if blocks.len() > 1 {
+            text.push('\n');
+        }
+    }
+    Ok(text)
 }
 
 /// Dispatch one named application. Unknown names are Name errors.

@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
+use crate::grading::try_capacity;
 use crate::{
     BasedRootDatum, Coweight, LatticeInvolution, RootId, RootInvolutionData, RootSystem,
     StructureError, TwistedConjugacyClass, TwistedConjugacyPartition, TwistedInvolution, Weight,
@@ -145,6 +146,72 @@ impl InnerClass {
             element = next;
         }
         Ok(element)
+    }
+
+    /// The distinguished involution's permutation of the simple generators
+    /// (the `weyl::Twist` of upstream's `TwistedWeylGroup`): `twist[s]` is
+    /// the generator whose simple root is the distinguished image of
+    /// `alpha_s`.
+    fn generator_twist(&self) -> Result<Vec<usize>, StructureError> {
+        let simple_ids = self.roots.simple_root_ids();
+        let mut twist = Vec::with_capacity(simple_ids.len());
+        for &simple_id in simple_ids {
+            let image = self
+                .distinguished_involution
+                .image(simple_id)
+                .ok_or(StructureError::InvalidBasedAutomorphism)?;
+            let position = simple_ids
+                .iter()
+                .position(|&candidate| candidate == image)
+                .ok_or(StructureError::InvalidBasedAutomorphism)?;
+            twist.push(position);
+        }
+        Ok(twist)
+    }
+
+    /// Port of upstream `TwistedWeylGroup::canonical_involution_expr`
+    /// (weyl.cpp:1359-1385): the reduced twisted-involution expression of a
+    /// twisted involution's Weyl part, lexicographically least in the
+    /// EXTERNAL generator numbering, one signed entry per step — a plain
+    /// entry `s` is a cross (left multiplication by `s`), a
+    /// bitwise-complemented entry `!s` is twisted conjugation by `s`
+    /// (upstream packs both into one `int`; prettyprint.cpp:219-232 decodes
+    /// the same way).
+    ///
+    /// PRECONDITION, the caller's contract exactly as upstream: `weyl` is
+    /// the Weyl part of a twisted involution of THIS inner class — the
+    /// loop's termination relies on it (each step drops the twisted
+    /// length).
+    pub fn canonical_involution_expr(
+        &self,
+        weyl: &WeylElement,
+    ) -> Result<Vec<i32>, StructureError> {
+        let twist = self.generator_twist()?;
+        let mut result = try_capacity(weyl.length())?;
+        let mut current = weyl.clone();
+        while !current.is_identity() {
+            // The first descent, in ascending generator order (upstream's
+            // external-least election, NOT the internal renumbering).
+            let mut generator = 0;
+            while !current.has_left_descent(&self.roots, generator)? {
+                generator += 1;
+            }
+            // hasTwistedCommutation (weyl.cpp:1296-1312): right-multiply by
+            // the TWISTED generator, then compare the length change against
+            // the product's own left descent.
+            let (transported, change) =
+                current.right_multiply_simple(&self.roots, twist[generator])?;
+            let signed =
+                i32::try_from(generator).map_err(|_| StructureError::ArithmeticOverflow)?;
+            if (change > 0) == transported.has_left_descent(&self.roots, generator)? {
+                result.push(signed);
+                current = current.left_multiply_simple(&self.roots, generator)?.0;
+            } else {
+                result.push(!signed);
+                current = current.twisted_conjugate(&self.roots, generator, &twist)?;
+            }
+        }
+        Ok(result)
     }
 
     /// Enumerate root involutions of the form `w after distinguished`.
@@ -776,6 +843,58 @@ mod tests {
         assert_eq!(
             inner_class.twisted_from_involution(flip),
             Err(StructureError::InvalidBasedAutomorphism)
+        );
+    }
+
+    #[test]
+    fn canonical_involution_expr_matches_the_b2_kgb_table_words() {
+        // A1 anchor: the split Cartan's involution is the simple reflection,
+        // printed `1^e` by the oracle's print_KGB (cross, not conjugation).
+        let datum = BasedRootDatum::standard(vec![vec![2]]).unwrap();
+        let inner_class = InnerClass::new(
+            datum.clone(),
+            LatticeInvolution::identity(&datum).unwrap(),
+            2,
+        )
+        .unwrap();
+        let simple = WeylElement::simple_reflection(inner_class.root_system(), 0).unwrap();
+        assert_eq!(inner_class.canonical_involution_expr(&simple), Ok(vec![0]));
+        let identity = WeylElement::identity(inner_class.root_system()).unwrap();
+        assert_eq!(
+            inner_class.canonical_involution_expr(&identity),
+            Ok(Vec::new())
+        );
+
+        // B2 split inner class (identity distinguished): the words below
+        // are the oracle's print_KGB involution column for the quasisplit
+        // form — `1^2x1^e` for w0, `1x2^e` for s0.s1.s0, `2x1^e` for
+        // s1.s0.s1 (bitwise-complemented entries print with `x`).
+        let datum = BasedRootDatum::standard(vec![vec![2, -2], vec![-1, 2]]).unwrap();
+        let inner_class = InnerClass::new(
+            datum.clone(),
+            LatticeInvolution::identity(&datum).unwrap(),
+            8,
+        )
+        .unwrap();
+        let system = inner_class.root_system();
+        let word = |letters: &[usize]| {
+            let mut element = WeylElement::identity(system).unwrap();
+            for &letter in letters {
+                element = element.right_multiply_simple(system, letter).unwrap().0;
+            }
+            element
+        };
+        assert_eq!(
+            inner_class.canonical_involution_expr(&word(&[0, 1, 0, 1])),
+            Ok(vec![0, !1, 0])
+        );
+        assert_eq!(
+            inner_class.canonical_involution_expr(&word(&[0, 1, 0])),
+            Ok(vec![!0, 1])
+        );
+        assert_eq!(
+            inner_class.canonical_involution_expr(&word(&[1, 0, 1])),
+            Ok(vec![!1, 0])
         );
     }
 }

@@ -575,12 +575,24 @@ impl TypedContext {
                     &mut type_,
                     &Analysis::new(&self.types, &self.globals, &self.overloads),
                 )?;
-                let value = evaluate_command_expr(&typed, &mut self.evaluation)?;
-                Ok(vec![TypedCommandEvent::Value {
+                let value = match evaluate_command_expr(&typed, &mut self.evaluation) {
+                    Ok(value) => value,
+                    Err(diagnostic) => {
+                        // Upstream keeps text printed before the failure;
+                        // this port has no channel for events alongside a
+                        // diagnostic, so the buffer is dropped instead of
+                        // leaking into the next command.
+                        self.evaluation.take_printed();
+                        return Err(diagnostic);
+                    }
+                };
+                let mut events = self.drain_printed(expression.span());
+                events.push(TypedCommandEvent::Value {
                     value,
                     type_,
                     span: expression.span(),
-                }])
+                });
+                Ok(events)
             }
             Command::Define {
                 name, value, span, ..
@@ -591,8 +603,16 @@ impl TypedContext {
                     &mut type_,
                     &Analysis::new(&self.types, &self.globals, &self.overloads),
                 )?;
-                let value = evaluate_command_expr(&typed, &mut self.evaluation)?;
-                Ok(vec![self.define_variable(name, type_, value, false, *span)])
+                let value = match evaluate_command_expr(&typed, &mut self.evaluation) {
+                    Ok(value) => value,
+                    Err(diagnostic) => {
+                        self.evaluation.take_printed();
+                        return Err(diagnostic);
+                    }
+                };
+                let mut events = self.drain_printed(*span);
+                events.push(self.define_variable(name, type_, value, false, *span));
+                Ok(events)
             }
             Command::Declare {
                 name,
@@ -655,7 +675,7 @@ impl TypedContext {
                     span: *span,
                 }])
             }
-            Command::Set { bindings, .. } => self.execute_set(bindings),
+            Command::Set { bindings, span } => self.execute_set(bindings, *span),
             Command::ShowOverloads { name, span } => {
                 // show_overloads (global.w:1790-1799): one line per active
                 // variant, argument and result types printed independently.
@@ -741,6 +761,17 @@ impl TypedContext {
             .to_string()
     }
 
+    /// Drain printer-builtin output produced by the last evaluation into
+    /// report events (upstream writes to `*output_stream` mid-evaluation,
+    /// so the report precedes the command's own value or binding report).
+    fn drain_printed(&mut self, span: SourceSpan) -> Vec<TypedCommandEvent> {
+        self.evaluation
+            .take_printed()
+            .into_iter()
+            .map(|text| TypedCommandEvent::ReportLine { text, span })
+            .collect()
+    }
+
     /// Bind a global value and report `(Constant|Variable) name: type`
     /// (global_define_identifier and the identifier-table branch of
     /// `do_global_set`, global.w:911-994). A redefinition notes the
@@ -811,6 +842,7 @@ impl TypedContext {
     fn execute_set(
         &mut self,
         bindings: &[LetBinding],
+        span: SourceSpan,
     ) -> Result<Vec<TypedCommandEvent>, Diagnostic> {
         struct Pending {
             shape: SlotShape,
@@ -835,14 +867,22 @@ impl TypedContext {
         }
         // Phase 1: evaluate every right-hand side before any binding
         // happens, so a failing initializer leaves the tables untouched.
+        let mut printed = Vec::new();
         let mut evaluated = Vec::with_capacity(pending.len());
         for pending in pending {
-            let value = evaluate_command_expr(&pending.typed, &mut self.evaluation)?;
+            let value = match evaluate_command_expr(&pending.typed, &mut self.evaluation) {
+                Ok(value) => value,
+                Err(diagnostic) => {
+                    self.evaluation.take_printed();
+                    return Err(diagnostic);
+                }
+            };
+            printed.extend(self.drain_printed(span));
             evaluated.push((pending.shape, pending.leaves, value));
         }
         // Phase 2: distribute each value over its pattern leaves and bind
         // them in declaration order, reporting as each lands.
-        let mut events = Vec::new();
+        let mut events = printed;
         for (shape, leaves, value) in evaluated {
             let mut slots = Vec::new();
             distribute(value, &shape, &mut slots);
@@ -3001,6 +3041,12 @@ enum BuiltinImpl {
         name: &'static str,
         no_value: DomainNoValue,
     },
+    /// A printer wrapper (atlas-types.w:8944-8957, 8850-8859): writes its
+    /// report to the evaluation output at BOTH levels and yields the empty
+    /// tuple at single_value; no diagnostics precede its no-value gate.
+    DomainPrinter {
+        name: &'static str,
+    },
     DomainRelation(Relation),
 }
 
@@ -3061,6 +3107,7 @@ impl Builtin {
         arguments: Vec<Value>,
         span: SourceSpan,
         level: Level,
+        context: &mut EvaluationContext,
     ) -> Result<Option<Value>, Control> {
         match self.implementation {
             BuiltinImpl::Scalar(operation) => run_scalar(operation, arguments, span, level),
@@ -3079,6 +3126,12 @@ impl Builtin {
                 domain_builtins::call(name, &arguments, span)
                     .map(|value| at_builtin_level(level, || value))
                     .map_err(Control::Runtime)
+            }
+            BuiltinImpl::DomainPrinter { name } => {
+                let text = domain_builtins::print_text(name, &arguments, span)
+                    .map_err(Control::Runtime)?;
+                context.print_text(text);
+                Ok(at_builtin_level(level, || Value::Tuple(Vec::new())))
             }
             BuiltinImpl::DomainRelation(relation) => {
                 let (first, second) = expect_pair(arguments);
@@ -3172,6 +3225,18 @@ fn domain_builtin_validate(
     hunger: u8,
 ) -> Builtin {
     domain_builtin_with_level(name, arg_type, result, hunger, DomainNoValue::Validate)
+}
+
+/// A printer wrapper entry: `void` result, the report produced at both
+/// evaluation levels (upstream prints before its `wrap_tuple<0>()` gate).
+fn domain_printer_builtin(name: &'static str, arg_type: Type) -> Builtin {
+    Builtin {
+        name,
+        arg_type,
+        result: Type::void(),
+        hunger: 0,
+        implementation: BuiltinImpl::DomainPrinter { name },
+    }
 }
 
 fn domain_relation_builtin(name: &'static str, arg_type: Type, relation: Relation) -> Builtin {
@@ -4191,6 +4256,19 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             ),
             domain_builtin_skip("form_number", primitive_type(Prim::RealForm), int_type(), 0),
             domain_builtin_skip("KGB_size", primitive_type(Prim::RealForm), int_type(), 0),
+            // print_KGB_wrapper (atlas-types.w:8944-8957): prints
+            // `kgbsize: N` then kgb_io::var_print_KGB, unconditionally —
+            // the report fires at both evaluation levels. The selection
+            // overload (atlas-types.w:8958-8973) shares the plumbing; its
+            // real-form mismatch diagnostic fires inside the print.
+            domain_printer_builtin("print_KGB", primitive_type(Prim::RealForm)),
+            domain_printer_builtin(
+                "print_KGB",
+                Type::tuple(vec![
+                    primitive_type(Prim::RealForm),
+                    Type::row(primitive_type(Prim::KgbElt)),
+                ]),
+            ),
             domain_builtin_validate(
                 "KGB",
                 Type::tuple(vec![primitive_type(Prim::RealForm), int_type()]),
@@ -4385,6 +4463,9 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 Type::row(int_type()),
                 0,
             ),
+            // print_strongreal_wrapper (atlas-types.w:8850-8859):
+            // output::printStrongReal, unconditional like print_KGB.
+            domain_printer_builtin("print_strong_real", primitive_type(Prim::CartanClass)),
             domain_relation_builtin("=", pair(primitive_type(Prim::LieType)), Relation::Equal),
             domain_relation_builtin(
                 "!=",
@@ -4603,7 +4684,7 @@ impl TypedExpr {
                     .iter()
                     .map(|argument| force(argument, context))
                     .collect::<Result<Vec<_>, _>>()?;
-                builtin_registry()[*builtin].run(values, *span, level)
+                builtin_registry()[*builtin].run(values, *span, level, context)
             }
             Self::Closure {
                 parameters,

@@ -363,3 +363,49 @@ fn typed_container_errors_have_the_expected_phase() {
         assert_eq!(diagnostic.kind, expected_kind, "source: {source}");
     }
 }
+
+#[test]
+fn involution_table_fixture_prints_the_frozen_kgb_and_strong_real_text() {
+    let events = run_source(&SourceText::new(include_str!(
+        "../../../tests/fixtures/domain/involution_table.atlas"
+    )));
+    assert!(
+        diagnostics(&events).is_empty(),
+        "fixture failed: {events:?}"
+    );
+    let reports: Vec<&str> = events
+        .iter()
+        .filter_map(|event| match event {
+            SessionEvent::ReportLine { text, .. } => Some(text.as_str()),
+            SessionEvent::Value { .. }
+            | SessionEvent::Output { .. }
+            | SessionEvent::Diagnostic(_) => None,
+        })
+        .collect();
+    assert_eq!(
+        reports,
+        vec![
+            "Declaring identifier 'rd': RootDatum\n",
+            "Declaring identifier 'ic': InnerClass\n",
+            "Declaring identifier 'rf': RealForm\n",
+            "kgbsize: 3\nBase grading: [1].\n0:  0  [n]   1    2  (0)#0 e\n1:  0  [n]   0    2  (1)#0 e\n2:  1  [r]   2    *  (0)#1 1^e\n",
+            "Declaring identifier 'rc': RealForm\n",
+            "kgbsize: 1\nBase grading: [0].\n0:  0  [c]   0    *  (0)#0 e\n",
+            "Declaring identifier 'cc': CartanClass\n",
+            "class #0, possible square: exp(2i\\pi([1]/2))\nreal form #1: [0] (1)\n",
+        ]
+    );
+}
+
+#[test]
+fn involution_table_rejected_fixture_is_the_two_overload_wording() {
+    let events = run_source(&SourceText::new(include_str!(
+        "../../../tests/fixtures/domain/involution_table_rejected.atlas"
+    )));
+    let diagnostic = single_diagnostic(&events);
+    assert_eq!(diagnostic.kind, ErrorKind::Type);
+    assert_eq!(
+        diagnostic.message,
+        "Failed to match 'print_KGB' with argument type RootDatum"
+    );
+}

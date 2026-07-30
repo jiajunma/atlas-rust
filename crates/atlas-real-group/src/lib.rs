@@ -75,7 +75,10 @@ pub use restricted_roots::{RestrictedRoot, RestrictedRootSystem, RestrictedWeigh
 pub use root_datum::BasedRootDatum;
 pub use root_involution::{RootInvolutionData, RootKind};
 pub use root_system::{RootId, RootSystem, RootSystemBudget};
-pub use strong_real::{SquareClassId, StrongRealClassification, StrongRealData, StrongRealFormRep};
+pub use strong_real::{
+    strong_real_class_prints, SquareClassId, StrongRealClassPrint, StrongRealClassification,
+    StrongRealData, StrongRealFormRep,
+};
 pub use tits_element::{TitsCoset, TitsElement};
 pub use twisted_involution::TwistedInvolution;
 pub use weak_real_form::{WeakRealFormId, WeakRealFormPartition};

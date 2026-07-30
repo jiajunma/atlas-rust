@@ -50,6 +50,9 @@ pub struct KgbGraph {
     form: WeakRealFormId,
     rank: usize,
     cocharacter: RationalCoweight,
+    /// The seed's grading offset — upstream `KGB_base::base_grading`
+    /// (kgb.h:339), the `Base grading: [...]` header of `var_print_KGB`.
+    base_grading: Vec<bool>,
     elements: Vec<TitsElement>,
     /// Sorted involution position per element.
     element_position: Vec<usize>,
@@ -375,6 +378,7 @@ impl KgbGraph {
             form,
             rank,
             cocharacter: seed.square_class_cocharacter().clone(),
+            base_grading: seed.grading_offset().to_vec(),
             elements,
             element_position,
             statuses,
@@ -405,6 +409,13 @@ impl KgbGraph {
     /// with the simple roots give the form's base grading.
     pub fn cocharacter(&self) -> &RationalCoweight {
         &self.cocharacter
+    }
+
+    /// The form's base grading over the simple roots (upstream
+    /// `KGB_base::base_grading`): set = the simple root is graded
+    /// (noncompact at the base), the bit printed `1` in the header.
+    pub fn base_grading(&self) -> &[bool] {
+        &self.base_grading
     }
 
     pub fn semisimple_rank(&self) -> usize {

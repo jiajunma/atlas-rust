@@ -1,9 +1,14 @@
+use malachite::base::num::arithmetic::traits::{DivisibleBy, Floor};
+use malachite::base::num::basic::traits::Zero;
+use malachite::{Integer, Rational};
+
 use crate::grading::try_capacity;
 use crate::mod_two::ModTwoSubquotient;
+use crate::real_form_seed::{fractional_part, fundamental_coweights, stable_log};
 use crate::weak_real_form::{walk_mask_orbits, MAX_MASK_BITS};
 use crate::{
-    AdjointFiberElement, CartanClassification, CartanId, ModTwoSubspace, ModTwoVector,
-    StructureError, WeakRealFormId,
+    AdjointFiberElement, CartanClassification, CartanId, ExternalFormOrder, InnerClass,
+    IntegerLatticeBudget, ModTwoSubspace, ModTwoVector, StructureError, WeakRealFormId,
 };
 
 /// Stable identifier for one central square class of one Cartan's fiber.
@@ -17,6 +22,14 @@ use crate::{
 /// (partition structure and all sizes are convention-invariant).
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct SquareClassId(pub(crate) usize);
+
+impl SquareClassId {
+    /// The coset-coordinate integer of the class — the `class #N` number of
+    /// upstream's `printStrongReal` (output.cpp:524).
+    pub fn index(&self) -> usize {
+        self.0
+    }
+}
 
 /// A strong real form representative: a `W_im` orbit in the fiber group of
 /// one square class, lying over one weak real form.
@@ -48,6 +61,7 @@ pub struct StrongRealData {
     central_square_classes: Vec<SquareClassId>,
     class_bases: Vec<AdjointFiberElement>,
     orbit_sizes: Vec<Vec<usize>>,
+    orbit_elements: Vec<Vec<Vec<u64>>>,
     to_weak_real: Vec<Vec<usize>>,
     strong_representatives: Vec<StrongRealFormRep>,
 }
@@ -76,6 +90,27 @@ impl StrongRealData {
     /// The number of `W_im` orbits in one square class's fiber partition.
     pub fn fiber_orbit_count(&self, square: SquareClassId) -> Option<usize> {
         self.orbit_sizes.get(square.0).map(Vec::len)
+    }
+
+    /// The lowest-numbered local weak class of one square class — upstream
+    /// `realFormPartition().classRep(csc)` (makeRealFormPartition elects
+    /// the first form it meets, and forms are swept ascending).
+    pub fn square_class_representative(&self, square: SquareClassId) -> Option<WeakRealFormId> {
+        let position = self
+            .central_square_classes
+            .iter()
+            .position(|candidate| *candidate == square)?;
+        Some(WeakRealFormId(position))
+    }
+
+    /// The fiber-element masks of one orbit, ascending (the
+    /// `printStrongReal` `[...]` list; its length is the parenthesised
+    /// count). Bounded by the square class count and the orbit count.
+    pub fn orbit_elements(&self, square: SquareClassId, orbit: usize) -> Option<&[u64]> {
+        self.orbit_elements
+            .get(square.0)?
+            .get(orbit)
+            .map(Vec::as_slice)
     }
 
     /// The weak real form lying under one strong orbit: upstream
@@ -250,6 +285,7 @@ impl StrongRealClassification {
             // One walk per square class; tables stay transient but live long
             // enough to classify the strong-representative solutions.
             let mut orbit_sizes = try_capacity(square_class_count)?;
+            let mut orbit_elements = try_capacity(square_class_count)?;
             let mut to_weak_real = try_capacity(square_class_count)?;
             let mut tables = try_capacity(square_class_count)?;
             for base_element in &class_bases {
@@ -280,6 +316,19 @@ impl StrongRealClassification {
                         .checked_add(1)
                         .ok_or(StructureError::ArithmeticOverflow)?;
                 }
+                // Per-orbit member masks, ascending — the order upstream's
+                // PartitionIterator serves a class's elements in (its
+                // stable sort by class, partition.cpp:148-177), which the
+                // `printStrongReal` orbit lists echo verbatim.
+                let mut members = try_capacity(orbits.representative_masks.len())?;
+                members.resize_with(orbits.representative_masks.len(), Vec::new);
+                for (index, &class) in orbits.class_of_by_mask.iter().enumerate() {
+                    let class =
+                        usize::try_from(class).map_err(|_| StructureError::ArithmeticOverflow)?;
+                    members[class].push(
+                        u64::try_from(index).map_err(|_| StructureError::ArithmeticOverflow)?,
+                    );
+                }
                 // toWeakReal per orbit: the adjoint orbit of
                 // `class_base(csc) + toAdjoint(rep)`, with `rep` the fiber
                 // element of the orbit's representative mask.
@@ -298,6 +347,7 @@ impl StrongRealClassification {
                     weak_row.push(weak.class_of(&sum)?.0);
                 }
                 orbit_sizes.push(sizes);
+                orbit_elements.push(members);
                 to_weak_real.push(weak_row);
                 tables.push(orbits.class_of_by_mask);
             }
@@ -377,6 +427,7 @@ impl StrongRealClassification {
                 central_square_classes,
                 class_bases,
                 orbit_sizes,
+                orbit_elements,
                 to_weak_real,
                 strong_representatives,
             });
@@ -474,6 +525,262 @@ impl StrongRealClassification {
     pub fn global_kgb_size(&self) -> usize {
         self.global_kgb_size
     }
+}
+
+/// One square class's `printStrongReal` block (upstream output.cpp:503-537):
+/// the fundamental square-class number, the elected possible-square
+/// coweight, and the per-orbit external form numbers with their fiber
+/// elements.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct StrongRealClassPrint {
+    class_number: usize,
+    square_numerators: Vec<i64>,
+    square_denominator: u64,
+    real_forms: Vec<(usize, Vec<u64>)>,
+}
+
+impl StrongRealClassPrint {
+    /// The `class #N` number: `xi_square` of the class representative,
+    /// lifted to the fundamental fiber (output.cpp:506-508).
+    pub fn class_number(&self) -> usize {
+        self.class_number
+    }
+
+    /// The `z` of `possible square: exp(2i\pi(z))`: numerators over one
+    /// positive denominator, each numerator already reduced to its
+    /// nonnegative remainder modulo the denominator (output.cpp:519-521).
+    pub fn square(&self) -> (&[i64], u64) {
+        (&self.square_numerators, self.square_denominator)
+    }
+
+    /// Per orbit, in partition order: the weak form's EXTERNAL number
+    /// (upstream `rfi.out`, which may repeat across orbits) and its
+    /// ascending fiber-element masks (the `[...]` list; its length is the
+    /// parenthesised count).
+    pub fn real_forms(&self) -> &[(usize, Vec<u64>)] {
+        &self.real_forms
+    }
+}
+
+/// The `printStrongReal` data of one Cartan class, one block per square
+/// class in ascending order (output.cpp:490-540).
+pub fn strong_real_class_prints(
+    inner_class: &InnerClass,
+    classification: &CartanClassification,
+    strong: &StrongRealClassification,
+    order: &ExternalFormOrder,
+    cartan: CartanId,
+    budget: &IntegerLatticeBudget,
+) -> Result<Vec<StrongRealClassPrint>, StructureError> {
+    let cartan_class =
+        classification
+            .cartan_class(cartan)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: cartan.0,
+                upper_bound: classification.cartan_classes().len(),
+            })?;
+    let data = strong
+        .strong_real_data(cartan)
+        .ok_or(StructureError::IndexOutOfRange {
+            index: cartan.0,
+            upper_bound: classification.cartan_classes().len(),
+        })?;
+    let fundamental = classification.cartan_class(CartanId(0)).ok_or(
+        StructureError::StrongRealInvariantViolation {
+            invariant: "fundamental class",
+        },
+    )?;
+    let fundamental_data = strong.strong_real_data(CartanId(0)).ok_or(
+        StructureError::StrongRealInvariantViolation {
+            invariant: "fundamental class",
+        },
+    )?;
+
+    let datum = inner_class.datum();
+    let system = inner_class.root_system();
+    let delta_data = inner_class.distinguished_involution();
+    let simple_ids = system.simple_root_ids();
+    let lattice_rank = datum.lattice_rank();
+    let coweights = fundamental_coweights(datum)?;
+    // stable_log takes the xi^T-plus-one matrix (y_values.cpp:155-166).
+    let mut xi_plus_one = try_capacity(lattice_rank)?;
+    for (index, row) in delta_data.involution().coweight_matrix().iter().enumerate() {
+        let mut entries = try_capacity(lattice_rank)?;
+        for (column, &value) in row.iter().enumerate() {
+            entries.push(if index == column { value + 1 } else { value });
+        }
+        xi_plus_one.push(entries);
+    }
+
+    let mut result = try_capacity(data.square_class_count())?;
+    for square in data.square_classes() {
+        // xi_square of the class representative, lifted through the labels
+        // into the fundamental fiber (output.cpp:506-508).
+        let local = data.square_class_representative(square).ok_or(
+            StructureError::StrongRealInvariantViolation {
+                invariant: "square class representative",
+            },
+        )?;
+        let global = cartan_class.labels().label(local).ok_or(
+            StructureError::StrongRealInvariantViolation {
+                invariant: "square class representative",
+            },
+        )?;
+        let fundamental_square = fundamental_data.central_square_class(global).ok_or(
+            StructureError::StrongRealInvariantViolation {
+                invariant: "square class representative",
+            },
+        )?;
+
+        // some_coch (innerclass.cpp:966-977): the fundamental coweights of
+        // the square-class representative's COMPACT delta-fixed simples,
+        // summed, then stably logged.
+        let fundamental_local = fundamental_data
+            .square_class_representative(fundamental_square)
+            .ok_or(StructureError::StrongRealInvariantViolation {
+                invariant: "square class representative",
+            })?;
+        let base_element = fundamental
+            .partition()
+            .class_representative(fundamental_local)
+            .ok_or(StructureError::StrongRealInvariantViolation {
+                invariant: "square class representative",
+            })?;
+        let base_grading = fundamental.grading().grading(base_element)?;
+        let mut coch_rep = try_capacity(lattice_rank)?;
+        coch_rep.resize(lattice_rank, Rational::ZERO);
+        for (generator, &simple_id) in simple_ids.iter().enumerate() {
+            if delta_data.image(simple_id) != Some(simple_id) {
+                continue;
+            }
+            let position = fundamental
+                .grading()
+                .imaginary_simple_roots()
+                .iter()
+                .position(|&candidate| candidate == simple_id)
+                .ok_or(StructureError::StrongRealInvariantViolation {
+                    invariant: "fixed simple root",
+                })?;
+            if !base_grading.is_noncompact(position).ok_or(
+                StructureError::StrongRealInvariantViolation {
+                    invariant: "fixed simple root",
+                },
+            )? {
+                for (slot, value) in coch_rep.iter_mut().zip(&coweights[generator]) {
+                    *slot += value;
+                }
+            }
+        }
+        let coch = stable_log(&coch_rep, &xi_plus_one, budget)?;
+
+        // grading_of_simples (innerclass.cpp:1295-1304): a simple root is
+        // marked when its pairing with the cocharacter is EVEN; `z` sums
+        // the fundamental coweights of the marked simples.
+        let mut z = try_capacity(lattice_rank)?;
+        z.resize(lattice_rank, Rational::ZERO);
+        for (generator, root) in datum.simple_roots().iter().enumerate() {
+            let mut pairing = Rational::ZERO;
+            for (value, &coordinate) in coch.iter().zip(root.as_slice()) {
+                pairing += value.clone() * Rational::from(coordinate);
+            }
+            if fractional_part(&pairing) != Rational::ZERO {
+                return Err(StructureError::StrongRealInvariantViolation {
+                    invariant: "integral simple pairing",
+                });
+            }
+            if pairing.floor().divisible_by(&Integer::from(2)) {
+                for (slot, value) in z.iter_mut().zip(&coweights[generator]) {
+                    *slot += value;
+                }
+            }
+        }
+        let (square_numerators, square_denominator) = normalized_remainder(&z)?;
+
+        let orbit_count =
+            data.fiber_orbit_count(square)
+                .ok_or(StructureError::StrongRealInvariantViolation {
+                    invariant: "square class count",
+                })?;
+        let mut real_forms = try_capacity(orbit_count)?;
+        for orbit in 0..orbit_count {
+            let local = data.weak_real_of_orbit(square, orbit).ok_or(
+                StructureError::StrongRealInvariantViolation {
+                    invariant: "orbit count",
+                },
+            )?;
+            let global = cartan_class.labels().label(local).ok_or(
+                StructureError::StrongRealInvariantViolation {
+                    invariant: "orbit weak form",
+                },
+            )?;
+            let external =
+                order
+                    .external(global)
+                    .ok_or(StructureError::StrongRealInvariantViolation {
+                        invariant: "orbit weak form",
+                    })?;
+            let elements = data.orbit_elements(square, orbit).ok_or(
+                StructureError::StrongRealInvariantViolation {
+                    invariant: "orbit count",
+                },
+            )?;
+            real_forms.push((external, elements.to_vec()));
+        }
+        result.push(StrongRealClassPrint {
+            class_number: fundamental_square.index(),
+            square_numerators,
+            square_denominator,
+            real_forms,
+        });
+    }
+    Ok(result)
+}
+
+/// `z` as one fraction — the shared denominator (lcm of the entry
+/// denominators), gcd-normalised like upstream's `RatWeight`, then each
+/// numerator reduced to its NONNEGATIVE remainder modulo the denominator
+/// (upstream `arithmetic::remainder`, output.cpp:519-521). The remainder
+/// pass preserves the gcd, so no second normalisation is needed.
+fn normalized_remainder(z: &[Rational]) -> Result<(Vec<i64>, u64), StructureError> {
+    let mut denominator = 1_u64;
+    for value in z {
+        let entry = u64::try_from(value.denominator_ref())
+            .map_err(|_| StructureError::ArithmeticOverflow)?;
+        denominator = denominator
+            .checked_mul(entry / gcd_u64(denominator, entry))
+            .ok_or(StructureError::ArithmeticOverflow)?;
+    }
+    let mut numerators = try_capacity(z.len())?;
+    let mut divisor = denominator;
+    for value in z {
+        let scaled = value * Rational::from(denominator);
+        let integer = Integer::try_from(&scaled).map_err(|_| {
+            StructureError::StrongRealInvariantViolation {
+                invariant: "square fraction",
+            }
+        })?;
+        let numerator = i64::try_from(&integer).map_err(|_| StructureError::ArithmeticOverflow)?;
+        divisor = gcd_u64(divisor, numerator.unsigned_abs());
+        numerators.push(numerator);
+    }
+    if divisor > 1 {
+        for numerator in &mut numerators {
+            *numerator /= i64::try_from(divisor).map_err(|_| StructureError::ArithmeticOverflow)?;
+        }
+        denominator /= divisor;
+    }
+    let modulus = i64::try_from(denominator).map_err(|_| StructureError::ArithmeticOverflow)?;
+    for numerator in &mut numerators {
+        *numerator = numerator.rem_euclid(modulus);
+    }
+    Ok((numerators, denominator))
+}
+
+fn gcd_u64(mut left: u64, mut right: u64) -> u64 {
+    while right != 0 {
+        (left, right) = (right, left % right);
+    }
+    left
 }
 
 fn strong_limit_error(resource: &'static str, limit: usize) -> StructureError {
@@ -635,5 +942,113 @@ mod tests {
                 limit: 1,
             })
         ));
+    }
+
+    fn print_pipeline(
+        datum: &BasedRootDatum,
+        weyl: usize,
+    ) -> (
+        InnerClass,
+        CartanClassification,
+        StrongRealClassification,
+        ExternalFormOrder,
+    ) {
+        let inner_class = InnerClass::new(
+            datum.clone(),
+            LatticeInvolution::identity(datum).unwrap(),
+            2 * weyl.max(4),
+        )
+        .unwrap();
+        let budget = CartanClassificationBudget::new(
+            IntegerLatticeBudget::new(64, 100_000, 100_000, 128),
+            AdjointFiberBudget::new(
+                IntegerLatticeBudget::new(64, 100_000, 100_000, 128),
+                50_000,
+                100_000,
+            ),
+            weyl,
+            64,
+            64,
+        );
+        let classification = CartanClassification::build(&inner_class, &budget).unwrap();
+        let strong = StrongRealClassification::build(&classification, 64).unwrap();
+        let order = ExternalFormOrder::build(&inner_class, &classification).unwrap();
+        (inner_class, classification, strong, order)
+    }
+
+    #[test]
+    fn strong_real_class_prints_match_the_oracle_blocks() {
+        let budget = IntegerLatticeBudget::new(64, 100_000, 100_000, 128);
+
+        // A1 simply connected, split inner class — the involution_table
+        // fixture's print_strong_real anchor: Cartan #1 prints
+        // `class #0, possible square: exp(2i\pi([1]/2))` then
+        // `real form #1: [0] (1)`.
+        let datum = BasedRootDatum::from_simple_data(
+            1,
+            vec![vec![2]],
+            vec![Weight::new(vec![2])],
+            vec![Coweight::new(vec![1])],
+        )
+        .unwrap();
+        let (inner_class, classification, strong, order) = print_pipeline(&datum, 2);
+        let split = classification.cartan_ids().nth(1).unwrap();
+        let prints = strong_real_class_prints(
+            &inner_class,
+            &classification,
+            &strong,
+            &order,
+            split,
+            &budget,
+        )
+        .unwrap();
+        assert_eq!(prints.len(), 1);
+        assert_eq!(prints[0].class_number(), 0);
+        assert_eq!(prints[0].square(), (&[1][..], 2));
+        assert_eq!(prints[0].real_forms(), &[(1, vec![0])]);
+
+        // B2 simply connected, split inner class — oracle anchors:
+        // Cartan #2 (the strong_real fixture's print block) and Cartan #0
+        // (multi-element orbits with an external-number collapse).
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2, -2], vec![-1, 2]],
+            vec![Weight::new(vec![2, -2]), Weight::new(vec![-1, 2])],
+            vec![Coweight::new(vec![1, 0]), Coweight::new(vec![0, 1])],
+        )
+        .unwrap();
+        let (inner_class, classification, strong, order) = print_pipeline(&datum, 8);
+        // The crate's B2 Cartan sweep orders the classes as upstream's
+        // #0, #2, #3, #1 (a known enumeration-order gap owned by the
+        // Cartan_class surface, not by this print data): upstream's c2
+        // block (the strong_real fixture anchor) is the crate's second
+        // class, and upstream's c0 block (multi-element orbits with an
+        // external-number collapse) is the first.
+        let c2 = classification.cartan_ids().nth(1).unwrap();
+        let prints =
+            strong_real_class_prints(&inner_class, &classification, &strong, &order, c2, &budget)
+                .unwrap();
+        assert_eq!(prints.len(), 2);
+        assert_eq!(prints[0].class_number(), 0);
+        assert_eq!(prints[0].square(), (&[0, 1][..], 2));
+        assert_eq!(prints[0].real_forms(), &[(2, vec![0])]);
+        assert_eq!(prints[1].class_number(), 1);
+        assert_eq!(prints[1].square(), (&[0, 0][..], 1));
+        assert_eq!(prints[1].real_forms(), &[(1, vec![0])]);
+
+        let c0 = classification.cartan_ids().next().unwrap();
+        let prints =
+            strong_real_class_prints(&inner_class, &classification, &strong, &order, c0, &budget)
+                .unwrap();
+        assert_eq!(prints.len(), 2);
+        assert_eq!(prints[0].class_number(), 0);
+        assert_eq!(prints[0].square(), (&[0, 1][..], 2));
+        assert_eq!(prints[0].real_forms(), &[(2, vec![0, 1, 2, 3])]);
+        assert_eq!(prints[1].class_number(), 1);
+        assert_eq!(prints[1].square(), (&[0, 0][..], 1));
+        assert_eq!(
+            prints[1].real_forms(),
+            &[(1, vec![0, 2]), (0, vec![1]), (0, vec![3])]
+        );
     }
 }

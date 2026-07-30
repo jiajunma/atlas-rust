@@ -35,11 +35,26 @@ pub struct Frame {
 #[derive(Default)]
 pub struct EvaluationContext {
     current: Option<Rc<Frame>>,
+    /// Text produced by printer builtins (upstream writes to
+    /// `*output_stream` mid-evaluation); the command layer drains it into
+    /// report events after each top-level evaluation.
+    printed: Vec<String>,
 }
 
 impl EvaluationContext {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Append one printer builtin's output (upstream's unconditional
+    /// `*output_stream` writes, e.g. atlas-types.w:8944-8957).
+    pub fn print_text(&mut self, text: String) {
+        self.printed.push(text);
+    }
+
+    /// Drain the buffered printer output in production order.
+    pub fn take_printed(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.printed)
     }
 
     /// The current chain head, for capture into a closure value.
