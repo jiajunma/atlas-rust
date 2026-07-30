@@ -1,4 +1,4 @@
-# Atlas-Rust handoff - 2026-07-29 (B4 loops verified)
+# Atlas-Rust handoff - 2026-07-29 (B5 set_type verified)
 
 This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
@@ -8,11 +8,11 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
 - Branch: `main`.
 - B3a non-recursive functions, B3b recursive functions / definition sugar,
-  B3c parameter patterns, B3d selectors, and B4 loops are implemented and
-  differentially verified. The exact commit is shown by
+  B3c parameter patterns, B3d selectors, B4 loops, and B5 `set_type` are
+  implemented and differentially verified. The exact commit is shown by
   `git log -1 --oneline`.
-- B5 set_type, B6 case/counted-for, and B7 misc commands have frozen reference
-  events (captures `3499601`, `3499627`, `3499657`); the B5 implementation is
+- B6 case/counted-for and B7 misc commands have frozen reference
+  events (captures `3499627`, `3499657`); the B6 implementation is
   in progress.
 - B8 user overloads (`3499692`, `3499705`), B9 file-command redirection
   (`3499747`), and B10 fromfile/quit (`3500378`) have frozen references
@@ -38,9 +38,30 @@ through the standard overload table, and loops (`while`/`for` collecting each
 iteration's body value into a row, `break` discarding the breaking iteration,
 `for x@i` index binding, `;` sequencing). This is not a
 claim of full Atlas compatibility: InnerClass/RealForm/KGB rendering and
-numbering, relations, primitive `involution` constructors, `set_type`, case
+numbering, relations, primitive `involution` constructors, case
 discrimination, counted `for`, user overloads, file commands, and later math
 overloads remain pending differential evidence.
+
+## Verified stage: B5 set_type
+
+- `tests/fixtures/eval/settype_b5.atlas` (accepted: single-name `set_type`
+  aliases with projector/injector overloads, bracketed `set_type [ ... ]`
+  entering the tabled type map for case discrimination and recursion, union
+  values displaying as `value.tag`, tabled types printing by name in
+  `whattype`, `Defined type:`/`Type:` headers) and
+  `tests/fixtures/eval/settype_b5_rejected.atlas` (rejected: `expr : type`
+  ascription syntax error, case discrimination on a union named only by the
+  single-name form, discrimination branches with disagreeing result types).
+- Oracle capture: `3499601` (commit `559f363`), PASS against the frozen oracle.
+- Differential: `pipeline_swap_diff` job `3500393` at commit `9bb95e3`
+  reports both fixtures PASS (suite PARTIAL as long as
+  `pipeline_swap_domain_equality` keeps its pending domain lines; B6-B12
+  fixtures still FAIL until implemented).
+- Reference metadata: `tests/reference/eval/settype_b5{,_rejected}.meta.json`
+  carry `rust_status: verified_hpc` with `differential_job: 3500393`.
+- Note: job `3500391` was invalidated by fixture-side file creation inside
+  the frozen snapshot; commit `9bb95e3` moved fixture execution into an
+  isolated per-run workspace directory.
 
 ## Verified stage: B4 loops
 
@@ -173,44 +194,40 @@ The bounded local checks for this stage:
   and re-capture anything taken in the dirty window (job `3499634` was
   re-taken as `3499638`).
 
-## Next implementation slice (B5 set_type in flight, then B6/B7/B8/B9)
+## Next implementation slice (B6 case/counted-for in flight, then B7/B8/B9)
 
 In rough dependency order, each with its own fixture + HPC capture first:
 
-1. B5 `set_type` (capture `3499601`, commit `559f363`): the single-name form
-   defines aliases plus projector/injector overloads but cannot support
-   `case` discrimination; only the bracketed `set_type [ ... ]` form enters
-   types into the tabled type map (required by discrimination and
-   recursion); union values display as `value.tag`; tabled types print by
-   name in `whattype`; `expr : type` ascription is a syntax error.
-   Implementation in progress.
-2. B6 case and counted for (capture `3499627`, commit `cfdd9cc`): integer
+1. B6 case and counted for (capture `3499627`, commit `cfdd9cc`): integer
    case selects in-list branches by 0-based index with remainder wrapping;
    else catches out-of-range, then catches negative; positional union case
    branches are functions; counted `for i: n from m`/`downto`; `e1 next e2`
    collects e1.
-3. B7 misc commands (capture `3499657`, commit `21ee423`): `forget` of
+2. B7 misc commands (capture `3499657`, commit `21ee423`): `forget` of
    unknown identifiers and of single overloads, `die` as a runtime
    diagnostic with batch continuation, coercion fallback after overload
    removal. The `whattype id_op ?` overload listing is deferred until the
    domain types appearing in builtin lists are ported.
-4. B8 user overloads (captures `3499692`, `3499705`): `set f = <lambda>`
+3. B8 user overloads (captures `3499692`, `3499705`): `set f = <lambda>`
    accumulates overloads (`Defined f: T`, `Added definition [2] of f: T`,
    `Redefined f: T` for a repeated signature), `whattype f ?` lists user
    overloads in definition order, calls resolve by arity, and a variable can
    coexist with function definitions on one identifier; wrong-arity calls
    are analysis-time type errors.
-5. B9 file commands (capture `3499747`; probe `3499729`, file evidence
+4. B9 file commands (capture `3499747`; probe `3499729`, file evidence
    `3499737`): `> "f" expr` / `>> "f" expr` redirect only the
    `Value: ...` line (truncate/append), a failed open prints
    `Failed to open <name>` on stderr and continues, and `tofile` accepts
-   only an expression (`set` there is a syntax error).
-6. B10 fromfile/quit (capture `3500378`): `< "f"` / `<< "f"` with a missing
+   only an expression (`set` there is a syntax error). The accepted lines
+   already PASS as of job `3500393`; the rejected line needs parse failure
+   before the output file is opened, and open failures must render through
+   the `Io error:` diagnostic header.
+5. B10 fromfile/quit (capture `3500378`): `< "f"` / `<< "f"` with a missing
    target print `failed to open input file '<name>'.` on stderr, batch
    continues, exit stays 0; `quit` mid-input terminates evaluation
    immediately, still prints `Bye.`, exit 0. Accepted-form inclusion
    semantics still need an HPC-absolute helper probe.
-7. Domain surface, smallest first: `pipeline_swap_domain_equality` lines
+6. Domain surface, smallest first: `pipeline_swap_domain_equality` lines
    3-14 (capture `3496440`) need oracle-exact InnerClass/RealForm rendering
    (inner-class type letter, real-form counts, Lie-algebra naming), KGB
    numbering (`#0` labels), and equality/inequality on domain handles; the

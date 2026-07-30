@@ -12,7 +12,7 @@
   "oracle_stdout_sha256": "2914c4c0d53de5a28b6f07f94a54c3936c966b08aeadc6c44d0b1954827ef110",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "capture_artifacts_sha256": "a5196574f4f1b8e22e891893cd22194394597ff5fa8ce08654bddbd0918ad483",
-  "rust_status": "implemented_pending_hpc",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/parser.y:163-167",
     "sources/interpreter/parser.y:753-761",
@@ -20,5 +20,6 @@
     "sources/interpreter/axis.w:5146-5168",
     "sources/interpreter/global.w:1639"
   ],
-  "notes": "B5 set_type slice, split from probes settype_probe..4 (captures 3498819, 3498820, 3498932, 3498991). Single-name set_type defines an alias with projector/injector overloads; only the bracketed form enters the type into the tabled type map, enabling case discrimination and recursion. Union values display as value.tag; whattype prints 'Defined type:' for names and 'Type:' for expressions, with tabled types shown by name. Reference captured by HPC job 3499601 against the frozen atlasofliegroups-4d3e9449 oracle; raw stdout normalized to ReportLine and Value events. Differential evidence remains pending until the pipeline_swap_diff run."
+  "notes": "B5 set_type slice, split from probes settype_probe..4 (captures 3498819, 3498820, 3498932, 3498991). Single-name set_type defines an alias with projector/injector overloads; only the bracketed form enters the type into the tabled type map, enabling case discrimination and recursion. Union values display as value.tag; whattype prints 'Defined type:' for names and 'Type:' for expressions, with tabled types shown by name. Reference captured by HPC job 3499601 against the frozen atlasofliegroups-4d3e9449 oracle; raw stdout normalized to ReportLine and Value events. HPC pipeline_swap_diff job 3500393 (commit 9bb95e3) reports PASS for this fixture.",
+  "differential_job": "3500393"
 }
