@@ -11,14 +11,15 @@
   "scenarios": [
     "filter_units rejects more factors than basis columns",
     "replace_gen rejects both matrix orientations with the wrong column length",
-    "replace_gen rejects too few replacement columns"
+    "replace_gen rejects too few replacement columns",
+    "ann_mod narrows its modulus before the no-value gate"
   ],
-  "notes": "Extended relation diagnostics captured verbatim by HPC jobs 3502440 and 3502442 against the frozen Atlas oracle. Differential evidence remains pending.",
+  "notes": "Extended relation diagnostics captured verbatim by HPC job 3502474 against the frozen Atlas oracle, including the execution-level ordering of ann_mod integer narrowing. Differential evidence remains pending.",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
-  "reference_job": "3502442",
-  "fixture_sha256": "123d40313572ee87443c4d56e337117fb4555b071e72e06833e1cb61dce76266",
+  "reference_job": "3502474",
+  "fixture_sha256": "d2ecfc8d67e7fb9efe2f646fd44d4a4fb11d92fd744fb42abe9ce51d7bbd4272",
   "oracle_exit_status": 1,
   "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
-  "oracle_stderr_sha256": "8a7b80901f34a9a63db30edfed9446a7acea0ab37c5b9eae55ca78fdb56b7873"
+  "oracle_stderr_sha256": "104bfc057a71e9faee3e513ba122995df61ef474083b251146f503b3e1326fe8"
 }

@@ -10,15 +10,15 @@
   ],
   "scenarios": [
     "Smith_Cartan on T2 and the D4 even-rank basis adjustment",
-    "ann_mod on zero, singular, rectangular, and negative-modulus inputs",
+    "ann_mod on zero, singular, rectangular, negative-modulus, and discarded-zero inputs",
     "quotient_basis on A3 generators with mixed denominators and a negative representative"
   ],
-  "notes": "Extended relation coverage captured verbatim by HPC job 3502464 against the frozen Atlas oracle, including the nonnegative-residue election for a negative rational generator. Differential evidence remains pending. The separate zero-modulus probe is excluded because upstream terminates with SIGFPE; safe Rust must diagnose rather than reproduce that crash.",
+  "notes": "Extended relation coverage captured verbatim by HPC job 3502474 against the frozen Atlas oracle, including the nonnegative-residue election for a negative rational generator, signed-to-unsigned compatibility for a negative modulus with nontrivial gcd, and the discarded zero-modulus path. Differential evidence remains pending. A value-producing zero-modulus call is excluded because upstream terminates with SIGFPE; safe Rust must diagnose rather than reproduce that crash.",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
-  "reference_job": "3502464",
-  "fixture_sha256": "096da2910502f0a81929fd94becdc654166190911ce27d2e986a8ca0d50e90fc",
+  "reference_job": "3502474",
+  "fixture_sha256": "356f64955e63a37ff776ca11110f029dfaa46a3dabd980c58f6b5a5de257cfdc",
   "oracle_exit_status": 0,
-  "oracle_stdout_sha256": "0caef635a9693da7bf78795a2b16c3dc78fc5cf4554c83099df0875c21992902",
+  "oracle_stdout_sha256": "1df1fc06356d107a33d750dbd591bae7d170d8223491c00e256b10793b9e0037",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 }
