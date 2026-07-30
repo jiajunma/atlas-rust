@@ -217,8 +217,20 @@ adjective chain non-standard/non-dominant/zero/non-final/non-normal/final +
 atlas-types.w:5210+5224); needs crate Rep_context/K_repr machinery
 (repr.{h,cpp}, K_repr.h) — sr_K normalization and the predicate set are the
 math core of this slice) →
-`ktypepol_basic` (null_K_module/#/±KType/int scaling/first_term/last_term —
-atlas-types.w:6091-6117; terms carry Split coefficients) →
+`ktypepol_basic` (KTypePol install list atlas-types.w:6091-6117:
+null_K_module(RealForm->KTypePol) display 'Empty sum of K-types';
+real_form; unary =/!= zero tests; =/!=(KTypePol,KTypePol); # = TERM count
+(not coefficient sum; anchor: #R=1 for 2*K); +(KTypePol,KType) /
+-(KTypePol,KType) merging like terms (anchor: Q+K doubles coefficient);
++(KTypePol,(Split,KType)) and +(KTypePol,[(Split,KType)]) term-list forms;
++(KTypePol,KTypePol) / -(KTypePol,KTypePol); *(int,KTypePol) /
+*(Split,KTypePol); last_term/first_term(KTypePol->Split,KType) — the tuple
+prints Split in FULL '(e+fs)' form and the KType WITH adjective prefix;
+truncate_above_height(KTypePol,int); pol display per basic_io.cpp:165
+print_K_type_pol: coefficient embellishment — full print_split only when
+BOTH e and s components occur across terms, else bare e (or '{s}s'), then
+'*' + ' K_type(x=N, lambda=rho+lam_rho)' (NO adjective) + ' [{height}]',
+one '\\n' per term; empty -> 'Empty sum of K-types') →
 `param_basic` (param(KGBElt,vec,ratvec)/%/height/predicates/real_form/
 K_type/param(KType) — atlas-types.w:7472-7480; rank-mismatch wording
 'Rank mismatch: (r,a,b)') →
