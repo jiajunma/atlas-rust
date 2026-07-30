@@ -1,33 +1,185 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "domain/root_coroot",
-  "status": "pending_hpc_reference",
+  "status": "verified_hpc_reference",
   "events": [
-    {"kind": "ReportLine", "text": "Declaring identifier 'ra': RootDatum\n"},
-    {"kind": "Value", "value": {"type": "domain", "domain": "RootDatum", "display": "simply connected root datum of Lie type 'A2'"}},
-    {"kind": "Value", "value": {"type": "integer", "value": 3}},
-    {"kind": "Value", "value": {"type": "vec", "display": "[  2, -1 ]"}},
-    {"kind": "Value", "value": {"type": "vec", "display": "[ 1, 0 ]"}},
-    {"kind": "Value", "value": {"type": "vec", "display": "[ -1,  2 ]"}},
-    {"kind": "Value", "value": {"type": "vec", "display": "[ 0, 1 ]"}},
-    {"kind": "Value", "value": {"type": "vec", "display": "[ 1, 1 ]"}},
-    {"kind": "Value", "value": {"type": "vec", "display": "[ 1, 1 ]"}},
-    {"kind": "Value", "value": {"type": "boolean", "value": false}},
-    {"kind": "Value", "value": {"type": "boolean", "value": false}},
-    {"kind": "ReportLine", "text": "Declaring identifier 'rb': RootDatum\n"},
-    {"kind": "Value", "value": {"type": "domain", "domain": "RootDatum", "display": "simply connected root datum of Lie type 'B2'"}},
-    {"kind": "Value", "value": {"type": "integer", "value": 4}},
-    {"kind": "Value", "value": {"type": "vec", "display": "[  2, -2 ]"}},
-    {"kind": "Value", "value": {"type": "vec", "display": "[ 1, 0 ]"}},
-    {"kind": "Value", "value": {"type": "boolean", "value": true}},
-    {"kind": "Value", "value": {"type": "boolean", "value": false}},
-    {"kind": "Value", "value": {"type": "vec", "display": "[ 1, 0 ]"}},
-    {"kind": "Value", "value": {"type": "vec", "display": "[ 2, 1 ]"}},
-    {"kind": "Value", "value": {"type": "boolean", "value": false}},
-    {"kind": "Value", "value": {"type": "boolean", "value": true}},
-    {"kind": "Value", "value": {"type": "vec", "display": "[ -2,  2 ]"}},
-    {"kind": "Value", "value": {"type": "vec", "display": "[ -2, -1 ]"}},
-    {"kind": "Value", "value": {"type": "integer", "value": 2}},
-    {"kind": "Value", "value": {"type": "matrix", "display": "\n|  2, -2 |\n| -1,  2 |\n"}}
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ra': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "RootDatum",
+        "display": "simply connected root datum of Lie type 'A2'"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 3
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "vec",
+        "display": "[  2, -1 ]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "vec",
+        "display": "[ 1, 0 ]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "vec",
+        "display": "[ -1,  2 ]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "vec",
+        "display": "[ 0, 1 ]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "vec",
+        "display": "[ 1, 1 ]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "vec",
+        "display": "[ 1, 1 ]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "boolean",
+        "value": false
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "boolean",
+        "value": false
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rb': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "RootDatum",
+        "display": "simply connected root datum of Lie type 'B2'"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 4
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "vec",
+        "display": "[  2, -2 ]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "vec",
+        "display": "[ 1, 0 ]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "boolean",
+        "value": true
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "boolean",
+        "value": false
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "vec",
+        "display": "[ 1, 0 ]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "vec",
+        "display": "[ 2, 1 ]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "boolean",
+        "value": false
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "boolean",
+        "value": true
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "vec",
+        "display": "[ -2,  2 ]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "vec",
+        "display": "[ -2, -1 ]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 2
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "matrix",
+        "display": "\n|  2, -2 |\n| -1,  2 |\n"
+      }
+    }
   ]
 }

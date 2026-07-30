@@ -1,8 +1,17 @@
 {
   "fixture": "domain/root_coroot_rejected.atlas",
-  "oracle": "pending_hpc_capture",
-  "stage": "domain_root_coroot",
-  "reference_status": "pending_hpc_reference",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3501118",
+  "source_archive_sha256": "ff55a814ce2ba15768db22b4c59b82f1eefd437d2ed8e35c4874861e752e949e",
+  "fixture_sha256": "5c32d6c21fcb749f5ebd9e03ea84e12c8ca4c669eb9039b957cceb5f8f5d4584",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "ff507c6447e60386a2caaf78dae9ff04b15b40a2dcf5c1a31db2bb5e695997bd",
+  "oracle_stderr_sha256": "95728fa85b2d396edb74b61221b76f0dc409acd4c0100359bc2337a0ac40c761",
+  "capture_artifacts_sha256": "6f458c47aa4847225e655052d421a5b59c24359fb18615623a49c42d87ba4d9c",
   "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:2228-2231"
