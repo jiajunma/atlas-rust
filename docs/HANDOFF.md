@@ -174,7 +174,11 @@ M^2!=I -> 'Given transformation is not an involution' (the contract-gated
 diagnostic), then tori::classify (tori.cpp:189) = NO eigenspace work:
 tau1=M+I; plus_rank = integer column-echelon rank of tau1; complex_rank =
 mod-2 image rank of tau1; result (plus-complex, complex, r-plus-complex) —
-anchors: I2 -> (2,0,0), A2 opposition -> (0,1,0)) → `strong_real` (square_classes + B2
+anchors: I2 -> (2,0,0), A2 opposition -> (0,1,0); CRATE RECON 2026-07-30:
+seed_x0 already landed InnerClass::twisted_from_involution with the
+conjugation word exported via wrt_distinguished_word — twisted_involution
+is a thin pair-assembly over it, classify_involution needs only integer
+echelon + mod-2 rank (integer_lattice.rs/mod_two.rs exist); LIGHT slice) → `strong_real` (square_classes + B2
 print_strong_real — square_classes(cc) (atlas-types.w:4230): per square
 class csc, pi=fiber_partition(csc), row of rfi.out(rfl[toWeakReal(c,csc)])
 per partition class c — NOTE rfi.out can COLLAPSE distinct internal forms to
