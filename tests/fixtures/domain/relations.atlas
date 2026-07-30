@@ -1,0 +1,7 @@
+Smith_Cartan(Lie_type("A2"))
+filter_units(Smith_Cartan(Lie_type("A2")))
+Smith_Cartan(Lie_type("A1.B2"))
+ann_mod([[2,4],[6,3]],2)
+replace_gen(Smith_Cartan(Lie_type("A2")),[[0,3]])
+quotient_basis(Lie_type("A2"),[[1]/3])
+quotient_basis(Lie_type("A2"),[[2]/6])
