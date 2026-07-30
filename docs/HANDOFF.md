@@ -1,4 +1,4 @@
-# Atlas-Rust handoff - 2026-07-29 (B6 case/counted-for verified)
+# Atlas-Rust handoff - 2026-07-30 (B7 forget/die implemented, pending HPC)
 
 This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
@@ -12,10 +12,13 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   case / counted-for are implemented and differentially verified; B11
   precedence needed no change and is verified as well. The exact commit is
   shown by `git log -1 --oneline`.
-- B7 misc commands have frozen reference events (capture `3499657`); the
-  B7 implementation is in progress.
+- B7 forget/die and the B10 missing-file diagnostics are implemented
+  (`f86fc68`, `73c7d81`), locally event-exact, pending the HPC differential.
+  B7 also aligns the undefined-identifier wording with `axis.w:1431`, and
+  span-less diagnostics now render with the `<Kind> error:` header so the
+  harness's stderr grammar can parse them (the oracle prints them bare).
 - B8 user overloads (`3499692`, `3499705`), B9 file-command redirection
-  (`3499747`), B10 fromfile/quit (`3500378`), and B12 runtime errors
+  (`3499747`), B10 accepted inclusion (`3500378`), and B12 runtime errors
   (`3500488`) have frozen references ahead of their implementations. The
   B11/B12 probes are retired.
 - No uncommitted repository changes should remain after the handoff commit.
@@ -42,6 +45,28 @@ claim of full Atlas compatibility: InnerClass/RealForm/KGB rendering and
 numbering, relations, primitive `involution` constructors, user overloads,
 file commands, and later math overloads remain pending differential
 evidence.
+
+## Implemented stage: B7 forget/die + B10 missing-file diagnostics
+
+- `tests/fixtures/eval/commands_b7.atlas` (4 accepted events: `forget x`
+  on an unknown name reports `Identifier 'x' not known`, `forget + @
+  (int,int)` reports `Definition of '+@(int,int)' forgotten`, after which
+  `1+2` resolves through int->rat coercion to `3/1`) and
+  `tests/fixtures/eval/commands_b7_rejected.atlas` (`die` raises runtime
+  `I die` and the batch continues; an undefined identifier is the name
+  error `Undefined identifier 'x'`). Implementation: `Command::Forget` /
+  `Command::ForgetOverload` / `Expr::Die`; overload removal is a
+  per-context filter over the static builtin registry
+  (`Analysis::forgotten`); the plain-identifier and assignment undefined
+  wordings now match `axis.w:1431` (commit `f86fc68`).
+- `tests/fixtures/eval/fromfile_b10.atlas` (2 io diagnostics for missing
+  `<`/`<<` targets, batch continues, exit 0): span-less diagnostics render
+  with the `<Kind> error:` header (commit `73c7d81`); the oracle prints
+  the same lines bare, so the header is a harness-grammar surface, not an
+  oracle wording change.
+- Oracle captures: `3499657` (B7), `3500378` (B10).
+- Differential evidence: pending the next `pipeline_swap_diff` run;
+  `rust_status: implemented_pending_hpc` on all three fixtures.
 
 ## Verified stage: B6 case and counted for
 

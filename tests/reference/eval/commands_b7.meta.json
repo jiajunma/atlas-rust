@@ -7,7 +7,7 @@
     "sources/interpreter/parser.y:141-142",
     "sources/interpreter/parser.y:155-157"
   ],
-  "rust_status": "not_implemented",
+  "rust_status": "implemented_pending_hpc",
   "notes": "B7 misc-commands slice, split from probe commands_b7_probe (capture 3499638). Forgetting an unknown identifier prints 'Identifier 'x' not known' to stdout and continues; 'forget operator @ type' removes one overload and reports it, after which int+int resolves through int->rat coercion to (rat,rat)->rat yielding 3/1. The whattype id_op ? overload listing is deferred: the builtin operator lists reference domain types (Split/KTypePol/ParamPol) not yet ported. Reference captured by HPC job 3499657 against the frozen atlasofliegroups-4d3e9449 oracle. Differential evidence remains pending until the pipeline_swap_diff run.",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",

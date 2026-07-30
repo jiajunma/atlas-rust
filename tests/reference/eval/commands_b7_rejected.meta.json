@@ -6,7 +6,7 @@
   "upstream_evidence": [
     "sources/interpreter/parser.y:383"
   ],
-  "rust_status": "not_implemented",
+  "rust_status": "implemented_pending_hpc",
   "notes": "Rejected companions of eval/commands_b7, split from probe commands_b7_probe (capture 3499638): 'die' raises the runtime diagnostic 'I die' and batch processing continues with the following line; an undefined identifier is a name-category analysis error. Reference captured by HPC job 3499657 against the frozen atlasofliegroups-4d3e9449 oracle. Differential evidence remains pending until the pipeline_swap_diff run.",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
