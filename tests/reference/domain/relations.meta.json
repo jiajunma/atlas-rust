@@ -1,8 +1,8 @@
 {
-  "fixture": "domain/relations.atlas",
-  "oracle": "pending_hpc_capture",
+  "fixture": "domain/relations",
+  "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:456",
@@ -19,5 +19,14 @@
     "replace_gen substitutes the non-unit column: adjoint A2 basis | 1, 0 | / | -2, 3 |",
     "quotient_basis(A2, [1]/3) = quotient_basis(A2, [2]/6) = adjoint basis"
   ],
-  "notes": "Relation-style root-datum lattice constructors (Smith_Cartan/filter_units/ann_mod/replace_gen/quotient_basis), drafted from direct oracle probes against the local atlas binary (rev 4d3e9449, same revision as the frozen HPC oracle). quotient_basis validates each generator against the invariant factors ('Improper generator entry: 1/2 not a multiple of 1/3', 'Length mismatch for generator 0: 2:1') and integrates filter_units + ann_mod + replace_gen per atlas-types.w:639-675. Reference capture on HPC pending; differential evidence remains pending until the pipeline_swap_diff run."
+  "notes": "Relation-style root-datum lattice constructors (Smith_Cartan/filter_units/ann_mod/replace_gen/quotient_basis), drafted from direct oracle probes against the local atlas binary (rev 4d3e9449, same revision as the frozen HPC oracle). quotient_basis validates each generator against the invariant factors ('Improper generator entry: 1/2 not a multiple of 1/3', 'Length mismatch for generator 0: 2:1') and integrates filter_units + ann_mod + replace_gen per atlas-types.w:639-675. Reference captured verbatim by HPC job 3502198 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3502198",
+  "source_archive_sha256": "039a11cdd1d346f54a31fc119a9ad1258a64887a65ed4551886cb0545b16d3f8",
+  "fixture_sha256": "f83371dcee12607e7e79241cda71400d488ae3a95c874e9dce2b4a862753cefa",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "14e1d26a545dc379e5a1879e82d86b6835e9d2fed914f5b4a30858bca0bb6ce2",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "1dfc7447b825e77812e785a1da5dc3bac9ff538b02dc32aae7797ba25b3509b4"
 }

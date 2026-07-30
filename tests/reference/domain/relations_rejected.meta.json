@@ -1,8 +1,8 @@
 {
-  "fixture": "domain/relations_rejected.atlas",
-  "oracle": "pending_hpc_capture",
+  "fixture": "domain/relations_rejected",
+  "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:585",
@@ -14,5 +14,14 @@
     "quotient_basis generator violating the invariant factor: 'Improper generator entry: 1/2 not a multiple of 1/3'",
     "quotient_basis generator of wrong length: 'Length mismatch for generator 0: 2:1'"
   ],
-  "notes": "Rejected companions for the relation-style constructors, drafted from direct oracle probes against the local atlas binary (rev 4d3e9449). Batch recovery: each runtime error aborts evaluation of its line and the batch continues. Reference capture on HPC pending."
+  "notes": "Rejected companions for the relation-style constructors, drafted from direct oracle probes against the local atlas binary (rev 4d3e9449). Batch recovery: each runtime error aborts evaluation of its line and the batch continues. Reference captured verbatim by HPC job 3502199 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stderr messages match the expected diagnostics exactly.",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3502199",
+  "source_archive_sha256": "039a11cdd1d346f54a31fc119a9ad1258a64887a65ed4551886cb0545b16d3f8",
+  "fixture_sha256": "287d1d98a16bf7c8e59c4ae78d9b8c2c335d9360c7e2197e08a52e8fa7c3fe04",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
+  "oracle_stderr_sha256": "523f689b5093877c769c4a05f38d99c30afbeac99af9e6928ac4e5a129e04689",
+  "capture_artifacts_sha256": "4fa110fffcaace2dae618d281dcb87833cc0eb3a02ced8fc10e691a320816d14"
 }
