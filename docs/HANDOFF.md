@@ -75,7 +75,17 @@ compact SU(2) = [1]/2); initial_torus_bits(rf) = `rf->val.x0_torus_part()`
 torus_bits(x) = the element's torus-part bit vec, parallel to the existing
 `torus_factor` adapter at domain_builtins.rs:1988; crate hooks in
 crates/atlas-real-group/src/grading.rs and real_form_labels.rs) → `weyl_element`
-(W_elt/word/length/=,!=/*//#/root_datum) → `cartan_aggregation`
+(W_elt/word/length/=,!=/*//#/root_datum — upstream semantics pinned:
+W_elt(rd,w) = check_Weyl_word(w, semisimple_rank) + W().element(w)
+(atlas-types.w:2361; errors 'Illegal Weyl word entry N (should be <R)' and
+'Negative integer where unsigned is required'); word(w) = W.word(w)
+(atlas-types.w:2374) is the CANONICAL reduced word from the Weyl-group
+Transducer (structure/weyl.{h,cpp}) — display `<0.1.0>` must match the
+oracle's transducer choice exactly (B2 input [0,1,0,1] canonicalizes to
+<1.0.1.0>, A2 [0,1,0] stays <0.1.0>); NOTE the crate-level weyl_element
+dropped the transducer order (WEYL_ELEMENT_DESIGN.md deferral), so the
+language layer must port the Transducer word canonicalization, not reuse
+the crate's raw word; length(w) = W.length(w)) → `cartan_aggregation`
 (Cartan_class/nr_of_Cartan_classes/most_split_Cartan/involution/real_forms/
 dual_real_forms/square_classes/fiber_partition) → `seed_x0` (KGB_elt
 synthetic) → `involution_table` (print_KGB/print_strong_real) →
