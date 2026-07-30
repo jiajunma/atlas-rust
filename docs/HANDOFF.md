@@ -6,7 +6,27 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
 ## Live continuation - 2026-07-31
 
-The current committed baseline is `a63dc32` on `main`. The relation lattice
+The current committed baseline is `292ca78` on `main` (meta upgrade commit;
+implementation HEAD is `364e340`). Differential job `3502718` at that
+commit ran 106 fixtures with zero FAIL and verified FOURTEEN contracts in
+one pass: the eval `split_basic{,_rejected}` pair (Split dual-number
+primitive), the three weak-real probes `b2_descent` /
+`central_coroot_rejected` / `validation_rejected`, and the strong-real
+surface — the base `strong_real` contract, the four B2/C2 Cartan
+enumeration probes, and the four rejected diagnostics. The strong-real
+surface still owes the `full_kgb` probe (KGB element discovery order,
+agent in flight) and the four `dual_order` probes (`posroots`/`poscoroots`/
+`dual(RootDatum)`/`dual(InnerClass)`, agent in flight). The two remaining
+weak-real probes (`a1_t1_central`, `a2_noncanonical`) await the custom-seed
+real_form gap.
+
+Earlier verified stages this line: relations `3502506`; involution
+decomposition `3502550`; base `weak_real_form{,_rejected}` `3502697`; the
+torus-radical fix `646f897`; the Cartan numbering adapter `a63dc32`
+(upstream BFS discovery order; B2 = [e, s1s0s1, s0s1s0, w0], orbit sizes
+[1,2,2,1]; A1/A2 unchanged). The older snapshot below remains useful as a
+historical ledger, but its `c0710a1` HEAD and implementation queue are no
+longer current.
 builtins are verified by differential job `3502506`; the involution
 decomposition builtins and all 17 associated fixtures are verified by job
 `3502550` (90/90 runnable fixtures PASS; suite PARTIAL only for the three
