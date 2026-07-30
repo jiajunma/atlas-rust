@@ -163,6 +163,17 @@ then freeze): KL file formats and readline completion. `dont`, `showall`,
 newly frozen language fixtures are covered by differential `3501643`. Deeper math
 overloads (KL polynomials, `W_graph`, `deform`, extended blocks).
 
+Legacy scaffolding triage (2026-07-30): the pre-v0-schema fixtures under
+`tests/fixtures/commands/`, `lex/`, `parse/`, `negative/`, and the early
+eval set (`containers`, `container_errors`, `context`, `exact_numerics`,
+`scalars`, `slices`, `subscriptions`) use an older events schema that the
+current harness cannot consume. Their behaviors are covered by the verified
+B-slice corpus — including lexer-error batch recovery, confirmed working
+today (`1 $ + 2` then `3` reports the syntax error, prints `Value: 3`,
+exits 1). `eval/exact_numerics` and `eval/scalars` still pass verbatim.
+They are NOT part of the compatibility gate; candidates for retirement in
+a future cleanup pass rather than schema migration.
+
 ## dont/showall probe findings (2026-07-30)
 
 - Bare top-level `let x = 3` is a SYNTAX ERROR in the oracle
