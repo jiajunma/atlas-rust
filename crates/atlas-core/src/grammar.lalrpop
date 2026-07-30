@@ -1,8 +1,8 @@
 use super::{
     anonymous_field, assignment, binary, case_branch, case_expression, cast_expression, declaration,
-    definition, elif_tail, else_branch, extend_operator_formula,
+    definition, elif_tail, else_branch, extend_operator_formula, forget_command,
     finish_let, expression_list, finish_operator_formula, for_expression, join_span, lambda,
-    lambda_parameter, lambda_parameters, let_bindings,
+    lambda_parameter, lambda_parameters, let_bindings, forget_overload_command,
     let_expression, list_expression, named_field, rec_function_binding, rec_lambda, return_expression,
     selector_suffix, operator_selector, sequence, set_type_command, type_definition, type_spec_span,
     unit_selector, next_sequence, case_select_expression, counted_for_expression,
@@ -48,7 +48,23 @@ pub Command: Command = {
         set_type_command(set_type, definitions, true, close)
     },
     <whattype:"whattype"> <target:Expr> => whattype_command(whattype, target),
+    // forget (parser.y:141-142,155-157): an identifier drops its global
+    // binding; `name @ type` (identifier or operator) removes ONE overload.
+    <forget:"forget"> <name:"identifier"> => forget_command(forget, name),
+    <forget:"forget"> <name:ForgetTarget> <_at:"@"> <signature:SpecTypeNode> => {
+        forget_overload_command(forget, name, signature)
+    },
     <expression:Expr> => Command::Expression(expression),
+};
+
+// The target of `forget … @ type` (parser.y:155-157): an overloaded
+// function identifier or an operator, reduced to its plain name.
+ForgetTarget: SpannedValue<String> = {
+    <name:"identifier"> => name,
+    <operator:"operator"> => SpannedValue {
+        value: operator.value.symbol,
+        span: operator.span,
+    },
 };
 
 pub Expr: Expr = {
@@ -395,6 +411,9 @@ Atom: Expr = {
     <for_span:"for"> <tail:ForTail> => for_expression(for_span, tail),
     <for_span:"for"> <tail:CountedForTail> => counted_for_expression(for_span, tail),
     <span:"break"> => Expr::Break { span },
+    // `die` (parser.y:383): a unit that type-checks anywhere and throws
+    // `I die` when evaluated.
+    <span:"die"> => Expr::Die { span },
     // Case discrimination (parser.y:480-482, caselist): `case subject |
     // tag(pattern): body | tag: body | else body esac`.
     <case:"case"> <subject:Expr> <_bar:"|"> <branches:CaseBranches> <esac:"esac"> => {
@@ -623,8 +642,10 @@ extern {
         "do" => ParserToken::Do(<SourceSpan>),
         "od" => ParserToken::Od(<SourceSpan>),
         "break" => ParserToken::Break(<SourceSpan>),
+        "die" => ParserToken::Die(<SourceSpan>),
         "set_type" => ParserToken::SetType(<SourceSpan>),
         "whattype" => ParserToken::Whattype(<SourceSpan>),
+        "forget" => ParserToken::Forget(<SourceSpan>),
         "case" => ParserToken::Case(<SourceSpan>),
         "esac" => ParserToken::Esac(<SourceSpan>),
         "next" => ParserToken::Next(<SourceSpan>),

@@ -232,7 +232,7 @@ fn negative_fixtures_report_name_and_type_categories() {
     )));
     let diagnostic = single_diagnostic(&undefined);
     assert_eq!(diagnostic.kind, ErrorKind::Name);
-    assert_eq!(diagnostic.message, "undefined identifier `missing`");
+    assert_eq!(diagnostic.message, "Undefined identifier 'missing'");
 
     let type_error = run_source(&SourceText::new(include_str!(
         "../../../tests/fixtures/eval/negative_type.atlas"

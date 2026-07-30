@@ -480,7 +480,7 @@ mod tests {
             panic!("expected a diagnostic");
         };
         assert_eq!(diagnostic.kind, ErrorKind::Name);
-        assert_eq!(diagnostic.message, "undefined identifier `missing`");
+        assert_eq!(diagnostic.message, "Undefined identifier 'missing'");
         assert_eq!(diagnostic.span.map(|span| span.start.column), Some(9));
     }
 
@@ -955,6 +955,58 @@ mod tests {
             SessionEvent::Diagnostic(ref diagnostic)
                 if diagnostic.kind == ErrorKind::Type
                     && diagnostic.message == "found string while int was needed."
+        ));
+    }
+
+    #[test]
+    fn commands_b7_fixture_matches_the_frozen_events() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/eval/commands_b7.atlas"
+        ));
+        let events = run_source(&source);
+
+        assert_eq!(events.len(), 4);
+        assert!(matches!(
+            events[0],
+            SessionEvent::ReportLine { ref text, .. } if text == "Identifier 'x' not known\n"
+        ));
+        assert!(matches!(
+            events[1],
+            SessionEvent::Value { value: Value::Integer(ref value), .. }
+                if value == &malachite::Integer::from(42)
+        ));
+        assert!(matches!(
+            events[2],
+            SessionEvent::ReportLine { ref text, .. }
+                if text == "Definition of '+@(int,int)' forgotten\n"
+        ));
+        // With the int+int overload forgotten, 1 + 2 resolves through the
+        // int->rat coercion and yields the rational 3/1.
+        assert!(matches!(
+            events[3],
+            SessionEvent::Value { value: Value::Rational(ref value), .. }
+                if value == &malachite::Rational::from(3)
+        ));
+    }
+
+    #[test]
+    fn commands_b7_rejected_fixture_matches_the_frozen_events() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/eval/commands_b7_rejected.atlas"
+        ));
+        let events = run_source(&source);
+
+        assert_eq!(events.len(), 2);
+        assert!(matches!(
+            events[0],
+            SessionEvent::Diagnostic(ref diagnostic)
+                if diagnostic.kind == ErrorKind::Runtime && diagnostic.message == "I die"
+        ));
+        assert!(matches!(
+            events[1],
+            SessionEvent::Diagnostic(ref diagnostic)
+                if diagnostic.kind == ErrorKind::Name
+                    && diagnostic.message == "Undefined identifier 'x'"
         ));
     }
 }

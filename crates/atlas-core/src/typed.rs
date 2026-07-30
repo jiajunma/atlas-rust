@@ -156,6 +156,11 @@ pub enum TypedExpr {
     },
     /// `break`, unwound to the innermost loop boundary.
     Break,
+    /// `die` (upstream `shell`, axis.w:621-630): analysing it succeeds
+    /// against any required type; evaluating it throws `I die`.
+    Die {
+        span: SourceSpan,
+    },
     /// The body of an injector closure: wraps the payload in a union value
     /// carrying the variant tag and the injector's name.
     UnionInject {
@@ -222,6 +227,10 @@ pub enum TypedExpr {
 pub struct Analysis<'a> {
     pub types: &'a TypeTable,
     pub globals: &'a IdTable,
+    /// Overloads removed by `forget name @ type` in this context
+    /// (`(name, signature)` pairs). The startup registry itself is static,
+    /// so removal is a per-context filter over `overload_variants`.
+    forgotten: &'a [(String, Type)],
     locals: BTreeMap<String, (TypeCell, usize, usize)>,
     /// Names bound by a const `!x` pattern; assignment to them is an
     /// analysis error. Entries shadow outward like `locals` does: a
@@ -241,6 +250,7 @@ impl<'a> Analysis<'a> {
         Self {
             types,
             globals,
+            forgotten: &[],
             locals: BTreeMap::new(),
             constant_locals: BTreeSet::new(),
             in_function: false,
@@ -248,11 +258,18 @@ impl<'a> Analysis<'a> {
         }
     }
 
+    /// Also hide the `forget`-removed overloads of this context.
+    pub fn with_forgotten(mut self, forgotten: &'a [(String, Type)]) -> Self {
+        self.forgotten = forgotten;
+        self
+    }
+
     /// The context for a loop body: same bindings, one more loop level.
     fn in_loop(&self) -> Self {
         Self {
             types: self.types,
             globals: self.globals,
+            forgotten: self.forgotten,
             locals: self.locals.clone(),
             constant_locals: self.constant_locals.clone(),
             in_function: self.in_function,
@@ -284,6 +301,11 @@ impl IdTable {
     pub fn lookup(&self, name: &str) -> Option<&(TypeCell, GlobalCell)> {
         self.entries.get(name)
     }
+
+    /// Remove a binding (`forget name`); `false` when it was not known.
+    pub fn remove(&mut self, name: &str) -> bool {
+        self.entries.remove(name).is_some()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -305,6 +327,11 @@ pub struct TypedContext {
     types: TypeTable,
     globals: IdTable,
     evaluation: EvaluationContext,
+    /// Overloads removed by `forget name @ type`, as `(name, signature)`
+    /// pairs. Upstream mutates its global overload table; the startup
+    /// registry here is static, so removals are recorded per context and
+    /// filtered out at overload resolution instead.
+    forgotten_overloads: Vec<(String, Type)>,
 }
 
 impl TypedContext {
@@ -323,7 +350,8 @@ impl TypedContext {
                 let typed = convert_expr(
                     expression,
                     &mut type_,
-                    &Analysis::new(&self.types, &self.globals),
+                    &Analysis::new(&self.types, &self.globals)
+                        .with_forgotten(&self.forgotten_overloads),
                 )?;
                 let value = evaluate_command_expr(&typed, &mut self.evaluation)?;
                 Ok(vec![TypedCommandEvent::Value {
@@ -339,7 +367,8 @@ impl TypedContext {
                 let typed = convert_expr(
                     value,
                     &mut type_,
-                    &Analysis::new(&self.types, &self.globals),
+                    &Analysis::new(&self.types, &self.globals)
+                        .with_forgotten(&self.forgotten_overloads),
                 )?;
                 let value = evaluate_command_expr(&typed, &mut self.evaluation)?;
                 let previous = self
@@ -384,7 +413,60 @@ impl TypedContext {
                 span,
             } => self.execute_set_type(definitions, *tabled, *span),
             Command::Whattype { target, span } => self.execute_whattype(target, *span),
+            Command::Forget { name, span } => {
+                // global_forget_identifier (global.w:1241-1248): the report
+                // goes to standard output and never fails the command. The
+                // upstream type-identifier cleanup has no counterpart yet:
+                // the tabled type map supports no removal.
+                let was_known = self.globals.remove(&name.value);
+                let state = if was_known { "forgotten" } else { "not known" };
+                Ok(vec![TypedCommandEvent::ReportLine {
+                    text: format!("Identifier '{}' {state}\n", name.value),
+                    span: *span,
+                }])
+            }
+            Command::ForgetOverload {
+                name,
+                signature,
+                span,
+            } => {
+                // global_forget_overload (global.w:1253-1261): removes ONE
+                // overload, reporting either way; the printed type is the
+                // resolved signature, exactly as upstream prints `type`.
+                let resolved = signature.resolve_in(&self.types).map_err(|unknown| {
+                    Diagnostic::new(
+                        ErrorKind::Name,
+                        format!("undefined type name '{}'", unknown.value),
+                        Some(unknown.span),
+                    )
+                })?;
+                let removed = self.overload_is_active(&name.value, &resolved);
+                if removed {
+                    self.forgotten_overloads
+                        .push((name.value.clone(), resolved.clone()));
+                }
+                let state = if removed { "forgotten" } else { "not known" };
+                Ok(vec![TypedCommandEvent::ReportLine {
+                    text: format!(
+                        "Definition of '{}@{}' {state}\n",
+                        name.value,
+                        resolved.display(&self.types)
+                    ),
+                    span: *span,
+                }])
+            }
         }
+    }
+
+    /// Whether `name` still has an active overload at exactly `signature`.
+    fn overload_is_active(&self, name: &str, signature: &Type) -> bool {
+        builtin_registry()
+            .iter()
+            .any(|builtin| builtin.name == name && builtin.arg_type == *signature)
+            && !self
+                .forgotten_overloads
+                .iter()
+                .any(|(forgotten_name, forgotten)| forgotten_name == name && forgotten == signature)
     }
 
     /// `set_type` (axis.w:5092-5168): the bracketed form registers every
@@ -538,7 +620,7 @@ impl TypedContext {
         convert_expr(
             target,
             &mut type_,
-            &Analysis::new(&self.types, &self.globals),
+            &Analysis::new(&self.types, &self.globals).with_forgotten(&self.forgotten_overloads),
         )?;
         Ok(vec![TypedCommandEvent::ReportLine {
             text: format!("Type: {}\n", type_.display(&self.types)),
@@ -961,7 +1043,7 @@ pub fn convert_expr(
             let Some((type_, cell)) = analysis.globals.lookup(name) else {
                 return Err(Diagnostic::new(
                     ErrorKind::Name,
-                    format!("undefined identifier `{name}`"),
+                    format!("Undefined identifier '{name}'"),
                     Some(*span),
                 ));
             };
@@ -1015,7 +1097,7 @@ pub fn convert_expr(
             let Some((target, cell)) = analysis.globals.lookup(name) else {
                 return Err(Diagnostic::new(
                     ErrorKind::Name,
-                    format!("undefined identifier `{name}` in assignment"),
+                    format!("Undefined identifier '{name}' in assignment"),
                     Some(*target_span),
                 ));
             };
@@ -1121,6 +1203,7 @@ pub fn convert_expr(
                         &Analysis {
                             types: analysis.types,
                             globals: analysis.globals,
+                            forgotten: analysis.forgotten,
                             locals: locals.clone(),
                             constant_locals: constant_locals.clone(),
                             in_function: analysis.in_function,
@@ -1181,6 +1264,7 @@ pub fn convert_expr(
                 &Analysis {
                     types: analysis.types,
                     globals: analysis.globals,
+                    forgotten: analysis.forgotten,
                     locals,
                     constant_locals,
                     in_function: analysis.in_function,
@@ -1257,7 +1341,7 @@ pub fn convert_expr(
                 let local_function = local
                     .is_some_and(|(type_, _, _)| matches!(&*type_.borrow(), Type::Function(_)));
                 let use_overloads = !local_function
-                    && (!overload_variants(name).is_empty()
+                    && (!available_variants(name, analysis).is_empty()
                         || (local.is_none() && analysis.globals.lookup(name).is_none()));
                 if use_overloads {
                     return convert_builtin_application(
@@ -1531,6 +1615,7 @@ pub fn convert_expr(
                 &Analysis {
                     types: analysis.types,
                     globals: analysis.globals,
+                    forgotten: analysis.forgotten,
                     locals,
                     constant_locals,
                     in_function: analysis.in_function,
@@ -1674,6 +1759,7 @@ pub fn convert_expr(
                     &Analysis {
                         types: analysis.types,
                         globals: analysis.globals,
+                        forgotten: analysis.forgotten,
                         locals,
                         constant_locals,
                         in_function: analysis.in_function,
@@ -1853,6 +1939,7 @@ pub fn convert_expr(
                 &Analysis {
                     types: analysis.types,
                     globals: analysis.globals,
+                    forgotten: analysis.forgotten,
                     locals,
                     constant_locals,
                     in_function: analysis.in_function,
@@ -1888,6 +1975,12 @@ pub fn convert_expr(
             // `… then break fi` branch balances against the implicit
             // void else branch.
             conform_types(&Type::void(), required, TypedExpr::Break, *span, analysis)
+        }
+        Expr::Die { span } => {
+            // `die` passes analysis trivially in ANY context, leaving the
+            // required type untouched (upstream die_expr, axis.w:634-638);
+            // only evaluation throws.
+            Ok(TypedExpr::Die { span: *span })
         }
     }
 }
@@ -2067,6 +2160,7 @@ fn convert_lambda_expression(
     let body_analysis = Analysis {
         types: analysis.types,
         globals: analysis.globals,
+        forgotten: analysis.forgotten,
         locals,
         constant_locals,
         in_function: true,
@@ -2174,6 +2268,7 @@ fn convert_rec_lambda_expression(
     let body_analysis = Analysis {
         types: analysis.types,
         globals: analysis.globals,
+        forgotten: analysis.forgotten,
         locals,
         constant_locals,
         in_function: true,
@@ -2215,7 +2310,7 @@ fn convert_builtin_application(
     analysis: &Analysis<'_>,
     resolve_name_first: bool,
 ) -> Result<TypedExpr, Diagnostic> {
-    let variants = overload_variants(name);
+    let variants = available_variants(name, analysis);
     if resolve_name_first && variants.is_empty() {
         // Atlas resolves the callee before analysing its arguments.  This is
         // observable for `foo(missing)`: the undefined function wins over an
@@ -2238,7 +2333,7 @@ fn convert_builtin_application(
     }
     let a_priori_type = Type::tuple(a_priori.clone());
     let mut chosen = None;
-    for &index in variants {
+    for &index in &variants {
         let builtin = &builtin_registry()[index];
         if builtin.arg_type == a_priori_type {
             chosen = Some(index);
@@ -3483,6 +3578,23 @@ fn overload_variants(name: &str) -> &'static [usize] {
         .unwrap_or(&[])
 }
 
+/// Variant indices for `name` with the context's `forget`-removed
+/// overloads filtered out, keeping the most-specific-first order.
+fn available_variants(name: &str, analysis: &Analysis<'_>) -> Vec<usize> {
+    overload_variants(name)
+        .iter()
+        .copied()
+        .filter(|&index| {
+            !analysis
+                .forgotten
+                .iter()
+                .any(|(forgotten_name, signature)| {
+                    forgotten_name == name && builtin_registry()[index].arg_type == *signature
+                })
+        })
+        .collect()
+}
+
 impl TypedExpr {
     /// Evaluate at the demanded level. `NoValue` returns `None`.
     pub fn evaluate(
@@ -3709,6 +3821,7 @@ impl TypedExpr {
                 Ok(at_level(level, || Value::List(collected.clone())))
             }
             Self::Break => Err(Control::Break(0)),
+            Self::Die { span } => Err(runtime("I die", *span)),
             Self::UnionInject {
                 tag,
                 injector_name,
@@ -4535,7 +4648,7 @@ mod tests {
         let error = convert_and_run_with("y", &globals).expect_err("unset global");
         assert!(error.message.contains("uninitialized variable 'y'"));
         let error = convert_and_run_with("z", &globals).expect_err("unknown name");
-        assert!(error.message.contains("undefined identifier"));
+        assert!(error.message.contains("Undefined identifier"));
     }
 
     #[test]
@@ -4555,7 +4668,7 @@ mod tests {
         let error = convert_and_run("missing := 2").expect_err("unknown assignment target");
         assert!(error
             .message
-            .contains("undefined identifier `missing` in assignment"));
+            .contains("Undefined identifier 'missing' in assignment"));
     }
 
     #[test]
@@ -4632,7 +4745,7 @@ mod tests {
         assert_eq!(value, Value::Integer(4.into()));
 
         let error = convert_and_run("let x = 1, y = x in y").expect_err("parallel group");
-        assert!(error.message.contains("undefined identifier `x`"));
+        assert!(error.message.contains("Undefined identifier 'x'"));
         let error = convert_and_run("let x = 1, x = 2 in x").expect_err("duplicate binding");
         assert!(error.message.contains("Multiple binding of 'x'"));
 

@@ -166,6 +166,11 @@ pub enum Expr {
     Break {
         span: SourceSpan,
     },
+    /// `die` (parser.y:383 DIE unit): passes analysis against any required
+    /// type; evaluating it raises the runtime error `I die` (axis.w:630).
+    Die {
+        span: SourceSpan,
+    },
     /// `case subject | tag[(pattern)]: body … [else body] esac`
     /// (parser.y:480-482 discrimination). Boxed to keep `Expr` small.
     Case(Box<CaseExpr>),
@@ -489,7 +494,8 @@ impl Expr {
             | Self::Sequence { span, .. }
             | Self::Next { span, .. }
             | Self::While { span, .. }
-            | Self::Break { span } => *span,
+            | Self::Break { span }
+            | Self::Die { span } => *span,
             Self::For(loop_) => loop_.span,
             Self::Case(case) => case.span,
             Self::IntCase(case) => case.span,
@@ -576,6 +582,21 @@ pub enum Command {
         target: Expr,
         span: SourceSpan,
     },
+    /// `forget name` (parser.y:141-142): removes the identifier's global
+    /// binding and reports; an unknown name reports `not known`. Never an
+    /// error.
+    Forget {
+        name: SpannedValue<String>,
+        span: SourceSpan,
+    },
+    /// `forget name @ type` (parser.y:155-157): removes ONE overload of an
+    /// operator or overloaded function at the given signature and reports;
+    /// a missing overload reports `not known`. Never an error.
+    ForgetOverload {
+        name: SpannedValue<String>,
+        signature: TypeExpr,
+        span: SourceSpan,
+    },
 }
 
 impl Command {
@@ -585,7 +606,9 @@ impl Command {
             Self::Define { span, .. }
             | Self::Declare { span, .. }
             | Self::SetType { span, .. }
-            | Self::Whattype { span, .. } => *span,
+            | Self::Whattype { span, .. }
+            | Self::Forget { span, .. }
+            | Self::ForgetOverload { span, .. } => *span,
         }
     }
 }
@@ -657,8 +680,10 @@ pub enum ParserToken {
     Do(SourceSpan),
     Od(SourceSpan),
     Break(SourceSpan),
+    Die(SourceSpan),
     SetType(SourceSpan),
     Whattype(SourceSpan),
+    Forget(SourceSpan),
     Case(SourceSpan),
     Esac(SourceSpan),
     Next(SourceSpan),
@@ -716,8 +741,10 @@ impl ParserToken {
             | Self::Do(span)
             | Self::Od(span)
             | Self::Break(span)
+            | Self::Die(span)
             | Self::SetType(span)
             | Self::Whattype(span)
+            | Self::Forget(span)
             | Self::Case(span)
             | Self::Esac(span)
             | Self::Next(span)
@@ -774,8 +801,10 @@ impl fmt::Display for ParserToken {
             Self::Do(_) => "do",
             Self::Od(_) => "od",
             Self::Break(_) => "break",
+            Self::Die(_) => "die",
             Self::SetType(_) => "set_type",
             Self::Whattype(_) => "whattype",
+            Self::Forget(_) => "forget",
             Self::Case(_) => "case",
             Self::Esac(_) => "esac",
             Self::Next(_) => "next",
@@ -909,8 +938,10 @@ fn parser_tokens_from_tokens(
                         "do" => ParserToken::Do(span),
                         "od" => ParserToken::Od(span),
                         "break" => ParserToken::Break(span),
+                        "die" => ParserToken::Die(span),
                         "set_type" => ParserToken::SetType(span),
                         "whattype" => ParserToken::Whattype(span),
+                        "forget" => ParserToken::Forget(span),
                         "case" => ParserToken::Case(span),
                         "esac" => ParserToken::Esac(span),
                         "next" => ParserToken::Next(span),
@@ -1099,8 +1130,10 @@ fn bison_token_name(token: &ParserToken) -> Option<&'static str> {
         ParserToken::Do(_) => Some("DO"),
         ParserToken::Od(_) => Some("OD"),
         ParserToken::Break(_) => Some("BREAK"),
+        ParserToken::Die(_) => Some("DIE"),
         ParserToken::SetType(_) => Some("SET_TYPE"),
         ParserToken::Whattype(_) => Some("WHATTYPE"),
+        ParserToken::Forget(_) => Some("FORGET"),
         ParserToken::Case(_) => Some("CASE"),
         ParserToken::Esac(_) => Some("ESAC"),
         ParserToken::Next(_) => Some("NEXT"),
@@ -1712,6 +1745,25 @@ fn whattype_command(whattype_span: SourceSpan, target: Expr) -> Command {
     }
 }
 
+fn forget_command(forget_span: SourceSpan, name: SpannedValue<String>) -> Command {
+    Command::Forget {
+        span: join_span(forget_span, name.span),
+        name,
+    }
+}
+
+fn forget_overload_command(
+    forget_span: SourceSpan,
+    name: SpannedValue<String>,
+    signature: TypeExpr,
+) -> Command {
+    Command::ForgetOverload {
+        span: join_span(forget_span, signature.span()),
+        name,
+        signature,
+    }
+}
+
 fn type_definition(name: SpannedValue<String>, spec: TypeSpec) -> TypeDefinition {
     TypeDefinition { name, spec }
 }
@@ -2177,6 +2229,7 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
             )
         }
         Expr::Break { .. } => "break".to_string(),
+        Expr::Die { .. } => "die".to_string(),
         Expr::Case(case) => {
             let branches = case
                 .branches
@@ -2525,6 +2578,7 @@ mod tests {
                 expression_shape(&loop_.body)
             ),
             Expr::Break { .. } => "break".to_string(),
+            Expr::Die { .. } => "die".to_string(),
             Expr::Case(case) => {
                 let branches = case
                     .branches
