@@ -199,6 +199,13 @@ FIXTURE_PLANS = (
     # torus-factor-size diagnostics.
     FixturePlan(name="domain/weak_real_form"),
     FixturePlan(name="domain/weak_real_form_rejected"),
+    # Weak-real probes whose prerequisites have landed: B2 downward descent,
+    # validation ordering, and the central-coroot rejection (torus-radical
+    # fix 646f897). The a1_t1/a2_noncanonical probes await the custom-seed
+    # real_form gap and stay unwired.
+    FixturePlan(name="domain/weak_real_form_b2_descent_probe"),
+    FixturePlan(name="domain/weak_real_form_central_coroot_rejected_probe"),
+    FixturePlan(name="domain/weak_real_form_validation_rejected_probe"),
     # Root-datum lattice relations: blockwise Smith bases, unit filtering,
     # annihilators modulo d, generator replacement, and quotient bases with
     # the three frozen validation diagnostics.
@@ -227,6 +234,19 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/involution_decomposition_twisted_non_root_rejected_probe"),
     FixturePlan(name="domain/involution_decomposition_twisted_rank_mismatch_rejected_probe"),
     FixturePlan(name="domain/involution_decomposition_twisted_root_datum_type_rejected_probe"),
+    # Strong-real surface: the base contract plus the probes whose slices
+    # have landed — the Cartan numbering adapter (a63dc32) covers the four
+    # B2/C2 Cartan enumerations and all four rejected diagnostics. The
+    # full-KGB and dual-order probes await their own slices and stay unwired.
+    FixturePlan(name="domain/strong_real"),
+    FixturePlan(name="domain/strong_real_b2_root_cartans_probe"),
+    FixturePlan(name="domain/strong_real_b2_coroot_cartans_probe"),
+    FixturePlan(name="domain/strong_real_c2_root_cartans_probe"),
+    FixturePlan(name="domain/strong_real_c2_coroot_cartans_probe"),
+    FixturePlan(name="domain/strong_real_cartan_high_rejected_probe"),
+    FixturePlan(name="domain/strong_real_cartan_negative_rejected_probe"),
+    FixturePlan(name="domain/strong_real_print_type_rejected_probe"),
+    FixturePlan(name="domain/strong_real_square_classes_type_rejected_probe"),
     # Early scalar-era fixtures: verified verbatim locally and included so
     # the HPC differential upgrades their reference metadata.
     FixturePlan(name="eval/scalars"),
