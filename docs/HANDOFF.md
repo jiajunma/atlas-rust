@@ -95,7 +95,13 @@ rf->val.mostSplit(); the CartanClass display 'Cartan class #N, occurring for
 X real forms and for Y dual real forms' needs the occurrence/dual-occurrence
 column counts — the real_form_labels machinery; nr_of_Cartan_classes =
 numCartanClasses (InnerClass) / numCartan (RealForm)) → `seed_x0` (KGB_elt
-synthetic) → `involution_table` (print_KGB/print_strong_real) →
+synthetic — atlas-types.w:4580: size check 'Torus factor size mismatch';
+make theta-fixed via num += theta*num, halve, subtract rf.g_rho_check, then
+denominator != 1 gives 'Torus factor not in cocharacter coset of real form';
+theta² != 1 gives 'Given transformation is not an involution' from
+twisted_from_involution; the TitsElt(TorusPart(num), tw) is looked up in the
+per-form KGB ('KGB element not present' otherwise); compact SU(2) accepts
+[1]/2 because its g_rho_check is exactly [1]/2) → `involution_table` (print_KGB/print_strong_real) →
 `adjoint_fiber` (central_fiber) → `real_form_labels` (occurrence_matrix/
 dual_occurrence_matrix/block_sizes/block_size/Cartan_order) →
 `weak_real_form` (real_form(InnerClass,mat,ratvec)) →
