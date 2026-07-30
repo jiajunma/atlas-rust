@@ -165,7 +165,16 @@ square_classes is already registered+verified by cartan_aggregation, so this
 slice is COVERAGE-ONLY if involution_table landed the full print_strong_real:
 B2 c2 exercises the multi-class layout ('there are 2 real form classes:\n\n'
 header, blank line after EVERY block including the last; squares
-exp(2i\pi([0,1]/2)) and exp(2i\pi([0,0]/1))) → `split_basic` (eval/; Split operator family —
+exp(2i\pi([0,1]/2)) and exp(2i\pi([0,0]/1))). NUMBERING ADAPTER NOTE
+(2026-07-30): this slice is the first B2 contract, and the crate's
+Cartan/involution enumeration order diverges from upstream at B2 (agent-15
+report; A1/A2 coincide) — a dedicated CARTAN NUMBERING ADAPTER slice must
+land FIRST: enumerate each twisted-conjugacy class, canonicalize its
+representative via the canonical_involution_expr landed with
+involution_table (72d42a8), and re-key the classification/KGB enumeration
+to the upstream canonical order (the deferral recorded in
+twisted_involution.rs:12-16 and CARTAN_AGGREGATION_DESIGN.md; also verify
+A2 coincidence explicitly in the real_form_labels slice) → `split_basic` (eval/; Split operator family —
 language-level primitive type `Split` (no crate math; s^2=1 pair arithmetic
 (e1e2+f1f2, e1f2+f1e2)); upstream install list atlas-types.w:5136-5145 is
 NINE entries: =(Split,Split->bool), !=(Split,Split->bool), unary =(Split->bool)
