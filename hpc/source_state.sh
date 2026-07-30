@@ -15,7 +15,7 @@ atlas_detect_dirty_tree() {
 
   local line
   while IFS= read -r line; do
-    if [[ -n "$line" && "$line" != "?? $slurm_stdout" ]]; then
+    if [[ -n "$line" && "$line" != "?? $slurm_stdout" && "$line" != "?? atlas-"*".out" ]]; then
       printf 'true\n'
       return 0
     fi
