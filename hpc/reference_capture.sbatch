@@ -44,7 +44,7 @@ detect_submit_dirty_tree() {
   status="$(git status --porcelain --untracked-files=all)" || return 2
   local line
   while IFS= read -r line; do
-    if [[ -n "$line" && "$line" != "?? $stdout_path" ]]; then
+    if [[ -n "$line" && "$line" != "?? $stdout_path" && "$line" != "?? atlas-"*".out" ]]; then
       printf 'true\n'
       return 0
     fi
