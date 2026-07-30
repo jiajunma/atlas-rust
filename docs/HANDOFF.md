@@ -152,10 +152,19 @@ covers tw's class downward before minimal_torus_part; anchors: (ic,[[1]],0)
 -> split form 1, (ic,[[-1]],0) -> split form 1 (form_number is already
 registered, typed.rs:4142), (ic,[[1]],[1]/2) -> compact form 0 — i.e. zero
 factor selects the QUASISPLIT form and the rho_check shift the compact one) →
-`involution_decomposition` (distinguished_involution/twisted_involution/
-classify_involution — twisted_involution(rd,theta) -> (WeylElt,InnerClass)
-PAIR, not the 4-arg form; classify_involution(mat) -> (int,int,int) Lie-type
-coordinates; distinguished_involution(ic) = G.distinguished()) → `strong_real` (square_classes + B2
+`involution_decomposition` (distinguished_involution(ic) =
+G.distinguished() as mat; twisted_involution(rd,M) =
+inner_class_value::build(rd,M,&ww) then the PAIR (W_elt(rd,W.element(ww)),
+ic) (atlas-types.w:3200) — ww is the conjugation word bringing M to
+distinguished form, and the W_elt display reuses the weyl_element Transducer
+canonicalization (anchors: A2 opposition -> (<0.1.0>, compact ic), identity
+-> (<>, same ic)); classify_involution(M) (atlas-types.w:2697): non-square
+-> 'Involution should be a {r}x{r} matrix; received a {a}x{b} matrix',
+M^2!=I -> 'Given transformation is not an involution' (the contract-gated
+diagnostic), then tori::classify (tori.cpp:189) = NO eigenspace work:
+tau1=M+I; plus_rank = integer column-echelon rank of tau1; complex_rank =
+mod-2 image rank of tau1; result (plus-complex, complex, r-plus-complex) —
+anchors: I2 -> (2,0,0), A2 opposition -> (0,1,0)) → `strong_real` (square_classes + B2
 print_strong_real — square_classes(cc): per square class, fiber_partition
 classes mapped via toWeakReal to external form numbers (atlas-types.w:4229;
 needs the CartanClass fiber partition + realFormLabels machinery)) → `split_basic` (eval/; Split operator family —
