@@ -1499,4 +1499,70 @@ mod tests {
             Err(StructureError::DistinguishedInvolutionMismatch)
         );
     }
+
+    #[test]
+    fn builds_an_inner_class_for_a_datum_with_a_central_torus() {
+        // A1.T1: lattice rank 2, semisimple rank 1 (the language fixture
+        // `root_datum([[2,0]],[[1,0]],true)`; oracle job 3502476 builds the
+        // identity inner class on it and prints inner class type 'cc').
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2]],
+            vec![crate::Weight::new(vec![2, 0])],
+            vec![crate::Coweight::new(vec![1, 0])],
+        )
+        .unwrap();
+        let identity = LatticeInvolution::identity(&datum).unwrap();
+        let inner_class =
+            InnerClass::from_root_involution(datum.clone(), identity.clone(), 2).unwrap();
+
+        assert_eq!(inner_class.datum().lattice_rank(), 2);
+        assert_eq!(inner_class.datum().semisimple_rank(), 1);
+        assert_eq!(inner_class.root_system().roots().len(), 2);
+        // The distinguished involution acts on the FULL lattice, central
+        // direction included: both action matrices are rank-2 identities.
+        let distinguished = inner_class.distinguished_involution().involution();
+        assert_eq!(distinguished.lattice_rank(), 2);
+        assert_eq!(distinguished.weight_matrix(), identity.weight_matrix());
+        assert_eq!(distinguished.coweight_matrix(), identity.coweight_matrix());
+        // Every root is imaginary for the identity, matching upstream's 'cc'.
+        assert_eq!(
+            inner_class
+                .distinguished_involution()
+                .roots_of_kind(RootKind::Imaginary)
+                .count(),
+            2
+        );
+        assert_eq!(
+            inner_class
+                .distinguished_involution()
+                .roots_of_kind(RootKind::Real)
+                .count(),
+            0
+        );
+        // The strict entry accepts the same already-based involution.
+        assert_eq!(
+            InnerClass::new(datum.clone(), identity, 2).unwrap(),
+            inner_class
+        );
+        // The central reflection is a valid involution of the unbased datum:
+        // it negates the central direction while fixing the root, so it is a
+        // second distinguished involution on this datum (upstream's other
+        // inner class of A1.T1).
+        let central_reflection = LatticeInvolution::new(
+            &datum,
+            vec![vec![1, 0], vec![0, -1]],
+            vec![vec![1, 0], vec![0, -1]],
+        )
+        .unwrap();
+        let twisted =
+            InnerClass::from_root_involution(datum, central_reflection.clone(), 2).unwrap();
+        assert_eq!(
+            twisted
+                .distinguished_involution()
+                .involution()
+                .weight_matrix(),
+            central_reflection.weight_matrix()
+        );
+    }
 }

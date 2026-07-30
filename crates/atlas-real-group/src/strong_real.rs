@@ -340,8 +340,13 @@ impl StrongRealClassification {
                 }
                 // toWeakReal per orbit: the adjoint orbit of
                 // `class_base(csc) + toAdjoint(rep)`, with `rep` the fiber
-                // element of the orbit's representative mask.
-                let ambient_rank = adjoint.datum().rank();
+                // element of the orbit's representative mask. The mask bits
+                // index the AMBIENT (source) fiber basis, so `rep` expands
+                // in the full coweight lattice — including any central-torus
+                // directions — not in the adjoint datum's smaller lattice
+                // (upstream `FiberElt rep(..., fiberRank())`,
+                // cartanclass.cpp:812).
+                let ambient_rank = ambient.lattice_rank();
                 let mut weak_row = try_capacity(orbits.representative_masks.len())?;
                 for &mask in &orbits.representative_masks {
                     let mut representative = ModTwoVector::zero(ambient_rank)?;
@@ -1026,6 +1031,36 @@ mod tests {
         let square = fundamental.central_square_class(compact_local).unwrap();
         assert_eq!(fundamental.fiber_orbit_count(square), Some(3));
         assert_eq!(fundamental.fiber_size(compact_local), Some(1));
+    }
+
+    #[test]
+    fn a1_with_a_central_torus_builds_over_the_full_lattice_fiber() {
+        // A1.T1: lattice rank 2 with a one-dimensional central torus. The
+        // orbit-to-weak-form walk expands ambient fiber masks in the FULL
+        // cocharacter lattice; measuring them against the adjoint datum's
+        // smaller rank used to reject the whole build with
+        // `lattice rank mismatch: expected 2, got 1`.
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2]],
+            vec![Weight::new(vec![2, 0])],
+            vec![Coweight::new(vec![1, 0])],
+        )
+        .unwrap();
+        let classification =
+            classification(&datum, LatticeInvolution::identity(&datum).unwrap(), 2);
+        let strong = StrongRealClassification::build(&classification, 64).unwrap();
+
+        // Oracle job 3502476 (weak_real_form_a1_t1_central_probe): the 'cc'
+        // inner class of A1.T1 has 2 weak real forms, and the quasisplit
+        // form's KGB reaches element #2 — the SL(2) pattern doubled by the
+        // central fiber direction.
+        assert_eq!(classification.weak_real_form_count(), 2);
+        assert_eq!(strong.kgb_size(WeakRealFormId(0)), Some(3));
+        assert_eq!(strong.kgb_size(WeakRealFormId(1)), Some(1));
+        assert_eq!(strong.global_kgb_size(), 10);
+        let fundamental = strong.strong_real_data(CartanId(0)).unwrap();
+        assert_eq!(fundamental.square_class_count(), 2);
     }
 
     #[test]
