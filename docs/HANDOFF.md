@@ -142,11 +142,16 @@ no Cartan_set remapping; replicate literally)) →
 `weak_real_form` (real_form(InnerClass,mat,ratvec) —
 atlas-types.w:3851: size check 'Torus factor size mismatch';
 twisted_from_involution(theta) ('Given transformation is not an involution');
-doubled projection num += theta*num with is_central parity test then halve
-('...' wording from the projection chunk); real_form_of(G,tw,factor,coch)
-sets the cocharacter; minimal_torus_part chooses the base TorusPart; NOTE
-the compact involution + zero factor selects the QUASISPLIT form, and the
-rho/2 shift selects the compact form — see the fixture's three A1 cases) →
+doubled projection num += theta.right_prod(num), is_central parity test on
+the DOUBLED factor (fail: 'Torus factor does not define a valid strong
+involution' — NOT exercised by the frozen contract, only the first two
+diagnostics are contract-gated), then halve; real_form_of(G,tw,factor,coch)
+classifies the weak form and sets the cocharacter; minimal_torus_part chooses
+the base TorusPart; the intervening chunk ensures the Cartan involution table
+covers tw's class downward before minimal_torus_part; anchors: (ic,[[1]],0)
+-> split form 1, (ic,[[-1]],0) -> split form 1 (form_number is already
+registered, typed.rs:4142), (ic,[[1]],[1]/2) -> compact form 0 — i.e. zero
+factor selects the QUASISPLIT form and the rho_check shift the compact one) →
 `involution_decomposition` (distinguished_involution/twisted_involution/
 classify_involution — twisted_involution(rd,theta) -> (WeylElt,InnerClass)
 PAIR, not the 4-arg form; classify_involution(mat) -> (int,int,int) Lie-type
