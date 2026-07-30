@@ -2,5 +2,13 @@
   "schema": "atlas-eval-events-v0",
   "fixture": "eval/dont_b13",
   "status": "verified_hpc_reference",
-  "events": []
+  "events": [
+    {
+      "kind": "Value",
+      "value": {
+        "type": "row",
+        "display": "[]"
+      }
+    }
+  ]
 }
