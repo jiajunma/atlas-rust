@@ -1,0 +1,12 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/involution_decomposition_twisted_matrix_type_rejected_probe",
+  "status": "verified_hpc_reference",
+  "events": [
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "found (RootDatum,[int]) while (RootDatum,mat) was needed."
+    }
+  ]
+}

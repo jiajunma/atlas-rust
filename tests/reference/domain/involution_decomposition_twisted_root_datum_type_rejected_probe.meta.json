@@ -1,0 +1,23 @@
+{
+  "fixture": "domain/involution_decomposition_twisted_root_datum_type_rejected_probe",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3502476",
+  "source_archive_sha256": "476a4dad70787c69fde640bd1388f55c1b5f9ffcf8932facd1346be82758fe02",
+  "fixture_sha256": "135a79ec54b9a6b2f52ef479b29e70365628a265da44f4aaaacbd99d981cffab",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
+  "oracle_stderr_sha256": "fe8f0f3289ce010f1d1d16eccc41c33e41e27ec43b88d8ad9561366246d87865",
+  "capture_artifacts_sha256": "34b467b27c763200ca232e68cce298cb54addf056630ff1a6fc88fdfef1cf49f",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:3200-3212"
+  ],
+  "scenarios": [
+    "twisted_involution rejects a LieType in the RootDatum position and reports the full argument tuple type"
+  ],
+  "notes": "Twisted-involution root-datum argument-type rejection captured verbatim by HPC job 3502476 against the pinned Atlas oracle. The event stores the normalized type diagnostic while the metadata hashes the full span-bearing stderr."
+}

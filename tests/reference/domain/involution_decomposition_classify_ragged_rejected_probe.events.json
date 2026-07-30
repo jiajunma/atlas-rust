@@ -1,0 +1,12 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/involution_decomposition_classify_ragged_rejected_probe",
+  "status": "verified_hpc_reference",
+  "events": [
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Vector sizes differ in conversion to matrix"
+    }
+  ]
+}

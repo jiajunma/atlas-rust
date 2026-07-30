@@ -1,0 +1,12 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/involution_decomposition_classify_type_rejected_probe",
+  "status": "verified_hpc_reference",
+  "events": [
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "found [int] while mat was needed."
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/involution_decomposition_twisted_foreign_datum_rejected_probe",
+  "status": "verified_hpc_reference",
+  "events": [
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Matrix maps simple root 0 to non-root"
+    }
+  ]
+}

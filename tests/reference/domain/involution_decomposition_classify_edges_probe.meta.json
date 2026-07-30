@@ -1,0 +1,26 @@
+{
+  "fixture": "domain/involution_decomposition_classify_edges_probe",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3502476",
+  "source_archive_sha256": "476a4dad70787c69fde640bd1388f55c1b5f9ffcf8932facd1346be82758fe02",
+  "fixture_sha256": "bfa3470006227a3b94ca05c03da29773830b67b9af86b76096307e5a8199e219",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "962fc6bc4bb46a8c94dd8cb16593204ed757b3a25ef7b02741340252f8aef51c",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "cff1ef8f12df1567fb821ca899533f9e8fbc33bd83e0907a1608657cefdc27fc",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:2697-2712"
+  ],
+  "scenarios": [
+    "the zero-rank matrix classifies as (0,0,0)",
+    "rank-one identity and negation classify as compact (1,0,0) and split (0,0,1)",
+    "the integral exchange block classifies as complex rank one (0,1,0)",
+    "the diagonalizable parity-obstructed involution classifies as (1,0,1)"
+  ],
+  "notes": "Edge classification values captured verbatim by HPC job 3502476 against the pinned Atlas oracle. The five cases freeze zero-rank handling and the compact, complex, and split lattice-factor counts before the Rust language wrapper is implemented."
+}

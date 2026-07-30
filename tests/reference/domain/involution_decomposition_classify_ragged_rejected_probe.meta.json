@@ -1,0 +1,23 @@
+{
+  "fixture": "domain/involution_decomposition_classify_ragged_rejected_probe",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3502476",
+  "source_archive_sha256": "476a4dad70787c69fde640bd1388f55c1b5f9ffcf8932facd1346be82758fe02",
+  "fixture_sha256": "e89f1afdf8e1a67d7cd1291b21549eac699f510a155d83d665936732cd2982dd",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
+  "oracle_stderr_sha256": "9ad5e5a5cdf511edb077e98c7fdc6e950693257d28a54a5844d9504ffd9099d0",
+  "capture_artifacts_sha256": "ecc57c8af077307e3cec5e972ffb1b3f1663ac4bf445ed92bf793f599a5db14f",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:2697-2712"
+  ],
+  "scenarios": [
+    "classify_involution rejects ragged vector columns during matrix conversion"
+  ],
+  "notes": "Ragged matrix-conversion rejection captured verbatim by HPC job 3502476 against the pinned Atlas oracle."
+}

@@ -1,0 +1,23 @@
+{
+  "fixture": "domain/involution_decomposition_twisted_matrix_type_rejected_probe",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3502476",
+  "source_archive_sha256": "476a4dad70787c69fde640bd1388f55c1b5f9ffcf8932facd1346be82758fe02",
+  "fixture_sha256": "5984c39604bd1b114b5acde3249bef04e6287366a8d8e1ab7dac1bb33516c5b9",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
+  "oracle_stderr_sha256": "82eb2b6df0b71ca21756c574a2a6ddd546d95f1948bc65926dcd8e89ac4e5a00",
+  "capture_artifacts_sha256": "c1a00ce4587f5b48ff17dd6fffcfa945290837ac061285ea48333193d9c89d60",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:3200-3212"
+  ],
+  "scenarios": [
+    "twisted_involution rejects a row value in the matrix position and reports the full argument tuple type"
+  ],
+  "notes": "Twisted-involution matrix-argument type rejection captured verbatim by HPC job 3502476 against the pinned Atlas oracle. The event stores the normalized type diagnostic while the metadata hashes the full span-bearing stderr."
+}

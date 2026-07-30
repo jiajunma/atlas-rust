@@ -1,0 +1,42 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/involution_decomposition_classify_edges_probe",
+  "status": "verified_hpc_reference",
+  "events": [
+    {
+      "kind": "Value",
+      "value": {
+        "type": "tuple",
+        "display": "(0,0,0)"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "tuple",
+        "display": "(1,0,0)"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "tuple",
+        "display": "(0,0,1)"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "tuple",
+        "display": "(0,1,0)"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "tuple",
+        "display": "(1,0,1)"
+      }
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "fixture": "domain/involution_decomposition_classify_type_rejected_probe",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3502476",
+  "source_archive_sha256": "476a4dad70787c69fde640bd1388f55c1b5f9ffcf8932facd1346be82758fe02",
+  "fixture_sha256": "cd818ca42e89a3846e49f299fccc7fdffc3a241efa0bc103485023aaf03978ac",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
+  "oracle_stderr_sha256": "11e89b423f437402dff959cc9ccc11adeec90050952585f5b8dce988b8ae3bea",
+  "capture_artifacts_sha256": "1faed9d162517e3c834eee0b3f89209001ef3a23ff82f8bc5bbc738dada435c0",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:2697-2712"
+  ],
+  "scenarios": [
+    "classify_involution rejects a row value when the mat argument type is required"
+  ],
+  "notes": "Classifier argument-type rejection captured verbatim by HPC job 3502476 against the pinned Atlas oracle. The event stores the normalized type diagnostic while the metadata hashes the full span-bearing stderr."
+}

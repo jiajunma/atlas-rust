@@ -1,0 +1,12 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/involution_decomposition_twisted_rank_mismatch_rejected_probe",
+  "status": "verified_hpc_reference",
+  "events": [
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Involution should be a 2x2 matrix; received a 1x1 matrix"
+    }
+  ]
+}

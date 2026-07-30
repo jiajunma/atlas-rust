@@ -1,0 +1,26 @@
+{
+  "fixture": "domain/involution_decomposition_rank_one_probe",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3502476",
+  "source_archive_sha256": "476a4dad70787c69fde640bd1388f55c1b5f9ffcf8932facd1346be82758fe02",
+  "fixture_sha256": "7de0f3db2a8b324059dab9d03d8ec1c7634635ff5465466dc31d2be0de8d629e",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "8bd3d49980bfb7f2fad515bc1593b447c459d1d75b1c0a19f95887829dc0166d",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "731b71194f448f24bed13ea7bb2c89ec0ad09d4a038f5452caee149b1fd6dccb",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:3200-3212",
+    "sources/interpreter/atlas-types.w:3236-3240"
+  ],
+  "scenarios": [
+    "A1 identity decomposes to the empty Weyl element and the compact inner class",
+    "A1 negation decomposes to the simple reflection <0> and the same inner-class presentation",
+    "both constructed A1 inner classes expose the identity as their distinguished involution"
+  ],
+  "notes": "Rank-one twisted and distinguished involution behavior captured verbatim by HPC job 3502476 against the pinned Atlas oracle. This freezes the decomposition pair ordering, canonical Weyl displays, and distinguished-matrix presentation."
+}

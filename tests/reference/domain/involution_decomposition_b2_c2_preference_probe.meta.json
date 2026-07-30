@@ -1,0 +1,27 @@
+{
+  "fixture": "domain/involution_decomposition_b2_c2_preference_probe",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3502479",
+  "source_archive_sha256": "3c2554e30b7925e3f4a6b7ff195ed57c3f74eea3e682b856b00669a5db6a0239",
+  "fixture_sha256": "2ee1ae923a4c1869382fc32cff6876d495133f09d475a769f3303d5ca884d6ac",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "0a55a2d6242039192a3458d5c7b16de2f129fbbd7cb01b1a84484a6663e1f10a",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "8d5607e1823968113a347fe46182a8132aa9c531137d095da980b59c066b0b7c",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:3200-3212",
+    "sources/interpreter/atlas-types.w:3236-3240"
+  ],
+  "scenarios": [
+    "B2 and C2 preserve their prefers_coroots flag in root-datum values but decompose to the same canonical Weyl words",
+    "the negative identity decomposes to the longest word <1.0.1.0>",
+    "the nontrivial rank-two root-datum involutions decompose to <1.0.1>",
+    "all four compact inner classes expose the identity distinguished involution"
+  ],
+  "notes": "B2/C2 root-versus-coroot preference behavior captured verbatim by HPC job 3502479 against the pinned Atlas oracle after correcting Axis matrix literals to list columns. The stale job 3502476 capture used the pre-correction fixture and is intentionally superseded."
+}

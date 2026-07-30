@@ -1,0 +1,23 @@
+{
+  "fixture": "domain/involution_decomposition_twisted_foreign_datum_rejected_probe",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3502476",
+  "source_archive_sha256": "476a4dad70787c69fde640bd1388f55c1b5f9ffcf8932facd1346be82758fe02",
+  "fixture_sha256": "84e61270d272309be72e5e6ad9e5c25509ae4e65bf06054cd40c2ec61dbb3df1",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
+  "oracle_stderr_sha256": "bbc93c02b918024f10669cef41f434eeb8ece35183536f5387dc6b9257079660",
+  "capture_artifacts_sha256": "dcdd2d8ff716cc6363370065eb4f1c854e702d434681f3dac2b0f8d6724358e4",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:3200-3212"
+  ],
+  "scenarios": [
+    "twisted_involution rejects a rank-two matrix that does not preserve the B2 root system"
+  ],
+  "notes": "B2 root-preservation rejection captured verbatim by HPC job 3502476 against the pinned Atlas oracle."
+}
