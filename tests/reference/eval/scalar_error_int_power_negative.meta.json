@@ -1,5 +1,5 @@
 {
-  "fixture": "eval/scalar_overloads",
+  "fixture": "eval/scalar_error_int_power_negative",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_status": "verified_hpc_reference",
@@ -7,11 +7,11 @@
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
   "reference_job": "3502017",
   "source_archive_sha256": "290240ce500a149453a7e4d77eba90248aeba69fc9a79edd2dbcb794ebe46aa6",
-  "fixture_sha256": "a2407ad818911d42aab4afbb988cdcb25dc0115dc0b6ebbd480867ff25f42f80",
-  "oracle_exit_status": 0,
-  "oracle_stdout_sha256": "af5a8a50133038b55847554def8805dad95eea9299cc54af37e6dd2966f18e65",
-  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "capture_artifacts_sha256": "323f8487114d26c3919145862b1b56654510b354fd1a6e9078116b1687971426",
+  "fixture_sha256": "066ec8da894bc2fd7f5e288cc218eac2c38ee38db7ba25c98df479b00f98e11a",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
+  "oracle_stderr_sha256": "98cbd8d322f12ca152c514a35b99e036254c945a4cf15111fa763c2dcd705429",
+  "capture_artifacts_sha256": "b6126b7135aaf457d997ccbdd296d83b252f8dc028418454c742d460e504593d",
   "rust_status": "pending",
   "upstream_evidence": [],
   "notes": "Scalar-era fixture re-captured verbatim by HPC job 3502017 against the frozen atlasofliegroups-4d3e9449 oracle (the earlier typed-builtin-registry-era metadata lacked pipeline-swap provenance); oracle stdout matches the expected events exactly. Differential evidence pending the next pipeline_swap_diff run."

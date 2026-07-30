@@ -1,1 +1,12 @@
-{"schema":"atlas-eval-events-v0","fixture":"eval/scalar_error_int_power_negative","status":"verified_hpc_reference","events":[{"kind":"Diagnostic","category":"runtime","message":"Negative power of integer"}]}
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "eval/scalar_error_int_power_negative",
+  "status": "verified_hpc_reference",
+  "events": [
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Negative power of integer"
+    }
+  ]
+}

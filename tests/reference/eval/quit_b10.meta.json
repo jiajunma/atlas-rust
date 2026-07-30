@@ -16,6 +16,7 @@
     "sources/interpreter/parser.y:169-170",
     "sources/interpreter/main.w:502-503"
   ],
-  "rust_status": "not_implemented",
-  "notes": "B10 quit slice, content-identical split from probe quit_probe (capture 3499775): 'quit' mid-input terminates evaluation immediately (the trailing 2+2 line produces no value), the closing 'Bye.' banner still prints, and the exit status is 0. In the differential plan only the first line is runnable; the quit line and the unreachable line are silent. Reference captured by HPC job 3500378 against the frozen atlasofliegroups-4d3e9449 oracle; oracle streams match the expected events verbatim. Differential evidence remains pending until the pipeline_swap_diff run."
+  "rust_status": "verified_hpc",
+  "notes": "B10 quit slice, content-identical split from probe quit_probe (capture 3499775): 'quit' mid-input terminates evaluation immediately (the trailing 2+2 line produces no value), the closing 'Bye.' banner still prints, and the exit status is 0. In the differential plan only the first line is runnable; the quit line and the unreachable line are silent. Reference captured by HPC job 3500378 against the frozen atlasofliegroups-4d3e9449 oracle; oracle streams match the expected events verbatim. Differential evidence remains pending until the pipeline_swap_diff run. Rust behavior verified by HPC differential job 3501467 (and every pipeline_swap_diff run since): the quit command exits the batch with status 0 exactly as the reference events record.",
+  "differential_job": "3501467"
 }
