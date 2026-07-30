@@ -1,0 +1,12 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/cartan_aggregation_rejected",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind": "ReportLine", "text": "Declaring identifier 'rd': RootDatum\n"},
+    {"kind": "Value", "value": {"type": "domain", "domain": "RootDatum", "display": "simply connected root datum of Lie type 'A1'"}},
+    {"kind": "ReportLine", "text": "Declaring identifier 'ic': InnerClass\n"},
+    {"kind": "Value", "value": {"type": "domain", "domain": "InnerClass", "display": "Complex reductive group of type A1, with involution defining\ninner class of type 'c', with 2 real forms and 2 dual real forms"}},
+    {"kind": "Diagnostic", "category": "runtime", "message": "Illegal Cartan class number: 5, this inner class only has 2 of them"}
+  ]
+}

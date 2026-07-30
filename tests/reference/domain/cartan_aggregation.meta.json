@@ -1,25 +1,21 @@
 {
   "fixture": "domain/cartan_aggregation.atlas",
-  "status": "structural_implementation_awaiting_hpc_preflight",
-  "oracle": "pending_domain_adapter",
-  "rust_status": "implemented_locally_126_tests_pending_hpc",
-  "reference_status": "pending_atlas_constructor_and_event_adapter",
-  "design_reviews": {
-    "completed_at": "2026-07-28",
-    "checks": [
-      "atlas_source_semantics",
-      "rust_ownership_and_internal_mechanics",
-      "public_api_and_consumer_integration"
-    ],
-    "recorded_in": "docs/CARTAN_AGGREGATION_DESIGN.md"
-  },
-  "scenarios": [
-    "simply-connected A1: two Cartans with split/compact attribution and most-split classes",
-    "A2 identity: fundamental-first reorder with sizes (1,3) and the one-pair poset",
-    "B2 identity: sizes (1,2,2,1), the exact five-pair graded poset, so(5) fundamental-only",
-    "A1 x A1 identity (four singletons) and swap (one class of size 2 with normalized identity representative)",
-    "partition lookup round-trips and rejects foreign datum and wrong-delta provenance",
-    "order-free most-split via the trivial-grading test with construction-time uniqueness"
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:4348-4366"
   ],
-  "notes": "Three fresh-context design reviews completed and folded into the design, including the empirically discovered fundamental-class reorder and the membership-plus-normalization rule for multi-element fundamental classes. The structural implementation passes 126 local unit tests. The frozen HPC preflight is queued until the cluster is reachable. This fixture remains reserved until the language-level constructors and both oracle adapters exist."
+  "scenarios": [
+    "A1: 2 Cartan classes; #0 compact (2 real forms, 1 dual), #1 split (1 real form, 2 dual)",
+    "most_split_Cartan of the split form is #1; involutions [[1]] and [[-1]]",
+    "real_forms(#0) = [su(2), sl(2,R)]; dual_real_forms(#1) shows the disconnected PGL(2,R)",
+    "square_classes(#0) = [[1],[0,0]]; fiber_partition(#0, split) = [0]",
+    "per-form Cartan_class(rf,0) = #0"
+  ],
+  "notes": "Cartan class language surface (Cartan_class/nr_of_Cartan_classes/most_split_Cartan/involution/real_forms/dual_real_forms/square_classes/fiber_partition), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The CartanClass display carries singular/plural 'real form(s)' and 'dual real form(s)'. The crate-level aggregation machinery recorded in the previous revision of this meta (126 local tests, CARTAN_AGGREGATION_DESIGN.md) remains the kernel this surface binds to.",
+  "design_reviews": {
+    "recorded_in": "docs/CARTAN_AGGREGATION_DESIGN.md"
+  }
 }
