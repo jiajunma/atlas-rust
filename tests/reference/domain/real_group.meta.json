@@ -1,28 +1,22 @@
 {
   "fixture": "domain/real_group.atlas",
-  "status": "hpc_preflight_passed_not_differential",
-  "oracle": "hpc-only",
-  "rust_status": "passed_hpc_preflight",
-  "reference_status": "pending_domain_adapter",
-  "cartan_fiber_status": "passed_hpc_preflight_not_differential",
-  "hpc_preflight": {
-    "job_id": "3462432",
-    "completed_at": "2026-07-27T15:12:53+08:00",
-    "source_commit": "ffc82e77eb62fad44381a35b71597738508b25f5",
-    "source_tree_state": "dirty",
-    "source_snapshot_sha256": "a3e8d6472b20ab767ab5e41443ba29e56db0e9677e94fab2c4f8ff44d79e67f9",
-    "source_snapshot_scope": "frozen submit directory excluding .git, target, results, and Slurm stdout",
-    "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-    "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)",
-    "cargo": "cargo 1.96.0 (30a34c682 2026-05-25)",
-    "checks": [
-      "cargo fmt -p atlas-real-group --check",
-      "cargo clippy -p atlas-real-group --all-targets --locked -- -D warnings",
-      "cargo test -p atlas-real-group --lib --locked: 67 passed"
-    ],
-    "report_sha256": "fdbd319eaa994c86d049f632dcb3b953921d445a903d20d7a11761bb86282a91",
-    "stdout_sha256": "e75ff2387bb2ad6ba7a4d2185e91f503ae3818542a4317046a8a5a551befd74a",
-    "remote_report": "/public/home/majj/atlas-rust-real-group.n9GILQ/results/ffc82e77eb62fad44381a35b71597738508b25f5/3462432/real_group_preflight.json"
-  },
-  "notes": "The recorded Rust structural preflight passed on XMU HPC from a frozen input snapshot, including formatting, Clippy with warnings denied, and exact integer-kernel, resource-bound, and CartanFiber tests. This is not Atlas differential evidence: KGB, Atlas constructor syntax, reference events, and Rust domain events remain pending."
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:3590-3620",
+    "sources/interpreter/atlas-types.w:3931-3960",
+    "sources/interpreter/output.cpp:556-782"
+  ],
+  "scenarios": [
+    "A1 compact inner class: 2 forms, form_names [su(2),sl(2,R)], form_number 0/1, quasisplit = 1 (split)",
+    "C2 compact inner class: 3 forms [sp(2),sp(1,1),sp(4,R)], dual names [so(5),so(4,1),so(3,2)], quasisplit = 2, dual_real_form(ic,0) = compact so(5), dual quasisplit = 2",
+    "A2 equal-rank inner class: 2 forms [su(3),su(2,1)], 1 dual real form (singular in the InnerClass display), quasisplit = 1",
+    "RealForm print variants: 'compact connected' / 'connected' / 'connected split' / 'connected quasisplit real group with Lie algebra ...'"
+  ],
+  "notes": "Real-form numbering surface, third activation of the fourteen domain fixtures (docs/LANGUAGE_BRIDGE_DESIGN.md): nr_of_real_forms/nr_of_dual_real_forms/form_names/dual_form_names/real_form(ic,i)/form_number/quasisplit_form/dual_real_form/dual_quasisplit_form, all drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The external form numbering matches output.cpp:71-140 (compact external 0, quasisplit last). The crate-level structural preflight recorded in the previous revision of this meta (HPC job 3462432, 67 atlas-real-group tests) remains historical evidence for the kernel layer only.",
+  "design_reviews": {
+    "recorded_in": "docs/LANGUAGE_BRIDGE_DESIGN.md and docs/REAL_FORM_LABELS_DESIGN.md"
+  }
 }

@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/real_group_rejected.atlas",
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:3590-3600"
+  ],
+  "notes": "Rejected companion of the real-form numbering slice: real_form(ic,5) on a 2-form inner class aborts with the runtime error 'Illegal real form number: 5' (atlas-types.w real_form_wrapper range check). Drafted from a direct oracle probe; verbatim HPC capture still pending."
+}

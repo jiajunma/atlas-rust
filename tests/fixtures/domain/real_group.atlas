@@ -1,3 +1,50 @@
-// Domain fixture reserved for the HPC Atlas/Rust differential harness.
-// The interpreter-side constructor syntax is not yet exposed.
-real_group_fixture;
+rd : RootDatum
+rd := simply_connected(Lie_type("A1"),true)
+ic : InnerClass
+ic := inner_class(rd,[[1]])
+nr_of_real_forms(ic)
+nr_of_dual_real_forms(ic)
+form_names(ic)
+dual_form_names(ic)
+rf0 : RealForm
+rf0 := real_form(ic,0)
+rf0
+form_number(rf0)
+rf1 : RealForm
+rf1 := real_form(ic,1)
+rf1
+form_number(rf1)
+form_number(quasisplit_form(ic))
+rd2 : RootDatum
+rd2 := simply_connected(Lie_type("C2"),true)
+ic2 : InnerClass
+ic2 := inner_class(rd2,[[1,0],[0,1]])
+nr_of_real_forms(ic2)
+form_names(ic2)
+nr_of_dual_real_forms(ic2)
+dual_form_names(ic2)
+s0 : RealForm
+s0 := real_form(ic2,0)
+s0
+s1 : RealForm
+s1 := real_form(ic2,1)
+s1
+s2 : RealForm
+s2 := real_form(ic2,2)
+s2
+form_number(quasisplit_form(ic2))
+dual_real_form(ic2,0)
+form_number(dual_quasisplit_form(ic2))
+rd3 : RootDatum
+rd3 := simply_connected(Lie_type("A2"),true)
+ic3 : InnerClass
+ic3 := inner_class(rd3,[[0,-1],[-1,0]])
+nr_of_real_forms(ic3)
+form_names(ic3)
+u0 : RealForm
+u0 := real_form(ic3,0)
+u0
+u1 : RealForm
+u1 := real_form(ic3,1)
+u1
+form_number(quasisplit_form(ic3))
