@@ -85,14 +85,7 @@ oracle's transducer choice exactly (B2 input [0,1,0,1] canonicalizes to
 <1.0.1.0>, A2 [0,1,0] stays <0.1.0>); NOTE the crate-level weyl_element
 dropped the transducer order (WEYL_ELEMENT_DESIGN.md deferral), so the
 language layer must port the Transducer word canonicalization, not reuse
-the crate's raw word; length(w) = W.length(w)) → `seed_x0` (KGB_elt
-synthetic — atlas-types.w:4580: size check 'Torus factor size mismatch';
-make theta-fixed via num += theta*num, halve, subtract rf.g_rho_check, then
-denominator != 1 gives 'Torus factor not in cocharacter coset of real form';
-theta² != 1 gives 'Given transformation is not an involution' from
-twisted_from_involution; the TitsElt(TorusPart(num), tw) is looked up in the
-per-form KGB ('KGB element not present' otherwise); compact SU(2) accepts
-[1]/2 because its g_rho_check is exactly [1]/2) → `involution_table`
+the crate's raw word; length(w) = W.length(w)) → `involution_table`
 (print_KGB: interpreter wrapper atlas-types.cpp:5159 prints 'kgbsize: N\n'
 then kgb_io::var_print_KGB (kgb_io.cpp:60, NON-traditional mode with
 G=innerClass): 'Base grading: [...].\n' header then rows
@@ -280,9 +273,9 @@ where -1 lies in W (A1,B2,Cn,D2n,...) it collapses to 'c'; 'u' often
 collapses to 's') — anchors: A1 "s" -> | 1 | (collapsed), A2 "s" -> flip,
 A2 "u" -> flip, B2 "s" -> I2, A1.A1 "C" -> swap, A2 mat [[1,1],[0,1]] "s"
 -> | 1, 1 | / | 0, -1 | via on_basis).
-`real_group`, `cartan_aggregation`, `overloads_ops_b8c{,_rejected}`,
+`real_group`, `cartan_aggregation`, `seed_x0`, `overloads_ops_b8c{,_rejected}`,
 `whattype_ops_b8d`, and `dont_b13{,_rejected}` are DONE (verified
-`3501779` / `3502126` / `3501643`).
+`3501779` / `3502126` / `3502176` / `3501643`).
 
 Uncovered matrix items needing contract design first (probe the oracle,
 then freeze): KL file formats and readline completion. `dont`, `showall`,
@@ -378,7 +371,8 @@ a future cleanup pass rather than schema migration.
   `involution_primitive` (frozen `3501449`),
   `weyl_element` (verified `3502034`) + `kgb_operations` +
   `tits_operations` (verified `3501870`), `cartan_aggregation`
-  (implemented `1989f62`, verified `3502126`) + `seed_x0` +
+  (implemented `1989f62`, verified `3502126`) + `seed_x0`
+  (implemented `babbefd`, verified `3502176`) +
   `involution_table` + `adjoint_fiber` + `real_form_labels` +
   `weak_real_form` + `involution_decomposition` +
   `strong_real` (`3501500`), `split_basic` + `block_basic` (`3501519`),
@@ -418,6 +412,23 @@ claim of full Atlas compatibility: RootDatum/InnerClass/RealForm/KGB domain
 queries beyond construction and display, relations, primitive `involution`
 constructors, Cartan classes, Weyl elements, synthetic KGB seeds, and the
 later math overloads remain pending differential evidence.
+
+## Verified stage: seed_x0 synthetic KGB constructor (differential 3502176)
+
+- `tests/fixtures/domain/seed_x0{,_rejected}.atlas`: `KGB_elt(RealForm, mat,
+  ratvec)` — the atlas-types.w:4580 synthetic seed. Crate side:
+  `InnerClass::twisted_from_involution` (root-permutation/coroot transport
+  gate, left-conjugation to distinguished, weight-matrix comparison) and
+  `KgbGraph::{lookup, seed_torus_part}` (kgb.cpp:716 lookup port; the
+  `(v + θᵀv)/2 − g_rho_check` arithmetic with non-integral-coordinate coset
+  rejection). Language side: shared `build_kgb_element` pipeline so call and
+  validate emit identical diagnostics in the upstream wrapper order; the
+  `(vec,int->ratvec)` division overload (`Denominator 0 in rational vector`,
+  negative-denominator normalization) was added as a fixture precondition.
+  Commit `babbefd`.
+- Differential: `pipeline_swap_diff` job `3502176` at commit `babbefd`
+  reports both fixtures PASS with zero regressions. Metadata carries
+  `rust_status: verified_hpc` with `differential_job: 3502176`.
 
 ## Verified stage: cartan_aggregation domain surface (differential 3502126)
 
