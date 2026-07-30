@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/real_form_labels_rejected.atlas",
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:3424-3431"
+  ],
+  "notes": "Rejected companion of the occurrence/block-size surface: block_size(ic,5,0) aborts with 'Real form number 5 out of bounds'. Confirmed by direct oracle probe; verbatim HPC capture still pending."
+}

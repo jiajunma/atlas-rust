@@ -1,3 +1,12 @@
-// Structural fixture reserved for the HPC Atlas/Rust differential harness.
-// The interpreter-side constructor syntax is not yet exposed.
-real_form_labels_fixture;
+rd : RootDatum
+rd := simply_connected(Lie_type("A2"),true)
+ic : InnerClass
+ic := inner_class(rd,[[0,-1],[-1,0]])
+occurrence_matrix(ic)
+dual_occurrence_matrix(ic)
+block_sizes(ic)
+block_size(ic,0,0)
+block_size(ic,1,0)
+rf : RealForm
+rf := real_form(ic,1)
+Cartan_order(rf)

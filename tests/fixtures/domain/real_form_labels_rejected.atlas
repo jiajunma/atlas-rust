@@ -1,0 +1,5 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("A2"),true)
+ic : InnerClass
+ic := inner_class(rd,[[0,-1],[-1,0]])
+block_size(ic,5,0)

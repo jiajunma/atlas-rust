@@ -1,25 +1,21 @@
 {
   "fixture": "domain/real_form_labels.atlas",
-  "status": "structural_implementation_awaiting_hpc_preflight",
-  "oracle": "pending_domain_adapter",
-  "rust_status": "implemented_locally_121_tests_pending_hpc",
-  "reference_status": "pending_atlas_constructor_and_event_adapter",
-  "design_reviews": {
-    "completed_at": "2026-07-28",
-    "checks": [
-      "atlas_source_semantics",
-      "rust_ownership_and_internal_mechanics",
-      "public_api_and_consumer_integration"
-    ],
-    "recorded_in": "docs/REAL_FORM_LABELS_DESIGN.md"
-  },
-  "scenarios": [
-    "A2 identity: reflection Cartan labels only the quasisplit form",
-    "fundamental Cartan labels are the identity map",
-    "simply-connected A1: split Cartan labels quasisplit",
-    "B2 identity and twisted A2: full per-Cartan sweep with the quasisplit anchor",
-    "interleaved and foreign-provenance rejections across the six inputs",
-    "base-grading extension parities including the transposed-system B2 case and a real-root rejection"
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:3422-3431",
+    "sources/interpreter/atlas-types.w:3941"
   ],
-  "notes": "Three fresh-context design reviews completed and folded into the design (the semantics review found no blocking corrections and settled the cross-action direction; the internals review pinned the transposed rational system and the explicit imaginarity gate). The structural implementation passes 121 local unit tests. The frozen HPC preflight is queued until the cluster is reachable. This fixture remains reserved until the language-level constructors and both oracle adapters exist."
+  "scenarios": [
+    "A2 equal-rank: occurrence_matrix [[1,0],[1,1]] (compact occurs at the fundamental class only)",
+    "dual_occurrence_matrix [[1,1]] (single dual form at both classes)",
+    "block_sizes [[1],[6]] and block_size(ic,0,0)=1, block_size(ic,1,0)=6 (matching the KGB sizes)",
+    "Cartan_order(SU(2,1)) [[1,1],[0,1]] (the two-class poset)"
+  ],
+  "notes": "Cartan occurrence/block-size/Cartan-order matrices, drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The crate-level real-form label machinery recorded in the previous revision of this meta (121 local tests, REAL_FORM_LABELS_DESIGN.md) remains the kernel this surface binds to.",
+  "design_reviews": {
+    "recorded_in": "docs/REAL_FORM_LABELS_DESIGN.md"
+  }
 }
