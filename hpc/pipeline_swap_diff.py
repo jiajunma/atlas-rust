@@ -138,6 +138,10 @@ FIXTURE_PLANS = (
     # negation, long/short flags, rank, and the illegal-index rejection.
     FixturePlan(name="domain/root_coroot"),
     FixturePlan(name="domain/root_coroot_rejected"),
+    # KGB headline observables: per-form KGB sizes and root statuses across
+    # the A1/C2/A2 families, plus the inexistent-element and type rejections.
+    FixturePlan(name="domain/kgb_generation"),
+    FixturePlan(name="domain/kgb_generation_rejected"),
 )
 
 

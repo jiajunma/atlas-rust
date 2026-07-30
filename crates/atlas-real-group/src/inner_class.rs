@@ -1,8 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::{
-    BasedRootDatum, LatticeInvolution, RootId, RootInvolutionData, RootSystem, StructureError,
-    TwistedConjugacyClass, TwistedConjugacyPartition, TwistedInvolution, WeylAction, WeylGroup,
+    BasedRootDatum, Coweight, LatticeInvolution, RootId, RootInvolutionData, RootSystem,
+    StructureError, TwistedConjugacyClass, TwistedConjugacyPartition, TwistedInvolution, Weight,
+    WeylAction, WeylGroup,
 };
 
 /// Shared structural data at the beginning of an Atlas inner-class computation.
@@ -36,6 +37,35 @@ impl InnerClass {
     ) -> Result<Self, StructureError> {
         let roots = RootSystem::enumerate(&datum, root_budget)?;
         let distinguished_involution = RootInvolutionData::new(&roots, distinguished_involution)?;
+        Self::with_roots(datum, roots, distinguished_involution)
+    }
+
+    /// Build the shared state from an arbitrary root-datum involution.
+    ///
+    /// This mirrors the upstream `inner_class(RootDatum,mat)` entry point
+    /// (interpreter/atlas-types.w `check_involution`): any involution of the
+    /// unbased root datum is accepted, validated to permute the root system
+    /// and transport coroots, and then left-composed with the Weyl word that
+    /// `wrt_distinguished` reads off the reflected simple-root images, which
+    /// makes it an involution of the based datum. The Weyl word itself is
+    /// forgotten, exactly as the upstream wrapper does.
+    pub fn from_root_involution(
+        datum: BasedRootDatum,
+        involution: LatticeInvolution,
+        root_budget: usize,
+    ) -> Result<Self, StructureError> {
+        let roots = RootSystem::enumerate(&datum, root_budget)?;
+        let involution = RootInvolutionData::new(&roots, involution)?;
+        let distinguished = wrt_distinguished(&datum, &roots, &involution)?;
+        let distinguished = RootInvolutionData::new(&roots, distinguished)?;
+        Self::with_roots(datum, roots, distinguished)
+    }
+
+    fn with_roots(
+        datum: BasedRootDatum,
+        roots: RootSystem,
+        distinguished_involution: RootInvolutionData,
+    ) -> Result<Self, StructureError> {
         if !preserves_simple_system(&datum, &roots, &distinguished_involution)? {
             return Err(StructureError::InvalidBasedAutomorphism);
         }
@@ -217,6 +247,130 @@ fn preserves_simple_system(
         })
 }
 
+/// Port of upstream `to_positive_system` + `wrt_distinguished`
+/// (structure/rootdata.cpp:1329-1387): reflect the simple-root images until
+/// every one is positive, then read the conjugating Weyl word off the final
+/// images and left-compose the involution with it. The composition preserves
+/// the simple system; [`InnerClass::with_roots`] re-checks that invariant.
+fn wrt_distinguished(
+    datum: &BasedRootDatum,
+    roots: &RootSystem,
+    involution: &RootInvolutionData,
+) -> Result<LatticeInvolution, StructureError> {
+    let mut images = datum
+        .simple_roots()
+        .iter()
+        .map(|root| {
+            let id = roots
+                .id_of(root)
+                .ok_or(StructureError::InvalidRootAutomorphism)?;
+            involution
+                .image(id)
+                .ok_or(StructureError::InvalidRootAutomorphism)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    // Upstream `to_positive_system`: while some image is negative, reflect
+    // every image in the root sitting at the first negative position.
+    let mut steps = Vec::new();
+    while let Some(generator) = images
+        .iter()
+        .position(|&image| roots.is_positive(image) == Some(false))
+    {
+        let mirror = images[generator];
+        for image in &mut images {
+            *image = reflect_root(roots, mirror, *image)?;
+        }
+        steps.push(generator);
+    }
+    // The images now form a positive simple system, necessarily the standard
+    // one, so each is one of the datum's simple roots.
+    let simple_index = |image: RootId| -> Result<usize, StructureError> {
+        let coordinates = roots
+            .simple_coordinates(image)
+            .ok_or(StructureError::InvalidRootAutomorphism)?;
+        let mut index = None;
+        for (position, &coordinate) in coordinates.iter().enumerate() {
+            match coordinate {
+                0 => {}
+                1 if index.is_none() => index = Some(position),
+                _ => return Err(StructureError::InvalidBasedAutomorphism),
+            }
+        }
+        index.ok_or(StructureError::InvalidBasedAutomorphism)
+    };
+    // Upstream `wrt_distinguished`: reverse the reflection steps, then twist
+    // each by the final images to get the left-conjugating Weyl word. The
+    // intermediate composites are not involutions, so the reflections act on
+    // the bare matrices and only the final result is revalidated.
+    let datum = involution.involution().datum().clone();
+    let mut weight_action = involution.involution().weight_matrix().to_vec();
+    let mut coweight_action = involution.involution().coweight_matrix().to_vec();
+    for &generator in steps.iter().rev() {
+        let simple = simple_index(images[generator])?;
+        let (reflected_weight, reflected_coweight) =
+            left_reflect(&datum, &weight_action, &coweight_action, simple)?;
+        weight_action = reflected_weight;
+        coweight_action = reflected_coweight;
+    }
+    LatticeInvolution::new(&datum, weight_action, coweight_action)
+}
+
+/// The reflection of root `gamma` in the hyperplane orthogonal to root
+/// `mirror`: `gamma - <gamma, mirror_vee> mirror`, resolved back to a root ID.
+fn reflect_root(
+    roots: &RootSystem,
+    mirror: RootId,
+    gamma: RootId,
+) -> Result<RootId, StructureError> {
+    let coefficient = i128::from(roots.bracket(gamma, mirror)?);
+    let mirror_weight = roots
+        .root(mirror)
+        .ok_or(StructureError::InvalidRootAutomorphism)?;
+    let gamma_weight = roots
+        .root(gamma)
+        .ok_or(StructureError::InvalidRootAutomorphism)?;
+    let mut image = Vec::with_capacity(gamma_weight.as_slice().len());
+    for (&coordinate, &mirror_coordinate) in
+        gamma_weight.as_slice().iter().zip(mirror_weight.as_slice())
+    {
+        let value = i128::from(coordinate) - coefficient * i128::from(mirror_coordinate);
+        image.push(i32::try_from(value).map_err(|_| StructureError::ArithmeticOverflow)?);
+    }
+    roots
+        .id_of(&Weight::new(image))
+        .ok_or(StructureError::InvalidRootAutomorphism)
+}
+
+/// A lattice action matrix applied by row-dot (`image = M * v`).
+type LatticeAction = Vec<Vec<i32>>;
+
+/// Left-compose involution actions with the simple reflection of `generator`,
+/// on weights and coweights alike (upstream
+/// `RootDatum::simple_reflect(generator, delta)`).
+fn left_reflect(
+    datum: &BasedRootDatum,
+    weight_action: &[Vec<i32>],
+    coweight_action: &[Vec<i32>],
+    generator: usize,
+) -> Result<(LatticeAction, LatticeAction), StructureError> {
+    let rank = datum.lattice_rank();
+    let mut reflected_weight = vec![vec![0; rank]; rank];
+    let mut reflected_coweight = vec![vec![0; rank]; rank];
+    for column in 0..rank {
+        let image: Vec<i32> = weight_action.iter().map(|row| row[column]).collect();
+        let image = datum.reflect_weight(generator, &Weight::new(image))?;
+        for (row, &entry) in image.as_slice().iter().enumerate() {
+            reflected_weight[row][column] = entry;
+        }
+        let coimage: Vec<i32> = coweight_action.iter().map(|row| row[column]).collect();
+        let coimage = datum.reflect_coweight(generator, &Coweight::new(coimage))?;
+        for (row, &entry) in coimage.as_slice().iter().enumerate() {
+            reflected_coweight[row][column] = entry;
+        }
+    }
+    Ok((reflected_weight, reflected_coweight))
+}
+
 fn inverse_permutation(permutation: &[RootId]) -> Result<Vec<usize>, StructureError> {
     let mut inverse = vec![None; permutation.len()];
     for (source, image) in permutation.iter().enumerate() {
@@ -386,6 +540,57 @@ mod tests {
         assert_eq!(
             InnerClass::new(datum, action, 2),
             Err(StructureError::InvalidRootDatumAutomorphism)
+        );
+    }
+
+    #[test]
+    fn conjugates_an_unbased_a2_involution_to_the_distinguished_identity() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        // The negated diagram swap maps each simple root to minus the other
+        // one: a root-datum involution that is not based.
+        let negated_swap = LatticeInvolution::new(
+            &datum,
+            vec![vec![0, -1], vec![-1, 0]],
+            vec![vec![0, -1], vec![-1, 0]],
+        )
+        .unwrap();
+        let inner_class = InnerClass::from_root_involution(datum.clone(), negated_swap, 6).unwrap();
+        let expected = InnerClass::new(
+            datum.clone(),
+            LatticeInvolution::identity(&datum).unwrap(),
+            6,
+        )
+        .unwrap();
+        assert_eq!(inner_class, expected);
+    }
+
+    #[test]
+    fn accepts_a_based_involution_unchanged_through_the_general_entry() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let diagram_twist = LatticeInvolution::new(
+            &datum,
+            vec![vec![0, 1], vec![1, 0]],
+            vec![vec![0, 1], vec![1, 0]],
+        )
+        .unwrap();
+        let general =
+            InnerClass::from_root_involution(datum.clone(), diagram_twist.clone(), 6).unwrap();
+        let strict = InnerClass::new(datum, diagram_twist, 6).unwrap();
+        assert_eq!(general, strict);
+    }
+
+    #[test]
+    fn general_entry_still_rejects_actions_that_do_not_permute_roots() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let involution = LatticeInvolution::new(
+            &datum,
+            vec![vec![1, 1], vec![0, -1]],
+            vec![vec![1, 0], vec![1, -1]],
+        )
+        .unwrap();
+        assert_eq!(
+            InnerClass::from_root_involution(datum, involution, 6),
+            Err(StructureError::InvalidRootAutomorphism)
         );
     }
 }

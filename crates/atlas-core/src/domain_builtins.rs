@@ -846,8 +846,11 @@ fn build_inner_class(
     let coweight = transpose(&matrix);
     let involution = LatticeInvolution::new(&handle.datum, matrix, coweight)
         .map_err(|error| runtime(span, error.to_string()))?;
-    let inner_class = InnerClass::new((*handle.datum).clone(), involution, ROOT_BUDGET)
-        .map_err(|error| runtime(span, error.to_string()))?;
+    // Upstream accepts any root-datum involution here and left-composes it
+    // into a distinguished one (`check_involution`, atlas-types.w:2829).
+    let inner_class =
+        InnerClass::from_root_involution((*handle.datum).clone(), involution, ROOT_BUDGET)
+            .map_err(|error| runtime(span, error.to_string()))?;
     let class_budget = CartanClassificationBudget::new(
         INTEGER_BUDGET,
         AdjointFiberBudget::new(INTEGER_BUDGET, 1_000_000, 10_000_000),
@@ -1646,9 +1649,10 @@ pub(crate) fn validate(
         "KGB" => {
             arity(name, arguments, 2, span)?;
             let context = as_real_form(&arguments[0], span)?;
-            let index = as_usize(&arguments[1], span)?;
-            if index >= context.graph.size() {
-                return Err(runtime(span, "Inexistent KGB element"));
+            let index = as_integer(&arguments[1], span)?;
+            let size = BigInt::from(context.graph.size());
+            if index < 0 || index >= size {
+                return Err(runtime(span, format!("Inexistent KGB element: {index}")));
             }
         }
         "cross" | "Cayley" | "status" => {
@@ -1831,7 +1835,15 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
         "KGB" => {
             arity(name, arguments, 2, span)?;
             let context = as_real_form(&arguments[0], span)?;
-            let index = as_usize(&arguments[1], span)?;
+            let index = as_integer(&arguments[1], span)?;
+            // Upstream rejects negative and oversized numbers alike with the
+            // value echoed (atlas-types.w:4412 `KGB_elt_wrapper`).
+            let size = BigInt::from(context.graph.size());
+            if index < 0 || index >= size {
+                return Err(runtime(span, format!("Inexistent KGB element: {index}")));
+            }
+            let index =
+                usize::try_from(&index).map_err(|_| runtime(span, "Inexistent KGB element"))?;
             let id = context
                 .graph
                 .ids()
