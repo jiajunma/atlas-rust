@@ -37,7 +37,7 @@ differential report naming the job.
 | exceptions and runtime errors | supported | B12 + rejected companions across all slices; `3501467`, `3501643` |
 | Atlas commands and batch files | supported | B7 forget/die, B9 redirect, B10 include, B13 dont, showall, quit; `3501467`, `3501643` |
 | interactive input and completion | partial | TTY banner/prompt implemented; readline completion remains pending |
-| domain objects and mathematical operations | partial | 11 of 21 frozen domain contracts verified: display `3501467`, root_coroot/kgb_generation `3501555`, real_group `3501779`, kgb_operations/tits_operations `3501870`, grading `3501915`, weyl_element `3502034`, cartan_aggregation `3502126`, seed_x0 `3502176`, involution_table `3502272`; Block/KL layer pending |
+| domain objects and mathematical operations | partial | 16 of 21 frozen domain contracts verified: display `3501467`, root_coroot/kgb_generation `3501555`, real_group `3501779`, kgb_operations/tits_operations `3501870`, grading `3501915`, weyl_element `3502034`, cartan_aggregation `3502126`, seed_x0 `3502176`, involution_table `3502272`, adjoint_fiber `3502318`, real_form_labels `3502375`, relations `3502506`, involution_decomposition `3502550`, weak_real_form `3502697`; Block/KL layer pending |
 | KL and file formats | planned | explicit filekl adapter coupled to the pending Block/KL math layer |
 
 No row moves to `supported` merely because Rust compiles. It needs a reference
@@ -53,15 +53,21 @@ basic TTY banner/prompt. These surfaces are covered by HPC differential job
 covered by direct CLI/session checks. The domain layer is partially ported:
 RootDatum root/coroot queries, KGB size/status, real-form numbering and
 dual forms, KGB decompose/twist, the grading observables, Weyl elements,
-the Cartan-class aggregation surface, synthetic KGB seeds, and the
-KGB/strong-real printers are verified by differentials `3501555`,
-`3501779`, `3501870`, `3501915`, `3502034`, `3502126`, `3502176`, and
-`3502272`; adjoint fibers,
-real-form labels and block sizes, synthetic real forms, involution
-decomposition, blocks, K-types, parameters, and the primitive involution
-constructors have frozen contracts awaiting implementation. Readline
-completion and KL binary formats remain outside the language-only gate
-because they depend on the unfinished Block/KL domain values.
+the Cartan-class aggregation surface, synthetic KGB seeds, the
+KGB/strong-real printers, adjoint fibers, real-form labels and block sizes,
+the relation lattice, involution decomposition, and the synthetic
+three-argument `real_form(InnerClass,mat,ratvec)` classification are verified
+by differentials `3501555`, `3501779`, `3501870`, `3501915`, `3502034`,
+`3502126`, `3502176`, `3502272`, `3502318`, `3502375`, `3502506`, `3502550`,
+and `3502697`. The strong-real Cartan enumeration probes (13 fixtures, B2/C2
+root/coroot/dual orders plus full B2 KGB prints, capture job `3502700`) are
+frozen and gate the Cartan numbering adapter in flight; the five weak-real
+probes are partially blocked by the custom-seed `real_form` gap
+(`minimal_torus_part`), and blocks, K-types, parameters, and the primitive
+involution constructors have frozen contracts awaiting implementation. The
+`Split` primitive type (eval `split_basic`) is the last open eval slice.
+Readline completion and KL binary formats remain outside the language-only
+gate because they depend on the unfinished Block/KL domain values.
 
 ## Source compatibility rules
 
