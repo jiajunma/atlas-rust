@@ -1,4 +1,4 @@
-# Atlas-Rust handoff - 2026-07-30 (B7 forget/die implemented, pending HPC)
+# Atlas-Rust handoff - 2026-07-30 (B7 forget/die verified)
 
 This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
@@ -8,13 +8,12 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
 - Branch: `main`.
 - B3a non-recursive functions, B3b recursive functions / definition sugar,
-  B3c parameter patterns, B3d selectors, B4 loops, B5 `set_type`, and B6
-  case / counted-for are implemented and differentially verified; B11
-  precedence needed no change and is verified as well. The exact commit is
-  shown by `git log -1 --oneline`.
-- B7 forget/die and the B10 missing-file diagnostics are implemented
-  (`f86fc68`, `73c7d81`), locally event-exact, pending the HPC differential.
-  B7 also aligns the undefined-identifier wording with `axis.w:1431`, and
+  B3c parameter patterns, B3d selectors, B4 loops, B5 `set_type`, B6
+  case / counted-for, B7 forget/die, and the B10 missing-file diagnostics
+  are implemented and differentially verified; B11 precedence needed no
+  change and is verified as well. The exact commit is shown by
+  `git log -1 --oneline`.
+- B7 also aligns the undefined-identifier wording with `axis.w:1431`, and
   span-less diagnostics now render with the `<Kind> error:` header so the
   harness's stderr grammar can parse them (the oracle prints them bare).
 - B8 user overloads (`3499692`, `3499705`), B9 file-command redirection
@@ -46,7 +45,7 @@ numbering, relations, primitive `involution` constructors, user overloads,
 file commands, and later math overloads remain pending differential
 evidence.
 
-## Implemented stage: B7 forget/die + B10 missing-file diagnostics
+## Verified stage: B7 forget/die + B10 missing-file diagnostics
 
 - `tests/fixtures/eval/commands_b7.atlas` (4 accepted events: `forget x`
   on an unknown name reports `Identifier 'x' not known`, `forget + @
@@ -65,8 +64,10 @@ evidence.
   the same lines bare, so the header is a harness-grammar surface, not an
   oracle wording change.
 - Oracle captures: `3499657` (B7), `3500378` (B10).
-- Differential evidence: pending the next `pipeline_swap_diff` run;
-  `rust_status: implemented_pending_hpc` on all three fixtures.
+- Differential: `pipeline_swap_diff` job `3500583` at commit `37e0f23`
+  reports all three fixtures PASS; all previously verified fixtures PASS
+  (regression clean). Metadata carries `rust_status: verified_hpc` with
+  `differential_job: 3500583`.
 
 ## Verified stage: B6 case and counted for
 

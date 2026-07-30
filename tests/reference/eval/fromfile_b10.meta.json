@@ -16,6 +16,7 @@
     "sources/interpreter/lexer.w:558-560",
     "sources/interpreter/parser.y:182-183"
   ],
-  "rust_status": "implemented_pending_hpc",
-  "notes": "B10 fromfile inclusion slice, content-identical split from probe fromfile_probe (capture 3499775): '< \"f\"' includes a file, '<< \"f\"' force-includes it; a missing target prints 'failed to open input file '<name>'.' (lowercase, trailing period) directly on stderr, batch evaluation continues, and the process still exits 0, so these are classified as io diagnostics with oracle_exit_status 0; the oracle prints the bare line, and the Rust side renders it with the harness's 'Io error: ' diagnostic header. Accepted-form inclusion semantics need an HPC-absolute helper file and are probed separately. Reference captured by HPC job 3500378 against the frozen atlasofliegroups-4d3e9449 oracle; oracle streams match the expected events verbatim. Differential evidence remains pending until the pipeline_swap_diff run."
+  "rust_status": "verified_hpc",
+  "notes": "B10 fromfile inclusion slice, content-identical split from probe fromfile_probe (capture 3499775): '< \"f\"' includes a file, '<< \"f\"' force-includes it; a missing target prints 'failed to open input file '<name>'.' (lowercase, trailing period) directly on stderr, batch evaluation continues, and the process still exits 0, so these are classified as io diagnostics with oracle_exit_status 0; the oracle prints the bare line, and the Rust side renders it with the harness's 'Io error: ' diagnostic header. Accepted-form inclusion semantics need an HPC-absolute helper file and are probed separately. Reference captured by HPC job 3500378 against the frozen atlasofliegroups-4d3e9449 oracle; oracle streams match the expected events verbatim. Differential evidence remains pending until the pipeline_swap_diff run.",
+  "differential_job": "3500583"
 }
