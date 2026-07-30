@@ -37,7 +37,7 @@ differential report naming the job.
 | exceptions and runtime errors | supported | B12 + rejected companions across all slices; `3501467`, `3501643` |
 | Atlas commands and batch files | supported | B7 forget/die, B9 redirect, B10 include, B13 dont, showall, quit; `3501467`, `3501643` |
 | interactive input and completion | partial | TTY banner/prompt implemented; readline completion remains pending |
-| domain objects and mathematical operations | partial | 9 of 21 frozen domain contracts verified: display `3501467`, root_coroot/kgb_generation `3501555`, real_group `3501779`, kgb_operations/tits_operations `3501870`, grading `3501915`, weyl_element `3502034`, cartan_aggregation `3502126`; Block/KL layer pending |
+| domain objects and mathematical operations | partial | 11 of 21 frozen domain contracts verified: display `3501467`, root_coroot/kgb_generation `3501555`, real_group `3501779`, kgb_operations/tits_operations `3501870`, grading `3501915`, weyl_element `3502034`, cartan_aggregation `3502126`, seed_x0 `3502176`, involution_table `3502272`; Block/KL layer pending |
 | KL and file formats | planned | explicit filekl adapter coupled to the pending Block/KL math layer |
 
 No row moves to `supported` merely because Rust compiles. It needs a reference
@@ -53,9 +53,10 @@ basic TTY banner/prompt. These surfaces are covered by HPC differential job
 covered by direct CLI/session checks. The domain layer is partially ported:
 RootDatum root/coroot queries, KGB size/status, real-form numbering and
 dual forms, KGB decompose/twist, the grading observables, Weyl elements,
-and the Cartan-class aggregation surface are verified by differentials
-`3501555`, `3501779`, `3501870`, `3501915`, `3502034`, and `3502126`;
-synthetic KGB seeds, the KGB/strong-real printers, adjoint fibers,
+the Cartan-class aggregation surface, synthetic KGB seeds, and the
+KGB/strong-real printers are verified by differentials `3501555`,
+`3501779`, `3501870`, `3501915`, `3502034`, `3502126`, `3502176`, and
+`3502272`; adjoint fibers,
 real-form labels and block sizes, synthetic real forms, involution
 decomposition, blocks, K-types, parameters, and the primitive involution
 constructors have frozen contracts awaiting implementation. Readline
