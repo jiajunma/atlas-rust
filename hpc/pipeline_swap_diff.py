@@ -176,6 +176,12 @@ FIXTURE_PLANS = (
     # fiber partition, per-form numbering, and the illegal-number rejection.
     FixturePlan(name="domain/cartan_aggregation"),
     FixturePlan(name="domain/cartan_aggregation_rejected"),
+    # Synthetic KGB seed: KGB_elt(RealForm,mat,ratvec) symmetrizes the torus
+    # factor, factors theta as a twisted involution, and looks the Tits
+    # element up per form; rejections cover the cocharacter-coset and
+    # non-involution diagnostics.
+    FixturePlan(name="domain/seed_x0"),
+    FixturePlan(name="domain/seed_x0_rejected"),
     # Early scalar-era fixtures: verified verbatim locally and included so
     # the HPC differential upgrades their reference metadata.
     FixturePlan(name="eval/scalars"),

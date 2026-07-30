@@ -542,6 +542,85 @@ impl KgbGraph {
         Ok(RationalCoweight::from_coordinates(result))
     }
 
+    /// Port of upstream `KGB::lookup` (gkmod/kgb.cpp:716-726): reduce the
+    /// candidate torus bits against the involution's mod space, then
+    /// raw-compare left torus parts across the fiber over the involution.
+    /// `Ok(None)` is upstream's `UndefKGB`.
+    pub fn lookup(
+        &self,
+        table: &InvolutionTable,
+        involution: InvolutionId,
+        torus: ModTwoVector,
+    ) -> Result<Option<KgbId>, StructureError> {
+        let record = table
+            .record(involution)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: involution.0,
+                upper_bound: table.involution_count(),
+            })?;
+        let reduced = record.mod_space().quotient_representative(torus)?;
+        let Some(position) = self
+            .positions
+            .iter()
+            .position(|entry| entry.0 == involution)
+        else {
+            return Ok(None);
+        };
+        for index in self.first_of_tau[position]..self.first_of_tau[position + 1] {
+            if self.elements[index].torus_bits() == &reduced {
+                return Ok(Some(KgbId(index)));
+            }
+        }
+        Ok(None)
+    }
+
+    /// Port of the torus-factor arithmetic in upstream
+    /// `build_KGB_element_wrapper` (interpreter/atlas-types.w:4585-4595):
+    /// make the rational factor theta-fixed (`num += theta.right_prod(num)`
+    /// — the transposed action on the numerator), halve, subtract
+    /// `g_rho_check`, and require integral coordinates. `Ok(None)` is
+    /// upstream's denominator rejection ("Torus factor not in cocharacter
+    /// coset of real form"); on success the integer vector's parity is the
+    /// `TorusPart`. This runs on the RAW matrix: upstream performs the
+    /// arithmetic before `twisted_from_involution` validates theta, and the
+    /// diagnostic order depends on it.
+    pub fn seed_torus_part(
+        &self,
+        theta: &[Vec<i32>],
+        factor: &[Rational],
+    ) -> Result<Option<ModTwoVector>, StructureError> {
+        let coordinates = self.cocharacter.coordinates();
+        let dimension = coordinates.len();
+        if factor.len() != dimension {
+            return Err(StructureError::RankMismatch {
+                expected: dimension,
+                actual: factor.len(),
+            });
+        }
+        if theta.len() != dimension || theta.iter().any(|row| row.len() != dimension) {
+            return Err(StructureError::InvalidIntegerMatrixShape);
+        }
+        let mut ones = try_capacity(dimension)?;
+        for (column, value) in factor.iter().enumerate() {
+            // right_prod: applied[column] = sum over rows of
+            // factor[row] * theta[row][column].
+            let mut transported = Rational::from(0);
+            for (row, theta_row) in theta.iter().enumerate() {
+                transported += &factor[row] * Rational::from(theta_row[column]);
+            }
+            let symmetrized = (value + transported) / Rational::from(2);
+            let shifted = &symmetrized - &coordinates[column];
+            let Ok(integer) = Integer::try_from(&shifted) else {
+                return Ok(None);
+            };
+            let parity = i64::try_from(&integer).map_err(|_| StructureError::ArithmeticOverflow)?;
+            if parity % 2 != 0 {
+                ones.push(column);
+            }
+        }
+        Ok(Some(ModTwoVector::from_ones(dimension, ones)?))
+    }
+
     /// Upstream `KGB::twisted` (gkmod/kgb.cpp:729-745): act by an external
     /// twist on one element. `delta` must be a based root datum involution
     /// commuting with the inner class's distinguished involution, and
@@ -980,5 +1059,173 @@ mod tests {
             assert_eq!(twice, KgbId(id));
         }
         assert!(moved, "the outer twist swaps the s1 and s2 fibers");
+    }
+
+    #[test]
+    fn seed_x0_lookup_and_torus_part_match_the_frozen_a1_anchors() {
+        // The fixture's split SL(2,R) scenarios (g_rho_check = [0]).
+        let mut pipeline = pipeline(sl2_datum(), None, 2, 2);
+        pipeline
+            .table
+            .add_cartan(&pipeline.classification, CartanId(0))
+            .unwrap();
+        let graph = build_graph(&mut pipeline, 0);
+        assert_eq!(graph.size(), 3);
+        let zero = ModTwoVector::from_ones(1, vec![]).unwrap();
+        let odd = ModTwoVector::from_ones(1, vec![0]).unwrap();
+        let identity = WeylElement::identity(pipeline.table.root_system()).unwrap();
+        let fundamental = pipeline.table.lookup(&identity).unwrap();
+        // KGB_elt(rf, [[1]], [0]/1) = #0; the type-I partner #1 carries
+        // the odd bit at the same involution.
+        assert_eq!(
+            graph
+                .lookup(&pipeline.table, fundamental, zero.clone())
+                .unwrap(),
+            Some(KgbId(0))
+        );
+        assert_eq!(
+            graph.lookup(&pipeline.table, fundamental, odd).unwrap(),
+            Some(KgbId(1))
+        );
+        // KGB_elt(rf, [[-1]], [0]/1) = #2: -1 factors as w0 through the
+        // compact class's twisted_from_involution.
+        let datum = pipeline.inner_class.datum().clone();
+        let longest = pipeline
+            .inner_class
+            .twisted_from_involution(
+                LatticeInvolution::new(&datum, vec![vec![-1]], vec![vec![-1]]).unwrap(),
+            )
+            .unwrap();
+        let split_involution = pipeline.table.lookup(&longest).unwrap();
+        assert_eq!(
+            graph
+                .lookup(&pipeline.table, split_involution, zero.clone())
+                .unwrap(),
+            Some(KgbId(2))
+        );
+        // The torus-part arithmetic: [0]/1 symmetrizes to the zero coset;
+        // [1]/2 is NOT in the split form's coset (denominator rejection);
+        // the raw [[2]] still does arithmetic — the involution check runs
+        // later, at the language layer.
+        let half = malachite::Rational::from(1) / malachite::Rational::from(2);
+        let zero_rational = malachite::Rational::from(0);
+        assert_eq!(
+            graph
+                .seed_torus_part(&[vec![1]], std::slice::from_ref(&zero_rational))
+                .unwrap(),
+            Some(zero.clone())
+        );
+        assert_eq!(
+            graph
+                .seed_torus_part(&[vec![1]], std::slice::from_ref(&half))
+                .unwrap(),
+            None
+        );
+        assert_eq!(
+            graph
+                .seed_torus_part(&[vec![2]], std::slice::from_ref(&zero_rational))
+                .unwrap(),
+            Some(zero.clone())
+        );
+
+        // Compact SU(2) (g_rho_check = [1]/2): [1]/2 symmetrizes into the
+        // zero coset, and the one-element graph answers #0.
+        let compact = build_graph(&mut pipeline, 1);
+        assert_eq!(compact.size(), 1);
+        assert_eq!(
+            compact.seed_torus_part(&[vec![1]], &[half]).unwrap(),
+            Some(zero.clone())
+        );
+        assert_eq!(
+            compact.lookup(&pipeline.table, fundamental, zero).unwrap(),
+            Some(KgbId(0))
+        );
+    }
+
+    #[test]
+    fn seed_x0_b2_split_anchors_the_longest_element_packet() {
+        // Split Sp(4,R) on the B2 datum: 11 elements, g_rho_check = [0,0].
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2, -2], vec![-1, 2]],
+            vec![Weight::new(vec![2, -2]), Weight::new(vec![-1, 2])],
+            vec![Coweight::new(vec![1, 0]), Coweight::new(vec![0, 1])],
+        )
+        .unwrap();
+        let mut pipeline = pipeline(datum, None, 8, 8);
+        pipeline
+            .table
+            .add_cartan(&pipeline.classification, CartanId(0))
+            .unwrap();
+        let graph = build_graph(&mut pipeline, 0);
+        assert_eq!(graph.size(), 11);
+        let zero = ModTwoVector::from_ones(2, vec![]).unwrap();
+        // The seed: identity theta and zero factor land on element #0.
+        let identity = WeylElement::identity(pipeline.table.root_system()).unwrap();
+        let fundamental = pipeline.table.lookup(&identity).unwrap();
+        assert_eq!(
+            graph
+                .lookup(&pipeline.table, fundamental, zero.clone())
+                .unwrap(),
+            Some(KgbId(0))
+        );
+        assert_eq!(
+            graph
+                .seed_torus_part(
+                    &[vec![1, 0], vec![0, 1]],
+                    &[malachite::Rational::from(0), malachite::Rational::from(0)],
+                )
+                .unwrap(),
+            Some(zero.clone())
+        );
+        // g = [0,0]: a half-integral factor is out of the coset.
+        let half = malachite::Rational::from(1) / malachite::Rational::from(2);
+        assert_eq!(
+            graph
+                .seed_torus_part(
+                    &[vec![1, 0], vec![0, 1]],
+                    &[half, malachite::Rational::from(0)],
+                )
+                .unwrap(),
+            None
+        );
+        // -1 = w0 is central in B2: the split form has exactly one element
+        // over the longest involution, and lookup round-trips its bits.
+        let longest = pipeline
+            .inner_class
+            .twisted_from_involution(
+                LatticeInvolution::new(
+                    pipeline.inner_class.datum(),
+                    vec![vec![-1, 0], vec![0, -1]],
+                    vec![vec![-1, 0], vec![0, -1]],
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        assert_eq!(longest.length(), 4);
+        let split_involution = pipeline.table.lookup(&longest).unwrap();
+        let packet: Vec<KgbId> = (0..graph.size())
+            .map(KgbId)
+            .filter(|&id| graph.involution_of(id) == Some(split_involution))
+            .collect();
+        assert_eq!(packet.len(), 1);
+        let bits = graph.element(packet[0]).unwrap().torus_bits().clone();
+        assert_eq!(
+            graph
+                .lookup(&pipeline.table, split_involution, bits)
+                .unwrap(),
+            Some(packet[0])
+        );
+        // A one-element packet declines the remaining bit patterns.
+        assert_eq!(
+            graph
+                .lookup(&pipeline.table, split_involution, zero)
+                .unwrap(),
+            if graph.element(packet[0]).unwrap().torus_bits().is_zero() {
+                Some(packet[0])
+            } else {
+                None
+            }
+        );
     }
 }

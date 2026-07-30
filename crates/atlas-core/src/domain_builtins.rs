@@ -1581,6 +1581,94 @@ fn twist_element(
     )))
 }
 
+/// Shared body of the synthetic KGB constructor `KGB_elt(RealForm,mat,
+/// ratvec)` (build_KGB_element_wrapper, interpreter/atlas-types.w:4580-4607).
+/// Every diagnostic fires before the wrapper's no_value gate, so `validate`
+/// runs the same pipeline and drops the result. The arithmetic order is the
+/// upstream one: size check, torus-factor symmetrization with its
+/// denominator rejection, THEN `twisted_from_involution` with its
+/// involution and inner-class checks, then the per-form KGB lookup.
+fn build_kgb_element(
+    context: &Arc<RealFormContext>,
+    theta: &Value,
+    factor: &Value,
+    span: SourceSpan,
+) -> Result<KgbId, Diagnostic> {
+    let inner_class = &context.parent.inner_class;
+    let rank = inner_class.datum().lattice_rank();
+    let Value::RatVector(factor) = factor else {
+        return Err(type_error(
+            span,
+            format!("expected a ratvec, found {factor}"),
+        ));
+    };
+    if factor.numerators().len() != rank {
+        return Err(runtime(span, "Torus factor size mismatch"));
+    }
+    // Upstream applies right_prod to the raw matrix before any theta check;
+    // a non-square matrix aborts there, so the classify chunk's shape
+    // diagnostic (atlas-types.w:2723-2729) is the closest defined behavior.
+    let zero_row =
+        matches!(theta, Value::Matrix(matrix) if matrix.rows() == 0 && matrix.cols() > 0);
+    let matrix = as_matrix_rows(theta, span)?;
+    let columns = matrix.first().map_or(0, Vec::len);
+    if matrix.len() != rank || columns != rank {
+        let (rows, cols) = if zero_row {
+            (0, matrix.len())
+        } else {
+            (matrix.len(), columns)
+        };
+        return Err(runtime(
+            span,
+            format!("Involution should be a {rank}x{rank} matrix; received a {rows}x{cols} matrix"),
+        ));
+    }
+    let factor: Vec<BigRational> = factor
+        .numerators()
+        .iter()
+        .map(|&numerator| BigRational::from(numerator) / BigRational::from(factor.denominator()))
+        .collect();
+    let Some(bits) = context
+        .graph
+        .seed_torus_part(&matrix, &factor)
+        .map_err(|error| runtime(span, error.to_string()))?
+    else {
+        return Err(runtime(
+            span,
+            "Torus factor not in cocharacter coset of real form",
+        ));
+    };
+    if !is_identity_square(&matrix) {
+        return Err(runtime(span, "Given transformation is not an involution"));
+    }
+    let involution =
+        LatticeInvolution::new(inner_class.datum(), matrix.clone(), transpose(&matrix))
+            .map_err(|error| runtime(span, error.to_string()))?;
+    let element = inner_class
+        .twisted_from_involution(involution)
+        .map_err(|error| {
+            runtime(
+                span,
+                match error {
+                    StructureError::InvalidBasedAutomorphism => {
+                        "Involution not in this inner class".to_string()
+                    }
+                    other => other.to_string(),
+                },
+            )
+        })?;
+    // A twisted involution whose Cartan the form does not meet is upstream's
+    // empty tau packet: UndefKGB either way.
+    let Some(involution_id) = context.table.lookup(&element) else {
+        return Err(runtime(span, "KGB element not present"));
+    };
+    context
+        .graph
+        .lookup(&context.table, involution_id, bits)
+        .map_err(|error| runtime(span, error.to_string()))?
+        .ok_or_else(|| runtime(span, "KGB element not present"))
+}
+
 /// A simple-coordinate root or coroot table.
 type CoordinateTable = Vec<Vec<i32>>;
 
@@ -2043,6 +2131,14 @@ pub(crate) fn validate(
             if index < 0 || index >= size {
                 return Err(runtime(span, format!("Inexistent KGB element: {index}")));
             }
+        }
+        // build_KGB_element_wrapper runs every check before its no_value
+        // gate (atlas-types.w:4580-4607), so validation runs the full
+        // constructor pipeline and drops the element.
+        "KGB_elt" => {
+            arity(name, arguments, 3, span)?;
+            let context = as_real_form(&arguments[0], span)?;
+            build_kgb_element(context, &arguments[1], &arguments[2], span)?;
         }
         "cross" | "Cayley" | "status" => {
             arity(name, arguments, 2, span)?;
@@ -2535,6 +2631,17 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 .ids()
                 .nth(index)
                 .ok_or_else(|| runtime(span, "Inexistent KGB element"))?;
+            Ok(Value::Domain(DomainValue::KgbElement(
+                Arc::clone(context),
+                id,
+            )))
+        }
+        // build_KGB_element_wrapper (atlas-types.w:4580-4607): the synthetic
+        // (RealForm,mat,ratvec) constructor.
+        "KGB_elt" => {
+            arity(name, arguments, 3, span)?;
+            let context = as_real_form(&arguments[0], span)?;
+            let id = build_kgb_element(context, &arguments[1], &arguments[2], span)?;
             Ok(Value::Domain(DomainValue::KgbElement(
                 Arc::clone(context),
                 id,

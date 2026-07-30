@@ -3031,6 +3031,7 @@ enum ScalarOp {
     RatDivideInt,
     RatQuotientInt,
     RatModuloInt,
+    VecDivideInt,
     RatAdd,
     RatSubtract,
     RatMultiply,
@@ -3351,6 +3352,45 @@ fn run_scalar(
             })),
             other => panic!("rational unfraction saw {other:?}"),
         },
+        ScalarOp::VecDivideInt => match expect_pair(arguments) {
+            (Value::Vector(vector), Value::Integer(denominator)) => {
+                // Upstream constructs the rational vector inside its
+                // no_value gate, so the diagnostics fire only when the
+                // value is actually produced.
+                if level == Level::NoValue {
+                    return Ok(None);
+                }
+                if denominator == 0 {
+                    return Err(runtime("Denominator 0 in rational vector", span));
+                }
+                let negative = denominator < 0;
+                let magnitude = if negative {
+                    -&denominator
+                } else {
+                    denominator.clone()
+                };
+                let magnitude = u64::try_from(&magnitude)
+                    .map_err(|_| runtime("Integer value to big for conversion", span))?;
+                Ok(at_builtin_level(level, || {
+                    let numerators = vector
+                        .0
+                        .iter()
+                        .map(|&entry| {
+                            let entry = i64::from(entry);
+                            if negative {
+                                -entry
+                            } else {
+                                entry
+                            }
+                        })
+                        .collect();
+                    Value::RatVector(
+                        RatVec::new(numerators, magnitude).expect("denominator checked nonzero"),
+                    )
+                }))
+            }
+            (first, second) => panic!("vector division saw {first:?} and {second:?}"),
+        },
         ScalarOp::RatAddInt
         | ScalarOp::RatSubtractInt
         | ScalarOp::RatMultiplyInt
@@ -3533,6 +3573,16 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             scalar_builtin("^", int_pair(), int_type(), 0, ScalarOp::IntPower),
             scalar_builtin("/", int_type(), rat_type(), 0, ScalarOp::IntInverse),
             scalar_builtin("/", int_pair(), rat_type(), 0, ScalarOp::IntFraction),
+            // vector_div_wrapper (global.w:4108): vec/int is the ratvec
+            // literal surface (`[0]/1`); the zero-denominator diagnostic
+            // fires only when the value is produced, as upstream gates it.
+            scalar_builtin(
+                "/",
+                Type::tuple(vec![primitive_type(Prim::Vec), int_type()]),
+                primitive_type(Prim::RatVec),
+                0,
+                ScalarOp::VecDivideInt,
+            ),
             scalar_builtin("%", rat_type(), int_pair(), 0, ScalarOp::RatUnfraction),
             scalar_builtin(
                 "+",
@@ -4144,6 +4194,19 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             domain_builtin_validate(
                 "KGB",
                 Type::tuple(vec![primitive_type(Prim::RealForm), int_type()]),
+                primitive_type(Prim::KgbElt),
+                0,
+            ),
+            // build_KGB_element_wrapper (atlas-types.w:4580-4607): the
+            // synthetic RealForm+mat+ratvec constructor; every diagnostic
+            // fires before its no_value gate, so it validates.
+            domain_builtin_validate(
+                "KGB_elt",
+                Type::tuple(vec![
+                    primitive_type(Prim::RealForm),
+                    primitive_type(Prim::Mat),
+                    primitive_type(Prim::RatVec),
+                ]),
                 primitive_type(Prim::KgbElt),
                 0,
             ),

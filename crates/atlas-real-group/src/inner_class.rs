@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use crate::{
     BasedRootDatum, Coweight, LatticeInvolution, RootId, RootInvolutionData, RootSystem,
     StructureError, TwistedConjugacyClass, TwistedConjugacyPartition, TwistedInvolution, Weight,
-    WeylAction, WeylGroup,
+    WeylAction, WeylElement, WeylGroup,
 };
 
 /// Shared structural data at the beginning of an Atlas inner-class computation.
@@ -113,6 +113,38 @@ impl InnerClass {
             twist.push(position);
         }
         Ok(twist)
+    }
+
+    /// Port of upstream `twisted_from_involution`
+    /// (interpreter/atlas-types.w:3844-3851): validate that `involution` — a
+    /// root-datum involution, already checked square and involutive by the
+    /// caller — lies in THIS inner class, and return the Weyl element `w`
+    /// of its twisted-involution factorization `theta = w * delta` with
+    /// `delta` distinguished. Upstream compares the reflected involution's
+    /// simple-root twist against the class twist AND the reflected matrix
+    /// against the distinguished one ("Involution not in this inner
+    /// class"); the weight-matrix equality subsumes the twist comparison,
+    /// and [`StructureError::InvalidBasedAutomorphism`] carries the
+    /// rejection here.
+    pub fn twisted_from_involution(
+        &self,
+        involution: LatticeInvolution,
+    ) -> Result<WeylElement, StructureError> {
+        let data = RootInvolutionData::new(&self.roots, involution)?;
+        let (distinguished, word) = wrt_distinguished_word(&self.datum, &self.roots, &data)?;
+        if distinguished.weight_matrix()
+            != self.distinguished_involution.involution().weight_matrix()
+        {
+            return Err(StructureError::InvalidBasedAutomorphism);
+        }
+        // Upstream `Weyl_group().element(ww)`: right-multiply the letters
+        // left to right.
+        let mut element = WeylElement::identity(&self.roots)?;
+        for generator in word {
+            let (next, _) = element.right_multiply_simple(&self.roots, generator)?;
+            element = next;
+        }
+        Ok(element)
     }
 
     /// Enumerate root involutions of the form `w after distinguished`.
@@ -284,6 +316,18 @@ fn wrt_distinguished(
     roots: &RootSystem,
     involution: &RootInvolutionData,
 ) -> Result<LatticeInvolution, StructureError> {
+    Ok(wrt_distinguished_word(datum, roots, involution)?.0)
+}
+
+/// [`wrt_distinguished`] plus the left-conjugating Weyl word itself
+/// (upstream returns it from `wrt_distinguished`; `check_involution`
+/// reflects by it and `twisted_from_involution` exports it). Letters are in
+/// left-to-right multiplication order.
+fn wrt_distinguished_word(
+    datum: &BasedRootDatum,
+    roots: &RootSystem,
+    involution: &RootInvolutionData,
+) -> Result<(LatticeInvolution, Vec<usize>), StructureError> {
     let mut images = datum
         .simple_roots()
         .iter()
@@ -332,14 +376,19 @@ fn wrt_distinguished(
     let datum = involution.involution().datum().clone();
     let mut weight_action = involution.involution().weight_matrix().to_vec();
     let mut coweight_action = involution.involution().coweight_matrix().to_vec();
+    let mut word = Vec::with_capacity(steps.len());
     for &generator in steps.iter().rev() {
         let simple = simple_index(images[generator])?;
         let (reflected_weight, reflected_coweight) =
             left_reflect(&datum, &weight_action, &coweight_action, simple)?;
         weight_action = reflected_weight;
         coweight_action = reflected_coweight;
+        word.push(simple);
     }
-    LatticeInvolution::new(&datum, weight_action, coweight_action)
+    Ok((
+        LatticeInvolution::new(&datum, weight_action, coweight_action)?,
+        word,
+    ))
 }
 
 /// The reflection of root `gamma` in the hyperplane orthogonal to root
@@ -664,6 +713,69 @@ mod tests {
         assert_eq!(
             inner_class.based_involution_twist(drifting),
             Err(StructureError::InvalidRootAutomorphism)
+        );
+    }
+
+    #[test]
+    fn twisted_from_involution_factors_unbased_and_rejects_foreign() {
+        // A1 anchor (the seed_x0 fixture's matrices): the compact class
+        // factors [[1]] as e and [[-1]] as the simple reflection.
+        let datum = BasedRootDatum::standard(vec![vec![2]]).unwrap();
+        let inner_class = InnerClass::new(
+            datum.clone(),
+            LatticeInvolution::identity(&datum).unwrap(),
+            2,
+        )
+        .unwrap();
+        let identity = inner_class
+            .twisted_from_involution(LatticeInvolution::identity(&datum).unwrap())
+            .unwrap();
+        assert!(identity.is_identity());
+        let negated = LatticeInvolution::new(&datum, vec![vec![-1]], vec![vec![-1]]).unwrap();
+        let simple = inner_class.twisted_from_involution(negated).unwrap();
+        assert_eq!(simple.length(), 1);
+        assert_eq!(
+            simple.reduced_word(inner_class.root_system()).unwrap(),
+            vec![0]
+        );
+
+        // B2 anchor: -1 = w0 is central, so the compact class admits it and
+        // factors it as the longest element.
+        let datum = BasedRootDatum::standard(vec![vec![2, -2], vec![-1, 2]]).unwrap();
+        let inner_class = InnerClass::new(
+            datum.clone(),
+            LatticeInvolution::identity(&datum).unwrap(),
+            8,
+        )
+        .unwrap();
+        let negated = LatticeInvolution::new(
+            &datum,
+            vec![vec![-1, 0], vec![0, -1]],
+            vec![vec![-1, 0], vec![0, -1]],
+        )
+        .unwrap();
+        let longest = inner_class.twisted_from_involution(negated).unwrap();
+        assert_eq!(longest.length(), 4);
+
+        // A2 anchor: the based diagram flip is an involution of the based
+        // datum but not of the COMPACT inner class — upstream's
+        // "Involution not in this inner class".
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let inner_class = InnerClass::new(
+            datum.clone(),
+            LatticeInvolution::identity(&datum).unwrap(),
+            6,
+        )
+        .unwrap();
+        let flip = LatticeInvolution::new(
+            &datum,
+            vec![vec![0, 1], vec![1, 0]],
+            vec![vec![0, 1], vec![1, 0]],
+        )
+        .unwrap();
+        assert_eq!(
+            inner_class.twisted_from_involution(flip),
+            Err(StructureError::InvalidBasedAutomorphism)
         );
     }
 }
