@@ -6,23 +6,29 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
 ## Live continuation - 2026-07-31
 
-The current committed baseline is `f2d2e51` on `main`. The relation lattice
+The current committed baseline is `9e8c2d9` on `main`. The relation lattice
 builtins are verified by differential job `3502506`; the involution
 decomposition builtins and all 17 associated fixtures are verified by job
 `3502550` (90/90 runnable fixtures PASS; suite PARTIAL only for the three
-explicitly pending overloads). The older snapshot below remains useful as a
-historical ledger, but its `c0710a1` HEAD and implementation queue are no
-longer current.
+explicitly pending overloads). The base `weak_real_form{,_rejected}` contract
+pair is verified by differential job `3502697` (92 fixtures, zero FAIL; the
+three-argument `real_form(InnerClass,mat,ratvec)` classification path:
+complex-cross DFS to the class representative, grading bits from
+simple-imaginary pairings, gradingRep/adjoint-orbit lookup). The older
+snapshot below remains useful as a historical ledger, but its `c0710a1` HEAD
+and implementation queue are no longer current.
 
-The active compatibility slice is the three-argument
-`real_form(InnerClass,mat,ratvec)` constructor. Five additional oracle probes
-from jobs `3502476`/`3502479` cover A1 with a torus radical, a noncanonical A2
-involution, B2 downward descent, central-coroot rejection, and validation
-ordering. Domain prerequisites in flight are `InnerClass::canonicalize`,
-inverse Cayley at the Tits-element layer, and exact rational strong-torus
-transport. Do not claim support until these probes and the base
-`weak_real_form{,_rejected}` fixtures pass an HPC differential at one clean
-commit.
+Still open on the weak real form surface (five oracle probes from jobs
+`3502476`/`3502479`): `b2_descent` and `validation_rejected` compare VERBATIM
+locally but are not yet wired into the pipeline; `a1_t1_central` and
+`central_coroot_rejected` are blocked by the torus-radical `inner_class`
+construction gap (lattice rank > semisimple rank, e.g. A1.T1 — agent-20 in
+flight); `a2_noncanonical` is blocked by the custom-seed real_form gap
+(upstream builds a non-default `real_form_value` seed via
+`minimal_torus_part`; the `global_tits.rs` rational torus carrier, inverse
+Cayley, and `InnerClass::canonicalize` groundwork for this route are
+committed). Upgrade the base-pair claim to the full slice only when all five
+probes pass an HPC differential at one clean commit.
 
 Important correction to the older queue text: upstream
 `realredgp::minimal_torus_part` does **not** call `central_fiber`. It transports
