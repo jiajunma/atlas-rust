@@ -202,9 +202,21 @@ inverse_Cayley, anchor inverse_Cayley(0,B,0)=0); needs crate Block::build
 (blocks.cpp:610/622) — the heaviest piece in this queue; display
 'Block of N elements'; dual_real_form(InnerClass,int) already registered
 (typed.rs:4125)) →
-`ktype_basic` (%/=/predicates/projections — atlas-types.w:6071-6088;
-K_type(x,v) normalizes v mod (1-theta_x)X* and displays lambda = v + rho;
-predicates is_standard/is_dominant/is_zero/is_semifinal/is_final + height) →
+`ktype_basic` (KType install list atlas-types.w:6071-6088
+is 16 entries: K_type(KGBElt,vec->KType) = Rep_context::sr_K normalizing
+lambda-rho mod (1-theta_x)X*, rank check 'Rank mismatch: ({rank},{size})'
+(atlas-types.w:5240); %(KType->KGBElt,vec) elected representative;
+real_form(KType->RealForm); height(KType->int); =/!=(KType,KType) on
+normalized forms (anchor: K_type(x,[0]) = K_type(x,[2]) for split A1 x=2
+since (1-theta)X*=2X*); equivalent (SR-equivalence); is_standard
+((1+theta)lambda imaginary-dominant)/is_dominant/is_zero (singular compact
+simply-imaginary exists)/is_semifinal (no real parity roots)/is_final;
+dominant/to_canonical_fiber/normal/theta_stable (KType->KType); display =
+adjective chain non-standard/non-dominant/zero/non-final/non-normal/final +
+' K-type' + print_K_type 'K_type(x=N, lambda=[..]/d)' (basic_io;
+atlas-types.w:5210+5224); needs crate Rep_context/K_repr machinery
+(repr.{h,cpp}, K_repr.h) — sr_K normalization and the predicate set are the
+math core of this slice) →
 `ktypepol_basic` (null_K_module/#/±KType/int scaling/first_term/last_term —
 atlas-types.w:6091-6117; terms carry Split coefficients) →
 `param_basic` (param(KGBElt,vec,ratvec)/%/height/predicates/real_form/
