@@ -3,7 +3,7 @@
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_status": "verified_hpc_reference",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:479-503",
     "sources/interpreter/atlas-types.w:585-637"
@@ -15,12 +15,13 @@
     "ann_mod narrows its modulus before the no-value gate",
     "filter_units checks factor count before the no-value gate in discarded context"
   ],
-  "notes": "Extended relation diagnostics captured verbatim by HPC jobs 3502474 and 3502489 against the frozen Atlas oracle, including the execution-level ordering of ann_mod integer narrowing and filter_units factor-count validation. Differential evidence remains pending.",
+  "notes": "Extended relation diagnostics captured verbatim by HPC jobs 3502474 and 3502489 against the frozen Atlas oracle, including the execution-level ordering of ann_mod integer narrowing and filter_units factor-count validation. Rust implementation verified by HPC differential job 3502506 (pipeline_swap_diff at commit 5d39262486f20d75942110f64e6972c4bd532ad0): stdout, stderr diagnostics, and exit status match the frozen reference events exactly.",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
   "reference_job": "3502489",
   "fixture_sha256": "372e99817b66bcec1f5b0bc2795399e3135c36b3474a3d18739e3ff8a5dedea2",
   "oracle_exit_status": 1,
   "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
-  "oracle_stderr_sha256": "35a8baf2a1a8bf0d1f3aaf7d02afded0c6e491fcdc1f15b5099ad90297fcf11d"
+  "oracle_stderr_sha256": "35a8baf2a1a8bf0d1f3aaf7d02afded0c6e491fcdc1f15b5099ad90297fcf11d",
+  "differential_job": "3502506"
 }

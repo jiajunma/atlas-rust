@@ -3,7 +3,7 @@
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_status": "verified_hpc_reference",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:456-558",
     "sources/interpreter/atlas-types.w:655-710"
@@ -14,12 +14,13 @@
     "filter_units skips relation-lattice construction after its discarded-context factor-count validation",
     "quotient_basis on A3 generators with mixed denominators and a negative representative"
   ],
-  "notes": "Extended relation coverage captured verbatim by HPC jobs 3502474 and 3502489 against the frozen Atlas oracle, including the nonnegative-residue election for a negative rational generator, signed-to-unsigned compatibility for a negative modulus with nontrivial gcd, the discarded zero-modulus path, and filter_units skipping relation conversion after its pre-gate factor-count check. Differential evidence remains pending. A value-producing zero-modulus call is excluded because upstream terminates with SIGFPE; safe Rust must diagnose rather than reproduce that crash.",
+  "notes": "Extended relation coverage captured verbatim by HPC jobs 3502474 and 3502489 against the frozen Atlas oracle, including the nonnegative-residue election for a negative rational generator, signed-to-unsigned compatibility for a negative modulus with nontrivial gcd, the discarded zero-modulus path, and filter_units skipping relation conversion after its pre-gate factor-count check. A value-producing zero-modulus call is excluded because upstream terminates with SIGFPE; safe Rust must diagnose rather than reproduce that crash. Rust implementation verified by HPC differential job 3502506 (pipeline_swap_diff at commit 5d39262486f20d75942110f64e6972c4bd532ad0): stdout, stderr diagnostics, and exit status match the frozen reference events exactly.",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
   "reference_job": "3502489",
   "fixture_sha256": "25cb650c8430256d693942f8371cb455bd260ad69043447a8bd44e5980bdd246",
   "oracle_exit_status": 0,
   "oracle_stdout_sha256": "98ce19c618b5d1088bd223b1179d1608ff712136c7f628578f2bcfd9b7c90ba3",
-  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "differential_job": "3502506"
 }
