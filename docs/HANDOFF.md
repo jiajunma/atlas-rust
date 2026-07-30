@@ -138,9 +138,21 @@ classes mapped via toWeakReal to external form numbers (atlas-types.w:4229;
 needs the CartanClass fiber partition + realFormLabels machinery)) → `split_basic` (eval/; Split operator family —
 Split_integer (e,s) arithmetic with s^2=1, int and (int,int) coercions, the
 '(e+ss)' display, and `%` back to (e,s) (atlas-types.w:5079-5145)) →
-`block_basic` (block/#/%/element/cross/Cayley/status/inverse_Cayley) →
-`ktype_basic` (%/=/predicates/projections) → `ktypepol_basic` →
-`param_basic` → `parampol_basic` → `involution_primitive`
+`block_basic` (block/#/%/element/cross/Cayley/status/inverse_Cayley —
+atlas-types.w:4995-5004; block(rf,df) requires a DUAL second form
+('Inner class mismatch between real form and dual real form'), built via
+Block::build(rf,df) so numbering is classical; needs Block construction at
+the crate, the heaviest piece in this queue) →
+`ktype_basic` (%/=/predicates/projections — atlas-types.w:6071-6088;
+K_type(x,v) normalizes v mod (1-theta_x)X* and displays lambda = v + rho;
+predicates is_standard/is_dominant/is_zero/is_semifinal/is_final + height) →
+`ktypepol_basic` (null_K_module/#/±KType/int scaling/first_term/last_term —
+atlas-types.w:6091-6117; terms carry Split coefficients) →
+`param_basic` (param(KGBElt,vec,ratvec)/%/height/predicates/real_form/
+K_type/param(KType) — atlas-types.w:7472-7480; rank-mismatch wording
+'Rank mismatch: (r,a,b)') →
+`parampol_basic` (null_module/#/±Param/first_term — atlas-types.w:8542-8567;
+term display drops the 'final' prefix) → `involution_primitive`
 (involution(LieType,[int],string) and the based form).
 `real_group`, `overloads_ops_b8c{,_rejected}`, `whattype_ops_b8d`, and
 `dont_b13{,_rejected}` are DONE (verified `3501779` / `3501643`).
