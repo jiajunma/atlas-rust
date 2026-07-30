@@ -186,7 +186,14 @@ pub(crate) fn dual_component_group_trivial(
         .map(|row| (0..rank).map(|column| basis[column][row]).collect())
         .collect();
     let transposed_rational = rational_matrix(&transposed);
-    let inverse = invert_rational(&transposed_rational)?;
+    let inverse_columns = invert_rational(&transposed_rational)?;
+    let inverse = (0..rank)
+        .map(|row| {
+            (0..rank)
+                .map(|column| inverse_columns[column][row].clone())
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>();
     let theta_rational = rational_matrix(theta);
     let product = rational_product(
         &rational_product(&transposed_rational, &theta_rational)?,
@@ -269,6 +276,13 @@ mod tests {
         )
         .unwrap();
         assert!(dual_component_group_trivial(&[vec![1]], &datum, &budget()).unwrap());
+    }
+
+    #[test]
+    fn compact_adjoint_b2_is_connected() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-2, 2]]).unwrap();
+        let theta = vec![vec![1, 0], vec![0, 1]];
+        assert!(dual_component_group_trivial(&theta, &datum, &budget()).unwrap());
     }
 
     #[test]

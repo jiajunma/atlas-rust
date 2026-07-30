@@ -4097,6 +4097,24 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 int_type(),
                 0,
             ),
+            domain_builtin_skip(
+                "nr_of_dual_real_forms",
+                primitive_type(Prim::InnerClass),
+                int_type(),
+                0,
+            ),
+            domain_builtin_skip(
+                "form_names",
+                primitive_type(Prim::InnerClass),
+                Type::row(string_type()),
+                0,
+            ),
+            domain_builtin_skip(
+                "dual_form_names",
+                primitive_type(Prim::InnerClass),
+                Type::row(string_type()),
+                0,
+            ),
             domain_builtin_validate(
                 "real_form",
                 Type::tuple(vec![primitive_type(Prim::InnerClass), int_type()]),
@@ -4104,7 +4122,19 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 0,
             ),
             domain_builtin_skip(
+                "dual_real_form",
+                Type::tuple(vec![primitive_type(Prim::InnerClass), int_type()]),
+                primitive_type(Prim::RealForm),
+                0,
+            ),
+            domain_builtin_skip(
                 "quasisplit_form",
+                primitive_type(Prim::InnerClass),
+                primitive_type(Prim::RealForm),
+                0,
+            ),
+            domain_builtin_skip(
+                "dual_quasisplit_form",
                 primitive_type(Prim::InnerClass),
                 primitive_type(Prim::RealForm),
                 0,
@@ -5837,7 +5867,7 @@ mod tests {
         assert!(matches!(
             error,
             Control::Runtime(Diagnostic { message, .. })
-                if message == "Illegal real form number"
+                if message == "Illegal real form number: 99"
         ));
     }
 

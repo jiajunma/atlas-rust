@@ -149,6 +149,10 @@ FIXTURE_PLANS = (
     # the A1/C2/A2 families, plus the inexistent-element and type rejections.
     FixturePlan(name="domain/kgb_generation"),
     FixturePlan(name="domain/kgb_generation_rejected"),
+    # Real-form numbering, form names, and dual real-form construction for
+    # A1/C2/A2, including the exact illegal external-number diagnostic.
+    FixturePlan(name="domain/real_group"),
+    FixturePlan(name="domain/real_group_rejected"),
 )
 
 

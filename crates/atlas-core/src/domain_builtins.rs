@@ -21,10 +21,10 @@ use std::sync::Arc;
 use malachite::{Integer as BigInt, Rational as BigRational};
 
 use atlas_real_group::{
-    build_presentations, dual_real_form_count, AdjointFiberBudget, BasedRootDatum,
-    CartanClassification, CartanClassificationBudget, Coweight, ExternalFormOrder, InnerClass,
-    InnerClassLayout, IntegerLatticeBudget, InvolutionTable, InvolutionTableBudget, KgbGraph,
-    KgbId, KgbStatus, LatticeInvolution, RealFormPresentation, RealFormSeed,
+    build_presentations, dual_inner_class, dual_real_form_count, AdjointFiberBudget,
+    BasedRootDatum, CartanClassification, CartanClassificationBudget, Coweight, ExternalFormOrder,
+    InnerClass, InnerClassLayout, IntegerLatticeBudget, InvolutionTable, InvolutionTableBudget,
+    KgbGraph, KgbId, KgbStatus, LatticeInvolution, RealFormPresentation, RealFormSeed,
     StrongRealClassification, WeakRealFormId, Weight,
 };
 
@@ -832,25 +832,11 @@ fn is_unimodular(matrix: &[Vec<i32>]) -> bool {
     })
 }
 
-fn build_inner_class(
+fn build_inner_class_context(
     handle: &RootDatumHandle,
-    matrix: Vec<Vec<i32>>,
+    inner_class: InnerClass,
     span: SourceSpan,
 ) -> Result<Arc<InnerClassContext>, Diagnostic> {
-    let transpose = |m: &[Vec<i32>]| -> Vec<Vec<i32>> {
-        let size = m.len();
-        (0..size)
-            .map(|i| (0..size).map(|j| m[j][i]).collect())
-            .collect()
-    };
-    let coweight = transpose(&matrix);
-    let involution = LatticeInvolution::new(&handle.datum, matrix, coweight)
-        .map_err(|error| runtime(span, error.to_string()))?;
-    // Upstream accepts any root-datum involution here and left-composes it
-    // into a distinguished one (`check_involution`, atlas-types.w:2829).
-    let inner_class =
-        InnerClass::from_root_involution((*handle.datum).clone(), involution, ROOT_BUDGET)
-            .map_err(|error| runtime(span, error.to_string()))?;
     let class_budget = CartanClassificationBudget::new(
         INTEGER_BUDGET,
         AdjointFiberBudget::new(INTEGER_BUDGET, 1_000_000, 10_000_000),
@@ -895,6 +881,45 @@ fn build_inner_class(
     }))
 }
 
+fn build_inner_class(
+    handle: &RootDatumHandle,
+    matrix: Vec<Vec<i32>>,
+    span: SourceSpan,
+) -> Result<Arc<InnerClassContext>, Diagnostic> {
+    let transpose = |m: &[Vec<i32>]| -> Vec<Vec<i32>> {
+        let size = m.len();
+        (0..size)
+            .map(|i| (0..size).map(|j| m[j][i]).collect())
+            .collect()
+    };
+    let coweight = transpose(&matrix);
+    let involution = LatticeInvolution::new(&handle.datum, matrix, coweight)
+        .map_err(|error| runtime(span, error.to_string()))?;
+    // Upstream accepts any root-datum involution here and left-composes it
+    // into a distinguished one (`check_involution`, atlas-types.w:2829).
+    let inner_class =
+        InnerClass::from_root_involution((*handle.datum).clone(), involution, ROOT_BUDGET)
+            .map_err(|error| runtime(span, error.to_string()))?;
+    build_inner_class_context(handle, inner_class, span)
+}
+
+fn build_dual_inner_class(
+    parent: &Arc<InnerClassContext>,
+    span: SourceSpan,
+) -> Result<Arc<InnerClassContext>, Diagnostic> {
+    let inner_class = dual_inner_class(&parent.inner_class, WEYL_BUDGET, ROOT_BUDGET)
+        .map_err(|error| runtime(span, error.to_string()))?;
+    let datum = inner_class.datum().clone();
+    let lie_type = infer_lie_type(datum.cartan_matrix(), datum.lattice_rank(), span)?;
+    let handle = RootDatumHandle {
+        isogeny: classify_isogeny(&datum),
+        datum: Arc::new(datum),
+        lie_type,
+        prefers_coroots: parent.root_datum.prefers_coroots,
+    };
+    build_inner_class_context(&handle, inner_class, span)
+}
+
 /// Apply the domain-owned coercions registered by the Atlas type layer.
 /// Keeping these conversions here preserves the root-datum provenance carried
 /// by the immutable handles instead of reconstructing a mathematically equal
@@ -936,7 +961,7 @@ fn build_real_form(
     let internal = parent
         .order
         .internal(external)
-        .ok_or_else(|| runtime(span, "Illegal real form number"))?;
+        .ok_or_else(|| runtime(span, format!("Illegal real form number: {external}")))?;
     let mut table =
         InnerClassContext::fresh_table(parent).map_err(|error| runtime(span, error.to_string()))?;
     let fundamental = parent
@@ -1644,7 +1669,7 @@ pub(crate) fn validate(
             context
                 .order
                 .internal(external)
-                .ok_or_else(|| runtime(span, "Illegal real form number"))?;
+                .ok_or_else(|| runtime(span, format!("Illegal real form number: {external}")))?;
         }
         "KGB" => {
             arity(name, arguments, 2, span)?;
@@ -1804,6 +1829,39 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             };
             Ok(Value::Integer(BigInt::from(context.order.form_count())))
         }
+        "nr_of_dual_real_forms" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::InnerClass(context)) = &arguments[0] else {
+                return Err(type_error(span, "expected an InnerClass"));
+            };
+            Ok(Value::Integer(BigInt::from(context.dual_form_count)))
+        }
+        "form_names" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::InnerClass(context)) = &arguments[0] else {
+                return Err(type_error(span, "expected an InnerClass"));
+            };
+            Ok(Value::List(
+                context
+                    .forms
+                    .iter()
+                    .map(|form| Value::String(form.name.clone()))
+                    .collect(),
+            ))
+        }
+        "dual_form_names" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::InnerClass(context)) = &arguments[0] else {
+                return Err(type_error(span, "expected an InnerClass"));
+            };
+            let dual = build_dual_inner_class(context, span)?;
+            Ok(Value::List(
+                dual.forms
+                    .iter()
+                    .map(|form| Value::String(form.name.clone()))
+                    .collect(),
+            ))
+        }
         "real_form" => {
             arity(name, arguments, 2, span)?;
             let Value::Domain(DomainValue::InnerClass(context)) = &arguments[0] else {
@@ -1813,6 +1871,16 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             let form = build_real_form(context, external, span)?;
             Ok(Value::Domain(DomainValue::RealForm(form)))
         }
+        "dual_real_form" => {
+            arity(name, arguments, 2, span)?;
+            let Value::Domain(DomainValue::InnerClass(context)) = &arguments[0] else {
+                return Err(type_error(span, "expected an InnerClass"));
+            };
+            let external = as_usize(&arguments[1], span)?;
+            let dual = build_dual_inner_class(context, span)?;
+            let form = build_real_form(&dual, external, span)?;
+            Ok(Value::Domain(DomainValue::RealForm(form)))
+        }
         "quasisplit_form" => {
             arity(name, arguments, 1, span)?;
             let Value::Domain(DomainValue::InnerClass(context)) = &arguments[0] else {
@@ -1820,6 +1888,16 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             };
             let external = context.order.quasisplit_external();
             let form = build_real_form(context, external, span)?;
+            Ok(Value::Domain(DomainValue::RealForm(form)))
+        }
+        "dual_quasisplit_form" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::InnerClass(context)) = &arguments[0] else {
+                return Err(type_error(span, "expected an InnerClass"));
+            };
+            let dual = build_dual_inner_class(context, span)?;
+            let external = dual.order.quasisplit_external();
+            let form = build_real_form(&dual, external, span)?;
             Ok(Value::Domain(DomainValue::RealForm(form)))
         }
         "form_number" => {
