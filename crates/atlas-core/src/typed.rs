@@ -18,7 +18,9 @@ use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
 use crate::domain_builtins;
 use crate::frames::{EvaluationContext, GlobalCell};
 use crate::linear_values::{Matrix, RatVec, Vec32};
-use crate::syntax::{compact_expression, Command, Expr, ForLoop, LambdaParam, Pattern, TypeSpec};
+use crate::syntax::{
+    compact_expression, Command, Expr, ForLoop, LambdaParam, LetBinding, Pattern, TypeSpec,
+};
 use crate::types::{Prim, Type, TypeBinding, TypeNumber, TypeTable};
 use crate::value::{Closure, SlotShape, Value};
 use std::cell::RefCell;
@@ -227,10 +229,9 @@ pub enum TypedExpr {
 pub struct Analysis<'a> {
     pub types: &'a TypeTable,
     pub globals: &'a IdTable,
-    /// Overloads removed by `forget name @ type` in this context
-    /// (`(name, signature)` pairs). The startup registry itself is static,
-    /// so removal is a per-context filter over `overload_variants`.
-    forgotten: &'a [(String, Type)],
+    /// The context's overload state: `forget`-removed startup overloads
+    /// and user `set` definitions, merged into resolution.
+    pub overloads: &'a OverloadState,
     locals: BTreeMap<String, (TypeCell, usize, usize)>,
     /// Names bound by a const `!x` pattern; assignment to them is an
     /// analysis error. Entries shadow outward like `locals` does: a
@@ -246,11 +247,11 @@ pub struct Analysis<'a> {
 }
 
 impl<'a> Analysis<'a> {
-    pub fn new(types: &'a TypeTable, globals: &'a IdTable) -> Self {
+    pub fn new(types: &'a TypeTable, globals: &'a IdTable, overloads: &'a OverloadState) -> Self {
         Self {
             types,
             globals,
-            forgotten: &[],
+            overloads,
             locals: BTreeMap::new(),
             constant_locals: BTreeSet::new(),
             in_function: false,
@@ -258,18 +259,12 @@ impl<'a> Analysis<'a> {
         }
     }
 
-    /// Also hide the `forget`-removed overloads of this context.
-    pub fn with_forgotten(mut self, forgotten: &'a [(String, Type)]) -> Self {
-        self.forgotten = forgotten;
-        self
-    }
-
     /// The context for a loop body: same bindings, one more loop level.
     fn in_loop(&self) -> Self {
         Self {
             types: self.types,
             globals: self.globals,
-            forgotten: self.forgotten,
+            overloads: self.overloads,
             locals: self.locals.clone(),
             constant_locals: self.constant_locals.clone(),
             in_function: self.in_function,
@@ -280,10 +275,13 @@ impl<'a> Analysis<'a> {
 
 /// The global identifier table: one binding per name, each definition
 /// holding the FRESH cell it allocated (converted code keeps the cell it
-/// captured; re-definition rebinds the name only).
+/// captured; re-definition rebinds the name only). Names bound by a const
+/// `!x` pattern in `set` reject assignment until a plain rebinding clears
+/// the mark.
 #[derive(Default)]
 pub struct IdTable {
     entries: BTreeMap<String, (TypeCell, GlobalCell)>,
+    const_names: BTreeSet<String>,
 }
 
 pub type TypeCell = Rc<RefCell<Type>>;
@@ -294,18 +292,238 @@ impl IdTable {
     }
 
     pub fn define(&mut self, name: impl Into<String>, type_: Type, cell: GlobalCell) {
+        let name = name.into();
+        // A fresh definition is never constant, even when it replaces a
+        // const binding (upstream rebinds the identifier outright).
+        self.const_names.remove(&name);
         self.entries
-            .insert(name.into(), (Rc::new(RefCell::new(type_)), cell));
+            .insert(name, (Rc::new(RefCell::new(type_)), cell));
     }
 
     pub fn lookup(&self, name: &str) -> Option<&(TypeCell, GlobalCell)> {
         self.entries.get(name)
     }
 
+    /// Mark a binding constant (`set !x = …`); assignment to it becomes an
+    /// analysis error.
+    pub fn mark_const(&mut self, name: &str) {
+        self.const_names.insert(name.to_owned());
+    }
+
+    pub fn is_const(&self, name: &str) -> bool {
+        self.const_names.contains(name)
+    }
+
     /// Remove a binding (`forget name`); `false` when it was not known.
     pub fn remove(&mut self, name: &str) -> bool {
+        self.const_names.remove(name);
         self.entries.remove(name).is_some()
     }
+}
+
+/// A user `set`-defined overload: the full function type (always
+/// `Type::Function`) and the closure value a call applies.
+#[derive(Clone, Debug, PartialEq)]
+pub struct UserOverload {
+    function_type: Type,
+    value: Value,
+}
+
+/// Per-context overload state (the upstream overload table,
+/// global.w:446-560): the startup registry is static, so
+/// `forget name @ type` records removals here and `set` records user
+/// variants; resolution merges both views into one ordered list.
+#[derive(Default)]
+pub struct OverloadState {
+    forgotten: Vec<(String, Type)>,
+    user: BTreeMap<String, Vec<UserOverload>>,
+}
+
+impl OverloadState {
+    /// Whether `forget name @ type` hid the startup overload at `arg_type`.
+    fn is_forgotten(&self, name: &str, arg_type: &Type) -> bool {
+        self.forgotten
+            .iter()
+            .any(|(forgotten_name, signature)| forgotten_name == name && signature == arg_type)
+    }
+
+    /// The user variants of `name`, in insertion order.
+    fn user_variants(&self, name: &str) -> &[UserOverload] {
+        self.user.get(name).map(Vec::as_slice).unwrap_or(&[])
+    }
+
+    /// Add a `set` function definition, replaying the upstream
+    /// single-table `add` over the merged view: an exact argument-type
+    /// twin is replaced in place (a startup twin is shadowed through the
+    /// forgotten list), a too-close neighbour is the upstream ambiguity
+    /// error, and anything else inserts at its ordered position. Returns
+    /// the variant counts before and after, which select the report
+    /// wording (`add_overload`, global.w:1004-1023).
+    fn add_user(
+        &mut self,
+        name: &str,
+        function_type: Type,
+        value: Value,
+        types: &TypeTable,
+        span: SourceSpan,
+    ) -> Result<(usize, usize), Diagnostic> {
+        let Type::Function(parts) = &function_type else {
+            unreachable!("only function-typed values enter the overload table")
+        };
+        let arg_type = parts.0.clone();
+        let merged = merged_variants(name, self, types);
+        let old_n = merged.len();
+        let mut lower = 0;
+        let mut upper = old_n;
+        let mut replacement = None;
+        for (slot, existing) in merged.iter().enumerate() {
+            match crate::coercions::is_close(&arg_type, &existing.arg_type, types) {
+                0x6 => lower = slot + 1,
+                0x5 => upper = upper.min(slot),
+                0x7 if arg_type == existing.arg_type => {
+                    replacement = Some(slot);
+                    break;
+                }
+                0x4 | 0x7 => {
+                    return Err(type_error(
+                        format!(
+                            "Cannot overload `{name}':\nalready overloaded type '{}' is too close to new argument type '{}',\nwhich would make overloading ambiguous for certain arguments. Simultaneous\noverloading for these types is not possible, forget the other one first.",
+                            existing.arg_type.display(types),
+                            arg_type.display(types),
+                        ),
+                        span,
+                    ));
+                }
+                _ => {}
+            }
+        }
+        let entry = UserOverload {
+            function_type,
+            value,
+        };
+        let (slot, n) = match replacement {
+            Some(slot) => match merged[slot].origin {
+                OverloadOrigin::User(user_index) => {
+                    self.user
+                        .get_mut(name)
+                        .expect("a merged user variant has a slot")[user_index] = entry;
+                    return Ok((old_n, old_n));
+                }
+                // Replacing a startup overload keeps the count: hide the
+                // builtin and take its position with the user value.
+                OverloadOrigin::Builtin(_) => {
+                    self.forgotten.push((name.to_owned(), arg_type));
+                    (slot, old_n)
+                }
+            },
+            None => (upper.max(lower), old_n + 1),
+        };
+        let user_position = merged[..slot]
+            .iter()
+            .filter(|variant| matches!(variant.origin, OverloadOrigin::User(_)))
+            .count();
+        self.user
+            .entry(name.to_owned())
+            .or_default()
+            .insert(user_position, entry);
+        Ok((old_n, n))
+    }
+
+    /// Remove ONE active overload at exactly `arg_type`
+    /// (`forget name @ type`, global.w:1253-1261): a user `set` variant
+    /// drops out; a startup overload is hidden by recording it (a variant
+    /// shadowed by `set` stays hidden, so forgetting the user replacement
+    /// never resurrects the builtin). `false` when nothing matched.
+    fn remove(&mut self, name: &str, arg_type: &Type) -> bool {
+        if let Some(users) = self.user.get_mut(name) {
+            let position = users.iter().position(
+                |user| matches!(&user.function_type, Type::Function(parts) if parts.0 == *arg_type),
+            );
+            if let Some(position) = position {
+                users.remove(position);
+                if users.is_empty() {
+                    self.user.remove(name);
+                }
+                return true;
+            }
+        }
+        let active_builtin = overload_variants(name)
+            .iter()
+            .map(|&index| &builtin_registry()[index])
+            .any(|builtin| builtin.arg_type == *arg_type);
+        if active_builtin && !self.is_forgotten(name, arg_type) {
+            self.forgotten.push((name.to_owned(), arg_type.clone()));
+            return true;
+        }
+        false
+    }
+}
+
+/// One candidate in the merged overload view: a startup builtin or a user
+/// `set` definition, most specific first (the upstream single-table
+/// order).
+#[derive(Clone, Copy)]
+enum OverloadOrigin {
+    Builtin(usize),
+    User(usize),
+}
+
+struct MergedVariant {
+    arg_type: Type,
+    result_type: Type,
+    origin: OverloadOrigin,
+}
+
+/// The active variants for `name`: startup overloads not hidden by
+/// `forget`, with user variants inserted at the position the upstream
+/// single-table ordering gives them.
+fn merged_variants(name: &str, overloads: &OverloadState, types: &TypeTable) -> Vec<MergedVariant> {
+    let mut merged: Vec<MergedVariant> = overload_variants(name)
+        .iter()
+        .copied()
+        .filter(|&index| !overloads.is_forgotten(name, &builtin_registry()[index].arg_type))
+        .map(|index| {
+            let builtin = &builtin_registry()[index];
+            MergedVariant {
+                arg_type: builtin.arg_type.clone(),
+                result_type: builtin.result.clone(),
+                origin: OverloadOrigin::Builtin(index),
+            }
+        })
+        .collect();
+    for (user_index, user) in overloads.user_variants(name).iter().enumerate() {
+        let Type::Function(parts) = &user.function_type else {
+            unreachable!("user overloads always hold a function type")
+        };
+        let variant = MergedVariant {
+            arg_type: parts.0.clone(),
+            result_type: parts.1.clone(),
+            origin: OverloadOrigin::User(user_index),
+        };
+        let position = insert_position(&variant.arg_type, &merged, types);
+        merged.insert(position, variant);
+    }
+    merged
+}
+
+/// The slot the upstream single-table ordering gives a new argument type:
+/// after every strictly more specific entry, before the less specific
+/// ones (`overload_table::add` without the conflict cases — `add_user`
+/// already rejected or resolved those).
+fn insert_position(arg_type: &Type, merged: &[MergedVariant], types: &TypeTable) -> usize {
+    let mut lower = 0;
+    let mut upper = merged.len();
+    for (slot, existing) in merged.iter().enumerate() {
+        match crate::coercions::is_close(arg_type, &existing.arg_type, types) {
+            0x6 => lower = slot + 1,
+            0x5 => upper = upper.min(slot),
+            // Exact or ambiguous neighbours cannot occur here; keep them
+            // ahead of the new variant defensively.
+            0x4 | 0x7 => lower = slot + 1,
+            _ => {}
+        }
+    }
+    upper.max(lower)
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -327,11 +545,9 @@ pub struct TypedContext {
     types: TypeTable,
     globals: IdTable,
     evaluation: EvaluationContext,
-    /// Overloads removed by `forget name @ type`, as `(name, signature)`
-    /// pairs. Upstream mutates its global overload table; the startup
-    /// registry here is static, so removals are recorded per context and
-    /// filtered out at overload resolution instead.
-    forgotten_overloads: Vec<(String, Type)>,
+    /// The overload table: startup overloads hidden by
+    /// `forget name @ type` plus user `set` definitions.
+    overloads: OverloadState,
 }
 
 impl TypedContext {
@@ -350,8 +566,7 @@ impl TypedContext {
                 let typed = convert_expr(
                     expression,
                     &mut type_,
-                    &Analysis::new(&self.types, &self.globals)
-                        .with_forgotten(&self.forgotten_overloads),
+                    &Analysis::new(&self.types, &self.globals, &self.overloads),
                 )?;
                 let value = evaluate_command_expr(&typed, &mut self.evaluation)?;
                 Ok(vec![TypedCommandEvent::Value {
@@ -367,28 +582,10 @@ impl TypedContext {
                 let typed = convert_expr(
                     value,
                     &mut type_,
-                    &Analysis::new(&self.types, &self.globals)
-                        .with_forgotten(&self.forgotten_overloads),
+                    &Analysis::new(&self.types, &self.globals, &self.overloads),
                 )?;
                 let value = evaluate_command_expr(&typed, &mut self.evaluation)?;
-                let previous = self
-                    .globals
-                    .lookup(name)
-                    .map(|(type_, _)| type_.borrow().display(&self.types).to_string());
-                self.globals.define(
-                    name.clone(),
-                    type_.clone(),
-                    crate::frames::global_with(Rc::new(value)),
-                );
-
-                let mut text = format!("Variable {name}: {}", type_.display(&self.types));
-                if let Some(previous) = previous {
-                    text.push_str(&format!(
-                        " (overriding previous instance, which had type {previous})"
-                    ));
-                }
-                text.push('\n');
-                Ok(vec![TypedCommandEvent::ReportLine { text, span: *span }])
+                Ok(vec![self.define_variable(name, type_, value, false, *span)])
             }
             Command::Declare {
                 name,
@@ -440,11 +637,7 @@ impl TypedContext {
                         Some(unknown.span),
                     )
                 })?;
-                let removed = self.overload_is_active(&name.value, &resolved);
-                if removed {
-                    self.forgotten_overloads
-                        .push((name.value.clone(), resolved.clone()));
-                }
+                let removed = self.overloads.remove(&name.value, &resolved);
                 let state = if removed { "forgotten" } else { "not known" };
                 Ok(vec![TypedCommandEvent::ReportLine {
                     text: format!(
@@ -455,18 +648,145 @@ impl TypedContext {
                     span: *span,
                 }])
             }
+            Command::Set { bindings, .. } => self.execute_set(bindings),
+            Command::ShowOverloads { name, span } => {
+                // show_overloads (global.w:1790-1799): one line per active
+                // variant, argument and result types printed independently.
+                let variants = merged_variants(&name.value, &self.overloads, &self.types);
+                let mut text = if variants.is_empty() {
+                    format!("No overloads for '{}'\n", name.value)
+                } else {
+                    format!("Overloaded instances of '{}'\n", name.value)
+                };
+                for variant in &variants {
+                    text.push_str(&format!(
+                        "  {}->{}\n",
+                        variant.arg_type.display(&self.types),
+                        variant.result_type.display(&self.types)
+                    ));
+                }
+                Ok(vec![TypedCommandEvent::ReportLine { text, span: *span }])
+            }
         }
     }
 
-    /// Whether `name` still has an active overload at exactly `signature`.
-    fn overload_is_active(&self, name: &str, signature: &Type) -> bool {
-        builtin_registry()
-            .iter()
-            .any(|builtin| builtin.name == name && builtin.arg_type == *signature)
-            && !self
-                .forgotten_overloads
-                .iter()
-                .any(|(forgotten_name, forgotten)| forgotten_name == name && forgotten == signature)
+    /// Bind a global value and report `(Constant|Variable) name: type`
+    /// (global_define_identifier and the identifier-table branch of
+    /// `do_global_set`, global.w:911-994). A redefinition notes the
+    /// overridden type.
+    fn define_variable(
+        &mut self,
+        name: &str,
+        type_: Type,
+        value: Value,
+        constant: bool,
+        span: SourceSpan,
+    ) -> TypedCommandEvent {
+        let previous = self
+            .globals
+            .lookup(name)
+            .map(|(type_, _)| type_.borrow().display(&self.types).to_string());
+        self.globals.define(
+            name.to_owned(),
+            type_.clone(),
+            crate::frames::global_with(Rc::new(value)),
+        );
+        if constant {
+            self.globals.mark_const(name);
+        }
+        let role = if constant { "Constant" } else { "Variable" };
+        let mut text = format!("{role} {name}: {}", type_.display(&self.types));
+        if let Some(previous) = previous {
+            text.push_str(&format!(
+                " (overriding previous instance, which had type {previous})"
+            ));
+        }
+        text.push('\n');
+        TypedCommandEvent::ReportLine { text, span }
+    }
+
+    /// Add a user function definition to the overload table and report it
+    /// (`add_overload`, global.w:1004-1023): replacing keeps the variant
+    /// count (`Redefined`), the first variant is `Defined`, otherwise
+    /// `Added definition [n] of`.
+    fn add_overload(
+        &mut self,
+        name: &str,
+        function_type: Type,
+        value: Value,
+        span: SourceSpan,
+    ) -> Result<TypedCommandEvent, Diagnostic> {
+        let (old_n, n) =
+            self.overloads
+                .add_user(name, function_type.clone(), value, &self.types, span)?;
+        let prefix = if n == old_n {
+            "Redefined ".to_string()
+        } else if n == 1 {
+            "Defined ".to_string()
+        } else {
+            format!("Added definition [{n}] of ")
+        };
+        Ok(TypedCommandEvent::ReportLine {
+            text: format!("{prefix}{name}: {}\n", function_type.display(&self.types)),
+            span,
+        })
+    }
+
+    /// `set declarations` (parser.y:140, `do_global_set` global.w:911-994):
+    /// every right-hand side converts against the CURRENT tables (parallel
+    /// semantics — no binding sees another), then evaluates, then binds
+    /// leaf by leaf: function-typed leaves join the overload table, the
+    /// rest the identifier table, each reporting as it lands.
+    fn execute_set(
+        &mut self,
+        bindings: &[LetBinding],
+    ) -> Result<Vec<TypedCommandEvent>, Diagnostic> {
+        struct Pending {
+            shape: SlotShape,
+            leaves: Vec<PatternLeaf>,
+            typed: TypedExpr,
+        }
+        // Phase 0: analyse all right-hand sides and patterns before
+        // anything evaluates or binds.
+        let mut pending = Vec::with_capacity(bindings.len());
+        {
+            let analysis = Analysis::new(&self.types, &self.globals, &self.overloads);
+            for binding in bindings {
+                let mut found = Type::Undetermined;
+                let typed = convert_expr(&binding.initializer, &mut found, &analysis)?;
+                let leaves = bind_pattern_leaves(&binding.pattern, &found, &self.types)?;
+                pending.push(Pending {
+                    shape: pattern_slot_shape(&binding.pattern),
+                    leaves,
+                    typed,
+                });
+            }
+        }
+        // Phase 1: evaluate every right-hand side before any binding
+        // happens, so a failing initializer leaves the tables untouched.
+        let mut evaluated = Vec::with_capacity(pending.len());
+        for pending in pending {
+            let value = evaluate_command_expr(&pending.typed, &mut self.evaluation)?;
+            evaluated.push((pending.shape, pending.leaves, value));
+        }
+        // Phase 2: distribute each value over its pattern leaves and bind
+        // them in declaration order, reporting as each lands.
+        let mut events = Vec::new();
+        for (shape, leaves, value) in evaluated {
+            let mut slots = Vec::new();
+            distribute(value, &shape, &mut slots);
+            debug_assert_eq!(slots.len(), leaves.len());
+            for ((name, name_span, constant, leaf_type), slot) in leaves.into_iter().zip(slots) {
+                let value = Rc::try_unwrap(slot).unwrap_or_else(|rc| (*rc).clone());
+                let event = if matches!(leaf_type, Type::Function(_)) {
+                    self.add_overload(&name, leaf_type, value, name_span)?
+                } else {
+                    self.define_variable(&name, leaf_type, value, constant, name_span)
+                };
+                events.push(event);
+            }
+        }
+        Ok(events)
     }
 
     /// `set_type` (axis.w:5092-5168): the bracketed form registers every
@@ -620,7 +940,7 @@ impl TypedContext {
         convert_expr(
             target,
             &mut type_,
-            &Analysis::new(&self.types, &self.globals).with_forgotten(&self.forgotten_overloads),
+            &Analysis::new(&self.types, &self.globals, &self.overloads),
         )?;
         Ok(vec![TypedCommandEvent::ReportLine {
             text: format!("Type: {}\n", type_.display(&self.types)),
@@ -1101,6 +1421,18 @@ pub fn convert_expr(
                     Some(*target_span),
                 ));
             };
+            // A const global (`set !x = …`) rejects assignment during
+            // analysis, exactly like a const local does.
+            if analysis.globals.is_const(name) {
+                return Err(Diagnostic::new(
+                    ErrorKind::Name,
+                    format!(
+                        "Name '{name}' is constant in assignment {name}:={}",
+                        compact_expression(value)
+                    ),
+                    Some(*target_span),
+                ));
+            }
             let mut required_value = target.borrow().clone();
             let converted = convert_expr(value, &mut required_value, analysis)?;
             *target.borrow_mut() = required_value.clone();
@@ -1203,7 +1535,7 @@ pub fn convert_expr(
                         &Analysis {
                             types: analysis.types,
                             globals: analysis.globals,
-                            forgotten: analysis.forgotten,
+                            overloads: analysis.overloads,
                             locals: locals.clone(),
                             constant_locals: constant_locals.clone(),
                             in_function: analysis.in_function,
@@ -1264,7 +1596,7 @@ pub fn convert_expr(
                 &Analysis {
                     types: analysis.types,
                     globals: analysis.globals,
-                    forgotten: analysis.forgotten,
+                    overloads: analysis.overloads,
                     locals,
                     constant_locals,
                     in_function: analysis.in_function,
@@ -1318,7 +1650,7 @@ pub fn convert_expr(
                     analysis,
                 );
             }
-            convert_builtin_application(
+            convert_overload_application(
                 &operator.symbol,
                 arguments,
                 required,
@@ -1341,10 +1673,10 @@ pub fn convert_expr(
                 let local_function = local
                     .is_some_and(|(type_, _, _)| matches!(&*type_.borrow(), Type::Function(_)));
                 let use_overloads = !local_function
-                    && (!available_variants(name, analysis).is_empty()
+                    && (!merged_variants(name, analysis.overloads, analysis.types).is_empty()
                         || (local.is_none() && analysis.globals.lookup(name).is_none()));
                 if use_overloads {
-                    return convert_builtin_application(
+                    return convert_overload_application(
                         name, arguments, required, *span, analysis, true,
                     );
                 }
@@ -1615,7 +1947,7 @@ pub fn convert_expr(
                 &Analysis {
                     types: analysis.types,
                     globals: analysis.globals,
-                    forgotten: analysis.forgotten,
+                    overloads: analysis.overloads,
                     locals,
                     constant_locals,
                     in_function: analysis.in_function,
@@ -1759,7 +2091,7 @@ pub fn convert_expr(
                     &Analysis {
                         types: analysis.types,
                         globals: analysis.globals,
-                        forgotten: analysis.forgotten,
+                        overloads: analysis.overloads,
                         locals,
                         constant_locals,
                         in_function: analysis.in_function,
@@ -1939,7 +2271,7 @@ pub fn convert_expr(
                 &Analysis {
                     types: analysis.types,
                     globals: analysis.globals,
-                    forgotten: analysis.forgotten,
+                    overloads: analysis.overloads,
                     locals,
                     constant_locals,
                     in_function: analysis.in_function,
@@ -2160,7 +2492,7 @@ fn convert_lambda_expression(
     let body_analysis = Analysis {
         types: analysis.types,
         globals: analysis.globals,
-        forgotten: analysis.forgotten,
+        overloads: analysis.overloads,
         locals,
         constant_locals,
         in_function: true,
@@ -2268,7 +2600,7 @@ fn convert_rec_lambda_expression(
     let body_analysis = Analysis {
         types: analysis.types,
         globals: analysis.globals,
-        forgotten: analysis.forgotten,
+        overloads: analysis.overloads,
         locals,
         constant_locals,
         in_function: true,
@@ -2302,7 +2634,7 @@ fn convert_rec_lambda_expression(
     Ok(closure(converted))
 }
 
-fn convert_builtin_application(
+fn convert_overload_application(
     name: &str,
     expressions: &[Expr],
     required: &mut Type,
@@ -2310,7 +2642,7 @@ fn convert_builtin_application(
     analysis: &Analysis<'_>,
     resolve_name_first: bool,
 ) -> Result<TypedExpr, Diagnostic> {
-    let variants = available_variants(name, analysis);
+    let variants = merged_variants(name, analysis.overloads, analysis.types);
     if resolve_name_first && variants.is_empty() {
         // Atlas resolves the callee before analysing its arguments.  This is
         // observable for `foo(missing)`: the undefined function wins over an
@@ -2333,26 +2665,23 @@ fn convert_builtin_application(
     }
     let a_priori_type = Type::tuple(a_priori.clone());
     let mut chosen = None;
-    for &index in &variants {
-        let builtin = &builtin_registry()[index];
-        if builtin.arg_type == a_priori_type {
-            chosen = Some(index);
+    for (position, variant) in variants.iter().enumerate() {
+        if variant.arg_type == a_priori_type {
+            chosen = Some(position);
             break;
         }
-        if crate::coercions::is_close(&a_priori_type, &builtin.arg_type, analysis.types) & 0x1 != 0
+        if crate::coercions::is_close(&a_priori_type, &variant.arg_type, analysis.types) & 0x1 != 0
         {
-            chosen = Some(index);
+            chosen = Some(position);
             break;
         }
     }
-    let index = chosen.ok_or_else(|| {
+    let position = chosen.ok_or_else(|| {
         let message = if variants.len() == 1 {
             format!(
                 "found {} while {} was needed.",
                 a_priori_type.display(analysis.types),
-                builtin_registry()[variants[0]]
-                    .arg_type
-                    .display(analysis.types),
+                variants[0].arg_type.display(analysis.types),
             )
         } else {
             format!(
@@ -2363,8 +2692,8 @@ fn convert_builtin_application(
         };
         type_error(message, span)
     })?;
-    let builtin = &builtin_registry()[index];
-    let expected: Vec<Type> = match &builtin.arg_type {
+    let variant = &variants[position];
+    let expected: Vec<Type> = match &variant.arg_type {
         Type::Tuple(components) => components.clone(),
         single => vec![single.clone()],
     };
@@ -2381,17 +2710,43 @@ fn convert_builtin_application(
             }
         })
         .collect::<Result<Vec<_>, _>>()?;
-    conform_types(
-        &builtin.result,
-        required,
-        TypedExpr::BuiltinCall {
-            builtin: index,
-            arguments,
+    match variant.origin {
+        OverloadOrigin::Builtin(index) => conform_types(
+            &variant.result_type,
+            required,
+            TypedExpr::BuiltinCall {
+                builtin: index,
+                arguments,
+                span,
+            },
             span,
-        },
-        span,
-        analysis,
-    )
+            analysis,
+        ),
+        OverloadOrigin::User(user_index) => {
+            let user = &analysis.overloads.user_variants(name)[user_index];
+            // A user overload applies its closure: the argument is ONE
+            // value, the tuple display for several parameters.
+            let argument = if arguments.len() == 1 {
+                arguments
+                    .into_iter()
+                    .next()
+                    .expect("a single argument was converted")
+            } else {
+                TypedExpr::TupleDisplay(arguments)
+            };
+            conform_types(
+                &variant.result_type,
+                required,
+                TypedExpr::FunctionCall {
+                    function: Box::new(TypedExpr::Denotation(user.value.clone())),
+                    argument: Box::new(argument),
+                    span,
+                },
+                span,
+                analysis,
+            )
+        }
+    }
 }
 
 /// Balance branch expressions to a common type (upstream `balance`,
@@ -3578,23 +3933,6 @@ fn overload_variants(name: &str) -> &'static [usize] {
         .unwrap_or(&[])
 }
 
-/// Variant indices for `name` with the context's `forget`-removed
-/// overloads filtered out, keeping the most-specific-first order.
-fn available_variants(name: &str, analysis: &Analysis<'_>) -> Vec<usize> {
-    overload_variants(name)
-        .iter()
-        .copied()
-        .filter(|&index| {
-            !analysis
-                .forgotten
-                .iter()
-                .any(|(forgotten_name, signature)| {
-                    forgotten_name == name && builtin_registry()[index].arg_type == *signature
-                })
-        })
-        .collect()
-}
-
 impl TypedExpr {
     /// Evaluate at the demanded level. `NoValue` returns `None`.
     pub fn evaluate(
@@ -4561,7 +4899,8 @@ mod tests {
             .unwrap_or_else(|error| panic!("test source {source:?} parses: {error:?}"));
         assert_eq!(program.expressions.len(), 1);
         let table = TypeTable::new();
-        let analysis = Analysis::new(&table, globals);
+        let overloads = OverloadState::default();
+        let analysis = Analysis::new(&table, globals, &overloads);
         let mut required = Type::Undetermined;
         let typed = convert_expr(&program.expressions[0], &mut required, &analysis)?;
         let mut context = EvaluationContext::new();
@@ -5093,7 +5432,8 @@ mod tests {
         let program = parse(&source).expect("power parses");
         let table = TypeTable::new();
         let globals = IdTable::new();
-        let analysis = Analysis::new(&table, &globals);
+        let overloads = OverloadState::default();
+        let analysis = Analysis::new(&table, &globals, &overloads);
         let mut required = Type::Undetermined;
         let typed = convert_expr(&program.expressions[0], &mut required, &analysis)
             .expect("power converts");

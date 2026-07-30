@@ -4,7 +4,8 @@ use super::{
     finish_let, expression_list, finish_operator_formula, for_expression, join_span, lambda,
     lambda_parameter, lambda_parameters, let_bindings, forget_overload_command,
     let_expression, list_expression, named_field, rec_function_binding, rec_lambda, return_expression,
-    selector_suffix, operator_selector, sequence, set_type_command, type_definition, type_spec_span,
+    selector_suffix, operator_selector, sequence, set_command, set_type_command, show_overloads_command,
+    type_definition, type_spec_span,
     unit_selector, next_sequence, case_select_expression, counted_for_expression,
     tuple_expression, function_binding,
     prepend_let_group,
@@ -48,6 +49,15 @@ pub Command: Command = {
         set_type_command(set_type, definitions, true, close)
     },
     <whattype:"whattype"> <target:Expr> => whattype_command(whattype, target),
+    // whattype id_op `?` (parser.y:187): list the overload instances of an
+    // identifier or operator. The `?` cannot follow an expression or an
+    // operator operand, so this never competes with the Expr form.
+    <whattype:"whattype"> <name:ForgetTarget> <question:"?"> => {
+        show_overloads_command(whattype, name, question)
+    },
+    // set (parser.y:140): the `let` declaration forms, bound globally and
+    // in parallel; function-typed leaves enter the overload table.
+    <set:"set"> <bindings:LetBindings> => set_command(set, bindings),
     // forget (parser.y:141-142,155-157): an identifier drops its global
     // binding; `name @ type` (identifier or operator) removes ONE overload.
     <forget:"forget"> <name:"identifier"> => forget_command(forget, name),
@@ -643,6 +653,8 @@ extern {
         "od" => ParserToken::Od(<SourceSpan>),
         "break" => ParserToken::Break(<SourceSpan>),
         "die" => ParserToken::Die(<SourceSpan>),
+        "?" => ParserToken::Question(<SourceSpan>),
+        "set" => ParserToken::Set(<SourceSpan>),
         "set_type" => ParserToken::SetType(<SourceSpan>),
         "whattype" => ParserToken::Whattype(<SourceSpan>),
         "forget" => ParserToken::Forget(<SourceSpan>),

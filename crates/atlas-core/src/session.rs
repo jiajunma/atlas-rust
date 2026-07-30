@@ -1009,4 +1009,128 @@ mod tests {
                     && diagnostic.message == "Undefined identifier 'x'"
         ));
     }
+
+    #[test]
+    fn overloads_b8_fixture_matches_the_frozen_events() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/eval/overloads_b8.atlas"
+        ));
+        let events = run_source(&source);
+
+        assert_eq!(events.len(), 5);
+        assert!(matches!(
+            events[0],
+            SessionEvent::ReportLine { ref text, .. } if text == "Defined f: (int->int)\n"
+        ));
+        assert!(matches!(
+            events[1],
+            SessionEvent::ReportLine { ref text, .. }
+                if text == "Added definition [2] of f: (int,int->int)\n"
+        ));
+        assert!(matches!(
+            events[2],
+            SessionEvent::ReportLine { ref text, .. }
+                if text == "Overloaded instances of 'f'\n  int->int\n  (int,int)->int\n"
+        ));
+        assert!(matches!(
+            events[3],
+            SessionEvent::Value { value: Value::Integer(ref value), .. }
+                if value == &malachite::Integer::from(3)
+        ));
+        assert!(matches!(
+            events[4],
+            SessionEvent::Value { value: Value::Integer(ref value), .. }
+                if value == &malachite::Integer::from(7)
+        ));
+    }
+
+    #[test]
+    fn overloads_b8b_fixture_matches_the_frozen_events() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/eval/overloads_b8b.atlas"
+        ));
+        let events = run_source(&source);
+
+        assert_eq!(events.len(), 8);
+        assert!(matches!(
+            events[0],
+            SessionEvent::ReportLine { ref text, .. } if text == "Defined f: (int->int)\n"
+        ));
+        // Same signature: the variant is replaced, the count unchanged.
+        assert!(matches!(
+            events[1],
+            SessionEvent::ReportLine { ref text, .. } if text == "Redefined f: (int->int)\n"
+        ));
+        assert!(matches!(
+            events[2],
+            SessionEvent::ReportLine { ref text, .. }
+                if text == "Overloaded instances of 'f'\n  int->int\n"
+        ));
+        assert!(matches!(
+            events[3],
+            SessionEvent::Value { value: Value::Integer(ref value), .. }
+                if value == &malachite::Integer::from(6)
+        ));
+        assert!(matches!(
+            events[4],
+            SessionEvent::ReportLine { ref text, .. } if text == "Defined g: (int->int)\n"
+        ));
+        // A non-function value joins the identifier table and coexists
+        // with the overload of the same name.
+        assert!(matches!(
+            events[5],
+            SessionEvent::ReportLine { ref text, .. } if text == "Variable g: int\n"
+        ));
+        assert!(matches!(
+            events[6],
+            SessionEvent::ReportLine { ref text, .. }
+                if text == "Overloaded instances of 'g'\n  int->int\n"
+        ));
+        assert!(matches!(
+            events[7],
+            SessionEvent::Value { value: Value::Integer(ref value), .. }
+                if value == &malachite::Integer::from(3)
+        ));
+    }
+
+    #[test]
+    fn overloads_b8_rejected_fixture_matches_the_frozen_events() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/eval/overloads_b8_rejected.atlas"
+        ));
+        let events = run_source(&source);
+
+        assert_eq!(events.len(), 2);
+        assert!(matches!(
+            events[0],
+            SessionEvent::ReportLine { ref text, .. } if text == "Defined f: (int->int)\n"
+        ));
+        // A single overload applies directly, so the mismatch names the
+        // one argument type needed.
+        assert!(matches!(
+            events[1],
+            SessionEvent::Diagnostic(ref diagnostic)
+                if diagnostic.kind == ErrorKind::Type
+                    && diagnostic.message == "found (int,int,int) while int was needed."
+        ));
+    }
+
+    #[test]
+    fn set_binds_several_declarations_in_parallel() {
+        // do_global_set (global.w:911-994): every right-hand side analyses
+        // against the tables as they were, so `x` in the second binding
+        // refers to an OUTER definition, not the one being made.
+        let source = SourceText::new("set x = 1, y = 2");
+        let events = run_source(&source);
+
+        assert_eq!(events.len(), 2);
+        assert!(matches!(
+            events[0],
+            SessionEvent::ReportLine { ref text, .. } if text == "Variable x: int\n"
+        ));
+        assert!(matches!(
+            events[1],
+            SessionEvent::ReportLine { ref text, .. } if text == "Variable y: int\n"
+        ));
+    }
 }

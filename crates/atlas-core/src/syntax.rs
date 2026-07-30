@@ -597,6 +597,20 @@ pub enum Command {
         signature: TypeExpr,
         span: SourceSpan,
     },
+    /// `set declarations` (parser.y:140): the same declaration forms as
+    /// `let`, bound in parallel into the global tables. Function-typed
+    /// leaves join the overload table; other leaves join the identifier
+    /// table.
+    Set {
+        bindings: Vec<LetBinding>,
+        span: SourceSpan,
+    },
+    /// `whattype id_op ?` (parser.y:187): lists the overload instances
+    /// known for the identifier or operator.
+    ShowOverloads {
+        name: SpannedValue<String>,
+        span: SourceSpan,
+    },
 }
 
 impl Command {
@@ -608,7 +622,9 @@ impl Command {
             | Self::SetType { span, .. }
             | Self::Whattype { span, .. }
             | Self::Forget { span, .. }
-            | Self::ForgetOverload { span, .. } => *span,
+            | Self::ForgetOverload { span, .. }
+            | Self::Set { span, .. }
+            | Self::ShowOverloads { span, .. } => *span,
         }
     }
 }
@@ -681,6 +697,8 @@ pub enum ParserToken {
     Od(SourceSpan),
     Break(SourceSpan),
     Die(SourceSpan),
+    Question(SourceSpan),
+    Set(SourceSpan),
     SetType(SourceSpan),
     Whattype(SourceSpan),
     Forget(SourceSpan),
@@ -742,6 +760,8 @@ impl ParserToken {
             | Self::Od(span)
             | Self::Break(span)
             | Self::Die(span)
+            | Self::Question(span)
+            | Self::Set(span)
             | Self::SetType(span)
             | Self::Whattype(span)
             | Self::Forget(span)
@@ -802,6 +822,8 @@ impl fmt::Display for ParserToken {
             Self::Od(_) => "od",
             Self::Break(_) => "break",
             Self::Die(_) => "die",
+            Self::Question(_) => "?",
+            Self::Set(_) => "set",
             Self::SetType(_) => "set_type",
             Self::Whattype(_) => "whattype",
             Self::Forget(_) => "forget",
@@ -939,6 +961,7 @@ fn parser_tokens_from_tokens(
                         "od" => ParserToken::Od(span),
                         "break" => ParserToken::Break(span),
                         "die" => ParserToken::Die(span),
+                        "set" => ParserToken::Set(span),
                         "set_type" => ParserToken::SetType(span),
                         "whattype" => ParserToken::Whattype(span),
                         "forget" => ParserToken::Forget(span),
@@ -978,6 +1001,7 @@ fn parser_tokens_from_tokens(
                         '[' => ParserToken::LBracket(span),
                         ']' => ParserToken::RBracket(span),
                         '|' => ParserToken::Bar(span),
+                        '?' => ParserToken::Question(span),
                         // `@` and `.` are expression punctuation here; the
                         // `<file` directive scanner reads filenames before
                         // any of these tokens exist, so they cannot clash.
@@ -1131,6 +1155,8 @@ fn bison_token_name(token: &ParserToken) -> Option<&'static str> {
         ParserToken::Od(_) => Some("OD"),
         ParserToken::Break(_) => Some("BREAK"),
         ParserToken::Die(_) => Some("DIE"),
+        ParserToken::Question(_) => Some("'?'"),
+        ParserToken::Set(_) => Some("SET"),
         ParserToken::SetType(_) => Some("SET_TYPE"),
         ParserToken::Whattype(_) => Some("WHATTYPE"),
         ParserToken::Forget(_) => Some("FORGET"),
@@ -1761,6 +1787,27 @@ fn forget_overload_command(
         span: join_span(forget_span, signature.span()),
         name,
         signature,
+    }
+}
+
+fn set_command(set_span: SourceSpan, bindings: Vec<LetBinding>) -> Command {
+    let end = bindings
+        .last()
+        .map_or(set_span, |binding| binding.initializer.span());
+    Command::Set {
+        span: join_span(set_span, end),
+        bindings,
+    }
+}
+
+fn show_overloads_command(
+    whattype_span: SourceSpan,
+    name: SpannedValue<String>,
+    question_span: SourceSpan,
+) -> Command {
+    Command::ShowOverloads {
+        span: join_span(whattype_span, question_span),
+        name,
     }
 }
 
