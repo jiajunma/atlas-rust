@@ -1,4 +1,4 @@
-# Atlas-Rust handoff - 2026-07-30 (B7 forget/die verified)
+# Atlas-Rust handoff - 2026-07-30 (B8/B9/B10/B12 + domain display verified)
 
 This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
@@ -9,41 +9,86 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 - Branch: `main`.
 - B3a non-recursive functions, B3b recursive functions / definition sugar,
   B3c parameter patterns, B3d selectors, B4 loops, B5 `set_type`, B6
-  case / counted-for, B7 forget/die, and the B10 missing-file diagnostics
-  are implemented and differentially verified; B11 precedence needed no
-  change and is verified as well. The exact commit is shown by
+  case / counted-for, B7 forget/die, B8 user overloads + `set`, B9
+  redirect-body parsing, B10 file inclusion (accepted and missing-file),
+  B11 precedence, and B12 subscription/runtime diagnostics are implemented
+  and differentially verified. The exact commit is shown by
   `git log -1 --oneline`.
-- B7 also aligns the undefined-identifier wording with `axis.w:1431`, and
-  span-less diagnostics now render with the `<Kind> error:` header so the
-  harness's stderr grammar can parse them (the oracle prints them bare).
-- B8 user overloads (`3499692`, `3499705`), B9 file-command redirection
-  (`3499747`), B10 accepted inclusion (`3500378`), and B12 runtime errors
-  (`3500488`) have frozen references ahead of their implementations. The
-  B11/B12 probes are retired.
+- InnerClass/RealForm values now print exactly as the oracle renders them
+  (compact/split/quasisplit/disconnected variants, dual-form
+  singular/plural), verified by differential `3501467`; the
+  `pipeline_swap_domain_equality` fixture runs fully in the swap plan.
+- Domain contracts frozen against the oracle and awaiting implementation:
+  `domain/root_coroot` + `domain/kgb_generation` (capture `3501118` /
+  `3501143`), `domain/real_group` (`3501368`), `domain/grading` +
+  `domain/involution_primitive` (`3501449`), `domain/weyl_element` +
+  `domain/kgb_operations` (`3501466`), and designed-but-uncaptured
+  `domain/cartan_aggregation` + `domain/seed_x0`.
+- Eval contracts frozen ahead of implementation: `overloads_ops_b8c{,_rejected}`
+  and `whattype_ops_b8d` (capture `3501368`; operator-`set` form and the
+  builtin overload listing).
+- Harness: Slurm stdout files (`atlas-*.out`) no longer count as checkout
+  dirt in either the bootstrap or the checked source-state helper
+  (commits `b1afa5e`, `cbf538f`); `__pycache__/` is gitignored (`4843b9f`).
 - No uncommitted repository changes should remain after the handoff commit.
 
 The typed session pipeline is active: `session.rs` and `session_frame.rs`
 convert/evaluate through `typed.rs`; the old dynamic `eval.rs` path is deleted.
-The current typed surface includes scalar and linear values, subscriptions,
-one-dimensional slices, matrix/vector/ratvec crossings, RootDatum/Cartan
-constructors, the exposed KGB constructor adapter, and now non-recursive
-functions: typed lambda literals `(int n): body`, parameterless `@: body`
-closures with frame capture (including escaped captures), `return` intercepted
-at the call boundary and rejected at analysis outside a function body,
-identifier selector postfix `receiver.name` lowered to `name(receiver)`,
-function-definition sugar `f(params): body` in `let`/`set` declarations,
-`rec_fun` recursive functions in declaration and expression form with explicit
-result types (the self binding lives in the argument frame), binding and
+The current typed surface includes scalar and linear values, subscriptions
+(including string subscript with the oracle range wording), one-dimensional
+slices, matrix/vector/ratvec crossings, RootDatum/Cartan constructors, the
+exposed KGB constructor adapter, non-recursive functions: typed lambda
+literals `(int n): body`, parameterless `@: body` closures with frame capture
+(including escaped captures), `return` intercepted at the call boundary and
+rejected at analysis outside a function body, identifier selector postfix
+`receiver.name` lowered to `name(receiver)`, function-definition sugar
+`f(params): body` in `let`/`set` declarations, `rec_fun` recursive functions
+in declaration and expression form with explicit result types, binding and
 parameter patterns (tuple destructuring, discard `type .`, const `!x`,
 whole-value `(a, b): t`) compiled to a shared `SlotShape` frame layout,
 operator/unit selectors (`2.-`, `2.3`) with operator selectors resolving
-through the standard overload table, and loops (`while`/`for` collecting each
+through the standard overload table, loops (`while`/`for` collecting each
 iteration's body value into a row, `break` discarding the breaking iteration,
-`for x@i` index binding, `;` sequencing). This is not a
-claim of full Atlas compatibility: InnerClass/RealForm/KGB rendering and
-numbering, relations, primitive `involution` constructors, user overloads,
-file commands, and later math overloads remain pending differential
-evidence.
+`for x@i` index binding, `;` sequencing), user overloads with merged
+builtin/user dispatch (`Defined`/`Added definition [n]`/`Redefined` reports,
+`whattype f ?` listings, shadow-on-exact-replace forget semantics), `set`
+parallel bindings (all RHS analyzed, then evaluated, then bound), and
+redirect bodies parsed as expressions before the sink opens. This is not a
+claim of full Atlas compatibility: RootDatum/InnerClass/RealForm/KGB domain
+queries beyond construction and display, relations, primitive `involution`
+constructors, Cartan classes, Weyl elements, synthetic KGB seeds, and the
+later math overloads remain pending differential evidence.
+
+## Verified stage: B8/B9/B10/B12 + domain display (differential 3501467)
+
+- `overloads_b8{,b,_rejected}`: user function overloads via `set f =
+  (int x): x` — heterogeneous signatures accumulate (`Added definition
+  [2] of f:`), same-signature replaces (`Redefined`), non-function values
+  bind as variables coexisting with the overload table, `whattype f ?`
+  lists instances, and merged dispatch inserts user variants among the
+  builtins (commit `162216c`).
+- `file_commands_b9{,_rejected}`: redirect bodies parse as expressions
+  before the sink opens, so `> "x" set qfc = 10` fails with
+  `syntax error, unexpected '='` and creates no file; the expression
+  grammar accepts the parser.y:264 `set pattern := expr` form (analysis
+  rejects it as not yet implemented) (commit `2a3eff6`).
+- `fromfile_accepted_b10`: HPC-only include fixture, fixed by the B8
+  `set` implementation.
+- `runtime_errors_b12`: range errors carry the compact subscription
+  source (`index N out of range (0<= . <L) in subscription EXPR`), tuple
+  subscript is the axis.w:4101-4105 type error, and string subscript is
+  legal with one-character results (commit `a3c2f8d`).
+- `pipeline_swap_domain_equality` now runs fully: InnerClass/RealForm
+  display matches the oracle (Dynkin classification, inner-class layout,
+  dual counts, topology, real-form type naming, presentation bits;
+  commit `b4c8dc6`).
+- Differential: `pipeline_swap_diff` job `3501467` at commit `8feb364`
+  reports all 31 fixtures PASS with zero failures (suite PARTIAL only for
+  the three plan-level pending overloads: two `involution` constructors
+  and the synthetic `real_form`). Metadata carries
+  `rust_status: verified_hpc` with `differential_job: 3501467`.
+- Harness fixes landed alongside: Slurm stdout ignored in dirty detection
+  (`b1afa5e`, `cbf538f`), `__pycache__/` gitignored (`4843b9f`).
 
 ## Verified stage: B7 forget/die + B10 missing-file diagnostics
 
