@@ -21,21 +21,23 @@ or CWEB preprocessing.
 ## Language surface matrix
 
 `planned` means the design is fixed but no compatibility claim may be made.
+`supported` requires reference corpus, Rust implementation, and an HPC
+differential report naming the job.
 
 | Surface | Bootstrap status | Acceptance evidence |
 |---|---|---|
-| identifiers, reserved words, literals | planned | token-stream fixtures |
-| comments and source locations | planned | lexer fixtures |
-| arithmetic, comparison, boolean, assignment | planned | expression goldens |
-| precedence and associativity | planned | parser ambiguity corpus |
-| declarations and scoped lookup | planned | scope/error goldens |
-| functions, arguments, returns, closures | planned | call/effect corpus |
-| lists, tuples, maps, records, iteration | planned | value normalization goldens |
-| constructors, overloads, implicit conversions | planned | type corpus |
-| exceptions and runtime errors | planned | diagnostic/exit tests |
-| Atlas commands and batch files | planned | event stream and exit tests |
+| identifiers, reserved words, literals | supported | scalar/pipeline fixtures; differentials `3501467`, `3501643` |
+| comments and source locations | supported | span-exact diagnostics across the B-slice rejected fixtures; `3501467` |
+| arithmetic, comparison, boolean, assignment | supported | scalar goldens; `3501467` |
+| precedence and associativity | supported | B11 corpus; `3501467` |
+| declarations and scoped lookup | supported | B3a/B3c/B8 fixtures; `3501467`, `3501643` |
+| functions, arguments, returns, closures | supported | B3a/B3b fixtures; `3501467` |
+| lists, tuples, maps, records, iteration | supported | containers/subscriptions/slices + B4 loops; `3501467` |
+| constructors, overloads, implicit conversions | supported | B8 + b8c/b8d operator overloads and `whattype * ?`; `3501643` |
+| exceptions and runtime errors | supported | B12 + rejected companions across all slices; `3501467`, `3501643` |
+| Atlas commands and batch files | supported | B7 forget/die, B9 redirect, B10 include, B13 dont, showall, quit; `3501467`, `3501643` |
 | interactive input and completion | partial | TTY banner/prompt implemented; readline completion remains pending |
-| domain objects and mathematical operations | planned | per-domain differential suites; `atlas-real-group` provides an initial structural API |
+| domain objects and mathematical operations | partial | 8 of 26 frozen domain contracts verified: display `3501467`, root_coroot/kgb_generation `3501555`, real_group `3501779`, kgb_operations/tits_operations `3501870`, grading/weyl_element in flight; Block/KL layer pending |
 | KL and file formats | planned | explicit filekl adapter coupled to the pending Block/KL math layer |
 
 No row moves to `supported` merely because Rust compiles. It needs a reference
@@ -48,9 +50,14 @@ operator overload declarations, builtin `whattype * ?`, `dont` in the while
 `do_expr` position, `showall`, `quit`, batch inclusion/redirection, and the
 basic TTY banner/prompt. These surfaces are covered by HPC differential job
 `3501643` (40 fixtures, all PASS); `showall`, `quit`, and the prompt are
-covered by direct CLI/session checks. Readline completion and KL binary
-formats remain outside the language-only gate because they depend on the
-unfinished Block/KL domain values.
+covered by direct CLI/session checks. The domain layer is partially ported:
+RootDatum root/coroot queries, KGB size/status, real-form numbering and
+dual forms, KGB decompose/twist, and the grading observables are verified by
+differentials `3501555`, `3501779`, and `3501870`; Cartan classes, Weyl
+elements, blocks, K-types, parameters, and the primitive involution
+constructors have frozen contracts awaiting implementation. Readline
+completion and KL binary formats remain outside the language-only gate
+because they depend on the unfinished Block/KL domain values.
 
 ## Source compatibility rules
 
