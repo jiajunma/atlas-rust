@@ -1,0 +1,3 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("B2"),true)
+square_classes(rd)

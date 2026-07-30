@@ -1,0 +1,42 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("C2"),false)
+ic : InnerClass
+ic := inner_class(rd,[[1,0],[0,1]])
+nr_of_Cartan_classes(ic)
+c0 : CartanClass
+c0 := Cartan_class(ic,0)
+c0
+involution(c0)
+real_forms(c0)
+dual_real_forms(c0)
+square_classes(c0)
+c1 : CartanClass
+c1 := Cartan_class(ic,1)
+c1
+involution(c1)
+real_forms(c1)
+dual_real_forms(c1)
+square_classes(c1)
+c2 : CartanClass
+c2 := Cartan_class(ic,2)
+c2
+involution(c2)
+real_forms(c2)
+dual_real_forms(c2)
+square_classes(c2)
+c3 : CartanClass
+c3 := Cartan_class(ic,3)
+c3
+involution(c3)
+real_forms(c3)
+dual_real_forms(c3)
+square_classes(c3)
+r0 : RealForm
+r0 := real_form(ic,0)
+most_split_Cartan(r0)
+r1 : RealForm
+r1 := real_form(ic,1)
+most_split_Cartan(r1)
+r2 : RealForm
+r2 := real_form(ic,2)
+most_split_Cartan(r2)

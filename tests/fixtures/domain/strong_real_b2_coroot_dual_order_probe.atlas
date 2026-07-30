@@ -1,0 +1,19 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("B2"),true)
+prefers_coroots(rd)
+posroots(rd)
+poscoroots(rd)
+dd : RootDatum
+dd := dual(rd)
+prefers_coroots(dd)
+posroots(dd)
+poscoroots(dd)
+ic : InnerClass
+ic := inner_class(rd,[[1,0],[0,1]])
+di : InnerClass
+di := dual(ic)
+drd : RootDatum
+drd := root_datum(di)
+prefers_coroots(drd)
+posroots(drd)
+poscoroots(drd)
