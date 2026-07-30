@@ -58,6 +58,20 @@
         "type": "matrix",
         "display": "\n|  1,  0, 0 |\n| -2,  1, 0 |\n|  1, -2, 4 |\n"
       }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "matrix",
+        "display": "\n| -3 |\n"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 7
+      }
     }
   ]
 }

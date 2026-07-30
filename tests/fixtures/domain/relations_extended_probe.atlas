@@ -6,3 +6,5 @@ ann_mod([[1],[0]],2)
 ann_mod([[1]],-2)
 quotient_basis(Lie_type("A3"),[[1]/2,[1]/4])
 quotient_basis(Lie_type("A3"),[[-1]/4])
+ann_mod([[3]],-3)
+begin ann_mod([[1]],0); 7 end

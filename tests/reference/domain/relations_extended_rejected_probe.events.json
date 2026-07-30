@@ -22,6 +22,11 @@
       "kind": "Diagnostic",
       "category": "runtime",
       "message": "Not enough replacement columns"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Integer value to big for conversion"
     }
   ]
 }
