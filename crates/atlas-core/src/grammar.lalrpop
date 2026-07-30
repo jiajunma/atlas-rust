@@ -5,7 +5,7 @@ use super::{
     lambda_parameter, lambda_parameters, let_bindings,
     let_expression, list_expression, named_field, rec_function_binding, rec_lambda, return_expression,
     selector_suffix, operator_selector, sequence, set_type_command, type_definition, type_spec_span,
-    unit_selector,
+    unit_selector, next_sequence, case_select_expression, counted_for_expression,
     tuple_expression, function_binding,
     prepend_let_group,
     call_suffix, postfix, prefix_operator_call, slice_suffix, start_binary_formula, start_prefix_formula,
@@ -16,6 +16,7 @@ use super::{
     BinaryOp, CaseBranch, Command, Expr, LambdaParam, LetBinding, ParsedFor, ParsedIf,
     ParsedLet, ParserToken, PatternTail, PostfixSuffix, Prim, Program, SlotTail, SpannedValue,
     TypeExpr, TypeField, TypeSpec, TypeVariantSlot, UnaryOp, Pattern, TypeDefinition,
+    ParsedCaseSelect, ParsedCountedFor, ParsedIntCase,
 };
 use crate::diagnostic::SourceSpan;
 use crate::formula::{FormulaOperator, FormulaStack};
@@ -66,8 +67,10 @@ pub Expr: Expr = {
     <at:"@"> ":" <body:Expr> => lambda(at, Vec::new(), body),
     <return_span:"return"> <value:Expr> => return_expression(return_span, value),
     // Sequencing (parser.y:243): `tertiary ';' expr`, right-recursive, so
-    // `a; b; c` is `a; (b; c)`.
+    // `a; b; c` is `a; (b; c)`. `next` (parser.y:236) shares the
+    // precedence but yields the FIRST operand's value.
     <first:AssignmentExpr> <_semicolon:";"> <rest:Expr> => sequence(first, rest),
+    <first:AssignmentExpr> <_next:"next"> <rest:Expr> => next_sequence(first, rest),
     <expression:AssignmentExpr> => expression,
 };
 
@@ -390,11 +393,79 @@ Atom: Expr = {
     // Loops and `break` are units upstream (parser.y:364,473-474,506-531).
     <while_span:"while"> <tail:WhileTail> => while_expression(while_span, tail),
     <for_span:"for"> <tail:ForTail> => for_expression(for_span, tail),
+    <for_span:"for"> <tail:CountedForTail> => counted_for_expression(for_span, tail),
     <span:"break"> => Expr::Break { span },
     // Case discrimination (parser.y:480-482, caselist): `case subject |
     // tag(pattern): body | tag: body | else body esac`.
     <case:"case"> <subject:Expr> <_bar:"|"> <branches:CaseBranches> <esac:"esac"> => {
         case_expression(case, subject, branches, esac)
+    },
+    // Integer selection and positional union case (parser.y:350-359).
+    <case:"case"> <condition:Expr> <tail:CaseSelectTail> => {
+        case_select_expression(case, condition, tail)
+    },
+};
+
+// The tail of an integer/union `case`: the keyword-permuted `then`/`else`
+// variants (parser.y:352-358) normalise into one AST, and the `|` branch
+// list marks the positional union form (parser.y:359).
+CaseSelectTail: ParsedCaseSelect = {
+    "else" <else_branch:Expr> "in" <branches:CaseCommaList> <esac:"esac"> => {
+        ParsedCaseSelect::Int(Box::new(ParsedIntCase { branches, then_branch: None, else_branch: Some(else_branch), esac }))
+    },
+    "then" <then_branch:Expr> "in" <branches:CaseCommaList> "else" <else_branch:Expr>
+        <esac:"esac"> => {
+        ParsedCaseSelect::Int(Box::new(ParsedIntCase { branches, then_branch: Some(then_branch), else_branch: Some(else_branch), esac }))
+    },
+    "then" <then_branch:Expr> "else" <else_branch:Expr> "in" <branches:CaseCommaList>
+        <esac:"esac"> => {
+        ParsedCaseSelect::Int(Box::new(ParsedIntCase { branches, then_branch: Some(then_branch), else_branch: Some(else_branch), esac }))
+    },
+    "in" <first:Expr> <tail:CaseInTail> => tail.into_case_select(vec![first]),
+};
+
+// After `case condition in first`: the branch list continues with `,`
+// (integer case), with `|` (positional union case), or ends; the integer
+// form may still gain `then`/`else` branches (parser.y:351,355).
+CaseInTail: ParsedCaseSelect = {
+    <esac:"esac"> => ParsedCaseSelect::Int(Box::new(ParsedIntCase {
+        branches: Vec::new(), then_branch: None, else_branch: None, esac,
+    })),
+    "else" <else_branch:Expr> <esac:"esac"> => ParsedCaseSelect::Int(Box::new(ParsedIntCase {
+        branches: Vec::new(), then_branch: None, else_branch: Some(else_branch), esac,
+    })),
+    "then" <then_branch:Expr> "else" <else_branch:Expr> <esac:"esac"> => {
+        ParsedCaseSelect::Int(Box::new(ParsedIntCase {
+            branches: Vec::new(), then_branch: Some(then_branch), else_branch: Some(else_branch), esac,
+        }))
+    },
+    "," <rest:CaseCommaList> <tail:CaseCommaEnd> => tail.into_case_select(rest),
+    "|" <second:Expr> <rest:("|" <Expr>)*> <esac:"esac"> => {
+        let mut branches = vec![second];
+        branches.extend(rest);
+        ParsedCaseSelect::Union { branches, esac }
+    },
+};
+
+CaseCommaEnd: ParsedCaseSelect = {
+    <esac:"esac"> => ParsedCaseSelect::Int(Box::new(ParsedIntCase {
+        branches: Vec::new(), then_branch: None, else_branch: None, esac,
+    })),
+    "else" <else_branch:Expr> <esac:"esac"> => ParsedCaseSelect::Int(Box::new(ParsedIntCase {
+        branches: Vec::new(), then_branch: None, else_branch: Some(else_branch), esac,
+    })),
+    "then" <then_branch:Expr> "else" <else_branch:Expr> <esac:"esac"> => {
+        ParsedCaseSelect::Int(Box::new(ParsedIntCase {
+            branches: Vec::new(), then_branch: Some(then_branch), else_branch: Some(else_branch), esac,
+        }))
+    },
+};
+
+CaseCommaList: Vec<Expr> = {
+    <first:Expr> <rest:("," <Expr>)*> => {
+        let mut branches = vec![first];
+        branches.extend(rest);
+        branches
     },
 };
 
@@ -456,6 +527,23 @@ ForTail: ParsedFor = {
     <pattern:ForPattern> <index:ForIndex?> <_in:"in"> <iterable:Expr> <_do:"do">
         <body:Expr> <od:"od"> => {
         ParsedFor { pattern, index, iterable, body, od }
+    },
+};
+
+// Counted for loops (parser.y:550-573): `FOR IDENT ':' count [FROM bound |
+// DOWNTO bound] DO body OD`, or the anonymous `FOR ':' count DO body OD`.
+CountedForTail: ParsedCountedFor = {
+    <name:"identifier"> ":" <count:Expr> "from" <bound:Expr> "do" <body:Expr> <od:"od"> => {
+        ParsedCountedFor { name: Some(name), count, bound: Some(bound), decreasing: false, body, od }
+    },
+    <name:"identifier"> ":" <count:Expr> "downto" <bound:Expr> "do" <body:Expr> <od:"od"> => {
+        ParsedCountedFor { name: Some(name), count, bound: Some(bound), decreasing: true, body, od }
+    },
+    <name:"identifier"> ":" <count:Expr> "do" <body:Expr> <od:"od"> => {
+        ParsedCountedFor { name: Some(name), count, bound: None, decreasing: false, body, od }
+    },
+    ":" <count:Expr> "do" <body:Expr> <od:"od"> => {
+        ParsedCountedFor { name: None, count, bound: None, decreasing: false, body, od }
     },
 };
 
@@ -539,6 +627,9 @@ extern {
         "whattype" => ParserToken::Whattype(<SourceSpan>),
         "case" => ParserToken::Case(<SourceSpan>),
         "esac" => ParserToken::Esac(<SourceSpan>),
+        "next" => ParserToken::Next(<SourceSpan>),
+        "from" => ParserToken::From(<SourceSpan>),
+        "downto" => ParserToken::Downto(<SourceSpan>),
         ";" => ParserToken::Semicolon(<SourceSpan>),
         "!" => ParserToken::Bang(<SourceSpan>),
         "@" => ParserToken::At(<SourceSpan>),

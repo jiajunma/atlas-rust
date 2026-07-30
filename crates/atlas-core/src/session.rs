@@ -889,4 +889,72 @@ mod tests {
                     && diagnostic.message == "found string while int was needed."
         ));
     }
+
+    #[test]
+    fn casefor_b6_fixture_matches_the_frozen_events() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/eval/casefor_b6.atlas"
+        ));
+        let events = run_source(&source);
+
+        assert_eq!(events.len(), 11);
+        let integers = vec![20, 10, 99, 77, 4];
+        for (event, expected) in [&events[0], &events[1], &events[2], &events[3], &events[5]]
+            .into_iter()
+            .zip(integers)
+        {
+            assert!(matches!(
+                event,
+                SessionEvent::Value { value: Value::Integer(ref value), .. }
+                    if value == &malachite::Integer::from(expected)
+            ));
+        }
+        assert!(matches!(
+            events[4],
+            SessionEvent::ReportLine { ref text, .. }
+                if text == "Type name 'U' defined as (int|string)\n  with injectors: i, s.\n"
+        ));
+        for (event, expected) in [
+            (&events[6], "[0,1,2]"),
+            (&events[7], "[40,50]"),
+            (&events[8], "[3,2,1]"),
+            (&events[9], "[7,7,7]"),
+            (&events[10], "[1,2,3]"),
+        ] {
+            assert_eq!(
+                match event {
+                    SessionEvent::Value { value, .. } => value.to_string(),
+                    other => panic!("expected a value event, got {other:?}"),
+                },
+                expected
+            );
+        }
+    }
+
+    #[test]
+    fn casefor_b6_rejected_fixture_matches_the_frozen_events() {
+        let source = SourceText::new(include_str!(
+            "../../../tests/fixtures/eval/casefor_b6_rejected.atlas"
+        ));
+        let events = run_source(&source);
+
+        assert_eq!(events.len(), 3);
+        assert!(matches!(
+            events[0],
+            SessionEvent::ReportLine { ref text, .. }
+                if text == "Type name 'U' defined as (int|string)\n  with injectors: i, s.\n"
+        ));
+        assert!(matches!(
+            events[1],
+            SessionEvent::Diagnostic(ref diagnostic)
+                if diagnostic.kind == ErrorKind::Type
+                    && diagnostic.message == "found int while (int->*) was needed."
+        ));
+        assert!(matches!(
+            events[2],
+            SessionEvent::Diagnostic(ref diagnostic)
+                if diagnostic.kind == ErrorKind::Type
+                    && diagnostic.message == "found string while int was needed."
+        ));
+    }
 }

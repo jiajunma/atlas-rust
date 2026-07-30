@@ -177,6 +177,45 @@ pub enum TypedExpr {
         fallback: Option<Box<TypedExpr>>,
         span: SourceSpan,
     },
+    /// `first next second`: yields the FIRST value; the second still
+    /// evaluates for effects (upstream `next_expression`).
+    Next {
+        first: Box<TypedExpr>,
+        second: Box<TypedExpr>,
+    },
+    /// Integer case selection (upstream `int_case_expression` and its
+    /// else/then-else variants): the selector picks a branch by 0-based
+    /// index, `then_branch` catches negative selectors, `else_branch` any
+    /// out-of-range one; without either the index wraps modulo the branch
+    /// count.
+    IntCase {
+        condition: Box<TypedExpr>,
+        branches: Vec<TypedExpr>,
+        then_branch: Option<Box<TypedExpr>>,
+        else_branch: Option<Box<TypedExpr>>,
+        span: SourceSpan,
+    },
+    /// Positional union case (upstream `union_case_expression`): each
+    /// branch evaluates to a function applied to the subject union's
+    /// payload, selected by variant position.
+    UnionCase {
+        subject: Box<TypedExpr>,
+        branches: Vec<TypedExpr>,
+        span: SourceSpan,
+    },
+    /// A counted for loop (upstream `counted_for_expression`): `count`
+    /// iterations collecting each body value; with `has_name` the counter
+    /// is bound (as a constant) in a per-iteration frame, increasing from
+    /// the bound (default 0), or decreasing to it inclusive when
+    /// `decreasing`.
+    CountedFor {
+        has_name: bool,
+        decreasing: bool,
+        count: Box<TypedExpr>,
+        bound: Option<Box<TypedExpr>>,
+        body: Box<TypedExpr>,
+        span: SourceSpan,
+    },
 }
 
 /// Conversion-time context (locals are let bindings and lambda parameters).
@@ -756,7 +795,8 @@ fn convert_conditional_expression(
 /// specialise-else-coerce-else-error (upstream `conform_types`,
 /// axis-types.w:3095-3100). Coercion to void always succeeds without a
 /// node (the caller voids); otherwise a matching table entry wraps the
-/// converted expression.
+/// converted expression. The error wording is the oracle's uniform
+/// type_error rendering (global.w:655-663).
 fn conform_types(
     found: &Type,
     required: &mut Type,
@@ -783,9 +823,9 @@ fn conform_types(
     }
     Err(type_error(
         format!(
-            "type {} does not match required pattern {}",
+            "found {} while {} was needed.",
             found.display(analysis.types),
-            required.display(analysis.types),
+            required.display(analysis.types)
         ),
         span,
     ))
@@ -1659,6 +1699,175 @@ pub fn convert_expr(
                     subject: Box::new(converted_subject),
                     branches: converted_branches,
                     fallback,
+                    span: *span,
+                },
+                *span,
+                analysis,
+            )
+        }
+        Expr::Next { first, second, .. } => {
+            // next_expr (axis.w:3697-3704): the first half converts
+            // against the required pattern, the second against void.
+            let first = convert_expr(first, required, analysis)?;
+            let mut void = Type::void();
+            let second = convert_expr(second, &mut void, analysis)?;
+            Ok(TypedExpr::Next {
+                first: Box::new(first),
+                second: Box::new(second),
+            })
+        }
+        Expr::IntCase(case) => {
+            let crate::syntax::IntCaseExpr {
+                condition,
+                branches,
+                then_branch,
+                else_branch,
+                span,
+            } = case.as_ref();
+            let mut int_type = Type::Primitive(Prim::Int);
+            let condition = convert_expr(condition, &mut int_type, analysis)?;
+            // Balance all sub-branches against the shared pattern, with
+            // the then/else branches ahead of the in-list ones in the
+            // upstream node's storage order (axis.w:4926-4946).
+            let mut ordered = Vec::with_capacity(branches.len() + 2);
+            if let Some(then_branch) = then_branch {
+                ordered.push(then_branch);
+            }
+            if let Some(else_branch) = else_branch {
+                ordered.push(else_branch);
+            }
+            ordered.extend(branches.iter());
+            let mut converted = balance(&ordered, required, *span, analysis)
+                .map_err(|error| error.into_diagnostic(analysis))?
+                .into_iter();
+            let then_branch = then_branch
+                .is_some()
+                .then(|| Box::new(converted.next().expect("then branch balanced")));
+            let else_branch = else_branch
+                .is_some()
+                .then(|| Box::new(converted.next().expect("else branch balanced")));
+            Ok(TypedExpr::IntCase {
+                condition: Box::new(condition),
+                branches: converted.collect(),
+                then_branch,
+                else_branch,
+                span: *span,
+            })
+        }
+        Expr::UnionCase(case) => {
+            let crate::syntax::UnionCaseExpr {
+                condition,
+                branches,
+                span,
+            } = case.as_ref();
+            let mut subject_type = Type::Undetermined;
+            let subject = convert_expr(condition, &mut subject_type, analysis)?;
+            // kind() untables transparently (axis-types.w:376-382).
+            let expansion = match &subject_type {
+                Type::Tabled(number) => analysis.types.expansion(*number).clone(),
+                other => other.clone(),
+            };
+            let Type::Union(variants) = &expansion else {
+                let pattern = Type::union_of(vec![Type::Undetermined; branches.len().max(2)]);
+                return Err(type_error(
+                    format!(
+                        "found {} while {} was needed.",
+                        subject_type.display(analysis.types),
+                        pattern.display(analysis.types)
+                    ),
+                    condition.span(),
+                ));
+            };
+            if variants.len() != branches.len() {
+                return Err(type_error(
+                    format!(
+                        "Union case expression has {} branches,\nwhile the union type {} has {} \
+                         variants",
+                        branches.len(),
+                        subject_type.display(analysis.types),
+                        variants.len()
+                    ),
+                    *span,
+                ));
+            }
+            // Each branch converts against (variant_i -> shared hole);
+            // the shared pattern specialises left-to-right
+            // (axis.w:5098-5109).
+            let mut common = required.clone();
+            let mut converted = Vec::with_capacity(branches.len());
+            for (branch, variant) in branches.iter().zip(variants) {
+                let mut function_type = Type::function(variant.clone(), common.clone());
+                converted.push(convert_expr(branch, &mut function_type, analysis)?);
+                let Type::Function(parts) = &function_type else {
+                    unreachable!("a function pattern stays a function type")
+                };
+                common.specialise(&parts.1, analysis.types);
+            }
+            conform_types(
+                &common,
+                required,
+                TypedExpr::UnionCase {
+                    subject: Box::new(subject),
+                    branches: converted,
+                    span: *span,
+                },
+                *span,
+                analysis,
+            )
+        }
+        Expr::CountedFor(loop_) => {
+            let crate::syntax::CountedForLoop {
+                name,
+                count,
+                bound,
+                decreasing,
+                body,
+                span,
+            } = loop_.as_ref();
+            let mut count_type = Type::Primitive(Prim::Int);
+            let count = convert_expr(count, &mut count_type, analysis)?;
+            let bound = match bound {
+                Some(bound) => {
+                    let mut bound_type = Type::Primitive(Prim::Int);
+                    Some(Box::new(convert_expr(bound, &mut bound_type, analysis)?))
+                }
+                None => None,
+            };
+            // The loop variable is bound as a CONSTANT int (axis.w:6484).
+            let mut locals = analysis.locals.clone();
+            let mut constant_locals = analysis.constant_locals.clone();
+            if let Some(name) = name {
+                for (_, depth, _) in locals.values_mut() {
+                    *depth += 1;
+                }
+                locals.insert(
+                    name.value.clone(),
+                    (Rc::new(RefCell::new(Type::Primitive(Prim::Int))), 0, 0),
+                );
+                constant_locals.insert(name.value.clone());
+            }
+            let mut body_type = Type::Undetermined;
+            let body = convert_expr(
+                body,
+                &mut body_type,
+                &Analysis {
+                    types: analysis.types,
+                    globals: analysis.globals,
+                    locals,
+                    constant_locals,
+                    in_function: analysis.in_function,
+                    loop_depth: analysis.loop_depth + 1,
+                },
+            )?;
+            conform_types(
+                &Type::row(body_type),
+                required,
+                TypedExpr::CountedFor {
+                    has_name: name.is_some(),
+                    decreasing: *decreasing,
+                    count: Box::new(count),
+                    bound,
+                    body: Box::new(body),
                     span: *span,
                 },
                 *span,
@@ -3431,63 +3640,7 @@ impl TypedExpr {
                     panic!("analysis let a non-function callee through: {closure}")
                 };
                 let argument = force(argument, context)?;
-                // The argument is one value: several parameters split it as
-                // a tuple, a single parameter takes it whole; each value
-                // then distributes into the frame slots its pattern shape
-                // describes. A parameterless call pushes no frame
-                // (empty-layer rule).
-                let mut slots = match closure.parameters {
-                    0 => None,
-                    1 => {
-                        let mut slots = Vec::new();
-                        distribute(argument, &closure.shapes[0], &mut slots);
-                        Some(slots)
-                    }
-                    _ => match argument {
-                        Value::Tuple(values) => {
-                            assert_eq!(
-                                values.len(),
-                                closure.parameters,
-                                "analysis let an argument arity mismatch through"
-                            );
-                            let mut slots = Vec::new();
-                            for (value, shape) in values.into_iter().zip(closure.shapes.iter()) {
-                                distribute(value, shape, &mut slots);
-                            }
-                            Some(slots)
-                        }
-                        other => panic!("multi-parameter call saw non-tuple argument {other}"),
-                    },
-                };
-                // All-anonymous parameter lists claim no frame, matching
-                // the analysis-time layer rule; a recursive closure still
-                // gains one for its self slot below.
-                if !closure.recursive {
-                    slots = slots.filter(|slots| !slots.is_empty());
-                }
-                // A recursive closure binds itself at slot 0, ahead of the
-                // argument slots (upstream `maybe_push`, axis.w:3548-3560);
-                // the new frame is not part of the captured chain, so the
-                // Rc structure stays acyclic.
-                if closure.recursive {
-                    slots
-                        .get_or_insert_with(Vec::new)
-                        .insert(0, Rc::new(Value::Closure(closure.clone())));
-                }
-                context.with_context(closure.frame.clone(), |context| {
-                    let result = match slots {
-                        Some(slots) => context
-                            .with_frame(slots, |context| closure.body.evaluate(context, level)),
-                        None => closure.body.evaluate(context, level),
-                    };
-                    match result {
-                        // An explicit `return` ends the call and supplies
-                        // its value (upstream function_return caught in
-                        // apply, axis.w:3569-3571).
-                        Err(Control::Return(value)) => Ok(at_level(level, move || value.clone())),
-                        other => other,
-                    }
-                })
+                apply_closure(&closure, argument, context, level)
             }
             Self::Sequence { first, second } => {
                 first.evaluate(context, Level::NoValue)?;
@@ -3607,6 +3760,119 @@ impl TypedExpr {
                     )),
                 }
             }
+            Self::Next { first, second } => {
+                // The first value is retained while the second half still
+                // evaluates for effects (upstream next_expression).
+                let value = first.evaluate(context, level)?;
+                second.evaluate(context, Level::NoValue)?;
+                Ok(value)
+            }
+            Self::IntCase {
+                condition,
+                branches,
+                then_branch,
+                else_branch,
+                span,
+            } => {
+                let selector = expect_integer(force(condition, context)?, *span, "case selector")?;
+                let negative = selector < 0;
+                let in_range = (!negative)
+                    .then(|| usize::try_from(&selector).ok())
+                    .flatten()
+                    .filter(|index| *index < branches.len());
+                if negative {
+                    if let Some(then_branch) = then_branch {
+                        return then_branch.evaluate(context, level);
+                    }
+                } else if let Some(index) = in_range {
+                    return branches[index].evaluate(context, level);
+                }
+                if let Some(else_branch) = else_branch {
+                    return else_branch.evaluate(context, level);
+                }
+                // No else branch: wrap modulo the branch count
+                // (axis.w:4884-4897 arithmetic::remainder; floored so a
+                // negative selector stays in range, which upstream leaves
+                // undefined).
+                let count = BigInt::from(branches.len());
+                let (_, remainder) = euclidean_divmod(&selector, &count);
+                let index = usize::try_from(&remainder).expect("wrapped index is in range");
+                branches[index].evaluate(context, level)
+            }
+            Self::UnionCase {
+                subject,
+                branches,
+                span: _,
+            } => {
+                let subject = force(subject, context)?;
+                let Value::Union { tag, value, .. } = subject else {
+                    panic!("analysis let a non-union union-case subject through: {subject}")
+                };
+                // The positional branch evaluates to a function, applied
+                // to the payload (axis.w:5041-5049).
+                let function = force(&branches[usize::from(tag)], context)?;
+                let Value::Closure(closure) = function else {
+                    panic!("analysis let a non-function union-case branch through: {function}")
+                };
+                apply_closure(&closure, value.as_ref().clone(), context, level)
+            }
+            Self::CountedFor {
+                has_name,
+                decreasing,
+                count,
+                bound,
+                body,
+                span,
+            } => {
+                let count = expect_integer(force(count, context)?, *span, "loop count")?;
+                // A negative count yields an empty row (axis.w:6521).
+                let count = if count < 0 { BigInt::from(0) } else { count };
+                let lower = match bound {
+                    Some(bound) => expect_integer(force(bound, context)?, *span, "loop bound")?,
+                    None => BigInt::from(0),
+                };
+                // Increasing takes `count` steps from the bound;
+                // decreasing runs from bound+count-1 down to the bound
+                // inclusive (axis.w:6638-6670).
+                let mut index = if *decreasing {
+                    &lower + &count - BigInt::from(1)
+                } else {
+                    lower.clone()
+                };
+                let mut collected = Vec::new();
+                loop {
+                    let active = if *decreasing {
+                        index >= lower
+                    } else {
+                        index < &lower + &count
+                    };
+                    if !active {
+                        break;
+                    }
+                    let result = if *has_name {
+                        context
+                            .with_frame(vec![Rc::new(Value::Integer(index.clone()))], |context| {
+                                body.evaluate(context, Level::SingleValue)
+                            })
+                    } else {
+                        body.evaluate(context, Level::SingleValue)
+                    };
+                    match result {
+                        Ok(Some(value)) => collected.push(value),
+                        Ok(None) => unreachable!("single-value loop body yields a value"),
+                        // The breaking iteration contributes no value.
+                        Err(Control::Break(0)) => break,
+                        Err(Control::Break(levels)) => return Err(Control::Break(levels - 1)),
+                        Err(control) => return Err(control),
+                    }
+                    if *decreasing {
+                        index -= BigInt::from(1);
+                    } else {
+                        index += BigInt::from(1);
+                    }
+                }
+                Ok(at_level(level, || Value::List(collected.clone())))
+            }
         }
     }
 }
@@ -3622,6 +3888,72 @@ fn force(expression: &TypedExpr, context: &mut EvaluationContext) -> Result<Valu
     expression
         .evaluate(context, Level::SingleValue)
         .map(|value| value.expect("single-value evaluation yields a value"))
+}
+
+/// Apply a closure value to one argument value (upstream `apply`,
+/// axis.w:3222-3571): the argument distributes into the frame slots its
+/// parameter shapes describe, a recursive closure additionally binds
+/// itself at slot 0, and a `return` unwinds to this call boundary.
+fn apply_closure(
+    closure: &Rc<Closure>,
+    argument: Value,
+    context: &mut EvaluationContext,
+    level: Level,
+) -> Result<Option<Value>, Control> {
+    // The argument is one value: several parameters split it as a tuple,
+    // a single parameter takes it whole. A parameterless call pushes no
+    // frame (empty-layer rule).
+    let mut slots = match closure.parameters {
+        0 => None,
+        1 => {
+            let mut slots = Vec::new();
+            distribute(argument, &closure.shapes[0], &mut slots);
+            Some(slots)
+        }
+        _ => match argument {
+            Value::Tuple(values) => {
+                assert_eq!(
+                    values.len(),
+                    closure.parameters,
+                    "analysis let an argument arity mismatch through"
+                );
+                let mut slots = Vec::new();
+                for (value, shape) in values.into_iter().zip(closure.shapes.iter()) {
+                    distribute(value, shape, &mut slots);
+                }
+                Some(slots)
+            }
+            other => panic!("multi-parameter call saw non-tuple argument {other}"),
+        },
+    };
+    // All-anonymous parameter lists claim no frame, matching the
+    // analysis-time layer rule; a recursive closure still gains one for
+    // its self slot below.
+    if !closure.recursive {
+        slots = slots.filter(|slots| !slots.is_empty());
+    }
+    // A recursive closure binds itself at slot 0, ahead of the argument
+    // slots (upstream `maybe_push`, axis.w:3548-3560); the new frame is
+    // not part of the captured chain, so the Rc structure stays acyclic.
+    if closure.recursive {
+        slots
+            .get_or_insert_with(Vec::new)
+            .insert(0, Rc::new(Value::Closure(closure.clone())));
+    }
+    context.with_context(closure.frame.clone(), |context| {
+        let result = match slots {
+            Some(slots) => {
+                context.with_frame(slots, |context| closure.body.evaluate(context, level))
+            }
+            None => closure.body.evaluate(context, level),
+        };
+        match result {
+            // An explicit `return` ends the call and supplies its value
+            // (upstream function_return caught in apply, axis.w:3569-3571).
+            Err(Control::Return(value)) => Ok(at_level(level, move || value.clone())),
+            other => other,
+        }
+    })
 }
 
 /// Bind one value against a slot shape, pushing leaves left-to-right
@@ -4372,9 +4704,10 @@ mod tests {
         // Mismatched branches fail balancing.
         let error = convert_and_run("if true then 1 else \"x\" fi").expect_err("mismatch");
         assert!(error.message.contains("incompatible types"));
-        // Non-boolean condition is a type error.
+        // Non-boolean condition is a type error (the loops_b4_rejected
+        // fixture pins this exact oracle wording).
         let error = convert_and_run("if 1 then 2 else 3 fi").expect_err("condition type");
-        assert!(error.message.contains("does not match"));
+        assert_eq!(error.message, "found int while bool was needed.");
     }
 
     #[test]
@@ -4762,7 +5095,7 @@ mod tests {
         assert_eq!(value.to_string(), "(1,true)");
 
         let error = convert_and_run("int: \"x\"").expect_err("mismatch");
-        assert!(error.message.contains("does not match required pattern"));
+        assert_eq!(error.message, "found string while int was needed.");
 
         let error = convert_and_run("bool: (1,2)").expect_err("no tuple coercion");
         assert!(error.message.contains("does not match"));

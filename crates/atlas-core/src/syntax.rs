@@ -169,6 +169,60 @@ pub enum Expr {
     /// `case subject | tag[(pattern)]: body … [else body] esac`
     /// (parser.y:480-482 discrimination). Boxed to keep `Expr` small.
     Case(Box<CaseExpr>),
+    /// `first next second` (parser.y:236 NEXT): the sequence yields the
+    /// FIRST expression's value; the second still evaluates for effects.
+    Next {
+        first: Box<Expr>,
+        second: Box<Expr>,
+        span: SourceSpan,
+    },
+    /// Integer case selection (parser.y:350-358): the condition selects a
+    /// branch of the `in` list by 0-based index; `then` catches negative
+    /// selectors, `else` any out-of-range one, and without either the
+    /// index wraps modulo the branch count.
+    IntCase(Box<IntCaseExpr>),
+    /// Positional union case (parser.y:359): branch functions applied to
+    /// the subject union's payload by variant position.
+    UnionCase(Box<UnionCaseExpr>),
+    /// Counted for loops (parser.y:550-573). Boxed to keep `Expr` small.
+    CountedFor(Box<CountedForLoop>),
+}
+
+/// An integer `case … in … esac`: the selector, the `in`-list branches in
+/// source order, and the optional `then` (negative) and `else`
+/// (out-of-range) branches.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct IntCaseExpr {
+    pub condition: Expr,
+    pub branches: Vec<Expr>,
+    pub then_branch: Option<Expr>,
+    pub else_branch: Option<Expr>,
+    pub span: SourceSpan,
+}
+
+/// A positional union `case … in f | g esac`: one branch function per
+/// variant of the subject's union type, in variant order.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct UnionCaseExpr {
+    pub condition: Expr,
+    pub branches: Vec<Expr>,
+    pub span: SourceSpan,
+}
+
+/// The payload of a counted `for` loop: the optional loop variable (bound
+/// as a constant int), the iteration count, the optional `from`/`downto`
+/// bound (absent means increasing from 0), and the body evaluated once per
+/// iteration.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CountedForLoop {
+    pub name: Option<SpannedValue<String>>,
+    pub count: Expr,
+    pub bound: Option<Expr>,
+    /// `downto` counts down to the bound inclusive; otherwise the loop
+    /// takes `count` increasing steps from the bound (default 0).
+    pub decreasing: bool,
+    pub body: Expr,
+    pub span: SourceSpan,
 }
 
 /// A case discrimination: the subject (a tabled union value) and its
@@ -433,10 +487,14 @@ impl Expr {
             | Self::Conditional { span, .. }
             | Self::Cast { span, .. }
             | Self::Sequence { span, .. }
+            | Self::Next { span, .. }
             | Self::While { span, .. }
             | Self::Break { span } => *span,
             Self::For(loop_) => loop_.span,
             Self::Case(case) => case.span,
+            Self::IntCase(case) => case.span,
+            Self::UnionCase(case) => case.span,
+            Self::CountedFor(loop_) => loop_.span,
         }
     }
 }
@@ -603,6 +661,9 @@ pub enum ParserToken {
     Whattype(SourceSpan),
     Case(SourceSpan),
     Esac(SourceSpan),
+    Next(SourceSpan),
+    From(SourceSpan),
+    Downto(SourceSpan),
     /// `!` — the const-binding marker in patterns, never a formula operator.
     Bang(SourceSpan),
     At(SourceSpan),
@@ -659,6 +720,9 @@ impl ParserToken {
             | Self::Whattype(span)
             | Self::Case(span)
             | Self::Esac(span)
+            | Self::Next(span)
+            | Self::From(span)
+            | Self::Downto(span)
             | Self::Bang(span)
             | Self::At(span)
             | Self::Dot(span)
@@ -714,6 +778,9 @@ impl fmt::Display for ParserToken {
             Self::Whattype(_) => "whattype",
             Self::Case(_) => "case",
             Self::Esac(_) => "esac",
+            Self::Next(_) => "next",
+            Self::From(_) => "from",
+            Self::Downto(_) => "downto",
             Self::Bang(_) => "!",
             Self::At(_) => "@",
             Self::Dot(_) => ".",
@@ -846,6 +913,9 @@ fn parser_tokens_from_tokens(
                         "whattype" => ParserToken::Whattype(span),
                         "case" => ParserToken::Case(span),
                         "esac" => ParserToken::Esac(span),
+                        "next" => ParserToken::Next(span),
+                        "from" => ParserToken::From(span),
+                        "downto" => ParserToken::Downto(span),
                         _ => ParserToken::Unsupported(SpannedValue { value: word, span }),
                     };
                     Some(Ok((token, span)))
@@ -1033,6 +1103,9 @@ fn bison_token_name(token: &ParserToken) -> Option<&'static str> {
         ParserToken::Whattype(_) => Some("WHATTYPE"),
         ParserToken::Case(_) => Some("CASE"),
         ParserToken::Esac(_) => Some("ESAC"),
+        ParserToken::Next(_) => Some("NEXT"),
+        ParserToken::From(_) => Some("FROM"),
+        ParserToken::Downto(_) => Some("DOWNTO"),
         ParserToken::Colon(_) => Some("':'"),
         ParserToken::VoidType(_) => Some("VOID"),
         _ => None,
@@ -1082,6 +1155,127 @@ fn sequence(first: Expr, rest: Expr) -> Expr {
         span: join_span(first.span(), rest.span()),
         first: Box::new(first),
         second: Box::new(rest),
+    }
+}
+
+fn next_sequence(first: Expr, rest: Expr) -> Expr {
+    Expr::Next {
+        span: join_span(first.span(), rest.span()),
+        first: Box::new(first),
+        second: Box::new(rest),
+    }
+}
+
+/// The pieces of a counted `for` loop between `for` and `od` (kept off a
+/// bare tuple like `ParsedFor`).
+#[derive(Debug)]
+pub struct ParsedCountedFor {
+    pub name: Option<SpannedValue<String>>,
+    pub count: Expr,
+    pub bound: Option<Expr>,
+    pub decreasing: bool,
+    pub body: Expr,
+    pub od: SourceSpan,
+}
+
+fn counted_for_expression(for_span: SourceSpan, parsed: ParsedCountedFor) -> Expr {
+    Expr::CountedFor(Box::new(CountedForLoop {
+        name: parsed.name,
+        count: parsed.count,
+        bound: parsed.bound,
+        decreasing: parsed.decreasing,
+        body: parsed.body,
+        span: join_span(for_span, parsed.od),
+    }))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn int_case_expression(
+    case_span: SourceSpan,
+    condition: Expr,
+    branches: Vec<Expr>,
+    then_branch: Option<Expr>,
+    else_branch: Option<Expr>,
+    esac: SourceSpan,
+) -> Expr {
+    Expr::IntCase(Box::new(IntCaseExpr {
+        condition,
+        branches,
+        then_branch,
+        else_branch,
+        span: join_span(case_span, esac),
+    }))
+}
+
+fn union_case_expression(
+    case_span: SourceSpan,
+    condition: Expr,
+    branches: Vec<Expr>,
+    esac: SourceSpan,
+) -> Expr {
+    Expr::UnionCase(Box::new(UnionCaseExpr {
+        condition,
+        branches,
+        span: join_span(case_span, esac),
+    }))
+}
+
+/// What follows the condition of a `case … in/then/else …` expression
+/// (parser.y:350-359): an integer selection (with the keyword-permuted
+/// `then`/`else` branches normalised away) or a positional union case.
+#[derive(Debug)]
+pub enum ParsedCaseSelect {
+    Int(Box<ParsedIntCase>),
+    Union {
+        branches: Vec<Expr>,
+        esac: SourceSpan,
+    },
+}
+
+/// The pieces of an integer `case` after keyword normalisation.
+#[derive(Debug)]
+pub struct ParsedIntCase {
+    pub branches: Vec<Expr>,
+    pub then_branch: Option<Expr>,
+    pub else_branch: Option<Expr>,
+    pub esac: SourceSpan,
+}
+
+impl ParsedCaseSelect {
+    /// Prepend the branches parsed before the tail (the first `in`-list
+    /// element, or the comma-list ahead of the `then`/`else` suffix).
+    pub fn into_case_select(mut self, mut head: Vec<Expr>) -> Self {
+        let branches = match &mut self {
+            Self::Int(case) => &mut case.branches,
+            Self::Union { branches, .. } => branches,
+        };
+        head.append(branches);
+        *branches = head;
+        self
+    }
+}
+
+fn case_select_expression(case_span: SourceSpan, condition: Expr, tail: ParsedCaseSelect) -> Expr {
+    match tail {
+        ParsedCaseSelect::Int(case) => {
+            let ParsedIntCase {
+                branches,
+                then_branch,
+                else_branch,
+                esac,
+            } = *case;
+            int_case_expression(
+                case_span,
+                condition,
+                branches,
+                then_branch,
+                else_branch,
+                esac,
+            )
+        }
+        ParsedCaseSelect::Union { branches, esac } => {
+            union_case_expression(case_span, condition, branches, esac)
+        }
     }
 }
 
@@ -2006,6 +2200,64 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
                 compact_expression(&case.subject)
             )
         }
+        Expr::Next { first, second, .. } => {
+            format!(
+                "{} next {}",
+                compact_expression(first),
+                compact_expression(second)
+            )
+        }
+        Expr::IntCase(case) => {
+            let then = case
+                .then_branch
+                .as_ref()
+                .map(|branch| format!("then {} ", compact_expression(branch)))
+                .unwrap_or_default();
+            let branches = case
+                .branches
+                .iter()
+                .map(compact_expression)
+                .collect::<Vec<_>>()
+                .join(", ");
+            let else_ = case
+                .else_branch
+                .as_ref()
+                .map(|branch| format!(" else {}", compact_expression(branch)))
+                .unwrap_or_default();
+            format!(
+                "case {} {then}in {branches}{else_} esac",
+                compact_expression(&case.condition)
+            )
+        }
+        Expr::UnionCase(case) => {
+            let branches = case
+                .branches
+                .iter()
+                .map(compact_expression)
+                .collect::<Vec<_>>()
+                .join(" | ");
+            format!(
+                "case {} in {branches} esac",
+                compact_expression(&case.condition)
+            )
+        }
+        Expr::CountedFor(loop_) => {
+            let name = loop_
+                .name
+                .as_ref()
+                .map(|name| name.value.clone())
+                .unwrap_or_default();
+            let bound = match (&loop_.bound, loop_.decreasing) {
+                (Some(bound), true) => format!(" downto {}", compact_expression(bound)),
+                (Some(bound), false) => format!(" from {}", compact_expression(bound)),
+                (None, _) => String::new(),
+            };
+            format!(
+                "for {name}: {}{bound} do {} od",
+                compact_expression(&loop_.count),
+                compact_expression(&loop_.body)
+            )
+        }
     }
 }
 
@@ -2292,6 +2544,61 @@ mod tests {
                     .collect::<Vec<_>>()
                     .join("|");
                 format!("case({};{})", expression_shape(&case.subject), branches)
+            }
+            Expr::Next { first, second, .. } => {
+                format!(
+                    "next({};{})",
+                    expression_shape(first),
+                    expression_shape(second)
+                )
+            }
+            Expr::IntCase(case) => {
+                let branches = case
+                    .branches
+                    .iter()
+                    .map(expression_shape)
+                    .collect::<Vec<_>>()
+                    .join(",");
+                let then = case
+                    .then_branch
+                    .as_ref()
+                    .map(|branch| format!(";then {}", expression_shape(branch)))
+                    .unwrap_or_default();
+                let else_ = case
+                    .else_branch
+                    .as_ref()
+                    .map(|branch| format!(";else {}", expression_shape(branch)))
+                    .unwrap_or_default();
+                format!(
+                    "icase({};{branches}{then}{else_})",
+                    expression_shape(&case.condition)
+                )
+            }
+            Expr::UnionCase(case) => {
+                let branches = case
+                    .branches
+                    .iter()
+                    .map(expression_shape)
+                    .collect::<Vec<_>>()
+                    .join("|");
+                format!("ucase({};{branches})", expression_shape(&case.condition))
+            }
+            Expr::CountedFor(loop_) => {
+                let name = loop_
+                    .name
+                    .as_ref()
+                    .map(|name| name.value.clone())
+                    .unwrap_or_default();
+                let bound = match (&loop_.bound, loop_.decreasing) {
+                    (Some(bound), true) => format!(" downto {}", expression_shape(bound)),
+                    (Some(bound), false) => format!(" from {}", expression_shape(bound)),
+                    (None, _) => String::new(),
+                };
+                format!(
+                    "cfor({name}:{}{bound};{})",
+                    expression_shape(&loop_.count),
+                    expression_shape(&loop_.body)
+                )
             }
         }
     }
@@ -2873,6 +3180,50 @@ mod tests {
         let command = parse_one_command("whattype IntList");
         assert!(
             matches!(command, Command::Whattype { target: Expr::Identifier { ref name, .. }, .. } if name == "IntList")
+        );
+    }
+
+    #[test]
+    fn parses_b6_case_next_and_counted_for_forms() {
+        // Integer case: plain, else-first, then-else keyword permutations.
+        assert_eq!(
+            expression_shape(&parse_one("case 1 in 10, 20, 30 esac")),
+            "icase(1;10,20,30)"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("case 5 else 99 in 10, 20, 30 esac")),
+            "icase(5;10,20,30;else 99)"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("case -1 then 77 in 10, 20, 30 else 99 esac")),
+            "icase(-@4(1);10,20,30;then 77;else 99)"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("case 5 in 10, 20 else 99 esac")),
+            "icase(5;10,20;else 99)"
+        );
+        // Positional union case: `|`-separated branch functions.
+        assert_eq!(
+            expression_shape(&parse_one("case u in (int x): x + 1 | (string s): 0 esac")),
+            "ucase(u;lambda(+@4(x,1))|lambda(0))"
+        );
+        // `next` yields the first operand's value.
+        assert_eq!(
+            expression_shape(&parse_one("i next i * 10")),
+            "next(i;*@6(i,10))"
+        );
+        // Counted for loops.
+        assert_eq!(
+            expression_shape(&parse_one("for i: 3 from 0 do i od")),
+            "cfor(i:3 from 0;i)"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("for i: 3 downto 1 do i od")),
+            "cfor(i:3 downto 1;i)"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("for : 3 do 7 od")),
+            "cfor(:3;7)"
         );
     }
 }
