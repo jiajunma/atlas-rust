@@ -278,7 +278,15 @@ A2 "u" -> flip, B2 "s" -> I2, A1.A1 "C" -> swap, A2 mat [[1,1],[0,1]] "s"
 `3501779` / `3502126` / `3502176` / `3501643`).
 
 Uncovered matrix items needing contract design first (probe the oracle,
-then freeze): KL file formats and readline completion. `dont`, `showall`,
+then freeze): KL file formats and readline completion. For readline
+completion the pty methodology is PROVEN (2026-07-30): python3 `pty.fork`
+drives the oracle interactively — banner + `atlas> ` prompt captured, line
+echo + value + next prompt read; harness must normalize CRLF (`\r\n`).
+CAUTION the local macOS binary is an older build (Sep 10 2024, readline
+DISABLED, axis 1.1) — fine for semantics probes (all matched HPC captures
+byte-for-byte) but completion probing requires the readline-ENABLED frozen
+binary, i.e. run the same pty script on the HPC login node against
+`/public/home/majj/atlasofliegroups-4d3e9449/atlas`. `dont`, `showall`,
 `quit`, and the basic interactive TTY banner/prompt are implemented; the
 newly frozen language fixtures are covered by differential `3501643`. Deeper math
 overloads (KL polynomials, `W_graph`, `deform`, extended blocks). The
