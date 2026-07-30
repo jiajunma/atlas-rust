@@ -85,28 +85,7 @@ oracle's transducer choice exactly (B2 input [0,1,0,1] canonicalizes to
 <1.0.1.0>, A2 [0,1,0] stays <0.1.0>); NOTE the crate-level weyl_element
 dropped the transducer order (WEYL_ELEMENT_DESIGN.md deferral), so the
 language layer must port the Transducer word canonicalization, not reuse
-the crate's raw word; length(w) = W.length(w)) → `real_form_labels` (occurrence_matrix/
-dual_occurrence_matrix: numRealForms × numCartanClasses (resp. dual) bitmaps
-of Cartan_set membership (atlas-types.w:3361); block_sizes(ic): matrix of
-G->val.block_size(interface.in(i), dual_interface.in(j)) (atlas-types.w:3323)
-— RESOLVED 2026-07-30: upstream block_size is NOT a Block build; it is the
-summation formula innerclass.cpp:1100 over Cartan_set(rf) & dual_Cartan_set(drf)
-of cartan(cn).orbitSize() * fiberSize(rf,cn) * dualFiberSize(drf,cn), so the
-crate needs only orbit sizes (twisted-conjugacy class sizes from the Cartan
-classification) and per-class fiber counts on both sides — Block::build stays
-gated to block_basic; block_size(ic,i,j) bounds: 'Real form number i out of
-bounds' / 'Dual real form number j out of bounds' (runtime category);
-Cartan_order(rf): n=numCartan(rf) square 0/1 matrix, M(i,j)=1 iff
-innerClass.Cartan_ordering().lesseq(i,j), filled only for i<=j
-(atlas-types.w:3709 — indexes the inner-class poset DIRECTLY with 0..n-1,
-no Cartan_set remapping; replicate literally); CRATE RECON 2026-07-30:
-orbitSize = TwistedConjugacyClass::twisted_involution_count
-(cartan_class.rs:35) ✓, Cartan sets and labels ✓, per-class fiber counts =
-enumerate masks + count by class_of_mask (small), dual equivalents exist
-(dual.rs) — the ONE real gap is the Cartan_ordering poset (closure order
-via inverse-Cayley reachability between classes, upstream innerclass.cpp;
-needs a new crate construction, the slice's main crate work)) →
-`weak_real_form` (real_form(InnerClass,mat,ratvec) —
+the crate's raw word; length(w) = W.length(w)) → `weak_real_form` (real_form(InnerClass,mat,ratvec) —
 atlas-types.w:3851: size check 'Torus factor size mismatch';
 twisted_from_involution(theta) ('Given transformation is not an involution');
 doubled projection num += theta.right_prod(num), is_central parity test on
@@ -298,9 +277,10 @@ identity under the layout permutation — plus the swap_sc collapsing
 u->s) and on_basis (topology.rs:184 already ports the integrality-checked
 division); MEDIUM slice of exact tables.
 `real_group`, `cartan_aggregation`, `seed_x0`, `involution_table`,
-`adjoint_fiber`, `overloads_ops_b8c{,_rejected}`,
+`adjoint_fiber`, `real_form_labels`, `overloads_ops_b8c{,_rejected}`,
 `whattype_ops_b8d`, and `dont_b13{,_rejected}` are DONE (verified
-`3501779` / `3502126` / `3502176` / `3502272` / `3502318` / `3501643`).
+`3501779` / `3502126` / `3502176` / `3502272` / `3502318` / `3502375` /
+`3501643`).
 
 Uncovered matrix items needing contract design first (probe the oracle,
 then freeze): KL file formats and readline completion. For readline
@@ -428,8 +408,8 @@ a future cleanup pass rather than schema migration.
   (implemented `1989f62`, verified `3502126`) + `seed_x0`
   (implemented `babbefd`, verified `3502176`) + `involution_table`
   (implemented `72d42a8`, verified `3502272`) + `adjoint_fiber`
-  (implemented `81eb98e`, verified `3502318`) +
-  `real_form_labels` +
+  (implemented `81eb98e`, verified `3502318`) + `real_form_labels`
+  (implemented `fa90911`, verified `3502375`) +
   `weak_real_form` + `involution_decomposition` +
   `strong_real` (`3501500`), `split_basic` + `block_basic` (`3501519`),
   `ktype_basic` + `ktypepol_basic` + `param_basic` + `parampol_basic`
@@ -469,6 +449,22 @@ blocks, K-types, parameters, the KL layer, and the relation-style datum
 constructors (`Smith_Cartan`, `filter_units`, `ann_mod`, `replace_gen`,
 `quotient_basis` — atlas-types.w:937, not yet covered by any frozen
 contract) remain pending differential evidence.
+
+## Verified stage: real_form_labels matrices and block sizes (differential 3502375)
+
+- `tests/fixtures/domain/real_form_labels{,_rejected}.atlas`:
+  `occurrence_matrix`/`dual_occurrence_matrix` Cartan-membership bitmaps,
+  `block_sizes`/`block_size` via the innerclass.cpp:1100 summation (orbit
+  size × fiber size × dual-fiber size — no Block build), and `Cartan_order`
+  over the poset relation. ZERO crate changes: the Cartan-ordering poset
+  already existed as the `below` matrix with `is_below`
+  (cartan_classification.rs, cartan_aggregation era) — the earlier recon
+  note flagging it as the slice's main gap was outdated. A2 Cartan
+  numbering confirmed consistent with upstream (the frozen occurrence and
+  order matrices hit verbatim). Commit `fa90911`.
+- Differential: `pipeline_swap_diff` job `3502375` at commit `fa90911`
+  reports both fixtures PASS with zero regressions. Metadata carries
+  `rust_status: verified_hpc` with `differential_job: 3502375`.
 
 ## Verified stage: adjoint_fiber central_fiber (differential 3502318)
 

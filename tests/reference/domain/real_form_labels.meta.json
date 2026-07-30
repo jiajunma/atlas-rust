@@ -3,7 +3,7 @@
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_status": "verified_hpc_reference",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:3422-3431",
     "sources/interpreter/atlas-types.w:3941"
@@ -26,5 +26,6 @@
   "oracle_exit_status": 0,
   "oracle_stdout_sha256": "c6dc1219dc1cd12c63e54c921f60c7fbe10fe8441e77a5df2a4966cecabd9f8f",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "capture_artifacts_sha256": "ef9f6ecea184c234d6a80d33906e55e1e7c437208ff2815d0d8734dd09eb5634"
+  "capture_artifacts_sha256": "ef9f6ecea184c234d6a80d33906e55e1e7c437208ff2815d0d8734dd09eb5634",
+  "differential_job": "3502375"
 }
