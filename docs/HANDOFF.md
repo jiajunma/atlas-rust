@@ -6,7 +6,7 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
 ## Live continuation - 2026-07-31
 
-The current committed baseline is `9e8c2d9` on `main`. The relation lattice
+The current committed baseline is `646f897` on `main`. The relation lattice
 builtins are verified by differential job `3502506`; the involution
 decomposition builtins and all 17 associated fixtures are verified by job
 `3502550` (90/90 runnable fixtures PASS; suite PARTIAL only for the three
@@ -14,18 +14,26 @@ explicitly pending overloads). The base `weak_real_form{,_rejected}` contract
 pair is verified by differential job `3502697` (92 fixtures, zero FAIL; the
 three-argument `real_form(InnerClass,mat,ratvec)` classification path:
 complex-cross DFS to the class representative, grading bits from
-simple-imaginary pairings, gradingRep/adjoint-orbit lookup). The older
-snapshot below remains useful as a historical ledger, but its `c0710a1` HEAD
-and implementation queue are no longer current.
+simple-imaginary pairings, gradingRep/adjoint-orbit lookup). The torus-radical
+`inner_class` gap is fixed (`646f897`: `StrongRealClassification::build` now
+sizes the toWeakReal representative from the ambient fiber lattice rank, not
+the adjoint datum rank), so `central_coroot_rejected` compares VERBATIM.
+Thirteen strong-real probes (B2/C2 Cartan enumerations in root/coroot
+preference, dual-order invariance, full B2 KGB prints, four rejected
+diagnostics) are frozen with reference metadata from capture job `3502700`
+(`230a8d5`) — they are the acceptance gate for the Cartan numbering adapter.
+The older snapshot below remains useful as a historical ledger, but its
+`c0710a1` HEAD and implementation queue are no longer current.
 
 Still open on the weak real form surface (five oracle probes from jobs
-`3502476`/`3502479`): `b2_descent` and `validation_rejected` compare VERBATIM
-locally but are not yet wired into the pipeline; `a1_t1_central` and
-`central_coroot_rejected` are blocked by the torus-radical `inner_class`
-construction gap (lattice rank > semisimple rank, e.g. A1.T1 — agent-20 in
-flight); `a2_noncanonical` is blocked by the custom-seed real_form gap
-(upstream builds a non-default `real_form_value` seed via
-`minimal_torus_part`; the `global_tits.rs` rational torus carrier, inverse
+`3502476`/`3502479`): `b2_descent`, `validation_rejected`, and
+`central_coroot_rejected` compare VERBATIM locally but are not yet wired into
+the pipeline; `a1_t1_central` matches the oracle through `form_number` and
+first diverges at `base_grading_vector` (want `[ 0, 1 ]/2`, got `[ 0, 0 ]/1`);
+`a2_noncanonical` classifies correctly but diverges on the seed-derived
+outputs. Both remaining probes need the custom-seed real_form gap: upstream
+builds a non-default `real_form_value` seed via `minimal_torus_part`
+(realredgp.cpp:212-309; the `global_tits.rs` rational torus carrier, inverse
 Cayley, and `InnerClass::canonicalize` groundwork for this route are
 committed). Upgrade the base-pair claim to the full slice only when all five
 probes pass an HPC differential at one clean commit.
