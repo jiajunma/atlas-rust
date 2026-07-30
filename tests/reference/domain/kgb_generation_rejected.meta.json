@@ -1,0 +1,12 @@
+{
+  "fixture": "domain/kgb_generation_rejected.atlas",
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:3939",
+    "sources/interpreter/atlas-types.w:4702"
+  ],
+  "notes": "Rejected companions of domain/kgb_generation: a negative KGB element number is the runtime diagnostic 'Inexistent KGB element: -1' and the batch continues; KGB_size on a RootDatum is the type error 'found RootDatum while RealForm was needed.'."
+}

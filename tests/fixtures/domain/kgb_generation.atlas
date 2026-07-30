@@ -1,3 +1,49 @@
-// Structural fixture reserved for the HPC Atlas/Rust differential harness.
-// The interpreter-side constructor syntax is not yet exposed.
-kgb_generation_fixture;
+rd : RootDatum
+rd := simply_connected(Lie_type("A1"),true)
+ic : InnerClass
+ic := inner_class(rd,[[1]])
+rf : RealForm
+rf := real_form(ic,1)
+KGB_size(rf)
+x0 : KGBElt
+x0 := KGB(rf,0)
+status(0,x0)
+x1 : KGBElt
+x1 := KGB(rf,1)
+status(0,x1)
+x2 : KGBElt
+x2 := KGB(rf,2)
+status(0,x2)
+rc : RealForm
+rc := real_form(ic,0)
+KGB_size(rc)
+xc : KGBElt
+xc := KGB(rc,0)
+status(0,xc)
+rd2 : RootDatum
+rd2 := simply_connected(Lie_type("C2"),true)
+ic2 : InnerClass
+ic2 := inner_class(rd2,[[1,0],[0,1]])
+s0 : RealForm
+s0 := real_form(ic2,0)
+KGB_size(s0)
+s1 : RealForm
+s1 := real_form(ic2,1)
+KGB_size(s1)
+s2 : RealForm
+s2 := real_form(ic2,2)
+KGB_size(s2)
+rd3 : RootDatum
+rd3 := simply_connected(Lie_type("A2"),true)
+ic3 : InnerClass
+ic3 := inner_class(rd3,[[0,-1],[-1,0]])
+u0 : RealForm
+u0 := real_form(ic3,0)
+KGB_size(u0)
+u1 : RealForm
+u1 := real_form(ic3,1)
+KGB_size(u1)
+xu : KGBElt
+xu := KGB(u1,0)
+status(0,xu)
+status(1,xu)

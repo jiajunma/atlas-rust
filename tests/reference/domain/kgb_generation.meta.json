@@ -1,14 +1,21 @@
 {
   "fixture": "domain/kgb_generation.atlas",
-  "status": "implemented_locally_4_tests_pending_hpc",
-  "oracle": "traced_kgb_cpp_permutations_4d3e9449",
-  "rust_status": "implemented_kgb_graph_rs",
-  "reference_status": "pending_atlas_constructor_and_event_adapter",
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:3939",
+    "sources/interpreter/atlas-types.w:4702-4706"
+  ],
+  "notes": "KGB headline observables, second activation of the fourteen domain fixtures (docs/LANGUAGE_BRIDGE_DESIGN.md): KGB sizes for SL(2,R)=3 (statuses 3,3,2 across the block), compact SU(2)=1 (status 1), the C2 tower sp(2)=1/sp(1,1)=4/sp(4,R)=11, and equal-rank A2 SU(3)=1/SU(2,1)=6 with statuses. The A2 equal-rank inner class is built as inner_class(rd,[[0,-1],[-1,0]]) (longest Weyl element as involution); the split class [[0,1],[1,0]] is anchored by the rejected companion's sibling probes. Crate-level scenario coverage (inverse Cayley, tau packets, torus_factor) stays in atlas-real-group tests.",
+  "design_reviews": {
+    "recorded_in": "docs/LANGUAGE_BRIDGE_DESIGN.md and the KGB design docs"
+  },
   "scenarios": [
     "SL(2,R)=3: type-I swap, inverse-Cayley pair (0, Some(1)), torus_factor theta-fixed at every element",
     "PGL(2,R)=2: type-II pair (0, None)",
     "Sp(4,R)=11 (simply connected C2): per-length elements (4,3,3,1), tau packets sum to orbitSize x fiberSize, deterministic",
     "SU(2,1)=6 (equal-rank A2; the flipped class is sl(3,R)); compact form = 1, all ImaginaryCompact, self-cross"
-  ],
-  "notes": "Stage (e) LANDED: the full pipeline datum -> inner class -> classification -> strong layer -> involution table -> seed -> KgbGraph runs end to end with sizes matching the oracle binary. Hybrid self-containment (torus_factor takes the table), flat strided storage, once-gated coset entry points, counting-sort standardization with first_of_tau snapshot, inverse Cayley as the ascending post-pass. Local suite 168 green under rustc 1.90 with clippy -D warnings and fmt clean; HPC preflight pending."
+  ]
 }
