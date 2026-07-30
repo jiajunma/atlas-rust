@@ -247,8 +247,20 @@ to equivalent/is_dominant/is_semifinal/dominant/normal/cross/Cayley/twist/
 orientation_nr/reducibility_points/scale (atlas-types.w:7485-7495) but
 those await their own contracts; needs crate StandardRepr/Rep_context
 (repr.{h,cpp}), shared with ktype_basic) →
-`parampol_basic` (null_module/#/±Param/first_term — atlas-types.w:8542-8567;
-term display drops the 'final' prefix) → `involution_primitive`
+`parampol_basic` (ParamPol fixture-gated set: null_module(RealForm->ParamPol)
+display 'Empty sum of standard modules'; #(ParamPol->int) TERM count;
++(ParamPol,Param) / -(ParamPol,Param) merging like terms (anchor: W-p
+returns to the empty display); first_term(ParamPol->Split,Param) tuple with
+Split in FULL '(e+fs)' form and Param WITH adjective; pol display per
+basic_io.cpp:214 print_SR_poly: same coefficient embellishment as KTypePol
+(full print_split only when both e and s occur, else bare e / '{s}s'), then
+'*' + print_stdrep 'parameter(x=N,lambda=[..]/d,nu=[..]/d)' — NO leading
+space, so terms render '1*parameter(...)' (contrast KTypePol's
+'1* K_type(...)' whose print_K_type has a leading space) + ' [{height}]';
+SLICE BOUNDARY: the install chunk's =/!=/K_type_pol/scaling/last_term/
+truncate/scale-by-rat and deform/twisted_deform/block_deform
+(atlas-types.w:8546-8570) await their own contracts — deform is the KL
+deformation, a later-slice centerpiece) → `involution_primitive`
 (involution(LieType,[int],string) and the based form).
 `real_group`, `cartan_aggregation`, `overloads_ops_b8c{,_rejected}`,
 `whattype_ops_b8d`, and `dont_b13{,_rejected}` are DONE (verified
