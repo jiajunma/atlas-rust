@@ -278,7 +278,10 @@ A2 "u" -> flip, B2 "s" -> I2, A1.A1 "C" -> swap, A2 mat [[1,1],[0,1]] "s"
 `3501779` / `3502126` / `3502176` / `3501643`).
 
 Uncovered matrix items needing contract design first (probe the oracle,
-then freeze): KL file formats and readline completion. `dont`, `showall`,
+then freeze): KL file formats and readline completion; the relation-style
+datum constructors (`Smith_Cartan`/`filter_units`/`ann_mod`/`replace_gen`/
+`quotient_basis`, atlas-types.w:937 — the `quotient_basis(LieType,[ratvec])`
+family that builds a root datum from relation vectors). `dont`, `showall`,
 `quit`, and the basic interactive TTY banner/prompt are implemented; the
 newly frozen language fixtures are covered by differential `3501643`. Deeper math
 overloads (KL polynomials, `W_graph`, `deform`, extended blocks).
@@ -408,10 +411,11 @@ builtin/user dispatch (`Defined`/`Added definition [n]`/`Redefined` reports,
 `whattype f ?` listings, shadow-on-exact-replace forget semantics), `set`
 parallel bindings (all RHS analyzed, then evaluated, then bound), and
 redirect bodies parsed as expressions before the sink opens. This is not a
-claim of full Atlas compatibility: RootDatum/InnerClass/RealForm/KGB domain
-queries beyond construction and display, relations, primitive `involution`
-constructors, Cartan classes, Weyl elements, synthetic KGB seeds, and the
-later math overloads remain pending differential evidence.
+claim of full Atlas compatibility: primitive `involution` constructors,
+blocks, K-types, parameters, the KL layer, and the relation-style datum
+constructors (`Smith_Cartan`, `filter_units`, `ann_mod`, `replace_gen`,
+`quotient_basis` — atlas-types.w:937, not yet covered by any frozen
+contract) remain pending differential evidence.
 
 ## Verified stage: seed_x0 synthetic KGB constructor (differential 3502176)
 
