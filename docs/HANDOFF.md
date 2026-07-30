@@ -133,7 +133,11 @@ rho/2 shift selects the compact form — see the fixture's three A1 cases) →
 classify_involution — twisted_involution(rd,theta) -> (WeylElt,InnerClass)
 PAIR, not the 4-arg form; classify_involution(mat) -> (int,int,int) Lie-type
 coordinates; distinguished_involution(ic) = G.distinguished()) → `strong_real` (square_classes + B2
-print_strong_real) → `split_basic` (eval/; Split operator family) →
+print_strong_real — square_classes(cc): per square class, fiber_partition
+classes mapped via toWeakReal to external form numbers (atlas-types.w:4229;
+needs the CartanClass fiber partition + realFormLabels machinery)) → `split_basic` (eval/; Split operator family —
+Split_integer (e,s) arithmetic with s^2=1, int and (int,int) coercions, the
+'(e+ss)' display, and `%` back to (e,s) (atlas-types.w:5079-5145)) →
 `block_basic` (block/#/%/element/cross/Cayley/status/inverse_Cayley) →
 `ktype_basic` (%/=/predicates/projections) → `ktypepol_basic` →
 `param_basic` → `parampol_basic` → `involution_primitive`
