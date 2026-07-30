@@ -88,7 +88,9 @@ language layer must port the Transducer word canonicalization, not reuse
 the crate's raw word; length(w) = W.length(w)) → `involution_table`
 (print_KGB: interpreter wrapper atlas-types.cpp:5159 prints 'kgbsize: N\n'
 then kgb_io::var_print_KGB (kgb_io.cpp:60, NON-traditional mode with
-G=innerClass): 'Base grading: [...].\n' header then rows
+G=innerClass): 'Base grading: [...].\n' header — the grading prints as a
+BARE BIT STRING with no separators (B2 anchor '[11]', A1 '[1]'/'[0]'),
+distinct from the status brackets which ARE comma-separated — then rows
 '{j:>width}:  {len:>lwidth}<pad2>[status] {cross:>width+pad}...<pad2>
 {cayley|*:>width+pad}...<pad2>(torus)#{cc:>cwidth} {involution-word}\n'
 where width=digits(size-1), cwidth=digits(Cartan_class(size-1)),
