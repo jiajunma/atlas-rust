@@ -1,3 +1,14 @@
-// Structural fixture reserved for the HPC Atlas/Rust differential harness.
-// The interpreter-side constructor syntax is not yet exposed.
-strong_real_fixture;
+rd : RootDatum
+rd := simply_connected(Lie_type("B2"),true)
+ic : InnerClass
+ic := inner_class(rd,[[1,0],[0,1]])
+nr_of_Cartan_classes(ic)
+c0 : CartanClass
+c0 := Cartan_class(ic,0)
+c0
+square_classes(c0)
+c2 : CartanClass
+c2 := Cartan_class(ic,2)
+c2
+square_classes(c2)
+print_strong_real(c2)

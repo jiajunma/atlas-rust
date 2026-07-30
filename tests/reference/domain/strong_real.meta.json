@@ -1,25 +1,21 @@
 {
   "fixture": "domain/strong_real.atlas",
-  "status": "structural_implementation_awaiting_hpc_preflight",
-  "oracle": "pending_domain_adapter",
-  "rust_status": "implemented_locally_131_tests_pending_hpc",
-  "reference_status": "pending_atlas_constructor_and_event_adapter",
-  "design_reviews": {
-    "completed_at": "2026-07-28",
-    "checks": [
-      "atlas_source_semantics",
-      "rust_ownership_and_internal_mechanics",
-      "public_api_and_consumer_integration"
-    ],
-    "recorded_in": "docs/STRONG_REAL_DESIGN.md"
-  },
-  "scenarios": [
-    "SL(2): KGB sizes 3 and 1, global 5, two square classes at the fundamental Cartan",
-    "A2 identity: KGB sizes 6 and 1, global 7, invertible toAdjoint",
-    "simply connected B2: KGB sizes 11 (the published Sp(4,R) value), 4, 1; global 17; two strong forms over so(5)",
-    "simply connected A1 x A1: multiplicative 9 and 25",
-    "the adjoint-isogeny standard B2 datum gives smaller sizes, confirming isogeny sensitivity",
-    "undersized budgets reject with the strong stage's own named error"
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:4363-4365",
+    "sources/interpreter/atlas-types.w:9112-9113"
   ],
-  "notes": "Three fresh-context design reviews completed and folded into the design, including the square-class-independent shift-column correction. The structural implementation passes 131 local unit tests; the KGB sizes match hand-verified published Atlas values. The frozen HPC preflight is queued until the cluster is reachable."
+  "scenarios": [
+    "B2 compact inner class has 4 Cartan classes",
+    "class #0: 3 real forms, square_classes [[2],[1,0,0]]",
+    "class #2: 2 real forms, square_classes [[2],[1]]",
+    "print_strong_real(#2): two square classes with possible squares exp(2i pi([0,1]/2)) and exp(2i pi([0,0]/1)), forms #2 and #1"
+  ],
+  "notes": "Strong real form report surface for B2 (square_classes and the multi-class print_strong_real layout with the 'there are N real form classes:' header), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The crate-level strong-real machinery recorded in the previous revision of this meta (STRONG_REAL_DESIGN.md) remains the kernel this surface binds to.",
+  "design_reviews": {
+    "recorded_in": "docs/STRONG_REAL_DESIGN.md"
+  }
 }
