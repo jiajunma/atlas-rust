@@ -109,7 +109,10 @@ column-for-column including the '*' for undefined Cayley and the 1^e
 decorated word; print_strong_real: io/output.cpp:490, single-class layout
 has no 'there are N real form classes:' header, multi-class adds it plus
 blank-line-separated blocks) →
-`adjoint_fiber` (central_fiber) → `real_form_labels` (occurrence_matrix/
+`adjoint_fiber` (central_fiber(rf) =
+rf->val.innerClass().central_fiber(rf->val.realForm()) as a row of int_Vector
+(atlas-types.w:3915); also anchors the adjoint(LieType,bool) datum display
+'adjoint root datum of Lie type ...') → `real_form_labels` (occurrence_matrix/
 dual_occurrence_matrix/block_sizes/block_size/Cartan_order) →
 `weak_real_form` (real_form(InnerClass,mat,ratvec)) →
 `involution_decomposition` (distinguished_involution/twisted_involution/
