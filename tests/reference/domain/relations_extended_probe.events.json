@@ -1,0 +1,56 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/relations_extended_probe",
+  "status": "verified_hpc_reference",
+  "events": [
+    {
+      "kind": "Value",
+      "value": {
+        "type": "tuple",
+        "display": "(\n| 1, 0 |\n| 0, 1 |\n,[ 0, 0 ])"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "tuple",
+        "display": "(\n|  1,  0, 0, 0 |\n| -2,  1, 0, 0 |\n|  1, -2, 1, 0 |\n|  1,  0, 0, 1 |\n,[ 1, 1, 2, 2 ])"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "matrix",
+        "display": "\n| 1, 0 |\n| 0, 1 |\n"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "matrix",
+        "display": "\n| 2, 0 |\n| 0, 1 |\n"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "matrix",
+        "display": "\n| 2 |\n"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "matrix",
+        "display": "\n| -2 |\n"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "matrix",
+        "display": "\n|  1,  0, 0 |\n| -2,  1, 0 |\n|  1, -2, 4 |\n"
+      }
+    }
+  ]
+}

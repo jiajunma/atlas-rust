@@ -1,0 +1,24 @@
+{
+  "fixture": "domain/relations_extended_rejected_probe",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:479-503",
+    "sources/interpreter/atlas-types.w:585-637"
+  ],
+  "scenarios": [
+    "filter_units rejects more factors than basis columns",
+    "replace_gen rejects both matrix orientations with the wrong column length",
+    "replace_gen rejects too few replacement columns"
+  ],
+  "notes": "Extended relation diagnostics captured verbatim by HPC jobs 3502440 and 3502442 against the frozen Atlas oracle. Differential evidence remains pending.",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3502442",
+  "fixture_sha256": "123d40313572ee87443c4d56e337117fb4555b071e72e06833e1cb61dce76266",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
+  "oracle_stderr_sha256": "8a7b80901f34a9a63db30edfed9446a7acea0ab37c5b9eae55ca78fdb56b7873"
+}

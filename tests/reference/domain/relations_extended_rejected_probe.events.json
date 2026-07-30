@@ -1,0 +1,27 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/relations_extended_rejected_probe",
+  "status": "verified_hpc_reference",
+  "events": [
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Too many factors: 3 for 2 columns"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Column lengths do not match"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Column lengths do not match"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Not enough replacement columns"
+    }
+  ]
+}

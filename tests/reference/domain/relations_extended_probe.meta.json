@@ -1,0 +1,24 @@
+{
+  "fixture": "domain/relations_extended_probe",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:456-558",
+    "sources/interpreter/atlas-types.w:655-710"
+  ],
+  "scenarios": [
+    "Smith_Cartan on T2 and the D4 even-rank basis adjustment",
+    "ann_mod on zero, singular, rectangular, and negative-modulus inputs",
+    "quotient_basis on A3 generators with mixed denominators"
+  ],
+  "notes": "Extended relation coverage captured verbatim by HPC job 3502440 against the frozen Atlas oracle. Differential evidence remains pending. The separate zero-modulus probe is excluded because upstream terminates with SIGFPE; safe Rust must diagnose rather than reproduce that crash.",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3502440",
+  "fixture_sha256": "7ca5be48f053e10b1ddc71ce48abf169b0b95751dd78e5f4690a0940a7a0215a",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "ac7478ac2dcacb41956a67eeb162e23c43e6b0d4c0a9107975d47ecc21257d6d",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}
