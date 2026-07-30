@@ -101,7 +101,14 @@ denominator != 1 gives 'Torus factor not in cocharacter coset of real form';
 theta² != 1 gives 'Given transformation is not an involution' from
 twisted_from_involution; the TitsElt(TorusPart(num), tw) is looked up in the
 per-form KGB ('KGB element not present' otherwise); compact SU(2) accepts
-[1]/2 because its g_rho_check is exactly [1]/2) → `involution_table` (print_KGB/print_strong_real) →
+[1]/2 because its g_rho_check is exactly [1]/2) → `involution_table`
+(print_KGB: row printer in io/kgb_io.cpp:126 with the interpreter's
+'kgbsize: N' + 'Base grading: [...]' header at atlas-types.cpp:5159 — the
+row format 'i: len [status] cross Cayley (torus)#x weylword' must be ported
+column-for-column including the '*' for undefined Cayley and the 1^e
+decorated word; print_strong_real: io/output.cpp:490, single-class layout
+has no 'there are N real form classes:' header, multi-class adds it plus
+blank-line-separated blocks) →
 `adjoint_fiber` (central_fiber) → `real_form_labels` (occurrence_matrix/
 dual_occurrence_matrix/block_sizes/block_size/Cartan_order) →
 `weak_real_form` (real_form(InnerClass,mat,ratvec)) →
