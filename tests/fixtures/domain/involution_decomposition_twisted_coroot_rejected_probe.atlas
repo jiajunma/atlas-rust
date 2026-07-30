@@ -1,0 +1,3 @@
+rd : RootDatum
+rd := root_datum([[1,0]],[[2,1]],true)
+twisted_involution(rd,[[-1,0],[0,1]])
