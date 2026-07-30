@@ -6,7 +6,7 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
 ## Live continuation - 2026-07-31
 
-The current committed baseline is `646f897` on `main`. The relation lattice
+The current committed baseline is `a63dc32` on `main`. The relation lattice
 builtins are verified by differential job `3502506`; the involution
 decomposition builtins and all 17 associated fixtures are verified by job
 `3502550` (90/90 runnable fixtures PASS; suite PARTIAL only for the three
@@ -21,9 +21,24 @@ the adjoint datum rank), so `central_coroot_rejected` compares VERBATIM.
 Thirteen strong-real probes (B2/C2 Cartan enumerations in root/coroot
 preference, dual-order invariance, full B2 KGB prints, four rejected
 diagnostics) are frozen with reference metadata from capture job `3502700`
-(`230a8d5`) — they are the acceptance gate for the Cartan numbering adapter.
-The older snapshot below remains useful as a historical ledger, but its
-`c0710a1` HEAD and implementation queue are no longer current.
+(`230a8d5`). The CARTAN NUMBERING ADAPTER has landed (`a63dc32`:
+`CartanClassification::build` enumerates classes in the upstream BFS
+discovery order — parents in discovery order, positive imaginary roots in
+(height, revlex) RootNbr order, Cayley successors canonicalized before
+dedup; B2 order is now [e, s1s0s1, s0s1s0, w0] with orbit sizes [1,2,2,1];
+A1/A2 unchanged). With it the four B2/C2 Cartan enumeration probes, the
+four rejected strong-real probes, the base `strong_real` contract, and the
+`b2_descent`/`central_coroot_rejected`/`validation_rejected` weak-real
+probes all compare VERBATIM locally — none of these is wired into the
+pipeline yet, so no HPC differential covers them so far. Two follow-up
+slices are identified and queued: the KGB element discovery order still
+diverges (`strong_real_b2_full_kgb_probe`: Cayley link targets; upstream
+kgb.cpp:489 extends each element by all cross actions in simple-root order
+before Cayley transforms), and the RootDatum dual-order surface is missing
+four builtins (`posroots`, `poscoroots`, `dual(RootDatum)`,
+`dual(InnerClass)` — the four `dual_order` probes). The older snapshot
+below remains useful as a historical ledger, but its `c0710a1` HEAD and
+implementation queue are no longer current.
 
 Still open on the weak real form surface (five oracle probes from jobs
 `3502476`/`3502479`): `b2_descent`, `validation_rejected`, and
