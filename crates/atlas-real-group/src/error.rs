@@ -1,5 +1,7 @@
 use std::fmt;
 
+use crate::lattice::Weight;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum StructureError {
     EmptyRootDatum,
@@ -18,6 +20,13 @@ pub enum StructureError {
     InvalidBasedAutomorphism,
     InvalidRootAutomorphism,
     InvalidRootDatumAutomorphism,
+    SimpleRootImageNotRoot {
+        simple_root: usize,
+    },
+    SimpleCorootImageMismatch {
+        simple_root: usize,
+        image_root: Weight,
+    },
     RootSystemTooLarge,
     WeylGroupTooLarge,
     ResourceLimitExceeded {
@@ -143,6 +152,16 @@ impl fmt::Display for StructureError {
             Self::InvalidRootDatumAutomorphism => {
                 write!(f, "root permutation does not transport coroots to coroots")
             }
+            Self::SimpleRootImageNotRoot { simple_root } => {
+                write!(f, "simple root {simple_root} does not map to a root")
+            }
+            Self::SimpleCorootImageMismatch {
+                simple_root,
+                image_root,
+            } => write!(
+                f,
+                "simple coroot {simple_root} does not map to the coroot of image root {image_root:?}"
+            ),
             Self::RootSystemTooLarge => {
                 write!(f, "root-system closure exceeded the finite-system limit")
             }

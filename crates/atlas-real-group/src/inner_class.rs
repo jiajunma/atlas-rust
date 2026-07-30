@@ -713,7 +713,10 @@ mod tests {
         // rejects this action before the simple-system check can run.
         assert_eq!(
             InnerClass::new(datum, action, 2),
-            Err(StructureError::InvalidRootDatumAutomorphism)
+            Err(StructureError::SimpleCorootImageMismatch {
+                simple_root: 0,
+                image_root: crate::Weight::new(vec![1, 0]),
+            })
         );
     }
 
@@ -764,7 +767,10 @@ mod tests {
         .unwrap();
         assert_eq!(
             InnerClass::from_root_involution(datum, involution, 6),
-            Err(StructureError::InvalidRootAutomorphism)
+            Err(StructureError::SimpleCorootImageMismatch {
+                simple_root: 0,
+                image_root: crate::Weight::new(vec![1, 0]),
+            })
         );
     }
 
@@ -800,8 +806,8 @@ mod tests {
             inner_class.based_involution_twist(negated_flip),
             Err(StructureError::InvalidBasedAutomorphism)
         );
-        // A lattice involution that does not permute the roots fails the
-        // earlier root-automorphism gate instead.
+        // A lattice involution that fails simple-coroot transport is rejected
+        // by the structured preflight before the full root permutation scan.
         let drifting = LatticeInvolution::new(
             &datum,
             vec![vec![1, 1], vec![0, -1]],
@@ -810,7 +816,10 @@ mod tests {
         .unwrap();
         assert_eq!(
             inner_class.based_involution_twist(drifting),
-            Err(StructureError::InvalidRootAutomorphism)
+            Err(StructureError::SimpleCorootImageMismatch {
+                simple_root: 0,
+                image_root: crate::Weight::new(vec![1, 0]),
+            })
         );
     }
 

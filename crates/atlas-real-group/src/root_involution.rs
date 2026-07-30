@@ -39,6 +39,7 @@ impl RootInvolutionData {
                 actual: involution.lattice_rank(),
             });
         }
+        validate_simple_root_images(root_system, &involution)?;
         let mut image_by_root = Vec::with_capacity(root_system.roots().len());
         let mut kind_by_root = Vec::with_capacity(root_system.roots().len());
         for (_, root, coroot) in root_system.entries() {
@@ -119,6 +120,37 @@ impl RootInvolutionData {
     pub fn real_simple_roots(&self) -> &[RootId] {
         &self.real_simple_roots
     }
+}
+
+fn validate_simple_root_images(
+    root_system: &RootSystem,
+    involution: &LatticeInvolution,
+) -> Result<(), StructureError> {
+    let datum = root_system.datum();
+    for (simple_root, (root, coroot)) in datum
+        .simple_roots()
+        .iter()
+        .zip(datum.simple_coroots())
+        .enumerate()
+    {
+        let image_root = involution.act_on_weight(root)?;
+        let image_id = root_system
+            .id_of(&image_root)
+            .ok_or(StructureError::SimpleRootImageNotRoot { simple_root })?;
+        let image_coroot = root_system
+            .coroot(image_id)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: image_id.0,
+                upper_bound: root_system.roots().len(),
+            })?;
+        if involution.act_on_coweight(coroot)? != *image_coroot {
+            return Err(StructureError::SimpleCorootImageMismatch {
+                simple_root,
+                image_root,
+            });
+        }
+    }
+    Ok(())
 }
 
 fn subsystem_simple_roots(
@@ -215,13 +247,65 @@ mod tests {
         let roots = RootSystem::enumerate(&datum, 6).unwrap();
         let involution = LatticeInvolution::new(
             &datum,
-            vec![vec![1, 1], vec![0, -1]],
-            vec![vec![1, 0], vec![1, -1]],
+            vec![vec![-1, 0], vec![1, 1]],
+            vec![vec![-1, 1], vec![0, 1]],
         )
         .unwrap();
         assert_eq!(
             RootInvolutionData::new(&roots, involution),
-            Err(StructureError::InvalidRootAutomorphism)
+            Err(StructureError::SimpleRootImageNotRoot { simple_root: 0 })
+        );
+    }
+
+    #[test]
+    fn reports_a_positive_simple_root_with_the_wrong_image_coroot() {
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2]],
+            vec![Weight::new(vec![1, 0])],
+            vec![Coweight::new(vec![2, 0])],
+        )
+        .unwrap();
+        let roots = RootSystem::enumerate(&datum, 2).unwrap();
+        let involution = LatticeInvolution::new(
+            &datum,
+            vec![vec![1, 2], vec![0, -1]],
+            vec![vec![1, 0], vec![2, -1]],
+        )
+        .unwrap();
+
+        assert_eq!(
+            RootInvolutionData::new(&roots, involution),
+            Err(StructureError::SimpleCorootImageMismatch {
+                simple_root: 0,
+                image_root: Weight::new(vec![1, 0]),
+            })
+        );
+    }
+
+    #[test]
+    fn reports_a_negative_simple_root_with_the_wrong_image_coroot() {
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2]],
+            vec![Weight::new(vec![1, 0])],
+            vec![Coweight::new(vec![2, 0])],
+        )
+        .unwrap();
+        let roots = RootSystem::enumerate(&datum, 2).unwrap();
+        let involution = LatticeInvolution::new(
+            &datum,
+            vec![vec![-1, 2], vec![0, 1]],
+            vec![vec![-1, 0], vec![2, 1]],
+        )
+        .unwrap();
+
+        assert_eq!(
+            RootInvolutionData::new(&roots, involution),
+            Err(StructureError::SimpleCorootImageMismatch {
+                simple_root: 0,
+                image_root: Weight::new(vec![-1, 0]),
+            })
         );
     }
 
