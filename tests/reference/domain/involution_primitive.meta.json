@@ -1,0 +1,20 @@
+{
+  "fixture": "domain/involution_primitive.atlas",
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:939-943",
+    "sources/interpreter/atlas-types.w:742-757",
+    "sources/interpreter/atlas-types.w:859-880"
+  ],
+  "scenarios": [
+    "A1 compact 'c' and split 's' both give the identity (w0 = -1 for A1)",
+    "A2 identity 'c' = identity; 's' and 'u' with identity permutation give the diagram swap [[0,1],[1,0]]",
+    "A1.A1 complex 'C' swaps the two factors",
+    "B2 's' = identity (w0 = -1)",
+    "based forms: A1 sublattice [[2]] and [[1]] keep the identity; A2 's' on lattice [[1,1],[0,1]] gives [[1,1],[0,-1]] with width-3 mat alignment"
+  ],
+  "notes": "Primitive involution constructors involution(LieType,[int],string) and involution(LieType,mat,string), fifth activation of the domain fixtures. The permutation row is 0-based with size = rank; the inner-class string is one letter per simple factor from \"Ccesu\" ('C' consumes two identical consecutive factors, 'e' is a synonym of 'c'). All outputs drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449); verbatim HPC capture still pending."
+}

@@ -1,0 +1,12 @@
+{
+  "fixture": "domain/involution_primitive_rejected.atlas",
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:742-790",
+    "sources/interpreter/atlas-types.w:859-943"
+  ],
+  "notes": "Rejected companions of the primitive involution constructors, all runtime errors confirmed by direct oracle probes: 1-based permutation entry, two letters for one factor, permutation size below rank, unknown letter, 'C' across non-identical factors, and a sublattice not stable under the involution. Verbatim HPC capture still pending."
+}

@@ -1,0 +1,6 @@
+involution(Lie_type("A1"),[1],"c")
+involution(Lie_type("A2"),[0,1],"ec")
+involution(Lie_type("A2"),[0],"c")
+involution(Lie_type("A1"),[0],"x")
+involution(Lie_type("A1.A2"),[0,1,2],"Cs")
+involution(Lie_type("A2"),[[1,0],[0,2]],"s")
