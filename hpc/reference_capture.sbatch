@@ -337,7 +337,7 @@ PY
 }
 cd "$snapshot_dir"
 
-expected_binary_sha256="${EXPECTED_ATLAS_BINARY_SHA256:-b627b3922391bf95483d621499079a744a566d81e08412f0f7c8cc535b6f5d55}"
+expected_binary_sha256="${EXPECTED_ATLAS_BINARY_SHA256:-66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9}"
 failure_phase="capturing_reference"
 set +e
 python3 hpc/reference_capture.py \
