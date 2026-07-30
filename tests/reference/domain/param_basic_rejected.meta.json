@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/param_basic_rejected.atlas",
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:7472"
+  ],
+  "notes": "Rejected companions of the Param constructor: a rank-2 lambda vec gives 'Rank mismatch: (1,2,1)' and a rank-2 nu ratvec gives 'Rank mismatch: (1,1,2)'. Both confirmed by direct oracle probes; verbatim HPC capture still pending."
+}

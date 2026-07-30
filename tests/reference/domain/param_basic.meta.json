@@ -1,0 +1,17 @@
+{
+  "fixture": "domain/param_basic.atlas",
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:7472-7480"
+  ],
+  "scenarios": [
+    "param(x2,[0],[0]/1) displays 'final parameter(x=2,lambda=[1]/1,nu=[0]/1)'",
+    "% decomposition to (KGBElt, vec, ratvec)",
+    "predicate battery and height; real_form/K_type projections",
+    "param(K_type) conversion roundtrip equals the direct construction"
+  ],
+  "notes": "Param language surface (param(KGBElt,vec,ratvec)/%/height/predicates/real_form/K_type/param(KType) roundtrip), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449); verbatim HPC capture still pending."
+}
