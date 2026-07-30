@@ -1,0 +1,18 @@
+{
+  "fixture": "domain/ktypepol_basic.atlas",
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:6091-6117"
+  ],
+  "scenarios": [
+    "null_K_module displays 'Empty sum of K-types' with # 0",
+    "P+K accumulates coefficients: 1* then 2* on the same term, # counts terms",
+    "term display is multi-line with leading newline: 'N* K_type(x=2, lambda=[1]/1) [0]'",
+    "first_term/last_term return the (Split coefficient, KType) pair",
+    "2*Q scales coefficients"
+  ],
+  "notes": "KTypePol language surface (null_K_module/#/+,-/int scaling/first_term/last_term/real_form), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449); verbatim HPC capture still pending."
+}
