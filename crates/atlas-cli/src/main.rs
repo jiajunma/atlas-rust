@@ -13,7 +13,7 @@
 //! not.
 
 use std::fs::OpenOptions;
-use std::io::{Read, Write};
+use std::io::{BufRead, IsTerminal, Read, Write};
 use std::process::ExitCode;
 
 use atlas_core::session::SessionEvent;
@@ -89,6 +89,9 @@ fn main() -> ExitCode {
 
     let mut frame = SessionFrame::new(FsProvider, FsSink::default(), search_path);
     if files.is_empty() {
+        if std::io::stdin().is_terminal() {
+            return run_interactive(&mut frame);
+        }
         let mut text = String::new();
         if std::io::stdin().read_to_string(&mut text).is_err() {
             eprintln!("Io error: could not read standard input");
@@ -109,6 +112,39 @@ fn main() -> ExitCode {
             print_events(&frame, &events);
             if frame.is_quitting() {
                 break;
+            }
+        }
+    }
+    println!("Bye.");
+    if frame.is_clean() {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    }
+}
+
+fn run_interactive(frame: &mut SessionFrame<FsProvider, FsSink>) -> ExitCode {
+    println!(
+        "This is 'atlas' (version 1.1.1, axis language version 1.1),\n\
+         the Atlas of Lie Groups and Representations interpreter,\n\
+         compiled with Rust, readline disabled.\n\
+         http://www.liegroups.org/"
+    );
+    let stdin = std::io::stdin();
+    let mut input = stdin.lock();
+    let mut line = String::new();
+    loop {
+        print!("atlas> ");
+        let _ = std::io::stdout().flush();
+        line.clear();
+        match input.read_line(&mut line) {
+            Ok(0) | Err(_) => break,
+            Ok(_) => {
+                let events = frame.run_top_level("<stdin>", &line);
+                print_events(frame, &events);
+                if frame.is_quitting() {
+                    break;
+                }
             }
         }
     }
