@@ -261,7 +261,25 @@ SLICE BOUNDARY: the install chunk's =/!=/K_type_pol/scaling/last_term/
 truncate/scale-by-rat and deform/twisted_deform/block_deform
 (atlas-types.w:8546-8570) await their own contracts — deform is the KL
 deformation, a later-slice centerpiece) → `involution_primitive`
-(involution(LieType,[int],string) and the based form).
+(involution(LieType,[int],string->mat) = basic_involution_wrapper
+(atlas-types.w:860): Layout{type, checked_inner_class_type(symbols,type),
+checked_permutation(perm)} then lietype::involution(lo) on the FUNDAMENTAL
+WEIGHT basis of the simply connected group; checked_permutation wordings
+'Permutation entry {e} too big' / 'Permutation has repeated entry {e}',
+size check 'Permutation size {n} does not match rank {r} of Lie type';
+involution(LieType,mat,string->mat) = based_involution_wrapper
+(atlas-types.w:902): basis r x r check 'Basis should be given by {r}x{r}
+matrix', then lietype::involution(type,class).on_basis(basis) with
+InexactIntegerDivision relabelled 'Inner class is not compatible with
+given lattice'; checked_inner_class_type (atlas-types.w:742): letters
+"Ccesu" with punctuation skipped, 'Too many inner class symbols' / 'Too few
+inner class symbols' / "Unknown inner class symbol `x'" / 'Complex inner
+class needs two identical consecutive types', 'c'~'e' synonyms, and the
+'s'/'u' COLLAPSING rules (atlas-types.w:782+: 's' means the class of -1 —
+where -1 lies in W (A1,B2,Cn,D2n,...) it collapses to 'c'; 'u' often
+collapses to 's') — anchors: A1 "s" -> | 1 | (collapsed), A2 "s" -> flip,
+A2 "u" -> flip, B2 "s" -> I2, A1.A1 "C" -> swap, A2 mat [[1,1],[0,1]] "s"
+-> | 1, 1 | / | 0, -1 | via on_basis).
 `real_group`, `cartan_aggregation`, `overloads_ops_b8c{,_rejected}`,
 `whattype_ops_b8d`, and `dont_b13{,_rejected}` are DONE (verified
 `3501779` / `3502126` / `3501643`).
