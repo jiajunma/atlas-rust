@@ -1,0 +1,24 @@
+{
+  "fixture": "domain/involution_decomposition_classify_zero_row_rejected_probe",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/global.w:4478-4493",
+    "sources/interpreter/atlas-types.w:2697-2710"
+  ],
+  "scenarios": [
+    "null(0,1) preserves its zero-row, one-column shape through classify_involution"
+  ],
+  "notes": "Zero-row classifier rejection captured verbatim by HPC job 3502546 against the pinned Atlas oracle. This freezes the matrix constructor's retained empty dimension and the classifier's actual-shape diagnostic before the Rust differential.",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3502546",
+  "source_archive_sha256": "c6f9044d920b6c978544239b6ec376c0561e4b57326c13c43902bd30c0146b33",
+  "fixture_sha256": "b527740e244d86a223aac9f966d52692c674e7b1ad7e0e99285e3c5e520c14fb",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
+  "oracle_stderr_sha256": "ea4c4f5f1c677430460534c6f4638e1b55a52a985590401c7af228afa0907e50",
+  "capture_artifacts_sha256": "72c94299b86be3f88d046fc357ea57f70ce20a8965d8d03b467cc65d14c1edd1"
+}
