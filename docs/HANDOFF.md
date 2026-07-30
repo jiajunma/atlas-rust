@@ -1,8 +1,36 @@
-# Atlas-Rust handoff - 2026-07-30 (handoff to next coding agent)
+# Atlas-Rust handoff - 2026-07-31 (handoff to next coding agent)
 
 This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
+
+## Live continuation - 2026-07-31
+
+The current committed baseline is `f2d2e51` on `main`. The relation lattice
+builtins are verified by differential job `3502506`; the involution
+decomposition builtins and all 17 associated fixtures are verified by job
+`3502550` (90/90 runnable fixtures PASS; suite PARTIAL only for the three
+explicitly pending overloads). The older snapshot below remains useful as a
+historical ledger, but its `c0710a1` HEAD and implementation queue are no
+longer current.
+
+The active compatibility slice is the three-argument
+`real_form(InnerClass,mat,ratvec)` constructor. Five additional oracle probes
+from jobs `3502476`/`3502479` cover A1 with a torus radical, a noncanonical A2
+involution, B2 downward descent, central-coroot rejection, and validation
+ordering. Domain prerequisites in flight are `InnerClass::canonicalize`,
+inverse Cayley at the Tits-element layer, and exact rational strong-torus
+transport. Do not claim support until these probes and the base
+`weak_real_form{,_rejected}` fixtures pass an HPC differential at one clean
+commit.
+
+Important correction to the older queue text: upstream
+`realredgp::minimal_torus_part` does **not** call `central_fiber`. It transports
+the supplied Tits element downward to the fundamental fiber using inverse
+Cayley or based twisted conjugation, reduces there, walks the fundamental
+imaginary grading orbit, filters by the target weak-form compact grading, and
+selects the numerically least torus part. `central_fiber` is part of the
+separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
@@ -98,13 +126,14 @@ covers tw's class downward before minimal_torus_part; anchors: (ic,[[1]],0)
 -> split form 1, (ic,[[-1]],0) -> split form 1 (form_number is already
 registered, typed.rs:4142), (ic,[[1]],[1]/2) -> compact form 0 — i.e. zero
 factor selects the QUASISPLIT form and the rho_check shift the compact one);
-CRATE RECON 2026-07-30: twisted_from_involution + seed_torus_part landed
+CRATE RECON 2026-07-31: twisted_from_involution + seed_torus_part landed
 with seed_x0; CartanGradingData grading classification
 (grading/element_from_grading, grading.rs:201/216) exists — the new work is
 (a) the (tw,factor)->grading->weak-class assembly of real_form_of
-(innerclass.cpp) and (b) minimal_torus_part, which is a sibling of
-x0_torus_part and uses central_fiber minimization — adjoint_fiber lands
-central_fiber first by queue order, so sequence matters; MEDIUM slice) →
+(innerclass.cpp) and (b) the distinct `minimal_torus_part` descent/orbit
+algorithm from realredgp.cpp:212-309. It uses inverse Cayley and based twisted
+conjugation to reach the fundamental fiber, then minimizes within the grading
+orbit; it does not use `central_fiber`. MEDIUM slice) →
 `involution_decomposition` (distinguished_involution(ic) =
 G.distinguished() as mat; twisted_involution(rd,M) =
 inner_class_value::build(rd,M,&ww) then the PAIR (W_elt(rd,W.element(ww)),

@@ -16,6 +16,10 @@ mod dual;
 mod dynkin;
 mod error;
 mod form_name;
+// Consumer is the synthetic-real-form builder; the carrier lands first so
+// its rational transport can be reviewed independently.
+#[allow(dead_code)]
+mod global_tits;
 mod grading;
 mod inner_class;
 mod integer_lattice;
