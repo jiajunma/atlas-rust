@@ -1,3 +1,8 @@
-// Structural fixture reserved for the HPC Atlas/Rust differential harness.
-// The interpreter-side constructor syntax is not yet exposed.
-weak_real_form_fixture;
+rd : RootDatum
+rd := simply_connected(Lie_type("A1"),true)
+ic : InnerClass
+ic := inner_class(rd,[[1]])
+real_form(ic,[[1]],[0]/1)
+real_form(ic,[[-1]],[0]/1)
+real_form(ic,[[1]],[1]/2)
+form_number(real_form(ic,[[-1]],[0]/1))

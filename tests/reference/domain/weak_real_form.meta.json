@@ -1,27 +1,21 @@
 {
   "fixture": "domain/weak_real_form.atlas",
-  "status": "structural_implementation_awaiting_hpc_preflight",
-  "oracle": "pending_domain_adapter",
-  "rust_status": "implemented_locally_109_tests_pending_hpc",
-  "reference_status": "pending_atlas_constructor_and_event_adapter",
-  "design_reviews": {
-    "completed_at": "2026-07-28",
-    "checks": [
-      "atlas_source_semantics",
-      "rust_ownership_and_internal_mechanics",
-      "public_api_and_consumer_integration"
-    ],
-    "recorded_in": "docs/WEAK_REAL_FORM_DESIGN.md"
-  },
-  "scenarios": [
-    "A2 identity involution: two weak real forms with quasisplit class zero",
-    "B2 identity involution under the pinned Cartan order: three weak real forms",
-    "simply-connected A1: trivial W_im action, two singleton classes",
-    "A2 diagram twist: one class over the trivial adjoint fiber",
-    "class representatives round-trip through class_of",
-    "foreign element rejection",
-    "honest fiber-element and mask-bits budget rejections at ranks 33 and 64",
-    "u32 class-count guard on the sentinel ordinal"
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:3851-3871",
+    "sources/interpreter/atlas-types.w:3950-3951"
   ],
-  "notes": "Three fresh-context design reviews completed and folded into the design; the structural implementation passes 109 local unit tests including the crate-wide suite. The frozen HPC preflight is queued until the cluster is reachable again. This fixture remains reserved: it is not executable Atlas evidence until the language-level constructors and both oracle adapters exist."
+  "scenarios": [
+    "real_form(ic,[[1]],[0]/1) = split SL(2,R) (compact involution, zero factor, quasisplit)",
+    "real_form(ic,[[-1]],[0]/1) = split SL(2,R) with form_number 1",
+    "real_form(ic,[[1]],[1]/2) = compact SU(2) (the rho/2 shift selects the compact form)",
+    "rejections: [[2]] is not an involution; a rank-2 torus factor mismatches the rank-1 class"
+  ],
+  "notes": "Synthetic real_form(InnerClass,mat,ratvec) constructor (the weak real form surface), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The crate-level weak-form enumeration recorded in the previous revision of this meta (WEAK_REAL_FORM_DESIGN.md) remains the kernel this surface binds to.",
+  "design_reviews": {
+    "recorded_in": "docs/WEAK_REAL_FORM_DESIGN.md"
+  }
 }

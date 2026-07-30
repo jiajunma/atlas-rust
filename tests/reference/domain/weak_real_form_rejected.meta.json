@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/weak_real_form_rejected.atlas",
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:3851-3871"
+  ],
+  "notes": "Rejected companions of the synthetic real_form: a non-involution matrix and a torus factor whose size mismatches the rank, both confirmed by direct oracle probes. Verbatim HPC capture still pending."
+}
