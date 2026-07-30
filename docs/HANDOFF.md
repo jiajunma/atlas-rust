@@ -174,8 +174,15 @@ slice is COVERAGE-ONLY if involution_table landed the full print_strong_real:
 B2 c2 exercises the multi-class layout ('there are 2 real form classes:\n\n'
 header, blank line after EVERY block including the last; squares
 exp(2i\pi([0,1]/2)) and exp(2i\pi([0,0]/1))) → `split_basic` (eval/; Split operator family —
-Split_integer (e,s) arithmetic with s^2=1, int and (int,int) coercions, the
-'(e+ss)' display, and `%` back to (e,s) (atlas-types.w:5079-5145)) →
+language-level primitive type `Split` (no crate math; s^2=1 pair arithmetic
+(e1e2+f1f2, e1f2+f1e2)); upstream install list atlas-types.w:5136-5145 is
+NINE entries: =(Split,Split->bool), !=(Split,Split->bool), unary =(Split->bool)
+and !=(Split->bool) zero tests, +(Split,Split->Split), -(Split,Split->Split),
+unary -(Split->Split), *(Split,Split->Split), %(Split->int,int) returning a
+TUPLE (e,f); coercions int->Split ((a,0)) and (int,int)->Split; display is
+'(' e ('+'|'-') |f| 's)' with sign folded (anchors: (3+2s), (5+0s), (-3-2s),
+(-2+2s)); type name in declarations is `Split`; no division overload —
+s/2 gives 'Failed to match '/' with argument type (Split,int)') →
 `block_basic` (block/#/%/element/cross/Cayley/status/inverse_Cayley —
 atlas-types.w:4995-5004; block(rf,df) requires a DUAL second form
 ('Inner class mismatch between real form and dual real form'), built via
