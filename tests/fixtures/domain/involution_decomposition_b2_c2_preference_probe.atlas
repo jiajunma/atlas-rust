@@ -1,0 +1,32 @@
+b2_coroots : RootDatum
+b2_coroots := simply_connected(Lie_type("B2"),true)
+prefers_coroots(b2_coroots)
+twisted_involution(b2_coroots,[[-1,0],[0,-1]])
+twisted_involution(b2_coroots,[[1,1],[0,-1]])
+b2_coroots_ic : InnerClass
+b2_coroots_ic := inner_class(b2_coroots,[[-1,0],[0,-1]])
+distinguished_involution(b2_coroots_ic)
+b2_roots : RootDatum
+b2_roots := simply_connected(Lie_type("B2"),false)
+prefers_coroots(b2_roots)
+twisted_involution(b2_roots,[[-1,0],[0,-1]])
+twisted_involution(b2_roots,[[1,1],[0,-1]])
+b2_roots_ic : InnerClass
+b2_roots_ic := inner_class(b2_roots,[[-1,0],[0,-1]])
+distinguished_involution(b2_roots_ic)
+c2_coroots : RootDatum
+c2_coroots := simply_connected(Lie_type("C2"),true)
+prefers_coroots(c2_coroots)
+twisted_involution(c2_coroots,[[-1,0],[0,-1]])
+twisted_involution(c2_coroots,[[1,2],[0,-1]])
+c2_coroots_ic : InnerClass
+c2_coroots_ic := inner_class(c2_coroots,[[-1,0],[0,-1]])
+distinguished_involution(c2_coroots_ic)
+c2_roots : RootDatum
+c2_roots := simply_connected(Lie_type("C2"),false)
+prefers_coroots(c2_roots)
+twisted_involution(c2_roots,[[-1,0],[0,-1]])
+twisted_involution(c2_roots,[[1,2],[0,-1]])
+c2_roots_ic : InnerClass
+c2_roots_ic := inner_class(c2_roots,[[-1,0],[0,-1]])
+distinguished_involution(c2_roots_ic)

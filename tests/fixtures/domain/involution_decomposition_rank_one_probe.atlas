@@ -1,0 +1,10 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("A1"),true)
+twisted_involution(rd,[[1]])
+twisted_involution(rd,[[-1]])
+plus_ic : InnerClass
+plus_ic := inner_class(rd,[[1]])
+distinguished_involution(plus_ic)
+minus_ic : InnerClass
+minus_ic := inner_class(rd,[[-1]])
+distinguished_involution(minus_ic)

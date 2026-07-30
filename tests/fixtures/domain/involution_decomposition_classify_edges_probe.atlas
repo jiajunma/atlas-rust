@@ -1,0 +1,5 @@
+classify_involution(null(0,0))
+classify_involution([[1]])
+classify_involution([[-1]])
+classify_involution([[1,1],[0,-1]])
+classify_involution([[1,2],[0,-1]])
