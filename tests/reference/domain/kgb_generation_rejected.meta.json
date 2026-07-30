@@ -12,7 +12,8 @@
   "oracle_stdout_sha256": "3b458c909c8d1f47b11d2c01e0185ad6d7f4040aa2d9ac07146560526da4973a",
   "oracle_stderr_sha256": "126c543185bd3780e161b6cacaaafeaeb31872ed4872bbd01eb16b4c63d2b5f6",
   "capture_artifacts_sha256": "3fbd151df3b1bcafe866345afb4bdf80f5211995757b4ddbf1165fb78f56c01a",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
+  "differential_job": "3501555",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:3939",
     "sources/interpreter/atlas-types.w:4702"
