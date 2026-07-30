@@ -1,0 +1,4 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("B2"),true)
+W_elt(rd,[5])
+W_elt(rd,[0,-1])

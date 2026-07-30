@@ -1,16 +1,19 @@
 {
   "fixture": "domain/weyl_element.atlas",
-  "status": "implemented_locally_10_tests_pending_hpc",
-  "oracle": "pending_domain_adapter",
-  "rust_status": "implemented_weyl_element_rs",
-  "reference_status": "pending_atlas_constructor_and_event_adapter",
-  "scenarios": [
-    "A2 closure, lengths, longest element, reduced words",
-    "B2 braid relation, inverse maintenance, unit length steps",
-    "cross-validation against the matrix Weyl layer (round-trip + inversion counts)",
-    "A1 x A1 swap twisted involutions {e, s0 s1}",
-    "provenance, twist validation, and degenerate-rank handling",
-    "RootSystem positivity slice and simple-root IDs"
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:2629-2639"
   ],
-  "notes": "Stage (a) of the KGB map: the word-level Weyl substrate on the root-permutation representation, dropping Atlas's transducer order into the standing adapter deferral. Implemented after all three design reviews returned; corrections recorded in WEYL_ELEMENT_DESIGN.md. Local suite 141 green (131 + 10 new: 9 weyl_element + 1 root_system) under rustc 1.90 with clippy -D warnings and fmt --check clean; HPC preflight pending cluster reachability."
+  "scenarios": [
+    "A2: W_elt(rd,[0,1,0]) displays <0.1.0>; braid-equivalent [1,0,1] is equal; w*v = identity (word [], length 0); /w inverts; w#1 reduces to <1.0>",
+    "B2: W_elt(rd,[0,1,0,1]) canonicalizes to <1.0.1.0>; braid 0101 = 1010; root_datum roundtrip",
+    "word() returns a row [0,1,0] (unpadded), distinct from vec display"
+  ],
+  "notes": "WeylElt language surface (W_elt/word/length/=,!=/*//,#/root_datum), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The WeylElt display is the canonical reduced word in angle brackets; equality is group equality (braid relations hold). The crate-level word substrate recorded in the previous revision of this meta (141 local tests) remains the kernel this surface binds to.",
+  "design_reviews": {
+    "recorded_in": "docs/WEYL_ELEMENT_DESIGN.md"
+  }
 }

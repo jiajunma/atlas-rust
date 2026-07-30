@@ -1,0 +1,32 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/weyl_element",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind": "ReportLine", "text": "Declaring identifier 'rd': RootDatum\n"},
+    {"kind": "Value", "value": {"type": "domain", "domain": "RootDatum", "display": "simply connected root datum of Lie type 'A2'"}},
+    {"kind": "ReportLine", "text": "Declaring identifier 'w': WeylElt\n"},
+    {"kind": "Value", "value": {"type": "domain", "domain": "WeylElt", "display": "<0.1.0>"}},
+    {"kind": "Value", "value": {"type": "domain", "domain": "WeylElt", "display": "<0.1.0>"}},
+    {"kind": "Value", "value": {"type": "row", "display": "[0,1,0]"}},
+    {"kind": "Value", "value": {"type": "integer", "value": 3}},
+    {"kind": "ReportLine", "text": "Declaring identifier 'v': WeylElt\n"},
+    {"kind": "Value", "value": {"type": "domain", "domain": "WeylElt", "display": "<0.1.0>"}},
+    {"kind": "Value", "value": {"type": "boolean", "value": true}},
+    {"kind": "Value", "value": {"type": "boolean", "value": false}},
+    {"kind": "Value", "value": {"type": "row", "display": "[]"}},
+    {"kind": "Value", "value": {"type": "row", "display": "[0,1,0]"}},
+    {"kind": "Value", "value": {"type": "integer", "value": 0}},
+    {"kind": "Value", "value": {"type": "domain", "domain": "WeylElt", "display": "<1.0>"}},
+    {"kind": "ReportLine", "text": "Declaring identifier 'rd2': RootDatum\n"},
+    {"kind": "Value", "value": {"type": "domain", "domain": "RootDatum", "display": "simply connected root datum of Lie type 'B2'"}},
+    {"kind": "ReportLine", "text": "Declaring identifier 'a': WeylElt\n"},
+    {"kind": "Value", "value": {"type": "domain", "domain": "WeylElt", "display": "<1.0.1.0>"}},
+    {"kind": "Value", "value": {"type": "domain", "domain": "WeylElt", "display": "<1.0.1.0>"}},
+    {"kind": "ReportLine", "text": "Declaring identifier 'b': WeylElt\n"},
+    {"kind": "Value", "value": {"type": "domain", "domain": "WeylElt", "display": "<1.0.1.0>"}},
+    {"kind": "Value", "value": {"type": "boolean", "value": true}},
+    {"kind": "Value", "value": {"type": "integer", "value": 4}},
+    {"kind": "Value", "value": {"type": "domain", "domain": "RootDatum", "display": "simply connected root datum of Lie type 'B2'"}}
+  ]
+}

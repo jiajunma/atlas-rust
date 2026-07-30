@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/weyl_element_rejected.atlas",
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:2629"
+  ],
+  "notes": "Rejected companions of the WeylElt surface: a generator index past the rank aborts with 'Illegal Weyl word entry 5 (should be <2)', and a negative word entry with 'Negative integer where unsigned is required'. Both confirmed by direct oracle probes; verbatim HPC capture still pending."
+}

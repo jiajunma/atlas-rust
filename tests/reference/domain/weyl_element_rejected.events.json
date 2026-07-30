@@ -1,0 +1,11 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/weyl_element_rejected",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind": "ReportLine", "text": "Declaring identifier 'rd': RootDatum\n"},
+    {"kind": "Value", "value": {"type": "domain", "domain": "RootDatum", "display": "simply connected root datum of Lie type 'B2'"}},
+    {"kind": "Diagnostic", "category": "runtime", "message": "Illegal Weyl word entry 5 (should be <2)"},
+    {"kind": "Diagnostic", "category": "runtime", "message": "Negative integer where unsigned is required"}
+  ]
+}

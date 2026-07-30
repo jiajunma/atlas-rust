@@ -1,3 +1,25 @@
-// Structural fixture reserved for the HPC Atlas/Rust differential harness.
-// The interpreter-side constructor syntax is not yet exposed.
-weyl_element_fixture;
+rd : RootDatum
+rd := simply_connected(Lie_type("A2"),true)
+w : WeylElt
+w := W_elt(rd,[0,1,0])
+w
+word(w)
+length(w)
+v : WeylElt
+v := W_elt(rd,[1,0,1])
+w=v
+w!=v
+word(w*v)
+word(/w)
+length(w*v)
+w#1
+rd2 : RootDatum
+rd2 := simply_connected(Lie_type("B2"),true)
+a : WeylElt
+a := W_elt(rd2,[0,1,0,1])
+a
+b : WeylElt
+b := W_elt(rd2,[1,0,1,0])
+a=b
+length(a)
+root_datum(a)
