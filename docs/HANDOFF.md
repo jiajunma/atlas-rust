@@ -1,8 +1,140 @@
-# Atlas-Rust handoff - 2026-07-30 (B8/B9/B10/B12 + domain display verified)
+# Atlas-Rust handoff - 2026-07-30 (handoff to next coding agent)
 
 This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
+
+## Start here (next agent)
+
+HEAD at handoff: `5aa7cf6` (main). Working tree clean. All eval slices B3a-B12
+and the InnerClass/RealForm display are `verified_hpc` (differential
+`3501467`); `root_coroot` (`af6cd7b`) and `kgb_generation` (`d7cef57`) are
+implemented and awaiting the HPC differential `3501555` (submitted at
+`5aa7cf6`, report under
+`results/5aa7cf6a8425f1fcd4285b86ae2ca2dfcc3397df/3501555/pipeline_swap/pipeline_swap_diff_report.json`
+on the HPC side — check `squeue -u majj`, fetch, verify PASS, then upgrade the
+four metas `tests/reference/domain/root_coroot{,_rejected}.meta.json` and
+`kgb_generation{,_rejected}.meta.json` to `rust_status: verified_hpc` with
+`differential_job: "3501555"` and commit).
+
+One background subagent (agent-9) may still be implementing the `real_group`
+slice (5 missing builtins: `nr_of_dual_real_forms`, `form_names`,
+`dual_form_names`, `dual_real_form`, `dual_quasisplit_form` — everything else
+in that fixture already works). If its changes are uncommitted in the tree
+(`crates/atlas-core/src/domain_builtins.rs`, `typed.rs`,
+`crates/atlas-real-group/`, `hpc/pipeline_swap_diff.py`), verify them
+yourself per the loop below before committing; otherwise re-do the slice
+from scratch — its contract is frozen and fully probed.
+
+## The per-slice loop (follow exactly)
+
+1. Pick the next contract from the queue below. Contracts are already
+   frozen (events.json status `verified_hpc_reference`); do NOT redesign
+   them unless an implementation proves the probe wrong — in that case
+   re-probe the oracle, never guess.
+2. Implement in the smallest owning module. Domain builtins register in
+   `crates/atlas-core/src/typed.rs` `builtin_registry()` (pattern: the six
+   `root_coroot` entries after `Cartan_matrix(RootDatum)`, commit
+   `af6cd7b`) and evaluate in `crates/atlas-core/src/domain_builtins.rs`;
+   crate-level math lives in `crates/atlas-real-group/` (safe Rust only).
+   Add `FixturePlan(name="domain/<n>")` (and `_rejected`) to
+   `hpc/pipeline_swap_diff.py`.
+3. Local bounded checks, all must pass:
+   `cargo test -p atlas-core --lib`, `cargo test -p atlas-real-group --lib`,
+   `cargo clippy -p atlas-core -p atlas-real-group --lib --tests -- -D warnings`,
+   `cargo fmt --all -- --check`, `cargo build -p atlas-cli`
+   (use `export PATH="$HOME/.cargo/bin:$PATH"`).
+4. Verbatim fixture check in a /tmp cwd: run
+   `./target/debug/atlas-cli tests/fixtures/domain/<n>.atlas`, compare
+   stdout/stderr/exit against events.json via
+   `hpc/pipeline_swap_diff.py:expected_cli_observation`.
+5. Full local regression (FAIL allowed only for
+   `fromfile_accepted_b10`, which needs HPC paths):
+   `cd /tmp && rm -rf R && mkdir -p R/workspace && cp -R <repo>/tests R/workspace/ && cd R && python3 <repo>/hpc/pipeline_swap_diff.py <repo>/target/debug/atlas-cli out --workspace-root workspace --fixture-root <repo>/tests/fixtures --reference-root <repo>/tests/reference --commit local --dirty-tree true --detected-commit local --detected-dirty-tree true --job-id local --source-snapshot-sha256 local`
+   Delete `hpc/__pycache__` afterwards (it is gitignored but keep the tree
+   tidy); delete any stray file `x` at repo root if a runner creates it.
+   Also run `python3 hpc/test_pipeline_swap_diff.py` (10 tests).
+6. Commit (conventional commits, no push without asking).
+7. Sync and submit the HPC differential:
+   `rsync -az --delete .git/ majj@10.26.14.64:/public/home/majj/atlas-rust/.git/ && git archive HEAD | ssh majj@10.26.14.64 'cd /public/home/majj/atlas-rust && tar -xf -'`
+   then `ssh majj@10.26.14.64 "cd /public/home/majj/atlas-rust && ATLAS_COMMIT=$(git rev-parse HEAD) ATLAS_DIRTY_TREE=false sbatch hpc/pipeline_swap_diff.sbatch"`.
+   This sync pattern is robust against dirty working trees (concurrent
+   subagents); the remote checkout must equal HEAD exactly.
+8. When the job finishes: fetch the report, confirm the target fixtures
+   PASS and no regressions (suite PARTIAL is normal while pending
+   overloads remain), then upgrade the fixture metas to
+   `rust_status: verified_hpc` + `differential_job` and commit.
+
+## Implementation queue (all contracts frozen, in suggested order)
+
+Domain (contracts in `tests/fixtures/domain/`, events verified):
+`real_group` (agent-9, see above) → `kgb_operations` → `grading` →
+`weyl_element` → `cartan_aggregation` → `seed_x0` → `involution_table` →
+`adjoint_fiber` → `real_form_labels` → `weak_real_form` →
+`involution_decomposition` → `tits_operations` → `strong_real` →
+`split_basic` (eval/) → `block_basic` → `ktype_basic` → `ktypepol_basic` →
+`param_basic` → `parampol_basic` → `involution_primitive` →
+`overloads_ops_b8c` + `whattype_ops_b8d` (operator-`set` form and the
+builtin `whattype * ?` listing; b8d pins the current 23-row `*` table).
+
+Uncovered matrix items needing contract design first (probe the oracle,
+then freeze): `dont` (loop construct, see findings below), `showall`
+(dumps the overload table as `name: (sig): {body}` lines), KL file
+formats, interactive input (needs a pty methodology), deeper math
+overloads (KL polynomials, `W_graph`, `deform`, extended blocks).
+
+## dont/showall probe findings (2026-07-30)
+
+- Bare top-level `let x = 3` is a SYNTAX ERROR in the oracle
+  (`expecting IN or THEN or ','`); `let x = 3 in x` evaluates fine.
+- `dont` is only valid where parser.y has `do_expr` (while bodies,
+  do-if branches, case arms): `for` loop bodies are plain `expr` and
+  reject it; `while true do dont od` also fails because after `DO` the
+  `tertiary DO expr` rule wants `expr`. The do_expr `DONT` alternative
+  (parser.y:442) makes `sequence(false, die)` — canonical usage is
+  `if cond then dont else ... fi` inside `while` bodies (see
+  atlas-scripts/test.at:43). A valid minimal probe was NOT yet found;
+  try `while true; if false then dont fi od` shapes before writing the
+  fixture.
+- `showall` prints `Overloaded operators and functions:` then
+  `name: (signature): {source}` per overload (huge); untested further.
+
+## Environment facts
+
+- Local: macOS, `export PATH="$HOME/.cargo/bin:$PATH"`; CLI at
+  `./target/debug/atlas-cli`. Upstream C++ sources (read-only reference):
+  `/Users/hoxide/mycodes/atlasofliegroups` (master `4d3e9449`).
+- HPC: `ssh majj@10.26.14.64`, project `/public/home/majj/atlas-rust`,
+  frozen oracle `/public/home/majj/atlasofliegroups-4d3e9449/atlas`
+  (rev `4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9`, binary sha256
+  `66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9`).
+- Direct oracle probe (for designing new contracts; login node needs the
+  gcc runtime):
+  `ssh majj@10.26.14.64 'module load misc/gcc/12.1 >/dev/null 2>&1; gcc_lib="$(dirname "$(gcc -print-file-name=libstdc++.so.6)")"; export LD_LIBRARY_PATH="$gcc_lib:$LD_LIBRARY_PATH"; cd /public/home/majj/atlasofliegroups-4d3e9449/atlas-scripts && printf "<lines>\nquit\n" | /public/home/majj/atlasofliegroups-4d3e9449/atlas 2>&1'`
+- Reference capture: `ATLAS_BIN=... EXPECTED_ATLAS_BINARY_SHA256=66f5d7d... sbatch hpc/reference_capture.sbatch tests/fixtures/<sub>/<name>.atlas ...`
+  (FULL paths with extension). Reports land in
+  `results/<commit>/<jobid>/reference_capture/reference_capture_report.json`;
+  per-fixture stdout/stderr text is embedded — verify verbatim against
+  events.json before writing provenance.
+- Meta provenance fields (order): fixture/oracle("atlas")/stage/
+  reference_status/reference_atlas_revision/reference_binary_sha256/
+  reference_job/source_archive_sha256/fixture_sha256/oracle_exit_status/
+  oracle_stdout_sha256/oracle_stderr_sha256/capture_artifacts_sha256/
+  rust_status/upstream_evidence/notes(/differential_job). The artifacts
+  hash: on HPC in the capture dir,
+  `shasum -a 256 "$PWD/x.stdout" "$PWD/x.stderr" > artifacts_x.sha256`,
+  then take that file's own sha256. events.json status goes
+  `pending_hpc_reference` → `verified_hpc_reference`; rust_status goes
+  `not_implemented` → `verified_hpc` (with `differential_job`).
+- Harness dirty detection ignores `atlas-*.out` everywhere
+  (`b1afa5e`, `cbf538f`); `__pycache__/` is gitignored (`4843b9f`).
+- Value/event encodings used in events.json: integers/booleans/strings
+  plain; `{"type":"vec","display":"[ 1, 0 ]"}` (padded); rows unpadded
+  `[0,1,0]`; `{"type":"ratvec","display":"[ 1, 0 ]/2"}`;
+  `{"type":"matrix","display":"\n| 1, 0 |\n| 0, 1 |\n"}`; domain values
+  `{"type":"domain","domain":"RealForm","display":"..."}`; KTypePol/
+  ParamPol terms have a leading-newline display; any value may carry
+  `display` verbatim (harness `render_value` short-circuits on it).
 
 ## Current state
 
@@ -18,12 +150,15 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   (compact/split/quasisplit/disconnected variants, dual-form
   singular/plural), verified by differential `3501467`; the
   `pipeline_swap_domain_equality` fixture runs fully in the swap plan.
-- Domain contracts frozen against the oracle and awaiting implementation:
-  `domain/root_coroot` + `domain/kgb_generation` (capture `3501118` /
-  `3501143`), `domain/real_group` (`3501368`), `domain/grading` +
-  `domain/involution_primitive` (`3501449`), `domain/weyl_element` +
-  `domain/kgb_operations` (`3501466`), and designed-but-uncaptured
-  `domain/cartan_aggregation` + `domain/seed_x0`.
+- Domain contracts frozen against the oracle: `root_coroot` + `kgb_generation`
+  (implemented `af6cd7b`/`d7cef57`, differential `3501555` in flight),
+  `real_group` (`3501368`), `grading` + `involution_primitive` (`3501449`),
+  `weyl_element` + `kgb_operations` (`3501466`), `cartan_aggregation` +
+  `seed_x0` + `involution_table` + `adjoint_fiber` + `real_form_labels` +
+  `weak_real_form` + `involution_decomposition` + `tits_operations` +
+  `strong_real` (`3501500`), `split_basic` + `block_basic` (`3501519`),
+  `ktype_basic` + `ktypepol_basic` + `param_basic` + `parampol_basic`
+  (`3501537`) — all pending implementation except where noted.
 - Eval contracts frozen ahead of implementation: `overloads_ops_b8c{,_rejected}`
   and `whattype_ops_b8d` (capture `3501368`; operator-`set` form and the
   builtin overload listing).
