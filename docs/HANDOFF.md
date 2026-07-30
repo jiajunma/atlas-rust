@@ -373,12 +373,14 @@ a future cleanup pass rather than schema migration.
   singular/plural), verified by differential `3501467`; the
   `pipeline_swap_domain_equality` fixture runs fully in the swap plan.
 - Domain contracts frozen against the oracle: `root_coroot` + `kgb_generation`
-  (implemented `af6cd7b`/`d7cef57`, differential `3501555` in flight),
-  `real_group` (`3501368`), `grading` + `involution_primitive` (`3501449`),
-  `weyl_element` + `kgb_operations` (`3501466`), `cartan_aggregation`
+  (implemented `af6cd7b`/`d7cef57`, verified `3501555`),
+  `real_group` (verified `3501779`), `grading` (verified `3501915`) +
+  `involution_primitive` (frozen `3501449`),
+  `weyl_element` (verified `3502034`) + `kgb_operations` +
+  `tits_operations` (verified `3501870`), `cartan_aggregation`
   (implemented `1989f62`, verified `3502126`) + `seed_x0` +
   `involution_table` + `adjoint_fiber` + `real_form_labels` +
-  `weak_real_form` + `involution_decomposition` + `tits_operations` +
+  `weak_real_form` + `involution_decomposition` +
   `strong_real` (`3501500`), `split_basic` + `block_basic` (`3501519`),
   `ktype_basic` + `ktypepol_basic` + `param_basic` + `parampol_basic`
   (`3501537`) — all pending implementation except where noted.
