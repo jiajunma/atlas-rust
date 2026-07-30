@@ -238,6 +238,11 @@ FIXTURE_PLANS = (
     FixturePlan(name="eval/scalar_error_rat_modulo_zero"),
     FixturePlan(name="eval/scalar_error_rat_power_negative"),
     FixturePlan(name="eval/scalar_error_rat_quotient_zero"),
+    # Split dual-number surface: the (int,int)/int coercions, sign-folded
+    # display, componentwise arithmetic, dual product, relations, and the
+    # `%` destructure, plus the missing-division rejection.
+    FixturePlan(name="eval/split_basic"),
+    FixturePlan(name="eval/split_basic_rejected"),
 )
 
 

@@ -180,6 +180,73 @@ pub struct WeylEltValue {
     word: Vec<usize>,
 }
 
+/// An Atlas `Split`: a dual number e + f*s with s²=1, stored as the
+/// (e, f) pair. The arithmetic matches upstream `Split_integer`
+/// (utilities/arithmetic.h:152-213) on its machine-int representation:
+/// componentwise sum and difference, negation, and the dual product
+/// (e1e2+f1f2, e1f2+f1e2). Machine-width overflow wraps, as upstream's
+/// `int` arithmetic does in practice.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct SplitValue {
+    e: i32,
+    f: i32,
+}
+
+impl SplitValue {
+    fn new(e: i32, f: i32) -> Self {
+        Self { e, f }
+    }
+
+    pub fn e(&self) -> i32 {
+        self.e
+    }
+
+    pub fn f(&self) -> i32 {
+        self.f
+    }
+
+    fn is_zero(&self) -> bool {
+        self.e == 0 && self.f == 0
+    }
+
+    fn add(self, other: Self) -> Self {
+        Self::new(self.e.wrapping_add(other.e), self.f.wrapping_add(other.f))
+    }
+
+    fn sub(self, other: Self) -> Self {
+        Self::new(self.e.wrapping_sub(other.e), self.f.wrapping_sub(other.f))
+    }
+
+    fn neg(self) -> Self {
+        Self::new(self.e.wrapping_neg(), self.f.wrapping_neg())
+    }
+
+    fn mul(self, other: Self) -> Self {
+        Self::new(
+            self.e
+                .wrapping_mul(other.e)
+                .wrapping_add(self.f.wrapping_mul(other.f)),
+            self.e
+                .wrapping_mul(other.f)
+                .wrapping_add(self.f.wrapping_mul(other.e)),
+        )
+    }
+}
+
+impl fmt::Display for SplitValue {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // arithmetic::print_split (io/basic_io.cpp:150-154): the sign
+        // folds into the separator and the s-component prints unsigned.
+        write!(
+            formatter,
+            "({}{}{}s)",
+            self.e,
+            if self.f < 0 { '-' } else { '+' },
+            self.f.unsigned_abs(),
+        )
+    }
+}
+
 /// The domain payload of [`Value::Domain`]. Equality is STRUCTURAL: two
 /// independently constructed handles for the same mathematical object
 /// compare equal, matching upstream's memoized handles.
@@ -192,6 +259,7 @@ pub enum DomainValue {
     KgbElement(Arc<RealFormContext>, KgbId),
     WeylElement(WeylEltValue),
     CartanClass(Arc<InnerClassContext>, CartanId),
+    Split(SplitValue),
 }
 
 impl PartialEq for DomainValue {
@@ -219,6 +287,7 @@ impl PartialEq for DomainValue {
             (Self::CartanClass(left, left_id), Self::CartanClass(right, right_id)) => {
                 left.inner_class == right.inner_class && left_id == right_id
             }
+            (Self::Split(left), Self::Split(right)) => left == right,
             _ => false,
         }
     }
@@ -320,6 +389,7 @@ impl fmt::Display for DomainValue {
                     if dual == 1 { "form" } else { "forms" },
                 )
             }
+            Self::Split(value) => write!(formatter, "{value}"),
         }
     }
 }
@@ -334,6 +404,7 @@ pub fn kind_name(value: &DomainValue) -> &'static str {
         DomainValue::KgbElement(_, _) => "KGBElt",
         DomainValue::WeylElement(_) => "WeylElt",
         DomainValue::CartanClass(_, _) => "CartanClass",
+        DomainValue::Split(_) => "Split",
     }
 }
 
@@ -1265,6 +1336,37 @@ pub(crate) fn coerce(tag: &str, value: Value, span: SourceSpan) -> Result<Value,
             other => Err(type_error(
                 span,
                 format!("expected a RealForm, found {other}"),
+            )),
+        },
+        // int_to_split_coercion (atlas-types.w:5113-5117): the plain part,
+        // narrowed like every Atlas int-to-machine-int extraction.
+        "SpI" => match value {
+            Value::Integer(value) => Ok(Value::Domain(DomainValue::Split(SplitValue::new(
+                narrow_split_component(&value, span)?,
+                0,
+            )))),
+            other => Err(type_error(span, format!("expected an int, found {other}"))),
+        },
+        // pair_to_split_coercion (atlas-types.w:5119-5125): (e, f) order.
+        "Sp(I,I)" => match value {
+            Value::Tuple(components) => match components.as_slice() {
+                [Value::Integer(e), Value::Integer(f)] => {
+                    Ok(Value::Domain(DomainValue::Split(SplitValue::new(
+                        narrow_split_component(e, span)?,
+                        narrow_split_component(f, span)?,
+                    ))))
+                }
+                _ => Err(type_error(
+                    span,
+                    format!(
+                        "expected an (int,int) pair, found {}",
+                        Value::Tuple(components)
+                    ),
+                )),
+            },
+            other => Err(type_error(
+                span,
+                format!("expected an (int,int) pair, found {other}"),
             )),
         },
         other => Err(runtime(
@@ -3931,14 +4033,24 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             torus_bits_value(context, id, span)
         }
         // decompose_KGB_wrapper (atlas-types.w:4429): the owning real form
-        // and the element number, wrapped as a pair.
+        // and the element number, wrapped as a pair. from_split_wrapper
+        // (atlas-types.w:5127-5134) unwraps the (e, f) pair instead.
         "%" => {
             arity(name, arguments, 1, span)?;
-            let (context, id) = as_kgb_element(&arguments[0], span)?;
-            Ok(Value::Tuple(vec![
-                Value::Domain(DomainValue::RealForm(Arc::clone(context))),
-                Value::Integer(BigInt::from(id.index())),
-            ]))
+            match &arguments[0] {
+                Value::Domain(DomainValue::KgbElement(context, id)) => Ok(Value::Tuple(vec![
+                    Value::Domain(DomainValue::RealForm(Arc::clone(context))),
+                    Value::Integer(BigInt::from(id.index())),
+                ])),
+                Value::Domain(DomainValue::Split(value)) => Ok(Value::Tuple(vec![
+                    Value::Integer(BigInt::from(value.e())),
+                    Value::Integer(BigInt::from(value.f())),
+                ])),
+                other => Err(type_error(
+                    span,
+                    format!("expected a KGBElt, found {other}"),
+                )),
+            }
         }
         // KGB_twist_wrapper (atlas-types.w:4616) twists by the inner
         // class's distinguished involution; KGB_outer_twist_wrapper
@@ -4004,19 +4116,52 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             ))
         }
         // W_elt_unary_eq/neq_wrapper (atlas-types.w:2395-2406): identity
-        // test. Binary equality is a domain relation (typed.rs), so only
-        // the unary overload dispatches here.
+        // test. split_unary_eq/neq_wrapper (atlas-types.w:5055-5064): the
+        // zero-pair test. Binary equality is a domain relation (typed.rs)
+        // in both cases, so only the unary overloads dispatch here.
         "=" | "!=" => {
             arity(name, arguments, 1, span)?;
-            let value = as_weyl_elt(&arguments[0], span)?;
-            let identity = value.element.is_identity();
-            Ok(Value::Boolean(if name == "=" {
-                identity
-            } else {
-                !identity
-            }))
+            let test = match &arguments[0] {
+                Value::Domain(DomainValue::WeylElement(value)) => value.element.is_identity(),
+                Value::Domain(DomainValue::Split(value)) => value.is_zero(),
+                other => {
+                    return Err(type_error(
+                        span,
+                        format!("expected a WeylElt, found {other}"),
+                    ))
+                }
+            };
+            Ok(Value::Boolean(if name == "=" { test } else { !test }))
         }
+        // split_plus/minus_wrapper (atlas-types.w:5079-5095): componentwise.
+        "+" => match arguments {
+            [Value::Domain(DomainValue::Split(left)), Value::Domain(DomainValue::Split(right))] => {
+                Ok(Value::Domain(DomainValue::Split(left.add(*right))))
+            }
+            _ => Err(Diagnostic::new(
+                ErrorKind::Name,
+                format!("undefined function `{name}`"),
+                Some(span),
+            )),
+        },
+        // split_minus_wrapper and split_unary_minus_wrapper
+        // (atlas-types.w:5085-5100): binary difference, unary negation.
+        "-" => match arguments {
+            [Value::Domain(DomainValue::Split(value))] => {
+                Ok(Value::Domain(DomainValue::Split(value.neg())))
+            }
+            [Value::Domain(DomainValue::Split(left)), Value::Domain(DomainValue::Split(right))] => {
+                Ok(Value::Domain(DomainValue::Split(left.sub(*right))))
+            }
+            _ => Err(Diagnostic::new(
+                ErrorKind::Name,
+                format!("undefined function `{name}`"),
+                Some(span),
+            )),
+        },
         // W_elt_prod_wrapper (atlas-types.w:2421-2432): the group product.
+        // split_times_wrapper (atlas-types.w:5102-5107): the dual product
+        // (e1e2+f1f2, e1f2+f1e2).
         "*" => match arguments {
             [Value::Domain(DomainValue::WeylElement(left)), Value::Domain(DomainValue::WeylElement(right))] =>
             {
@@ -4028,6 +4173,9 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                     .multiply(&left.context.system, &right.element)
                     .map_err(|error| runtime(span, error.to_string()))?;
                 weyl_elt_value(Arc::clone(&left.context), product, span)
+            }
+            [Value::Domain(DomainValue::Split(left)), Value::Domain(DomainValue::Split(right))] => {
+                Ok(Value::Domain(DomainValue::Split(left.mul(*right))))
             }
             _ => Err(Diagnostic::new(
                 ErrorKind::Name,
@@ -4086,6 +4234,12 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
 fn narrow_ann_modulus(value: &Value, span: SourceSpan) -> Result<i32, Diagnostic> {
     let modulus = as_integer(value, span)?;
     i32::try_from(&modulus).map_err(|_| runtime(span, "Integer value to big for conversion"))
+}
+
+/// Narrow an Atlas int into one Split component (upstream
+/// `big_int::int_val`, utilities/bigint.cpp:142-146, typo included).
+fn narrow_split_component(value: &BigInt, span: SourceSpan) -> Result<i32, Diagnostic> {
+    i32::try_from(value).map_err(|_| runtime(span, "Integer value to big for conversion"))
 }
 
 #[cfg(test)]

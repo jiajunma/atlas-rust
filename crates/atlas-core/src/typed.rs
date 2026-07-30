@@ -1407,14 +1407,36 @@ pub fn convert_expr(
             conform_types(&cast_type, required, converted, expression.span(), analysis)
         }
         Expr::Tuple { elements, span } => {
-            // Prepare a tuple pattern of the right arity, or fail.
+            // Prepare a tuple pattern of the right arity.  When it cannot
+            // specialise to the required type the display is not yet
+            // rejected: the a priori tuple may still COERCE into the
+            // required type (axis.w:786-815 — the (int,int)->Split
+            // conversion is the unique such entry), so components convert
+            // against undetermined slots and the coercion applies directly;
+            // failing that, the error is the standard found/needed wording.
             let mut pattern = Type::Tuple(vec![Type::Undetermined; elements.len()]);
             if !pattern.can_specialise(required, analysis.types) {
+                let mut components = vec![Type::Undetermined; elements.len()];
+                let converted = elements
+                    .iter()
+                    .zip(components.iter_mut())
+                    .map(|(element, component)| convert_expr(element, component, analysis))
+                    .collect::<Result<Vec<_>, _>>()?;
+                let found = Type::tuple(components);
+                if let Some(coercion) =
+                    crate::coercions::coercion_between(&found, required, analysis.types)
+                {
+                    return Ok(TypedExpr::Conversion {
+                        tag: coercion.tag,
+                        inner: Box::new(TypedExpr::TupleDisplay(converted)),
+                        span: *span,
+                    });
+                }
                 return Err(type_error(
                     format!(
-                        "tuple display of {} components does not match required pattern {}",
-                        elements.len(),
-                        required.display(analysis.types),
+                        "found {} while {} was needed.",
+                        found.display(analysis.types),
+                        required.display(analysis.types)
                     ),
                     *span,
                 ));
@@ -3830,11 +3852,13 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::Vec),
                 0,
             ),
-            domain_builtin_skip(
+            // split_times_wrapper (atlas-types.w:5102-5107, hunger 2) is
+            // implemented; it keeps this position in the `*` listing.
+            domain_builtin(
                 "*",
                 pair(primitive_type(Prim::Split)),
                 primitive_type(Prim::Split),
-                0,
+                2,
             ),
             domain_builtin_skip(
                 "*",
@@ -4640,6 +4664,32 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             // print_strongreal_wrapper (atlas-types.w:8850-8859):
             // output::printStrongReal, unconditional like print_KGB.
             domain_printer_builtin("print_strong_real", primitive_type(Prim::CartanClass)),
+            // Split surface (atlas-types.w:5136-5145): the unary zero-test
+            // relations, componentwise sum and difference, unary negation,
+            // and the destructure back to an (int,int) pair. The dual
+            // product keeps its position among the arithmetic overloads
+            // above; binary equality lives in the relation block below.
+            domain_builtin("=", primitive_type(Prim::Split), bool_type(), 0),
+            domain_builtin("!=", primitive_type(Prim::Split), bool_type(), 0),
+            domain_builtin(
+                "+",
+                pair(primitive_type(Prim::Split)),
+                primitive_type(Prim::Split),
+                1,
+            ),
+            domain_builtin(
+                "-",
+                pair(primitive_type(Prim::Split)),
+                primitive_type(Prim::Split),
+                1,
+            ),
+            domain_builtin(
+                "-",
+                primitive_type(Prim::Split),
+                primitive_type(Prim::Split),
+                3,
+            ),
+            domain_builtin("%", primitive_type(Prim::Split), int_pair(), 0),
             domain_relation_builtin("=", pair(primitive_type(Prim::LieType)), Relation::Equal),
             domain_relation_builtin(
                 "!=",
@@ -4672,6 +4722,8 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 pair(primitive_type(Prim::WeylElt)),
                 Relation::NotEqual,
             ),
+            domain_relation_builtin("=", pair(primitive_type(Prim::Split)), Relation::Equal),
+            domain_relation_builtin("!=", pair(primitive_type(Prim::Split)), Relation::NotEqual),
         ]
     })
 }
@@ -5693,7 +5745,7 @@ fn apply_conversion(tag: &str, value: Value, span: SourceSpan) -> Result<Value, 
                 })
                 .collect::<Result<Vec<_>, Control>>()?,
         )),
-        "LT" | "RdIc" | "IcRf" | "RdRf" => {
+        "LT" | "RdIc" | "IcRf" | "RdRf" | "SpI" | "Sp(I,I)" => {
             domain_builtins::coerce(tag, value, span).map_err(Control::Runtime)
         }
         other => Err(runtime(
@@ -6274,13 +6326,14 @@ mod tests {
                 int_pair(),
                 Type::tuple(vec![rat_type(), int_type()]),
                 pair(rat_type()),
+                pair(primitive_type(Prim::Split)),
             ]
         );
         assert_eq!(
             plus.iter()
                 .map(|&index| builtin_registry()[index].hunger)
                 .collect::<Vec<_>>(),
-            vec![1, 1, 1]
+            vec![1, 1, 1, 1]
         );
     }
 
@@ -6618,7 +6671,7 @@ mod tests {
         assert_eq!(error.message, "found string while int was needed.");
 
         let error = convert_and_run("bool: (1,2)").expect_err("no tuple coercion");
-        assert!(error.message.contains("does not match"));
+        assert_eq!(error.message, "found (int,int) while bool was needed.");
     }
 
     #[test]

@@ -409,3 +409,35 @@ fn involution_table_rejected_fixture_is_the_two_overload_wording() {
         "Failed to match 'print_KGB' with argument type RootDatum"
     );
 }
+
+#[test]
+fn split_fixture_covers_dual_number_arithmetic() {
+    let events = run_source(&SourceText::new(include_str!(
+        "../../../tests/fixtures/eval/split_basic.atlas"
+    )));
+    assert!(
+        diagnostics(&events).is_empty(),
+        "split fixture emitted diagnostics: {events:?}"
+    );
+    let displays: Vec<String> = values(&events).iter().map(ToString::to_string).collect();
+    assert_eq!(
+        displays,
+        vec![
+            "(3+2s)", "(3+2s)", "(5+0s)", "(5+0s)", "(8+2s)", "(-2+2s)", "(15+10s)", "(-3-2s)",
+            "false", "true", "(3,2)", "(4+2s)",
+        ]
+    );
+}
+
+#[test]
+fn split_rejected_fixture_is_the_missing_division_overload() {
+    let events = run_source(&SourceText::new(include_str!(
+        "../../../tests/fixtures/eval/split_basic_rejected.atlas"
+    )));
+    let diagnostic = single_diagnostic(&events);
+    assert_eq!(diagnostic.kind, ErrorKind::Type);
+    assert_eq!(
+        diagnostic.message,
+        "Failed to match '/' with argument type (Split,int)"
+    );
+}
