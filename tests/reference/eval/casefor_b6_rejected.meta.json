@@ -12,10 +12,10 @@
   "oracle_stdout_sha256": "385697091b4bf742d80997ce3a85af76dffb2e138b170a0cc459b7bfb6db192e",
   "oracle_stderr_sha256": "94085f376fa6d4cbfd1876d1400bfe48912c3677275c0f944def433e214ed703",
   "capture_artifacts_sha256": "9f093a9fa4e2bbd51b7b20aca38bb6df0a7fe1e1e9df56d9baf8b45c4fc04651",
-  "rust_status": "not_implemented",
+  "rust_status": "implemented_pending_hpc",
   "upstream_evidence": [
     "sources/interpreter/parser.y:359",
     "sources/interpreter/axis.w:4884-4901"
   ],
-  "notes": "Rejected companions of eval/casefor_b6: positional union case branches must be functions of the variant type ('found int while (int->*) was needed.'), and branch result types must agree in order ('found string while int was needed.'). The leading set_type line succeeds and emits its ReportLine. Reference captured by HPC job 3499627 against the frozen atlasofliegroups-4d3e9449 oracle. Differential evidence remains pending until the pipeline_swap_diff run."
+  "notes": "Rejected companions of eval/casefor_b6: positional union case branches must be functions of the variant type ('found int while (int->*) was needed.'), and branch result types must agree in order ('found string while int was needed.'). The leading set_type line succeeds and emits its ReportLine. Reference captured by HPC job 3499627 against the frozen atlasofliegroups-4d3e9449 oracle. Differential evidence remains pending until the pipeline_swap_diff run. Implementation committed as 5f58160 (181 lib tests, clippy/fmt clean, both fixtures verified event-by-event locally); differential evidence pending."
 }
