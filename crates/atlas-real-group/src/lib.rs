@@ -59,7 +59,11 @@ pub use error::StructureError;
 pub use form_name::form_type_name;
 pub use grading::{CartanGradingData, Grading};
 pub use inner_class::{inner_class_with_twisted_involution, InnerClass};
-pub use integer_lattice::IntegerLatticeBudget;
+pub use integer_lattice::{
+    adapted_relation_basis, annihilator_modulo, filter_relation_units, quotient_relation_basis,
+    replace_relation_generators, IntegerLatticeBudget, RelationBasis, RelationError,
+    RelationGenerator, RelationMatrix,
+};
 pub use involution::LatticeInvolution;
 pub use involution_classification::{classify_involution, InvolutionClassification};
 pub use involution_table::{

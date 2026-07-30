@@ -2843,9 +2843,13 @@ fn convert_overload_application(
         type_error(message, span)
     })?;
     let variant = &variants[position];
-    let expected: Vec<Type> = match &variant.arg_type {
-        Type::Tuple(components) => components.clone(),
-        single => vec![single.clone()],
+    let expected: Vec<Type> = if expressions.len() == 1 {
+        vec![variant.arg_type.clone()]
+    } else {
+        match &variant.arg_type {
+            Type::Tuple(components) => components.clone(),
+            single => vec![single.clone()],
+        }
     };
     let arguments = converted
         .into_iter()
@@ -4089,6 +4093,42 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 ScalarOp::StringConcat,
             ),
             domain_builtin("Lie_type", string_type(), primitive_type(Prim::LieType), 0),
+            domain_builtin_skip(
+                "Smith_Cartan",
+                primitive_type(Prim::LieType),
+                Type::tuple(vec![primitive_type(Prim::Mat), primitive_type(Prim::Vec)]),
+                0,
+            ),
+            domain_builtin_validate(
+                "filter_units",
+                Type::tuple(vec![primitive_type(Prim::Mat), primitive_type(Prim::Vec)]),
+                Type::tuple(vec![primitive_type(Prim::Mat), primitive_type(Prim::Vec)]),
+                0,
+            ),
+            domain_builtin_validate(
+                "ann_mod",
+                Type::tuple(vec![primitive_type(Prim::Mat), int_type()]),
+                primitive_type(Prim::Mat),
+                0,
+            ),
+            domain_builtin(
+                "replace_gen",
+                Type::tuple(vec![
+                    Type::tuple(vec![primitive_type(Prim::Mat), primitive_type(Prim::Vec)]),
+                    primitive_type(Prim::Mat),
+                ]),
+                primitive_type(Prim::Mat),
+                0,
+            ),
+            domain_builtin(
+                "quotient_basis",
+                Type::tuple(vec![
+                    primitive_type(Prim::LieType),
+                    Type::row(primitive_type(Prim::RatVec)),
+                ]),
+                primitive_type(Prim::Mat),
+                0,
+            ),
             domain_builtin(
                 "Lie_type",
                 primitive_type(Prim::RootDatum),
@@ -4726,10 +4766,19 @@ impl TypedExpr {
                 arguments,
                 span,
             } => {
-                let values = arguments
+                let mut values = arguments
                     .iter()
                     .map(|argument| force(argument, context))
                     .collect::<Result<Vec<_>, _>>()?;
+                if values.len() == 1
+                    && matches!(builtin_registry()[*builtin].arg_type, Type::Tuple(_))
+                    && matches!(values.first(), Some(Value::Tuple(_)))
+                {
+                    let Value::Tuple(components) = values.pop().expect("one tuple argument") else {
+                        unreachable!("tuple shape checked above")
+                    };
+                    values = components;
+                }
                 builtin_registry()[*builtin].run(values, *span, level, context)
             }
             Self::Closure {
@@ -6212,6 +6261,33 @@ mod tests {
     }
 
     #[test]
+    fn ann_mod_no_value_narrows_the_modulus_without_running_the_lattice() {
+        let error = convert_and_run("begin ann_mod([[1]],2147483648);7 end")
+            .expect_err("the wrapper narrows before its no-value gate");
+        assert_eq!(error.message, "Integer value to big for conversion");
+
+        let (_, value) = convert_and_run("begin ann_mod([[1]],0);7 end")
+            .expect("zero is not passed to the lattice in no-value context");
+        assert_eq!(value, Value::Integer(BigInt::from(7)));
+    }
+
+    #[test]
+    fn filter_units_no_value_skips_relation_conversion_and_reduction() {
+        let tall_column = (0..65).map(|_| "0").collect::<Vec<_>>().join(",");
+        let source = format!("begin filter_units(([[{tall_column}]],[1]));7 end");
+        let (_, value) = convert_and_run(&source)
+            .expect("no-value filter_units does not build a relation matrix");
+        assert_eq!(value, Value::Integer(BigInt::from(7)));
+    }
+
+    #[test]
+    fn filter_units_no_value_still_checks_the_factor_count() {
+        let error = convert_and_run("begin filter_units(([[0]],[1,2]));7 end")
+            .expect_err("factor count precedes the no-value gate");
+        assert_eq!(error.message, "Too many factors: 2 for 1 columns");
+    }
+
+    #[test]
     fn casts_produce_real_linear_values_through_conversions() {
         let (type_, value) = convert_and_run("vec: [1,22]").expect("vec cast");
         assert_eq!(type_, Type::Primitive(Prim::Vec));
@@ -6261,6 +6337,45 @@ mod tests {
 
         let error = convert_and_run("bool: (1,2)").expect_err("no tuple coercion");
         assert!(error.message.contains("does not match"));
+    }
+
+    #[test]
+    fn tuple_producing_expression_supplies_one_builtin_argument_pack() {
+        let (type_, value) =
+            convert_and_run("+(%(5/2))").expect("divmod tuple supplies the binary plus overload");
+        assert_eq!(type_, int_type());
+        assert_eq!(value, Value::Integer(7.into()));
+    }
+
+    #[test]
+    fn nested_tuple_user_parameter_is_not_flattened() {
+        let (type_, value) =
+            convert_and_run("let f = (((int a, int b), int c)): a + b + c in f((1,2),3)")
+                .expect("nested tuple parameter retains its inner tuple");
+        assert_eq!(type_, int_type());
+        assert_eq!(value, Value::Integer(6.into()));
+    }
+
+    #[test]
+    fn ordinary_user_calls_and_set_overloads_keep_argument_shape() {
+        let (_, value) = convert_and_run("let add(int a, int b) = a + b in add(20,22)")
+            .expect("ordinary local function call");
+        assert_eq!(value, Value::Integer(42.into()));
+
+        let mut context = TypedContext::new();
+        context
+            .execute(&command("set add = (int a, int b): a + b"))
+            .expect("install user overload");
+        let events = context
+            .execute(&command("add(20,22)"))
+            .expect("ordinary user overload call");
+        assert!(matches!(
+            &events[..],
+            [TypedCommandEvent::Value {
+                value: Value::Integer(value),
+                ..
+            }] if value == &BigInt::from(42)
+        ));
     }
 
     #[test]
@@ -6591,5 +6706,32 @@ mod tests {
         let error = convert_and_run("while 1 do 2 od").expect_err("non-boolean condition");
         assert_eq!(error.kind, ErrorKind::Type);
         assert_eq!(error.message, "found int while bool was needed.");
+    }
+
+    #[test]
+    fn relation_lattice_builtins_flow_through_tuple_results() {
+        for (source, expected) in [
+            (
+                "Smith_Cartan(Lie_type(\"A2\"))",
+                "(\n|  1, 0 |\n| -2, 1 |\n,[ 1, 3 ])",
+            ),
+            (
+                "filter_units(Smith_Cartan(Lie_type(\"A2\")))",
+                "(\n| 0 |\n| 1 |\n,[ 3 ])",
+            ),
+            ("ann_mod([[2,4],[6,3]],2)", "\n| -1,  4 |\n|  0, -2 |\n"),
+            (
+                "replace_gen(Smith_Cartan(Lie_type(\"A2\")),[[0,3]])",
+                "\n|  1, 0 |\n| -2, 3 |\n",
+            ),
+            (
+                "quotient_basis(Lie_type(\"A2\"),[[1]/3])",
+                "\n|  1, 0 |\n| -2, 3 |\n",
+            ),
+        ] {
+            let (_, value) = convert_and_run(source)
+                .unwrap_or_else(|error| panic!("{source} should run: {error:?}"));
+            assert_eq!(value.to_string(), expected, "source: {source}");
+        }
     }
 }

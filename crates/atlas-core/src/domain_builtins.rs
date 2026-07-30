@@ -17,17 +17,23 @@ use std::cmp::Ordering;
 use std::collections::BTreeSet;
 use std::fmt;
 use std::fmt::Write as _;
+use std::num::{NonZeroI32, NonZeroU64};
 use std::sync::Arc;
 
 use malachite::{Integer as BigInt, Rational as BigRational};
 
 use atlas_real_group::{
-    build_presentations, central_fiber, dual_cartan_correspondence, dual_inner_class,
-    AdjointFiberBudget, BasedRootDatum, CartanClass, CartanClassification,
-    CartanClassificationBudget, CartanId, Coweight, ExternalFormOrder, InnerClass,
-    InnerClassLayout, IntegerLatticeBudget, InvolutionTable, InvolutionTableBudget, KgbGraph,
-    KgbId, KgbStatus, LatticeInvolution, RealFormPresentation, RealFormSeed, RootSystem,
-    StrongRealClassification, StructureError, WeakRealFormId, Weight, WeylElement, WeylInterface,
+    adapted_relation_basis, annihilator_modulo as relation_annihilator_modulo, build_presentations,
+    central_fiber, dual_cartan_correspondence, dual_inner_class,
+    filter_relation_units as domain_filter_relation_units,
+    quotient_relation_basis as domain_quotient_relation_basis,
+    replace_relation_generators as domain_replace_relation_generators, AdjointFiberBudget,
+    BasedRootDatum, CartanClass, CartanClassification, CartanClassificationBudget, CartanId,
+    Coweight, ExternalFormOrder, InnerClass, InnerClassLayout, IntegerLatticeBudget,
+    InvolutionTable, InvolutionTableBudget, KgbGraph, KgbId, KgbStatus, LatticeInvolution,
+    RealFormPresentation, RealFormSeed, RelationBasis, RelationError, RelationGenerator,
+    RelationMatrix, RootSystem, StrongRealClassification, StructureError, WeakRealFormId, Weight,
+    WeylElement, WeylInterface,
 };
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
@@ -466,6 +472,237 @@ fn block_cartan(lie_type: &LieTypeValue) -> Vec<Vec<i32>> {
         offset += rank;
     }
     matrix
+}
+
+fn relation_diagnostic(error: RelationError, span: SourceSpan) -> Diagnostic {
+    let message = match error {
+        RelationError::Structure(error) => error.to_string(),
+        RelationError::TooManyFactors { factors, columns } => {
+            format!("Too many factors: {factors} for {columns} columns")
+        }
+        RelationError::ColumnLengthsDoNotMatch => "Column lengths do not match".to_string(),
+        RelationError::NotEnoughReplacementColumns => "Not enough replacement columns".to_string(),
+        RelationError::TooManyReplacementColumns => "Too many replacement columns".to_string(),
+        RelationError::GeneratorLengthMismatch {
+            generator,
+            actual,
+            expected,
+        } => format!("Length mismatch for generator {generator}: {actual}:{expected}"),
+        RelationError::ImproperGeneratorEntry {
+            numerator,
+            denominator,
+            factor,
+        } => format!(
+            "Improper generator entry: {numerator}/{denominator} not a multiple of 1/{factor}"
+        ),
+        RelationError::IntegerOutOfRange => {
+            "Integer value too big for matrix conversion".to_string()
+        }
+    };
+    runtime(span, message)
+}
+
+fn relation_matrix(matrix: &Matrix, span: SourceSpan) -> Result<RelationMatrix, Diagnostic> {
+    let rows = matrix.rows();
+    let columns = matrix.cols();
+    let entries =
+        (0..rows).flat_map(|row| (0..columns).filter_map(move |column| matrix.entry(row, column)));
+    RelationMatrix::from_i32_iter(rows, columns, entries, &INTEGER_BUDGET)
+        .map_err(|error| relation_diagnostic(error, span))
+}
+
+fn relation_value(matrix: &RelationMatrix, span: SourceSpan) -> Result<Value, Diagnostic> {
+    let rows = matrix.rows();
+    let columns = matrix.columns();
+    let entry_count = RelationMatrix::preflight_shape(rows, columns, &INTEGER_BUDGET)
+        .map_err(|error| relation_diagnostic(error, span))?;
+    let row_entries = matrix
+        .try_i32_rows()
+        .map_err(|error| relation_diagnostic(error, span))?;
+    let mut entries = Vec::new();
+    entries.try_reserve_exact(entry_count).map_err(|_| {
+        relation_diagnostic(
+            RelationError::Structure(StructureError::AllocationFailed {
+                requested: entry_count,
+            }),
+            span,
+        )
+    })?;
+    for column in 0..columns {
+        for row in &row_entries {
+            entries.push(row[column]);
+        }
+    }
+    Matrix::from_columns(rows, columns, entries)
+        .map(Value::Matrix)
+        .ok_or_else(|| runtime(span, "Invalid matrix dimensions"))
+}
+
+fn smith_cartan(
+    lie_type: &LieTypeValue,
+    span: SourceSpan,
+) -> Result<(RelationMatrix, Vec<i32>), Diagnostic> {
+    let rank = lie_type.total_rank();
+    let entry_count = RelationMatrix::preflight_shape(rank, rank, &INTEGER_BUDGET)
+        .map_err(|error| relation_diagnostic(error, span))?;
+    let mut basis_entries = Vec::new();
+    basis_entries.try_reserve_exact(entry_count).map_err(|_| {
+        relation_diagnostic(
+            RelationError::Structure(StructureError::AllocationFailed {
+                requested: entry_count,
+            }),
+            span,
+        )
+    })?;
+    basis_entries.resize(entry_count, 0);
+    let mut factors = Vec::new();
+    factors.try_reserve_exact(rank).map_err(|_| {
+        relation_diagnostic(
+            RelationError::Structure(StructureError::AllocationFailed { requested: rank }),
+            span,
+        )
+    })?;
+
+    let mut offset = 0;
+    for &(letter, factor_rank) in &lie_type.factors {
+        if letter == 'T' {
+            for index in 0..factor_rank {
+                basis_entries[(offset + index) * rank + offset + index] = 1;
+                factors.push(0);
+            }
+        } else {
+            let cartan = factor_cartan(letter, factor_rank);
+            let mut transposed = Vec::new();
+            transposed.try_reserve_exact(factor_rank).map_err(|_| {
+                relation_diagnostic(
+                    RelationError::Structure(StructureError::AllocationFailed {
+                        requested: factor_rank,
+                    }),
+                    span,
+                )
+            })?;
+            for (row, _) in cartan.iter().enumerate() {
+                let mut entries = Vec::new();
+                entries.try_reserve_exact(factor_rank).map_err(|_| {
+                    relation_diagnostic(
+                        RelationError::Structure(StructureError::AllocationFailed {
+                            requested: factor_rank,
+                        }),
+                        span,
+                    )
+                })?;
+                entries.extend((0..factor_rank).map(|column| cartan[column][row]));
+                transposed.push(entries);
+            }
+            let adapted = adapted_relation_basis(&transposed, &INTEGER_BUDGET)
+                .map_err(|error| relation_diagnostic(error, span))?;
+            let (block, block_factors) = adapted.into_parts();
+            let mut block_rows = block
+                .try_i32_rows()
+                .map_err(|error| relation_diagnostic(error, span))?;
+            if letter == 'D' && factor_rank % 2 == 0 {
+                for row in &mut block_rows {
+                    row[factor_rank - 2] = row[factor_rank - 2]
+                        .checked_add(row[factor_rank - 1])
+                        .ok_or_else(|| {
+                        relation_diagnostic(RelationError::IntegerOutOfRange, span)
+                    })?;
+                }
+            }
+            if block_factors.len() != factor_rank {
+                return Err(runtime(span, "Cartan matrix reduction lost rank"));
+            }
+            for row in 0..factor_rank {
+                for column in 0..factor_rank {
+                    basis_entries[(offset + row) * rank + offset + column] =
+                        block_rows[row][column];
+                }
+            }
+            factors.extend(block_factors);
+        }
+        offset += factor_rank;
+    }
+
+    let basis = RelationMatrix::from_i32_entries(rank, rank, &basis_entries, &INTEGER_BUDGET)
+        .map_err(|error| relation_diagnostic(error, span))?;
+    Ok((basis, factors))
+}
+
+fn filter_relation_units_adapter(
+    basis: &Matrix,
+    factors: &[i32],
+    span: SourceSpan,
+) -> Result<(RelationMatrix, Vec<i32>), Diagnostic> {
+    let basis = relation_matrix(basis, span)?;
+    domain_filter_relation_units(&basis, factors, &INTEGER_BUDGET)
+        .map(RelationBasis::into_parts)
+        .map_err(|error| relation_diagnostic(error, span))
+}
+
+fn replace_relation_generators_adapter(
+    basis: &Matrix,
+    factors: &[i32],
+    replacements: &Matrix,
+    span: SourceSpan,
+) -> Result<RelationMatrix, Diagnostic> {
+    let basis = relation_matrix(basis, span)?;
+    let replacements = relation_matrix(replacements, span)?;
+    domain_replace_relation_generators(&basis, factors, &replacements, &INTEGER_BUDGET)
+        .map_err(|error| relation_diagnostic(error, span))
+}
+
+fn smith_value(lie_type: &LieTypeValue, span: SourceSpan) -> Result<Value, Diagnostic> {
+    let (basis, factors) = smith_cartan(lie_type, span)?;
+    Ok(Value::Tuple(vec![
+        relation_value(&basis, span)?,
+        Value::Vector(Vec32(factors)),
+    ]))
+}
+
+fn relation_pair<'a>(
+    name: &str,
+    arguments: &'a [Value],
+    span: SourceSpan,
+) -> Result<(&'a Matrix, &'a [i32]), Diagnostic> {
+    let (first, second) = match arguments {
+        [Value::Tuple(pair)] if pair.len() == 2 => (&pair[0], &pair[1]),
+        [first, second] => (first, second),
+        _ => return Err(runtime(span, format!("{name} expects 2 argument(s)"))),
+    };
+    let (Value::Matrix(matrix), Value::Vector(Vec32(factors))) = (first, second) else {
+        return Err(type_error(span, format!("{name} expects (mat,vec)")));
+    };
+    Ok((matrix, factors))
+}
+
+fn quotient_relation_basis_adapter(
+    lie_type: &LieTypeValue,
+    generators: &[Value],
+    span: SourceSpan,
+) -> Result<Value, Diagnostic> {
+    for generator in generators {
+        let Value::RatVector(_) = generator else {
+            return Err(type_error(span, "quotient_basis expects a row of ratvec"));
+        };
+    }
+    let relation_generators = RelationGenerator::try_collect(
+        lie_type.total_rank(),
+        generators.iter().map(|generator| {
+            let Value::RatVector(generator) = generator else {
+                unreachable!("generator types were checked before budgeted collection")
+            };
+            let denominator = NonZeroU64::new(generator.denominator())
+                .expect("RatVec maintains a nonzero denominator");
+            RelationGenerator::new(generator.numerators(), denominator)
+        }),
+        &INTEGER_BUDGET,
+    )
+    .map_err(|error| relation_diagnostic(error, span))?;
+    let (smith, factors) = smith_cartan(lie_type, span)?;
+    let basis =
+        domain_quotient_relation_basis(&smith, &factors, &relation_generators, &INTEGER_BUDGET)
+            .map_err(|error| relation_diagnostic(error, span))?;
+    relation_value(&basis, span)
 }
 
 fn build_datum(
@@ -2327,6 +2564,30 @@ pub(crate) fn validate(
             };
             block_size_numbers(context, arguments, span)?;
         }
+        // filter_units_wrapper checks the factor count against the matrix
+        // column count before its no-value gate (atlas-types.w:479-503), but
+        // conversion to the exact relation lattice and filtering follow it.
+        "filter_units" => {
+            let (basis, factors) = relation_pair(name, arguments, span)?;
+            if factors.len() > basis.cols() {
+                return Err(relation_diagnostic(
+                    RelationError::TooManyFactors {
+                        factors: factors.len(),
+                        columns: basis.cols(),
+                    },
+                    span,
+                ));
+            }
+        }
+        // ann_mod_wrapper extracts the Atlas `int` before its no-value gate,
+        // but matrix reduction and the nonzero precondition are behind it.
+        "ann_mod" => {
+            arity(name, arguments, 2, span)?;
+            let Value::Matrix(_) = &arguments[0] else {
+                return Err(type_error(span, "ann_mod expects a mat"));
+            };
+            narrow_ann_modulus(&arguments[1], span)?;
+        }
         other => {
             return Err(runtime(
                 span,
@@ -2596,6 +2857,49 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 value => as_lie_type(value, span)?,
             };
             Ok(Value::Domain(DomainValue::LieType(lie_type)))
+        }
+        "Smith_Cartan" => {
+            arity(name, arguments, 1, span)?;
+            let lie_type = as_lie_type(&arguments[0], span)?;
+            smith_value(&lie_type, span)
+        }
+        "filter_units" => {
+            let (basis, factors) = relation_pair(name, arguments, span)?;
+            let (basis, factors) = filter_relation_units_adapter(basis, factors, span)?;
+            Ok(Value::Tuple(vec![
+                relation_value(&basis, span)?,
+                Value::Vector(Vec32(factors)),
+            ]))
+        }
+        "ann_mod" => {
+            arity(name, arguments, 2, span)?;
+            let Value::Matrix(matrix) = &arguments[0] else {
+                return Err(type_error(span, "ann_mod expects a mat"));
+            };
+            let denominator = narrow_ann_modulus(&arguments[1], span)?;
+            let denominator = NonZeroI32::new(denominator)
+                .ok_or_else(|| runtime(span, "ann_mod modulus must be nonzero"))?;
+            let matrix = relation_matrix(matrix, span)?;
+            let annihilator = relation_annihilator_modulo(&matrix, denominator, &INTEGER_BUDGET)
+                .map_err(|error| relation_diagnostic(error, span))?;
+            relation_value(&annihilator, span)
+        }
+        "replace_gen" => {
+            arity(name, arguments, 2, span)?;
+            let (basis, factors) = relation_pair(name, std::slice::from_ref(&arguments[0]), span)?;
+            let Value::Matrix(replacements) = &arguments[1] else {
+                return Err(type_error(span, "replace_gen expects replacement columns"));
+            };
+            let result = replace_relation_generators_adapter(basis, factors, replacements, span)?;
+            relation_value(&result, span)
+        }
+        "quotient_basis" => {
+            arity(name, arguments, 2, span)?;
+            let lie_type = as_lie_type(&arguments[0], span)?;
+            let Value::List(generators) = &arguments[1] else {
+                return Err(type_error(span, "quotient_basis expects a row of ratvec"));
+            };
+            quotient_relation_basis_adapter(&lie_type, generators, span)
         }
         "prefers_coroots" => {
             arity(name, arguments, 1, span)?;
@@ -3478,6 +3782,11 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
     }
 }
 
+fn narrow_ann_modulus(value: &Value, span: SourceSpan) -> Result<i32, Diagnostic> {
+    let modulus = as_integer(value, span)?;
+    i32::try_from(&modulus).map_err(|_| runtime(span, "Integer value to big for conversion"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -4281,5 +4590,243 @@ mod tests {
         let error = call("block_size", &[inner.clone(), int(-1), int(0)], span())
             .expect_err("negative form number");
         assert_eq!(error.message, "Negative integer where unsigned is required");
+    }
+
+    fn relation_lie_type(text: &str) -> Value {
+        call("Lie_type", &[Value::String(text.into())], span()).expect("Lie type")
+    }
+
+    fn relation_smith(text: &str) -> Value {
+        call("Smith_Cartan", &[relation_lie_type(text)], span()).expect("Smith basis")
+    }
+
+    #[test]
+    fn relation_lattice_constructors_match_the_frozen_oracle() {
+        let a2_smith = relation_smith("A2");
+        assert_eq!(a2_smith.to_string(), "(\n|  1, 0 |\n| -2, 1 |\n,[ 1, 3 ])");
+        assert_eq!(
+            call("filter_units", std::slice::from_ref(&a2_smith), span())
+                .expect("filtered Smith basis")
+                .to_string(),
+            "(\n| 0 |\n| 1 |\n,[ 3 ])"
+        );
+        assert_eq!(
+            relation_smith("A1.B2").to_string(),
+            "(\n| 1,  0, 0 |\n| 0,  1, 0 |\n| 0, -2, 1 |\n,[ 2, 1, 2 ])"
+        );
+
+        let modulo_matrix =
+            Value::Matrix(Matrix::from_columns(2, 2, vec![2, 4, 6, 3]).expect("2x2 matrix"));
+        assert_eq!(
+            call("ann_mod", &[modulo_matrix, int(2)], span())
+                .expect("annihilator modulo two")
+                .to_string(),
+            "\n| -1,  4 |\n|  0, -2 |\n"
+        );
+
+        let replacement =
+            Value::Matrix(Matrix::from_columns(2, 1, vec![0, 3]).expect("one replacement column"));
+        assert_eq!(
+            call("replace_gen", &[a2_smith, replacement], span())
+                .expect("replaced generators")
+                .to_string(),
+            "\n|  1, 0 |\n| -2, 3 |\n"
+        );
+
+        for generator in [
+            RatVec::new(vec![1], 3).expect("one third"),
+            RatVec::new(vec![2], 6).expect("normalised one third"),
+        ] {
+            assert_eq!(
+                call(
+                    "quotient_basis",
+                    &[
+                        relation_lie_type("A2"),
+                        Value::List(vec![Value::RatVector(generator)]),
+                    ],
+                    span(),
+                )
+                .expect("quotient basis")
+                .to_string(),
+                "\n|  1, 0 |\n| -2, 3 |\n"
+            );
+        }
+    }
+
+    #[test]
+    fn relation_lattice_rejections_match_the_frozen_oracle() {
+        let extra_columns = Value::Matrix(
+            Matrix::from_columns(2, 2, vec![0, 1, 3, 1]).expect("two replacement columns"),
+        );
+        let error = call(
+            "replace_gen",
+            &[relation_smith("A2"), extra_columns],
+            span(),
+        )
+        .expect_err("one non-unit factor accepts one replacement column");
+        assert_eq!(error.kind, ErrorKind::Runtime);
+        assert_eq!(error.message, "Too many replacement columns");
+
+        let improper = call(
+            "quotient_basis",
+            &[
+                relation_lie_type("A2"),
+                Value::List(vec![Value::RatVector(
+                    RatVec::new(vec![1], 2).expect("one half"),
+                )]),
+            ],
+            span(),
+        )
+        .expect_err("one half is not a generator of the order-three factor");
+        assert_eq!(
+            improper.message,
+            "Improper generator entry: 1/2 not a multiple of 1/3"
+        );
+
+        let wrong_length = call(
+            "quotient_basis",
+            &[
+                relation_lie_type("A2"),
+                Value::List(vec![Value::RatVector(
+                    RatVec::new(vec![1, 0], 3).expect("two-entry generator"),
+                )]),
+            ],
+            span(),
+        )
+        .expect_err("generator length follows the filtered invariant factors");
+        assert_eq!(wrong_length.message, "Length mismatch for generator 0: 2:1");
+    }
+
+    #[test]
+    fn relation_lattice_extended_oracle_elections_are_preserved() {
+        assert_eq!(
+            relation_smith("T2").to_string(),
+            "(\n| 1, 0 |\n| 0, 1 |\n,[ 0, 0 ])"
+        );
+        assert_eq!(
+            relation_smith("D4").to_string(),
+            "(\n|  1,  0, 0, 0 |\n| -2,  1, 0, 0 |\n|  1, -2, 1, 0 |\n|  1,  0, 0, 1 |\n,[ 1, 1, 2, 2 ])"
+        );
+
+        let cases = [
+            (
+                Matrix::from_columns(2, 2, vec![0, 0, 0, 0]).expect("zero matrix"),
+                "\n| 1, 0 |\n| 0, 1 |\n",
+            ),
+            (
+                Matrix::from_columns(2, 1, vec![1, 0]).expect("two by one"),
+                "\n| 2, 0 |\n| 0, 1 |\n",
+            ),
+            (
+                Matrix::from_columns(1, 2, vec![1, 0]).expect("one by two"),
+                "\n| 2 |\n",
+            ),
+        ];
+        for (matrix, expected) in cases {
+            assert_eq!(
+                call("ann_mod", &[Value::Matrix(matrix), int(2)], span())
+                    .expect("annihilator")
+                    .to_string(),
+                expected
+            );
+        }
+        assert_eq!(
+            call(
+                "ann_mod",
+                &[
+                    Value::Matrix(Matrix::from_columns(1, 1, vec![1]).expect("one by one")),
+                    int(-2),
+                ],
+                span(),
+            )
+            .expect("negative modulus follows the oracle")
+            .to_string(),
+            "\n| -2 |\n"
+        );
+        assert_eq!(
+            call(
+                "ann_mod",
+                &[
+                    Value::Matrix(Matrix::from_columns(1, 1, vec![3]).expect("one by one")),
+                    int(-3),
+                ],
+                span(),
+            )
+            .expect("negative modulus uses the upstream unsigned gcd")
+            .to_string(),
+            "\n| -3 |\n"
+        );
+
+        let quotient = call(
+            "quotient_basis",
+            &[
+                relation_lie_type("A3"),
+                Value::List(vec![
+                    Value::RatVector(RatVec::new(vec![1], 2).expect("one half")),
+                    Value::RatVector(RatVec::new(vec![1], 4).expect("one quarter")),
+                ]),
+            ],
+            span(),
+        )
+        .expect("mixed denominator quotient");
+        assert_eq!(
+            quotient.to_string(),
+            "\n|  1,  0, 0 |\n| -2,  1, 0 |\n|  1, -2, 4 |\n"
+        );
+    }
+
+    #[test]
+    fn relation_lattice_extended_diagnostics_and_safe_zero_divergence() {
+        let identity = Value::Tuple(vec![
+            Value::Matrix(Matrix::from_columns(2, 2, vec![1, 0, 0, 1]).expect("identity")),
+            Value::Vector(Vec32(vec![2, 2])),
+        ]);
+        let one_replacement =
+            Value::Matrix(Matrix::from_columns(2, 1, vec![1, 0]).expect("one replacement column"));
+        let error = call("replace_gen", &[identity, one_replacement], span())
+            .expect_err("two non-unit factors require two columns");
+        assert_eq!(error.message, "Not enough replacement columns");
+
+        let singleton =
+            Value::Matrix(Matrix::from_columns(1, 1, vec![1]).expect("singleton matrix"));
+        let overflow = call(
+            "ann_mod",
+            &[
+                singleton.clone(),
+                Value::Integer(BigInt::from(2_147_483_648_i64)),
+            ],
+            span(),
+        )
+        .expect_err("the wrapper narrows to Atlas int before domain arithmetic");
+        assert_eq!(overflow.message, "Integer value to big for conversion");
+
+        let zero = call("ann_mod", &[singleton, int(0)], span())
+            .expect_err("Rust must not reproduce the upstream SIGFPE");
+        assert_eq!(zero.message, "ann_mod modulus must be nonzero");
+
+        let over_rank =
+            Value::Matrix(Matrix::from_columns(65, 0, Vec::new()).expect("empty 65 by 0 matrix"));
+        let error = call("ann_mod", &[over_rank, int(1)], span())
+            .expect_err("matrix rank is checked before adapter copying");
+        assert_eq!(
+            error.message,
+            "integer-lattice rank exceeded its limit of 64"
+        );
+
+        let generators = Value::List(
+            (0..65)
+                .map(|_| Value::RatVector(RatVec::new(vec![0], 1).expect("zero generator")))
+                .collect(),
+        );
+        let error = call(
+            "quotient_basis",
+            &[relation_lie_type("A1"), generators],
+            span(),
+        )
+        .expect_err("generator count is checked before adapter copying");
+        assert_eq!(
+            error.message,
+            "integer-lattice rank exceeded its limit of 64"
+        );
     }
 }

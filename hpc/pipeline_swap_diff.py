@@ -198,6 +198,13 @@ FIXTURE_PLANS = (
     # real-form-number out-of-bounds rejection.
     FixturePlan(name="domain/real_form_labels"),
     FixturePlan(name="domain/real_form_labels_rejected"),
+    # Root-datum lattice relations: blockwise Smith bases, unit filtering,
+    # annihilators modulo d, generator replacement, and quotient bases with
+    # the three frozen validation diagnostics.
+    FixturePlan(name="domain/relations"),
+    FixturePlan(name="domain/relations_rejected"),
+    FixturePlan(name="domain/relations_extended_probe"),
+    FixturePlan(name="domain/relations_extended_rejected_probe"),
     # Early scalar-era fixtures: verified verbatim locally and included so
     # the HPC differential upgrades their reference metadata.
     FixturePlan(name="eval/scalars"),

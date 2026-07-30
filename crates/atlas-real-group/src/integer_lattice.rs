@@ -1,3 +1,5 @@
+use std::num::{NonZeroI32, NonZeroU64};
+
 use malachite::{
     base::num::{
         arithmetic::traits::{Abs, DivExact, DivMod, DivisibleBy, ExtendedGcd},
@@ -73,6 +75,27 @@ pub(crate) struct IntegerMatrix {
 }
 
 impl IntegerMatrix {
+    fn from_i32_entries(
+        rows: usize,
+        columns: usize,
+        source: &[i32],
+        budget: &IntegerLatticeBudget,
+    ) -> Result<Self, StructureError> {
+        let entry_count = checked_shape(rows, columns, budget)?;
+        if source.len() != entry_count {
+            return Err(StructureError::InvalidIntegerMatrixShape);
+        }
+        let mut entries = try_integer_vec(entry_count)?;
+        entries.extend(source.iter().copied().map(Integer::from));
+        let matrix = Self {
+            rows,
+            columns,
+            entries,
+        };
+        matrix.check_coefficient_bits(budget)?;
+        Ok(matrix)
+    }
+
     pub(crate) fn from_i32_rows(
         rows: &[Vec<i32>],
         budget: &IntegerLatticeBudget,
@@ -485,6 +508,988 @@ pub(crate) fn negative_coweight_eigenspace(
     saturated_kernel(&matrix, budget)
 }
 
+/// An exact integer matrix used by the public relation-lattice operations.
+///
+/// The representation stays opaque so language adapters cannot bypass the
+/// resource checks or depend on the reduction engine's storage layout.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RelationMatrix(IntegerMatrix);
+
+impl RelationMatrix {
+    /// Validate a relation-matrix shape before an adapter computes its entry
+    /// count or allocates/copies any entries.
+    pub fn preflight_shape(
+        rows: usize,
+        columns: usize,
+        budget: &IntegerLatticeBudget,
+    ) -> Result<usize, RelationError> {
+        checked_shape(rows, columns, budget).map_err(RelationError::Structure)
+    }
+
+    pub fn from_i32_entries(
+        rows: usize,
+        columns: usize,
+        row_major_entries: &[i32],
+        budget: &IntegerLatticeBudget,
+    ) -> Result<Self, RelationError> {
+        IntegerMatrix::from_i32_entries(rows, columns, row_major_entries, budget)
+            .map(Self)
+            .map_err(RelationError::Structure)
+    }
+
+    /// Construct from row-major entries, rejecting an oversized shape before
+    /// the iterator is advanced or storage is reserved.
+    pub fn from_i32_iter<I>(
+        rows: usize,
+        columns: usize,
+        row_major_entries: I,
+        budget: &IntegerLatticeBudget,
+    ) -> Result<Self, RelationError>
+    where
+        I: IntoIterator<Item = i32>,
+    {
+        let entry_count = Self::preflight_shape(rows, columns, budget)?;
+        let mut source = row_major_entries.into_iter();
+        let mut entries = try_integer_vec(entry_count)?;
+        for _ in 0..entry_count {
+            let entry = source
+                .next()
+                .ok_or(StructureError::InvalidIntegerMatrixShape)?;
+            entries.push(Integer::from(entry));
+        }
+        if source.next().is_some() {
+            return Err(RelationError::Structure(
+                StructureError::InvalidIntegerMatrixShape,
+            ));
+        }
+        let matrix = IntegerMatrix {
+            rows,
+            columns,
+            entries,
+        };
+        matrix.check_coefficient_bits(budget)?;
+        Ok(Self(matrix))
+    }
+
+    pub fn from_i32_rows(
+        rows: &[Vec<i32>],
+        budget: &IntegerLatticeBudget,
+    ) -> Result<Self, RelationError> {
+        IntegerMatrix::from_i32_rows(rows, budget)
+            .map(Self)
+            .map_err(RelationError::Structure)
+    }
+
+    pub const fn rows(&self) -> usize {
+        self.0.rows
+    }
+
+    pub const fn columns(&self) -> usize {
+        self.0.columns
+    }
+
+    pub fn try_i32_rows(&self) -> Result<Vec<Vec<i32>>, RelationError> {
+        let mut rows = Vec::new();
+        rows.try_reserve_exact(self.0.rows).map_err(|_| {
+            RelationError::Structure(StructureError::AllocationFailed {
+                requested: self.0.rows,
+            })
+        })?;
+        for row in 0..self.0.rows {
+            let mut entries = Vec::new();
+            entries.try_reserve_exact(self.0.columns).map_err(|_| {
+                RelationError::Structure(StructureError::AllocationFailed {
+                    requested: self.0.columns,
+                })
+            })?;
+            for column in 0..self.0.columns {
+                entries.push(
+                    i32::try_from(self.0.entry(row, column))
+                        .map_err(|_| RelationError::IntegerOutOfRange)?,
+                );
+            }
+            rows.push(entries);
+        }
+        Ok(rows)
+    }
+}
+
+/// An elected ambient basis and the corresponding positive invariant factors.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RelationBasis {
+    basis: RelationMatrix,
+    factors: Vec<i32>,
+}
+
+impl RelationBasis {
+    pub const fn basis(&self) -> &RelationMatrix {
+        &self.basis
+    }
+
+    pub fn factors(&self) -> &[i32] {
+        &self.factors
+    }
+
+    pub fn into_parts(self) -> (RelationMatrix, Vec<i32>) {
+        (self.basis, self.factors)
+    }
+}
+
+/// A rational generator as stored by an Atlas `ratvec`.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct RelationGenerator<'a> {
+    numerators: &'a [i64],
+    denominator: NonZeroU64,
+}
+
+impl<'a> RelationGenerator<'a> {
+    pub const fn new(numerators: &'a [i64], denominator: NonZeroU64) -> Self {
+        Self {
+            numerators,
+            denominator,
+        }
+    }
+
+    /// Collect borrowed generator descriptors only after their count and
+    /// implied numerator matrix have passed the relation-lattice budget.
+    pub fn try_collect<I>(
+        ambient_rank: usize,
+        generators: I,
+        budget: &IntegerLatticeBudget,
+    ) -> Result<Vec<Self>, RelationError>
+    where
+        I: ExactSizeIterator<Item = Self>,
+    {
+        let generator_count = generators.len();
+        let numerator_entries = checked_shape(ambient_rank, generator_count, budget)?;
+        check_entry_total(&[numerator_entries, generator_count], budget)?;
+        let mut collected = Vec::new();
+        collected.try_reserve_exact(generator_count).map_err(|_| {
+            StructureError::AllocationFailed {
+                requested: generator_count,
+            }
+        })?;
+        collected.extend(generators);
+        Ok(collected)
+    }
+}
+
+/// Semantic or resource failure from a relation-lattice operation.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum RelationError {
+    Structure(StructureError),
+    TooManyFactors {
+        factors: usize,
+        columns: usize,
+    },
+    ColumnLengthsDoNotMatch,
+    NotEnoughReplacementColumns,
+    TooManyReplacementColumns,
+    GeneratorLengthMismatch {
+        generator: usize,
+        actual: usize,
+        expected: usize,
+    },
+    ImproperGeneratorEntry {
+        numerator: i64,
+        denominator: u64,
+        factor: i32,
+    },
+    IntegerOutOfRange,
+}
+
+impl From<StructureError> for RelationError {
+    fn from(error: StructureError) -> Self {
+        Self::Structure(error)
+    }
+}
+
+/// Run the existing upstream-order adapted-basis reducer behind an opaque,
+/// checked result boundary.
+pub fn adapted_relation_basis(
+    rows: &[Vec<i32>],
+    budget: &IntegerLatticeBudget,
+) -> Result<RelationBasis, RelationError> {
+    let adapted = adapted_basis(rows, budget)?;
+    let mut factors = Vec::new();
+    factors
+        .try_reserve_exact(adapted.diagonal.len())
+        .map_err(|_| StructureError::AllocationFailed {
+            requested: adapted.diagonal.len(),
+        })?;
+    for factor in adapted.diagonal {
+        factors.push(i32::try_from(&factor).map_err(|_| RelationError::IntegerOutOfRange)?);
+    }
+    Ok(RelationBasis {
+        basis: RelationMatrix(adapted.basis),
+        factors,
+    })
+}
+
+pub fn filter_relation_units(
+    basis: &RelationMatrix,
+    factors: &[i32],
+    budget: &IntegerLatticeBudget,
+) -> Result<RelationBasis, RelationError> {
+    if factors.len() > basis.columns() {
+        return Err(RelationError::TooManyFactors {
+            factors: factors.len(),
+            columns: basis.columns(),
+        });
+    }
+    let kept_count = (0..basis.columns())
+        .filter(|&column| factors.get(column).copied() != Some(1))
+        .count();
+    let mut kept = Vec::new();
+    kept.try_reserve_exact(kept_count)
+        .map_err(|_| StructureError::AllocationFailed {
+            requested: kept_count,
+        })?;
+    kept.extend((0..basis.columns()).filter(|&column| factors.get(column).copied() != Some(1)));
+    let selected = select_columns(&basis.0, &kept, budget)?;
+    let mut selected_factors = Vec::new();
+    selected_factors
+        .try_reserve_exact(kept_count)
+        .map_err(|_| StructureError::AllocationFailed {
+            requested: kept_count,
+        })?;
+    selected_factors.extend(factors.iter().copied().filter(|&factor| factor != 1));
+    Ok(RelationBasis {
+        basis: RelationMatrix(selected),
+        factors: selected_factors,
+    })
+}
+
+pub fn replace_relation_generators(
+    basis: &RelationMatrix,
+    factors: &[i32],
+    replacements: &RelationMatrix,
+    budget: &IntegerLatticeBudget,
+) -> Result<RelationMatrix, RelationError> {
+    if factors.len() > basis.columns() {
+        return Err(RelationError::TooManyFactors {
+            factors: factors.len(),
+            columns: basis.columns(),
+        });
+    }
+    if replacements.rows() != basis.rows() {
+        return Err(RelationError::ColumnLengthsDoNotMatch);
+    }
+    check_entry_total(
+        &[
+            basis.0.entries.len(),
+            replacements.0.entries.len(),
+            basis.0.entries.len(),
+        ],
+        budget,
+    )?;
+    let mut result = basis.0.try_clone()?;
+    let mut replacement = 0;
+    for column in 0..basis.columns() {
+        if factors.get(column).copied() == Some(1) {
+            continue;
+        }
+        if replacement >= replacements.columns() {
+            return Err(RelationError::NotEnoughReplacementColumns);
+        }
+        for row in 0..basis.rows() {
+            result.set(row, column, replacements.0.entry(row, replacement).clone());
+        }
+        replacement += 1;
+    }
+    if replacement < replacements.columns() {
+        return Err(RelationError::TooManyReplacementColumns);
+    }
+    result.check_against(budget)?;
+    Ok(RelationMatrix(result))
+}
+
+fn select_columns(
+    matrix: &IntegerMatrix,
+    columns: &[usize],
+    budget: &IntegerLatticeBudget,
+) -> Result<IntegerMatrix, StructureError> {
+    if columns.iter().any(|&column| column >= matrix.columns) {
+        return Err(StructureError::IntegerLatticeInvariantViolation);
+    }
+    let output_entries = matrix
+        .rows
+        .checked_mul(columns.len())
+        .ok_or(StructureError::ArithmeticOverflow)?;
+    check_entry_total(&[matrix.entries.len(), output_entries], budget)?;
+    let mut result = IntegerMatrix::zero(matrix.rows, columns.len(), budget)?;
+    for (target, &source) in columns.iter().enumerate() {
+        for row in 0..matrix.rows {
+            result.set(row, target, matrix.entry(row, source).clone());
+        }
+    }
+    Ok(result)
+}
+
+/// Return the full lattice of vectors whose transpose sends `matrix` into the
+/// nonzero signed modulus. The elected basis follows upstream `diagonalise`.
+pub fn annihilator_modulo(
+    matrix: &RelationMatrix,
+    modulus: NonZeroI32,
+    budget: &IntegerLatticeBudget,
+) -> Result<RelationMatrix, RelationError> {
+    let mut steps = 0;
+    // atlas-types.w reads an `int`, then passes it to a function taking
+    // `Denom_t` (`unsigned long long`). C++ therefore converts a negative
+    // value modulo 2^64 before the unsigned gcd.
+    let denominator = Integer::from(atlas_denom_from_i32(modulus.get()));
+    annihilator_modulo_integer(
+        &matrix.0,
+        &denominator,
+        budget,
+        &mut steps,
+        0,
+        RelationMultiplierWidth::AtlasLatticeCoefficient,
+    )
+    .map(RelationMatrix)
+    .map_err(RelationError::Structure)
+}
+
+#[derive(Clone, Copy)]
+enum RelationMultiplierWidth {
+    Exact,
+    AtlasLatticeCoefficient,
+}
+
+fn atlas_denom_from_i32(value: i32) -> u64 {
+    let magnitude = u64::from(value.unsigned_abs());
+    if value.is_negative() {
+        0_u64.wrapping_sub(magnitude)
+    } else {
+        magnitude
+    }
+}
+
+fn atlas_lattice_coefficient(value: &Integer) -> Result<Integer, StructureError> {
+    let unsigned =
+        u64::try_from(value).map_err(|_| StructureError::IntegerLatticeInvariantViolation)?;
+    let low_word = u32::try_from(unsigned & u64::from(u32::MAX))
+        .map_err(|_| StructureError::IntegerLatticeInvariantViolation)?;
+    // The pinned GCC build narrows the unsigned `div_gcd` result to Atlas's
+    // 32-bit signed `LatticeCoeff` by retaining this low word. Reinterpret it
+    // explicitly instead of relying on Rust casts or signed overflow.
+    Ok(Integer::from(i32::from_ne_bytes(low_word.to_ne_bytes())))
+}
+
+struct RelationDiagonalState<'a, 's> {
+    source_entries: usize,
+    matrix: IntegerMatrix,
+    left: IntegerMatrix,
+    budget: &'a IntegerLatticeBudget,
+    steps: &'s mut usize,
+}
+
+impl<'a, 's> RelationDiagonalState<'a, 's> {
+    fn new(
+        source: &IntegerMatrix,
+        budget: &'a IntegerLatticeBudget,
+        steps: &'s mut usize,
+        external_entries: usize,
+    ) -> Result<Self, StructureError> {
+        source.check_against(budget)?;
+        let left_entries = source
+            .rows
+            .checked_mul(source.rows)
+            .ok_or(StructureError::ArithmeticOverflow)?;
+        let temporary_entries = source.columns.max(source.rows);
+        let diagonal_entries = source.rows.min(source.columns);
+        check_entry_total(
+            &[
+                external_entries,
+                source.entries.len(),
+                source.entries.len(),
+                left_entries,
+                temporary_entries,
+                diagonal_entries,
+            ],
+            budget,
+        )?;
+        Ok(Self {
+            source_entries: external_entries
+                .checked_add(source.entries.len())
+                .and_then(|entries| entries.checked_add(diagonal_entries))
+                .ok_or(StructureError::ArithmeticOverflow)?,
+            matrix: source.try_clone()?,
+            left: IntegerMatrix::identity(source.rows, budget)?,
+            budget,
+            steps,
+        })
+    }
+
+    fn begin_step(&mut self) -> Result<(), StructureError> {
+        count_step(self.steps, self.budget)?;
+        Ok(())
+    }
+
+    fn check_coefficients(&self) -> Result<(), StructureError> {
+        self.matrix.check_against(self.budget)?;
+        self.left.check_against(self.budget)
+    }
+
+    fn check_temporary(&self, entries: usize) -> Result<(), StructureError> {
+        check_entry_total(
+            &[
+                self.source_entries,
+                self.matrix.entries.len(),
+                self.left.entries.len(),
+                entries,
+            ],
+            self.budget,
+        )
+    }
+
+    fn negate_matrix_column(&mut self, column: usize) -> Result<(), StructureError> {
+        self.begin_step()?;
+        negate_column(&mut self.matrix, column);
+        self.check_coefficients()
+    }
+
+    fn swap_matrix_columns(&mut self, left: usize, right: usize) -> Result<(), StructureError> {
+        if left == right {
+            return Ok(());
+        }
+        self.begin_step()?;
+        self.matrix.swap_columns(left, right);
+        self.check_coefficients()
+    }
+
+    fn add_matrix_column_multiple(
+        &mut self,
+        target: usize,
+        source: usize,
+        factor: &Integer,
+    ) -> Result<(), StructureError> {
+        self.check_temporary(self.matrix.rows)?;
+        self.begin_step()?;
+        self.matrix.add_column_multiple(
+            target,
+            source,
+            factor,
+            self.budget.max_coefficient_bits,
+        )?;
+        self.check_coefficients()
+    }
+
+    fn negate_rows(&mut self, row: usize) -> Result<(), StructureError> {
+        self.begin_step()?;
+        self.matrix.negate_row(row);
+        self.left.negate_row(row);
+        self.check_coefficients()
+    }
+
+    fn swap_rows(&mut self, left: usize, right: usize) -> Result<(), StructureError> {
+        if left == right {
+            return Ok(());
+        }
+        self.begin_step()?;
+        self.matrix.swap_rows(left, right);
+        self.left.swap_rows(left, right);
+        self.check_coefficients()
+    }
+
+    fn add_row_multiple(
+        &mut self,
+        target: usize,
+        source: usize,
+        factor: &Integer,
+    ) -> Result<(), StructureError> {
+        self.check_temporary(self.matrix.columns.max(self.left.columns))?;
+        self.begin_step()?;
+        self.matrix
+            .add_row_multiple(target, source, factor, self.budget.max_coefficient_bits)?;
+        self.left
+            .add_row_multiple(target, source, factor, self.budget.max_coefficient_bits)?;
+        self.check_coefficients()
+    }
+
+    fn negate_left_first_row(&mut self) -> Result<(), StructureError> {
+        self.begin_step()?;
+        self.left.negate_row(0);
+        self.check_coefficients()
+    }
+}
+
+fn relation_gcd_row(
+    state: &mut RelationDiagonalState<'_, '_>,
+    row: usize,
+    pivot: usize,
+) -> Result<(Integer, bool), StructureError> {
+    if pivot >= state.matrix.columns {
+        return Ok((Integer::ZERO, false));
+    }
+    let capacity = state.matrix.columns - pivot;
+    let mut active = try_usize_vec(capacity)?;
+    let mut minimum = Integer::ZERO;
+    let mut minimum_column = pivot;
+    for column in pivot..state.matrix.columns {
+        let entry = state.matrix.entry(row, column);
+        if entry == &Integer::ZERO {
+            continue;
+        }
+        active.push(column);
+        let magnitude = entry.clone().abs();
+        if minimum == Integer::ZERO || magnitude < minimum {
+            minimum = magnitude;
+            minimum_column = column;
+        }
+    }
+    if active.is_empty() {
+        return Ok((Integer::ZERO, false));
+    }
+
+    let mut flipped = false;
+    if state.matrix.entry(row, minimum_column) < &Integer::ZERO {
+        state.negate_matrix_column(minimum_column)?;
+        flipped = !flipped;
+    }
+    while active.len() > 1 {
+        let current = minimum_column;
+        let divisor = state.matrix.entry(row, current).clone();
+        let mut survivors = try_usize_vec(active.len())?;
+        for column in active {
+            if column == current {
+                survivors.push(column);
+                continue;
+            }
+            let (quotient, remainder) = state.matrix.entry(row, column).div_mod(&divisor);
+            if quotient != Integer::ZERO {
+                state.add_matrix_column_multiple(column, current, &-quotient)?;
+            }
+            if remainder == Integer::ZERO {
+                continue;
+            }
+            if remainder < minimum {
+                minimum = remainder;
+                minimum_column = column;
+            }
+            survivors.push(column);
+        }
+        active = survivors;
+    }
+    if minimum_column != pivot {
+        state.swap_matrix_columns(pivot, minimum_column)?;
+        flipped = !flipped;
+    }
+    Ok((minimum, flipped))
+}
+
+fn relation_gcd_column(
+    state: &mut RelationDiagonalState<'_, '_>,
+    column: usize,
+    pivot: usize,
+) -> Result<(Integer, bool), StructureError> {
+    if pivot >= state.matrix.rows {
+        return Ok((Integer::ZERO, false));
+    }
+    let capacity = state.matrix.rows - pivot;
+    let mut active = try_usize_vec(capacity)?;
+    let mut minimum = Integer::ZERO;
+    let mut minimum_row = pivot;
+    for row in pivot..state.matrix.rows {
+        let entry = state.matrix.entry(row, column);
+        if entry == &Integer::ZERO {
+            continue;
+        }
+        active.push(row);
+        let magnitude = entry.clone().abs();
+        if minimum == Integer::ZERO || magnitude < minimum {
+            minimum = magnitude;
+            minimum_row = row;
+        }
+    }
+    if active.is_empty() {
+        return Ok((Integer::ZERO, false));
+    }
+
+    let mut flipped = false;
+    if state.matrix.entry(minimum_row, column) < &Integer::ZERO {
+        state.negate_rows(minimum_row)?;
+        flipped = !flipped;
+    }
+    while active.len() > 1 {
+        let current = minimum_row;
+        let divisor = state.matrix.entry(current, column).clone();
+        let mut survivors = try_usize_vec(active.len())?;
+        for row in active {
+            if row == current {
+                survivors.push(row);
+                continue;
+            }
+            let (quotient, remainder) = state.matrix.entry(row, column).div_mod(&divisor);
+            if quotient != Integer::ZERO {
+                state.add_row_multiple(row, current, &-quotient)?;
+            }
+            if remainder == Integer::ZERO {
+                continue;
+            }
+            if remainder < minimum {
+                minimum = remainder;
+                minimum_row = row;
+            }
+            survivors.push(row);
+        }
+        active = survivors;
+    }
+    if minimum_row != pivot {
+        state.swap_rows(pivot, minimum_row)?;
+        flipped = !flipped;
+    }
+    Ok((minimum, flipped))
+}
+
+fn relation_diagonalise(
+    matrix: &IntegerMatrix,
+    budget: &IntegerLatticeBudget,
+    steps: &mut usize,
+    external_entries: usize,
+) -> Result<(Vec<Integer>, IntegerMatrix), StructureError> {
+    let mut state = RelationDiagonalState::new(matrix, budget, steps, external_entries)?;
+    let mut diagonal = Vec::new();
+    diagonal
+        .try_reserve_exact(matrix.rows.min(matrix.columns))
+        .map_err(|_| StructureError::AllocationFailed {
+            requested: matrix.rows.min(matrix.columns),
+        })?;
+    if matrix.rows == 0 || matrix.columns == 0 {
+        return Ok((diagonal, state.left));
+    }
+
+    let mut row_minus = false;
+    let mut pivot_row = 0;
+    for column in 0..matrix.columns {
+        let (mut factor, first_flip) = relation_gcd_column(&mut state, column, pivot_row)?;
+        if factor == Integer::ZERO {
+            continue;
+        }
+        row_minus = first_flip;
+        let mut last_flip;
+        loop {
+            let old_factor = factor.clone();
+            let (next_factor, flip) = relation_gcd_row(&mut state, pivot_row, column)?;
+            factor = next_factor;
+            last_flip = flip;
+            if factor == old_factor {
+                break;
+            }
+
+            let old_factor = factor.clone();
+            let (next_factor, flip) = relation_gcd_column(&mut state, column, pivot_row)?;
+            factor = next_factor;
+            row_minus ^= flip;
+            last_flip = flip;
+            if factor >= old_factor {
+                break;
+            }
+        }
+        row_minus ^= last_flip;
+        diagonal.push(factor);
+        pivot_row += 1;
+    }
+    if row_minus {
+        state.negate_left_first_row()?;
+    }
+    Ok((diagonal, state.left))
+}
+
+fn annihilator_modulo_integer(
+    matrix: &IntegerMatrix,
+    denominator: &Integer,
+    budget: &IntegerLatticeBudget,
+    steps: &mut usize,
+    external_entries: usize,
+    multiplier_width: RelationMultiplierWidth,
+) -> Result<IntegerMatrix, StructureError> {
+    if denominator == &Integer::ZERO {
+        return Err(StructureError::IntegerLatticeInvariantViolation);
+    }
+    let (diagonal, mut left) = relation_diagonalise(matrix, budget, steps, external_entries)?;
+    let row_external = external_entries
+        .checked_add(matrix.entries.len())
+        .and_then(|entries| entries.checked_add(diagonal.len()))
+        .ok_or(StructureError::ArithmeticOverflow)?;
+    for (row, factor) in diagonal.iter().enumerate() {
+        let divisor = positive_integer_gcd(denominator, factor);
+        let exact_multiplier = denominator.div_exact(&divisor);
+        let multiplier = match multiplier_width {
+            RelationMultiplierWidth::Exact => exact_multiplier,
+            RelationMultiplierWidth::AtlasLatticeCoefficient => {
+                atlas_lattice_coefficient(&exact_multiplier)?
+            }
+        };
+        multiply_row_bounded(&mut left, row, &multiplier, row_external, budget, steps)?;
+    }
+    drop(diagonal);
+    let live_external = external_entries
+        .checked_add(matrix.entries.len())
+        .ok_or(StructureError::ArithmeticOverflow)?;
+    transpose_bounded(&left, live_external, budget)
+}
+
+fn positive_integer_gcd(left: &Integer, right: &Integer) -> Integer {
+    let mut left = left.clone().abs();
+    let mut right = right.clone().abs();
+    while right != Integer::ZERO {
+        let (_, remainder) = left.div_mod(&right);
+        left = right;
+        right = remainder;
+    }
+    left
+}
+
+fn multiply_row_bounded(
+    matrix: &mut IntegerMatrix,
+    row: usize,
+    factor: &Integer,
+    external_entries: usize,
+    budget: &IntegerLatticeBudget,
+    steps: &mut usize,
+) -> Result<(), StructureError> {
+    check_entry_total(
+        &[external_entries, matrix.entries.len(), matrix.columns],
+        budget,
+    )?;
+    count_step(steps, budget)?;
+    let mut replacement = try_integer_vec(matrix.columns)?;
+    for column in 0..matrix.columns {
+        replacement.push(bounded_linear_combination(
+            factor,
+            matrix.entry(row, column),
+            &Integer::ZERO,
+            &Integer::ZERO,
+            budget.max_coefficient_bits,
+        )?);
+    }
+    for (column, value) in replacement.into_iter().enumerate() {
+        matrix.set(row, column, value);
+    }
+    Ok(())
+}
+
+fn transpose_bounded(
+    matrix: &IntegerMatrix,
+    external_entries: usize,
+    budget: &IntegerLatticeBudget,
+) -> Result<IntegerMatrix, StructureError> {
+    let output_entries = matrix
+        .rows
+        .checked_mul(matrix.columns)
+        .ok_or(StructureError::ArithmeticOverflow)?;
+    check_entry_total(
+        &[external_entries, matrix.entries.len(), output_entries],
+        budget,
+    )?;
+    let mut result = IntegerMatrix::zero(matrix.columns, matrix.rows, budget)?;
+    for row in 0..matrix.rows {
+        for column in 0..matrix.columns {
+            result.set(column, row, matrix.entry(row, column).clone());
+        }
+    }
+    Ok(result)
+}
+
+/// Assemble the weight-lattice basis selected by rational centre generators.
+pub fn quotient_relation_basis(
+    smith_basis: &RelationMatrix,
+    factors: &[i32],
+    generators: &[RelationGenerator<'_>],
+    budget: &IntegerLatticeBudget,
+) -> Result<RelationMatrix, RelationError> {
+    let filtered = filter_relation_units(smith_basis, factors, budget)?;
+    let filtered_rank = filtered.factors.len();
+    for (generator_index, generator) in generators.iter().enumerate() {
+        if generator.numerators.len() != filtered_rank {
+            return Err(RelationError::GeneratorLengthMismatch {
+                generator: generator_index,
+                actual: generator.numerators.len(),
+                expected: filtered_rank,
+            });
+        }
+    }
+
+    let numerator_entries = filtered_rank
+        .checked_mul(generators.len())
+        .ok_or(StructureError::ArithmeticOverflow)?;
+    check_entry_total(
+        &[
+            smith_basis.0.entries.len(),
+            filtered.basis.0.entries.len(),
+            numerator_entries,
+            generators.len(),
+            1,
+            4,
+        ],
+        budget,
+    )?;
+    let mut numerators = IntegerMatrix::zero(filtered_rank, generators.len(), budget)?;
+    let mut denominators = try_integer_vec(generators.len())?;
+    let mut common_denominator = Integer::ONE;
+    let mut steps = 0;
+
+    for (column, generator) in generators.iter().enumerate() {
+        let denominator = Integer::from(generator.denominator.get());
+        count_step(&mut steps, budget)?;
+        let divisor = positive_integer_gcd(&common_denominator, &denominator);
+        let reduced = common_denominator.div_exact(&divisor);
+        common_denominator = bounded_linear_combination(
+            &reduced,
+            &denominator,
+            &Integer::ZERO,
+            &Integer::ZERO,
+            budget.max_coefficient_bits,
+        )?;
+        denominators.push(denominator.clone());
+
+        for (row, (&numerator, &factor)) in generator
+            .numerators
+            .iter()
+            .zip(&filtered.factors)
+            .enumerate()
+        {
+            let numerator_integer = Integer::from(numerator);
+            count_step(&mut steps, budget)?;
+            let factored = bounded_linear_combination(
+                &Integer::from(factor),
+                &numerator_integer,
+                &Integer::ZERO,
+                &Integer::ZERO,
+                budget.max_coefficient_bits,
+            )?;
+            if factored.div_mod(&denominator).1 != Integer::ZERO {
+                return Err(RelationError::ImproperGeneratorEntry {
+                    numerator,
+                    denominator: generator.denominator.get(),
+                    factor,
+                });
+            }
+            numerators.set(row, column, numerator_integer.div_mod(&denominator).1);
+        }
+    }
+
+    for (column, denominator) in denominators.iter().enumerate() {
+        let multiplier = (&common_denominator).div_exact(denominator);
+        if multiplier == Integer::ONE {
+            continue;
+        }
+        check_entry_total(
+            &[
+                smith_basis.0.entries.len(),
+                filtered.basis.0.entries.len(),
+                numerators.entries.len(),
+                denominators.len(),
+                1,
+                numerators.rows,
+                2,
+            ],
+            budget,
+        )?;
+        count_step(&mut steps, budget)?;
+        let mut replacement = try_integer_vec(numerators.rows)?;
+        for row in 0..numerators.rows {
+            replacement.push(bounded_linear_combination(
+                &multiplier,
+                numerators.entry(row, column),
+                &Integer::ZERO,
+                &Integer::ZERO,
+                budget.max_coefficient_bits,
+            )?);
+        }
+        for (row, value) in replacement.into_iter().enumerate() {
+            numerators.set(row, column, value);
+        }
+    }
+
+    let external_entries = smith_basis
+        .0
+        .entries
+        .len()
+        .checked_add(filtered.basis.0.entries.len())
+        .and_then(|entries| entries.checked_add(denominators.len()))
+        .and_then(|entries| entries.checked_add(1))
+        .ok_or(StructureError::ArithmeticOverflow)?;
+    let annihilator = annihilator_modulo_integer(
+        &numerators,
+        &common_denominator,
+        budget,
+        &mut steps,
+        external_entries,
+        RelationMultiplierWidth::Exact,
+    )?;
+    drop(numerators);
+    drop(denominators);
+    drop(common_denominator);
+
+    let replacements = multiply_relation_matrices(
+        &filtered.basis.0,
+        &annihilator,
+        smith_basis.0.entries.len(),
+        budget,
+        &mut steps,
+    )?;
+    drop(annihilator);
+    drop(filtered);
+    replace_relation_generators(smith_basis, factors, &RelationMatrix(replacements), budget)
+}
+
+fn multiply_relation_matrices(
+    left: &IntegerMatrix,
+    right: &IntegerMatrix,
+    external_entries: usize,
+    budget: &IntegerLatticeBudget,
+    steps: &mut usize,
+) -> Result<IntegerMatrix, StructureError> {
+    if left.columns != right.rows {
+        return Err(StructureError::InvalidIntegerMatrixShape);
+    }
+    let output_entries = left
+        .rows
+        .checked_mul(right.columns)
+        .ok_or(StructureError::ArithmeticOverflow)?;
+    check_entry_total(
+        &[
+            external_entries,
+            left.entries.len(),
+            right.entries.len(),
+            output_entries,
+            1,
+        ],
+        budget,
+    )?;
+    let mut result = IntegerMatrix::zero(left.rows, right.columns, budget)?;
+    for row in 0..left.rows {
+        for column in 0..right.columns {
+            let mut value = Integer::ZERO;
+            for inner in 0..left.columns {
+                count_step(steps, budget)?;
+                value = bounded_linear_combination(
+                    &Integer::ONE,
+                    &value,
+                    left.entry(row, inner),
+                    right.entry(inner, column),
+                    budget.max_coefficient_bits,
+                )?;
+            }
+            result.set(row, column, value);
+        }
+    }
+    result.check_against(budget)?;
+    Ok(result)
+}
+
+fn try_usize_vec(capacity: usize) -> Result<Vec<usize>, StructureError> {
+    let mut values = Vec::new();
+    values
+        .try_reserve_exact(capacity)
+        .map_err(|_| StructureError::AllocationFailed {
+            requested: capacity,
+        })?;
+    Ok(values)
+}
+
 /// The result of [`adapted_basis`]: a unimodular basis `B` of the ambient
 /// lattice, its inverse, and positive diagonal factors such that the input's
 /// column span is exactly `span{ diagonal[t] * B.column(t) }` — so the FIRST
@@ -512,15 +1517,34 @@ pub(crate) fn adapted_basis(
     let mut matrix = IntegerMatrix::from_i32_rows(rows, budget)?;
     let height = matrix.rows;
     let width = matrix.columns;
+    let square_entries = height
+        .checked_mul(height)
+        .ok_or(StructureError::ArithmeticOverflow)?;
+    let diagonal_entries = height.min(width);
+    // The working matrix, basis, and inverse are live throughout. A stable
+    // permutation temporarily materialises one additional square matrix.
+    check_entry_total(
+        &[
+            matrix.entries.len(),
+            square_entries,
+            square_entries,
+            square_entries,
+            diagonal_entries,
+        ],
+        budget,
+    )?;
     let mut basis = IntegerMatrix::identity(height, budget)?;
     let mut inverse = IntegerMatrix::identity(height, budget)?;
     let mut diagonal = Vec::new();
-    diagonal.try_reserve_exact(width.min(height)).map_err(|_| {
-        StructureError::AllocationFailed {
-            requested: width.min(height),
-        }
-    })?;
-    let mut kept = vec![false; height];
+    diagonal
+        .try_reserve_exact(diagonal_entries)
+        .map_err(|_| StructureError::AllocationFailed {
+            requested: diagonal_entries,
+        })?;
+    let mut kept = Vec::new();
+    kept.try_reserve_exact(height)
+        .map_err(|_| StructureError::AllocationFailed { requested: height })?;
+    kept.resize(height, false);
     let mut steps = 0_usize;
     let mut pivot_column = 0_usize;
 
@@ -537,19 +1561,37 @@ pub(crate) fn adapted_basis(
             count_step(&mut steps, budget)?;
             for column in pivot_column..width {
                 let current = matrix.entry(row, column).clone();
-                let replacement = matrix.entry(other, column) - &quotient * &current;
+                let replacement = bounded_linear_combination(
+                    &Integer::ONE,
+                    matrix.entry(other, column),
+                    &-&quotient,
+                    &current,
+                    budget.max_coefficient_bits,
+                )?;
                 matrix.set(row, column, replacement);
                 matrix.set(other, column, current);
             }
             for column in 0..height {
                 let current = inverse.entry(row, column).clone();
-                let replacement = inverse.entry(other, column) - &quotient * &current;
+                let replacement = bounded_linear_combination(
+                    &Integer::ONE,
+                    inverse.entry(other, column),
+                    &-&quotient,
+                    &current,
+                    budget.max_coefficient_bits,
+                )?;
                 inverse.set(row, column, replacement);
                 inverse.set(other, column, current);
             }
             for target in 0..height {
                 let current = basis.entry(target, other).clone();
-                let replacement = basis.entry(target, row) + &quotient * &current;
+                let replacement = bounded_linear_combination(
+                    &Integer::ONE,
+                    basis.entry(target, row),
+                    &quotient,
+                    &current,
+                    budget.max_coefficient_bits,
+                )?;
                 basis.set(target, other, replacement);
                 basis.set(target, row, current);
             }
@@ -576,11 +1618,23 @@ pub(crate) fn adapted_basis(
             // skipped (upstream ignores that column below the pivot), but
             // BOTH transforms must record it.
             for column in 0..height {
-                let update = inverse.entry(other, column) - &quotient * inverse.entry(row, column);
+                let update = bounded_linear_combination(
+                    &Integer::ONE,
+                    inverse.entry(other, column),
+                    &-&quotient,
+                    inverse.entry(row, column),
+                    budget.max_coefficient_bits,
+                )?;
                 inverse.set(other, column, update);
             }
             for target in 0..height {
-                let update = basis.entry(target, row) + &quotient * basis.entry(target, other);
+                let update = bounded_linear_combination(
+                    &Integer::ONE,
+                    basis.entry(target, row),
+                    &quotient,
+                    basis.entry(target, other),
+                    budget.max_coefficient_bits,
+                )?;
                 basis.set(target, row, update);
             }
         }
@@ -664,11 +1718,12 @@ fn gcd_row_to_pivot(
             let (quotient, remainder) = matrix.entry(row, column).div_mod(&divisor);
             if quotient != Integer::ZERO {
                 count_step(steps, budget)?;
-                for target in 0..matrix.rows {
-                    let update =
-                        matrix.entry(target, column) - &quotient * matrix.entry(target, current);
-                    matrix.set(target, column, update);
-                }
+                matrix.add_column_multiple(
+                    column,
+                    current,
+                    &-&quotient,
+                    budget.max_coefficient_bits,
+                )?;
             }
             if remainder == Integer::ZERO {
                 continue;
@@ -1121,6 +2176,224 @@ mod tests {
                 resource: "reduction steps",
                 limit: 1,
             })
+        );
+    }
+
+    #[test]
+    fn relation_adapted_basis_matches_the_observable_a2_election() {
+        let adapted = adapted_relation_basis(&[vec![2, -1], vec![-1, 2]], &budget()).unwrap();
+        assert_eq!(
+            adapted.basis().try_i32_rows().unwrap(),
+            vec![vec![1, 0], vec![-2, 1]]
+        );
+        assert_eq!(adapted.factors(), &[1, 3]);
+    }
+
+    #[test]
+    fn relation_annihilator_matches_the_frozen_basis_and_annihilates_modulo_d() {
+        let modulus = std::num::NonZeroI32::new(2).unwrap();
+        let input = vec![vec![2, 6], vec![4, 3]];
+        let input_matrix = RelationMatrix::from_i32_rows(&input, &budget()).unwrap();
+        let annihilator = annihilator_modulo(&input_matrix, modulus, &budget()).unwrap();
+        let rows = annihilator.try_i32_rows().unwrap();
+        assert_eq!(rows, vec![vec![-1, 4], vec![0, -2]]);
+
+        for column in 0..rows.first().map_or(0, Vec::len) {
+            for input_column in 0..input.first().map_or(0, Vec::len) {
+                let pairing = rows
+                    .iter()
+                    .zip(&input)
+                    .map(|(row, input_row)| {
+                        i64::from(row[column]) * i64::from(input_row[input_column])
+                    })
+                    .sum::<i64>();
+                assert_eq!(pairing.rem_euclid(i64::from(modulus.get())), 0);
+            }
+        }
+    }
+
+    #[test]
+    fn relation_annihilator_preserves_negative_modulus_semantics() {
+        for (entry, modulus, expected) in [(1, -2, -2), (3, -3, -3)] {
+            let input = RelationMatrix::from_i32_rows(&[vec![entry]], &budget()).unwrap();
+            let result = annihilator_modulo(
+                &input,
+                std::num::NonZeroI32::new(modulus).unwrap(),
+                &budget(),
+            )
+            .unwrap();
+            assert_eq!(result.try_i32_rows().unwrap(), vec![vec![expected]]);
+        }
+    }
+
+    #[test]
+    fn relation_inputs_preflight_before_iterating_or_copying() {
+        use std::cell::Cell;
+
+        let matrix_visited = Cell::new(false);
+        let over_rank = IntegerLatticeBudget::new(1, 16, 16, 32);
+        let matrix = RelationMatrix::from_i32_iter(
+            2,
+            1,
+            (0..2).map(|_| {
+                matrix_visited.set(true);
+                0
+            }),
+            &over_rank,
+        );
+        assert_eq!(
+            matrix,
+            Err(RelationError::Structure(
+                StructureError::IntegerLatticeResourceLimit {
+                    resource: "rank",
+                    limit: 1,
+                }
+            ))
+        );
+        assert!(!matrix_visited.get());
+
+        let generator_visited = Cell::new(false);
+        let generators = RelationGenerator::try_collect(
+            1,
+            (0..3).map(|_| {
+                generator_visited.set(true);
+                RelationGenerator::new(&[], NonZeroU64::new(1).unwrap())
+            }),
+            &IntegerLatticeBudget::new(2, 16, 16, 32),
+        );
+        assert_eq!(
+            generators,
+            Err(RelationError::Structure(
+                StructureError::IntegerLatticeResourceLimit {
+                    resource: "rank",
+                    limit: 2,
+                }
+            ))
+        );
+        assert!(!generator_visited.get());
+
+        let stored_entry_visited = Cell::new(false);
+        let generators = RelationGenerator::try_collect(
+            2,
+            (0..1).map(|_| {
+                stored_entry_visited.set(true);
+                RelationGenerator::new(&[], NonZeroU64::new(1).unwrap())
+            }),
+            &IntegerLatticeBudget::new(2, 2, 16, 32),
+        );
+        assert_eq!(
+            generators,
+            Err(RelationError::Structure(
+                StructureError::IntegerLatticeResourceLimit {
+                    resource: "stored entries",
+                    limit: 2,
+                }
+            ))
+        );
+        assert!(!stored_entry_visited.get());
+    }
+
+    #[test]
+    fn relation_reduction_enforces_step_and_coefficient_budgets() {
+        let step_budget = IntegerLatticeBudget::new(4, 128, 0, 128);
+        let step_input =
+            RelationMatrix::from_i32_rows(&[vec![2, 6], vec![4, 3]], &step_budget).unwrap();
+        assert_eq!(
+            annihilator_modulo(
+                &step_input,
+                std::num::NonZeroI32::new(2).unwrap(),
+                &step_budget,
+            ),
+            Err(RelationError::Structure(
+                StructureError::IntegerLatticeResourceLimit {
+                    resource: "reduction steps",
+                    limit: 0,
+                }
+            ))
+        );
+        let coefficient_budget = IntegerLatticeBudget::new(1, 8, 16, 8);
+        let coefficient_input =
+            RelationMatrix::from_i32_rows(&[vec![1]], &coefficient_budget).unwrap();
+        assert_eq!(
+            annihilator_modulo(
+                &coefficient_input,
+                std::num::NonZeroI32::new(i32::MAX).unwrap(),
+                &coefficient_budget,
+            ),
+            Err(RelationError::Structure(
+                StructureError::IntegerLatticeResourceLimit {
+                    resource: "coefficient bits",
+                    limit: 8,
+                }
+            ))
+        );
+
+        let entry_budget = IntegerLatticeBudget::new(2, 15, 32, 128);
+        let entry_input =
+            RelationMatrix::from_i32_rows(&[vec![2, 6], vec![4, 3]], &entry_budget).unwrap();
+        assert_eq!(
+            annihilator_modulo(
+                &entry_input,
+                std::num::NonZeroI32::new(2).unwrap(),
+                &entry_budget,
+            ),
+            Err(RelationError::Structure(
+                StructureError::IntegerLatticeResourceLimit {
+                    resource: "stored entries",
+                    limit: 15,
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn relation_adapted_basis_counts_all_live_exact_matrices() {
+        assert_eq!(
+            adapted_relation_basis(
+                &[vec![2, -1], vec![-1, 2]],
+                &IntegerLatticeBudget::new(2, 11, 32, 32),
+            ),
+            Err(RelationError::Structure(
+                StructureError::IntegerLatticeResourceLimit {
+                    resource: "stored entries",
+                    limit: 11,
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn quotient_relation_uses_nonnegative_residues_for_negative_generators() {
+        let budget = budget();
+        let smith = RelationMatrix::from_i32_rows(&[vec![1]], &budget).unwrap();
+        let numerator = [-1_i64];
+        let generators = [RelationGenerator::new(
+            &numerator,
+            NonZeroU64::new(4).unwrap(),
+        )];
+        let quotient = quotient_relation_basis(&smith, &[4], &generators, &budget).unwrap();
+        assert_eq!(quotient.try_i32_rows().unwrap(), vec![vec![4]]);
+
+        let remainder = Integer::from(-1).div_mod(&Integer::from(4)).1;
+        assert_eq!(remainder, Integer::from(3));
+    }
+
+    #[test]
+    fn relation_matrix_validates_shape_and_rank_before_reduction() {
+        assert_eq!(
+            RelationMatrix::from_i32_entries(2, 2, &[1, 2, 3], &budget()),
+            Err(RelationError::Structure(
+                StructureError::InvalidIntegerMatrixShape
+            ))
+        );
+        assert_eq!(
+            RelationMatrix::from_i32_entries(2, 1, &[1, 2], &IntegerLatticeBudget::new(1, 8, 8, 8),),
+            Err(RelationError::Structure(
+                StructureError::IntegerLatticeResourceLimit {
+                    resource: "rank",
+                    limit: 1,
+                }
+            ))
         );
     }
 
