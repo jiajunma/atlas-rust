@@ -1,3 +1,17 @@
-// Reserved for the Atlas/Rust adjoint-fiber differential harness.
-// The interpreter-side constructor syntax and event adapter are not exposed.
-adjoint_fiber_fixture;
+rd : RootDatum
+rd := simply_connected(Lie_type("A1"),true)
+ic : InnerClass
+ic := inner_class(rd,[[1]])
+rf : RealForm
+rf := real_form(ic,1)
+central_fiber(rf)
+rc : RealForm
+rc := real_form(ic,0)
+central_fiber(rc)
+rd2 : RootDatum
+rd2 := adjoint(Lie_type("A2"),true)
+ic2 : InnerClass
+ic2 := inner_class(rd2,[[0,-1],[-1,0]])
+qf : RealForm
+qf := quasisplit_form(ic2)
+central_fiber(qf)
