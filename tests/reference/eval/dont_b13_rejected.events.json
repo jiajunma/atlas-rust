@@ -1,0 +1,12 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "eval/dont_b13_rejected",
+  "status": "verified_hpc_reference",
+  "events": [
+    {
+      "kind": "Diagnostic",
+      "category": "syntax",
+      "message": "syntax error, unexpected FI, expecting ELSE or ELIF"
+    }
+  ]
+}

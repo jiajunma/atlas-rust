@@ -169,6 +169,10 @@ pub enum Expr {
     Break {
         span: SourceSpan,
     },
+    /// `dont` is admitted only by the while `do_expr` grammar.
+    Dont {
+        span: SourceSpan,
+    },
     /// `die` (parser.y:383 DIE unit): passes analysis against any required
     /// type; evaluating it raises the runtime error `I die` (axis.w:630).
     Die {
@@ -508,6 +512,7 @@ impl Expr {
             | Self::Next { span, .. }
             | Self::While { span, .. }
             | Self::Break { span }
+            | Self::Dont { span }
             | Self::Die { span } => *span,
             Self::For(loop_) => loop_.span,
             Self::MultiAssignment(assignment) => assignment.span,
@@ -625,6 +630,10 @@ pub enum Command {
         name: SpannedValue<String>,
         span: SourceSpan,
     },
+    /// `showall` dumps the active overload table and global bindings.
+    ShowAll {
+        span: SourceSpan,
+    },
 }
 
 impl Command {
@@ -638,7 +647,8 @@ impl Command {
             | Self::Forget { span, .. }
             | Self::ForgetOverload { span, .. }
             | Self::Set { span, .. }
-            | Self::ShowOverloads { span, .. } => *span,
+            | Self::ShowOverloads { span, .. }
+            | Self::ShowAll { span } => *span,
         }
     }
 }
@@ -710,11 +720,13 @@ pub enum ParserToken {
     Do(SourceSpan),
     Od(SourceSpan),
     Break(SourceSpan),
+    Dont(SourceSpan),
     Die(SourceSpan),
     Question(SourceSpan),
     Set(SourceSpan),
     SetType(SourceSpan),
     Whattype(SourceSpan),
+    Showall(SourceSpan),
     Forget(SourceSpan),
     Case(SourceSpan),
     Esac(SourceSpan),
@@ -773,11 +785,13 @@ impl ParserToken {
             | Self::Do(span)
             | Self::Od(span)
             | Self::Break(span)
+            | Self::Dont(span)
             | Self::Die(span)
             | Self::Question(span)
             | Self::Set(span)
             | Self::SetType(span)
             | Self::Whattype(span)
+            | Self::Showall(span)
             | Self::Forget(span)
             | Self::Case(span)
             | Self::Esac(span)
@@ -835,11 +849,13 @@ impl fmt::Display for ParserToken {
             Self::Do(_) => "do",
             Self::Od(_) => "od",
             Self::Break(_) => "break",
+            Self::Dont(_) => "dont",
             Self::Die(_) => "die",
             Self::Question(_) => "?",
             Self::Set(_) => "set",
             Self::SetType(_) => "set_type",
             Self::Whattype(_) => "whattype",
+            Self::Showall(_) => "showall",
             Self::Forget(_) => "forget",
             Self::Case(_) => "case",
             Self::Esac(_) => "esac",
@@ -974,10 +990,12 @@ fn parser_tokens_from_tokens(
                         "do" => ParserToken::Do(span),
                         "od" => ParserToken::Od(span),
                         "break" => ParserToken::Break(span),
+                        "dont" => ParserToken::Dont(span),
                         "die" => ParserToken::Die(span),
                         "set" => ParserToken::Set(span),
                         "set_type" => ParserToken::SetType(span),
                         "whattype" => ParserToken::Whattype(span),
+                        "showall" => ParserToken::Showall(span),
                         "forget" => ParserToken::Forget(span),
                         "case" => ParserToken::Case(span),
                         "esac" => ParserToken::Esac(span),
@@ -1180,11 +1198,13 @@ fn bison_token_name(token: &ParserToken) -> Option<&'static str> {
         ParserToken::Do(_) => Some("DO"),
         ParserToken::Od(_) => Some("OD"),
         ParserToken::Break(_) => Some("BREAK"),
+        ParserToken::Dont(_) => Some("DONT"),
         ParserToken::Die(_) => Some("DIE"),
         ParserToken::Question(_) => Some("'?'"),
         ParserToken::Set(_) => Some("SET"),
         ParserToken::SetType(_) => Some("SET_TYPE"),
         ParserToken::Whattype(_) => Some("WHATTYPE"),
+        ParserToken::Showall(_) => Some("SHOWALL"),
         ParserToken::Forget(_) => Some("FORGET"),
         ParserToken::Case(_) => Some("CASE"),
         ParserToken::Esac(_) => Some("ESAC"),
@@ -2335,6 +2355,7 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
             )
         }
         Expr::Break { .. } => "break".to_string(),
+        Expr::Dont { .. } => "dont".to_string(),
         Expr::Die { .. } => "die".to_string(),
         Expr::Case(case) => {
             let branches = case
@@ -2689,6 +2710,7 @@ mod tests {
                 expression_shape(&loop_.body)
             ),
             Expr::Break { .. } => "break".to_string(),
+            Expr::Dont { .. } => "dont".to_string(),
             Expr::Die { .. } => "die".to_string(),
             Expr::Case(case) => {
                 let branches = case

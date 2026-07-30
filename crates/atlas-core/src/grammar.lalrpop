@@ -56,6 +56,7 @@ pub Command: Command = {
         show_overloads_command(whattype, name, question)
     },
     <whattype:"whattype"> <target:Expr> => whattype_command(whattype, target),
+    <showall:"showall"> => Command::ShowAll { span: showall },
     // set (parser.y:140): the `let` declaration forms, bound globally and
     // in parallel; function-typed leaves enter the overload table.
     <set:"set"> <operator:Operator> <open:"(">
@@ -557,6 +558,11 @@ CasePatternTail: PatternTail = {
 // is the constant-true condition (parser.y:443). The `;`-sequenced
 // do_expr conditions (parser.y:441) are deferred until a fixture needs them.
 WhileTail: (Option<Expr>, Expr, SourceSpan) = {
+    <condition:AssignmentExpr> ";" <dont:"dont"> <od:"od"> => (
+        Some(condition),
+        Expr::Dont { span: dont },
+        od,
+    ),
     <_do:"do"> <body:Expr> <od:"od"> => (None, body, od),
     <condition:AssignmentExpr> <_do:"do"> <body:Expr> <od:"od"> => (Some(condition), body, od),
 };
@@ -664,11 +670,13 @@ extern {
         "do" => ParserToken::Do(<SourceSpan>),
         "od" => ParserToken::Od(<SourceSpan>),
         "break" => ParserToken::Break(<SourceSpan>),
+        "dont" => ParserToken::Dont(<SourceSpan>),
         "die" => ParserToken::Die(<SourceSpan>),
         "?" => ParserToken::Question(<SourceSpan>),
         "set" => ParserToken::Set(<SourceSpan>),
         "set_type" => ParserToken::SetType(<SourceSpan>),
         "whattype" => ParserToken::Whattype(<SourceSpan>),
+        "showall" => ParserToken::Showall(<SourceSpan>),
         "forget" => ParserToken::Forget(<SourceSpan>),
         "case" => ParserToken::Case(<SourceSpan>),
         "esac" => ParserToken::Esac(<SourceSpan>),

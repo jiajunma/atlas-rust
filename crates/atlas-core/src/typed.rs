@@ -36,6 +36,7 @@ use std::sync::OnceLock;
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Control {
     Break(usize),
+    Dont,
     Return(Value),
     Runtime(Diagnostic),
 }
@@ -162,6 +163,8 @@ pub enum TypedExpr {
     },
     /// `break`, unwound to the innermost loop boundary.
     Break,
+    /// `dont` terminates the current while iteration without an error.
+    Dont,
     /// `die` (upstream `shell`, axis.w:621-630): analysing it succeeds
     /// against any required type; evaluating it throws `I die`.
     Die {
@@ -671,7 +674,71 @@ impl TypedContext {
                 }
                 Ok(vec![TypedCommandEvent::ReportLine { text, span: *span }])
             }
+            Command::ShowAll { span } => Ok(vec![TypedCommandEvent::ReportLine {
+                text: self.show_all_text(),
+                span: *span,
+            }]),
         }
+    }
+
+    fn show_all_text(&self) -> String {
+        let mut text = String::from("Overloaded operators and functions:\n");
+        let mut names = Vec::new();
+        for builtin in builtin_registry() {
+            if !names.iter().any(|name| name == &builtin.name) {
+                names.push(builtin.name);
+            }
+        }
+        for name in self.overloads.user.keys() {
+            if !names.iter().any(|known| known == name) {
+                names.push(name.as_str());
+            }
+        }
+        for name in names {
+            for variant in merged_variants(name, &self.overloads, &self.types) {
+                let source = match variant.origin {
+                    OverloadOrigin::Builtin(_index) => {
+                        format!("{{{}@{}}}", name, variant.arg_type.display(&self.types))
+                    }
+                    OverloadOrigin::User(index) => self
+                        .overloads
+                        .user_variants(name)
+                        .get(index)
+                        .map(|entry| entry.value.to_string())
+                        .unwrap_or_else(|| "*".to_owned()),
+                };
+                text.push_str(&format!(
+                    "{}: {}: {}\n",
+                    name,
+                    Self::format_function_signature(
+                        &variant.arg_type,
+                        &variant.result_type,
+                        &self.types,
+                    ),
+                    source
+                ));
+            }
+        }
+        text.push_str("Global variables:\n");
+        for (name, (type_cell, cell)) in &self.globals.entries {
+            let value = cell
+                .borrow()
+                .as_ref()
+                .map_or_else(|| "*".to_owned(), |value| value.to_string());
+            text.push_str(&format!(
+                "{}: {}: {}\n",
+                name,
+                type_cell.borrow().display(&self.types),
+                value
+            ));
+        }
+        text
+    }
+
+    fn format_function_signature(arg_type: &Type, result_type: &Type, types: &TypeTable) -> String {
+        Type::function(arg_type.clone(), result_type.clone())
+            .display(types)
+            .to_string()
     }
 
     /// Bind a global value and report `(Constant|Variable) name: type`
@@ -961,7 +1028,7 @@ fn evaluate_command_expr(
         .evaluate(context, Level::SingleValue)
         .map_err(|control| match control {
             Control::Runtime(diagnostic) => diagnostic,
-            Control::Break(_) | Control::Return(_) => Diagnostic::new(
+            Control::Break(_) | Control::Dont | Control::Return(_) => Diagnostic::new(
                 ErrorKind::Runtime,
                 "illegal control flow at top level",
                 None,
@@ -2341,6 +2408,15 @@ pub fn convert_expr(
             // `… then break fi` branch balances against the implicit
             // void else branch.
             conform_types(&Type::void(), required, TypedExpr::Break, *span, analysis)
+        }
+        Expr::Dont { span } => {
+            if analysis.loop_depth == 0 {
+                return Err(type_error(
+                    "Using 'dont' not in the reach of any loop".into(),
+                    *span,
+                ));
+            }
+            conform_types(&Type::void(), required, TypedExpr::Dont, *span, analysis)
         }
         Expr::Die { span } => {
             // `die` passes analysis trivially in ANY context, leaving the
@@ -4335,6 +4411,7 @@ impl TypedExpr {
                         Ok(None) => unreachable!("single-value loop body yields a value"),
                         // The breaking iteration contributes no value.
                         Err(Control::Break(0)) => break,
+                        Err(Control::Dont) => break,
                         Err(Control::Break(levels)) => {
                             return Err(Control::Break(levels - 1));
                         }
@@ -4381,6 +4458,7 @@ impl TypedExpr {
                 Ok(at_level(level, || Value::List(collected.clone())))
             }
             Self::Break => Err(Control::Break(0)),
+            Self::Dont => Err(Control::Dont),
             Self::Die { span } => Err(runtime("I die", *span)),
             Self::UnionInject {
                 tag,
