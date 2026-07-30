@@ -1,0 +1,24 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/strong_real_print_type_rejected_probe",
+  "status": "verified_hpc_reference",
+  "events": [
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rd': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "RootDatum",
+        "display": "simply connected root datum of Lie type 'B2'"
+      }
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "found RootDatum while CartanClass was needed."
+    }
+  ]
+}

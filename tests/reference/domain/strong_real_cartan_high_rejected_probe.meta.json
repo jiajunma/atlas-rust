@@ -1,0 +1,24 @@
+{
+  "fixture": "domain/strong_real_cartan_high_rejected_probe",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3502700",
+  "source_archive_sha256": "87ebc832a6df4f25b98d2e5481e3119fb9f9b02b65b6da6d2659ad9784f012c1",
+  "fixture_sha256": "3403c5912de49905712f0fe86873b1783aa246196b1a19b1456fa8586cce4522",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "40b9e63cb0f4df0f942208829a87209cfcb8eb32ba3de92030f4d7c8b269354e",
+  "oracle_stderr_sha256": "8601b178fbdd65fc1da1a8161def23db213fe245cf7005dce9e9b93382f4a5ff",
+  "capture_artifacts_sha256": "7f1194bce28cadd88d1f1e51c6e78664a61e4bff8c74334d11ff582b145ff2c2",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:4347-4363",
+    "sources/interpreter/atlas-types.w:9112-9123"
+  ],
+  "scenarios": [
+    "Cartan_class(ic,4) with 4 classes -> 'Illegal Cartan class number: 4, this inner class only has 4 of them'"
+  ],
+  "notes": "Strong-real Cartan enumeration probe captured verbatim by HPC job 3502700 against the pinned atlasofliegroups-4d3e9449 oracle. Rust support remains unimplemented; the Cartan numbering adapter must land before these can pass."
+}

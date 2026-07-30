@@ -1,0 +1,290 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/strong_real_b2_root_cartans_probe",
+  "status": "verified_hpc_reference",
+  "events": [
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rd': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "RootDatum",
+        "display": "simply connected root datum of Lie type 'B2'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ic': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "InnerClass",
+        "display": "Complex reductive group of type B2, with involution defining\ninner class of type 'c', with 3 real forms and 3 dual real forms"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 4
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'c0': CartanClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "CartanClass",
+        "display": "Cartan class #0, occurring for 3 real forms and for 1 dual real form"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "CartanClass",
+        "display": "Cartan class #0, occurring for 3 real forms and for 1 dual real form"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "matrix",
+        "display": "\n| 1, 0 |\n| 0, 1 |\n"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "row",
+        "display": "[compact connected real group with Lie algebra 'so(5)',connected real group with Lie algebra 'so(4,1)',connected split real group with Lie algebra 'so(3,2)']"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "row",
+        "display": "[disconnected split real group with Lie algebra 'sp(4,R)']"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "row",
+        "display": "[[2],[1,0,0]]"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'c1': CartanClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "CartanClass",
+        "display": "Cartan class #1, occurring for 1 real form and for 2 dual real forms"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "CartanClass",
+        "display": "Cartan class #1, occurring for 1 real form and for 2 dual real forms"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "matrix",
+        "display": "\n|  1,  0 |\n| -2, -1 |\n"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "row",
+        "display": "[connected split real group with Lie algebra 'so(3,2)']"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "row",
+        "display": "[disconnected real group with Lie algebra 'sp(1,1)',disconnected split real group with Lie algebra 'sp(4,R)']"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "row",
+        "display": "[[2]]"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'c2': CartanClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "CartanClass",
+        "display": "Cartan class #2, occurring for 2 real forms and for 1 dual real form"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "CartanClass",
+        "display": "Cartan class #2, occurring for 2 real forms and for 1 dual real form"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "matrix",
+        "display": "\n| -1, -1 |\n|  0,  1 |\n"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "row",
+        "display": "[connected real group with Lie algebra 'so(4,1)',connected split real group with Lie algebra 'so(3,2)']"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "row",
+        "display": "[disconnected split real group with Lie algebra 'sp(4,R)']"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "row",
+        "display": "[[2],[1]]"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'c3': CartanClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "CartanClass",
+        "display": "Cartan class #3, occurring for 1 real form and for 3 dual real forms"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "CartanClass",
+        "display": "Cartan class #3, occurring for 1 real form and for 3 dual real forms"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "matrix",
+        "display": "\n| -1,  0 |\n|  0, -1 |\n"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "row",
+        "display": "[connected split real group with Lie algebra 'so(3,2)']"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "row",
+        "display": "[compact connected real group with Lie algebra 'sp(2)',disconnected real group with Lie algebra 'sp(1,1)',disconnected split real group with Lie algebra 'sp(4,R)']"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "row",
+        "display": "[[2]]"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'r0': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "RealForm",
+        "display": "compact connected real group with Lie algebra 'so(5)'"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "CartanClass",
+        "display": "Cartan class #0, occurring for 3 real forms and for 1 dual real form"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'r1': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "RealForm",
+        "display": "connected real group with Lie algebra 'so(4,1)'"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "CartanClass",
+        "display": "Cartan class #2, occurring for 2 real forms and for 1 dual real form"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'r2': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "RealForm",
+        "display": "connected split real group with Lie algebra 'so(3,2)'"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "CartanClass",
+        "display": "Cartan class #3, occurring for 1 real form and for 3 dual real forms"
+      }
+    }
+  ]
+}

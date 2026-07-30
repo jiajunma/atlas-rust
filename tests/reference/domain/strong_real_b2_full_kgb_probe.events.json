@@ -1,0 +1,79 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/strong_real_b2_full_kgb_probe",
+  "status": "verified_hpc_reference",
+  "events": [
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rd': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "RootDatum",
+        "display": "simply connected root datum of Lie type 'B2'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ic': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "InnerClass",
+        "display": "Complex reductive group of type B2, with involution defining\ninner class of type 'c', with 3 real forms and 3 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'r0': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "RealForm",
+        "display": "compact connected real group with Lie algebra 'so(5)'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "kgbsize: 1\nBase grading: [00].\n0:  0  [c,c]   0  0    *  *  (0,0)#0 e\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'r1': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "RealForm",
+        "display": "connected real group with Lie algebra 'so(4,1)'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "kgbsize: 4\nBase grading: [00].\n0:  0  [c,n]   0  1    *  2  (1,0)#0 e\n1:  0  [c,n]   1  0    *  2  (1,1)#0 e\n2:  1  [C,r]   3  2    *  *  (1,0) 2 2^e\n3:  2  [C,c]   2  3    *  *  (0,0)#2 1x2^e\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'r2': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "RealForm",
+        "display": "connected split real group with Lie algebra 'so(3,2)'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "kgbsize: 11\nBase grading: [11].\n 0:  0  [n,n]    1   2     4   6  (0,0)#0 e\n 1:  0  [n,c]    0   1     4   *  (1,0)#0 e\n 2:  0  [n,n]    3   0     5   6  (0,1)#0 e\n 3:  0  [n,c]    2   3     5   *  (1,1)#0 e\n 4:  1  [r,C]    4   8     *   *  (0,0) 1 1^e\n 5:  1  [r,C]    5   9     *   *  (0,1) 1 1^e\n 6:  1  [C,r]    7   6     *   *  (0,0) 2 2^e\n 7:  2  [C,n]    6   7     *  10  (0,0)#2 1x2^e\n 8:  2  [n,C]    9   4    10   *  (0,0)#1 2x1^e\n 9:  2  [n,C]    8   5    10   *  (0,1)#1 2x1^e\n10:  3  [r,r]   10  10     *   *  (0,0)#3 1^2x1^e\n"
+    }
+  ]
+}

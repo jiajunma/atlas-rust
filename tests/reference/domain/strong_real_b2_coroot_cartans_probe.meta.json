@@ -1,0 +1,25 @@
+{
+  "fixture": "domain/strong_real_b2_coroot_cartans_probe",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3502700",
+  "source_archive_sha256": "87ebc832a6df4f25b98d2e5481e3119fb9f9b02b65b6da6d2659ad9784f012c1",
+  "fixture_sha256": "031f8f3042c76967b90a1b8e340dcaaa0dc8b29edeb2a46b92f5f452e37bdd36",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "8f3f513a8d9a02ff304d1895fb8030341ff3ee66c77bc269916679e98489af3e",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "0145b2b9cfb9a0e16457bdb7134e5c6bba6b9ded87ff32d6e6975c6c63d303bf",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:4347-4363",
+    "sources/interpreter/atlas-types.w:9112-9123"
+  ],
+  "scenarios": [
+    "same 4-class enumeration in coroot preference (simply_connected(...,true))",
+    "pins whether Cartan numbering is invariant under coroot preference"
+  ],
+  "notes": "Strong-real Cartan enumeration probe captured verbatim by HPC job 3502700 against the pinned atlasofliegroups-4d3e9449 oracle. Rust support remains unimplemented; the Cartan numbering adapter must land before these can pass."
+}

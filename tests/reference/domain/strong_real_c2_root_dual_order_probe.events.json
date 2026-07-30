@@ -1,0 +1,130 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/strong_real_c2_root_dual_order_probe",
+  "status": "verified_hpc_reference",
+  "events": [
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rd': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "RootDatum",
+        "display": "simply connected root datum of Lie type 'C2'"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "boolean",
+        "value": false
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "matrix",
+        "display": "\n|  2, -2, 0, 2 |\n| -1,  2, 1, 0 |\n"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "matrix",
+        "display": "\n| 1, 0, 1, 1 |\n| 0, 1, 2, 1 |\n"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'dd': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "RootDatum",
+        "display": "adjoint root datum of Lie type 'B2'"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "boolean",
+        "value": true
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "matrix",
+        "display": "\n| 1, 0, 1, 1 |\n| 0, 1, 2, 1 |\n"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "matrix",
+        "display": "\n|  2, -2, 0, 2 |\n| -1,  2, 1, 0 |\n"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ic': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "InnerClass",
+        "display": "Complex reductive group of type C2, with involution defining\ninner class of type 'c', with 3 real forms and 3 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'di': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "InnerClass",
+        "display": "Complex reductive group of type B2, with involution defining\ninner class of type 'c', with 3 real forms and 3 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'drd': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "RootDatum",
+        "display": "adjoint root datum of Lie type 'B2'"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "boolean",
+        "value": true
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "matrix",
+        "display": "\n| 1, 0, 1, 1 |\n| 0, 1, 2, 1 |\n"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "matrix",
+        "display": "\n|  2, -2, 0, 2 |\n| -1,  2, 1, 0 |\n"
+      }
+    }
+  ]
+}

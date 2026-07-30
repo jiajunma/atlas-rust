@@ -1,0 +1,24 @@
+{
+  "fixture": "domain/strong_real_print_type_rejected_probe",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3502700",
+  "source_archive_sha256": "87ebc832a6df4f25b98d2e5481e3119fb9f9b02b65b6da6d2659ad9784f012c1",
+  "fixture_sha256": "7e1f4f2e5f2a1b99cca4312db83081d7e7aa937ead8a14cff0ca477811f803aa",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "92e13f700b4bc1c24ab4b39647853f0e96c8224f3f442ddccb6d7bc4ade80e64",
+  "oracle_stderr_sha256": "269071bd310df95778bd4af6cfc2bc8786373b52cede2aef4c4b270da71abfcc",
+  "capture_artifacts_sha256": "72ce73af0ab254b9cce815be915c4624504889193a67e0a07fdd2f7913ac0873",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:4347-4363",
+    "sources/interpreter/atlas-types.w:9112-9123"
+  ],
+  "scenarios": [
+    "print_strong_real(rd) -> type error 'found RootDatum while CartanClass was needed.'"
+  ],
+  "notes": "Strong-real Cartan enumeration probe captured verbatim by HPC job 3502700 against the pinned atlasofliegroups-4d3e9449 oracle. Rust support remains unimplemented; the Cartan numbering adapter must land before these can pass."
+}
