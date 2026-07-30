@@ -173,16 +173,16 @@ square_classes is already registered+verified by cartan_aggregation, so this
 slice is COVERAGE-ONLY if involution_table landed the full print_strong_real:
 B2 c2 exercises the multi-class layout ('there are 2 real form classes:\n\n'
 header, blank line after EVERY block including the last; squares
-exp(2i\pi([0,1]/2)) and exp(2i\pi([0,0]/1))). NUMBERING ADAPTER NOTE
-(2026-07-30): this slice is the first B2 contract, and the crate's
-Cartan/involution enumeration order diverges from upstream at B2 (agent-15
-report; A1/A2 coincide) — a dedicated CARTAN NUMBERING ADAPTER slice must
-land FIRST: enumerate each twisted-conjugacy class, canonicalize its
-representative via the canonical_involution_expr landed with
-involution_table (72d42a8), and re-key the classification/KGB enumeration
-to the upstream canonical order (the deferral recorded in
-twisted_involution.rs:12-16 and CARTAN_AGGREGATION_DESIGN.md; also verify
-A2 coincidence explicitly in the real_form_labels slice) → `split_basic` (eval/; Split operator family —
+exp(2i\pi([0,1]/2)) and exp(2i\pi([0,0]/1))). NUMBERING ADAPTER — LANDED
+2026-07-31: `CartanClassification::build` now enumerates classes in the
+upstream BFS discovery order (innerclass.cpp:218-291 task 1; parents in
+discovery order, positive imaginary roots in (height, revlex) RootNbr
+order, Cayley successors canonicalized via `InnerClass::canonicalize`
+before dedup). B2 order is now [e, s1s0s1, s0s1s0, w0] with orbit sizes
+[1,2,2,1], verified against the oracle's Cartan_info and the frozen
+B2/C2 Cartan probes; A1/A2 order unchanged. The KGB element discovery
+order still diverges (full_kgb probe: Cayley link targets) and is a
+separate queued slice → `split_basic` (eval/; Split operator family —
 language-level primitive type `Split` (no crate math; s^2=1 pair arithmetic
 (e1e2+f1f2, e1f2+f1e2)); upstream install list atlas-types.w:5136-5145 is
 NINE entries: =(Split,Split->bool), !=(Split,Split->bool), unary =(Split->bool)
@@ -540,10 +540,10 @@ contract) remain pending differential evidence.
   `Failed to match 'print_KGB' with argument type RootDatum` overload-miss
   wording required implementing the selection overload as upstream
   registers two. Commit `72d42a8`.
-- Known pre-existing divergence (documented in the agent report):
-  the crate's Cartan/involution enumeration order differs from upstream
-  for B2 (standing adapter deferral); A1 contracts pass verbatim because
-  the orders coincide. `strong_real` (B2) needs the numbering adapter.
+- The B2 Cartan/involution enumeration divergence this note recorded is
+  RESOLVED: the numbering adapter (`CartanClassification::build` BFS
+  discovery order with canonical representatives) landed after this stage;
+  see the numbering-adapter entry in the live continuation.
 - Differential: `pipeline_swap_diff` job `3502272` at commit `72d42a8`
   reports both fixtures PASS with zero regressions. Metadata carries
   `rust_status: verified_hpc` with `differential_job: 3502272`.

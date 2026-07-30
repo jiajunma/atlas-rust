@@ -1212,13 +1212,11 @@ mod tests {
         )
         .unwrap();
         let (inner_class, classification, strong, order) = print_pipeline(&datum, 8);
-        // The crate's B2 Cartan sweep orders the classes as upstream's
-        // #0, #2, #3, #1 (a known enumeration-order gap owned by the
-        // Cartan_class surface, not by this print data): upstream's c2
-        // block (the strong_real fixture anchor) is the crate's second
-        // class, and upstream's c0 block (multi-element orbits with an
-        // external-number collapse) is the first.
-        let c2 = classification.cartan_ids().nth(1).unwrap();
+        // The crate's B2 Cartan sweep matches upstream's BFS discovery order
+        // #0, #1, #2, #3: upstream's c2 block (the strong_real fixture
+        // anchor) is the crate's Cartan #2, and upstream's c0 block
+        // (multi-element orbits with an external-number collapse) is #0.
+        let c2 = classification.cartan_ids().nth(2).unwrap();
         let prints =
             strong_real_class_prints(&inner_class, &classification, &strong, &order, c2, &budget)
                 .unwrap();

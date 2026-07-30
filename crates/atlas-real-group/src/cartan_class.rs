@@ -8,8 +8,12 @@ use crate::{
 
 /// One deterministic orbit under Weyl twisted conjugacy.
 ///
-/// The representative is the first action in this crate's deterministic Weyl
-/// enumeration, not Atlas's `canonicalize` representative; it decomposes
+/// A class produced by [`TwistedConjugacyPartition`] carries the first
+/// action in this crate's deterministic Weyl enumeration as its
+/// representative; [`crate::CartanClassification`] rebuilds each class it
+/// consumes with the Atlas-canonical representative instead
+/// (`InnerClass::canonicalize`, applied to the Cayley successor before
+/// numbering, innerclass.cpp:252-263). Either way the class decomposes
 /// through [`crate::CayleyCrossDecomposition`], and real-form labels
 /// correlate through [`crate::RealFormLabels`] at that same representative.
 /// Fiber groups, real-form attribution, and real Cartan component data live
@@ -41,8 +45,11 @@ impl TwistedConjugacyClass {
 /// involutions, with a membership lookup.
 ///
 /// Classes are in the deterministic enumeration order (matrix-lexicographic;
-/// NOT graded — the identity class generally sorts last). The lookup key is
-/// the root-image permutation, which does not encode the datum, so
+/// NOT graded — the identity class generally sorts last). This raw order is
+/// an implementation detail of the orbit walk: the Cartan-numbering consumer
+/// [`crate::CartanClassification`] reorders the classes into Atlas's BFS
+/// discovery order through this partition's membership map. The lookup key
+/// is the root-image permutation, which does not encode the datum, so
 /// [`Self::class_of`] gates datum and distinguished-involution provenance
 /// before the map hit; a miss after those gates is an invariant violation,
 /// never a recoverable absence.

@@ -9,8 +9,9 @@ use crate::{
 /// their twisted-conjugacy orbits. This value only establishes the
 /// root-theoretic condition `w theta` squared equals one; the Cayley/cross
 /// decomposition relative to the distinguished involution lives in
-/// [`crate::CayleyCrossDecomposition`], and Atlas canonicalization remains
-/// unimplemented.
+/// [`crate::CayleyCrossDecomposition`], and Atlas canonicalization lives in
+/// [`crate::InnerClass::canonicalize`], which [`crate::CartanClassification`]
+/// applies when numbering Cartan classes.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TwistedInvolution {
     weyl_action: WeylAction,
