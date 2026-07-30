@@ -231,9 +231,22 @@ print_K_type_pol: coefficient embellishment — full print_split only when
 BOTH e and s components occur across terms, else bare e (or '{s}s'), then
 '*' + ' K_type(x=N, lambda=rho+lam_rho)' (NO adjective) + ' [{height}]',
 one '\\n' per term; empty -> 'Empty sum of K-types') →
-`param_basic` (param(KGBElt,vec,ratvec)/%/height/predicates/real_form/
-K_type/param(KType) — atlas-types.w:7472-7480; rank-mismatch wording
-'Rank mismatch: (r,a,b)') →
+`param_basic` (param(KGBElt,vec,ratvec->Param) =
+Rep_context::sr(x,lam_rho,nu), rank check 'Rank mismatch:
+({rank},{lam_size},{nu_size})' (atlas-types.w:6215); %(Param->KGBElt,vec,
+ratvec) = (x, rc().lambda_rho(val), val.gamma()) — NOTE third component is
+the INFO CHARACTER gamma, not input nu (atlas-types.w:6252; A1 x=2 anchor:
+gamma=[0]/1 since lambda projects to 0 on the split Cartan); height stored
+in StandardRepr (= K-type height); real_form; K_type(Param->KType) =
+rc().sr_K(val) restrict; param(KType->Param) = rc().sr(K-type) with nu=0;
+=/!= on StandardRepr; is_standard/is_final/is_zero predicates; display =
+same 6-way adjective chain as KType + print_stdrep
+'parameter(x=N,lambda=[..]/d,nu=[..]/d)' (basic_io); SLICE BOUNDARY:
+register ONLY the fixture-gated set — the upstream install chunk continues
+to equivalent/is_dominant/is_semifinal/dominant/normal/cross/Cayley/twist/
+orientation_nr/reducibility_points/scale (atlas-types.w:7485-7495) but
+those await their own contracts; needs crate StandardRepr/Rep_context
+(repr.{h,cpp}), shared with ktype_basic) →
 `parampol_basic` (null_module/#/±Param/first_term — atlas-types.w:8542-8567;
 term display drops the 'final' prefix) → `involution_primitive`
 (involution(LieType,[int],string) and the based form).
