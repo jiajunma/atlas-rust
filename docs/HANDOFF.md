@@ -293,7 +293,15 @@ class needs two identical consecutive types', 'c'~'e' synonyms, and the
 where -1 lies in W (A1,B2,Cn,D2n,...) it collapses to 'c'; 'u' often
 collapses to 's') — anchors: A1 "s" -> | 1 | (collapsed), A2 "s" -> flip,
 A2 "u" -> flip, B2 "s" -> I2, A1.A1 "C" -> swap, A2 mat [[1,1],[0,1]] "s"
--> | 1, 1 | / | 0, -1 | via on_basis).
+-> | 1, 1 | / | 0, -1 | via on_basis). CRATE RECON 2026-07-30:
+InnerClassLayout exists (layout.rs:25 factors/letters/perm); the new work
+is table-driven, no deep math: simple_involution (lietype.cpp:480) per
+letter — complex = factor swap, unequal_rank = per-type tables (A
+antidiagonal, D last-two swap, E6 0<->5+2<->4, T -1), compact/split =
+identity under the layout permutation — plus the swap_sc collapsing
+(lietype.cpp:~435: A1/B/C/D2n/E7/E8/F/G interchange c<->s, E6 and T map
+u->s) and on_basis (topology.rs:184 already ports the integrality-checked
+division); MEDIUM slice of exact tables.
 `real_group`, `cartan_aggregation`, `seed_x0`, `overloads_ops_b8c{,_rejected}`,
 `whattype_ops_b8d`, and `dont_b13{,_rejected}` are DONE (verified
 `3501779` / `3502126` / `3502176` / `3501643`).
