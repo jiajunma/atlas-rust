@@ -85,31 +85,7 @@ oracle's transducer choice exactly (B2 input [0,1,0,1] canonicalizes to
 <1.0.1.0>, A2 [0,1,0] stays <0.1.0>); NOTE the crate-level weyl_element
 dropped the transducer order (WEYL_ELEMENT_DESIGN.md deferral), so the
 language layer must port the Transducer word canonicalization, not reuse
-the crate's raw word; length(w) = W.length(w)) → `involution_table`
-(print_KGB: interpreter wrapper atlas-types.cpp:5159 prints 'kgbsize: N\n'
-then kgb_io::var_print_KGB (kgb_io.cpp:60, NON-traditional mode with
-G=innerClass): 'Base grading: [...].\n' header — the grading prints as a
-BARE BIT STRING with no separators (B2 anchor '[11]', A1 '[1]'/'[0]'),
-distinct from the status brackets which ARE comma-separated — then rows
-'{j:>width}:  {len:>lwidth}<pad2>[status] {cross:>width+pad}...<pad2>
-{cayley|*:>width+pad}...<pad2>(torus)#{cc:>cwidth} {involution-word}\n'
-where width=digits(size-1), cwidth=digits(Cartan_class(size-1)),
-lwidth=digits(length(size-1)), pad=2; status chars per simple root
-C/c/n/r comma-separated in brackets (prettyprint.cpp:284); the '#' flag
-fires when kgb.involution(j)==G.involution_of_Cartan(cc(j)); the word is
-prettyprint::printInvolution (prettyprint.cpp:219) =
-TwistedWeylGroup::canonical_involution_expr, digits 1-based with '^'
-suffix for positive entries and 'x' for complemented (~) entries, closed
-by 'e' — NOTE the crate may lack involution-word canonicalization (same
-gap class as the weyl_element Transducer); print_strong_real:
-output.cpp:490 — n=cc.numRealFormClasses()>1 adds 'there are N real form
-classes:\n\n' and blank-line-separated blocks; per square class:
-'class #{f_csc}, possible square: exp(2i\pi({z}))\n' with f_csc =
-xi_square(rfl[fiber classRep]), z = sum of fundamental_coweight over
-base-graded simples with numerator entries reduced mod denominator
-(remainder), then per weak form 'real form #{rfi.out(rfl[toWeakReal])}:
-[{orbit comma-sep}] ({count})\n') →
-`adjoint_fiber` (central_fiber(RealForm->[vec]) =
+the crate's raw word; length(w) = W.length(w)) → `adjoint_fiber` (central_fiber(RealForm->[vec]) =
 rf->val.innerClass().central_fiber(rf->val.realForm()) wrapped as a row of
 int_Vector (atlas-types.w:3915); upstream algorithm innerclass.cpp:1042:
 csc = fund_fiber.central_square_class(rf); diff = wrf_rep(rf) -
@@ -326,9 +302,10 @@ identity under the layout permutation — plus the swap_sc collapsing
 (lietype.cpp:~435: A1/B/C/D2n/E7/E8/F/G interchange c<->s, E6 and T map
 u->s) and on_basis (topology.rs:184 already ports the integrality-checked
 division); MEDIUM slice of exact tables.
-`real_group`, `cartan_aggregation`, `seed_x0`, `overloads_ops_b8c{,_rejected}`,
+`real_group`, `cartan_aggregation`, `seed_x0`, `involution_table`,
+`overloads_ops_b8c{,_rejected}`,
 `whattype_ops_b8d`, and `dont_b13{,_rejected}` are DONE (verified
-`3501779` / `3502126` / `3502176` / `3501643`).
+`3501779` / `3502126` / `3502176` / `3502272` / `3501643`).
 
 Uncovered matrix items needing contract design first (probe the oracle,
 then freeze): KL file formats and readline completion. For readline
@@ -454,8 +431,9 @@ a future cleanup pass rather than schema migration.
   `weyl_element` (verified `3502034`) + `kgb_operations` +
   `tits_operations` (verified `3501870`), `cartan_aggregation`
   (implemented `1989f62`, verified `3502126`) + `seed_x0`
-  (implemented `babbefd`, verified `3502176`) +
-  `involution_table` + `adjoint_fiber` + `real_form_labels` +
+  (implemented `babbefd`, verified `3502176`) + `involution_table`
+  (implemented `72d42a8`, verified `3502272`) +
+  `adjoint_fiber` + `real_form_labels` +
   `weak_real_form` + `involution_decomposition` +
   `strong_real` (`3501500`), `split_basic` + `block_basic` (`3501519`),
   `ktype_basic` + `ktypepol_basic` + `param_basic` + `parampol_basic`
@@ -495,6 +473,28 @@ blocks, K-types, parameters, the KL layer, and the relation-style datum
 constructors (`Smith_Cartan`, `filter_units`, `ann_mod`, `replace_gen`,
 `quotient_basis` — atlas-types.w:937, not yet covered by any frozen
 contract) remain pending differential evidence.
+
+## Verified stage: involution_table printers (differential 3502272)
+
+- `tests/fixtures/domain/involution_table{,_rejected}.atlas`: `print_KGB`
+  in both upstream forms (full `kgbsize: N` + `Base grading: [..].` header
+  and the selection form without the header) and `print_strong_real`
+  (single- and multi-class layouts), ported column-for-column from
+  kgb_io.cpp:60/output.cpp:490. Crate side: `InnerClass::canonical_involution_expr`
+  (weyl.cpp:1359-1385) produces the `1^2x1^e` decoration words; the printer
+  output drains through a new `EvaluationContext.printed` buffer into
+  report events (`BuiltinImpl::DomainPrinter` prints at both levels and
+  returns the empty tuple at single_value). The rejected contract's
+  `Failed to match 'print_KGB' with argument type RootDatum` overload-miss
+  wording required implementing the selection overload as upstream
+  registers two. Commit `72d42a8`.
+- Known pre-existing divergence (documented in the agent report):
+  the crate's Cartan/involution enumeration order differs from upstream
+  for B2 (standing adapter deferral); A1 contracts pass verbatim because
+  the orders coincide. `strong_real` (B2) needs the numbering adapter.
+- Differential: `pipeline_swap_diff` job `3502272` at commit `72d42a8`
+  reports both fixtures PASS with zero regressions. Metadata carries
+  `rust_status: verified_hpc` with `differential_job: 3502272`.
 
 ## Verified stage: seed_x0 synthetic KGB constructor (differential 3502176)
 
