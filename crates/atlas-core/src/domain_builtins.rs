@@ -2132,6 +2132,115 @@ fn build_kgb_element(
         .ok_or_else(|| runtime(span, "KGB element not present"))
 }
 
+/// Shared body of the synthetic real-form constructor
+/// `real_form(InnerClass,mat,ratvec)` (synthetic_real_form_wrapper,
+/// interpreter/atlas-types.w:3851-3871): the weak real form claiming the
+/// (involution, torus factor) datum, answered as the form's EXTERNAL
+/// number. Every diagnostic fires before the wrapper's no_value gate, so
+/// `validate` runs the same pipeline and drops the result. The order is
+/// the upstream one — size check, `twisted_from_involution` with its
+/// shape, involution, and inner-class checks, THEN the doubled
+/// theta-fixed projection with its centrality parity test and halving —
+/// the exact reverse of `build_KGB_element`'s arithmetic-first order.
+/// Upstream's closing `minimal_torus_part` elects the base torus part for
+/// the value's KGB seed; the crate's `build_real_form` recomputes the
+/// elected seed from the form number (`RealFormSeed`), which is exactly
+/// upstream's drop-to-shared-build case of `real_form_value::build`.
+fn synthetic_real_form(
+    context: &Arc<InnerClassContext>,
+    theta: &Value,
+    factor: &Value,
+    span: SourceSpan,
+) -> Result<usize, Diagnostic> {
+    let inner_class = &context.inner_class;
+    let rank = inner_class.datum().lattice_rank();
+    let Value::RatVector(factor) = factor else {
+        return Err(type_error(
+            span,
+            format!("expected a ratvec, found {factor}"),
+        ));
+    };
+    if factor.numerators().len() != rank {
+        return Err(runtime(span, "Torus factor size mismatch"));
+    }
+    // The upstream shape diagnostic prints the matrix's true shape; the
+    // row adapter represents a 0xN matrix as N empty rows, so recover
+    // that one case from the value itself.
+    let zero_row =
+        matches!(theta, Value::Matrix(matrix) if matrix.rows() == 0 && matrix.cols() > 0);
+    let matrix = as_matrix_rows(theta, span)?;
+    let columns = matrix.first().map_or(0, Vec::len);
+    if matrix.len() != rank || columns != rank {
+        let (rows, cols) = if zero_row {
+            (0, matrix.len())
+        } else {
+            (matrix.len(), columns)
+        };
+        return Err(runtime(
+            span,
+            format!("Involution should be a {rank}x{rank} matrix; received a {rows}x{cols} matrix"),
+        ));
+    }
+    if !is_identity_square(&matrix) {
+        return Err(runtime(span, "Given transformation is not an involution"));
+    }
+    let involution =
+        LatticeInvolution::new(inner_class.datum(), matrix.clone(), transpose(&matrix))
+            .map_err(|error| runtime(span, error.to_string()))?;
+    let element = inner_class
+        .twisted_from_involution(involution)
+        .map_err(|error| match error {
+            StructureError::InvalidBasedAutomorphism => {
+                runtime(span, "Involution not in this inner class")
+            }
+            // The root-datum automorphism rejections share the involution
+            // decomposition slice's upstream wording.
+            other => twisted_involution_diagnostic(&context.root_datum, other, span),
+        })?;
+    // Doubled theta-fixed projection on the numerator (upstream
+    // `num += theta->val.right_prod(num)`), then the centrality parity
+    // test of the DOUBLED factor: every simple root must evaluate to a
+    // multiple of twice the denominator (upstream `is_central`).
+    let denominator = BigInt::from(factor.denominator());
+    let doubled: Vec<BigInt> = (0..rank)
+        .map(|column| {
+            let mut symmetrized = BigInt::from(factor.numerators()[column]);
+            for (row, theta_row) in matrix.iter().enumerate() {
+                symmetrized +=
+                    BigInt::from(theta_row[column]) * BigInt::from(factor.numerators()[row]);
+            }
+            symmetrized
+        })
+        .collect();
+    let twice_denominator = BigInt::from(2) * &denominator;
+    for root in inner_class.datum().simple_roots() {
+        let mut evaluation = BigInt::from(0);
+        for (&coordinate, numerator) in root.as_slice().iter().zip(&doubled) {
+            evaluation += BigInt::from(coordinate) * numerator;
+        }
+        if &evaluation % &twice_denominator != 0 {
+            return Err(runtime(
+                span,
+                "Torus factor does not define a valid strong involution",
+            ));
+        }
+    }
+    let projected: Vec<BigRational> = doubled
+        .iter()
+        .map(|numerator| {
+            BigRational::from(numerator.clone()) / BigRational::from(&twice_denominator)
+        })
+        .collect();
+    let internal = context
+        .classification
+        .real_form_of(inner_class, &element, &projected)
+        .map_err(|error| runtime(span, error.to_string()))?;
+    context
+        .order
+        .external(internal)
+        .ok_or_else(|| runtime(span, "real form number out of range"))
+}
+
 /// A simple-coordinate root or coroot table.
 type CoordinateTable = Vec<Vec<i32>>;
 
@@ -2575,16 +2684,30 @@ pub(crate) fn validate(
     span: SourceSpan,
 ) -> Result<(), Diagnostic> {
     match name {
+        // Both real_form wrappers: real_form_wrapper (InnerClass,int) and
+        // synthetic_real_form_wrapper (InnerClass,mat,ratvec), dispatched
+        // by argument count like the other overloaded names.
         "real_form" => {
-            arity(name, arguments, 2, span)?;
-            let Value::Domain(DomainValue::InnerClass(context)) = &arguments[0] else {
+            let Some(Value::Domain(DomainValue::InnerClass(context))) = arguments.first() else {
                 return Err(type_error(span, "expected an InnerClass"));
             };
-            let external = as_usize(&arguments[1], span)?;
-            context
-                .order
-                .internal(external)
-                .ok_or_else(|| runtime(span, format!("Illegal real form number: {external}")))?;
+            match arguments.len() {
+                2 => {
+                    let external = as_usize(&arguments[1], span)?;
+                    context.order.internal(external).ok_or_else(|| {
+                        runtime(span, format!("Illegal real form number: {external}"))
+                    })?;
+                }
+                3 => {
+                    synthetic_real_form(context, &arguments[1], &arguments[2], span)?;
+                }
+                count => {
+                    return Err(type_error(
+                        span,
+                        format!("real_form expects 2 or 3 argument(s), found {count}"),
+                    ));
+                }
+            }
         }
         "KGB" => {
             arity(name, arguments, 2, span)?;
@@ -3218,14 +3341,30 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                     .collect(),
             ))
         }
+        // real_form_wrapper (InnerClass,int) and
+        // synthetic_real_form_wrapper (InnerClass,mat,ratvec), dispatched
+        // by argument count.
         "real_form" => {
-            arity(name, arguments, 2, span)?;
-            let Value::Domain(DomainValue::InnerClass(context)) = &arguments[0] else {
+            let Some(Value::Domain(DomainValue::InnerClass(context))) = arguments.first() else {
                 return Err(type_error(span, "expected an InnerClass"));
             };
-            let external = as_usize(&arguments[1], span)?;
-            let form = build_real_form(context, external, span)?;
-            Ok(Value::Domain(DomainValue::RealForm(form)))
+            match arguments.len() {
+                2 => {
+                    let external = as_usize(&arguments[1], span)?;
+                    let form = build_real_form(context, external, span)?;
+                    Ok(Value::Domain(DomainValue::RealForm(form)))
+                }
+                3 => {
+                    let external =
+                        synthetic_real_form(context, &arguments[1], &arguments[2], span)?;
+                    let form = build_real_form(context, external, span)?;
+                    Ok(Value::Domain(DomainValue::RealForm(form)))
+                }
+                count => Err(type_error(
+                    span,
+                    format!("real_form expects 2 or 3 argument(s), found {count}"),
+                )),
+            }
         }
         "dual_real_form" => {
             arity(name, arguments, 2, span)?;

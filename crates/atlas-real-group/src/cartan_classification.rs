@@ -1,10 +1,16 @@
+use std::collections::BTreeSet;
+
+use malachite::base::num::arithmetic::traits::DivisibleBy;
+use malachite::{Integer, Rational};
+
 use crate::adjoint_fiber::AdjointFiberBudget;
 use crate::grading::try_capacity;
 use crate::integer_lattice::IntegerLatticeBudget;
 use crate::{
     AdjointCartanFiber, CartanClass, CartanFiber, CartanGradingData, CayleyCrossDecomposition,
-    InnerClass, RealFormLabels, RootKind, StructureError, TwistedConjugacyClass, TwistedInvolution,
-    WeakRealFormId, WeakRealFormPartition, WeylAction,
+    Grading, InnerClass, RealFormLabels, RootKind, RootSystem, StructureError,
+    TwistedConjugacyClass, TwistedInvolution, WeakRealFormId, WeakRealFormPartition, Weight,
+    WeylAction, WeylElement,
 };
 
 /// Stable identifier for one Cartan class of one inner class.
@@ -326,6 +332,214 @@ impl CartanClassification {
         }
         self.below.get(b.0).map(|row| row[a.0])
     }
+
+    /// Port of upstream `real_form_of` (innerclass.cpp:1305-1355, sole
+    /// caller the synthetic `real_form(InnerClass,mat,ratvec)` wrapper,
+    /// interpreter/atlas-types.w:3851-3871): the weak real form claiming
+    /// the strong-involution datum `(twisted, factor)`. `factor` is the
+    /// caller-projected theta-fixed rational coweight (the wrapper's
+    /// doubled, centrality-checked, then halved torus factor). Upstream's
+    /// `coch` output feeds only `minimal_torus_part` and the
+    /// default-seed comparison in `real_form_value::build`; the crate's
+    /// [`crate::RealFormSeed`] recomputes the elected seed from the form
+    /// id alone, so no cocharacter is returned here.
+    ///
+    /// Upstream canonicalizes `tw` and cross-acts the torus part along;
+    /// the canonicalize conjugator uses only COMPLEX letters
+    /// (innerclass.cpp:760-766 records why), so `complex_cross_act`
+    /// (tits.h:191-192 — a simple reflection of the factor) is the only
+    /// transport that ever fires inside `real_form_of`. The walk below
+    /// therefore branches only on complex simple roots: an imaginary or
+    /// real simple root fixes the Weyl part exactly (`s theta s = theta`
+    /// when `theta(alpha_s) = ±alpha_s`), so complex steps alone exhaust
+    /// the Weyl-part cross orbit. The first class representative met is
+    /// the datum's Cartan class, and the grading measured there — bit set
+    /// (noncompact) iff the factor's pairing with the simple-imaginary
+    /// root is an EVEN integer, upstream `gr.set(i, not
+    /// a.torus_part().negative_at(...))` — classifies through the class's
+    /// own partition and labels. The pairing's integrality is asserted
+    /// upstream inside `negative_at` and gated here as a named invariant.
+    pub fn real_form_of(
+        &self,
+        inner_class: &InnerClass,
+        twisted: &WeylElement,
+        factor: &[Rational],
+    ) -> Result<WeakRealFormId, StructureError> {
+        let datum = inner_class.datum();
+        let system = inner_class.root_system();
+        let rank = datum.lattice_rank();
+        if factor.len() != rank {
+            return Err(StructureError::RankMismatch {
+                expected: rank,
+                actual: factor.len(),
+            });
+        }
+        if twisted.image_permutation().len() != system.roots().len() {
+            return Err(StructureError::DatumMismatch);
+        }
+        let distinguished = inner_class.distinguished_involution();
+        let simple_ids = system.simple_root_ids();
+        let simple_roots = datum.simple_roots();
+        let simple_coroots = datum.simple_coroots();
+
+        let mut twist = try_capacity(simple_ids.len())?;
+        let mut opposite = try_capacity(simple_ids.len())?;
+        for &simple_id in simple_ids {
+            let image = distinguished.image(simple_id).ok_or(
+                StructureError::CartanClassificationInvariantViolation {
+                    invariant: "distinguished simple image",
+                },
+            )?;
+            let position = simple_ids
+                .iter()
+                .position(|&candidate| candidate == image)
+                .ok_or(StructureError::CartanClassificationInvariantViolation {
+                    invariant: "distinguished simple image",
+                })?;
+            twist.push(position);
+            let negated: Vec<i32> = system
+                .root(simple_id)
+                .ok_or(StructureError::CartanClassificationInvariantViolation {
+                    invariant: "simple root",
+                })?
+                .as_slice()
+                .iter()
+                .map(|coordinate| -coordinate)
+                .collect();
+            opposite.push(system.id_of(&Weight::new(negated)).ok_or(
+                StructureError::CartanClassificationInvariantViolation {
+                    invariant: "opposite simple root",
+                },
+            )?);
+        }
+        let mut representatives = try_capacity(self.cartan_classes.len())?;
+        for cartan_class in &self.cartan_classes {
+            representatives.push(WeylElement::from_action(
+                system,
+                cartan_class.representative().weyl_action(),
+            )?);
+        }
+
+        // Depth-first over the cross orbit; each element is pushed once,
+        // so the class size bounds the pops, and the representative of the
+        // datum's own class is always reached.
+        let mut visited = BTreeSet::new();
+        let mut stack = try_capacity(self.twisted_involution_count())?;
+        visited.insert(twisted.clone());
+        stack.push((twisted.clone(), factor.to_vec()));
+        let mut pops = 0_usize;
+        while let Some((element, transported)) = stack.pop() {
+            pops = pops
+                .checked_add(1)
+                .ok_or(StructureError::ArithmeticOverflow)?;
+            if pops > self.twisted_involution_count() {
+                return Err(StructureError::CartanClassificationInvariantViolation {
+                    invariant: "synthetic class search",
+                });
+            }
+            if let Some(position) = representatives
+                .iter()
+                .position(|representative| representative == &element)
+            {
+                return self.synthetic_form_at(position, system, &transported);
+            }
+            for generator in 0..simple_ids.len() {
+                let delta_image = distinguished.image(simple_ids[generator]).ok_or(
+                    StructureError::CartanClassificationInvariantViolation {
+                        invariant: "distinguished simple image",
+                    },
+                )?;
+                let theta_image = element.image(delta_image).ok_or(
+                    StructureError::CartanClassificationInvariantViolation {
+                        invariant: "twisted simple image",
+                    },
+                )?;
+                if theta_image == simple_ids[generator] || theta_image == opposite[generator] {
+                    // Imaginary or real: the Weyl part is fixed, and
+                    // upstream's conjugator never uses these letters here.
+                    continue;
+                }
+                let next = element.twisted_conjugate(system, generator, &twist)?;
+                let mut next_factor = transported.clone();
+                let pairing = rational_dot(simple_roots[generator].as_slice(), &next_factor)?;
+                for (slot, &coordinate) in next_factor
+                    .iter_mut()
+                    .zip(simple_coroots[generator].as_slice())
+                {
+                    if coordinate != 0 {
+                        *slot -= &pairing * Rational::from(coordinate);
+                    }
+                }
+                if visited.insert(next.clone()) {
+                    stack.push((next, next_factor));
+                }
+            }
+        }
+        Err(StructureError::CartanClassificationInvariantViolation {
+            invariant: "synthetic class search",
+        })
+    }
+
+    /// The grading classification at one class representative: measure the
+    /// parities, solve the adjoint fiber element with that grading, and
+    /// read its weak-real-form label off the class's labels (upstream
+    /// `f.gradingRep(gr)` + `f.adjoint_orbit(rep)` +
+    /// `G.realFormLabels(cn)[...]`).
+    fn synthetic_form_at(
+        &self,
+        position: usize,
+        system: &RootSystem,
+        factor: &[Rational],
+    ) -> Result<WeakRealFormId, StructureError> {
+        let cartan_class = &self.cartan_classes[position];
+        let grading = cartan_class.grading();
+        let imaginary_rank = grading.imaginary_rank();
+        let mut noncompact = try_capacity(imaginary_rank)?;
+        for imaginary_index in 0..imaginary_rank {
+            let root = grading.imaginary_simple_root(imaginary_index).ok_or(
+                StructureError::CartanClassificationInvariantViolation {
+                    invariant: "imaginary simple root",
+                },
+            )?;
+            let coordinates = system.root(root).ok_or(
+                StructureError::CartanClassificationInvariantViolation {
+                    invariant: "imaginary simple root",
+                },
+            )?;
+            let pairing = rational_dot(coordinates.as_slice(), factor)?;
+            let integer = Integer::try_from(&pairing).map_err(|_| {
+                StructureError::CartanClassificationInvariantViolation {
+                    invariant: "synthetic grading integrality",
+                }
+            })?;
+            if integer.divisible_by(&Integer::from(2)) {
+                noncompact.push(imaginary_index);
+            }
+        }
+        let target = Grading::from_noncompact(imaginary_rank, noncompact)?;
+        let element = grading.element_from_grading(&target)?;
+        let local = cartan_class.partition().class_of(&element)?;
+        cartan_class.labels().labels().get(local.0).copied().ok_or(
+            StructureError::CartanClassificationInvariantViolation {
+                invariant: "synthetic form label",
+            },
+        )
+    }
+}
+
+/// The exact pairing of an integer weight with a rational coweight factor.
+fn rational_dot(coordinates: &[i32], factor: &[Rational]) -> Result<Rational, StructureError> {
+    if coordinates.len() != factor.len() {
+        return Err(StructureError::RankMismatch {
+            expected: factor.len(),
+            actual: coordinates.len(),
+        });
+    }
+    let mut pairing = Rational::from(0);
+    for (&coordinate, value) in coordinates.iter().zip(factor) {
+        pairing += Rational::from(coordinate) * value;
+    }
+    Ok(pairing)
 }
 
 #[cfg(test)]
@@ -566,5 +780,91 @@ mod tests {
             partition.class_of(&twist_backed),
             Err(StructureError::DistinguishedInvolutionMismatch)
         ));
+    }
+
+    #[test]
+    fn real_form_of_matches_the_frozen_a1_anchors() {
+        // The weak_real_form fixture's simply-connected compact A1: the
+        // identity theta with the zero factor is the split form (internal
+        // quasisplit 0, external LAST), the rho-shifted factor the compact
+        // form (internal 1, external FIRST), and -1 = w0 with the zero
+        // factor lands on the split form again.
+        let datum = BasedRootDatum::from_simple_data(
+            1,
+            vec![vec![2]],
+            vec![Weight::new(vec![2])],
+            vec![Coweight::new(vec![1])],
+        )
+        .unwrap();
+        let inner_class = InnerClass::new(
+            datum.clone(),
+            LatticeInvolution::identity(&datum).unwrap(),
+            2,
+        )
+        .unwrap();
+        let classification = CartanClassification::build(&inner_class, &budget(2)).unwrap();
+        let identity = WeylElement::identity(inner_class.root_system()).unwrap();
+        let longest = WeylElement::simple_reflection(inner_class.root_system(), 0).unwrap();
+        let zero = Rational::from(0);
+        let half = Rational::from(1) / Rational::from(2);
+
+        assert_eq!(
+            classification.real_form_of(&inner_class, &identity, std::slice::from_ref(&zero)),
+            Ok(WeakRealFormId(0))
+        );
+        assert_eq!(
+            classification.real_form_of(&inner_class, &identity, std::slice::from_ref(&half)),
+            Ok(WeakRealFormId(1))
+        );
+        assert_eq!(
+            classification.real_form_of(&inner_class, &longest, std::slice::from_ref(&zero)),
+            Ok(WeakRealFormId(0))
+        );
+
+        // The form_number round trip: internal 0 (split) is external 1,
+        // internal 1 (compact) external 0 — compact first, quasisplit last.
+        let order = crate::ExternalFormOrder::build(&inner_class, &classification).unwrap();
+        assert_eq!(order.external(WeakRealFormId(0)), Some(1));
+        assert_eq!(order.external(WeakRealFormId(1)), Some(0));
+
+        assert!(matches!(
+            classification.real_form_of(&inner_class, &identity, &[zero.clone(), zero]),
+            Err(StructureError::RankMismatch {
+                expected: 1,
+                actual: 2
+            })
+        ));
+    }
+
+    #[test]
+    fn real_form_of_transports_along_complex_crosses_to_the_class_representative() {
+        // Compact A2: the split Cartan class is the three-element cross
+        // orbit {s0, s1, w0}, and it hosts the quasisplit form alone
+        // (most-split uniqueness), so every one of its twisted involutions
+        // with the zero factor must classify to form 0 — exercising the
+        // complex-reflection transport from non-representative elements.
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let inner_class = InnerClass::new(
+            datum.clone(),
+            LatticeInvolution::identity(&datum).unwrap(),
+            6,
+        )
+        .unwrap();
+        let classification = CartanClassification::build(&inner_class, &budget(6)).unwrap();
+        let zero = [Rational::from(0), Rational::from(0)];
+        for word in [vec![0_usize], vec![1], vec![0, 1, 0]] {
+            let mut element = WeylElement::identity(inner_class.root_system()).unwrap();
+            for &generator in &word {
+                element = element
+                    .right_multiply_simple(inner_class.root_system(), generator)
+                    .unwrap()
+                    .0;
+            }
+            assert_eq!(
+                classification.real_form_of(&inner_class, &element, &zero),
+                Ok(WeakRealFormId(0)),
+                "word {word:?}"
+            );
+        }
     }
 }

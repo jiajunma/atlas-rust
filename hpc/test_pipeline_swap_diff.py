@@ -101,7 +101,6 @@ class PipelineSwapDiffTest(unittest.TestCase):
             {
                 ("involution", "(LieType,[int],string) -> mat"),
                 ("involution", "(LieType,mat,string) -> mat"),
-                ("real_form", "(InnerClass,mat,ratvec) -> RealForm"),
             },
         )
 

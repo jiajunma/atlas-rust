@@ -4351,6 +4351,19 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::RealForm),
                 0,
             ),
+            // synthetic_real_form_wrapper (atlas-types.w:3851-3871): the
+            // synthetic (InnerClass,mat,ratvec) constructor; every
+            // diagnostic fires before its no_value gate, so it validates.
+            domain_builtin_validate(
+                "real_form",
+                Type::tuple(vec![
+                    primitive_type(Prim::InnerClass),
+                    primitive_type(Prim::Mat),
+                    primitive_type(Prim::RatVec),
+                ]),
+                primitive_type(Prim::RealForm),
+                0,
+            ),
             domain_builtin_skip(
                 "dual_real_form",
                 Type::tuple(vec![primitive_type(Prim::InnerClass), int_type()]),

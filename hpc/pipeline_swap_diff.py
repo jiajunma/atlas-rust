@@ -59,11 +59,6 @@ PENDING_OVERLOADS = (
         "signature": "(LieType,mat,string) -> mat",
         "reason": "Rust overload is not implemented",
     },
-    {
-        "feature": "real_form",
-        "signature": "(InnerClass,mat,ratvec) -> RealForm",
-        "reason": "Rust overload is not implemented",
-    },
 )
 
 
@@ -198,6 +193,12 @@ FIXTURE_PLANS = (
     # real-form-number out-of-bounds rejection.
     FixturePlan(name="domain/real_form_labels"),
     FixturePlan(name="domain/real_form_labels_rejected"),
+    # Synthetic weak real form: real_form(InnerClass,mat,ratvec) projects
+    # the torus factor onto its theta-fixed part and classifies the
+    # resulting grading; rejections cover the non-involution and
+    # torus-factor-size diagnostics.
+    FixturePlan(name="domain/weak_real_form"),
+    FixturePlan(name="domain/weak_real_form_rejected"),
     # Root-datum lattice relations: blockwise Smith bases, unit filtering,
     # annihilators modulo d, generator replacement, and quotient bases with
     # the three frozen validation diagnostics.
