@@ -113,7 +113,14 @@ blank-line-separated blocks) →
 rf->val.innerClass().central_fiber(rf->val.realForm()) as a row of int_Vector
 (atlas-types.w:3915); also anchors the adjoint(LieType,bool) datum display
 'adjoint root datum of Lie type ...') → `real_form_labels` (occurrence_matrix/
-dual_occurrence_matrix/block_sizes/block_size/Cartan_order) →
+dual_occurrence_matrix: numRealForms × numCartanClasses (resp. dual) bitmaps
+of Cartan_set membership (atlas-types.w:3361); block_sizes(ic): matrix of
+G->val.block_size(interface.in(i), dual_interface.in(j)) (atlas-types.w:3323)
+— NOTE this is the full BLOCK size, needing block construction; the A2
+contract values (1,6) coincide with KGB sizes, so a KGB-based implementation
+must verify the coincidence argument or port Block::build; block_size(ic,i,j)
+bounds: 'Real form number i out of bounds' / 'Dual real form number j out of
+bounds'; Cartan_order(rf): poset matrix of the Cartan-class ordering) →
 `weak_real_form` (real_form(InnerClass,mat,ratvec)) →
 `involution_decomposition` (distinguished_involution/twisted_involution/
 classify_involution) → `strong_real` (square_classes + B2
