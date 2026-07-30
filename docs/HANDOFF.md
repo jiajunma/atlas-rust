@@ -114,10 +114,17 @@ xi_square(rfl[fiber classRep]), z = sum of fundamental_coweight over
 base-graded simples with numerator entries reduced mod denominator
 (remainder), then per weak form 'real form #{rfi.out(rfl[toWeakReal])}:
 [{orbit comma-sep}] ({count})\n') →
-`adjoint_fiber` (central_fiber(rf) =
-rf->val.innerClass().central_fiber(rf->val.realForm()) as a row of int_Vector
-(atlas-types.w:3915); also anchors the adjoint(LieType,bool) datum display
-'adjoint root datum of Lie type ...') → `real_form_labels` (occurrence_matrix/
+`adjoint_fiber` (central_fiber(RealForm->[vec]) =
+rf->val.innerClass().central_fiber(rf->val.realForm()) wrapped as a row of
+int_Vector (atlas-types.w:3915); upstream algorithm innerclass.cpp:1042:
+csc = fund_fiber.central_square_class(rf); diff = wrf_rep(rf) -
+class_base(csc); y = toAdjoint.section()*diff; then preimage()
+(innerclass.cpp:1020): in fiber_partition(csc) class of y, collect
+fg.fromBasis(fe+y) for members fe with toAdjoint(fe)==diff — i.e. the
+fundamental-fiber stabiliser of rf's gradings; displays as a row of vecs
+e.g. [[ 0 ],[ 1 ]]; rejected case is plain conform_types wording 'found
+InnerClass while RealForm was needed.'; also anchors the
+adjoint(LieType,bool) datum display 'adjoint root datum of Lie type ...') → `real_form_labels` (occurrence_matrix/
 dual_occurrence_matrix: numRealForms × numCartanClasses (resp. dual) bitmaps
 of Cartan_set membership (atlas-types.w:3361); block_sizes(ic): matrix of
 G->val.block_size(interface.in(i), dual_interface.in(j)) (atlas-types.w:3323)
