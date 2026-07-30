@@ -154,7 +154,14 @@ the base TorusPart; the intervening chunk ensures the Cartan involution table
 covers tw's class downward before minimal_torus_part; anchors: (ic,[[1]],0)
 -> split form 1, (ic,[[-1]],0) -> split form 1 (form_number is already
 registered, typed.rs:4142), (ic,[[1]],[1]/2) -> compact form 0 — i.e. zero
-factor selects the QUASISPLIT form and the rho_check shift the compact one) →
+factor selects the QUASISPLIT form and the rho_check shift the compact one);
+CRATE RECON 2026-07-30: twisted_from_involution + seed_torus_part landed
+with seed_x0; CartanGradingData grading classification
+(grading/element_from_grading, grading.rs:201/216) exists — the new work is
+(a) the (tw,factor)->grading->weak-class assembly of real_form_of
+(innerclass.cpp) and (b) minimal_torus_part, which is a sibling of
+x0_torus_part and uses central_fiber minimization — adjoint_fiber lands
+central_fiber first by queue order, so sequence matters; MEDIUM slice) →
 `involution_decomposition` (distinguished_involution(ic) =
 G.distinguished() as mat; twisted_involution(rd,M) =
 inner_class_value::build(rd,M,&ww) then the PAIR (W_elt(rd,W.element(ww)),
