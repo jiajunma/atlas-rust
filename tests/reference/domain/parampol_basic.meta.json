@@ -1,0 +1,17 @@
+{
+  "fixture": "domain/parampol_basic.atlas",
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:8542-8567"
+  ],
+  "scenarios": [
+    "null_module displays 'Empty sum of standard modules' with # 0",
+    "V+p adds a term displayed without the 'final' prefix: '1*parameter(x=2,lambda=[1]/1,nu=[0]/1) [0]'",
+    "first_term returns the (Split coefficient, final Param) pair",
+    "W-p cancels back to the empty sum"
+  ],
+  "notes": "ParamPol language surface (null_module/#/+,-/first_term), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449); verbatim HPC capture still pending."
+}
