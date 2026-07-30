@@ -12,7 +12,8 @@
   "oracle_stdout_sha256": "c7728cd65672d33aac7c6478b48afc0ca7cdd9078e73556478db4685d4b590a0",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "capture_artifacts_sha256": "eb11cea2c41289d09c76444175b38ff8979429689a13a1dd5b340cfb11474fd9",
-  "rust_status": "pending",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [],
-  "notes": "Scalar-era fixture re-captured verbatim by HPC job 3502017 against the frozen atlasofliegroups-4d3e9449 oracle (the earlier typed-builtin-registry-era metadata lacked pipeline-swap provenance); oracle stdout matches the expected events exactly. Differential evidence pending the next pipeline_swap_diff run."
+  "notes": "Scalar-era fixture re-captured verbatim by HPC job 3502017 against the frozen atlasofliegroups-4d3e9449 oracle (the earlier typed-builtin-registry-era metadata lacked pipeline-swap provenance); oracle stdout matches the expected events exactly. Differential evidence pending the next pipeline_swap_diff run. Rust implementation verified by HPC differential job 3502034 (pipeline_swap_diff at commit 7444261): stdout, stderr diagnostics, and exit status match the frozen reference events exactly.",
+  "differential_job": "3502034"
 }

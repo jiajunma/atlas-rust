@@ -3,7 +3,7 @@
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_status": "verified_hpc_reference",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:2629-2639"
   ],
@@ -12,7 +12,7 @@
     "B2: W_elt(rd,[0,1,0,1]) canonicalizes to <1.0.1.0>; braid 0101 = 1010; root_datum roundtrip",
     "word() returns a row [0,1,0] (unpadded), distinct from vec display"
   ],
-  "notes": "WeylElt language surface (W_elt/word/length/=,!=/*//,#/root_datum), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The WeylElt display is the canonical reduced word in angle brackets; equality is group equality (braid relations hold). The crate-level word substrate recorded in the previous revision of this meta (141 local tests) remains the kernel this surface binds to. Reference captured verbatim by HPC job 3501466 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
+  "notes": "WeylElt language surface (W_elt/word/length/=,!=/*//,#/root_datum), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The WeylElt display is the canonical reduced word in angle brackets; equality is group equality (braid relations hold). The crate-level word substrate recorded in the previous revision of this meta (141 local tests) remains the kernel this surface binds to. Reference captured verbatim by HPC job 3501466 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run. Rust implementation verified by HPC differential job 3502034 (pipeline_swap_diff at commit 7444261): stdout, stderr diagnostics, and exit status match the frozen reference events exactly.",
   "design_reviews": {
     "recorded_in": "docs/WEYL_ELEMENT_DESIGN.md"
   },
@@ -24,5 +24,6 @@
   "oracle_exit_status": 0,
   "oracle_stdout_sha256": "22ec831e3d1040b26768c18b50f3f0e7a33a24d25f975d62b0ec774ef126a69a",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "capture_artifacts_sha256": "89dc91ce7ea14ec064b1b6031833b1e6d94f7f44e91bae284dcf72e9ececceee"
+  "capture_artifacts_sha256": "89dc91ce7ea14ec064b1b6031833b1e6d94f7f44e91bae284dcf72e9ececceee",
+  "differential_job": "3502034"
 }
