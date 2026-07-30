@@ -162,6 +162,10 @@ FIXTURE_PLANS = (
     # by a matrix, including the unbased-involution rejection.
     FixturePlan(name="domain/tits_operations"),
     FixturePlan(name="domain/tits_operations_rejected"),
+    # Grading slice: base_grading_vector/initial_torus_bits per real form
+    # and torus_bits per KGB element, plus the RootDatum-argument rejection.
+    FixturePlan(name="domain/grading"),
+    FixturePlan(name="domain/grading_rejected"),
 )
 
 

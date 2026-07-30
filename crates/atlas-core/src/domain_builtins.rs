@@ -1210,6 +1210,24 @@ fn arity(
     Ok(())
 }
 
+/// The element's mod-two torus bits as a language `vec` of 0/1 entries,
+/// in lattice coordinates (upstream `int_Vector` view of the torus part).
+fn torus_bits_value(
+    context: &Arc<RealFormContext>,
+    id: KgbId,
+    span: SourceSpan,
+) -> Result<Value, Diagnostic> {
+    let element = context
+        .graph
+        .element(id)
+        .ok_or_else(|| runtime(span, "Inexistent KGB element"))?;
+    let bits = element.torus_bits();
+    let coordinates = (0..bits.dimension())
+        .map(|index| i32::from(bits.bit(index) == Some(true)))
+        .collect();
+    Ok(Value::Vector(Vec32(coordinates)))
+}
+
 /// Combined forward-and-inverse Cayley (`any_Cayley`): real descents take
 /// the FIRST inverse image, noncompact imaginary the forward image, and
 /// everything else returns the argument unchanged (upstream parity).
@@ -2118,6 +2136,35 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 factor.to_rationals(),
                 span,
             )?))
+        }
+        // base_grading_vector_wrapper (atlas-types.w:3689): the form's
+        // elected g_rho_check, already frozen into the KGB graph.
+        "base_grading_vector" => {
+            arity(name, arguments, 1, span)?;
+            let context = as_real_form(&arguments[0], span)?;
+            Ok(Value::RatVector(ratvec_from_rationals(
+                context.graph.cocharacter().to_rationals(),
+                span,
+            )?))
+        }
+        // x0_torus_part_wrapper (atlas-types.w:3695): the seed's torus
+        // bits. Element #0 IS the seed (the BFS root).
+        "initial_torus_bits" => {
+            arity(name, arguments, 1, span)?;
+            let context = as_real_form(&arguments[0], span)?;
+            let base = context
+                .graph
+                .ids()
+                .next()
+                .ok_or_else(|| runtime(span, "Inexistent KGB element"))?;
+            torus_bits_value(context, base, span)
+        }
+        // torus_bits_wrapper (atlas-types.w:4714): the element's torus part
+        // as a 0/1 int vector.
+        "torus_bits" => {
+            arity(name, arguments, 1, span)?;
+            let (context, id) = as_kgb_element(&arguments[0], span)?;
+            torus_bits_value(context, id, span)
         }
         // decompose_KGB_wrapper (atlas-types.w:4429): the owning real form
         // and the element number, wrapped as a pair.

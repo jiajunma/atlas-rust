@@ -400,6 +400,13 @@ impl KgbGraph {
         self.form
     }
 
+    /// The seed's elected square-class cocharacter — upstream
+    /// `RealReductiveGroup::g_rho_check` (realgroups.h), whose pairings
+    /// with the simple roots give the form's base grading.
+    pub fn cocharacter(&self) -> &RationalCoweight {
+        &self.cocharacter
+    }
+
     pub fn semisimple_rank(&self) -> usize {
         self.rank
     }

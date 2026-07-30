@@ -4179,6 +4179,24 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 0,
             ),
             domain_builtin_skip(
+                "base_grading_vector",
+                primitive_type(Prim::RealForm),
+                primitive_type(Prim::RatVec),
+                0,
+            ),
+            domain_builtin_skip(
+                "initial_torus_bits",
+                primitive_type(Prim::RealForm),
+                primitive_type(Prim::Vec),
+                0,
+            ),
+            domain_builtin_skip(
+                "torus_bits",
+                primitive_type(Prim::KgbElt),
+                primitive_type(Prim::Vec),
+                0,
+            ),
+            domain_builtin_skip(
                 "%",
                 primitive_type(Prim::KgbElt),
                 Type::tuple(vec![primitive_type(Prim::RealForm), int_type()]),
