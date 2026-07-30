@@ -278,13 +278,24 @@ A2 "u" -> flip, B2 "s" -> I2, A1.A1 "C" -> swap, A2 mat [[1,1],[0,1]] "s"
 `3501779` / `3502126` / `3502176` / `3501643`).
 
 Uncovered matrix items needing contract design first (probe the oracle,
-then freeze): KL file formats and readline completion; the relation-style
-datum constructors (`Smith_Cartan`/`filter_units`/`ann_mod`/`replace_gen`/
-`quotient_basis`, atlas-types.w:937 — the `quotient_basis(LieType,[ratvec])`
-family that builds a root datum from relation vectors). `dont`, `showall`,
+then freeze): KL file formats and readline completion. `dont`, `showall`,
 `quit`, and the basic interactive TTY banner/prompt are implemented; the
 newly frozen language fixtures are covered by differential `3501643`. Deeper math
-overloads (KL polynomials, `W_graph`, `deform`, extended blocks).
+overloads (KL polynomials, `W_graph`, `deform`, extended blocks). The
+relation-style datum constructors (`Smith_Cartan`/`filter_units`/`ann_mod`/
+`replace_gen`/`quotient_basis`, atlas-types.w:937) are now FROZEN
+(`domain/relations{,_rejected}`, capture `3502198`/`3502199`) and join the
+implementation queue after `involution_primitive`; brief:
+Smith_Cartan(LieType->mat,vec) = LieType::Smith_basis of the transposed
+Cartan matrix + block invariant factors (torus factors: standard basis,
+null factors); filter_units(mat,vec->mat,vec) drops factor-1 columns;
+ann_mod(mat,int->mat) = annihilator_modulo; replace_gen((mat,vec),mat->mat)
+substitutes non-unit columns ('Too many factors: {n} for {m} columns' /
+'Column lengths do not match' / 'Not enough replacement columns' / 'Too
+many replacement columns'); quotient_basis(LieType,[ratvec]->mat) =
+replace_gen(S, C*ann_mod(M,d)) with per-generator validation against the
+invariant factors ('Improper generator entry: {r} not a multiple of 1/{d}',
+'Length mismatch for generator {j}: {a}:{b}') (atlas-types.w:639-677).
 
 Legacy scaffolding triage (2026-07-30): the pre-v0-schema fixtures under
 `tests/fixtures/commands/`, `lex/`, `parse/`, `negative/`, and the early
