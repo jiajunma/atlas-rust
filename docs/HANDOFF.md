@@ -75,12 +75,13 @@ Domain (contracts in `tests/fixtures/domain/`, events verified):
 `split_basic` (eval/) → `block_basic` → `ktype_basic` → `ktypepol_basic` →
 `param_basic` → `parampol_basic` → `involution_primitive` →
 `overloads_ops_b8c` + `whattype_ops_b8d` (operator-`set` form and the
-builtin `whattype * ?` listing; b8d pins the current 23-row `*` table).
+builtin `whattype * ?` listing; b8d pins the current 23-row `*` table) are
+implemented and verified in differential `3501643`.
 
 Uncovered matrix items needing contract design first (probe the oracle,
-then freeze): `dont` (loop construct, see findings below), `showall`
-(dumps the overload table as `name: (sig): {body}` lines), KL file
-formats, interactive input (needs a pty methodology), deeper math
+then freeze): KL file formats and readline completion. `dont`, `showall`,
+`quit`, and the basic interactive TTY banner/prompt are implemented; the
+newly frozen language fixtures are covered by differential `3501643`. Deeper math
 overloads (KL polynomials, `W_graph`, `deform`, extended blocks).
 
 ## dont/showall probe findings (2026-07-30)
@@ -159,9 +160,9 @@ overloads (KL polynomials, `W_graph`, `deform`, extended blocks).
   `strong_real` (`3501500`), `split_basic` + `block_basic` (`3501519`),
   `ktype_basic` + `ktypepol_basic` + `param_basic` + `parampol_basic`
   (`3501537`) — all pending implementation except where noted.
-- Eval contracts frozen ahead of implementation: `overloads_ops_b8c{,_rejected}`
-  and `whattype_ops_b8d` (capture `3501368`; operator-`set` form and the
-  builtin overload listing).
+- Eval contracts `overloads_ops_b8c{,_rejected}`, `whattype_ops_b8d`, and
+  `dont_b13{,_rejected}` are implemented and verified by differential
+  `3501643`.
 - Harness: Slurm stdout files (`atlas-*.out`) no longer count as checkout
   dirt in either the bootstrap or the checked source-state helper
   (commits `b1afa5e`, `cbf538f`); `__pycache__/` is gitignored (`4843b9f`).

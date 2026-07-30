@@ -34,12 +34,23 @@ or CWEB preprocessing.
 | constructors, overloads, implicit conversions | planned | type corpus |
 | exceptions and runtime errors | planned | diagnostic/exit tests |
 | Atlas commands and batch files | planned | event stream and exit tests |
-| interactive input and completion | planned | pseudo-terminal HPC tests |
+| interactive input and completion | partial | TTY banner/prompt implemented; readline completion remains pending |
 | domain objects and mathematical operations | planned | per-domain differential suites; `atlas-real-group` provides an initial structural API |
-| KL and file formats | planned | byte/semantic comparisons |
+| KL and file formats | planned | explicit filekl adapter coupled to the pending Block/KL math layer |
 
 No row moves to `supported` merely because Rust compiles. It needs a reference
 corpus, Rust implementation, and HPC differential report.
+
+## Current Language Slice
+
+The typed session pipeline covers the B3a-B13 language slices, including
+operator overload declarations, builtin `whattype * ?`, `dont` in the while
+`do_expr` position, `showall`, `quit`, batch inclusion/redirection, and the
+basic TTY banner/prompt. These surfaces are covered by HPC differential job
+`3501643` (40 fixtures, all PASS); `showall`, `quit`, and the prompt are
+covered by direct CLI/session checks. Readline completion and KL binary
+formats remain outside the language-only gate because they depend on the
+unfinished Block/KL domain values.
 
 ## Source compatibility rules
 
