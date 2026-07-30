@@ -88,6 +88,33 @@ impl InnerClass {
         &self.distinguished_involution
     }
 
+    /// Port of upstream `check_based_root_datum_involution`
+    /// (interpreter/atlas-types.w:2787-2795): the involution must permute
+    /// this class's root system and transport coroots (the
+    /// [`RootInvolutionData`] gate), and additionally map every SIMPLE root
+    /// to a simple root — upstream's "distinguished" rejection is
+    /// [`StructureError::InvalidBasedAutomorphism`]. On success the induced
+    /// simple-root permutation (upstream `rootdata::twist`) is returned.
+    pub fn based_involution_twist(
+        &self,
+        involution: LatticeInvolution,
+    ) -> Result<Vec<usize>, StructureError> {
+        let data = RootInvolutionData::new(&self.roots, involution)?;
+        let simple_ids = self.roots.simple_root_ids();
+        let mut twist = Vec::with_capacity(simple_ids.len());
+        for &simple_id in simple_ids {
+            let image = data
+                .image(simple_id)
+                .ok_or(StructureError::InvalidRootAutomorphism)?;
+            let position = simple_ids
+                .iter()
+                .position(|&candidate| candidate == image)
+                .ok_or(StructureError::InvalidBasedAutomorphism)?;
+            twist.push(position);
+        }
+        Ok(twist)
+    }
+
     /// Enumerate root involutions of the form `w after distinguished`.
     ///
     /// This is a stable list of twisted involutions, not yet the quotient into
@@ -590,6 +617,52 @@ mod tests {
         .unwrap();
         assert_eq!(
             InnerClass::from_root_involution(datum, involution, 6),
+            Err(StructureError::InvalidRootAutomorphism)
+        );
+    }
+
+    #[test]
+    fn based_involution_twist_reads_the_simple_root_permutation() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let inner_class = InnerClass::new(
+            datum.clone(),
+            LatticeInvolution::identity(&datum).unwrap(),
+            6,
+        )
+        .unwrap();
+        let flip = LatticeInvolution::new(
+            &datum,
+            vec![vec![0, 1], vec![1, 0]],
+            vec![vec![0, 1], vec![1, 0]],
+        )
+        .unwrap();
+        assert_eq!(inner_class.based_involution_twist(flip), Ok(vec![1, 0]));
+        assert_eq!(
+            inner_class.based_involution_twist(LatticeInvolution::identity(&datum).unwrap()),
+            Ok(vec![0, 1])
+        );
+        // The negated flip maps each simple root to minus the other one:
+        // a root-datum involution, but not one of the BASED datum.
+        let negated_flip = LatticeInvolution::new(
+            &datum,
+            vec![vec![0, -1], vec![-1, 0]],
+            vec![vec![0, -1], vec![-1, 0]],
+        )
+        .unwrap();
+        assert_eq!(
+            inner_class.based_involution_twist(negated_flip),
+            Err(StructureError::InvalidBasedAutomorphism)
+        );
+        // A lattice involution that does not permute the roots fails the
+        // earlier root-automorphism gate instead.
+        let drifting = LatticeInvolution::new(
+            &datum,
+            vec![vec![1, 1], vec![0, -1]],
+            vec![vec![1, 0], vec![1, -1]],
+        )
+        .unwrap();
+        assert_eq!(
+            inner_class.based_involution_twist(drifting),
             Err(StructureError::InvalidRootAutomorphism)
         );
     }

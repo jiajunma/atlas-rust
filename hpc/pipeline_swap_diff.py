@@ -153,6 +153,15 @@ FIXTURE_PLANS = (
     # A1/C2/A2, including the exact illegal external-number diagnostic.
     FixturePlan(name="domain/real_group"),
     FixturePlan(name="domain/real_group_rejected"),
+    # KGB element operations: cross/Cayley/status/length, torus_factor,
+    # equality, the `%` decompose, the distinguished twist, and the
+    # illegal-generator rejection.
+    FixturePlan(name="domain/kgb_operations"),
+    FixturePlan(name="domain/kgb_operations_rejected"),
+    # Tits twists: distinguished twist on KGB elements and the outer twist
+    # by a matrix, including the unbased-involution rejection.
+    FixturePlan(name="domain/tits_operations"),
+    FixturePlan(name="domain/tits_operations_rejected"),
 )
 
 

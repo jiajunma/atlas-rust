@@ -4178,6 +4178,27 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::RatVec),
                 0,
             ),
+            domain_builtin_skip(
+                "%",
+                primitive_type(Prim::KgbElt),
+                Type::tuple(vec![primitive_type(Prim::RealForm), int_type()]),
+                0,
+            ),
+            domain_builtin_skip(
+                "twist",
+                primitive_type(Prim::KgbElt),
+                primitive_type(Prim::KgbElt),
+                3,
+            ),
+            domain_builtin_validate(
+                "twist",
+                Type::tuple(vec![
+                    primitive_type(Prim::KgbElt),
+                    primitive_type(Prim::Mat),
+                ]),
+                primitive_type(Prim::KgbElt),
+                1,
+            ),
             domain_relation_builtin("=", pair(primitive_type(Prim::LieType)), Relation::Equal),
             domain_relation_builtin(
                 "!=",

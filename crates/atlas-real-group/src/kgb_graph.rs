@@ -14,13 +14,14 @@
 
 use std::collections::BTreeMap;
 
-use malachite::Rational;
+use malachite::{Integer, Rational};
 
 use crate::grading::try_capacity;
+use crate::tits_element::apply_matrix_mod_two;
 use crate::{
-    CartanClassification, CartanId, InnerClass, InvolutionId, InvolutionTable, RationalCoweight,
-    RealFormSeed, RootKind, StrongRealClassification, StructureError, TitsCoset, TitsElement,
-    WeakRealFormId, WeylElement,
+    CartanClassification, CartanId, InnerClass, InvolutionId, InvolutionTable, LatticeInvolution,
+    ModTwoVector, RationalCoweight, RealFormSeed, RootKind, StrongRealClassification,
+    StructureError, TitsCoset, TitsElement, WeakRealFormId, WeylElement,
 };
 
 /// Stable identifier of one KGB element in one graph's numbering.
@@ -534,6 +535,93 @@ impl KgbGraph {
         Ok(RationalCoweight::from_coordinates(result))
     }
 
+    /// Upstream `KGB::twisted` (gkmod/kgb.cpp:729-745): act by an external
+    /// twist on one element. `delta` must be a based root datum involution
+    /// commuting with the inner class's distinguished involution, and
+    /// `twist` its induced simple-root permutation — both the caller's
+    /// contract (upstream `test_compatible`; the language adapter runs
+    /// [`InnerClass::based_involution_twist`] first). The Weyl part is
+    /// renamed letter-by-letter (upstream `WeylGroup::translation`), the
+    /// torus part transports by delta's mod-2 coweight action plus the
+    /// grading correction `g - g*delta`, and the result is looked up by
+    /// RAW bits without reducing, exactly as upstream's `lookup`.
+    /// `Ok(None)` is upstream's `UndefKGB`: the correction is
+    /// non-integral, or the twisted element is not in this form's graph.
+    pub fn twisted(
+        &self,
+        id: KgbId,
+        table: &InvolutionTable,
+        delta: &LatticeInvolution,
+        twist: &[usize],
+    ) -> Result<Option<KgbId>, StructureError> {
+        let element = self
+            .elements
+            .get(id.0)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: id.0,
+                upper_bound: self.elements.len(),
+            })?;
+        let record =
+            table
+                .record(element.involution())
+                .ok_or(StructureError::KgbInvariantViolation {
+                    invariant: "involution bucket",
+                })?;
+        let system = table.root_system();
+
+        // Weyl_group().translation(a.w(), twist): rename the letters of a
+        // reduced word by the diagram permutation.
+        let word = record.weyl_element().reduced_word(system)?;
+        let mut renamed = WeylElement::identity(system)?;
+        for generator in word {
+            let image = *twist
+                .get(generator)
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: generator,
+                    upper_bound: twist.len(),
+                })?;
+            renamed = renamed.multiply(system, &WeylElement::simple_reflection(system, image)?)?;
+        }
+        let Some(target) = table.lookup(&renamed) else {
+            return Ok(None);
+        };
+
+        // The torus part: t*delta2 + corr, where corr is the numerator of
+        // g - g*delta and a non-integral entry aborts (UndefKGB). The
+        // mod-2 apply already gated delta's matrix to the lattice rank.
+        let mut bits = apply_matrix_mod_two(delta.coweight_matrix(), element.torus_bits())?;
+        let coordinates = self.cocharacter.coordinates();
+        let mut correction = try_capacity(coordinates.len())?;
+        for (row_index, row) in delta.coweight_matrix().iter().enumerate() {
+            let mut transported = Rational::from(0);
+            for (column, &entry) in row.iter().enumerate() {
+                transported += Rational::from(entry) * &coordinates[column];
+            }
+            let Ok(correction_entry) = Integer::try_from(&coordinates[row_index] - transported)
+            else {
+                return Ok(None);
+            };
+            let parity =
+                i64::try_from(&correction_entry).map_err(|_| StructureError::ArithmeticOverflow)?;
+            if parity % 2 != 0 {
+                correction.push(row_index);
+            }
+        }
+        bits.xor_assign(&ModTwoVector::from_ones(coordinates.len(), correction)?)?;
+
+        // lookup: the fiber over the renamed involution, raw-bit equality.
+        let Some(position) = self.positions.iter().position(|entry| entry.0 == target) else {
+            return Ok(None);
+        };
+        for index in self.first_of_tau[position]..self.first_of_tau[position + 1] {
+            let candidate = &self.elements[index];
+            if candidate.torus_bits() == &bits {
+                return Ok(Some(KgbId(index)));
+            }
+        }
+        Ok(None)
+    }
+
     fn check_indices(&self, id: KgbId, generator: usize) -> Result<(), StructureError> {
         if id.0 >= self.elements.len() {
             return Err(StructureError::IndexOutOfRange {
@@ -815,5 +903,75 @@ mod tests {
             .add_cartan(&result.classification, CartanId(0))
             .unwrap();
         result
+    }
+
+    #[test]
+    fn distinguished_twist_fixes_every_sl2r_element() {
+        let mut pipeline = pipeline(sl2_datum(), None, 2, 2);
+        pipeline
+            .table
+            .add_cartan(&pipeline.classification, CartanId(0))
+            .unwrap();
+        let graph = build_graph(&mut pipeline, 0);
+        let delta = pipeline
+            .inner_class
+            .distinguished_involution()
+            .involution()
+            .clone();
+        let twist = pipeline
+            .inner_class
+            .based_involution_twist(delta.clone())
+            .unwrap();
+        assert_eq!(twist, vec![0]);
+        for id in 0..graph.size() {
+            assert_eq!(
+                graph
+                    .twisted(KgbId(id), &pipeline.table, &delta, &twist)
+                    .unwrap(),
+                Some(KgbId(id))
+            );
+        }
+    }
+
+    #[test]
+    fn outer_flip_twist_round_trips_on_su21() {
+        // The A2 diagram flip is a based involution of the split (identity
+        // delta) class commuting with the distinguished involution, so it
+        // is a legal OUTER twist; it acts on su(2,1)'s six elements as an
+        // involution (flip(corr) == -corr makes the torus correction
+        // cancel on the second application).
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let mut pipeline = pipeline(datum.clone(), None, 6, 6);
+        pipeline
+            .table
+            .add_cartan(&pipeline.classification, CartanId(0))
+            .unwrap();
+        let graph = build_graph(&mut pipeline, 0);
+        assert_eq!(graph.size(), 6);
+        let flip = LatticeInvolution::new(
+            &datum,
+            vec![vec![0, 1], vec![1, 0]],
+            vec![vec![0, 1], vec![1, 0]],
+        )
+        .unwrap();
+        let twist = pipeline
+            .inner_class
+            .based_involution_twist(flip.clone())
+            .unwrap();
+        assert_eq!(twist, vec![1, 0]);
+        let mut moved = false;
+        for id in 0..graph.size() {
+            let once = graph
+                .twisted(KgbId(id), &pipeline.table, &flip, &twist)
+                .unwrap()
+                .expect("the flip preserves the quasisplit form");
+            moved |= once != KgbId(id);
+            let twice = graph
+                .twisted(once, &pipeline.table, &flip, &twist)
+                .unwrap()
+                .expect("the flip preserves the quasisplit form");
+            assert_eq!(twice, KgbId(id));
+        }
+        assert!(moved, "the outer twist swaps the s1 and s2 fibers");
     }
 }

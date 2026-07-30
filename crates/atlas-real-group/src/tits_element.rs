@@ -407,8 +407,9 @@ fn parity_vector(coordinates: &[i32]) -> Result<ModTwoVector, StructureError> {
 /// Apply an integer matrix mod 2: output bit `i` is the parity of
 /// `matrix[i][j]` over the set bits `j` of the input. This is the
 /// production carrier for `pull_across` as matrix transport
-/// (`ModTwoLinearMap` is deliberately test-only).
-fn apply_matrix_mod_two(
+/// (`ModTwoLinearMap` is deliberately test-only), shared with the KGB
+/// twist (kgb_graph.rs).
+pub(crate) fn apply_matrix_mod_two(
     matrix: &[Vec<i32>],
     vector: &ModTwoVector,
 ) -> Result<ModTwoVector, StructureError> {

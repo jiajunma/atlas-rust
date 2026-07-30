@@ -25,7 +25,7 @@ use atlas_real_group::{
     BasedRootDatum, CartanClassification, CartanClassificationBudget, Coweight, ExternalFormOrder,
     InnerClass, InnerClassLayout, IntegerLatticeBudget, InvolutionTable, InvolutionTableBudget,
     KgbGraph, KgbId, KgbStatus, LatticeInvolution, RealFormPresentation, RealFormSeed,
-    StrongRealClassification, WeakRealFormId, Weight,
+    StrongRealClassification, StructureError, WeakRealFormId, Weight,
 };
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
@@ -1292,6 +1292,118 @@ fn transpose(matrix: &[Vec<i32>]) -> Vec<Vec<i32>> {
         .collect()
 }
 
+/// Integer matrix product with wide accumulation: user matrices are
+/// unbounded, and the products feed equality tests only (the twist
+/// compatibility checks below).
+fn integer_matrix_product(left: &[Vec<i32>], right: &[Vec<i32>]) -> Vec<Vec<i128>> {
+    let columns = right.first().map_or(0, Vec::len);
+    let mut product = vec![vec![0i128; columns]; left.len()];
+    for (row, left_row) in left.iter().enumerate() {
+        for (middle, &entry) in left_row.iter().enumerate() {
+            for (column, &right_entry) in right[middle].iter().enumerate() {
+                product[row][column] += i128::from(entry) * i128::from(right_entry);
+            }
+        }
+    }
+    product
+}
+
+fn is_identity_square(matrix: &[Vec<i32>]) -> bool {
+    integer_matrix_product(matrix, matrix)
+        .iter()
+        .enumerate()
+        .all(|(row, entries)| {
+            entries
+                .iter()
+                .enumerate()
+                .all(|(column, &entry)| entry == i128::from(row == column))
+        })
+}
+
+/// Port of upstream `test_compatible` (interpreter/atlas-types.w:4625-4632)
+/// with the wrapper's exact diagnostics: the user's matrix must be an
+/// involution of the BASED root datum of the element's inner class — the
+/// distinguished rejection rides on the crate's
+/// [`atlas_real_group::InnerClass::based_involution_twist`] — and it must
+/// commute with the class's distinguished involution. Returns the
+/// validated involution and its induced simple-root twist.
+fn compatible_outer_twist(
+    context: &Arc<RealFormContext>,
+    value: &Value,
+    span: SourceSpan,
+) -> Result<(LatticeInvolution, Vec<usize>), Diagnostic> {
+    // The upstream size diagnostic prints the matrix's true shape; the row
+    // adapter represents a 0xN matrix as N empty rows, so recover that one
+    // case from the value itself.
+    let zero_row =
+        matches!(value, Value::Matrix(matrix) if matrix.rows() == 0 && matrix.cols() > 0);
+    let matrix = as_matrix_rows(value, span)?;
+    let inner_class = &context.parent.inner_class;
+    let rank = inner_class.datum().lattice_rank();
+    let columns = matrix.first().map_or(0, Vec::len);
+    if matrix.len() != rank || columns != rank {
+        let (rows, cols) = if zero_row {
+            (0, matrix.len())
+        } else {
+            (matrix.len(), columns)
+        };
+        return Err(runtime(
+            span,
+            format!("Involution should be a {rank}x{rank} matrix; received a {rows}x{cols} matrix"),
+        ));
+    }
+    if !is_identity_square(&matrix) {
+        return Err(runtime(span, "Given transformation is not an involution"));
+    }
+    let delta = LatticeInvolution::new(inner_class.datum(), matrix.clone(), transpose(&matrix))
+        .map_err(|error| runtime(span, error.to_string()))?;
+    let twist = inner_class
+        .based_involution_twist(delta.clone())
+        .map_err(|error| {
+            runtime(
+                span,
+                match error {
+                    StructureError::InvalidBasedAutomorphism => {
+                        "Root datum involution is not distinguished".to_string()
+                    }
+                    other => other.to_string(),
+                },
+            )
+        })?;
+    let distinguished = inner_class
+        .distinguished_involution()
+        .involution()
+        .weight_matrix();
+    if integer_matrix_product(&matrix, distinguished)
+        != integer_matrix_product(distinguished, &matrix)
+    {
+        return Err(runtime(span, "Non commuting distinguished involution"));
+    }
+    Ok((delta, twist))
+}
+
+/// Shared tail of both `twist` wrappers: apply the crate twist and rewrap
+/// the target in the same real-form context. `Ok(None)` from the crate is
+/// upstream's `UndefKGB`, surfaced with the established inexistent
+/// wording.
+fn twist_element(
+    context: &Arc<RealFormContext>,
+    id: KgbId,
+    delta: &LatticeInvolution,
+    twist: &[usize],
+    span: SourceSpan,
+) -> Result<Value, Diagnostic> {
+    let target = context
+        .graph
+        .twisted(id, &context.table, delta, twist)
+        .map_err(|error| runtime(span, error.to_string()))?
+        .ok_or_else(|| runtime(span, "Inexistent KGB element"))?;
+    Ok(Value::Domain(DomainValue::KgbElement(
+        Arc::clone(context),
+        target,
+    )))
+}
+
 /// A simple-coordinate root or coroot table.
 type CoordinateTable = Vec<Vec<i32>>;
 
@@ -1643,8 +1755,10 @@ fn check_generator(
 ) -> Result<(), Diagnostic> {
     let rank = context.graph.semisimple_rank();
     if generator >= rank {
-        // Posroot and negative indices are a documented phase-1 deferral.
-        return Err(runtime(span, "Illegal root index"));
+        // Posroot and negative indices are a documented phase-1 deferral;
+        // the message echoes the user index like upstream
+        // `get_reflection_index` (atlas-types.w:4481-4489).
+        return Err(runtime(span, format!("Illegal root index: {generator}")));
     }
     Ok(())
 }
@@ -1688,6 +1802,14 @@ pub(crate) fn validate(
             if context.graph.element(id).is_none() {
                 return Err(runtime(span, "Inexistent KGB element"));
             }
+        }
+        // KGB_outer_twist_wrapper runs test_compatible BEFORE its no_value
+        // check (atlas-types.w:4634), so the compatibility diagnostics fire
+        // even in a value-suppressed context.
+        "twist" => {
+            arity(name, arguments, 2, span)?;
+            let (context, _) = as_kgb_element(&arguments[0], span)?;
+            compatible_outer_twist(context, &arguments[1], span)?;
         }
         other => {
             return Err(runtime(
@@ -1997,6 +2119,49 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 span,
             )?))
         }
+        // decompose_KGB_wrapper (atlas-types.w:4429): the owning real form
+        // and the element number, wrapped as a pair.
+        "%" => {
+            arity(name, arguments, 1, span)?;
+            let (context, id) = as_kgb_element(&arguments[0], span)?;
+            Ok(Value::Tuple(vec![
+                Value::Domain(DomainValue::RealForm(Arc::clone(context))),
+                Value::Integer(BigInt::from(id.index())),
+            ]))
+        }
+        // KGB_twist_wrapper (atlas-types.w:4616) twists by the inner
+        // class's distinguished involution; KGB_outer_twist_wrapper
+        // (atlas-types.w:4634) validates the user's involution with
+        // test_compatible first.
+        "twist" => match arguments {
+            [element] => {
+                let (context, id) = as_kgb_element(element, span)?;
+                let delta = context
+                    .parent
+                    .inner_class
+                    .distinguished_involution()
+                    .involution()
+                    .clone();
+                let twist = context
+                    .parent
+                    .inner_class
+                    .based_involution_twist(delta.clone())
+                    .map_err(|error| runtime(span, error.to_string()))?;
+                twist_element(context, id, &delta, &twist, span)
+            }
+            [element, matrix] => {
+                let (context, id) = as_kgb_element(element, span)?;
+                let (delta, twist) = compatible_outer_twist(context, matrix, span)?;
+                twist_element(context, id, &delta, &twist, span)
+            }
+            _ => Err(type_error(
+                span,
+                format!(
+                    "{name} has no matching overload for {} argument(s)",
+                    arguments.len()
+                ),
+            )),
+        },
         unknown => Err(Diagnostic::new(
             ErrorKind::Name,
             format!("undefined function `{unknown}`"),
@@ -2321,6 +2486,101 @@ mod tests {
             .expect("KGB element");
         let factor = call("torus_factor", &[element], span()).expect("torus factor");
         assert!(matches!(factor, Value::RatVector(_)));
+    }
+
+    fn sl2r_split_form() -> Value {
+        let lie_type = call("Lie_type", &[Value::String("A1".into())], span()).expect("Lie type");
+        let datum = call(
+            "simply_connected",
+            &[lie_type, Value::Boolean(true)],
+            span(),
+        )
+        .expect("root datum");
+        let matrix =
+            Value::Matrix(Matrix::from_columns(1, 1, vec![1]).expect("identity involution"));
+        let inner = call("inner_class", &[datum, matrix], span()).expect("inner class");
+        call(
+            "real_form",
+            &[inner, Value::Integer(BigInt::from(1))],
+            span(),
+        )
+        .expect("split real form")
+    }
+
+    #[test]
+    fn decompose_returns_the_real_form_and_element_number() {
+        let real = sl2r_split_form();
+        let element =
+            call("KGB", &[real, Value::Integer(BigInt::from(0))], span()).expect("KGB element");
+        let decomposed = call("%", &[element], span()).expect("decompose");
+        let Value::Tuple(parts) = &decomposed else {
+            panic!("decompose must return a tuple")
+        };
+        assert_eq!(parts.len(), 2);
+        assert!(matches!(parts[0], Value::Domain(DomainValue::RealForm(_))));
+        assert_eq!(parts[1], Value::Integer(BigInt::from(0)));
+        assert_eq!(
+            decomposed.to_string(),
+            "(connected split real group with Lie algebra 'sl(2,R)',0)"
+        );
+    }
+
+    #[test]
+    fn distinguished_twist_fixes_sl2r_elements() {
+        let real = sl2r_split_form();
+        for index in [0, 2] {
+            let element = call(
+                "KGB",
+                &[real.clone(), Value::Integer(BigInt::from(index))],
+                span(),
+            )
+            .expect("KGB element");
+            let twisted = call("twist", std::slice::from_ref(&element), span()).expect("twist");
+            assert_eq!(twisted, element);
+        }
+    }
+
+    #[test]
+    fn outer_twist_applies_and_validates_like_the_oracle() {
+        let real = sl2r_split_form();
+        let element = |index: i64| {
+            call(
+                "KGB",
+                &[real.clone(), Value::Integer(BigInt::from(index))],
+                span(),
+            )
+            .expect("KGB element")
+        };
+        let matrix = |entry: i32| {
+            Value::Matrix(Matrix::from_columns(1, 1, vec![entry]).expect("1x1 matrix"))
+        };
+
+        // The identity outer twist fixes the split element #2.
+        let twisted = call("twist", &[element(2), matrix(1)], span()).expect("outer twist");
+        assert_eq!(twisted, element(2));
+
+        // [[-1]] is a root-datum involution, but not one of the BASED datum.
+        let error = call("twist", &[element(0), matrix(-1)], span())
+            .expect_err("unbased involution is rejected");
+        assert_eq!(error.kind, ErrorKind::Runtime);
+        assert_eq!(error.message, "Root datum involution is not distinguished");
+        let error = validate("twist", &[element(0), matrix(-1)], span())
+            .expect_err("the no-value path validates identically");
+        assert_eq!(error.message, "Root datum involution is not distinguished");
+
+        // A non-involutive matrix fails the earlier check.
+        let error = call("twist", &[element(0), matrix(2)], span())
+            .expect_err("non-involution is rejected");
+        assert_eq!(error.message, "Given transformation is not an involution");
+
+        // A wrongly sized matrix fails first of all.
+        let wide = Value::Matrix(Matrix::from_columns(1, 2, vec![1, 0]).expect("1x2 matrix"));
+        let error =
+            call("twist", &[element(0), wide], span()).expect_err("wrong-size matrix is rejected");
+        assert_eq!(
+            error.message,
+            "Involution should be a 1x1 matrix; received a 1x2 matrix"
+        );
     }
 
     fn fixture_datum(lie_type: &str, prefers_coroots: bool) -> Value {
