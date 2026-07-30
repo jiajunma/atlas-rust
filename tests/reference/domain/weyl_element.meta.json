@@ -1,8 +1,8 @@
 {
-  "fixture": "domain/weyl_element.atlas",
-  "oracle": "pending_hpc_capture",
+  "fixture": "domain/weyl_element",
+  "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:2629-2639"
@@ -12,8 +12,17 @@
     "B2: W_elt(rd,[0,1,0,1]) canonicalizes to <1.0.1.0>; braid 0101 = 1010; root_datum roundtrip",
     "word() returns a row [0,1,0] (unpadded), distinct from vec display"
   ],
-  "notes": "WeylElt language surface (W_elt/word/length/=,!=/*//,#/root_datum), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The WeylElt display is the canonical reduced word in angle brackets; equality is group equality (braid relations hold). The crate-level word substrate recorded in the previous revision of this meta (141 local tests) remains the kernel this surface binds to.",
+  "notes": "WeylElt language surface (W_elt/word/length/=,!=/*//,#/root_datum), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The WeylElt display is the canonical reduced word in angle brackets; equality is group equality (braid relations hold). The crate-level word substrate recorded in the previous revision of this meta (141 local tests) remains the kernel this surface binds to. Reference captured verbatim by HPC job 3501466 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
   "design_reviews": {
     "recorded_in": "docs/WEYL_ELEMENT_DESIGN.md"
-  }
+  },
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3501466",
+  "source_archive_sha256": "7d2f5a96e655c96c84243880d936028ff6481a6a4432946935f2792ff3dd020a",
+  "fixture_sha256": "a72de934ae2d55ebdea1a537e4df791749711ed844849e62fc4af59fa26ea545",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "22ec831e3d1040b26768c18b50f3f0e7a33a24d25f975d62b0ec774ef126a69a",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "89dc91ce7ea14ec064b1b6031833b1e6d94f7f44e91bae284dcf72e9ececceee"
 }

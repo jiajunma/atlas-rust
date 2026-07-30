@@ -1,11 +1,20 @@
 {
-  "fixture": "domain/kgb_operations_rejected.atlas",
-  "oracle": "pending_hpc_capture",
+  "fixture": "domain/kgb_operations_rejected",
+  "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:4704"
   ],
-  "notes": "Rejected companion of the KGB per-element operations: cross(5,x0) on a rank-1 form aborts with 'Illegal root index: 5'. Confirmed by direct oracle probe; verbatim HPC capture still pending."
+  "notes": "Rejected companion of the KGB per-element operations: cross(5,x0) on a rank-1 form aborts with 'Illegal root index: 5'. Confirmed by direct oracle probe; verbatim HPC capture still pending. Reference captured verbatim by HPC job 3501466 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3501466",
+  "source_archive_sha256": "7d2f5a96e655c96c84243880d936028ff6481a6a4432946935f2792ff3dd020a",
+  "fixture_sha256": "b972d871f3a7eb187f672b92881b6bb5295b1cbee4852dc7189374d46cfa1760",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "e1d27d031622ecfd6318843bf71693c6ac01792b74bd6203a2c74ca9f9af294f",
+  "oracle_stderr_sha256": "d695e50f655b2640608edeccd70261431ba7b521dd73cac5a9e32711a7176560",
+  "capture_artifacts_sha256": "77ea4323172121ab5468c7ab7d228d295c5c27a1eae8e41289abae21c87c14b2"
 }

@@ -15,6 +15,7 @@
   "upstream_evidence": [
     "sources/interpreter/parser.y:187"
   ],
-  "rust_status": "not_implemented",
-  "notes": "B8 user-overload rejected companion, split from probe overloads_b8_probe (capture 3499701): calling a single-instance user function with a tuple of the wrong arity is an analysis-time type error. The oracle's multi-line diagnostic ('Type error:\\n  Subexpression (1,2,3) ... has wrong type: found (int,int,int) while int was needed.') is normalized to its final 'found ... while ... was needed.' line. Reference captured by HPC job 3499705 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stderr matches the expected diagnostic. Differential evidence remains pending until the pipeline_swap_diff run."
+  "rust_status": "verified_hpc",
+  "notes": "B8 user-overload rejected companion, split from probe overloads_b8_probe (capture 3499701): calling a single-instance user function with a tuple of the wrong arity is an analysis-time type error. The oracle's multi-line diagnostic ('Type error:\\n  Subexpression (1,2,3) ... has wrong type: found (int,int,int) while int was needed.') is normalized to its final 'found ... while ... was needed.' line. Reference captured by HPC job 3499705 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stderr matches the expected diagnostic. Differential evidence remains pending until the pipeline_swap_diff run. Rust implementation verified by HPC differential job 3501467 (pipeline_swap_diff at commit 8feb364): stdout, stderr diagnostics, and exit status match the frozen reference events exactly.",
+  "differential_job": "3501467"
 }

@@ -1,11 +1,20 @@
 {
-  "fixture": "domain/weyl_element_rejected.atlas",
-  "oracle": "pending_hpc_capture",
+  "fixture": "domain/weyl_element_rejected",
+  "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:2629"
   ],
-  "notes": "Rejected companions of the WeylElt surface: a generator index past the rank aborts with 'Illegal Weyl word entry 5 (should be <2)', and a negative word entry with 'Negative integer where unsigned is required'. Both confirmed by direct oracle probes; verbatim HPC capture still pending."
+  "notes": "Rejected companions of the WeylElt surface: a generator index past the rank aborts with 'Illegal Weyl word entry 5 (should be <2)', and a negative word entry with 'Negative integer where unsigned is required'. Both confirmed by direct oracle probes; verbatim HPC capture still pending. Reference captured verbatim by HPC job 3501466 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3501466",
+  "source_archive_sha256": "7d2f5a96e655c96c84243880d936028ff6481a6a4432946935f2792ff3dd020a",
+  "fixture_sha256": "2fd8c31d3a977f3f76f8c89e49249c3f1cddfc6bba1000bb4df429c893ccddd4",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "92e13f700b4bc1c24ab4b39647853f0e96c8224f3f442ddccb6d7bc4ade80e64",
+  "oracle_stderr_sha256": "2642def796ebdd03d072322101eaf714e71919f1dea79001e0f2331e815627c2",
+  "capture_artifacts_sha256": "0fbb1e73a05c4e4f79b8b06fbf5af82fcb5868dd873079dc16ef607a6443129a"
 }

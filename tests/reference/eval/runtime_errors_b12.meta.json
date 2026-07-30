@@ -12,9 +12,10 @@
   "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
   "oracle_stderr_sha256": "5e8f9d9a4e66c39d088ce88ba9cd40be33bd5fbf397852f58bb5739c6d67c19f",
   "capture_artifacts_sha256": "805ed6ca6b51c7822580997413bbc270ac486da6eca2d702495deb74565544ed",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/axis.w"
   ],
-  "notes": "B12 runtime-error corpus, content-identical split from probe runtime_errors_probe (capture 3500387). Out-of-range subscription on a row and on a string are runtime errors ('Runtime error:\\n  index N out of range (0<= . <M) in subscription <source>', normalized to the message line; the subscription source renders without spaces for rows); modulo by zero is 'Modulo zero' and integer division by zero is 'Inverse of zero'. Subscripting a tuple with a non-constant index is an ANALYSIS error ('Cannot subscript value of type (int,int) with index of type int'), classified type. Batch evaluation continues after each failure and the process exits 1. Reference captured by HPC job 3500488 (commit a0f18af) against the frozen atlasofliegroups-4d3e9449 oracle; raw output matches the pre-registered events, which this capture confirms verbatim."
+  "notes": "B12 runtime-error corpus, content-identical split from probe runtime_errors_probe (capture 3500387). Out-of-range subscription on a row and on a string are runtime errors ('Runtime error:\\n  index N out of range (0<= . <M) in subscription <source>', normalized to the message line; the subscription source renders without spaces for rows); modulo by zero is 'Modulo zero' and integer division by zero is 'Inverse of zero'. Subscripting a tuple with a non-constant index is an ANALYSIS error ('Cannot subscript value of type (int,int) with index of type int'), classified type. Batch evaluation continues after each failure and the process exits 1. Reference captured by HPC job 3500488 (commit a0f18af) against the frozen atlasofliegroups-4d3e9449 oracle; raw output matches the pre-registered events, which this capture confirms verbatim. Rust implementation verified by HPC differential job 3501467 (pipeline_swap_diff at commit 8feb364): stdout, stderr diagnostics, and exit status match the frozen reference events exactly.",
+  "differential_job": "3501467"
 }
