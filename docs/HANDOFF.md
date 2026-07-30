@@ -86,8 +86,15 @@ oracle's transducer choice exactly (B2 input [0,1,0,1] canonicalizes to
 dropped the transducer order (WEYL_ELEMENT_DESIGN.md deferral), so the
 language layer must port the Transducer word canonicalization, not reuse
 the crate's raw word; length(w) = W.length(w)) → `cartan_aggregation`
-(Cartan_class/nr_of_Cartan_classes/most_split_Cartan/involution/real_forms/
-dual_real_forms/square_classes/fiber_partition) → `seed_x0` (KGB_elt
+(Cartan_class(ic,i) bound-checked by numCartanClasses with the wording
+'Illegal Cartan class number: i, this inner class only has N of them'
+(atlas-types.w:4019); Cartan_class(rf,i) maps the per-form index through
+rf->val.Cartan_set().n_th(i) to the inner-class number (atlas-types.w:4040,
+wording 'this real form only has N of them'); most_split_Cartan(rf) =
+rf->val.mostSplit(); the CartanClass display 'Cartan class #N, occurring for
+X real forms and for Y dual real forms' needs the occurrence/dual-occurrence
+column counts — the real_form_labels machinery; nr_of_Cartan_classes =
+numCartanClasses (InnerClass) / numCartan (RealForm)) → `seed_x0` (KGB_elt
 synthetic) → `involution_table` (print_KGB/print_strong_real) →
 `adjoint_fiber` (central_fiber) → `real_form_labels` (occurrence_matrix/
 dual_occurrence_matrix/block_sizes/block_size/Cartan_order) →
