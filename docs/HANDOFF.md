@@ -242,7 +242,17 @@ adjective chain non-standard/non-dominant/zero/non-final/non-normal/final +
 ' K-type' + print_K_type 'K_type(x=N, lambda=[..]/d)' (basic_io;
 atlas-types.w:5210+5224); needs crate Rep_context/K_repr machinery
 (repr.{h,cpp}, K_repr.h) — sr_K normalization and the predicate set are the
-math core of this slice) →
+math core of this slice. REP RECON 2026-07-30: the gated Rep_context subset
+is focused despite repr.cpp's 2839 lines (most is blocks/KL/branch/deform):
+sr(x,lam,nu)=sr_gamma(x,lam,gamma(x,lam,nu)) (repr.h:242); sr_gamma
+(repr.cpp:756) = StandardRepr(x, y_pack(i_x,lam_rho), gamma,
+height((1+theta)gamma)); sr_K(x,lam_rho) with the mod-(1-theta)X*
+normalization inside K_type's constructor (K_repr.cpp, 626 lines total);
+~8 predicates are compact root-table computations; supporting pieces
+mostly EXIST: InvolutionTable (involution_table.rs), Tits coset reduce
+(seed_x0's quotient_representative ~ y_pack), kgb status, g_rho_check —
+plan ktype_basic+param_basic as ONE crate milestone (Rep_context subset)
+with two language slices; ktypepol/parampol are then thin) →
 `ktypepol_basic` (KTypePol install list atlas-types.w:6091-6117:
 null_K_module(RealForm->KTypePol) display 'Empty sum of K-types';
 real_form; unary =/!= zero tests; =/!=(KTypePol,KTypePol); # = TERM count
