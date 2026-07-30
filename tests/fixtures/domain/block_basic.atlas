@@ -1,0 +1,19 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("A1"),true)
+ic : InnerClass
+ic := inner_class(rd,[[1]])
+rf : RealForm
+rf := real_form(ic,1)
+df : RealForm
+df := dual_real_form(ic,1)
+B : Block
+B := block(rf,df)
+B
+#B
+%B
+element(B,0)
+cross(0,B,0)
+Cayley(0,B,2)
+status(0,B,0)
+status(0,B,2)
+inverse_Cayley(0,B,0)

@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/block_basic_rejected.atlas",
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:4995-4998"
+  ],
+  "notes": "Rejected companions of the Block surface: block(rf,rf) with a non-dual second form aborts with 'Inner class mismatch between real form and dual real form'; element(B,5) aborts with 'Block element 5 out of range (<3)'. Both confirmed by direct oracle probes; verbatim HPC capture still pending."
+}

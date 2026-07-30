@@ -1,0 +1,16 @@
+{
+  "fixture": "domain/block_basic.atlas",
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:4995-5004"
+  ],
+  "scenarios": [
+    "block(SL(2,R), PGL(2,R)) has 3 elements; #B and the % decomposition",
+    "element(B,0) = (KGB #0, KGB #1) with independent dual numbering",
+    "block cross/Cayley/inverse_Cayley and block status values (6 and 2)"
+  ],
+  "notes": "Block language surface (block/#/%/element/cross/Cayley/status/inverse_Cayley), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449); verbatim HPC capture still pending."
+}
