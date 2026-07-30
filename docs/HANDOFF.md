@@ -183,11 +183,25 @@ TUPLE (e,f); coercions int->Split ((a,0)) and (int,int)->Split; display is
 '(' e ('+'|'-') |f| 's)' with sign folded (anchors: (3+2s), (5+0s), (-3-2s),
 (-2+2s)); type name in declarations is `Split`; no division overload —
 s/2 gives 'Failed to match '/' with argument type (Split,int)') →
-`block_basic` (block/#/%/element/cross/Cayley/status/inverse_Cayley —
-atlas-types.w:4995-5004; block(rf,df) requires a DUAL second form
-('Inner class mismatch between real form and dual real form'), built via
-Block::build(rf,df) so numbering is classical; needs Block construction at
-the crate, the heaviest piece in this queue) →
+`block_basic` (install list atlas-types.w:4994-5004
+is TEN entries: block(RealForm,RealForm->Block) gated by
+is_dual(rf.ic,df.ic) else 'Inner class mismatch between real form and dual
+real form'; %(Block->RealForm,RealForm) = (rf,dual_rf); #(Block->int);
+element(Block,int->KGBElt,KGBElt) bounds 'Block element {i} out of range
+(<{size})' — the y component is rebuilt in rf.ic_ptr->dual() via
+real_form_value::build(dic, dual_rf.realForm()); index(Block,KGBElt,KGBElt
+->int); dual(Block->Block); status(int,Block,int->int) bounds 'Illegal
+simple reflection: {s}' then element bounds, output renumbered
+tab={4,5,6,7,1,0,3,2} from DescentStatus::Value order
+{ComplexAscent,RealNonparity,ImaginaryTypeI,ImaginaryTypeII,
+ImaginaryCompact,ComplexDescent,RealTypeII,RealTypeI} (descents.h:40) to
+0=C-,1=ic,2=r1,3=r2,4=C+,5=rn,6=i1,7=i2 (anchors: status(0,B,0)=6,
+status(0,B,2)=2); cross always defined; Cayley = cayley(s,i).first with
+UndefBlock -> return INPUT i as undefined indicator (same for
+inverse_Cayley, anchor inverse_Cayley(0,B,0)=0); needs crate Block::build
+(blocks.cpp:610/622) — the heaviest piece in this queue; display
+'Block of N elements'; dual_real_form(InnerClass,int) already registered
+(typed.rs:4125)) →
 `ktype_basic` (%/=/predicates/projections — atlas-types.w:6071-6088;
 K_type(x,v) normalizes v mod (1-theta_x)X* and displays lambda = v + rho;
 predicates is_standard/is_dominant/is_zero/is_semifinal/is_final + height) →
