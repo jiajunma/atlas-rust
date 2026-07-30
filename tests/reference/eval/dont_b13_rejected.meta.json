@@ -12,7 +12,8 @@
   "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
   "oracle_stderr_sha256": "6bc6ec819a7d3fb7bdddbdee73e5cd4ab271d15b275db2fdd8d9f0863b4efa1c",
   "capture_artifacts_sha256": "b1d64bd15579d5439bf3e6ce41a72ced57d223003d26f9546436fd6f49de353b",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
+  "differential_job": "3501643",
   "upstream_evidence": [
     "sources/interpreter/parser.y:364",
     "sources/interpreter/parser.y:441-444"

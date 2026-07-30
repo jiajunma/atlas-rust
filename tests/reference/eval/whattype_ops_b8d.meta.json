@@ -3,7 +3,8 @@
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_status": "verified_hpc_reference",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
+  "differential_job": "3501643",
   "upstream_evidence": [
     "sources/interpreter/global.w:1790",
     "sources/interpreter/parser.y:187"
