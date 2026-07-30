@@ -23,11 +23,11 @@ use malachite::{Integer as BigInt, Rational as BigRational};
 
 use atlas_real_group::{
     build_presentations, central_fiber, dual_cartan_correspondence, dual_inner_class,
-    AdjointFiberBudget, BasedRootDatum, CartanClassification, CartanClassificationBudget, CartanId,
-    Coweight, ExternalFormOrder, InnerClass, InnerClassLayout, IntegerLatticeBudget,
-    InvolutionTable, InvolutionTableBudget, KgbGraph, KgbId, KgbStatus, LatticeInvolution,
-    RealFormPresentation, RealFormSeed, RootSystem, StrongRealClassification, StructureError,
-    WeakRealFormId, Weight, WeylElement, WeylInterface,
+    AdjointFiberBudget, BasedRootDatum, CartanClass, CartanClassification,
+    CartanClassificationBudget, CartanId, Coweight, ExternalFormOrder, InnerClass,
+    InnerClassLayout, IntegerLatticeBudget, InvolutionTable, InvolutionTableBudget, KgbGraph,
+    KgbId, KgbStatus, LatticeInvolution, RealFormPresentation, RealFormSeed, RootSystem,
+    StrongRealClassification, StructureError, WeakRealFormId, Weight, WeylElement, WeylInterface,
 };
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
@@ -1352,6 +1352,127 @@ fn fiber_partition_membership(
     Ok(())
 }
 
+/// big_int::ulong_val (bigint.cpp:164-171): the unsigned extraction an int
+/// argument goes through before `block_size_wrapper`'s bounds checks, so a
+/// negative or over-wide value throws here, ahead of them.
+fn as_unsigned_long(value: &Value, span: SourceSpan) -> Result<u64, Diagnostic> {
+    let Value::Integer(value) = value else {
+        return Err(type_error(span, format!("expected an int, found {value}")));
+    };
+    if *value < 0 {
+        return Err(runtime(span, "Negative integer where unsigned is required"));
+    }
+    u64::try_from(value).map_err(|_| runtime(span, "Integer value to big for conversion"))
+}
+
+/// The guard clauses of `block_size_wrapper` (atlas-types.w:3337-3357): the
+/// form numbers are extracted as unsigned longs and bounds-checked — real
+/// form first — all before the upstream no-value gate, so `validate` reuses
+/// this. Returns `(real form, dual real form)` external numbers.
+fn block_size_numbers(
+    context: &InnerClassContext,
+    arguments: &[Value],
+    span: SourceSpan,
+) -> Result<(u64, u64), Diagnostic> {
+    let form = as_unsigned_long(&arguments[1], span)?;
+    let dual_form = as_unsigned_long(&arguments[2], span)?;
+    if form >= context.order.form_count() as u64 {
+        return Err(runtime(
+            span,
+            format!("Real form number {form} out of bounds"),
+        ));
+    }
+    if dual_form >= context.dual_form_count as u64 {
+        return Err(runtime(
+            span,
+            format!("Dual real form number {dual_form} out of bounds"),
+        ));
+    }
+    Ok((form, dual_form))
+}
+
+/// fiberSize/dualFiberSize (innerclass.cpp:603-640): the per-form count of
+/// adjoint-fiber elements at one Cartan, enumerated by the fiber's
+/// canonical masks exactly like `fiber_partition`.
+fn fiber_size(
+    cartan: &CartanClass,
+    form: WeakRealFormId,
+    span: SourceSpan,
+) -> Result<u64, Diagnostic> {
+    let dimension = cartan.grading().adjoint_fiber().dimension();
+    // The partition's mask-bits bound keeps this shift in range.
+    let element_count = 1_u64
+        .checked_shl(
+            u32::try_from(dimension)
+                .map_err(|_| runtime(span, "internal fiber dimension overflow"))?,
+        )
+        .ok_or_else(|| runtime(span, "internal fiber dimension overflow"))?;
+    let mut count = 0_u64;
+    for mask in 0..element_count {
+        let local = cartan
+            .partition()
+            .class_of_mask(mask)
+            .map_err(|error| runtime(span, error.to_string()))?;
+        if cartan.labels().label(local) == Some(form) {
+            count += 1;
+        }
+    }
+    Ok(count)
+}
+
+/// InnerClass::block_size (innerclass.cpp:1100-1114): the sum, over the
+/// Cartan classes shared by the real form and the dual real form, of
+/// `orbitSize * fiberSize * dualFiberSize` — NOT a Block::build.
+fn block_size_sum(
+    context: &Arc<InnerClassContext>,
+    dual: &Arc<InnerClassContext>,
+    internal: WeakRealFormId,
+    dual_internal: WeakRealFormId,
+    span: SourceSpan,
+) -> Result<u64, Diagnostic> {
+    let cartan_set = context
+        .classification
+        .cartan_set(internal)
+        .expect("a real form's internal number is in range");
+    let dual_set = dual
+        .classification
+        .cartan_set(dual_internal)
+        .expect("a real form's internal number is in range");
+    let mut total = 0_u64;
+    for (number, id) in context.classification.cartan_ids().enumerate() {
+        if !cartan_set.contains(&id) {
+            continue;
+        }
+        let (dual_id, _) = context
+            .dual_cartans
+            .get(number)
+            .expect("the correspondence covers every Cartan class");
+        if !dual_set.contains(dual_id) {
+            continue;
+        }
+        let cartan = context
+            .classification
+            .cartan_class(id)
+            .expect("Cartan ids enumerate in-range classes");
+        let dual_cartan = dual
+            .classification
+            .cartan_class(*dual_id)
+            .expect("the correspondence covers every Cartan class");
+        let orbit = u64::try_from(cartan.twisted_involution_count())
+            .map_err(|_| runtime(span, "internal block size overflow"))?;
+        let factor = fiber_size(cartan, internal, span)?;
+        let dual_factor = fiber_size(dual_cartan, dual_internal, span)?;
+        let term = orbit
+            .checked_mul(factor)
+            .and_then(|product| product.checked_mul(dual_factor))
+            .ok_or_else(|| runtime(span, "internal block size overflow"))?;
+        total = total
+            .checked_add(term)
+            .ok_or_else(|| runtime(span, "internal block size overflow"))?;
+    }
+    Ok(total)
+}
+
 fn arity(
     name: &str,
     arguments: &[Value],
@@ -2197,6 +2318,15 @@ pub(crate) fn validate(
             let form = as_real_form(&arguments[1], span)?;
             fiber_partition_membership(context, id, form, span)?;
         }
+        // block_size_wrapper's unsigned extraction and bounds checks
+        // precede its no_value gate (atlas-types.w:3337-3357).
+        "block_size" => {
+            arity(name, arguments, 3, span)?;
+            let Value::Domain(DomainValue::InnerClass(context)) = &arguments[0] else {
+                return Err(type_error(span, "expected an InnerClass"));
+            };
+            block_size_numbers(context, arguments, span)?;
+        }
         other => {
             return Err(runtime(
                 span,
@@ -2858,6 +2988,167 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 }
             }
             Ok(Value::List(members))
+        }
+        // occurrence_matrix_wrapper (atlas-types.w:3361-3379): rows indexed
+        // by real forms, columns by Cartan classes; membership reads the
+        // per-form Cartan set.
+        "occurrence_matrix" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::InnerClass(context)) = &arguments[0] else {
+                return Err(type_error(span, "expected an InnerClass"));
+            };
+            let class_count = context.classification.cartan_ids().len();
+            let mut rows = Vec::with_capacity(context.order.form_count());
+            for external in 0..context.order.form_count() {
+                let internal = context
+                    .order
+                    .internal(external)
+                    .expect("external numbers are in range");
+                let set = context
+                    .classification
+                    .cartan_set(internal)
+                    .expect("a real form's internal number is in range");
+                let mut row = vec![0_i32; class_count];
+                for (column, id) in context.classification.cartan_ids().enumerate() {
+                    if set.contains(&id) {
+                        row[column] = 1;
+                    }
+                }
+                rows.push(row);
+            }
+            matrix_value(&rows, span)
+        }
+        // dual_occurrence_matrix_wrapper (atlas-types.w:3381-3400): the same
+        // sweep over the dual real forms, mapped back to this inner class's
+        // Cartan numbering through the dual correspondence.
+        "dual_occurrence_matrix" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::InnerClass(context)) = &arguments[0] else {
+                return Err(type_error(span, "expected an InnerClass"));
+            };
+            let dual = build_dual_inner_class(context, span)?;
+            let class_count = context.classification.cartan_ids().len();
+            let mut rows = Vec::with_capacity(dual.order.form_count());
+            for external in 0..dual.order.form_count() {
+                let internal = dual
+                    .order
+                    .internal(external)
+                    .expect("external numbers are in range");
+                let set = dual
+                    .classification
+                    .cartan_set(internal)
+                    .expect("a real form's internal number is in range");
+                let mut row = vec![0_i32; class_count];
+                for (column, slot) in row.iter_mut().enumerate() {
+                    let (dual_id, _) = context
+                        .dual_cartans
+                        .get(column)
+                        .expect("the correspondence covers every Cartan class");
+                    if set.contains(dual_id) {
+                        *slot = 1;
+                    }
+                }
+                rows.push(row);
+            }
+            matrix_value(&rows, span)
+        }
+        // block_sizes_wrapper (atlas-types.w:3323-3335): the full
+        // numRealForms x numDualRealForms table of InnerClass::block_size.
+        "block_sizes" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::InnerClass(context)) = &arguments[0] else {
+                return Err(type_error(span, "expected an InnerClass"));
+            };
+            let dual = build_dual_inner_class(context, span)?;
+            let mut rows = Vec::with_capacity(context.order.form_count());
+            for external in 0..context.order.form_count() {
+                let internal = context
+                    .order
+                    .internal(external)
+                    .expect("external numbers are in range");
+                let mut row = Vec::with_capacity(dual.order.form_count());
+                for dual_external in 0..dual.order.form_count() {
+                    let dual_internal = dual
+                        .order
+                        .internal(dual_external)
+                        .expect("external numbers are in range");
+                    let size = block_size_sum(context, &dual, internal, dual_internal, span)?;
+                    row.push(
+                        i32::try_from(size)
+                            .map_err(|_| runtime(span, "block size exceeds the mat entry range"))?,
+                    );
+                }
+                rows.push(row);
+            }
+            matrix_value(&rows, span)
+        }
+        // block_size_wrapper (atlas-types.w:3337-3357): the unsigned
+        // extraction and both bounds checks precede the no-value gate, so
+        // `validate` shares them via block_size_numbers.
+        "block_size" => {
+            arity(name, arguments, 3, span)?;
+            let Value::Domain(DomainValue::InnerClass(context)) = &arguments[0] else {
+                return Err(type_error(span, "expected an InnerClass"));
+            };
+            let (external, dual_external) = block_size_numbers(context, arguments, span)?;
+            let internal = context
+                .order
+                .internal(usize::try_from(external).expect("bounds checked against the form count"))
+                .expect("bounds checked against the form count");
+            let dual = build_dual_inner_class(context, span)?;
+            let dual_internal = dual
+                .order
+                .internal(
+                    usize::try_from(dual_external)
+                        .expect("bounds checked against the dual form count"),
+                )
+                .expect("bounds checked against the dual form count");
+            Ok(Value::Integer(BigInt::from(block_size_sum(
+                context,
+                &dual,
+                internal,
+                dual_internal,
+                span,
+            )?)))
+        }
+        // Cartan_order_wrapper (atlas-types.w:3709-3724): the 0/1 matrix of
+        // the inner-class Cartan poset over 0..n-1 with n = numCartan(rf) —
+        // upstream indexes the poset DIRECTLY, without the form's Cartan-set
+        // remapping, and fills only the i<=j triangle.
+        "Cartan_order" => {
+            arity(name, arguments, 1, span)?;
+            let form = as_real_form(&arguments[0], span)?;
+            let classification = &form.parent.classification;
+            let count = classification
+                .cartan_set(form.internal)
+                .expect("a real form's internal number is in range")
+                .len();
+            let mut rows = Vec::with_capacity(count);
+            for i in 0..count {
+                let mut row = vec![0_i32; count];
+                for (j, slot) in row.iter_mut().enumerate().skip(i) {
+                    // poset::Poset::lesseq (poset.h:84-85): reflexive on the
+                    // diagonal, the strict closed Cayley order off it.
+                    let related = i == j
+                        || classification
+                            .is_below(
+                                classification
+                                    .cartan_ids()
+                                    .nth(i)
+                                    .expect("i is bounded by the class count"),
+                                classification
+                                    .cartan_ids()
+                                    .nth(j)
+                                    .expect("j is bounded by the class count"),
+                            )
+                            .expect("Cartan ids are in range");
+                    if related {
+                        *slot = 1;
+                    }
+                }
+                rows.push(row);
+            }
+            matrix_value(&rows, span)
         }
         "KGB_size" => {
             arity(name, arguments, 1, span)?;
@@ -3920,5 +4211,75 @@ mod tests {
         let a2 = call("W_elt", &[fixture_datum("A2", true), row(&[0, 1])], span()).expect("W_elt");
         let error = call("*", &[w, a2], span()).expect_err("mismatched data");
         assert_eq!(error.message, "Weyl group mismatch");
+    }
+
+    fn compact_a2_inner_class() -> Value {
+        let matrix =
+            Value::Matrix(Matrix::from_columns(2, 2, vec![0, -1, -1, 0]).expect("2x2 matrix"));
+        call("inner_class", &[fixture_datum("A2", true), matrix], span()).expect("inner class")
+    }
+
+    #[test]
+    fn real_form_labels_match_the_frozen_a2_anchors() {
+        let inner = compact_a2_inner_class();
+        assert_eq!(
+            call("occurrence_matrix", std::slice::from_ref(&inner), span())
+                .expect("occurrence_matrix")
+                .to_string(),
+            "\n| 1, 0 |\n| 1, 1 |\n"
+        );
+        assert_eq!(
+            call(
+                "dual_occurrence_matrix",
+                std::slice::from_ref(&inner),
+                span()
+            )
+            .expect("dual_occurrence_matrix")
+            .to_string(),
+            "\n| 1, 1 |\n"
+        );
+        assert_eq!(
+            call("block_sizes", std::slice::from_ref(&inner), span())
+                .expect("block_sizes")
+                .to_string(),
+            "\n| 1 |\n| 6 |\n"
+        );
+        assert_eq!(
+            call("block_size", &[inner.clone(), int(0), int(0)], span()),
+            Ok(Value::Integer(BigInt::from(1)))
+        );
+        assert_eq!(
+            call("block_size", &[inner.clone(), int(1), int(0)], span()),
+            Ok(Value::Integer(BigInt::from(6)))
+        );
+        let quasisplit = call("real_form", &[inner.clone(), int(1)], span()).expect("real form");
+        assert_eq!(
+            quasisplit.to_string(),
+            "connected quasisplit real group with Lie algebra 'su(2,1)'"
+        );
+        assert_eq!(
+            call("Cartan_order", std::slice::from_ref(&quasisplit), span())
+                .expect("Cartan_order")
+                .to_string(),
+            "\n| 1, 1 |\n| 0, 1 |\n"
+        );
+    }
+
+    #[test]
+    fn block_size_bounds_diagnostics_echo_the_oracle_on_both_levels() {
+        let inner = compact_a2_inner_class();
+        let error = call("block_size", &[inner.clone(), int(5), int(0)], span())
+            .expect_err("real form out of bounds");
+        assert_eq!(error.kind, ErrorKind::Runtime);
+        assert_eq!(error.message, "Real form number 5 out of bounds");
+        let error = validate("block_size", &[inner.clone(), int(5), int(0)], span())
+            .expect_err("the no-value path validates identically");
+        assert_eq!(error.message, "Real form number 5 out of bounds");
+        let error = call("block_size", &[inner.clone(), int(0), int(5)], span())
+            .expect_err("dual real form out of bounds");
+        assert_eq!(error.message, "Dual real form number 5 out of bounds");
+        let error = call("block_size", &[inner.clone(), int(-1), int(0)], span())
+            .expect_err("negative form number");
+        assert_eq!(error.message, "Negative integer where unsigned is required");
     }
 }

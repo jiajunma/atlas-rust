@@ -4471,6 +4471,44 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 Type::row(int_type()),
                 0,
             ),
+            // Real-form label matrices (atlas-types.w:3323-3400, 3709-3724):
+            // occurrence/block_sizes/Cartan_order only read and print values
+            // behind their upstream no-value gates, so they skip; block_size
+            // bounds-checks before its gate, so it validates.
+            domain_builtin_skip(
+                "occurrence_matrix",
+                primitive_type(Prim::InnerClass),
+                primitive_type(Prim::Mat),
+                0,
+            ),
+            domain_builtin_skip(
+                "dual_occurrence_matrix",
+                primitive_type(Prim::InnerClass),
+                primitive_type(Prim::Mat),
+                0,
+            ),
+            domain_builtin_skip(
+                "block_sizes",
+                primitive_type(Prim::InnerClass),
+                primitive_type(Prim::Mat),
+                0,
+            ),
+            domain_builtin_validate(
+                "block_size",
+                Type::tuple(vec![
+                    primitive_type(Prim::InnerClass),
+                    int_type(),
+                    int_type(),
+                ]),
+                int_type(),
+                0,
+            ),
+            domain_builtin_skip(
+                "Cartan_order",
+                primitive_type(Prim::RealForm),
+                primitive_type(Prim::Mat),
+                0,
+            ),
             // print_strongreal_wrapper (atlas-types.w:8850-8859):
             // output::printStrongReal, unconditional like print_KGB.
             domain_printer_builtin("print_strong_real", primitive_type(Prim::CartanClass)),

@@ -193,6 +193,11 @@ FIXTURE_PLANS = (
     # argument conform rejection.
     FixturePlan(name="domain/adjoint_fiber"),
     FixturePlan(name="domain/adjoint_fiber_rejected"),
+    # Real-form label matrices: occurrence/dual_occurrence, block_sizes and
+    # block_size, and Cartan_order on the A2 compact inner class, plus the
+    # real-form-number out-of-bounds rejection.
+    FixturePlan(name="domain/real_form_labels"),
+    FixturePlan(name="domain/real_form_labels_rejected"),
     # Early scalar-era fixtures: verified verbatim locally and included so
     # the HPC differential upgrades their reference metadata.
     FixturePlan(name="eval/scalars"),
