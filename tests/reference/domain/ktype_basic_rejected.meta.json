@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/ktype_basic_rejected.atlas",
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:6071"
+  ],
+  "notes": "Rejected companion of the KType surface: K_type with a rank-2 weight on a rank-1 form aborts with 'Rank mismatch: (1,2)'. Confirmed by direct oracle probe; verbatim HPC capture still pending."
+}

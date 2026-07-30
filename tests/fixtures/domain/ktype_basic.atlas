@@ -1,0 +1,26 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("A1"),true)
+ic : InnerClass
+ic := inner_class(rd,[[1]])
+rf : RealForm
+rf := real_form(ic,1)
+x : KGBElt
+x := KGB(rf,2)
+K : KType
+K := K_type(x,[0])
+K
+%K
+height(K)
+is_standard(K)
+is_dominant(K)
+is_zero(K)
+is_final(K)
+is_semifinal(K)
+real_form(K)
+dominant(K)
+normal(K)
+theta_stable(K)
+K2 : KType
+K2 := K_type(x,[2])
+K=K2
+equivalent(K,K2)

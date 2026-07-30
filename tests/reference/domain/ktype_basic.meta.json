@@ -1,0 +1,18 @@
+{
+  "fixture": "domain/ktype_basic.atlas",
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:6071-6088"
+  ],
+  "scenarios": [
+    "K_type(x2,[0]) displays 'final K-type K_type(x=2, lambda=[1]/1)' (lambda = input + rho)",
+    "%K returns the raw (KGB element #2,[ 0 ]) pair",
+    "predicate battery: standard/dominant/final/semifinal true, zero false, height 0",
+    "normalization mod (1-theta)X*: K_type(x,[2]) == K_type(x,[0]) (equivalent too)",
+    "dominant/normal/theta_stable are idempotent on a final K-type"
+  ],
+  "notes": "KType language surface (K_type/%/height/predicates/real_form/dominant/normal/theta_stable/equality/equivalent), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449); verbatim HPC capture still pending."
+}
