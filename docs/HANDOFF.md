@@ -93,13 +93,27 @@ theta² != 1 gives 'Given transformation is not an involution' from
 twisted_from_involution; the TitsElt(TorusPart(num), tw) is looked up in the
 per-form KGB ('KGB element not present' otherwise); compact SU(2) accepts
 [1]/2 because its g_rho_check is exactly [1]/2) → `involution_table`
-(print_KGB: row printer in io/kgb_io.cpp:126 with the interpreter's
-'kgbsize: N' + 'Base grading: [...]' header at atlas-types.cpp:5159 — the
-row format 'i: len [status] cross Cayley (torus)#x weylword' must be ported
-column-for-column including the '*' for undefined Cayley and the 1^e
-decorated word; print_strong_real: io/output.cpp:490, single-class layout
-has no 'there are N real form classes:' header, multi-class adds it plus
-blank-line-separated blocks) →
+(print_KGB: interpreter wrapper atlas-types.cpp:5159 prints 'kgbsize: N\n'
+then kgb_io::var_print_KGB (kgb_io.cpp:60, NON-traditional mode with
+G=innerClass): 'Base grading: [...].\n' header then rows
+'{j:>width}:  {len:>lwidth}<pad2>[status] {cross:>width+pad}...<pad2>
+{cayley|*:>width+pad}...<pad2>(torus)#{cc:>cwidth} {involution-word}\n'
+where width=digits(size-1), cwidth=digits(Cartan_class(size-1)),
+lwidth=digits(length(size-1)), pad=2; status chars per simple root
+C/c/n/r comma-separated in brackets (prettyprint.cpp:284); the '#' flag
+fires when kgb.involution(j)==G.involution_of_Cartan(cc(j)); the word is
+prettyprint::printInvolution (prettyprint.cpp:219) =
+TwistedWeylGroup::canonical_involution_expr, digits 1-based with '^'
+suffix for positive entries and 'x' for complemented (~) entries, closed
+by 'e' — NOTE the crate may lack involution-word canonicalization (same
+gap class as the weyl_element Transducer); print_strong_real:
+output.cpp:490 — n=cc.numRealFormClasses()>1 adds 'there are N real form
+classes:\n\n' and blank-line-separated blocks; per square class:
+'class #{f_csc}, possible square: exp(2i\pi({z}))\n' with f_csc =
+xi_square(rfl[fiber classRep]), z = sum of fundamental_coweight over
+base-graded simples with numerator entries reduced mod denominator
+(remainder), then per weak form 'real form #{rfi.out(rfl[toWeakReal])}:
+[{orbit comma-sep}] ({count})\n') →
 `adjoint_fiber` (central_fiber(rf) =
 rf->val.innerClass().central_fiber(rf->val.realForm()) as a row of int_Vector
 (atlas-types.w:3915); also anchors the adjoint(LieType,bool) datum display
