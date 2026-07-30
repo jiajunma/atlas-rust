@@ -1,8 +1,8 @@
 {
-  "fixture": "domain/adjoint_fiber.atlas",
-  "oracle": "pending_hpc_capture",
+  "fixture": "domain/adjoint_fiber",
+  "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:3952"
@@ -13,8 +13,17 @@
     "adjoint A2 datum prints 'adjoint root datum'; SU(2,1) central fiber [[ 0, 0 ]]",
     "rejected: central_fiber(InnerClass) is a type error"
   ],
-  "notes": "central_fiber(RealForm->[vec]) surface plus the adjoint(LieType,bool) datum constructor display, drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The crate-level adjoint-fiber machinery recorded in the previous revision of this meta (ADJOINT_FIBER_DESIGN.md) remains the kernel this surface binds to.",
+  "notes": "central_fiber(RealForm->[vec]) surface plus the adjoint(LieType,bool) datum constructor display, drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The crate-level adjoint-fiber machinery recorded in the previous revision of this meta (ADJOINT_FIBER_DESIGN.md) remains the kernel this surface binds to. Reference captured verbatim by HPC job 3501500 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
   "design_reviews": {
     "recorded_in": "docs/ADJOINT_FIBER_DESIGN.md"
-  }
+  },
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3501500",
+  "source_archive_sha256": "ba386f95772f395192050f70504e81d55e06883aad1090d5081a9658f1c8fa28",
+  "fixture_sha256": "decb674ffe6bf491900e388423ab2356022cbc25ed2c2c369e5c7d8721de089e",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "37ab197caa0e6733c1186f1f9af62be3d19f679bfc381a2a051283ded4fe7d67",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "a1d3b73a81626fe01a18c34e3271e2390e5a30eefbb8c8d637b419b86d1c8745"
 }

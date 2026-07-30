@@ -1,8 +1,8 @@
 {
-  "fixture": "domain/involution_decomposition.atlas",
-  "oracle": "pending_hpc_capture",
+  "fixture": "domain/involution_decomposition",
+  "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:3400-3408"
@@ -12,8 +12,17 @@
     "twisted_involution(rd,theta) returns the (WeylElt, InnerClass) pair: longest element <0.1.0> for the quasisplit involution, <> for the identity",
     "classify_involution maps the quasisplit A2 involution to (0,1,0) and the identity to (2,0,0)"
   ],
-  "notes": "Involution decomposition surface (distinguished_involution/twisted_involution/classify_involution), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The crate-level decomposition machinery recorded in the previous revision of this meta (115 local tests, INVOLUTION_DECOMPOSITION_DESIGN.md) remains the kernel this surface binds to.",
+  "notes": "Involution decomposition surface (distinguished_involution/twisted_involution/classify_involution), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The crate-level decomposition machinery recorded in the previous revision of this meta (115 local tests, INVOLUTION_DECOMPOSITION_DESIGN.md) remains the kernel this surface binds to. Reference captured verbatim by HPC job 3501500 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
   "design_reviews": {
     "recorded_in": "docs/INVOLUTION_DECOMPOSITION_DESIGN.md"
-  }
+  },
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3501500",
+  "source_archive_sha256": "ba386f95772f395192050f70504e81d55e06883aad1090d5081a9658f1c8fa28",
+  "fixture_sha256": "67d805ac65c94ed404004af552fe28b76721f2c16b9a68c5af8cc74d69631432",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "701272885d611f189c2060ea91bd0cb154aa193e379b0866445499a123a80ab3",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "966d6527c782d5df50e5551928ba75dddb74b2c851682ae8c704f4db338a529c"
 }

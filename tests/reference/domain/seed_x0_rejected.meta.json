@@ -1,11 +1,20 @@
 {
-  "fixture": "domain/seed_x0_rejected.atlas",
-  "oracle": "pending_hpc_capture",
+  "fixture": "domain/seed_x0_rejected",
+  "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:4706"
   ],
-  "notes": "Rejected companions of the synthetic KGB seed: a torus factor outside the real form's cocharacter coset and a non-involution matrix, both confirmed by direct oracle probes. Verbatim HPC capture still pending."
+  "notes": "Rejected companions of the synthetic KGB seed: a torus factor outside the real form's cocharacter coset and a non-involution matrix, both confirmed by direct oracle probes. Verbatim HPC capture still pending. Reference captured verbatim by HPC job 3501500 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3501500",
+  "source_archive_sha256": "ba386f95772f395192050f70504e81d55e06883aad1090d5081a9658f1c8fa28",
+  "fixture_sha256": "15d7ae2b2417de0e1ce9fb570438792ed5b955115b9f56c73b0199fcff458573",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "3b458c909c8d1f47b11d2c01e0185ad6d7f4040aa2d9ac07146560526da4973a",
+  "oracle_stderr_sha256": "7333afc02e1411b251ecc6d9717c9a17bb5c7578a701b6fbba04ea29eef6bace",
+  "capture_artifacts_sha256": "c4bb288f3845cf04d1cad9ae234372bfd4e1d9aad0569829987c501805f07ec6"
 }

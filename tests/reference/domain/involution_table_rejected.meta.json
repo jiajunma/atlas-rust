@@ -1,11 +1,20 @@
 {
-  "fixture": "domain/involution_table_rejected.atlas",
-  "oracle": "pending_hpc_capture",
+  "fixture": "domain/involution_table_rejected",
+  "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:9119"
   ],
-  "notes": "Rejected companion of the report surfaces: print_KGB applied to a RootDatum fails overload matching with 'Failed to match 'print_KGB' with argument type RootDatum' (the void-report overload form, not the coercion wording). Confirmed by direct oracle probe; verbatim HPC capture still pending."
+  "notes": "Rejected companion of the report surfaces: print_KGB applied to a RootDatum fails overload matching with 'Failed to match 'print_KGB' with argument type RootDatum' (the void-report overload form, not the coercion wording). Confirmed by direct oracle probe; verbatim HPC capture still pending. Reference captured verbatim by HPC job 3501500 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3501500",
+  "source_archive_sha256": "ba386f95772f395192050f70504e81d55e06883aad1090d5081a9658f1c8fa28",
+  "fixture_sha256": "bafcd866107b661cc3053727747edebd4603a7b55bbc4ba35b36508a121576ae",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "e8efa9090f4c4f408040bb4028467a1924e5e8e8d40530c34427c48605e3bf9b",
+  "oracle_stderr_sha256": "32d23606e98a2d08f06fab2ec9792063ef9472e6de899b4c09bdf14d7dc3465e",
+  "capture_artifacts_sha256": "901ed3f93ac9dba139ff800503bcc9a2d272b803cdf6c641fd716e393d537ea9"
 }

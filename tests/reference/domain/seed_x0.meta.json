@@ -1,8 +1,8 @@
 {
-  "fixture": "domain/seed_x0.atlas",
-  "oracle": "pending_hpc_capture",
+  "fixture": "domain/seed_x0",
+  "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:4706"
@@ -13,8 +13,17 @@
     "KGB_elt(compact SU(2), [[1]], [1]/2) = element 0 (the compact rho/2 shift is a valid coset)",
     "rejections: [1]/2 torus factor is not in the split form's cocharacter coset; [[2]] is not an involution"
   ],
-  "notes": "Synthetic KGB seed constructor KGB_elt(RealForm,mat,ratvec), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The crate-level seed machinery recorded in the previous revision of this meta remains the kernel this surface binds to.",
+  "notes": "Synthetic KGB seed constructor KGB_elt(RealForm,mat,ratvec), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The crate-level seed machinery recorded in the previous revision of this meta remains the kernel this surface binds to. Reference captured verbatim by HPC job 3501500 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
   "design_reviews": {
     "recorded_in": "docs/SEED_X0_DESIGN.md"
-  }
+  },
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3501500",
+  "source_archive_sha256": "ba386f95772f395192050f70504e81d55e06883aad1090d5081a9658f1c8fa28",
+  "fixture_sha256": "64ce2130cb209bad79abe8b299c2033e056271a5d9def0361eee49b29127edaa",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "dc8eed194f142a56696d8d47e82083fe303aa07113a619d97d82fcde869088a5",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "d1f3b13e908910f55f4cd4afcc675e732f851a7567f28746164b118619fbfe0e"
 }

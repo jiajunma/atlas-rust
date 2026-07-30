@@ -1,8 +1,8 @@
 {
-  "fixture": "domain/cartan_aggregation.atlas",
-  "oracle": "pending_hpc_capture",
+  "fixture": "domain/cartan_aggregation",
+  "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:4348-4366"
@@ -14,8 +14,17 @@
     "square_classes(#0) = [[1],[0,0]]; fiber_partition(#0, split) = [0]",
     "per-form Cartan_class(rf,0) = #0"
   ],
-  "notes": "Cartan class language surface (Cartan_class/nr_of_Cartan_classes/most_split_Cartan/involution/real_forms/dual_real_forms/square_classes/fiber_partition), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The CartanClass display carries singular/plural 'real form(s)' and 'dual real form(s)'. The crate-level aggregation machinery recorded in the previous revision of this meta (126 local tests, CARTAN_AGGREGATION_DESIGN.md) remains the kernel this surface binds to.",
+  "notes": "Cartan class language surface (Cartan_class/nr_of_Cartan_classes/most_split_Cartan/involution/real_forms/dual_real_forms/square_classes/fiber_partition), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The CartanClass display carries singular/plural 'real form(s)' and 'dual real form(s)'. The crate-level aggregation machinery recorded in the previous revision of this meta (126 local tests, CARTAN_AGGREGATION_DESIGN.md) remains the kernel this surface binds to. Reference captured verbatim by HPC job 3501500 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
   "design_reviews": {
     "recorded_in": "docs/CARTAN_AGGREGATION_DESIGN.md"
-  }
+  },
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3501500",
+  "source_archive_sha256": "ba386f95772f395192050f70504e81d55e06883aad1090d5081a9658f1c8fa28",
+  "fixture_sha256": "ffbe807e7a2dfe4ce3aa09b27316d3d66de206b1fa036a36117039d7ff625c2f",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "4026b1dee21337911222e8a07cdc939d801282d665abe1447ce43d40be6700a9",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "ad0171add93b2daba6dd458e094faabcaac898428a9ab6994fd7405dc5d6b1a6"
 }

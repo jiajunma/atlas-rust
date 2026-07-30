@@ -1,8 +1,8 @@
 {
-  "fixture": "domain/real_form_labels.atlas",
-  "oracle": "pending_hpc_capture",
+  "fixture": "domain/real_form_labels",
+  "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:3422-3431",
@@ -14,8 +14,17 @@
     "block_sizes [[1],[6]] and block_size(ic,0,0)=1, block_size(ic,1,0)=6 (matching the KGB sizes)",
     "Cartan_order(SU(2,1)) [[1,1],[0,1]] (the two-class poset)"
   ],
-  "notes": "Cartan occurrence/block-size/Cartan-order matrices, drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The crate-level real-form label machinery recorded in the previous revision of this meta (121 local tests, REAL_FORM_LABELS_DESIGN.md) remains the kernel this surface binds to.",
+  "notes": "Cartan occurrence/block-size/Cartan-order matrices, drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The crate-level real-form label machinery recorded in the previous revision of this meta (121 local tests, REAL_FORM_LABELS_DESIGN.md) remains the kernel this surface binds to. Reference captured verbatim by HPC job 3501500 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
   "design_reviews": {
     "recorded_in": "docs/REAL_FORM_LABELS_DESIGN.md"
-  }
+  },
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3501500",
+  "source_archive_sha256": "ba386f95772f395192050f70504e81d55e06883aad1090d5081a9658f1c8fa28",
+  "fixture_sha256": "88feb397364b61a924da48bca3aff734042388546e9942e7f716676f22d23da3",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "c6dc1219dc1cd12c63e54c921f60c7fbe10fe8441e77a5df2a4966cecabd9f8f",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "ef9f6ecea184c234d6a80d33906e55e1e7c437208ff2815d0d8734dd09eb5634"
 }

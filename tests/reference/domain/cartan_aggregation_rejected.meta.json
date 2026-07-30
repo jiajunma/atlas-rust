@@ -1,11 +1,20 @@
 {
-  "fixture": "domain/cartan_aggregation_rejected.atlas",
-  "oracle": "pending_hpc_capture",
+  "fixture": "domain/cartan_aggregation_rejected",
+  "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:4348-4352"
   ],
-  "notes": "Rejected companion of the Cartan class surface: Cartan_class(ic,5) on a 2-class inner class aborts with 'Illegal Cartan class number: 5, this inner class only has 2 of them'. Confirmed by direct oracle probe; verbatim HPC capture still pending."
+  "notes": "Rejected companion of the Cartan class surface: Cartan_class(ic,5) on a 2-class inner class aborts with 'Illegal Cartan class number: 5, this inner class only has 2 of them'. Confirmed by direct oracle probe; verbatim HPC capture still pending. Reference captured verbatim by HPC job 3501500 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3501500",
+  "source_archive_sha256": "ba386f95772f395192050f70504e81d55e06883aad1090d5081a9658f1c8fa28",
+  "fixture_sha256": "a80e70945355d03676f36387f1186edef8f2961b566abfb3245d97e4a3094555",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "d33f3c5dff446f36b24cc231e6e0243ab9c668655c0c119b3b0e4026b14d8e5c",
+  "oracle_stderr_sha256": "6192879a62bb56054b2141da29b7f8200f9c1f9338b4eec5c19237c71e91fac4",
+  "capture_artifacts_sha256": "c42c6e061e289a773acb16d99688f09fcaa2f974b69d4aff457770d804af7ace"
 }

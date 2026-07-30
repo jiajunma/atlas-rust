@@ -1,8 +1,8 @@
 {
-  "fixture": "domain/strong_real.atlas",
-  "oracle": "pending_hpc_capture",
+  "fixture": "domain/strong_real",
+  "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:4363-4365",
@@ -14,8 +14,17 @@
     "class #2: 2 real forms, square_classes [[2],[1]]",
     "print_strong_real(#2): two square classes with possible squares exp(2i pi([0,1]/2)) and exp(2i pi([0,0]/1)), forms #2 and #1"
   ],
-  "notes": "Strong real form report surface for B2 (square_classes and the multi-class print_strong_real layout with the 'there are N real form classes:' header), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The crate-level strong-real machinery recorded in the previous revision of this meta (STRONG_REAL_DESIGN.md) remains the kernel this surface binds to.",
+  "notes": "Strong real form report surface for B2 (square_classes and the multi-class print_strong_real layout with the 'there are N real form classes:' header), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The crate-level strong-real machinery recorded in the previous revision of this meta (STRONG_REAL_DESIGN.md) remains the kernel this surface binds to. Reference captured verbatim by HPC job 3501500 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
   "design_reviews": {
     "recorded_in": "docs/STRONG_REAL_DESIGN.md"
-  }
+  },
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3501500",
+  "source_archive_sha256": "ba386f95772f395192050f70504e81d55e06883aad1090d5081a9658f1c8fa28",
+  "fixture_sha256": "b26630f7baee7572db5cc77fa2d2e7eab4fd0d68dbd9510d001f27aa7126a018",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "f1a41a979b51d244357a7330e34baae1b9a26d3f73523f36535640974af629f7",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "96fef9338c3e915459a85ed82811e24cc15bbd7541d3f12ed72870381784cb4f"
 }

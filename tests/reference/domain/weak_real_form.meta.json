@@ -1,8 +1,8 @@
 {
-  "fixture": "domain/weak_real_form.atlas",
-  "oracle": "pending_hpc_capture",
+  "fixture": "domain/weak_real_form",
+  "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:3851-3871",
@@ -14,8 +14,17 @@
     "real_form(ic,[[1]],[1]/2) = compact SU(2) (the rho/2 shift selects the compact form)",
     "rejections: [[2]] is not an involution; a rank-2 torus factor mismatches the rank-1 class"
   ],
-  "notes": "Synthetic real_form(InnerClass,mat,ratvec) constructor (the weak real form surface), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The crate-level weak-form enumeration recorded in the previous revision of this meta (WEAK_REAL_FORM_DESIGN.md) remains the kernel this surface binds to.",
+  "notes": "Synthetic real_form(InnerClass,mat,ratvec) constructor (the weak real form surface), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The crate-level weak-form enumeration recorded in the previous revision of this meta (WEAK_REAL_FORM_DESIGN.md) remains the kernel this surface binds to. Reference captured verbatim by HPC job 3501500 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
   "design_reviews": {
     "recorded_in": "docs/WEAK_REAL_FORM_DESIGN.md"
-  }
+  },
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3501500",
+  "source_archive_sha256": "ba386f95772f395192050f70504e81d55e06883aad1090d5081a9658f1c8fa28",
+  "fixture_sha256": "c0e9288f28a6c343b091fbb773fdbf475a5e9807a8e405f79639dd5ccbd849cd",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "d3dfbea0d77f16cf1c7e92b68f0d7e4fab54738d50dc6bab606a8130583374af",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "c40dd8af797da5c084f266ee636e8f06581574fe356a5d07ff4e10a0d065bf21"
 }
