@@ -85,21 +85,7 @@ oracle's transducer choice exactly (B2 input [0,1,0,1] canonicalizes to
 <1.0.1.0>, A2 [0,1,0] stays <0.1.0>); NOTE the crate-level weyl_element
 dropped the transducer order (WEYL_ELEMENT_DESIGN.md deferral), so the
 language layer must port the Transducer word canonicalization, not reuse
-the crate's raw word; length(w) = W.length(w)) → `adjoint_fiber` (central_fiber(RealForm->[vec]) =
-rf->val.innerClass().central_fiber(rf->val.realForm()) wrapped as a row of
-int_Vector (atlas-types.w:3915); upstream algorithm innerclass.cpp:1042:
-csc = fund_fiber.central_square_class(rf); diff = wrf_rep(rf) -
-class_base(csc); y = toAdjoint.section()*diff; then preimage()
-(innerclass.cpp:1020): in fiber_partition(csc) class of y, collect
-fg.fromBasis(fe+y) for members fe with toAdjoint(fe)==diff — i.e. the
-fundamental-fiber stabiliser of rf's gradings; displays as a row of vecs
-e.g. [[ 0 ],[ 1 ]]; rejected case is plain conform_types wording 'found
-InnerClass while RealForm was needed.'; also anchors the
-adjoint(LieType,bool) datum display 'adjoint root datum of Lie type ...';
-CRATE RECON 2026-07-30: strong_real.rs StrongRealData already carries
-central_square_class (line ~67), class_bases, and toAdjoint solve (line
-~305), weak_real_form.rs has class_of_mask — the gap is likely assembly of
-these into the preimage enumeration, making this a LIGHT slice) → `real_form_labels` (occurrence_matrix/
+the crate's raw word; length(w) = W.length(w)) → `real_form_labels` (occurrence_matrix/
 dual_occurrence_matrix: numRealForms × numCartanClasses (resp. dual) bitmaps
 of Cartan_set membership (atlas-types.w:3361); block_sizes(ic): matrix of
 G->val.block_size(interface.in(i), dual_interface.in(j)) (atlas-types.w:3323)
@@ -312,9 +298,9 @@ identity under the layout permutation — plus the swap_sc collapsing
 u->s) and on_basis (topology.rs:184 already ports the integrality-checked
 division); MEDIUM slice of exact tables.
 `real_group`, `cartan_aggregation`, `seed_x0`, `involution_table`,
-`overloads_ops_b8c{,_rejected}`,
+`adjoint_fiber`, `overloads_ops_b8c{,_rejected}`,
 `whattype_ops_b8d`, and `dont_b13{,_rejected}` are DONE (verified
-`3501779` / `3502126` / `3502176` / `3502272` / `3501643`).
+`3501779` / `3502126` / `3502176` / `3502272` / `3502318` / `3501643`).
 
 Uncovered matrix items needing contract design first (probe the oracle,
 then freeze): KL file formats and readline completion. For readline
@@ -441,8 +427,9 @@ a future cleanup pass rather than schema migration.
   `tits_operations` (verified `3501870`), `cartan_aggregation`
   (implemented `1989f62`, verified `3502126`) + `seed_x0`
   (implemented `babbefd`, verified `3502176`) + `involution_table`
-  (implemented `72d42a8`, verified `3502272`) +
-  `adjoint_fiber` + `real_form_labels` +
+  (implemented `72d42a8`, verified `3502272`) + `adjoint_fiber`
+  (implemented `81eb98e`, verified `3502318`) +
+  `real_form_labels` +
   `weak_real_form` + `involution_decomposition` +
   `strong_real` (`3501500`), `split_basic` + `block_basic` (`3501519`),
   `ktype_basic` + `ktypepol_basic` + `param_basic` + `parampol_basic`
@@ -482,6 +469,23 @@ blocks, K-types, parameters, the KL layer, and the relation-style datum
 constructors (`Smith_Cartan`, `filter_units`, `ann_mod`, `replace_gen`,
 `quotient_basis` — atlas-types.w:937, not yet covered by any frozen
 contract) remain pending differential evidence.
+
+## Verified stage: adjoint_fiber central_fiber (differential 3502318)
+
+- `tests/fixtures/domain/adjoint_fiber{,_rejected}.atlas`:
+  `central_fiber(RealForm->[vec])` — the fundamental-fiber stabiliser of a
+  real form's gradings (innerclass.cpp:1042/1020). The crate assembly
+  reuses the strong-representative solve (`wrf_preimage_masks`, collected
+  during the existing build loop) as the `toAdjoint` preimage, so no new
+  solver was needed; `wrf_rep` = the fundamental partition's
+  `class_representative`. Registered as `skip` (only conform-level
+  diagnostics). The agent report records a theoretical caveat: list order
+  follows the crate's augmented-span reduction, not upstream
+  `BinaryMap::section` — observable only when `diff != 0`, which no frozen
+  contract exercises (all three have `diff = 0`). Commit `81eb98e`.
+- Differential: `pipeline_swap_diff` job `3502318` at commit `81eb98e`
+  reports both fixtures PASS with zero regressions. Metadata carries
+  `rust_status: verified_hpc` with `differential_job: 3502318`.
 
 ## Verified stage: involution_table printers (differential 3502272)
 
