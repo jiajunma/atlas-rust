@@ -85,16 +85,7 @@ oracle's transducer choice exactly (B2 input [0,1,0,1] canonicalizes to
 <1.0.1.0>, A2 [0,1,0] stays <0.1.0>); NOTE the crate-level weyl_element
 dropped the transducer order (WEYL_ELEMENT_DESIGN.md deferral), so the
 language layer must port the Transducer word canonicalization, not reuse
-the crate's raw word; length(w) = W.length(w)) → `cartan_aggregation`
-(Cartan_class(ic,i) bound-checked by numCartanClasses with the wording
-'Illegal Cartan class number: i, this inner class only has N of them'
-(atlas-types.w:4019); Cartan_class(rf,i) maps the per-form index through
-rf->val.Cartan_set().n_th(i) to the inner-class number (atlas-types.w:4040,
-wording 'this real form only has N of them'); most_split_Cartan(rf) =
-rf->val.mostSplit(); the CartanClass display 'Cartan class #N, occurring for
-X real forms and for Y dual real forms' needs the occurrence/dual-occurrence
-column counts — the real_form_labels machinery; nr_of_Cartan_classes =
-numCartanClasses (InnerClass) / numCartan (RealForm)) → `seed_x0` (KGB_elt
+the crate's raw word; length(w) = W.length(w)) → `seed_x0` (KGB_elt
 synthetic — atlas-types.w:4580: size check 'Torus factor size mismatch';
 make theta-fixed via num += theta*num, halve, subtract rf.g_rho_check, then
 denominator != 1 gives 'Torus factor not in cocharacter coset of real form';
@@ -154,8 +145,9 @@ K_type/param(KType) — atlas-types.w:7472-7480; rank-mismatch wording
 `parampol_basic` (null_module/#/±Param/first_term — atlas-types.w:8542-8567;
 term display drops the 'final' prefix) → `involution_primitive`
 (involution(LieType,[int],string) and the based form).
-`real_group`, `overloads_ops_b8c{,_rejected}`, `whattype_ops_b8d`, and
-`dont_b13{,_rejected}` are DONE (verified `3501779` / `3501643`).
+`real_group`, `cartan_aggregation`, `overloads_ops_b8c{,_rejected}`,
+`whattype_ops_b8d`, and `dont_b13{,_rejected}` are DONE (verified
+`3501779` / `3502126` / `3501643`).
 
 Uncovered matrix items needing contract design first (probe the oracle,
 then freeze): KL file formats and readline completion. `dont`, `showall`,
@@ -248,8 +240,9 @@ a future cleanup pass rather than schema migration.
 - Domain contracts frozen against the oracle: `root_coroot` + `kgb_generation`
   (implemented `af6cd7b`/`d7cef57`, differential `3501555` in flight),
   `real_group` (`3501368`), `grading` + `involution_primitive` (`3501449`),
-  `weyl_element` + `kgb_operations` (`3501466`), `cartan_aggregation` +
-  `seed_x0` + `involution_table` + `adjoint_fiber` + `real_form_labels` +
+  `weyl_element` + `kgb_operations` (`3501466`), `cartan_aggregation`
+  (implemented `1989f62`, verified `3502126`) + `seed_x0` +
+  `involution_table` + `adjoint_fiber` + `real_form_labels` +
   `weak_real_form` + `involution_decomposition` + `tits_operations` +
   `strong_real` (`3501500`), `split_basic` + `block_basic` (`3501519`),
   `ktype_basic` + `ktypepol_basic` + `param_basic` + `parampol_basic`
@@ -288,6 +281,24 @@ claim of full Atlas compatibility: RootDatum/InnerClass/RealForm/KGB domain
 queries beyond construction and display, relations, primitive `involution`
 constructors, Cartan classes, Weyl elements, synthetic KGB seeds, and the
 later math overloads remain pending differential evidence.
+
+## Verified stage: cartan_aggregation domain surface (differential 3502126)
+
+- `tests/fixtures/domain/cartan_aggregation{,_rejected}.atlas`: the
+  CartanClass language surface — `Cartan_class(InnerClass,int)` /
+  `Cartan_class(RealForm,int)` bound-checked constructors, `nr_of_Cartan_classes`,
+  `most_split_Cartan`, `involution(CartanClass)`, `real_forms`,
+  `dual_real_forms`, `square_classes`, `fiber_partition`, and the
+  `Cartan class #N, occurring for X real form(s) and for Y dual real
+  form(s)` display. Dual correspondence is computed at the crate as the
+  negated covariant involution matrix matched by root-image permutation
+  against the dual classification's twisted-conjugacy partition (upstream
+  `innerclass.cpp:435-441` pairs `tw` with `tw·w0`, then canonicalizes,
+  so matrix equality is unreliable — the permutation key is the same one
+  `class_of` uses). Commit `1989f62`.
+- Differential: `pipeline_swap_diff` job `3502126` at commit `1989f62`
+  reports both fixtures PASS with zero regressions. Metadata carries
+  `rust_status: verified_hpc` with `differential_job: 3502126`.
 
 ## Verified stage: B8/B9/B10/B12 + domain display (differential 3501467)
 
