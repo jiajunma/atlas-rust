@@ -215,7 +215,19 @@ UndefBlock -> return INPUT i as undefined indicator (same for
 inverse_Cayley, anchor inverse_Cayley(0,B,0)=0); needs crate Block::build
 (blocks.cpp:610/622) — the heaviest piece in this queue; display
 'Block of N elements'; dual_real_form(InnerClass,int) already registered
-(typed.rs:4125)) →
+(typed.rs:4125). BLOCK CONSTRUCTION MAP (recon 2026-07-30):
+Block::build = KGB(rf, common_Cartans(G_R,dG_R)) + dual KGB likewise
+(blocks.cpp:610) then Block(kgb,dual_kgb) (blocks.cpp:527): per twisted
+involution w, dual_w = dual_involution(w,tW,dual_tW) — the tW-LEVEL dual
+map, NEW (cartan_aggregation's dual_cartan_correspondence is the
+class-level analogue) — and elements = fibred product x in tauPacket(w)
+times y in tauPacket(dual_w); descents(x,y,kgb,dual_kgb) per simple root;
+cross(s,z) = element(kgb.cross, dual_kgb.cross); Cayley TypeI/II pairs
+kgb.cayley with dual_kgb.inverseCayley .first/.second; element(x,y) via
+first_z_of_x binary search. Fixture needs NONE of compute_supports/Bruhat.
+Crate reuse: tauPacket/involution table/cross/cayley exist per form;
+new = common-Cartans restricted KGB, tW dual map, fibred assembly,
+block-level descent status) →
 `ktype_basic` (KType install list atlas-types.w:6071-6088
 is 16 entries: K_type(KGBElt,vec->KType) = Rep_context::sr_K normalizing
 lambda-rho mod (1-theta_x)X*, rank check 'Rank mismatch: ({rank},{size})'
