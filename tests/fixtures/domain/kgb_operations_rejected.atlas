@@ -1,0 +1,9 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("A1"),true)
+ic : InnerClass
+ic := inner_class(rd,[[1]])
+rf : RealForm
+rf := real_form(ic,1)
+x0 : KGBElt
+x0 := KGB(rf,0)
+cross(5,x0)

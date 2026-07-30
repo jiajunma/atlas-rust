@@ -1,0 +1,19 @@
+{
+  "fixture": "domain/kgb_operations.atlas",
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:4702-4715"
+  ],
+  "scenarios": [
+    "SL(2,R) cross action swaps elements 0 and 1; Cayley pairs 0 and 2",
+    "length 0 at the closed orbit, 1 at element 2; torus_factor [ 0 ]/1 (theta-fixed)",
+    "KGBElt equality is provenance-aware (x0=x1 false, != true)",
+    "%x decomposes to (RealForm, int) printed as a tuple",
+    "twist fixes x0; involution(x0) is the identity mat",
+    "compact SU(2): Cayley and cross on the compact root are the identity (no error)"
+  ],
+  "notes": "KGB per-element operations (cross/Cayley/length/torus_factor/=,!=/%/twist/involution), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449); verbatim HPC capture still pending."
+}
