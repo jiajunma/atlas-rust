@@ -1,3 +1,13 @@
-// Structural fixture reserved for the HPC Atlas/Rust differential harness.
-// The interpreter-side constructor syntax is not yet exposed.
-involution_table_fixture;
+rd : RootDatum
+rd := simply_connected(Lie_type("A1"),true)
+ic : InnerClass
+ic := inner_class(rd,[[1]])
+rf : RealForm
+rf := real_form(ic,1)
+print_KGB(rf)
+rc : RealForm
+rc := real_form(ic,0)
+print_KGB(rc)
+cc : CartanClass
+cc := Cartan_class(ic,1)
+print_strong_real(cc)

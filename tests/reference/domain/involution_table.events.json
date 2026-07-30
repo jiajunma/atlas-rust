@@ -1,0 +1,20 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/involution_table",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind": "ReportLine", "text": "Declaring identifier 'rd': RootDatum\n"},
+    {"kind": "Value", "value": {"type": "domain", "domain": "RootDatum", "display": "simply connected root datum of Lie type 'A1'"}},
+    {"kind": "ReportLine", "text": "Declaring identifier 'ic': InnerClass\n"},
+    {"kind": "Value", "value": {"type": "domain", "domain": "InnerClass", "display": "Complex reductive group of type A1, with involution defining\ninner class of type 'c', with 2 real forms and 2 dual real forms"}},
+    {"kind": "ReportLine", "text": "Declaring identifier 'rf': RealForm\n"},
+    {"kind": "Value", "value": {"type": "domain", "domain": "RealForm", "display": "connected split real group with Lie algebra 'sl(2,R)'"}},
+    {"kind": "ReportLine", "text": "kgbsize: 3\nBase grading: [1].\n0:  0  [n]   1    2  (0)#0 e\n1:  0  [n]   0    2  (1)#0 e\n2:  1  [r]   2    *  (0)#1 1^e\n"},
+    {"kind": "ReportLine", "text": "Declaring identifier 'rc': RealForm\n"},
+    {"kind": "Value", "value": {"type": "domain", "domain": "RealForm", "display": "compact connected real group with Lie algebra 'su(2)'"}},
+    {"kind": "ReportLine", "text": "kgbsize: 1\nBase grading: [0].\n0:  0  [c]   0    *  (0)#0 e\n"},
+    {"kind": "ReportLine", "text": "Declaring identifier 'cc': CartanClass\n"},
+    {"kind": "Value", "value": {"type": "domain", "domain": "CartanClass", "display": "Cartan class #1, occurring for 1 real form and for 2 dual real forms"}},
+    {"kind": "ReportLine", "text": "class #0, possible square: exp(2i\\pi([1]/2))\nreal form #1: [0] (1)\n"}
+  ]
+}
