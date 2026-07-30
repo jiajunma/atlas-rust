@@ -1,4 +1,4 @@
-# Atlas-Rust handoff - 2026-07-29 (B5 set_type verified)
+# Atlas-Rust handoff - 2026-07-29 (B6 case/counted-for verified)
 
 This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
@@ -8,16 +8,16 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
 - Branch: `main`.
 - B3a non-recursive functions, B3b recursive functions / definition sugar,
-  B3c parameter patterns, B3d selectors, B4 loops, and B5 `set_type` are
-  implemented and differentially verified. The exact commit is shown by
-  `git log -1 --oneline`.
-- B6 case/counted-for and B7 misc commands have frozen reference
-  events (captures `3499627`, `3499657`); the B6 implementation is
-  in progress.
+  B3c parameter patterns, B3d selectors, B4 loops, B5 `set_type`, and B6
+  case / counted-for are implemented and differentially verified; B11
+  precedence needed no change and is verified as well. The exact commit is
+  shown by `git log -1 --oneline`.
+- B7 misc commands have frozen reference events (capture `3499657`); the
+  B7 implementation is in progress.
 - B8 user overloads (`3499692`, `3499705`), B9 file-command redirection
-  (`3499747`), B10 fromfile/quit (`3500378`), B11 precedence (`3500488`),
-  and B12 runtime errors (`3500488`) have frozen references ahead of their
-  implementations. The B11/B12 probes are retired.
+  (`3499747`), B10 fromfile/quit (`3500378`), and B12 runtime errors
+  (`3500488`) have frozen references ahead of their implementations. The
+  B11/B12 probes are retired.
 - No uncommitted repository changes should remain after the handoff commit.
 
 The typed session pipeline is active: `session.rs` and `session_frame.rs`
@@ -39,9 +39,30 @@ through the standard overload table, and loops (`while`/`for` collecting each
 iteration's body value into a row, `break` discarding the breaking iteration,
 `for x@i` index binding, `;` sequencing). This is not a
 claim of full Atlas compatibility: InnerClass/RealForm/KGB rendering and
-numbering, relations, primitive `involution` constructors, case
-discrimination, counted `for`, user overloads, file commands, and later math
-overloads remain pending differential evidence.
+numbering, relations, primitive `involution` constructors, user overloads,
+file commands, and later math overloads remain pending differential
+evidence.
+
+## Verified stage: B6 case and counted for
+
+- `tests/fixtures/eval/casefor_b6.atlas` (11 accepted events: integer case
+  with 0-based in-range selection, remainder wrapping for out-of-range
+  without else, else catching out-of-range, then catching negative,
+  positional union case with function branches, counted `for i: n from m`,
+  `downto`, anonymous `for : n`, and `e1 next e2` collecting e1) and
+  `tests/fixtures/eval/casefor_b6_rejected.atlas` (2 rejected type errors:
+  non-function union branch `found int while (int->*) was needed.`,
+  disagreeing branch types `found string while int was needed.`).
+  Implementation: `IntCase`/`UnionCase`/`CountedFor`/`Next` typed variants,
+  `conform_types` wording aligned to the oracle `found {} while {} was
+  needed.` format (commit `5f58160`).
+- Oracle capture: `3499627` (commit `cfdd9cc`), PASS against the frozen
+  oracle.
+- Differential: `pipeline_swap_diff` job `3500495` at commit `6df6622`
+  reports both fixtures PASS; all previously verified fixtures PASS
+  (regression clean).
+- Reference metadata: `tests/reference/eval/casefor_b6{,_rejected}.meta.json`
+  carry `rust_status: verified_hpc` with `differential_job: 3500495`.
 
 ## Verified stage: B5 set_type
 
@@ -195,27 +216,22 @@ The bounded local checks for this stage:
   and re-capture anything taken in the dirty window (job `3499634` was
   re-taken as `3499638`).
 
-## Next implementation slice (B6 case/counted-for in flight, then B7/B8/B9)
+## Next implementation slice (B7 misc commands in flight, then B8/B9/B10/B12)
 
 In rough dependency order, each with its own fixture + HPC capture first:
 
-1. B6 case and counted for (capture `3499627`, commit `cfdd9cc`): integer
-   case selects in-list branches by 0-based index with remainder wrapping;
-   else catches out-of-range, then catches negative; positional union case
-   branches are functions; counted `for i: n from m`/`downto`; `e1 next e2`
-   collects e1.
-2. B7 misc commands (capture `3499657`, commit `21ee423`): `forget` of
+1. B7 misc commands (capture `3499657`, commit `21ee423`): `forget` of
    unknown identifiers and of single overloads, `die` as a runtime
    diagnostic with batch continuation, coercion fallback after overload
    removal. The `whattype id_op ?` overload listing is deferred until the
    domain types appearing in builtin lists are ported.
-3. B8 user overloads (captures `3499692`, `3499705`): `set f = <lambda>`
+2. B8 user overloads (captures `3499692`, `3499705`): `set f = <lambda>`
    accumulates overloads (`Defined f: T`, `Added definition [2] of f: T`,
    `Redefined f: T` for a repeated signature), `whattype f ?` lists user
    overloads in definition order, calls resolve by arity, and a variable can
    coexist with function definitions on one identifier; wrong-arity calls
    are analysis-time type errors.
-4. B9 file commands (capture `3499747`; probe `3499729`, file evidence
+3. B9 file commands (capture `3499747`; probe `3499729`, file evidence
    `3499737`): `> "f" expr` / `>> "f" expr` redirect only the
    `Value: ...` line (truncate/append), a failed open prints
    `Failed to open <name>` on stderr and continues, and `tofile` accepts
@@ -223,11 +239,17 @@ In rough dependency order, each with its own fixture + HPC capture first:
    already PASS as of job `3500393`; the rejected line needs parse failure
    before the output file is opened, and open failures must render through
    the `Io error:` diagnostic header.
-5. B10 fromfile/quit (capture `3500378`): `< "f"` / `<< "f"` with a missing
+4. B10 fromfile/quit (capture `3500378`): `< "f"` / `<< "f"` with a missing
    target print `failed to open input file '<name>'.` on stderr, batch
    continues, exit stays 0; `quit` mid-input terminates evaluation
    immediately, still prints `Bye.`, exit 0. Accepted-form inclusion
    semantics still need an HPC-absolute helper probe.
+5. B12 runtime-error messages (capture `3500488`; differential `3500489`
+   shows 2 of 5 already exact): row subscription out-of-range must append
+   the space-free subscription source (`in subscription [1,2][5]`), tuple
+   subscription with a non-constant index is a type error worded `Cannot
+   subscript value of type (int,int) with index of type int`, and string
+   subscription must exist as a runtime-checked operation.
 6. Domain surface, smallest first: `pipeline_swap_domain_equality` lines
    3-14 (capture `3496440`) need oracle-exact InnerClass/RealForm rendering
    (inner-class type letter, real-form counts, Lie-algebra naming), KGB

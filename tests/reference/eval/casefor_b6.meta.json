@@ -12,12 +12,13 @@
   "oracle_stdout_sha256": "c3aca6ef600b32c14faaca2101d972da1764c1e701916a5c9e23f44765ccce1f",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "capture_artifacts_sha256": "a73295effa23e0cc674d8f3d4c3346cdea1402002253189b88f5e9c81c2d70de",
-  "rust_status": "implemented_pending_hpc",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/parser.y:350-359",
     "sources/interpreter/parser.y:550-573",
     "sources/interpreter/parser.y:236",
     "sources/interpreter/axis.w:4884-4901"
   ],
-  "notes": "B6 case and counted-for slice, split from probes casefor_probe (capture 3499619) and casefor_probe2 (capture 3499625). Integer case selects an in-list branch by 0-based index; out-of-range wraps via arithmetic::remainder without an else clause; else catches out-of-range; then catches negative selectors only. Positional union case branches are functions of the variant type. Counted for loops iterate from/downto bounds or repeat identifier-less. In loop bodies, 'e1 next e2' collects e1's value and discards e2. Reference captured by HPC job 3499627 against the frozen atlasofliegroups-4d3e9449 oracle. Differential evidence remains pending until the pipeline_swap_diff run. Implementation committed as 5f58160 (181 lib tests, clippy/fmt clean, both fixtures verified event-by-event locally); differential evidence pending."
+  "notes": "B6 case and counted-for slice, split from probes casefor_probe (capture 3499619) and casefor_probe2 (capture 3499625). Integer case selects an in-list branch by 0-based index; out-of-range wraps via arithmetic::remainder without an else clause; else catches out-of-range; then catches negative selectors only. Positional union case branches are functions of the variant type. Counted for loops iterate from/downto bounds or repeat identifier-less. In loop bodies, 'e1 next e2' collects e1's value and discards e2. Reference captured by HPC job 3499627 against the frozen atlasofliegroups-4d3e9449 oracle. Differential evidence remains pending until the pipeline_swap_diff run. Implementation committed as 5f58160 (181 lib tests, clippy/fmt clean, both fixtures verified event-by-event locally); HPC pipeline_swap_diff job 3500495 (commit 6df6622) reports PASS for this fixture.",
+  "differential_job": "3500495"
 }
