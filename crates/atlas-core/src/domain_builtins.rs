@@ -13,6 +13,8 @@
 //! 3566-3575) from the layout, dual-count, and presentation machinery of
 //! `atlas-real-group`.
 
+use std::cmp::Ordering;
+use std::collections::BTreeSet;
 use std::fmt;
 use std::sync::Arc;
 
@@ -27,7 +29,7 @@ use atlas_real_group::{
 };
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
-use crate::value::{Matrix, RatVec, Value};
+use crate::value::{Matrix, RatVec, Value, Vec32};
 
 /// Upstream Lie-type letter bounds (atlas-types.w:165-211) and RANK_MAX.
 const RANK_MAX: usize = 32;
@@ -1224,6 +1226,388 @@ fn status_code(context: &Arc<RealFormContext>, generator: usize, id: KgbId) -> O
     })
 }
 
+/// C++ `RootSystem::root_compare` (rootdata.cpp:117-129): lexicographic with
+/// the LAST simple coordinate most significant. It orders each height level
+/// during positive-root generation, and with it the language-visible root
+/// numbering.
+#[derive(Clone, Eq, PartialEq)]
+struct ByLastCoordinate(Vec<i32>);
+
+impl Ord for ByLastCoordinate {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.0.iter().rev().cmp(other.0.iter().rev())
+    }
+}
+
+impl PartialOrd for ByLastCoordinate {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+fn dot_row(left: &[i32], right: &[i32]) -> i32 {
+    left.iter().zip(right).map(|(&a, &b)| a * b).sum()
+}
+
+fn dot_column(vector: &[i32], matrix: &[Vec<i32>], column: usize) -> i32 {
+    vector
+        .iter()
+        .enumerate()
+        .map(|(row, &entry)| entry * matrix[row][column])
+        .sum()
+}
+
+fn transpose(matrix: &[Vec<i32>]) -> Vec<Vec<i32>> {
+    let size = matrix.len();
+    (0..size)
+        .map(|i| (0..size).map(|j| matrix[j][i]).collect())
+        .collect()
+}
+
+/// A simple-coordinate root or coroot table.
+type CoordinateTable = Vec<Vec<i32>>;
+
+/// Positive roots and coroots of `cartan` in simple coordinates, in the
+/// oracle's presentation order (rootdata.cpp `RootSystem::RootSystem`
+/// generation): roots appear by height, each level ordered by
+/// [`ByLastCoordinate`]; coroots complete from the first descent's downward
+/// link. The `4 * rank` level bound is the upstream one (`E8` needs 30).
+fn generate_positive(
+    cartan: &[Vec<i32>],
+    span: SourceSpan,
+) -> Result<(CoordinateTable, CoordinateTable), Diagnostic> {
+    let rank = cartan.len();
+    if rank == 0 {
+        return Ok((Vec::new(), Vec::new()));
+    }
+    let mut levels: Vec<BTreeSet<ByLastCoordinate>> = vec![BTreeSet::new(); 2];
+    for i in 0..rank {
+        let mut simple = vec![0; rank];
+        simple[i] = 1;
+        levels[1].insert(ByLastCoordinate(simple));
+    }
+    let mut roots: Vec<Vec<i32>> = Vec::new();
+    let mut links: Vec<Vec<usize>> = Vec::new();
+    // `level_start[l]` is the index of the first level-`l` root in `roots`.
+    let mut level_start: Vec<usize> = vec![0];
+    let mut level = 1;
+    while level < levels.len() && !levels[level].is_empty() {
+        level_start.push(roots.len());
+        let current = std::mem::take(&mut levels[level]);
+        for alpha in current {
+            let alpha = alpha.0;
+            let cur = roots.len();
+            roots.push(alpha.clone());
+            links.push(vec![usize::MAX; rank]);
+            for i in 0..rank {
+                let coefficient = dot_column(&alpha, cartan, i);
+                if coefficient == 0 {
+                    links[cur][i] = cur;
+                } else if coefficient > 0 {
+                    // A descent, except that a simple root reflects to minus
+                    // itself, which is not on the list.
+                    if level > 1 {
+                        let mut beta = alpha.clone();
+                        beta[i] -= coefficient;
+                        let lower = level - coefficient as usize;
+                        let candidates = level_start[lower]..level_start[lower + 1];
+                        let Some(j) = candidates.into_iter().find(|&j| roots[j] == beta) else {
+                            return Err(runtime(span, "internal root-generation descent miss"));
+                        };
+                        links[cur][i] = j;
+                        links[j][i] = cur;
+                    }
+                } else {
+                    let mut beta = alpha.clone();
+                    beta[i] -= coefficient;
+                    let upper = coefficient
+                        .checked_neg()
+                        .and_then(|rise| usize::try_from(rise).ok())
+                        .and_then(|rise| level.checked_add(rise))
+                        .ok_or_else(|| runtime(span, "internal root-generation level overflow"))?;
+                    if upper > 4 * rank {
+                        return Err(runtime(span, "internal root-generation level bound"));
+                    }
+                    while levels.len() <= upper {
+                        levels.push(BTreeSet::new());
+                    }
+                    levels[upper].insert(ByLastCoordinate(beta));
+                }
+            }
+        }
+        level += 1;
+    }
+    let mut coroots: Vec<Vec<i32>> = Vec::with_capacity(roots.len());
+    for i in 0..rank {
+        let mut simple = vec![0; rank];
+        simple[i] = 1;
+        coroots.push(simple);
+    }
+    for alpha in rank..roots.len() {
+        let descent = (0..rank)
+            .find(|&i| dot_column(&roots[alpha], cartan, i) > 0)
+            .ok_or_else(|| runtime(span, "internal root-generation descent set"))?;
+        let beta = links[alpha][descent];
+        let mut coroot = coroots[beta].clone();
+        coroot[descent] -= dot_row(&coroots[beta], &cartan[descent]);
+        coroots.push(coroot);
+    }
+    Ok((roots, coroots))
+}
+
+/// Irreducible Dynkin-diagram components: index sets linked by nonzero
+/// Cartan entries.
+fn components(cartan: &[Vec<i32>]) -> Vec<Vec<usize>> {
+    let rank = cartan.len();
+    let mut seen = vec![false; rank];
+    let mut components = Vec::new();
+    for start in 0..rank {
+        if seen[start] {
+            continue;
+        }
+        seen[start] = true;
+        let mut component = vec![start];
+        let mut cursor = 0;
+        while cursor < component.len() {
+            let i = component[cursor];
+            cursor += 1;
+            for (j, &linked) in cartan[i].iter().enumerate() {
+                if linked != 0 && !seen[j] {
+                    seen[j] = true;
+                    component.push(j);
+                }
+            }
+        }
+        components.push(component);
+    }
+    components
+}
+
+/// Relative squared simple-root lengths, one free scale per component:
+/// `lengths[j] = lengths[i] * C[j][i] / C[i][j]` along every edge, so
+/// `v, w |-> sum v_i * C[i][j] * w_j * lengths[j]` is the Weyl-invariant
+/// form with `lengths[j]` the half squared length of simple root `j`.
+fn simple_lengths(cartan: &[Vec<i32>], components: &[Vec<usize>]) -> Vec<BigRational> {
+    let rank = cartan.len();
+    let mut lengths = vec![BigRational::from(0u32); rank];
+    for component in components {
+        let mut assigned = vec![false; rank];
+        let mut frontier = Vec::new();
+        for &start in component {
+            if !assigned[start] {
+                assigned[start] = true;
+                lengths[start] = BigRational::from(1u32);
+                frontier.push(start);
+            }
+            while let Some(i) = frontier.pop() {
+                for &j in component {
+                    if assigned[j] || cartan[i][j] == 0 {
+                        continue;
+                    }
+                    assigned[j] = true;
+                    lengths[j] = lengths[i].clone() * BigRational::from(i64::from(cartan[j][i]))
+                        / BigRational::from(i64::from(cartan[i][j]));
+                    frontier.push(j);
+                }
+            }
+        }
+    }
+    lengths
+}
+
+/// The invariant form evaluated on simple coordinates: `B(v,v)` with
+/// `B(α_i,α_j) = C[i][j] * lengths[j]`, symmetric by construction.
+fn squared_length(cartan: &[Vec<i32>], lengths: &[BigRational], coords: &[i32]) -> BigRational {
+    let mut total = BigRational::from(0u32);
+    for (i, &left) in coords.iter().enumerate() {
+        if left == 0 {
+            continue;
+        }
+        for (j, &right) in coords.iter().enumerate() {
+            if right != 0 && cartan[i][j] != 0 {
+                total += BigRational::from(i64::from(left) * i64::from(right))
+                    * BigRational::from(i64::from(cartan[i][j]))
+                    * &lengths[j];
+            }
+        }
+    }
+    total
+}
+
+/// Per-vector length flags: long exactly when the squared length exceeds
+/// the component minimum (so simply laced components are all-short, the
+/// upstream convention from atlas-types.w:1521-1526).
+fn length_flags(cartan: &[Vec<i32>], components: &[Vec<usize>], vectors: &[Vec<i32>]) -> Vec<bool> {
+    let lengths = simple_lengths(cartan, components);
+    vectors
+        .iter()
+        .map(|coords| {
+            let Some(support) = coords.iter().position(|&entry| entry != 0) else {
+                return false;
+            };
+            let component = components
+                .iter()
+                .find(|component| component.contains(&support))
+                .expect("a root's support lies in one component");
+            let minimum = component
+                .iter()
+                .map(|&j| BigRational::from(2u32) * &lengths[j])
+                .min()
+                .expect("components are nonempty");
+            squared_length(cartan, &lengths, coords) > minimum
+        })
+        .collect()
+}
+
+/// Positive roots and coroots of one datum in the oracle's presentation
+/// order, with per-vector length flags. A coroot-preferring datum generates
+/// from the TRANSPOSED Cartan matrix and swaps the tables afterwards, the
+/// upstream `prefer_co` path in rootdata.cpp.
+struct RootTable {
+    roots: Vec<Vec<i32>>,
+    coroots: Vec<Vec<i32>>,
+    long_roots: Vec<bool>,
+    long_coroots: Vec<bool>,
+}
+
+impl RootTable {
+    fn build(handle: &RootDatumHandle, span: SourceSpan) -> Result<Self, Diagnostic> {
+        let datum = &*handle.datum;
+        let cartan = datum.cartan_matrix();
+        let transposed = transpose(cartan);
+        let generation = if handle.prefers_coroots {
+            &transposed
+        } else {
+            cartan
+        };
+        let (roots, coroots) = generate_positive(generation, span)?;
+        let (roots, coroots) = if handle.prefers_coroots {
+            (coroots, roots)
+        } else {
+            (roots, coroots)
+        };
+        let components = components(cartan);
+        let root_basis: Vec<&[i32]> = datum.simple_roots().iter().map(Weight::as_slice).collect();
+        let coroot_basis: Vec<&[i32]> = datum
+            .simple_coroots()
+            .iter()
+            .map(Coweight::as_slice)
+            .collect();
+        Ok(Self {
+            long_roots: length_flags(cartan, &components, &roots),
+            long_coroots: length_flags(&transposed, &components, &coroots),
+            roots: express(&roots, &root_basis),
+            coroots: express(&coroots, &coroot_basis),
+        })
+    }
+}
+
+/// Simple-coordinate vectors expressed against an ambient lattice basis.
+fn express(simple: &[Vec<i32>], basis: &[&[i32]]) -> Vec<Vec<i32>> {
+    let lattice_rank = basis.first().map_or(0, |vector| vector.len());
+    simple
+        .iter()
+        .map(|coords| {
+            let mut ambient = vec![0; lattice_rank];
+            for (&coefficient, vector) in coords.iter().zip(basis) {
+                for (entry, &basis_entry) in ambient.iter_mut().zip(*vector) {
+                    *entry += coefficient * basis_entry;
+                }
+            }
+            ambient
+        })
+        .collect()
+}
+
+/// Language-level (co)root index to the positive table slot, with the
+/// upstream signed convention (atlas-types.w `internal_root_index`): user
+/// index `i` is valid for `-npos <= i < npos`, and a negative index negates
+/// the positive root at `-1 - i` (internally the negative roots sit before
+/// the positive ones, ordered so negation is `numRoots-1-alpha`).
+fn positive_slot(
+    index: &BigInt,
+    positive_count: usize,
+    coroot: bool,
+    span: SourceSpan,
+) -> Result<(usize, bool), Diagnostic> {
+    let npos =
+        i64::try_from(positive_count).map_err(|_| runtime(span, "internal root count overflow"))?;
+    let internal = i64::try_from(index)
+        .ok()
+        .and_then(|index| index.checked_add(npos));
+    let Some(internal) = internal.filter(|&internal| internal >= 0 && internal < 2 * npos) else {
+        return Err(runtime(
+            span,
+            format!(
+                "Illegal {}root index {index}",
+                if coroot { "co" } else { "" }
+            ),
+        ));
+    };
+    let internal =
+        usize::try_from(internal).map_err(|_| runtime(span, "internal root index overflow"))?;
+    let npos = usize::try_from(npos).expect("positive count fits usize");
+    if internal >= npos {
+        Ok((internal - npos, false))
+    } else {
+        Ok((npos - 1 - internal, true))
+    }
+}
+
+fn root_query(
+    handle: &RootDatumHandle,
+    index: &BigInt,
+    coroot: bool,
+    span: SourceSpan,
+) -> Result<Value, Diagnostic> {
+    let table = RootTable::build(handle, span)?;
+    let (positive, negate) = positive_slot(index, table.roots.len(), coroot, span)?;
+    let vector = if coroot {
+        &table.coroots[positive]
+    } else {
+        &table.roots[positive]
+    };
+    let coordinates = if negate {
+        vector.iter().map(|entry| -entry).collect()
+    } else {
+        vector.clone()
+    };
+    Ok(Value::Vector(Vec32(coordinates)))
+}
+
+fn length_query(
+    handle: &RootDatumHandle,
+    index: &BigInt,
+    coroot: bool,
+    span: SourceSpan,
+) -> Result<Value, Diagnostic> {
+    let table = RootTable::build(handle, span)?;
+    let (positive, _) = positive_slot(index, table.roots.len(), coroot, span)?;
+    let flag = if coroot {
+        table.long_coroots[positive]
+    } else {
+        table.long_roots[positive]
+    };
+    Ok(Value::Boolean(flag))
+}
+
+fn as_integer(value: &Value, span: SourceSpan) -> Result<BigInt, Diagnostic> {
+    match value {
+        Value::Integer(value) => Ok(value.clone()),
+        other => Err(type_error(span, format!("expected an int, found {other}"))),
+    }
+}
+
+fn as_root_datum(value: &Value, span: SourceSpan) -> Result<&RootDatumHandle, Diagnostic> {
+    match value {
+        Value::Domain(DomainValue::RootDatum(handle)) => Ok(handle),
+        other => Err(type_error(
+            span,
+            format!("expected a RootDatum, found {other}"),
+        )),
+    }
+}
+
 fn check_generator(
     context: &Arc<RealFormContext>,
     generator: usize,
@@ -1371,6 +1755,29 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                     format!("expected a LieType or RootDatum, found {other}"),
                 )),
             }
+        }
+        "nr_of_posroots" => {
+            arity(name, arguments, 1, span)?;
+            let handle = as_root_datum(&arguments[0], span)?;
+            let table = RootTable::build(handle, span)?;
+            Ok(Value::Integer(BigInt::from(table.roots.len())))
+        }
+        "rank" => {
+            arity(name, arguments, 1, span)?;
+            let handle = as_root_datum(&arguments[0], span)?;
+            Ok(Value::Integer(BigInt::from(handle.datum.lattice_rank())))
+        }
+        "root" | "coroot" => {
+            arity(name, arguments, 2, span)?;
+            let handle = as_root_datum(&arguments[0], span)?;
+            let index = as_integer(&arguments[1], span)?;
+            root_query(handle, &index, name == "coroot", span)
+        }
+        "is_long_root" | "is_long_coroot" => {
+            arity(name, arguments, 2, span)?;
+            let handle = as_root_datum(&arguments[0], span)?;
+            let index = as_integer(&arguments[1], span)?;
+            length_query(handle, &index, name == "is_long_coroot", span)
         }
         "inner_class" => match arguments {
             [Value::Domain(DomainValue::RealForm(context))] => Ok(Value::Domain(
@@ -1824,5 +2231,220 @@ mod tests {
             .expect("KGB element");
         let factor = call("torus_factor", &[element], span()).expect("torus factor");
         assert!(matches!(factor, Value::RatVector(_)));
+    }
+
+    fn fixture_datum(lie_type: &str, prefers_coroots: bool) -> Value {
+        let lie_type =
+            call("Lie_type", &[Value::String(lie_type.into())], span()).expect("Lie type");
+        call(
+            "simply_connected",
+            &[lie_type, Value::Boolean(prefers_coroots)],
+            span(),
+        )
+        .expect("root datum")
+    }
+
+    fn int(value: i64) -> Value {
+        Value::Integer(BigInt::from(value))
+    }
+
+    #[test]
+    fn root_and_coroot_queries_follow_the_oracle_presentation_order() {
+        let a2 = fixture_datum("A2", true);
+        assert_eq!(
+            call("nr_of_posroots", std::slice::from_ref(&a2), span()),
+            Ok(Value::Integer(BigInt::from(3)))
+        );
+        assert_eq!(
+            call("root", &[a2.clone(), int(0)], span())
+                .expect("root")
+                .to_string(),
+            "[  2, -1 ]"
+        );
+        assert_eq!(
+            call("coroot", &[a2.clone(), int(0)], span())
+                .expect("coroot")
+                .to_string(),
+            "[ 1, 0 ]"
+        );
+        assert_eq!(
+            call("root", &[a2.clone(), int(1)], span())
+                .expect("root")
+                .to_string(),
+            "[ -1,  2 ]"
+        );
+        assert_eq!(
+            call("coroot", &[a2.clone(), int(1)], span())
+                .expect("coroot")
+                .to_string(),
+            "[ 0, 1 ]"
+        );
+        assert_eq!(
+            call("root", &[a2.clone(), int(2)], span())
+                .expect("root")
+                .to_string(),
+            "[ 1, 1 ]"
+        );
+        assert_eq!(
+            call("coroot", &[a2, int(2)], span())
+                .expect("coroot")
+                .to_string(),
+            "[ 1, 1 ]"
+        );
+
+        let b2 = fixture_datum("B2", true);
+        assert_eq!(
+            call("nr_of_posroots", std::slice::from_ref(&b2), span()),
+            Ok(Value::Integer(BigInt::from(4)))
+        );
+        assert_eq!(
+            call("root", &[b2.clone(), int(0)], span())
+                .expect("root")
+                .to_string(),
+            "[  2, -2 ]"
+        );
+        assert_eq!(
+            call("coroot", &[b2.clone(), int(0)], span())
+                .expect("coroot")
+                .to_string(),
+            "[ 1, 0 ]"
+        );
+        assert_eq!(
+            call("root", &[b2.clone(), int(3)], span())
+                .expect("root")
+                .to_string(),
+            "[ 1, 0 ]"
+        );
+        assert_eq!(
+            call("coroot", &[b2.clone(), int(3)], span())
+                .expect("coroot")
+                .to_string(),
+            "[ 2, 1 ]"
+        );
+        // Negative indices negate the positive root at -1 - i (upstream
+        // `internal_root_index` with the palindromic root numbering).
+        assert_eq!(
+            call("root", &[b2.clone(), int(-1)], span())
+                .expect("root")
+                .to_string(),
+            "[ -2,  2 ]"
+        );
+        assert_eq!(
+            call("coroot", &[b2.clone(), int(-4)], span())
+                .expect("coroot")
+                .to_string(),
+            "[ -2, -1 ]"
+        );
+        assert_eq!(
+            call("rank", std::slice::from_ref(&b2), span()),
+            Ok(Value::Integer(BigInt::from(2)))
+        );
+    }
+
+    #[test]
+    fn root_index_out_of_range_is_the_oracle_runtime_error() {
+        let b2 = fixture_datum("B2", true);
+        let error = call("root", &[b2.clone(), int(4)], span())
+            .expect_err("one past the last positive root");
+        assert_eq!(error.kind, ErrorKind::Runtime);
+        assert_eq!(error.message, "Illegal root index 4");
+        let error =
+            call("coroot", &[b2, int(-5)], span()).expect_err("one past the first negative coroot");
+        assert_eq!(error.kind, ErrorKind::Runtime);
+        assert_eq!(error.message, "Illegal coroot index -5");
+    }
+
+    #[test]
+    fn length_flags_follow_the_simply_laced_all_short_convention() {
+        let a2 = fixture_datum("A2", true);
+        assert_eq!(
+            call("is_long_root", &[a2.clone(), int(0)], span()),
+            Ok(Value::Boolean(false))
+        );
+        assert_eq!(
+            call("is_long_root", &[a2, int(2)], span()),
+            Ok(Value::Boolean(false))
+        );
+        let b2 = fixture_datum("B2", true);
+        assert_eq!(
+            call("is_long_root", &[b2.clone(), int(0)], span()),
+            Ok(Value::Boolean(true))
+        );
+        assert_eq!(
+            call("is_long_coroot", &[b2.clone(), int(0)], span()),
+            Ok(Value::Boolean(false))
+        );
+        assert_eq!(
+            call("is_long_root", &[b2.clone(), int(3)], span()),
+            Ok(Value::Boolean(false))
+        );
+        assert_eq!(
+            call("is_long_coroot", &[b2, int(3)], span()),
+            Ok(Value::Boolean(true))
+        );
+    }
+
+    #[test]
+    fn coroot_preference_reorders_multi_laced_roots_like_the_oracle_swap() {
+        // Without the coroot preference the generation runs on the
+        // untransposed Cartan matrix, so the height order dominates and
+        // α1+α2 precedes α1+2α2.
+        let b2 = fixture_datum("B2", false);
+        assert_eq!(
+            call("root", &[b2.clone(), int(2)], span())
+                .expect("root")
+                .to_string(),
+            "[ 1, 0 ]"
+        );
+        assert_eq!(
+            call("root", &[b2.clone(), int(3)], span())
+                .expect("root")
+                .to_string(),
+            "[ 0, 2 ]"
+        );
+    }
+
+    #[test]
+    fn g2_generation_covers_triple_bonds_and_both_length_classes() {
+        let g2 = fixture_datum("G2", true);
+        assert_eq!(
+            call("nr_of_posroots", std::slice::from_ref(&g2), span()),
+            Ok(Value::Integer(BigInt::from(6)))
+        );
+        // Order from the transposed-Cartan generation, swapped back.
+        let expected_roots = [
+            "[  2, -1 ]",
+            "[ -3,  2 ]",
+            "[  3, -1 ]",
+            "[ 0, 1 ]",
+            "[ -1,  1 ]",
+            "[ 1, 0 ]",
+        ];
+        let long_roots = [false, true, true, true, false, false];
+        let long_coroots = [true, false, false, false, true, true];
+        for (index, ((expected_root, &long_root), &long_coroot)) in expected_roots
+            .iter()
+            .zip(&long_roots)
+            .zip(&long_coroots)
+            .enumerate()
+        {
+            let index = index as i64;
+            assert_eq!(
+                call("root", &[g2.clone(), int(index)], span())
+                    .expect("root")
+                    .to_string(),
+                *expected_root
+            );
+            assert_eq!(
+                call("is_long_root", &[g2.clone(), int(index)], span()),
+                Ok(Value::Boolean(long_root)),
+                "is_long_root at {index}"
+            );
+            assert_eq!(
+                call("is_long_coroot", &[g2.clone(), int(index)], span()),
+                Ok(Value::Boolean(long_coroot)),
+                "is_long_coroot at {index}"
+            );
+        }
     }
 }

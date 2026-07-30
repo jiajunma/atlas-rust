@@ -195,21 +195,15 @@ class PipelineSwapDiffTest(unittest.TestCase):
                     self.assertEqual(completed.returncode, 9)
                     self.assertIn("unexpected fixture input", completed.stderr)
 
-    def test_domain_display_fixture_keeps_unported_surface_pending(self) -> None:
+    def test_domain_display_fixture_runs_fully(self) -> None:
         plan = next(
             plan
             for plan in FIXTURE_PLANS
             if plan.name == "eval/pipeline_swap_domain_equality"
         )
-        self.assertEqual(plan.runnable_lines, (1, 2))
-        self.assertEqual(plan.runnable_events, (0, 1))
-        self.assertEqual(len(plan.pending), 12)
-        self.assertTrue(
-            all(
-                case.feature == "inner_class_real_form_display_and_relations"
-                for case in plan.pending
-            )
-        )
+        self.assertIsNone(plan.runnable_lines)
+        self.assertIsNone(plan.runnable_events)
+        self.assertEqual(plan.pending, ())
 
 
 if __name__ == "__main__":

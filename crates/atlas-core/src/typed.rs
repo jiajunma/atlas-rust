@@ -3831,6 +3831,37 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::Mat),
                 0,
             ),
+            domain_builtin_skip(
+                "nr_of_posroots",
+                primitive_type(Prim::RootDatum),
+                int_type(),
+                0,
+            ),
+            domain_builtin_skip("rank", primitive_type(Prim::RootDatum), int_type(), 0),
+            domain_builtin(
+                "root",
+                Type::tuple(vec![primitive_type(Prim::RootDatum), int_type()]),
+                primitive_type(Prim::Vec),
+                0,
+            ),
+            domain_builtin(
+                "coroot",
+                Type::tuple(vec![primitive_type(Prim::RootDatum), int_type()]),
+                primitive_type(Prim::Vec),
+                0,
+            ),
+            domain_builtin(
+                "is_long_root",
+                Type::tuple(vec![primitive_type(Prim::RootDatum), int_type()]),
+                bool_type(),
+                0,
+            ),
+            domain_builtin(
+                "is_long_coroot",
+                Type::tuple(vec![primitive_type(Prim::RootDatum), int_type()]),
+                bool_type(),
+                0,
+            ),
             domain_builtin(
                 "inner_class",
                 Type::tuple(vec![

@@ -134,6 +134,10 @@ FIXTURE_PLANS = (
     # B11 precedence/associativity corpus and B12 runtime-error corpus.
     FixturePlan(name="eval/precedence_b11"),
     FixturePlan(name="eval/runtime_errors_b12"),
+    # RootDatum root/coroot queries: oracle presentation order, negative-index
+    # negation, long/short flags, rank, and the illegal-index rejection.
+    FixturePlan(name="domain/root_coroot"),
+    FixturePlan(name="domain/root_coroot_rejected"),
 )
 
 
@@ -302,7 +306,11 @@ def run_fixture(
     if metadata.get("fixture_sha256") != fixture_sha:
         configuration_errors.append("fixture checksum differs from oracle metadata")
     expected_fixture_name = plan.name
-    if metadata.get("fixture") != expected_fixture_name:
+    # Older capture jobs recorded the fixture name with its ".atlas" suffix
+    # (for example domain/root_coroot.atlas); the events file and the plan
+    # both use the bare name, so normalize only that suffix away.
+    metadata_fixture = str(metadata.get("fixture", "")).removesuffix(".atlas")
+    if metadata_fixture != expected_fixture_name:
         configuration_errors.append("metadata names a different fixture")
     if expectation.get("fixture") != expected_fixture_name:
         configuration_errors.append("event expectation names a different fixture")
