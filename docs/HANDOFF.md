@@ -67,7 +67,14 @@ from scratch — both contracts are frozen and fully probed.
 
 Domain (contracts in `tests/fixtures/domain/`, events verified):
 `kgb_operations` + `tits_operations` (agent-10, see above) → `grading`
-(base_grading_vector/initial_torus_bits/torus_bits) → `weyl_element`
+(base_grading_vector/initial_torus_bits/torus_bits — upstream semantics
+pinned: base_grading_vector(rf) = `rf->val.g_rho_check()` (atlas-types.w:3689,
+the rational coweight whose simple-root pairings are the base grading, e.g.
+compact SU(2) = [1]/2); initial_torus_bits(rf) = `rf->val.x0_torus_part()`
+(atlas-types.w:3695, distinguished-seed torus bits as int_Vector);
+torus_bits(x) = the element's torus-part bit vec, parallel to the existing
+`torus_factor` adapter at domain_builtins.rs:1988; crate hooks in
+crates/atlas-real-group/src/grading.rs and real_form_labels.rs) → `weyl_element`
 (W_elt/word/length/=,!=/*//#/root_datum) → `cartan_aggregation`
 (Cartan_class/nr_of_Cartan_classes/most_split_Cartan/involution/real_forms/
 dual_real_forms/square_classes/fiber_partition) → `seed_x0` (KGB_elt
