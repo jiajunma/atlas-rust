@@ -1,1 +1,19 @@
-{"fixtures":["eval/scalar_error_fraction_zero","eval/scalar_error_int_power_negative","eval/scalar_error_int_power_large","eval/scalar_error_rat_power_negative","eval/scalar_error_rat_divide_zero","eval/scalar_error_rat_quotient_zero","eval/scalar_error_rat_modulo_zero"],"oracle":"atlas","stage":"typed-builtin-registry","reference_status":"verified_hpc_reference","reference_atlas_revision":"4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9","reference_binary_sha256":"66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9","reference_job":"3496365","rust_status":"pending"}
+{
+  "fixtures": [
+    "eval/scalar_error_fraction_zero",
+    "eval/scalar_error_int_power_negative",
+    "eval/scalar_error_int_power_large",
+    "eval/scalar_error_rat_power_negative",
+    "eval/scalar_error_rat_divide_zero",
+    "eval/scalar_error_rat_quotient_zero",
+    "eval/scalar_error_rat_modulo_zero"
+  ],
+  "oracle": "atlas",
+  "stage": "typed-builtin-registry",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3496365",
+  "rust_status": "verified_hpc",
+  "differential_job": "3502034"
+}
