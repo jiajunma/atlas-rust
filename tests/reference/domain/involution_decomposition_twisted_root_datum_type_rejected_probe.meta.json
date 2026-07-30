@@ -12,12 +12,13 @@
   "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
   "oracle_stderr_sha256": "fe8f0f3289ce010f1d1d16eccc41c33e41e27ec43b88d8ad9561366246d87865",
   "capture_artifacts_sha256": "34b467b27c763200ca232e68cce298cb54addf056630ff1a6fc88fdfef1cf49f",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:3200-3212"
   ],
   "scenarios": [
     "twisted_involution rejects a LieType in the RootDatum position and reports the full argument tuple type"
   ],
-  "notes": "Twisted-involution root-datum argument-type rejection captured verbatim by HPC job 3502476 against the pinned Atlas oracle. The event stores the normalized type diagnostic while the metadata hashes the full span-bearing stderr."
+  "notes": "Twisted-involution root-datum argument-type rejection captured verbatim by HPC job 3502476 against the pinned Atlas oracle. The event stores the normalized type diagnostic while the metadata hashes the full span-bearing stderr. Rust implementation verified by HPC differential job 3502550 (pipeline_swap_diff at commit 5346584ab0a946d1d3024f950358d12db35f6458): stdout, stderr diagnostics, and exit status match the frozen reference events exactly.",
+  "differential_job": "3502550"
 }

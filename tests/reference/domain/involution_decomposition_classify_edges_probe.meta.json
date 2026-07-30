@@ -12,7 +12,7 @@
   "oracle_stdout_sha256": "962fc6bc4bb46a8c94dd8cb16593204ed757b3a25ef7b02741340252f8aef51c",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "capture_artifacts_sha256": "cff1ef8f12df1567fb821ca899533f9e8fbc33bd83e0907a1608657cefdc27fc",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:2697-2712"
   ],
@@ -22,5 +22,6 @@
     "the integral exchange block classifies as complex rank one (0,1,0)",
     "the diagonalizable parity-obstructed involution classifies as (1,0,1)"
   ],
-  "notes": "Edge classification values captured verbatim by HPC job 3502476 against the pinned Atlas oracle. The five cases freeze zero-rank handling and the compact, complex, and split lattice-factor counts before the Rust language wrapper is implemented."
+  "notes": "Edge classification values captured verbatim by HPC job 3502476 against the pinned Atlas oracle. The five cases freeze zero-rank handling and the compact, complex, and split lattice-factor counts before the Rust language wrapper is implemented. Rust implementation verified by HPC differential job 3502550 (pipeline_swap_diff at commit 5346584ab0a946d1d3024f950358d12db35f6458): stdout, stderr diagnostics, and exit status match the frozen reference events exactly.",
+  "differential_job": "3502550"
 }

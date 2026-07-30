@@ -12,12 +12,13 @@
   "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
   "oracle_stderr_sha256": "aba4f35fd7399bf49772e9989a2178eaed34160e621991cc158382d914af3899",
   "capture_artifacts_sha256": "a9fdbb398f96550e8c4f84850058aaf4ce86543d849bf2762d6410d29317ad88",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:3236-3240"
   ],
   "scenarios": [
     "distinguished_involution rejects a RootDatum where an InnerClass is required"
   ],
-  "notes": "Distinguished-involution argument-type rejection captured verbatim by HPC job 3502476 against the pinned Atlas oracle. The event stores the normalized type diagnostic while the metadata hashes the full span-bearing stderr."
+  "notes": "Distinguished-involution argument-type rejection captured verbatim by HPC job 3502476 against the pinned Atlas oracle. The event stores the normalized type diagnostic while the metadata hashes the full span-bearing stderr. Rust implementation verified by HPC differential job 3502550 (pipeline_swap_diff at commit 5346584ab0a946d1d3024f950358d12db35f6458): stdout, stderr diagnostics, and exit status match the frozen reference events exactly.",
+  "differential_job": "3502550"
 }

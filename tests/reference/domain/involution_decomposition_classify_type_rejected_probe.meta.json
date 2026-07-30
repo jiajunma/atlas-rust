@@ -12,12 +12,13 @@
   "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
   "oracle_stderr_sha256": "11e89b423f437402dff959cc9ccc11adeec90050952585f5b8dce988b8ae3bea",
   "capture_artifacts_sha256": "1faed9d162517e3c834eee0b3f89209001ef3a23ff82f8bc5bbc738dada435c0",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:2697-2712"
   ],
   "scenarios": [
     "classify_involution rejects a row value when the mat argument type is required"
   ],
-  "notes": "Classifier argument-type rejection captured verbatim by HPC job 3502476 against the pinned Atlas oracle. The event stores the normalized type diagnostic while the metadata hashes the full span-bearing stderr."
+  "notes": "Classifier argument-type rejection captured verbatim by HPC job 3502476 against the pinned Atlas oracle. The event stores the normalized type diagnostic while the metadata hashes the full span-bearing stderr. Rust implementation verified by HPC differential job 3502550 (pipeline_swap_diff at commit 5346584ab0a946d1d3024f950358d12db35f6458): stdout, stderr diagnostics, and exit status match the frozen reference events exactly.",
+  "differential_job": "3502550"
 }

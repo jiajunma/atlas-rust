@@ -12,7 +12,7 @@
   "oracle_stdout_sha256": "8bd3d49980bfb7f2fad515bc1593b447c459d1d75b1c0a19f95887829dc0166d",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "capture_artifacts_sha256": "731b71194f448f24bed13ea7bb2c89ec0ad09d4a038f5452caee149b1fd6dccb",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:3200-3212",
     "sources/interpreter/atlas-types.w:3236-3240"
@@ -22,5 +22,6 @@
     "A1 negation decomposes to the simple reflection <0> and the same inner-class presentation",
     "both constructed A1 inner classes expose the identity as their distinguished involution"
   ],
-  "notes": "Rank-one twisted and distinguished involution behavior captured verbatim by HPC job 3502476 against the pinned Atlas oracle. This freezes the decomposition pair ordering, canonical Weyl displays, and distinguished-matrix presentation."
+  "notes": "Rank-one twisted and distinguished involution behavior captured verbatim by HPC job 3502476 against the pinned Atlas oracle. This freezes the decomposition pair ordering, canonical Weyl displays, and distinguished-matrix presentation. Rust implementation verified by HPC differential job 3502550 (pipeline_swap_diff at commit 5346584ab0a946d1d3024f950358d12db35f6458): stdout, stderr diagnostics, and exit status match the frozen reference events exactly.",
+  "differential_job": "3502550"
 }

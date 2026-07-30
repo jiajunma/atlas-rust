@@ -12,12 +12,13 @@
   "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
   "oracle_stderr_sha256": "bbc93c02b918024f10669cef41f434eeb8ece35183536f5387dc6b9257079660",
   "capture_artifacts_sha256": "f5d7fcb516ad12222f0ef673375382441a3c9a2c51d80b71d435fe2441894bd9",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:3200-3212"
   ],
   "scenarios": [
     "twisted_involution rejects a rank-two matrix that does not preserve the C2 root system"
   ],
-  "notes": "C2 root-preservation rejection captured verbatim by HPC job 3502476 against the pinned Atlas oracle."
+  "notes": "C2 root-preservation rejection captured verbatim by HPC job 3502476 against the pinned Atlas oracle. Rust implementation verified by HPC differential job 3502550 (pipeline_swap_diff at commit 5346584ab0a946d1d3024f950358d12db35f6458): stdout, stderr diagnostics, and exit status match the frozen reference events exactly.",
+  "differential_job": "3502550"
 }

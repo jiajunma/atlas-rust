@@ -3,11 +3,11 @@
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_status": "verified_hpc_reference",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:3400"
   ],
-  "notes": "Rejected companion of the involution decomposition surface: classify_involution([[2,0],[0,2]]) aborts with 'Given transformation is not an involution'. Confirmed by direct oracle probe; verbatim HPC capture still pending. Reference captured verbatim by HPC job 3501500 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
+  "notes": "Rejected companion of the involution decomposition surface: classify_involution([[2,0],[0,2]]) aborts with 'Given transformation is not an involution'. Confirmed by direct oracle probe. Reference captured verbatim by HPC job 3501500 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Rust implementation verified by HPC differential job 3502550 (pipeline_swap_diff at commit 5346584ab0a946d1d3024f950358d12db35f6458): stdout, stderr diagnostics, and exit status match the frozen reference events exactly.",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
   "reference_job": "3501500",
@@ -16,5 +16,6 @@
   "oracle_exit_status": 1,
   "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
   "oracle_stderr_sha256": "6510f9e88d2857920c05339560d5e538c2c5a7a1b319d6a37e3463e0c4378043",
-  "capture_artifacts_sha256": "5a5f91963d6ec858a9bc11dffa820c064a7523546ce710adf4e602af7abe5ea6"
+  "capture_artifacts_sha256": "5a5f91963d6ec858a9bc11dffa820c064a7523546ce710adf4e602af7abe5ea6",
+  "differential_job": "3502550"
 }

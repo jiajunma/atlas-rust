@@ -3,7 +3,7 @@
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_status": "verified_hpc_reference",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:3400-3408"
   ],
@@ -12,7 +12,7 @@
     "twisted_involution(rd,theta) returns the (WeylElt, InnerClass) pair: longest element <0.1.0> for the quasisplit involution, <> for the identity",
     "classify_involution maps the quasisplit A2 involution to (0,1,0) and the identity to (2,0,0)"
   ],
-  "notes": "Involution decomposition surface (distinguished_involution/twisted_involution/classify_involution), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The crate-level decomposition machinery recorded in the previous revision of this meta (115 local tests, INVOLUTION_DECOMPOSITION_DESIGN.md) remains the kernel this surface binds to. Reference captured verbatim by HPC job 3501500 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
+  "notes": "Involution decomposition surface (distinguished_involution/twisted_involution/classify_involution), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The crate-level decomposition machinery recorded in the previous revision of this meta (115 local tests, INVOLUTION_DECOMPOSITION_DESIGN.md) remains the kernel this surface binds to. Reference captured verbatim by HPC job 3501500 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Rust implementation verified by HPC differential job 3502550 (pipeline_swap_diff at commit 5346584ab0a946d1d3024f950358d12db35f6458): stdout, stderr diagnostics, and exit status match the frozen reference events exactly.",
   "design_reviews": {
     "recorded_in": "docs/INVOLUTION_DECOMPOSITION_DESIGN.md"
   },
@@ -24,5 +24,6 @@
   "oracle_exit_status": 0,
   "oracle_stdout_sha256": "701272885d611f189c2060ea91bd0cb154aa193e379b0866445499a123a80ab3",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "capture_artifacts_sha256": "966d6527c782d5df50e5551928ba75dddb74b2c851682ae8c704f4db338a529c"
+  "capture_artifacts_sha256": "966d6527c782d5df50e5551928ba75dddb74b2c851682ae8c704f4db338a529c",
+  "differential_job": "3502550"
 }

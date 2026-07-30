@@ -12,12 +12,13 @@
   "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
   "oracle_stderr_sha256": "43650653d3fcf36df94064e16ae9275a2ef1487640245398f29a6a875518856c",
   "capture_artifacts_sha256": "00db68b24ffc1f0cd5b316608f4229f6eee06a9f34bb88c1514d7099181355f2",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:2697-2712"
   ],
   "scenarios": [
     "classify_involution rejects a 1-by-2 matrix with the exact expected-versus-received dimensions"
   ],
-  "notes": "Nonsquare classifier rejection captured verbatim by HPC job 3502476 against the pinned Atlas oracle."
+  "notes": "Nonsquare classifier rejection captured verbatim by HPC job 3502476 against the pinned Atlas oracle. Rust implementation verified by HPC differential job 3502550 (pipeline_swap_diff at commit 5346584ab0a946d1d3024f950358d12db35f6458): stdout, stderr diagnostics, and exit status match the frozen reference events exactly.",
+  "differential_job": "3502550"
 }

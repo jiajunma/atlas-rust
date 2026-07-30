@@ -3,7 +3,7 @@
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_status": "verified_hpc_reference",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:2764-2784",
     "sources/interpreter/atlas-types.w:3195-3212"
@@ -12,7 +12,7 @@
     "an A1.T1 involution maps its simple root to a negative root but fails the corresponding coroot transport",
     "the negative root is rendered with Atlas's unsigned presentation number 4294967295"
   ],
-  "notes": "Negative-root coroot-transport rejection captured verbatim by HPC job 3502546 against the pinned Atlas oracle. The exact unsigned root presentation number is part of the wrapper diagnostic contract.",
+  "notes": "Negative-root coroot-transport rejection captured verbatim by HPC job 3502546 against the pinned Atlas oracle. The exact unsigned root presentation number is part of the wrapper diagnostic contract. Rust implementation verified by HPC differential job 3502550 (pipeline_swap_diff at commit 5346584ab0a946d1d3024f950358d12db35f6458): stdout, stderr diagnostics, and exit status match the frozen reference events exactly.",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
   "reference_job": "3502546",
@@ -21,5 +21,6 @@
   "oracle_exit_status": 1,
   "oracle_stdout_sha256": "a092882e30a04587a6f44cfa7b3e1d3050b7c29eb60cb600ab812b9d61d9be4c",
   "oracle_stderr_sha256": "0bf447f980fcbe3a5d053c295cb3f5ae92276be2bc147564fd30127bcb4043e4",
-  "capture_artifacts_sha256": "2c4d197ca015e213479e97149d6588d8a196dc1309560a5ea16b25cd36cc7aff"
+  "capture_artifacts_sha256": "2c4d197ca015e213479e97149d6588d8a196dc1309560a5ea16b25cd36cc7aff",
+  "differential_job": "3502550"
 }
