@@ -4254,6 +4254,74 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::WeylElt),
                 1,
             ),
+            // CartanClass surface (atlas-types.w:4347-4363): the two
+            // constructors, counts, most-split, involution, the (dual)
+            // real-form sweeps, square classes, and the per-form fiber
+            // partition. The constructors bounds-check and fiber_partition
+            // guards before their upstream no-value gates, so they validate.
+            domain_builtin_validate(
+                "Cartan_class",
+                Type::tuple(vec![primitive_type(Prim::InnerClass), int_type()]),
+                primitive_type(Prim::CartanClass),
+                0,
+            ),
+            domain_builtin_validate(
+                "Cartan_class",
+                Type::tuple(vec![primitive_type(Prim::RealForm), int_type()]),
+                primitive_type(Prim::CartanClass),
+                0,
+            ),
+            domain_builtin_skip(
+                "nr_of_Cartan_classes",
+                primitive_type(Prim::InnerClass),
+                int_type(),
+                0,
+            ),
+            domain_builtin_skip(
+                "nr_of_Cartan_classes",
+                primitive_type(Prim::RealForm),
+                int_type(),
+                0,
+            ),
+            domain_builtin_skip(
+                "most_split_Cartan",
+                primitive_type(Prim::RealForm),
+                primitive_type(Prim::CartanClass),
+                0,
+            ),
+            domain_builtin_skip(
+                "involution",
+                primitive_type(Prim::CartanClass),
+                primitive_type(Prim::Mat),
+                0,
+            ),
+            domain_builtin_skip(
+                "real_forms",
+                primitive_type(Prim::CartanClass),
+                Type::row(primitive_type(Prim::RealForm)),
+                0,
+            ),
+            domain_builtin_skip(
+                "dual_real_forms",
+                primitive_type(Prim::CartanClass),
+                Type::row(primitive_type(Prim::RealForm)),
+                0,
+            ),
+            domain_builtin_skip(
+                "square_classes",
+                primitive_type(Prim::CartanClass),
+                Type::row(Type::row(int_type())),
+                0,
+            ),
+            domain_builtin_validate(
+                "fiber_partition",
+                Type::tuple(vec![
+                    primitive_type(Prim::CartanClass),
+                    primitive_type(Prim::RealForm),
+                ]),
+                Type::row(int_type()),
+                0,
+            ),
             domain_relation_builtin("=", pair(primitive_type(Prim::LieType)), Relation::Equal),
             domain_relation_builtin(
                 "!=",

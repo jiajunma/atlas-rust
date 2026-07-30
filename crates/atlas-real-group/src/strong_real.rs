@@ -48,12 +48,19 @@ pub struct StrongRealData {
     central_square_classes: Vec<SquareClassId>,
     class_bases: Vec<AdjointFiberElement>,
     orbit_sizes: Vec<Vec<usize>>,
+    to_weak_real: Vec<Vec<usize>>,
     strong_representatives: Vec<StrongRealFormRep>,
 }
 
 impl StrongRealData {
     pub fn square_class_count(&self) -> usize {
         self.class_bases.len()
+    }
+
+    /// The square-class ids in ascending order, for external consumers that
+    /// cannot construct [`SquareClassId`] values directly.
+    pub fn square_classes(&self) -> impl ExactSizeIterator<Item = SquareClassId> + '_ {
+        (0..self.class_bases.len()).map(SquareClassId)
     }
 
     /// Bounded by the Cartan's local weak class count.
@@ -69,6 +76,23 @@ impl StrongRealData {
     /// The number of `W_im` orbits in one square class's fiber partition.
     pub fn fiber_orbit_count(&self, square: SquareClassId) -> Option<usize> {
         self.orbit_sizes.get(square.0).map(Vec::len)
+    }
+
+    /// The weak real form lying under one strong orbit: upstream
+    /// `Fiber::toWeakReal` (cartanclass.cpp:812-817), the adjoint orbit of
+    /// `class_base(csc) + toAdjoint(rep)` with `rep` the orbit's
+    /// representative fiber element. Bounded by the square class count and
+    /// that class's orbit count.
+    pub fn weak_real_of_orbit(
+        &self,
+        square: SquareClassId,
+        orbit: usize,
+    ) -> Option<WeakRealFormId> {
+        self.to_weak_real
+            .get(square.0)?
+            .get(orbit)
+            .copied()
+            .map(WeakRealFormId)
     }
 
     /// The fiber size of one local weak class: the class size of its strong
@@ -226,6 +250,7 @@ impl StrongRealClassification {
             // One walk per square class; tables stay transient but live long
             // enough to classify the strong-representative solutions.
             let mut orbit_sizes = try_capacity(square_class_count)?;
+            let mut to_weak_real = try_capacity(square_class_count)?;
             let mut tables = try_capacity(square_class_count)?;
             for base_element in &class_bases {
                 let class_grading = grading.grading(base_element)?;
@@ -255,7 +280,25 @@ impl StrongRealClassification {
                         .checked_add(1)
                         .ok_or(StructureError::ArithmeticOverflow)?;
                 }
+                // toWeakReal per orbit: the adjoint orbit of
+                // `class_base(csc) + toAdjoint(rep)`, with `rep` the fiber
+                // element of the orbit's representative mask.
+                let ambient_rank = adjoint.datum().rank();
+                let mut weak_row = try_capacity(orbits.representative_masks.len())?;
+                for &mask in &orbits.representative_masks {
+                    let mut representative = ModTwoVector::zero(ambient_rank)?;
+                    for (index, basis) in ambient.basis_representatives().iter().enumerate() {
+                        if mask & (1_u64 << index) != 0 {
+                            representative.xor_assign(basis)?;
+                        }
+                    }
+                    let element = ambient.element_from_ambient(representative)?;
+                    let image = fiber_map.apply(&element)?;
+                    let sum = adjoint.add(&image, base_element)?;
+                    weak_row.push(weak.class_of(&sum)?.0);
+                }
                 orbit_sizes.push(sizes);
+                to_weak_real.push(weak_row);
                 tables.push(orbits.class_of_by_mask);
             }
 
@@ -334,6 +377,7 @@ impl StrongRealClassification {
                 central_square_classes,
                 class_bases,
                 orbit_sizes,
+                to_weak_real,
                 strong_representatives,
             });
         }
@@ -489,6 +533,25 @@ mod tests {
         assert_eq!(strong.fiber_size(quasisplit, CartanId(0)), Some(2));
         assert_eq!(strong.fiber_size(quasisplit, CartanId(1)), Some(1));
         assert_eq!(strong.fiber_size(compact, CartanId(1)), Some(0));
+        // Oracle (capture 3501500): square_classes of the fundamental Cartan
+        // is [[1],[0,0]] — square class 0 holds one orbit over the split
+        // (quasisplit) weak form, square class 1 two orbits over the compact
+        // one.
+        assert_eq!(
+            fundamental.weak_real_of_orbit(SquareClassId(0), 0),
+            Some(quasisplit)
+        );
+        assert_eq!(fundamental.fiber_orbit_count(SquareClassId(0)), Some(1));
+        assert_eq!(fundamental.fiber_orbit_count(SquareClassId(1)), Some(2));
+        assert_eq!(
+            fundamental.weak_real_of_orbit(SquareClassId(1), 0),
+            Some(compact)
+        );
+        assert_eq!(
+            fundamental.weak_real_of_orbit(SquareClassId(1), 1),
+            Some(compact)
+        );
+        assert_eq!(fundamental.weak_real_of_orbit(SquareClassId(1), 2), None);
     }
 
     #[test]

@@ -18,7 +18,8 @@ use crate::integer_lattice::IntegerLatticeBudget;
 use crate::twisted_involution::compose_matrices;
 use crate::weak_real_form::WeakRealFormPartition;
 use crate::{
-    BasedRootDatum, Coweight, InnerClass, LatticeInvolution, StructureError, Weight, WeylGroup,
+    BasedRootDatum, CartanClassification, CartanId, Coweight, InnerClass, LatticeInvolution,
+    StructureError, Weight, WeylAction, WeylGroup,
 };
 
 /// The based root datum dual to `datum`: transposed Cartan matrix, simple
@@ -64,13 +65,12 @@ fn two_rho(inner_class: &InnerClass) -> Result<Weight, StructureError> {
     Ok(Weight::new(coordinates))
 }
 
-/// The distinguished involution of the dual inner class
-/// (`dualBasedInvolution`): `-(q * W0)^t` on the dual weight lattice, with
-/// `W0` the action matrix of the longest Weyl element.
-fn dual_involution(
+/// The longest Weyl group element, characterized by sending `2rho` to
+/// `-2rho` (`rd.to_dominant(-rd.twoRho())`).
+fn longest_action(
     inner_class: &InnerClass,
     weyl_budget: usize,
-) -> Result<Vec<Vec<i32>>, StructureError> {
+) -> Result<WeylAction, StructureError> {
     let datum = inner_class.datum();
     let rho = two_rho(inner_class)?;
     let negative: Vec<i32> = rho
@@ -85,13 +85,22 @@ fn dual_involution(
     let negative_rho = Weight::new(negative);
 
     let actions = WeylGroup::new(datum.clone()).enumerate_actions(weyl_budget)?;
-    let longest = actions
-        .iter()
+    actions
+        .into_iter()
         .find(|action| action.act(&rho).is_ok_and(|image| image == negative_rho))
         .ok_or(StructureError::LayoutInvariantViolation {
             invariant: "longest Weyl element",
-        })?;
+        })
+}
 
+/// The distinguished involution of the dual inner class
+/// (`dualBasedInvolution`): `-(q * W0)^t` on the dual weight lattice, with
+/// `W0` the action matrix of the longest Weyl element.
+fn dual_involution(
+    inner_class: &InnerClass,
+    weyl_budget: usize,
+) -> Result<Vec<Vec<i32>>, StructureError> {
+    let longest = longest_action(inner_class, weyl_budget)?;
     // M = q * W0; the dual involution is -M^t (the coweight action -M is
     // derived at construction, since M is an involution).
     let distinguished = inner_class.distinguished_involution().involution();
@@ -124,6 +133,147 @@ pub fn dual_inner_class(
     }
     let involution = LatticeInvolution::new(&dual, dual_weight, dual_coweight)?;
     InnerClass::new(dual, involution, root_budget)
+}
+
+/// The Cartan-class correspondence across duality, for every Cartan class of
+/// `classification` in crate Cartan order.
+///
+/// Upstream builds the dual inner class's Cartan list from the original one
+/// in reverse order, pairing the Cartan with representative twisted
+/// involution `tw` against the dual Cartan of twisted involution `tw * w0`
+/// (innerclass.cpp:435-441, the dual `InnerClass` constructor). The dual
+/// distinguished involution is `-(delta * w0)^t` (`dualBasedInvolution`),
+/// and transposition is contragredient, so the paired dual Cartan involution
+/// on the dual weight lattice — the original coweight lattice — simplifies:
+/// `(w * w0)|co ∘ (-(delta * w0)^t)` = `-(w * delta)|co`, the negative of
+/// the original Cartan involution read on the coweight side. Upstream then
+/// canonicalizes the dual twisted involution, so the dual class's stored
+/// representative is generally a CONJUGATE of `tw * w0` and matrix
+/// comparison is unsound; the class is instead located by the root-image
+/// permutation that lattice map induces on the dual roots, exactly the key
+/// of [`crate::TwistedConjugacyPartition::class_of`]. Each entry carries
+/// the dual CartanId with the dual class's weak-real-form count (upstream
+/// `CartanClass::numDualRealForms`, the dual fiber's weak-real partition
+/// size). A permutation miss is an invariant violation, never a hole: every
+/// twisted involution is in the full-W enumeration. `weyl_budget` bounds
+/// that enumeration of the dual side.
+pub fn dual_cartan_correspondence(
+    inner_class: &InnerClass,
+    classification: &CartanClassification,
+    dual: &InnerClass,
+    dual_classification: &CartanClassification,
+    weyl_budget: usize,
+) -> Result<Vec<(CartanId, usize)>, StructureError> {
+    let original_fundamental = classification.cartan_ids().next().ok_or(
+        StructureError::CartanClassificationInvariantViolation {
+            invariant: "dual Cartan correspondence",
+        },
+    )?;
+    if classification
+        .cartan_class(original_fundamental)
+        .expect("cartan_ids yields in-range ids")
+        .representative()
+        .weyl_action()
+        .datum()
+        != inner_class.datum()
+    {
+        return Err(StructureError::DatumMismatch);
+    }
+    let dual_roots = dual.root_system();
+    let dual_fundamental = dual_classification.cartan_ids().next().ok_or(
+        StructureError::CartanClassificationInvariantViolation {
+            invariant: "dual Cartan correspondence",
+        },
+    )?;
+    if dual_classification
+        .cartan_class(dual_fundamental)
+        .expect("cartan_ids yields in-range ids")
+        .representative()
+        .weyl_action()
+        .datum()
+        != dual.datum()
+    {
+        return Err(StructureError::DatumMismatch);
+    }
+
+    // The dual partition's member-permutation map, and the raw class index of
+    // each classification class (its representative's permutation is a member
+    // key; the fundamental class's normalized identity is the identity
+    // permutation, also a member key).
+    let partition = dual.twisted_conjugacy_partition(weyl_budget)?;
+    let permutation_of = |dual_class: &crate::CartanClass| {
+        dual_class
+            .representative()
+            .root_involution()
+            .image_permutation()
+            .iter()
+            .map(|id| id.0)
+            .collect::<Vec<_>>()
+    };
+    let mut cartan_of_raw = vec![None; partition.classes().len()];
+    for id in dual_classification.cartan_ids() {
+        let dual_class = dual_classification
+            .cartan_class(id)
+            .expect("cartan_ids yields in-range ids");
+        let raw = partition
+            .class_index_of_permutation(&permutation_of(dual_class))
+            .ok_or(StructureError::CartanClassificationInvariantViolation {
+                invariant: "dual Cartan correspondence",
+            })?;
+        cartan_of_raw[raw] = Some(id);
+    }
+
+    let mut correspondence = Vec::with_capacity(classification.cartan_classes().len());
+    for cartan_class in classification.cartan_classes() {
+        // theta_dual = -(theta on the coweight lattice): the permutation that
+        // map induces on the dual roots.
+        let coweight = cartan_class
+            .representative()
+            .root_involution()
+            .involution()
+            .coweight_matrix();
+        let mut permutation = Vec::with_capacity(dual_roots.roots().len());
+        for root in dual_roots.roots() {
+            let mut image = Vec::with_capacity(coweight.len());
+            for entries in coweight.iter() {
+                let mut value = 0_i64;
+                for (column, &entry) in root.as_slice().iter().enumerate() {
+                    let term = i64::from(entries[column])
+                        .checked_mul(i64::from(entry))
+                        .ok_or(StructureError::ArithmeticOverflow)?;
+                    value = value
+                        .checked_add(term)
+                        .ok_or(StructureError::ArithmeticOverflow)?;
+                }
+                let negated = value
+                    .checked_neg()
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+                image.push(i32::try_from(negated).map_err(|_| StructureError::ArithmeticOverflow)?);
+            }
+            permutation.push(dual_roots.id_of(&Weight::new(image)).ok_or(
+                StructureError::CartanClassificationInvariantViolation {
+                    invariant: "dual Cartan correspondence",
+                },
+            )?);
+        }
+        let permutation: Vec<usize> = permutation.iter().map(|id| id.0).collect();
+        let raw = partition.class_index_of_permutation(&permutation).ok_or(
+            StructureError::CartanClassificationInvariantViolation {
+                invariant: "dual Cartan correspondence",
+            },
+        )?;
+        let dual_id =
+            cartan_of_raw[raw].ok_or(StructureError::CartanClassificationInvariantViolation {
+                invariant: "dual Cartan correspondence",
+            })?;
+        let form_count = dual_classification
+            .cartan_class(dual_id)
+            .expect("cartan_ids yields in-range ids")
+            .partition()
+            .class_count();
+        correspondence.push((dual_id, form_count));
+    }
+    Ok(correspondence)
 }
 
 /// The number of dual real forms of `inner_class`: the fundamental
@@ -254,5 +404,111 @@ mod tests {
         // W0 for A2 sends e1 -> -e2, e2 -> -e1, so -W0^t = [[0,1],[1,0]].
         let product = dual_involution(&inner_class, 6).unwrap();
         assert_eq!(product, vec![vec![0, -1], vec![-1, 0]]);
+    }
+
+    #[test]
+    fn simply_connected_a1_cartans_pair_with_the_dual_cartans_in_reverse() {
+        // Oracle (capture 3501500, A1 compact inner class): Cartan #0 occurs
+        // for 1 dual real form, Cartan #1 for 2. The dual inner class is the
+        // adjoint A1, whose split Cartan (#1) carries only the quasisplit
+        // dual form while its fundamental Cartan (#0) carries both.
+        let datum = BasedRootDatum::from_simple_data(
+            1,
+            vec![vec![2]],
+            vec![Weight::new(vec![2])],
+            vec![Coweight::new(vec![1])],
+        )
+        .unwrap();
+        let inner_class = InnerClass::new(
+            datum.clone(),
+            LatticeInvolution::identity(&datum).unwrap(),
+            2,
+        )
+        .unwrap();
+        let budget =
+            crate::CartanClassificationBudget::new(integer_budget(), adjoint_budget(), 2, 64, 64);
+        let classification = CartanClassification::build(&inner_class, &budget).unwrap();
+        let dual = dual_inner_class(&inner_class, 2, 64).unwrap();
+        let dual_classification = CartanClassification::build(&dual, &budget).unwrap();
+        let correspondence = dual_cartan_correspondence(
+            &inner_class,
+            &classification,
+            &dual,
+            &dual_classification,
+            2,
+        )
+        .unwrap();
+        assert_eq!(correspondence, vec![(CartanId(1), 1), (CartanId(0), 2)],);
+    }
+
+    #[test]
+    fn compact_b2_correspondence_is_a_bijection_onto_the_dual_cartans() {
+        // B2 has w0 = -1 central, so the compact inner class is its own dual
+        // type. The fundamental Cartan pairs with the dual `w0` class — only
+        // the quasisplit dual form has a split Cartan — and the original
+        // `w0` class (involution -1 on the whole lattice) pairs with the
+        // dual fundamental, which every one of the three dual real forms
+        // contains.
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2, -2], vec![-1, 2]],
+            vec![Weight::new(vec![2, -2]), Weight::new(vec![-1, 2])],
+            vec![Coweight::new(vec![1, 0]), Coweight::new(vec![0, 1])],
+        )
+        .unwrap();
+        let inner_class = InnerClass::new(
+            datum.clone(),
+            LatticeInvolution::identity(&datum).unwrap(),
+            8,
+        )
+        .unwrap();
+        let budget =
+            crate::CartanClassificationBudget::new(integer_budget(), adjoint_budget(), 8, 64, 64);
+        let classification = CartanClassification::build(&inner_class, &budget).unwrap();
+        assert_eq!(classification.cartan_classes().len(), 4);
+        let dual = dual_inner_class(&inner_class, 8, 64).unwrap();
+        let dual_classification = CartanClassification::build(&dual, &budget).unwrap();
+        let correspondence = dual_cartan_correspondence(
+            &inner_class,
+            &classification,
+            &dual,
+            &dual_classification,
+            8,
+        )
+        .unwrap();
+        assert_eq!(correspondence.len(), 4);
+        assert_eq!(correspondence[0].1, 1);
+        let longest_index = classification
+            .cartan_classes()
+            .iter()
+            .position(|class| {
+                class
+                    .representative()
+                    .root_involution()
+                    .involution()
+                    .weight_matrix()
+                    .iter()
+                    .enumerate()
+                    .all(|(row, entries)| {
+                        entries
+                            .iter()
+                            .enumerate()
+                            .all(|(column, &entry)| entry == -i32::from(row == column))
+                    })
+            })
+            .expect("the w0 class is enumerated");
+        assert_eq!(correspondence[longest_index].1, 3);
+        assert!(correspondence.iter().all(|&(_, count)| count >= 1));
+        let mut ids: Vec<usize> = correspondence
+            .iter()
+            .map(|&(id, _)| {
+                dual_classification
+                    .cartan_ids()
+                    .position(|other| other == id)
+                    .unwrap()
+            })
+            .collect();
+        ids.sort_unstable();
+        assert_eq!(ids, vec![0, 1, 2, 3]);
     }
 }

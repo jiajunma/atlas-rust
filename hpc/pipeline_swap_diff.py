@@ -171,6 +171,11 @@ FIXTURE_PLANS = (
     # plus the illegal-entry and negative-entry rejections.
     FixturePlan(name="domain/weyl_element"),
     FixturePlan(name="domain/weyl_element_rejected"),
+    # CartanClass surface: per-class occurrence counts and display,
+    # involution, most-split, (dual) real-form sweeps, square classes,
+    # fiber partition, per-form numbering, and the illegal-number rejection.
+    FixturePlan(name="domain/cartan_aggregation"),
+    FixturePlan(name="domain/cartan_aggregation_rejected"),
     # Early scalar-era fixtures: verified verbatim locally and included so
     # the HPC differential upgrades their reference metadata.
     FixturePlan(name="eval/scalars"),

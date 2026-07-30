@@ -21,11 +21,12 @@ use std::sync::Arc;
 use malachite::{Integer as BigInt, Rational as BigRational};
 
 use atlas_real_group::{
-    build_presentations, dual_inner_class, dual_real_form_count, AdjointFiberBudget,
-    BasedRootDatum, CartanClassification, CartanClassificationBudget, Coweight, ExternalFormOrder,
-    InnerClass, InnerClassLayout, IntegerLatticeBudget, InvolutionTable, InvolutionTableBudget,
-    KgbGraph, KgbId, KgbStatus, LatticeInvolution, RealFormPresentation, RealFormSeed, RootSystem,
-    StrongRealClassification, StructureError, WeakRealFormId, Weight, WeylElement, WeylInterface,
+    build_presentations, dual_cartan_correspondence, dual_inner_class, AdjointFiberBudget,
+    BasedRootDatum, CartanClassification, CartanClassificationBudget, CartanId, Coweight,
+    ExternalFormOrder, InnerClass, InnerClassLayout, IntegerLatticeBudget, InvolutionTable,
+    InvolutionTableBudget, KgbGraph, KgbId, KgbStatus, LatticeInvolution, RealFormPresentation,
+    RealFormSeed, RootSystem, StrongRealClassification, StructureError, WeakRealFormId, Weight,
+    WeylElement, WeylInterface,
 };
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
@@ -135,6 +136,10 @@ pub struct InnerClassContext {
     order: ExternalFormOrder,
     layout: InnerClassLayout,
     dual_form_count: usize,
+    /// Per Cartan class (crate Cartan order): the corresponding dual
+    /// inner-class Cartan and its weak-real-form count, the upstream
+    /// `numDualRealForms` of the class's dual fiber.
+    dual_cartans: Vec<(CartanId, usize)>,
     forms: Vec<RealFormPresentation>,
 }
 
@@ -179,6 +184,7 @@ pub enum DomainValue {
     RealForm(Arc<RealFormContext>),
     KgbElement(Arc<RealFormContext>, KgbId),
     WeylElement(WeylEltValue),
+    CartanClass(Arc<InnerClassContext>, CartanId),
 }
 
 impl PartialEq for DomainValue {
@@ -202,6 +208,9 @@ impl PartialEq for DomainValue {
             // representation: braid-equivalent words compare equal.
             (Self::WeylElement(left), Self::WeylElement(right)) => {
                 left.context.handle == right.context.handle && left.element == right.element
+            }
+            (Self::CartanClass(left, left_id), Self::CartanClass(right, right_id)) => {
+                left.inner_class == right.inner_class && left_id == right_id
             }
             _ => false,
         }
@@ -278,6 +287,32 @@ impl fmt::Display for DomainValue {
                 }
                 write!(formatter, ">")
             }
+            // Cartan_class_value::print (interpreter/atlas-types.w:4007-4016):
+            // the class number with its real-form and dual-real-form counts —
+            // the weak-real partition sizes of the class's fiber and of the
+            // corresponding dual class's fiber.
+            Self::CartanClass(context, id) => {
+                let number =
+                    cartan_number(context, *id).expect("CartanClass values carry an in-range id");
+                let real = context
+                    .classification
+                    .cartan_class(*id)
+                    .expect("CartanClass values carry an in-range id")
+                    .partition()
+                    .class_count();
+                let dual = context
+                    .dual_cartans
+                    .get(number)
+                    .expect("the correspondence covers every Cartan class")
+                    .1;
+                write!(
+                    formatter,
+                    "Cartan class #{number}, occurring for {real} real {} \
+                     and for {dual} dual real {}",
+                    if real == 1 { "form" } else { "forms" },
+                    if dual == 1 { "form" } else { "forms" },
+                )
+            }
         }
     }
 }
@@ -291,6 +326,7 @@ pub fn kind_name(value: &DomainValue) -> &'static str {
         DomainValue::RealForm(_) => "RealForm",
         DomainValue::KgbElement(_, _) => "KGBElt",
         DomainValue::WeylElement(_) => "WeylElt",
+        DomainValue::CartanClass(_, _) => "CartanClass",
     }
 }
 
@@ -891,13 +927,20 @@ fn build_inner_class_context(
         .map_err(|error| runtime(span, error.to_string()))?;
     let layout = InnerClassLayout::build(&inner_class, &INTEGER_BUDGET)
         .map_err(|error| runtime(span, error.to_string()))?;
-    let dual_form_count = dual_real_form_count(
+    // The dual side once: the dual form count is the dual fundamental weak
+    // partition size, and the correspondence pairs each Cartan class with its
+    // dual class (upstream dual InnerClass constructor, innerclass.cpp:435).
+    let dual_inner = dual_inner_class(&inner_class, WEYL_BUDGET, ROOT_BUDGET)
+        .map_err(|error| runtime(span, error.to_string()))?;
+    let dual_classification = CartanClassification::build(&dual_inner, &class_budget)
+        .map_err(|error| runtime(span, error.to_string()))?;
+    let dual_form_count = dual_classification.weak_real_form_count();
+    let dual_cartans = dual_cartan_correspondence(
         &inner_class,
+        &classification,
+        &dual_inner,
+        &dual_classification,
         WEYL_BUDGET,
-        &INTEGER_BUDGET,
-        &AdjointFiberBudget::new(INTEGER_BUDGET, 1_000_000, 10_000_000),
-        FIBER_BUDGET,
-        ROOT_BUDGET,
     )
     .map_err(|error| runtime(span, error.to_string()))?;
     let forms = build_presentations(
@@ -916,6 +959,7 @@ fn build_inner_class_context(
         order,
         layout,
         dual_form_count,
+        dual_cartans,
         forms,
     }))
 }
@@ -1229,6 +1273,82 @@ fn as_kgb_element(
             format!("expected a KGBElt, found {other}"),
         )),
     }
+}
+
+fn as_cartan_class(
+    value: &Value,
+    span: SourceSpan,
+) -> Result<(&Arc<InnerClassContext>, CartanId), Diagnostic> {
+    match value {
+        Value::Domain(DomainValue::CartanClass(context, id)) => Ok((context, *id)),
+        other => Err(type_error(
+            span,
+            format!("expected a CartanClass, found {other}"),
+        )),
+    }
+}
+
+/// The language-visible number of a Cartan id: its position in the crate
+/// Cartan order, which is the fundamental-first numbering upstream prints.
+fn cartan_number(context: &InnerClassContext, id: CartanId) -> Option<usize> {
+    context
+        .classification
+        .cartan_ids()
+        .position(|other| other == id)
+}
+
+/// The shared out-of-range diagnostic of both `Cartan_class` wrappers
+/// (atlas-types.w:4019-4029, 4040-4050): the signed index is echoed, and
+/// `owner` selects the "inner class" / "real form" wording.
+fn check_cartan_number(
+    index: &BigInt,
+    count: usize,
+    owner: &str,
+    span: SourceSpan,
+) -> Result<usize, Diagnostic> {
+    usize::try_from(index)
+        .ok()
+        .filter(|&number| number < count)
+        .ok_or_else(|| {
+            runtime(
+                span,
+                format!(
+                    "Illegal Cartan class number: {index}, this {owner} only has {count} of them"
+                ),
+            )
+        })
+}
+
+fn cartan_class_value(context: &Arc<InnerClassContext>, id: CartanId) -> Value {
+    Value::Domain(DomainValue::CartanClass(Arc::clone(context), id))
+}
+
+/// The guard clauses of `fiber_partition_wrapper` (atlas-types.w:4199-4213):
+/// both values must belong to one inner class, and the class must occur for
+/// the real form. Runs before the upstream no-value gate, so `validate`
+/// reuses it.
+fn fiber_partition_membership(
+    cartan_context: &Arc<InnerClassContext>,
+    id: CartanId,
+    form: &Arc<RealFormContext>,
+    span: SourceSpan,
+) -> Result<(), Diagnostic> {
+    if cartan_context.inner_class != form.parent.inner_class {
+        return Err(runtime(
+            span,
+            "Inner class mismatch between real form and Cartan class",
+        ));
+    }
+    let occurs = form
+        .parent
+        .classification
+        .cartan_set(form.internal)
+        .expect("a real form's internal number is in range")
+        .contains(&id);
+    if !occurs {
+        return Err(runtime(span, "Cartan class not defined for this real form"));
+    }
+    Ok(())
 }
 
 fn arity(
@@ -1941,6 +2061,45 @@ pub(crate) fn validate(
             let (context, _) = as_kgb_element(&arguments[0], span)?;
             compatible_outer_twist(context, &arguments[1], span)?;
         }
+        // Both Cartan_class wrappers bounds-check before their no_value gate
+        // (atlas-types.w:4025-4033, 4046-4056).
+        "Cartan_class" => {
+            arity(name, arguments, 2, span)?;
+            let index = as_integer(&arguments[1], span)?;
+            match &arguments[0] {
+                Value::Domain(DomainValue::InnerClass(context)) => {
+                    check_cartan_number(
+                        &index,
+                        context.classification.cartan_ids().len(),
+                        "inner class",
+                        span,
+                    )?;
+                }
+                Value::Domain(DomainValue::RealForm(form)) => {
+                    let count = form
+                        .parent
+                        .classification
+                        .cartan_set(form.internal)
+                        .expect("a real form's internal number is in range")
+                        .len();
+                    check_cartan_number(&index, count, "real form", span)?;
+                }
+                other => {
+                    return Err(type_error(
+                        span,
+                        format!("expected an InnerClass or RealForm, found {other}"),
+                    ));
+                }
+            }
+        }
+        // fiber_partition_wrapper's mismatch and occurrence checks precede
+        // its no_value gate (atlas-types.w:4202-4213).
+        "fiber_partition" => {
+            arity(name, arguments, 2, span)?;
+            let (context, id) = as_cartan_class(&arguments[0], span)?;
+            let form = as_real_form(&arguments[1], span)?;
+            fiber_partition_membership(context, id, form, span)?;
+        }
         other => {
             return Err(runtime(
                 span,
@@ -2160,6 +2319,200 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             let context = as_real_form(&arguments[0], span)?;
             Ok(Value::Integer(BigInt::from(context.external)))
         }
+        // ic_Cartan_class_wrapper (atlas-types.w:4019-4034) and
+        // rf_Cartan_class_wrapper (atlas-types.w:4040-4060): the real-form
+        // overload translates its per-form index through the form's Cartan
+        // set into the inner-class numbering (`Cartan_set().n_th(i)`).
+        "Cartan_class" => {
+            arity(name, arguments, 2, span)?;
+            let index = as_integer(&arguments[1], span)?;
+            match &arguments[0] {
+                Value::Domain(DomainValue::InnerClass(context)) => {
+                    let number = check_cartan_number(
+                        &index,
+                        context.classification.cartan_ids().len(),
+                        "inner class",
+                        span,
+                    )?;
+                    let id = context
+                        .classification
+                        .cartan_ids()
+                        .nth(number)
+                        .expect("bounds checked against the class count");
+                    Ok(cartan_class_value(context, id))
+                }
+                Value::Domain(DomainValue::RealForm(form)) => {
+                    let set = form
+                        .parent
+                        .classification
+                        .cartan_set(form.internal)
+                        .expect("a real form's internal number is in range");
+                    let id = set[check_cartan_number(&index, set.len(), "real form", span)?];
+                    Ok(cartan_class_value(&form.parent, id))
+                }
+                other => Err(type_error(
+                    span,
+                    format!("expected an InnerClass or RealForm, found {other}"),
+                )),
+            }
+        }
+        // n_Cartan_classes_wrapper (atlas-types.w:3308-3322) and
+        // count_Cartans_wrapper (atlas-types.w:3698-3704).
+        "nr_of_Cartan_classes" => {
+            arity(name, arguments, 1, span)?;
+            match &arguments[0] {
+                Value::Domain(DomainValue::InnerClass(context)) => Ok(Value::Integer(
+                    BigInt::from(context.classification.cartan_ids().len()),
+                )),
+                Value::Domain(DomainValue::RealForm(form)) => Ok(Value::Integer(BigInt::from(
+                    form.parent
+                        .classification
+                        .cartan_set(form.internal)
+                        .expect("a real form's internal number is in range")
+                        .len(),
+                ))),
+                other => Err(type_error(
+                    span,
+                    format!("expected an InnerClass or RealForm, found {other}"),
+                )),
+            }
+        }
+        // most_split_Cartan_wrapper (atlas-types.w:4065-4071).
+        "most_split_Cartan" => {
+            arity(name, arguments, 1, span)?;
+            let form = as_real_form(&arguments[0], span)?;
+            let id = form
+                .parent
+                .classification
+                .most_split(form.internal)
+                .expect("most-split uniqueness is a construction invariant");
+            Ok(cartan_class_value(&form.parent, id))
+        }
+        // real_forms_of_Cartan_wrapper (atlas-types.w:4155-4168): every
+        // external form whose Cartan set contains the class, in external
+        // order.
+        "real_forms" => {
+            arity(name, arguments, 1, span)?;
+            let (context, id) = as_cartan_class(&arguments[0], span)?;
+            let mut forms = Vec::new();
+            for external in 0..context.order.form_count() {
+                let internal = context
+                    .order
+                    .internal(external)
+                    .expect("external numbers are in range");
+                if context
+                    .classification
+                    .cartan_set(internal)
+                    .expect("a real form's internal number is in range")
+                    .contains(&id)
+                {
+                    forms.push(Value::Domain(DomainValue::RealForm(build_real_form(
+                        context, external, span,
+                    )?)));
+                }
+            }
+            Ok(Value::List(forms))
+        }
+        // dual_real_forms_of_Cartan_wrapper (atlas-types.w:4171-4185): the
+        // same sweep on the dual side, at the corresponding dual Cartan.
+        "dual_real_forms" => {
+            arity(name, arguments, 1, span)?;
+            let (context, id) = as_cartan_class(&arguments[0], span)?;
+            let number =
+                cartan_number(context, id).expect("CartanClass values carry an in-range id");
+            let (dual_id, _) = context
+                .dual_cartans
+                .get(number)
+                .expect("the correspondence covers every Cartan class");
+            let dual = build_dual_inner_class(context, span)?;
+            let mut forms = Vec::new();
+            for external in 0..dual.order.form_count() {
+                let internal = dual
+                    .order
+                    .internal(external)
+                    .expect("external numbers are in range");
+                if dual
+                    .classification
+                    .cartan_set(internal)
+                    .expect("a real form's internal number is in range")
+                    .contains(dual_id)
+                {
+                    forms.push(Value::Domain(DomainValue::RealForm(build_real_form(
+                        &dual, external, span,
+                    )?)));
+                }
+            }
+            Ok(Value::List(forms))
+        }
+        // square_classes_wrapper (atlas-types.w:4229-4246): per square class,
+        // each strong orbit's weak real form, as an EXTERNAL form number.
+        "square_classes" => {
+            arity(name, arguments, 1, span)?;
+            let (context, id) = as_cartan_class(&arguments[0], span)?;
+            let cartan = context
+                .classification
+                .cartan_class(id)
+                .expect("CartanClass values carry an in-range id");
+            let data = context
+                .strong
+                .strong_real_data(id)
+                .expect("the strong layer covers every Cartan class");
+            let mut classes = Vec::new();
+            for square in data.square_classes() {
+                let mut orbits = Vec::new();
+                for orbit in 0..data
+                    .fiber_orbit_count(square)
+                    .expect("square_classes yields in-range ids")
+                {
+                    let local = data
+                        .weak_real_of_orbit(square, orbit)
+                        .expect("orbit numbers are bounded by the orbit count");
+                    let internal = cartan
+                        .labels()
+                        .label(local)
+                        .expect("toWeakReal lands in a local class");
+                    let external = context
+                        .order
+                        .external(internal)
+                        .expect("real-form labels land in a global form");
+                    orbits.push(Value::Integer(BigInt::from(external)));
+                }
+                classes.push(Value::List(orbits));
+            }
+            Ok(Value::List(classes))
+        }
+        // fiber_partition_wrapper (atlas-types.w:4199-4223): the fiber
+        // elements whose weak class labels back to the given real form,
+        // numbered by the fiber's canonical enumeration.
+        "fiber_partition" => {
+            arity(name, arguments, 2, span)?;
+            let (context, id) = as_cartan_class(&arguments[0], span)?;
+            let form = as_real_form(&arguments[1], span)?;
+            fiber_partition_membership(context, id, form, span)?;
+            let cartan = context
+                .classification
+                .cartan_class(id)
+                .expect("CartanClass values carry an in-range id");
+            let dimension = cartan.grading().adjoint_fiber().dimension();
+            // The partition's mask-bits bound keeps this shift in range.
+            let element_count = 1_u64
+                .checked_shl(
+                    u32::try_from(dimension)
+                        .map_err(|_| runtime(span, "internal fiber dimension overflow"))?,
+                )
+                .ok_or_else(|| runtime(span, "internal fiber dimension overflow"))?;
+            let mut members = Vec::new();
+            for mask in 0..element_count {
+                let local = cartan
+                    .partition()
+                    .class_of_mask(mask)
+                    .map_err(|error| runtime(span, error.to_string()))?;
+                if cartan.labels().label(local) == Some(form.internal) {
+                    members.push(Value::Integer(BigInt::from(mask)));
+                }
+            }
+            Ok(Value::List(members))
+        }
         "KGB_size" => {
             arity(name, arguments, 1, span)?;
             let context = as_real_form(&arguments[0], span)?;
@@ -2236,6 +2589,22 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
         }
         "involution" => {
             arity(name, arguments, 1, span)?;
+            // Cartan_involution_wrapper (atlas-types.w:4080-4084): the
+            // class's distinguished involution matrix.
+            if let Value::Domain(DomainValue::CartanClass(context, id)) = &arguments[0] {
+                let cartan = context
+                    .classification
+                    .cartan_class(*id)
+                    .expect("CartanClass values carry an in-range id");
+                return matrix_value(
+                    cartan
+                        .representative()
+                        .root_involution()
+                        .involution()
+                        .weight_matrix(),
+                    span,
+                );
+            }
             let (context, id) = as_kgb_element(&arguments[0], span)?;
             let involution = context
                 .graph

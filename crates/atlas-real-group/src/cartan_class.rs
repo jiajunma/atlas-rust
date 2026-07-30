@@ -73,6 +73,14 @@ impl TwistedConjugacyPartition {
         &self.classes
     }
 
+    /// The raw index of the class containing the twisted involution whose
+    /// root-image permutation is `permutation`: the map lookup behind
+    /// [`Self::class_of`] without the provenance gates, for consumers that
+    /// derive the permutation from a lattice involution directly.
+    pub(crate) fn class_index_of_permutation(&self, permutation: &[usize]) -> Option<usize> {
+        self.class_by_permutation.get(permutation).copied()
+    }
+
     /// The index of the class containing this twisted involution.
     pub fn class_of(&self, twisted: &TwistedInvolution) -> Result<usize, StructureError> {
         if twisted.weyl_action().datum() != &self.datum {

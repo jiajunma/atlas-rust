@@ -128,6 +128,14 @@ impl WeakRealFormPartition {
         element: &AdjointFiberElement,
     ) -> Result<WeakRealFormId, StructureError> {
         let mask = mask_of(&self.adjoint, element)?;
+        self.class_of_mask(mask)
+    }
+
+    /// The weak real form whose orbit contains the element whose canonical
+    /// coordinates are `mask` (bit `i` = adjoint basis direction `i`). This
+    /// is the crate's fiber-element enumeration order, so it backs
+    /// language-level per-element queries such as `fiber_partition`.
+    pub fn class_of_mask(&self, mask: u64) -> Result<WeakRealFormId, StructureError> {
         let index = index_from_mask(mask)?;
         let class =
             self.class_of_by_mask
