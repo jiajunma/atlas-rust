@@ -24,9 +24,9 @@ use malachite::{Integer as BigInt, Rational as BigRational};
 
 use atlas_real_group::{
     adapted_relation_basis, annihilator_modulo as relation_annihilator_modulo, build_presentations,
-    central_fiber, dual_cartan_correspondence, dual_inner_class,
-    filter_relation_units as domain_filter_relation_units,
-    quotient_relation_basis as domain_quotient_relation_basis,
+    central_fiber, classify_involution as domain_classify_involution, dual_cartan_correspondence,
+    dual_inner_class, filter_relation_units as domain_filter_relation_units,
+    inner_class_with_twisted_involution, quotient_relation_basis as domain_quotient_relation_basis,
     replace_relation_generators as domain_replace_relation_generators, AdjointFiberBudget,
     BasedRootDatum, CartanClass, CartanClassification, CartanClassificationBudget, CartanId,
     Coweight, ExternalFormOrder, InnerClass, InnerClassLayout, IntegerLatticeBudget,
@@ -1856,6 +1856,110 @@ fn is_identity_square(matrix: &[Vec<i32>]) -> bool {
         })
 }
 
+/// The common wrapper-side checks of Atlas's involution constructors.
+///
+/// `mat` retains dimensions that cannot be recovered from `Vec<Vec<_>>`
+/// (notably `0xN`), so inspect the value before adapting it to rows.  Atlas
+/// elects the matrix row count as the expected rank for the standalone
+/// classifier; datum-owned constructors supply their lattice rank instead.
+fn checked_involution_matrix(
+    value: &Value,
+    expected_rank: Option<usize>,
+    span: SourceSpan,
+) -> Result<Vec<Vec<i32>>, Diagnostic> {
+    let Value::Matrix(matrix) = value else {
+        return Err(type_error(span, "expected a mat"));
+    };
+    let rows = matrix.rows();
+    let columns = matrix.cols();
+    let rank = expected_rank.unwrap_or(rows);
+    if rows != rank || columns != rank {
+        return Err(runtime(
+            span,
+            format!(
+                "Involution should be a {rank}x{rank} matrix; received a {rows}x{columns} matrix"
+            ),
+        ));
+    }
+    let matrix = as_matrix_rows(value, span)?;
+    if !is_identity_square(&matrix) {
+        return Err(runtime(span, "Given transformation is not an involution"));
+    }
+    Ok(matrix)
+}
+
+/// Number a root like Atlas's `RootDatum` presentation: positive roots use
+/// `0..npos`, while the negative of positive slot `p` is represented by the
+/// unsigned value `UINT_MAX-p` in the wrapper diagnostic.
+fn atlas_root_number(
+    handle: &RootDatumHandle,
+    image_root: &Weight,
+    span: SourceSpan,
+) -> Result<u32, Diagnostic> {
+    let table = RootTable::build(handle, span)?;
+    for (position, root) in table.roots.iter().enumerate() {
+        let position =
+            u32::try_from(position).map_err(|_| runtime(span, "internal root index overflow"))?;
+        if root.as_slice() == image_root.as_slice() {
+            return Ok(position);
+        }
+        if root
+            .iter()
+            .zip(image_root.as_slice())
+            .all(|(&positive, &image)| i64::from(positive) == -i64::from(image))
+        {
+            return Ok(u32::MAX - position);
+        }
+    }
+    Err(runtime(
+        span,
+        format!("root-system image {image_root:?} is not in the presentation table"),
+    ))
+}
+
+fn twisted_involution_diagnostic(
+    handle: &RootDatumHandle,
+    error: StructureError,
+    span: SourceSpan,
+) -> Diagnostic {
+    match error {
+        StructureError::SimpleRootImageNotRoot { simple_root } => runtime(
+            span,
+            format!("Matrix maps simple root {simple_root} to non-root"),
+        ),
+        StructureError::SimpleCorootImageMismatch {
+            simple_root,
+            image_root,
+        } => match atlas_root_number(handle, &image_root, span) {
+            Ok(image) => runtime(
+                span,
+                format!("Matrix does not map simple coroot {simple_root} to coroot {image}"),
+            ),
+            Err(error) => error,
+        },
+        other => runtime(span, other.to_string()),
+    }
+}
+
+/// Validate and normalize a user involution into the domain-owned factor and
+/// fully built inner-class handle.  The language Weyl value is deliberately
+/// not assembled here: Atlas performs this work before its no-value gate but
+/// constructs the returned pair only when a value is requested.
+fn build_twisted_involution(
+    handle: &RootDatumHandle,
+    value: &Value,
+    span: SourceSpan,
+) -> Result<(WeylElement, Arc<InnerClassContext>), Diagnostic> {
+    let matrix = checked_involution_matrix(value, Some(handle.datum.lattice_rank()), span)?;
+    let involution = LatticeInvolution::new(&handle.datum, matrix.clone(), transpose(&matrix))
+        .map_err(|error| runtime(span, error.to_string()))?;
+    let (factor, inner_class) =
+        inner_class_with_twisted_involution((*handle.datum).clone(), involution, ROOT_BUDGET)
+            .map_err(|error| twisted_involution_diagnostic(handle, error, span))?;
+    let context = build_inner_class_context(handle, inner_class, span)?;
+    Ok((factor, context))
+}
+
 /// Port of upstream `test_compatible` (interpreter/atlas-types.w:4625-4632)
 /// with the wrapper's exact diagnostics: the user's matrix must be an
 /// involution of the BASED root datum of the element's inner class — the
@@ -2499,6 +2603,21 @@ pub(crate) fn validate(
             let context = as_real_form(&arguments[0], span)?;
             build_kgb_element(context, &arguments[1], &arguments[2], span)?;
         }
+        // classify_involution_wrapper validates squareness and M^2=I before
+        // its no-value gate, but the integer-lattice classification follows
+        // it (atlas-types.w:2697-2710).
+        "classify_involution" => {
+            arity(name, arguments, 1, span)?;
+            checked_involution_matrix(&arguments[0], None, span)?;
+        }
+        // twisted_involution_wrapper builds and normalizes the inner class,
+        // retaining the Weyl factor, before checking no_value.  Only the
+        // language Weyl value and result pair are suppressed.
+        "twisted_involution" => {
+            arity(name, arguments, 2, span)?;
+            let handle = as_root_datum(&arguments[0], span)?;
+            build_twisted_involution(handle, &arguments[1], span)?;
+        }
         "cross" | "Cayley" | "status" => {
             arity(name, arguments, 2, span)?;
             let generator = as_usize(&arguments[0], span)?;
@@ -3016,6 +3135,49 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 "inner_class expects a RealForm or (RootDatum,mat)",
             )),
         },
+        "classify_involution" => {
+            arity(name, arguments, 1, span)?;
+            let matrix = checked_involution_matrix(&arguments[0], None, span)?;
+            let classification = domain_classify_involution(&matrix, &INTEGER_BUDGET).map_err(
+                |error| match error {
+                    StructureError::InvalidInvolution => {
+                        runtime(span, "Given transformation is not an involution")
+                    }
+                    other => runtime(span, other.to_string()),
+                },
+            )?;
+            let (compact, complex, split) = classification.as_tuple();
+            Ok(Value::Tuple(vec![
+                Value::Integer(BigInt::from(compact)),
+                Value::Integer(BigInt::from(complex)),
+                Value::Integer(BigInt::from(split)),
+            ]))
+        }
+        "twisted_involution" => {
+            arity(name, arguments, 2, span)?;
+            let handle = as_root_datum(&arguments[0], span)?;
+            let (factor, inner_class) = build_twisted_involution(handle, &arguments[1], span)?;
+            let weyl_context = build_weyl_context(handle, span)?;
+            let factor = weyl_elt_value(weyl_context, factor, span)?;
+            Ok(Value::Tuple(vec![
+                factor,
+                Value::Domain(DomainValue::InnerClass(inner_class)),
+            ]))
+        }
+        "distinguished_involution" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::InnerClass(context)) = &arguments[0] else {
+                return Err(type_error(span, "expected an InnerClass"));
+            };
+            matrix_value(
+                context
+                    .inner_class
+                    .distinguished_involution()
+                    .involution()
+                    .weight_matrix(),
+                span,
+            )
+        }
         "nr_of_real_forms" => {
             arity(name, arguments, 1, span)?;
             let Value::Domain(DomainValue::InnerClass(context)) = &arguments[0] else {
@@ -4213,6 +4375,137 @@ mod tests {
 
     fn int(value: i64) -> Value {
         Value::Integer(BigInt::from(value))
+    }
+
+    fn matrix(rows: usize, columns: usize, column_major: Vec<i32>) -> Value {
+        Value::Matrix(
+            Matrix::from_columns(rows, columns, column_major).expect("consistent matrix shape"),
+        )
+    }
+
+    #[test]
+    fn involution_classifier_matches_the_frozen_edge_anchors() {
+        let cases = [
+            (matrix(0, 0, Vec::new()), (0, 0, 0)),
+            (matrix(1, 1, vec![1]), (1, 0, 0)),
+            (matrix(1, 1, vec![-1]), (0, 0, 1)),
+            (matrix(2, 2, vec![1, 1, 0, -1]), (0, 1, 0)),
+            (matrix(2, 2, vec![1, 2, 0, -1]), (1, 0, 1)),
+        ];
+        for (involution, expected) in cases {
+            assert_eq!(
+                call("classify_involution", &[involution], span()),
+                Ok(Value::Tuple(vec![
+                    int(expected.0),
+                    int(expected.1),
+                    int(expected.2),
+                ]))
+            );
+        }
+    }
+
+    #[test]
+    fn involution_decomposition_matches_the_frozen_a2_anchor() {
+        let datum = fixture_datum("A2", true);
+        let opposition = matrix(2, 2, vec![0, -1, -1, 0]);
+        let decomposition = call(
+            "twisted_involution",
+            &[datum.clone(), opposition.clone()],
+            span(),
+        )
+        .expect("A2 opposition decomposes");
+        assert_eq!(
+            decomposition.to_string(),
+            "(<0.1.0>,Complex reductive group of type A2, with involution defining\n\
+             inner class of type 'c', with 2 real forms and 1 dual real form)"
+        );
+
+        let Value::Tuple(parts) = decomposition else {
+            panic!("decomposition is a pair")
+        };
+        assert_eq!(
+            call(
+                "distinguished_involution",
+                std::slice::from_ref(&parts[1]),
+                span(),
+            )
+            .expect("distinguished involution")
+            .to_string(),
+            "\n| 1, 0 |\n| 0, 1 |\n"
+        );
+
+        assert_eq!(
+            call(
+                "twisted_involution",
+                &[datum, matrix(2, 2, vec![1, 0, 0, 1])],
+                span(),
+            )
+            .expect("identity decomposes")
+            .to_string(),
+            "(<>,Complex reductive group of type A2, with involution defining\n\
+             inner class of type 'c', with 2 real forms and 1 dual real form)"
+        );
+    }
+
+    #[test]
+    fn involution_decomposition_rejections_and_no_value_validation_are_exact() {
+        let nonsquare = matrix(1, 2, vec![1, 0]);
+        let error = call(
+            "classify_involution",
+            std::slice::from_ref(&nonsquare),
+            span(),
+        )
+        .expect_err("classifier rejects a nonsquare matrix");
+        assert_eq!(
+            error.message,
+            "Involution should be a 1x1 matrix; received a 1x2 matrix"
+        );
+        let zero_by_one = matrix(0, 1, Vec::new());
+        let error = call(
+            "classify_involution",
+            std::slice::from_ref(&zero_by_one),
+            span(),
+        )
+        .expect_err("classifier retains a zero-row matrix's column count");
+        assert_eq!(
+            error.message,
+            "Involution should be a 0x0 matrix; received a 0x1 matrix"
+        );
+
+        let non_involution = matrix(2, 2, vec![2, 0, 0, 2]);
+        for result in [
+            call(
+                "classify_involution",
+                std::slice::from_ref(&non_involution),
+                span(),
+            ),
+            validate(
+                "classify_involution",
+                std::slice::from_ref(&non_involution),
+                span(),
+            )
+            .map(|()| Value::Tuple(Vec::new())),
+        ] {
+            assert_eq!(
+                result.expect_err("M squared is not the identity").message,
+                "Given transformation is not an involution"
+            );
+        }
+
+        let b2 = fixture_datum("B2", true);
+        let foreign = matrix(2, 2, vec![1, 2, 0, -1]);
+        for result in [
+            call("twisted_involution", &[b2.clone(), foreign.clone()], span()),
+            validate("twisted_involution", &[b2, foreign], span())
+                .map(|()| Value::Tuple(Vec::new())),
+        ] {
+            assert_eq!(
+                result
+                    .expect_err("matrix does not preserve B2 roots")
+                    .message,
+                "Matrix maps simple root 0 to non-root"
+            );
+        }
     }
 
     #[test]

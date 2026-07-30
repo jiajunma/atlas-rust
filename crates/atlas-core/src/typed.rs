@@ -3090,6 +3090,7 @@ enum ScalarOp {
     RatNegate,
     RatInverse,
     RatPower,
+    NullMatrix,
     UnaryRelation(Relation),
     BinaryRelation(Relation),
     StringConcat,
@@ -3300,6 +3301,13 @@ fn expect_pair(mut arguments: Vec<Value>) -> (Value, Value) {
         (Some(first), Some(second)) => (first, second),
         other => panic!("binary builtin saw {other:?}"),
     }
+}
+
+fn unsigned_long(value: &BigInt, span: SourceSpan) -> Result<u64, Control> {
+    if value < &BigInt::from(0) {
+        return Err(runtime("Negative integer where unsigned is required", span));
+    }
+    u64::try_from(value).map_err(|_| runtime("Integer value to big for conversion", span))
 }
 
 fn euclidean_divmod(left: &BigInt, right: &BigInt) -> (BigInt, BigInt) {
@@ -3575,6 +3583,40 @@ fn run_scalar(
                     )))
                 }
             }))
+        }
+        ScalarOp::NullMatrix => {
+            let (row_value, column_value) = expect_ints(arguments);
+            // Atlas pops/converts the column count first, then the row count.
+            let columns = unsigned_long(&column_value, span)?;
+            let rows = unsigned_long(&row_value, span)?;
+            if rows > u64::from(u32::MAX) {
+                return Err(runtime(
+                    format!("Number of rows {rows} exceeds implementation limit"),
+                    span,
+                ));
+            }
+            if columns > u64::from(u32::MAX) {
+                return Err(runtime(
+                    format!("Number of columns {columns} exceeds implementation limit"),
+                    span,
+                ));
+            }
+            if level == Level::NoValue {
+                return Ok(None);
+            }
+            let rows = usize::try_from(rows).expect("u32 matrix row count fits usize");
+            let columns = usize::try_from(columns).expect("u32 matrix column count fits usize");
+            let cells = rows
+                .checked_mul(columns)
+                .ok_or_else(|| runtime("Matrix dimensions exceed available memory", span))?;
+            let mut data = Vec::new();
+            data.try_reserve_exact(cells)
+                .map_err(|_| runtime("Matrix dimensions exceed available memory", span))?;
+            data.resize(cells, 0);
+            Ok(Some(Value::Matrix(
+                Matrix::from_columns(rows, columns, data)
+                    .expect("allocated zero data matches matrix dimensions"),
+            )))
         }
         ScalarOp::UnaryRelation(relation) => {
             let value = expect_unary(arguments);
@@ -4092,6 +4134,15 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 1,
                 ScalarOp::StringConcat,
             ),
+            // global.w:4478-4493: retain zero-row/zero-column dimensions,
+            // narrow and bound both dimensions before the no-value gate.
+            scalar_builtin(
+                "null",
+                int_pair(),
+                primitive_type(Prim::Mat),
+                0,
+                ScalarOp::NullMatrix,
+            ),
             domain_builtin("Lie_type", string_type(), primitive_type(Prim::LieType), 0),
             domain_builtin_skip(
                 "Smith_Cartan",
@@ -4244,6 +4295,30 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 "inner_class",
                 primitive_type(Prim::RealForm),
                 primitive_type(Prim::InnerClass),
+                0,
+            ),
+            domain_builtin_validate(
+                "classify_involution",
+                primitive_type(Prim::Mat),
+                Type::tuple(vec![int_type(), int_type(), int_type()]),
+                0,
+            ),
+            domain_builtin_validate(
+                "twisted_involution",
+                Type::tuple(vec![
+                    primitive_type(Prim::RootDatum),
+                    primitive_type(Prim::Mat),
+                ]),
+                Type::tuple(vec![
+                    primitive_type(Prim::WeylElt),
+                    primitive_type(Prim::InnerClass),
+                ]),
+                0,
+            ),
+            domain_builtin_skip(
+                "distinguished_involution",
+                primitive_type(Prim::InnerClass),
+                primitive_type(Prim::Mat),
                 0,
             ),
             domain_builtin_skip(
@@ -5324,16 +5399,18 @@ fn gcd_big(mut a: BigInt, mut b: BigInt) -> BigInt {
     }
 }
 
-fn columns_to_matrix(columns: Vec<Vec32>, span: SourceSpan) -> Result<Matrix, Control> {
+fn columns_to_matrix(
+    columns: Vec<Vec32>,
+    empty_columns: &'static str,
+    unequal_sizes: &'static str,
+    span: SourceSpan,
+) -> Result<Matrix, Control> {
     if columns.is_empty() {
-        return Err(runtime(
-            "Implicit conversion to matrix for an empty set of vectors",
-            span,
-        ));
+        return Err(runtime(empty_columns, span));
     }
     let rows = columns.first().map_or(0, |column| column.0.len());
     if columns.iter().any(|column| column.0.len() != rows) {
-        return Err(runtime("matrix columns must have equal lengths", span));
+        return Err(runtime(unequal_sizes, span));
     }
     let cols = columns.len();
     let data = columns.into_iter().flat_map(|column| column.0).collect();
@@ -5500,14 +5577,24 @@ fn apply_conversion(tag: &str, value: Value, span: SourceSpan) -> Result<Value, 
                     other => panic!("M[V] conversion saw column {other}"),
                 })
                 .collect();
-            Ok(Value::Matrix(columns_to_matrix(columns, span)?))
+            Ok(Value::Matrix(columns_to_matrix(
+                columns,
+                "Implicit conversion to matrix for an empty set of vectors",
+                "Vector sizes differ in conversion to matrix",
+                span,
+            )?))
         }
         "M[[I]]" => {
             let columns = expect_list(value)
                 .into_iter()
                 .map(|column| list_to_vec32(expect_list(column), span))
                 .collect::<Result<Vec<_>, _>>()?;
-            Ok(Value::Matrix(columns_to_matrix(columns, span)?))
+            Ok(Value::Matrix(columns_to_matrix(
+                columns,
+                "Cannot convert empty list of lists to matrix",
+                "List sizes differ in conversion to matrix",
+                span,
+            )?))
         }
         "[V]M" => match value {
             Value::Matrix(matrix) => Ok(matrix_to_vectors(matrix)),
@@ -6269,6 +6356,188 @@ mod tests {
         let (_, value) = convert_and_run("begin ann_mod([[1]],0);7 end")
             .expect("zero is not passed to the lattice in no-value context");
         assert_eq!(value, Value::Integer(BigInt::from(7)));
+    }
+
+    #[test]
+    fn null_matrix_preserves_shape_and_checks_dimensions_before_no_value() {
+        let (type_, value) = convert_and_run("null(0,2)").expect("zero-row matrix");
+        assert_eq!(type_, primitive_type(Prim::Mat));
+        assert_eq!(value.to_string(), "The 0x2 matrix");
+
+        let (_, value) = convert_and_run("begin null(2,3);7 end")
+            .expect("discarded construction validates without allocating its value");
+        assert_eq!(value, Value::Integer(BigInt::from(7)));
+
+        for (source, expected) in [
+            (
+                "begin null(-1,0);7 end",
+                "Negative integer where unsigned is required",
+            ),
+            (
+                "begin null(4294967296,0);7 end",
+                "Number of rows 4294967296 exceeds implementation limit",
+            ),
+            (
+                "begin null(0,4294967296);7 end",
+                "Number of columns 4294967296 exceeds implementation limit",
+            ),
+        ] {
+            assert_eq!(
+                convert_and_run(source)
+                    .expect_err("invalid matrix dimension is rejected")
+                    .message,
+                expected,
+                "source: {source}"
+            );
+        }
+    }
+
+    #[test]
+    fn involution_decomposition_surface_matches_the_frozen_a2_contract() {
+        let (type_, value) =
+            convert_and_run("classify_involution([[0,-1],[-1,0]])").expect("classification");
+        assert_eq!(type_, Type::tuple(vec![int_type(), int_type(), int_type()]));
+        assert_eq!(value.to_string(), "(0,1,0)");
+
+        let (type_, value) = convert_and_run(
+            "twisted_involution(simply_connected(Lie_type(\"A2\"),true),[[0,-1],[-1,0]])",
+        )
+        .expect("A2 opposition decomposition");
+        assert_eq!(
+            type_,
+            Type::tuple(vec![
+                primitive_type(Prim::WeylElt),
+                primitive_type(Prim::InnerClass),
+            ])
+        );
+        assert_eq!(
+            value.to_string(),
+            "(<0.1.0>,Complex reductive group of type A2, with involution defining\n\
+             inner class of type 'c', with 2 real forms and 1 dual real form)"
+        );
+
+        let (_, value) = convert_and_run(
+            "distinguished_involution(inner_class(simply_connected(Lie_type(\"A2\"),true),[[0,-1],[-1,0]]))",
+        )
+        .expect("distinguished A2 involution");
+        assert_eq!(value.to_string(), "\n| 1, 0 |\n| 0, 1 |\n");
+    }
+
+    #[test]
+    fn involution_decomposition_diagnostics_and_no_value_gates_are_exact() {
+        let cases = [
+            (
+                "classify_involution([[1],[0]])",
+                "Involution should be a 1x1 matrix; received a 1x2 matrix",
+            ),
+            (
+                "classify_involution([[2,0],[0,2]])",
+                "Given transformation is not an involution",
+            ),
+            (
+                "classify_involution([[1,0],[0]])",
+                "Vector sizes differ in conversion to matrix",
+            ),
+            (
+                "twisted_involution(simply_connected(Lie_type(\"A2\"),true),[[1]])",
+                "Involution should be a 2x2 matrix; received a 1x1 matrix",
+            ),
+            (
+                "twisted_involution(simply_connected(Lie_type(\"B2\"),true),[[1,2],[0,-1]])",
+                "Matrix maps simple root 0 to non-root",
+            ),
+        ];
+        for (source, expected) in cases {
+            assert_eq!(
+                convert_and_run(source)
+                    .expect_err("fixture is rejected")
+                    .message,
+                expected,
+                "source: {source}"
+            );
+        }
+
+        let type_cases = [
+            (
+                "classify_involution([1])",
+                "found [int] while mat was needed.",
+            ),
+            (
+                "twisted_involution(simply_connected(Lie_type(\"A1\"),true),[1])",
+                "found (RootDatum,[int]) while (RootDatum,mat) was needed.",
+            ),
+            (
+                "distinguished_involution(simply_connected(Lie_type(\"A1\"),true))",
+                "found RootDatum while InnerClass was needed.",
+            ),
+        ];
+        for (source, expected) in type_cases {
+            assert_eq!(
+                convert_and_run(source)
+                    .expect_err("overload does not match")
+                    .message,
+                expected,
+                "source: {source}"
+            );
+        }
+
+        let error = convert_and_run("begin classify_involution([[2]]);7 end")
+            .expect_err("classifier checks M squared before no_value");
+        assert_eq!(error.message, "Given transformation is not an involution");
+        let error = convert_and_run(
+            "begin twisted_involution(simply_connected(Lie_type(\"B2\"),true),[[1,2],[0,-1]]);7 end",
+        )
+        .expect_err("twisted constructor validates roots before no_value");
+        assert_eq!(error.message, "Matrix maps simple root 0 to non-root");
+        let (_, value) = convert_and_run(
+            "begin twisted_involution(simply_connected(Lie_type(\"A1\"),true),[[1]]);7 end",
+        )
+        .expect("a valid discarded constructor does not assemble its result pair");
+        assert_eq!(value, Value::Integer(BigInt::from(7)));
+    }
+
+    #[test]
+    fn matrix_conversion_size_diagnostics_follow_the_source_route() {
+        let span = SourceText::new("").span(0, 0);
+        let vector_columns = Value::List(vec![
+            Value::Vector(Vec32(vec![1, 0])),
+            Value::Vector(Vec32(vec![0])),
+        ]);
+        let error = apply_conversion("M[V]", vector_columns, span)
+            .expect_err("vector columns have unequal sizes");
+        assert!(matches!(
+            error,
+            Control::Runtime(Diagnostic { message, .. })
+                if message == "Vector sizes differ in conversion to matrix"
+        ));
+
+        let integer_columns = Value::List(vec![
+            Value::List(vec![Value::Integer(1.into()), Value::Integer(0.into())]),
+            Value::List(vec![Value::Integer(0.into())]),
+        ]);
+        let error = apply_conversion("M[[I]]", integer_columns, span)
+            .expect_err("integer lists have unequal sizes");
+        assert!(matches!(
+            error,
+            Control::Runtime(Diagnostic { message, .. })
+                if message == "List sizes differ in conversion to matrix"
+        ));
+
+        for (tag, expected) in [
+            (
+                "M[V]",
+                "Implicit conversion to matrix for an empty set of vectors",
+            ),
+            ("M[[I]]", "Cannot convert empty list of lists to matrix"),
+        ] {
+            let error = apply_conversion(tag, Value::List(Vec::new()), span)
+                .expect_err("empty conversion reports its source route");
+            assert!(matches!(
+                error,
+                Control::Runtime(Diagnostic { message, .. })
+                    if message == expected
+            ));
+        }
     }
 
     #[test]

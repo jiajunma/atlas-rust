@@ -205,6 +205,27 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/relations_rejected"),
     FixturePlan(name="domain/relations_extended_probe"),
     FixturePlan(name="domain/relations_extended_rejected_probe"),
+    # Involution decomposition: lattice classification, distinguished
+    # matrices, and (WeylElt, InnerClass) factorization.  The probes freeze
+    # zero-rank/rank-one behavior, B2/C2 presentation preferences, exact
+    # matrix-coercion diagnostics, and root/coroot preservation failures.
+    FixturePlan(name="domain/involution_decomposition"),
+    FixturePlan(name="domain/involution_decomposition_rejected"),
+    FixturePlan(name="domain/involution_decomposition_classify_edges_probe"),
+    FixturePlan(name="domain/involution_decomposition_classify_nonsquare_rejected_probe"),
+    FixturePlan(name="domain/involution_decomposition_classify_zero_row_rejected_probe"),
+    FixturePlan(name="domain/involution_decomposition_classify_ragged_rejected_probe"),
+    FixturePlan(name="domain/involution_decomposition_classify_type_rejected_probe"),
+    FixturePlan(name="domain/involution_decomposition_distinguished_type_rejected_probe"),
+    FixturePlan(name="domain/involution_decomposition_rank_one_probe"),
+    FixturePlan(name="domain/involution_decomposition_b2_c2_preference_probe"),
+    FixturePlan(name="domain/involution_decomposition_twisted_coroot_rejected_probe"),
+    FixturePlan(name="domain/involution_decomposition_twisted_foreign_c2_datum_rejected_probe"),
+    FixturePlan(name="domain/involution_decomposition_twisted_foreign_datum_rejected_probe"),
+    FixturePlan(name="domain/involution_decomposition_twisted_matrix_type_rejected_probe"),
+    FixturePlan(name="domain/involution_decomposition_twisted_non_root_rejected_probe"),
+    FixturePlan(name="domain/involution_decomposition_twisted_rank_mismatch_rejected_probe"),
+    FixturePlan(name="domain/involution_decomposition_twisted_root_datum_type_rejected_probe"),
     # Early scalar-era fixtures: verified verbatim locally and included so
     # the HPC differential upgrades their reference metadata.
     FixturePlan(name="eval/scalars"),
