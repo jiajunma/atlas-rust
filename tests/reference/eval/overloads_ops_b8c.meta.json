@@ -1,12 +1,21 @@
 {
   "fixture": "eval/overloads_ops_b8c",
-  "oracle": "pending_hpc_capture",
+  "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/parser.y:143-154",
     "sources/interpreter/global.w:1005-1020"
   ],
-  "notes": "Operator-overload slice of B8 (parser.y operator-set form): 'set * (string s, int n) = s' adds a user overload to the builtin operator '*', reported as 'Added definition [24] of *: (string,int->string)' because the builtin table already carries 23 '*' variants; the new overload then applies ('\"ab\" * 3' yields \"ab\"). Also anchors the empty-name diagnostic: 'whattype zzz ?' prints 'No overloads for 'zzz''. Expected events drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node); verbatim HPC capture still pending."
+  "notes": "Operator-overload slice of B8 (parser.y operator-set form): 'set * (string s, int n) = s' adds a user overload to the builtin operator '*', reported as 'Added definition [24] of *: (string,int->string)' because the builtin table already carries 23 '*' variants; the new overload then applies ('\"ab\" * 3' yields \"ab\"). Also anchors the empty-name diagnostic: 'whattype zzz ?' prints 'No overloads for 'zzz''. Expected events drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node); verbatim HPC capture still pending. Reference captured verbatim by HPC job 3501368 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3501368",
+  "source_archive_sha256": "f760b9618efdf06fc53f2d9d9bf2adef2bca64c1f687d124d19616a9cfdd176a",
+  "fixture_sha256": "c8a17a3bbc4588bc507c3aecac8906788216f91a0bb6cfa48287458146a88e91",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "2138be6fa57429a97320681eb1f9c535a4dfff4d4f78f1fede30c7020a2bedbf",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "e4d9f3c2a30ecfd4fedcfb675840783b8efb41f1aa75b7331710963205e6c124"
 }

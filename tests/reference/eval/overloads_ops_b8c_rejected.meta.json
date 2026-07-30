@@ -1,11 +1,20 @@
 {
   "fixture": "eval/overloads_ops_b8c_rejected",
-  "oracle": "pending_hpc_capture",
+  "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/parser.y:143-154"
   ],
-  "notes": "Rejected companion of the operator-set slice: the colon form 'set * (string s, int n): s' is not valid operator-set syntax (operator definitions take '=' before the body, unlike lambda literals), so the oracle reports a syntax error 'unexpected ':'' at the colon. Expected events drafted from a direct oracle probe; verbatim HPC capture still pending."
+  "notes": "Rejected companion of the operator-set slice: the colon form 'set * (string s, int n): s' is not valid operator-set syntax (operator definitions take '=' before the body, unlike lambda literals), so the oracle reports a syntax error 'unexpected ':'' at the colon. Expected events drafted from a direct oracle probe; verbatim HPC capture still pending. Reference captured verbatim by HPC job 3501368 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3501368",
+  "source_archive_sha256": "f760b9618efdf06fc53f2d9d9bf2adef2bca64c1f687d124d19616a9cfdd176a",
+  "fixture_sha256": "2c04012e6a91e2f788df192851c6863da06bf8d3e4c9880219632a0466c3e7af",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
+  "oracle_stderr_sha256": "6fdcbfea2ca3ef311e71b8b5f58ea1f9ee3672cf13a0879a95f906f07fd11987",
+  "capture_artifacts_sha256": "bfae16d12794f794af34174eea91624a88a5899627e19505ad4337f3c660516e"
 }

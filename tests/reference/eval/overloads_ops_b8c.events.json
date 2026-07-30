@@ -1,10 +1,22 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "eval/overloads_ops_b8c",
-  "status": "pending_hpc_reference",
+  "status": "verified_hpc_reference",
   "events": [
-    {"kind": "ReportLine", "text": "Added definition [24] of *: (string,int->string)\n"},
-    {"kind": "Value", "value": {"type": "string", "value": "ab"}},
-    {"kind": "ReportLine", "text": "No overloads for 'zzz'\n"}
+    {
+      "kind": "ReportLine",
+      "text": "Added definition [24] of *: (string,int->string)\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "string",
+        "value": "ab"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "No overloads for 'zzz'\n"
+    }
   ]
 }

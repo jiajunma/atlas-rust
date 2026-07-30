@@ -1,12 +1,21 @@
 {
   "fixture": "eval/whattype_ops_b8d",
-  "oracle": "pending_hpc_capture",
+  "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/global.w:1790",
     "sources/interpreter/parser.y:187"
   ],
-  "notes": "Builtin overload listing anchor: 'whattype * ?' prints the full builtin '*' table (23 variants, arithmetic/string/vector/matrix rows) in table order. Long-term anchor for the builtin overload registry; the listing must track the registry as Split/KTypePol/Param/ParamPol rows land, so this fixture pins the current-epoch 23-row table exactly as probed from the oracle. Expected events drafted from a direct oracle probe; verbatim HPC capture still pending."
+  "notes": "Builtin overload listing anchor: 'whattype * ?' prints the full builtin '*' table (23 variants, arithmetic/string/vector/matrix rows) in table order. Long-term anchor for the builtin overload registry; the listing must track the registry as Split/KTypePol/Param/ParamPol rows land, so this fixture pins the current-epoch 23-row table exactly as probed from the oracle. Expected events drafted from a direct oracle probe; verbatim HPC capture still pending. Reference captured verbatim by HPC job 3501368 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3501368",
+  "source_archive_sha256": "f760b9618efdf06fc53f2d9d9bf2adef2bca64c1f687d124d19616a9cfdd176a",
+  "fixture_sha256": "0244a50792d1e91d059ff811f884fcf9761efe75fc0a0b06958146901a60db63",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "1753b99d780a57b95e431cdc8bbee4b69f8f6d1e9757b67db883096ca2381d36",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "2aa6fecbfc6874114a58fcb4fd9b65e87abc1e4538f44cccc3ff510b02879f50"
 }

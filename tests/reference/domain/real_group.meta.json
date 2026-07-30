@@ -1,8 +1,8 @@
 {
-  "fixture": "domain/real_group.atlas",
-  "oracle": "pending_hpc_capture",
+  "fixture": "domain/real_group",
+  "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:3590-3620",
@@ -15,8 +15,17 @@
     "A2 equal-rank inner class: 2 forms [su(3),su(2,1)], 1 dual real form (singular in the InnerClass display), quasisplit = 1",
     "RealForm print variants: 'compact connected' / 'connected' / 'connected split' / 'connected quasisplit real group with Lie algebra ...'"
   ],
-  "notes": "Real-form numbering surface, third activation of the fourteen domain fixtures (docs/LANGUAGE_BRIDGE_DESIGN.md): nr_of_real_forms/nr_of_dual_real_forms/form_names/dual_form_names/real_form(ic,i)/form_number/quasisplit_form/dual_real_form/dual_quasisplit_form, all drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The external form numbering matches output.cpp:71-140 (compact external 0, quasisplit last). The crate-level structural preflight recorded in the previous revision of this meta (HPC job 3462432, 67 atlas-real-group tests) remains historical evidence for the kernel layer only.",
+  "notes": "Real-form numbering surface, third activation of the fourteen domain fixtures (docs/LANGUAGE_BRIDGE_DESIGN.md): nr_of_real_forms/nr_of_dual_real_forms/form_names/dual_form_names/real_form(ic,i)/form_number/quasisplit_form/dual_real_form/dual_quasisplit_form, all drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The external form numbering matches output.cpp:71-140 (compact external 0, quasisplit last). The crate-level structural preflight recorded in the previous revision of this meta (HPC job 3462432, 67 atlas-real-group tests) remains historical evidence for the kernel layer only. Reference captured verbatim by HPC job 3501368 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
   "design_reviews": {
     "recorded_in": "docs/LANGUAGE_BRIDGE_DESIGN.md and docs/REAL_FORM_LABELS_DESIGN.md"
-  }
+  },
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3501368",
+  "source_archive_sha256": "f760b9618efdf06fc53f2d9d9bf2adef2bca64c1f687d124d19616a9cfdd176a",
+  "fixture_sha256": "771556699253ac1c7ab01fb6e0504b60e55f5a31b0631a25b50e642db9f01e2c",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "1d635f4085006aaa55924f4094fc824a28412a8ffd0ba1c6ae85dc8c91aa60ca",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "0fc0a31825eca184a5d067a0757839fef4a1460c992e0ee150bcda1c5974c5cf"
 }
