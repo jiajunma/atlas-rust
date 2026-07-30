@@ -9,8 +9,9 @@
 //! sophistication upstream's own comment names, tits.cpp:425-432), and the
 //! based cross action is one closed-form per-element map verified
 //! step-for-step against the four sigma multiplications
-//! (tits.cpp:469-503). The inverse Cayley transform is deferred beyond
-//! stage (f) with its repair invariance recorded in the design.
+//! (tits.cpp:469-503). Inverse Cayley uses the source involution's
+//! mod-space to repair a compact reconstructed grading before reduction
+//! at the target (tits.cpp:605-644).
 
 use crate::grading::try_capacity;
 use crate::{
@@ -290,6 +291,73 @@ impl TitsCoset {
         }))
     }
 
+    /// Invert a Cayley transform through a real simple root.
+    ///
+    /// The inverse first applies the bare `sigma_inv_mult`. Modular
+    /// reduction at the real source can have forgotten the source-side
+    /// grading, so a compact reconstructed root is repaired by the first
+    /// source mod-space basis vector that pairs nontrivially with it. The
+    /// result is then reduced at the imaginary target. `None` means either
+    /// that the root is not real or that the downward Cartan class has not
+    /// been added to the table.
+    pub fn inverse_cayley(
+        &self,
+        table: &InvolutionTable,
+        generator: usize,
+        element: &TitsElement,
+    ) -> Result<Option<TitsElement>, StructureError> {
+        self.gate(table)?;
+        self.check_generator(generator)?;
+        let source = required_record(table, element.involution)?;
+        if table.simple_root_kind(element.involution, generator) != Some(RootKind::Real) {
+            return Ok(None);
+        }
+        let Some(target_id) = table.cayley(generator, element.involution)? else {
+            return Ok(None);
+        };
+        let target = required_record(table, target_id)?;
+
+        // Upstream `sigma_inv_mult`: reflect the left torus part, then add
+        // m_alpha precisely when left multiplication increases Weyl length.
+        let mut bits = element.torus.clone();
+        if self.dual_m_alpha[generator].dot(&bits)? {
+            bits.xor_assign(&self.m_alpha[generator])?;
+        }
+        if !source
+            .weyl_element()
+            .has_left_descent(table.root_system(), generator)?
+        {
+            bits.xor_assign(&self.m_alpha[generator])?;
+        }
+
+        if self.grading_offset[generator] == self.dual_m_alpha[generator].dot(&bits)? {
+            let mut repaired = false;
+            for basis_vector in source.mod_space().basis_vectors() {
+                if self.dual_m_alpha[generator].dot(basis_vector)? {
+                    bits.xor_assign(basis_vector)?;
+                    repaired = true;
+                    break;
+                }
+            }
+            if !repaired {
+                return Err(StructureError::TitsCosetInvariantViolation {
+                    invariant: "inverse Cayley grading repair",
+                });
+            }
+        }
+
+        let result = TitsElement {
+            involution: target_id,
+            torus: target.mod_space().quotient_representative(bits)?,
+        };
+        if !self.simple_grading_pregated(&result, generator)? {
+            return Err(StructureError::TitsCosetInvariantViolation {
+                invariant: "inverse Cayley grading repair",
+            });
+        }
+        Ok(Some(result))
+    }
+
     /// Noncompactness of an arbitrary IMAGINARY root, by upstream's
     /// conjugate-to-simple loop over based cross actions; `None` when the
     /// root is not imaginary at the element's involution.
@@ -525,6 +593,18 @@ mod tests {
         InnerClass::new(datum, distinguished, 2).unwrap()
     }
 
+    fn a2_inner_class() -> InnerClass {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let distinguished = LatticeInvolution::identity(&datum).unwrap();
+        InnerClass::new(datum, distinguished, 6).unwrap()
+    }
+
+    fn b2_inner_class() -> InnerClass {
+        let datum = BasedRootDatum::standard(vec![vec![2, -2], vec![-1, 2]]).unwrap();
+        let distinguished = LatticeInvolution::identity(&datum).unwrap();
+        InnerClass::new(datum, distinguished, 8).unwrap()
+    }
+
     fn bits(dimension: usize, ones: Vec<usize>) -> ModTwoVector {
         ModTwoVector::from_ones(dimension, ones).unwrap()
     }
@@ -534,6 +614,108 @@ mod tests {
             .map(InvolutionId)
             .find(|&id| table.record(id).unwrap().weyl_element().is_identity())
             .unwrap()
+    }
+
+    fn reduced_torus_representatives(
+        table: &InvolutionTable,
+        coset: &TitsCoset,
+        involution: InvolutionId,
+    ) -> Vec<TitsElement> {
+        let dimension = table.root_system().lattice_rank();
+        let pattern_count = 1_usize.checked_shl(dimension as u32).unwrap();
+        let mut representatives = Vec::new();
+        for pattern in 0..pattern_count {
+            let ones = (0..dimension)
+                .filter(|&coordinate| pattern & (1 << coordinate) != 0)
+                .collect();
+            let raw = TitsElement::new(table, involution, bits(dimension, ones)).unwrap();
+            let reduced = coset.reduce(table, &raw).unwrap();
+            if !representatives.contains(&reduced) {
+                representatives.push(reduced);
+            }
+        }
+        representatives
+    }
+
+    fn assert_all_real_edges_inverse_round_trip(
+        inner_class: &InnerClass,
+        weyl: usize,
+        max_involutions: usize,
+        require_nontrivial_target: bool,
+    ) {
+        let table = filled_table(inner_class, weyl, max_involutions);
+        let rank = inner_class.datum().semisimple_rank();
+        let coset = TitsCoset::new(inner_class, vec![true; rank]).unwrap();
+        let mut real_edges = 0_usize;
+        let mut inverse_cases = 0_usize;
+        let mut nontrivial_target_edges = 0_usize;
+
+        for index in 0..table.involution_count() {
+            let real_involution = InvolutionId(index);
+            for generator in 0..rank {
+                if table.simple_root_kind(real_involution, generator) != Some(RootKind::Real) {
+                    continue;
+                }
+                real_edges += 1;
+                let imaginary_involution =
+                    table.cayley(generator, real_involution).unwrap().unwrap();
+                assert_eq!(
+                    table.simple_root_kind(imaginary_involution, generator),
+                    Some(RootKind::Imaginary)
+                );
+                if table
+                    .record(imaginary_involution)
+                    .unwrap()
+                    .mod_space()
+                    .rank()
+                    > 0
+                {
+                    nontrivial_target_edges += 1;
+                }
+
+                // Inverse Cayley is defined on valid strong involutions. Build
+                // its exhaustive reduced source set as the forward images of
+                // every noncompact representative at the imaginary endpoint.
+                let mut real_sources = Vec::new();
+                for preimage in reduced_torus_representatives(&table, &coset, imaginary_involution)
+                {
+                    if !coset.simple_grading(&table, &preimage, generator).unwrap() {
+                        continue;
+                    }
+                    let source = coset.cayley(&table, generator, &preimage).unwrap().unwrap();
+                    assert_eq!(source.involution(), real_involution);
+                    if !real_sources.contains(&source) {
+                        real_sources.push(source);
+                    }
+                }
+                assert!(!real_sources.is_empty());
+
+                for source in &real_sources {
+                    assert_eq!(coset.reduce(&table, source).unwrap(), *source);
+                    let inverse = coset
+                        .inverse_cayley(&table, generator, source)
+                        .unwrap()
+                        .unwrap();
+                    assert_eq!(coset.reduce(&table, &inverse).unwrap(), inverse);
+                    assert_eq!(
+                        table.simple_root_kind(inverse.involution(), generator),
+                        Some(RootKind::Imaginary)
+                    );
+                    assert!(coset.simple_grading(&table, &inverse, generator).unwrap());
+                    assert_eq!(
+                        coset.cayley(&table, generator, &inverse).unwrap(),
+                        Some(source.clone())
+                    );
+                    inverse_cases += 1;
+                }
+            }
+        }
+
+        assert!(real_edges > 0);
+        assert!(inverse_cases >= real_edges);
+        if require_nontrivial_target {
+            assert!(nontrivial_target_edges > 0);
+        }
     }
 
     #[test]
@@ -566,6 +748,23 @@ mod tests {
     }
 
     #[test]
+    fn inverse_cayley_round_trips_the_type_one_forward_image() {
+        let inner_class = sl2_inner_class();
+        let table = filled_table(&inner_class, 2, 4);
+        let coset = TitsCoset::new(&inner_class, vec![true]).unwrap();
+        let fundamental = fundamental_id(&table);
+        let zero = TitsElement::new(&table, fundamental, bits(1, vec![])).unwrap();
+        let one = TitsElement::new(&table, fundamental, bits(1, vec![0])).unwrap();
+        let split = coset.cayley(&table, 0, &zero).unwrap().unwrap();
+        assert_eq!(coset.cayley(&table, 0, &one).unwrap(), Some(split.clone()));
+
+        let restored = coset.inverse_cayley(&table, 0, &split).unwrap().unwrap();
+        assert_eq!(restored, zero);
+        assert!(coset.simple_grading(&table, &restored, 0).unwrap());
+        assert_eq!(coset.cayley(&table, 0, &restored).unwrap(), Some(split));
+    }
+
+    #[test]
     fn compact_su2_grades_everything_compact() {
         let inner_class = sl2_inner_class();
         let table = filled_table(&inner_class, 2, 4);
@@ -589,6 +788,81 @@ mod tests {
             let element = TitsElement::new(&table, fundamental, bits(1, pattern)).unwrap();
             assert_eq!(coset.cross(&table, 0, &element).unwrap(), element);
         }
+    }
+
+    #[test]
+    fn inverse_cayley_repairs_a_compact_type_two_lift() {
+        let inner_class = pgl2_inner_class();
+        let table = filled_table(&inner_class, 2, 4);
+        let coset = TitsCoset::new(&inner_class, vec![false]).unwrap();
+        let fundamental = fundamental_id(&table);
+        let compact = TitsElement::new(&table, fundamental, bits(1, vec![])).unwrap();
+        let noncompact = TitsElement::new(&table, fundamental, bits(1, vec![0])).unwrap();
+        assert!(!coset.simple_grading(&table, &compact, 0).unwrap());
+        assert!(coset.simple_grading(&table, &noncompact, 0).unwrap());
+
+        let split = coset.cayley(&table, 0, &noncompact).unwrap().unwrap();
+        let restored = coset.inverse_cayley(&table, 0, &split).unwrap().unwrap();
+        assert_eq!(restored, noncompact);
+        assert_eq!(coset.cayley(&table, 0, &restored).unwrap(), Some(split));
+    }
+
+    #[test]
+    fn inverse_cayley_declines_non_real_roots_and_rejects_bad_generators() {
+        let inner_class = sl2_inner_class();
+        let table = filled_table(&inner_class, 2, 4);
+        let coset = TitsCoset::new(&inner_class, vec![true]).unwrap();
+        let fundamental = fundamental_id(&table);
+        let imaginary = TitsElement::new(&table, fundamental, bits(1, vec![])).unwrap();
+
+        assert_eq!(coset.inverse_cayley(&table, 0, &imaginary), Ok(None));
+        assert_eq!(
+            coset.inverse_cayley(&table, 3, &imaginary),
+            Err(StructureError::IndexOutOfRange {
+                index: 3,
+                upper_bound: 1,
+            })
+        );
+    }
+
+    #[test]
+    fn inverse_cayley_round_trips_every_a2_real_edge_and_reduced_torus_part() {
+        assert_all_real_edges_inverse_round_trip(&a2_inner_class(), 6, 8, false);
+    }
+
+    #[test]
+    fn inverse_cayley_round_trips_every_b2_real_edge_and_reduced_torus_part() {
+        assert_all_real_edges_inverse_round_trip(&b2_inner_class(), 8, 8, true);
+    }
+
+    #[test]
+    fn inverse_cayley_returns_none_when_the_downward_cartan_is_not_loaded() {
+        let inner_class = sl2_inner_class();
+        let classification = CartanClassification::build(&inner_class, &class_budget(2)).unwrap();
+        let coset = TitsCoset::new(&inner_class, vec![true]).unwrap();
+        let mut exercised = false;
+
+        'cartans: for cartan in 0..classification.cartan_classes().len() {
+            let mut table = InvolutionTable::new(
+                &inner_class,
+                InvolutionTableBudget::new(4, IntegerLatticeBudget::new(64, 100_000, 100_000, 128)),
+            )
+            .unwrap();
+            table.add_cartan(&classification, CartanId(cartan)).unwrap();
+            for index in 0..table.involution_count() {
+                let involution = InvolutionId(index);
+                if table.simple_root_kind(involution, 0) == Some(RootKind::Real)
+                    && table.cayley(0, involution).unwrap().is_none()
+                {
+                    let source = TitsElement::new(&table, involution, bits(1, vec![])).unwrap();
+                    assert_eq!(coset.inverse_cayley(&table, 0, &source), Ok(None));
+                    exercised = true;
+                    break 'cartans;
+                }
+            }
+        }
+
+        assert!(exercised);
     }
 
     /// Upstream's exact four-step sigma recipe at the word level, used as
