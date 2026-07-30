@@ -73,6 +73,9 @@ pub enum Expr {
         value: Box<Expr>,
         span: SourceSpan,
     },
+    /// `set pattern := value` (parser.y:264): assignment through a pattern
+    /// to existing variables. Boxed to keep `Expr` small, like `For`.
+    MultiAssignment(Box<MultiAssignmentExpr>),
     Let {
         binding_groups: Vec<Vec<LetBinding>>,
         body: Box<Expr>,
@@ -191,6 +194,16 @@ pub enum Expr {
     UnionCase(Box<UnionCaseExpr>),
     /// Counted for loops (parser.y:550-573). Boxed to keep `Expr` small.
     CountedFor(Box<CountedForLoop>),
+}
+
+/// A `set pattern := value` multi-assignment (parser.y:264): the pattern
+/// targets existing variables, unlike a let binding which introduces new
+/// ones. Analysis rejects it until the multi-assignment slice lands.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MultiAssignmentExpr {
+    pub pattern: Pattern,
+    pub value: Expr,
+    pub span: SourceSpan,
 }
 
 /// An integer `case … in … esac`: the selector, the `in`-list branches in
@@ -497,6 +510,7 @@ impl Expr {
             | Self::Break { span }
             | Self::Die { span } => *span,
             Self::For(loop_) => loop_.span,
+            Self::MultiAssignment(assignment) => assignment.span,
             Self::Case(case) => case.span,
             Self::IntCase(case) => case.span,
             Self::UnionCase(case) => case.span,
@@ -1084,6 +1098,18 @@ pub fn parse_command(tokens: &[Token], source: &SourceText) -> Result<Command, P
         .map_err(|error| syntax_error(error, source, &spans))
 }
 
+/// Parse one already-delimited Atlas expression. The body of a `>file` /
+/// `>>file` redirect is an expression upstream (parser.y:180-181
+/// `TOFILE expr`), parsed before the sink is opened (main.w:498-511), so
+/// the session layer validates redirect bodies with this entry.
+pub fn parse_expression(tokens: &[Token], source: &SourceText) -> Result<Expr, ParseError> {
+    let parsed = parser_tokens_from_tokens(tokens.iter().cloned())?;
+    let spans: Vec<SourceSpan> = parsed.iter().map(|(_, span)| *span).collect();
+    grammar::ExprParser::new()
+        .parse(TokenStream::new(parsed))
+        .map_err(|error| syntax_error(error, source, &spans))
+}
+
 fn syntax_error(
     error: lalrpop_util::ParseError<usize, ParserToken, ()>,
     source: &SourceText,
@@ -1166,6 +1192,7 @@ fn bison_token_name(token: &ParserToken) -> Option<&'static str> {
         ParserToken::From(_) => Some("FROM"),
         ParserToken::Downto(_) => Some("DOWNTO"),
         ParserToken::Colon(_) => Some("':'"),
+        ParserToken::Equals(_) => Some("'='"),
         ParserToken::VoidType(_) => Some("VOID"),
         _ => None,
     }
@@ -1207,6 +1234,15 @@ fn assignment(target: SpannedValue<String>, value: Expr) -> Expr {
         span: join_span(target.span, value.span()),
         value: Box::new(value),
     }
+}
+
+/// `set pattern := value` (parser.y:264 `SET pattern BECOMES tertiary`).
+fn multi_assignment(set_span: SourceSpan, pattern: Pattern, value: Expr) -> Expr {
+    Expr::MultiAssignment(Box::new(MultiAssignmentExpr {
+        span: join_span(set_span, value.span()),
+        pattern,
+        value,
+    }))
 }
 
 fn sequence(first: Expr, rest: Expr) -> Expr {
@@ -2138,6 +2174,11 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
         Expr::Assignment { name, value, .. } => {
             format!("{name}:={}", compact_expression(value))
         }
+        Expr::MultiAssignment(assignment) => format!(
+            "set {}:={}",
+            compact_pattern(&assignment.pattern),
+            compact_expression(&assignment.value)
+        ),
         Expr::Let {
             binding_groups,
             body,
@@ -2504,6 +2545,11 @@ mod tests {
             Expr::Assignment { name, value, .. } => {
                 format!("assign({name},{})", expression_shape(value))
             }
+            Expr::MultiAssignment(assignment) => format!(
+                "multiassign({},{})",
+                pattern_shape(&assignment.pattern),
+                expression_shape(&assignment.value)
+            ),
             Expr::Let {
                 binding_groups,
                 body,

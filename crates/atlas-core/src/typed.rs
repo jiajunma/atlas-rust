@@ -1380,6 +1380,16 @@ pub fn convert_expr(
                 analysis,
             )
         }
+        Expr::MultiAssignment(assignment) => {
+            // parser.y:264 accepts `set pattern := value`; the evaluation
+            // slice has not landed yet, so analysis rejects it explicitly
+            // rather than silently mis-binding.
+            Err(Diagnostic::new(
+                ErrorKind::Type,
+                "multi-assignment 'set <pattern> := <value>' is not yet implemented",
+                Some(assignment.span),
+            ))
+        }
         Expr::Assignment {
             name,
             target_span,

@@ -17,6 +17,7 @@ use crate::diagnostic::{Diagnostic, ErrorKind, SourceId};
 use crate::lex::{DirectiveKind, Lexer, Token, TokenKind};
 use crate::session::{execute_tokens, SessionEvent};
 use crate::source::SourceText;
+use crate::syntax::parse_expression;
 use crate::typed::TypedContext;
 
 /// Read access to included files. The CLI backs this with the filesystem
@@ -27,8 +28,9 @@ pub trait FileProvider {
 }
 
 /// Write access for `>file` / `>>file` redirects. The sink opens (creating
-/// or truncating) BEFORE the command evaluates, so a failing command still
-/// leaves the file with any partial output — upstream behaviour.
+/// or truncating) only after the body parses and BEFORE it evaluates, so a
+/// syntax error leaves no file while a failing evaluation still leaves the
+/// file with any partial output — upstream behaviour.
 pub trait FileSink {
     fn open(&mut self, path: &str, append: bool) -> bool;
     fn write(&mut self, text: &str);
@@ -351,8 +353,10 @@ impl<P: FileProvider, S: FileSink> SessionFrame<P, S> {
         None
     }
 
-    /// `>file EXPR` / `>>file EXPR`: open the sink before evaluation, stream
-    /// the command's printable output into it, restore unconditionally.
+    /// `>file EXPR` / `>>file EXPR`: the body parses as an EXPRESSION first
+    /// (parser.y:180-181 `TOFILE expr`), the sink opens only after the parse
+    /// succeeds (main.w:498-511), then the command's printable output streams
+    /// into it and the sink restores unconditionally.
     fn run_redirect_command(
         &mut self,
         lexer: &mut Lexer<'_>,
@@ -380,6 +384,14 @@ impl<P: FileProvider, S: FileSink> SessionFrame<P, S> {
                 "output redirection needs a command",
                 None,
             )));
+            self.clean = false;
+            return Outcome::Abort;
+        }
+        // A failed parse never reaches the sink: `> "x" set qfc = 10` errors
+        // at the `=` (the body is an expression, where `set qfc` starts a
+        // multi-assignment that expects `:=`) and leaves `x` uncreated.
+        if let Err(diagnostic) = parse_expression(&command, source) {
+            events.push(SessionEvent::Diagnostic(diagnostic));
             self.clean = false;
             return Outcome::Abort;
         }
@@ -765,24 +777,45 @@ mod tests {
     }
 
     #[test]
-    fn redirected_definition_reports_keep_include_indentation() {
+    fn redirect_bodies_parse_as_expressions_before_the_sink_opens() {
+        // B9 (parser.y:180-181 `TOFILE expr`, main.w:498-511): the body of
+        // `>file` is an expression. `x: 1` is a definition, so the parse
+        // fails at the `:` and the sink never opens — upstream creates no
+        // file either — and the error inside the include abandons it.
         let mut frame = frame(&[("lib.at", ">out.txt x: 1\n")], &[]);
         let events = frame.run_top_level("<stdin>", "<lib.at\n");
-        assert_eq!(
-            stdout_of(&events),
-            concat!(
-                "Starting to read from file 'lib.at'.\n",
-                "Completely read file 'lib.at'.\n",
-            )
+        assert!(
+            frame.sink.open.is_none(),
+            "a failed parse never opens the sink"
         );
-        assert_eq!(
-            frame.sink.writes,
-            vec![(
-                "out.txt".to_owned(),
-                false,
-                "  Variable x: int\n".to_owned(),
-            )]
+        assert!(frame.sink.writes.is_empty());
+        assert_eq!(stdout_of(&events), "Starting to read from file 'lib.at'.\n");
+        let errors = stderr_of(&events);
+        assert!(errors
+            .iter()
+            .any(|message| message == "syntax error, unexpected ':'"));
+        assert!(errors
+            .iter()
+            .any(|message| message == "Abandoning reading of file 'lib.at' at line 1"));
+        assert!(!frame.is_clean());
+    }
+
+    #[test]
+    fn set_command_body_errors_at_the_equals_and_creates_no_file() {
+        // eval/file_commands_b9_rejected: after `> "x"` the body parses as
+        // an expression, where `set qfc` starts a multi-assignment
+        // (parser.y:264) expecting `:=`, so the offending token is the `=`
+        // and `x` is never created; the session recovers at the next line.
+        let mut frame = frame(&[], &[]);
+        let events = frame.run_top_level("<stdin>", "> \"x\" set qfc = 10\n8+9\n");
+        assert!(
+            frame.sink.open.is_none(),
+            "the syntax error precedes any open"
         );
+        assert!(frame.sink.writes.is_empty());
+        assert_eq!(stdout_of(&events), "Value: 17\n");
+        assert_eq!(stderr_of(&events), vec!["syntax error, unexpected '='"]);
+        assert!(!frame.is_clean());
     }
 
     #[test]

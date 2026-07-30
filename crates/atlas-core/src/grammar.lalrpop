@@ -1,6 +1,6 @@
 use super::{
     anonymous_field, assignment, binary, case_branch, case_expression, cast_expression, declaration,
-    definition, elif_tail, else_branch, extend_operator_formula, forget_command,
+    definition, elif_tail, else_branch, extend_operator_formula, forget_command, multi_assignment,
     finish_let, expression_list, finish_operator_formula, for_expression, join_span, lambda,
     lambda_parameter, lambda_parameters, let_bindings, forget_overload_command,
     let_expression, list_expression, named_field, rec_function_binding, rec_lambda, return_expression,
@@ -286,6 +286,13 @@ LetBinding: LetBinding = {
 
 AssignmentExpr: Expr = {
     <name:"identifier"> <_becomes:":="> <value:AssignmentExpr> => assignment(name, value),
+    // `set pattern := value` (parser.y:264 tertiary): assignment through a
+    // pattern to existing variables. Parsing it keeps `set` legal in
+    // expression position — a redirect body parses as `expr` upstream, so
+    // `set x = …` there is an error at the `=`, not at the `set`.
+    <set:"set"> <pattern:Pattern> <_becomes:":="> <value:AssignmentExpr> => {
+        multi_assignment(set, pattern, value)
+    },
     <expression:OrExpr> => expression,
 };
 
