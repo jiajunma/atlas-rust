@@ -1,15 +1,20 @@
 {
   "fixture": "domain/seed_x0.atlas",
-  "status": "implemented_locally_7_tests_pending_hpc",
-  "oracle": "traced_innerclass_realredgp_4d3e9449",
-  "rust_status": "implemented_real_form_seed_rs",
-  "reference_status": "pending_atlas_constructor_and_event_adapter",
-  "scenarios": [
-    "quasisplit seeds for SL(2,R)/PGL(2,R) with the x0-compacts invariant",
-    "Sp(4,R): all three forms in internal order (kgb_size 11/4/1), deterministic builds",
-    "SU(2,1): empty delta-fixed simple set, 0-dimensional grading-shift system",
-    "B2 so(5) square class: central-fiber minimization of the shifted value",
-    "numbering-coincidence pin plus the crate doc-comment corrections"
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:4706"
   ],
-  "notes": "Stage (d) of the KGB map, reviews folded. THE ORDERING AUDIT RULED COINCIDE: the port's weak-real-form and square-class numbering equals upstream internal RealFormNbr (proof chain in the design) — no reindexing; the crate's own adapter-deferral doc claims on those ids are wrong and get corrected with this stage. A THIRD numbering was surfaced: the interpreter's FormNumberMap external order (compact=0, split=last) is an adapter obligation. Implementation plan: RealFormSeed::build(&InnerClass, &CartanClassification, &StrongRealClassification, &InvolutionTable, WeakRealFormId, &IntegerLatticeBudget, max_fiber_elements) in real_form_seed.rs; new adapted_basis (transform-tracking, faithful matreduc pivots — observable-bearing election) in integer_lattice.rs; RationalCoweight opaque newtype in lattice.rs; shared augmented-elimination helper; grading-shift matrix over the DELTA-FIXED simple roots; central fiber by in-stage walk_mask_orbits re-walk with the recorded strong-layer gate downgrade; seed element via table.lookup(identity); errors SeedInvariantViolation/SeedResourceLimit."
+  "scenarios": [
+    "KGB_elt(split SL(2,R), [[1]], [0]/1) = element 0 (closed orbit)",
+    "KGB_elt(split SL(2,R), [[-1]], [0]/1) = element 2 (most split)",
+    "KGB_elt(compact SU(2), [[1]], [1]/2) = element 0 (the compact rho/2 shift is a valid coset)",
+    "rejections: [1]/2 torus factor is not in the split form's cocharacter coset; [[2]] is not an involution"
+  ],
+  "notes": "Synthetic KGB seed constructor KGB_elt(RealForm,mat,ratvec), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The crate-level seed machinery recorded in the previous revision of this meta remains the kernel this surface binds to.",
+  "design_reviews": {
+    "recorded_in": "docs/SEED_X0_DESIGN.md"
+  }
 }

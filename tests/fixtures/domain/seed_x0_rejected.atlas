@@ -4,8 +4,5 @@ ic : InnerClass
 ic := inner_class(rd,[[1]])
 rf : RealForm
 rf := real_form(ic,1)
-KGB_elt(rf,[[1]],[0]/1)
-KGB_elt(rf,[[-1]],[0]/1)
-rc : RealForm
-rc := real_form(ic,0)
-KGB_elt(rc,[[1]],[1]/2)
+KGB_elt(rf,[[1]],[1]/2)
+KGB_elt(rf,[[2]],[0]/1)
