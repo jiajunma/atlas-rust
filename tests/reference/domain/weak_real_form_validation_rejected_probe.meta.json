@@ -12,7 +12,7 @@
   "oracle_stdout_sha256": "e0aba6ce54c6f70245a7fd2a3f8d4fb4b39584f58285ab4ae24dfe935094215b",
   "oracle_stderr_sha256": "2fd8fd6e79bcdeb94a0ee31d8748a291789bb8db0ff53c577012145229ea9654",
   "capture_artifacts_sha256": "c0b10981fed1296d09a9301cbf8aa2cff14c310b988b895fbf8d2ff9cd43677b",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:2721-2733",
     "sources/interpreter/atlas-types.w:2764-2784",
@@ -24,5 +24,6 @@
     "the valid A2 Weyl-conjugate involution still constructs quasisplit SU(2,1), proving batch recovery between rejected lines",
     "an A1 identity involution with torus factor [1]/4 is rejected because its projected square is not central"
   ],
-  "notes": "Synthetic-real-form validation order and batch recovery captured verbatim by HPC job 3502476 against the pinned Atlas oracle. The runtime sequence covers matrix shape, involutivity, root preservation, one accepted recovery line, and strong-torus centrality; Rust support remains unimplemented."
+  "notes": "Synthetic-real-form validation order and batch recovery captured verbatim by HPC job 3502476 against the pinned Atlas oracle. The runtime sequence covers matrix shape, involutivity, root preservation, one accepted recovery line, and strong-torus centrality; Rust support remains unimplemented.",
+  "differential_job": "3502718"
 }

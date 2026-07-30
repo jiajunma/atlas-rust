@@ -12,7 +12,7 @@
   "oracle_stdout_sha256": "8f3f513a8d9a02ff304d1895fb8030341ff3ee66c77bc269916679e98489af3e",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "capture_artifacts_sha256": "b6b1deb90b231623f92aa1af8f9b5ed600602f5796c9d774ee3bf3ebfea36020",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:4347-4363",
     "sources/interpreter/atlas-types.w:9112-9123"
@@ -23,5 +23,6 @@
     "square_classes rows: [[2],[1,0,0]] on #0, [[2]] on #1, [[2],[1]] on #2",
     "most_split_Cartan per real form"
   ],
-  "notes": "Strong-real Cartan enumeration probe captured verbatim by HPC job 3502700 against the pinned atlasofliegroups-4d3e9449 oracle. Rust support remains unimplemented; the Cartan numbering adapter must land before these can pass."
+  "notes": "Strong-real Cartan enumeration probe captured verbatim by HPC job 3502700 against the pinned atlasofliegroups-4d3e9449 oracle. Rust support remains unimplemented; the Cartan numbering adapter must land before these can pass.",
+  "differential_job": "3502718"
 }

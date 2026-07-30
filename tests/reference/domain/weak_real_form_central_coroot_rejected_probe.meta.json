@@ -12,7 +12,7 @@
   "oracle_stdout_sha256": "d585d497e7ba419122230f1ff9554e0c03a31ba1d4c6e92a74e41b315af16839",
   "oracle_stderr_sha256": "0bf447f980fcbe3a5d053c295cb3f5ae92276be2bc147564fd30127bcb4043e4",
   "capture_artifacts_sha256": "34cbf65d24008bbe4bea3740a04fc9c7765b26faab9c3486f168476bae6ad424",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:2764-2784",
     "sources/interpreter/atlas-types.w:3841-3857"
@@ -22,5 +22,6 @@
     "synthetic real_form rejects the matrix before torus projection or form construction",
     "the negative root is rendered with Atlas's unsigned presentation number 4294967295"
   ],
-  "notes": "Synthetic-real-form coroot-transport rejection captured verbatim by HPC job 3502476 against the pinned Atlas oracle. The exact unsigned root presentation number is part of the runtime diagnostic contract; Rust support remains unimplemented."
+  "notes": "Synthetic-real-form coroot-transport rejection captured verbatim by HPC job 3502476 against the pinned Atlas oracle. The exact unsigned root presentation number is part of the runtime diagnostic contract; Rust support remains unimplemented.",
+  "differential_job": "3502718"
 }

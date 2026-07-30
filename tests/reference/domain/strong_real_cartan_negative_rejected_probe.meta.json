@@ -12,7 +12,7 @@
   "oracle_stdout_sha256": "40b9e63cb0f4df0f942208829a87209cfcb8eb32ba3de92030f4d7c8b269354e",
   "oracle_stderr_sha256": "d35cf57a68a5eaa073d9f62ce45ba7cf08697c18712ffe9cc1bfb5cb5fcf96cf",
   "capture_artifacts_sha256": "bcdbe6fcb572244097d1826e37aafeb441dbbac79cf89a1c91afcb10d921d328",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:4347-4363",
     "sources/interpreter/atlas-types.w:9112-9123"
@@ -20,5 +20,6 @@
   "scenarios": [
     "Cartan_class(ic,-1) -> 'Illegal Cartan class number: -1, this inner class only has 4 of them'"
   ],
-  "notes": "Strong-real Cartan enumeration probe captured verbatim by HPC job 3502700 against the pinned atlasofliegroups-4d3e9449 oracle. Rust support remains unimplemented; the Cartan numbering adapter must land before these can pass."
+  "notes": "Strong-real Cartan enumeration probe captured verbatim by HPC job 3502700 against the pinned atlasofliegroups-4d3e9449 oracle. Rust support remains unimplemented; the Cartan numbering adapter must land before these can pass.",
+  "differential_job": "3502718"
 }

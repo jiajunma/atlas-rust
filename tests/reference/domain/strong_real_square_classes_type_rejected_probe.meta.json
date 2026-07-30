@@ -12,7 +12,7 @@
   "oracle_stdout_sha256": "92e13f700b4bc1c24ab4b39647853f0e96c8224f3f442ddccb6d7bc4ade80e64",
   "oracle_stderr_sha256": "d9e15c39c0f21dacc711a513bfe7e886c0f9910a6e94e8a2d5d04225cab3f4d0",
   "capture_artifacts_sha256": "71da4055210b3751d6b6bd875b5d652bcfda0817cb7d98d8b133f03da0cd2ca4",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:4347-4363",
     "sources/interpreter/atlas-types.w:9112-9123"
@@ -20,5 +20,6 @@
   "scenarios": [
     "square_classes(rd) -> type error 'found RootDatum while CartanClass was needed.'"
   ],
-  "notes": "Strong-real Cartan enumeration probe captured verbatim by HPC job 3502700 against the pinned atlasofliegroups-4d3e9449 oracle. Rust support remains unimplemented; the Cartan numbering adapter must land before these can pass."
+  "notes": "Strong-real Cartan enumeration probe captured verbatim by HPC job 3502700 against the pinned atlasofliegroups-4d3e9449 oracle. Rust support remains unimplemented; the Cartan numbering adapter must land before these can pass.",
+  "differential_job": "3502718"
 }

@@ -12,7 +12,7 @@
   "oracle_stdout_sha256": "7de2e1b9d3193fae8ca80a1ea92dcbba4408f18a5bf329fd4559d71e748b36f8",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "capture_artifacts_sha256": "ac609a77f38ffdb3c2061f924f450606018043dd83c1e96467c286e687ee6fe3",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:3841-3907",
     "sources/structure/innerclass.cpp:1305-1355",
@@ -23,5 +23,6 @@
     "downward inverse-Cayley descent produces the minimal initial torus bits [0,0]",
     "the supplied representative is KGB element #10 and retains the negative-identity involution"
   ],
-  "notes": "B2 descent and minimal-torus behavior captured verbatim by HPC job 3502476 against the pinned Atlas oracle. The case forces descent from the negative identity to the fundamental fiber; Rust support remains unimplemented."
+  "notes": "B2 descent and minimal-torus behavior captured verbatim by HPC job 3502476 against the pinned Atlas oracle. The case forces descent from the negative identity to the fundamental fiber; Rust support remains unimplemented.",
+  "differential_job": "3502718"
 }
