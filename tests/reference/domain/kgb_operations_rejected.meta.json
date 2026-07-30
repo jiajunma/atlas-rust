@@ -3,11 +3,11 @@
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_status": "verified_hpc_reference",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:4704"
   ],
-  "notes": "Rejected companion of the KGB per-element operations: cross(5,x0) on a rank-1 form aborts with 'Illegal root index: 5'. Confirmed by direct oracle probe; verbatim HPC capture still pending. Reference captured verbatim by HPC job 3501466 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
+  "notes": "Rejected companion of the KGB per-element operations: cross(5,x0) on a rank-1 form aborts with 'Illegal root index: 5'. Confirmed by direct oracle probe; verbatim HPC capture still pending. Reference captured verbatim by HPC job 3501466 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run. Rust implementation verified by HPC differential job 3501870 (pipeline_swap_diff at commit 8b48edf): stdout, stderr diagnostics, and exit status match the frozen reference events exactly.",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
   "reference_job": "3501466",
@@ -16,5 +16,6 @@
   "oracle_exit_status": 1,
   "oracle_stdout_sha256": "e1d27d031622ecfd6318843bf71693c6ac01792b74bd6203a2c74ca9f9af294f",
   "oracle_stderr_sha256": "d695e50f655b2640608edeccd70261431ba7b521dd73cac5a9e32711a7176560",
-  "capture_artifacts_sha256": "77ea4323172121ab5468c7ab7d228d295c5c27a1eae8e41289abae21c87c14b2"
+  "capture_artifacts_sha256": "77ea4323172121ab5468c7ab7d228d295c5c27a1eae8e41289abae21c87c14b2",
+  "differential_job": "3501870"
 }
