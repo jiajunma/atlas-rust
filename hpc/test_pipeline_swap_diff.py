@@ -61,12 +61,12 @@ class PipelineSwapDiffTest(unittest.TestCase):
     def test_fixture_plans_cover_every_line_and_reference_event(self) -> None:
         for plan in FIXTURE_PLANS:
             fixture = (
-                REPOSITORY / "tests/fixtures/eval" / f"{plan.name}.atlas"
+                REPOSITORY / "tests/fixtures" / f"{plan.name}.atlas"
             ).read_text(encoding="utf-8")
             events = json.loads(
                 (
                     REPOSITORY
-                    / "tests/reference/eval"
+                    / "tests/reference"
                     / f"{plan.name}.events.json"
                 ).read_text(encoding="utf-8")
             )["events"]
@@ -171,8 +171,8 @@ class PipelineSwapDiffTest(unittest.TestCase):
                 FIXTURE_PLANS[0],
                 cli,
                 temporary / "artifacts",
-                REPOSITORY / "tests/fixtures/eval",
-                REPOSITORY / "tests/reference/eval",
+                REPOSITORY / "tests/fixtures",
+                REPOSITORY / "tests/reference",
                 REPOSITORY,
                 PINNED_ATLAS_REVISION,
                 5,
@@ -199,7 +199,7 @@ class PipelineSwapDiffTest(unittest.TestCase):
         plan = next(
             plan
             for plan in FIXTURE_PLANS
-            if plan.name == "pipeline_swap_domain_equality"
+            if plan.name == "eval/pipeline_swap_domain_equality"
         )
         self.assertEqual(plan.runnable_lines, (1, 2))
         self.assertEqual(plan.runnable_events, (0, 1))

@@ -327,8 +327,8 @@ set +e
 python3 hpc/pipeline_swap_diff.py \
   "$cli_bin" "$artifact_dir" \
   --workspace-root "$workspace_dir" \
-  --fixture-root "$snapshot_dir/tests/fixtures/eval" \
-  --reference-root "$snapshot_dir/tests/reference/eval" \
+  --fixture-root "$snapshot_dir/tests/fixtures" \
+  --reference-root "$snapshot_dir/tests/reference" \
   --commit "$commit" \
   --dirty-tree "$dirty_tree" \
   --detected-commit "$detected_commit" \

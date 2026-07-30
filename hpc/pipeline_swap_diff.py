@@ -68,9 +68,9 @@ PENDING_OVERLOADS = (
 
 
 FIXTURE_PLANS = (
-    FixturePlan(name="pipeline_swap_constructors"),
+    FixturePlan(name="eval/pipeline_swap_constructors"),
     FixturePlan(
-        name="pipeline_swap_domain_equality",
+        name="eval/pipeline_swap_domain_equality",
         # The RootDatum prefix is compatible. InnerClass/RealForm/KGB setup,
         # full domain renderings, and relation outputs remain pending until
         # those domain surfaces and numbering are ported.
@@ -89,68 +89,68 @@ FIXTURE_PLANS = (
             for line, event in zip(range(3, 15), range(2, 14))
         ),
     ),
-    FixturePlan(name="pipeline_swap_linear_values"),
-    FixturePlan(name="pipeline_swap_rejected"),
-    FixturePlan(name="pipeline_swap_void_reports"),
+    FixturePlan(name="eval/pipeline_swap_linear_values"),
+    FixturePlan(name="eval/pipeline_swap_rejected"),
+    FixturePlan(name="eval/pipeline_swap_void_reports"),
     # B3a non-recursive functions: typed lambdas, closure capture, return at
     # the call boundary, and identifier selectors.
-    FixturePlan(name="functions_b3"),
-    FixturePlan(name="functions_b3_rejected"),
+    FixturePlan(name="eval/functions_b3"),
+    FixturePlan(name="eval/functions_b3_rejected"),
     # B3b recursive functions and let-declaration definition sugar.
-    FixturePlan(name="functions_b3b"),
-    FixturePlan(name="functions_b3b_rejected"),
+    FixturePlan(name="eval/functions_b3b"),
+    FixturePlan(name="eval/functions_b3b_rejected"),
     # B3c parameter patterns: tuple destructuring, discard, and const patterns.
-    FixturePlan(name="patterns_b3c"),
-    FixturePlan(name="patterns_b3c_rejected"),
+    FixturePlan(name="eval/patterns_b3c"),
+    FixturePlan(name="eval/patterns_b3c_rejected"),
     # B3d selectors: unit selector and operator selectors.
-    FixturePlan(name="selectors_b3d"),
-    FixturePlan(name="selectors_b3d_rejected"),
+    FixturePlan(name="eval/selectors_b3d"),
+    FixturePlan(name="eval/selectors_b3d_rejected"),
     # B4 loops: while/for value collection, break, and loop rejections.
-    FixturePlan(name="loops_b4"),
-    FixturePlan(name="loops_b4_rejected"),
+    FixturePlan(name="eval/loops_b4"),
+    FixturePlan(name="eval/loops_b4_rejected"),
     # B5 set_type: user-defined types, union display, and case discrimination.
-    FixturePlan(name="settype_b5"),
-    FixturePlan(name="settype_b5_rejected"),
+    FixturePlan(name="eval/settype_b5"),
+    FixturePlan(name="eval/settype_b5_rejected"),
     # B6 case and counted for: integer case selection, union case, and
     # from/downto loops.
-    FixturePlan(name="casefor_b6"),
-    FixturePlan(name="casefor_b6_rejected"),
+    FixturePlan(name="eval/casefor_b6"),
+    FixturePlan(name="eval/casefor_b6_rejected"),
     # B7 misc commands: forget, die, and coercion after overload removal.
-    FixturePlan(name="commands_b7"),
-    FixturePlan(name="commands_b7_rejected"),
+    FixturePlan(name="eval/commands_b7"),
+    FixturePlan(name="eval/commands_b7_rejected"),
     # B8 user overloads: definition accumulation, redefinition, listing, and
     # wrong-arity rejection.
-    FixturePlan(name="overloads_b8"),
-    FixturePlan(name="overloads_b8b"),
-    FixturePlan(name="overloads_b8_rejected"),
+    FixturePlan(name="eval/overloads_b8"),
+    FixturePlan(name="eval/overloads_b8b"),
+    FixturePlan(name="eval/overloads_b8_rejected"),
     # B9 file commands: tofile/addtofile redirection and its rejections.
     # The two redirect lines run but produce no stdout event.
     FixturePlan(
-        name="file_commands_b9",
+        name="eval/file_commands_b9",
         runnable_lines=(3,),
         runnable_events=(0,),
         silent_lines=(1, 2),
     ),
-    FixturePlan(name="file_commands_b9_rejected"),
+    FixturePlan(name="eval/file_commands_b9_rejected"),
     # B10 fromfile inclusion errors and quit semantics. The quit line and
     # the unreachable line after it run but produce no event.
-    FixturePlan(name="fromfile_b10"),
+    FixturePlan(name="eval/fromfile_b10"),
     # B10 accepted inclusion: line 3 is a silent skip (file already seen).
     FixturePlan(
-        name="fromfile_accepted_b10",
+        name="eval/fromfile_accepted_b10",
         runnable_lines=(1, 2, 4),
         runnable_events=(0, 1, 2),
         silent_lines=(3,),
     ),
     FixturePlan(
-        name="quit_b10",
+        name="eval/quit_b10",
         runnable_lines=(1,),
         runnable_events=(0,),
         silent_lines=(2, 3),
     ),
     # B11 precedence/associativity corpus and B12 runtime-error corpus.
-    FixturePlan(name="precedence_b11"),
-    FixturePlan(name="runtime_errors_b12"),
+    FixturePlan(name="eval/precedence_b11"),
+    FixturePlan(name="eval/runtime_errors_b12"),
 )
 
 
@@ -318,7 +318,7 @@ def run_fixture(
     fixture_sha = sha256(source_bytes)
     if metadata.get("fixture_sha256") != fixture_sha:
         configuration_errors.append("fixture checksum differs from oracle metadata")
-    expected_fixture_name = f"eval/{plan.name}"
+    expected_fixture_name = plan.name
     if metadata.get("fixture") != expected_fixture_name:
         configuration_errors.append("metadata names a different fixture")
     if expectation.get("fixture") != expected_fixture_name:
