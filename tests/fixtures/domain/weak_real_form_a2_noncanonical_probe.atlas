@@ -1,0 +1,32 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("A2"),true)
+ic : InnerClass
+ic := inner_class(rd,[[1,0],[0,1]])
+r0 : RealForm
+r0 := real_form(ic,[[-1,0],[1,1]],[1,2]/3)
+form_number(r0)
+base_grading_vector(r0)
+initial_torus_bits(r0)
+x0 : KGBElt
+x0 := KGB_elt(r0,[[-1,0],[1,1]],[1,2]/3)
+x0
+torus_factor(x0)
+r1 : RealForm
+r1 := real_form(ic,[[1,1],[0,-1]],[2,1]/3)
+form_number(r1)
+base_grading_vector(r1)
+initial_torus_bits(r1)
+x1 : KGBElt
+x1 := KGB_elt(r1,[[1,1],[0,-1]],[2,1]/3)
+x1
+torus_factor(x1)
+rp : RealForm
+rp := real_form(ic,[[-1,0],[1,1]],[4,2]/3)
+r0=rp
+form_number(rp)
+base_grading_vector(rp)
+initial_torus_bits(rp)
+xp : KGBElt
+xp := KGB_elt(rp,[[-1,0],[1,1]],[4,2]/3)
+xp
+torus_factor(xp)

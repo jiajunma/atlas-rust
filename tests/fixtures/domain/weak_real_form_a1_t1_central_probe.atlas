@@ -1,0 +1,14 @@
+rd : RootDatum
+rd := root_datum([[2,0]],[[1,0]],true)
+ic : InnerClass
+ic := inner_class(rd,[[1,0],[0,1]])
+rf : RealForm
+rf := real_form(ic,[[-1,0],[0,1]],[0,1]/2)
+form_number(rf)
+base_grading_vector(rf)
+initial_torus_bits(rf)
+x : KGBElt
+x := KGB_elt(rf,[[-1,0],[0,1]],[0,1]/2)
+x
+involution(x)
+torus_factor(x)

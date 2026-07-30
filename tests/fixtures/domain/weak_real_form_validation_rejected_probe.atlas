@@ -1,0 +1,14 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("A2"),true)
+ic : InnerClass
+ic := inner_class(rd,[[1,0],[0,1]])
+real_form(ic,[[1]],[0,0]/1)
+real_form(ic,[[1,0]],[0,0]/1)
+real_form(ic,[[1,1],[0,1]],[0,0]/1)
+real_form(ic,[[1,0],[0,-1]],[0,0]/1)
+real_form(ic,[[0,-1],[-1,0]],[0,0]/1)
+ra : RootDatum
+ra := simply_connected(Lie_type("A1"),true)
+ia : InnerClass
+ia := inner_class(ra,[[1]])
+real_form(ia,[[1]],[1]/4)
