@@ -1,12 +1,21 @@
 {
-  "fixture": "domain/involution_primitive_rejected.atlas",
-  "oracle": "pending_hpc_capture",
+  "fixture": "domain/involution_primitive_rejected",
+  "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:742-790",
     "sources/interpreter/atlas-types.w:859-943"
   ],
-  "notes": "Rejected companions of the primitive involution constructors, all runtime errors confirmed by direct oracle probes: 1-based permutation entry, two letters for one factor, permutation size below rank, unknown letter, 'C' across non-identical factors, and a sublattice not stable under the involution. Verbatim HPC capture still pending."
+  "notes": "Rejected companions of the primitive involution constructors, all runtime errors confirmed by direct oracle probes: 1-based permutation entry, two letters for one factor, permutation size below rank, unknown letter, 'C' across non-identical factors, and a sublattice not stable under the involution. Verbatim HPC capture still pending. Reference captured verbatim by HPC job 3501449 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3501449",
+  "source_archive_sha256": "445aab9693322fe5cb0c541ebc2a60b8def3cc1827992d0786776edfa457caad",
+  "fixture_sha256": "cc5e4ad1e47c83ed4170b48ac477c88e84cc6688e02e40815783e297604261c3",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
+  "oracle_stderr_sha256": "345ccc993107a6f8714b0492b1746e516987ac98b378f4fec54f2082c794e1ff",
+  "capture_artifacts_sha256": "0a8ffb0501b6e86975399251ae67fa2cf8bb09da6f88e0a1ba35554fa6bd7ee4"
 }

@@ -1,18 +1,84 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "domain/involution_primitive",
-  "status": "pending_hpc_reference",
+  "status": "verified_hpc_reference",
   "events": [
-    {"kind": "Value", "value": {"type": "matrix", "display": "\n| 1 |\n"}},
-    {"kind": "Value", "value": {"type": "matrix", "display": "\n| 1 |\n"}},
-    {"kind": "Value", "value": {"type": "matrix", "display": "\n| 1, 0 |\n| 0, 1 |\n"}},
-    {"kind": "Value", "value": {"type": "matrix", "display": "\n| 0, 1 |\n| 1, 0 |\n"}},
-    {"kind": "Value", "value": {"type": "matrix", "display": "\n| 0, 1 |\n| 1, 0 |\n"}},
-    {"kind": "Value", "value": {"type": "matrix", "display": "\n| 1, 0 |\n| 0, 1 |\n"}},
-    {"kind": "Value", "value": {"type": "matrix", "display": "\n| 0, 1 |\n| 1, 0 |\n"}},
-    {"kind": "Value", "value": {"type": "matrix", "display": "\n| 0, 1 |\n| 1, 0 |\n"}},
-    {"kind": "Value", "value": {"type": "matrix", "display": "\n| 1 |\n"}},
-    {"kind": "Value", "value": {"type": "matrix", "display": "\n| 1 |\n"}},
-    {"kind": "Value", "value": {"type": "matrix", "display": "\n| 1,  1 |\n| 0, -1 |\n"}}
+    {
+      "kind": "Value",
+      "value": {
+        "type": "matrix",
+        "display": "\n| 1 |\n"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "matrix",
+        "display": "\n| 1 |\n"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "matrix",
+        "display": "\n| 1, 0 |\n| 0, 1 |\n"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "matrix",
+        "display": "\n| 0, 1 |\n| 1, 0 |\n"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "matrix",
+        "display": "\n| 0, 1 |\n| 1, 0 |\n"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "matrix",
+        "display": "\n| 1, 0 |\n| 0, 1 |\n"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "matrix",
+        "display": "\n| 0, 1 |\n| 1, 0 |\n"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "matrix",
+        "display": "\n| 0, 1 |\n| 1, 0 |\n"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "matrix",
+        "display": "\n| 1 |\n"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "matrix",
+        "display": "\n| 1 |\n"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "matrix",
+        "display": "\n| 1,  1 |\n| 0, -1 |\n"
+      }
+    }
   ]
 }

@@ -1,13 +1,37 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "domain/involution_primitive_rejected",
-  "status": "pending_hpc_reference",
+  "status": "verified_hpc_reference",
   "events": [
-    {"kind": "Diagnostic", "category": "runtime", "message": "Permutation entry 1 too big"},
-    {"kind": "Diagnostic", "category": "runtime", "message": "Too many inner class symbols"},
-    {"kind": "Diagnostic", "category": "runtime", "message": "Permutation size 1 does not match rank 2 of Lie type"},
-    {"kind": "Diagnostic", "category": "runtime", "message": "Unknown inner class symbol `x'"},
-    {"kind": "Diagnostic", "category": "runtime", "message": "Complex inner class needs two identical consecutive types"},
-    {"kind": "Diagnostic", "category": "runtime", "message": "Inner class is not compatible with given lattice"}
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Permutation entry 1 too big"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Too many inner class symbols"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Permutation size 1 does not match rank 2 of Lie type"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Unknown inner class symbol `x'"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Complex inner class needs two identical consecutive types"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Inner class is not compatible with given lattice"
+    }
   ]
 }

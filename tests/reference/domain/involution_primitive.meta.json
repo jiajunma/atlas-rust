@@ -1,8 +1,8 @@
 {
-  "fixture": "domain/involution_primitive.atlas",
-  "oracle": "pending_hpc_capture",
+  "fixture": "domain/involution_primitive",
+  "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:939-943",
@@ -16,5 +16,14 @@
     "B2 's' = identity (w0 = -1)",
     "based forms: A1 sublattice [[2]] and [[1]] keep the identity; A2 's' on lattice [[1,1],[0,1]] gives [[1,1],[0,-1]] with width-3 mat alignment"
   ],
-  "notes": "Primitive involution constructors involution(LieType,[int],string) and involution(LieType,mat,string), fifth activation of the domain fixtures. The permutation row is 0-based with size = rank; the inner-class string is one letter per simple factor from \"Ccesu\" ('C' consumes two identical consecutive factors, 'e' is a synonym of 'c'). All outputs drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449); verbatim HPC capture still pending."
+  "notes": "Primitive involution constructors involution(LieType,[int],string) and involution(LieType,mat,string), fifth activation of the domain fixtures. The permutation row is 0-based with size = rank; the inner-class string is one letter per simple factor from \"Ccesu\" ('C' consumes two identical consecutive factors, 'e' is a synonym of 'c'). All outputs drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449); verbatim HPC capture still pending. Reference captured verbatim by HPC job 3501449 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3501449",
+  "source_archive_sha256": "445aab9693322fe5cb0c541ebc2a60b8def3cc1827992d0786776edfa457caad",
+  "fixture_sha256": "fa3b881d75f3bae5c65a8c3edffeffd34669e1a05ddf804c3cabe07664a21ee4",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "c6d92acab744ac2b99eab524e07f5946ee8e298723549247273cefb1b445628a",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "29e3a7505c2f95ac553f73651fb4ee61dfa5576f2dfdf3130ac643fe0873a70b"
 }

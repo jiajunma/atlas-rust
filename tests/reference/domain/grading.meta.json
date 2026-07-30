@@ -1,8 +1,8 @@
 {
-  "fixture": "domain/grading.atlas",
-  "oracle": "pending_hpc_capture",
+  "fixture": "domain/grading",
+  "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "rust_status": "not_implemented",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:3940",
@@ -16,8 +16,17 @@
     "torus_bits on KGB elements: KGB(sp(1,1),0) = [ 0, 1 ], KGB(sp(4,R),3) = [ 1, 1 ]",
     "rejected: base_grading_vector(rd) is a type error 'found RootDatum while RealForm was needed.'"
   ],
-  "notes": "Grading observables slice (base_grading_vector/initial_torus_bits/torus_bits), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). ratvec displays as '[ ... ]/d' with the common denominator. The crate-level grading machinery and its preflight (job 3473257, 102 tests) recorded in the previous revision of this meta remain the kernel this surface binds to.",
+  "notes": "Grading observables slice (base_grading_vector/initial_torus_bits/torus_bits), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). ratvec displays as '[ ... ]/d' with the common denominator. The crate-level grading machinery and its preflight (job 3473257, 102 tests) recorded in the previous revision of this meta remain the kernel this surface binds to. Reference captured verbatim by HPC job 3501449 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
   "design_reviews": {
     "recorded_in": "docs/GRADING_DESIGN.md"
-  }
+  },
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3501449",
+  "source_archive_sha256": "445aab9693322fe5cb0c541ebc2a60b8def3cc1827992d0786776edfa457caad",
+  "fixture_sha256": "5d2c695009cd691ff95403f93fdbc546fdc7a3c8ebcf88cafdacfd3cdcc7386e",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "e8c4aa0cb1149f9417e27a1b569c889dad67e5823f52fbe2f0cdb032b4cd0fe8",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "6515417b11a46d56342671ca11ddfca9b0e82917e029d9fd05a7c578ca375ca0"
 }
