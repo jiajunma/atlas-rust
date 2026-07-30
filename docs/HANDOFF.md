@@ -128,11 +128,17 @@ adjoint(LieType,bool) datum display 'adjoint root datum of Lie type ...') → `r
 dual_occurrence_matrix: numRealForms × numCartanClasses (resp. dual) bitmaps
 of Cartan_set membership (atlas-types.w:3361); block_sizes(ic): matrix of
 G->val.block_size(interface.in(i), dual_interface.in(j)) (atlas-types.w:3323)
-— NOTE this is the full BLOCK size, needing block construction; the A2
-contract values (1,6) coincide with KGB sizes, so a KGB-based implementation
-must verify the coincidence argument or port Block::build; block_size(ic,i,j)
-bounds: 'Real form number i out of bounds' / 'Dual real form number j out of
-bounds'; Cartan_order(rf): poset matrix of the Cartan-class ordering) →
+— RESOLVED 2026-07-30: upstream block_size is NOT a Block build; it is the
+summation formula innerclass.cpp:1100 over Cartan_set(rf) & dual_Cartan_set(drf)
+of cartan(cn).orbitSize() * fiberSize(rf,cn) * dualFiberSize(drf,cn), so the
+crate needs only orbit sizes (twisted-conjugacy class sizes from the Cartan
+classification) and per-class fiber counts on both sides — Block::build stays
+gated to block_basic; block_size(ic,i,j) bounds: 'Real form number i out of
+bounds' / 'Dual real form number j out of bounds' (runtime category);
+Cartan_order(rf): n=numCartan(rf) square 0/1 matrix, M(i,j)=1 iff
+innerClass.Cartan_ordering().lesseq(i,j), filled only for i<=j
+(atlas-types.w:3709 — indexes the inner-class poset DIRECTLY with 0..n-1,
+no Cartan_set remapping; replicate literally)) →
 `weak_real_form` (real_form(InnerClass,mat,ratvec) —
 atlas-types.w:3851: size check 'Torus factor size mismatch';
 twisted_from_involution(theta) ('Given transformation is not an involution');
