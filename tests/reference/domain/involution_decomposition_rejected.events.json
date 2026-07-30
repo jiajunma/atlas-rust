@@ -1,0 +1,8 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/involution_decomposition_rejected",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind": "Diagnostic", "category": "runtime", "message": "Given transformation is not an involution"}
+  ]
+}

@@ -1,25 +1,19 @@
 {
   "fixture": "domain/involution_decomposition.atlas",
-  "status": "structural_implementation_awaiting_hpc_preflight",
-  "oracle": "pending_domain_adapter",
-  "rust_status": "implemented_locally_115_tests_pending_hpc",
-  "reference_status": "pending_atlas_constructor_and_event_adapter",
-  "design_reviews": {
-    "completed_at": "2026-07-28",
-    "checks": [
-      "atlas_source_semantics",
-      "rust_ownership_and_internal_mechanics",
-      "public_api_and_consumer_integration"
-    ],
-    "recorded_in": "docs/INVOLUTION_DECOMPOSITION_DESIGN.md"
-  },
-  "scenarios": [
-    "distinguished involutions decompose to empty parts",
-    "A1 x A1 identity: single Cayley; swap: single cross (no Cayley letters exist in that class)",
-    "A2 identity: single-Cayley and mixed-letter anchors with the replayed cross action",
-    "B2 short-first pinning long-orthogonalizes; long-first pinning is a no-op",
-    "exhaustive replay and strong-orthogonality sweep over enumerated twisted involutions",
-    "peeling-step budget, datum, and distinguished-provenance rejections"
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:3400-3408"
   ],
-  "notes": "Three fresh-context design reviews completed and folded into the design, correcting three anchors and the lexicographic-order claim (raw words are not differential-comparable; only replay-invariant and label-level results are). The structural implementation passes 115 local unit tests. The frozen HPC preflight is queued until the cluster is reachable. This fixture remains reserved until the language-level constructors and both oracle adapters exist."
+  "scenarios": [
+    "distinguished_involution of the equal-rank A2 class is the identity",
+    "twisted_involution(rd,theta) returns the (WeylElt, InnerClass) pair: longest element <0.1.0> for the quasisplit involution, <> for the identity",
+    "classify_involution maps the quasisplit A2 involution to (0,1,0) and the identity to (2,0,0)"
+  ],
+  "notes": "Involution decomposition surface (distinguished_involution/twisted_involution/classify_involution), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The crate-level decomposition machinery recorded in the previous revision of this meta (115 local tests, INVOLUTION_DECOMPOSITION_DESIGN.md) remains the kernel this surface binds to.",
+  "design_reviews": {
+    "recorded_in": "docs/INVOLUTION_DECOMPOSITION_DESIGN.md"
+  }
 }

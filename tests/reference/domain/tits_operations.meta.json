@@ -1,16 +1,19 @@
 {
   "fixture": "domain/tits_operations.atlas",
-  "status": "implemented_locally_6_tests_pending_hpc",
-  "oracle": "traced_tits_h_cpp_4d3e9449",
-  "rust_status": "implemented_tits_element_rs",
-  "reference_status": "pending_atlas_constructor_and_event_adapter",
-  "scenarios": [
-    "SL(2,R): type-I cross SWAP on the fundamental fiber, split fixed, Cayley to split, distinct reduced states",
-    "compact SU(2): all-compact grading",
-    "Sp(4,R): closed-form cross vs word-level four-step sigma recipe, bit-for-bit before reduction, all 6 involutions x 4 bit patterns x 2 generators, plus the simple-root grading degeneracy",
-    "SU(2,1): conjugate-to-simple grading on the non-simple simple-imaginary root; complex simples decline",
-    "PGL(2,R): type-II cross fixes the fundamental fiber",
-    "offset RankMismatch and twist-invariance, same-datum different-delta provenance, TitsElement::new gates, public reduce idempotence"
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:4709-4710"
   ],
-  "notes": "Stage (c) of the KGB map. Implemented after the three-review workflow: closed-form cross VERIFIED step-for-step; torus_factor comparability re-grounded on convention coincidence (recorded in KGB_STAGE_MAP observables); SL(2,R) oracle corrected to the type-I swap; inverse Cayley deferred beyond stage (f). Local suite 153 green (147 + 6) under rustc 1.90 with clippy -D warnings and fmt --check clean; HPC preflight pending cluster reachability."
+  "scenarios": [
+    "twist fixes both SL(2,R) KGB elements (delta is inner for this class)",
+    "identity outer twist twist(x2,[[1]]) fixes x2",
+    "rejection: the anti-distinguished outer twist [[-1]] aborts"
+  ],
+  "notes": "KGB twist operations (twist(KGBElt) and the outer twist(KGBElt,mat)), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). The crate-level Tits machinery recorded in the previous revision of this meta (TITS_OPERATIONS_DESIGN.md) remains the kernel this surface binds to.",
+  "design_reviews": {
+    "recorded_in": "docs/TITS_OPERATIONS_DESIGN.md"
+  }
 }

@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/involution_decomposition_rejected.atlas",
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:3400"
+  ],
+  "notes": "Rejected companion of the involution decomposition surface: classify_involution([[2,0],[0,2]]) aborts with 'Given transformation is not an involution'. Confirmed by direct oracle probe; verbatim HPC capture still pending."
+}

@@ -1,3 +1,9 @@
-// Structural fixture reserved for the HPC Atlas/Rust differential harness.
-// The interpreter-side constructor syntax is not yet exposed.
-involution_decomposition_fixture;
+rd : RootDatum
+rd := simply_connected(Lie_type("A2"),true)
+ic : InnerClass
+ic := inner_class(rd,[[0,-1],[-1,0]])
+distinguished_involution(ic)
+twisted_involution(rd,[[0,-1],[-1,0]])
+twisted_involution(rd,[[1,0],[0,1]])
+classify_involution([[0,-1],[-1,0]])
+classify_involution([[1,0],[0,1]])

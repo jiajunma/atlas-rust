@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/tits_operations_rejected.atlas",
+  "oracle": "pending_hpc_capture",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:4710"
+  ],
+  "notes": "Rejected companion of the twist surface: twist(x0,[[-1]]) applies an outer twist outside the distinguished fiber and aborts with 'Root datum involution is not distinguished'. Confirmed by direct oracle probe; verbatim HPC capture still pending."
+}
