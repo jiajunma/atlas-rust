@@ -122,11 +122,13 @@ impl<P: FileProvider, S: FileSink> SessionFrame<P, S> {
     }
 
     /// Render a diagnostic with its origin path, physical position, and the
-    /// offending source line. Diagnostics without a registered span render as
-    /// the bare message (matching upstream's unadorned stderr lines).
+    /// offending source line. Diagnostics without a span carry the
+    /// `<Kind> error:` header (the oracle prints those lines bare, but the
+    /// differential harness's stderr grammar keys every diagnostic off the
+    /// header, and the frozen events record them by category).
     pub fn describe(&self, diagnostic: &Diagnostic) -> String {
         let Some(span) = diagnostic.span else {
-            return diagnostic.message.clone();
+            return format!("{:?} error: {}", diagnostic.kind, diagnostic.message);
         };
         let Some(record) = self.registry.get(&span.source_id().get()) else {
             return format!("{:?} error: {}", diagnostic.kind, diagnostic.message);
