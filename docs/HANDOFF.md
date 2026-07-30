@@ -119,6 +119,10 @@ overloads (KL polynomials, `W_graph`, `deform`, extended blocks).
 - Direct oracle probe (for designing new contracts; login node needs the
   gcc runtime):
   `ssh majj@10.26.14.64 'module load misc/gcc/12.1 >/dev/null 2>&1; gcc_lib="$(dirname "$(gcc -print-file-name=libstdc++.so.6)")"; export LD_LIBRARY_PATH="$gcc_lib:$LD_LIBRARY_PATH"; cd /public/home/majj/atlasofliegroups-4d3e9449/atlas-scripts && printf "<lines>\nquit\n" | /public/home/majj/atlasofliegroups-4d3e9449/atlas 2>&1'`
+  A local oracle build at `/Users/hoxide/mycodes/atlasofliegroups/atlas`
+  (built from the same frozen revision `4d3e9449`, different binary sha)
+  runs the same probes without ssh — convenient for drafting; the HPC
+  capture remains the verification of record either way.
 - Reference capture: `ATLAS_BIN=... EXPECTED_ATLAS_BINARY_SHA256=66f5d7d... sbatch hpc/reference_capture.sbatch tests/fixtures/<sub>/<name>.atlas ...`
   (FULL paths with extension). Reports land in
   `results/<commit>/<jobid>/reference_capture/reference_capture_report.json`;
