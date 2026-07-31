@@ -125,6 +125,38 @@ FIXTURE_PLANS = (
     # B11 precedence/associativity corpus and B12 runtime-error corpus.
     FixturePlan(name="eval/precedence_b11"),
     FixturePlan(name="eval/runtime_errors_b12"),
+    # Legacy command/eval contracts frozen verbatim by capture job 3503334:
+    # declarations/assignments/let, container and subscription behavior, exact
+    # bignum numerics, undefined-name and wrong-type rejections, and error
+    # recovery across lines.
+    FixturePlan(name="commands/assignments"),
+    FixturePlan(name="commands/assignment_order"),
+    FixturePlan(name="commands/container_assignments"),
+    FixturePlan(name="commands/declarations"),
+    FixturePlan(name="commands/declaration_errors"),
+    FixturePlan(name="commands/let_errors"),
+    FixturePlan(name="commands/let_error_order"),
+    # The final let command spans lines 12-14; the two continuation lines are
+    # part of the runnable input but produce no event of their own.
+    FixturePlan(
+        name="commands/let",
+        runnable_lines=(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12),
+        runnable_events=(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11),
+        silent_lines=(13, 14),
+    ),
+    FixturePlan(name="commands/ordered_events"),
+    FixturePlan(name="commands/slice_order"),
+    FixturePlan(name="commands/subscription_context"),
+    FixturePlan(name="commands/subscription_order"),
+    FixturePlan(name="eval/containers"),
+    FixturePlan(name="eval/slices"),
+    FixturePlan(name="eval/subscriptions"),
+    FixturePlan(name="eval/context"),
+    FixturePlan(name="eval/exact_numerics"),
+    FixturePlan(name="eval/negative_type"),
+    FixturePlan(name="eval/negative_undefined"),
+    FixturePlan(name="parse/basic"),
+    FixturePlan(name="parse/exact_numerics"),
     # RootDatum root/coroot queries: oracle presentation order, negative-index
     # negation, long/short flags, rank, and the illegal-index rejection.
     FixturePlan(name="domain/root_coroot"),
