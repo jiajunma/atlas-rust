@@ -6,19 +6,24 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
 ## Live continuation - 2026-07-31
 
-The current committed baseline is `292ca78` on `main` (meta upgrade commit;
-implementation HEAD is `364e340`). Differential job `3502718` at that
-commit ran 106 fixtures with zero FAIL and verified FOURTEEN contracts in
-one pass: the eval `split_basic{,_rejected}` pair (Split dual-number
-primitive), the three weak-real probes `b2_descent` /
-`central_coroot_rejected` / `validation_rejected`, and the strong-real
-surface — the base `strong_real` contract, the four B2/C2 Cartan
-enumeration probes, and the four rejected diagnostics. The strong-real
-surface still owes the `full_kgb` probe (KGB element discovery order,
-agent in flight) and the four `dual_order` probes (`posroots`/`poscoroots`/
-`dual(RootDatum)`/`dual(InnerClass)`, agent in flight). The two remaining
-weak-real probes (`a1_t1_central`, `a2_noncanonical`) await the custom-seed
-real_form gap.
+The current committed baseline is `HEAD` on `main` (implementation HEAD
+`1e2a3a5`). Differential job `3502731` ran 111 fixtures with zero FAIL and
+verified the last FIVE strong-real contracts: the four `dual_order` probes
+(RootDatum dual-order surface `cba10ec`: `posroots`/`poscoroots`/
+`dual(RootDatum)` with flipped coroot preference and letterwise B<->C Lie
+type, `dual(InnerClass)`) and the `full_kgb` probe — the KGB renumbering
+sort's third key is the TwistedInvolution value compare (`WeylElt::operator<`
+= parabolic-subquotient pieces by internal generator order, ported as
+`ParabolicPieces`; the crate's root-permutation Ord coincided at A2 and
+reversed at B2/C2). **The strong-real family is COMPLETE** (base contract
+plus all thirteen probes verified). Differential `3502718` verified fourteen
+contracts: the eval `split_basic{,_rejected}` pair (**the eval family is
+COMPLETE**), the three weak-real probes `b2_descent` /
+`central_coroot_rejected` / `validation_rejected`, and the first nine
+strong-real contracts. The two remaining weak-real probes (`a1_t1_central`,
+`a2_noncanonical`) await the custom-seed real_form gap (agent in flight).
+One coverage suggestion on file: a C2 print_KGB probe (the pieces key fixes
+C2 identically but no fixture pins it).
 
 Earlier verified stages this line: relations `3502506`; involution
 decomposition `3502550`; base `weak_real_form{,_rejected}` `3502697`; the
