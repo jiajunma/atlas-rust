@@ -28,7 +28,7 @@ differential report naming the job.
 |---|---|---|
 | identifiers, reserved words, literals | supported | scalar/pipeline fixtures; differentials `3501467`, `3501643` |
 | comments and source locations | supported | span-exact diagnostics across the B-slice rejected fixtures; `3501467` |
-| arithmetic, comparison, boolean, assignment | supported | scalar goldens; `3501467` |
+| arithmetic, comparison, boolean, assignment | supported | scalar goldens + Split dual numbers; `3501467`, `3502718` |
 | precedence and associativity | supported | B11 corpus; `3501467` |
 | declarations and scoped lookup | supported | B3a/B3c/B8 fixtures; `3501467`, `3501643` |
 | functions, arguments, returns, closures | supported | B3a/B3b fixtures; `3501467` |
@@ -37,7 +37,7 @@ differential report naming the job.
 | exceptions and runtime errors | supported | B12 + rejected companions across all slices; `3501467`, `3501643` |
 | Atlas commands and batch files | supported | B7 forget/die, B9 redirect, B10 include, B13 dont, showall, quit; `3501467`, `3501643` |
 | interactive input and completion | partial | TTY banner/prompt implemented; readline completion remains pending |
-| domain objects and mathematical operations | partial | 16 of 21 frozen domain contracts verified: display `3501467`, root_coroot/kgb_generation `3501555`, real_group `3501779`, kgb_operations/tits_operations `3501870`, grading `3501915`, weyl_element `3502034`, cartan_aggregation `3502126`, seed_x0 `3502176`, involution_table `3502272`, adjoint_fiber `3502318`, real_form_labels `3502375`, relations `3502506`, involution_decomposition `3502550`, weak_real_form `3502697`; Block/KL layer pending |
+| domain objects and mathematical operations | partial | 17 of 21 frozen domain contracts verified: display `3501467`, root_coroot/kgb_generation `3501555`, real_group `3501779`, kgb_operations/tits_operations `3501870`, grading `3501915`, weyl_element `3502034`, cartan_aggregation `3502126`, seed_x0 `3502176`, involution_table `3502272`, adjoint_fiber `3502318`, real_form_labels `3502375`, relations `3502506`, involution_decomposition `3502550`, weak_real_form `3502697`, strong_real `3502718`/`3502731`/`3502736`; Block/KL layer pending |
 | KL and file formats | planned | explicit filekl adapter coupled to the pending Block/KL math layer |
 
 No row moves to `supported` merely because Rust compiles. It needs a reference
