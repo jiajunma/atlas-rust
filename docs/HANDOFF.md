@@ -33,7 +33,10 @@ Earlier verified stages this line: relations `3502506`; involution
 decomposition `3502550`; base `weak_real_form{,_rejected}` `3502697`; the
 torus-radical fix `646f897`; the Cartan numbering adapter `a63dc32`
 (upstream BFS discovery order; B2 = [e, s1s0s1, s0s1s0, w0], orbit sizes
-[1,2,2,1]; A1/A2 unchanged). The older snapshot below remains useful as a
+[1,2,2,1]; A1/A2 unchanged); the Block domain `3503231` (`4167249`:
+fibred-product BlockGraph over both sides' full KGB, tW-level
+dual_involution, renumbered descent status, undefined Cayleys return the
+input index). The older snapshot below remains useful as a
 historical ledger, but its `c0710a1` HEAD and implementation queue are no
 longer current.
 builtins are verified by differential job `3502506`; the involution
