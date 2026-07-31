@@ -98,6 +98,9 @@ pub enum StructureError {
     KgbInvariantViolation {
         invariant: &'static str,
     },
+    BlockInvariantViolation {
+        invariant: &'static str,
+    },
     RealFormOrderInvariantViolation {
         invariant: &'static str,
     },
@@ -248,6 +251,9 @@ impl fmt::Display for StructureError {
             }
             Self::KgbInvariantViolation { invariant } => {
                 write!(f, "KGB {invariant} invariant was violated")
+            }
+            Self::BlockInvariantViolation { invariant } => {
+                write!(f, "block {invariant} invariant was violated")
             }
             Self::RealFormOrderInvariantViolation { invariant } => {
                 write!(f, "real-form order {invariant} invariant was violated")

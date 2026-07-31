@@ -196,7 +196,7 @@ impl InnerClass {
     /// (the `weyl::Twist` of upstream's `TwistedWeylGroup`): `twist[s]` is
     /// the generator whose simple root is the distinguished image of
     /// `alpha_s`.
-    fn generator_twist(&self) -> Result<Vec<usize>, StructureError> {
+    pub fn generator_twist(&self) -> Result<Vec<usize>, StructureError> {
         let simple_ids = self.roots.simple_root_ids();
         let mut twist = Vec::with_capacity(simple_ids.len());
         for &simple_id in simple_ids {

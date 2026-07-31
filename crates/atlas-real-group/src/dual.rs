@@ -67,7 +67,7 @@ fn two_rho(inner_class: &InnerClass) -> Result<Weight, StructureError> {
 
 /// The longest Weyl group element, characterized by sending `2rho` to
 /// `-2rho` (`rd.to_dominant(-rd.twoRho())`).
-fn longest_action(
+pub fn longest_action(
     inner_class: &InnerClass,
     weyl_budget: usize,
 ) -> Result<WeylAction, StructureError> {

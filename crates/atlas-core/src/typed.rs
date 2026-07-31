@@ -4696,6 +4696,81 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             // print_strongreal_wrapper (atlas-types.w:8850-8859):
             // output::printStrongReal, unconditional like print_KGB.
             domain_printer_builtin("print_strong_real", primitive_type(Prim::CartanClass)),
+            // Block surface (atlas-types.w:4994-5005): the Fokko
+            // constructor (is_dual gated), the (rf, dual_rf) decomposition,
+            // the size, the element/index pair, the dual block, and the
+            // per-generator status/cross/Cayley wrappers. block, element,
+            // index, and the four per-generator wrappers run their gates
+            // before their upstream no-value checks, so they validate;
+            // %, #, and dual gate first, so they skip.
+            domain_builtin_validate(
+                "block",
+                Type::tuple(vec![
+                    primitive_type(Prim::RealForm),
+                    primitive_type(Prim::RealForm),
+                ]),
+                primitive_type(Prim::Block),
+                0,
+            ),
+            domain_builtin_skip(
+                "%",
+                primitive_type(Prim::Block),
+                Type::tuple(vec![
+                    primitive_type(Prim::RealForm),
+                    primitive_type(Prim::RealForm),
+                ]),
+                0,
+            ),
+            domain_builtin_skip("#", primitive_type(Prim::Block), int_type(), 0),
+            domain_builtin_validate(
+                "element",
+                Type::tuple(vec![primitive_type(Prim::Block), int_type()]),
+                Type::tuple(vec![
+                    primitive_type(Prim::KgbElt),
+                    primitive_type(Prim::KgbElt),
+                ]),
+                0,
+            ),
+            domain_builtin_validate(
+                "index",
+                Type::tuple(vec![
+                    primitive_type(Prim::Block),
+                    primitive_type(Prim::KgbElt),
+                    primitive_type(Prim::KgbElt),
+                ]),
+                int_type(),
+                0,
+            ),
+            domain_builtin_skip(
+                "dual",
+                primitive_type(Prim::Block),
+                primitive_type(Prim::Block),
+                0,
+            ),
+            domain_builtin_validate(
+                "status",
+                Type::tuple(vec![int_type(), primitive_type(Prim::Block), int_type()]),
+                int_type(),
+                0,
+            ),
+            domain_builtin_validate(
+                "cross",
+                Type::tuple(vec![int_type(), primitive_type(Prim::Block), int_type()]),
+                int_type(),
+                0,
+            ),
+            domain_builtin_validate(
+                "Cayley",
+                Type::tuple(vec![int_type(), primitive_type(Prim::Block), int_type()]),
+                int_type(),
+                0,
+            ),
+            domain_builtin_validate(
+                "inverse_Cayley",
+                Type::tuple(vec![int_type(), primitive_type(Prim::Block), int_type()]),
+                int_type(),
+                0,
+            ),
             // Split surface (atlas-types.w:5136-5145): the unary zero-test
             // relations, componentwise sum and difference, unary negation,
             // and the destructure back to an (int,int) pair. The dual

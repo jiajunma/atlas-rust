@@ -8,6 +8,7 @@
 use std::collections::{HashSet, VecDeque};
 
 mod adjoint_fiber;
+mod block;
 mod cartan_class;
 mod cartan_classification;
 mod cartan_fiber;
@@ -55,11 +56,14 @@ pub use adjoint_fiber::{
     AdjointBasedRootDatum, AdjointCartanFiber, AdjointCoweight, AdjointFiberBudget,
     AdjointFiberElement, AdjointProjection, AmbientCoweight, FiberToAdjoint,
 };
+pub use block::{dual_involution, BlockDescent, BlockGraph};
 pub use cartan_class::{CartanClass, TwistedConjugacyClass, TwistedConjugacyPartition};
 pub use cartan_classification::{CartanClassification, CartanClassificationBudget, CartanId};
 pub use cartan_fiber::{CartanFiber, CartanFiberElement};
 pub use cayley_cross::CayleyCrossDecomposition;
-pub use dual::{dual_cartan_correspondence, dual_inner_class, dual_real_form_count};
+pub use dual::{
+    dual_cartan_correspondence, dual_inner_class, dual_real_form_count, longest_action,
+};
 pub use error::StructureError;
 pub use form_name::form_type_name;
 pub use grading::{CartanGradingData, Grading};

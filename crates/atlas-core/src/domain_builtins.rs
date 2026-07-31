@@ -25,12 +25,12 @@ use malachite::{Integer as BigInt, Rational as BigRational};
 use atlas_real_group::{
     adapted_relation_basis, annihilator_modulo as relation_annihilator_modulo, build_presentations,
     central_fiber, classify_involution as domain_classify_involution, dual_cartan_correspondence,
-    dual_inner_class, elected_square_root, filter_relation_units as domain_filter_relation_units,
-    inner_class_with_twisted_involution, minimal_torus_part,
-    quotient_relation_basis as domain_quotient_relation_basis,
+    dual_inner_class, dual_involution as block_dual_involution, elected_square_root,
+    filter_relation_units as domain_filter_relation_units, inner_class_with_twisted_involution,
+    longest_action, minimal_torus_part, quotient_relation_basis as domain_quotient_relation_basis,
     replace_relation_generators as domain_replace_relation_generators, AdjointFiberBudget,
-    BasedRootDatum, CartanClass, CartanClassification, CartanClassificationBudget, CartanId,
-    Coweight, ExternalFormOrder, InnerClass, InnerClassLayout, IntegerLatticeBudget,
+    BasedRootDatum, BlockGraph, CartanClass, CartanClassification, CartanClassificationBudget,
+    CartanId, Coweight, ExternalFormOrder, InnerClass, InnerClassLayout, IntegerLatticeBudget,
     InvolutionTable, InvolutionTableBudget, KgbGraph, KgbId, KgbStatus, LatticeInvolution,
     ModTwoVector, RealFormPresentation, RealFormSeed, RelationBasis, RelationError,
     RelationGenerator, RelationMatrix, RootSystem, StrongRealClassification, StructureError,
@@ -161,6 +161,17 @@ pub struct RealFormContext {
     graph: KgbGraph,
 }
 
+/// A Block value: the owning real form and dual real form contexts with
+/// the fibred-product graph (upstream `Block_value`,
+/// interpreter/atlas-types.w:4748-4764). The graph is boxed so the
+/// `DomainValue` variants stay one pointer wide.
+#[derive(Clone, Debug)]
+pub struct BlockValue {
+    rf: Arc<RealFormContext>,
+    dual_rf: Arc<RealFormContext>,
+    graph: Box<BlockGraph>,
+}
+
 /// The Weyl side of one root datum: the enumerated semisimple root system
 /// the word-level kernel operates on, plus the internal generator
 /// renumbering that fixes the upstream canonical-word choice.
@@ -258,6 +269,7 @@ pub enum DomainValue {
     InnerClass(Arc<InnerClassContext>),
     RealForm(Arc<RealFormContext>),
     KgbElement(Arc<RealFormContext>, KgbId),
+    Block(BlockValue),
     WeylElement(WeylEltValue),
     CartanClass(Arc<InnerClassContext>, CartanId),
     Split(SplitValue),
@@ -285,6 +297,14 @@ impl PartialEq for DomainValue {
                 left.parent.inner_class == right.parent.inner_class
                     && left.internal == right.internal
                     && left_id == right_id
+            }
+            // Structural handle equality on the two owning forms, in the
+            // same scheme as the RealForm arm above.
+            (Self::Block(left), Self::Block(right)) => {
+                left.rf.parent.inner_class == right.rf.parent.inner_class
+                    && left.rf.internal == right.rf.internal
+                    && left.dual_rf.parent.inner_class == right.dual_rf.parent.inner_class
+                    && left.dual_rf.internal == right.dual_rf.internal
             }
             // Group equality on the canonical root-permutation
             // representation: braid-equivalent words compare equal.
@@ -358,6 +378,8 @@ impl fmt::Display for DomainValue {
                 )
             }
             Self::KgbElement(_, id) => write!(formatter, "KGB element #{}", id.index()),
+            // Block_value::print (interpreter/atlas-types.w:4774-4775).
+            Self::Block(value) => write!(formatter, "Block of {} elements", value.graph.size()),
             // W_elt_value::print (interpreter/atlas-types.w:2326-2333):
             // the canonical reduced word, dot-separated in angle brackets.
             Self::WeylElement(value) => {
@@ -409,6 +431,7 @@ pub fn kind_name(value: &DomainValue) -> &'static str {
         DomainValue::InnerClass(_) => "InnerClass",
         DomainValue::RealForm(_) => "RealForm",
         DomainValue::KgbElement(_, _) => "KGBElt",
+        DomainValue::Block(_) => "Block",
         DomainValue::WeylElement(_) => "WeylElt",
         DomainValue::CartanClass(_, _) => "CartanClass",
         DomainValue::Split(_) => "Split",
@@ -1755,6 +1778,148 @@ fn as_cartan_class(
     }
 }
 
+fn as_block(value: &Value, span: SourceSpan) -> Result<&BlockValue, Diagnostic> {
+    match value {
+        Value::Domain(DomainValue::Block(block)) => Ok(block),
+        other => Err(type_error(span, format!("expected a Block, found {other}"))),
+    }
+}
+
+/// The `is_dual` gate of `Fokko_block_wrapper` (atlas-types.w:4782-4793):
+/// the second form's inner class must be the dual of the first form's. The
+/// crate's structural dual-inner-class equality covers upstream's
+/// datum-pointer and dual-distinguished-involution pair.
+fn check_dual_pair(
+    rf: &Arc<RealFormContext>,
+    df: &Arc<RealFormContext>,
+    span: SourceSpan,
+) -> Result<(), Diagnostic> {
+    let dual = dual_inner_class(&rf.parent.inner_class, WEYL_BUDGET, ROOT_BUDGET)
+        .map_err(|error| runtime(span, error.to_string()))?;
+    if dual != df.parent.inner_class {
+        return Err(runtime(
+            span,
+            "Inner class mismatch between real form and dual real form",
+        ));
+    }
+    Ok(())
+}
+
+/// The `Block::build(rf->val, dual_rf->val)` construction of `Block_value`
+/// (atlas-types.w:4753-4756): the fibred product of the two forms' full
+/// KGB sets, frozen with the owning contexts.
+fn build_block(
+    rf: &Arc<RealFormContext>,
+    df: &Arc<RealFormContext>,
+    span: SourceSpan,
+) -> Result<BlockValue, Diagnostic> {
+    let graph = BlockGraph::build(
+        &rf.graph,
+        &rf.table,
+        &df.graph,
+        &df.table,
+        &df.parent.inner_class,
+        WEYL_BUDGET,
+    )
+    .map_err(|error| runtime(span, error.to_string()))?;
+    Ok(BlockValue {
+        rf: Arc::clone(rf),
+        dual_rf: Arc::clone(df),
+        graph: Box::new(graph),
+    })
+}
+
+/// The block wrappers' integer extraction: upstream narrows the Atlas int
+/// to a C++ `int` (`int_val()` — "Integer value to big for conversion" on
+/// overflow) and re-reads it as the unsigned `BlockElt`/`unsigned int`
+/// (atlas-types.w:4829, 4893-4895, 4941-4943), so negative indices echo
+/// wrapped in the out-of-range diagnostics.
+fn as_wrapped_u32(value: &Value, span: SourceSpan) -> Result<u32, Diagnostic> {
+    let integer = as_integer(value, span)?;
+    let narrowed = i32::try_from(&integer)
+        .map_err(|_| runtime(span, "Integer value to big for conversion"))?;
+    Ok(narrowed as u32)
+}
+
+/// The shared generator gate of the four per-generator block wrappers
+/// (atlas-types.w:4896-4900, 4924-4928, 4944-4948, 4970-4974).
+fn block_generator_check(
+    block: &BlockValue,
+    value: &Value,
+    span: SourceSpan,
+) -> Result<usize, Diagnostic> {
+    let generator = as_wrapped_u32(value, span)?;
+    let rank = block.rf.graph.semisimple_rank();
+    if generator as usize >= rank {
+        return Err(runtime(
+            span,
+            format!("Illegal simple reflection: {generator}"),
+        ));
+    }
+    Ok(generator as usize)
+}
+
+/// The shared element gate of the block wrappers (`Block element {i} out
+/// of range (<{size})`): the wrapped index is echoed, as upstream prints
+/// the unsigned `BlockElt`.
+fn block_element_index(
+    block: &BlockValue,
+    value: &Value,
+    span: SourceSpan,
+) -> Result<usize, Diagnostic> {
+    let index = as_wrapped_u32(value, span)?;
+    let size = block.graph.size();
+    if index as usize >= size {
+        return Err(runtime(
+            span,
+            format!("Block element {index} out of range (<{size})"),
+        ));
+    }
+    Ok(index as usize)
+}
+
+/// The fiber-compatibility gate of `block_index_wrapper`
+/// (atlas-types.w:4865-4870): `dual_involution` of the x involution (in
+/// the BLOCK's KGB) must equal the y involution (in the block's dual KGB).
+fn block_fiber_check(
+    block: &BlockValue,
+    x: KgbId,
+    y: KgbId,
+    span: SourceSpan,
+) -> Result<(), Diagnostic> {
+    let mismatch = || runtime(span, "Fiber mismatch KGB and dual KGB elements");
+    let x_involution = block
+        .rf
+        .graph
+        .involution_of(x)
+        .and_then(|involution| block.rf.table.record(involution))
+        .ok_or_else(mismatch)?;
+    let word = x_involution
+        .weyl_element()
+        .reduced_word(block.rf.table.root_system())
+        .map_err(|error| runtime(span, error.to_string()))?;
+    let dual_class = &block.dual_rf.parent.inner_class;
+    let dual_twist = dual_class
+        .generator_twist()
+        .map_err(|error| runtime(span, error.to_string()))?;
+    let longest = longest_action(dual_class, WEYL_BUDGET)
+        .map_err(|error| runtime(span, error.to_string()))?;
+    let dual_longest = WeylElement::from_action(dual_class.root_system(), &longest)
+        .map_err(|error| runtime(span, error.to_string()))?;
+    let dual_w = block_dual_involution(&word, dual_class.root_system(), &dual_twist, &dual_longest)
+        .map_err(|error| runtime(span, error.to_string()))?;
+    let y_involution = block
+        .dual_rf
+        .graph
+        .involution_of(y)
+        .and_then(|involution| block.dual_rf.table.record(involution))
+        .ok_or_else(mismatch)?;
+    if dual_w != *y_involution.weyl_element() {
+        return Err(mismatch());
+    }
+    Ok(())
+}
+
 /// The language-visible number of a Cartan id: its position in the crate
 /// Cartan order, which is the fundamental-first numbering upstream prints.
 fn cartan_number(context: &InnerClassContext, id: CartanId) -> Option<usize> {
@@ -3035,14 +3200,54 @@ pub(crate) fn validate(
             let handle = as_root_datum(&arguments[0], span)?;
             build_twisted_involution(handle, &arguments[1], span)?;
         }
-        "cross" | "Cayley" | "status" => {
-            arity(name, arguments, 2, span)?;
-            let generator = as_usize(&arguments[0], span)?;
-            let (context, id) = as_kgb_element(&arguments[1], span)?;
-            check_generator(context, generator, span)?;
-            if context.graph.element(id).is_none() {
-                return Err(runtime(span, "Inexistent KGB element"));
+        // The KGB wrappers bounds-check the generator and element before
+        // their no_value gates; the (int,Block,int) block wrappers run the
+        // generator gate first, then the block-element gate
+        // (atlas-types.w:4896-4906, 4924-4934, 4944-4954, 4970-4980).
+        "cross" | "Cayley" | "status" | "inverse_Cayley" => {
+            if arguments.len() == 3 {
+                let block = as_block(&arguments[1], span)?;
+                block_generator_check(block, &arguments[0], span)?;
+                block_element_index(block, &arguments[2], span)?;
+            } else {
+                arity(name, arguments, 2, span)?;
+                let generator = as_usize(&arguments[0], span)?;
+                let (context, id) = as_kgb_element(&arguments[1], span)?;
+                check_generator(context, generator, span)?;
+                if context.graph.element(id).is_none() {
+                    return Err(runtime(span, "Inexistent KGB element"));
+                }
             }
+        }
+        // Fokko_block_wrapper's is_dual gate precedes its no_value check
+        // (atlas-types.w:4790-4794).
+        "block" => {
+            arity(name, arguments, 2, span)?;
+            let rf = as_real_form(&arguments[0], span)?;
+            let df = as_real_form(&arguments[1], span)?;
+            check_dual_pair(rf, df, span)?;
+        }
+        // block_element_wrapper bounds-checks before its no_value gate
+        // (atlas-types.w:4830-4836).
+        "element" => {
+            arity(name, arguments, 2, span)?;
+            let block = as_block(&arguments[0], span)?;
+            block_element_index(block, &arguments[1], span)?;
+        }
+        // block_index_wrapper's three gates precede its no_value gate
+        // (atlas-types.w:4861-4872).
+        "index" => {
+            arity(name, arguments, 3, span)?;
+            let block = as_block(&arguments[0], span)?;
+            let (x_context, x) = as_kgb_element(&arguments[1], span)?;
+            let (y_context, y) = as_kgb_element(&arguments[2], span)?;
+            if x_context.parent.inner_class != block.rf.parent.inner_class {
+                return Err(runtime(span, "Real form not in inner class of block"));
+            }
+            if y_context.parent.inner_class != block.dual_rf.parent.inner_class {
+                return Err(runtime(span, "Dual real form not in inner class of block"));
+            }
+            block_fiber_check(block, x, y, span)?;
         }
         // KGB_outer_twist_wrapper runs test_compatible BEFORE its no_value
         // check (atlas-types.w:4634), so the compatibility diagnostics fire
@@ -3677,9 +3882,10 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 )),
             }
         }
-        // dual_datum_wrapper (atlas-types.w:1713-1717) and
-        // dual_inner_class_wrapper (atlas-types.w:3254-3258): datum duality,
-        // switching the coroot preference (RootSystem DualTag).
+        // dual_datum_wrapper (atlas-types.w:1713-1717),
+        // dual_inner_class_wrapper (atlas-types.w:3254-3258), and
+        // dual_block_wrapper (atlas-types.w:4882-4886): datum/inner-class
+        // duality, or the block rebuilt on the swapped forms.
         "dual" => {
             arity(name, arguments, 1, span)?;
             match &arguments[0] {
@@ -3691,11 +3897,28 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                     let dual = build_dual_inner_class(context, span)?;
                     Ok(Value::Domain(DomainValue::InnerClass(dual)))
                 }
+                Value::Domain(DomainValue::Block(block)) => {
+                    // dual_block_wrapper: Block_value(dual_rf, rf) — a fresh
+                    // fibred product on the swapped contexts.
+                    let dual = build_block(&block.dual_rf, &block.rf, span)?;
+                    Ok(Value::Domain(DomainValue::Block(dual)))
+                }
                 other => Err(type_error(
                     span,
-                    format!("expected a RootDatum or InnerClass, found {other}"),
+                    format!("expected a RootDatum, InnerClass, or Block, found {other}"),
                 )),
             }
+        }
+        // Fokko_block_wrapper (atlas-types.w:4786-4796): the is_dual gate,
+        // then the fibred product of the two forms' KGB sets.
+        "block" => {
+            arity(name, arguments, 2, span)?;
+            let rf = as_real_form(&arguments[0], span)?;
+            let df = as_real_form(&arguments[1], span)?;
+            check_dual_pair(rf, df, span)?;
+            Ok(Value::Domain(DomainValue::Block(build_block(
+                rf, df, span,
+            )?)))
         }
         "dual_real_form" => {
             arity(name, arguments, 2, span)?;
@@ -4147,7 +4370,54 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 id,
             )))
         }
+        // block_element_wrapper (atlas-types.w:4826-4845): the pair of KGB
+        // elements identifying the block element, the y component read in
+        // the dual real form's own KGB numbering.
+        "element" => {
+            arity(name, arguments, 2, span)?;
+            let block = as_block(&arguments[0], span)?;
+            let index = block_element_index(block, &arguments[1], span)?;
+            let x = block.graph.x(index).expect("an in-range block element");
+            let y = block.graph.y(index).expect("an in-range block element");
+            Ok(Value::Tuple(vec![
+                Value::Domain(DomainValue::KgbElement(Arc::clone(&block.rf), x)),
+                Value::Domain(DomainValue::KgbElement(Arc::clone(&block.dual_rf), y)),
+            ]))
+        }
+        // block_index_wrapper (atlas-types.w:4857-4876): the inverse
+        // lookup, gated on the inner classes and the involution fibers; the
+        // element numbers read in the BLOCK's KGB sets, like upstream's
+        // `b->rf->kgb()` (only the inner classes are gated, not the forms).
+        "index" => {
+            arity(name, arguments, 3, span)?;
+            let block = as_block(&arguments[0], span)?;
+            let (x_context, x) = as_kgb_element(&arguments[1], span)?;
+            let (y_context, y) = as_kgb_element(&arguments[2], span)?;
+            if x_context.parent.inner_class != block.rf.parent.inner_class {
+                return Err(runtime(span, "Real form not in inner class of block"));
+            }
+            if y_context.parent.inner_class != block.dual_rf.parent.inner_class {
+                return Err(runtime(span, "Dual real form not in inner class of block"));
+            }
+            block_fiber_check(block, x, y, span)?;
+            let z = block
+                .graph
+                .element(x, y)
+                .map_err(|error| runtime(span, error.to_string()))?;
+            Ok(Value::Integer(BigInt::from(z)))
+        }
         "cross" => {
+            if arguments.len() == 3 {
+                // block_cross_wrapper (atlas-types.w:4920-4937).
+                let block = as_block(&arguments[1], span)?;
+                let generator = block_generator_check(block, &arguments[0], span)?;
+                let index = block_element_index(block, &arguments[2], span)?;
+                let target = block
+                    .graph
+                    .cross(index, generator)
+                    .expect("an in-range block element and generator");
+                return Ok(Value::Integer(BigInt::from(target)));
+            }
             arity(name, arguments, 2, span)?;
             let generator = as_usize(&arguments[0], span)?;
             let (context, id) = as_kgb_element(&arguments[1], span)?;
@@ -4162,6 +4432,21 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             )))
         }
         "Cayley" => {
+            if arguments.len() == 3 {
+                // block_Cayley_wrapper (atlas-types.w:4939-4963): an
+                // undefined Cayley returns the INPUT index as the signal.
+                let block = as_block(&arguments[1], span)?;
+                let generator = block_generator_check(block, &arguments[0], span)?;
+                let index = block_element_index(block, &arguments[2], span)?;
+                let (first, _) = block
+                    .graph
+                    .cayley(index, generator)
+                    .expect("an in-range block element and generator");
+                return Ok(match first {
+                    Some(target) => Value::Integer(BigInt::from(target)),
+                    None => arguments[2].clone(),
+                });
+            }
             arity(name, arguments, 2, span)?;
             let generator = as_usize(&arguments[0], span)?;
             let (context, id) = as_kgb_element(&arguments[1], span)?;
@@ -4172,7 +4457,35 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 target,
             )))
         }
+        // block_inverse_Cayley_wrapper (atlas-types.w:4965-4989): like
+        // block_Cayley_wrapper, undefined returns the input index.
+        "inverse_Cayley" => {
+            arity(name, arguments, 3, span)?;
+            let block = as_block(&arguments[1], span)?;
+            let generator = block_generator_check(block, &arguments[0], span)?;
+            let index = block_element_index(block, &arguments[2], span)?;
+            let (first, _) = block
+                .graph
+                .inverse_cayley(index, generator)
+                .expect("an in-range block element and generator");
+            Ok(match first {
+                Some(target) => Value::Integer(BigInt::from(target)),
+                None => arguments[2].clone(),
+            })
+        }
         "status" => {
+            if arguments.len() == 3 {
+                // block_status_wrapper (atlas-types.w:4892-4914): the
+                // renumbered DescentStatus of the block element.
+                let block = as_block(&arguments[1], span)?;
+                let generator = block_generator_check(block, &arguments[0], span)?;
+                let index = block_element_index(block, &arguments[2], span)?;
+                let code = block
+                    .graph
+                    .status_code(index, generator)
+                    .expect("an in-range block element and generator");
+                return Ok(Value::Integer(BigInt::from(code)));
+            }
             arity(name, arguments, 2, span)?;
             let generator = as_usize(&arguments[0], span)?;
             let (context, id) = as_kgb_element(&arguments[1], span)?;
@@ -4262,8 +4575,9 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             torus_bits_value(context, id, span)
         }
         // decompose_KGB_wrapper (atlas-types.w:4429): the owning real form
-        // and the element number, wrapped as a pair. from_split_wrapper
-        // (atlas-types.w:5127-5134) unwraps the (e, f) pair instead.
+        // and the element number, wrapped as a pair. decompose_block_wrapper
+        // (atlas-types.w:4809-4818) unwraps the block's two forms instead,
+        // and from_split_wrapper (atlas-types.w:5127-5134) the (e, f) pair.
         "%" => {
             arity(name, arguments, 1, span)?;
             match &arguments[0] {
@@ -4271,13 +4585,17 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                     Value::Domain(DomainValue::RealForm(Arc::clone(context))),
                     Value::Integer(BigInt::from(id.index())),
                 ])),
+                Value::Domain(DomainValue::Block(block)) => Ok(Value::Tuple(vec![
+                    Value::Domain(DomainValue::RealForm(Arc::clone(&block.rf))),
+                    Value::Domain(DomainValue::RealForm(Arc::clone(&block.dual_rf))),
+                ])),
                 Value::Domain(DomainValue::Split(value)) => Ok(Value::Tuple(vec![
                     Value::Integer(BigInt::from(value.e())),
                     Value::Integer(BigInt::from(value.f())),
                 ])),
                 other => Err(type_error(
                     span,
-                    format!("expected a KGBElt, found {other}"),
+                    format!("expected a KGBElt or Block, found {other}"),
                 )),
             }
         }
@@ -4426,6 +4744,7 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
         // W_elt_gen_prod_wrapper (atlas-types.w:2456-2465): right
         // multiplication by one simple generator; check_Weyl_gen echoes
         // the signed index on rejection (atlas-types.w:2447-2454).
+        // size_of_block_wrapper (atlas-types.w:4820-4824): the block size.
         "#" => match arguments {
             [Value::Domain(DomainValue::WeylElement(value)), Value::Integer(generator)] => {
                 let rank = value.context.handle.datum.semisimple_rank();
@@ -4445,6 +4764,9 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                     .right_multiply_simple(&value.context.system, generator)
                     .map_err(|error| runtime(span, error.to_string()))?;
                 weyl_elt_value(Arc::clone(&value.context), product, span)
+            }
+            [Value::Domain(DomainValue::Block(block))] => {
+                Ok(Value::Integer(BigInt::from(block.graph.size())))
             }
             _ => Err(Diagnostic::new(
                 ErrorKind::Name,
