@@ -1,0 +1,14 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "parse/exact_numerics",
+  "status": "verified_hpc_reference",
+  "events": [
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 1234567890123456789012345678901234567890
+      }
+    }
+  ]
+}

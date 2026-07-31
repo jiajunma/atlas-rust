@@ -1,8 +1,17 @@
 {
   "fixture": "commands/assignment_errors",
   "oracle": "atlas",
-  "stage": "command-stream",
-  "reference_status": "pending_hpc_reference",
-  "rust_status": "implemented_pending_hpc",
-  "notes": "Checks failed assignments preserve the old binding and undefined assignment targets are rejected."
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3503334",
+  "source_archive_sha256": "bd8106a57a116cf9cfc195d763369ac38c010410ee47ce575c0e5bd2cdb05611",
+  "fixture_sha256": "d45093ce27c4f0f12628ffb96f3a1e075d9084e1689fd16711b5ab80c71a038d",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "ad979939ba892bbe44a9bab1bd0c260f98b239970caf2b264884e352cdf5dd16",
+  "oracle_stderr_sha256": "bf744a9263b8ff5556d539ded000a2dea7973e2dc30cf833f3ec7a971432894e",
+  "capture_artifacts_sha256": "2a19c54b398df5a26e51ca02a25f9ea807dd8205c0a00db78243502d005e98e0",
+  "rust_status": "not_implemented",
+  "notes": "Checks failed assignments preserve the old binding and undefined assignment targets are rejected. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract."
 }

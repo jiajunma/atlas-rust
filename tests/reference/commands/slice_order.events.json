@@ -1,10 +1,25 @@
 {
-  "schema": "atlas-session-events-v0",
+  "schema": "atlas-eval-events-v0",
   "fixture": "commands/slice_order",
-  "status": "pending_hpc_reference",
+  "status": "verified_hpc_reference",
   "events": [
-    {"kind":"Output","text":"Variable i: int\n"},
-    {"kind":"Value","type":"list","values":[]},
-    {"kind":"Value","type":"integer","value":2034}
+    {
+      "kind": "Output",
+      "text": "Variable i: int\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "list",
+        "display": "[]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 2034
+      }
+    }
   ]
 }

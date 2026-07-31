@@ -1,35 +1,31 @@
 {
   "schema": "atlas-eval-events-v0",
-  "fixture": "commands/assignment_errors",
+  "fixture": "commands/ordered_events",
   "status": "verified_hpc_reference",
   "events": [
-    {
-      "kind": "Output",
-      "text": "Variable x: int\n"
-    },
     {
       "kind": "Value",
       "value": {
         "type": "integer",
-        "value": 10
+        "value": 3
       }
     },
     {
       "kind": "Value",
       "value": {
         "type": "integer",
-        "value": 10
+        "value": 12
       }
     },
     {
       "kind": "Diagnostic",
-      "category": "type",
-      "message": "found string while int was needed."
+      "category": "runtime",
+      "message": "Inverse of zero"
     },
     {
       "kind": "Diagnostic",
       "category": "name",
-      "message": "Undefined identifier 'missing' in assignment missing:=2"
+      "message": "Undefined identifier 'missing'"
     }
   ]
 }

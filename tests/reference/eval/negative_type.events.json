@@ -1,12 +1,12 @@
 {
   "schema": "atlas-eval-events-v0",
-  "fixture": "commands/let_error_order",
+  "fixture": "eval/negative_type",
   "status": "verified_hpc_reference",
   "events": [
     {
       "kind": "Diagnostic",
-      "category": "name",
-      "message": "Undefined identifier 'missing'"
+      "category": "type",
+      "message": "Failed to match '+' with argument type (bool,int)"
     }
   ]
 }

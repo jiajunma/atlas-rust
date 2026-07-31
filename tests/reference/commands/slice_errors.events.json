@@ -1,19 +1,79 @@
 {
-  "schema": "atlas-session-events-v0",
+  "schema": "atlas-eval-events-v0",
   "fixture": "commands/slice_errors",
-  "status": "pending_hpc_reference",
+  "status": "verified_hpc_reference",
   "events": [
-    {"kind":"Diagnostic","category":"runtime"},
-    {"kind":"Value","type":"integer","value":1},
-    {"kind":"Diagnostic","category":"runtime"},
-    {"kind":"Value","type":"integer","value":2},
-    {"kind":"Diagnostic","category":"runtime"},
-    {"kind":"Value","type":"integer","value":3},
-    {"kind":"Diagnostic","category":"type"},
-    {"kind":"Value","type":"integer","value":4},
-    {"kind":"Diagnostic","category":"type"},
-    {"kind":"Value","type":"integer","value":5},
-    {"kind":"Diagnostic","category":"type"},
-    {"kind":"Value","type":"integer","value":6}
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 1
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 2
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 3
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 4
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 5
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 6
+      }
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "lower bound -1 out of range (should be >=0) in slice [1,2][-1:1]"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "upper bound 3 out of range (should be <=2) in slice [1,2][0:3]"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "both bounds -1:3 out of range (should be >=0 respectively <=2) in slice [1,2][-1:3]"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "Cannot slice value of type (int,int)"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "found bool while int was needed."
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "found bool while int was needed."
+    }
   ]
 }

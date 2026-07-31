@@ -1,14 +1,48 @@
 {
-  "schema": "atlas-session-events-v0",
+  "schema": "atlas-eval-events-v0",
   "fixture": "commands/container_syntax_errors",
-  "status": "pending_hpc_reference",
+  "status": "verified_hpc_reference",
   "events": [
-    {"kind":"Diagnostic","category":"syntax"},
-    {"kind":"Value","type":"integer","value":1},
-    {"kind":"Diagnostic","category":"syntax"},
-    {"kind":"Value","type":"integer","value":2},
-    {"kind":"Diagnostic","category":"syntax"},
-    {"kind":"Value","type":"integer","value":3},
-    {"kind":"Diagnostic","category":"syntax"}
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 1
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 2
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 3
+      }
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "syntax",
+      "message": "syntax error, unexpected ']'"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "syntax",
+      "message": "syntax error, unexpected INT, expecting ']'"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "syntax",
+      "message": "syntax error, unexpected ']'"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "syntax",
+      "message": "syntax error, unexpected QUIT, expecting ']'"
+    }
   ]
 }

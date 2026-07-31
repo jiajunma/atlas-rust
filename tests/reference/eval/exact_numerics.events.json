@@ -1,18 +1,89 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "eval/exact_numerics",
-  "status": "pending_hpc_reference",
+  "status": "verified_hpc_reference",
   "events": [
-    {"kind":"Value","value":{"type":"integer","value":"1234567890123456789012345678901234567890"}},
-    {"kind":"Value","value":{"type":"integer","value":"-1234567890123456789012345678901234567890"}},
-    {"kind":"Value","value":{"type":"rational","numerator":"-1","denominator":"2"}},
-    {"kind":"Value","value":{"type":"integer","value":"1000000000000000000000000000000000000000000000000000000000000"}},
-    {"kind":"Value","value":{"type":"integer","value":"1"}},
-    {"kind":"Value","value":{"type":"rational","numerator":"1","denominator":"3"}},
-    {"kind":"Value","value":{"type":"rational","numerator":"1","denominator":"1"}},
-    {"kind":"Value","value":{"type":"boolean","value":true}},
-    {"kind":"Value","value":{"type":"boolean","value":true}},
-    {"kind":"Value","value":{"type":"rational","numerator":"5","denominator":"6"}},
-    {"kind":"Value","value":{"type":"rational","numerator":"2","denominator":"1"}}
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 1234567890123456789012345678901234567890
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": -1234567890123456789012345678901234567890
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "rational",
+        "numerator": -1,
+        "denominator": 2
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 1000000000000000000000000000000000000000000000000000000000000
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 1
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "rational",
+        "numerator": 1,
+        "denominator": 3
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "rational",
+        "numerator": 1,
+        "denominator": 1
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "boolean",
+        "value": true
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "boolean",
+        "value": true
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "rational",
+        "numerator": 5,
+        "denominator": 6
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "rational",
+        "numerator": 2,
+        "denominator": 1
+      }
+    }
   ]
 }

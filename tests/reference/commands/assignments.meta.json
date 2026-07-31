@@ -1,8 +1,17 @@
 {
   "fixture": "commands/assignments",
   "oracle": "atlas",
-  "stage": "command-stream",
-  "reference_status": "pending_hpc_reference",
-  "rust_status": "implemented_pending_hpc",
-  "notes": "Checks global definition output, persistent lookup, expression assignment, and post-assignment reads."
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3503334",
+  "source_archive_sha256": "bd8106a57a116cf9cfc195d763369ac38c010410ee47ce575c0e5bd2cdb05611",
+  "fixture_sha256": "97bf7000d6e36b4074eef21d4f62b0e1d4cc88c3e69dbd21995d979f9859c800",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "b8d2edc8a8ddb2165974fdba65f375f916b5a824741b4e6c57f8358f72e9e079",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "1211663290712376d33db9f5674af56c731e23ea285a60d18c8700df5e742293",
+  "rust_status": "not_implemented",
+  "notes": "Checks global definition output, persistent lookup, expression assignment, and post-assignment reads. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract."
 }

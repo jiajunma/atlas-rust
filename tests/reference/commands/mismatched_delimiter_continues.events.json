@@ -1,0 +1,19 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "commands/mismatched_delimiter_continues",
+  "status": "verified_hpc_reference",
+  "events": [
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 2
+      }
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "syntax",
+      "message": "syntax error, unexpected ']', expecting ','"
+    }
+  ]
+}

@@ -1,8 +1,17 @@
 {
   "fixture": "commands/subscription_errors",
   "oracle": "atlas",
-  "stage": "command-stream",
-  "reference_status": "pending_hpc_reference",
-  "rust_status": "implemented_pending_hpc",
-  "notes": "Checks negative and upper-bound indices, empty rows, non-row and non-integer subscriptions, and command recovery."
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3503334",
+  "source_archive_sha256": "bd8106a57a116cf9cfc195d763369ac38c010410ee47ce575c0e5bd2cdb05611",
+  "fixture_sha256": "0e651a399106f4f1bb1ffa83a240a5e4d8848d74fd726ddfef6cb0a6cd03432c",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "26f0ff54f5e3686b5c396fbcd999bb911cf47f6d2068c19a104401f2470b1e59",
+  "oracle_stderr_sha256": "47b757792c6a129b4c4c1a1eaca4047761586ba9616f5c1290da2559812ea949",
+  "capture_artifacts_sha256": "a65ddfe211ccdd2c19abc45650b21f5d2af3cdbe6d574f5725943a57c559c38c",
+  "rust_status": "not_implemented",
+  "notes": "Checks negative and upper-bound indices, empty rows, non-row and non-integer subscriptions, and command recovery. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract."
 }

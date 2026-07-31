@@ -1,17 +1,62 @@
 {
-  "schema": "atlas-session-events-v0",
+  "schema": "atlas-eval-events-v0",
   "fixture": "commands/let_errors",
-  "status": "pending_hpc_reference",
+  "status": "verified_hpc_reference",
   "events": [
-    {"kind":"Diagnostic","category":"name"},
-    {"kind":"Diagnostic","category":"name"},
-    {"kind":"Diagnostic","category":"name"},
-    {"kind":"Diagnostic","category":"type"},
-    {"kind":"Output","text":"Variable x: int\n"},
-    {"kind":"Value","type":"integer","value":3},
-    {"kind":"Value","type":"integer","value":10},
-    {"kind":"Diagnostic","category":"runtime"},
-    {"kind":"Diagnostic","category":"name"},
-    {"kind":"Value","type":"integer","value":10}
+    {
+      "kind": "Output",
+      "text": "Variable x: int\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 3
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 10
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 10
+      }
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "name",
+      "message": "Undefined identifier 'x'"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "name",
+      "message": "Multiple binding of 'x' in same scope"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "name",
+      "message": "Undefined identifier 'x'"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "found string while int was needed."
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Inverse of zero"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "name",
+      "message": "Undefined identifier 'y'"
+    }
   ]
 }

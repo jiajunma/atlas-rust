@@ -1,8 +1,17 @@
 {
   "fixture": "commands/assignment_order",
   "oracle": "atlas",
-  "stage": "command-stream",
-  "reference_status": "pending_hpc_reference",
-  "rust_status": "implemented_pending_hpc",
-  "notes": "Checks right-associated assignment and Atlas evaluation order when a nested RHS side effect precedes an outer runtime failure."
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3503334",
+  "source_archive_sha256": "bd8106a57a116cf9cfc195d763369ac38c010410ee47ce575c0e5bd2cdb05611",
+  "fixture_sha256": "14e19865108c3e82b34d0f92e36a2ed52aef60f628520f15d8be143dc56f9eae",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "82504942320054a8092342a41c1ea6097b143e23142f9e2b77a7aeb51baea0fb",
+  "oracle_stderr_sha256": "db37c6a9191dd2ca4023e139acd033b31c110f012cd973b77262e4d8751c9801",
+  "capture_artifacts_sha256": "f64fc6f3bc36d9adfacb377c99991dcd35135572b687235f73734e375270626f",
+  "rust_status": "not_implemented",
+  "notes": "Checks right-associated assignment and Atlas evaluation order when a nested RHS side effect precedes an outer runtime failure. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract."
 }

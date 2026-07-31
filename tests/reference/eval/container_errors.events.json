@@ -1,11 +1,27 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "eval/container_errors",
-  "status": "pending_hpc_reference",
+  "status": "verified_hpc_reference",
   "events": [
-    {"kind":"Diagnostic","category":"type"},
-    {"kind":"Diagnostic","category":"type"},
-    {"kind":"Diagnostic","category":"type"},
-    {"kind":"Diagnostic","category":"runtime"}
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "No common type found between components of list expression: { [int], [string] }"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "No common type found between components of list expression: { (int,int), (bool,string) }"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "No common type found between components of list expression: { int, string }"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "DivMod by zero"
+    }
   ]
 }

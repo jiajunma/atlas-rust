@@ -1,15 +1,63 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "eval/slices",
-  "status": "pending_hpc_reference",
+  "status": "verified_hpc_reference",
   "events": [
-    {"kind":"Value","type":"list","values":[20,30]},
-    {"kind":"Value","type":"list","values":[10,20]},
-    {"kind":"Value","type":"list","values":[30,40]},
-    {"kind":"Value","type":"list","values":[10,20,30,40]},
-    {"kind":"Value","type":"list","values":[]},
-    {"kind":"Value","type":"list","values":[]},
-    {"kind":"Value","type":"list","values":[]},
-    {"kind":"Value","type":"list","values":[]}
+    {
+      "kind": "Value",
+      "value": {
+        "type": "list",
+        "display": "[20,30]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "list",
+        "display": "[10,20]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "list",
+        "display": "[30,40]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "list",
+        "display": "[10,20,30,40]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "list",
+        "display": "[]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "list",
+        "display": "[]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "list",
+        "display": "[]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "list",
+        "display": "[]"
+      }
+    }
   ]
 }

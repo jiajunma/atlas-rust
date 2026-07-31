@@ -1,8 +1,17 @@
 {
   "fixture": "eval/container_errors",
   "oracle": "atlas",
-  "stage": "expression-evaluation",
-  "reference_status": "pending_hpc_reference",
-  "rust_status": "implemented_pending_hpc",
-  "notes": "Checks homogeneous list validation and divmod-by-zero recovery."
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3503334",
+  "source_archive_sha256": "bd8106a57a116cf9cfc195d763369ac38c010410ee47ce575c0e5bd2cdb05611",
+  "fixture_sha256": "1857c4215108e18fda0587332f08a959e026fc30585c0d0074c6f7ddc2924340",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
+  "oracle_stderr_sha256": "73f764b185ce7c5445779a4009d33b836c78189eb2c64e23ebde3199f22039e1",
+  "capture_artifacts_sha256": "a944fcaf26ac36df1394868af0be1b710454ea45f1e5f4a021d396d1e84370f6",
+  "rust_status": "not_implemented",
+  "notes": "Checks homogeneous list validation and divmod-by-zero recovery. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract."
 }

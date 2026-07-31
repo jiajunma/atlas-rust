@@ -1,0 +1,12 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "parse/negative_trailing_token",
+  "status": "verified_hpc_reference",
+  "events": [
+    {
+      "kind": "Diagnostic",
+      "category": "syntax",
+      "message": "syntax error, unexpected INT, expecting '\\n'"
+    }
+  ]
+}

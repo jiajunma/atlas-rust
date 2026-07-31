@@ -1,0 +1,19 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "negative/unterminated_string",
+  "status": "verified_hpc_reference",
+  "events": [
+    {
+      "kind": "Value",
+      "value": {
+        "type": "string",
+        "value": "unterminated"
+      }
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "lexical",
+      "message": "Closing string denotation."
+    }
+  ]
+}

@@ -1,1 +1,17 @@
-{"fixture":"parse/negative_trailing_token","oracle":"atlas","stage":"parser","expected_diagnostic":"syntax","reference_status":"pending_hpc_reference","rust_status":"pending"}
+{
+  "fixture": "parse/negative_trailing_token",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3503334",
+  "source_archive_sha256": "bd8106a57a116cf9cfc195d763369ac38c010410ee47ce575c0e5bd2cdb05611",
+  "fixture_sha256": "f251ddc12234e0da8d3b778bd0f7463fb477f16f47757f5617dc8b4ff4d4f14a",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
+  "oracle_stderr_sha256": "9eff6db777c9b00b9da4679910d5215ecfb41f09d137f516837df5617fbcf896",
+  "capture_artifacts_sha256": "a313dc38ae8697113bbe34b3c01612a521e23be46b3a96e2a70bff307e511f2e",
+  "rust_status": "not_implemented",
+  "notes": "Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract."
+}

@@ -1,8 +1,17 @@
 {
   "fixture": "commands/container_assignments",
   "oracle": "atlas",
-  "stage": "command-stream",
-  "reference_status": "pending_hpc_reference",
-  "rust_status": "implemented_pending_hpc",
-  "notes": "Checks recursive integer-to-rational coercion when assigning nested lists and tuple rows."
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3503334",
+  "source_archive_sha256": "bd8106a57a116cf9cfc195d763369ac38c010410ee47ce575c0e5bd2cdb05611",
+  "fixture_sha256": "b95d39bb2c1c142112ccbd5ec3ec0a315e829db54a2ee27aac19ff6cb6237605",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "c8e2de0dc48503d292c1fccde7fcd0e2d93118a7ebb1fe019baa84b4fb411092",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "3198c44ed9ba1e3fa7e9358e7fd7829a8139c0411eab1cacc6eb3a8da0b40eb9",
+  "rust_status": "not_implemented",
+  "notes": "Checks recursive integer-to-rational coercion when assigning nested lists and tuple rows. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract."
 }

@@ -1,19 +1,79 @@
 {
-  "schema": "atlas-session-events-v0",
+  "schema": "atlas-eval-events-v0",
   "fixture": "commands/subscription_errors",
-  "status": "pending_hpc_reference",
+  "status": "verified_hpc_reference",
   "events": [
-    {"kind":"Diagnostic","category":"runtime"},
-    {"kind":"Value","type":"integer","value":7},
-    {"kind":"Diagnostic","category":"runtime"},
-    {"kind":"Value","type":"integer","value":8},
-    {"kind":"Diagnostic","category":"runtime"},
-    {"kind":"Value","type":"integer","value":9},
-    {"kind":"Diagnostic","category":"type"},
-    {"kind":"Value","type":"integer","value":10},
-    {"kind":"Diagnostic","category":"type"},
-    {"kind":"Value","type":"integer","value":11},
-    {"kind":"Diagnostic","category":"runtime"},
-    {"kind":"Value","type":"integer","value":6}
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 7
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 8
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 9
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 10
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 11
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 6
+      }
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "index -1 out of range (0<= . <2) in subscription [1,2][-1]"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "index 2 out of range (0<= . <2) in subscription [1,2][2]"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "index -1 out of range (0<= . <2) in subscription [1,2]~[-1]"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "Cannot subscript value of type (int,int) with index of type int"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "Cannot subscript value of type [int] with index of type bool"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "index 0 out of range (0<= . <0) in subscription [][0]"
+    }
   ]
 }

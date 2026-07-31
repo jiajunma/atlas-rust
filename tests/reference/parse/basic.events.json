@@ -1,50 +1,48 @@
 {
   "schema": "atlas-eval-events-v0",
-  "fixture": "eval/subscriptions",
+  "fixture": "parse/basic",
   "status": "verified_hpc_reference",
   "events": [
     {
       "kind": "Value",
       "value": {
         "type": "integer",
-        "value": 10
+        "value": 42
       }
     },
     {
       "kind": "Value",
       "value": {
-        "type": "integer",
-        "value": 30
+        "type": "boolean",
+        "value": true
       }
     },
     {
       "kind": "Value",
       "value": {
-        "type": "integer",
-        "value": 30
-      }
-    },
-    {
-      "kind": "Value",
-      "value": {
-        "type": "integer",
-        "value": 10
-      }
-    },
-    {
-      "kind": "Value",
-      "value": {
-        "type": "integer",
-        "value": 3
+        "type": "string",
+        "value": "atlas"
       }
     },
     {
       "kind": "Value",
       "value": {
         "type": "rational",
-        "numerator": 1,
+        "numerator": 7,
         "denominator": 1
       }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "boolean",
+        "value": true
+      }
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "name",
+      "message": "Undefined identifier 'x'"
     }
   ]
 }

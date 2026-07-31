@@ -1,22 +1,87 @@
 {
-  "schema": "atlas-session-events-v0",
+  "schema": "atlas-eval-events-v0",
   "fixture": "commands/subscription_context",
-  "status": "pending_hpc_reference",
+  "status": "verified_hpc_reference",
   "events": [
-    {"kind":"Output","text":"Declaring identifier 'x': int\n"},
-    {"kind":"Diagnostic","category":"runtime"},
-    {"kind":"Value","type":"integer","value":1},
-    {"kind":"Output","text":"Declaring identifier 'y': string\n"},
-    {"kind":"Diagnostic","category":"type"},
-    {"kind":"Value","type":"integer","value":2},
-    {"kind":"Output","text":"Declaring identifier 'z': string\n"},
-    {"kind":"Diagnostic","category":"type"},
-    {"kind":"Value","type":"integer","value":3},
-    {"kind":"Output","text":"Declaring identifier 'w': string\n"},
-    {"kind":"Diagnostic","category":"type"},
-    {"kind":"Value","type":"integer","value":4},
-    {"kind":"Output","text":"Declaring identifier 'u': int\n"},
-    {"kind":"Diagnostic","category":"type"},
-    {"kind":"Value","type":"integer","value":5}
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'x': int\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 1
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'y': string\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 2
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'z': string\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 3
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'w': string\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 4
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'u': int\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 5
+      }
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "index 0 out of range (0<= . <0) in subscription [][0]"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "Failed to match '%' with argument type (*,int)"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "Failed to match '+' with argument type (*,*)"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "Failed to match '+' with argument type *"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "Failed to match '+' with argument type (*,*)"
+    }
   ]
 }

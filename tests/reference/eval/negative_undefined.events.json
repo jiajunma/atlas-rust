@@ -1,6 +1,6 @@
 {
   "schema": "atlas-eval-events-v0",
-  "fixture": "commands/let_error_order",
+  "fixture": "eval/negative_undefined",
   "status": "verified_hpc_reference",
   "events": [
     {

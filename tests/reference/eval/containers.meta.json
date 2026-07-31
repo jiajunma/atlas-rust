@@ -1,8 +1,17 @@
 {
   "fixture": "eval/containers",
   "oracle": "atlas",
-  "stage": "expression-evaluation",
-  "reference_status": "pending_hpc_reference",
-  "rust_status": "implemented_pending_hpc",
-  "notes": "Checks tuple and list displays, empty lists, recursive numeric promotion, and tuple-valued integer divmod."
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3503334",
+  "source_archive_sha256": "bd8106a57a116cf9cfc195d763369ac38c010410ee47ce575c0e5bd2cdb05611",
+  "fixture_sha256": "28625631e2578e21d74689d69994517e8392ff014e878efeec032c0b20c4e260",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "918808f43cbd4d86b8258ede5cf5fe732f35a9640a3bf17567af246cb263c188",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "66c1798ffef0cc3887189008df78fd825f92bccef687a7108293ac0963a72e4c",
+  "rust_status": "not_implemented",
+  "notes": "Checks tuple and list displays, empty lists, recursive numeric promotion, and tuple-valued integer divmod. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract."
 }

@@ -1,8 +1,17 @@
 {
   "fixture": "commands/subscription_context",
   "oracle": "atlas",
-  "stage": "command-stream",
-  "reference_status": "pending_hpc_reference",
-  "rust_status": "implemented_pending_hpc",
-  "notes": "Checks empty-row element type flowing through arithmetic and typed assignment. The upstream a-priori overload rule rejects the unknown operand pair before runtime bounds evaluation; HPC capture remains pending."
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3503334",
+  "source_archive_sha256": "bd8106a57a116cf9cfc195d763369ac38c010410ee47ce575c0e5bd2cdb05611",
+  "fixture_sha256": "27d9275ee55decfe19b916728a7705bdc160ba2803c3ef274ef3513cad92c325",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "6043e5ad87da5d67cefda4b2dddd9006595d3ac7ff076a051f1c9306b60538a7",
+  "oracle_stderr_sha256": "fecb328b27a42c9938b688f1841ac6143f73890b69770118a7e4f00f52f89eef",
+  "capture_artifacts_sha256": "f8f2b06fbd68137747af515d287f6bb57d5749a551e58f5f81fb96dced65cdd8",
+  "rust_status": "not_implemented",
+  "notes": "Checks empty-row element type flowing through arithmetic and typed assignment. The upstream a-priori overload rule rejects the unknown operand pair before runtime bounds evaluation; HPC capture remains pending. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract."
 }

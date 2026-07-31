@@ -1,1 +1,17 @@
-{"fixture":"commands/mismatched_delimiter_continues","oracle":"atlas","stage":"command-stream","expected_events":["syntax-diagnostic","value"],"reference_status":"待在HPC冻结","rust_status":"测试先行"}
+{
+  "fixture": "commands/mismatched_delimiter_continues",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3503334",
+  "source_archive_sha256": "bd8106a57a116cf9cfc195d763369ac38c010410ee47ce575c0e5bd2cdb05611",
+  "fixture_sha256": "d14414d322eaf89191eda96949683b14588ca5a32b3ba7faa54b2d133fb76e3b",
+  "oracle_exit_status": 1,
+  "oracle_stdout_sha256": "7a754d598815e4937545225c07d2c4fbb622a5636500d7537e2a5bcef01c37ff",
+  "oracle_stderr_sha256": "24dc5818f93211bae815166c05df89e983659e63f21a780b379d26bfc74ebe96",
+  "capture_artifacts_sha256": "23bef2ee231a14cd9f4d6979d5311ea7771698d650987ab272aabf466d627896",
+  "rust_status": "not_implemented",
+  "notes": "Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract."
+}

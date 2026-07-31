@@ -1,10 +1,17 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "eval/context",
-  "status": "pending_hpc_reference",
-  "bindings": {"answer": {"type":"integer","value":41}},
+  "status": "verified_hpc_reference",
   "events": [
-    {"kind":"Value","value":{"type":"integer","value":41}},
-    {"kind":"Value","value":{"type":"integer","value":42}}
+    {
+      "kind": "Diagnostic",
+      "category": "name",
+      "message": "Undefined identifier 'answer'"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "name",
+      "message": "Undefined identifier 'answer'"
+    }
   ]
 }
