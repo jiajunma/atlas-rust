@@ -12,7 +12,7 @@
   "oracle_stdout_sha256": "f05f16be0b2eb52671e3532b7b6586fcc4a8a1efcd8683ff4503d5022325387d",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "capture_artifacts_sha256": "304a18ff4f058ad225a8c204b9484fea8ac44ed61a0a977834be746308b8f14a",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:4347-4363",
     "sources/interpreter/atlas-types.w:9112-9123"
@@ -21,5 +21,6 @@
     "dual(rd)/dual(ic) preserve Cartan class order and counts",
     "prefers_coroots/posroots/poscoroots shape on dual data"
   ],
-  "notes": "Strong-real Cartan enumeration probe captured verbatim by HPC job 3502700 against the pinned atlasofliegroups-4d3e9449 oracle. Rust support remains unimplemented; the Cartan numbering adapter must land before these can pass."
+  "notes": "Strong-real Cartan enumeration probe captured verbatim by HPC job 3502700 against the pinned atlasofliegroups-4d3e9449 oracle. Rust support remains unimplemented; the Cartan numbering adapter must land before these can pass.",
+  "differential_job": "3502731"
 }
