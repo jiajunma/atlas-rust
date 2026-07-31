@@ -20,10 +20,14 @@ plus all thirteen probes verified). Differential `3502718` verified fourteen
 contracts: the eval `split_basic{,_rejected}` pair (**the eval family is
 COMPLETE**), the three weak-real probes `b2_descent` /
 `central_coroot_rejected` / `validation_rejected`, and the first nine
-strong-real contracts. The two remaining weak-real probes (`a1_t1_central`,
-`a2_noncanonical`) await the custom-seed real_form gap (agent in flight).
-One coverage suggestion on file: a C2 print_KGB probe (the pieces key fixes
-C2 identically but no fixture pins it).
+strong-real contracts. Differential `3502969` verified the last TWO
+weak-real probes (`a1_t1_central`, `a2_noncanonical`): the custom-seed
+real_form path (`8135b89`) ports the elected square root cocharacter,
+the involution-table extension, the full `minimal_torus_part` descent
+(realredgp.cpp:212-309), and `real_form_value::build`'s default-vs-custom
+branch — **the weak real form family is COMPLETE** (base pair plus all
+five probes), and the C2 print_KGB probe is frozen and verified
+(`3502734`/`3502736`).
 
 Earlier verified stages this line: relations `3502506`; involution
 decomposition `3502550`; base `weak_real_form{,_rejected}` `3502697`; the
