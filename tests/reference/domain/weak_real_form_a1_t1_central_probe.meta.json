@@ -12,7 +12,7 @@
   "oracle_stdout_sha256": "1b8abbe3285acdac7b265097ecf8575062fecf5f66aaf4865fa5e6be99dd8694",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "capture_artifacts_sha256": "8119f98b3fe0e02c799d5d834276a9fef82c0acb6f5d9b216105068538531813",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:3841-3907",
     "sources/structure/innerclass.cpp:1305-1355",
@@ -23,5 +23,6 @@
     "the central factor [0,1]/2 is retained in the synthetic form's base grading while initial torus bits reduce to [0,0]",
     "the supplied strong representative is KGB element #2 with the requested involution and torus factor"
   ],
-  "notes": "A1.T1 central-coordinate behavior captured verbatim by HPC job 3502476 against the pinned Atlas oracle. This freezes projection and minimal-torus behavior when the lattice has a non-semisimple coordinate; Rust support remains unimplemented."
+  "notes": "A1.T1 central-coordinate behavior captured verbatim by HPC job 3502476 against the pinned Atlas oracle. This freezes projection and minimal-torus behavior when the lattice has a non-semisimple coordinate; Rust support remains unimplemented.",
+  "differential_job": "3502969"
 }

@@ -12,7 +12,7 @@
   "oracle_stdout_sha256": "bbfe2e72f3e14745aa536ceeaf7d9a4a6be74390ce784cf3237cf71ef5ac2c67",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "capture_artifacts_sha256": "8f9ea71402affea92eb1e0947de3708b691634685c6534f0cb4b441b33032fe0",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:3841-3907",
     "sources/structure/innerclass.cpp:1305-1355",
@@ -23,5 +23,6 @@
     "the first representative produces KGB element #4 with [1,2]/3 while the second produces KGB element #3 with [2,1]/3",
     "adding an integral lattice vector to the first torus factor normalizes back to [1,2]/3 and yields an equal RealForm"
   ],
-  "notes": "Corrected noncanonical A2 behavior captured verbatim by HPC job 3502479 against the pinned Atlas oracle. Job 3502476 used stale row-oriented matrix literals, failed root preservation, and is intentionally excluded from this reference; Rust support remains unimplemented."
+  "notes": "Corrected noncanonical A2 behavior captured verbatim by HPC job 3502479 against the pinned Atlas oracle. Job 3502476 used stale row-oriented matrix literals, failed root preservation, and is intentionally excluded from this reference; Rust support remains unimplemented.",
+  "differential_job": "3502969"
 }
