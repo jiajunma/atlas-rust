@@ -236,8 +236,10 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/involution_decomposition_twisted_root_datum_type_rejected_probe"),
     # Strong-real surface: the base contract plus the probes whose slices
     # have landed — the Cartan numbering adapter (a63dc32) covers the four
-    # B2/C2 Cartan enumerations and all four rejected diagnostics. The
-    # full-KGB and dual-order probes await their own slices and stay unwired.
+    # B2/C2 Cartan enumerations and all four rejected diagnostics, and the
+    # RootDatum dual-order surface (cba10ec) covers the four dual-order
+    # probes. The full-KGB probe awaits the KGB discovery-order slice and
+    # stays unwired.
     FixturePlan(name="domain/strong_real"),
     FixturePlan(name="domain/strong_real_b2_root_cartans_probe"),
     FixturePlan(name="domain/strong_real_b2_coroot_cartans_probe"),
@@ -247,6 +249,10 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/strong_real_cartan_negative_rejected_probe"),
     FixturePlan(name="domain/strong_real_print_type_rejected_probe"),
     FixturePlan(name="domain/strong_real_square_classes_type_rejected_probe"),
+    FixturePlan(name="domain/strong_real_b2_root_dual_order_probe"),
+    FixturePlan(name="domain/strong_real_b2_coroot_dual_order_probe"),
+    FixturePlan(name="domain/strong_real_c2_root_dual_order_probe"),
+    FixturePlan(name="domain/strong_real_c2_coroot_dual_order_probe"),
     # Early scalar-era fixtures: verified verbatim locally and included so
     # the HPC differential upgrades their reference metadata.
     FixturePlan(name="eval/scalars"),
