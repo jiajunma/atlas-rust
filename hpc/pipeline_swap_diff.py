@@ -48,18 +48,7 @@ class FixturePlan:
 # These overloads are present in the Atlas oracle but are intentionally not
 # registered until their owning Rust domain types and semantics are ported.
 # They are coverage gaps, not fixture failures.
-PENDING_OVERLOADS = (
-    {
-        "feature": "involution",
-        "signature": "(LieType,[int],string) -> mat",
-        "reason": "Rust overload is not implemented",
-    },
-    {
-        "feature": "involution",
-        "signature": "(LieType,mat,string) -> mat",
-        "reason": "Rust overload is not implemented",
-    },
-)
+PENDING_OVERLOADS = ()
 
 
 FIXTURE_PLANS = (
@@ -243,6 +232,11 @@ FIXTURE_PLANS = (
     # (4167249), with the upstream gate order and renumbered descent status.
     FixturePlan(name="domain/block_basic"),
     FixturePlan(name="domain/block_basic_rejected"),
+    # Primitive involution constructors (152f4b8): layout tables per Lie
+    # letter with the 's'/'u' collapse rules, and the based on_basis
+    # transport with the integrality gate.
+    FixturePlan(name="domain/involution_primitive"),
+    FixturePlan(name="domain/involution_primitive_rejected"),
     # Strong-real surface: the base contract plus the probes whose slices
     # have landed — the Cartan numbering adapter (a63dc32) covers the four
     # B2/C2 Cartan enumerations and all four rejected diagnostics, and the

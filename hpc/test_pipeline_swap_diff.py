@@ -98,10 +98,7 @@ class PipelineSwapDiffTest(unittest.TestCase):
     def test_unimplemented_overloads_are_explicit_pending_cases(self) -> None:
         self.assertEqual(
             {(item["feature"], item["signature"]) for item in PENDING_OVERLOADS},
-            {
-                ("involution", "(LieType,[int],string) -> mat"),
-                ("involution", "(LieType,mat,string) -> mat"),
-            },
+            set(),
         )
 
     def test_batch_script_binds_slurm_spool_to_frozen_commit(self) -> None:
