@@ -206,6 +206,11 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/weak_real_form_b2_descent_probe"),
     FixturePlan(name="domain/weak_real_form_central_coroot_rejected_probe"),
     FixturePlan(name="domain/weak_real_form_validation_rejected_probe"),
+    # The custom-seed real_form path (8135b89): elected square root,
+    # involution-table extension, minimal_torus_part descent, and the
+    # default-vs-custom seed branch make both remaining probes verbatim.
+    FixturePlan(name="domain/weak_real_form_a1_t1_central_probe"),
+    FixturePlan(name="domain/weak_real_form_a2_noncanonical_probe"),
     # Root-datum lattice relations: blockwise Smith bases, unit filtering,
     # annihilators modulo d, generator replacement, and quotient bases with
     # the three frozen validation diagnostics.
