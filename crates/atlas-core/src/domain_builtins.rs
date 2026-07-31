@@ -24,10 +24,11 @@ use malachite::{Integer as BigInt, Rational as BigRational};
 
 use atlas_real_group::{
     adapted_relation_basis, annihilator_modulo as relation_annihilator_modulo, build_presentations,
-    central_fiber, classify_involution as domain_classify_involution, dual_cartan_correspondence,
-    dual_inner_class, dual_involution as block_dual_involution, elected_square_root,
-    filter_relation_units as domain_filter_relation_units, inner_class_with_twisted_involution,
-    longest_action, minimal_torus_part, quotient_relation_basis as domain_quotient_relation_basis,
+    central_fiber, checked_inner_class_letters, classify_involution as domain_classify_involution,
+    dual_cartan_correspondence, dual_inner_class, dual_involution as block_dual_involution,
+    elected_square_root, filter_relation_units as domain_filter_relation_units,
+    inner_class_with_twisted_involution, layout_involution, longest_action, minimal_torus_part,
+    on_basis as lattice_on_basis, quotient_relation_basis as domain_quotient_relation_basis,
     replace_relation_generators as domain_replace_relation_generators, AdjointFiberBudget,
     BasedRootDatum, BlockGraph, CartanClass, CartanClassification, CartanClassificationBudget,
     CartanId, Coweight, ExternalFormOrder, InnerClass, InnerClassLayout, IntegerLatticeBudget,
@@ -2282,6 +2283,121 @@ fn checked_involution_matrix(
     Ok(matrix)
 }
 
+/// `checked_permutation` (atlas-types.w:829-846): the `[int]` row must be a
+/// permutation of `0..size`. Entries are read through the upstream unsigned
+/// accessor, so a negative entry wraps to a huge value before the
+/// too-big/repeated diagnostics.
+fn checked_permutation(entries: &[Value], span: SourceSpan) -> Result<Vec<usize>, Diagnostic> {
+    let size = entries.len();
+    let mut seen = vec![false; size];
+    let mut result = Vec::with_capacity(size);
+    for value in entries {
+        let integer = as_integer(value, span)?;
+        let entry: u64 = i64::try_from(&integer)
+            .map(|narrow| narrow as u64)
+            .unwrap_or(u64::MAX);
+        if entry >= size as u64 {
+            return Err(runtime(span, format!("Permutation entry {entry} too big")));
+        }
+        let index = entry as usize;
+        if seen[index] {
+            return Err(runtime(
+                span,
+                format!("Permutation has repeated entry {entry}"),
+            ));
+        }
+        seen[index] = true;
+        result.push(index);
+    }
+    Ok(result)
+}
+
+/// The inner-class string argument of the primitive involution wrappers.
+fn as_inner_class_symbols(value: &Value, span: SourceSpan) -> Result<&str, Diagnostic> {
+    match value {
+        Value::String(symbols) => Ok(symbols),
+        other => Err(type_error(
+            span,
+            format!("expected a string of inner class symbols, found {other}"),
+        )),
+    }
+}
+
+/// `basic_involution_wrapper` (atlas-types.w:860-880): pack
+/// `Layout{type, checked_inner_class_type(symbols), checked_permutation(perm)}`
+/// and return `lietype::involution(lo)` on the simply-connected fundamental
+/// weight basis. The permutation size check precedes the letter and entry
+/// checks, in upstream's gate order.
+fn basic_primitive_involution(
+    lie_type: &LieTypeValue,
+    entries: &[Value],
+    symbols: &str,
+    span: SourceSpan,
+) -> Result<Value, Diagnostic> {
+    let rank = lie_type.total_rank();
+    if entries.len() != rank {
+        return Err(runtime(
+            span,
+            format!(
+                "Permutation size {} does not match rank {rank} of Lie type",
+                entries.len()
+            ),
+        ));
+    }
+    let letters = checked_inner_class_letters(symbols, &lie_type.factors)
+        .map_err(|error| runtime(span, error.to_string()))?;
+    let perm = checked_permutation(entries, span)?;
+    matrix_value(&layout_involution(&lie_type.factors, &letters, &perm), span)
+}
+
+/// `based_involution_wrapper` (atlas-types.w:902-927):
+/// `lietype::involution(type, class).on_basis(basis)` with the identity
+/// Bourbaki permutation; the inexact-division failure (and a singular basis)
+/// is relabeled "Inner class is not compatible with given lattice". The
+/// upstream shape guard reads `n_rows()!=r or n_rows()!=r` — the second
+/// clause was meant for the column count (the message documents a square
+/// matrix), so both dimensions are checked here.
+fn based_primitive_involution(
+    lie_type: &LieTypeValue,
+    basis: &[Vec<i32>],
+    symbols: &str,
+    span: SourceSpan,
+) -> Result<Value, Diagnostic> {
+    let rank = lie_type.total_rank();
+    if basis.len() != rank || basis.iter().any(|row| row.len() != rank) {
+        return Err(runtime(
+            span,
+            format!("Basis should be given by {rank}x{rank} matrix"),
+        ));
+    }
+    let letters = checked_inner_class_letters(symbols, &lie_type.factors)
+        .map_err(|error| runtime(span, error.to_string()))?;
+    let identity: Vec<usize> = (0..rank).collect();
+    let involution = layout_involution(&lie_type.factors, &letters, &identity);
+    let transported = lattice_on_basis(&involution, basis)
+        .ok_or_else(|| runtime(span, "Inner class is not compatible with given lattice"))?;
+    matrix_value(&transported, span)
+}
+
+/// Dispatch the two primitive `involution(LieType,...) -> mat` wrappers on
+/// the second argument's shape: a row is the basic wrapper's permutation, a
+/// matrix is the based wrapper's sublattice basis.
+fn primitive_involution(
+    lie_type: &LieTypeValue,
+    lattice: &Value,
+    symbols: &Value,
+    span: SourceSpan,
+) -> Result<Value, Diagnostic> {
+    let symbols = as_inner_class_symbols(symbols, span)?;
+    match lattice {
+        Value::List(entries) => basic_primitive_involution(lie_type, entries, symbols, span),
+        basis => {
+            let basis = as_matrix_rows(basis, span)?;
+            based_primitive_involution(lie_type, &basis, symbols, span)
+        }
+    }
+}
+
 /// Number a root like Atlas's `RootDatum` presentation: positive roots use
 /// `0..npos`, while the negative of positive slot `p` is represented by the
 /// unsigned value `UINT_MAX-p` in the wrapper diagnostic.
@@ -3199,6 +3315,34 @@ pub(crate) fn validate(
             arity(name, arguments, 2, span)?;
             let handle = as_root_datum(&arguments[0], span)?;
             build_twisted_involution(handle, &arguments[1], span)?;
+        }
+        // basic_involution_wrapper's permutation SIZE check precedes its
+        // no_value gate; the letter and permutation-entry checks follow it
+        // (atlas-types.w:862-868). based_involution_wrapper has no early
+        // gate: the basis shape, the letters, and the lattice compatibility
+        // all fire in a no-value context (atlas-types.w:909-926).
+        "involution" => {
+            arity(name, arguments, 3, span)?;
+            let lie_type = as_lie_type(&arguments[0], span)?;
+            let symbols = as_inner_class_symbols(&arguments[2], span)?;
+            match &arguments[1] {
+                Value::List(entries) => {
+                    let rank = lie_type.total_rank();
+                    if entries.len() != rank {
+                        return Err(runtime(
+                            span,
+                            format!(
+                                "Permutation size {} does not match rank {rank} of Lie type",
+                                entries.len()
+                            ),
+                        ));
+                    }
+                }
+                basis => {
+                    let basis = as_matrix_rows(basis, span)?;
+                    based_primitive_involution(&lie_type, &basis, symbols, span)?;
+                }
+            }
         }
         // The KGB wrappers bounds-check the generator and element before
         // their no_value gates; the (int,Block,int) block wrappers run the
@@ -4508,6 +4652,12 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             Ok(Value::Integer(BigInt::from(length)))
         }
         "involution" => {
+            if arguments.len() == 3 {
+                // basic_involution_wrapper (atlas-types.w:860-880) and
+                // based_involution_wrapper (atlas-types.w:902-927).
+                let lie_type = as_lie_type(&arguments[0], span)?;
+                return primitive_involution(&lie_type, &arguments[1], &arguments[2], span);
+            }
             arity(name, arguments, 1, span)?;
             // Cartan_involution_wrapper (atlas-types.w:4080-4084): the
             // class's distinguished involution matrix.

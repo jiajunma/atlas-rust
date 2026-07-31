@@ -33,6 +33,7 @@ mod layout;
 mod minimal_torus;
 mod mod_two;
 mod presentation;
+mod primitive_involution;
 mod real_form_labels;
 mod real_form_order;
 mod real_form_seed;
@@ -84,6 +85,9 @@ pub use layout::InnerClassLayout;
 pub use minimal_torus::{elected_square_root, minimal_torus_part};
 pub use mod_two::{ModTwoSubspace, ModTwoVector};
 pub use presentation::{build_presentations, RealFormPresentation};
+pub use primitive_involution::{
+    checked_inner_class_letters, layout_involution, on_basis, InnerClassLetterError,
+};
 pub use real_form_labels::RealFormLabels;
 pub use real_form_order::ExternalFormOrder;
 pub use real_form_seed::RealFormSeed;

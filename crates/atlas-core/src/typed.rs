@@ -4628,6 +4628,32 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::Mat),
                 0,
             ),
+            // basic_involution_wrapper (atlas-types.w:860-880, installed at
+            // atlas-types.w:939-940): the permutation size check precedes
+            // its no-value gate, so validation checks the size only.
+            domain_builtin_validate(
+                "involution",
+                Type::tuple(vec![
+                    primitive_type(Prim::LieType),
+                    Type::row(int_type()),
+                    string_type(),
+                ]),
+                primitive_type(Prim::Mat),
+                0,
+            ),
+            // based_involution_wrapper (atlas-types.w:902-927, installed at
+            // atlas-types.w:941-943): every diagnostic fires before its
+            // result-only no-value gate, so validation runs the full check.
+            domain_builtin_validate(
+                "involution",
+                Type::tuple(vec![
+                    primitive_type(Prim::LieType),
+                    primitive_type(Prim::Mat),
+                    string_type(),
+                ]),
+                primitive_type(Prim::Mat),
+                0,
+            ),
             domain_builtin_skip(
                 "real_forms",
                 primitive_type(Prim::CartanClass),
@@ -6667,6 +6693,118 @@ mod tests {
         )
         .expect("a valid discarded constructor does not assemble its result pair");
         assert_eq!(value, Value::Integer(BigInt::from(7)));
+    }
+
+    #[test]
+    fn involution_primitive_surface_matches_the_frozen_contract() {
+        // The accepted fixture's eleven anchors (domain/involution_primitive).
+        let cases = [
+            ("involution(Lie_type(\"A1\"),[0],\"c\")", "\n| 1 |\n"),
+            ("involution(Lie_type(\"A1\"),[0],\"s\")", "\n| 1 |\n"),
+            (
+                "involution(Lie_type(\"A2\"),[0,1],\"c\")",
+                "\n| 1, 0 |\n| 0, 1 |\n",
+            ),
+            (
+                "involution(Lie_type(\"A2\"),[1,0],\"s\")",
+                "\n| 0, 1 |\n| 1, 0 |\n",
+            ),
+            (
+                "involution(Lie_type(\"A1.A1\"),[0,1],\"C\")",
+                "\n| 0, 1 |\n| 1, 0 |\n",
+            ),
+            (
+                "involution(Lie_type(\"B2\"),[0,1],\"s\")",
+                "\n| 1, 0 |\n| 0, 1 |\n",
+            ),
+            (
+                "involution(Lie_type(\"A2\"),[0,1],\"s\")",
+                "\n| 0, 1 |\n| 1, 0 |\n",
+            ),
+            (
+                "involution(Lie_type(\"A2\"),[0,1],\"u\")",
+                "\n| 0, 1 |\n| 1, 0 |\n",
+            ),
+            ("involution(Lie_type(\"A1\"),[[2]],\"c\")", "\n| 1 |\n"),
+            ("involution(Lie_type(\"A1\"),[[1]],\"s\")", "\n| 1 |\n"),
+            (
+                "involution(Lie_type(\"A2\"),[[1,1],[0,1]],\"s\")",
+                "\n| 1,  1 |\n| 0, -1 |\n",
+            ),
+        ];
+        for (source, expected) in cases {
+            let (type_, value) =
+                convert_and_run(source).unwrap_or_else(|error| panic!("{source}: {error:?}"));
+            assert_eq!(type_, primitive_type(Prim::Mat), "source: {source}");
+            assert_eq!(value.to_string(), expected, "source: {source}");
+        }
+    }
+
+    #[test]
+    fn involution_primitive_diagnostics_and_no_value_gates_are_exact() {
+        // The rejected fixture's six diagnostics (domain/involution_primitive_rejected).
+        let cases = [
+            (
+                "involution(Lie_type(\"A1\"),[1],\"c\")",
+                "Permutation entry 1 too big",
+            ),
+            (
+                "involution(Lie_type(\"A2\"),[0,1],\"ec\")",
+                "Too many inner class symbols",
+            ),
+            (
+                "involution(Lie_type(\"A2\"),[0],\"c\")",
+                "Permutation size 1 does not match rank 2 of Lie type",
+            ),
+            (
+                "involution(Lie_type(\"A1\"),[0],\"x\")",
+                "Unknown inner class symbol `x'",
+            ),
+            (
+                "involution(Lie_type(\"A1.A2\"),[0,1,2],\"Cs\")",
+                "Complex inner class needs two identical consecutive types",
+            ),
+            (
+                "involution(Lie_type(\"A2\"),[[1,0],[0,2]],\"s\")",
+                "Inner class is not compatible with given lattice",
+            ),
+        ];
+        for (source, expected) in cases {
+            assert_eq!(
+                convert_and_run(source)
+                    .expect_err("fixture line is rejected")
+                    .message,
+                expected,
+                "source: {source}"
+            );
+        }
+
+        // basic_involution_wrapper's size check precedes its no-value gate;
+        // the letter and permutation-entry checks are suppressed with it.
+        let error = convert_and_run("begin involution(Lie_type(\"A2\"),[0],\"c\");7 end")
+            .expect_err("the size check fires in a no-value context");
+        assert_eq!(
+            error.message,
+            "Permutation size 1 does not match rank 2 of Lie type"
+        );
+        let (_, value) = convert_and_run("begin involution(Lie_type(\"A1\"),[1],\"c\");7 end")
+            .expect("the permutation-entry check follows the no-value gate");
+        assert_eq!(value, Value::Integer(BigInt::from(7)));
+        let (_, value) = convert_and_run("begin involution(Lie_type(\"A1\"),[0],\"x\");7 end")
+            .expect("the letter check follows the no-value gate");
+        assert_eq!(value, Value::Integer(BigInt::from(7)));
+
+        // based_involution_wrapper has no early gate: the letters and the
+        // lattice compatibility fire in a no-value context too.
+        let error = convert_and_run("begin involution(Lie_type(\"A1\"),[[1]],\"x\");7 end")
+            .expect_err("the based wrapper checks letters in a no-value context");
+        assert_eq!(error.message, "Unknown inner class symbol `x'");
+        let error = convert_and_run("begin involution(Lie_type(\"A2\"),[[1,0],[0,2]],\"s\");7 end")
+            .expect_err("the based wrapper checks the lattice in a no-value context");
+        assert_eq!(
+            error.message,
+            "Inner class is not compatible with given lattice"
+        );
     }
 
     #[test]
