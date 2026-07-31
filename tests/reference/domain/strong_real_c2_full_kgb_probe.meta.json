@@ -1,0 +1,25 @@
+{
+  "fixture": "domain/strong_real_c2_full_kgb_probe",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3502734",
+  "source_archive_sha256": "0c530bed7fdb66a7d66c0411e0b69cb75c2ce4babfe67f1332072ee4a88a591a",
+  "fixture_sha256": "22280f36f805f45326529628c48e8287f8763ea792b6ffce1ffb2d6dce012baa",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "504962553876b4f532a2901d65c8ceea6aec66fe906582fd5eebde76afb3bf76",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "2c131ebf068f3b6c0e42110900f13330d726c9f3b664b2fa3a79b0321c067280",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:9119",
+    "sources/gkmod/kgb.cpp:489-683"
+  ],
+  "scenarios": [
+    "print_KGB for all three C2 (Sp(4,R)) real forms in coroot preference",
+    "pins the parabolic-pieces involution ordering at C2, isomorphic to B2"
+  ],
+  "notes": "C2 full KGB print captured verbatim by HPC job 3502734 against the pinned atlasofliegroups-4d3e9449 oracle; suggested by the KGB pieces-key slice to pin C2 numbering explicitly."
+}

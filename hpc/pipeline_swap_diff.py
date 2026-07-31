@@ -256,6 +256,7 @@ FIXTURE_PLANS = (
     # The full B2 KGB print: the parabolic-pieces involution key (1e2a3a5)
     # matches the oracle's element numbering exactly.
     FixturePlan(name="domain/strong_real_b2_full_kgb_probe"),
+    FixturePlan(name="domain/strong_real_c2_full_kgb_probe"),
     # Early scalar-era fixtures: verified verbatim locally and included so
     # the HPC differential upgrades their reference metadata.
     FixturePlan(name="eval/scalars"),
