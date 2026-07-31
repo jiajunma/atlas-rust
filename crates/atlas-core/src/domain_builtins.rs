@@ -922,6 +922,63 @@ fn build_quotient_from_handle(
     })
 }
 
+/// The based root datum dual to `handle`'s: transposed Cartan matrix,
+/// simple roots and simple coroots interchanged, and the coroot preference
+/// switched — the upstream `RootSystem(rs,DualTag)` (`prefer_co(not
+/// rs.prefer_co)`, rootdata.cpp:341) behind `root_datum_value::dual`
+/// (atlas-types.w:1147-1155). The stored Lie type dualizes letter-wise
+/// (B<->C per factor, every other factor unchanged), which keeps torus
+/// factors and factor order exactly as constructed; `Lie_type` of the dual
+/// datum computes the same letters from the transposed Cartan matrix.
+fn dual_root_datum(
+    handle: &RootDatumHandle,
+    span: SourceSpan,
+) -> Result<RootDatumHandle, Diagnostic> {
+    let datum = &*handle.datum;
+    let dual_roots: Vec<Weight> = datum
+        .simple_coroots()
+        .iter()
+        .map(|coroot| Weight::new(coroot.as_slice().to_vec()))
+        .collect();
+    let dual_coroots: Vec<Coweight> = datum
+        .simple_roots()
+        .iter()
+        .map(|root| Coweight::new(root.as_slice().to_vec()))
+        .collect();
+    let dual = BasedRootDatum::from_simple_data(
+        datum.lattice_rank(),
+        transpose(datum.cartan_matrix()),
+        dual_roots,
+        dual_coroots,
+    )
+    .map_err(|error| runtime(span, error.to_string()))?;
+    Ok(RootDatumHandle {
+        isogeny: classify_isogeny(&dual),
+        datum: Arc::new(dual),
+        lie_type: dual_lie_type(&handle.lie_type),
+        prefers_coroots: !handle.prefers_coroots,
+    })
+}
+
+/// The Lie type of the dual datum: every B factor becomes the C factor of
+/// the same rank and vice versa; all other factors are self-dual.
+fn dual_lie_type(lie_type: &LieTypeValue) -> LieTypeValue {
+    LieTypeValue {
+        factors: lie_type
+            .factors
+            .iter()
+            .map(|&(letter, rank)| {
+                let dual_letter = match letter {
+                    'B' => 'C',
+                    'C' => 'B',
+                    other => other,
+                };
+                (dual_letter, rank)
+            })
+            .collect(),
+    }
+}
+
 /// Build a root datum from explicit simple-root and simple-coroot matrices.
 /// Matrix columns are the basis vectors, matching Atlas's `mat` convention.
 fn build_explicit_datum(
@@ -1302,12 +1359,15 @@ fn build_dual_inner_class(
     let inner_class = dual_inner_class(&parent.inner_class, WEYL_BUDGET, ROOT_BUDGET)
         .map_err(|error| runtime(span, error.to_string()))?;
     let datum = inner_class.datum().clone();
-    let lie_type = infer_lie_type(datum.cartan_matrix(), datum.lattice_rank(), span)?;
+    // The dual inner class carries the dual datum (inner_class_value::dual,
+    // atlas-types.w:3152-3156): its coroot preference is switched
+    // (RootSystem DualTag, rootdata.cpp:341) and its Lie type is the
+    // letter-wise dual of the parent's.
     let handle = RootDatumHandle {
         isogeny: classify_isogeny(&datum),
         datum: Arc::new(datum),
-        lie_type,
-        prefers_coroots: parent.root_datum.prefers_coroots,
+        lie_type: dual_lie_type(&parent.root_datum.lie_type),
+        prefers_coroots: !parent.root_datum.prefers_coroots,
     };
     build_inner_class_context(&handle, inner_class, span)
 }
@@ -1536,6 +1596,20 @@ fn matrix_value(rows: &[Vec<i32>], span: SourceSpan) -> Result<Value, Diagnostic
     Matrix::from_columns(row_count, column_count, data)
         .map(Value::Matrix)
         .ok_or_else(|| runtime(span, "matrix dimensions exceed machine range"))
+}
+
+/// A matrix whose columns are the given lattice vectors — the by-columns
+/// `matrix_value` constructor behind the simple_roots/posroots wrappers
+/// (atlas-types.w:1631-1636).
+fn columns_matrix_value(
+    columns: &[Vec<i32>],
+    row_count: usize,
+    span: SourceSpan,
+) -> Result<Value, Diagnostic> {
+    let rows: Vec<Vec<i32>> = (0..row_count)
+        .map(|row| columns.iter().map(|column| column[row]).collect())
+        .collect();
+    matrix_value(&rows, span)
 }
 
 fn datum_preference(name: &str, arguments: &[Value], span: SourceSpan) -> Result<bool, Diagnostic> {
@@ -3329,6 +3403,20 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             let table = RootTable::build(handle, span)?;
             Ok(Value::Integer(BigInt::from(table.roots.len())))
         }
+        // positive_roots_wrapper / positive_coroots_wrapper
+        // (atlas-types.w:1656-1671): the positive (co)root table as a
+        // by-columns matrix, in the oracle's presentation order.
+        "posroots" | "poscoroots" => {
+            arity(name, arguments, 1, span)?;
+            let handle = as_root_datum(&arguments[0], span)?;
+            let table = RootTable::build(handle, span)?;
+            let columns = if name == "poscoroots" {
+                &table.coroots
+            } else {
+                &table.roots
+            };
+            columns_matrix_value(columns, handle.datum.lattice_rank(), span)
+        }
         "rank" => {
             arity(name, arguments, 1, span)?;
             let handle = as_root_datum(&arguments[0], span)?;
@@ -3465,6 +3553,26 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 count => Err(type_error(
                     span,
                     format!("real_form expects 2 or 3 argument(s), found {count}"),
+                )),
+            }
+        }
+        // dual_datum_wrapper (atlas-types.w:1713-1717) and
+        // dual_inner_class_wrapper (atlas-types.w:3254-3258): datum duality,
+        // switching the coroot preference (RootSystem DualTag).
+        "dual" => {
+            arity(name, arguments, 1, span)?;
+            match &arguments[0] {
+                Value::Domain(DomainValue::RootDatum(handle)) => {
+                    let dual = dual_root_datum(handle, span)?;
+                    Ok(Value::Domain(DomainValue::RootDatum(dual)))
+                }
+                Value::Domain(DomainValue::InnerClass(context)) => {
+                    let dual = build_dual_inner_class(context, span)?;
+                    Ok(Value::Domain(DomainValue::InnerClass(dual)))
+                }
+                other => Err(type_error(
+                    span,
+                    format!("expected a RootDatum or InnerClass, found {other}"),
                 )),
             }
         }
@@ -4954,6 +5062,106 @@ mod tests {
                 .expect("root")
                 .to_string(),
             "[ 0, 2 ]"
+        );
+    }
+
+    #[test]
+    fn posroots_and_poscoroots_render_the_oracle_column_order() {
+        // Frozen dual_order probe anchors (HPC job 3502700): the same
+        // generation order as the root/coroot queries, laid out by columns.
+        let b2 = fixture_datum("B2", false);
+        assert_eq!(
+            call("posroots", std::slice::from_ref(&b2), span())
+                .expect("posroots")
+                .to_string(),
+            "\n|  2, -1, 1, 0 |\n| -2,  2, 0, 2 |\n"
+        );
+        assert_eq!(
+            call("poscoroots", std::slice::from_ref(&b2), span())
+                .expect("poscoroots")
+                .to_string(),
+            "\n| 1, 0, 2, 1 |\n| 0, 1, 1, 1 |\n"
+        );
+        // The coroot preference generates on the transposed Cartan matrix
+        // and swaps the tables back, reordering the non-simple entries.
+        let b2_coroot = fixture_datum("B2", true);
+        assert_eq!(
+            call("posroots", std::slice::from_ref(&b2_coroot), span())
+                .expect("posroots")
+                .to_string(),
+            "\n|  2, -1, 0, 1 |\n| -2,  2, 2, 0 |\n"
+        );
+        assert_eq!(
+            call("poscoroots", std::slice::from_ref(&b2_coroot), span())
+                .expect("poscoroots")
+                .to_string(),
+            "\n| 1, 0, 1, 2 |\n| 0, 1, 1, 1 |\n"
+        );
+    }
+
+    #[test]
+    fn dual_root_datum_dualizes_type_isogeny_and_coroot_preference() {
+        let b2 = fixture_datum("B2", false);
+        let dual = call("dual", std::slice::from_ref(&b2), span()).expect("dual");
+        assert_eq!(dual.to_string(), "adjoint root datum of Lie type 'C2'");
+        assert_eq!(
+            call("prefers_coroots", std::slice::from_ref(&dual), span()),
+            Ok(Value::Boolean(true))
+        );
+        // The dual's positive roots are the original's positive coroots.
+        assert_eq!(
+            call("posroots", std::slice::from_ref(&dual), span())
+                .expect("posroots")
+                .to_string(),
+            call("poscoroots", std::slice::from_ref(&b2), span())
+                .expect("poscoroots")
+                .to_string()
+        );
+        // The double dual reproduces the original datum.
+        let c2 = fixture_datum("C2", true);
+        let double = call(
+            "dual",
+            std::slice::from_ref(
+                &call("dual", std::slice::from_ref(&c2.clone()), span()).expect("dual"),
+            ),
+            span(),
+        )
+        .expect("double dual");
+        assert_eq!(double.to_string(), c2.to_string());
+        assert_eq!(
+            call("prefers_coroots", std::slice::from_ref(&double), span()),
+            Ok(Value::Boolean(true))
+        );
+    }
+
+    #[test]
+    fn dual_inner_class_carries_the_dual_datum() {
+        // Frozen dual_order probe anchors (HPC job 3502700): dual(ic)
+        // displays the dual type, and root_datum(di) is the dual datum with
+        // the switched coroot preference.
+        let b2 = fixture_datum("B2", false);
+        let identity = matrix(2, 2, vec![1, 0, 0, 1]);
+        let inner = call("inner_class", &[b2, identity], span()).expect("inner class");
+        assert_eq!(
+            inner.to_string(),
+            "Complex reductive group of type B2, with involution defining\n\
+             inner class of type 'c', with 3 real forms and 3 dual real forms"
+        );
+        let dual_inner = call("dual", std::slice::from_ref(&inner), span()).expect("dual");
+        assert_eq!(
+            dual_inner.to_string(),
+            "Complex reductive group of type C2, with involution defining\n\
+             inner class of type 'c', with 3 real forms and 3 dual real forms"
+        );
+        let dual_datum = call("root_datum", std::slice::from_ref(&dual_inner), span())
+            .expect("root_datum of dual inner class");
+        assert_eq!(
+            dual_datum.to_string(),
+            "adjoint root datum of Lie type 'C2'"
+        );
+        assert_eq!(
+            call("prefers_coroots", std::slice::from_ref(&dual_datum), span()),
+            Ok(Value::Boolean(true))
         );
     }
 

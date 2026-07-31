@@ -4306,6 +4306,29 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 bool_type(),
                 0,
             ),
+            // positive_roots_wrapper / positive_coroots_wrapper
+            // (atlas-types.w:1656-1671): the no-value gate precedes the
+            // by-columns matrix build, so skip.
+            domain_builtin_skip(
+                "posroots",
+                primitive_type(Prim::RootDatum),
+                primitive_type(Prim::Mat),
+                0,
+            ),
+            domain_builtin_skip(
+                "poscoroots",
+                primitive_type(Prim::RootDatum),
+                primitive_type(Prim::Mat),
+                0,
+            ),
+            // dual_datum_wrapper (atlas-types.w:1713-1717): the no-value
+            // gate precedes the dual build, so skip.
+            domain_builtin_skip(
+                "dual",
+                primitive_type(Prim::RootDatum),
+                primitive_type(Prim::RootDatum),
+                0,
+            ),
             domain_builtin(
                 "inner_class",
                 Type::tuple(vec![
@@ -4356,6 +4379,15 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::InnerClass),
                 int_type(),
                 0,
+            ),
+            // dual_inner_class_wrapper (atlas-types.w:3254-3258, installed
+            // with hunger 3 at atlas-types.w:3414): the no-value gate
+            // precedes the dual build, so skip.
+            domain_builtin_skip(
+                "dual",
+                primitive_type(Prim::InnerClass),
+                primitive_type(Prim::InnerClass),
+                3,
             ),
             domain_builtin_skip(
                 "form_names",
