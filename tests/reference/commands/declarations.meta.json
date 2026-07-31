@@ -12,6 +12,7 @@
   "oracle_stdout_sha256": "795e8037023eb56a78fe0a5b6c48a08c15b799e8f72f32cc1f11042cd1276f77",
   "oracle_stderr_sha256": "7f6a6fd7505f997b51f93720de708396d295e734d4994c36078991ba56f6c45f",
   "capture_artifacts_sha256": "805d1ee0239e621dff382095713f72eaa7d3cade60946ce5e59071d951e3756e",
-  "rust_status": "not_implemented",
-  "notes": "Checks primitive declaration output, uninitialized reads, assignment initialization, and int-to-rat coercion. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract."
+  "rust_status": "verified_hpc",
+  "notes": "Checks primitive declaration output, uninitialized reads, assignment initialization, and int-to-rat coercion. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract.",
+  "differential_job": "3503356"
 }

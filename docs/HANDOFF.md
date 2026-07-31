@@ -7,8 +7,26 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 ## Live continuation - 2026-07-31
 
 The current committed baseline is `HEAD` on `main` (implementation HEAD
-`152f4b8`, wiring `1288e1e`). Differential job `3503322` ran 118 fixtures
-with zero FAIL and verified the primitive involution constructors:
+`152f4b8`, wiring `1288e1e`). Differential job `3503356` ran 139 fixtures
+with zero FAIL and verified the 21 legacy command/eval contracts
+(`0898e81`): the pre-harness `command-stream`/`expression-evaluation`/
+`evaluator`/`parser` contracts were regenerated verbatim from capture job
+`3503334` (32 fixtures: declarations/assignments/let, containers,
+subscriptions, slices, exact bignum numerics, name/type rejections, and
+error recovery), the combined `eval/negative` metadata split into
+`negative_type`/`negative_undefined`, and the superseded parser AST goldens
+were removed. Eleven contracts remain frozen with `not_implemented`:
+four diagnostic-wording slices (`assignment_errors`, `slice_errors`,
+`subscription_errors`, `container_errors`), five bison syntax-message
+slices (`invalid_token_continues`, `mismatched_delimiter_continues`,
+`nested_invalid_token_continues`, `container_syntax_errors`,
+`parse/negative_trailing_token`), `set verbose` (`lex/basic`), and the
+unterminated-string recovery (`negative/unterminated_string`).
+Operational note: after `git archive` overlays on HPC, files deleted in
+the new HEAD must be removed explicitly or the submit tree reads dirty
+(job `3503347` aborted on exactly that).
+
+Differential job `3503322` ran 118 fixtures with zero FAIL and verified the primitive involution constructors:
 `involution(LieType,[int],string)` and `involution(LieType,mat,string)`
 (`152f4b8`: `checked_inner_class_letters` with the 's'/'u' collapse rules
 per atlas-types.w:742, per-letter layout permutation tables per

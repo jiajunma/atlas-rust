@@ -12,6 +12,7 @@
   "oracle_stdout_sha256": "918808f43cbd4d86b8258ede5cf5fe732f35a9640a3bf17567af246cb263c188",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "capture_artifacts_sha256": "66c1798ffef0cc3887189008df78fd825f92bccef687a7108293ac0963a72e4c",
-  "rust_status": "not_implemented",
-  "notes": "Checks tuple and list displays, empty lists, recursive numeric promotion, and tuple-valued integer divmod. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract."
+  "rust_status": "verified_hpc",
+  "notes": "Checks tuple and list displays, empty lists, recursive numeric promotion, and tuple-valued integer divmod. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract.",
+  "differential_job": "3503356"
 }

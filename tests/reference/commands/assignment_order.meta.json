@@ -12,6 +12,7 @@
   "oracle_stdout_sha256": "82504942320054a8092342a41c1ea6097b143e23142f9e2b77a7aeb51baea0fb",
   "oracle_stderr_sha256": "db37c6a9191dd2ca4023e139acd033b31c110f012cd973b77262e4d8751c9801",
   "capture_artifacts_sha256": "f64fc6f3bc36d9adfacb377c99991dcd35135572b687235f73734e375270626f",
-  "rust_status": "not_implemented",
-  "notes": "Checks right-associated assignment and Atlas evaluation order when a nested RHS side effect precedes an outer runtime failure. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract."
+  "rust_status": "verified_hpc",
+  "notes": "Checks right-associated assignment and Atlas evaluation order when a nested RHS side effect precedes an outer runtime failure. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract.",
+  "differential_job": "3503356"
 }

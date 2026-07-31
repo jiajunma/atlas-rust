@@ -12,6 +12,7 @@
   "oracle_stdout_sha256": "e0e51a83550062e041d332b4e92c0adc093d40789815db2c1df1ef9db437346a",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "capture_artifacts_sha256": "daa75a91ed1d313253fcaa19289d37bd17151ba2b530e7889274d6ff98f59e0f",
-  "rust_status": "not_implemented",
-  "notes": "Checks normalized forward row slices, half-open bounds, omitted bounds, and empty results. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract."
+  "rust_status": "verified_hpc",
+  "notes": "Checks normalized forward row slices, half-open bounds, omitted bounds, and empty results. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract.",
+  "differential_job": "3503356"
 }

@@ -12,6 +12,7 @@
   "oracle_stdout_sha256": "6043e5ad87da5d67cefda4b2dddd9006595d3ac7ff076a051f1c9306b60538a7",
   "oracle_stderr_sha256": "fecb328b27a42c9938b688f1841ac6143f73890b69770118a7e4f00f52f89eef",
   "capture_artifacts_sha256": "f8f2b06fbd68137747af515d287f6bb57d5749a551e58f5f81fb96dced65cdd8",
-  "rust_status": "not_implemented",
-  "notes": "Checks empty-row element type flowing through arithmetic and typed assignment. The upstream a-priori overload rule rejects the unknown operand pair before runtime bounds evaluation; HPC capture remains pending. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract."
+  "rust_status": "verified_hpc",
+  "notes": "Checks empty-row element type flowing through arithmetic and typed assignment. The upstream a-priori overload rule rejects the unknown operand pair before runtime bounds evaluation; HPC capture remains pending. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract.",
+  "differential_job": "3503356"
 }

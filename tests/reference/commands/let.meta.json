@@ -12,6 +12,7 @@
   "oracle_stdout_sha256": "526b8e895e64e077fbb4ea842f2c30118b55a354db06a97ae9f891b0c0f6482a",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "capture_artifacts_sha256": "96b768e35ecec848b5807dacc4beec1d852cd5611a914b705cdce0f1afdaf81d",
-  "rust_status": "not_implemented",
-  "notes": "Checks scalar let bindings, parallel comma groups, sequential then groups, lexical shadowing, initializer lookup, local assignment, nested scopes, and multiline commands. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract."
+  "rust_status": "verified_hpc",
+  "notes": "Checks scalar let bindings, parallel comma groups, sequential then groups, lexical shadowing, initializer lookup, local assignment, nested scopes, and multiline commands. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract.",
+  "differential_job": "3503356"
 }

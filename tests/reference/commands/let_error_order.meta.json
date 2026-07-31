@@ -12,6 +12,7 @@
   "oracle_stdout_sha256": "209c68b255c1e461b2c0142af6ff2e30360eaa6ebecd827e142d84a16e5d9b9d",
   "oracle_stderr_sha256": "856bc3c547a041e951166938a277bb0d8ce0a9a0fedc417ade42066634bc7e1e",
   "capture_artifacts_sha256": "64f6b209130779c743ca3e21fb4ad26a453f1a87dc846528ad3d8edc368f7bd6",
-  "rust_status": "not_implemented",
-  "notes": "Checks that initializer name validation precedes duplicate binding validation within a parallel let group. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract."
+  "rust_status": "verified_hpc",
+  "notes": "Checks that initializer name validation precedes duplicate binding validation within a parallel let group. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract.",
+  "differential_job": "3503356"
 }

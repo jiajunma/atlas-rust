@@ -12,6 +12,7 @@
   "oracle_stdout_sha256": "bf41a3e566f538e5694d62b1e350d4bb656d8b4b70900a79f1ecc6fc65de0966",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "capture_artifacts_sha256": "66f6f02890feca37363b65487f7870603ad431378858bb45e051ed8f496c883b",
-  "rust_status": "not_implemented",
-  "notes": "Checks Atlas slice runtime order: upper bound, lower bound, then row expression. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract."
+  "rust_status": "verified_hpc",
+  "notes": "Checks Atlas slice runtime order: upper bound, lower bound, then row expression. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract.",
+  "differential_job": "3503356"
 }

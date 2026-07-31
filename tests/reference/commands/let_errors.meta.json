@@ -12,6 +12,7 @@
   "oracle_stdout_sha256": "e79ba4036e82e8a2563c76389ab5090b55e262c55ffee2bf7f338783e36fcf18",
   "oracle_stderr_sha256": "40301edc102c124c71d1272445b7d053d27e187ee27d5c3251621c6b7189dbe3",
   "capture_artifacts_sha256": "d8854b8204069b6499bc56bede23b0167dfb1020ca3f83fea8273bfddba447af",
-  "rust_status": "not_implemented",
-  "notes": "Checks parallel initializer visibility, duplicate bindings, initializer name errors, local assignment type errors, error recovery, and non-leaking shadowed state. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract."
+  "rust_status": "verified_hpc",
+  "notes": "Checks parallel initializer visibility, duplicate bindings, initializer name errors, local assignment type errors, error recovery, and non-leaking shadowed state. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract.",
+  "differential_job": "3503356"
 }

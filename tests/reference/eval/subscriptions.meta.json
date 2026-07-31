@@ -12,6 +12,7 @@
   "oracle_stdout_sha256": "97e943b4dc02151966cb3409a36bd2875ab9feed0f31f053d7c4153be7504a33",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "capture_artifacts_sha256": "586a1d55db62240bc7b225d4f9131c0a7b1ea3a79eaac6ce209e95d851dda2d1",
-  "rust_status": "not_implemented",
-  "notes": "Checks forward and reverse row subscription, chaining, and promoted element types. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract."
+  "rust_status": "verified_hpc",
+  "notes": "Checks forward and reverse row subscription, chaining, and promoted element types. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract.",
+  "differential_job": "3503356"
 }

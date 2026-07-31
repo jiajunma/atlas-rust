@@ -12,6 +12,7 @@
   "oracle_stdout_sha256": "c8e2de0dc48503d292c1fccde7fcd0e2d93118a7ebb1fe019baa84b4fb411092",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "capture_artifacts_sha256": "3198c44ed9ba1e3fa7e9358e7fd7829a8139c0411eab1cacc6eb3a8da0b40eb9",
-  "rust_status": "not_implemented",
-  "notes": "Checks recursive integer-to-rational coercion when assigning nested lists and tuple rows. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract."
+  "rust_status": "verified_hpc",
+  "notes": "Checks recursive integer-to-rational coercion when assigning nested lists and tuple rows. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract.",
+  "differential_job": "3503356"
 }
