@@ -101,6 +101,9 @@ pub enum StructureError {
     BlockInvariantViolation {
         invariant: &'static str,
     },
+    RepInvariantViolation {
+        invariant: &'static str,
+    },
     RealFormOrderInvariantViolation {
         invariant: &'static str,
     },
@@ -254,6 +257,9 @@ impl fmt::Display for StructureError {
             }
             Self::BlockInvariantViolation { invariant } => {
                 write!(f, "block {invariant} invariant was violated")
+            }
+            Self::RepInvariantViolation { invariant } => {
+                write!(f, "rep-context {invariant} invariant was violated")
             }
             Self::RealFormOrderInvariantViolation { invariant } => {
                 write!(f, "real-form order {invariant} invariant was violated")

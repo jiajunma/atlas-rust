@@ -3414,3 +3414,44 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+mod probe_tests {
+    use super::*;
+
+    #[test]
+    fn probe_bison_error_states() {
+        let cases = [
+            "1 2",
+            "1 $ + 2",
+            "(1]",
+            "(``",
+            "[1,]",
+            "[1 2]",
+            "(1,]",
+            "[",
+        ];
+        for input in cases {
+            let source = SourceText::new(input);
+            let tokens = crate::lex::tokenize(&source).expect("lex");
+            let parsed = parser_tokens_from_tokens(tokens).expect("tokens");
+            let spans: Vec<SourceSpan> = parsed.iter().map(|(_, span)| *span).collect();
+            let error = grammar::CommandParser::new()
+                .parse(TokenStream::new(parsed))
+                .expect_err("must fail");
+            eprintln!("=== {input:?}");
+            match &error {
+                lalrpop_util::ParseError::UnrecognizedToken { token, expected } => {
+                    eprintln!("  token: {:?}", token.1);
+                    eprintln!("  expected: {expected:?}");
+                }
+                lalrpop_util::ParseError::UnrecognizedEof { location, expected } => {
+                    eprintln!("  EOF at {location}, expected: {expected:?}");
+                }
+                other => eprintln!("  other: {other:?}"),
+            }
+            let _ = spans;
+        }
+        panic!("probe");
+    }
+}

@@ -84,6 +84,42 @@ pub(crate) fn pair_coordinates(left: &[i32], right: &[i32]) -> Result<i32, Struc
     i32::try_from(value).map_err(|_| StructureError::ArithmeticOverflow)
 }
 
+/// Checked coordinatewise sum of two equal-rank weights.
+pub(crate) fn checked_add_weights(left: &Weight, right: &Weight) -> Result<Weight, StructureError> {
+    combine_weights(left, right, 1)
+}
+
+/// Checked coordinatewise difference of two equal-rank weights.
+pub(crate) fn checked_sub_weights(left: &Weight, right: &Weight) -> Result<Weight, StructureError> {
+    combine_weights(left, right, -1)
+}
+
+fn combine_weights(left: &Weight, right: &Weight, sign: i32) -> Result<Weight, StructureError> {
+    if left.rank() != right.rank() {
+        return Err(StructureError::RankMismatch {
+            expected: left.rank(),
+            actual: right.rank(),
+        });
+    }
+    let mut coordinates = Vec::new();
+    coordinates
+        .try_reserve_exact(left.rank())
+        .map_err(|_| StructureError::AllocationFailed {
+            requested: left.rank(),
+        })?;
+    for (&left_entry, &right_entry) in left.as_slice().iter().zip(right.as_slice()) {
+        let scaled = right_entry
+            .checked_mul(sign)
+            .ok_or(StructureError::ArithmeticOverflow)?;
+        coordinates.push(
+            left_entry
+                .checked_add(scaled)
+                .ok_or(StructureError::ArithmeticOverflow)?,
+        );
+    }
+    Ok(Weight::new(coordinates))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -105,6 +141,212 @@ mod tests {
         let coweight = Coweight::new(vec![3, 4]);
         assert_eq!(pair(&weight, &coweight), Ok(2));
     }
+}
+
+/// An exact rational character value: upstream `RatWeight`
+/// (utilities/ratvec.h). Storage mirrors the C++ layout — one integer
+/// numerator vector over a single common denominator — because the Atlas
+/// display layer prints exactly that pair (`[ 5, 0 ]/2`), and gcd-normalized
+/// common-denominator storage makes that printing convention, and value
+/// equality, canonical. Denominators stay positive; construction normalizes
+/// by the gcd of the denominator and every numerator entry (ratvec.cpp:172).
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct RationalWeight {
+    numerator: Vec<i64>,
+    denominator: i64,
+}
+
+impl RationalWeight {
+    /// Build and gcd-normalize; rejects a non-positive denominator, as
+    /// upstream's `normalize` rejects zero (ratvec.cpp:172-175).
+    pub fn new(numerator: Vec<i64>, denominator: i64) -> Result<Self, StructureError> {
+        if denominator <= 0 {
+            return Err(StructureError::RepInvariantViolation {
+                invariant: "rational weight denominator",
+            });
+        }
+        let mut gcd = denominator.unsigned_abs();
+        for &entry in &numerator {
+            gcd = gcd_u64(entry.unsigned_abs(), gcd);
+            if gcd == 1 {
+                break;
+            }
+        }
+        let divisor = i64::try_from(gcd).map_err(|_| StructureError::ArithmeticOverflow)?;
+        let mut normalized = Vec::new();
+        normalized
+            .try_reserve_exact(numerator.len())
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: numerator.len(),
+            })?;
+        for entry in numerator {
+            normalized.push(
+                entry
+                    .checked_div(divisor)
+                    .ok_or(StructureError::ArithmeticOverflow)?,
+            );
+        }
+        Ok(Self {
+            numerator: normalized,
+            denominator: denominator / divisor,
+        })
+    }
+
+    /// An integral weight viewed as a rational weight with denominator 1.
+    pub fn from_weight(weight: &Weight) -> Result<Self, StructureError> {
+        let mut numerator = Vec::new();
+        numerator
+            .try_reserve_exact(weight.as_slice().len())
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: weight.as_slice().len(),
+            })?;
+        for &coordinate in weight.as_slice() {
+            numerator.push(i64::from(coordinate));
+        }
+        Self::new(numerator, 1)
+    }
+
+    pub fn zero(rank: usize) -> Result<Self, StructureError> {
+        Self::new(vec![0; rank], 1)
+    }
+
+    pub fn rank(&self) -> usize {
+        self.numerator.len()
+    }
+
+    pub fn numerator(&self) -> &[i64] {
+        &self.numerator
+    }
+
+    pub fn denominator(&self) -> i64 {
+        self.denominator
+    }
+
+    pub fn is_zero(&self) -> bool {
+        self.numerator.iter().all(|&entry| entry == 0)
+    }
+
+    pub(crate) fn add(&self, right: &Self) -> Result<Self, StructureError> {
+        self.combine(right, 1)
+    }
+
+    pub(crate) fn sub(&self, right: &Self) -> Result<Self, StructureError> {
+        self.combine(right, -1)
+    }
+
+    /// Exact sum/difference on a common denominator, then normalize.
+    fn combine(&self, right: &Self, sign: i64) -> Result<Self, StructureError> {
+        if self.rank() != right.rank() {
+            return Err(StructureError::RankMismatch {
+                expected: self.rank(),
+                actual: right.rank(),
+            });
+        }
+        let denominator = self
+            .denominator
+            .checked_mul(right.denominator)
+            .ok_or(StructureError::ArithmeticOverflow)?;
+        let mut numerator = Vec::new();
+        numerator
+            .try_reserve_exact(self.rank())
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: self.rank(),
+            })?;
+        for (&left, &right_entry) in self.numerator.iter().zip(&right.numerator) {
+            let scaled_left = left
+                .checked_mul(right.denominator)
+                .ok_or(StructureError::ArithmeticOverflow)?;
+            let scaled_right = right_entry
+                .checked_mul(self.denominator)
+                .and_then(|value| value.checked_mul(sign))
+                .ok_or(StructureError::ArithmeticOverflow)?;
+            numerator.push(
+                scaled_left
+                    .checked_add(scaled_right)
+                    .ok_or(StructureError::ArithmeticOverflow)?,
+            );
+        }
+        Self::new(numerator, denominator)
+    }
+
+    /// Apply an integer matrix (an involution's weight action) to the
+    /// numerator, keeping the denominator (ratvec.cpp:190).
+    pub(crate) fn apply_matrix(&self, matrix: &[Vec<i32>]) -> Result<Self, StructureError> {
+        if matrix.len() != self.rank()
+            || matrix.iter().any(|row| row.len() != self.rank())
+        {
+            return Err(StructureError::RankMismatch {
+                expected: self.rank(),
+                actual: matrix.len(),
+            });
+        }
+        let mut numerator = Vec::new();
+        numerator
+            .try_reserve_exact(self.rank())
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: self.rank(),
+            })?;
+        for row in matrix {
+            let mut entry = 0_i64;
+            for (&coefficient, &coordinate) in row.iter().zip(&self.numerator) {
+                let product = i64::from(coefficient)
+                    .checked_mul(coordinate)
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+                entry = entry
+                    .checked_add(product)
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+            }
+            numerator.push(entry);
+        }
+        Self::new(numerator, self.denominator)
+    }
+
+    /// Halve the value by doubling the denominator, without normalizing;
+    /// callers normalize at the point upstream does.
+    pub(crate) fn halve(&self) -> Result<Self, StructureError> {
+        Ok(Self {
+            numerator: self.numerator.clone(),
+            denominator: self
+                .denominator
+                .checked_mul(2)
+                .ok_or(StructureError::ArithmeticOverflow)?,
+        })
+    }
+
+    /// Re-run the constructor's gcd normalization (ratvec.cpp:172).
+    pub(crate) fn normalized(&self) -> Result<Self, StructureError> {
+        Self::new(self.numerator.clone(), self.denominator)
+    }
+
+    /// The numerator divided by the denominator, requiring integrality —
+    /// the checked form of upstream's `assert(entry%denominator==0)`
+    /// divisions (repr.cpp:194-199, 768-774).
+    pub(crate) fn integral_coordinates(&self) -> Result<Vec<i64>, StructureError> {
+        let mut coordinates = Vec::new();
+        coordinates
+            .try_reserve_exact(self.rank())
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: self.rank(),
+            })?;
+        for &entry in &self.numerator {
+            if entry % self.denominator != 0 {
+                return Err(StructureError::RepInvariantViolation {
+                    invariant: "rational weight integrality",
+                });
+            }
+            coordinates.push(entry / self.denominator);
+        }
+        Ok(coordinates)
+    }
+}
+
+fn gcd_u64(mut left: u64, mut right: u64) -> u64 {
+    while right != 0 {
+        let remainder = left % right;
+        left = right;
+        right = remainder;
+    }
+    left.max(1)
 }
 
 /// An exact rational cocharacter value (stage (d)'s `some_coch` output).

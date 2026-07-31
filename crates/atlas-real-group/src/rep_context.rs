@@ -1,0 +1,1516 @@
+//! The `Rep_context` subset for `StandardRepr` and `KType` values.
+//!
+//! This module ports the parameter-layer mathematics of upstream
+//! `gkmod/repr.cpp` and the `K_type` normalization of
+//! `structure/involutions.cpp`: a [`StandardRepr`] is the
+//! `(x, y, gamma, height)` quadruple of `repr.h:76-110`, built only through
+//! [`RepContext::sr_gamma`] / [`RepContext::sr`], and the per-involution
+//! `(1-theta)X^*` image-basis pair (`lift_mat`, `M_real`) that upstream
+//! stores in its `InvolutionTable::record` (involutions.h:104-105) is
+//! derived here on construction, per the crate's documented divergence of
+//! transporting `M_real`/`lift_mat` in the involution table itself (see
+//! `involution_table.rs`). The echelon reduction reproduces upstream's
+//! `matreduc::column_echelon` (matreduc.h:129) and its gcd sweep
+//! (matreduc.h:70) operation-for-operation, because the elected
+//! `lambda-rho` representative depends on the exact image basis.
+
+use std::collections::BTreeMap;
+
+use crate::grading::try_capacity;
+use crate::lattice::{
+    checked_add_weights, checked_sub_weights, pair, pair_coordinates, RationalWeight,
+};
+use crate::{
+    Coweight, InnerClass, InvolutionId, InvolutionTable, KgbGraph, KgbId, KgbStatus, KType,
+    LatticeInvolution, ModTwoVector, RootId, RootKind, StructureError, Weight,
+};
+
+/// A standard-module parameter: upstream `repr::StandardRepr`
+/// (gkmod/repr.h:76-110).
+///
+/// `y_bits` is the torsion part of `lambda`, packed as the mod-2
+/// coordinates of `(1-theta_x)(lambda-rho)` in the involution's `(1-theta)`
+/// image basis (upstream `TorusPart`, involutions.h:211). `gamma` is the
+/// (representative of the) infinitesimal character. `height` is derived
+/// from the other fields at construction and is therefore excluded from
+/// equality, exactly like upstream's `StandardRepr::operator==`
+/// (repr.cpp:36-40).
+#[derive(Clone, Debug)]
+pub struct StandardRepr {
+    x: KgbId,
+    y_bits: ModTwoVector,
+    gamma: RationalWeight,
+    height: u32,
+}
+
+impl StandardRepr {
+    pub fn x(&self) -> KgbId {
+        self.x
+    }
+
+    /// The packed torsion part of `lambda` (upstream `y()`).
+    pub fn y_bits(&self) -> &ModTwoVector {
+        &self.y_bits
+    }
+
+    /// The infinitesimal character, gcd-normalized (upstream `gamma()`).
+    pub fn gamma(&self) -> &RationalWeight {
+        &self.gamma
+    }
+
+    pub fn height(&self) -> u32 {
+        self.height
+    }
+}
+
+/// Upstream `StandardRepr::operator==` (gkmod/repr.cpp:36-40): `x`, the
+/// packed torsion part, and `gamma`; the derived `height` is not compared.
+impl PartialEq for StandardRepr {
+    fn eq(&self, other: &Self) -> bool {
+        self.x == other.x && self.y_bits == other.y_bits && self.gamma == other.gamma
+    }
+}
+
+/// The per-involution `(1-theta)X^*` image data: upstream's
+/// `InvolutionTable::record` pair (involutions.h:104-105).
+///
+/// `lift_mat` is the column-echelon basis of the image of `1-theta`
+/// (rank `n x r`); `m_real` (rank `r x n`) expresses an image element in
+/// that basis. The pair satisfies `lift_mat * m_real == 1 - theta`
+/// (involutions.h:105), which construction verifies.
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct RealProjection {
+    lift_mat: Vec<Vec<i64>>,
+    m_real: Vec<Vec<i64>>,
+}
+
+impl RealProjection {
+    /// Port of `matreduc::column_echelon` (matreduc.h:129-161) applied to
+    /// `1-theta`, tracking the column-operation matrix and its inverse
+    /// incrementally; upstream's `InvolutionTable::add_involution`
+    /// (involutions.cpp:196-208) then takes `M_real` as the first `r`
+    /// rows of the inverse.
+    fn build(theta: &LatticeInvolution) -> Result<Self, StructureError> {
+        let matrix = theta.weight_matrix();
+        let rank = matrix.len();
+        // `a` starts as the integer matrix `1 - theta` (involutions.cpp:196).
+        let mut a: Vec<Vec<i64>> = Vec::new();
+        a.try_reserve_exact(rank)
+            .map_err(|_| StructureError::AllocationFailed { requested: rank })?;
+        for (row_index, row) in matrix.iter().enumerate() {
+            let mut converted = Vec::new();
+            converted
+                .try_reserve_exact(rank)
+                .map_err(|_| StructureError::AllocationFailed { requested: rank })?;
+            for (column_index, &entry) in row.iter().enumerate() {
+                let diagonal = i64::from(row_index == column_index);
+                converted.push(
+                    diagonal
+                        .checked_sub(i64::from(entry))
+                        .ok_or(StructureError::ArithmeticOverflow)?,
+                );
+            }
+            a.push(converted);
+        }
+        let mut col = identity_matrix(rank)?;
+        let mut col_inverse = identity_matrix(rank)?;
+
+        // Row sweep, bottom row first; the pivot of each processed row
+        // lands at column `limit - 1` (matreduc.h:136-148).
+        let mut limit = rank;
+        for row in (0..rank).rev() {
+            let pivot = gcd_sweep(&mut a, row, limit, &mut col, &mut col_inverse)?;
+            if pivot == 0 {
+                continue; // partial row already zero: no pivot in this row
+            }
+            limit -= 1; // pivot now at column `limit`
+        }
+
+        // Row sweep, bottom row first; the pivot of each processed row
+        // lands at column `limit - 1` (matreduc.h:136-148).
+        let mut limit = rank;
+        for row in (0..rank).rev() {
+            let pivot = gcd_sweep(&mut a, row, limit, &mut col, &mut col_inverse)?;
+            if pivot == 0 {
+                continue; // partial row already zero: no pivot in this row
+            }
+            limit -= 1; // pivot now at column `limit`
+        }
+
+        // Erase the `limit` zero columns, rotating the corresponding
+        // kernel columns of `col` towards the right end one at a time
+        // (matreduc.h:150-158): columns already parked at the right are
+        // not touched again. `col_inverse` rows get the mirrored cyclic
+        // shift, keeping `col * col_inverse == id`.
+        let zero_columns = limit;
+        let mut erased = 0_usize;
+        while limit > 0 {
+            limit -= 1;
+            for a_row in a.iter_mut() {
+                a_row.remove(limit);
+            }
+            let m_columns = rank - erased - 1; // column count of `a` now
+            let cc: Vec<i64> = (0..rank).map(|k| col[k][limit]).collect();
+            for col_row in col.iter_mut() {
+                for j in limit..m_columns {
+                    col_row[j] = col_row[j + 1];
+                }
+            }
+            for (k, col_row) in col.iter_mut().enumerate() {
+                col_row[m_columns] = cc[k];
+            }
+            let rotated_row = col_inverse.remove(limit);
+            col_inverse.insert(m_columns, rotated_row);
+            erased += 1;
+        }
+        debug_assert_eq!(erased, zero_columns);
+
+        let image_rank = rank - zero_columns;
+        let m_real: Vec<Vec<i64>> = col_inverse[..image_rank].to_vec();
+        let projection = Self {
+            lift_mat: a,
+            m_real,
+        };
+        projection.check_against(theta)?;
+        Ok(projection)
+    }
+
+    /// `lift_mat * m_real == 1 - theta` (involutions.h:105).
+    fn check_against(&self, theta: &LatticeInvolution) -> Result<(), StructureError> {
+        let matrix = theta.weight_matrix();
+        for (row_index, row) in matrix.iter().enumerate() {
+            for (column_index, &entry) in row.iter().enumerate() {
+                let mut product = 0_i64;
+                for (basis_index, basis_row) in self.m_real.iter().enumerate() {
+                    product = product
+                        .checked_add(
+                            self.lift_mat[row_index][basis_index]
+                                .checked_mul(basis_row[column_index])
+                                .ok_or(StructureError::ArithmeticOverflow)?,
+                        )
+                        .ok_or(StructureError::ArithmeticOverflow)?;
+                }
+                let expected = i64::from(row_index == column_index) - i64::from(entry);
+                if product != expected {
+                    return Err(StructureError::RepInvariantViolation {
+                        invariant: "image basis factorization",
+                    });
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// `(1-theta)*v` in image-basis coordinates: `M_real * v`
+    /// (involutions.h:211).
+    fn coordinates(&self, weight: &Weight) -> Result<Vec<i64>, StructureError> {
+        let mut result = Vec::new();
+        result
+            .try_reserve_exact(self.m_real.len())
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: self.m_real.len(),
+            })?;
+        for row in &self.m_real {
+            let mut entry = 0_i64;
+            for (&coefficient, &coordinate) in row.iter().zip(weight.as_slice()) {
+                let product = coefficient
+                    .checked_mul(i64::from(coordinate))
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+                entry = entry
+                    .checked_add(product)
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+            }
+            result.push(entry);
+        }
+        Ok(result)
+    }
+
+    /// `lift_mat * coordinates` back in `X^*` (involutions.cpp:346-356).
+    fn lift(&self, coordinates: &[i64]) -> Result<Vec<i64>, StructureError> {
+        let mut result = vec![0_i64; self.lift_mat.len()];
+        for (basis_index, &coordinate) in coordinates.iter().enumerate() {
+            for (row, entry) in result.iter_mut().enumerate() {
+                let product = self.lift_mat[row][basis_index]
+                    .checked_mul(coordinate)
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+                *entry = entry
+                    .checked_add(product)
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+            }
+        }
+        Ok(result)
+    }
+}
+
+fn identity_matrix(rank: usize) -> Result<Vec<Vec<i64>>, StructureError> {
+    let mut matrix = Vec::new();
+    matrix
+        .try_reserve_exact(rank)
+        .map_err(|_| StructureError::AllocationFailed { requested: rank })?;
+    for row in 0..rank {
+        let mut values = Vec::new();
+        values
+            .try_reserve_exact(rank)
+            .map_err(|_| StructureError::AllocationFailed { requested: rank })?;
+        values.resize(rank, 0);
+        values[row] = 1;
+        matrix.push(values);
+    }
+    Ok(matrix)
+}
+
+/// One elementary column operation `column_j += c * column_k` on `a` and
+/// `col`, mirrored by the inverse row operation `row_k -= c * row_j` on
+/// `col_inverse`, keeping `col * col_inverse == id` throughout.
+fn column_operation(
+    a: &mut [Vec<i64>],
+    col: &mut [Vec<i64>],
+    col_inverse: &mut [Vec<i64>],
+    j: usize,
+    k: usize,
+    c: i64,
+) -> Result<(), StructureError> {
+    if c == 0 {
+        return Ok(());
+    }
+    for row in 0..a.len() {
+        a[row][j] = a[row][j]
+            .checked_add(
+                c.checked_mul(a[row][k])
+                    .ok_or(StructureError::ArithmeticOverflow)?,
+            )
+            .ok_or(StructureError::ArithmeticOverflow)?;
+        col[row][j] = col[row][j]
+            .checked_add(
+                c.checked_mul(col[row][k])
+                    .ok_or(StructureError::ArithmeticOverflow)?,
+            )
+            .ok_or(StructureError::ArithmeticOverflow)?;
+    }
+    for column in 0..col_inverse.len() {
+        col_inverse[k][column] = col_inverse[k][column]
+            .checked_sub(
+                c.checked_mul(col_inverse[j][column])
+                    .ok_or(StructureError::ArithmeticOverflow)?,
+            )
+            .ok_or(StructureError::ArithmeticOverflow)?;
+    }
+    Ok(())
+}
+
+fn swap_columns(
+    a: &mut [Vec<i64>],
+    col: &mut [Vec<i64>],
+    col_inverse: &mut [Vec<i64>],
+    left: usize,
+    right: usize,
+) {
+    if left == right {
+        return;
+    }
+    for row in 0..a.len() {
+        a[row].swap(left, right);
+        col[row].swap(left, right);
+    }
+    col_inverse.swap(left, right);
+}
+
+/// The gcd sweep of `matreduc::gcd` (matreduc.h:70-122) on the partial
+/// row `a[row][0..limit]`, recording the column operations into `col` and
+/// their inverses into `col_inverse`. Returns the (positive) pivot, or 0
+/// when the partial row is zero. The pivot is left at column `dest =
+/// limit - 1`, matching the `column_echelon` call site (matreduc.h:139).
+fn gcd_sweep(
+    a: &mut [Vec<i64>],
+    row: usize,
+    limit: usize,
+    col: &mut [Vec<i64>],
+    col_inverse: &mut [Vec<i64>],
+) -> Result<i64, StructureError> {
+    let dest = limit
+        .checked_sub(1)
+        .ok_or(StructureError::RepInvariantViolation {
+            invariant: "echelon pivot column",
+        })?;
+    let mut active: Vec<usize> = Vec::new();
+    let mut min = 0_i64;
+    let mut mindex = 0_usize;
+    for (column, &entry) in a[row].iter().enumerate().take(limit) {
+        if entry != 0 {
+            active.push(column);
+            let magnitude = entry.abs();
+            if min == 0 || magnitude < min {
+                min = magnitude;
+                mindex = column;
+            }
+        }
+    }
+    if active.is_empty() {
+        return Ok(0);
+    }
+    if a[row][mindex] < 0 {
+        // Force a positive pivot (matreduc.h:93-98).
+        for matrix_row in a.iter_mut() {
+            matrix_row[mindex] = -matrix_row[mindex];
+        }
+        for matrix_row in col.iter_mut() {
+            matrix_row[mindex] = -matrix_row[mindex];
+        }
+        for entry in col_inverse[mindex].iter_mut() {
+            *entry = -*entry;
+        }
+    }
+
+    while active.len() > 1 {
+        let current = mindex;
+        let pivot = a[row][current];
+        let mut survivors = Vec::new();
+        survivors
+            .try_reserve_exact(active.len())
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: active.len(),
+            })?;
+        for &j in &active {
+            if j == current {
+                survivors.push(j);
+                continue;
+            }
+            let quotient = a[row][j].div_euclid(pivot);
+            column_operation(a, col, col_inverse, j, current, -quotient)?;
+            a[row][j] = a[row][j]
+                .checked_sub(
+                    pivot
+                        .checked_mul(quotient)
+                        .ok_or(StructureError::ArithmeticOverflow)?,
+                )
+                .ok_or(StructureError::ArithmeticOverflow)?;
+            if a[row][j] != 0 {
+                survivors.push(j);
+                if a[row][j] < min {
+                    min = a[row][j];
+                    mindex = j;
+                }
+            }
+        }
+        active = survivors;
+    }
+
+    swap_columns(a, col, col_inverse, dest, mindex);
+    Ok(a[row][dest])
+}
+
+/// The representation context of one real form: upstream `Rep_context`
+/// (gkmod/repr.h:203-411) restricted to the KType/StandardRepr surface.
+///
+/// The struct borrows the inner class, the involution table, and the
+/// form's KGB graph — the same substrate triple the graph was built
+/// against — and derives the root-datum constants (`2rho`, `2rho^v`,
+/// `rho`) plus every present involution's [`RealProjection`] once at
+/// construction.
+pub struct RepContext<'a> {
+    inner_class: &'a InnerClass,
+    table: &'a InvolutionTable,
+    graph: &'a KgbGraph,
+    two_rho: Weight,
+    dual_two_rho: Coweight,
+    rho: RationalWeight,
+    projections: BTreeMap<usize, RealProjection>,
+}
+
+impl<'a> RepContext<'a> {
+    /// Bind the context, deriving the datum constants and the
+    /// `(1-theta)` image bases of the graph's involutions. The gate is the
+    /// same full inner-class equality as the Tits coset's.
+    pub fn new(
+        inner_class: &'a InnerClass,
+        table: &'a InvolutionTable,
+        graph: &'a KgbGraph,
+    ) -> Result<Self, StructureError> {
+        if table.inner_class() != inner_class {
+            return Err(StructureError::DatumMismatch);
+        }
+        let system = inner_class.root_system();
+        let lattice_rank = system.lattice_rank();
+        let mut two_rho = try_capacity(lattice_rank)?;
+        two_rho.resize(lattice_rank, 0_i32);
+        let mut dual_two_rho = try_capacity(lattice_rank)?;
+        dual_two_rho.resize(lattice_rank, 0_i32);
+        for (id, root, coroot) in system.entries() {
+            if !system.is_positive(id).ok_or(StructureError::IndexOutOfRange {
+                index: id.0,
+                upper_bound: system.roots().len(),
+            })? {
+                continue;
+            }
+            for (sum, &coordinate) in two_rho.iter_mut().zip(root.as_slice()) {
+                *sum = sum
+                    .checked_add(coordinate)
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+            }
+            for (sum, &coordinate) in dual_two_rho.iter_mut().zip(coroot.as_slice()) {
+                *sum = sum
+                    .checked_add(coordinate)
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+            }
+        }
+        let two_rho = Weight::new(two_rho);
+        let rho = RationalWeight::new(
+            two_rho.as_slice().iter().map(|&c| i64::from(c)).collect(),
+            2,
+        )?;
+        let mut projections = BTreeMap::new();
+        for position in 0..graph.packet_count() {
+            let involution =
+                graph
+                    .packet_involution(position)
+                    .ok_or(StructureError::IndexOutOfRange {
+                        index: position,
+                        upper_bound: graph.packet_count(),
+                    })?;
+            if projections.contains_key(&involution.0) {
+                continue;
+            }
+            let theta = table
+                .record(involution)
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: involution.0,
+                    upper_bound: table.involution_count(),
+                })?
+                .theta()
+                .clone();
+            projections.insert(involution.0, RealProjection::build(&theta)?);
+        }
+        Ok(Self {
+            inner_class,
+            table,
+            graph,
+            two_rho: two_rho.clone(),
+            dual_two_rho: Coweight::new(dual_two_rho),
+            rho,
+            projections,
+        })
+    }
+
+    /// The lattice rank of the underlying root datum (repr.h:215).
+    pub fn rank(&self) -> usize {
+        self.inner_class.datum().lattice_rank()
+    }
+
+    pub fn graph(&self) -> &KgbGraph {
+        self.graph
+    }
+
+    pub fn table(&self) -> &InvolutionTable {
+        self.table
+    }
+
+    pub fn inner_class(&self) -> &InnerClass {
+        self.inner_class
+    }
+
+    /// The real form this context belongs to (the graph's weak form).
+    pub fn real_form(&self) -> crate::WeakRealFormId {
+        self.graph.form()
+    }
+
+    pub(crate) fn projection(&self, involution: InvolutionId) -> Result<&RealProjection, StructureError> {
+        self.projections
+            .get(&involution.0)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: involution.0,
+                upper_bound: self.table.involution_count(),
+            })
+    }
+
+    pub(crate) fn involution_of(&self, x: KgbId) -> Result<InvolutionId, StructureError> {
+        self.graph
+            .involution_of(x)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: x.index(),
+                upper_bound: self.graph.size(),
+            })
+    }
+
+    pub(crate) fn theta_at(&self, x: KgbId) -> Result<&LatticeInvolution, StructureError> {
+        let involution = self.involution_of(x)?;
+        Ok(self
+            .table
+            .record(involution)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: involution.0,
+                upper_bound: self.table.involution_count(),
+            })?
+            .theta())
+    }
+
+    pub(crate) fn theta_plus_one_rho_at(&self, x: KgbId) -> Result<Weight, StructureError> {
+        let involution = self.involution_of(x)?;
+        Ok(self
+            .table
+            .record(involution)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: involution.0,
+                upper_bound: self.table.involution_count(),
+            })?
+            .theta_plus_one_rho()
+            .clone())
+    }
+
+    /// Half the sum of the positive roots (rootdata.cpp:1260).
+    pub fn rho(&self) -> &RationalWeight {
+        &self.rho
+    }
+
+    /// The sum of the positive roots (rootdata.h:568).
+    pub(crate) fn two_rho(&self) -> &Weight {
+        &self.two_rho
+    }
+
+    /// The sum of the positive roots in `roots` (rootdata.h:746).
+    pub(crate) fn two_rho_of(&self, roots: &[RootId]) -> Result<Weight, StructureError> {
+        let system = self.inner_class.root_system();
+        let mut sum = vec![0_i32; system.lattice_rank()];
+        for &id in roots {
+            let root = system.root(id).ok_or(StructureError::IndexOutOfRange {
+                index: id.0,
+                upper_bound: system.roots().len(),
+            })?;
+            for (total, &coordinate) in sum.iter_mut().zip(root.as_slice()) {
+                *total = total
+                    .checked_add(coordinate)
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+            }
+        }
+        Ok(Weight::new(sum))
+    }
+
+    /// `coroot(alpha).(twoRho())/2` (rootdata.cpp:389-401, which upstream
+    /// implements as the simple-coroot coordinate sum; rootdata.h:225
+    /// documents the pairing form used here).
+    pub(crate) fn colevel(&self, alpha: RootId) -> Result<i32, StructureError> {
+        let system = self.inner_class.root_system();
+        let coroot = system
+            .coroot(alpha)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: alpha.0,
+                upper_bound: system.roots().len(),
+            })?;
+        let pairing = pair(&self.two_rho, coroot)?;
+        if pairing % 2 != 0 {
+            return Err(StructureError::RepInvariantViolation {
+                invariant: "coroot level parity",
+            });
+        }
+        Ok(pairing / 2)
+    }
+
+    /// `lambda_unique` (involutions.cpp:322-332): the elected coset
+    /// representative of `lam_rho` modulo `(1-theta)X^*`, subtracting
+    /// `lift_mat` times the Euclidean halves of its `M_real` coordinates.
+    pub fn lambda_unique(
+        &self,
+        involution: InvolutionId,
+        lam_rho: &Weight,
+    ) -> Result<Weight, StructureError> {
+        if lam_rho.rank() != self.rank() {
+            return Err(StructureError::RankMismatch {
+                expected: self.rank(),
+                actual: lam_rho.rank(),
+            });
+        }
+        let projection = self.projection(involution)?;
+        let coordinates = projection.coordinates(lam_rho)?;
+        let halves: Vec<i64> = coordinates.iter().map(|&v| v.div_euclid(2)).collect();
+        let correction = projection.lift(&halves)?;
+        let mut normalized = Vec::new();
+        normalized
+            .try_reserve_exact(lam_rho.rank())
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: lam_rho.rank(),
+            })?;
+        for (&coordinate, &shift) in lam_rho.as_slice().iter().zip(&correction) {
+            let shifted = i64::from(coordinate)
+                .checked_sub(shift)
+                .ok_or(StructureError::ArithmeticOverflow)?;
+            normalized.push(
+                i32::try_from(shifted).map_err(|_| StructureError::ArithmeticOverflow)?,
+            );
+        }
+        Ok(Weight::new(normalized))
+    }
+
+    /// `y_pack` (involutions.h:211-213): the `M_real` coordinates of
+    /// `lambda_rho` reduced mod 2, as a [`ModTwoVector`] over the image
+    /// basis (upstream `TorusPart`).
+    pub fn y_pack(
+        &self,
+        involution: InvolutionId,
+        lam_rho: &Weight,
+    ) -> Result<ModTwoVector, StructureError> {
+        if lam_rho.rank() != self.rank() {
+            return Err(StructureError::RankMismatch {
+                expected: self.rank(),
+                actual: lam_rho.rank(),
+            });
+        }
+        let projection = self.projection(involution)?;
+        let coordinates = projection.coordinates(lam_rho)?;
+        let ones: Vec<usize> = coordinates
+            .iter()
+            .enumerate()
+            .filter_map(|(index, &v)| (v.rem_euclid(2) != 0).then_some(index))
+            .collect();
+        ModTwoVector::from_ones(coordinates.len(), ones)
+    }
+
+    /// `y_lift` (involutions.cpp:346-356): `(1-theta)*lam_rho` for a
+    /// `lam_rho` with the given packed torsion part.
+    pub fn y_lift(
+        &self,
+        involution: InvolutionId,
+        y_bits: &ModTwoVector,
+    ) -> Result<Weight, StructureError> {
+        let projection = self.projection(involution)?;
+        if y_bits.dimension() != projection.m_real.len() {
+            return Err(StructureError::RankMismatch {
+                expected: projection.m_real.len(),
+                actual: y_bits.dimension(),
+            });
+        }
+        let mut coordinates = Vec::new();
+        coordinates
+            .try_reserve_exact(y_bits.dimension())
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: y_bits.dimension(),
+            })?;
+        for index in 0..y_bits.dimension() {
+            let bit = y_bits.bit(index).ok_or(StructureError::IndexOutOfRange {
+                index,
+                upper_bound: y_bits.dimension(),
+            })?;
+            coordinates.push(i64::from(bit));
+        }
+        let lifted = projection.lift(&coordinates)?;
+        let mut weight = Vec::new();
+        weight
+            .try_reserve_exact(lifted.len())
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: lifted.len(),
+            })?;
+        for entry in lifted {
+            weight.push(i32::try_from(entry).map_err(|_| StructureError::ArithmeticOverflow)?);
+        }
+        Ok(Weight::new(weight))
+    }
+
+    /// `height` (repr.cpp:160-166): `<2rho^v, w>/2` with `w` made
+    /// dominant, where `w = (1+theta)*gamma` (an integral weight).
+    pub fn height(&self, theta_plus_1_gamma: &Weight) -> Result<u32, StructureError> {
+        let dominant = self.make_dominant_weight(theta_plus_1_gamma)?;
+        let pairing = pair(&dominant, &self.dual_two_rho)?;
+        if pairing < 0 || pairing % 2 != 0 {
+            return Err(StructureError::RepInvariantViolation {
+                invariant: "height parity",
+            });
+        }
+        u32::try_from(pairing / 2).map_err(|_| StructureError::ArithmeticOverflow)
+    }
+
+    /// `RootDatum::make_dominant` (rootdata.h:638-640): reflect at simple
+    /// roots with negative pairing until dominant. The termination bound
+    /// is exact: `D(w) = sum over positive coroots of max(0, -<w, beta>)`
+    /// strictly decreases at every step.
+    pub(crate) fn make_dominant_weight(&self, weight: &Weight) -> Result<Weight, StructureError> {
+        let datum = self.inner_class.datum();
+        let system = self.inner_class.root_system();
+        let mut defect = 0_i64;
+        for (id, _, coroot) in system.entries() {
+            if system.is_positive(id).ok_or(StructureError::IndexOutOfRange {
+                index: id.0,
+                upper_bound: system.roots().len(),
+            })? {
+                let pairing = pair(weight, coroot)?;
+                if pairing < 0 {
+                    defect += i64::from(-pairing);
+                }
+            }
+        }
+        let mut result = weight.clone();
+        loop {
+            let mut reflected = false;
+            for (generator, coroot) in datum.simple_coroots().iter().enumerate() {
+                if pair(&result, coroot)? < 0 {
+                    result = datum.reflect_weight(generator, &result)?;
+                    defect -= 1;
+                    reflected = true;
+                    break;
+                }
+            }
+            if !reflected {
+                return Ok(result);
+            }
+            if defect < 0 {
+                return Err(StructureError::RepInvariantViolation {
+                    invariant: "dominance termination",
+                });
+            }
+        }
+    }
+
+    /// `Rep_context::gamma` (repr.cpp:168-177): the representative
+    /// infinitesimal character `(lambda + nu + theta(lambda - nu))/2`
+    /// with `lambda = rho + lambda_rho`.
+    pub fn gamma(
+        &self,
+        x: KgbId,
+        lambda_rho: &Weight,
+        nu: &RationalWeight,
+    ) -> Result<RationalWeight, StructureError> {
+        if lambda_rho.rank() != self.rank() || nu.rank() != self.rank() {
+            return Err(StructureError::RankMismatch {
+                expected: self.rank(),
+                actual: lambda_rho.rank(),
+            });
+        }
+        let theta = self.theta_at(x)?;
+        let lambda = self.rho.add(&RationalWeight::from_weight(lambda_rho)?)?;
+        let difference = lambda.sub(nu)?;
+        let theta_difference = difference.apply_matrix(theta.weight_matrix())?;
+        lambda
+            .add(nu)?
+            .add(&theta_difference)?
+            .halve()?
+            .normalized()
+    }
+
+    /// `Rep_context::lambda_rho` (repr.cpp:182-204): recover `lambda-rho`
+    /// from the doubled `(1+theta)` projection of `gamma - rho` and the
+    /// packed torsion part: `((1+theta)(gamma-rho) + y_lift(y))/2`, both
+    /// divisions exact.
+    pub fn lambda_rho(&self, z: &StandardRepr) -> Result<Weight, StructureError> {
+        let involution = self.involution_of(z.x)?;
+        let theta = self.theta_at(z.x)?;
+        let gamma_minus_rho = z.gamma.sub(&self.rho)?;
+        let theta_image = gamma_minus_rho.apply_matrix(theta.weight_matrix())?;
+        let doubled = gamma_minus_rho.add(&theta_image)?;
+        let projection_weight = doubled.integral_coordinates()?;
+        let y_lift = self.y_lift(involution, &z.y_bits)?;
+        let mut sum = Vec::new();
+        sum.try_reserve_exact(self.rank())
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: self.rank(),
+            })?;
+        for (&projected, &lifted) in projection_weight.iter().zip(y_lift.as_slice()) {
+            let total = projected
+                .checked_add(i64::from(lifted))
+                .ok_or(StructureError::ArithmeticOverflow)?;
+            if total % 2 != 0 {
+                return Err(StructureError::RepInvariantViolation {
+                    invariant: "lambda-rho halving",
+                });
+            }
+            sum.push(i32::try_from(total / 2).map_err(|_| StructureError::ArithmeticOverflow)?);
+        }
+        Ok(Weight::new(sum))
+    }
+
+    /// `Rep_context::lambda` (repr.h:304): `rho + lambda_rho`, the
+    /// half-integral weight the interpreter prints as `lambda=[..]/d`
+    /// (basic_io.cpp print_stdrep/print_K_type).
+    pub fn lambda(&self, z: &StandardRepr) -> Result<RationalWeight, StructureError> {
+        self.rho.add(&RationalWeight::from_weight(&self.lambda_rho(z)?)?)
+    }
+
+    /// `rho + lambda_rho` of a [`KType`] (basic_io.cpp:158-163).
+    pub fn lambda_of_ktype(&self, t: &KType) -> Result<RationalWeight, StructureError> {
+        self.rho.add(&RationalWeight::from_weight(t.lambda_rho())?)
+    }
+
+    /// `Rep_context::nu` (repr.cpp:239-245): `(gamma - theta*gamma)/2`,
+    /// the `-theta`-fixed projection printed as `nu=[..]/d`.
+    pub fn nu(&self, z: &StandardRepr) -> Result<RationalWeight, StructureError> {
+        let theta = self.theta_at(z.x)?;
+        let theta_gamma = z.gamma.apply_matrix(theta.weight_matrix())?;
+        z.gamma.sub(&theta_gamma)?.halve()?.normalized()
+    }
+
+    /// `Rep_context::sr_gamma` (repr.cpp:756-784): pack the torsion part
+    /// of `lambda_rho` and store `gamma` with the height of
+    /// `(1+theta)*gamma`.
+    pub fn sr_gamma(
+        &self,
+        x: KgbId,
+        lambda_rho: &Weight,
+        gamma: &RationalWeight,
+    ) -> Result<StandardRepr, StructureError> {
+        if lambda_rho.rank() != self.rank() || gamma.rank() != self.rank() {
+            return Err(StructureError::RankMismatch {
+                expected: self.rank(),
+                actual: lambda_rho.rank(),
+            });
+        }
+        let involution = self.involution_of(x)?;
+        let theta = self.theta_at(x)?;
+        let theta_gamma = gamma.apply_matrix(theta.weight_matrix())?;
+        let doubled = gamma.add(&theta_gamma)?;
+        let projection = doubled.integral_coordinates()?;
+        let mut th1_gamma = Vec::new();
+        th1_gamma
+            .try_reserve_exact(self.rank())
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: self.rank(),
+            })?;
+        for entry in projection {
+            th1_gamma.push(i32::try_from(entry).map_err(|_| StructureError::ArithmeticOverflow)?);
+        }
+        let y_bits = self.y_pack(involution, lambda_rho)?;
+        let height = self.height(&Weight::new(th1_gamma))?;
+        Ok(StandardRepr {
+            x,
+            y_bits,
+            gamma: gamma.clone(),
+            height,
+        })
+    }
+
+    /// `Rep_context::sr` (repr.h:242-244): the parameter of the
+    /// `(x, lambda-rho, nu)` triplet.
+    pub fn sr(
+        &self,
+        x: KgbId,
+        lambda_rho: &Weight,
+        nu: &RationalWeight,
+    ) -> Result<StandardRepr, StructureError> {
+        let gamma = self.gamma(x, lambda_rho, nu)?;
+        self.sr_gamma(x, lambda_rho, &gamma)
+    }
+
+    /// `Rep_context::sr(const K_type&)` (repr.h:252-253): extend a
+    /// K-type with `nu = 0`.
+    pub fn sr_of_ktype(&self, t: &KType) -> Result<StandardRepr, StructureError> {
+        let zero = RationalWeight::zero(self.rank())?;
+        self.sr(t.x(), t.lambda_rho(), &zero)
+    }
+
+    /// `Rep_context::sr_K(const StandardRepr&)` (repr.h:232-233): restrict
+    /// a parameter to K, carrying the elected `lambda-rho` and the height.
+    pub fn sr_k_of_standard(&self, z: &StandardRepr) -> Result<KType, StructureError> {
+        Ok(KType::new(z.x, self.lambda_rho(z)?, z.height))
+    }
+
+    /// `Rep_context::theta` (repr.cpp:179-180): the involution of `z`'s
+    /// KGB element.
+    pub fn theta(&self, z: &StandardRepr) -> Result<LatticeInvolution, StructureError> {
+        Ok(self.theta_at(z.x)?.clone())
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Shared KGB/root helpers and the `StandardRepr` predicate/operation set
+// (gkmod/repr.cpp:359-699).
+// ---------------------------------------------------------------------------
+
+impl RepContext<'_> {
+    pub(crate) fn kgb_status(&self, x: KgbId, generator: usize) -> Result<KgbStatus, StructureError> {
+        self.graph.status(x, generator).ok_or({
+            StructureError::IndexOutOfRange {
+                index: x.index(),
+                upper_bound: self.graph.size(),
+            }
+        })
+    }
+
+    pub(crate) fn is_complex_descent(&self, x: KgbId, generator: usize) -> Result<bool, StructureError> {
+        if self.kgb_status(x, generator)? != KgbStatus::Complex {
+            return Ok(false);
+        }
+        self.graph.is_descent(x, generator).ok_or({
+            StructureError::IndexOutOfRange {
+                index: x.index(),
+                upper_bound: self.graph.size(),
+            }
+        })
+    }
+
+    pub(crate) fn cross_at(&self, x: KgbId, generator: usize) -> Result<KgbId, StructureError> {
+        self.graph.cross(x, generator).ok_or({
+            StructureError::IndexOutOfRange {
+                index: x.index(),
+                upper_bound: self.graph.size(),
+            }
+        })
+    }
+
+    pub(crate) fn is_complex_simple(&self, x: KgbId, generator: usize) -> Result<bool, StructureError> {
+        let involution = self.involution_of(x)?;
+        Ok(self.table.simple_root_kind(involution, generator) == Some(RootKind::Complex))
+    }
+
+    pub(crate) fn imaginary_simple_roots_at(&self, x: KgbId) -> Result<Vec<RootId>, StructureError> {
+        let involution = self.involution_of(x)?;
+        let record = self
+            .table
+            .record(involution)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: involution.0,
+                upper_bound: self.table.involution_count(),
+            })?;
+        Ok(record
+            .twisted_involution()
+            .root_involution()
+            .imaginary_simple_roots()
+            .to_vec())
+    }
+
+    pub(crate) fn real_simple_roots_at(&self, x: KgbId) -> Result<Vec<RootId>, StructureError> {
+        let involution = self.involution_of(x)?;
+        let record = self
+            .table
+            .record(involution)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: involution.0,
+                upper_bound: self.table.involution_count(),
+            })?;
+        Ok(record
+            .twisted_involution()
+            .root_involution()
+            .real_simple_roots()
+            .to_vec())
+    }
+
+    /// The positive real roots of `x`'s involution: upstream
+    /// `i_tab.real_roots(i_x) & rd.posroot_set()` (repr.cpp:407-409).
+    pub(crate) fn positive_real_roots_at(&self, x: KgbId) -> Result<Vec<RootId>, StructureError> {
+        let involution = self.involution_of(x)?;
+        let record = self
+            .table
+            .record(involution)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: involution.0,
+                upper_bound: self.table.involution_count(),
+            })?;
+        let system = self.inner_class.root_system();
+        let mut roots = Vec::new();
+        for id in record
+            .twisted_involution()
+            .root_involution()
+            .roots_of_kind(RootKind::Real)
+        {
+            if system.is_positive(id).ok_or(StructureError::IndexOutOfRange {
+                index: id.0,
+                upper_bound: system.roots().len(),
+            })? {
+                roots.push(id);
+            }
+        }
+        Ok(roots)
+    }
+
+    /// `TitsCoset::simple_imaginary_grading` (tits.cpp:704-717): the
+    /// compactness grading of the positive simply-imaginary root `alpha`
+    /// at `x`; `true` means NONCOMPACT, matching `Grading::is_noncompact`.
+    pub(crate) fn simple_imaginary_grading(&self, x: KgbId, alpha: RootId) -> Result<bool, StructureError> {
+        let system = self.inner_class.root_system();
+        let datum = self.inner_class.datum();
+        let coordinates =
+            system
+                .simple_coordinates(alpha)
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: alpha.0,
+                    upper_bound: system.roots().len(),
+                })?;
+        let element = self.graph.element(x).ok_or(StructureError::IndexOutOfRange {
+            index: x.index(),
+            upper_bound: self.graph.size(),
+        })?;
+        let base_grading = self.graph.base_grading();
+        // The mod-2 reduction of alpha's simple-root expression
+        // (tits.cpp:713): the complement-of-base-grading parity and the
+        // dual-m_alpha torus evaluations both fold over its set bits.
+        let mut complement_parity = false;
+        let mut evaluation_parity = false;
+        for (generator, &coefficient) in coordinates.iter().enumerate() {
+            if coefficient.rem_euclid(2) == 0 {
+                continue;
+            }
+            if !base_grading[generator] {
+                complement_parity = !complement_parity;
+            }
+            let mut dot = false;
+            let simple_root = &datum.simple_roots()[generator];
+            for (index, &coordinate) in simple_root.as_slice().iter().enumerate() {
+                if coordinate.rem_euclid(2) != 0
+                    && element.torus_bits().bit(index) == Some(true)
+                {
+                    dot = !dot;
+                }
+            }
+            if dot {
+                evaluation_parity = !evaluation_parity;
+            }
+        }
+        Ok(complement_parity ^ evaluation_parity ^ true)
+    }
+
+    /// `rd.simple_reflect(s, v, d)` (rootdata.h:617-618):
+    /// `v -= (<v, alpha_s^v> + d) * alpha_s`.
+    pub(crate) fn simple_reflect(
+        &self,
+        generator: usize,
+        weight: &mut Weight,
+        offset: i32,
+    ) -> Result<(), StructureError> {
+        let datum = self.inner_class.datum();
+        let pairing = pair(weight, &datum.simple_coroots()[generator])?
+            .checked_add(offset)
+            .ok_or(StructureError::ArithmeticOverflow)?;
+        let mut coordinates = Vec::new();
+        coordinates
+            .try_reserve_exact(weight.rank())
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: weight.rank(),
+            })?;
+        for (&entry, &root_entry) in weight
+            .as_slice()
+            .iter()
+            .zip(datum.simple_roots()[generator].as_slice())
+        {
+            let shift = pairing
+                .checked_mul(root_entry)
+                .ok_or(StructureError::ArithmeticOverflow)?;
+            coordinates.push(
+                entry
+                    .checked_sub(shift)
+                    .ok_or(StructureError::ArithmeticOverflow)?,
+            );
+        }
+        *weight = Weight::new(coordinates);
+        Ok(())
+    }
+
+    /// The same shifted reflection on a rational weight's numerator
+    /// (repr.cpp:572: `rd.simple_reflect(s,numer)`).
+    pub(crate) fn simple_reflect_numerator(
+        &self,
+        generator: usize,
+        numerator: &mut [i64],
+    ) -> Result<(), StructureError> {
+        let datum = self.inner_class.datum();
+        let coroot = &datum.simple_coroots()[generator];
+        if numerator.len() != coroot.rank() {
+            return Err(StructureError::RankMismatch {
+                expected: coroot.rank(),
+                actual: numerator.len(),
+            });
+        }
+        let mut pairing = 0_i64;
+        for (&entry, &coroot_entry) in numerator.iter().zip(coroot.as_slice()) {
+            let product = entry
+                .checked_mul(i64::from(coroot_entry))
+                .ok_or(StructureError::ArithmeticOverflow)?;
+            pairing = pairing
+                .checked_add(product)
+                .ok_or(StructureError::ArithmeticOverflow)?;
+        }
+        for (entry, &root_entry) in numerator
+            .iter_mut()
+            .zip(datum.simple_roots()[generator].as_slice())
+        {
+            let shift = pairing
+                .checked_mul(i64::from(root_entry))
+                .ok_or(StructureError::ArithmeticOverflow)?;
+            *entry = entry
+                .checked_sub(shift)
+                .ok_or(StructureError::ArithmeticOverflow)?;
+        }
+        Ok(())
+    }
+
+    /// The dominance defect `sum over positive coroots of
+    /// max(0, -<v, beta^v>)`, an exact step bound for the greedy
+    /// dominance loops: it strictly decreases at every reflection.
+    pub(crate) fn numerator_defect(&self, numerator: &[i64]) -> Result<i64, StructureError> {
+        let system = self.inner_class.root_system();
+        let mut defect = 0_i64;
+        for (id, _, coroot) in system.entries() {
+            if !system.is_positive(id).ok_or(StructureError::IndexOutOfRange {
+                index: id.0,
+                upper_bound: system.roots().len(),
+            })? {
+                continue;
+            }
+            let mut pairing = 0_i64;
+            for (&entry, &coroot_entry) in numerator.iter().zip(coroot.as_slice()) {
+                let product = entry
+                    .checked_mul(i64::from(coroot_entry))
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+                pairing = pairing
+                    .checked_add(product)
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+            }
+            if pairing < 0 {
+                defect = defect
+                    .checked_add(-pairing)
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+            }
+        }
+        Ok(defect)
+    }
+
+    pub(crate) fn simple_coroot_numerator_pairing(
+        &self,
+        generator: usize,
+        numerator: &[i64],
+    ) -> Result<i64, StructureError> {
+        let coroot = &self.inner_class.datum().simple_coroots()[generator];
+        let mut pairing = 0_i64;
+        for (&entry, &coroot_entry) in numerator.iter().zip(coroot.as_slice()) {
+            let product = entry
+                .checked_mul(i64::from(coroot_entry))
+                .ok_or(StructureError::ArithmeticOverflow)?;
+            pairing = pairing
+                .checked_add(product)
+                .ok_or(StructureError::ArithmeticOverflow)?;
+        }
+        Ok(pairing)
+    }
+
+    /// `Rep_context::singular_simples` (repr.cpp:526-535): the simple
+    /// generators with `<gamma, alpha_s^v> == 0`.
+    pub(crate) fn singular_simples(&self, z: &StandardRepr) -> Result<Vec<bool>, StructureError> {
+        let datum = self.inner_class.datum();
+        let mut singulars = try_capacity(datum.semisimple_rank())?;
+        for generator in 0..datum.semisimple_rank() {
+            singulars.push(self.simple_coroot_numerator_pairing(
+                generator,
+                z.gamma.numerator(),
+            )? == 0);
+        }
+        Ok(singulars)
+    }
+
+    /// `Rep_context::complex_crosses` (repr.cpp:590-611): cross `z`
+    /// through the word's singular complex simple generators, reflecting
+    /// `lambda-rho` with the `rho`-based shift, then re-pack `y_bits`.
+    pub(crate) fn complex_crosses(&self, z: &mut StandardRepr, word: &[usize]) -> Result<(), StructureError> {
+        let mut lr = self.lambda_rho(z)?;
+        for &generator in word {
+            if self.simple_coroot_numerator_pairing(generator, z.gamma.numerator())? != 0 {
+                return Err(StructureError::RepInvariantViolation {
+                    invariant: "singular complex cross",
+                });
+            }
+            if !self.is_complex_simple(z.x, generator)? {
+                return Err(StructureError::RepInvariantViolation {
+                    invariant: "complex simple cross",
+                });
+            }
+            z.x = self.cross_at(z.x, generator)?;
+            self.simple_reflect(generator, &mut lr, 1)?;
+        }
+        z.y_bits = self.y_pack(self.involution_of(z.x)?, &lr)?;
+        Ok(())
+    }
+
+    /// `Rep_context::complex_descent_w` (repr.cpp:537-554): the word
+    /// exhausting singular complex descents from `z.x()`.
+    pub(crate) fn complex_descent_w(
+        &self,
+        z: &StandardRepr,
+        singulars: &[bool],
+    ) -> Result<Vec<usize>, StructureError> {
+        let mut x = z.x;
+        let mut word = Vec::new();
+        // Every cross is a descent, so the involution length strictly
+        // decreases; the graph size is a generous termination cap.
+        for _ in 0..=self.graph.size() {
+            let mut stepped = false;
+            for (generator, &singular) in singulars.iter().enumerate() {
+                if singular && self.is_complex_descent(x, generator)? {
+                    x = self.cross_at(x, generator)?;
+                    word.push(generator);
+                    stepped = true;
+                    break;
+                }
+            }
+            if !stepped {
+                return Ok(word);
+            }
+        }
+        Err(StructureError::RepInvariantViolation {
+            invariant: "complex descent termination",
+        })
+    }
+
+    /// `Rep_context::to_singular_canonical` (repr.cpp:613-620): move `z`
+    /// to the canonical involution of its Cartan class using only the
+    /// singular generators, then verify the involution landed as
+    /// `canonicalize` predicted.
+    pub(crate) fn to_singular_canonical(
+        &self,
+        z: &mut StandardRepr,
+        singulars: &[bool],
+    ) -> Result<(), StructureError> {
+        let involution = self.involution_of(z.x)?;
+        let twisted = self
+            .table
+            .record(involution)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: involution.0,
+                upper_bound: self.table.involution_count(),
+            })?
+            .twisted_involution()
+            .clone();
+        let (canonical, word) = self
+            .inner_class
+            .canonicalize_with_generators(twisted, singulars)?;
+        self.complex_crosses(z, &word)?;
+        let landed = self.involution_of(z.x)?;
+        let landed_twisted = &self
+            .table
+            .record(landed)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: landed.0,
+                upper_bound: self.table.involution_count(),
+            })?
+            .twisted_involution();
+        if *landed_twisted != canonical {
+            return Err(StructureError::RepInvariantViolation {
+                invariant: "singular canonical landing",
+            });
+        }
+        Ok(())
+    }
+}
+
+impl StandardRepr {
+    /// `Rep_context::is_standard` (repr.cpp:359-375): `gamma` is weakly
+    /// dominant on the simply-imaginary coroots.
+    pub fn is_standard(&self, rc: &RepContext) -> Result<bool, StructureError> {
+        let system = rc.inner_class.root_system();
+        for alpha in rc.imaginary_simple_roots_at(self.x)? {
+            let coroot = system
+                .coroot(alpha)
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: alpha.0,
+                    upper_bound: system.roots().len(),
+                })?;
+            let mut pairing = 0_i64;
+            for (&entry, &coroot_entry) in self.gamma.numerator().iter().zip(coroot.as_slice()) {
+                let product = entry
+                    .checked_mul(i64::from(coroot_entry))
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+                pairing = pairing
+                    .checked_add(product)
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+            }
+            if pairing < 0 {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
+    /// `Rep_context::is_dominant` (repr.h:336-337, via
+    /// `is_dominant_ratweight` rootdata.cpp:1616): `gamma` is dominant on
+    /// every simple coroot.
+    pub fn is_dominant(&self, rc: &RepContext) -> Result<bool, StructureError> {
+        let datum = rc.inner_class.datum();
+        for generator in 0..datum.semisimple_rank() {
+            if rc.simple_coroot_numerator_pairing(generator, self.gamma.numerator())? < 0 {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
+    /// `Rep_context::is_nonzero` (repr.cpp:377-392): no singular compact
+    /// simply-imaginary root. Assumes `is_standard`, exactly as upstream
+    /// does (the interpreter's adjective chain calls it in that order).
+    pub fn is_nonzero(&self, rc: &RepContext) -> Result<bool, StructureError> {
+        let system = rc.inner_class.root_system();
+        for alpha in rc.imaginary_simple_roots_at(self.x)? {
+            let coroot = system
+                .coroot(alpha)
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: alpha.0,
+                    upper_bound: system.roots().len(),
+                })?;
+            let mut pairing = 0_i64;
+            for (&entry, &coroot_entry) in self.gamma.numerator().iter().zip(coroot.as_slice()) {
+                let product = entry
+                    .checked_mul(i64::from(coroot_entry))
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+                pairing = pairing
+                    .checked_add(product)
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+            }
+            if pairing == 0 && !rc.simple_imaginary_grading(self.x, alpha)? {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
+    /// `Rep_context::is_semifinal` (repr.cpp:403-420): no positive real
+    /// root is both singular on `gamma` and odd on the shifted test
+    /// weight `y_lift(y) + 2rho - 2rho_R`.
+    pub fn is_semifinal(&self, rc: &RepContext) -> Result<bool, StructureError> {
+        let involution = rc.involution_of(self.x)?;
+        let positive_real = rc.positive_real_roots_at(self.x)?;
+        let test_weight = checked_add_weights(
+            &rc.y_lift(involution, &self.y_bits)?,
+            &checked_sub_weights(&rc.two_rho, &rc.two_rho_of(&positive_real)?)?,
+        )?;
+        let system = rc.inner_class.root_system();
+        for alpha in positive_real {
+            let coroot = system
+                .coroot(alpha)
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: alpha.0,
+                    upper_bound: system.roots().len(),
+                })?;
+            let mut gamma_pairing = 0_i64;
+            for (&entry, &coroot_entry) in self.gamma.numerator().iter().zip(coroot.as_slice()) {
+                let product = entry
+                    .checked_mul(i64::from(coroot_entry))
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+                gamma_pairing = gamma_pairing
+                    .checked_add(product)
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+            }
+            if gamma_pairing == 0 && pair(&test_weight, coroot)? % 4 != 0 {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
+    /// `Rep_context::is_final` (repr.cpp:422-453): `gamma` dominant and
+    /// no singular descent of any kind, then the full simply-imaginary
+    /// `is_nonzero` check.
+    pub fn is_final(&self, rc: &RepContext) -> Result<bool, StructureError> {
+        let datum = rc.inner_class.datum();
+        let involution = rc.involution_of(self.x)?;
+        let y_lift = rc.y_lift(involution, &self.y_bits)?;
+        for generator in 0..datum.semisimple_rank() {
+            let pairing = rc.simple_coroot_numerator_pairing(generator, self.gamma.numerator())?;
+            if pairing < 0 {
+                return Ok(false);
+            }
+            if pairing == 0 {
+                match rc.kgb_status(self.x, generator)? {
+                    KgbStatus::Complex => {
+                        if rc.is_complex_descent(self.x, generator)? {
+                            return Ok(false);
+                        }
+                    }
+                    KgbStatus::ImaginaryCompact => return Ok(false),
+                    KgbStatus::Real => {
+                        if pair(&y_lift, &datum.simple_coroots()[generator])? % 4 != 0 {
+                            return Ok(false);
+                        }
+                    }
+                    KgbStatus::ImaginaryNoncompact => {}
+                }
+            }
+        }
+        self.is_nonzero(rc)
+    }
+
+    /// `Rep_context::is_normal` (repr.cpp:394-399): `z` equals its
+    /// normal form. Upstream's adjective chain calls this only after the
+    /// other four predicates pass.
+    pub fn is_normal(&self, rc: &RepContext) -> Result<bool, StructureError> {
+        Ok(self.normalised(rc)? == *self)
+    }
+
+    /// `Rep_context::make_dominant` (repr.cpp:556-587): cross through
+    /// complex or real simple roots with negative `gamma` pairing,
+    /// reflecting `gamma`'s numerator and `lambda-rho`, until `gamma` is
+    /// dominant. Imaginary negative roots fail, as upstream's
+    /// "Non standard parameter in make_dominant". The stored height is
+    /// invariant under these crosses (the `(1+theta)gamma` weight moves
+    /// by Weyl conjugates), so it is carried unchanged, as upstream does.
+    pub fn made_dominant(&self, rc: &RepContext) -> Result<StandardRepr, StructureError> {
+        let datum = rc.inner_class.datum();
+        let mut z = self.clone();
+        let mut lr = rc.lambda_rho(&z)?;
+        let mut numerator = z.gamma.numerator().to_vec();
+        let mut remaining_steps = rc.numerator_defect(&numerator)?;
+        loop {
+            let mut reflected = false;
+            for generator in 0..datum.semisimple_rank() {
+                if rc.simple_coroot_numerator_pairing(generator, &numerator)? < 0 {
+                    let offset = match rc.kgb_status(z.x, generator)? {
+                        KgbStatus::Complex => 1,
+                        KgbStatus::Real => 0,
+                        _ => {
+                            return Err(StructureError::RepInvariantViolation {
+                                invariant: "standard parameter in make_dominant",
+                            })
+                        }
+                    };
+                    rc.simple_reflect_numerator(generator, &mut numerator)?;
+                    rc.simple_reflect(generator, &mut lr, offset)?;
+                    z.x = rc.cross_at(z.x, generator)?;
+                    reflected = true;
+                    break;
+                }
+            }
+            if !reflected {
+                break;
+            }
+            remaining_steps -= 1;
+            if remaining_steps < 0 {
+                return Err(StructureError::RepInvariantViolation {
+                    invariant: "dominance termination",
+                });
+            }
+        }
+        z.gamma = RationalWeight::new(numerator, z.gamma.denominator())?;
+        z.y_bits = rc.y_pack(rc.involution_of(z.x)?, &lr)?;
+        Ok(z)
+    }
+
+    /// `Rep_context::normalise` (repr.cpp:659-667): make dominant, move
+    /// to the singular-canonical involution, then exhaust singular
+    /// complex descents.
+    pub fn normalised(&self, rc: &RepContext) -> Result<StandardRepr, StructureError> {
+        let mut z = self.made_dominant(rc)?;
+        let singulars = rc.singular_simples(&z)?;
+        rc.to_singular_canonical(&mut z, &singulars)?;
+        let descent_word = rc.complex_descent_w(&z, &singulars)?;
+        rc.complex_crosses(&mut z, &descent_word)?;
+        Ok(z)
+    }
+
+    /// `Rep_context::equivalent` (repr.cpp:678-699): equality after
+    /// `make_dominant` and `to_singular_canonical`; strict equality when
+    /// either parameter fails `is_standard`.
+    pub fn equivalent(&self, rc: &RepContext, other: &StandardRepr) -> Result<bool, StructureError> {
+        let self_cartan = rc.graph.cartan_of(self.x).ok_or(StructureError::IndexOutOfRange {
+            index: self.x.index(),
+            upper_bound: rc.graph.size(),
+        })?;
+        let other_cartan = rc.graph.cartan_of(other.x).ok_or(StructureError::IndexOutOfRange {
+            index: other.x.index(),
+            upper_bound: rc.graph.size(),
+        })?;
+        if self_cartan != other_cartan {
+            return Ok(false);
+        }
+        if !(self.is_standard(rc)? && other.is_standard(rc)?) {
+            return Ok(*self == *other);
+        }
+        let mut left = self.made_dominant(rc)?;
+        let mut right = other.made_dominant(rc)?;
+        if left.gamma != right.gamma {
+            return Ok(false);
+        }
+        let singulars = rc.singular_simples(&left)?;
+        rc.to_singular_canonical(&mut left, &singulars)?;
+        rc.to_singular_canonical(&mut right, &singulars)?;
+        Ok(left == right)
+    }
+}

@@ -98,6 +98,10 @@ pub enum TypedExpr {
         lower: Box<TypedExpr>,
         upper: Box<TypedExpr>,
         flags: crate::syntax::SliceFlags,
+        /// Compact rendering of the source expression, quoted by the
+        /// out-of-range diagnostic exactly like the oracle's
+        /// `slice_range_error` prints the slice node (axis.w:4299).
+        source: String,
         span: SourceSpan,
     },
     LetGroup {
@@ -1194,7 +1198,10 @@ enum BalanceConversionError {
 }
 
 impl BalanceConversionError {
-    fn into_diagnostic(self, analysis: &Analysis<'_>) -> Diagnostic {
+    /// Flatten to a diagnostic once the enclosing expression kind is known;
+    /// `items` is the upstream `balance_error` items name, and the variants
+    /// print between braces exactly like global.w:665-671 reports them.
+    fn into_diagnostic(self, analysis: &Analysis<'_>, items: &str) -> Diagnostic {
         match self {
             Self::Diagnostic(diagnostic) => diagnostic,
             Self::Balance(failure) => {
@@ -1208,8 +1215,8 @@ impl BalanceConversionError {
                 }
                 type_error(
                     format!(
-                        "branches have incompatible types {}",
-                        displays.join(" and ")
+                        "No common type found between {items}: {{ {} }}",
+                        displays.join(", ")
                     ),
                     failure.span,
                 )
@@ -1475,7 +1482,7 @@ pub fn convert_expr(
         }
         Expr::List { elements, span } => {
             convert_list_expression(elements, *span, required, analysis)
-                .map_err(|error| error.into_diagnostic(analysis))
+                .map_err(|error| error.into_diagnostic(analysis, "components of list expression"))
         }
         Expr::Identifier { name, span } => {
             if let Some((type_, depth, offset)) = analysis.locals.get(name) {
@@ -1558,9 +1565,14 @@ pub fn convert_expr(
                 );
             }
             let Some((target, cell)) = analysis.globals.lookup(name) else {
+                // Upstream `report_undefined` (axis.w:7090-7097) appends the
+                // printed assignment node after the `in assignment` marker.
                 return Err(Diagnostic::new(
                     ErrorKind::Name,
-                    format!("Undefined identifier '{name}' in assignment"),
+                    format!(
+                        "Undefined identifier '{name}' in assignment {name}:={}",
+                        compact_expression(value)
+                    ),
                     Some(*target_span),
                 ));
             };
@@ -1598,15 +1610,20 @@ pub fn convert_expr(
         } => {
             let mut array_type = Type::Undetermined;
             let converted_array = convert_expr(array, &mut array_type, analysis)?;
-            let mut index_type = Type::Primitive(Prim::Int);
+            // The index converts with an undetermined a-priori type, exactly
+            // like upstream (axis.w:4020-4026); only equality with `int` is
+            // admitted, so a mistyped index falls to the dedicated `not_so`
+            // error rather than a coercion failure.
+            let mut index_type = Type::Undetermined;
             let converted_index = convert_expr(index, &mut index_type, analysis)?;
             // Upstream `subscr_base::index_kind` (axis.w:3941-3973): a row
             // subscripts to its component type, a string to a one-character
             // string; anything unsubscriptable is the analysis-time `not_so`
             // error (axis.w:4101-4105).
+            let int_index = matches!(index_type, Type::Primitive(Prim::Int));
             let found = match &array_type {
-                Type::Row(component) => (**component).clone(),
-                Type::Primitive(Prim::String) => Type::Primitive(Prim::String),
+                Type::Row(component) if int_index => (**component).clone(),
+                Type::Primitive(Prim::String) if int_index => Type::Primitive(Prim::String),
                 Type::Primitive(Prim::Vec | Prim::RatVec | Prim::Mat) => {
                     // vec/ratvec/mat subscription is upstream-legal but not
                     // yet implemented; keep the not-a-row diagnostic there.
@@ -1652,10 +1669,13 @@ pub fn convert_expr(
         } => {
             let mut array_type = Type::Undetermined;
             let converted_array = convert_expr(array, &mut array_type, analysis)?;
+            // Only row slicing is implemented; anything else is the
+            // analysis-time error upstream raises from the `make_slice`
+            // default case (axis.w:4171-4173).
             let Type::Row(component) = array_type else {
                 return Err(type_error(
                     format!(
-                        "slice requires a row, found {}",
+                        "Cannot slice value of type {}",
                         array_type.display(analysis.types)
                     ),
                     *span,
@@ -1674,6 +1694,7 @@ pub fn convert_expr(
                     lower: Box::new(converted_lower),
                     upper: Box::new(converted_upper),
                     flags: *flags,
+                    source: compact_expression(expression),
                     span: *span,
                 },
                 *span,
@@ -1923,7 +1944,7 @@ pub fn convert_expr(
             required,
             analysis,
         )
-        .map_err(|error| error.into_diagnostic(analysis)),
+        .map_err(|error| error.into_diagnostic(analysis, "branches of conditional")),
         // Upstream desugars the boolean connectives into conditionals at
         // parse time (parser.y:280-294); this port does it at conversion.
         Expr::Binary { op, lhs, rhs, span } => {
@@ -2319,7 +2340,7 @@ pub fn convert_expr(
             }
             ordered.extend(branches.iter());
             let mut converted = balance(&ordered, required, *span, analysis)
-                .map_err(|error| error.into_diagnostic(analysis))?
+                .map_err(|error| error.into_diagnostic(analysis, "branches of case"))?
                 .into_iter();
             let then_branch = then_branch
                 .is_some()
@@ -5003,12 +5024,13 @@ impl TypedExpr {
                 lower,
                 upper,
                 flags,
+                source,
                 span,
             } => {
                 let upper = expect_integer(force(upper, context)?, *span, "slice upper bound")?;
                 let lower = expect_integer(force(lower, context)?, *span, "slice lower bound")?;
                 let values = expect_typed_list(force(array, context)?, *span, "slice")?;
-                let sliced = evaluate_slice(values, lower, upper, *flags, *span)?;
+                let sliced = evaluate_slice(values, lower, upper, *flags, source, *span)?;
                 Ok(at_level(level, || Value::List(sliced.clone())))
             }
             Self::LetGroup { initializers, body } => {
@@ -5492,6 +5514,7 @@ fn evaluate_slice(
     lower: BigInt,
     upper: BigInt,
     flags: crate::syntax::SliceFlags,
+    source: &str,
     span: SourceSpan,
 ) -> Result<Vec<Value>, Control> {
     let length = BigInt::from(values.len());
@@ -5508,16 +5531,18 @@ fn evaluate_slice(
     let lower_out_of_range = lower < 0;
     let upper_out_of_range = upper > length;
     if lower_out_of_range || upper_out_of_range {
+        // Upstream `slice_range_error` (axis.w:4281-4301): no space after
+        // `<=`, and the printed slice node closes the message.
         let message = match (lower_out_of_range, upper_out_of_range) {
             (true, true) => format!(
-                "both bounds {lower}:{upper} out of range (should be >=0 respectively <= {}) in slice",
+                "both bounds {lower}:{upper} out of range (should be >=0 respectively <={}) in slice {source}",
                 values.len()
             ),
             (true, false) => {
-                format!("lower bound {lower} out of range (should be >=0) in slice")
+                format!("lower bound {lower} out of range (should be >=0) in slice {source}")
             }
             (false, true) => format!(
-                "upper bound {upper} out of range (should be <= {}) in slice",
+                "upper bound {upper} out of range (should be <={}) in slice {source}",
                 values.len()
             ),
             (false, false) => unreachable!(),
@@ -6196,9 +6221,13 @@ mod tests {
         assert_eq!(value, Value::Boolean(true));
         let (_, value) = convert_and_run("not false").expect("not");
         assert_eq!(value, Value::Boolean(true));
-        // Mismatched branches fail balancing.
+        // Mismatched branches fail balancing (upstream `balance_error` with
+        // the "branches of conditional" items name, axis.w:4790).
         let error = convert_and_run("if true then 1 else \"x\" fi").expect_err("mismatch");
-        assert!(error.message.contains("incompatible types"));
+        assert_eq!(
+            error.message,
+            "No common type found between branches of conditional: { int, string }"
+        );
         // Non-boolean condition is a type error (the loops_b4_rejected
         // fixture pins this exact oracle wording).
         let error = convert_and_run("if 1 then 2 else 3 fi").expect_err("condition type");
@@ -6247,11 +6276,17 @@ mod tests {
     fn deeper_balance_failure_is_not_absorbed_by_outer_balance() {
         let error = convert_and_run("[begin [1,true] end,if true then 2 fi]")
             .expect_err("a wrapped inner balance failure must propagate");
-        assert!(error.message.contains("incompatible types int and bool"));
+        assert_eq!(
+            error.message,
+            "No common type found between components of list expression: { int, bool }"
+        );
 
         let error = convert_and_run("[[if true then 1 else true fi],if true then 2 fi]")
             .expect_err("a conditional failure nested in a list must propagate");
-        assert!(error.message.contains("incompatible types int and bool"));
+        assert_eq!(
+            error.message,
+            "No common type found between components of list expression: { int, bool }"
+        );
     }
 
     #[test]
