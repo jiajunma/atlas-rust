@@ -4,6 +4,76 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-07-31 (usage-limit handoff)
+
+This checkpoint was committed while three slice agents were interrupted by a
+provider 403 (usage limit). Everything in this section supersedes the queues
+below until the slices land.
+
+**In-flight WIP (committed as `chore: checkpoint ... WIP`, may not compile):**
+
+- `crates/atlas-real-group/src/{error.rs,lattice.rs}` + new
+  `ktype.rs`/`rep_context.rs`: agent-27's Rep_context crate milestone
+  (`RepInvariantViolation` error variant, y_pack coset machinery). Direction
+  reviewed, contents not fully audited.
+- `crates/atlas-core/src/{syntax.rs,typed.rs}`: agent-29's L2 bison
+  syntax-message slice (error-state probe tests). Partial.
+- agent-28's L1 diagnostic-wording slice had no evaluator edits on disk yet
+  when interrupted.
+
+**Resuming the agents (if this session is alive):** `Agent(resume="agent-27"
+/ "agent-28" / "agent-29", run_in_background=true)` — each retains full
+context. A fresh agent can instead finish the slices by hand from the briefs.
+
+**Persisted slice briefs:** `docs/slices/` holds all nine agent briefs
+(`/tmp` is volatile; the originals were copied here):
+
+- `agent_L1_prompt.md` — 4 diagnostic-wording contracts
+  (`commands/assignment_errors`, `slice_errors`, `subscription_errors`,
+  `eval/container_errors`). Upstream anchors: `axis.w:7092`
+  (`' in ' << where << ' ' << e`), `axis.w:4289` (`e->print(o << " in slice
+  ")`, `<=2` no space), `axis.w:4172/:4103/:8167`, `axis-types.w:3515`.
+- `agent_L2_prompt.md` — 5 bison syntax-message contracts
+  (`commands/{container_syntax_errors,invalid_token_continues,
+  mismatched_delimiter_continues,nested_invalid_token_continues}`,
+  `parse/negative_trailing_token`). Target messages like `syntax error,
+  unexpected INT, expecting '\n'`; `parser.y:63` has `%define parse.error
+  verbose`. The dangling `[` line of `container_syntax_errors` is excluded
+  (oracle saw the capture-time appended `quit`).
+- `agent_L3_prompt.md` — `set verbose` + `lex/basic`. Anchors:
+  `parser.y:171-178` (SET IDENT option command, unknown option `'X' is not
+  something one can set`), `main.w:495-516` and `:528-540` (the three trace
+  lines `Expression before type analysis: `/`Type found: `/`Converted
+  expression: `). Blocked on L2 releasing `lex.rs`.
+- `agent_L4_prompt.md` — `negative/unterminated_string` recovery. Oracle:
+  lexical warning `Closing string denotation.` + recovers the string +
+  prints the Value + exit 0; needs a warning-level diagnostic that does not
+  flip the exit code. Blocked on L2.
+- `agent27_rep_context_prompt.md` + the four language briefs
+  `agent_ktype_lang_prompt.md` / `agent_param_lang_prompt.md` /
+  `agent_ktypepol_lang_prompt.md` / `agent_parampol_lang_prompt.md` — the
+  six ktype/param-family contracts (`domain/ktype_basic{,_rejected}`,
+  `ktypepol_basic`, `param_basic{,_rejected}`, `parampol_basic`), all gated
+  on the Rep_context crate milestone. Serialization rule: only one
+  language-layer agent at a time on `typed.rs`/`domain_builtins.rs`.
+
+**Remaining work after these slices:** 17 frozen contracts total (all with
+verified reference + events, fields checked): the 11 above plus the 6
+ktype/param family. Then the final `docs/LANGUAGE.md` matrix refresh.
+readline completion and KL file formats stay outside the language-only gate
+(they need the Block/KL layer; `deform` is a later large item).
+
+**Per-slice delivery loop (unchanged):** local three-piece gate
+(`cargo test -p atlas-core --lib`, `cargo test -p atlas-real-group --lib`,
+`cargo clippy -p atlas-core -p atlas-real-group --lib --tests -- -D
+warnings`, `cargo fmt --all -- --check`) + verbatim fixture comparison +
+full local pipeline replay (only `eval/fromfile_accepted_b10` may FAIL) +
+`python3 hpc/test_pipeline_swap_diff.py` from inside `hpc/` (10 tests OK) →
+wire into `hpc/pipeline_swap_diff.py` → sync HPC + submit differential →
+report shows both fixtures PASS, zero FAIL → bump meta to
+`rust_status: verified_hpc` + `differential_job` → record here → commit →
+`rsync -az --delete .git/` to HPC.
+
 ## Live continuation - 2026-07-31
 
 The current committed baseline is `HEAD` on `main` (implementation HEAD
