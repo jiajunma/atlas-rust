@@ -7,7 +7,17 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 ## Live continuation - 2026-07-31
 
 The current committed baseline is `HEAD` on `main` (implementation HEAD
-`1e2a3a5`). Differential job `3502731` ran 111 fixtures with zero FAIL and
+`152f4b8`, wiring `1288e1e`). Differential job `3503322` ran 118 fixtures
+with zero FAIL and verified the primitive involution constructors:
+`involution(LieType,[int],string)` and `involution(LieType,mat,string)`
+(`152f4b8`: `checked_inner_class_letters` with the 's'/'u' collapse rules
+per atlas-types.w:742, per-letter layout permutation tables per
+lietype.cpp:507, and the based `on_basis` lattice transport per
+matrix.cpp:289 with the integrality gate; both wrapper gate orders follow
+atlas-types.w:860/:902). `PENDING_OVERLOADS` is now empty and the harness
+runs 118 wired fixtures.
+
+Differential job `3502731` ran 111 fixtures with zero FAIL and
 verified the last FIVE strong-real contracts: the four `dual_order` probes
 (RootDatum dual-order surface `cba10ec`: `posroots`/`poscoroots`/
 `dual(RootDatum)` with flipped coroot preference and letterwise B<->C Lie
