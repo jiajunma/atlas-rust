@@ -239,6 +239,10 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/involution_decomposition_twisted_non_root_rejected_probe"),
     FixturePlan(name="domain/involution_decomposition_twisted_rank_mismatch_rejected_probe"),
     FixturePlan(name="domain/involution_decomposition_twisted_root_datum_type_rejected_probe"),
+    # Block domain: the fibred-product BlockGraph over both sides' full KGB
+    # (4167249), with the upstream gate order and renumbered descent status.
+    FixturePlan(name="domain/block_basic"),
+    FixturePlan(name="domain/block_basic_rejected"),
     # Strong-real surface: the base contract plus the probes whose slices
     # have landed — the Cartan numbering adapter (a63dc32) covers the four
     # B2/C2 Cartan enumerations and all four rejected diagnostics, and the
