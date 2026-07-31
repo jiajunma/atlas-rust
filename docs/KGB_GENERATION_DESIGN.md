@@ -93,11 +93,12 @@ Citations are to `~/mycodes/atlasofliegroups`, master `4d3e9449`.
    inverse Cayley as `Vec<Vec<(Option<KgbId>, Option<KgbId>)>>`
    installed by the ascending post-pass. `None` plays `UndefKGB`.
 5. Numbering: `inv_nrs` sorted by (involution length, Weyl length,
-   `WeylElement` derived `Ord`) — the stage-(a) documented tie-break
-   in place of upstream's transducer compare (adapter-deferred
-   numbering divergence within equal-length groups, recorded since
-   stage (a)); the counting-sort standardization ported EXACTLY
-   (stable within buckets — within a tau packet the BFS discovery
+   the TwistedInvolution VALUE compare — `WeylElt::operator<`, the
+   parabolic-subquotient pieces key by internal generator order,
+   ported as `ParabolicPieces`; the upstream "internal number"
+   comments are stale); the counting-sort standardization ported
+   EXACTLY (stable within buckets — within a tau packet the BFS
+   discovery
    order is preserved, which the two implementations SHARE given the
    seed and reduction coincidences); `first_of_tau` from the
    cumulative counts; records placed by the inverse map, link targets
@@ -208,15 +209,17 @@ The full findings live in the review archive; the deltas adopted:
 1. Atlas semantics (verified against the RUNNING oracle binary):
    Sp(4,R) per-length data corrected above; the involution sort's
    third key is the TwistedInvolution VALUE compare (the upstream
-   "internal number" comments are STALE — the port's WeylElement-Ord
-   tie-break is the right analogue), and `stable_sort`'s stability is
-   vacuous there (a strict total order) — the load-bearing stability
-   is exclusively the counting sort's. Shared within-packet discovery
-   order requires ALL of: same generator numbering, the single seed,
-   canonical reduction, and identical simple_grading decisions; and
-   Sp(4,R) itself EXERCISES the tie-break divergence (ties at
-   (1,1) and (2,2)), so exact numbering is not comparable even for
-   the primary fixture — counts, packet contents, and structure are.
+   "internal number" comments are STALE — `WeylElt::operator<` is the
+   parabolic-subquotient pieces lexicographic order, now ported as
+   `ParabolicPieces` with the B2 ties at (1,1) and (2,2) resolved
+   exactly as the oracle orders them), and `stable_sort`'s stability
+   is vacuous there (a strict total order) — the load-bearing
+   stability is exclusively the counting sort's. Shared within-packet
+   discovery order requires ALL of: same generator numbering, the
+   single seed, canonical reduction, and identical simple_grading
+   decisions; with the pieces key in place the Sp(4,R) numbering
+   matches the oracle exactly (the 11-element KGB test and the
+   `strong_real_b2_full_kgb_probe` fixture pin it).
    Write-once holds by loop discipline (upstream's OR-set would
    silently corrupt; the port's checked invariant is a strengthening;
    descents are assignments, not ORs). torus_factor sharpenings: the

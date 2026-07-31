@@ -2,15 +2,18 @@
 //!
 //! BFS from the stage-(d) seed over based cross actions and Cayley
 //! transforms with reduce-and-dedup, statuses classified from the
-//! involution table, the (involution length, Weyl length, `WeylElement`
-//! `Ord`) sorted numbering via the stable counting-sort standardization,
-//! and inverse-Cayley links installed by the ascending post-pass. The
-//! graph is HYBRID self-contained: per-involution-position data and the
-//! cocharacter are copied in, so every accessor except
-//! [`KgbGraph::torus_factor`] (which needs theta from the table) is
-//! substrate-free. Element numbering within equal-length groups uses the
-//! crate's documented tie-break; exact upstream numbering is adapter
-//! territory (Sp(4,R) itself exercises the divergence).
+//! involution table, the upstream involution ordering — (involution
+//! length, Weyl length, parabolic piece list), the
+//! `Cartan_orbits::comparer` key of involutions.cpp:420-428 whose third
+//! leg compares `WeylElt::pieces` lexicographically — applied through the
+//! stable counting-sort standardization, and inverse-Cayley links
+//! installed by the ascending post-pass. The graph is HYBRID
+//! self-contained: per-involution-position data and the cocharacter are
+//! copied in, so every accessor except [`KgbGraph::torus_factor`] (which
+//! needs theta from the table) is substrate-free. Element numbering
+//! reproduces the upstream `KGB::KGB` numbering (kgb.cpp:489-683)
+//! exactly: BFS discovery order within each tau packet, packets ordered
+//! by the sorted involutions.
 
 use std::collections::BTreeMap;
 
@@ -20,8 +23,9 @@ use crate::grading::try_capacity;
 use crate::tits_element::apply_matrix_mod_two;
 use crate::{
     CartanClassification, CartanId, InnerClass, InvolutionId, InvolutionTable, LatticeInvolution,
-    ModTwoVector, RationalCoweight, RealFormSeed, RootKind, StrongRealClassification,
-    StructureError, TitsCoset, TitsElement, WeakRealFormId, WeylElement,
+    ModTwoVector, ParabolicPieces, RationalCoweight, RealFormSeed, RootKind,
+    StrongRealClassification, StructureError, TitsCoset, TitsElement, WeakRealFormId, WeylElement,
+    WeylInterface,
 };
 
 /// Stable identifier of one KGB element in one graph's numbering.
@@ -238,7 +242,14 @@ impl KgbGraph {
             });
         }
 
-        // The form's involutions, sorted by the documented key.
+        // The form's involutions, sorted by the upstream key: involution
+        // length, then Weyl length, then the TwistedInvolution VALUE
+        // compare — the parabolic piece list in the internal generator
+        // order (`Cartan_orbits::comparer`, involutions.cpp:420-428; the
+        // "internal number" comments in kgb.cpp and involutions.h are
+        // stale). The key is a strict total order, so the sort's
+        // stability is vacuous; the load-bearing stability is exclusively
+        // the counting sort's below.
         let mut involutions: Vec<InvolutionId> = Vec::new();
         for &cartan in cartan_set {
             let (start, slice) =
@@ -251,15 +262,23 @@ impl KgbGraph {
                 involutions.push(InvolutionId(start.0 + offset));
             }
         }
-        involutions.sort_unstable_by(|left, right| {
-            let a = table.record(*left).expect("sorted involutions exist");
-            let b = table.record(*right).expect("sorted involutions exist");
-            (a.involution_length(), a.weyl_length(), a.weyl_element()).cmp(&(
-                b.involution_length(),
-                b.weyl_length(),
-                b.weyl_element(),
-            ))
-        });
+        let interface = WeylInterface::new(inner_class.datum().cartan_matrix())?;
+        let pieces = ParabolicPieces::build(table.root_system(), &interface)?;
+        let mut keyed = try_capacity(involutions.len())?;
+        for id in involutions {
+            let record = table.record(id).expect("sorted involutions exist");
+            keyed.push((
+                record.involution_length(),
+                record.weyl_length(),
+                pieces.key(table.root_system(), &interface, record.weyl_element())?,
+                id.0,
+            ));
+        }
+        keyed.sort_unstable();
+        let involutions: Vec<InvolutionId> = keyed
+            .into_iter()
+            .map(|(_, _, _, id)| InvolutionId(id))
+            .collect();
         let buckets = involutions.len();
         let mut involution_bucket: Vec<Option<usize>> = try_capacity(table.involution_count())?;
         involution_bucket.resize(table.involution_count(), None);
@@ -965,6 +984,110 @@ mod tests {
         // Determinism.
         let again = build_graph(&mut pipeline, 0);
         assert_eq!(graph, again);
+    }
+
+    /// The frozen B2 full-KGB probe's split-form table, verbatim from the
+    /// oracle (tests/reference/domain/strong_real_b2_full_kgb_probe.events
+    /// .json, job 3502700): packet order, cross/Cayley links, statuses,
+    /// and the inverse-Cayley pairs of the eleven-element numbering.
+    #[test]
+    fn sp4r_kgb_matches_the_oracle_numbering() {
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2, -2], vec![-1, 2]],
+            vec![Weight::new(vec![2, -2]), Weight::new(vec![-1, 2])],
+            vec![Coweight::new(vec![1, 0]), Coweight::new(vec![0, 1])],
+        )
+        .unwrap();
+        let mut pipeline = pipeline(datum, None, 8, 8);
+        pipeline
+            .table
+            .add_cartan(&pipeline.classification, CartanId(0))
+            .unwrap();
+        let graph = build_graph(&mut pipeline, 0);
+        let system = pipeline.table.root_system();
+        let word = |letters: &[usize]| {
+            let mut element = WeylElement::identity(system).unwrap();
+            for &generator in letters {
+                let (next, _) = element.right_multiply_simple(system, generator).unwrap();
+                element = next;
+            }
+            element
+        };
+        let involution_word = |id: usize| {
+            let involution = graph.involution_of(KgbId(id)).unwrap();
+            pipeline
+                .table
+                .record(involution)
+                .unwrap()
+                .weyl_element()
+                .clone()
+        };
+        // Packet order: identity (0..4), s_0 (4,5), s_1 (6), s_0 s_1 s_0
+        // (7), s_1 s_0 s_1 (8,9), longest (10).
+        for id in 0..4 {
+            assert_eq!(involution_word(id), word(&[]));
+        }
+        assert_eq!(involution_word(4), word(&[0]));
+        assert_eq!(involution_word(5), word(&[0]));
+        assert_eq!(involution_word(6), word(&[1]));
+        assert_eq!(involution_word(7), word(&[0, 1, 0]));
+        assert_eq!(involution_word(8), word(&[1, 0, 1]));
+        assert_eq!(involution_word(9), word(&[1, 0, 1]));
+        assert_eq!(involution_word(10), word(&[0, 1, 0, 1]));
+        // Statuses and links, row by row.
+        use KgbStatus::{
+            Complex as C, ImaginaryCompact as Ic, ImaginaryNoncompact as In, Real as R,
+        };
+        type Row = ([KgbStatus; 2], [usize; 2], [Option<usize>; 2]);
+        let expected: [Row; 11] = [
+            ([In, In], [1, 2], [Some(4), Some(6)]),
+            ([In, Ic], [0, 1], [Some(4), None]),
+            ([In, In], [3, 0], [Some(5), Some(6)]),
+            ([In, Ic], [2, 3], [Some(5), None]),
+            ([R, C], [4, 8], [None, None]),
+            ([R, C], [5, 9], [None, None]),
+            ([C, R], [7, 6], [None, None]),
+            ([C, In], [6, 7], [None, Some(10)]),
+            ([In, C], [9, 4], [Some(10), None]),
+            ([In, C], [8, 5], [Some(10), None]),
+            ([R, R], [10, 10], [None, None]),
+        ];
+        for (id, (statuses, crosses, cayleys)) in expected.iter().enumerate() {
+            for generator in 0..2 {
+                assert_eq!(
+                    graph.status(KgbId(id), generator),
+                    Some(statuses[generator]),
+                    "status of {id} at {generator}"
+                );
+                assert_eq!(
+                    graph.cross(KgbId(id), generator),
+                    Some(KgbId(crosses[generator])),
+                    "cross of {id} at {generator}"
+                );
+                assert_eq!(
+                    graph.cayley(KgbId(id), generator).unwrap(),
+                    cayleys[generator].map(KgbId),
+                    "Cayley of {id} at {generator}"
+                );
+            }
+        }
+        assert_eq!(
+            graph.inverse_cayley(KgbId(4), 0).unwrap(),
+            Some((KgbId(0), Some(KgbId(1))))
+        );
+        assert_eq!(
+            graph.inverse_cayley(KgbId(6), 1).unwrap(),
+            Some((KgbId(0), Some(KgbId(2))))
+        );
+        assert_eq!(
+            graph.inverse_cayley(KgbId(10), 0).unwrap(),
+            Some((KgbId(8), Some(KgbId(9))))
+        );
+        assert_eq!(
+            graph.inverse_cayley(KgbId(10), 1).unwrap(),
+            Some((KgbId(7), None))
+        );
     }
 
     #[test]

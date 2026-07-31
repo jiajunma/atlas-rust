@@ -12,6 +12,15 @@
 //! is the caller's contract, owned by the KGB stages. Antisymmetry of the
 //! permutation is guaranteed by keeping the constructors the only entry
 //! points.
+//!
+//! The [`ParabolicPieces`] table reproduces the upstream transducer's
+//! `EltPiece` indexing (weyl.cpp:289-416): the parabolic-subquotient piece
+//! list is the tie-break of the upstream involution ordering
+//! (`Cartan_orbits::comparer`, involutions.cpp:420-428, which compares the
+//! `WeylElt::pieces` arrays lexicographically), so the KGB renumbering
+//! consumes it verbatim.
+
+use std::collections::BTreeMap;
 
 use crate::grading::try_capacity;
 use crate::{RootId, RootSystem, StructureError, WeylAction};
@@ -312,10 +321,14 @@ impl WeylElement {
 ///
 /// Upstream needs the renumbering to keep its transducer tables small;
 /// this port keeps only its observable effect, the canonical-word choice
-/// of [`WeylElement::canonical_word`].
+/// of [`WeylElement::canonical_word`], and the internal-order piece
+/// indexing of [`ParabolicPieces`].
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct WeylInterface {
     outward: Vec<usize>,
+    /// Per internal index, the first internal index of its Dynkin
+    /// component — upstream `comp.offset` of the owning component.
+    component_offset: Vec<usize>,
 }
 
 impl WeylInterface {
@@ -326,10 +339,15 @@ impl WeylInterface {
         let components = crate::dynkin::classify(cartan)?;
         let mut outward = try_capacity(cartan.len())?;
         outward.resize(cartan.len(), usize::MAX);
+        let mut component_offset = try_capacity(cartan.len())?;
+        component_offset.resize(cartan.len(), usize::MAX);
         let mut offset = 0;
         for component in &components {
             let size = component.position.len();
             let reverse = matches!(component.letter, 'B' | 'C' | 'D');
+            for slot in component_offset.iter_mut().take(offset + size).skip(offset) {
+                *slot = offset;
+            }
             for (index, &external) in component.position.iter().enumerate() {
                 let internal = if reverse {
                     offset + size - 1 - index
@@ -353,7 +371,10 @@ impl WeylInterface {
         if outward.contains(&usize::MAX) {
             return Err(permutation_violation(()));
         }
-        Ok(Self { outward })
+        Ok(Self {
+            outward,
+            component_offset,
+        })
     }
 
     /// External generator numbers in increasing internal order.
@@ -380,6 +401,129 @@ fn simple_id(system: &RootSystem, generator: usize) -> Result<RootId, StructureE
             index: generator,
             upper_bound: system.simple_root_ids().len(),
         })
+}
+
+/// The per-level `EltPiece` indexing of the upstream transducer
+/// (`WeylGroup::Transducer::Transducer`, weyl.cpp:289-416): for each
+/// internal generator `i`, the minimal coset representatives of
+/// `W_{i-1}\W_i` enumerated in the transducer's creation order — BFS from
+/// the identity piece, right-multiplying by the Dynkin component's
+/// internal generators in ascending order and keeping only products that
+/// stay coset-minimal (no left descents below the level).
+///
+/// The piece list of an element is the tie-break of the upstream
+/// involution ordering: `Cartan_orbits::comparer`
+/// (involutions.cpp:420-428) compares `WeylElt::pieces` arrays, upstream's
+/// `WeylElt::operator<` (weyl.h:133). Building the table once per KGB
+/// construction keeps [`Self::key`] lookups out of the transducer
+/// enumeration.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ParabolicPieces {
+    /// Per internal level: minimal coset representative -> piece index.
+    levels: Vec<BTreeMap<WeylElement, usize>>,
+}
+
+impl ParabolicPieces {
+    pub fn build(system: &RootSystem, interface: &WeylInterface) -> Result<Self, StructureError> {
+        let rank = system.simple_root_ids().len();
+        if interface.outward.len() != rank {
+            return Err(StructureError::WeylElementInvariantViolation {
+                invariant: "interface provenance",
+            });
+        }
+        let mut levels = try_capacity(rank)?;
+        for level in 0..rank {
+            let offset = interface.component_offset[level];
+            let identity = WeylElement::identity(system)?;
+            let mut reps = Vec::new();
+            let mut index = BTreeMap::new();
+            reps.push(identity.clone());
+            index.insert(identity, 0_usize);
+            let mut cursor = 0;
+            while cursor < reps.len() {
+                let current = reps[cursor].clone();
+                for internal in offset..=level {
+                    let (candidate, _) =
+                        current.right_multiply_simple(system, interface.outward[internal])?;
+                    let mut coset_minimal = true;
+                    for lower in offset..level {
+                        if candidate.has_left_descent(system, interface.outward[lower])? {
+                            coset_minimal = false;
+                            break;
+                        }
+                    }
+                    if coset_minimal && !index.contains_key(&candidate) {
+                        index.insert(candidate.clone(), reps.len());
+                        reps.push(candidate);
+                    }
+                }
+                cursor += 1;
+            }
+            levels.push(index);
+        }
+        Ok(Self { levels })
+    }
+
+    /// The element's piece list in internal-level order: the unique
+    /// factorization `w = w_1...w_n` with `w_i` the minimal representative
+    /// of its right coset `W_{i-1}.w`, returned as the per-level piece
+    /// indices. Lexicographic comparison of these lists is upstream's
+    /// `WeylElt::operator<`.
+    pub fn key(
+        &self,
+        system: &RootSystem,
+        interface: &WeylInterface,
+        element: &WeylElement,
+    ) -> Result<Vec<usize>, StructureError> {
+        element.check_provenance(system)?;
+        let rank = system.simple_root_ids().len();
+        if interface.outward.len() != rank || self.levels.len() != rank {
+            return Err(StructureError::WeylElementInvariantViolation {
+                invariant: "interface provenance",
+            });
+        }
+        let mut pieces = try_capacity(rank)?;
+        pieces.resize(rank, 0_usize);
+        let mut tail = element.clone();
+        for level in (0..rank).rev() {
+            // Peel the coset `W_{level}.tail` down to its minimal
+            // representative: any remaining left descent below the level
+            // shortens the element inside the same coset.
+            let mut minimal = tail.clone();
+            loop {
+                let mut descended = false;
+                for internal in 0..level {
+                    let generator = interface.outward[internal];
+                    if minimal.has_left_descent(system, generator)? {
+                        let (next, change) = minimal.left_multiply_simple(system, generator)?;
+                        if change != -1 {
+                            return Err(StructureError::WeylElementInvariantViolation {
+                                invariant: "descent peeling",
+                            });
+                        }
+                        minimal = next;
+                        descended = true;
+                        break;
+                    }
+                }
+                if !descended {
+                    break;
+                }
+            }
+            pieces[level] = *self.levels[level].get(&minimal).ok_or(
+                StructureError::WeylElementInvariantViolation {
+                    invariant: "parabolic piece",
+                },
+            )?;
+            tail = tail.multiply(system, &minimal.inverse())?;
+        }
+        if !tail.is_identity() {
+            return Err(StructureError::WeylElementInvariantViolation {
+                invariant: "parabolic factorization",
+            });
+        }
+        Ok(pieces)
+    }
 }
 
 fn lowest_left_descent(
@@ -804,5 +948,92 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn parabolic_pieces_match_the_oracle_b2_anchors() {
+        // B2's internal order is reversed: internal t_0 = datum s_1,
+        // t_1 = datum s_0. The level-1 minimal coset reps enumerate as
+        // [e, t_1, t_1 t_0, t_1 t_0 t_1] (weyl.cpp:320-405), so the piece
+        // lists of the (involution length, Weyl length) ties are:
+        let b2 = b2();
+        let interface = WeylInterface::new(b2.datum().cartan_matrix()).unwrap();
+        let pieces = ParabolicPieces::build(&b2, &interface).unwrap();
+        let key = |word: &[usize]| pieces.key(&b2, &interface, &from_word(&b2, word)).unwrap();
+        assert_eq!(key(&[]), [0, 0]);
+        // s_0 = t_1 factors (e, t_1); s_1 = t_0 factors (t_0, e).
+        assert_eq!(key(&[0]), [0, 1]);
+        assert_eq!(key(&[1]), [1, 0]);
+        // s_0 s_1 s_0 = t_1 t_0 t_1 vs s_1 s_0 s_1 = t_0 (t_1 t_0).
+        assert_eq!(key(&[0, 1, 0]), [0, 3]);
+        assert_eq!(key(&[1, 0, 1]), [1, 2]);
+        assert_eq!(key(&[0, 1, 0, 1]), [1, 3]);
+        assert_eq!(key(&[1, 0, 1, 0]), [1, 3]);
+        // The upstream involution ordering therefore places the s_0 packet
+        // before the s_1 packet and the s_0 s_1 s_0 packet before the
+        // s_1 s_0 s_1 packet — the frozen B2 full-KGB probe's numbering.
+        assert!(key(&[0]) < key(&[1]));
+        assert!(key(&[0, 1, 0]) < key(&[1, 0, 1]));
+    }
+
+    #[test]
+    fn parabolic_pieces_preserve_the_a1_a2_ordering() {
+        // A1 has a single generator: no equal-(length, Weyl length) ties
+        // exist, so no numbering can change.
+        let a1 = enumerate(vec![vec![2]], 2);
+        let a1_interface = WeylInterface::new(a1.datum().cartan_matrix()).unwrap();
+        let a1_pieces = ParabolicPieces::build(&a1, &a1_interface).unwrap();
+        assert_eq!(
+            a1_pieces
+                .key(&a1, &a1_interface, &from_word(&a1, &[0]))
+                .unwrap(),
+            [1]
+        );
+        // A2's internal order is straight; the (1,1) tie compares
+        // s_1 = [0,1] before s_0 = [1,0] — the SAME order the derived
+        // root-permutation Ord already gave, so A2 numbering is
+        // invariant under the tie-break switch.
+        let a2 = a2();
+        let interface = WeylInterface::new(a2.datum().cartan_matrix()).unwrap();
+        let pieces = ParabolicPieces::build(&a2, &interface).unwrap();
+        let s0 = from_word(&a2, &[0]);
+        let s1 = from_word(&a2, &[1]);
+        assert_eq!(pieces.key(&a2, &interface, &s1).unwrap(), [0, 1]);
+        assert_eq!(pieces.key(&a2, &interface, &s0).unwrap(), [1, 0]);
+        assert!(s1 < s0, "derived Ord already placed s_1 before s_0");
+    }
+
+    #[test]
+    fn parabolic_pieces_key_is_a_total_order_on_group_elements() {
+        let g2 = enumerate(vec![vec![2, -3], vec![-1, 2]], 12);
+        let c2 = enumerate(vec![vec![2, -1], vec![-2, 2]], 8);
+        let a3 = enumerate(vec![vec![2, -1, 0], vec![-1, 2, -1], vec![0, -1, 2]], 12);
+        for system in [a2(), b2(), c2, g2, a3] {
+            let interface = WeylInterface::new(system.datum().cartan_matrix()).unwrap();
+            let pieces = ParabolicPieces::build(&system, &interface).unwrap();
+            let mut keys = Vec::new();
+            for element in closure(&system) {
+                keys.push(pieces.key(&system, &interface, &element).unwrap());
+            }
+            let mut sorted = keys.clone();
+            sorted.sort_unstable();
+            sorted.dedup();
+            assert_eq!(keys.len(), sorted.len(), "piece lists collide");
+        }
+        // The rank-zero edge: one empty piece list.
+        let torus = BasedRootDatum::from_simple_data(2, vec![], vec![], vec![]).unwrap();
+        let torus_system = RootSystem::enumerate(&torus, 0).unwrap();
+        let torus_interface = WeylInterface::new(&[]).unwrap();
+        let torus_pieces = ParabolicPieces::build(&torus_system, &torus_interface).unwrap();
+        assert_eq!(
+            torus_pieces
+                .key(
+                    &torus_system,
+                    &torus_interface,
+                    &WeylElement::identity(&torus_system).unwrap(),
+                )
+                .unwrap(),
+            Vec::<usize>::new()
+        );
     }
 }
