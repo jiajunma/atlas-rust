@@ -12,7 +12,7 @@
   "oracle_stdout_sha256": "504962553876b4f532a2901d65c8ceea6aec66fe906582fd5eebde76afb3bf76",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "capture_artifacts_sha256": "2c131ebf068f3b6c0e42110900f13330d726c9f3b664b2fa3a79b0321c067280",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:9119",
     "sources/gkmod/kgb.cpp:489-683"
@@ -21,5 +21,6 @@
     "print_KGB for all three C2 (Sp(4,R)) real forms in coroot preference",
     "pins the parabolic-pieces involution ordering at C2, isomorphic to B2"
   ],
-  "notes": "C2 full KGB print captured verbatim by HPC job 3502734 against the pinned atlasofliegroups-4d3e9449 oracle; suggested by the KGB pieces-key slice to pin C2 numbering explicitly."
+  "notes": "C2 full KGB print captured verbatim by HPC job 3502734 against the pinned atlasofliegroups-4d3e9449 oracle; suggested by the KGB pieces-key slice to pin C2 numbering explicitly.",
+  "differential_job": "3502736"
 }
