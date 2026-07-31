@@ -25,15 +25,16 @@ use malachite::{Integer as BigInt, Rational as BigRational};
 use atlas_real_group::{
     adapted_relation_basis, annihilator_modulo as relation_annihilator_modulo, build_presentations,
     central_fiber, classify_involution as domain_classify_involution, dual_cartan_correspondence,
-    dual_inner_class, filter_relation_units as domain_filter_relation_units,
-    inner_class_with_twisted_involution, quotient_relation_basis as domain_quotient_relation_basis,
+    dual_inner_class, elected_square_root, filter_relation_units as domain_filter_relation_units,
+    inner_class_with_twisted_involution, minimal_torus_part,
+    quotient_relation_basis as domain_quotient_relation_basis,
     replace_relation_generators as domain_replace_relation_generators, AdjointFiberBudget,
     BasedRootDatum, CartanClass, CartanClassification, CartanClassificationBudget, CartanId,
     Coweight, ExternalFormOrder, InnerClass, InnerClassLayout, IntegerLatticeBudget,
     InvolutionTable, InvolutionTableBudget, KgbGraph, KgbId, KgbStatus, LatticeInvolution,
-    RealFormPresentation, RealFormSeed, RelationBasis, RelationError, RelationGenerator,
-    RelationMatrix, RootSystem, StrongRealClassification, StructureError, WeakRealFormId, Weight,
-    WeylElement, WeylInterface,
+    ModTwoVector, RealFormPresentation, RealFormSeed, RelationBasis, RelationError,
+    RelationGenerator, RelationMatrix, RootSystem, StrongRealClassification, StructureError,
+    WeakRealFormId, Weight, WeylElement, WeylInterface,
 };
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
@@ -271,8 +272,14 @@ impl PartialEq for DomainValue {
                 left.inner_class == right.inner_class
             }
             (Self::RealForm(left), Self::RealForm(right)) => {
+                // RealReductiveGroup operator== (realredgp.h:142-149): same
+                // inner class and form, same base cocharacter, same initial
+                // torus part — the custom-seed identity.
                 left.parent.inner_class == right.parent.inner_class
                     && left.internal == right.internal
+                    && left.graph.cocharacter() == right.graph.cocharacter()
+                    && left.graph.seed_element().torus_bits()
+                        == right.graph.seed_element().torus_bits()
             }
             (Self::KgbElement(left, left_id), Self::KgbElement(right, right_id)) => {
                 left.parent.inner_class == right.parent.inner_class
@@ -1482,6 +1489,52 @@ fn build_real_form(
     }))
 }
 
+/// The custom-seed construction of `real_form_value::build`
+/// (atlas-types.w:3543-3544): a fresh KGB pipeline seeded with the
+/// caller's (cocharacter, torus part) pair rather than the form's elected
+/// seed. Only `synthetic_real_form` plans that failed the default test
+/// reach here.
+fn build_custom_real_form(
+    parent: &Arc<InnerClassContext>,
+    plan: &SyntheticRealForm,
+    span: SourceSpan,
+) -> Result<Arc<RealFormContext>, Diagnostic> {
+    let mut table =
+        InnerClassContext::fresh_table(parent).map_err(|error| runtime(span, error.to_string()))?;
+    let fundamental = parent
+        .classification
+        .cartan_ids()
+        .next()
+        .ok_or_else(|| runtime(span, "empty classification"))?;
+    table
+        .add_cartan(&parent.classification, fundamental)
+        .map_err(|error| runtime(span, error.to_string()))?;
+    let seed = RealFormSeed::custom(
+        &parent.inner_class,
+        &parent.classification,
+        &table,
+        plan.internal,
+        &plan.cocharacter,
+        plan.torus_part.clone(),
+    )
+    .map_err(|error| runtime(span, error.to_string()))?;
+    let graph = KgbGraph::build(
+        &parent.inner_class,
+        &parent.classification,
+        &parent.strong,
+        &mut table,
+        &seed,
+    )
+    .map_err(|error| runtime(span, error.to_string()))?;
+    Ok(Arc::new(RealFormContext {
+        parent: Arc::clone(parent),
+        external: plan.external,
+        internal: plan.internal,
+        table,
+        graph,
+    }))
+}
+
 impl InnerClassContext {
     fn fresh_table(
         parent: &Arc<InnerClassContext>,
@@ -2308,26 +2361,40 @@ fn build_kgb_element(
         .ok_or_else(|| runtime(span, "KGB element not present"))
 }
 
+/// The seed plan of a synthetic real form: the weak form, the elected
+/// cocharacter, and the minimal torus part, plus whether
+/// `real_form_value::build` (atlas-types.w:3534-3545) drops to the shared
+/// default construction because the pair coincides with the elected seed.
+struct SyntheticRealForm {
+    external: usize,
+    internal: WeakRealFormId,
+    cocharacter: Vec<BigRational>,
+    torus_part: ModTwoVector,
+    default_seed: bool,
+}
+
 /// Shared body of the synthetic real-form constructor
 /// `real_form(InnerClass,mat,ratvec)` (synthetic_real_form_wrapper,
 /// interpreter/atlas-types.w:3851-3871): the weak real form claiming the
-/// (involution, torus factor) datum, answered as the form's EXTERNAL
-/// number. Every diagnostic fires before the wrapper's no_value gate, so
-/// `validate` runs the same pipeline and drops the result. The order is
-/// the upstream one — size check, `twisted_from_involution` with its
-/// shape, involution, and inner-class checks, THEN the doubled
-/// theta-fixed projection with its centrality parity test and halving —
-/// the exact reverse of `build_KGB_element`'s arithmetic-first order.
-/// Upstream's closing `minimal_torus_part` elects the base torus part for
-/// the value's KGB seed; the crate's `build_real_form` recomputes the
-/// elected seed from the form number (`RealFormSeed`), which is exactly
-/// upstream's drop-to-shared-build case of `real_form_value::build`.
+/// (involution, torus factor) datum, together with the seed
+/// `real_form_value::build` stores. Every diagnostic fires before the
+/// wrapper's no_value gate, so `validate` runs the same pipeline and drops
+/// the result. The order is the upstream one — size check,
+/// `twisted_from_involution` with its shape, involution, and inner-class
+/// checks, THEN the doubled theta-fixed projection with its centrality
+/// parity test and halving — the exact reverse of `build_KGB_element`'s
+/// arithmetic-first order. After classification the wrapper computes
+/// `real_form_of`'s `coch` output and `minimal_torus_part`
+/// (realredgp.cpp:212-309), and `build` elects the shared default value
+/// only when the pair equals the form's elected seed
+/// (atlas-types.w:3534-3545); the caller builds the custom-seed KGB
+/// pipeline otherwise.
 fn synthetic_real_form(
     context: &Arc<InnerClassContext>,
     theta: &Value,
     factor: &Value,
     span: SourceSpan,
-) -> Result<usize, Diagnostic> {
+) -> Result<SyntheticRealForm, Diagnostic> {
     let inner_class = &context.inner_class;
     let rank = inner_class.datum().lattice_rank();
     let Value::RatVector(factor) = factor else {
@@ -2407,14 +2474,65 @@ fn synthetic_real_form(
             BigRational::from(numerator.clone()) / BigRational::from(&twice_denominator)
         })
         .collect();
-    let internal = context
+    let (internal, cartan) = context
         .classification
-        .real_form_of(inner_class, &element, &projected)
+        .real_form_of_detailed(inner_class, &element, &projected)
         .map_err(|error| runtime(span, error.to_string()))?;
-    context
+    // real_form_of's `coch` output: the stable log of the shifted square.
+    let cocharacter = elected_square_root(inner_class, &element, &projected, &INTEGER_BUDGET)
+        .map_err(|error| runtime(span, error.to_string()))?;
+    // Make sure the involution table knows the Cartan class of the
+    // involution and every class below it (atlas-types.w:3902-3907).
+    let mut table = InnerClassContext::fresh_table(context)
+        .map_err(|error| runtime(span, error.to_string()))?;
+    let mut classes: Vec<CartanId> = context
+        .classification
+        .cartan_ids()
+        .filter(|&id| id == cartan || context.classification.is_below(id, cartan) == Some(true))
+        .collect();
+    classes.sort_unstable();
+    for id in classes {
+        table
+            .add_cartan(&context.classification, id)
+            .map_err(|error| runtime(span, error.to_string()))?;
+    }
+    let torus_part = minimal_torus_part(
+        inner_class,
+        &context.classification,
+        &table,
+        internal,
+        &cocharacter,
+        &element,
+        &projected,
+    )
+    .map_err(|error| runtime(span, error.to_string()))?;
+    // real_form_value::build's default test (atlas-types.w:3538-3541):
+    // drop to the shared construction when the pair equals the elected
+    // seed — `some_coch` and `x0_torus_part`, which is exactly what
+    // `RealFormSeed::build` computes.
+    let default = RealFormSeed::build(
+        inner_class,
+        &context.classification,
+        &context.strong,
+        &table,
+        internal,
+        &INTEGER_BUDGET,
+        FIBER_BUDGET,
+    )
+    .map_err(|error| runtime(span, error.to_string()))?;
+    let default_seed = cocharacter == default.square_class_cocharacter().to_rationals()
+        && torus_part == *default.element().torus_bits();
+    let external = context
         .order
         .external(internal)
-        .ok_or_else(|| runtime(span, "real form number out of range"))
+        .ok_or_else(|| runtime(span, "real form number out of range"))?;
+    Ok(SyntheticRealForm {
+        external,
+        internal,
+        cocharacter,
+        torus_part,
+        default_seed,
+    })
 }
 
 /// A simple-coordinate root or coroot table.
@@ -3545,9 +3663,12 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                     Ok(Value::Domain(DomainValue::RealForm(form)))
                 }
                 3 => {
-                    let external =
-                        synthetic_real_form(context, &arguments[1], &arguments[2], span)?;
-                    let form = build_real_form(context, external, span)?;
+                    let plan = synthetic_real_form(context, &arguments[1], &arguments[2], span)?;
+                    let form = if plan.default_seed {
+                        build_real_form(context, plan.external, span)?
+                    } else {
+                        build_custom_real_form(context, &plan, span)?
+                    };
                     Ok(Value::Domain(DomainValue::RealForm(form)))
                 }
                 count => Err(type_error(

@@ -445,6 +445,14 @@ impl KgbGraph {
         self.elements.get(id.0)
     }
 
+    /// The seed element the BFS was rooted at — always element #0 (the
+    /// discovery order interns the seed first, and the fundamental
+    /// involution sorts first). This is upstream's `x0_torus_part` carrier
+    /// for the real form equality test.
+    pub fn seed_element(&self) -> &TitsElement {
+        &self.elements[0]
+    }
+
     pub fn involution_of(&self, id: KgbId) -> Option<InvolutionId> {
         let position = *self.element_position.get(id.0)?;
         Some(self.positions[position].0)

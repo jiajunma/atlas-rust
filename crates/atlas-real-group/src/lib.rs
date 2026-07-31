@@ -29,6 +29,7 @@ mod involution_table;
 mod kgb_graph;
 mod lattice;
 mod layout;
+mod minimal_torus;
 mod mod_two;
 mod presentation;
 mod real_form_labels;
@@ -76,6 +77,7 @@ pub use involution_table::{
 pub use kgb_graph::{KgbGraph, KgbId, KgbStatus};
 pub use lattice::{pair, Coweight, RationalCoweight, Weight};
 pub use layout::InnerClassLayout;
+pub use minimal_torus::{elected_square_root, minimal_torus_part};
 pub use mod_two::{ModTwoSubspace, ModTwoVector};
 pub use presentation::{build_presentations, RealFormPresentation};
 pub use real_form_labels::RealFormLabels;

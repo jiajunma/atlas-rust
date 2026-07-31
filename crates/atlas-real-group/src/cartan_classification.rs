@@ -386,6 +386,21 @@ impl CartanClassification {
         twisted: &WeylElement,
         factor: &[Rational],
     ) -> Result<WeakRealFormId, StructureError> {
+        Ok(self.real_form_of_detailed(inner_class, twisted, factor)?.0)
+    }
+
+    /// [`Self::real_form_of`] plus the Cartan class of `twisted` — the
+    /// synthetic wrapper additionally needs the class to extend its
+    /// involution table over every class below it before calling
+    /// `minimal_torus_part` (interpreter/atlas-types.w:3902-3907). The
+    /// classification logic is unchanged: the class is the one whose
+    /// representative the canonicalizing walk meets.
+    pub fn real_form_of_detailed(
+        &self,
+        inner_class: &InnerClass,
+        twisted: &WeylElement,
+        factor: &[Rational],
+    ) -> Result<(WeakRealFormId, CartanId), StructureError> {
         let datum = inner_class.datum();
         let system = inner_class.root_system();
         let rank = datum.lattice_rank();
@@ -462,7 +477,9 @@ impl CartanClassification {
                 .iter()
                 .position(|representative| representative == &element)
             {
-                return self.synthetic_form_at(position, system, &transported);
+                return self
+                    .synthetic_form_at(position, system, &transported)
+                    .map(|form| (form, CartanId(position)));
             }
             for generator in 0..simple_ids.len() {
                 let delta_image = distinguished.image(simple_ids[generator]).ok_or(

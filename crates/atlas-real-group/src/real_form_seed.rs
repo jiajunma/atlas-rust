@@ -488,6 +488,152 @@ impl RealFormSeed {
         })
     }
 
+    /// Build the seed from an EXPLICIT (cocharacter, torus part) pair — the
+    /// custom branch of upstream `real_form_value::build`
+    /// (atlas-types.w:3534-3545), whose `RealReductiveGroup` constructor
+    /// stores the pair unchanged (realredgp.cpp:56-69). Gates: the table's
+    /// inner class and the classification's fundamental class are
+    /// normalized as in [`Self::build`], the cocharacter's simple pairings
+    /// are integral (upstream asserts inside `RatCoweight::dot`), and the
+    /// torus part reproduces the form's compact pattern — upstream's own
+    /// x0-compacts assert (innerclass.cpp:1090-1092), the same
+    /// verification [`Self::build`] performs on its elected output.
+    pub fn custom(
+        inner_class: &InnerClass,
+        classification: &CartanClassification,
+        table: &InvolutionTable,
+        form: WeakRealFormId,
+        cocharacter: &[Rational],
+        torus_part: ModTwoVector,
+    ) -> Result<Self, StructureError> {
+        if table.inner_class() != inner_class {
+            return Err(StructureError::DatumMismatch);
+        }
+        let datum = inner_class.datum();
+        let lattice_rank = datum.lattice_rank();
+        if cocharacter.len() != lattice_rank {
+            return Err(StructureError::RankMismatch {
+                expected: lattice_rank,
+                actual: cocharacter.len(),
+            });
+        }
+        if torus_part.dimension() != lattice_rank {
+            return Err(StructureError::RankMismatch {
+                expected: lattice_rank,
+                actual: torus_part.dimension(),
+            });
+        }
+        let fundamental = classification.cartan_class(CartanId(0)).ok_or(
+            StructureError::SeedInvariantViolation {
+                invariant: "fundamental class",
+            },
+        )?;
+        let representative = fundamental.representative();
+        if representative.weyl_action().datum() != datum
+            || representative.weyl_action() != &WeylAction::identity(datum)?
+        {
+            return Err(StructureError::SeedInvariantViolation {
+                invariant: "fundamental class",
+            });
+        }
+        let delta = inner_class.distinguished_involution().involution();
+        let stored = representative.root_involution().involution();
+        if stored.weight_matrix() != delta.weight_matrix()
+            || stored.coweight_matrix() != delta.coweight_matrix()
+        {
+            return Err(StructureError::SeedInvariantViolation {
+                invariant: "fundamental class",
+            });
+        }
+
+        // The offset over ALL simples (even = set), under the same
+        // integral-pairing gate as the elected cocharacter's.
+        let semisimple_rank = datum.semisimple_rank();
+        let mut grading_offset = try_capacity(semisimple_rank)?;
+        for root in datum.simple_roots() {
+            let mut pairing = Rational::ZERO;
+            for (value, &coordinate) in cocharacter.iter().zip(root.as_slice()) {
+                pairing += value.clone() * Rational::from(coordinate);
+            }
+            if fractional_part(&pairing) != Rational::ZERO {
+                return Err(StructureError::SeedInvariantViolation {
+                    invariant: "integral simple pairing",
+                });
+            }
+            let integral = Rational::from(pairing.clone().floor());
+            debug_assert_eq!(integral, pairing);
+            grading_offset.push(pairing.floor().divisible_by(&Integer::from(2)));
+        }
+
+        let system = inner_class.root_system();
+        let simple_ids = system.simple_root_ids();
+        let grading = fundamental.grading();
+        let delta_data = inner_class.distinguished_involution();
+        let mut fixed_simples = try_capacity(semisimple_rank)?;
+        for (generator, &simple_id) in simple_ids.iter().enumerate() {
+            if delta_data.image(simple_id) == Some(simple_id) {
+                let position = grading
+                    .imaginary_simple_roots()
+                    .iter()
+                    .position(|&candidate| candidate == simple_id)
+                    .ok_or(StructureError::SeedInvariantViolation {
+                        invariant: "fixed simple root",
+                    })?;
+                fixed_simples.push((generator, position));
+            }
+        }
+        let weak = fundamental.partition();
+        let form_element =
+            weak.class_representative(form)
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: form.0,
+                    upper_bound: weak.class_count(),
+                })?;
+        let form_grading = grading.grading(form_element)?;
+
+        // The seed element, located by lookup and reduced at the
+        // fundamental record's mod space, exactly as in `build`.
+        let identity = WeylElement::identity(system)?;
+        let fundamental_involution =
+            table
+                .lookup(&identity)
+                .ok_or(StructureError::SeedInvariantViolation {
+                    invariant: "fundamental involution",
+                })?;
+        let record =
+            table
+                .record(fundamental_involution)
+                .ok_or(StructureError::SeedInvariantViolation {
+                    invariant: "fundamental involution",
+                })?;
+        let reduced = record.mod_space().quotient_representative(torus_part)?;
+
+        // Upstream's own seed verification: the compacts of t + bits equal
+        // the form's compact set (innerclass.cpp:1090-1092).
+        for &(generator, position) in &fixed_simples {
+            let base_compact = !grading_offset[generator];
+            let flip = parity_dot(&reduced, datum.simple_roots()[generator].as_slice())?;
+            let form_compact = !form_grading.is_noncompact(position).ok_or(
+                StructureError::SeedInvariantViolation {
+                    invariant: "fixed simple root",
+                },
+            )?;
+            if (base_compact != flip) != form_compact {
+                return Err(StructureError::SeedInvariantViolation {
+                    invariant: "x0 compacts",
+                });
+            }
+        }
+        let element = TitsElement::new(table, fundamental_involution, reduced)?;
+
+        Ok(Self {
+            form,
+            grading_offset,
+            cocharacter: RationalCoweight::from_coordinates(cocharacter.to_vec()),
+            element,
+        })
+    }
+
     pub fn form(&self) -> WeakRealFormId {
         self.form
     }
