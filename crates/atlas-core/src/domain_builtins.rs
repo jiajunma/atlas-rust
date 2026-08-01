@@ -30,13 +30,13 @@ use atlas_real_group::{
     inner_class_with_twisted_involution, layout_involution, longest_action, minimal_torus_part,
     on_basis as lattice_on_basis, quotient_relation_basis as domain_quotient_relation_basis,
     replace_relation_generators as domain_replace_relation_generators, AdjointFiberBudget,
-    BasedRootDatum, BlockGraph, CartanClass, CartanClassification, CartanClassificationBudget,
-    CartanId, Coweight, ExternalFormOrder, InnerClass, InnerClassLayout, IntegerLatticeBudget,
-    InvolutionTable, InvolutionTableBudget, KType, KgbGraph, KgbId, KgbStatus, KlPol, KlTable,
-    LatticeInvolution, ModTwoVector, RationalWeight, RealFormPresentation, RealFormSeed,
-    RelationBasis, RelationError, RelationGenerator, RelationMatrix, RepContext, RootSystem,
-    StandardRepr, StrongRealClassification, StructureError, WeakRealFormId, Weight, WeylElement,
-    WeylInterface,
+    BasedRootDatum, BlockDescent, BlockGraph, CartanClass, CartanClassification,
+    CartanClassificationBudget, CartanId, Coweight, ExternalFormOrder, InnerClass,
+    InnerClassLayout, IntegerLatticeBudget, InvolutionTable, InvolutionTableBudget, KType,
+    KgbGraph, KgbId, KgbStatus, KlPol, KlTable, LatticeInvolution, ModTwoVector, RationalWeight,
+    RealFormPresentation, RealFormSeed, RelationBasis, RelationError, RelationGenerator,
+    RelationMatrix, RepContext, RootSystem, StandardRepr, StrongRealClassification, StructureError,
+    WeakRealFormId, Weight, WeylElement, WeylInterface,
 };
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
@@ -2129,6 +2129,63 @@ fn bruhat_closure(hasse: &[Vec<usize>]) -> Vec<Vec<bool>> {
         .iter()
         .map(|cl| (0..n).map(|i| cl.contains(&i)).collect())
         .collect()
+}
+
+/// The block descent code printed by `block_io::printDescent`
+/// (block_io.cpp:373-420): C-, C+, ic, rn, i1, i2, r1, r2.
+fn block_descent_code(descent: BlockDescent) -> &'static str {
+    match descent {
+        BlockDescent::ComplexDescent => "C-",
+        BlockDescent::ComplexAscent => "C+",
+        BlockDescent::ImaginaryCompact => "ic",
+        BlockDescent::RealNonparity => "rn",
+        BlockDescent::ImaginaryTypeI => "i1",
+        BlockDescent::ImaginaryTypeII => "i2",
+        BlockDescent::RealTypeI => "r1",
+        BlockDescent::RealTypeII => "r2",
+    }
+}
+
+/// The reduced word of a Weyl element in ascending-generator order
+/// (weyl.cpp greedy left-descent, `W.word`).
+fn weyl_reduced_word(inner: &InnerClass, element: &WeylElement) -> Vec<usize> {
+    let mut result = Vec::new();
+    let mut current = element.clone();
+    while !current.is_identity() {
+        let mut generator = 0;
+        while !current
+            .has_left_descent(inner.root_system(), generator)
+            .unwrap_or(false)
+        {
+            generator += 1;
+        }
+        result.push(generator);
+        current = current
+            .left_multiply_simple(inner.root_system(), generator)
+            .expect("left descent shortens")
+            .0;
+    }
+    result
+}
+
+/// The `[..]` descent line of a block element (block_io.cpp:373-420),
+/// with generators whose mask bit is unset shown as `* `.
+fn block_descent_set(graph: &BlockGraph, z: usize, rank: usize, mask: &[bool]) -> String {
+    let mut out = String::from("[");
+    for s in 0..rank {
+        if s != 0 {
+            out.push(',');
+        }
+        if !mask[s] {
+            out.push_str("* ");
+        } else {
+            out.push_str(block_descent_code(
+                graph.descent_value(z, s).expect("in-range"),
+            ));
+        }
+    }
+    out.push(']');
+    out
 }
 
 /// `KL_table::primitives` (kl.cpp:163-170): every primitive `x` for the
@@ -4512,6 +4569,270 @@ pub(crate) fn print_text(
                 text.push_str("}\n");
                 Ok(text)
             }
+        }
+        // print_block / print_blockd (atlas-types.w:8869-8901, block_io.cpp:
+        // 48-126): the block's elements as `z(x,y): length [descents]
+        // cross... cayley... Cartan involution-word` rows; print_block uses
+        // the Weyl word (as_invol_expr=false), print_blockd the twisted
+        // reduced expression (as_invol_expr=true).
+        "print_block" | "print_blockd" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::Block(block)) = &arguments[0] else {
+                return Err(type_error(span, "expected a Block"));
+            };
+            let graph = &block.graph;
+            let primal = &block.rf.graph;
+            let size = graph.size();
+            let width = digits(size - 1);
+            let mut max_x = 0;
+            let mut max_y = 0;
+            let mut last_length = 0;
+            for z in 0..size {
+                if let Some(x) = graph.x(z) {
+                    max_x = max_x.max(x.index());
+                }
+                if let Some(y) = graph.y(z) {
+                    max_y = max_y.max(y.index());
+                }
+                if let Some(length) = graph.length(z) {
+                    last_length = last_length.max(length);
+                }
+            }
+            let xwidth = digits(max_x);
+            let ywidth = digits(max_y);
+            let lwidth = digits(last_length);
+            let pad = 2;
+            let rank = graph.rank();
+            let mut text = String::new();
+            for z in 0..size {
+                let x = graph.x(z).expect("in-range").index();
+                let y = graph.y(z).expect("in-range").index();
+                let length = graph.length(z).expect("in-range");
+                text.push_str(&format!("{:width$}({:xwidth$},{:ywidth$}):", z, x, y));
+                text.push_str(&format!("{:width$}", length, width = lwidth + pad));
+                text.push_str(&" ".repeat(pad));
+                // descents
+                text.push('[');
+                for generator in 0..rank {
+                    if generator > 0 {
+                        text.push(',');
+                    }
+                    text.push_str(block_descent_code(
+                        graph.descent_value(z, generator).expect("in-range"),
+                    ));
+                }
+                text.push(']');
+                // cross actions
+                for generator in 0..rank {
+                    match graph.cross(z, generator) {
+                        Some(target) => {
+                            text.push_str(&format!("{:width$}", target, width = width + pad))
+                        }
+                        None => text.push_str(&format!("{:width$}", '*', width = width + pad)),
+                    }
+                }
+                text.push_str(&" ".repeat(pad + 1));
+                // Cayley transforms
+                for generator in 0..rank {
+                    let pair = if graph
+                        .descent_value(z, generator)
+                        .expect("in-range")
+                        .is_descent()
+                    {
+                        graph.inverse_cayley(z, generator).expect("in-range")
+                    } else {
+                        graph.cayley(z, generator).expect("in-range")
+                    };
+                    text.push('(');
+                    match pair.0 {
+                        Some(first) => text.push_str(&format!("{:width$}", first)),
+                        None => text.push_str(&format!("{:width$}", '*')),
+                    }
+                    text.push(',');
+                    match pair.1 {
+                        Some(second) => text.push_str(&format!("{:width$}", second)),
+                        None => text.push_str(&format!("{:width$}", '*')),
+                    }
+                    text.push(')');
+                    text.push_str(&" ".repeat(pad));
+                }
+                // Block::print: Cartan class then the involution word.
+                let id = graph.x(z).expect("in-range");
+                let cartan = primal.cartan_of(id).expect("in-range");
+                let number = cartan_number(&block.rf.parent, cartan)
+                    .expect("the graph's Cartans are in range");
+                let cwidth = digits(
+                    cartan_number(
+                        &block.rf.parent,
+                        primal
+                            .cartan_of(graph.x(size - 1).expect("in-range"))
+                            .expect("in-range"),
+                    )
+                    .expect("in-range"),
+                );
+                text.push_str(&format!("{:width$}", number, width = cwidth));
+                text.push_str(&" ".repeat(2));
+                // Weyl word (prettyprint::printWeylElt, basic_io.cpp:100-118):
+                // one-based generators comma-separated, `e` for the identity.
+                let record = block
+                    .rf
+                    .table
+                    .record(primal.involution_of(id).expect("in-range"))
+                    .expect("in-range");
+                if name == "print_block" {
+                    // Weyl word (prettyprint::printWeylElt): one-based
+                    // generators comma-separated, `e` for the identity.
+                    let word =
+                        weyl_reduced_word(&block.rf.parent.inner_class, record.weyl_element());
+                    if word.is_empty() {
+                        text.push('e');
+                    } else {
+                        let digits: Vec<String> = word
+                            .iter()
+                            .map(|&generator| (generator + 1).to_string())
+                            .collect();
+                        text.push_str(&digits.join(","));
+                    }
+                } else {
+                    // printInvolution (prettyprint.cpp:219-232): one-based
+                    // generator digits, '^' for crosses, 'x' for
+                    // conjugations, `e` closing.
+                    let word = block
+                        .rf
+                        .parent
+                        .inner_class
+                        .canonical_involution_expr(record.weyl_element())
+                        .expect("a KGB involution is a twisted involution of the class");
+                    for entry in word {
+                        if entry >= 0 {
+                            text.push(char::from(
+                                b'1' + u8::try_from(entry).expect("generator rank"),
+                            ));
+                            text.push('^');
+                        } else {
+                            text.push(char::from(
+                                b'1' + u8::try_from(!entry).expect("generator rank"),
+                            ));
+                            text.push('x');
+                        }
+                    }
+                    text.push('e');
+                }
+                text.push('\n');
+            }
+            Ok(text)
+        }
+        // print_blocku (atlas-types.w:8894-8917, block_io.cpp:282-369):
+        // only the unitary block elements (the involution support is
+        // contained in the weak descents), with the filtered descent sets
+        // and the twisted reduced expression.
+        "print_blocku" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::Block(block)) = &arguments[0] else {
+                return Err(type_error(span, "expected a Block"));
+            };
+            let graph = &block.graph;
+            let primal = &block.rf.graph;
+            let size = graph.size();
+            let width = digits(size - 1);
+            let mut max_x = 0;
+            let mut max_y = 0;
+            let mut last_length = 0;
+            let mut last_cartan = 0;
+            for z in 0..size {
+                if let Some(x) = graph.x(z) {
+                    max_x = max_x.max(x.index());
+                }
+                if let Some(y) = graph.y(z) {
+                    max_y = max_y.max(y.index());
+                }
+                if let Some(length) = graph.length(z) {
+                    last_length = last_length.max(length);
+                }
+                let id = graph.x(z).expect("in-range");
+                let number =
+                    cartan_number(&block.rf.parent, primal.cartan_of(id).expect("in-range"))
+                        .expect("in-range");
+                last_cartan = last_cartan.max(number);
+            }
+            let xwidth = digits(max_x);
+            let ywidth = digits(max_y);
+            let lwidth = digits(last_length);
+            let cwidth = digits(last_cartan);
+            let pad = 2;
+            let rank = graph.rank();
+            let mut text = String::new();
+            for z in 0..size {
+                let support = {
+                    let id = graph.x(z).expect("in-range");
+                    let record = block
+                        .rf
+                        .table
+                        .record(primal.involution_of(id).expect("in-range"))
+                        .expect("in-range");
+                    let word =
+                        weyl_reduced_word(&block.rf.parent.inner_class, record.weyl_element());
+                    let mut flags = vec![false; rank];
+                    for generator in word {
+                        if generator < rank {
+                            flags[generator] = true;
+                        }
+                    }
+                    flags
+                };
+                let mut unitary = true;
+                for (s, &in_support) in support.iter().enumerate() {
+                    if in_support && !graph.descent_value(z, s).expect("in-range").is_descent() {
+                        unitary = false;
+                        break;
+                    }
+                }
+                if !unitary {
+                    continue;
+                }
+                let x = graph.x(z).expect("in-range").index();
+                let y = graph.y(z).expect("in-range").index();
+                let length = graph.length(z).expect("in-range");
+                text.push_str(&format!("{:width$}({:xwidth$},{:ywidth$}):", z, x, y));
+                text.push_str(&format!("{:width$}", length, width = lwidth + pad));
+                let id = graph.x(z).expect("in-range");
+                let number =
+                    cartan_number(&block.rf.parent, primal.cartan_of(id).expect("in-range"))
+                        .expect("in-range");
+                text.push_str(&format!("{:width$}", number, width = cwidth + pad));
+                text.push_str(&" ".repeat(pad));
+                text.push_str(&block_descent_set(graph, z, rank, &vec![true; rank]));
+                text.push_str(&" ".repeat(pad));
+                text.push_str(&block_descent_set(graph, z, rank, &support));
+                text.push_str(&" ".repeat(pad));
+                let record = block
+                    .rf
+                    .table
+                    .record(primal.involution_of(id).expect("in-range"))
+                    .expect("in-range");
+                let word = block
+                    .rf
+                    .parent
+                    .inner_class
+                    .canonical_involution_expr(record.weyl_element())
+                    .expect("in-range");
+                for entry in word {
+                    if entry >= 0 {
+                        text.push(char::from(
+                            b'1' + u8::try_from(entry).expect("generator rank"),
+                        ));
+                        text.push('^');
+                    } else {
+                        text.push(char::from(
+                            b'1' + u8::try_from(!entry).expect("generator rank"),
+                        ));
+                        text.push('x');
+                    }
+                }
+                text.push('e');
+                text.push('\n');
+            }
+            Ok(text)
         }
         // print_KL_basis / print_prim_KL / print_KL_list / print_W_graph /
         // print_W_cells (atlas-types.w:9017-9083): the KLV polynomials of

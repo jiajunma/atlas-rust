@@ -4657,6 +4657,9 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             ),
             // print_KL_basis / print_prim_KL / print_KL_list
             // (atlas-types.w:9117-9119): the KLV table printers over a Block.
+            domain_printer_builtin("print_block", primitive_type(Prim::Block)),
+            domain_printer_builtin("print_blockd", primitive_type(Prim::Block)),
+            domain_printer_builtin("print_blocku", primitive_type(Prim::Block)),
             domain_printer_builtin("print_KL_basis", primitive_type(Prim::Block)),
             domain_printer_builtin("print_prim_KL", primitive_type(Prim::Block)),
             domain_printer_builtin("print_KL_list", primitive_type(Prim::Block)),

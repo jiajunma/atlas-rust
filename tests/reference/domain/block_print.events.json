@@ -1,0 +1,134 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/block_print",
+  "status": "local_oracle_reference",
+  "events": [
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ra': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'A2'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ic': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type A2, with involution defining\ninner class of type 'c', with 2 real forms and 1 dual real form"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rf': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "connected quasisplit real group with Lie algebra 'su(2,1)'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'df': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "connected split real group with Lie algebra 'sl(3,R)'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'blk': Block\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Block of 6 elements"
+      }
+    },
+    {
+      "kind": "Output",
+      "text": "0(0,3):  0  [i1,i1]  1  2   (4,*)  (3,*)  0  e\n"
+    },
+    {
+      "kind": "Output",
+      "text": "1(1,3):  0  [i1,ic]  0  1   (4,*)  (*,*)  0  e\n"
+    },
+    {
+      "kind": "Output",
+      "text": "2(2,3):  0  [ic,i1]  2  0   (*,*)  (3,*)  0  e\n"
+    },
+    {
+      "kind": "Output",
+      "text": "3(3,2):  1  [C+,r1]  5  3   (*,*)  (0,2)  1  2\n"
+    },
+    {
+      "kind": "Output",
+      "text": "4(4,1):  1  [r1,C+]  4  5   (0,1)  (*,*)  1  1\n"
+    },
+    {
+      "kind": "Output",
+      "text": "5(5,0):  2  [C-,C-]  3  4   (*,*)  (*,*)  1  1,2,1\n"
+    },
+    {
+      "kind": "Output",
+      "text": "0(0,3):  0  [i1,i1]  1  2   (4,*)  (3,*)  0  e\n"
+    },
+    {
+      "kind": "Output",
+      "text": "1(1,3):  0  [i1,ic]  0  1   (4,*)  (*,*)  0  e\n"
+    },
+    {
+      "kind": "Output",
+      "text": "2(2,3):  0  [ic,i1]  2  0   (*,*)  (3,*)  0  e\n"
+    },
+    {
+      "kind": "Output",
+      "text": "3(3,2):  1  [C+,r1]  5  3   (*,*)  (0,2)  1  2^e\n"
+    },
+    {
+      "kind": "Output",
+      "text": "4(4,1):  1  [r1,C+]  4  5   (0,1)  (*,*)  1  1^e\n"
+    },
+    {
+      "kind": "Output",
+      "text": "5(5,0):  2  [C-,C-]  3  4   (*,*)  (*,*)  1  1x2^e\n"
+    },
+    {
+      "kind": "Output",
+      "text": "0(0,3):  0  0  [i1,i1]  [* ,* ]  e\n"
+    },
+    {
+      "kind": "Output",
+      "text": "1(1,3):  0  0  [i1,ic]  [* ,* ]  e\n"
+    },
+    {
+      "kind": "Output",
+      "text": "2(2,3):  0  0  [ic,i1]  [* ,* ]  e\n"
+    },
+    {
+      "kind": "Output",
+      "text": "3(3,2):  1  1  [C+,r1]  [* ,r1]  2^e\n"
+    },
+    {
+      "kind": "Output",
+      "text": "4(4,1):  1  1  [r1,C+]  [r1,* ]  1^e\n"
+    },
+    {
+      "kind": "Output",
+      "text": "5(5,0):  2  1  [C-,C-]  [C-,C-]  1x2^e\n"
+    }
+  ]
+}

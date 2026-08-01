@@ -1,0 +1,16 @@
+{
+  "fixture": "domain/block_print.atlas",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "implemented_local",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:8869-8917",
+    "sources/io/block_io.cpp:48-126, 282-369",
+    "sources/io/basic_io.cpp:100-118",
+    "sources/io/prettyprint.cpp:219-232"
+  ],
+  "oracle_exit_status": 0,
+  "notes": "Batch 4 (block printers): print_block (Weyl word rows), print_blockd (twisted reduced expression) and print_blocku (unitary elements only, filtered descent sets). Reference status pending HPC capture."
+}

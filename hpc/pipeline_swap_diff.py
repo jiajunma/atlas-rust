@@ -234,6 +234,8 @@ FIXTURE_PLANS = (
     # Batch 4 (KL printers): print_KL_basis / print_prim_KL / print_KL_list
     # over the block's KL table, plus BlockGraph::bruhat_hasse.
     FixturePlan(name="domain/kl_print"),
+    # Batch 4 (block printers): print_block / print_blockd / print_blocku.
+    FixturePlan(name="domain/block_print"),
     # KGB headline observables: per-form KGB sizes and root statuses across
     # the A1/C2/A2 families, plus the inexistent-element and type rejections.
     FixturePlan(name="domain/kgb_generation"),
