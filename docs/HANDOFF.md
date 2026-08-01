@@ -74,6 +74,26 @@ report shows both fixtures PASS, zero FAIL → bump meta to
 `rust_status: verified_hpc` + `differential_job` → record here → commit →
 `rsync -az --delete .git/` to HPC.
 
+## Language gate completed - 2026-08-01
+
+The language gate is substantially complete. HEAD is `53ebfba` (main).
+Working tree clean. 165 fixtures, **165 `verified_hpc`**, one frozen —
+`domain/deform` — with `not_implemented`. The per-slice differential
+chain (3506234, 3506272, 3506287, 3506321, 3506358, 3506387, 3506433,
+3506622, …) ran the entire plan with zero FAIL across every run (only
+`container_syntax_errors` stayed PARTIAL for its two permanent pending
+cases; its meta was upgraded at `53ebfba`).
+
+The remaining contract `domain/deform` is gated on the KL polynomial
+layer (Kazhdan-Lusztig polynomials and W-graph calculations — the Rust
+crate has no KL/W-graph code yet). Upstream deform lives in
+`sources/gkmod/repr.{h,cpp}` (~31 call sites plus the
+`deformation_unit`, `deform_readjust`, and formula-lookup machinery);
+it is the "later large item" originally deferred to the end of the
+queue. The frozen fixture exercises three A2 deformations (compact SU(3)
+inner class, quasisplit su(2,1) real form) and expects nine events
+(three SRPol values plus declarations).
+
 ## Live continuation - 2026-08-01 (Param predicates/transforms)
 
 The Param predicate/transform surface is landed and HPC-verified. HEAD is
@@ -529,26 +549,29 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: the param_transforms commit (main). Working tree clean.
-Every frozen contract from the 2026-07-31 checkpoint is landed and
-HPC-verified, plus the deform-family slices `KGP_sum` (`3506387`),
-`K_type_formula` (`3506400`), `branch` (`3506410`), the ParamPol/Param
-operations (`3506433`), and the Param predicates/transforms (`3506622`).
-The domain layer is complete (86 of 86 frozen domain contracts). The
-remaining porting work is the deform/KL math layer (`deform` — reference
+HEAD at handoff: `53ebfba` (main). Working tree clean. The language gate
+is substantially complete: 165 of 166 frozen fixtures carry
+`verified_hpc`; the sole `not_implemented` contract is `domain/deform`,
+gated on the KL polynomial layer (Kazhdan-Lusztig polynomials and
+W-graph — the crate has no KL/W-graph code yet).
+
+The domain layer is complete (86 of 86 frozen domain contracts). Every
+frozen contract from the 2026-07-31 checkpoint plus the deform-family
+slices (KGP_sum, K_type_formula, branch, ParamPol/Param operations,
+Param predicates/transforms), L3/L4 (set verbose + string recovery), and
+the ktype/param language surface are landed and HPC-verified.
+
+The remaining porting work: deform/KL math layer (`deform` — reference
 frozen at job `3506415` — `twisted_deform`, `block_deform`,
 `full_deform`, KL sums, `KL_block`), the Param `cross`/`Cayley`
 transforms (need the integral SubSystem), the KL/file formats (filekl
-adapter), readline completion, and the `docs/LANGUAGE.md` matrix refresh.
-The deform slice is the large one: `Rep_table::lookup` (partial common
-block generation), `deformation_terms` (repr.cpp:1933-2025, with the
-contribution table, singular generators, KLV polynomials evaluated at
-q=-1, orientation numbers), the KL polynomial table (kl.cpp), and the
-block structure (blocks.cpp). Language-layer design notes (value shape,
-Display formats, on-demand RepContext construction from
-`Arc<RealFormContext>`) are in the 2026-08-01 entries; the pol term math
-now lives in the crate (`finals_for`, `K_type_formula`) plus thin
-language-layer containers in `domain_builtins.rs`.
+adapter), and readline completion. The deform slice is the large one:
+`Rep_table::lookup` (partial common block generation),
+`deformation_terms` (repr.cpp:1933-2025, with the contribution table,
+singular generators, KLV polynomials evaluated at q=-1, orientation
+numbers), the KL polynomial table (kl.cpp), and the block structure
+(blocks.cpp). The frozen fixture exercises three A2 deformations
+(compact SU(3), quasisplit su(2,1)) and expects nine events.
 
 Verified `verified_hpc` so far: all eval slices B3a-B13, `set_type`,
 operator overload declarations, builtin `whattype * ?`, `showall`,
