@@ -2172,11 +2172,11 @@ fn weyl_reduced_word(inner: &InnerClass, element: &WeylElement) -> Vec<usize> {
 /// with generators whose mask bit is unset shown as `* `.
 fn block_descent_set(graph: &BlockGraph, z: usize, rank: usize, mask: &[bool]) -> String {
     let mut out = String::from("[");
-    for s in 0..rank {
+    for (s, &visible) in mask.iter().enumerate() {
         if s != 0 {
             out.push(',');
         }
-        if !mask[s] {
+        if !visible {
             out.push_str("* ");
         } else {
             out.push_str(block_descent_code(
