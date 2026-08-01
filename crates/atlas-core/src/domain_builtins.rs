@@ -4673,8 +4673,8 @@ pub(crate) fn print_text(
                 // oriented_graph (wgraph.cpp:58-72): drop x -> y when the
                 // descent set of x is contained in that of y.
                 let mut oriented: Vec<Vec<usize>> = Vec::with_capacity(size);
-                for edges_x in &edges {
-                    let desc_x = kl_table.support().descent_set(&edges_x).clone();
+                for (x, edges_x) in edges.iter().enumerate() {
+                    let desc_x = kl_table.support().descent_set(x).clone();
                     let mut targets = Vec::new();
                     for &(y, _) in edges_x {
                         if !kl_table.support().descent_set(y).contains(&desc_x) {
