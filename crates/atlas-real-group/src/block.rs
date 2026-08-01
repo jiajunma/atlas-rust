@@ -458,6 +458,113 @@ impl BlockGraph {
     pub fn status_code(&self, z: usize, generator: usize) -> Option<u32> {
         Some(self.descent_value(z, generator)?.language_code())
     }
+
+    /// The Bruhat Hasse diagram of the block (blocks.cpp:1603-1656
+    /// `complete_Hasse_diagram`): for each element the immediate
+    /// down-neighbours. The recursion follows the first strict good descent
+    /// (complex or type-I real) like the KGB case; at a split principal
+    /// series the predecessors are exactly the inverse Cayley transforms of
+    /// the type-II real descents.
+    pub fn bruhat_hasse(&self) -> Vec<Vec<usize>> {
+        let size = self.size();
+        let rank = self.rank();
+        let mut hasse: Vec<Vec<usize>> = Vec::with_capacity(size);
+        for z in 0..size {
+            let mut covered: std::collections::BTreeSet<usize> = std::collections::BTreeSet::new();
+            let strict_good = (0..rank).find(|&s| {
+                matches!(
+                    self.descent_value(z, s),
+                    Some(BlockDescent::ComplexDescent | BlockDescent::RealTypeI)
+                )
+            });
+            match strict_good {
+                Some(s) => match self.descent_value(z, s) {
+                    Some(BlockDescent::ComplexDescent) => {
+                        let sz = self.cross(z, s).expect("complex descent cross");
+                        covered.insert(sz);
+                        insert_ascents(self, &hasse[sz], s, &mut covered);
+                    }
+                    Some(BlockDescent::RealTypeI) => {
+                        let (first, second) =
+                            self.inverse_cayley(z, s).expect("type I inverse Cayley");
+                        let first = first.expect("type I first image");
+                        covered.insert(first);
+                        if let Some(second) = second {
+                            covered.insert(second);
+                        }
+                        insert_ascents(self, &hasse[first], s, &mut covered);
+                    }
+                    _ => unreachable!("strict good descent match"),
+                },
+                None => {
+                    for s in 0..rank {
+                        if self.descent_value(z, s) == Some(BlockDescent::RealTypeII) {
+                            if let Some(first) =
+                                self.inverse_cayley(z, s).expect("type II inverse Cayley").0
+                            {
+                                covered.insert(first);
+                            }
+                        }
+                    }
+                }
+            }
+            hasse.push(covered.into_iter().collect());
+        }
+        hasse
+    }
+
+    /// The number of Bruhat-comparable pairs of the block poset, including
+    /// each element with itself (poset.cpp:197-229 `n_comparable_from_Hasse`).
+    pub fn n_bruhat_comparable(hasse: &[Vec<usize>]) -> usize {
+        let mut closure: Vec<std::collections::BTreeSet<usize>> = Vec::with_capacity(hasse.len());
+        let mut count = 0_usize;
+        for row in hasse {
+            let mut cl = std::collections::BTreeSet::new();
+            cl.insert(closure.len());
+            for &j in row {
+                cl.extend(closure[j].iter().copied());
+            }
+            count += cl.len();
+            closure.push(cl);
+        }
+        count
+    }
+}
+
+/// The `insert_ascents` helper of `complete_Hasse_diagram`
+/// (blocks.cpp:1576-1599): lift the already-computed covered set of the
+/// recursion target through the strict ascents at generator `s`.
+fn insert_ascents(
+    block: &BlockGraph,
+    hr: &[usize],
+    s: usize,
+    hs: &mut std::collections::BTreeSet<usize>,
+) {
+    for &z in hr {
+        match block.descent_value(z, s) {
+            Some(BlockDescent::ComplexAscent) => {
+                if let Some(c) = block.cross(z, s) {
+                    hs.insert(c);
+                }
+            }
+            Some(BlockDescent::ImaginaryTypeI) => {
+                if let Some(c) = block.cayley(z, s).expect("type I Cayley").0 {
+                    hs.insert(c);
+                }
+            }
+            Some(BlockDescent::ImaginaryTypeII) => {
+                if let Some((a, b)) = block.cayley(z, s) {
+                    if let Some(a) = a {
+                        hs.insert(a);
+                    }
+                    if let Some(b) = b {
+                        hs.insert(b);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
 }
 
 /// The descent status of one generator at `(x, y)` (upstream `descents`,

@@ -1,0 +1,17 @@
+{
+  "fixture": "domain/kl_print.atlas",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "implemented_local",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:9017-9063",
+    "sources/io/kl_io.cpp:48-173",
+    "sources/gkmod/kl.cpp:163-170",
+    "sources/gkmod/blocks.cpp:1603-1656",
+    "sources/utilities/polynomials_def.h:300-331"
+  ],
+  "notes": "Batch 4 (KL printers): print_KL_basis (full KLV table with the Bruhat-comparable count), print_prim_KL (primitive-pair restriction via prim_back_up) and print_KL_list (distinct polynomials). Block bruhat_hasse (blocks.cpp complete_Hasse_diagram) added to BlockGraph. Reference status pending HPC capture.",
+  "oracle_exit_status": 0
+}

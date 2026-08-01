@@ -4655,6 +4655,11 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                     Type::row(primitive_type(Prim::KgbElt)),
                 ]),
             ),
+            // print_KL_basis / print_prim_KL / print_KL_list
+            // (atlas-types.w:9117-9119): the KLV table printers over a Block.
+            domain_printer_builtin("print_KL_basis", primitive_type(Prim::Block)),
+            domain_printer_builtin("print_prim_KL", primitive_type(Prim::Block)),
+            domain_printer_builtin("print_KL_list", primitive_type(Prim::Block)),
             // print_KGB_order / print_KGB_graph (atlas-types.w:9122-9123):
             // the Bruhat Hasse rows and the Graphviz digraph of the KGB.
             domain_printer_builtin("print_KGB_order", primitive_type(Prim::RealForm)),

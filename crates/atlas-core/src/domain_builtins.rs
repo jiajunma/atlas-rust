@@ -32,7 +32,7 @@ use atlas_real_group::{
     replace_relation_generators as domain_replace_relation_generators, AdjointFiberBudget,
     BasedRootDatum, BlockGraph, CartanClass, CartanClassification, CartanClassificationBudget,
     CartanId, Coweight, ExternalFormOrder, InnerClass, InnerClassLayout, IntegerLatticeBudget,
-    InvolutionTable, InvolutionTableBudget, KType, KgbGraph, KgbId, KgbStatus, KlTable,
+    InvolutionTable, InvolutionTableBudget, KType, KgbGraph, KgbId, KgbStatus, KlPol, KlTable,
     LatticeInvolution, ModTwoVector, RationalWeight, RealFormPresentation, RealFormSeed,
     RelationBasis, RelationError, RelationGenerator, RelationMatrix, RepContext, RootSystem,
     StandardRepr, StrongRealClassification, StructureError, WeakRealFormId, Weight, WeylElement,
@@ -2058,6 +2058,103 @@ pub(crate) fn strong_components(graph: &[Vec<usize>]) -> (Vec<Vec<usize>>, Vec<V
         }
     }
     (partition, induced)
+}
+
+/// The upstream KLV polynomial printing (polynomials_def.h:300-331,
+/// `printMonomial` + `Polynomial::print`): least-degree-first coefficients,
+/// printed highest degree down, `q`/`q^d` monomials with a `+` separator for
+/// positive middle coefficients, `1` for the constant.
+fn print_klpol(polynomial: &KlPol) -> String {
+    if polynomial.is_zero() {
+        return "0".to_string();
+    }
+    let degree = polynomial.degree();
+    let mut out = String::new();
+    for i in (0..=degree).rev() {
+        let coefficient = polynomial.coefficient(i);
+        if coefficient == 0 {
+            continue;
+        }
+        if i < degree && coefficient > 0 {
+            out.push('+');
+        }
+        if i == 0 {
+            out.push_str(&coefficient.to_string());
+        } else {
+            if coefficient == -1 {
+                out.push('-');
+            } else if coefficient != 1 {
+                out.push_str(&coefficient.to_string());
+            }
+            out.push('q');
+            if i > 1 {
+                out.push_str(&format!("^{i}"));
+            }
+        }
+    }
+    out
+}
+
+/// `kl_tab.KL_pol(x, y)` resolved through the hash pool.
+fn kl_pol_at(
+    kl_table: &KlTable,
+    x: usize,
+    y: usize,
+    span: SourceSpan,
+) -> Result<KlPol, Diagnostic> {
+    let index = kl_table
+        .kl_pol(x, y)
+        .map_err(|error| structure_diagnostic(error, span))?;
+    kl_table
+        .pool()
+        .get(index)
+        .cloned()
+        .ok_or_else(|| runtime(span, "internal KL pool miss"))
+}
+
+/// The transitive closure of a Hasse diagram as a `lesseq` matrix
+/// (poset.cpp:197-229 style, rows are the closure sets).
+fn bruhat_closure(hasse: &[Vec<usize>]) -> Vec<Vec<bool>> {
+    let n = hasse.len();
+    let mut closure: Vec<std::collections::BTreeSet<usize>> = Vec::with_capacity(n);
+    for row in hasse {
+        let mut cl = std::collections::BTreeSet::new();
+        cl.insert(closure.len());
+        for &j in row {
+            cl.extend(closure[j].iter().copied());
+        }
+        closure.push(cl);
+    }
+    closure
+        .iter()
+        .map(|cl| (0..n).map(|i| cl.contains(&i)).collect())
+        .collect()
+}
+
+/// `KL_table::primitives` (kl.cpp:163-170): every primitive `x` for the
+/// descent set of `y`, walked by `prim_back_up` from the length floor.
+fn kl_primitives(kl_table: &KlTable, y: usize) -> Vec<usize> {
+    let support = kl_table.support();
+    let limit = support.length_floor(y);
+    let desc_y = support.descent_set(y).clone();
+    let mut result = Vec::new();
+    let mut x = limit;
+    while support.prim_back_up(&mut x, &desc_y) {
+        result.push(x);
+    }
+    result
+}
+
+/// `polynomials::compare` on the coefficient vectors (least degree first).
+fn compare_klpol(a: &KlPol, b: &KlPol) -> std::cmp::Ordering {
+    let max = a.degree().max(b.degree());
+    for i in 0..=max {
+        let (ca, cb) = (a.coefficient(i), b.coefficient(i));
+        if ca != cb {
+            return ca.cmp(&cb);
+        }
+    }
+    std::cmp::Ordering::Equal
 }
 
 /// A matrix whose columns are the given lattice vectors — the by-columns
@@ -4415,6 +4512,133 @@ pub(crate) fn print_text(
                 text.push_str("}\n");
                 Ok(text)
             }
+        }
+        // print_KL_basis / print_prim_KL / print_KL_list
+        // (atlas-types.w:9017-9063): the KLV polynomials of the block's KL
+        // table, printed as a table, restricted to primitive pairs, or as
+        // the sorted list of distinct polynomials.
+        "print_KL_basis" | "print_prim_KL" | "print_KL_list" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::Block(block)) = &arguments[0] else {
+                return Err(type_error(span, "expected a Block"));
+            };
+            let mut kl_table =
+                KlTable::new(&block.graph).map_err(|error| structure_diagnostic(error, span))?;
+            kl_table
+                .fill(0)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let size = block.graph.size();
+            let width = digits(size - 1);
+            let tab = 2;
+            let mut text = String::new();
+            if name == "print_KL_basis" {
+                text.push_str("Full list of non-zero Kazhdan-Lusztig-Vogan polynomials:\n\n");
+                let mut count = 0_usize;
+                for y in 0..size {
+                    text.push_str(&format!("{y:width$}: "));
+                    let mut first = true;
+                    for x in 0..=y {
+                        let polynomial = kl_pol_at(&kl_table, x, y, span)?;
+                        if polynomial.is_zero() {
+                            continue;
+                        }
+                        if first {
+                            text.push_str(&format!("{x:width$}: "));
+                            first = false;
+                        } else {
+                            text.push_str(&" ".repeat(width + tab));
+                            text.push_str(&format!("{x:width$}: "));
+                        }
+                        text.push_str(&print_klpol(&polynomial));
+                        text.push('\n');
+                        count += 1;
+                    }
+                    text.push('\n');
+                }
+                let hasse = block.graph.bruhat_hasse();
+                let comparable = BlockGraph::n_bruhat_comparable(&hasse);
+                let zeros = comparable - count;
+                text.push_str(&format!(
+                    "{count} nonzero polynomial{}",
+                    if count == 1 { "" } else { "s" }
+                ));
+                text.push_str(&format!(
+                    ", and {zeros} zero polynomial{},\n",
+                    if zeros == 1 { "" } else { "s" }
+                ));
+                text.push_str(&format!(
+                    " at {comparable} Bruhat-comparable {}\n",
+                    if comparable == 1 { "pair." } else { "pairs." }
+                ));
+            } else if name == "print_prim_KL" {
+                text.push_str(
+                    "Non-zero Kazhdan-Lusztig-Vogan polynomials for primitive pairs:\n\n",
+                );
+                let hasse = block.graph.bruhat_hasse();
+                let lesseq: Vec<Vec<bool>> = bruhat_closure(&hasse);
+                let mut count = 0_usize;
+                let mut zero_count = 0_usize;
+                let mut incomp_count = 0_usize;
+                for (y, lesseq_row) in lesseq.iter().enumerate() {
+                    let prims = kl_primitives(&kl_table, y);
+                    text.push_str(&format!("{y:width$}: "));
+                    let mut first = true;
+                    for x in prims {
+                        if lesseq_row[x] {
+                            count += 1;
+                            let polynomial = kl_pol_at(&kl_table, x, y, span)?;
+                            if polynomial.is_zero() {
+                                zero_count += 1;
+                            }
+                            if first {
+                                text.push_str(&format!("{x:width$}: "));
+                                first = false;
+                            } else {
+                                text.push_str(&" ".repeat(width + tab));
+                                text.push_str(&format!("{x:width$}: "));
+                            }
+                            text.push_str(&print_klpol(&polynomial));
+                            text.push('\n');
+                        } else {
+                            incomp_count += 1;
+                        }
+                    }
+                    count += 1; // P_{y,y}
+                    if !first {
+                        text.push_str(&format!("{:width$}", ""));
+                    }
+                    text.push_str(&format!("{y:width$}: 1\n\n"));
+                }
+                text.push_str(&format!(
+                    "{count} Bruhat-comparable primitive {}",
+                    if count == 1 { "pair" } else { "pairs" }
+                ));
+                text.push_str(&format!(
+                    ", of which {zero_count} ha{} null polynomial,\n",
+                    if zero_count == 1 { "s" } else { "ve" }
+                ));
+                text.push_str(&format!(
+                    " and {incomp_count} incomparable primitive {}\n",
+                    if incomp_count == 1 { "pair" } else { "pairs" }
+                ));
+            } else {
+                // print_KL_list: the sorted distinct nonzero polynomials.
+                let mut polynomials: Vec<KlPol> = Vec::new();
+                for y in 0..size {
+                    for x in 0..=y {
+                        let polynomial = kl_pol_at(&kl_table, x, y, span)?;
+                        if !polynomial.is_zero() && !polynomials.contains(&polynomial) {
+                            polynomials.push(polynomial);
+                        }
+                    }
+                }
+                polynomials.sort_by(compare_klpol);
+                for polynomial in &polynomials {
+                    text.push_str(&print_klpol(polynomial));
+                    text.push('\n');
+                }
+            }
+            Ok(text)
         }
         other => panic!("printer dispatch saw {other}"),
     }
