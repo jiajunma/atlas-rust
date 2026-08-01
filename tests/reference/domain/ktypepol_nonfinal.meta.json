@@ -1,0 +1,21 @@
+{
+  "fixture": "domain/ktypepol_nonfinal",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3506276",
+  "source_archive_sha256": "a8dd5a72ccd32a84412463a33c686c00c76e2e0daa8b0957ea9d95f1cccd4d69",
+  "fixture_sha256": "701c0ed45d797f12b236fa95323bd709fd9642cb2aafd9014016b0d543a6c515",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "2359db31a42b0d92fde74d7477114f50454fae303fef54633bd68e5139f35c09",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "2b48cedd6674222f7707d3e52cf803ceed137594b459b463b0b9a901325e1b2c",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/gkmod/K_repr.cpp:290-396",
+    "sources/gkmod/repr.cpp:1205-1297"
+  ],
+  "notes": "KTypePol non-final surface (finals_for expansion when adding a K-type to a KTypePol), drafted from direct oracle probes and captured verbatim by HPC job 3506276 against the frozen atlasofliegroups-4d3e9449 oracle. Q1 = P + K_type(KGB(rf,5),[0,0]) collapses the non-final x=5 K-type to the final x=0 term [0,0]/1 at height 0; Q2 = P + K_type(KGB(rf,4),[1,0]) expands to two height-4 terms at x=0 and x=1 with lambda [0,2]/1; Q3 = P + K_type(KGB(rf,5),[1,0]) recovers the final representative x=4 lambda [1,0]/1 from the non-dominant input; 2*Q2 doubles the coefficients."
+}

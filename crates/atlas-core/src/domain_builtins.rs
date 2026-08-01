@@ -2125,44 +2125,37 @@ fn require_same_form(
     }
 }
 
-/// `finals_for` of a final K-type: the identity singleton with coefficient
-/// one. Non-final expansion awaits the deformation layer, so the language
-/// wrapper rejects it rather than producing a wrong term.
+/// The final-K-type expansion of one K-type with Split coefficients
+/// (`Rep_context::finals_for`, K_repr.cpp:290-396).
 fn finals_of_final(
     ktype: &KTypeValue,
     rc: &RepContext<'_>,
     span: SourceSpan,
 ) -> Result<Vec<(SplitValue, KType)>, Diagnostic> {
-    if !ktype
+    let finals = ktype
         .ktype
-        .is_final(rc)
-        .expect("K-type predicate is computable")
-    {
-        return Err(runtime(
-            span,
-            "adding a non-final K-type to a KTypePol is not implemented",
-        ));
-    }
-    Ok(vec![(SplitValue::new(1, 0), ktype.ktype.clone())])
+        .finals_for(rc)
+        .map_err(|error| structure_diagnostic(error, span))?;
+    Ok(finals
+        .into_iter()
+        .map(|(term, coefficient)| (SplitValue::new(coefficient, 0), term))
+        .collect())
 }
 
-/// `expand_final` of a final parameter: the identity singleton.
+/// The final-parameter expansion of one parameter (`Rep_context::
+/// expand_final`, repr.cpp:1299-1309).
 fn expand_final(
     parameter: &ParamValue,
     rc: &RepContext<'_>,
     span: SourceSpan,
 ) -> Result<Vec<(SplitValue, StandardRepr)>, Diagnostic> {
-    if !parameter
-        .repr
-        .is_final(rc)
-        .expect("parameter predicate is computable")
-    {
-        return Err(runtime(
-            span,
-            "adding a non-final parameter to a ParamPol is not implemented",
-        ));
-    }
-    Ok(vec![(SplitValue::new(1, 0), parameter.repr.clone())])
+    let finals = rc
+        .expand_final(&parameter.repr)
+        .map_err(|error| structure_diagnostic(error, span))?;
+    Ok(finals
+        .into_iter()
+        .map(|(term, coefficient)| (SplitValue::new(coefficient, 0), term))
+        .collect())
 }
 
 /// Insert or merge one polynomial term (upstream
@@ -2186,6 +2179,53 @@ fn merge_pol_term<T: Clone + PartialEq>(
     } else {
         terms.push((coefficient, term));
     }
+}
+
+/// The upstream `K_type_pol` term order (K_repr.h:59-70): increasing
+/// height, then increasing KGB element, then lambda-rho lexicographic.
+fn sort_ktypepol_terms(terms: &mut [(SplitValue, KType)]) {
+    terms.sort_by(|(_, left), (_, right)| {
+        left.height()
+            .cmp(&right.height())
+            .then_with(|| left.x().index().cmp(&right.x().index()))
+            .then_with(|| {
+                left.lambda_rho()
+                    .as_slice()
+                    .cmp(right.lambda_rho().as_slice())
+            })
+    });
+}
+
+/// The upstream `SR_poly` term order (repr.cpp:41-54): increasing height,
+/// then DECREASING KGB element, then the packed torsion part, then the
+/// infinitesimal character cross-multiplied.
+fn sort_parampol_terms(terms: &mut [(SplitValue, StandardRepr)]) {
+    terms.sort_by(|(_, left), (_, right)| {
+        left.height()
+            .cmp(&right.height())
+            .then_with(|| right.x().index().cmp(&left.x().index()))
+            .then_with(|| {
+                for index in 0..left.y_bits().dimension().max(right.y_bits().dimension()) {
+                    let l = left.y_bits().bit(index).unwrap_or(false);
+                    let r = right.y_bits().bit(index).unwrap_or(false);
+                    if l != r {
+                        return l.cmp(&r);
+                    }
+                }
+                std::cmp::Ordering::Equal
+            })
+            .then_with(|| {
+                let left_den = left.gamma().denominator();
+                let right_den = right.gamma().denominator();
+                left.gamma()
+                    .numerator()
+                    .iter()
+                    .zip(right.gamma().numerator())
+                    .map(|(&l, &r)| (l * right_den).cmp(&(r * left_den)))
+                    .find(|ordering| *ordering != std::cmp::Ordering::Equal)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+    });
 }
 
 /// The `is_dual` gate of `Fokko_block_wrapper` (atlas-types.w:4782-4793):
@@ -5263,7 +5303,7 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                     ));
                 }
                 let rc = rep_context(context);
-                let ktype = KType::sr_k(&rc, x, &Weight::new(lam_rho))
+                let ktype = KType::sr_k(&rc, x, &Weight::new(lam_rho.clone()))
                     .map_err(|error| structure_diagnostic(error, span))?;
                 Ok(Value::Domain(DomainValue::KType(KTypeValue {
                     context: Arc::clone(context),
@@ -5667,6 +5707,7 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 for (coefficient, term) in finals {
                     merge_pol_term(&mut terms, coefficient, term);
                 }
+                sort_ktypepol_terms(&mut terms);
                 Ok(Value::Domain(DomainValue::KTypePol(KTypePolValue {
                     rf: Arc::clone(&accumulator.rf),
                     terms,
@@ -5688,6 +5729,7 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 for (coefficient, term) in expanded {
                     merge_pol_term(&mut terms, coefficient, term);
                 }
+                sort_parampol_terms(&mut terms);
                 Ok(Value::Domain(DomainValue::ParamPol(ParamPolValue {
                     rf: Arc::clone(&accumulator.rf),
                     terms,
@@ -5724,6 +5766,7 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 for (coefficient, term) in finals {
                     merge_pol_term(&mut terms, coefficient.neg(), term);
                 }
+                sort_ktypepol_terms(&mut terms);
                 Ok(Value::Domain(DomainValue::KTypePol(KTypePolValue {
                     rf: Arc::clone(&accumulator.rf),
                     terms,
@@ -5744,6 +5787,7 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 for (coefficient, term) in expanded {
                     merge_pol_term(&mut terms, coefficient.neg(), term);
                 }
+                sort_parampol_terms(&mut terms);
                 Ok(Value::Domain(DomainValue::ParamPol(ParamPolValue {
                     rf: Arc::clone(&accumulator.rf),
                     terms,

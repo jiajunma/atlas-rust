@@ -396,6 +396,136 @@ impl KType {
             }
         }
     }
+
+    /// `Rep_context::finals_for(const K_repr::K_type&)`
+    /// (K_repr.cpp:290-396): the final-K-type expansion of this (possibly
+    /// non-final) K-type — a signed multiplicity list of final K-types in
+    /// its equivalence class, produced by making `(1+theta_x)lambda`
+    /// dominant through complex/noncompact-imaginary crosses and Cayley
+    /// transforms, dropping singular compact factors, and splitting along
+    /// parity real roots. The returned list is unordered; coefficient
+    /// merging happens at the language layer in the polynomial's canonical
+    /// term order. A final K-type yields exactly itself with multiplicity
+    /// one (the loop terminates immediately).
+    pub fn finals_for(&self, rc: &RepContext) -> Result<Vec<(KType, i32)>, StructureError> {
+        let datum = rc.inner_class().datum();
+        let mut result = Vec::new();
+        let mut todo = vec![(self.clone(), 1_i32)];
+        while let Some((ktype, mut coef)) = todo.pop() {
+            let height = ktype.height();
+            let mut x = ktype.x();
+            let mut lr = ktype.lambda_rho().clone();
+            let theta = rc.theta_at(x)?;
+            // `im_wt = lr + theta*lr + theta_plus_1_rho`
+            // (K_repr.cpp:306-311).
+            let mut im_wt = checked_add_weights(
+                &checked_add_weights(&lr, &theta.act_on_weight(&lr)?)?,
+                &rc.theta_plus_one_rho_at(x)?,
+            )?;
+            let mut dropped = false;
+            'restart: loop {
+                for s in 0..datum.semisimple_rank() {
+                    let eval = pair(&im_wt, &datum.simple_coroots()[s])?;
+                    if eval > 0 {
+                        continue;
+                    }
+                    match rc.kgb_status(x, s)? {
+                        KgbStatus::ImaginaryCompact => {
+                            if eval < 0 {
+                                rc.simple_reflect(s, &mut im_wt, 0)?;
+                                rc.simple_reflect(s, &mut lr, 1)?;
+                                coef = -coef;
+                                continue 'restart;
+                            }
+                            dropped = true;
+                            break 'restart;
+                        }
+                        KgbStatus::ImaginaryNoncompact => {
+                            if eval < 0 {
+                                let sx = rc.cross_at(x, s)?;
+                                let cx = rc.graph().cayley(x, s)?.ok_or(
+                                    StructureError::RepInvariantViolation {
+                                        invariant: "noncompact imaginary Cayley",
+                                    },
+                                )?;
+                                todo.push((KType::sr_k(rc, cx, &lr)?, coef));
+                                if sx == x {
+                                    // Type-2 Cayley: the shifted-lambda term.
+                                    let shifted =
+                                        checked_add_weights(&lr, &datum.simple_roots()[s])?;
+                                    todo.push((KType::sr_k(rc, cx, &shifted)?, coef));
+                                }
+                                x = sx;
+                                rc.simple_reflect(s, &mut im_wt, 0)?;
+                                rc.simple_reflect(s, &mut lr, 1)?;
+                                coef = -coef;
+                                continue 'restart;
+                            }
+                        }
+                        KgbStatus::Complex => {
+                            if eval < 0 || rc.is_complex_descent(x, s)? {
+                                x = rc.cross_at(x, s)?;
+                                rc.simple_reflect(s, &mut im_wt, 0)?;
+                                rc.simple_reflect(s, &mut lr, 1)?;
+                                continue 'restart;
+                            }
+                        }
+                        KgbStatus::Real => {
+                            let eval_lr = pair(&lr, &datum.simple_coroots()[s])?;
+                            if eval_lr % 2 != 0 {
+                                // Project to the wall for the parity real
+                                // root, then split by inverse Cayley
+                                // (K_repr.cpp:381-390).
+                                let shift = (eval_lr + 1) / 2;
+                                let mut projected = Vec::new();
+                                projected.try_reserve_exact(lr.rank()).map_err(|_| {
+                                    StructureError::AllocationFailed {
+                                        requested: lr.rank(),
+                                    }
+                                })?;
+                                for (&entry, &root_entry) in
+                                    lr.as_slice().iter().zip(datum.simple_roots()[s].as_slice())
+                                {
+                                    projected.push(
+                                        entry
+                                            .checked_sub(
+                                                root_entry
+                                                    .checked_mul(shift)
+                                                    .ok_or(StructureError::ArithmeticOverflow)?,
+                                            )
+                                            .ok_or(StructureError::ArithmeticOverflow)?,
+                                    );
+                                }
+                                lr = Weight::new(projected);
+                                let Some((first, second)) = rc.graph().inverse_cayley(x, s)? else {
+                                    return Err(StructureError::RepInvariantViolation {
+                                        invariant: "parity real inverse Cayley",
+                                    });
+                                };
+                                if let Some(second) = second {
+                                    todo.push((KType::sr_k(rc, second, &lr)?, coef));
+                                }
+                                todo.push((KType::sr_k(rc, first, &lr)?, coef));
+                                dropped = true;
+                                break 'restart;
+                            }
+                        }
+                    }
+                }
+                break;
+            }
+            if dropped {
+                continue;
+            }
+            // The loop terminated with a dominant weight: contribute the
+            // normalized, now-final K-type. The height is carried from the
+            // todo entry (invariant under the Weyl-conjugate moves,
+            // K_repr.cpp:174-204 comment).
+            let normalized = rc.lambda_unique(rc.involution_of(x)?, &lr)?;
+            result.push((KType::new(x, normalized, height), coef));
+        }
+        Ok(result)
+    }
 }
 
 /// Recover a simple root's generator index from its [`RootId`].
@@ -448,6 +578,44 @@ mod tests {
         let involution = LatticeInvolution::identity(&datum).unwrap();
         let inner_class = InnerClass::new(datum, involution, 4).unwrap();
         let classification = CartanClassification::build(&inner_class, &class_budget(4)).unwrap();
+        let strong = StrongRealClassification::build(&classification, 4_096).unwrap();
+        let mut table = InvolutionTable::new(
+            &inner_class,
+            InvolutionTableBudget::new(64, IntegerLatticeBudget::new(64, 100_000, 100_000, 128)),
+        )
+        .unwrap();
+        table.add_cartan(&classification, CartanId(0)).unwrap();
+        let seed = RealFormSeed::build(
+            &inner_class,
+            &classification,
+            &strong,
+            &table,
+            WeakRealFormId(0),
+            &IntegerLatticeBudget::new(64, 100_000, 100_000, 128),
+            4_096,
+        )
+        .unwrap();
+        let graph =
+            crate::KgbGraph::build(&inner_class, &classification, &strong, &mut table, &seed)
+                .unwrap();
+        let context = RepContext::new(&inner_class, &table, &graph).unwrap();
+        f(&context, &graph)
+    }
+
+    /// Inline su(2,1) (quasisplit A2) context builder; the language layer
+    /// uses the simply-connected datum (roots are Cartan rows, coroots the
+    /// identity basis).
+    fn with_su21<T>(f: impl FnOnce(&RepContext<'_>, &crate::KgbGraph) -> T) -> T {
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2, -1], vec![-1, 2]],
+            vec![Weight::new(vec![2, -1]), Weight::new(vec![-1, 2])],
+            vec![Coweight::new(vec![1, 0]), Coweight::new(vec![0, 1])],
+        )
+        .unwrap();
+        let involution = LatticeInvolution::identity(&datum).unwrap();
+        let inner_class = InnerClass::new(datum, involution, 6).unwrap();
+        let classification = CartanClassification::build(&inner_class, &class_budget(6)).unwrap();
         let strong = StrongRealClassification::build(&classification, 4_096).unwrap();
         let mut table = InvolutionTable::new(
             &inner_class,
@@ -538,6 +706,32 @@ mod tests {
             let k2 = KType::sr_k(rc, x, &Weight::new(vec![0])).unwrap();
             let parameter2 = rc.sr_of_ktype(&k2).unwrap();
             assert!(parameter.equivalent(rc, &parameter2).unwrap());
+        });
+    }
+
+    #[test]
+    fn a2_su21_context_builds_all_involutions_and_pins_nonfinal_anchors() {
+        // The su(2,1) KGB graph exercises every packet involution's
+        // (1-theta) image basis, including the singleton-negative-pivot
+        // sweep with a column swap. The oracle's lambda_unique does NOT
+        // record that pivot negation in the column ops (release build), so
+        // the elected basis for x=4 is (2,-1),[1,0] — the negation of what
+        // recording it would give — and the sweep must terminate (the
+        // local row copy keeps the Euclidean reductions off the working
+        // matrix). These anchors pin the elected representatives:
+        // K_type(x4,[1,0]) keeps [1,0], K_type(x5,[1,0]) keeps [1,0],
+        // K_type(x5,[0,0]) keeps [0,0], and the non-final predicates hold.
+        with_su21(|rc, graph| {
+            assert_eq!(graph.size(), 6);
+            let k4 = KType::sr_k(rc, KgbId(4), &Weight::new(vec![1, 0])).unwrap();
+            assert_eq!(k4.lambda_rho(), &Weight::new(vec![1, 0]));
+            assert!(!k4.is_final(rc).unwrap());
+            let k5 = KType::sr_k(rc, KgbId(5), &Weight::new(vec![1, 0])).unwrap();
+            assert_eq!(k5.lambda_rho(), &Weight::new(vec![1, 0]));
+            assert!(!k5.is_dominant(rc).unwrap());
+            let k = KType::sr_k(rc, KgbId(5), &Weight::new(vec![0, 0])).unwrap();
+            assert_eq!(k.lambda_rho(), &Weight::new(vec![0, 0]));
+            assert!(!k.is_final(rc).unwrap());
         });
     }
 }

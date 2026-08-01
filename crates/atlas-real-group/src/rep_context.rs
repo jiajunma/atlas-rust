@@ -23,6 +23,28 @@ use crate::{
     LatticeInvolution, ModTwoVector, RootId, RootKind, StructureError, Weight,
 };
 
+/// `<coweight, weight>` for an i64 numerator vector (the sign evaluation
+/// of a rational weight's raw numerator, repr.cpp:1224).
+fn pair_i64(weight: &[i64], coweight: &Coweight) -> Result<i64, StructureError> {
+    if weight.len() != coweight.rank() {
+        return Err(StructureError::RankMismatch {
+            expected: coweight.rank(),
+            actual: weight.len(),
+        });
+    }
+    let mut result = 0_i64;
+    for (&coordinate, &entry) in coweight.as_slice().iter().zip(weight) {
+        result = result
+            .checked_add(
+                i64::from(coordinate)
+                    .checked_mul(entry)
+                    .ok_or(StructureError::ArithmeticOverflow)?,
+            )
+            .ok_or(StructureError::ArithmeticOverflow)?;
+    }
+    Ok(result)
+}
+
 /// A standard-module parameter: upstream `repr::StandardRepr`
 /// (gkmod/repr.h:76-110).
 ///
@@ -320,10 +342,20 @@ fn gcd_sweep(
         .ok_or(StructureError::RepInvariantViolation {
             invariant: "echelon pivot column",
         })?;
+    // Upstream `gcd` reduces a COPY of the partial row (`row` by value,
+    // matreduc.h:70-122); the elementary column operations are recorded in
+    // the ops matrix and applied to the working matrix M only afterwards.
+    // The oracle build therefore negates ONLY the local pivot entry (the
+    // pivot sign is never recorded in ops): M keeps the un-negated pivot
+    // column, which fixes the sign of the elected lambda-rho representative
+    // (the image-basis identity `lift_mat*M_real == 1-theta` holds either
+    // way). The local copy also keeps the Euclidean reductions off the
+    // working matrix, which is what terminates the sweep.
+    let mut local_row = a[row][..limit].to_vec();
     let mut active: Vec<usize> = Vec::new();
     let mut min = 0_i64;
     let mut mindex = 0_usize;
-    for (column, &entry) in a[row].iter().enumerate().take(limit) {
+    for (column, &entry) in local_row.iter().enumerate() {
         if entry != 0 {
             active.push(column);
             let magnitude = entry.abs();
@@ -336,22 +368,17 @@ fn gcd_sweep(
     if active.is_empty() {
         return Ok(0);
     }
-    if a[row][mindex] < 0 {
-        // Force a positive pivot (matreduc.h:93-98).
-        for matrix_row in a.iter_mut() {
-            matrix_row[mindex] = -matrix_row[mindex];
-        }
-        for matrix_row in col.iter_mut() {
-            matrix_row[mindex] = -matrix_row[mindex];
-        }
-        for entry in col_inverse[mindex].iter_mut() {
-            *entry = -*entry;
-        }
+    if local_row[mindex] < 0 {
+        // Force a positive LOCAL pivot (matreduc.h:93-98): upstream flips
+        // the sign of the copied row entry only; the release oracle does
+        // not record `col(mindex,mindex) = -1`, so the matrices keep the
+        // un-negated pivot column.
+        local_row[mindex] = -local_row[mindex];
     }
 
     while active.len() > 1 {
         let current = mindex;
-        let pivot = a[row][current];
+        let pivot = local_row[current];
         let mut survivors = Vec::new();
         survivors.try_reserve_exact(active.len()).map_err(|_| {
             StructureError::AllocationFailed {
@@ -363,19 +390,19 @@ fn gcd_sweep(
                 survivors.push(j);
                 continue;
             }
-            let quotient = a[row][j].div_euclid(pivot);
+            let quotient = local_row[j].div_euclid(pivot);
             column_operation(a, col, col_inverse, j, current, -quotient)?;
-            a[row][j] = a[row][j]
+            local_row[j] = local_row[j]
                 .checked_sub(
                     pivot
                         .checked_mul(quotient)
                         .ok_or(StructureError::ArithmeticOverflow)?,
                 )
                 .ok_or(StructureError::ArithmeticOverflow)?;
-            if a[row][j] != 0 {
+            if local_row[j] != 0 {
                 survivors.push(j);
-                if a[row][j] < min {
-                    min = a[row][j];
+                if local_row[j] < min {
+                    min = local_row[j];
                     mindex = j;
                 }
             }
@@ -384,7 +411,7 @@ fn gcd_sweep(
     }
 
     swap_columns(a, col, col_inverse, dest, mindex);
-    Ok(a[row][dest])
+    Ok(min)
 }
 
 /// The representation context of one real form: upstream `Rep_context`
@@ -890,6 +917,144 @@ impl<'a> RepContext<'a> {
     /// a parameter to K, carrying the elected `lambda-rho` and the height.
     pub fn sr_k_of_standard(&self, z: &StandardRepr) -> Result<KType, StructureError> {
         Ok(KType::new(z.x, self.lambda_rho(z)?, z.height))
+    }
+
+    /// `Rep_context::finals_for(StandardRepr)` (repr.cpp:1205-1297): the
+    /// final-parameter expansion — make the infinitesimal character
+    /// dominant through crosses and Cayley transforms, drop singular
+    /// compact factors, and split along parity real roots. Returns the
+    /// signed multiplicity list of final parameters (unordered; the
+    /// language layer merges like terms in the polynomial's canonical
+    /// order).
+    pub fn finals_for_standard(
+        &self,
+        z: &StandardRepr,
+    ) -> Result<Vec<(StandardRepr, i32)>, StructureError> {
+        let datum = self.inner_class.datum();
+        let mut result = Vec::new();
+        let mut todo = vec![(z.clone(), 1_i32)];
+        while let Some((repr, mut coef)) = todo.pop() {
+            let mut x = repr.x();
+            let mut lr = self.lambda_rho(&repr)?;
+            let mut gamma_numerator = repr.gamma().numerator().to_vec();
+            let gamma_denominator = repr.gamma().denominator();
+            let mut dropped = false;
+            'restart: loop {
+                for s in 0..datum.semisimple_rank() {
+                    // The sign of `<alpha_s^v, gamma>`; upstream evaluates
+                    // the coroot against the raw numerator
+                    // (repr.cpp:1224).
+                    let eval = pair_i64(&gamma_numerator, &datum.simple_coroots()[s])?;
+                    if eval > 0 {
+                        continue;
+                    }
+                    match self.kgb_status(x, s)? {
+                        KgbStatus::ImaginaryCompact => {
+                            if eval == 0 {
+                                dropped = true;
+                                break 'restart;
+                            }
+                            self.simple_reflect(s, &mut lr, 1)?;
+                            self.simple_reflect_numerator(s, &mut gamma_numerator)?;
+                            coef = -coef;
+                            continue 'restart;
+                        }
+                        KgbStatus::ImaginaryNoncompact => {
+                            if eval == 0 {
+                                continue;
+                            }
+                            let sx = self.cross_at(x, s)?;
+                            let cx = self.graph().cayley(x, s)?.ok_or(
+                                StructureError::RepInvariantViolation {
+                                    invariant: "noncompact imaginary Cayley",
+                                },
+                            )?;
+                            let gamma =
+                                RationalWeight::new(gamma_numerator.clone(), gamma_denominator)?;
+                            todo.push((self.sr_gamma(cx, &lr, &gamma)?, coef));
+                            if sx == x {
+                                let shifted = checked_add_weights(&lr, &datum.simple_roots()[s])?;
+                                todo.push((self.sr_gamma(cx, &shifted, &gamma)?, coef));
+                            }
+                            x = sx;
+                            self.simple_reflect(s, &mut lr, 1)?;
+                            self.simple_reflect_numerator(s, &mut gamma_numerator)?;
+                            coef = -coef;
+                            continue 'restart;
+                        }
+                        KgbStatus::Complex => {
+                            if eval == 0 && !self.is_complex_descent(x, s)? {
+                                continue;
+                            }
+                            x = self.cross_at(x, s)?;
+                            self.simple_reflect(s, &mut lr, 1)?;
+                            self.simple_reflect_numerator(s, &mut gamma_numerator)?;
+                            continue 'restart;
+                        }
+                        KgbStatus::Real => {
+                            let eval_lr = pair(&lr, &datum.simple_coroots()[s])?;
+                            if eval_lr % 2 == 0 {
+                                continue;
+                            }
+                            let shift = (eval_lr + 1) / 2;
+                            let mut projected = Vec::new();
+                            projected.try_reserve_exact(lr.rank()).map_err(|_| {
+                                StructureError::AllocationFailed {
+                                    requested: lr.rank(),
+                                }
+                            })?;
+                            for (&entry, &root_entry) in
+                                lr.as_slice().iter().zip(datum.simple_roots()[s].as_slice())
+                            {
+                                projected.push(
+                                    entry
+                                        .checked_sub(
+                                            root_entry
+                                                .checked_mul(shift)
+                                                .ok_or(StructureError::ArithmeticOverflow)?,
+                                        )
+                                        .ok_or(StructureError::ArithmeticOverflow)?,
+                                );
+                            }
+                            lr = Weight::new(projected);
+                            let gamma =
+                                RationalWeight::new(gamma_numerator.clone(), gamma_denominator)?;
+                            let Some((first, second)) = self.graph().inverse_cayley(x, s)? else {
+                                return Err(StructureError::RepInvariantViolation {
+                                    invariant: "parity real inverse Cayley",
+                                });
+                            };
+                            if let Some(second) = second {
+                                todo.push((self.sr_gamma(second, &lr, &gamma)?, coef));
+                            }
+                            todo.push((self.sr_gamma(first, &lr, &gamma)?, coef));
+                            dropped = true;
+                            break 'restart;
+                        }
+                    }
+                }
+                break;
+            }
+            if dropped {
+                continue;
+            }
+            // The loop terminated with a dominant gamma: contribute the
+            // fresh, now-final parameter (repr.cpp:1287-1290).
+            let gamma = RationalWeight::new(gamma_numerator, gamma_denominator)?;
+            result.push((self.sr_gamma(x, &lr, &gamma)?, coef));
+        }
+        Ok(result)
+    }
+
+    /// `Rep_context::expand_final(StandardRepr)` (repr.cpp:1299-1309):
+    /// the ParamPol term list of a parameter's final expansion, one
+    /// integer multiplicity per final parameter (Split coefficients are
+    /// assembled at the language layer).
+    pub fn expand_final(
+        &self,
+        z: &StandardRepr,
+    ) -> Result<Vec<(StandardRepr, i32)>, StructureError> {
+        self.finals_for_standard(z)
     }
 
     /// `Rep_context::theta` (repr.cpp:179-180): the involution of `z`'s

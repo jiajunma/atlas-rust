@@ -335,6 +335,11 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/param_basic_rejected"),
     FixturePlan(name="domain/ktypepol_basic"),
     FixturePlan(name="domain/parampol_basic"),
+    # Non-final KTypePol/ParamPol expansion (finals_for/expand_final,
+    # K_repr.cpp:290-396 / repr.cpp:1205-1297): adding a non-final K-type
+    # or parameter to a polynomial expands to its final terms.
+    FixturePlan(name="domain/ktypepol_nonfinal"),
+    FixturePlan(name="domain/parampol_nonfinal"),
     # Strong-real surface: the base contract plus the probes whose slices
     # have landed — the Cartan numbering adapter (a63dc32) covers the four
     # B2/C2 Cartan enumerations and all four rejected diagnostics, and the
