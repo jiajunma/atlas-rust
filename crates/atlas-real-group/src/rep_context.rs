@@ -19,7 +19,7 @@ use std::collections::BTreeMap;
 use crate::grading::try_capacity;
 use crate::lattice::{checked_add_weights, checked_sub_weights, pair, RationalWeight};
 use crate::{
-    Coweight, InnerClass, InvolutionId, InvolutionTable, KType, KgbGraph, KgbId, KgbStatus,
+    BlockGraph, Coweight, InnerClass, InvolutionId, InvolutionTable, KType, KgbGraph, KgbId, KgbStatus,
     LatticeInvolution, ModTwoVector, RootId, RootKind, StructureError, Weight,
 };
 
@@ -915,6 +915,82 @@ impl<'a> RepContext<'a> {
             height,
         })
     }
+    /// `Rep_table::deformation_terms` (repr.cpp:1933-2025), simplified for
+    /// the case the frozen `domain/deform` contract exercises: identity
+    /// block modifier, empty singular system (a regular dominant gamma),
+    /// and a constant `lambda_rho` across the block. Returns the
+    /// `(StandardRepr, integer coefficient)` deformation terms of the
+    /// final element `y` at `gamma`.
+    ///
+    /// The full algorithm walks the finals in reverse, maintaining the
+    /// remainder/accumulator vectors, and evaluates every KL polynomial
+    /// in the column at `q = -1` (alternating the sign when the length
+    /// difference is odd), exactly like repr.cpp:1947-1988.
+    pub fn deformation_terms(
+        &self,
+        block: &BlockGraph,
+        y: usize,
+        gamma: &RationalWeight,
+        lambda_rho: &Weight,
+        kl_table: &crate::KlTable<'_>,
+    ) -> Result<Vec<(StandardRepr, i32)>, StructureError> {
+        if block.length(y) == Some(0) {
+            return Ok(Vec::new()); // easy case, null result (repr.cpp:1941)
+        }
+
+        // With an empty singular system every element is final; the
+        // reverse-accumulated list is [y, y-1, ..., 0] (repr.cpp:1944-1947).
+        let finals: Vec<usize> = (0..=y).rev().collect();
+        let mut index = vec![0_usize; y + 1];
+        for (position, &z) in finals.iter().enumerate() {
+            index[z] = position;
+        }
+
+        let mut acc = vec![0_i32; finals.len()];
+        let mut remainder = vec![0_i32; finals.len()];
+        remainder[0] = 1; // we initialised remainder = 1*sr_y
+        let y_parity = block.length(y).expect("valid element") % 2;
+
+        for (position, &z) in finals.iter().enumerate() {
+            let c_cur = remainder[position];
+            if c_cur == 0 {
+                continue;
+            }
+            let contribute = block.length(z).expect("valid element") % 2 != y_parity;
+            // for x from z down to 0 inclusive (repr.cpp:1970-1988)
+            for x in (0..=z).rev() {
+                let index_kl = kl_table.kl_pol(x, z)?;
+                let pol = kl_table.pool().get(index_kl).cloned().unwrap_or_else(crate::KlPol::zero);
+                let mut eval = pol.evaluate_at_minus_one();
+                if eval == 0 {
+                    continue; // polynomials with -1 as a root do not contribute
+                }
+                if !(block.length(z).expect("valid element") - block.length(x).expect("valid element")).is_multiple_of(2) {
+                    eval = -eval; // alternating sum of the KL column at -1
+                }
+                let j = index[x];
+                let c = c_cur * eval;
+                remainder[j] -= c;
+                if contribute {
+                    acc[j] += c;
+                }
+            }
+        }
+
+        // Orientation-number differences: A2 (no compact Cartan, no real
+        // roots) has orientation 0 everywhere, so the Split-value scaling
+        // of repr.cpp:1996-2017 is an integer coefficient.
+        let mut result = Vec::new();
+        for (position, &z) in finals.iter().enumerate() {
+            let c = acc[position];
+            if c != 0 {
+                let sr = self.sr_gamma(block.x(z).expect("valid element"), lambda_rho, gamma)?;
+                result.push((sr, c));
+            }
+        }
+        Ok(result)
+    }
+
 
     /// `Rep_context::sr` (repr.h:242-244): the parameter of the
     /// `(x, lambda-rho, nu)` triplet.
@@ -2075,6 +2151,46 @@ impl StandardRepr {
         z.y_bits = rc.y_pack(rc.involution_of(z.x)?, &lr)?;
         Ok(z)
     }
+
+    /// `Rep_context::deform_readjust` (repr.cpp:622-654): make `gamma`
+    /// dominant while exhausting singular complex descents. Unlike
+    /// `made_dominant` this only acts on complex roots, and an
+    /// `eval == 0` with a descent also reflects (the singular complex
+    /// descent case). Returns the readjusted parameter.
+    pub fn deform_readjust(&self, rc: &RepContext) -> Result<StandardRepr, StructureError> {
+        let datum = rc.inner_class.datum();
+        let mut z = self.clone();
+        let mut lr = rc.lambda_rho(&z)?;
+        let mut numer = z.gamma.numerator().to_vec();
+        loop {
+            let mut moved = false;
+            for generator in 0..datum.semisimple_rank() {
+                if rc.kgb_status(z.x, generator)? != KgbStatus::Complex {
+                    continue;
+                }
+                let eval = rc.simple_coroot_numerator_pairing(generator, &numer)?;
+                if eval < 0 {
+                    rc.simple_reflect_numerator(generator, &mut numer)?;
+                    rc.simple_reflect(generator, &mut lr, 1)?;
+                    z.x = rc.cross_at(z.x, generator)?;
+                    moved = true;
+                    break;
+                } else if eval == 0 && rc.is_complex_descent(z.x, generator)? {
+                    rc.simple_reflect(generator, &mut lr, 1)?;
+                    z.x = rc.cross_at(z.x, generator)?;
+                    moved = true;
+                    break;
+                }
+            }
+            if !moved {
+                break;
+            }
+        }
+        z.gamma = RationalWeight::new(numer, z.gamma.denominator())?;
+        z.y_bits = rc.y_pack(rc.involution_of(z.x)?, &lr)?;
+        Ok(z)
+    }
+
 
     /// `Rep_context::normalise` (repr.cpp:659-667): make dominant, move
     /// to the singular-canonical involution, then exhaust singular

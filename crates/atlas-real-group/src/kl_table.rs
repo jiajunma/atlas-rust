@@ -628,7 +628,7 @@ impl<'a> KlTable<'a> {
             if !sz.is_descent() {
                 continue;
             }
-            let d = (ly - lz + 1) / 2;
+            let d = (ly - lz).div_ceil(2);
             let p_xz = self.kl_pol_pool(x, z)?;
             pol = pol.add_shifted_scaled(&p_xz, d, mu);
         }
@@ -888,5 +888,95 @@ mod tests {
         assert_eq!(mu3, vec![(0, 1), (2, 1)], "mu3");
         assert_eq!(mu4, vec![(0, 1), (1, 1)], "mu4");
         assert_eq!(mu5, vec![(3, 1), (4, 1)], "mu5");
+    }
+
+    #[test]
+    fn a2_deformation_terms_reach_the_frozen_deform_outputs() {
+        // deform(param(KGB(rf,3),[0,0],[1,1]/1)) -> x=2, x=0 (height 4)
+        // deform(param(KGB(rf,4),[0,0],[1,1]/1)) -> x=1, x=0 (height 4)
+        // with the same gamma=[1,1]/1 and lambda_rho=[0,0] on every term.
+        // Rebuild the quasisplit RepContext (like ktype::with_su21), the
+        // dual KGB, the block, and the KL table, then run the simplified
+        // deformation_terms for y=3 and y=4.
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2, -1], vec![-1, 2]],
+            vec![Weight::new(vec![2, -1]), Weight::new(vec![-1, 2])],
+            vec![Coweight::new(vec![1, 0]), Coweight::new(vec![0, 1])],
+        )
+        .unwrap();
+        let involution = LatticeInvolution::identity(&datum).unwrap();
+        let inner_class = crate::InnerClass::new(datum, involution, 8).unwrap();
+        let classification = CartanClassification::build(&inner_class, &class_budget(8)).unwrap();
+        let strong = StrongRealClassification::build(&classification, 4_096).unwrap();
+        let mut table = InvolutionTable::new(
+            &inner_class,
+            InvolutionTableBudget::new(64, IntegerLatticeBudget::new(64, 100_000, 100_000, 128)),
+        )
+        .unwrap();
+        let (graph, primal_table) =
+            graph_with_size(&inner_class, &classification, &strong, &mut table, 6);
+        let rc = crate::RepContext::new(&inner_class, &primal_table, &graph).unwrap();
+        let dual_class = crate::dual::dual_inner_class(&inner_class, 8, 64).unwrap();
+        let dual_classification =
+            CartanClassification::build(&dual_class, &class_budget(8)).unwrap();
+        let dual_strong = StrongRealClassification::build(&dual_classification, 4_096).unwrap();
+        let mut dual_table = InvolutionTable::new(
+            &dual_class,
+            InvolutionTableBudget::new(64, IntegerLatticeBudget::new(64, 100_000, 100_000, 128)),
+        )
+        .unwrap();
+        let (dual_graph, dual_table) =
+            graph_with_size(&dual_class, &dual_classification, &dual_strong, &mut dual_table, 4);
+        let block = BlockGraph::build(
+            &graph,
+            &primal_table,
+            &dual_graph,
+            &dual_table,
+            &dual_class,
+            8,
+        )
+        .unwrap();
+        assert_eq!(block.size(), 6);
+        let mut kl = KlTable::new(&block).unwrap();
+        kl.fill(0).unwrap();
+        let gamma = crate::RationalWeight::new(vec![1, 1], 1).unwrap();
+        let lam_rho = Weight::new(vec![0, 0]);
+
+        for &y in &[3usize, 4usize] {
+            let terms = rc.deformation_terms(&block, y, &gamma, &lam_rho, &kl).unwrap();
+            let rendered: Vec<(usize, i32, u32)> = terms
+                .iter()
+                .map(|(sr, c)| {
+                    let lam = rc.lambda(sr).unwrap();
+                    let nu = rc.nu(sr).unwrap();
+                    eprintln!(
+                        "y={y}: x={} lambda={:?}/{} nu={:?}/{} c={} height={}",
+                        sr.x().index(),
+                        lam.numerator(),
+                        lam.denominator(),
+                        nu.numerator(),
+                        nu.denominator(),
+                        c,
+                        sr.height(),
+                    );
+                    (sr.x().index(), *c, sr.height())
+                })
+                .collect();
+            assert!(!rendered.is_empty(), "y={y} should have terms");
+            for &(x, _, height) in &rendered {
+                assert_eq!(height, 4, "y={y} term x={x} height");
+            }
+        }
+        // The exact sources: y=3 reaches x=2 and x=0, y=4 reaches x=1
+        // and x=0 (the frozen contract). Coefficients are both nonzero.
+        let terms3 = rc.deformation_terms(&block, 3, &gamma, &lam_rho, &kl).unwrap();
+        let mut xs3: Vec<usize> = terms3.iter().map(|(sr, _)| sr.x().index()).collect();
+        xs3.sort_unstable();
+        assert_eq!(xs3, vec![0, 2], "deform(x=3) sources, terms={terms3:?}");
+        let terms4 = rc.deformation_terms(&block, 4, &gamma, &lam_rho, &kl).unwrap();
+        let mut xs4: Vec<usize> = terms4.iter().map(|(sr, _)| sr.x().index()).collect();
+        xs4.sort_unstable();
+        assert_eq!(xs4, vec![0, 1], "deform(x=4) sources, terms={terms4:?}");
     }
 }

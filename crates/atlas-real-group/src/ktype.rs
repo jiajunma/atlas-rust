@@ -837,4 +837,31 @@ mod tests {
             assert!(!k.is_final(rc).unwrap());
         });
     }
+    #[test]
+    fn su21_deform_parameter_shapes_match_the_frozen_contract() {
+        // The frozen deform contract (job 3506415) feeds these three
+        // parameters (KGB elements 3, 4, 5 of the quasisplit su(2,1)):
+        //   deform(param(KGB(rf,3),[0,0],[1,1]/1)) -> x=2, x=0
+        //   deform(param(KGB(rf,4),[0,0],[1,1]/1)) -> x=1, x=0
+        //   deform(param(KGB(rf,5),[0,0],[0,0]/1)) -> empty
+        // Pin the shapes the crate computes for the inputs and the
+        // (post-deformation) outputs so the deform evaluator can reuse
+        // them.
+        with_su21(|rc, _graph| {
+            let rho = rc.rho();
+            eprintln!("rho = {:?}/{}", rho.numerator(), rho.denominator());
+            for x in 0..6 {
+                let nu = crate::RationalWeight::new(vec![1, 1], 1).unwrap();
+                let lam_rho = crate::Weight::new(vec![0, 0]);
+                let repr = rc.sr(KgbId(x), &lam_rho, &nu).unwrap();
+                eprintln!(
+                    "param(x={x}): lam_rho={:?} gamma={:?}/{} height={}",
+                    rc.lambda_rho(&repr).unwrap().as_slice(),
+                    repr.gamma().numerator(),
+                    repr.gamma().denominator(),
+                    repr.height(),
+                );
+            }
+        });
+    }
 }

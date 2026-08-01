@@ -226,13 +226,6 @@ impl KlHashTable {
     }
 }
 
-/// Normalise a polynomial pool index, verifying it stays in range.
-pub fn checked_pool_index(table: &KlHashTable, index: usize) -> Result<&KlPol, StructureError> {
-    table.get(index).ok_or(StructureError::IndexOutOfRange {
-        index,
-        upper_bound: table.len(),
-    })
-}
 
 #[cfg(test)]
 mod tests {
