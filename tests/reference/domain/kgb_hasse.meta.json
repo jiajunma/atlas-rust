@@ -1,0 +1,14 @@
+{
+  "fixture": "domain/kgb_hasse.atlas",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "implemented_local",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:3735-3743",
+    "sources/gkmod/kgb.cpp"
+  ],
+  "oracle_exit_status": 0,
+  "notes": "Batch 8 (misc): KGB_Hasse — the Bruhat Hasse matrix M[i][j]=1 when i is an immediate Bruhat predecessor of j, from KgbGraph::bruhat_hasse. Reference status pending HPC capture."
+}

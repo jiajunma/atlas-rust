@@ -1,0 +1,47 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/kgb_hasse",
+  "status": "local_oracle_reference",
+  "events": [
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ra': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'A2'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ic': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type A2, with involution defining\ninner class of type 'c', with 2 real forms and 1 dual real form"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rf': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "connected quasisplit real group with Lie algebra 'su(2,1)'"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "\n| 0, 0, 0, 1, 1, 0 |\n| 0, 0, 0, 0, 1, 0 |\n| 0, 0, 0, 1, 0, 0 |\n| 0, 0, 0, 0, 0, 1 |\n| 0, 0, 0, 0, 0, 1 |\n| 0, 0, 0, 0, 0, 0 |\n"
+      }
+    }
+  ]
+}

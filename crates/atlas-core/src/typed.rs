@@ -4660,6 +4660,13 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             domain_printer_builtin("print_block", primitive_type(Prim::Block)),
             domain_printer_builtin("print_blockd", primitive_type(Prim::Block)),
             domain_printer_builtin("print_blocku", primitive_type(Prim::Block)),
+            // KGB_Hasse (atlas-types.w:3735-3743): the Bruhat Hasse matrix.
+            domain_builtin_skip(
+                "KGB_Hasse",
+                primitive_type(Prim::RealForm),
+                primitive_type(Prim::Mat),
+                0,
+            ),
             domain_printer_builtin("print_KL_basis", primitive_type(Prim::Block)),
             domain_printer_builtin("print_prim_KL", primitive_type(Prim::Block)),
             domain_printer_builtin("print_KL_list", primitive_type(Prim::Block)),

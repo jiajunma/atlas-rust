@@ -5896,6 +5896,23 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
         // component-group generators of the form, i.e. the rank of the
         // kernel of the restriction map on the most-split Cartan
         // (realredgp.cpp:73-75 dual_pi0_gens).
+        // KGB_Hasse (atlas-types.w:3735-3743): the Bruhat Hasse matrix of
+        // the real form's KGB, `M[i][j] = 1` when `i` is an immediate
+        // Bruhat predecessor of `j`.
+        "KGB_Hasse" => {
+            arity(name, arguments, 1, span)?;
+            let context = as_real_form(&arguments[0], span)?;
+            let graph = &context.graph;
+            let n = graph.size();
+            let hasse = graph.bruhat_hasse();
+            let mut columns = vec![vec![0_i32; n]; n];
+            for (z, row) in hasse.iter().enumerate() {
+                for &down in row {
+                    columns[z][down] = 1;
+                }
+            }
+            columns_matrix_value(&columns, n, span)
+        }
         "components_rank" => {
             arity(name, arguments, 1, span)?;
             let form = as_real_form(&arguments[0], span)?;
