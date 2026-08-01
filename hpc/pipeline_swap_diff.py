@@ -351,6 +351,9 @@ FIXTURE_PLANS = (
     # The K-type formula with height cutoff (K_repr.cpp:549-591,
     # atlas-types.w:6030-6054).
     FixturePlan(name="domain/ktype_formula"),
+    # The branch of a KTypePol at a height cutoff (K_repr.cpp:592-622,
+    # atlas-types.w:6055-6070).
+    FixturePlan(name="domain/branch"),
     # Strong-real surface: the base contract plus the probes whose slices
     # have landed — the Cartan numbering adapter (a63dc32) covers the four
     # B2/C2 Cartan enumerations and all four rejected diagnostics, and the

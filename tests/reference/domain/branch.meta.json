@@ -1,0 +1,21 @@
+{
+  "fixture": "domain/branch",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3506405",
+  "source_archive_sha256": "381bd1788f583b4cb58e876e3eb3d991ab322376",
+  "fixture_sha256": "74efab92bf9f9bb010fb9b2105ec23d522b98b32a2fdc77fccf13adcfd47cc94",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "f4656823d4ca4d4c136baa2cf70c8b2785b35b832b2ae3e6e812c9e8262e655f",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "8f673fde00c9825b185e3aa884939958a1c733cf6cb60cb151aa76838d8d63f4",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/gkmod/K_repr.cpp:592-622",
+    "sources/interpreter/atlas-types.w:6055-6070"
+  ],
+  "notes": "branch surface (the branch of a KTypePol at a height cutoff), captured verbatim by HPC job 3506405 against the frozen atlasofliegroups-4d3e9449 oracle."
+}

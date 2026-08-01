@@ -5171,6 +5171,14 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::KTypePol),
                 0,
             ),
+            // branch_wrapper (atlas-types.w:6123, hunger 1): the branch of
+            // a KTypePol at a height cutoff; negative bounds rejected.
+            domain_builtin_validate(
+                "branch",
+                Type::tuple(vec![primitive_type(Prim::KTypePol), int_type()]),
+                primitive_type(Prim::KTypePol),
+                1,
+            ),
             // ParamPol surface (atlas-types.w:8542-8570): the
             // fixture-gated subset. add/subtract_module_wrapper check the
             // real form identity before their no-value gates.

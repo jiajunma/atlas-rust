@@ -2084,6 +2084,16 @@ fn as_ktype(value: &Value, span: SourceSpan) -> Result<&KTypeValue, Diagnostic> 
     }
 }
 
+fn as_ktypepol(value: &Value, span: SourceSpan) -> Result<&KTypePolValue, Diagnostic> {
+    match value {
+        Value::Domain(DomainValue::KTypePol(pol)) => Ok(pol),
+        other => Err(type_error(
+            span,
+            format!("expected a KTypePol, found {other}"),
+        )),
+    }
+}
+
 /// The language `vec` payload of an Atlas weight argument.
 fn as_weight_vec(value: &Value, span: SourceSpan) -> Result<Vec<i32>, Diagnostic> {
     match value {
@@ -4053,6 +4063,17 @@ pub(crate) fn validate(
                 ));
             }
         }
+        // branch_wrapper's negative-bound check precedes its no-value
+        // gate (atlas-types.w:6058-6060).
+        "branch" => {
+            arity(name, arguments, 2, span)?;
+            as_ktypepol(&arguments[0], span)?;
+            let bound = i64::try_from(&as_integer(&arguments[1], span)?)
+                .map_err(|_| runtime(span, "Integer value to big for conversion"))?;
+            if bound < 0 {
+                return Err(runtime(span, "Maximum level in branch cannot be negative"));
+            }
+        }
         // add/subtract_K_type_wrapper and add/subtract_module_wrapper's
         // real-form identity checks precede their no-value gates
         // (atlas-types.w:5670-5673, 5684-5687, 7788-7791, 7800-7803).
@@ -5753,6 +5774,62 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             Ok(Value::Domain(DomainValue::KTypePol(KTypePolValue {
                 rf: Arc::clone(&ktype.context),
                 terms,
+            })))
+        }
+        // branch_wrapper (atlas-types.w:6055-6070): repeatedly move the
+        // least term of the remainder into the result and subtract its
+        // K_type_formula from the remainder until it cancels
+        // (K_repr.cpp:592-622).
+        "branch" => {
+            arity(name, arguments, 2, span)?;
+            let pol = as_ktypepol(&arguments[0], span)?;
+            let bound = i64::try_from(&as_integer(&arguments[1], span)?)
+                .map_err(|_| runtime(span, "Integer value to big for conversion"))?;
+            if bound < 0 {
+                return Err(runtime(span, "Maximum level in branch cannot be negative"));
+            }
+            let max_level = u32::try_from(bound)
+                .map_err(|_| runtime(span, "Integer value to big for conversion"))?;
+            let rc = rep_context(&pol.rf);
+            let mut remainder = pol.terms.clone();
+            let mut result: Vec<(SplitValue, KType)> = Vec::new();
+            let mut count: u64 = 0;
+            while !remainder.is_empty() {
+                count += 1;
+                // Periodically flatten the remainder to remove leading
+                // zero terms (K_repr.cpp:599-603).
+                if count * count > 2 * remainder.len() as u64 {
+                    remainder.retain(|(coefficient, _)| !coefficient.is_zero());
+                    count = 0;
+                    if remainder.is_empty() {
+                        break;
+                    }
+                }
+                // Upstream keeps the lead IN the remainder while its
+                // K_type_formula is subtracted, so the formula's own
+                // lead term (coefficient 1) cancels it
+                // (K_repr.cpp:611-616); removing it first would leave a
+                // -coef lead term that cycles forever.
+                let (lead_coefficient, lead) = remainder[0].clone();
+                if lead.height() > max_level {
+                    remainder.remove(0);
+                    // Drop input terms that are already too high.
+                    continue;
+                }
+                merge_pol_term(&mut result, lead_coefficient, lead.clone());
+                let formula = rc
+                    .k_type_formula(&lead, max_level)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                for (term, multiplicity) in formula {
+                    let scaled = lead_coefficient.mul(SplitValue::new(multiplicity, 0));
+                    merge_pol_term(&mut remainder, scaled.neg(), term);
+                }
+                sort_ktypepol_terms(&mut remainder);
+            }
+            sort_ktypepol_terms(&mut result);
+            Ok(Value::Domain(DomainValue::KTypePol(KTypePolValue {
+                rf: Arc::clone(&pol.rf),
+                terms: result,
             })))
         }
         // truncate_K_type_poly_above_wrapper /
