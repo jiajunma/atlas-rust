@@ -864,4 +864,36 @@ mod tests {
             }
         });
     }
+
+    #[test]
+    fn su21_finals_for_singular_gamma_zero() {
+        // The frozen deform contract's third row:
+        //   deform(param(KGB(rf,5),[0,0],[0,0]/1)) -> Empty
+        // gamma = lam_rho + nu = [0,0] is fully singular. The deform
+        // wrapper runs finals_for first; pin what that produces.
+        with_su21(|rc, _graph| {
+            let gamma = crate::RationalWeight::new(vec![0, 0], 1).unwrap();
+            let repr = rc
+                .sr_gamma(KgbId(5), &Weight::new(vec![0, 0]), &gamma)
+                .unwrap();
+            eprintln!(
+                "sr(x=5,gamma=0): height={} gamma={:?}/{}",
+                repr.height(),
+                repr.gamma().numerator(),
+                repr.gamma().denominator()
+            );
+            let finals = rc.finals_for_standard(&repr).unwrap();
+            eprintln!("finals_for(x=5,gamma=0) = {} terms", finals.len());
+            for (term, coef) in &finals {
+                eprintln!(
+                    "  term x={} lam_rho={:?} gamma={:?}/{} coef={}",
+                    term.x().index(),
+                    rc.lambda_rho(term).unwrap().as_slice(),
+                    term.gamma().numerator(),
+                    term.gamma().denominator(),
+                    coef
+                );
+            }
+        });
+    }
 }

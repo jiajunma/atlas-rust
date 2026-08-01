@@ -249,13 +249,11 @@ impl BlockGraph {
                     let y = KgbId(y_start.index() + y_offset);
                     xs.push(x);
                     ys.push(y);
-                    lengths.push(
-                        graph
-                            .length(x)
-                            .ok_or(StructureError::BlockInvariantViolation {
-                                invariant: "block element length",
-                            })?,
-                    );
+                    lengths.push(graph.length(x).ok_or(
+                        StructureError::BlockInvariantViolation {
+                            invariant: "block element length",
+                        },
+                    )?);
                     for generator in 0..rank {
                         descent.push(descents(x, y, generator, graph, dual_graph)?);
                     }

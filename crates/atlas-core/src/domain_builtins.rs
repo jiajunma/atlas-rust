@@ -32,10 +32,11 @@ use atlas_real_group::{
     replace_relation_generators as domain_replace_relation_generators, AdjointFiberBudget,
     BasedRootDatum, BlockGraph, CartanClass, CartanClassification, CartanClassificationBudget,
     CartanId, Coweight, ExternalFormOrder, InnerClass, InnerClassLayout, IntegerLatticeBudget,
-    InvolutionTable, InvolutionTableBudget, KType, KgbGraph, KgbId, KgbStatus, LatticeInvolution,
-    ModTwoVector, RationalWeight, RealFormPresentation, RealFormSeed, RelationBasis, RelationError,
-    RelationGenerator, RelationMatrix, RepContext, RootSystem, StandardRepr,
-    StrongRealClassification, StructureError, WeakRealFormId, Weight, WeylElement, WeylInterface,
+    InvolutionTable, InvolutionTableBudget, KType, KgbGraph, KgbId, KgbStatus, KlTable,
+    LatticeInvolution, ModTwoVector, RationalWeight, RealFormPresentation, RealFormSeed,
+    RelationBasis, RelationError, RelationGenerator, RelationMatrix, RepContext, RootSystem,
+    StandardRepr, StrongRealClassification, StructureError, WeakRealFormId, Weight, WeylElement,
+    WeylInterface,
 };
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
@@ -5938,6 +5939,71 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             Ok(Value::Domain(DomainValue::KTypePol(KTypePolValue {
                 rf: Arc::clone(&pol.rf),
                 terms: result,
+            })))
+        }
+        // deform_wrapper (atlas-types.w:8084-8105): for every final
+        // parameter of the input, compute its deformation terms in the
+        // common block and accumulate an SR_poly. The crate's
+        // deformation_terms returns integer coefficients; the wrapper
+        // scales by `Split_integer(c, -c)` = c(1-s) and by the
+        // finals_for coefficient.
+        "deform" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "{name} has no matching overload for {} argument(s)",
+                        arguments.len()
+                    ),
+                ));
+            };
+            let rc = rep_context(&parameter.context);
+            let finals = rc
+                .finals_for_standard(&parameter.repr)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
+            // The deform block pairs the real form with its dual's first
+            // (for A2, only) real form.
+            let dual_rf = build_real_form(&dual_parent, 0, span)?;
+            let mut terms: Vec<(SplitValue, StandardRepr)> = Vec::new();
+            for (final_sr, final_coef) in finals {
+                let block = BlockGraph::build(
+                    &parameter.context.graph,
+                    &parameter.context.table,
+                    &dual_rf.graph,
+                    &dual_rf.table,
+                    &dual_rf.parent.inner_class,
+                    WEYL_BUDGET,
+                )
+                .map_err(|error| structure_diagnostic(error, span))?;
+                let mut kl_table =
+                    KlTable::new(&block).map_err(|error| structure_diagnostic(error, span))?;
+                kl_table
+                    .fill(0)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                let q_index = (0..block.size())
+                    .find(|&z| block.x(z) == Some(final_sr.x()))
+                    .ok_or_else(|| runtime(span, "parameter not in the common block"))?;
+                let lam_rho = rc
+                    .lambda_rho(&final_sr)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                let dterms = rc
+                    .deformation_terms(&block, q_index, final_sr.gamma(), &lam_rho, &kl_table)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                for (term_sr, coefficient) in dterms {
+                    // Split_integer(c, -c) * it->second (atlas-types.w:8103).
+                    let scaled = SplitValue::new(
+                        coefficient.wrapping_mul(final_coef),
+                        (-coefficient).wrapping_mul(final_coef),
+                    );
+                    merge_pol_term(&mut terms, scaled, term_sr);
+                }
+            }
+            sort_parampol_terms(&mut terms);
+            Ok(Value::Domain(DomainValue::ParamPol(ParamPolValue {
+                rf: Arc::clone(&parameter.context),
+                terms,
             })))
         }
         // truncate_K_type_poly_above_wrapper /

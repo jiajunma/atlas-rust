@@ -96,10 +96,12 @@ impl<'a> KlSupport<'a> {
             let mut desc = RankFlags::empty();
             let mut good_asc = RankFlags::empty();
             for s in 0..rank {
-                let value = block.descent_value(z, s).ok_or(StructureError::IndexOutOfRange {
-                    index: z * rank + s,
-                    upper_bound: size * rank,
-                })?;
+                let value = block
+                    .descent_value(z, s)
+                    .ok_or(StructureError::IndexOutOfRange {
+                        index: z * rank + s,
+                        upper_bound: size * rank,
+                    })?;
                 if value.is_descent() {
                     desc.set(s);
                 } else if value != BlockDescent::ImaginaryTypeII {
@@ -112,7 +114,10 @@ impl<'a> KlSupport<'a> {
 
         // length_stop[l] = first element of length >= l, or size when none
         // (klsupport.cpp:46-62).
-        let max_length = (0..size).map(|z| block.length(z).unwrap_or(0)).max().unwrap_or(0);
+        let max_length = (0..size)
+            .map(|z| block.length(z).unwrap_or(0))
+            .max()
+            .unwrap_or(0);
         let mut length_stop = Vec::new();
         for z in 0..size {
             let length = block.length(z).ok_or(StructureError::IndexOutOfRange {
@@ -288,7 +293,8 @@ impl<'a> KlSupport<'a> {
                 *slot = range - 1 - *slot; // reverse indices
             }
         }
-        self.prim_index.insert(desc_y.bits, PrimIndexRecord { index, range });
+        self.prim_index
+            .insert(desc_y.bits, PrimIndexRecord { index, range });
     }
 }
 

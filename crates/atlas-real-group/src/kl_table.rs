@@ -80,19 +80,20 @@ impl<'a> KlTable<'a> {
     pub fn kl_pol(&self, x: BlockElt, y: BlockElt) -> Result<KlIndex, StructureError> {
         let desc_y = self.support.descent_set(y);
         let prim = self.primitive_index_of(x, desc_y)?;
-        let column = self
-            .columns
-            .get(y)
-            .ok_or(StructureError::IndexOutOfRange {
-                index: y,
-                upper_bound: self.columns.len(),
-            })?;
+        let column = self.columns.get(y).ok_or(StructureError::IndexOutOfRange {
+            index: y,
+            upper_bound: self.columns.len(),
+        })?;
         // kl.cpp:129-131: when `prim` is at or past the column end
         // (l(x) >= l(y), including a failed primitivisation), the answer
         // is the identity P_{y,y}=1 when `x` primitivises to `y` itself,
         // else the zero polynomial.
         if prim >= column.len() {
-            return Ok(if prim == self.support.self_index(y) { 1 } else { 0 });
+            return Ok(if prim == self.support.self_index(y) {
+                1
+            } else {
+                0
+            });
         }
         Ok(column[prim])
     }
@@ -115,12 +116,7 @@ impl<'a> KlTable<'a> {
     pub fn prim_map(&self, y: BlockElt) -> Vec<bool> {
         self.columns
             .get(y)
-            .map(|column| {
-                column
-                    .iter()
-                    .map(|&index| index != 0)
-                    .collect::<Vec<_>>()
-            })
+            .map(|column| column.iter().map(|&index| index != 0).collect::<Vec<_>>())
             .unwrap_or_default()
     }
 
@@ -137,7 +133,11 @@ impl<'a> KlTable<'a> {
     /// `KL_table::fill(limit)` (kl.cpp:188-221): compute columns up to
     /// (excluding) `limit`; `limit == 0` fills everything.
     pub fn fill(&mut self, limit: usize) -> Result<(), StructureError> {
-        let limit = if limit == 0 { self.support.size() } else { limit };
+        let limit = if limit == 0 {
+            self.support.size()
+        } else {
+            limit
+        };
         let mut working = Vec::with_capacity(self.support.size());
         for y in 0..limit.min(self.support.size()) {
             if !self.holes[y] {
@@ -150,7 +150,11 @@ impl<'a> KlTable<'a> {
     }
 
     /// `KL_table::fill_KL_column` (kl.cpp:350-363): compute column `y`.
-    fn fill_kl_column(&mut self, working: &mut Vec<KlPol>, y: BlockElt) -> Result<(), StructureError> {
+    fn fill_kl_column(
+        &mut self,
+        working: &mut Vec<KlPol>,
+        y: BlockElt,
+    ) -> Result<(), StructureError> {
         // Prepare the primitive index for y's descent set (kl.cpp:353).
         let desc_y = self.support.descent_set(y).clone();
         self.support.prepare_prim_index(&desc_y);
@@ -174,7 +178,10 @@ impl<'a> KlTable<'a> {
                 .block()
                 .descent_value(y, s)
                 .expect("valid generator");
-            if matches!(value, BlockDescent::ComplexDescent | BlockDescent::RealTypeI) {
+            if matches!(
+                value,
+                BlockDescent::ComplexDescent | BlockDescent::RealTypeI
+            ) {
                 return s;
             }
         }
@@ -250,11 +257,7 @@ impl<'a> KlTable<'a> {
         }
 
         for &x in &extremals {
-            let sx = self
-                .support
-                .block()
-                .cross(x, s)
-                .expect("cross of extremal");
+            let sx = self.support.block().cross(x, s).expect("cross of extremal");
             let value = self
                 .support
                 .block()
@@ -361,7 +364,11 @@ impl<'a> KlTable<'a> {
     /// `KL_table::complete_primitives` (kl.cpp:544-589): transfer the
     /// completed row to `d_KL[y]` and `d_mu[y]`, inserting polynomials for
     /// primitive non-extremal elements.
-    fn complete_primitives(&mut self, working: &[KlPol], y: BlockElt) -> Result<(), StructureError> {
+    fn complete_primitives(
+        &mut self,
+        working: &[KlPol],
+        y: BlockElt,
+    ) -> Result<(), StructureError> {
         let desc_y = self.support.descent_set(y).clone();
         let ly = self.support.length(y);
         let mut column: Vec<KlIndex> = Vec::with_capacity(self.support.col_size(y));
@@ -436,7 +443,9 @@ impl<'a> KlTable<'a> {
                     result.push(z);
                 }
                 BlockDescent::RealTypeI => {
-                    let pair = block.inverse_cayley(y, s).expect("real type I inverse Cayley");
+                    let pair = block
+                        .inverse_cayley(y, s)
+                        .expect("real type I inverse Cayley");
                     if let Some(z) = pair.0 {
                         result.push(z);
                     }
@@ -445,7 +454,9 @@ impl<'a> KlTable<'a> {
                     }
                 }
                 BlockDescent::RealTypeII => {
-                    let pair = block.inverse_cayley(y, s).expect("real type II inverse Cayley");
+                    let pair = block
+                        .inverse_cayley(y, s)
+                        .expect("real type II inverse Cayley");
                     if let Some(z) = pair.0 {
                         result.push(z);
                     }
@@ -515,15 +526,12 @@ impl<'a> KlTable<'a> {
                     .expect("valid generator")
                 {
                     BlockDescent::ComplexAscent => {
-                        let cross_pol = kl_y(working, self.support.block().cross(x, s).expect("cross"));
+                        let cross_pol =
+                            kl_y(working, self.support.block().cross(x, s).expect("cross"));
                         pxy = pxy.sub_shifted(&cross_pol, 1, 1);
                     }
                     BlockDescent::ImaginaryTypeII => {
-                        let pair = self
-                            .support
-                            .block()
-                            .cayley(s, x)
-                            .expect("cayley");
+                        let pair = self.support.block().cayley(s, x).expect("cayley");
                         let sum = kl_y(working, pair.0.expect("first image"))
                             .add(&kl_y(working, pair.1.expect("second image")));
                         pxy = pxy.add(&sum);
@@ -550,21 +558,13 @@ impl<'a> KlTable<'a> {
                 let st = self.first_endgame_pair(x, y);
                 if let Some((s, t)) = st {
                     pxy = self.mu_new_formula(x, y, s, &mu_pairs)?;
-                    let pair = self
-                        .support
-                        .block()
-                        .cayley(s, x)
-                        .expect("endgame cayley");
+                    let pair = self.support.block().cayley(s, x).expect("endgame cayley");
                     let p_xprime = kl_y(working, pair.0.expect("first image"));
                     pxy = pxy.add(&p_xprime);
                     pxy = pxy.sub_shifted(&p_xprime, 1, 1);
                     if let Some(t) = t {
                         let sx = self.support.block().cross(s, x).expect("endgame cross");
-                        let up = self
-                            .support
-                            .block()
-                            .cayley(t, sx)
-                            .expect("endgame up");
+                        let up = self.support.block().cayley(t, sx).expect("endgame up");
                         if let Some(first) = up.0 {
                             pxy = pxy.sub(&kl_y(working, first));
                         }
@@ -671,13 +671,10 @@ impl<'a> KlTable<'a> {
     fn kl_pol_pool(&self, x: BlockElt, y: BlockElt) -> Result<KlPol, StructureError> {
         let desc_y = self.support.descent_set(y).clone();
         let prim = self.support.prim_index(x, &desc_y);
-        let column = self
-            .columns
-            .get(y)
-            .ok_or(StructureError::IndexOutOfRange {
-                index: y,
-                upper_bound: self.columns.len(),
-            })?;
+        let column = self.columns.get(y).ok_or(StructureError::IndexOutOfRange {
+            index: y,
+            upper_bound: self.columns.len(),
+        })?;
         let index = if prim >= column.len() {
             if prim == self.support.self_index(y) {
                 1 // P_{y,y} = 1
@@ -695,8 +692,8 @@ mod tests {
     use crate::block::BlockGraph;
     use crate::{
         AdjointFiberBudget, BasedRootDatum, CartanClassification, CartanClassificationBudget,
-        CartanId, Coweight, IntegerLatticeBudget, InvolutionTable, InvolutionTableBudget,
-        KgbGraph, LatticeInvolution, RealFormSeed, StrongRealClassification, WeakRealFormId, Weight,
+        CartanId, Coweight, IntegerLatticeBudget, InvolutionTable, InvolutionTableBudget, KgbGraph,
+        LatticeInvolution, RealFormSeed, StrongRealClassification, WeakRealFormId, Weight,
     };
 
     use super::*;
@@ -739,8 +736,7 @@ mod tests {
                 4_096,
             )
             .unwrap();
-            let graph =
-                KgbGraph::build(inner_class, classification, strong, table, &seed).unwrap();
+            let graph = KgbGraph::build(inner_class, classification, strong, table, &seed).unwrap();
             return (graph, table.clone());
         }
         panic!("no real form with KGB size {size}");
@@ -782,8 +778,13 @@ mod tests {
             InvolutionTableBudget::new(64, IntegerLatticeBudget::new(64, 100_000, 100_000, 128)),
         )
         .unwrap();
-        let (dual_graph, _) =
-            graph_with_size(&dual_class, &dual_classification, &dual_strong, &mut dual_table, 4);
+        let (dual_graph, _) = graph_with_size(
+            &dual_class,
+            &dual_classification,
+            &dual_strong,
+            &mut dual_table,
+            4,
+        );
         let block = BlockGraph::build(
             &graph,
             &primal_table,
@@ -866,21 +867,9 @@ mod tests {
         let (block, _table) = a2_block();
         let mut kl = KlTable::new(&block).unwrap();
         kl.fill(0).unwrap();
-        let mu3: Vec<(usize, i32)> = kl
-            .mu_column(3)
-            .iter()
-            .map(|p| (p.x, p.coef))
-            .collect();
-        let mu4: Vec<(usize, i32)> = kl
-            .mu_column(4)
-            .iter()
-            .map(|p| (p.x, p.coef))
-            .collect();
-        let mu5: Vec<(usize, i32)> = kl
-            .mu_column(5)
-            .iter()
-            .map(|p| (p.x, p.coef))
-            .collect();
+        let mu3: Vec<(usize, i32)> = kl.mu_column(3).iter().map(|p| (p.x, p.coef)).collect();
+        let mu4: Vec<(usize, i32)> = kl.mu_column(4).iter().map(|p| (p.x, p.coef)).collect();
+        let mu5: Vec<(usize, i32)> = kl.mu_column(5).iter().map(|p| (p.x, p.coef)).collect();
         // The frozen deform contract (job 3506415) deformations:
         //   deform(param(x=3,...)) -> terms at x=2 and x=0
         //   deform(param(x=4,...)) -> terms at x=1 and x=0
@@ -926,8 +915,13 @@ mod tests {
             InvolutionTableBudget::new(64, IntegerLatticeBudget::new(64, 100_000, 100_000, 128)),
         )
         .unwrap();
-        let (dual_graph, dual_table) =
-            graph_with_size(&dual_class, &dual_classification, &dual_strong, &mut dual_table, 4);
+        let (dual_graph, dual_table) = graph_with_size(
+            &dual_class,
+            &dual_classification,
+            &dual_strong,
+            &mut dual_table,
+            4,
+        );
         let block = BlockGraph::build(
             &graph,
             &primal_table,
@@ -944,7 +938,9 @@ mod tests {
         let lam_rho = Weight::new(vec![0, 0]);
 
         for &y in &[3usize, 4usize] {
-            let terms = rc.deformation_terms(&block, y, &gamma, &lam_rho, &kl).unwrap();
+            let terms = rc
+                .deformation_terms(&block, y, &gamma, &lam_rho, &kl)
+                .unwrap();
             let rendered: Vec<(usize, i32, u32)> = terms
                 .iter()
                 .map(|(sr, c)| {
@@ -970,11 +966,15 @@ mod tests {
         }
         // The exact sources: y=3 reaches x=2 and x=0, y=4 reaches x=1
         // and x=0 (the frozen contract). Coefficients are both nonzero.
-        let terms3 = rc.deformation_terms(&block, 3, &gamma, &lam_rho, &kl).unwrap();
+        let terms3 = rc
+            .deformation_terms(&block, 3, &gamma, &lam_rho, &kl)
+            .unwrap();
         let mut xs3: Vec<usize> = terms3.iter().map(|(sr, _)| sr.x().index()).collect();
         xs3.sort_unstable();
         assert_eq!(xs3, vec![0, 2], "deform(x=3) sources, terms={terms3:?}");
-        let terms4 = rc.deformation_terms(&block, 4, &gamma, &lam_rho, &kl).unwrap();
+        let terms4 = rc
+            .deformation_terms(&block, 4, &gamma, &lam_rho, &kl)
+            .unwrap();
         let mut xs4: Vec<usize> = terms4.iter().map(|(sr, _)| sr.x().index()).collect();
         xs4.sort_unstable();
         assert_eq!(xs4, vec![0, 1], "deform(x=4) sources, terms={terms4:?}");

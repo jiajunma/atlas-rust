@@ -5202,6 +5202,14 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::KTypePol),
                 1,
             ),
+            // deform_wrapper (atlas-types.w:8084-8105): the KL deformation
+            // of a parameter, producing an SR_poly (ParamPol).
+            domain_builtin_validate(
+                "deform",
+                primitive_type(Prim::Param),
+                primitive_type(Prim::ParamPol),
+                1,
+            ),
             // ParamPol surface (atlas-types.w:8542-8570): the
             // fixture-gated subset. add/subtract_module_wrapper check the
             // real form identity before their no-value gates.

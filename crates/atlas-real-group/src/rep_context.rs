@@ -19,8 +19,8 @@ use std::collections::BTreeMap;
 use crate::grading::try_capacity;
 use crate::lattice::{checked_add_weights, checked_sub_weights, pair, RationalWeight};
 use crate::{
-    BlockGraph, Coweight, InnerClass, InvolutionId, InvolutionTable, KType, KgbGraph, KgbId, KgbStatus,
-    LatticeInvolution, ModTwoVector, RootId, RootKind, StructureError, Weight,
+    BlockGraph, Coweight, InnerClass, InvolutionId, InvolutionTable, KType, KgbGraph, KgbId,
+    KgbStatus, LatticeInvolution, ModTwoVector, RootId, RootKind, StructureError, Weight,
 };
 
 /// `<coweight, weight>` for an i64 numerator vector (the sign evaluation
@@ -960,12 +960,19 @@ impl<'a> RepContext<'a> {
             // for x from z down to 0 inclusive (repr.cpp:1970-1988)
             for x in (0..=z).rev() {
                 let index_kl = kl_table.kl_pol(x, z)?;
-                let pol = kl_table.pool().get(index_kl).cloned().unwrap_or_else(crate::KlPol::zero);
+                let pol = kl_table
+                    .pool()
+                    .get(index_kl)
+                    .cloned()
+                    .unwrap_or_else(crate::KlPol::zero);
                 let mut eval = pol.evaluate_at_minus_one();
                 if eval == 0 {
                     continue; // polynomials with -1 as a root do not contribute
                 }
-                if !(block.length(z).expect("valid element") - block.length(x).expect("valid element")).is_multiple_of(2) {
+                if !(block.length(z).expect("valid element")
+                    - block.length(x).expect("valid element"))
+                .is_multiple_of(2)
+                {
                     eval = -eval; // alternating sum of the KL column at -1
                 }
                 let j = index[x];
@@ -990,7 +997,6 @@ impl<'a> RepContext<'a> {
         }
         Ok(result)
     }
-
 
     /// `Rep_context::sr` (repr.h:242-244): the parameter of the
     /// `(x, lambda-rho, nu)` triplet.
@@ -2190,7 +2196,6 @@ impl StandardRepr {
         z.y_bits = rc.y_pack(rc.involution_of(z.x)?, &lr)?;
         Ok(z)
     }
-
 
     /// `Rep_context::normalise` (repr.cpp:659-667): make dominant, move
     /// to the singular-canonical involution, then exhaust singular
