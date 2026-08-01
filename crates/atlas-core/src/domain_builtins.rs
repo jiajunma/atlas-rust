@@ -4513,10 +4513,11 @@ pub(crate) fn print_text(
                 Ok(text)
             }
         }
-        // print_KL_basis / print_prim_KL / print_KL_list / print_W_graph
-        // (atlas-types.w:9017-9078): the KLV polynomials of the block's KL
-        // table (full table, primitive pairs, distinct list) and the W-graph.
-        "print_KL_basis" | "print_prim_KL" | "print_KL_list" | "print_W_graph" => {
+        // print_KL_basis / print_prim_KL / print_KL_list / print_W_graph /
+        // print_W_cells (atlas-types.w:9017-9083): the KLV polynomials of
+        // the block's KL table, the W-graph, and its cell decomposition.
+        "print_KL_basis" | "print_prim_KL" | "print_KL_list" | "print_W_graph"
+        | "print_W_cells" => {
             arity(name, arguments, 1, span)?;
             let Value::Domain(DomainValue::Block(block)) = &arguments[0] else {
                 return Err(type_error(span, "expected a Block"));
@@ -4653,6 +4654,90 @@ pub(crate) fn print_text(
                         text.push_str(&format!("({target},{coef})"));
                     }
                     text.push_str("}\n");
+                }
+            } else if name == "print_W_cells" {
+                // print_W_cells (atlas-types.w:9058-9065, wgraph.cpp:58-116,
+                // wgraph_io.cpp:78-122): the cell decomposition of the
+                // W-graph via the oriented graph's strong components.
+                let rank = block.graph.rank();
+                let mut edges: Vec<Vec<(usize, i32)>> = vec![Vec::new(); size];
+                for y in 0..size {
+                    for pair in kl_table.mu_column(y) {
+                        edges[y].push((pair.x, pair.coef));
+                        edges[pair.x].push((y, pair.coef));
+                    }
+                }
+                for edges_z in edges.iter_mut() {
+                    edges_z.sort_unstable();
+                }
+                // oriented_graph (wgraph.cpp:58-72): drop x -> y when the
+                // descent set of x is contained in that of y.
+                let mut oriented: Vec<Vec<usize>> = Vec::with_capacity(size);
+                for edges_x in &edges {
+                    let desc_x = kl_table.support().descent_set(&edges_x).clone();
+                    let mut targets = Vec::new();
+                    for &(y, _) in edges_x {
+                        if !kl_table.support().descent_set(y).contains(&desc_x) {
+                            targets.push(y);
+                        }
+                    }
+                    oriented.push(targets);
+                }
+                let (partition, induced) = strong_components(&oriented);
+                // Cells and their vertices.
+                text.push_str("// Cells and their vertices.\n");
+                for (i, members) in partition.iter().enumerate() {
+                    let joined = members
+                        .iter()
+                        .map(ToString::to_string)
+                        .collect::<Vec<_>>()
+                        .join(",");
+                    text.push_str(&format!("#{i}={{{joined}}}\n"));
+                }
+                // Induced graph on cells.
+                text.push_str("\n// Induced graph on cells.\n");
+                for (i, targets) in induced.iter().enumerate() {
+                    text.push_str(&format!("#{i}:"));
+                    for (j, &target) in targets.iter().enumerate() {
+                        text.push_str(if j == 0 { "->#" } else { ",#" });
+                        text.push_str(&target.to_string());
+                    }
+                    text.push_str(".\n");
+                }
+                // Individual cells.
+                text.push_str("\n// Individual cells.\n");
+                let mut relno = vec![0_usize; size];
+                for (i, members) in partition.iter().enumerate() {
+                    text.push_str(&format!("// cell #{i}:\n"));
+                    for (j, &original) in members.iter().enumerate() {
+                        relno[original] = j;
+                    }
+                    for (j, &original) in members.iter().enumerate() {
+                        text.push_str(&format!("{j}[{original}]: "));
+                        let desc = kl_table.support().descent_set(original);
+                        let mut gens: Vec<String> = Vec::new();
+                        for s in 0..rank {
+                            if desc.is_set(s) {
+                                gens.push((s + 1).to_string());
+                            }
+                        }
+                        text.push_str(&format!("{{{}}}", gens.join(",")));
+                        let mut first_edge = true;
+                        for &(target, coef) in &edges[original] {
+                            if !partition[i].contains(&target) {
+                                continue;
+                            }
+                            text.push_str(if first_edge { " --> " } else { "," });
+                            first_edge = false;
+                            if coef == 1 {
+                                text.push_str(&relno[target].to_string());
+                            } else {
+                                text.push_str(&format!("({},{coef})", relno[target]));
+                            }
+                        }
+                        text.push('\n');
+                    }
+                    text.push('\n');
                 }
             } else {
                 // print_KL_list: the sorted distinct nonzero polynomials.
