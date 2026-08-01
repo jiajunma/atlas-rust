@@ -74,7 +74,65 @@ report shows both fixtures PASS, zero FAIL → bump meta to
 `rust_status: verified_hpc` + `differential_job` → record here → commit →
 `rsync -az --delete .git/` to HPC.
 
-## Live continuation - 2026-08-01
+## Live continuation - 2026-08-01 (ktype/param language slice)
+
+The six K-type/standard-parameter contracts are now landed and
+HPC-verified. HEAD is `dbf02fe` (main); differential `3506258` ran 154
+fixtures with **zero FAIL** (one PARTIAL: the two intentional
+`container_syntax_errors` pending cases) and PASSES all six:
+`domain/ktype_basic{,_rejected}`, `domain/param_basic{,_rejected}`,
+`domain/ktypepol_basic`, `domain/parampol_basic`. Their meta files carry
+`rust_status: verified_hpc` + `differential_job: 3506258`. The domain
+layer is COMPLETE (77 of 77 frozen domain contracts), and
+`docs/LANGUAGE.md` reflects that.
+
+Implementation (commit `dbf02fe`, no atlas-real-group changes):
+
+- `DomainValue` gained `KType`/`KTypePol`/`Param`/`ParamPol` variants
+  carrying the owning `Arc<RealFormContext>` plus the crate `KType` /
+  `StandardRepr` (or the pol term lists). Structural equality reuses the
+  real-form identity of the `RealForm` arm (`same_real_form`) plus strict
+  crate component equality, matching `K_type_value`/`module_parameter_value`
+  operator==.
+- Display: the 6-way adjective chain (is_standard → is_dominant →
+  is_nonzero → is_semifinal → is_normal → "final") then ` K-type` +
+  print_K_type (` K_type(x=N, lambda=[..]/d]`, LEADING space) for KType,
+  and the same chain + `parameter(x=N,lambda=[..]/d,nu=[..]/d]` for Param.
+  The lambda/nu render through a no-inner-space rational-vector helper
+  (`[1]/1`), distinct from the language RatVec display used by `%`.
+  Pols use print_K_type_pol/print_SR_poly exactly: one `\n` per term,
+  coefficient embellishment (`(e+fs)` only when both components occur
+  across the terms), `*` + term text, ` [height]`; empty texts
+  `Empty sum of K-types` / `Empty sum of standard modules`.
+- Registrations follow the fixture-gated install subsets
+  (atlas-types.w:6071-6088, 7472-7480, 6091-6117, 8542-8570):
+  `K_type` (KGBElt,vec) + (Param), `param` (KGBElt,vec,ratvec) +
+  (KType), `%` (KType)/(Param), `real_form` ×4, `height` ×2, predicates
+  (5 for KType, 3 for Param), `equivalent`, `dominant`/`normal`/
+  `theta_stable`/`to_canonical_fiber` (KType), `null_K_module`/
+  `null_module`, `#` ×2, `+`/`-` (KTypePol,KType)/(ParamPol,Param),
+  `first_term`/`last_term` ×2, and `*(int,KTypePol/ParamPol)` (skip →
+  implemented, hunger 2). Constructors and `equivalent` and the pol
+  add/subtract mismatch checks precede the no-value gates (validate);
+  the rest run behind them (skip).
+- Rank checks replicate the wrapper order and wording: `Rank mismatch:
+  (r,size)` for K_type and `Rank mismatch: (r,l,n)` for param, evaluated
+  BEFORE the crate call. `%` on Param returns gamma (not nu) as the third
+  component. Real-form mismatch wordings and the empty-term errors match
+  the upstream strings.
+- Deferred by design: `+`/`-` on a NON-final KType/Param is rejected with
+  a runtime "not implemented" diagnostic — `finals_for`/`expand_final`
+  expansions for non-final values await the deformation layer. The other
+  install-list entries (Split-scaled pol products, KTypePol/ParamPol
+  binary equality, term-list forms, truncate/scale/deform families) stay
+  unregistered per the slice boundaries.
+
+Local gate: 229 atlas-core + 292 atlas-real-group tests pass; clippy and
+fmt clean; the six fixtures VERBATIM via check_fixture; the wired local
+pipeline reports 152 PASS + 1 PARTIAL + the known `fromfile_accepted_b10`
+FAIL (HPC paths); `hpc/test_pipeline_swap_diff.py` 10/10.
+
+## Live continuation - 2026-08-01 (L1/L2 + Rep_context milestone)
 
 The three interrupted slices are now landed and HPC-verified; the tree is
 clean at HEAD `16cb440` (main). What changed since the 2026-07-31
@@ -257,29 +315,31 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: `16cb440` (main). Working tree clean. The L1/L2 slices
-and the agent-27 Rep_context crate milestone are landed (see the
-2026-08-01 live-continuation entry above; differential `3506234` verified
-the eight L1/L2 contracts). The crate math (RepContext/KType/StandardRepr)
-compiles, is clippy-clean, and has in-crate split-A1 anchor tests. The
-next slice is the language layer for the six ktype/param-family contracts
-(`ktype_basic{,_rejected}`, `ktypepol_basic`, `param_basic{,_rejected}`,
-`parampol_basic`), followed by `set verbose` (`lex/basic`, L3) and the
-unterminated-string recovery (`negative/unterminated_string`, L4), then
-the final `docs/LANGUAGE.md` matrix refresh. Design notes for the
-language layer are in the 2026-08-01 entry (value shape, Display formats
-with the print_K_type leading space and the no-inner-space `[1]/1` lambda
-rendering, on-demand RepContext construction from `Arc<RealFormContext>`).
+HEAD at handoff: `dbf02fe` (main). Working tree clean. The L1/L2 slices,
+the Rep_context crate milestone, AND the six ktype/param-family language
+contracts are landed (see the 2026-08-01 live-continuation entries above;
+differential `3506234` verified the eight L1/L2 contracts, `3506258` the
+six ktype/param contracts). The domain layer is complete: 77 of 77 frozen
+domain contracts verified. The next slices are `set verbose` (`lex/basic`,
+L3) and the unterminated-string recovery
+(`negative/unterminated_string`, L4), then the final
+`docs/LANGUAGE.md` matrix refresh (the domain rows were updated at
+`dbf02fe`; the L3/L4 rows remain). Language-layer design notes
+(value shape, Display formats, on-demand RepContext construction from
+`Arc<RealFormContext>`) are in the 2026-08-01 entries; the KTypePol/
+ParamPol term math lives in `domain_builtins.rs` as thin language-layer
+containers over the crate values.
 
 Verified `verified_hpc` so far: all eval slices B3a-B13, `set_type`,
 operator overload declarations, builtin `whattype * ?`, `showall`,
 `quit`, basic TTY banner/prompt, InnerClass/RealForm display, the domain
 slices `root_coroot` (`3501555`), `kgb_generation` (`3501555`),
-`real_group` (`3501779`), the eight L1/L2 contracts (`3506234`), and the
-later domain families listed in the live-continuation entries below
-(weak/strong real forms, split, block, involution primitive, etc.). The
-eval/operator/dont/showall batch was verified by differential `3501643`;
-the domain display and B8-B12 batch by `3501467`.
+`real_group` (`3501779`), the eight L1/L2 contracts (`3506234`), the six
+ktype/param contracts (`3506258`), and the later domain families listed in
+the live-continuation entries below (weak/strong real forms, split, block,
+involution primitive, etc.). The eval/operator/dont/showall batch was
+verified by differential `3501643`; the domain display and B8-B12 batch by
+`3501467`.
 
 ## The per-slice loop (follow exactly)
 

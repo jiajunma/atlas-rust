@@ -37,7 +37,7 @@ differential report naming the job.
 | exceptions and runtime errors | supported | B12 + rejected companions across all slices; `3501467`, `3501643` |
 | Atlas commands and batch files | supported | B7 forget/die, B9 redirect, B10 include, B13 dont, showall, quit; `3501467`, `3501643` |
 | interactive input and completion | partial | TTY banner/prompt implemented; readline completion remains pending |
-| domain objects and mathematical operations | partial | 71 of 77 frozen domain contracts verified: display `3501467`, root_coroot/kgb_generation `3501555`, real_group `3501779`, kgb_operations/tits_operations `3501870`, grading `3501915`, weyl_element `3502034`, cartan_aggregation `3502126`, seed_x0 `3502176`, involution_table `3502272`, adjoint_fiber `3502318`, real_form_labels `3502375`, relations `3502506`, involution_decomposition `3502550`, weak_real_form `3502697`/`3502969`, strong_real `3502718`/`3502731`/`3502736`, block `3503231`, involution_primitive `3503322`; K-type/standard-parameter family (6 contracts) pending |
+| domain objects and mathematical operations | partial | 77 of 77 frozen domain contracts verified: display `3501467`, root_coroot/kgb_generation `3501555`, real_group `3501779`, kgb_operations/tits_operations `3501870`, grading `3501915`, weyl_element `3502034`, cartan_aggregation `3502126`, seed_x0 `3502176`, involution_table `3502272`, adjoint_fiber `3502318`, real_form_labels `3502375`, relations `3502506`, involution_decomposition `3502550`, weak_real_form `3502697`/`3502969`, strong_real `3502718`/`3502731`/`3502736`, block `3503231`, involution_primitive `3503322`, ktype/param family `3506258` |
 | KL and file formats | planned | explicit filekl adapter coupled to the pending Block/KL math layer |
 
 No row moves to `supported` merely because Rust compiles. It needs a reference
@@ -54,14 +54,13 @@ covered by direct CLI/session checks. The eval family is complete through
 `split_basic` (`3502718`), and the 21 legacy command/eval contracts
 (declarations, assignments, let, containers, subscriptions, slices, exact
 bignum numerics, name/type rejections, error recovery) are verified by
-`3503356`. The domain layer is verified through blocks (`3503231`) and the
-primitive involution constructors (`3503322`): 71 of 77 frozen domain
-contracts, with only the K-type/standard-parameter family
-(`ktype_basic{,_rejected}`, `param_basic{,_rejected}`, `ktypepol_basic`,
-`parampol_basic`) still pending its Rep_context crate milestone. Eleven
-legacy contracts remain frozen with implementation gaps in flight: four
-diagnostic-wording slices, five bison syntax-message slices, `set verbose`,
-and the unterminated-string recovery. Readline completion and KL binary
+`3503356`. The domain layer is now complete: all 77 frozen domain
+contracts are verified, the last six — the K-type/standard-parameter
+family (`ktype_basic{,_rejected}`, `param_basic{,_rejected}`,
+`ktypepol_basic`, `parampol_basic`) — by differential `3506258` on top of
+the Rep_context crate milestone. Two legacy contracts remain frozen with
+implementation gaps in flight: `set verbose` (L3) and the
+unterminated-string recovery (L4). Readline completion and KL binary
 formats remain outside the language-only gate because they depend on the
 unfinished Block/KL domain values.
 

@@ -3,11 +3,11 @@
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_status": "verified_hpc_reference",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:7472"
   ],
-  "notes": "Rejected companions of the Param constructor: a rank-2 lambda vec gives 'Rank mismatch: (1,2,1)' and a rank-2 nu ratvec gives 'Rank mismatch: (1,1,2)'. Both confirmed by direct oracle probes; verbatim HPC capture still pending. Reference captured verbatim by HPC job 3501537 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
+  "notes": "Rejected companions of the Param constructor: a rank-2 lambda vec gives 'Rank mismatch: (1,2,1)' and a rank-2 nu ratvec gives 'Rank mismatch: (1,1,2)'. Both confirmed by direct oracle probes. Reference captured verbatim by HPC job 3501537 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential pipeline_swap_diff job 3506258 (commit dbf02fe) reports PASS with zero regressions; metadata carries rust_status verified_hpc with differential_job 3506258.",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
   "reference_job": "3501537",
@@ -16,5 +16,6 @@
   "oracle_exit_status": 1,
   "oracle_stdout_sha256": "b452ab12e9a45622e0dbe0bcf5df01f48259f7855f147f331293de1938a114bc",
   "oracle_stderr_sha256": "a69ce5fa0cb9e0ee7d9a673c497b937e218ab99ae347ab709aa68747cd4a5382",
-  "capture_artifacts_sha256": "98d0e0696defffc681b948f70dd059a6d9eeba712b06a5119eb9403e0c0901c6"
+  "capture_artifacts_sha256": "98d0e0696defffc681b948f70dd059a6d9eeba712b06a5119eb9403e0c0901c6",
+  "differential_job": "3506258"
 }

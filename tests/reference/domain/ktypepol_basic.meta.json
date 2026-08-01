@@ -3,7 +3,7 @@
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_status": "verified_hpc_reference",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:6091-6117"
   ],
@@ -14,7 +14,7 @@
     "first_term/last_term return the (Split coefficient, KType) pair",
     "2*Q scales coefficients"
   ],
-  "notes": "KTypePol language surface (null_K_module/#/+,-/int scaling/first_term/last_term/real_form), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449); verbatim HPC capture still pending. Reference captured verbatim by HPC job 3501537 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
+  "notes": "KTypePol language surface (null_K_module/#/+,-/int scaling/first_term/last_term/real_form), drafted from direct oracle probes (LD_LIBRARY_PATH-wrapped atlas on the HPC login node, rev 4d3e9449). Reference captured verbatim by HPC job 3501537 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential pipeline_swap_diff job 3506258 (commit dbf02fe) reports PASS with zero regressions; metadata carries rust_status verified_hpc with differential_job 3506258.",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
   "reference_job": "3501537",
@@ -23,5 +23,6 @@
   "oracle_exit_status": 0,
   "oracle_stdout_sha256": "a0ef3426280fdd09a7946dc5e6ef5b54746234f0e0eed1c014b190d9075cae4a",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "capture_artifacts_sha256": "4db3e9108906516fa8a0c0d49438a949f880ec5a780ff6eaf2aa743f99cd07ac"
+  "capture_artifacts_sha256": "4db3e9108906516fa8a0c0d49438a949f880ec5a780ff6eaf2aa743f99cd07ac",
+  "differential_job": "3506258"
 }

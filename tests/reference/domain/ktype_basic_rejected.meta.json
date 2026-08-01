@@ -3,11 +3,11 @@
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_status": "verified_hpc_reference",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:6071"
   ],
-  "notes": "Rejected companion of the KType surface: K_type with a rank-2 weight on a rank-1 form aborts with 'Rank mismatch: (1,2)'. Confirmed by direct oracle probe; verbatim HPC capture still pending. Reference captured verbatim by HPC job 3501537 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential evidence remains pending until the pipeline_swap_diff run.",
+  "notes": "Rejected companion of the KType surface: K_type with a rank-2 weight on a rank-1 form aborts with 'Rank mismatch: (1,2)'. Confirmed by direct oracle probe. Reference captured verbatim by HPC job 3501537 against the frozen atlasofliegroups-4d3e9449 oracle; oracle stdout matches the expected events exactly. Differential pipeline_swap_diff job 3506258 (commit dbf02fe) reports PASS with zero regressions; metadata carries rust_status verified_hpc with differential_job 3506258.",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
   "reference_job": "3501537",
@@ -16,5 +16,6 @@
   "oracle_exit_status": 1,
   "oracle_stdout_sha256": "b452ab12e9a45622e0dbe0bcf5df01f48259f7855f147f331293de1938a114bc",
   "oracle_stderr_sha256": "32a1355f5b26d7ac5fa4450d2f1a045400bc9a22a01083dceb4ec29775dece02",
-  "capture_artifacts_sha256": "4ea3e69156bc2d95395a2ec399272e3049af512d810a82a157a0fcbf644f17d6"
+  "capture_artifacts_sha256": "4ea3e69156bc2d95395a2ec399272e3049af512d810a82a157a0fcbf644f17d6",
+  "differential_job": "3506258"
 }
