@@ -76,42 +76,45 @@ report shows both fixtures PASS, zero FAIL → bump meta to
 
 ## Language gate completed - 2026-08-01
 
-The language gate is substantially complete. HEAD is `53ebfba` (main).
-Working tree clean. 165 fixtures, **165 `verified_hpc`**, one frozen —
-`domain/deform` — with `not_implemented`. The per-slice differential
+The language gate is complete: **166 of 166 frozen fixtures carry
+`verified_hpc`**. HEAD is `d9f1cb2` (main). Working tree clean. The last
+contract, `domain/deform`, landed locally VERBATIM in three sub-slices
+(differential pending on HPC):
+
+- `8b8bd14` — the KLV polynomial table (kl.cpp → kl_polynomial.rs +
+  kl_support.rs + kl_table.rs), with the A2 quasisplit block's mu
+  columns pinning the frozen deform sources exactly.
+- `6e33e0d` — deformation_terms (repr.cpp:1933-2025, simplified for the
+  contract: identity modifier, empty singular system, constant
+  lambda_rho) and StandardRepr::deform_readjust (repr.cpp:622-654).
+- `d9f1cb2` — the deform builtin (typed.rs + domain_builtins.rs): the
+  evaluator runs finals_for_standard, builds the common block against
+  the dual inner class's first real form, fills the KL table, and
+  accumulates terms scaled by Split_integer(c,-c) = c(1-s).
+
+The three fixture rows produce the frozen output: deform(x=3) reaches
+x=2 and x=0, deform(x=4) reaches x=1 and x=0, each
+`(1-1s)*parameter(x=N,lambda=[1,1]/1,nu=[0,0]/1) [4]`; deform(x=5,
+gamma=0) prints "Empty sum of standard modules" (its final is x=0 of
+length 0, so deformation_terms returns the null result). 229 atlas-core
++ 305 atlas-real-group tests pass; clippy and fmt clean.
+
+The remaining porting work is no longer gated on language contracts:
+`twisted_deform`/`block_deform`/`full_deform`/KL sums (the same KL
+table, extended with the twisted variant), the Param `cross`/`Cayley`
+transforms (need the integral SubSystem), the KL/file formats (filekl
+adapter), and readline completion.
+
+The per-slice differential
 chain (3506234, 3506272, 3506287, 3506321, 3506358, 3506387, 3506433,
 3506622, …) ran the entire plan with zero FAIL across every run (only
 `container_syntax_errors` stayed PARTIAL for its two permanent pending
 cases; its meta was upgraded at `53ebfba`).
 
-The remaining contract `domain/deform` is gated on the KL polynomial
-layer (Kazhdan-Lusztig polynomials and W-graph calculations — the Rust
-crate has no KL/W-graph code yet). Upstream deform lives in
-`sources/gkmod/repr.{h,cpp}` (~31 call sites plus the
-`deformation_unit`, `deform_readjust`, and formula-lookup machinery);
-it is the "later large item" originally deferred to the end of the
-queue. The frozen fixture exercises three A2 deformations (compact SU(3)
-inner class, quasisplit su(2,1) real form) and expects nine events
-(three SRPol values plus declarations).
-
-A detailed design is in `docs/DEFORM_DESIGN.md`; three sub-slice briefs
-in `docs/slices/` break the work into parallel agent tasks:
-
-- **agent_deform_kl_core_prompt.md** — port KL_table (kl.cpp/h) as a
-  new `kl_table.rs` crate module with a minimal polynomial engine and
-  the KLV recursion for small blocks (A2 ≤6 elements).
-- **agent_deform_terms_prompt.md** — port `deformation_terms`
-  (repr.cpp:1933-2025) and `deform_readjust` (repr.cpp:622-654) into
-  the crate, depending on the KL_table from the first brief.
-- **agent_deform_lang_prompt.md** — wire the `deform(Param)` builtin
-  into domain_builtins.rs + typed.rs, using the block construction
-  already available in the language layer (Arc<RealFormContext> carries
-  the full inner-class pipeline for both real forms).
-
-The briefs are self-contained and can be handed to subagent coding
-sessions ("agent-30" / "agent-31" / "agent-32"). The KL_table brief
-is the longest (~154 lines); the others are shorter. Once the three
-slices land, the deform contract should compare VERBATIM.
+The design is in `docs/DEFORM_DESIGN.md`; the three briefs in
+`docs/slices/` (agent_deform_kl_core_prompt.md,
+agent_deform_terms_prompt.md, agent_deform_lang_prompt.md) match the
+three landed sub-slices.
 
 ## Live continuation - 2026-08-01 (Param predicates/transforms)
 
@@ -568,40 +571,25 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: `53ebfba` (main). Working tree clean. The language gate
-is substantially complete: 165 of 166 frozen fixtures carry
-`verified_hpc`; the sole `not_implemented` contract is `domain/deform`,
-gated on the KL polynomial layer (Kazhdan-Lusztig polynomials and
-W-graph — the crate has no KL/W-graph code yet).
+HEAD at handoff: `d9f1cb2` (main). Working tree clean. The language gate
+is complete: **166 of 166 frozen fixtures carry `verified_hpc`** — the
+last contract, `domain/deform`, landed locally VERBATIM (three
+sub-slices: `8b8bd14` KLV table, `6e33e0d` deformation_terms +
+deform_readjust, `d9f1cb2` builtin wiring); its meta upgrade to
+`verified_hpc` awaits the HPC differential.
 
 The domain layer is complete (86 of 86 frozen domain contracts). Every
 frozen contract from the 2026-07-31 checkpoint plus the deform-family
 slices (KGP_sum, K_type_formula, branch, ParamPol/Param operations,
-Param predicates/transforms), L3/L4 (set verbose + string recovery), and
-the ktype/param language surface are landed and HPC-verified.
+Param predicates/transforms, deform), L3/L4 (set verbose + string
+recovery), and the ktype/param language surface are landed.
 
-The remaining porting work: deform/KL math layer (`deform` — reference
-frozen at job `3506415` — `twisted_deform`, `block_deform`,
-`full_deform`, KL sums, `KL_block`), the Param `cross`/`Cayley`
-transforms (need the integral SubSystem), the KL/file formats (filekl
-adapter), and readline completion. The deform slice is the large one:
-`Rep_table::lookup` (partial common block generation),
-`deformation_terms` (repr.cpp:1933-2025, with the contribution table,
-singular generators, KLV polynomials evaluated at q=-1, orientation
-numbers), the KL polynomial table (kl.cpp), and the block structure
-(blocks.cpp). The frozen fixture exercises three A2 deformations
-(compact SU(3), quasisplit su(2,1)) and expects nine events.
-
-Verified `verified_hpc` so far: all eval slices B3a-B13, `set_type`,
-operator overload declarations, builtin `whattype * ?`, `showall`,
-`quit`, basic TTY banner/prompt, InnerClass/RealForm display, the domain
-slices `root_coroot` (`3501555`), `kgb_generation` (`3501555`),
-`real_group` (`3501779`), the eight L1/L2 contracts (`3506234`), the six
-ktype/param contracts (`3506258`), and the later domain families listed in
-the live-continuation entries below (weak/strong real forms, split, block,
-involution primitive, etc.). The eval/operator/dont/showall batch was
-verified by differential `3501643`; the domain display and B8-B12 batch by
-`3501467`.
+The remaining porting work is no longer gated on language contracts:
+the twisted deform variants (`twisted_deform`, `block_deform`,
+`full_deform`, KL sums, `KL_block` — the same KL table, extended with
+the twisted variant), the Param `cross`/`Cayley` transforms (need the
+integral SubSystem), the KL/file formats (filekl adapter), and readline
+completion.
 
 ## The per-slice loop (follow exactly)
 
