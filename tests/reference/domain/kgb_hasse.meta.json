@@ -4,7 +4,7 @@
   "stage": "typed-pipeline-swap",
   "reference_status": "verified_hpc_reference",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "rust_status": "implemented_local",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:3735-3743",
     "sources/gkmod/kgb.cpp"
@@ -15,5 +15,6 @@
   "reference_job": "3506898",
   "source_archive_sha256": "2f9eb569364d386f1582b0f9255e9f8b82dc7212f7d76fa0537b45c6c43c1c5f",
   "fixture_sha256": "73729d6fffa92bc5565714c934e42e9a62d953bbe1a5a0fc5d6c5d5d15a7b2ff",
-  "capture_artifacts_sha256": "b0c514892256b8baae09313793254f7b1ff34b33a62846e69b0b03fcf8a985ab"
+  "capture_artifacts_sha256": "b0c514892256b8baae09313793254f7b1ff34b33a62846e69b0b03fcf8a985ab",
+  "differential_job": "3506900"
 }
