@@ -1,0 +1,22 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("A2"),true)
+ic : InnerClass
+ic := inner_class(rd,[[1,0],[0,1]])
+rf : RealForm
+rf := real_form(ic,1)
+p : Param
+p := param(KGB(rf,5),[0,0],[0,0]/1)
+is_standard(p)
+is_dominant(p)
+is_semifinal(p)
+is_final(p)
+dominant(p)
+normal(p)
+equivalent(p,p)
+q : Param
+q := param(KGB(rf,3),[0,0],[0,0]/1)
+is_standard(q)
+is_dominant(q)
+is_semifinal(q)
+is_final(q)
+normal(q)
