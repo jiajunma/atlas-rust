@@ -236,6 +236,8 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/kl_print"),
     # Batch 4 (block printers): print_block / print_blockd / print_blocku.
     FixturePlan(name="domain/block_print"),
+    # Batch 3 completion: components_rank / strong_components.
+    FixturePlan(name="domain/components_rank"),
     # KGB headline observables: per-form KGB sizes and root statuses across
     # the A1/C2/A2 families, plus the inexistent-element and type rejections.
     FixturePlan(name="domain/kgb_generation"),

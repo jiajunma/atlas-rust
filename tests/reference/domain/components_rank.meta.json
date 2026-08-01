@@ -1,0 +1,14 @@
+{
+  "fixture": "domain/components_rank.atlas",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "implemented_local",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:3636-3637, 7525-7527",
+    "sources/gkmod/realweyl.cpp"
+  ],
+  "oracle_exit_status": 0,
+  "notes": "Batch 3 completion: components_rank (dual component group rank via dual_component_group_rank on the most-split representative) and strong_components (Tarjan on a row-of-rows graph). Reference status pending HPC capture."
+}

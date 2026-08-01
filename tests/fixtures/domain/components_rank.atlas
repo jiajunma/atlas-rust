@@ -1,0 +1,16 @@
+ra : RootDatum
+ra := simply_connected(Lie_type("A2"),true)
+ic : InnerClass
+ic := inner_class(ra,[[1,0],[0,1]])
+rf : RealForm
+rf := real_form(ic,1)
+components_rank(rf)
+ra2 : RootDatum
+ra2 := adjoint(Lie_type("A2"),true)
+ic2 : InnerClass
+ic2 := inner_class(ra2,[[1,0],[0,1]])
+rf2 : RealForm
+rf2 := real_form(ic2,1)
+components_rank(rf2)
+strong_components([[1],[2],[0]])
+strong_components([[1,2],[0],[0]])
