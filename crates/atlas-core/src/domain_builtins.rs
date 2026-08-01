@@ -4716,6 +4716,47 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             };
             matrix_value(&rows, span)
         }
+        // root_coradical / coroot_radical (atlas-types.w:2254-2255): the
+        // simple roots/coroots followed by a basis of the kernel of the
+        // coroots/roots (the coradical/radical), as matrix rows.
+        "root_coradical" | "coroot_radical" => {
+            arity(name, arguments, 1, span)?;
+            let handle = as_root_datum(&arguments[0], span)?;
+            let mut rows: Vec<Vec<i32>> = if name == "coroot_radical" {
+                handle
+                    .datum
+                    .simple_coroots()
+                    .iter()
+                    .map(|coweight| coweight.as_slice().to_vec())
+                    .collect()
+            } else {
+                handle
+                    .datum
+                    .simple_roots()
+                    .iter()
+                    .map(|weight| weight.as_slice().to_vec())
+                    .collect()
+            };
+            let extra: Vec<Vec<i32>> = if name == "coroot_radical" {
+                handle
+                    .datum
+                    .radical_basis()
+                    .map_err(|error| structure_diagnostic(error, span))?
+                    .iter()
+                    .map(|coweight| coweight.as_slice().to_vec())
+                    .collect()
+            } else {
+                handle
+                    .datum
+                    .coradical_basis()
+                    .map_err(|error| structure_diagnostic(error, span))?
+                    .iter()
+                    .map(|weight| weight.as_slice().to_vec())
+                    .collect()
+            };
+            rows.extend(extra);
+            matrix_value(&rows, span)
+        }
         // is_Cartan_matrix (atlas-types.w:368-375): the matrix is a Cartan
         // matrix iff its Dynkin classification succeeds.
         "is_Cartan_matrix" => {

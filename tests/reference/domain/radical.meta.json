@@ -1,0 +1,14 @@
+{
+  "fixture": "domain/radical",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "local_oracle_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "oracle_exit_status": 0,
+  "rust_status": "implemented_local",
+  "upstream_evidence": [
+    "sources/structure/rootdata.cpp:830-885",
+    "sources/interpreter/atlas-types.w:2254-2255"
+  ],
+  "notes": "Batch 3 (partial): root_coradical / coroot_radical print the simple roots/coroots plus the kernel basis of the coroots/roots (coradical/radical), via integer_lattice::saturated_kernel."
+}

@@ -4469,6 +4469,19 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::Mat),
                 0,
             ),
+            // root_coradical / coroot_radical (atlas-types.w:2254-2255).
+            domain_builtin_skip(
+                "root_coradical",
+                primitive_type(Prim::RootDatum),
+                primitive_type(Prim::Mat),
+                0,
+            ),
+            domain_builtin_skip(
+                "coroot_radical",
+                primitive_type(Prim::RootDatum),
+                primitive_type(Prim::Mat),
+                0,
+            ),
             // is_Cartan_matrix (atlas-types.w:368-375, 433): a Cartan
             // matrix iff its Dynkin classification succeeds.
             domain_builtin_skip(

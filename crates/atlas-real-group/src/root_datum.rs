@@ -107,6 +107,75 @@ impl BasedRootDatum {
         &self.simple_coroots
     }
 
+    /// The coradical basis (rootdata.cpp:858 `lattice::perp`): a basis of
+    /// the weights orthogonal to all simple coroots — the kernel of the
+    /// matrix whose rows are the coroots. The `root_coradical` wrapper
+    /// prints these rows after the simple roots.
+    pub fn coradical_basis(&self) -> Result<Vec<Weight>, StructureError> {
+        let basis = crate::integer_lattice::saturated_kernel(
+            &crate::integer_lattice::IntegerMatrix::from_i32_rows(
+                &self.coroot_rows(),
+                &self.budget(),
+            )?,
+            &self.budget(),
+        )?;
+        let mut result = Vec::with_capacity(basis.rank());
+        for column in basis.columns() {
+            let mut coordinates = Vec::with_capacity(self.lattice_rank);
+            for entry in column {
+                coordinates
+                    .push(i32::try_from(entry).map_err(|_| StructureError::ArithmeticOverflow)?);
+            }
+            result.push(Weight::new(coordinates));
+        }
+        Ok(result)
+    }
+
+    /// The radical basis (rootdata.cpp:859 `lattice::perp` of the
+    /// coroots): a basis of the coweights orthogonal to all simple roots
+    /// — the kernel of the matrix whose rows are the roots. The
+    /// `coroot_radical` wrapper prints these rows after the simple
+    /// coroots.
+    pub fn radical_basis(&self) -> Result<Vec<Coweight>, StructureError> {
+        let basis = crate::integer_lattice::saturated_kernel(
+            &crate::integer_lattice::IntegerMatrix::from_i32_rows(
+                &self.root_rows(),
+                &self.budget(),
+            )?,
+            &self.budget(),
+        )?;
+        let mut result = Vec::with_capacity(basis.rank());
+        for column in basis.columns() {
+            let mut coordinates = Vec::with_capacity(self.lattice_rank);
+            for entry in column {
+                coordinates
+                    .push(i32::try_from(entry).map_err(|_| StructureError::ArithmeticOverflow)?);
+            }
+            result.push(Coweight::new(coordinates));
+        }
+        Ok(result)
+    }
+
+    /// The simple-coroot rows (the coradical annihilator matrix).
+    fn coroot_rows(&self) -> Vec<Vec<i32>> {
+        self.simple_coroots
+            .iter()
+            .map(|coweight| coweight.as_slice().to_vec())
+            .collect()
+    }
+
+    /// The simple-root rows (the radical annihilator matrix).
+    fn root_rows(&self) -> Vec<Vec<i32>> {
+        self.simple_roots
+            .iter()
+            .map(|weight| weight.as_slice().to_vec())
+            .collect()
+    }
+
+    fn budget(&self) -> crate::IntegerLatticeBudget {
+        crate::IntegerLatticeBudget::new(64, 100_000, 100_000, 128)
+    }
+
     pub fn reflect_weight(
         &self,
         generator: usize,

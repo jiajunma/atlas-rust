@@ -1,0 +1,8 @@
+ra : RootDatum
+ra := simply_connected(Lie_type("A2"),true)
+rb : RootDatum
+rb := adjoint(Lie_type("A2"),true)
+root_coradical(ra)
+coroot_radical(ra)
+root_coradical(rb)
+coroot_radical(rb)
