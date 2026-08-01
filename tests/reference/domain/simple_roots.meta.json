@@ -1,8 +1,8 @@
 {
-  "fixture": "domain/simple_roots",
+  "fixture": "domain/simple_roots.atlas",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "local_oracle_reference",
+  "reference_status": "verified_hpc_reference",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "oracle_exit_status": 0,
   "rust_status": "implemented_local",
@@ -11,5 +11,12 @@
     "sources/interpreter/atlas-types.w:368-375",
     "sources/interpreter/atlas-types.w:3247-3251"
   ],
-  "notes": "Batch 1 of the remaining-builtin ledger (docs/REMAINING_BUILTINS.md): simple_roots, simple_coroots, is_Cartan_matrix, dual_datum(InnerClass)."
+  "notes": "Batch 1 of the remaining-builtin ledger (docs/REMAINING_BUILTINS.md): simple_roots, simple_coroots, is_Cartan_matrix, dual_datum(InnerClass).",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3506835",
+  "source_archive_sha256": "ea705526618bb0af4c11ee6c451b8e583783f676541eb192f35b4b9543beffe2",
+  "fixture_sha256": "30136db7258ccc23568ba22de6fcb7daf774bbe469939bce367cc119c92eec2a",
+  "oracle_stdout_sha256": "d58e6c5702c4aec322ce5a6d00ae3375093e1a322fdbfc2ad1009fb0eaf0ad4a",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "d58e6c5702c4aec322ce5a6d00ae3375093e1a322fdbfc2ad1009fb0eaf0ad4a"
 }
