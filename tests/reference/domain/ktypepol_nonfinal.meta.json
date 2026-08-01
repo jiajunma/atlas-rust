@@ -12,10 +12,11 @@
   "oracle_stdout_sha256": "2359db31a42b0d92fde74d7477114f50454fae303fef54633bd68e5139f35c09",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "capture_artifacts_sha256": "2b48cedd6674222f7707d3e52cf803ceed137594b459b463b0b9a901325e1b2c",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/gkmod/K_repr.cpp:290-396",
     "sources/gkmod/repr.cpp:1205-1297"
   ],
-  "notes": "KTypePol non-final surface (finals_for expansion when adding a K-type to a KTypePol), drafted from direct oracle probes and captured verbatim by HPC job 3506276 against the frozen atlasofliegroups-4d3e9449 oracle. Q1 = P + K_type(KGB(rf,5),[0,0]) collapses the non-final x=5 K-type to the final x=0 term [0,0]/1 at height 0; Q2 = P + K_type(KGB(rf,4),[1,0]) expands to two height-4 terms at x=0 and x=1 with lambda [0,2]/1; Q3 = P + K_type(KGB(rf,5),[1,0]) recovers the final representative x=4 lambda [1,0]/1 from the non-dominant input; 2*Q2 doubles the coefficients."
+  "notes": "KTypePol non-final surface (finals_for expansion when adding a K-type to a KTypePol). Reference captured verbatim by HPC job 3506276 against the frozen atlasofliegroups-4d3e9449 oracle. The crate port of Rep_context::finals_for (K_repr.cpp:290-396) plus the language-layer term merge in the upstream pol order landed at commit f4d5798, together with the projection-sweep fixes (local row copy + unrecorded pivot negation) that the su(2,1) elections exposed. Differential pipeline_swap_diff job 3506331 reports PASS with zero regressions; metadata carries rust_status verified_hpc with differential_job 3506331.",
+  "differential_job": "3506331"
 }

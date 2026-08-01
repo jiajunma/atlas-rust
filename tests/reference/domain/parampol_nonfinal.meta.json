@@ -12,10 +12,11 @@
   "oracle_stdout_sha256": "1dc6be13a51c839a334868293eb7f19efd275a8c2ac6f7d1c141a1a8b952ae21",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "capture_artifacts_sha256": "02f4e583ea2647e947d1a05585f808c5277d780a6ffe1f9833d049f18edea64c",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/gkmod/K_repr.cpp:290-396",
     "sources/gkmod/repr.cpp:1205-1297"
   ],
-  "notes": "ParamPol non-final surface (expand_final when adding a parameter to a ParamPol), drafted from direct oracle probes and captured verbatim by HPC job 3506276 against the frozen atlasofliegroups-4d3e9449 oracle. W = V + param(KGB(rf,5),[0,0],[0,0]/1) expands the non-final x=5 parameter to the final x=0 term [0,0]/1/[0,0]/1 at height 0; W - param(...) cancels back to the empty sum; first_term(W) returns the (Split, final Param) pair."
+  "notes": "ParamPol non-final surface (expand_final when adding a parameter to a ParamPol). Reference captured verbatim by HPC job 3506276 against the frozen atlasofliegroups-4d3e9449 oracle. The crate port of Rep_context::expand_final (repr.cpp:1299-1309) over finals_for_standard (repr.cpp:1205-1297) plus the language-layer term merge landed at commit f4d5798. Differential pipeline_swap_diff job 3506331 reports PASS with zero regressions; metadata carries rust_status verified_hpc with differential_job 3506331.",
+  "differential_job": "3506331"
 }

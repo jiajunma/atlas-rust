@@ -74,6 +74,44 @@ report shows both fixtures PASS, zero FAIL → bump meta to
 `rust_status: verified_hpc` + `differential_job` → record here → commit →
 `rsync -az --delete .git/` to HPC.
 
+## Live continuation - 2026-08-01 (non-final KTypePol/ParamPol expansion)
+
+The non-final pol contracts are landed and HPC-verified. HEAD is
+`f4d5798` (main); differential `3506331` ran 158 fixtures with **zero
+FAIL** (one PARTIAL: the two intentional `container_syntax_errors`
+pending cases) and PASSES `domain/ktypepol_nonfinal` and
+`domain/parampol_nonfinal` (reference captured by `3506276`). Their meta
+files carry `rust_status: verified_hpc` + `differential_job: 3506331`.
+
+Implementation (commit `f4d5798`):
+
+- `KType::finals_for` (K_repr.cpp:290-396) and
+  `RepContext::finals_for_standard` + `expand_final`
+  (repr.cpp:1205-1309): crosses, type-1/type-2 Cayley and inverse-Cayley
+  splits, singular-compact drops, and parity-real wall projections, with
+  the multiplicity signs. The language layer now expands non-final
+  KTypes/Params in the pol `+`/`-` wrappers and merges like terms in the
+  upstream term order (`K_type_pol`: height asc, x asc, lam_rho lex;
+  `SR_poly`: height asc, x desc, y bits, gamma cross-multiplied).
+- **Projection-sweep fixes (root cause of a hang + a sign bug):**
+  `gcd_sweep` now reduces a LOCAL row copy like upstream's `gcd` (the old
+  code read and wrote the working matrix directly, applying the pivot
+  multiple twice — the A2 su(2,1) involutions made it spin forever), and
+  the pivot NEGATION is applied only to that local copy: the oracle build
+  does not record `col(mindex,mindex) = -1` in the column ops (release
+  asserts are off), which fixes the elected lambda-rho sign for the
+  singleton-negative-pivot-with-swap involution — `K_type(x4,[1,0])` keeps
+  `[1,0]` (the un-negated basis `(2,-1),[1,0]`) instead of electing
+  `[-1,1]`. Verified against 14 oracle `%K_type` probes on su(2,1) and the
+  compiled upstream `matreduc` for all four involutions. The regression
+  test `a2_su21_context_builds_all_involutions_and_pins_nonfinal_anchors`
+  pins the elected representatives.
+
+Local gate: 293 atlas-real-group + 229 atlas-core tests pass; clippy and
+fmt clean; the six ktype/param-family fixtures VERBATIM; the wired local
+pipeline reports 156 PASS + 1 PARTIAL + the known `fromfile_accepted_b10`
+FAIL; harness 10/10.
+
 ## Live continuation - 2026-08-01 (L3/L4: set verbose + string recovery)
 
 The last two frozen legacy contracts are landed and HPC-verified. HEAD is
@@ -362,21 +400,22 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: `41b2dbe` (main). Working tree clean. Every frozen
+HEAD at handoff: `f4d5798` (main). Working tree clean. Every frozen
 contract from the 2026-07-31 checkpoint is landed and HPC-verified: the
 eight L1/L2 contracts (`3506234`), the six ktype/param contracts
-(`3506258`), and L3 `set quiet`/`set verbose` + L4 unterminated-string
-recovery (`3506272`). The domain layer is complete (77 of 77 frozen
-domain contracts). The language-only gate is complete; the remaining
-porting work is the deform/KL math layer (`deform`/`K_type_pol` internals,
-`finals_for`/`expand_final` for non-final values), the KL/file formats
-(filekl adapter), readline completion, and the final
-`docs/LANGUAGE.md` matrix refresh (domain rows updated at `dbf02fe`;
-the remaining rows track the Block/KL layer). Language-layer design notes
-(value shape, Display formats, on-demand RepContext construction from
-`Arc<RealFormContext>`) are in the 2026-08-01 entries; the KTypePol/
-ParamPol term math lives in `domain_builtins.rs` as thin language-layer
-containers over the crate values.
+(`3506258`), L3/L4 (`3506272`), and the non-final KTypePol/ParamPol
+expansion (`3506331`). The domain layer is complete (79 of 79 frozen
+domain contracts), and the projection sweep (`gcd_sweep`) now matches the
+oracle build's local-row semantics (terminating, oracle-elected basis).
+The remaining porting work is the deform/KL math layer (`deform`,
+`K_type_formula`, `branch`, KL sums, the block deformations), the KL/file
+formats (filekl adapter), readline completion, and the `docs/LANGUAGE.md`
+matrix refresh (domain rows updated at `dbf02fe`/`f4d5798`; the remaining
+rows track the Block/KL layer). Language-layer design notes (value shape,
+Display formats, on-demand RepContext construction from
+`Arc<RealFormContext>`) are in the 2026-08-01 entries; the pol term math
+now lives in the crate (`finals_for`) plus thin language-layer containers
+in `domain_builtins.rs`.
 
 Verified `verified_hpc` so far: all eval slices B3a-B13, `set_type`,
 operator overload declarations, builtin `whattype * ?`, `showall`,
