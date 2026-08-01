@@ -74,6 +74,22 @@ report shows both fixtures PASS, zero FAIL → bump meta to
 `rust_status: verified_hpc` + `differential_job` → record here → commit →
 `rsync -az --delete .git/` to HPC.
 
+## Live continuation - 2026-08-01 (branch: deform-family slice 3)
+
+The branch surface is landed and HPC-verified. HEAD is the branch
+commit; differential `3506410` ran 163 fixtures with **zero FAIL** (one
+PARTIAL: the two intentional `container_syntax_errors` pending cases) and
+PASSES `domain/branch` (reference captured by `3506405`). Its meta
+carries `rust_status: verified_hpc` + `differential_job: 3506410`.
+
+Implementation: the branch wrapper (atlas-types.w:6055-6070) iterates
+`Rep_context::branch` (K_repr.cpp:592-622) — repeatedly promote the least
+remainder term into the result and subtract its `K_type_formula` (scaled
+by the lead coefficient) from the remainder; the formula's own lead term
+cancels the remainder's copy (keeping the lead IN the remainder while
+subtracting is what terminates the loop). Negative bounds report
+`Maximum level in branch cannot be negative` before the no-value gate.
+
 ## Live continuation - 2026-08-01 (K_type_formula: deform-family slice 2)
 
 The K-type formula surface is landed and HPC-verified. HEAD is the
@@ -467,19 +483,24 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: the ktype_formula commit (main). Working tree clean.
-Every frozen contract from the 2026-07-31 checkpoint is landed and
-HPC-verified, plus the first two deform-family slices `KGP_sum`
-(`3506387`) and `K_type_formula` (`3506400`). The domain layer is
-complete (83 of 83 frozen domain contracts). The remaining porting work
-is the deform/KL math layer (`branch`, `deform`, `twisted_deform`,
-`block_deform`, `full_deform`, KL sums, `KL_block`), the KL/file formats
-(filekl adapter), readline completion, and the `docs/LANGUAGE.md` matrix
-refresh (the remaining rows track the Block/KL layer). Language-layer
-design notes (value shape, Display formats, on-demand RepContext
-construction from `Arc<RealFormContext>`) are in the 2026-08-01 entries;
-the pol term math now lives in the crate (`finals_for`, `K_type_formula`)
-plus thin language-layer containers in `domain_builtins.rs`.
+HEAD at handoff: the branch commit (main). Working tree clean. Every
+frozen contract from the 2026-07-31 checkpoint is landed and
+HPC-verified, plus the first three deform-family slices `KGP_sum`
+(`3506387`), `K_type_formula` (`3506400`), and `branch` (`3506410`).
+The domain layer is complete (84 of 84 frozen domain contracts). The
+remaining porting work is the deform/KL math layer (`deform`,
+`twisted_deform`, `block_deform`, `full_deform`, KL sums, `KL_block`) —
+this is the large one: `Rep_table::lookup` (partial common block
+generation), `deformation_terms` (repr.cpp:1933-2025, with the
+contribution table, singular generators, KLV polynomials evaluated at
+q=-1, orientation numbers), the KL polynomial table (kl.cpp), and the
+block structure (blocks.cpp) — plus the KL/file formats (filekl adapter),
+readline completion, and the `docs/LANGUAGE.md` matrix refresh.
+Language-layer design notes (value shape, Display formats, on-demand
+RepContext construction from `Arc<RealFormContext>`) are in the
+2026-08-01 entries; the pol term math now lives in the crate
+(`finals_for`, `K_type_formula`) plus thin language-layer containers in
+`domain_builtins.rs`.
 
 Verified `verified_hpc` so far: all eval slices B3a-B13, `set_type`,
 operator overload declarations, builtin `whattype * ?`, `showall`,

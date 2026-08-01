@@ -12,10 +12,11 @@
   "oracle_stdout_sha256": "f4656823d4ca4d4c136baa2cf70c8b2785b35b832b2ae3e6e812c9e8262e655f",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "capture_artifacts_sha256": "8f673fde00c9825b185e3aa884939958a1c733cf6cb60cb151aa76838d8d63f4",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/gkmod/K_repr.cpp:592-622",
     "sources/interpreter/atlas-types.w:6055-6070"
   ],
-  "notes": "branch surface (the branch of a KTypePol at a height cutoff), captured verbatim by HPC job 3506405 against the frozen atlasofliegroups-4d3e9449 oracle."
+  "notes": "branch surface (the branch of a KTypePol at a height cutoff), captured verbatim by HPC job 3506405 against the frozen atlasofliegroups-4d3e9449 oracle. Implemented at the branch commit (Rep_context::branch iteration over k_type_formula, K_repr.cpp:592-622). Differential pipeline_swap_diff job 3506410 reports PASS with zero regressions; metadata carries rust_status verified_hpc with differential_job 3506410.",
+  "differential_job": "3506410"
 }
