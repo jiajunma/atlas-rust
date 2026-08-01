@@ -1,0 +1,110 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/param_pol_ops",
+  "status": "verified_hpc_reference",
+  "events": [
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rd': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "RootDatum",
+        "display": "simply connected root datum of Lie type 'A2'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ic': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "InnerClass",
+        "display": "Complex reductive group of type A2, with involution defining\ninner class of type 'c', with 2 real forms and 1 dual real form"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rf': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "RealForm",
+        "display": "connected quasisplit real group with Lie algebra 'su(2,1)'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'V': ParamPol\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "ParamPol",
+        "display": "Empty sum of standard modules"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'W': ParamPol\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "ParamPol",
+        "display": "\n1*parameter(x=0,lambda=[0,0]/1,nu=[0,0]/1) [0]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "KTypePol",
+        "display": "\n1* K_type(x=0, lambda=[0,0]/1) [0]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "tuple",
+        "display": "((1+0s),final parameter(x=0,lambda=[0,0]/1,nu=[0,0]/1))"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "ParamPol",
+        "display": "\n1*parameter(x=0,lambda=[0,0]/1,nu=[0,0]/1) [0]"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'p': Param\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "Param",
+        "display": "non-final parameter(x=5,lambda=[1,1]/1,nu=[0,0]/1)"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "Param",
+        "display": "non-final parameter(x=5,lambda=[1,1]/1,nu=[0,0]/1)"
+      }
+    }
+  ]
+}

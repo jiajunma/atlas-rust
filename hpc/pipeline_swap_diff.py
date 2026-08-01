@@ -354,6 +354,9 @@ FIXTURE_PLANS = (
     # The branch of a KTypePol at a height cutoff (K_repr.cpp:592-622,
     # atlas-types.w:6055-6070).
     FixturePlan(name="domain/branch"),
+    # ParamPol/Param operations: K_type_pol(ParamPol), last_term, and the
+    # (ParamPol,rat)/(Param,rat) scalings.
+    FixturePlan(name="domain/param_pol_ops"),
     # Strong-real surface: the base contract plus the probes whose slices
     # have landed — the Cartan numbering adapter (a63dc32) covers the four
     # B2/C2 Cartan enumerations and all four rejected diagnostics, and the

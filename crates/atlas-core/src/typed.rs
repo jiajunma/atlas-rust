@@ -4008,11 +4008,11 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::KTypePol),
                 2,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "*",
                 Type::tuple(vec![primitive_type(Prim::Param), rat_type()]),
                 primitive_type(Prim::Param),
-                0,
+                1,
             ),
             domain_builtin(
                 "*",
@@ -4029,11 +4029,11 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::ParamPol),
                 2,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "*",
                 Type::tuple(vec![primitive_type(Prim::ParamPol), rat_type()]),
                 primitive_type(Prim::ParamPol),
-                0,
+                1,
             ),
             scalar_builtin("/", pair(rat_type()), rat_type(), 1, ScalarOp::RatDivide),
             scalar_builtin("%", pair(rat_type()), rat_type(), 1, ScalarOp::RatModulo),
@@ -5245,6 +5245,23 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 Type::tuple(vec![primitive_type(Prim::ParamPol), int_type()]),
                 primitive_type(Prim::ParamPol),
                 1,
+            ),
+            // param_poly_to_K_type_poly_wrapper (atlas-types.w:8546): the
+            // K-type restriction of a ParamPol.
+            domain_builtin_skip(
+                "K_type_pol",
+                primitive_type(Prim::ParamPol),
+                primitive_type(Prim::KTypePol),
+                0,
+            ),
+            domain_builtin_skip(
+                "last_term",
+                primitive_type(Prim::ParamPol),
+                Type::tuple(vec![
+                    primitive_type(Prim::Split),
+                    primitive_type(Prim::Param),
+                ]),
+                0,
             ),
             domain_relation_builtin("=", pair(primitive_type(Prim::LieType)), Relation::Equal),
             domain_relation_builtin(

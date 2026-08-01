@@ -1,0 +1,24 @@
+{
+  "fixture": "domain/param_pol_ops",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3506427",
+  "source_archive_sha256": "5cb4293044437723aab670dcf280424b50907565",
+  "fixture_sha256": "36a1904e1003b941389bb2ab59d70d0bf6d0439a3a60421405b3bcc1eba36e5f",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "594b323567c240ef43e1fb21f98b16c2284b1022f5af9689ff464f916a092fba",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "9b75f5bfd6fe5e9096c79128c15915d17120e401da13237422e1d480e1dce4e3",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:6582-6592",
+    "sources/interpreter/atlas-types.w:7717-7730",
+    "sources/interpreter/atlas-types.w:8058-8066",
+    "sources/gkmod/repr.cpp:701-709",
+    "sources/gkmod/repr.cpp:1161-1170"
+  ],
+  "notes": "ParamPol/Param operation surface (K_type_pol(ParamPol) restriction, last_term, and the (ParamPol,rat)/(Param,rat) scalings), captured verbatim by HPC job 3506427 against the frozen atlasofliegroups-4d3e9449 oracle."
+}

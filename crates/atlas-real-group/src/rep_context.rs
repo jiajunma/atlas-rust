@@ -1079,6 +1079,33 @@ impl<'a> RepContext<'a> {
         self.finals_for_standard(z)
     }
 
+    /// `Rep_context::scale(StandardRepr, f)` (repr.cpp:701-709): scale
+    /// the infinitesimal character by the rational `f` along its
+    /// `nu = (gamma - theta*gamma)/2` direction: the new gamma is
+    /// `(gamma + theta*gamma + 2*nu*f)/2`, with the x and torsion parts
+    /// unchanged (and the stored height carried, as upstream does).
+    pub fn scale(
+        &self,
+        z: &StandardRepr,
+        numerator: i64,
+        denominator: i64,
+    ) -> Result<StandardRepr, StructureError> {
+        let theta = self.theta_at(z.x)?;
+        let image = z.gamma.apply_matrix(theta.weight_matrix())?;
+        let difference = z.gamma.sub(&image)?; // 2*nu(z)
+        let mut scaled = z
+            .gamma
+            .add(&image)?
+            .add(&difference.scale(numerator, denominator)?)?;
+        scaled = scaled.halve()?.normalized()?;
+        Ok(StandardRepr {
+            x: z.x,
+            y_bits: z.y_bits.clone(),
+            gamma: scaled,
+            height: z.height,
+        })
+    }
+
     /// `status(kgb, x, alpha)` for an arbitrary (positive) root
     /// (kgb.cpp:819-830): conjugate the root to a simple one by
     /// reflecting along its descents, crossing the KGB element in

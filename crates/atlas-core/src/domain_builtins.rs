@@ -2131,6 +2131,16 @@ fn ratvec_from_rational_weight(
         .ok_or_else(|| runtime(span, "ratvec denominator must be nonzero"))
 }
 
+/// The `(numerator, denominator)` of an Atlas rational, narrowed to i64
+/// (the parameter/polynomial scaling factors, repr.cpp:701-709).
+fn rational_pair(value: &BigRational, span: SourceSpan) -> Result<(i64, i64), Diagnostic> {
+    let numerator = i64::try_from(value.numerator_ref())
+        .map_err(|_| runtime(span, "Integer value to big for conversion"))?;
+    let denominator = i64::try_from(value.denominator_ref())
+        .map_err(|_| runtime(span, "Integer value to big for conversion"))?;
+    Ok((numerator, denominator))
+}
+
 /// Map a crate structure error to the runtime diagnostic wording.
 fn structure_diagnostic(error: StructureError, span: SourceSpan) -> Diagnostic {
     runtime(span, error.to_string())
@@ -5695,6 +5705,36 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 )),
             }
         }
+        // param_poly_to_K_type_poly_wrapper (atlas-types.w:7717-7730):
+        // restrict every term to K (sr_K) and expand through finals_for.
+        "K_type_pol" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::ParamPol(pol)) = &arguments[0] else {
+                return Err(type_error(span, "expected a ParamPol"));
+            };
+            let rc = rep_context(&pol.rf);
+            let mut terms: Vec<(SplitValue, KType)> = Vec::new();
+            for (coefficient, repr) in &pol.terms {
+                let ktype = rc
+                    .sr_k_of_standard(repr)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                let finals = ktype
+                    .finals_for(&rc)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                for (final_ktype, multiplicity) in finals {
+                    merge_pol_term(
+                        &mut terms,
+                        coefficient.mul(SplitValue::new(multiplicity, 0)),
+                        final_ktype,
+                    );
+                }
+            }
+            sort_ktypepol_terms(&mut terms);
+            Ok(Value::Domain(DomainValue::KTypePol(KTypePolValue {
+                rf: Arc::clone(&pol.rf),
+                terms,
+            })))
+        }
         // KGP_sum_wrapper (atlas-types.w:5995-6010): the KGP set of a
         // semifinal K-type as a row of length-parity-signed (int, KType)
         // pairs; the semifinal precondition precedes the no-value gate.
@@ -6312,6 +6352,48 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                     .filter(|(coefficient, _)| split_keeps(coefficient, *scalar))
                     .map(|(coefficient, repr)| (coefficient.mul(*scalar), repr.clone()))
                     .collect();
+                Ok(Value::Domain(DomainValue::ParamPol(ParamPolValue {
+                    rf: Arc::clone(&pol.rf),
+                    terms,
+                })))
+            }
+            // scale_parameter_wrapper (atlas-types.w:6582-6592,
+            // (Param,rat)): scale the infinitesimal character by the rat
+            // (repr.cpp:701-709).
+            [Value::Domain(DomainValue::Param(parameter)), Value::Rational(factor)] => {
+                let (numerator, denominator) = rational_pair(factor, span)?;
+                let rc = rep_context(&parameter.context);
+                let repr = rc
+                    .scale(&parameter.repr, numerator, denominator)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                Ok(Value::Domain(DomainValue::Param(ParamValue {
+                    context: Arc::clone(&parameter.context),
+                    repr,
+                })))
+            }
+            // scale_poly_wrapper (atlas-types.w:8058-8066,
+            // (ParamPol,rat)): scale every parameter and re-expand through
+            // finals_for (repr.cpp:1161-1170).
+            [Value::Domain(DomainValue::ParamPol(pol)), Value::Rational(factor)] => {
+                let (numerator, denominator) = rational_pair(factor, span)?;
+                let rc = rep_context(&pol.rf);
+                let mut terms: Vec<(SplitValue, StandardRepr)> = Vec::new();
+                for (coefficient, repr) in &pol.terms {
+                    let scaled = rc
+                        .scale(repr, numerator, denominator)
+                        .map_err(|error| structure_diagnostic(error, span))?;
+                    let finals = rc
+                        .expand_final(&scaled)
+                        .map_err(|error| structure_diagnostic(error, span))?;
+                    for (final_repr, multiplicity) in finals {
+                        merge_pol_term(
+                            &mut terms,
+                            coefficient.mul(SplitValue::new(multiplicity, 0)),
+                            final_repr,
+                        );
+                    }
+                }
+                sort_parampol_terms(&mut terms);
                 Ok(Value::Domain(DomainValue::ParamPol(ParamPolValue {
                     rf: Arc::clone(&pol.rf),
                     terms,
