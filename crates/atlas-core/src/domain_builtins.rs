@@ -4513,11 +4513,10 @@ pub(crate) fn print_text(
                 Ok(text)
             }
         }
-        // print_KL_basis / print_prim_KL / print_KL_list
-        // (atlas-types.w:9017-9063): the KLV polynomials of the block's KL
-        // table, printed as a table, restricted to primitive pairs, or as
-        // the sorted list of distinct polynomials.
-        "print_KL_basis" | "print_prim_KL" | "print_KL_list" => {
+        // print_KL_basis / print_prim_KL / print_KL_list / print_W_graph
+        // (atlas-types.w:9017-9078): the KLV polynomials of the block's KL
+        // table (full table, primitive pairs, distinct list) and the W-graph.
+        "print_KL_basis" | "print_prim_KL" | "print_KL_list" | "print_W_graph" => {
             arity(name, arguments, 1, span)?;
             let Value::Domain(DomainValue::Block(block)) = &arguments[0] else {
                 return Err(type_error(span, "expected a Block"));
@@ -4621,6 +4620,40 @@ pub(crate) fn print_text(
                     " and {incomp_count} incomparable primitive {}\n",
                     if incomp_count == 1 { "pair" } else { "pairs" }
                 ));
+            } else if name == "print_W_graph" {
+                // print_W_graph (atlas-types.w:9068-9078, wgraph_io.cpp:47-62):
+                // the W-graph of the block: descent sets and the mu edges.
+                let rank = block.graph.rank();
+                // kl::wGraph (kl.cpp:1042-1058): every mu pair contributes
+                // an edge in BOTH directions, sorted by target.
+                let mut edges: Vec<Vec<(usize, i32)>> = vec![Vec::new(); size];
+                for y in 0..size {
+                    for pair in kl_table.mu_column(y) {
+                        edges[y].push((pair.x, pair.coef));
+                        edges[pair.x].push((y, pair.coef));
+                    }
+                }
+                for edges_z in edges.iter_mut() {
+                    edges_z.sort_unstable();
+                }
+                for z in 0..size {
+                    text.push_str(&format!("{z}:"));
+                    let desc = kl_table.support().descent_set(z);
+                    let mut gens: Vec<String> = Vec::new();
+                    for s in 0..rank {
+                        if desc.is_set(s) {
+                            gens.push((s + 1).to_string());
+                        }
+                    }
+                    text.push_str(&format!("{{{}}}:{{", gens.join(",")));
+                    for (j, &(target, coef)) in edges[z].iter().enumerate() {
+                        if j > 0 {
+                            text.push(',');
+                        }
+                        text.push_str(&format!("({target},{coef})"));
+                    }
+                    text.push_str("}\n");
+                }
             } else {
                 // print_KL_list: the sorted distinct nonzero polynomials.
                 let mut polynomials: Vec<KlPol> = Vec::new();
