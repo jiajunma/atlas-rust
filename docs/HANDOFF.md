@@ -94,6 +94,25 @@ queue. The frozen fixture exercises three A2 deformations (compact SU(3)
 inner class, quasisplit su(2,1) real form) and expects nine events
 (three SRPol values plus declarations).
 
+A detailed design is in `docs/DEFORM_DESIGN.md`; three sub-slice briefs
+in `docs/slices/` break the work into parallel agent tasks:
+
+- **agent_deform_kl_core_prompt.md** — port KL_table (kl.cpp/h) as a
+  new `kl_table.rs` crate module with a minimal polynomial engine and
+  the KLV recursion for small blocks (A2 ≤6 elements).
+- **agent_deform_terms_prompt.md** — port `deformation_terms`
+  (repr.cpp:1933-2025) and `deform_readjust` (repr.cpp:622-654) into
+  the crate, depending on the KL_table from the first brief.
+- **agent_deform_lang_prompt.md** — wire the `deform(Param)` builtin
+  into domain_builtins.rs + typed.rs, using the block construction
+  already available in the language layer (Arc<RealFormContext> carries
+  the full inner-class pipeline for both real forms).
+
+The briefs are self-contained and can be handed to subagent coding
+sessions ("agent-30" / "agent-31" / "agent-32"). The KL_table brief
+is the longest (~154 lines); the others are shorter. Once the three
+slices land, the deform contract should compare VERBATIM.
+
 ## Live continuation - 2026-08-01 (Param predicates/transforms)
 
 The Param predicate/transform surface is landed and HPC-verified. HEAD is
