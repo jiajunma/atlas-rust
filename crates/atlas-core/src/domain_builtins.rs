@@ -1978,6 +1978,88 @@ fn matrix_rows(matrix: &Matrix) -> Vec<Vec<i32>> {
         .collect()
 }
 
+/// Tarjan's strong components (graph.cpp:186-294) with the induced quotient
+/// graph (add_links, graph.cpp:345-361). Returns `(partition, induced)` where
+/// `partition[c]` lists the vertices of component `c` (discovered in sink-first
+/// topological order, vertices within a class in ascending order) and
+/// `induced[c]` lists the component targets of `c`'s outgoing edges.
+pub(crate) fn strong_components(graph: &[Vec<usize>]) -> (Vec<Vec<usize>>, Vec<Vec<usize>>) {
+    let size = graph.len();
+    let nil = size;
+    let infinity = size + 1;
+    let mut rank: Vec<usize> = vec![0; size];
+    let mut class_of: Vec<usize> = vec![0; size];
+    let mut partition: Vec<Vec<usize>> = Vec::new();
+    let mut induced: Vec<Vec<usize>> = Vec::new();
+
+    for x0 in 0..size {
+        if rank[x0] >= infinity {
+            continue;
+        }
+        let mut count = 1;
+        rank[x0] = count;
+        count += 1;
+        // active entries: (vertex, parent location, next edge index, min rank)
+        let mut active: Vec<(usize, usize, usize, usize)> = vec![(x0, nil, 0, rank[x0])];
+        let mut cur_pos = 0;
+        while cur_pos != nil {
+            let (v, parent, next_edge, min) = active[cur_pos];
+            let edges = &graph[v];
+            let mut next_edge = next_edge;
+            let mut min = min;
+            let mut advanced = false;
+            while next_edge < edges.len() {
+                let y = edges[next_edge];
+                next_edge += 1;
+                if rank[y] == 0 {
+                    let x_pos = cur_pos;
+                    let y_pos = active.len();
+                    rank[y] = count;
+                    count += 1;
+                    active.push((y, x_pos, 0, rank[y]));
+                    active[x_pos].2 = next_edge;
+                    active[x_pos].3 = min;
+                    cur_pos = y_pos;
+                    advanced = true;
+                    break;
+                } else if rank[y] < min {
+                    min = rank[y];
+                }
+            }
+            if advanced {
+                continue;
+            }
+            // x matures
+            let new_pos = parent;
+            if min == rank[v] {
+                let class_index = partition.len();
+                partition.push(Vec::new());
+                let mut out: Vec<&[usize]> = Vec::new();
+                for entry in active.iter().skip(cur_pos) {
+                    let y = entry.0;
+                    partition[class_index].push(y);
+                    class_of[y] = class_index;
+                    rank[y] = infinity;
+                    out.push(&graph[y]);
+                }
+                active.truncate(cur_pos);
+                let mut seen = std::collections::BTreeSet::new();
+                for list in &out {
+                    for &e in *list {
+                        seen.insert(class_of[e]);
+                    }
+                }
+                seen.remove(&class_index);
+                induced.push(seen.into_iter().collect());
+            } else if min < active[new_pos].3 {
+                active[new_pos].3 = min;
+            }
+            cur_pos = new_pos;
+        }
+    }
+    (partition, induced)
+}
+
 /// A matrix whose columns are the given lattice vectors — the by-columns
 /// `matrix_value` constructor behind the simple_roots/posroots wrappers
 /// (atlas-types.w:1631-1636).
@@ -5005,6 +5087,64 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             let form = build_real_form(context, external, span)?;
             Ok(Value::Domain(DomainValue::RealForm(form)))
         }
+        // strong_components (atlas-types.w:7525-7556): Tarjan's strong
+        // components of an adjacency-list graph, then the induced quotient
+        // graph's edge lists. Returns (partition, induced).
+        "strong_components" => {
+            arity(name, arguments, 1, span)?;
+            let Value::List(rows) = &arguments[0] else {
+                return Err(type_error(span, "strong_components expects a row of rows"));
+            };
+            let mut graph: Vec<Vec<usize>> = Vec::with_capacity(rows.len());
+            for entry in rows {
+                let Value::List(edges) = entry else {
+                    return Err(type_error(span, "strong_components expects a row of rows"));
+                };
+                let mut targets = Vec::with_capacity(edges.len());
+                for edge in edges {
+                    let target = as_usize(edge, span)?;
+                    if target >= rows.len() {
+                        return Err(runtime(
+                            span,
+                            format!(
+                                "Edge target {target} out of bounds (should be <{})",
+                                rows.len()
+                            ),
+                        ));
+                    }
+                    targets.push(target);
+                }
+                graph.push(targets);
+            }
+            let (partition, induced) = strong_components(&graph);
+            let partition_value = Value::List(
+                partition
+                    .iter()
+                    .map(|class| {
+                        Value::List(
+                            class
+                                .iter()
+                                .map(|&v| Value::Integer(BigInt::from(v)))
+                                .collect(),
+                        )
+                    })
+                    .collect(),
+            );
+            let induced_value = Value::List(
+                induced
+                    .iter()
+                    .map(|class| {
+                        Value::List(
+                            class
+                                .iter()
+                                .map(|&v| Value::Integer(BigInt::from(v)))
+                                .collect(),
+                        )
+                    })
+                    .collect(),
+            );
+            Ok(Value::Tuple(vec![partition_value, induced_value]))
+        }
         "dual_quasisplit_form" => {
             arity(name, arguments, 1, span)?;
             let Value::Domain(DomainValue::InnerClass(context)) = &arguments[0] else {
@@ -5088,6 +5228,37 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 .most_split(form.internal)
                 .expect("most-split uniqueness is a construction invariant");
             Ok(cartan_class_value(&form.parent, id))
+        }
+        // components_rank (atlas-types.w:3936-3939): the number of dual
+        // component-group generators of the form, i.e. the rank of the
+        // kernel of the restriction map on the most-split Cartan
+        // (realredgp.cpp:73-75 dual_pi0_gens).
+        "components_rank" => {
+            arity(name, arguments, 1, span)?;
+            let form = as_real_form(&arguments[0], span)?;
+            let id = form
+                .parent
+                .classification
+                .most_split(form.internal)
+                .expect("most-split uniqueness is a construction invariant");
+            let representative = form
+                .parent
+                .classification
+                .cartan_class(id)
+                .expect("most-split Cartan is in range")
+                .representative();
+            let theta = representative
+                .root_involution()
+                .involution()
+                .weight_matrix()
+                .to_vec();
+            let rank = atlas_real_group::dual_component_group_rank(
+                &theta,
+                &form.parent.inner_class.datum().clone(),
+                &atlas_real_group::IntegerLatticeBudget::new(64, 100_000, 100_000, 128),
+            )
+            .map_err(|error| structure_diagnostic(error, span))?;
+            Ok(Value::Integer(BigInt::from(rank)))
         }
         // real_forms_of_Cartan_wrapper (atlas-types.w:4155-4168): every
         // external form whose Cartan set contains the class, in external
@@ -6798,6 +6969,16 @@ mod tests {
     use super::*;
     use crate::diagnostic::{SourceId, SourcePosition};
     use crate::value::Matrix;
+
+    #[test]
+    fn strong_components_probe() {
+        let g1 = vec![vec![1], vec![2], vec![0]];
+        let (p, i) = super::strong_components(&g1);
+        eprintln!("g1 partition={p:?} induced={i:?}");
+        let g2 = vec![vec![1, 2], vec![], vec![2]];
+        let (p, i) = super::strong_components(&g2);
+        eprintln!("g2 partition={p:?} induced={i:?}");
+    }
 
     fn span() -> SourceSpan {
         SourceSpan::new(

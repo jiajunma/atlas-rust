@@ -1,0 +1,16 @@
+{
+  "fixture": "domain/components.atlas",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "implemented_local",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:3936-3939",
+    "sources/interpreter/atlas-types.w:7525-7556",
+    "sources/utilities/graph.cpp:186-294",
+    "sources/structure/topology.cpp:165-192"
+  ],
+  "notes": "Batch 3 (remainder): components_rank (dual component-group rank via the most-split Cartan kernel) and strong_components (Tarjan's algorithm with the induced quotient graph). Reference status pending HPC capture.",
+  "oracle_exit_status": 0
+}

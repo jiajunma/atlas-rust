@@ -228,6 +228,9 @@ FIXTURE_PLANS = (
     # Batch 3 (root/radical data): root_coradical / coroot_radical print
     # the simple (co)roots plus the kernel basis of the (co)roots.
     FixturePlan(name="domain/radical"),
+    # Batch 3 (remainder): components_rank (dual component-group rank) and
+    # strong_components (Tarjan + induced quotient graph).
+    FixturePlan(name="domain/components"),
     # KGB headline observables: per-form KGB sizes and root statuses across
     # the A1/C2/A2 families, plus the inexistent-element and type rejections.
     FixturePlan(name="domain/kgb_generation"),

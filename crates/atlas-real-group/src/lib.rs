@@ -49,6 +49,7 @@ mod root_system;
 mod strong_real;
 mod tits_element;
 mod topology;
+pub use topology::dual_component_group_rank;
 mod twisted_involution;
 mod weak_real_form;
 mod weyl;

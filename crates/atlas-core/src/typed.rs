@@ -4490,6 +4490,24 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 bool_type(),
                 0,
             ),
+            // components_rank (atlas-types.w:3936).
+            domain_builtin_skip(
+                "components_rank",
+                primitive_type(Prim::RealForm),
+                int_type(),
+                0,
+            ),
+            // strong_components (atlas-types.w:7525-7527): the graph is a
+            // row of rows of ints; the result is a pair of such rows.
+            domain_builtin_skip(
+                "strong_components",
+                Type::row(Type::row(int_type())),
+                Type::tuple(vec![
+                    Type::row(Type::row(int_type())),
+                    Type::row(Type::row(int_type())),
+                ]),
+                0,
+            ),
             // dual_datum_of_inner_class_wrapper (atlas-types.w:3412-3413).
             domain_builtin_skip(
                 "dual_datum",

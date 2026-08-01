@@ -231,6 +231,93 @@ pub(crate) fn dual_component_group_trivial(
     Ok(image.rank() == source.dimension())
 }
 
+/// The rank of the dual component group of a Cartan involution: the
+/// dimension of the kernel of the induced restriction map, i.e. the size of
+/// the `dualComponentReps` basis (topology.cpp:165-192 `m2.kernel()`).
+/// `dual_component_group_trivial` is exactly `rank == 0`.
+pub fn dual_component_group_rank(
+    theta: &[Vec<i32>],
+    datum: &BasedRootDatum,
+    budget: &IntegerLatticeBudget,
+) -> Result<usize, StructureError> {
+    let rank = datum.lattice_rank();
+    let semisimple_rank = datum.semisimple_rank();
+    if theta.len() != rank || theta.iter().any(|row| row.len() != rank) {
+        return Err(StructureError::InvalidIntegerMatrixShape);
+    }
+
+    let root_rows: Vec<Vec<i32>> = datum
+        .simple_roots()
+        .iter()
+        .map(|root| root.as_slice().to_vec())
+        .collect();
+    let radical = saturated_kernel(&IntegerMatrix::from_i32_rows(&root_rows, budget)?, budget)?;
+    if radical.rank() != rank - semisimple_rank {
+        return Err(StructureError::LayoutInvariantViolation {
+            invariant: "radical rank",
+        });
+    }
+
+    let mut basis = vec![vec![0_i32; rank]; rank];
+    for (column, coroot) in datum.simple_coroots().iter().enumerate() {
+        for (row, &value) in coroot.as_slice().iter().enumerate() {
+            basis[row][column] = value;
+        }
+    }
+    for (offset, column) in radical.columns().iter().enumerate() {
+        for (row, value) in column.iter().enumerate() {
+            basis[row][semisimple_rank + offset] =
+                i32::try_from(value).map_err(|_| StructureError::ArithmeticOverflow)?;
+        }
+    }
+
+    let transposed: Vec<Vec<i32>> = (0..rank)
+        .map(|row| (0..rank).map(|column| basis[column][row]).collect())
+        .collect();
+    let transposed_rational = rational_matrix(&transposed);
+    let inverse_columns = invert_rational(&transposed_rational)?;
+    let inverse = (0..rank)
+        .map(|row| {
+            (0..rank)
+                .map(|column| inverse_columns[column][row].clone())
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>();
+    let theta_rational = rational_matrix(theta);
+    let product = rational_product(
+        &rational_product(&transposed_rational, &theta_rational)?,
+        &inverse,
+    )?;
+    let mut transported = Vec::with_capacity(rank);
+    for row in &product {
+        let mut converted = Vec::with_capacity(rank);
+        for value in row {
+            converted.push(integral_entry(value)?);
+        }
+        transported.push(converted);
+    }
+
+    let source = dual_pi0(theta, budget)?;
+    let target = dual_pi0(&transported, budget)?;
+
+    let mut zeroed = basis;
+    for row in zeroed.iter_mut() {
+        for entry in row.iter_mut().take(rank).skip(semisimple_rank) {
+            *entry = 0;
+        }
+    }
+    let map = CorootRestriction { zeroed };
+    source.validate_induced_map_to(&target, &map)?;
+
+    let mut image = ModTwoSubspace::new(target.dimension())?;
+    for representative in source.basis_representatives() {
+        let mapped = map.apply(representative)?;
+        let coordinates = target.to_coordinates(mapped)?;
+        image.insert(coordinates)?;
+    }
+    Ok(source.dimension() - image.rank())
+}
+
 #[cfg(test)]
 mod tests {
     use crate::integer_lattice::IntegerLatticeBudget;
