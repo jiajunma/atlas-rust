@@ -58,11 +58,14 @@ bignum numerics, name/type rejections, error recovery) are verified by
 contracts are verified, the last six — the K-type/standard-parameter
 family (`ktype_basic{,_rejected}`, `param_basic{,_rejected}`,
 `ktypepol_basic`, `parampol_basic`) — by differential `3506258` on top of
-the Rep_context crate milestone. Two legacy contracts remain frozen with
-implementation gaps in flight: `set verbose` (L3) and the
-unterminated-string recovery (L4). Readline completion and KL binary
-formats remain outside the language-only gate because they depend on the
-unfinished Block/KL domain values.
+the Rep_context crate milestone. The two last legacy contracts — the
+`set quiet`/`set verbose` option commands with the verbose trace
+(`lex/basic`) and the unterminated-string lexical recovery
+(`negative/unterminated_string`) — are verified by differential
+`3506272`; every frozen contract from the 2026-07-31 checkpoint is now
+landed. Readline completion and KL binary formats remain outside the
+language-only gate because they depend on the unfinished Block/KL domain
+values (`deform`, `finals_for`/`expand_final`, filekl).
 
 ## Source compatibility rules
 

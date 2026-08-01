@@ -74,6 +74,53 @@ report shows both fixtures PASS, zero FAIL → bump meta to
 `rust_status: verified_hpc` + `differential_job` → record here → commit →
 `rsync -az --delete .git/` to HPC.
 
+## Live continuation - 2026-08-01 (L3/L4: set verbose + string recovery)
+
+The last two frozen legacy contracts are landed and HPC-verified. HEAD is
+`41b2dbe` (main); differential `3506272` ran 156 fixtures with **zero
+FAIL** (one PARTIAL: the two intentional `container_syntax_errors`
+pending cases) and PASSES both:
+`lex/basic` (`set quiet`/`set verbose` + the verbose analysis trace) and
+`negative/unterminated_string` (lexical recovery with exit 0). Their meta
+files carry `rust_status: verified_hpc` + `differential_job: 3506272`.
+**All 17 frozen contracts from the 2026-07-31 checkpoint are now
+verified**; the language-only gate is complete.
+
+Implementation (commit `41b2dbe`):
+
+- Session verbosity lives in `TypedContext` (`verbosity: u8`, default 0):
+  `Command::SetOption` handles `quiet` (0) and `verbose` (1) per
+  parser.y:171-178; unknown options report `'X' is not something one can
+  set` through the span-less diagnostic header convention. The grammar
+  gained the `set IDENT` command production (before the binding forms, so
+  `set f = ...` still parses as bindings).
+- The verbose trace (main.w:495-516, 528-540) emits three `Output`
+  events per accepted expression command: `Expression before type
+  analysis:` (via `compact_expression`), then `Type found:` and
+  `Converted expression:` (new `compact_typed_expression`: denotations
+  print their value, identifiers their name, calls `name(args)`; other
+  shapes fall back to `<expression>` and are not oracle-verified).
+  `TypedCommandEvent::Output` was added and flows to `SessionEvent::Output`.
+- Unterminated strings stay a lexical recovery with the `Closing string
+  denotation.` message (lexer.w:311-320) but are now `Diagnostic::warning`
+  (new `warning` flag + `Diagnostic::warning` constructor); the session
+  frame reports the warning without setting `clean=false` or aborting an
+  include, so the run exits 0 and continues evaluating the recovered
+  string.
+- The missing `:=` bison row was added (`bison_token_name` → `:=`,
+  `bison_expecting` → `'='`) so `let x := 42 in ...` reports the frozen
+  `syntax error, unexpected :=, expecting '='`.
+- Harness: `validate_plan` now accepts runnable lines that produce
+  several events (verbose trace = 3 stdout lines + Value for one source
+  line; a lexical warning rides with its recovered Value), and the two
+  fixtures are wired with explicit line/event selections (`set verbose`
+  is silent).
+
+Local gate: 229 atlas-core + 292 atlas-real-group tests pass; clippy and
+fmt clean; both fixtures VERBATIM; the wired local pipeline reports
+154 PASS + 1 PARTIAL + the known `fromfile_accepted_b10` FAIL (HPC
+paths); `hpc/test_pipeline_swap_diff.py` 10/10.
+
 ## Live continuation - 2026-08-01 (ktype/param language slice)
 
 The six K-type/standard-parameter contracts are now landed and
@@ -315,16 +362,17 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: `dbf02fe` (main). Working tree clean. The L1/L2 slices,
-the Rep_context crate milestone, AND the six ktype/param-family language
-contracts are landed (see the 2026-08-01 live-continuation entries above;
-differential `3506234` verified the eight L1/L2 contracts, `3506258` the
-six ktype/param contracts). The domain layer is complete: 77 of 77 frozen
-domain contracts verified. The next slices are `set verbose` (`lex/basic`,
-L3) and the unterminated-string recovery
-(`negative/unterminated_string`, L4), then the final
-`docs/LANGUAGE.md` matrix refresh (the domain rows were updated at
-`dbf02fe`; the L3/L4 rows remain). Language-layer design notes
+HEAD at handoff: `41b2dbe` (main). Working tree clean. Every frozen
+contract from the 2026-07-31 checkpoint is landed and HPC-verified: the
+eight L1/L2 contracts (`3506234`), the six ktype/param contracts
+(`3506258`), and L3 `set quiet`/`set verbose` + L4 unterminated-string
+recovery (`3506272`). The domain layer is complete (77 of 77 frozen
+domain contracts). The language-only gate is complete; the remaining
+porting work is the deform/KL math layer (`deform`/`K_type_pol` internals,
+`finals_for`/`expand_final` for non-final values), the KL/file formats
+(filekl adapter), readline completion, and the final
+`docs/LANGUAGE.md` matrix refresh (domain rows updated at `dbf02fe`;
+the remaining rows track the Block/KL layer). Language-layer design notes
 (value shape, Display formats, on-demand RepContext construction from
 `Arc<RealFormContext>`) are in the 2026-08-01 entries; the KTypePol/
 ParamPol term math lives in `domain_builtins.rs` as thin language-layer

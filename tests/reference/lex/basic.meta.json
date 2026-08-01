@@ -12,6 +12,7 @@
   "oracle_stdout_sha256": "71cdd8ae4bdcfbe9978696ea39cda93ea97e76305aec8775cbb44e3e66f54ade",
   "oracle_stderr_sha256": "f190a9c2d911d887208926cb3aae05272b45bb6816476a32101d4cef933bcc7b",
   "capture_artifacts_sha256": "1409aa795618ede648f31af9d7a0fa388cbd7d99003a49abe6e12fcdd9ae03f9",
-  "rust_status": "not_implemented",
-  "notes": "Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract."
+  "rust_status": "verified_hpc",
+  "notes": "Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle. set quiet/set verbose option commands (parser.y:171-178) and the verbose analysis trace (main.w:495-516, 528-540) landed at commit 41b2dbe; differential pipeline_swap_diff job 3506272 reports PASS with zero regressions; metadata carries rust_status verified_hpc with differential_job 3506272.",
+  "differential_job": "3506272"
 }

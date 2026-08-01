@@ -12,6 +12,7 @@
   "oracle_stdout_sha256": "cc9d2d40bbaf600ec0d81bbd9614c818298b07d583b8898ab7460c056bc0d86d",
   "oracle_stderr_sha256": "fecc7cf541c2def16e70c9688948adc9b318635d47f391875fb821d2a0c5c14b",
   "capture_artifacts_sha256": "5662ca4e3e88de3a1e096b51969b62052da251dd73d1529b86eac9860e1395b6",
-  "rust_status": "not_implemented",
-  "notes": "Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract."
+  "rust_status": "verified_hpc",
+  "notes": "Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle. The lexer recovers the unterminated string at end of line (lexer.w:311-320) with the 'Closing string denotation.' lexical warning; the warning does not flip the exit status (exit 0). Landed at commit 41b2dbe; differential pipeline_swap_diff job 3506272 reports PASS with zero regressions; metadata carries rust_status verified_hpc with differential_job 3506272.",
+  "differential_job": "3506272"
 }
