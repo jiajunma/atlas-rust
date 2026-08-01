@@ -1,0 +1,21 @@
+{
+  "fixture": "domain/ktype_formula",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3506396",
+  "source_archive_sha256": "6b423f54af1ad29d8ccc3f238c5848bb426ce088",
+  "fixture_sha256": "2246be5e5aa11ab5ef7046c7ea10d7ee7951146544e30ced9529e9e0abe2536f",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "eea2e0a285c39c342bb0fa56438954e671148e98fe9c3756553e2688256c25ae",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "1b90d8607f982db9e5888a9f730d1a42b171acd33a92910014502f83d491f243",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/gkmod/K_repr.cpp:470-591",
+    "sources/interpreter/atlas-types.w:6030-6054"
+  ],
+  "notes": "K_type_formula surface (the full K-type formula of a semifinal K-type with -1/unbounded and height-cutoff bounds), captured verbatim by HPC job 3506396 against the frozen atlasofliegroups-4d3e9449 oracle. Implementation requires the Q-form inner product, full root classification at an involution, height_bound (dominant-cone projection), and monomial_product."
+}
