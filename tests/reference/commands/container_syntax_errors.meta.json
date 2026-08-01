@@ -12,6 +12,7 @@
   "oracle_stdout_sha256": "8facb5cc1c8f47027a2d1dc56630ca38a022a7abda2e608148d346f0cc863b28",
   "oracle_stderr_sha256": "e4aecbafb58a9854e2f4d6d213bf4d1e245f9b643e62830dce1069adbbb6cf57",
   "capture_artifacts_sha256": "b850d7823fde24450039045cd8152c46be91a7f398e6b5ef689db6c5a9025963",
-  "rust_status": "not_implemented",
-  "notes": "Checks malformed list/tuple command recovery and unterminated bracket containment. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract."
+  "rust_status": "verified_hpc",
+  "notes": "Checks malformed list/tuple command recovery and unterminated bracket containment. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract.",
+  "differential_job": "3506234"
 }
