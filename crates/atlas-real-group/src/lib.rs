@@ -28,6 +28,9 @@ mod involution;
 mod involution_classification;
 mod involution_table;
 mod kgb_graph;
+mod kl_polynomial;
+mod kl_support;
+mod kl_table;
 mod ktype;
 mod lattice;
 mod layout;
@@ -82,6 +85,9 @@ pub use involution_table::{
     InvolutionId, InvolutionRecord, InvolutionTable, InvolutionTableBudget,
 };
 pub use kgb_graph::{KgbGraph, KgbId, KgbStatus};
+pub use kl_polynomial::KlPol;
+pub use kl_support::RankFlags;
+pub use kl_table::{KlTable, MuPair};
 pub use ktype::KType;
 pub use lattice::{pair, Coweight, RationalCoweight, RationalWeight, Weight};
 pub use layout::InnerClassLayout;

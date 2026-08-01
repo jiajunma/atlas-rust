@@ -126,6 +126,9 @@ pub struct BlockGraph {
     /// (ascents) and the inverse Cayley (weak descents) accessors.
     cayley_first: Vec<Option<usize>>,
     cayley_second: Vec<Option<usize>>,
+    /// The primal KGB length of each block element (blocks.cpp:557
+    /// `kgb.length(x)`), used by the KL-table's length ordering.
+    lengths: Vec<usize>,
     /// `first_z_of_x[x]` = the first block element with `x(z) >= x`
     /// (blocks.cpp:630-643); length `xrange + 1` with a size sentinel.
     first_z_of_x: Vec<usize>,
@@ -223,6 +226,7 @@ impl BlockGraph {
         let mut xs: Vec<KgbId> = try_capacity(size)?;
         let mut ys: Vec<KgbId> = try_capacity(size)?;
         let mut descent: Vec<BlockDescent> = try_capacity(size * rank.max(1))?;
+        let mut lengths: Vec<usize> = try_capacity(size)?;
         for (position, dual) in dual_w.iter().enumerate() {
             let Some(&dual_pos) = dual_position.get(dual) else {
                 continue; // empty dual packet: upstream's (0,0) tauPacket
@@ -245,6 +249,13 @@ impl BlockGraph {
                     let y = KgbId(y_start.index() + y_offset);
                     xs.push(x);
                     ys.push(y);
+                    lengths.push(
+                        graph
+                            .length(x)
+                            .ok_or(StructureError::BlockInvariantViolation {
+                                invariant: "block element length",
+                            })?,
+                    );
                     for generator in 0..rank {
                         descent.push(descents(x, y, generator, graph, dual_graph)?);
                     }
@@ -360,6 +371,7 @@ impl BlockGraph {
             cross,
             cayley_first,
             cayley_second,
+            lengths,
             first_z_of_x,
         })
     }
@@ -380,6 +392,12 @@ impl BlockGraph {
     /// The dual KGB coordinate of `z` (upstream `Block_base::y`).
     pub fn y(&self, z: usize) -> Option<KgbId> {
         self.ys.get(z).copied()
+    }
+
+    /// The primal KGB length of `z` (blocks.cpp:557), the KL-table's
+    /// length ordering.
+    pub fn length(&self, z: usize) -> Option<usize> {
+        self.lengths.get(z).copied()
     }
 
     /// Upstream `Block_base::descentValue`.
