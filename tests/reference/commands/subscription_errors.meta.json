@@ -12,6 +12,7 @@
   "oracle_stdout_sha256": "26f0ff54f5e3686b5c396fbcd999bb911cf47f6d2068c19a104401f2470b1e59",
   "oracle_stderr_sha256": "47b757792c6a129b4c4c1a1eaca4047761586ba9616f5c1290da2559812ea949",
   "capture_artifacts_sha256": "a65ddfe211ccdd2c19abc45650b21f5d2af3cdbe6d574f5725943a57c559c38c",
-  "rust_status": "not_implemented",
-  "notes": "Checks negative and upper-bound indices, empty rows, non-row and non-integer subscriptions, and command recovery. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract."
+  "rust_status": "verified_hpc",
+  "notes": "Checks negative and upper-bound indices, empty rows, non-row and non-integer subscriptions, and command recovery. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract.",
+  "differential_job": "3506234"
 }

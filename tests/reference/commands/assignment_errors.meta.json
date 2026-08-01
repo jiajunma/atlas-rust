@@ -12,6 +12,7 @@
   "oracle_stdout_sha256": "ad979939ba892bbe44a9bab1bd0c260f98b239970caf2b264884e352cdf5dd16",
   "oracle_stderr_sha256": "bf744a9263b8ff5556d539ded000a2dea7973e2dc30cf833f3ec7a971432894e",
   "capture_artifacts_sha256": "2a19c54b398df5a26e51ca02a25f9ea807dd8205c0a00db78243502d005e98e0",
-  "rust_status": "not_implemented",
-  "notes": "Checks failed assignments preserve the old binding and undefined assignment targets are rejected. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract."
+  "rust_status": "verified_hpc",
+  "notes": "Checks failed assignments preserve the old binding and undefined assignment targets are rejected. Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract.",
+  "differential_job": "3506234"
 }

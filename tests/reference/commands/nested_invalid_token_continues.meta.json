@@ -12,6 +12,7 @@
   "oracle_stdout_sha256": "7a754d598815e4937545225c07d2c4fbb622a5636500d7537e2a5bcef01c37ff",
   "oracle_stderr_sha256": "e44c30fe3cd9ecc6d48329a68b6059235576ea2bbf60a682eb4624f6a167e699",
   "capture_artifacts_sha256": "b8c79e3859235200fb6e18f4b40e76ba4e37847d44ff1b73d626fbf5399e8a6b",
-  "rust_status": "not_implemented",
-  "notes": "Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract."
+  "rust_status": "verified_hpc",
+  "notes": "Legacy contract regenerated verbatim from HPC capture job 3503334 against the frozen atlasofliegroups-4d3e9449 oracle; supersedes the pre-harness pending contract.",
+  "differential_job": "3506234"
 }
