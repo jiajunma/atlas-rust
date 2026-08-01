@@ -306,6 +306,15 @@ FIXTURE_PLANS = (
     # transport with the integrality gate.
     FixturePlan(name="domain/involution_primitive"),
     FixturePlan(name="domain/involution_primitive_rejected"),
+    # K-type / standard-parameter family (agent-27 Rep_context crate
+    # milestone + the language slice): the six contracts over the
+    # KType/Param/KTypePol/ParamPol language values.
+    FixturePlan(name="domain/ktype_basic"),
+    FixturePlan(name="domain/ktype_basic_rejected"),
+    FixturePlan(name="domain/param_basic"),
+    FixturePlan(name="domain/param_basic_rejected"),
+    FixturePlan(name="domain/ktypepol_basic"),
+    FixturePlan(name="domain/parampol_basic"),
     # Strong-real surface: the base contract plus the probes whose slices
     # have landed — the Cartan numbering adapter (a63dc32) covers the four
     # B2/C2 Cartan enumerations and all four rejected diagnostics, and the

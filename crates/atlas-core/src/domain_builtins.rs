@@ -32,10 +32,10 @@ use atlas_real_group::{
     replace_relation_generators as domain_replace_relation_generators, AdjointFiberBudget,
     BasedRootDatum, BlockGraph, CartanClass, CartanClassification, CartanClassificationBudget,
     CartanId, Coweight, ExternalFormOrder, InnerClass, InnerClassLayout, IntegerLatticeBudget,
-    InvolutionTable, InvolutionTableBudget, KgbGraph, KgbId, KgbStatus, LatticeInvolution,
-    ModTwoVector, RealFormPresentation, RealFormSeed, RelationBasis, RelationError,
-    RelationGenerator, RelationMatrix, RootSystem, StrongRealClassification, StructureError,
-    WeakRealFormId, Weight, WeylElement, WeylInterface,
+    InvolutionTable, InvolutionTableBudget, KType, KgbGraph, KgbId, KgbStatus, LatticeInvolution,
+    ModTwoVector, RationalWeight, RealFormPresentation, RealFormSeed, RelationBasis, RelationError,
+    RelationGenerator, RelationMatrix, RepContext, RootSystem, StandardRepr,
+    StrongRealClassification, StructureError, WeakRealFormId, Weight, WeylElement, WeylInterface,
 };
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
@@ -260,6 +260,40 @@ impl fmt::Display for SplitValue {
     }
 }
 
+/// A K-type value: the crate `KType` plus the real form that owns it
+/// (upstream `K_type_value`, interpreter/atlas-types.w:5175-5192).
+#[derive(Clone, Debug)]
+pub struct KTypeValue {
+    context: Arc<RealFormContext>,
+    ktype: KType,
+}
+
+/// A standard-module parameter value: the crate `StandardRepr` plus the
+/// real form that owns it (upstream `module_parameter_value`).
+#[derive(Clone, Debug)]
+pub struct ParamValue {
+    context: Arc<RealFormContext>,
+    repr: StandardRepr,
+}
+
+/// A K-type polynomial: ordered `(Split, KType)` terms over one real form
+/// (upstream `K_type_pol`, gkmod/K_repr.h). Adding a like term merges the
+/// Split coefficient; a zero coefficient removes the term.
+#[derive(Clone, Debug)]
+pub struct KTypePolValue {
+    rf: Arc<RealFormContext>,
+    terms: Vec<(SplitValue, KType)>,
+}
+
+/// A virtual module: ordered `(Split, StandardRepr)` terms over one real
+/// form (upstream `SR_poly`, gkmod/repr.h). Like terms merge and zero
+/// coefficients drop, matching `SR_poly::add_term`.
+#[derive(Clone, Debug)]
+pub struct ParamPolValue {
+    rf: Arc<RealFormContext>,
+    terms: Vec<(SplitValue, StandardRepr)>,
+}
+
 /// The domain payload of [`Value::Domain`]. Equality is STRUCTURAL: two
 /// independently constructed handles for the same mathematical object
 /// compare equal, matching upstream's memoized handles.
@@ -274,6 +308,10 @@ pub enum DomainValue {
     WeylElement(WeylEltValue),
     CartanClass(Arc<InnerClassContext>, CartanId),
     Split(SplitValue),
+    KType(KTypeValue),
+    KTypePol(KTypePolValue),
+    Param(ParamValue),
+    ParamPol(ParamPolValue),
 }
 
 impl PartialEq for DomainValue {
@@ -284,16 +322,7 @@ impl PartialEq for DomainValue {
             (Self::InnerClass(left), Self::InnerClass(right)) => {
                 left.inner_class == right.inner_class
             }
-            (Self::RealForm(left), Self::RealForm(right)) => {
-                // RealReductiveGroup operator== (realredgp.h:142-149): same
-                // inner class and form, same base cocharacter, same initial
-                // torus part — the custom-seed identity.
-                left.parent.inner_class == right.parent.inner_class
-                    && left.internal == right.internal
-                    && left.graph.cocharacter() == right.graph.cocharacter()
-                    && left.graph.seed_element().torus_bits()
-                        == right.graph.seed_element().torus_bits()
-            }
+            (Self::RealForm(left), Self::RealForm(right)) => same_real_form(left, right),
             (Self::KgbElement(left, left_id), Self::KgbElement(right, right_id)) => {
                 left.parent.inner_class == right.parent.inner_class
                     && left.internal == right.internal
@@ -316,12 +345,42 @@ impl PartialEq for DomainValue {
                 left.inner_class == right.inner_class && left_id == right_id
             }
             (Self::Split(left), Self::Split(right)) => left == right,
+            // K_type_value::operator== (atlas-types.w:5310-5316): the
+            // owning real form and the strict KType components.
+            (Self::KType(left), Self::KType(right)) => {
+                same_real_form(&left.context, &right.context) && left.ktype == right.ktype
+            }
+            // module_parameter_value::operator==
+            // (atlas-types.w:6344-6350): the owning real form and the
+            // strict StandardRepr components (height is derived, excluded).
+            (Self::Param(left), Self::Param(right)) => {
+                same_real_form(&left.context, &right.context) && left.repr == right.repr
+            }
+            // K_type_pol/SR_poly equality: same owning form and identical
+            // ordered term lists (atlas-types.w:5549-5568, 7731-7748).
+            (Self::KTypePol(left), Self::KTypePol(right)) => {
+                same_real_form(&left.rf, &right.rf) && left.terms == right.terms
+            }
+            (Self::ParamPol(left), Self::ParamPol(right)) => {
+                same_real_form(&left.rf, &right.rf) && left.terms == right.terms
+            }
             _ => false,
         }
     }
 }
 
 impl Eq for DomainValue {}
+
+/// The owning-form identity of a [`RealFormContext`], matching the
+/// `RealReductiveGroup operator==` (realredgp.h:142-149): same inner
+/// class and form, same base cocharacter, same initial torus part — the
+/// custom-seed identity.
+fn same_real_form(left: &RealFormContext, right: &RealFormContext) -> bool {
+    left.parent.inner_class == right.parent.inner_class
+        && left.internal == right.internal
+        && left.graph.cocharacter() == right.graph.cocharacter()
+        && left.graph.seed_element().torus_bits() == right.graph.seed_element().torus_bits()
+}
 
 impl fmt::Display for DomainValue {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -420,8 +479,219 @@ impl fmt::Display for DomainValue {
                 )
             }
             Self::Split(value) => write!(formatter, "{value}"),
+            // K_type_value::print (atlas-types.w:5212-5215): the adjective
+            // chain, ` K-type`, then print_K_type (basic_io.cpp:158-163)
+            // whose own leading space gives `final K-type K_type(...)`.
+            Self::KType(value) => {
+                let rc = rep_context(&value.context);
+                let adjectives = ktype_adjective(&rc, &value.ktype);
+                write!(
+                    formatter,
+                    "{adjectives} K-type K_type(x={}, lambda={})",
+                    value.ktype.x().index(),
+                    rational_weight_display(
+                        &rc.lambda_of_ktype(&value.ktype)
+                            .expect("KType lambda is computable"),
+                    ),
+                )
+            }
+            // module_parameter_value::print (atlas-types.w:6183-6185): the
+            // adjective chain, a space, then print_stdrep
+            // (basic_io.cpp:203-207).
+            Self::Param(value) => {
+                let rc = rep_context(&value.context);
+                let adjectives = repr_adjective(&rc, &value.repr);
+                write!(
+                    formatter,
+                    "{adjectives} parameter(x={},lambda={},nu={})",
+                    value.repr.x().index(),
+                    rational_weight_display(
+                        &rc.lambda(&value.repr)
+                            .expect("parameter lambda is computable"),
+                    ),
+                    rational_weight_display(
+                        &rc.nu(&value.repr).expect("parameter nu is computable"),
+                    ),
+                )
+            }
+            Self::KTypePol(value) => write!(formatter, "{}", ktype_pol_display(value)),
+            Self::ParamPol(value) => write!(formatter, "{}", param_pol_display(value)),
         }
     }
+}
+
+/// Bind the representation context of a real form's frozen pipeline. The
+/// `RealFormContext` owns exactly the borrow triple the crate `RepContext`
+/// needs (parent inner class, involution table, KGB graph).
+fn rep_context(context: &RealFormContext) -> RepContext<'_> {
+    RepContext::new(&context.parent.inner_class, &context.table, &context.graph)
+        .expect("a constructed real form yields a valid Rep_context")
+}
+
+/// The 6-way adjective chain for a K-type (atlas-types.w:5228-5235).
+fn ktype_adjective(rc: &RepContext<'_>, value: &KType) -> &'static str {
+    if !value
+        .is_standard(rc)
+        .expect("K-type predicate is computable")
+    {
+        "non-standard"
+    } else if !value
+        .is_dominant(rc)
+        .expect("K-type predicate is computable")
+    {
+        "non-dominant"
+    } else if !value
+        .is_nonzero(rc)
+        .expect("K-type predicate is computable")
+    {
+        "zero"
+    } else if !value
+        .is_semifinal(rc)
+        .expect("K-type predicate is computable")
+    {
+        "non-final"
+    } else if !value.is_normal(rc).expect("K-type predicate is computable") {
+        "non-normal"
+    } else {
+        "final"
+    }
+}
+
+/// The 6-way adjective chain for a module parameter
+/// (atlas-types.w:6199-6206).
+fn repr_adjective(rc: &RepContext<'_>, value: &StandardRepr) -> &'static str {
+    if !value
+        .is_standard(rc)
+        .expect("parameter predicate is computable")
+    {
+        "non-standard"
+    } else if !value
+        .is_dominant(rc)
+        .expect("parameter predicate is computable")
+    {
+        "non-dominant"
+    } else if !value
+        .is_nonzero(rc)
+        .expect("parameter predicate is computable")
+    {
+        "zero"
+    } else if !value
+        .is_semifinal(rc)
+        .expect("parameter predicate is computable")
+    {
+        "non-final"
+    } else if !value
+        .is_normal(rc)
+        .expect("parameter predicate is computable")
+    {
+        "non-normal"
+    } else {
+        "final"
+    }
+}
+
+/// The ratvec `seqPrint` of a crate rational weight: bracket-enclosed,
+/// comma-separated numerators then `/denominator`, no inner spaces
+/// (basic_io.cpp:124-132, matrix::seqPrint). Used by print_K_type and
+/// print_stdrep, in contrast with the language RatVec display `[ n ]/d`.
+fn rational_weight_display(weight: &RationalWeight) -> String {
+    let numerator = weight
+        .numerator()
+        .iter()
+        .map(ToString::to_string)
+        .collect::<Vec<_>>()
+        .join(",");
+    format!("[{numerator}]/{}", weight.denominator())
+}
+
+/// print_K_type_pol (basic_io.cpp:165-202): `Empty sum of K-types` for the
+/// zero polynomial, otherwise one `\n`-prefixed term per entry — the
+/// coefficient embellishment (full `(e+fs)` only when both components occur
+/// somewhere across the terms), then `*` + print_K_type (whose own leading
+/// space follows the `*`) + ` [height]`.
+fn ktype_pol_display(value: &KTypePolValue) -> String {
+    if value.terms.is_empty() {
+        return "Empty sum of K-types".to_string();
+    }
+    let has_one = value
+        .terms
+        .iter()
+        .any(|(coefficient, _)| coefficient.e() != 0);
+    let has_s = value
+        .terms
+        .iter()
+        .any(|(coefficient, _)| coefficient.f() != 0);
+    let rc = rep_context(&value.rf);
+    let mut out = String::new();
+    for (coefficient, ktype) in &value.terms {
+        out.push('\n');
+        if has_one && has_s {
+            out.push_str(&format!(
+                "({}{}{}s)",
+                coefficient.e(),
+                if coefficient.f() < 0 { '-' } else { '+' },
+                coefficient.f().unsigned_abs(),
+            ));
+        } else if has_one {
+            out.push_str(&coefficient.e().to_string());
+        } else {
+            out.push_str(&format!("{}s", coefficient.f()));
+        }
+        out.push('*');
+        out.push_str(&format!(
+            " K_type(x={}, lambda={})",
+            ktype.x().index(),
+            rational_weight_display(
+                &rc.lambda_of_ktype(ktype)
+                    .expect("KType lambda is computable"),
+            ),
+        ));
+        out.push_str(&format!(" [{}]", ktype.height()));
+    }
+    out
+}
+
+/// print_SR_poly (basic_io.cpp:214-244): like print_K_type_pol, but the
+/// parameter text (`parameter(...)`, no leading space) follows the `*`
+/// directly, and the empty text is `Empty sum of standard modules`.
+fn param_pol_display(value: &ParamPolValue) -> String {
+    if value.terms.is_empty() {
+        return "Empty sum of standard modules".to_string();
+    }
+    let has_one = value
+        .terms
+        .iter()
+        .any(|(coefficient, _)| coefficient.e() != 0);
+    let has_s = value
+        .terms
+        .iter()
+        .any(|(coefficient, _)| coefficient.f() != 0);
+    let rc = rep_context(&value.rf);
+    let mut out = String::new();
+    for (coefficient, repr) in &value.terms {
+        out.push('\n');
+        if has_one && has_s {
+            out.push_str(&format!(
+                "({}{}{}s)",
+                coefficient.e(),
+                if coefficient.f() < 0 { '-' } else { '+' },
+                coefficient.f().unsigned_abs(),
+            ));
+        } else if has_one {
+            out.push_str(&coefficient.e().to_string());
+        } else {
+            out.push_str(&format!("{}s", coefficient.f()));
+        }
+        out.push('*');
+        out.push_str(&format!(
+            "parameter(x={},lambda={},nu={})",
+            repr.x().index(),
+            rational_weight_display(&rc.lambda(repr).expect("parameter lambda is computable"),),
+            rational_weight_display(&rc.nu(repr).expect("parameter nu is computable")),
+        ));
+        out.push_str(&format!(" [{}]", repr.height()));
+    }
+    out
 }
 
 /// The language-facing kind name, used by diagnostics and type printing.
@@ -436,6 +706,10 @@ pub fn kind_name(value: &DomainValue) -> &'static str {
         DomainValue::WeylElement(_) => "WeylElt",
         DomainValue::CartanClass(_, _) => "CartanClass",
         DomainValue::Split(_) => "Split",
+        DomainValue::KType(_) => "KType",
+        DomainValue::KTypePol(_) => "KTypePol",
+        DomainValue::Param(_) => "Param",
+        DomainValue::ParamPol(_) => "ParamPol",
     }
 }
 
@@ -1783,6 +2057,134 @@ fn as_block(value: &Value, span: SourceSpan) -> Result<&BlockValue, Diagnostic> 
     match value {
         Value::Domain(DomainValue::Block(block)) => Ok(block),
         other => Err(type_error(span, format!("expected a Block, found {other}"))),
+    }
+}
+
+fn as_ktype(value: &Value, span: SourceSpan) -> Result<&KTypeValue, Diagnostic> {
+    match value {
+        Value::Domain(DomainValue::KType(ktype)) => Ok(ktype),
+        other => Err(type_error(span, format!("expected a KType, found {other}"))),
+    }
+}
+
+/// The language `vec` payload of an Atlas weight argument.
+fn as_weight_vec(value: &Value, span: SourceSpan) -> Result<Vec<i32>, Diagnostic> {
+    match value {
+        Value::Vector(Vec32(entries)) => Ok(entries.clone()),
+        other => Err(type_error(span, format!("expected a vec, found {other}"))),
+    }
+}
+
+/// The language `ratvec` payload as the crate's gcd-normalized rational
+/// weight (ratvec.cpp:172 normalization is shared by both layers).
+fn as_rational_weight(value: &Value, span: SourceSpan) -> Result<RationalWeight, Diagnostic> {
+    match value {
+        Value::RatVector(factor) => RationalWeight::new(
+            factor.numerators().to_vec(),
+            i64::try_from(factor.denominator())
+                .map_err(|_| runtime(span, "Integer value to big for conversion"))?,
+        )
+        .map_err(|error| runtime(span, error.to_string())),
+        other => Err(type_error(
+            span,
+            format!("expected a ratvec, found {other}"),
+        )),
+    }
+}
+
+/// A crate rational weight as a language `ratvec` (both layers keep the
+/// gcd-normalized common-denominator form, ratvec.cpp:172).
+fn ratvec_from_rational_weight(
+    weight: &RationalWeight,
+    span: SourceSpan,
+) -> Result<RatVec, Diagnostic> {
+    let denominator = u64::try_from(weight.denominator())
+        .map_err(|_| runtime(span, "Integer value to big for conversion"))?;
+    RatVec::new(weight.numerator().to_vec(), denominator)
+        .ok_or_else(|| runtime(span, "ratvec denominator must be nonzero"))
+}
+
+/// Map a crate structure error to the runtime diagnostic wording.
+fn structure_diagnostic(error: StructureError, span: SourceSpan) -> Diagnostic {
+    runtime(span, error.to_string())
+}
+
+/// The owning-form identity check shared by the equivalence and polynomial
+/// wrappers (atlas-types.w:5323-5331, 5668-5676, 7786-7803): the mismatch
+/// diagnostic precedes the wrapper's no-value gate.
+fn require_same_form(
+    left: &RealFormContext,
+    right: &RealFormContext,
+    message: &str,
+    span: SourceSpan,
+) -> Result<(), Diagnostic> {
+    if same_real_form(left, right) {
+        Ok(())
+    } else {
+        Err(runtime(span, message))
+    }
+}
+
+/// `finals_for` of a final K-type: the identity singleton with coefficient
+/// one. Non-final expansion awaits the deformation layer, so the language
+/// wrapper rejects it rather than producing a wrong term.
+fn finals_of_final(
+    ktype: &KTypeValue,
+    rc: &RepContext<'_>,
+    span: SourceSpan,
+) -> Result<Vec<(SplitValue, KType)>, Diagnostic> {
+    if !ktype
+        .ktype
+        .is_final(rc)
+        .expect("K-type predicate is computable")
+    {
+        return Err(runtime(
+            span,
+            "adding a non-final K-type to a KTypePol is not implemented",
+        ));
+    }
+    Ok(vec![(SplitValue::new(1, 0), ktype.ktype.clone())])
+}
+
+/// `expand_final` of a final parameter: the identity singleton.
+fn expand_final(
+    parameter: &ParamValue,
+    rc: &RepContext<'_>,
+    span: SourceSpan,
+) -> Result<Vec<(SplitValue, StandardRepr)>, Diagnostic> {
+    if !parameter
+        .repr
+        .is_final(rc)
+        .expect("parameter predicate is computable")
+    {
+        return Err(runtime(
+            span,
+            "adding a non-final parameter to a ParamPol is not implemented",
+        ));
+    }
+    Ok(vec![(SplitValue::new(1, 0), parameter.repr.clone())])
+}
+
+/// Insert or merge one polynomial term (upstream
+/// `K_type_pol::add_term` / `SR_poly::add_term`): like terms sum their
+/// Split coefficients and a zero coefficient removes the term.
+fn merge_pol_term<T: Clone + PartialEq>(
+    terms: &mut Vec<(SplitValue, T)>,
+    coefficient: SplitValue,
+    term: T,
+) {
+    if coefficient.is_zero() {
+        return;
+    }
+    if let Some(index) = terms.iter().position(|(_, existing)| *existing == term) {
+        let updated = terms[index].0.add(coefficient);
+        if updated.is_zero() {
+            terms.remove(index);
+        } else {
+            terms[index].0 = updated;
+        }
+    } else {
+        terms.push((coefficient, term));
     }
 }
 
@@ -3464,6 +3866,106 @@ pub(crate) fn validate(
                 ));
             }
         }
+        // K_type_wrapper's rank check precedes its no-value gate
+        // (atlas-types.w:5243-5249).
+        "K_type" => match arguments {
+            [kgb, lam] => {
+                let (context, _) = as_kgb_element(kgb, span)?;
+                let lam_rho = as_weight_vec(lam, span)?;
+                let rank = context.parent.inner_class.datum().lattice_rank();
+                if lam_rho.len() != rank {
+                    return Err(runtime(
+                        span,
+                        format!("Rank mismatch: ({rank},{})", lam_rho.len()),
+                    ));
+                }
+            }
+            [_] => {}
+            _ => {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "K_type expects 1 or 2 argument(s), found {}",
+                        arguments.len()
+                    ),
+                ));
+            }
+        },
+        // module_parameter_wrapper's rank check precedes its no-value gate
+        // (atlas-types.w:6224-6230).
+        "param" => match arguments {
+            [kgb, lam, nu] => {
+                let (context, _) = as_kgb_element(kgb, span)?;
+                let lam_rho = as_weight_vec(lam, span)?;
+                let nu_weight = as_rational_weight(nu, span)?;
+                let rank = context.parent.inner_class.datum().lattice_rank();
+                if nu_weight.rank() != lam_rho.len() || nu_weight.rank() != rank {
+                    return Err(runtime(
+                        span,
+                        format!(
+                            "Rank mismatch: ({rank},{},{})",
+                            lam_rho.len(),
+                            nu_weight.rank()
+                        ),
+                    ));
+                }
+            }
+            [_] => {}
+            _ => {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "param expects 1 or 3 argument(s), found {}",
+                        arguments.len()
+                    ),
+                ));
+            }
+        },
+        // K_type_equivalent_wrapper's real-form identity check precedes
+        // its no-value gate (atlas-types.w:5325-5327).
+        "equivalent" => {
+            arity(name, arguments, 2, span)?;
+            let left = as_ktype(&arguments[0], span)?;
+            let right = as_ktype(&arguments[1], span)?;
+            require_same_form(
+                &left.context,
+                &right.context,
+                "Real form mismatch when testing equivalence",
+                span,
+            )?;
+        }
+        // add/subtract_K_type_wrapper and add/subtract_module_wrapper's
+        // real-form identity checks precede their no-value gates
+        // (atlas-types.w:5670-5673, 5684-5687, 7788-7791, 7800-7803).
+        "+" | "-" => match arguments {
+            [Value::Domain(DomainValue::KTypePol(accumulator)), Value::Domain(DomainValue::KType(ktype))] =>
+            {
+                require_same_form(
+                    &accumulator.rf,
+                    &ktype.context,
+                    if name == "+" {
+                        "Real form mismatch when adding a KType to a KTypePol"
+                    } else {
+                        "Real form mismatch when subtracting a KType from a KTypePol"
+                    },
+                    span,
+                )?;
+            }
+            [Value::Domain(DomainValue::ParamPol(accumulator)), Value::Domain(DomainValue::Param(parameter))] =>
+            {
+                require_same_form(
+                    &accumulator.rf,
+                    &parameter.context,
+                    if name == "+" {
+                        "Real form mismatch when adding a Param to a ParamPol"
+                    } else {
+                        "Real form mismatch when subtracting a Param from a ParamPol"
+                    },
+                    span,
+                )?;
+            }
+            _ => {}
+        },
         // ann_mod_wrapper extracts the Atlas `int` before its no-value gate,
         // but matrix reduction and the nonzero precondition are behind it.
         "ann_mod" => {
@@ -4002,28 +4504,48 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
         // synthetic_real_form_wrapper (InnerClass,mat,ratvec), dispatched
         // by argument count.
         "real_form" => {
-            let Some(Value::Domain(DomainValue::InnerClass(context))) = arguments.first() else {
-                return Err(type_error(span, "expected an InnerClass"));
-            };
-            match arguments.len() {
-                2 => {
-                    let external = as_usize(&arguments[1], span)?;
-                    let form = build_real_form(context, external, span)?;
-                    Ok(Value::Domain(DomainValue::RealForm(form)))
-                }
-                3 => {
-                    let plan = synthetic_real_form(context, &arguments[1], &arguments[2], span)?;
-                    let form = if plan.default_seed {
-                        build_real_form(context, plan.external, span)?
-                    } else {
-                        build_custom_real_form(context, &plan, span)?
-                    };
-                    Ok(Value::Domain(DomainValue::RealForm(form)))
-                }
-                count => Err(type_error(
-                    span,
-                    format!("real_form expects 2 or 3 argument(s), found {count}"),
+            // The four projection wrappers (atlas-types.w:5279-5287,
+            // 5543-5548, 6269-6275, 7621-7626) return the owning form.
+            match arguments {
+                [Value::Domain(DomainValue::KType(ktype))] => Ok(Value::Domain(
+                    DomainValue::RealForm(Arc::clone(&ktype.context)),
                 )),
+                [Value::Domain(DomainValue::KTypePol(pol))] => {
+                    Ok(Value::Domain(DomainValue::RealForm(Arc::clone(&pol.rf))))
+                }
+                [Value::Domain(DomainValue::Param(parameter))] => Ok(Value::Domain(
+                    DomainValue::RealForm(Arc::clone(&parameter.context)),
+                )),
+                [Value::Domain(DomainValue::ParamPol(pol))] => {
+                    Ok(Value::Domain(DomainValue::RealForm(Arc::clone(&pol.rf))))
+                }
+                arguments => {
+                    let Some(Value::Domain(DomainValue::InnerClass(context))) = arguments.first()
+                    else {
+                        return Err(type_error(span, "expected an InnerClass"));
+                    };
+                    match arguments.len() {
+                        2 => {
+                            let external = as_usize(&arguments[1], span)?;
+                            let form = build_real_form(context, external, span)?;
+                            Ok(Value::Domain(DomainValue::RealForm(form)))
+                        }
+                        3 => {
+                            let plan =
+                                synthetic_real_form(context, &arguments[1], &arguments[2], span)?;
+                            let form = if plan.default_seed {
+                                build_real_form(context, plan.external, span)?
+                            } else {
+                                build_custom_real_form(context, &plan, span)?
+                            };
+                            Ok(Value::Domain(DomainValue::RealForm(form)))
+                        }
+                        count => Err(type_error(
+                            span,
+                            format!("real_form expects 1, 2, or 3 argument(s), found {count}"),
+                        )),
+                    }
+                }
             }
         }
         // dual_datum_wrapper (atlas-types.w:1713-1717),
@@ -4724,6 +5246,270 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             let (context, id) = as_kgb_element(&arguments[0], span)?;
             torus_bits_value(context, id, span)
         }
+        // K_type_wrapper (atlas-types.w:5240-5250): the (KGBElt,vec)
+        // constructor rank-checks before its no-value gate, then builds
+        // through Rep_context::sr_K (K_repr.cpp:25-32).
+        // param_to_K_type_wrapper (atlas-types.w:6270-6280): restricting a
+        // parameter to K ignores nu (repr.h:232-233).
+        "K_type" => match arguments {
+            [kgb, lam] => {
+                let (context, x) = as_kgb_element(kgb, span)?;
+                let lam_rho = as_weight_vec(lam, span)?;
+                let rank = context.parent.inner_class.datum().lattice_rank();
+                if lam_rho.len() != rank {
+                    return Err(runtime(
+                        span,
+                        format!("Rank mismatch: ({rank},{})", lam_rho.len()),
+                    ));
+                }
+                let rc = rep_context(context);
+                let ktype = KType::sr_k(&rc, x, &Weight::new(lam_rho))
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                Ok(Value::Domain(DomainValue::KType(KTypeValue {
+                    context: Arc::clone(context),
+                    ktype,
+                })))
+            }
+            [Value::Domain(DomainValue::Param(parameter))] => {
+                let rc = rep_context(&parameter.context);
+                let ktype = rc
+                    .sr_k_of_standard(&parameter.repr)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                Ok(Value::Domain(DomainValue::KType(KTypeValue {
+                    context: Arc::clone(&parameter.context),
+                    ktype,
+                })))
+            }
+            _ => Err(type_error(
+                span,
+                format!(
+                    "{name} has no matching overload for {} argument(s)",
+                    arguments.len()
+                ),
+            )),
+        },
+        // module_parameter_wrapper (atlas-types.w:6215-6231): the
+        // (KGBElt,vec,ratvec) constructor rank-checks both vectors against
+        // the form's rank before its no-value gate (message order
+        // (rank, lambda size, nu size)), then builds through
+        // Rep_context::sr (repr.h:242-244). K_type_to_param_wrapper
+        // (atlas-types.w:6283-6292) extends a K-type with nu = 0.
+        "param" => match arguments {
+            [kgb, lam, nu] => {
+                let (context, x) = as_kgb_element(kgb, span)?;
+                let lam_rho = as_weight_vec(lam, span)?;
+                let nu_weight = as_rational_weight(nu, span)?;
+                let rank = context.parent.inner_class.datum().lattice_rank();
+                if nu_weight.rank() != lam_rho.len() || nu_weight.rank() != rank {
+                    return Err(runtime(
+                        span,
+                        format!(
+                            "Rank mismatch: ({rank},{},{})",
+                            lam_rho.len(),
+                            nu_weight.rank()
+                        ),
+                    ));
+                }
+                let rc = rep_context(context);
+                let repr = rc
+                    .sr(x, &Weight::new(lam_rho), &nu_weight)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                Ok(Value::Domain(DomainValue::Param(ParamValue {
+                    context: Arc::clone(context),
+                    repr,
+                })))
+            }
+            [Value::Domain(DomainValue::KType(ktype))] => {
+                let rc = rep_context(&ktype.context);
+                let repr = rc
+                    .sr_of_ktype(&ktype.ktype)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                Ok(Value::Domain(DomainValue::Param(ParamValue {
+                    context: Arc::clone(&ktype.context),
+                    repr,
+                })))
+            }
+            _ => Err(type_error(
+                span,
+                format!(
+                    "{name} has no matching overload for {} argument(s)",
+                    arguments.len()
+                ),
+            )),
+        },
+        // K_type_height_wrapper (atlas-types.w:5291) and
+        // parameter_height_wrapper (atlas-types.w:6311-6317): the stored
+        // height.
+        "height" => match arguments {
+            [Value::Domain(DomainValue::KType(ktype))] => {
+                Ok(Value::Integer(BigInt::from(ktype.ktype.height())))
+            }
+            [Value::Domain(DomainValue::Param(parameter))] => {
+                Ok(Value::Integer(BigInt::from(parameter.repr.height())))
+            }
+            _ => Err(type_error(
+                span,
+                format!(
+                    "{name} has no matching overload for {} argument(s)",
+                    arguments.len()
+                ),
+            )),
+        },
+        // The predicate set shared by both value kinds
+        // (atlas-types.w:5346-5377, 6360-6384): each predicate has one
+        // wrapper per kind; `is_zero` is the negation of `is_nonzero`.
+        "is_standard" | "is_dominant" | "is_zero" | "is_semifinal" | "is_final" => {
+            arity(name, arguments, 1, span)?;
+            let result = match &arguments[0] {
+                Value::Domain(DomainValue::KType(ktype)) => {
+                    let rc = rep_context(&ktype.context);
+                    match name {
+                        "is_standard" => ktype.ktype.is_standard(&rc),
+                        "is_dominant" => ktype.ktype.is_dominant(&rc),
+                        "is_zero" => ktype.ktype.is_nonzero(&rc).map(|nonzero| !nonzero),
+                        "is_semifinal" => ktype.ktype.is_semifinal(&rc),
+                        "is_final" => ktype.ktype.is_final(&rc),
+                        _ => unreachable!(),
+                    }
+                }
+                Value::Domain(DomainValue::Param(parameter)) => {
+                    let rc = rep_context(&parameter.context);
+                    match name {
+                        "is_standard" => parameter.repr.is_standard(&rc),
+                        "is_dominant" => parameter.repr.is_dominant(&rc),
+                        "is_zero" => parameter.repr.is_nonzero(&rc).map(|nonzero| !nonzero),
+                        "is_semifinal" => parameter.repr.is_semifinal(&rc),
+                        "is_final" => parameter.repr.is_final(&rc),
+                        _ => unreachable!(),
+                    }
+                }
+                other => {
+                    return Err(type_error(
+                        span,
+                        format!("expected a KType or Param, found {other}"),
+                    ));
+                }
+            };
+            result
+                .map(Value::Boolean)
+                .map_err(|error| structure_diagnostic(error, span))
+        }
+        // K_type_equivalent_wrapper (atlas-types.w:5323-5331): the real
+        // form identity is checked before the no-value gate; equivalence
+        // then moves both K-types to the canonical fiber of their Cartan
+        // class (K_repr.cpp:159-171).
+        "equivalent" => {
+            arity(name, arguments, 2, span)?;
+            let left = as_ktype(&arguments[0], span)?;
+            let right = as_ktype(&arguments[1], span)?;
+            require_same_form(
+                &left.context,
+                &right.context,
+                "Real form mismatch when testing equivalence",
+                span,
+            )?;
+            let rc = rep_context(&left.context);
+            let result = left
+                .ktype
+                .equivalent(&rc, &right.ktype)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            Ok(Value::Boolean(result))
+        }
+        // K_type_dominant/normal/theta_stable/to_canonical_fiber wrappers
+        // (atlas-types.w:5397-5444): KType-preserving transforms computed
+        // behind the no-value gate. `normal` is the elected equivalence
+        // class representative, `dominant` the complex-dominant form, and
+        // `theta_stable` the form without complex descents.
+        "dominant" | "normal" | "theta_stable" | "to_canonical_fiber" => {
+            arity(name, arguments, 1, span)?;
+            let ktype = as_ktype(&arguments[0], span)?;
+            let rc = rep_context(&ktype.context);
+            let transformed = match name {
+                "dominant" => ktype.ktype.made_dominant(&rc),
+                "normal" => ktype.ktype.normalised(&rc),
+                "theta_stable" => ktype.ktype.made_theta_stable(&rc),
+                "to_canonical_fiber" => ktype.ktype.to_canonical_fiber(&rc),
+                _ => unreachable!(),
+            }
+            .map_err(|error| structure_diagnostic(error, span))?;
+            Ok(Value::Domain(DomainValue::KType(KTypeValue {
+                context: Arc::clone(&ktype.context),
+                ktype: transformed,
+            })))
+        }
+        // K_type_pol_wrapper / virtual_module_wrapper
+        // (atlas-types.w:5537-5543, 7613-7620): the empty sum of one real
+        // form.
+        "null_K_module" | "null_module" => {
+            arity(name, arguments, 1, span)?;
+            let rf = as_real_form(&arguments[0], span)?;
+            if name == "null_K_module" {
+                Ok(Value::Domain(DomainValue::KTypePol(KTypePolValue {
+                    rf: Arc::clone(rf),
+                    terms: Vec::new(),
+                })))
+            } else {
+                Ok(Value::Domain(DomainValue::ParamPol(ParamPolValue {
+                    rf: Arc::clone(rf),
+                    terms: Vec::new(),
+                })))
+            }
+        }
+        // first/last_K_type_term_wrapper and first/last_term_wrapper
+        // (atlas-types.w:5910-5943, 7996-8027): the selected term as a
+        // (Split, KType/Param) pair, with the value-kind wording of the
+        // upstream empty-poly error.
+        "first_term" | "last_term" => {
+            arity(name, arguments, 1, span)?;
+            match &arguments[0] {
+                Value::Domain(DomainValue::KTypePol(pol)) => {
+                    let empty = if name == "first_term" {
+                        "Empty KTypePol has no first term"
+                    } else {
+                        "Empty KTypePol has no last term"
+                    };
+                    let Some((coefficient, ktype)) = (if name == "first_term" {
+                        pol.terms.first()
+                    } else {
+                        pol.terms.last()
+                    }) else {
+                        return Err(runtime(span, empty));
+                    };
+                    Ok(Value::Tuple(vec![
+                        Value::Domain(DomainValue::Split(*coefficient)),
+                        Value::Domain(DomainValue::KType(KTypeValue {
+                            context: Arc::clone(&pol.rf),
+                            ktype: ktype.clone(),
+                        })),
+                    ]))
+                }
+                Value::Domain(DomainValue::ParamPol(pol)) => {
+                    let empty = if name == "first_term" {
+                        "Empty module has no first term"
+                    } else {
+                        "Empty module has no last term"
+                    };
+                    let Some((coefficient, repr)) = (if name == "first_term" {
+                        pol.terms.first()
+                    } else {
+                        pol.terms.last()
+                    }) else {
+                        return Err(runtime(span, empty));
+                    };
+                    Ok(Value::Tuple(vec![
+                        Value::Domain(DomainValue::Split(*coefficient)),
+                        Value::Domain(DomainValue::Param(ParamValue {
+                            context: Arc::clone(&pol.rf),
+                            repr: repr.clone(),
+                        })),
+                    ]))
+                }
+                other => Err(type_error(
+                    span,
+                    format!("expected a KTypePol or ParamPol, found {other}"),
+                )),
+            }
+        }
         // decompose_KGB_wrapper (atlas-types.w:4429): the owning real form
         // and the element number, wrapped as a pair. decompose_block_wrapper
         // (atlas-types.w:4809-4818) unwraps the block's two forms instead,
@@ -4743,9 +5529,38 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                     Value::Integer(BigInt::from(value.e())),
                     Value::Integer(BigInt::from(value.f())),
                 ])),
+                // unwrap_K_type_wrapper (atlas-types.w:5266-5277): the
+                // owning KGB element and the ELECTED lambda-rho.
+                Value::Domain(DomainValue::KType(ktype)) => Ok(Value::Tuple(vec![
+                    Value::Domain(DomainValue::KgbElement(
+                        Arc::clone(&ktype.context),
+                        ktype.ktype.x(),
+                    )),
+                    Value::Vector(Vec32(ktype.ktype.lambda_rho().as_slice().to_vec())),
+                ])),
+                // unwrap_parameter_wrapper (atlas-types.w:6252-6267): the
+                // KGB element, lambda-rho, and the info character gamma —
+                // NOT the input nu.
+                Value::Domain(DomainValue::Param(parameter)) => {
+                    let rc = rep_context(&parameter.context);
+                    let lam_rho = rc
+                        .lambda_rho(&parameter.repr)
+                        .map_err(|error| structure_diagnostic(error, span))?;
+                    Ok(Value::Tuple(vec![
+                        Value::Domain(DomainValue::KgbElement(
+                            Arc::clone(&parameter.context),
+                            parameter.repr.x(),
+                        )),
+                        Value::Vector(Vec32(lam_rho.as_slice().to_vec())),
+                        Value::RatVector(ratvec_from_rational_weight(
+                            parameter.repr.gamma(),
+                            span,
+                        )?),
+                    ]))
+                }
                 other => Err(type_error(
                     span,
-                    format!("expected a KGBElt or Block, found {other}"),
+                    format!("expected a KGBElt, Block, Split, KType, or Param, found {other}"),
                 )),
             }
         }
@@ -4835,6 +5650,49 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             [Value::Domain(DomainValue::Split(left)), Value::Domain(DomainValue::Split(right))] => {
                 Ok(Value::Domain(DomainValue::Split(left.add(*right))))
             }
+            // add_K_type_wrapper (atlas-types.w:5668-5679): expand the
+            // K-type to final terms and add them (finals_for); the real
+            // form mismatch check precedes the no-value gate.
+            [Value::Domain(DomainValue::KTypePol(accumulator)), Value::Domain(DomainValue::KType(ktype))] =>
+            {
+                require_same_form(
+                    &accumulator.rf,
+                    &ktype.context,
+                    "Real form mismatch when adding a KType to a KTypePol",
+                    span,
+                )?;
+                let rc = rep_context(&accumulator.rf);
+                let finals = finals_of_final(ktype, &rc, span)?;
+                let mut terms = accumulator.terms.clone();
+                for (coefficient, term) in finals {
+                    merge_pol_term(&mut terms, coefficient, term);
+                }
+                Ok(Value::Domain(DomainValue::KTypePol(KTypePolValue {
+                    rf: Arc::clone(&accumulator.rf),
+                    terms,
+                })))
+            }
+            // add_module_wrapper (atlas-types.w:7786-7795): expand the
+            // final parameter and add it (expand_final).
+            [Value::Domain(DomainValue::ParamPol(accumulator)), Value::Domain(DomainValue::Param(parameter))] =>
+            {
+                require_same_form(
+                    &accumulator.rf,
+                    &parameter.context,
+                    "Real form mismatch when adding a Param to a ParamPol",
+                    span,
+                )?;
+                let rc = rep_context(&accumulator.rf);
+                let expanded = expand_final(parameter, &rc, span)?;
+                let mut terms = accumulator.terms.clone();
+                for (coefficient, term) in expanded {
+                    merge_pol_term(&mut terms, coefficient, term);
+                }
+                Ok(Value::Domain(DomainValue::ParamPol(ParamPolValue {
+                    rf: Arc::clone(&accumulator.rf),
+                    terms,
+                })))
+            }
             _ => Err(Diagnostic::new(
                 ErrorKind::Name,
                 format!("undefined function `{name}`"),
@@ -4849,6 +5707,47 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             }
             [Value::Domain(DomainValue::Split(left)), Value::Domain(DomainValue::Split(right))] => {
                 Ok(Value::Domain(DomainValue::Split(left.sub(*right))))
+            }
+            // subtract_K_type_wrapper (atlas-types.w:5682-5693): add the
+            // final terms with negated coefficients.
+            [Value::Domain(DomainValue::KTypePol(accumulator)), Value::Domain(DomainValue::KType(ktype))] =>
+            {
+                require_same_form(
+                    &accumulator.rf,
+                    &ktype.context,
+                    "Real form mismatch when subtracting a KType from a KTypePol",
+                    span,
+                )?;
+                let rc = rep_context(&accumulator.rf);
+                let finals = finals_of_final(ktype, &rc, span)?;
+                let mut terms = accumulator.terms.clone();
+                for (coefficient, term) in finals {
+                    merge_pol_term(&mut terms, coefficient.neg(), term);
+                }
+                Ok(Value::Domain(DomainValue::KTypePol(KTypePolValue {
+                    rf: Arc::clone(&accumulator.rf),
+                    terms,
+                })))
+            }
+            // subtract_module_wrapper (atlas-types.w:7798-7807).
+            [Value::Domain(DomainValue::ParamPol(accumulator)), Value::Domain(DomainValue::Param(parameter))] =>
+            {
+                require_same_form(
+                    &accumulator.rf,
+                    &parameter.context,
+                    "Real form mismatch when subtracting a Param from a ParamPol",
+                    span,
+                )?;
+                let rc = rep_context(&accumulator.rf);
+                let expanded = expand_final(parameter, &rc, span)?;
+                let mut terms = accumulator.terms.clone();
+                for (coefficient, term) in expanded {
+                    merge_pol_term(&mut terms, coefficient.neg(), term);
+                }
+                Ok(Value::Domain(DomainValue::ParamPol(ParamPolValue {
+                    rf: Arc::clone(&accumulator.rf),
+                    terms,
+                })))
             }
             _ => Err(Diagnostic::new(
                 ErrorKind::Name,
@@ -4873,6 +5772,52 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             }
             [Value::Domain(DomainValue::Split(left)), Value::Domain(DomainValue::Split(right))] => {
                 Ok(Value::Domain(DomainValue::Split(left.mul(*right))))
+            }
+            // int_mult_K_type_pol_wrapper (atlas-types.w:5821-5840) and
+            // int_mult_virtual_module_wrapper (atlas-types.w:7907-7926):
+            // scale every coefficient by the Atlas int (both Split
+            // components, arithmetic.h:187).
+            [Value::Integer(scalar), Value::Domain(DomainValue::KTypePol(pol))] => {
+                let scalar = narrow_split_component(scalar, span)?;
+                let terms = pol
+                    .terms
+                    .iter()
+                    .map(|(coefficient, ktype)| {
+                        (
+                            SplitValue::new(
+                                coefficient.e().wrapping_mul(scalar),
+                                coefficient.f().wrapping_mul(scalar),
+                            ),
+                            ktype.clone(),
+                        )
+                    })
+                    .filter(|(coefficient, _)| !coefficient.is_zero())
+                    .collect();
+                Ok(Value::Domain(DomainValue::KTypePol(KTypePolValue {
+                    rf: Arc::clone(&pol.rf),
+                    terms,
+                })))
+            }
+            [Value::Integer(scalar), Value::Domain(DomainValue::ParamPol(pol))] => {
+                let scalar = narrow_split_component(scalar, span)?;
+                let terms = pol
+                    .terms
+                    .iter()
+                    .map(|(coefficient, repr)| {
+                        (
+                            SplitValue::new(
+                                coefficient.e().wrapping_mul(scalar),
+                                coefficient.f().wrapping_mul(scalar),
+                            ),
+                            repr.clone(),
+                        )
+                    })
+                    .filter(|(coefficient, _)| !coefficient.is_zero())
+                    .collect();
+                Ok(Value::Domain(DomainValue::ParamPol(ParamPolValue {
+                    rf: Arc::clone(&pol.rf),
+                    terms,
+                })))
             }
             _ => Err(Diagnostic::new(
                 ErrorKind::Name,
@@ -4917,6 +5862,15 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             }
             [Value::Domain(DomainValue::Block(block))] => {
                 Ok(Value::Integer(BigInt::from(block.graph.size())))
+            }
+            // K_type_pol_size_wrapper (atlas-types.w:5594-5600) and
+            // virtual_module_size_wrapper (atlas-types.w:7671-7677): the
+            // TERM count.
+            [Value::Domain(DomainValue::KTypePol(pol))] => {
+                Ok(Value::Integer(BigInt::from(pol.terms.len())))
+            }
+            [Value::Domain(DomainValue::ParamPol(pol))] => {
+                Ok(Value::Integer(BigInt::from(pol.terms.len())))
             }
             _ => Err(Diagnostic::new(
                 ErrorKind::Name,
