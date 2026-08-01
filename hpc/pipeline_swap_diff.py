@@ -340,6 +340,11 @@ FIXTURE_PLANS = (
     # or parameter to a polynomial expands to its final terms.
     FixturePlan(name="domain/ktypepol_nonfinal"),
     FixturePlan(name="domain/parampol_nonfinal"),
+    # KTypePol/ParamPol arithmetic: binary sums/differences, Split-scaled
+    # products, the (Split,KType) term-list add, binary =/!=, and
+    # truncate_above_height.
+    FixturePlan(name="domain/ktypepol_arithmetic"),
+    FixturePlan(name="domain/parampol_arithmetic"),
     # Strong-real surface: the base contract plus the probes whose slices
     # have landed — the Cartan numbering adapter (a63dc32) covers the four
     # B2/C2 Cartan enumerations and all four rejected diagnostics, and the

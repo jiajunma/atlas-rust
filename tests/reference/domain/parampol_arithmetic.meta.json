@@ -1,0 +1,21 @@
+{
+  "fixture": "domain/parampol_arithmetic",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3506344",
+  "source_archive_sha256": "ad8bee62a02f47635c374688037b5a0ac434eea4",
+  "fixture_sha256": "8e48f5e151c2a3c702fc93f8eb31fcd38ffe68a2b13ee5b43ca3b1e263c696fe",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "f1afdea3dc05a7337d5237ab4f990e04d56bb42114242fecc77e4cd802b4cdf2",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "d34934829c79378d6da85e825a6544807f699656990cf9222463c1e32b5b70d1",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:6091-6117",
+    "sources/interpreter/atlas-types.w:8542-8570"
+  ],
+  "notes": "ParamPol arithmetic surface (binary sums/differences, Split-scaled products, binary =/!=, truncate_above_height), captured verbatim by HPC job 3506344 against the frozen atlasofliegroups-4d3e9449 oracle."
+}

@@ -3999,14 +3999,14 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::KTypePol),
                 2,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "*",
                 Type::tuple(vec![
                     primitive_type(Prim::Split),
                     primitive_type(Prim::KTypePol),
                 ]),
                 primitive_type(Prim::KTypePol),
-                0,
+                2,
             ),
             domain_builtin_skip(
                 "*",
@@ -4020,14 +4020,14 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::ParamPol),
                 2,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "*",
                 Type::tuple(vec![
                     primitive_type(Prim::Split),
                     primitive_type(Prim::ParamPol),
                 ]),
                 primitive_type(Prim::ParamPol),
-                0,
+                2,
             ),
             domain_builtin_skip(
                 "*",
@@ -5092,10 +5092,40 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 1,
             ),
             domain_builtin_validate(
+                "+",
+                Type::tuple(vec![
+                    primitive_type(Prim::KTypePol),
+                    primitive_type(Prim::KTypePol),
+                ]),
+                primitive_type(Prim::KTypePol),
+                1,
+            ),
+            domain_builtin_validate(
+                "+",
+                Type::tuple(vec![
+                    primitive_type(Prim::KTypePol),
+                    Type::tuple(vec![
+                        primitive_type(Prim::Split),
+                        primitive_type(Prim::KType),
+                    ]),
+                ]),
+                primitive_type(Prim::KTypePol),
+                1,
+            ),
+            domain_builtin_validate(
                 "-",
                 Type::tuple(vec![
                     primitive_type(Prim::KTypePol),
                     primitive_type(Prim::KType),
+                ]),
+                primitive_type(Prim::KTypePol),
+                1,
+            ),
+            domain_builtin_validate(
+                "-",
+                Type::tuple(vec![
+                    primitive_type(Prim::KTypePol),
+                    primitive_type(Prim::KTypePol),
                 ]),
                 primitive_type(Prim::KTypePol),
                 1,
@@ -5117,6 +5147,12 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                     primitive_type(Prim::KType),
                 ]),
                 0,
+            ),
+            domain_builtin_skip(
+                "truncate_above_height",
+                Type::tuple(vec![primitive_type(Prim::KTypePol), int_type()]),
+                primitive_type(Prim::KTypePol),
+                1,
             ),
             // ParamPol surface (atlas-types.w:8542-8570): the
             // fixture-gated subset. add/subtract_module_wrapper check the
@@ -5144,10 +5180,28 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 1,
             ),
             domain_builtin_validate(
+                "+",
+                Type::tuple(vec![
+                    primitive_type(Prim::ParamPol),
+                    primitive_type(Prim::ParamPol),
+                ]),
+                primitive_type(Prim::ParamPol),
+                1,
+            ),
+            domain_builtin_validate(
                 "-",
                 Type::tuple(vec![
                     primitive_type(Prim::ParamPol),
                     primitive_type(Prim::Param),
+                ]),
+                primitive_type(Prim::ParamPol),
+                1,
+            ),
+            domain_builtin_validate(
+                "-",
+                Type::tuple(vec![
+                    primitive_type(Prim::ParamPol),
+                    primitive_type(Prim::ParamPol),
                 ]),
                 primitive_type(Prim::ParamPol),
                 1,
@@ -5160,6 +5214,12 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                     primitive_type(Prim::Param),
                 ]),
                 0,
+            ),
+            domain_builtin_skip(
+                "truncate_above_height",
+                Type::tuple(vec![primitive_type(Prim::ParamPol), int_type()]),
+                primitive_type(Prim::ParamPol),
+                1,
             ),
             domain_relation_builtin("=", pair(primitive_type(Prim::LieType)), Relation::Equal),
             domain_relation_builtin(
@@ -5199,6 +5259,18 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             domain_relation_builtin("!=", pair(primitive_type(Prim::KType)), Relation::NotEqual),
             domain_relation_builtin("=", pair(primitive_type(Prim::Param)), Relation::Equal),
             domain_relation_builtin("!=", pair(primitive_type(Prim::Param)), Relation::NotEqual),
+            domain_relation_builtin("=", pair(primitive_type(Prim::KTypePol)), Relation::Equal),
+            domain_relation_builtin(
+                "!=",
+                pair(primitive_type(Prim::KTypePol)),
+                Relation::NotEqual,
+            ),
+            domain_relation_builtin("=", pair(primitive_type(Prim::ParamPol)), Relation::Equal),
+            domain_relation_builtin(
+                "!=",
+                pair(primitive_type(Prim::ParamPol)),
+                Relation::NotEqual,
+            ),
         ]
     })
 }
@@ -6821,8 +6893,23 @@ mod tests {
                     primitive_type(Prim::KType),
                 ]),
                 Type::tuple(vec![
+                    primitive_type(Prim::KTypePol),
+                    primitive_type(Prim::KTypePol),
+                ]),
+                Type::tuple(vec![
+                    primitive_type(Prim::KTypePol),
+                    Type::tuple(vec![
+                        primitive_type(Prim::Split),
+                        primitive_type(Prim::KType),
+                    ]),
+                ]),
+                Type::tuple(vec![
                     primitive_type(Prim::ParamPol),
                     primitive_type(Prim::Param),
+                ]),
+                Type::tuple(vec![
+                    primitive_type(Prim::ParamPol),
+                    primitive_type(Prim::ParamPol),
                 ]),
             ]
         );
@@ -6830,7 +6917,7 @@ mod tests {
             plus.iter()
                 .map(|&index| builtin_registry()[index].hunger)
                 .collect::<Vec<_>>(),
-            vec![1, 1, 1, 1, 1, 1]
+            vec![1, 1, 1, 1, 1, 1, 1, 1, 1]
         );
     }
 

@@ -1,0 +1,21 @@
+{
+  "fixture": "domain/ktypepol_arithmetic",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3506344",
+  "source_archive_sha256": "ad8bee62a02f47635c374688037b5a0ac434eea4",
+  "fixture_sha256": "ab3bc645b2eb916c4624967ab436cb8cb9f3f6110fe672a78173bfda2d6078bf",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "3441742c3c20360b657d69a4ad797085b304b97d7833f39ad7a8640a91f0babe",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "2fcb67d51f272d0f7c86054e4b6fdf752b5cc465692c0f978ca656701f911376",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:6091-6117",
+    "sources/interpreter/atlas-types.w:8542-8570"
+  ],
+  "notes": "KTypePol arithmetic surface (binary sums/differences, Split-scaled products, the (Split,KType) term-list add, binary =/!=, truncate_above_height), captured verbatim by HPC job 3506344 against the frozen atlasofliegroups-4d3e9449 oracle."
+}

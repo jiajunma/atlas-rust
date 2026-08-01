@@ -246,6 +246,23 @@ impl SplitValue {
     }
 }
 
+/// Whether a Split-scaled product keeps the term whose coefficient is
+/// `term` (split_mult_K_type_pol_wrapper, atlas-types.w:5868-5900): a
+/// zero-divisor scalar (a multiple of 1-s or 1+s) kills the terms whose
+/// evaluation at the annihilated point is zero; any other scalar keeps
+/// every term.
+fn split_keeps(term: &SplitValue, scalar: SplitValue) -> bool {
+    let term_at_one = term.e() + term.f();
+    let term_at_minus_one = term.e() - term.f();
+    if scalar.e() + scalar.f() == 0 {
+        term_at_minus_one != 0
+    } else if scalar.e() - scalar.f() == 0 {
+        term_at_one != 0
+    } else {
+        true
+    }
+}
+
 impl fmt::Display for SplitValue {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         // arithmetic::print_split (io/basic_io.cpp:150-154): the sign
@@ -2228,6 +2245,34 @@ fn sort_parampol_terms(terms: &mut [(SplitValue, StandardRepr)]) {
     });
 }
 
+/// Keep the KTypePol terms whose height is at most `bound`; a negative
+/// bound keeps every term.
+fn truncate_ktypepol(pol: &KTypePolValue, bound: i64) -> Vec<(SplitValue, KType)> {
+    if bound < 0 {
+        pol.terms.clone()
+    } else {
+        pol.terms
+            .iter()
+            .filter(|(_, ktype)| i64::from(ktype.height()) <= bound)
+            .cloned()
+            .collect()
+    }
+}
+
+/// Keep the ParamPol terms whose height is at most `bound`; a negative
+/// bound keeps every term.
+fn truncate_parampol(pol: &ParamPolValue, bound: i64) -> Vec<(SplitValue, StandardRepr)> {
+    if bound < 0 {
+        pol.terms.clone()
+    } else {
+        pol.terms
+            .iter()
+            .filter(|(_, repr)| i64::from(repr.height()) <= bound)
+            .cloned()
+            .collect()
+    }
+}
+
 /// The `is_dual` gate of `Fokko_block_wrapper` (atlas-types.w:4782-4793):
 /// the second form's inner class must be the dual of the first form's. The
 /// crate's structural dual-inner-class equality covers upstream's
@@ -3991,6 +4036,38 @@ pub(crate) fn validate(
                     span,
                 )?;
             }
+            [Value::Domain(DomainValue::KTypePol(accumulator)), Value::Domain(DomainValue::KTypePol(other))] =>
+            {
+                require_same_form(
+                    &accumulator.rf,
+                    &other.rf,
+                    if name == "+" {
+                        "Real form mismatch when adding two K_types"
+                    } else {
+                        "Real form mismatch when subtracting two K_types"
+                    },
+                    span,
+                )?;
+            }
+            [Value::Domain(DomainValue::KTypePol(accumulator)), Value::Tuple(term)]
+                if matches!(
+                    term.as_slice(),
+                    [
+                        Value::Domain(DomainValue::Split(_)),
+                        Value::Domain(DomainValue::KType(_))
+                    ]
+                ) =>
+            {
+                let Value::Domain(DomainValue::KType(ktype)) = &term[1] else {
+                    unreachable!()
+                };
+                require_same_form(
+                    &accumulator.rf,
+                    &ktype.context,
+                    "Real form mismatch when adding a term to a K_type",
+                    span,
+                )?;
+            }
             [Value::Domain(DomainValue::ParamPol(accumulator)), Value::Domain(DomainValue::Param(parameter))] =>
             {
                 require_same_form(
@@ -4000,6 +4077,19 @@ pub(crate) fn validate(
                         "Real form mismatch when adding a Param to a ParamPol"
                     } else {
                         "Real form mismatch when subtracting a Param from a ParamPol"
+                    },
+                    span,
+                )?;
+            }
+            [Value::Domain(DomainValue::ParamPol(accumulator)), Value::Domain(DomainValue::ParamPol(other))] =>
+            {
+                require_same_form(
+                    &accumulator.rf,
+                    &other.rf,
+                    if name == "+" {
+                        "Real form mismatch when adding two modules"
+                    } else {
+                        "Real form mismatch when subtracting two modules"
                     },
                     span,
                 )?;
@@ -5550,6 +5640,36 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 )),
             }
         }
+        // truncate_K_type_poly_above_wrapper /
+        // truncate_param_poly_above_wrapper
+        // (atlas-types.w:5945-5976, 8033-8056): keep the terms whose
+        // height does not exceed the bound; a negative bound keeps
+        // everything (upstream converts it to the maximum level).
+        "truncate_above_height" => {
+            arity(name, arguments, 2, span)?;
+            let bound = i64::try_from(&as_integer(&arguments[1], span)?)
+                .map_err(|_| runtime(span, "Integer value to big for conversion"))?;
+            match &arguments[0] {
+                Value::Domain(DomainValue::KTypePol(pol)) => {
+                    let terms = truncate_ktypepol(pol, bound);
+                    Ok(Value::Domain(DomainValue::KTypePol(KTypePolValue {
+                        rf: Arc::clone(&pol.rf),
+                        terms,
+                    })))
+                }
+                Value::Domain(DomainValue::ParamPol(pol)) => {
+                    let terms = truncate_parampol(pol, bound);
+                    Ok(Value::Domain(DomainValue::ParamPol(ParamPolValue {
+                        rf: Arc::clone(&pol.rf),
+                        terms,
+                    })))
+                }
+                other => Err(type_error(
+                    span,
+                    format!("expected a KTypePol or ParamPol, found {other}"),
+                )),
+            }
+        }
         // decompose_KGB_wrapper (atlas-types.w:4429): the owning real form
         // and the element number, wrapped as a pair. decompose_block_wrapper
         // (atlas-types.w:4809-4818) unwraps the block's two forms instead,
@@ -5713,6 +5833,61 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                     terms,
                 })))
             }
+            // add_K_type_pols_wrapper (atlas-types.w:5780-5791): merge the
+            // two polynomials term by term.
+            [Value::Domain(DomainValue::KTypePol(accumulator)), Value::Domain(DomainValue::KTypePol(addend))] =>
+            {
+                require_same_form(
+                    &accumulator.rf,
+                    &addend.rf,
+                    "Real form mismatch when adding two K_types",
+                    span,
+                )?;
+                let mut terms = accumulator.terms.clone();
+                for (coefficient, term) in &addend.terms {
+                    merge_pol_term(&mut terms, *coefficient, term.clone());
+                }
+                sort_ktypepol_terms(&mut terms);
+                Ok(Value::Domain(DomainValue::KTypePol(KTypePolValue {
+                    rf: Arc::clone(&accumulator.rf),
+                    terms,
+                })))
+            }
+            // add_K_type_term_wrapper (atlas-types.w:5701-5722): a term
+            // with an explicit Split coefficient.
+            [Value::Domain(DomainValue::KTypePol(accumulator)), Value::Tuple(term)]
+                if matches!(
+                    term.as_slice(),
+                    [
+                        Value::Domain(DomainValue::Split(_)),
+                        Value::Domain(DomainValue::KType(_))
+                    ]
+                ) =>
+            {
+                let Value::Domain(DomainValue::Split(coefficient)) = &term[0] else {
+                    unreachable!()
+                };
+                let Value::Domain(DomainValue::KType(ktype)) = &term[1] else {
+                    unreachable!()
+                };
+                require_same_form(
+                    &accumulator.rf,
+                    &ktype.context,
+                    "Real form mismatch when adding a term to a K_type",
+                    span,
+                )?;
+                let rc = rep_context(&accumulator.rf);
+                let finals = finals_of_final(ktype, &rc, span)?;
+                let mut terms = accumulator.terms.clone();
+                for (final_coefficient, final_term) in finals {
+                    merge_pol_term(&mut terms, final_coefficient.mul(*coefficient), final_term);
+                }
+                sort_ktypepol_terms(&mut terms);
+                Ok(Value::Domain(DomainValue::KTypePol(KTypePolValue {
+                    rf: Arc::clone(&accumulator.rf),
+                    terms,
+                })))
+            }
             // add_module_wrapper (atlas-types.w:7786-7795): expand the
             // final parameter and add it (expand_final).
             [Value::Domain(DomainValue::ParamPol(accumulator)), Value::Domain(DomainValue::Param(parameter))] =>
@@ -5728,6 +5903,25 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 let mut terms = accumulator.terms.clone();
                 for (coefficient, term) in expanded {
                     merge_pol_term(&mut terms, coefficient, term);
+                }
+                sort_parampol_terms(&mut terms);
+                Ok(Value::Domain(DomainValue::ParamPol(ParamPolValue {
+                    rf: Arc::clone(&accumulator.rf),
+                    terms,
+                })))
+            }
+            // add_virtual_modules_wrapper (atlas-types.w:7866-7877).
+            [Value::Domain(DomainValue::ParamPol(accumulator)), Value::Domain(DomainValue::ParamPol(addend))] =>
+            {
+                require_same_form(
+                    &accumulator.rf,
+                    &addend.rf,
+                    "Real form mismatch when adding two modules",
+                    span,
+                )?;
+                let mut terms = accumulator.terms.clone();
+                for (coefficient, term) in &addend.terms {
+                    merge_pol_term(&mut terms, *coefficient, term.clone());
                 }
                 sort_parampol_terms(&mut terms);
                 Ok(Value::Domain(DomainValue::ParamPol(ParamPolValue {
@@ -5772,6 +5966,25 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                     terms,
                 })))
             }
+            // subtract_K_type_pols_wrapper (atlas-types.w:5794-5805).
+            [Value::Domain(DomainValue::KTypePol(accumulator)), Value::Domain(DomainValue::KTypePol(subtrahend))] =>
+            {
+                require_same_form(
+                    &accumulator.rf,
+                    &subtrahend.rf,
+                    "Real form mismatch when subtracting two K_types",
+                    span,
+                )?;
+                let mut terms = accumulator.terms.clone();
+                for (coefficient, term) in &subtrahend.terms {
+                    merge_pol_term(&mut terms, coefficient.neg(), term.clone());
+                }
+                sort_ktypepol_terms(&mut terms);
+                Ok(Value::Domain(DomainValue::KTypePol(KTypePolValue {
+                    rf: Arc::clone(&accumulator.rf),
+                    terms,
+                })))
+            }
             // subtract_module_wrapper (atlas-types.w:7798-7807).
             [Value::Domain(DomainValue::ParamPol(accumulator)), Value::Domain(DomainValue::Param(parameter))] =>
             {
@@ -5786,6 +5999,25 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 let mut terms = accumulator.terms.clone();
                 for (coefficient, term) in expanded {
                     merge_pol_term(&mut terms, coefficient.neg(), term);
+                }
+                sort_parampol_terms(&mut terms);
+                Ok(Value::Domain(DomainValue::ParamPol(ParamPolValue {
+                    rf: Arc::clone(&accumulator.rf),
+                    terms,
+                })))
+            }
+            // subtract_virtual_modules_wrapper (atlas-types.w:7880-7891).
+            [Value::Domain(DomainValue::ParamPol(accumulator)), Value::Domain(DomainValue::ParamPol(subtrahend))] =>
+            {
+                require_same_form(
+                    &accumulator.rf,
+                    &subtrahend.rf,
+                    "Real form mismatch when subtracting two modules",
+                    span,
+                )?;
+                let mut terms = accumulator.terms.clone();
+                for (coefficient, term) in &subtrahend.terms {
+                    merge_pol_term(&mut terms, coefficient.neg(), term.clone());
                 }
                 sort_parampol_terms(&mut terms);
                 Ok(Value::Domain(DomainValue::ParamPol(ParamPolValue {
@@ -5857,6 +6089,36 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                         )
                     })
                     .filter(|(coefficient, _)| !coefficient.is_zero())
+                    .collect();
+                Ok(Value::Domain(DomainValue::ParamPol(ParamPolValue {
+                    rf: Arc::clone(&pol.rf),
+                    terms,
+                })))
+            }
+            // split_mult_K_type_pol_wrapper (atlas-types.w:5863-5907) and
+            // split_mult_virtual_module_wrapper (atlas-types.w:7949-7994):
+            // scale every coefficient by the Split, dropping the terms a
+            // zero-divisor factor (a multiple of 1-s or 1+s) kills.
+            [Value::Domain(DomainValue::Split(scalar)), Value::Domain(DomainValue::KTypePol(pol))] =>
+            {
+                let terms = pol
+                    .terms
+                    .iter()
+                    .filter(|(coefficient, _)| split_keeps(coefficient, *scalar))
+                    .map(|(coefficient, ktype)| (coefficient.mul(*scalar), ktype.clone()))
+                    .collect();
+                Ok(Value::Domain(DomainValue::KTypePol(KTypePolValue {
+                    rf: Arc::clone(&pol.rf),
+                    terms,
+                })))
+            }
+            [Value::Domain(DomainValue::Split(scalar)), Value::Domain(DomainValue::ParamPol(pol))] =>
+            {
+                let terms = pol
+                    .terms
+                    .iter()
+                    .filter(|(coefficient, _)| split_keeps(coefficient, *scalar))
+                    .map(|(coefficient, repr)| (coefficient.mul(*scalar), repr.clone()))
                     .collect();
                 Ok(Value::Domain(DomainValue::ParamPol(ParamPolValue {
                     rf: Arc::clone(&pol.rf),
