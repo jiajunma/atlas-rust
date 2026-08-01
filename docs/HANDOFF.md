@@ -572,7 +572,7 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: `c0f26b4` (main). Working tree clean. The language gate
+HEAD at handoff: `8d9837d` (main). Working tree clean. The language gate
 is complete: **166 of 166 frozen fixtures carry `verified_hpc`** — the
 last contract, `domain/deform`, passed the HPC differential `3506798`
 (165 PASS + the one known PARTIAL `container_syntax_errors`, zero FAIL)
@@ -583,6 +583,31 @@ frozen contract from the 2026-07-31 checkpoint plus the deform-family
 slices (KGP_sum, K_type_formula, branch, ParamPol/Param operations,
 Param predicates/transforms, deform), L3/L4 (set verbose + string
 recovery), and the ktype/param language surface are landed.
+
+Since the gate closed, the remaining-builtin port has made three
+HPC-verified batches (48 remaining names → 44):
+
+- `4857d2a` Batch 1: `simple_roots`, `simple_coroots`, `is_Cartan_matrix`,
+  `dual_datum(InnerClass)` — fixture `domain/simple_roots`.
+- `0894ccf` Batch 2: `print_KGB_order`, `print_KGB_graph` —
+  `KgbGraph::bruhat_hasse` (kgb.cpp:848-893) + `n_bruhat_comparable`
+  (poset.cpp:197-229) — fixture `domain/kgb_bruhat`.
+- `843e24a` Batch 3 (partial): `root_coradical`, `coroot_radical` —
+  `BasedRootDatum::coradical_basis/radical_basis` via
+  `integer_lattice::saturated_kernel` — fixture `domain/radical`.
+- `076a01b`/`8d9837d`: HPC reference capture (job 3506835) and the
+  swap-diff differential (job 3506839: 168 fixtures, runnable PASS,
+  0 FAIL, 2 known pending). All three new metas are `verified_hpc`.
+
+The 44 remaining names are tracked in `docs/REMAINING_BUILTINS.md`
+(batches 3 remainder → 8): ladder bottoms (need the full root-system
+permutations, rootdata.cpp:243-313, not stored by the atlas-core
+RootTable), the block/KL/print family, W-cells, extended blocks, the
+twisted deform variants, and Cartan_info (whose first triple is
+`classify_involution`, already ported). Each batch follows the per-slice
+loop below: probe the local oracle at `/Users/hoxide/mycodes/atlasofliegroups/atlas`,
+freeze a fixture, local gate, HPC reference capture, swap diff, meta
+upgrade.
 
 The remaining porting work is no longer gated on language contracts:
 the twisted deform variants (`twisted_deform`, `block_deform`,
