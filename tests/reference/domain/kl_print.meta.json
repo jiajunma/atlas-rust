@@ -13,5 +13,12 @@
     "sources/utilities/polynomials_def.h:300-331"
   ],
   "notes": "Batch 4 (KL printers): print_KL_basis (full KLV table with the Bruhat-comparable count), print_prim_KL (primitive-pair restriction via prim_back_up) and print_KL_list (distinct polynomials). Block bruhat_hasse (blocks.cpp complete_Hasse_diagram) added to BlockGraph. Reference status pending HPC capture.",
-  "oracle_exit_status": 0
+  "oracle_exit_status": 0,
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3506888",
+  "source_archive_sha256": "5c82cd36360eaac6bb03ba7d09bd2c2e6f298b535e1c6adf6c057d647011dd94",
+  "fixture_sha256": "e4e4c4bc9461e9ed5efdef2428c247776ae39fea04a956fdf60adbb94fa0a9da",
+  "oracle_stdout_sha256": "8c3e0c43db97c5d579fc05feba3da5830a5b05cf6a98fc63538d1d1ec120e6f6",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "8c3e0c43db97c5d579fc05feba3da5830a5b05cf6a98fc63538d1d1ec120e6f6"
 }

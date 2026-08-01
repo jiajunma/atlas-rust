@@ -12,5 +12,12 @@
     "sources/structure/topology.cpp:165-192"
   ],
   "notes": "Batch 3 (remainder): components_rank (dual component-group rank via the most-split Cartan kernel) and strong_components (Tarjan's algorithm with the induced quotient graph). Reference status pending HPC capture.",
-  "oracle_exit_status": 0
+  "oracle_exit_status": 0,
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3506888",
+  "source_archive_sha256": "5c82cd36360eaac6bb03ba7d09bd2c2e6f298b535e1c6adf6c057d647011dd94",
+  "fixture_sha256": "8d820d6ee19eccdd31d761a93c75c9c0f593b3cb21df08b371a803a522e1f2f6",
+  "oracle_stdout_sha256": "0259a9002cd0be115a5272dd85f2daaa95807a19060c00013b4b4ed161552485",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "0259a9002cd0be115a5272dd85f2daaa95807a19060c00013b4b4ed161552485"
 }

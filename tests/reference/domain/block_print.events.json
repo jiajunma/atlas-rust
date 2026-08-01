@@ -1,7 +1,7 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "domain/block_print",
-  "status": "local_oracle_reference",
+  "status": "verified_hpc_reference",
   "events": [
     {
       "kind": "ReportLine",

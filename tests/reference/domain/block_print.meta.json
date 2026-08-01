@@ -12,5 +12,12 @@
     "sources/io/prettyprint.cpp:219-232"
   ],
   "oracle_exit_status": 0,
-  "notes": "Batch 4 (block printers): print_block (Weyl word rows), print_blockd (twisted reduced expression) and print_blocku (unitary elements only, filtered descent sets). Reference status pending HPC capture."
+  "notes": "Batch 4 (block printers): print_block (Weyl word rows), print_blockd (twisted reduced expression) and print_blocku (unitary elements only, filtered descent sets). Reference status pending HPC capture.",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3506888",
+  "source_archive_sha256": "5c82cd36360eaac6bb03ba7d09bd2c2e6f298b535e1c6adf6c057d647011dd94",
+  "fixture_sha256": "d3f2e5c7ba0b1ac7150bc29c9533f20ce5438bd29918e96293d762a5d178a4a4",
+  "oracle_stdout_sha256": "0fc6a046e1ef69b7e4c08807c781928dea84224001e9628b5a73f005d97dfffe",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "0fc6a046e1ef69b7e4c08807c781928dea84224001e9628b5a73f005d97dfffe"
 }
