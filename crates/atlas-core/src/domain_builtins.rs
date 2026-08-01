@@ -4036,6 +4036,23 @@ pub(crate) fn validate(
                 ));
             }
         }
+        // K_type_formula_wrapper's semifinal precondition precedes its
+        // no-value gate (atlas-types.w:6035-6039).
+        "K_type_formula" => {
+            arity(name, arguments, 2, span)?;
+            let ktype = as_ktype(&arguments[0], span)?;
+            let rc = rep_context(&ktype.context);
+            if !ktype
+                .ktype
+                .is_semifinal(&rc)
+                .map_err(|error| structure_diagnostic(error, span))?
+            {
+                return Err(runtime(
+                    span,
+                    "K-type has parity real roots (so not semifinal)",
+                ));
+            }
+        }
         // add/subtract_K_type_wrapper and add/subtract_module_wrapper's
         // real-form identity checks precede their no-value gates
         // (atlas-types.w:5670-5673, 5684-5687, 7788-7791, 7800-7803).
@@ -5700,6 +5717,43 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 })
                 .collect();
             Ok(Value::List(row))
+        }
+        // K_type_formula_wrapper (atlas-types.w:6030-6054): the K-type
+        // formula with a height cutoff; a negative bound means unbounded.
+        "K_type_formula" => {
+            arity(name, arguments, 2, span)?;
+            let ktype = as_ktype(&arguments[0], span)?;
+            let bound = i64::try_from(&as_integer(&arguments[1], span)?)
+                .map_err(|_| runtime(span, "Integer value to big for conversion"))?;
+            let rc = rep_context(&ktype.context);
+            if !ktype
+                .ktype
+                .is_semifinal(&rc)
+                .map_err(|error| structure_diagnostic(error, span))?
+            {
+                return Err(runtime(
+                    span,
+                    "K-type has parity real roots (so not semifinal)",
+                ));
+            }
+            let max_level = if bound < 0 {
+                u32::MAX
+            } else {
+                u32::try_from(bound)
+                    .map_err(|_| runtime(span, "Integer value to big for conversion"))?
+            };
+            let formula = rc
+                .k_type_formula(&ktype.ktype, max_level)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let mut terms: Vec<(SplitValue, KType)> = formula
+                .into_iter()
+                .map(|(term, coefficient)| (SplitValue::new(coefficient, 0), term))
+                .collect();
+            sort_ktypepol_terms(&mut terms);
+            Ok(Value::Domain(DomainValue::KTypePol(KTypePolValue {
+                rf: Arc::clone(&ktype.context),
+                terms,
+            })))
         }
         // truncate_K_type_poly_above_wrapper /
         // truncate_param_poly_above_wrapper

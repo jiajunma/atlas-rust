@@ -336,6 +336,62 @@ impl RationalWeight {
         }
         Ok(coordinates)
     }
+
+    /// Scalar multiplication by the rational `numerator/denominator`,
+    /// normalized (the RatWeight scalar products of K_repr.cpp
+    /// height_bound/monomial arithmetic).
+    pub(crate) fn scale(&self, numerator: i64, denominator: i64) -> Result<Self, StructureError> {
+        if denominator <= 0 {
+            return Err(StructureError::RepInvariantViolation {
+                invariant: "rational weight scale denominator",
+            });
+        }
+        let mut scaled = Vec::new();
+        scaled
+            .try_reserve_exact(self.rank())
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: self.rank(),
+            })?;
+        for &entry in &self.numerator {
+            scaled.push(
+                entry
+                    .checked_mul(numerator)
+                    .ok_or(StructureError::ArithmeticOverflow)?,
+            );
+        }
+        Self::new(
+            scaled,
+            self.denominator
+                .checked_mul(denominator)
+                .ok_or(StructureError::ArithmeticOverflow)?,
+        )
+    }
+
+    /// `<lambda, coroot>` as the reduced rational `(numerator,
+    /// denominator)` (the `dot_Q` of a rational weight with a coroot,
+    /// ratvec.h:167-175).
+    pub(crate) fn dot_coroot(&self, coroot: &Coweight) -> Result<(i64, i64), StructureError> {
+        if self.rank() != coroot.rank() {
+            return Err(StructureError::RankMismatch {
+                expected: coroot.rank(),
+                actual: self.rank(),
+            });
+        }
+        let mut numerator = 0_i64;
+        for (&entry, &coordinate) in self.numerator.iter().zip(coroot.as_slice()) {
+            numerator = numerator
+                .checked_add(
+                    entry
+                        .checked_mul(i64::from(coordinate))
+                        .ok_or(StructureError::ArithmeticOverflow)?,
+                )
+                .ok_or(StructureError::ArithmeticOverflow)?;
+        }
+        let mut divisor = self.denominator.unsigned_abs();
+        divisor = gcd_u64(numerator.unsigned_abs(), divisor);
+        let divisor = i64::try_from(divisor).map_err(|_| StructureError::ArithmeticOverflow)?;
+        Ok((numerator / divisor, self.denominator / divisor))
+    }
 }
 
 fn gcd_u64(mut left: u64, mut right: u64) -> u64 {

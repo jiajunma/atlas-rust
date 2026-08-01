@@ -5163,6 +5163,14 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 Type::row(Type::tuple(vec![int_type(), primitive_type(Prim::KType)])),
                 0,
             ),
+            // K_type_formula_wrapper (atlas-types.w:6121-6122): the K-type
+            // formula with a height cutoff; semifinal precondition first.
+            domain_builtin_validate(
+                "K_type_formula",
+                Type::tuple(vec![primitive_type(Prim::KType), int_type()]),
+                primitive_type(Prim::KTypePol),
+                0,
+            ),
             // ParamPol surface (atlas-types.w:8542-8570): the
             // fixture-gated subset. add/subtract_module_wrapper check the
             // real form identity before their no-value gates.

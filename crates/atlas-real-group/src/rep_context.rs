@@ -45,6 +45,28 @@ fn pair_i64(weight: &[i64], coweight: &Coweight) -> Result<i64, StructureError> 
     Ok(result)
 }
 
+/// Insert or merge one (KType, integer multiplicity) term; a zero
+/// coefficient removes the term (the `K_type_pol::add_term` semantics of
+/// the K_type_formula accumulation).
+fn merge_ktype_terms(terms: &mut Vec<(KType, i32)>, term: KType, coefficient: i32) {
+    if coefficient == 0 {
+        return;
+    }
+    if let Some(index) = terms.iter().position(|(existing, _)| *existing == term) {
+        let updated = terms[index]
+            .1
+            .checked_add(coefficient)
+            .expect("K-type formula coefficients stay in range");
+        if updated == 0 {
+            terms.remove(index);
+        } else {
+            terms[index].1 = updated;
+        }
+    } else {
+        terms.push((term, coefficient));
+    }
+}
+
 /// A standard-module parameter: upstream `repr::StandardRepr`
 /// (gkmod/repr.h:76-110).
 ///
@@ -1055,6 +1077,323 @@ impl<'a> RepContext<'a> {
         z: &StandardRepr,
     ) -> Result<Vec<(StandardRepr, i32)>, StructureError> {
         self.finals_for_standard(z)
+    }
+
+    /// `status(kgb, x, alpha)` for an arbitrary (positive) root
+    /// (kgb.cpp:819-830): conjugate the root to a simple one by
+    /// reflecting along its descents, crossing the KGB element in
+    /// parallel, and return the simple status.
+    pub(crate) fn root_status_at(
+        &self,
+        x: KgbId,
+        root: RootId,
+    ) -> Result<KgbStatus, StructureError> {
+        let datum = self.inner_class().datum();
+        let system = self.inner_class().root_system();
+        let mut x = x;
+        let mut alpha = system
+            .root(root)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: root.0,
+                upper_bound: system.roots().len(),
+            })?
+            .clone();
+        debug_assert_eq!(
+            system.is_positive(root),
+            Some(true),
+            "positive root expected"
+        );
+        let simple_roots = datum.simple_roots();
+        let simple_coroots = datum.simple_coroots();
+        let simple_ids = system.simple_root_ids();
+        loop {
+            // find_descent: the first simple generator whose coroot
+            // pairing is positive.
+            let mut descent = None;
+            for (generator, &simple) in simple_ids.iter().enumerate() {
+                if pair(&alpha, &simple_coroots[generator])? > 0 {
+                    descent = Some(generator);
+                    let _ = simple;
+                    break;
+                }
+            }
+            let Some(generator) = descent else {
+                return Err(StructureError::RepInvariantViolation {
+                    invariant: "positive root descent",
+                });
+            };
+            if alpha == simple_roots[generator] {
+                return self.kgb_status(x, generator);
+            }
+            let pairing = pair(&alpha, &simple_coroots[generator])?;
+            let mut reflected = Vec::new();
+            reflected.try_reserve_exact(alpha.rank()).map_err(|_| {
+                StructureError::AllocationFailed {
+                    requested: alpha.rank(),
+                }
+            })?;
+            for (&entry, &root_entry) in alpha
+                .as_slice()
+                .iter()
+                .zip(simple_roots[generator].as_slice())
+            {
+                reflected.push(
+                    entry
+                        .checked_sub(
+                            pairing
+                                .checked_mul(root_entry)
+                                .ok_or(StructureError::ArithmeticOverflow)?,
+                        )
+                        .ok_or(StructureError::ArithmeticOverflow)?,
+                );
+            }
+            alpha = Weight::new(reflected);
+            x = self.cross_at(x, generator)?;
+        }
+    }
+
+    /// `Rep_context::height_bound` (K_repr.cpp:511-545): `ceil(height)` of
+    /// the orthogonal projection of a rational weight onto the dominant
+    /// cone, computed by the incremental projector construction of the
+    /// upstream (each projector is the simple root orthogonalized against
+    /// the previous ones, scaled to unit coroot pairing).
+    pub fn height_bound(&self, lambda: &RationalWeight) -> Result<u32, StructureError> {
+        let datum = self.inner_class().datum();
+        struct Projector {
+            generator: usize,
+            vector: RationalWeight,
+        }
+        let mut projectors: Vec<Projector> = Vec::new();
+        let mut selected = vec![false; datum.semisimple_rank()];
+        let mut lambda = lambda.clone();
+        loop {
+            let mut reflected = false;
+            for (generator, &chosen) in selected.iter().enumerate() {
+                if chosen {
+                    continue;
+                }
+                let (dot_numerator, _) = lambda.dot_coroot(&datum.simple_coroots()[generator])?;
+                if dot_numerator < 0 {
+                    // alpha = simpleRoot(s)/1, orthogonalized against the
+                    // previous projectors, then scaled to unit coroot
+                    // pairing.
+                    let mut alpha = RationalWeight::from_weight(&datum.simple_roots()[generator])?;
+                    for projector in &projectors {
+                        let (num, den) =
+                            alpha.dot_coroot(&datum.simple_coroots()[projector.generator])?;
+                        alpha = alpha.sub(&projector.vector.scale(num, den)?)?;
+                    }
+                    let (num, den) = alpha.dot_coroot(&datum.simple_coroots()[generator])?;
+                    alpha = alpha.scale(den, num)?.normalized()?;
+                    // lambda -= alpha * <lambda, alpha_s^v>
+                    let (num, den) = lambda.dot_coroot(&datum.simple_coroots()[generator])?;
+                    lambda = lambda.sub(&alpha.scale(num, den)?)?;
+                    projectors.push(Projector {
+                        generator,
+                        vector: alpha,
+                    });
+                    selected[generator] = true;
+                    reflected = true;
+                    break;
+                }
+            }
+            if !reflected {
+                break;
+            }
+        }
+        // ceil(<lambda, 2rho^v>): the projection is dominant, so the
+        // pairing is nonnegative (K_repr.cpp:543-545).
+        let denominator = lambda.denominator();
+        let mut sum = 0_i64;
+        for (&entry, &coordinate) in lambda.numerator().iter().zip(self.dual_two_rho.as_slice()) {
+            sum = sum
+                .checked_add(
+                    entry
+                        .checked_mul(i64::from(coordinate))
+                        .ok_or(StructureError::ArithmeticOverflow)?,
+                )
+                .ok_or(StructureError::ArithmeticOverflow)?;
+        }
+        let ceiling = sum
+            .checked_add(denominator - 1)
+            .ok_or(StructureError::ArithmeticOverflow)?
+            / denominator;
+        u32::try_from(ceiling).map_err(|_| StructureError::ArithmeticOverflow)
+    }
+
+    /// `monomial_product` of one term by the root `shift`
+    /// (K_repr.cpp:466-485): shift lambda-rho, re-elect the coset
+    /// representative, and recompute the height.
+    pub fn monomial_shift(&self, ktype: &KType, shift: &Weight) -> Result<KType, StructureError> {
+        let mut new_exp = checked_add_weights(ktype.lambda_rho(), shift)?;
+        let involution = self.involution_of(ktype.x())?;
+        new_exp = self.lambda_unique(involution, &new_exp)?;
+        let theta = self.theta_at(ktype.x())?;
+        let th1 = checked_add_weights(
+            &checked_add_weights(&new_exp, &theta.act_on_weight(&new_exp)?)?,
+            &self.theta_plus_one_rho_at(ktype.x())?,
+        )?;
+        let height = self.height(&th1)?;
+        Ok(KType::new(ktype.x(), new_exp, height))
+    }
+
+    /// `Rep_context::K_type_formula` (K_repr.cpp:549-591): the K-type
+    /// formula of a semifinal K-type with the given height cutoff — the
+    /// KGP set expanded by the nilpotent (1-X^alpha) factors of the
+    /// parabolic, pruned by `height_bound` and re-expanded to final
+    /// K-types. The returned list is unordered with integer
+    /// multiplicities (the language layer merges like terms in the pol
+    /// order).
+    pub fn k_type_formula(
+        &self,
+        t: &KType,
+        max_level: u32,
+    ) -> Result<Vec<(KType, i32)>, StructureError> {
+        let system = self.inner_class().root_system();
+        let terms = t.kgp_set(self)?;
+        let theta_stable = &terms[0];
+        let max_length =
+            self.graph()
+                .length(theta_stable.x())
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: theta_stable.x().index(),
+                    upper_bound: self.graph().size(),
+                })?;
+        // The nilpotent positive roots of the parabolic at the
+        // theta-stable element: all positive roots that are not real.
+        let theta_involution = self.involution_of(theta_stable.x())?;
+        let theta_root_data = self
+            .table()
+            .record(theta_involution)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: theta_involution.0,
+                upper_bound: self.table().involution_count(),
+            })?
+            .twisted_involution()
+            .root_involution();
+        let mut radical_posroots = Vec::new();
+        for (id, _, _) in system.entries() {
+            if system
+                .is_positive(id)
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: id.0,
+                    upper_bound: system.roots().len(),
+                })?
+                && theta_root_data.kind(id) != Some(RootKind::Real)
+            {
+                radical_posroots.push(id);
+            }
+        }
+
+        let mut result: Vec<(KType, i32)> = Vec::new();
+        for term in &terms {
+            let x = term.x();
+            let lr = term.lambda_rho();
+            let theta = self.theta_at(x)?;
+            let lambda_0 = RationalWeight::new(
+                checked_add_weights(
+                    &checked_add_weights(lr, &theta.act_on_weight(lr)?)?,
+                    &self.theta_plus_one_rho_at(x)?,
+                )?
+                .as_slice()
+                .iter()
+                .map(|&entry| i64::from(entry))
+                .collect(),
+                2,
+            )?
+            .normalized()?;
+            if self.height_bound(&lambda_0)? > max_level {
+                continue;
+            }
+            let involution = self.involution_of(x)?;
+            let root_data = self
+                .table()
+                .record(involution)
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: involution.0,
+                    upper_bound: self.table().involution_count(),
+                })?
+                .twisted_involution()
+                .root_involution();
+            let mut sum_set = Vec::new();
+            for &root in &radical_posroots {
+                match root_data.kind(root) {
+                    Some(RootKind::Complex) => {
+                        if let Some(image) = root_data.image(root) {
+                            // First complex of a swapped pair
+                            // (K_repr.cpp:557-558).
+                            if image.0 > root.0 {
+                                sum_set.push(root);
+                            }
+                        }
+                    }
+                    Some(RootKind::Imaginary)
+                        if self.root_status_at(x, root)? == KgbStatus::ImaginaryNoncompact =>
+                    {
+                        sum_set.push(root);
+                    }
+                    _ => {}
+                }
+            }
+            let term_length = self
+                .graph()
+                .length(x)
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: x.index(),
+                    upper_bound: self.graph().size(),
+                })?;
+            let sign = if (max_length as i64 - term_length as i64) % 2 == 0 {
+                1
+            } else {
+                -1
+            };
+            let mut product: Vec<(KType, i32)> = vec![(term.clone(), sign)];
+            for &root in &sum_set {
+                let root_weight = system.root(root).ok_or(StructureError::IndexOutOfRange {
+                    index: root.0,
+                    upper_bound: system.roots().len(),
+                })?;
+                let mut shifted_terms: Vec<(KType, i32)> = Vec::new();
+                for (ktype, coefficient) in &product {
+                    let shifted = self.monomial_shift(ktype, root_weight)?;
+                    let shifted_theta = self.theta_at(shifted.x())?;
+                    let shifted_lambda_0 = RationalWeight::new(
+                        checked_add_weights(
+                            &checked_add_weights(
+                                shifted.lambda_rho(),
+                                &shifted_theta.act_on_weight(shifted.lambda_rho())?,
+                            )?,
+                            &self.theta_plus_one_rho_at(shifted.x())?,
+                        )?
+                        .as_slice()
+                        .iter()
+                        .map(|&entry| i64::from(entry))
+                        .collect(),
+                        2,
+                    )?
+                    .normalized()?;
+                    if self.height_bound(&shifted_lambda_0)? <= max_level {
+                        merge_ktype_terms(&mut shifted_terms, shifted, *coefficient);
+                    }
+                }
+                for (ktype, coefficient) in shifted_terms {
+                    // Multiply the product by (1 - X^alpha).
+                    merge_ktype_terms(&mut product, ktype, -coefficient);
+                }
+            }
+            for (ktype, coefficient) in product {
+                let finals = ktype.finals_for(self)?;
+                for (final_ktype, multiplicity) in finals {
+                    if final_ktype.height() <= max_level {
+                        let combined = coefficient
+                            .checked_mul(multiplicity)
+                            .ok_or(StructureError::ArithmeticOverflow)?;
+                        merge_ktype_terms(&mut result, final_ktype, combined);
+                    }
+                }
+            }
+        }
+        Ok(result)
     }
 
     /// `Rep_context::theta` (repr.cpp:179-180): the involution of `z`'s
