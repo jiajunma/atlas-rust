@@ -218,6 +218,10 @@ FIXTURE_PLANS = (
     # negation, long/short flags, rank, and the illegal-index rejection.
     FixturePlan(name="domain/root_coroot"),
     FixturePlan(name="domain/root_coroot_rejected"),
+    # Batch 1 of the remaining-builtin ledger (docs/REMAINING_BUILTINS.md):
+    # simple_roots/simple_coroots matrices, the is_Cartan_matrix predicate,
+    # and dual_datum(InnerClass).
+    FixturePlan(name="domain/simple_roots"),
     # KGB headline observables: per-form KGB sizes and root statuses across
     # the A1/C2/A2 families, plus the inexistent-element and type rejections.
     FixturePlan(name="domain/kgb_generation"),

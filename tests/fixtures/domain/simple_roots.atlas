@@ -1,0 +1,9 @@
+ra : RootDatum
+ra := simply_connected(Lie_type("A2"),true)
+simple_roots(ra)
+simple_coroots(ra)
+is_Cartan_matrix([[2,-1],[-1,2]])
+is_Cartan_matrix([[1,0],[0,1]])
+ic : InnerClass
+ic := inner_class(ra,[[1,0],[0,1]])
+dual_datum(ic)

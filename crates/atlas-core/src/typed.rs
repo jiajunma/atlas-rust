@@ -4454,6 +4454,36 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::Mat),
                 0,
             ),
+            // simple_roots/simple_coroots (atlas-types.w:1638-1658):
+            // one row per simple (co)root; the no-value gate precedes the
+            // matrix build, so skip.
+            domain_builtin_skip(
+                "simple_roots",
+                primitive_type(Prim::RootDatum),
+                primitive_type(Prim::Mat),
+                0,
+            ),
+            domain_builtin_skip(
+                "simple_coroots",
+                primitive_type(Prim::RootDatum),
+                primitive_type(Prim::Mat),
+                0,
+            ),
+            // is_Cartan_matrix (atlas-types.w:368-375, 433): a Cartan
+            // matrix iff its Dynkin classification succeeds.
+            domain_builtin_skip(
+                "is_Cartan_matrix",
+                primitive_type(Prim::Mat),
+                bool_type(),
+                0,
+            ),
+            // dual_datum_of_inner_class_wrapper (atlas-types.w:3412-3413).
+            domain_builtin_skip(
+                "dual_datum",
+                primitive_type(Prim::InnerClass),
+                primitive_type(Prim::RootDatum),
+                0,
+            ),
             // dual_datum_wrapper (atlas-types.w:1713-1717): the no-value
             // gate precedes the dual build, so skip.
             domain_builtin_skip(

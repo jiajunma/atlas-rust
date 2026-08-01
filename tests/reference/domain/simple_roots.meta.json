@@ -1,0 +1,15 @@
+{
+  "fixture": "domain/simple_roots",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "local_oracle_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "oracle_exit_status": 0,
+  "rust_status": "implemented_local",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:1638-1658",
+    "sources/interpreter/atlas-types.w:368-375",
+    "sources/interpreter/atlas-types.w:3247-3251"
+  ],
+  "notes": "Batch 1 of the remaining-builtin ledger (docs/REMAINING_BUILTINS.md): simple_roots, simple_coroots, is_Cartan_matrix, dual_datum(InnerClass)."
+}

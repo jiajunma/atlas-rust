@@ -1967,6 +1967,17 @@ fn matrix_value(rows: &[Vec<i32>], span: SourceSpan) -> Result<Value, Diagnostic
         .ok_or_else(|| runtime(span, "matrix dimensions exceed machine range"))
 }
 
+/// The row-major view of a column-major `Matrix`.
+fn matrix_rows(matrix: &Matrix) -> Vec<Vec<i32>> {
+    (0..matrix.rows())
+        .map(|row| {
+            (0..matrix.cols())
+                .filter_map(|col| matrix.entry(row, col))
+                .collect()
+        })
+        .collect()
+}
+
 /// A matrix whose columns are the given lattice vectors — the by-columns
 /// `matrix_value` constructor behind the simple_roots/posroots wrappers
 /// (atlas-types.w:1631-1636).
@@ -4604,6 +4615,45 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             };
             columns_matrix_value(columns, handle.datum.lattice_rank(), span)
         }
+        // simple_roots/simple_coroots (atlas-types.w:1638-1658): one row
+        // per simple (co)root.
+        "simple_roots" | "simple_coroots" => {
+            arity(name, arguments, 1, span)?;
+            let handle = as_root_datum(&arguments[0], span)?;
+            let rows: Vec<Vec<i32>> = if name == "simple_coroots" {
+                handle
+                    .datum
+                    .simple_coroots()
+                    .iter()
+                    .map(|coweight| coweight.as_slice().to_vec())
+                    .collect()
+            } else {
+                handle
+                    .datum
+                    .simple_roots()
+                    .iter()
+                    .map(|weight| weight.as_slice().to_vec())
+                    .collect()
+            };
+            matrix_value(&rows, span)
+        }
+        // is_Cartan_matrix (atlas-types.w:368-375): the matrix is a Cartan
+        // matrix iff its Dynkin classification succeeds.
+        "is_Cartan_matrix" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Matrix(matrix) = &arguments[0] else {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "{name} has no matching overload for {} argument(s)",
+                        arguments.len()
+                    ),
+                ));
+            };
+            let rows = matrix_rows(matrix);
+            let recognized = infer_lie_type(&rows, rows.len(), span).is_ok();
+            Ok(Value::Boolean(recognized))
+        }
         "rank" => {
             arity(name, arguments, 1, span)?;
             let handle = as_root_datum(&arguments[0], span)?;
@@ -4792,6 +4842,18 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                     format!("expected a RootDatum, InnerClass, or Block, found {other}"),
                 )),
             }
+        }
+        // dual_datum_of_inner_class_wrapper (atlas-types.w:3247-3251,
+        // 3412-3413): the dual inner class's own root datum.
+        "dual_datum" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::InnerClass(context)) = &arguments[0] else {
+                return Err(type_error(span, "expected an InnerClass"));
+            };
+            let dual = build_dual_inner_class(context, span)?;
+            Ok(Value::Domain(DomainValue::RootDatum(
+                dual.root_datum.clone(),
+            )))
         }
         // Fokko_block_wrapper (atlas-types.w:4786-4796): the is_dual gate,
         // then the fibred product of the two forms' KGB sets.
