@@ -1,0 +1,25 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("A2"),true)
+ic : InnerClass
+ic := inner_class(rd,[[1,0],[0,1]])
+rf : RealForm
+rf := real_form(ic,1)
+V : ParamPol
+V := null_module(rf)
+W : ParamPol
+W := V + param(KGB(rf,5),[0,0],[0,0]/1)
+W
+X : ParamPol
+X := (1,2)*W
+X
+Y : ParamPol
+Y := W + W
+Y
+Z : ParamPol
+Z := W - W
+Z
+W=W
+W=Y
+W!=Y
+truncate_above_height(W,0)
+truncate_above_height(W,1)

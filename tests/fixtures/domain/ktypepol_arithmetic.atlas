@@ -1,0 +1,28 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("A2"),true)
+ic : InnerClass
+ic := inner_class(rd,[[1,0],[0,1]])
+rf : RealForm
+rf := real_form(ic,1)
+P : KTypePol
+P := null_K_module(rf)
+Q : KTypePol
+Q := P + K_type(KGB(rf,4),[1,0])
+Q
+R : KTypePol
+R := Q + Q
+R
+S : KTypePol
+S := Q - Q
+S
+T : KTypePol
+T := (1,2)*Q
+T
+U : KTypePol
+U := P + (1,K_type(KGB(rf,4),[1,0]))
+U
+Q=Q
+Q=R
+Q!=R
+truncate_above_height(Q,3)
+truncate_above_height(Q,4)
