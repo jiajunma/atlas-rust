@@ -10,5 +10,10 @@
     "sources/gkmod/realweyl.cpp"
   ],
   "oracle_exit_status": 0,
-  "notes": "Batch 3 completion: components_rank (dual component group rank via dual_component_group_rank on the most-split representative) and strong_components (Tarjan on a row-of-rows graph). Reference status pending HPC capture."
+  "notes": "Batch 3 completion: components_rank (dual component group rank via dual_component_group_rank on the most-split representative) and strong_components (Tarjan on a row-of-rows graph). Reference status pending HPC capture.",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3506898",
+  "source_archive_sha256": "2f9eb569364d386f1582b0f9255e9f8b82dc7212f7d76fa0537b45c6c43c1c5f",
+  "fixture_sha256": "fa6f86ca8d871da634ff37d198dee1cd351f91a2c6a913fd038c2d49666e7814",
+  "capture_artifacts_sha256": "60d373ef70a4dd9d4a3243ec002372976305428c96cded2b9942c0fcfa3678c5"
 }

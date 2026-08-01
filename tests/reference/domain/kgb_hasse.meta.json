@@ -10,5 +10,10 @@
     "sources/gkmod/kgb.cpp"
   ],
   "oracle_exit_status": 0,
-  "notes": "Batch 8 (misc): KGB_Hasse — the Bruhat Hasse matrix M[i][j]=1 when i is an immediate Bruhat predecessor of j, from KgbGraph::bruhat_hasse. Reference status pending HPC capture."
+  "notes": "Batch 8 (misc): KGB_Hasse — the Bruhat Hasse matrix M[i][j]=1 when i is an immediate Bruhat predecessor of j, from KgbGraph::bruhat_hasse. Reference status pending HPC capture.",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3506898",
+  "source_archive_sha256": "2f9eb569364d386f1582b0f9255e9f8b82dc7212f7d76fa0537b45c6c43c1c5f",
+  "fixture_sha256": "73729d6fffa92bc5565714c934e42e9a62d953bbe1a5a0fc5d6c5d5d15a7b2ff",
+  "capture_artifacts_sha256": "b0c514892256b8baae09313793254f7b1ff34b33a62846e69b0b03fcf8a985ab"
 }
