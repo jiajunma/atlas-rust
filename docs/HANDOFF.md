@@ -74,6 +74,21 @@ report shows both fixtures PASS, zero FAIL → bump meta to
 `rust_status: verified_hpc` + `differential_job` → record here → commit →
 `rsync -az --delete .git/` to HPC.
 
+## Live continuation - 2026-08-01 (Param predicates/transforms)
+
+The Param predicate/transform surface is landed and HPC-verified. HEAD is
+the param_transforms commit; differential `3506622` ran 165 fixtures with
+**zero FAIL** (one PARTIAL: the two intentional `container_syntax_errors`
+pending cases) and PASSES `domain/param_transforms` (reference captured
+by `3506620`). Its meta carries `rust_status: verified_hpc` +
+`differential_job: 3506622`.
+
+Implementation: the Param surface now registers `is_dominant`/
+`is_semifinal`, the `dominant`/`normal` transforms
+(`StandardRepr::made_dominant`/`normalised`, repr.cpp:1507-1561), and
+Param equivalence (`StandardRepr::equivalent`, repr.cpp:1563-1576) with
+the real-form mismatch gate.
+
 ## Live continuation - 2026-08-01 (ParamPol/Param operations)
 
 The ParamPol/Param operation surface is landed and HPC-verified. HEAD is
@@ -514,26 +529,26 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: the param_pol_ops commit (main). Working tree clean.
+HEAD at handoff: the param_transforms commit (main). Working tree clean.
 Every frozen contract from the 2026-07-31 checkpoint is landed and
 HPC-verified, plus the deform-family slices `KGP_sum` (`3506387`),
-`K_type_formula` (`3506400`), `branch` (`3506410`), and the ParamPol/Param
-operations (`3506433`). The domain layer is complete (85 of 85 frozen
-domain contracts). The remaining porting work is the deform/KL math layer
-(`deform` — reference frozen at job `3506415` — `twisted_deform`,
-`block_deform`, `full_deform`, KL sums, `KL_block`), the Param
-`cross`/`Cayley`/`dominant`/`normal`/`equivalent` transforms, the KL/file
-formats (filekl adapter), readline completion, and the `docs/LANGUAGE.md`
-matrix refresh. The deform slice is the large one: `Rep_table::lookup`
-(partial common block generation), `deformation_terms`
-(repr.cpp:1933-2025, with the contribution table, singular generators,
-KLV polynomials evaluated at q=-1, orientation numbers), the KL
-polynomial table (kl.cpp), and the block structure (blocks.cpp).
-Language-layer design notes (value shape, Display formats, on-demand
-RepContext construction from `Arc<RealFormContext>`) are in the
-2026-08-01 entries; the pol term math now lives in the crate
-(`finals_for`, `K_type_formula`) plus thin language-layer containers in
-`domain_builtins.rs`.
+`K_type_formula` (`3506400`), `branch` (`3506410`), the ParamPol/Param
+operations (`3506433`), and the Param predicates/transforms (`3506622`).
+The domain layer is complete (86 of 86 frozen domain contracts). The
+remaining porting work is the deform/KL math layer (`deform` — reference
+frozen at job `3506415` — `twisted_deform`, `block_deform`,
+`full_deform`, KL sums, `KL_block`), the Param `cross`/`Cayley`
+transforms (need the integral SubSystem), the KL/file formats (filekl
+adapter), readline completion, and the `docs/LANGUAGE.md` matrix refresh.
+The deform slice is the large one: `Rep_table::lookup` (partial common
+block generation), `deformation_terms` (repr.cpp:1933-2025, with the
+contribution table, singular generators, KLV polynomials evaluated at
+q=-1, orientation numbers), the KL polynomial table (kl.cpp), and the
+block structure (blocks.cpp). Language-layer design notes (value shape,
+Display formats, on-demand RepContext construction from
+`Arc<RealFormContext>`) are in the 2026-08-01 entries; the pol term math
+now lives in the crate (`finals_for`, `K_type_formula`) plus thin
+language-layer containers in `domain_builtins.rs`.
 
 Verified `verified_hpc` so far: all eval slices B3a-B13, `set_type`,
 operator overload declarations, builtin `whattype * ?`, `showall`,

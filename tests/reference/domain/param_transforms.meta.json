@@ -12,10 +12,11 @@
   "oracle_stdout_sha256": "e082466594a3d9edcdc9ac52ed17bc77554e156b54112529915336c043deb586",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "capture_artifacts_sha256": "747bab5fded797762cf15a3bcd1f72eeb8bcfd42917d93b20989871286948cea",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/gkmod/repr.cpp:1361-1572",
     "sources/interpreter/atlas-types.w:7472-7502"
   ],
-  "notes": "Param transforms surface (is_standard/is_dominant/is_semifinal/is_final predicates, dominant/normal transforms, and equivalence on parameters), captured verbatim by HPC job 3506620 against the frozen atlasofliegroups-4d3e9449 oracle."
+  "notes": "Param transforms surface (is_standard/is_dominant/is_semifinal/is_final predicates, dominant/normal transforms, equivalence), captured verbatim by HPC job 3506620 against the frozen atlasofliegroups-4d3e9449 oracle. Implemented at the param_transforms commit (StandardRepr::made_dominant/normalised/equivalent). Differential pipeline_swap_diff job 3506622 reports PASS with zero regressions; metadata carries rust_status verified_hpc with differential_job 3506622.",
+  "differential_job": "3506622"
 }
