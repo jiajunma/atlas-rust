@@ -77,9 +77,10 @@ report shows both fixtures PASS, zero FAIL → bump meta to
 ## Language gate completed - 2026-08-01
 
 The language gate is complete: **166 of 166 frozen fixtures carry
-`verified_hpc`**. HEAD is `d9f1cb2` (main). Working tree clean. The last
-contract, `domain/deform`, landed locally VERBATIM in three sub-slices
-(differential pending on HPC):
+`verified_hpc`** (differential `3506798`: 165 PASS + the one known
+PARTIAL `container_syntax_errors`, zero FAIL). HEAD is `c0f26b4`
+(main). Working tree clean. The last contract, `domain/deform`, landed
+VERBATIM in three sub-slices:
 
 - `8b8bd14` — the KLV polynomial table (kl.cpp → kl_polynomial.rs +
   kl_support.rs + kl_table.rs), with the A2 quasisplit block's mu
@@ -571,12 +572,11 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: `d9f1cb2` (main). Working tree clean. The language gate
+HEAD at handoff: `c0f26b4` (main). Working tree clean. The language gate
 is complete: **166 of 166 frozen fixtures carry `verified_hpc`** — the
-last contract, `domain/deform`, landed locally VERBATIM (three
-sub-slices: `8b8bd14` KLV table, `6e33e0d` deformation_terms +
-deform_readjust, `d9f1cb2` builtin wiring); its meta upgrade to
-`verified_hpc` awaits the HPC differential.
+last contract, `domain/deform`, passed the HPC differential `3506798`
+(165 PASS + the one known PARTIAL `container_syntax_errors`, zero FAIL)
+and its meta was upgraded at the deform-verify commit.
 
 The domain layer is complete (86 of 86 frozen domain contracts). Every
 frozen contract from the 2026-07-31 checkpoint plus the deform-family
