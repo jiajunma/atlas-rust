@@ -2170,7 +2170,7 @@ fn weyl_reduced_word(inner: &InnerClass, element: &WeylElement) -> Vec<usize> {
 
 /// The `[..]` descent line of a block element (block_io.cpp:373-420),
 /// with generators whose mask bit is unset shown as `* `.
-fn block_descent_set(graph: &BlockGraph, z: usize, rank: usize, mask: &[bool]) -> String {
+fn block_descent_set(graph: &BlockGraph, z: usize, _rank: usize, mask: &[bool]) -> String {
     let mut out = String::from("[");
     for (s, &visible) in mask.iter().enumerate() {
         if s != 0 {
