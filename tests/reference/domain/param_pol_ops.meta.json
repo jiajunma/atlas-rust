@@ -12,7 +12,7 @@
   "oracle_stdout_sha256": "594b323567c240ef43e1fb21f98b16c2284b1022f5af9689ff464f916a092fba",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "capture_artifacts_sha256": "9b75f5bfd6fe5e9096c79128c15915d17120e401da13237422e1d480e1dce4e3",
-  "rust_status": "not_implemented",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:6582-6592",
     "sources/interpreter/atlas-types.w:7717-7730",
@@ -20,5 +20,6 @@
     "sources/gkmod/repr.cpp:701-709",
     "sources/gkmod/repr.cpp:1161-1170"
   ],
-  "notes": "ParamPol/Param operation surface (K_type_pol(ParamPol) restriction, last_term, and the (ParamPol,rat)/(Param,rat) scalings), captured verbatim by HPC job 3506427 against the frozen atlasofliegroups-4d3e9449 oracle."
+  "notes": "ParamPol/Param operation surface (K_type_pol(ParamPol) restriction, last_term, (ParamPol,rat)/(Param,rat) scalings), captured verbatim by HPC job 3506427 against the frozen atlasofliegroups-4d3e9449 oracle. Implemented at the param_pol_ops commit (RepContext::scale, repr.cpp:701-709, plus the pol re-expansion of repr.cpp:1161-1170). Differential pipeline_swap_diff job 3506433 reports PASS with zero regressions; metadata carries rust_status verified_hpc with differential_job 3506433.",
+  "differential_job": "3506433"
 }
