@@ -17,11 +17,9 @@
 use std::collections::BTreeMap;
 
 use crate::grading::try_capacity;
-use crate::lattice::{
-    checked_add_weights, checked_sub_weights, pair, pair_coordinates, RationalWeight,
-};
+use crate::lattice::{checked_add_weights, checked_sub_weights, pair, RationalWeight};
 use crate::{
-    Coweight, InnerClass, InvolutionId, InvolutionTable, KgbGraph, KgbId, KgbStatus, KType,
+    Coweight, InnerClass, InvolutionId, InvolutionTable, KType, KgbGraph, KgbId, KgbStatus,
     LatticeInvolution, ModTwoVector, RootId, RootKind, StructureError, Weight,
 };
 
@@ -126,17 +124,6 @@ impl RealProjection {
             limit -= 1; // pivot now at column `limit`
         }
 
-        // Row sweep, bottom row first; the pivot of each processed row
-        // lands at column `limit - 1` (matreduc.h:136-148).
-        let mut limit = rank;
-        for row in (0..rank).rev() {
-            let pivot = gcd_sweep(&mut a, row, limit, &mut col, &mut col_inverse)?;
-            if pivot == 0 {
-                continue; // partial row already zero: no pivot in this row
-            }
-            limit -= 1; // pivot now at column `limit`
-        }
-
         // Erase the `limit` zero columns, rotating the corresponding
         // kernel columns of `col` towards the right end one at a time
         // (matreduc.h:150-158): columns already parked at the right are
@@ -205,11 +192,11 @@ impl RealProjection {
     /// (involutions.h:211).
     fn coordinates(&self, weight: &Weight) -> Result<Vec<i64>, StructureError> {
         let mut result = Vec::new();
-        result
-            .try_reserve_exact(self.m_real.len())
-            .map_err(|_| StructureError::AllocationFailed {
+        result.try_reserve_exact(self.m_real.len()).map_err(|_| {
+            StructureError::AllocationFailed {
                 requested: self.m_real.len(),
-            })?;
+            }
+        })?;
         for row in &self.m_real {
             let mut entry = 0_i64;
             for (&coefficient, &coordinate) in row.iter().zip(weight.as_slice()) {
@@ -287,10 +274,11 @@ fn column_operation(
             )
             .ok_or(StructureError::ArithmeticOverflow)?;
     }
-    for column in 0..col_inverse.len() {
-        col_inverse[k][column] = col_inverse[k][column]
+    let source_row = col_inverse[j].clone();
+    for (inverse_entry, &source_entry) in col_inverse[k].iter_mut().zip(&source_row) {
+        *inverse_entry = inverse_entry
             .checked_sub(
-                c.checked_mul(col_inverse[j][column])
+                c.checked_mul(source_entry)
                     .ok_or(StructureError::ArithmeticOverflow)?,
             )
             .ok_or(StructureError::ArithmeticOverflow)?;
@@ -365,11 +353,11 @@ fn gcd_sweep(
         let current = mindex;
         let pivot = a[row][current];
         let mut survivors = Vec::new();
-        survivors
-            .try_reserve_exact(active.len())
-            .map_err(|_| StructureError::AllocationFailed {
+        survivors.try_reserve_exact(active.len()).map_err(|_| {
+            StructureError::AllocationFailed {
                 requested: active.len(),
-            })?;
+            }
+        })?;
         for &j in &active {
             if j == current {
                 survivors.push(j);
@@ -436,10 +424,13 @@ impl<'a> RepContext<'a> {
         let mut dual_two_rho = try_capacity(lattice_rank)?;
         dual_two_rho.resize(lattice_rank, 0_i32);
         for (id, root, coroot) in system.entries() {
-            if !system.is_positive(id).ok_or(StructureError::IndexOutOfRange {
-                index: id.0,
-                upper_bound: system.roots().len(),
-            })? {
+            if !system
+                .is_positive(id)
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: id.0,
+                    upper_bound: system.roots().len(),
+                })?
+            {
                 continue;
             }
             for (sum, &coordinate) in two_rho.iter_mut().zip(root.as_slice()) {
@@ -513,7 +504,7 @@ impl<'a> RepContext<'a> {
         self.graph.form()
     }
 
-    pub(crate) fn projection(&self, involution: InvolutionId) -> Result<&RealProjection, StructureError> {
+    fn projection(&self, involution: InvolutionId) -> Result<&RealProjection, StructureError> {
         self.projections
             .get(&involution.0)
             .ok_or(StructureError::IndexOutOfRange {
@@ -623,18 +614,17 @@ impl<'a> RepContext<'a> {
         let halves: Vec<i64> = coordinates.iter().map(|&v| v.div_euclid(2)).collect();
         let correction = projection.lift(&halves)?;
         let mut normalized = Vec::new();
-        normalized
-            .try_reserve_exact(lam_rho.rank())
-            .map_err(|_| StructureError::AllocationFailed {
+        normalized.try_reserve_exact(lam_rho.rank()).map_err(|_| {
+            StructureError::AllocationFailed {
                 requested: lam_rho.rank(),
-            })?;
+            }
+        })?;
         for (&coordinate, &shift) in lam_rho.as_slice().iter().zip(&correction) {
             let shifted = i64::from(coordinate)
                 .checked_sub(shift)
                 .ok_or(StructureError::ArithmeticOverflow)?;
-            normalized.push(
-                i32::try_from(shifted).map_err(|_| StructureError::ArithmeticOverflow)?,
-            );
+            normalized
+                .push(i32::try_from(shifted).map_err(|_| StructureError::ArithmeticOverflow)?);
         }
         Ok(Weight::new(normalized))
     }
@@ -725,10 +715,13 @@ impl<'a> RepContext<'a> {
         let system = self.inner_class.root_system();
         let mut defect = 0_i64;
         for (id, _, coroot) in system.entries() {
-            if system.is_positive(id).ok_or(StructureError::IndexOutOfRange {
-                index: id.0,
-                upper_bound: system.roots().len(),
-            })? {
+            if system
+                .is_positive(id)
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: id.0,
+                    upper_bound: system.roots().len(),
+                })?
+            {
                 let pairing = pair(weight, coroot)?;
                 if pairing < 0 {
                     defect += i64::from(-pairing);
@@ -818,7 +811,8 @@ impl<'a> RepContext<'a> {
     /// half-integral weight the interpreter prints as `lambda=[..]/d`
     /// (basic_io.cpp print_stdrep/print_K_type).
     pub fn lambda(&self, z: &StandardRepr) -> Result<RationalWeight, StructureError> {
-        self.rho.add(&RationalWeight::from_weight(&self.lambda_rho(z)?)?)
+        self.rho
+            .add(&RationalWeight::from_weight(&self.lambda_rho(z)?)?)
     }
 
     /// `rho + lambda_rho` of a [`KType`] (basic_io.cpp:158-163).
@@ -911,7 +905,11 @@ impl<'a> RepContext<'a> {
 // ---------------------------------------------------------------------------
 
 impl RepContext<'_> {
-    pub(crate) fn kgb_status(&self, x: KgbId, generator: usize) -> Result<KgbStatus, StructureError> {
+    pub(crate) fn kgb_status(
+        &self,
+        x: KgbId,
+        generator: usize,
+    ) -> Result<KgbStatus, StructureError> {
         self.graph.status(x, generator).ok_or({
             StructureError::IndexOutOfRange {
                 index: x.index(),
@@ -920,7 +918,11 @@ impl RepContext<'_> {
         })
     }
 
-    pub(crate) fn is_complex_descent(&self, x: KgbId, generator: usize) -> Result<bool, StructureError> {
+    pub(crate) fn is_complex_descent(
+        &self,
+        x: KgbId,
+        generator: usize,
+    ) -> Result<bool, StructureError> {
         if self.kgb_status(x, generator)? != KgbStatus::Complex {
             return Ok(false);
         }
@@ -941,12 +943,19 @@ impl RepContext<'_> {
         })
     }
 
-    pub(crate) fn is_complex_simple(&self, x: KgbId, generator: usize) -> Result<bool, StructureError> {
+    pub(crate) fn is_complex_simple(
+        &self,
+        x: KgbId,
+        generator: usize,
+    ) -> Result<bool, StructureError> {
         let involution = self.involution_of(x)?;
         Ok(self.table.simple_root_kind(involution, generator) == Some(RootKind::Complex))
     }
 
-    pub(crate) fn imaginary_simple_roots_at(&self, x: KgbId) -> Result<Vec<RootId>, StructureError> {
+    pub(crate) fn imaginary_simple_roots_at(
+        &self,
+        x: KgbId,
+    ) -> Result<Vec<RootId>, StructureError> {
         let involution = self.involution_of(x)?;
         let record = self
             .table
@@ -978,6 +987,56 @@ impl RepContext<'_> {
             .to_vec())
     }
 
+    /// `i_tab.root_involution(n, alpha)` (involutions.h:159-160): the
+    /// involution's root permutation applied to `alpha`.
+    pub(crate) fn root_involution_image_at(
+        &self,
+        x: KgbId,
+        alpha: RootId,
+    ) -> Result<RootId, StructureError> {
+        let involution = self.involution_of(x)?;
+        let record = self
+            .table
+            .record(involution)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: involution.0,
+                upper_bound: self.table.involution_count(),
+            })?;
+        record
+            .twisted_involution()
+            .root_involution()
+            .image(alpha)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: alpha.0,
+                upper_bound: self.inner_class.root_system().roots().len(),
+            })
+    }
+
+    /// The dominance defect `sum over positive coroots of max(0, -<v, beta^v>)`,
+    /// an exact step bound for the greedy dominance loops: it strictly
+    /// decreases at every reflection (rootdata.h:638-640).
+    pub(crate) fn weight_defect(&self, weight: &Weight) -> Result<i64, StructureError> {
+        let system = self.inner_class.root_system();
+        let mut defect = 0_i64;
+        for (id, _, coroot) in system.entries() {
+            if system
+                .is_positive(id)
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: id.0,
+                    upper_bound: system.roots().len(),
+                })?
+            {
+                let pairing = pair(weight, coroot)?;
+                if pairing < 0 {
+                    defect = defect
+                        .checked_add(i64::from(-pairing))
+                        .ok_or(StructureError::ArithmeticOverflow)?;
+                }
+            }
+        }
+        Ok(defect)
+    }
+
     /// The positive real roots of `x`'s involution: upstream
     /// `i_tab.real_roots(i_x) & rd.posroot_set()` (repr.cpp:407-409).
     pub(crate) fn positive_real_roots_at(&self, x: KgbId) -> Result<Vec<RootId>, StructureError> {
@@ -996,10 +1055,13 @@ impl RepContext<'_> {
             .root_involution()
             .roots_of_kind(RootKind::Real)
         {
-            if system.is_positive(id).ok_or(StructureError::IndexOutOfRange {
-                index: id.0,
-                upper_bound: system.roots().len(),
-            })? {
+            if system
+                .is_positive(id)
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: id.0,
+                    upper_bound: system.roots().len(),
+                })?
+            {
                 roots.push(id);
             }
         }
@@ -1009,7 +1071,11 @@ impl RepContext<'_> {
     /// `TitsCoset::simple_imaginary_grading` (tits.cpp:704-717): the
     /// compactness grading of the positive simply-imaginary root `alpha`
     /// at `x`; `true` means NONCOMPACT, matching `Grading::is_noncompact`.
-    pub(crate) fn simple_imaginary_grading(&self, x: KgbId, alpha: RootId) -> Result<bool, StructureError> {
+    pub(crate) fn simple_imaginary_grading(
+        &self,
+        x: KgbId,
+        alpha: RootId,
+    ) -> Result<bool, StructureError> {
         let system = self.inner_class.root_system();
         let datum = self.inner_class.datum();
         let coordinates =
@@ -1019,10 +1085,13 @@ impl RepContext<'_> {
                     index: alpha.0,
                     upper_bound: system.roots().len(),
                 })?;
-        let element = self.graph.element(x).ok_or(StructureError::IndexOutOfRange {
-            index: x.index(),
-            upper_bound: self.graph.size(),
-        })?;
+        let element = self
+            .graph
+            .element(x)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: x.index(),
+                upper_bound: self.graph.size(),
+            })?;
         let base_grading = self.graph.base_grading();
         // The mod-2 reduction of alpha's simple-root expression
         // (tits.cpp:713): the complement-of-base-grading parity and the
@@ -1039,9 +1108,7 @@ impl RepContext<'_> {
             let mut dot = false;
             let simple_root = &datum.simple_roots()[generator];
             for (index, &coordinate) in simple_root.as_slice().iter().enumerate() {
-                if coordinate.rem_euclid(2) != 0
-                    && element.torus_bits().bit(index) == Some(true)
-                {
+                if coordinate.rem_euclid(2) != 0 && element.torus_bits().bit(index) == Some(true) {
                     dot = !dot;
                 }
             }
@@ -1065,11 +1132,11 @@ impl RepContext<'_> {
             .checked_add(offset)
             .ok_or(StructureError::ArithmeticOverflow)?;
         let mut coordinates = Vec::new();
-        coordinates
-            .try_reserve_exact(weight.rank())
-            .map_err(|_| StructureError::AllocationFailed {
+        coordinates.try_reserve_exact(weight.rank()).map_err(|_| {
+            StructureError::AllocationFailed {
                 requested: weight.rank(),
-            })?;
+            }
+        })?;
         for (&entry, &root_entry) in weight
             .as_slice()
             .iter()
@@ -1133,10 +1200,13 @@ impl RepContext<'_> {
         let system = self.inner_class.root_system();
         let mut defect = 0_i64;
         for (id, _, coroot) in system.entries() {
-            if !system.is_positive(id).ok_or(StructureError::IndexOutOfRange {
-                index: id.0,
-                upper_bound: system.roots().len(),
-            })? {
+            if !system
+                .is_positive(id)
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: id.0,
+                    upper_bound: system.roots().len(),
+                })?
+            {
                 continue;
             }
             let mut pairing = 0_i64;
@@ -1181,10 +1251,8 @@ impl RepContext<'_> {
         let datum = self.inner_class.datum();
         let mut singulars = try_capacity(datum.semisimple_rank())?;
         for generator in 0..datum.semisimple_rank() {
-            singulars.push(self.simple_coroot_numerator_pairing(
-                generator,
-                z.gamma.numerator(),
-            )? == 0);
+            singulars
+                .push(self.simple_coroot_numerator_pairing(generator, z.gamma.numerator())? == 0);
         }
         Ok(singulars)
     }
@@ -1192,7 +1260,11 @@ impl RepContext<'_> {
     /// `Rep_context::complex_crosses` (repr.cpp:590-611): cross `z`
     /// through the word's singular complex simple generators, reflecting
     /// `lambda-rho` with the `rho`-based shift, then re-pack `y_bits`.
-    pub(crate) fn complex_crosses(&self, z: &mut StandardRepr, word: &[usize]) -> Result<(), StructureError> {
+    pub(crate) fn complex_crosses(
+        &self,
+        z: &mut StandardRepr,
+        word: &[usize],
+    ) -> Result<(), StructureError> {
         let mut lr = self.lambda_rho(z)?;
         for &generator in word {
             if self.simple_coroot_numerator_pairing(generator, z.gamma.numerator())? != 0 {
@@ -1266,7 +1338,7 @@ impl RepContext<'_> {
             .canonicalize_with_generators(twisted, singulars)?;
         self.complex_crosses(z, &word)?;
         let landed = self.involution_of(z.x)?;
-        let landed_twisted = &self
+        let landed_twisted = self
             .table
             .record(landed)
             .ok_or(StructureError::IndexOutOfRange {
@@ -1488,15 +1560,25 @@ impl StandardRepr {
     /// `Rep_context::equivalent` (repr.cpp:678-699): equality after
     /// `make_dominant` and `to_singular_canonical`; strict equality when
     /// either parameter fails `is_standard`.
-    pub fn equivalent(&self, rc: &RepContext, other: &StandardRepr) -> Result<bool, StructureError> {
-        let self_cartan = rc.graph.cartan_of(self.x).ok_or(StructureError::IndexOutOfRange {
-            index: self.x.index(),
-            upper_bound: rc.graph.size(),
-        })?;
-        let other_cartan = rc.graph.cartan_of(other.x).ok_or(StructureError::IndexOutOfRange {
-            index: other.x.index(),
-            upper_bound: rc.graph.size(),
-        })?;
+    pub fn equivalent(
+        &self,
+        rc: &RepContext,
+        other: &StandardRepr,
+    ) -> Result<bool, StructureError> {
+        let self_cartan = rc
+            .graph
+            .cartan_of(self.x)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: self.x.index(),
+                upper_bound: rc.graph.size(),
+            })?;
+        let other_cartan = rc
+            .graph
+            .cartan_of(other.x)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: other.x.index(),
+                upper_bound: rc.graph.size(),
+            })?;
         if self_cartan != other_cartan {
             return Ok(false);
         }

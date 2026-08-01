@@ -299,6 +299,12 @@ impl<'a> Lexer<'a> {
                     .next()
                     .expect("offset is before end of source");
                 self.offset += character.len_utf8();
+                // An unsupported character is a lexical dead end: the oracle
+                // reports the syntax error and recovers at the next newline,
+                // so drop any open nesting that would otherwise swallow the
+                // terminating newline (probe `(`` then `2`).
+                self.nesting.clear();
+                self.prevent_termination = None;
                 Ok(token(
                     source,
                     TokenKind::Unsupported(character.to_string()),

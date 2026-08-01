@@ -28,6 +28,7 @@ mod involution;
 mod involution_classification;
 mod involution_table;
 mod kgb_graph;
+mod ktype;
 mod lattice;
 mod layout;
 mod minimal_torus;
@@ -37,6 +38,7 @@ mod primitive_involution;
 mod real_form_labels;
 mod real_form_order;
 mod real_form_seed;
+mod rep_context;
 mod restricted_roots;
 mod root_datum;
 mod root_involution;
@@ -80,7 +82,8 @@ pub use involution_table::{
     InvolutionId, InvolutionRecord, InvolutionTable, InvolutionTableBudget,
 };
 pub use kgb_graph::{KgbGraph, KgbId, KgbStatus};
-pub use lattice::{pair, Coweight, RationalCoweight, Weight};
+pub use ktype::KType;
+pub use lattice::{pair, Coweight, RationalCoweight, RationalWeight, Weight};
 pub use layout::InnerClassLayout;
 pub use minimal_torus::{elected_square_root, minimal_torus_part};
 pub use mod_two::{ModTwoSubspace, ModTwoVector};
@@ -91,6 +94,7 @@ pub use primitive_involution::{
 pub use real_form_labels::RealFormLabels;
 pub use real_form_order::ExternalFormOrder;
 pub use real_form_seed::RealFormSeed;
+pub use rep_context::{RepContext, StandardRepr};
 pub use restricted_roots::{RestrictedRoot, RestrictedRootSystem, RestrictedWeight};
 pub use root_datum::BasedRootDatum;
 pub use root_involution::{RootInvolutionData, RootKind};

@@ -136,6 +136,43 @@ FIXTURE_PLANS = (
     FixturePlan(name="commands/declaration_errors"),
     FixturePlan(name="commands/let_errors"),
     FixturePlan(name="commands/let_error_order"),
+    # L1 diagnostic wordings (agent-28): assignment/slice/subscription and
+    # container-list messages match the oracle's source-text appending and
+    # the `No common type found` wording.
+    FixturePlan(name="commands/assignment_errors"),
+    FixturePlan(name="commands/slice_errors"),
+    FixturePlan(name="commands/subscription_errors"),
+    FixturePlan(name="eval/container_errors"),
+    # L2 bison syntax messages (agent-29): the `syntax error, unexpected X,
+    # expecting Y` wording, with recovery continuing at the next line.
+    FixturePlan(name="parse/negative_trailing_token"),
+    FixturePlan(name="commands/invalid_token_continues"),
+    FixturePlan(name="commands/mismatched_delimiter_continues"),
+    FixturePlan(name="commands/nested_invalid_token_continues"),
+    # The dangling `[` line is excluded: the oracle saw the capture-time
+    # appended `quit` (`unexpected QUIT, expecting ']'`) where the CLI sees
+    # EOF, so that event stays pending; the `4` line after it belongs to the
+    # same unclosed command (swallowed by the open bracket) and produced no
+    # oracle event of its own, so it is pending on the same event.
+    FixturePlan(
+        name="commands/container_syntax_errors",
+        runnable_lines=(1, 2, 3, 4, 5, 6),
+        runnable_events=(0, 1, 2, 3, 4, 5),
+        pending=(
+            PendingCase(
+                feature="dangling open bracket sees capture-time quit",
+                source_line=7,
+                reference_event=6,
+                reason="the oracle parsed the harness-appended `quit` where the CLI sees EOF",
+            ),
+            PendingCase(
+                feature="swallowed line after the dangling open bracket",
+                source_line=8,
+                reference_event=6,
+                reason="the oracle's unclosed `[` swallows this line before quit",
+            ),
+        ),
+    ),
     # The final let command spans lines 12-14; the two continuation lines are
     # part of the runnable input but produce no event of their own.
     FixturePlan(
@@ -428,8 +465,8 @@ def validate_plan(
     pending_events = tuple(case.reference_event for case in plan.pending)
     if tuple(sorted(set(pending_lines))) != pending_lines:
         errors.append("pending source lines are not unique and increasing")
-    if tuple(sorted(set(pending_events))) != pending_events:
-        errors.append("pending event indices are not unique and increasing")
+    if any(index < 0 or index >= len(events) for index in pending_events):
+        errors.append("pending event index is outside the expectation")
     silent_lines = plan.silent_lines
     if tuple(sorted(set(silent_lines))) != silent_lines:
         errors.append("silent source lines are not unique and increasing")
@@ -445,7 +482,7 @@ def validate_plan(
         errors.append("an event is both runnable and pending")
     if tuple(sorted(runnable_lines + silent_lines + pending_lines)) != nonempty_lines:
         errors.append("source selection does not cover every nonempty fixture line")
-    if tuple(sorted(runnable_events + pending_events)) != tuple(range(len(events))):
+    if tuple(sorted(set(runnable_events + pending_events))) != tuple(range(len(events))):
         errors.append("event selection does not cover every expected event")
     return runnable_lines, runnable_events, errors
 

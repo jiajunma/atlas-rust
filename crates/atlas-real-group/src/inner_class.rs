@@ -228,6 +228,21 @@ impl InnerClass {
         &self,
         involution: TwistedInvolution,
     ) -> Result<(TwistedInvolution, Vec<usize>), StructureError> {
+        let active = vec![true; self.datum.semisimple_rank()];
+        self.canonicalize_with_generators(involution, &active)
+    }
+
+    /// `InnerClass::canonicalize` restricted to the simple generators in
+    /// `active` (innerclass.cpp:740-832 with the `RankFlags gens` argument;
+    /// `Rep_context::to_singular_canonical` uses this with the singular
+    /// generators, repr.cpp:613-620). The residual subsystem of phase two is
+    /// the intersection of `active` with the generators orthogonal to both
+    /// dominant sums.
+    pub fn canonicalize_with_generators(
+        &self,
+        involution: TwistedInvolution,
+        active: &[bool],
+    ) -> Result<(TwistedInvolution, Vec<usize>), StructureError> {
         self.validate_twisted_involution(&involution)?;
         let twist = self.generator_twist()?;
         let mut real_sum =
@@ -262,8 +277,9 @@ impl InnerClass {
             &mut imaginary_sum,
             &mut word,
             phase_one_cap,
+            active,
         )?;
-        let residual_generators = self.residual_generators(&real_sum, &imaginary_sum)?;
+        let residual_generators = self.residual_generators(&real_sum, &imaginary_sum, active)?;
         self.make_residual_action_positive(
             &mut action,
             &twist,
@@ -282,7 +298,9 @@ impl InnerClass {
     }
 
     // Phase one: lexicographically make the real sum dominant, then the
-    // imaginary sum on the walls of the real sum.
+    // imaginary sum on the walls of the real sum. Only the generators
+    // flagged in `active` participate (innerclass.cpp:770-795).
+    #[allow(clippy::too_many_arguments)]
     fn make_root_sums_dominant(
         &self,
         action: &mut WeylAction,
@@ -291,11 +309,22 @@ impl InnerClass {
         imaginary_sum: &mut Weight,
         word: &mut Vec<usize>,
         max_steps: usize,
+        active: &[bool],
     ) -> Result<(), StructureError> {
         let mut steps = 0_usize;
         loop {
             let mut changed = false;
             for generator in 0..self.datum.semisimple_rank() {
+                if !active
+                    .get(generator)
+                    .copied()
+                    .ok_or(StructureError::IndexOutOfRange {
+                        index: generator,
+                        upper_bound: active.len(),
+                    })?
+                {
+                    continue;
+                }
                 let real_pairing = pair(real_sum, &self.datum.simple_coroots()[generator])?;
                 let should_reflect = real_pairing < 0
                     || (real_pairing == 0
@@ -328,18 +357,27 @@ impl InnerClass {
     }
 
     // Phase two: retain exactly the simple generators orthogonal to both
-    // dominant sums. They generate the residual complex subsystem.
+    // dominant sums, intersected with `active`. They generate the residual
+    // complex subsystem (innerclass.cpp:798-803).
     fn residual_generators(
         &self,
         real_sum: &Weight,
         imaginary_sum: &Weight,
+        active: &[bool],
     ) -> Result<Vec<bool>, StructureError> {
         let mut residual_generators = try_capacity(self.datum.semisimple_rank())?;
         for generator in 0..self.datum.semisimple_rank() {
             let real_pairing = pair(real_sum, &self.datum.simple_coroots()[generator])?;
-            let active = real_pairing <= 0
-                && pair(imaginary_sum, &self.datum.simple_coroots()[generator])? <= 0;
-            residual_generators.push(active);
+            let kept = real_pairing <= 0
+                && pair(imaginary_sum, &self.datum.simple_coroots()[generator])? <= 0
+                && active
+                    .get(generator)
+                    .copied()
+                    .ok_or(StructureError::IndexOutOfRange {
+                        index: generator,
+                        upper_bound: active.len(),
+                    })?;
+            residual_generators.push(kept);
         }
         Ok(residual_generators)
     }

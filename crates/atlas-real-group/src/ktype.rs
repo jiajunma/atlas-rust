@@ -11,7 +11,6 @@
 //! `equivalent` relation is computed by moving to the canonical
 //! involution (K_repr.cpp:159-171).
 
-use crate::grading::try_capacity;
 use crate::lattice::{checked_add_weights, checked_sub_weights, pair};
 use crate::rep_context::RepContext;
 use crate::{KgbId, KgbStatus, RootId, StructureError, Weight};
@@ -31,21 +30,13 @@ impl KType {
     /// The raw value constructor; normalization is [`KType::sr_k`]'s job,
     /// matching the upstream struct constructors (K_repr.h:39-44).
     pub(crate) fn new(x: KgbId, lam_rho: Weight, height: u32) -> Self {
-        Self {
-            x,
-            lam_rho,
-            height,
-        }
+        Self { x, lam_rho, height }
     }
 
     /// `Rep_context::sr_K(KGBElt, Weight)` (K_repr.cpp:25-32): normalize
     /// `lambda_rho` modulo `(1-theta_x)X^*` and store the height of
     /// `(1+theta_x)*lambda`.
-    pub fn sr_k(
-        rc: &RepContext,
-        x: KgbId,
-        lambda_rho: &Weight,
-    ) -> Result<Self, StructureError> {
+    pub fn sr_k(rc: &RepContext, x: KgbId, lambda_rho: &Weight) -> Result<Self, StructureError> {
         let involution = rc.involution_of(x)?;
         let normalized = rc.lambda_unique(involution, lambda_rho)?;
         let theta = rc.theta_at(x)?;
@@ -249,14 +240,20 @@ impl KType {
     /// then strict equality after moving both to the canonical
     /// involution of the class.
     pub fn equivalent(&self, rc: &RepContext, other: &KType) -> Result<bool, StructureError> {
-        let self_cartan = rc.graph().cartan_of(self.x).ok_or(StructureError::IndexOutOfRange {
-            index: self.x.index(),
-            upper_bound: rc.graph().size(),
-        })?;
-        let other_cartan = rc.graph().cartan_of(other.x).ok_or(StructureError::IndexOutOfRange {
-            index: other.x.index(),
-            upper_bound: rc.graph().size(),
-        })?;
+        let self_cartan = rc
+            .graph()
+            .cartan_of(self.x)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: self.x.index(),
+                upper_bound: rc.graph().size(),
+            })?;
+        let other_cartan =
+            rc.graph()
+                .cartan_of(other.x)
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: other.x.index(),
+                    upper_bound: rc.graph().size(),
+                })?;
         if self_cartan != other_cartan {
             return Ok(false);
         }

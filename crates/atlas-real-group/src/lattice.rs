@@ -174,11 +174,11 @@ impl RationalWeight {
         }
         let divisor = i64::try_from(gcd).map_err(|_| StructureError::ArithmeticOverflow)?;
         let mut normalized = Vec::new();
-        normalized
-            .try_reserve_exact(numerator.len())
-            .map_err(|_| StructureError::AllocationFailed {
+        normalized.try_reserve_exact(numerator.len()).map_err(|_| {
+            StructureError::AllocationFailed {
                 requested: numerator.len(),
-            })?;
+            }
+        })?;
         for entry in numerator {
             normalized.push(
                 entry
@@ -272,9 +272,7 @@ impl RationalWeight {
     /// Apply an integer matrix (an involution's weight action) to the
     /// numerator, keeping the denominator (ratvec.cpp:190).
     pub(crate) fn apply_matrix(&self, matrix: &[Vec<i32>]) -> Result<Self, StructureError> {
-        if matrix.len() != self.rank()
-            || matrix.iter().any(|row| row.len() != self.rank())
-        {
+        if matrix.len() != self.rank() || matrix.iter().any(|row| row.len() != self.rank()) {
             return Err(StructureError::RankMismatch {
                 expected: self.rank(),
                 actual: matrix.len(),
@@ -323,11 +321,11 @@ impl RationalWeight {
     /// divisions (repr.cpp:194-199, 768-774).
     pub(crate) fn integral_coordinates(&self) -> Result<Vec<i64>, StructureError> {
         let mut coordinates = Vec::new();
-        coordinates
-            .try_reserve_exact(self.rank())
-            .map_err(|_| StructureError::AllocationFailed {
+        coordinates.try_reserve_exact(self.rank()).map_err(|_| {
+            StructureError::AllocationFailed {
                 requested: self.rank(),
-            })?;
+            }
+        })?;
         for &entry in &self.numerator {
             if entry % self.denominator != 0 {
                 return Err(StructureError::RepInvariantViolation {
