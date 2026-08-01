@@ -4636,7 +4636,7 @@ pub(crate) fn print_text(
                 for edges_z in edges.iter_mut() {
                     edges_z.sort_unstable();
                 }
-                for z in 0..size {
+                for (z, edges_z) in edges.iter().enumerate() {
                     text.push_str(&format!("{z}:"));
                     let desc = kl_table.support().descent_set(z);
                     let mut gens: Vec<String> = Vec::new();
@@ -4646,7 +4646,7 @@ pub(crate) fn print_text(
                         }
                     }
                     text.push_str(&format!("{{{}}}:{{", gens.join(",")));
-                    for (j, &(target, coef)) in edges[z].iter().enumerate() {
+                    for (j, &(target, coef)) in edges_z.iter().enumerate() {
                         if j > 0 {
                             text.push(',');
                         }
