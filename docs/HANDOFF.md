@@ -74,6 +74,37 @@ report shows both fixtures PASS, zero FAIL → bump meta to
 `rust_status: verified_hpc` + `differential_job` → record here → commit →
 `rsync -az --delete .git/` to HPC.
 
+## Live continuation - 2026-08-01 (KTypePol/ParamPol arithmetic surface)
+
+The pol arithmetic surface is landed and HPC-verified. HEAD is
+`ef109af` (main); differential `3506368` ran 160 fixtures with **zero
+FAIL** (one PARTIAL: the two intentional `container_syntax_errors`
+pending cases) and PASSES `domain/ktypepol_arithmetic` and
+`domain/parampol_arithmetic` (reference captured by `3506344`). Their
+meta files carry `rust_status: verified_hpc` + `differential_job:
+3506368`. The domain layer is complete at 81 of 81 frozen contracts.
+
+Implementation (commit `ef109af`):
+
+- Binary `+`/`-` on (KTypePol,KTypePol) and (ParamPol,ParamPol) merge
+  like terms in the upstream pol term order (mismatch wordings `adding
+  two K_types` / `subtracting two K_types` / `adding two modules` /
+  `subtracting two modules`).
+- `+(KTypePol,(Split,KType))` (add_K_type_term_wrapper): the explicit
+  Split coefficient scales each final expansion term.
+- `*(Split,KTypePol)` / `*(Split,ParamPol)` (split_mult_*_wrapper):
+  every coefficient is multiplied by the Split, with the zero-divisor
+  filtering — a scalar multiple of 1-s drops terms whose e-f vanishes, a
+  multiple of 1+s drops terms whose e+f vanishes.
+- `truncate_above_height(Pol,int)`: terms with height <= bound survive; a
+  negative bound keeps everything.
+- Binary `=`/`!=` on the pols via structural equality.
+
+Local gate: 293 atlas-real-group + 229 atlas-core tests pass; clippy and
+fmt clean; the eight ktype/param-family fixtures VERBATIM; the wired local
+pipeline reports 158 PASS + 1 PARTIAL + the known `fromfile_accepted_b10`
+FAIL; harness 10/10.
+
 ## Live continuation - 2026-08-01 (non-final KTypePol/ParamPol expansion)
 
 The non-final pol contracts are landed and HPC-verified. HEAD is
@@ -400,22 +431,22 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: `f4d5798` (main). Working tree clean. Every frozen
+HEAD at handoff: `ef109af` (main). Working tree clean. Every frozen
 contract from the 2026-07-31 checkpoint is landed and HPC-verified: the
 eight L1/L2 contracts (`3506234`), the six ktype/param contracts
-(`3506258`), L3/L4 (`3506272`), and the non-final KTypePol/ParamPol
-expansion (`3506331`). The domain layer is complete (79 of 79 frozen
-domain contracts), and the projection sweep (`gcd_sweep`) now matches the
-oracle build's local-row semantics (terminating, oracle-elected basis).
-The remaining porting work is the deform/KL math layer (`deform`,
-`K_type_formula`, `branch`, KL sums, the block deformations), the KL/file
-formats (filekl adapter), readline completion, and the `docs/LANGUAGE.md`
-matrix refresh (domain rows updated at `dbf02fe`/`f4d5798`; the remaining
-rows track the Block/KL layer). Language-layer design notes (value shape,
-Display formats, on-demand RepContext construction from
-`Arc<RealFormContext>`) are in the 2026-08-01 entries; the pol term math
-now lives in the crate (`finals_for`) plus thin language-layer containers
-in `domain_builtins.rs`.
+(`3506258`), L3/L4 (`3506272`), the non-final pol expansion (`3506331`),
+and the pol arithmetic surface (`3506368`). The domain layer is complete
+(81 of 81 frozen domain contracts), and the projection sweep now matches
+the oracle build's local-row semantics. The remaining porting work is the
+deform/KL math layer (`deform`, `twisted_deform`, `block_deform`,
+`full_deform`, `K_type_formula`, `branch`, `KGP_sum`, KL sums,
+`KL_block`), the KL/file formats (filekl adapter), readline completion,
+and the `docs/LANGUAGE.md` matrix refresh (the remaining rows track the
+Block/KL layer). Language-layer design notes (value shape, Display
+formats, on-demand RepContext construction from `Arc<RealFormContext>`)
+are in the 2026-08-01 entries; the pol term math now lives in the crate
+(`finals_for`) plus thin language-layer containers in
+`domain_builtins.rs`.
 
 Verified `verified_hpc` so far: all eval slices B3a-B13, `set_type`,
 operator overload declarations, builtin `whattype * ?`, `showall`,
