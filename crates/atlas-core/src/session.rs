@@ -106,6 +106,7 @@ pub(crate) fn execute_tokens(
                 span,
             },
             TypedCommandEvent::ReportLine { text, span } => SessionEvent::ReportLine { text, span },
+            TypedCommandEvent::Output { text, span } => SessionEvent::Output { text, span },
         })),
         Err(diagnostic) => events.push(SessionEvent::Diagnostic(diagnostic)),
     }

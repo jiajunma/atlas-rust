@@ -149,6 +149,26 @@ FIXTURE_PLANS = (
     FixturePlan(name="commands/invalid_token_continues"),
     FixturePlan(name="commands/mismatched_delimiter_continues"),
     FixturePlan(name="commands/nested_invalid_token_continues"),
+    # L3 `set quiet`/`set verbose` option commands (parser.y:171-178) with
+    # the verbose analysis trace (main.w:495-516, 528-540), and L4's
+    # unterminated-string lexical recovery (lexer.w:311-320): a warning
+    # diagnostic that does not flip the exit status.
+    # The `set verbose` line itself produces no event (silent); line 3's
+    # trace + value span events 0-3, and line 2's syntax diagnostic is
+    # event 4 — the source/event mapping is not one-to-one.
+    FixturePlan(
+        name="lex/basic",
+        runnable_lines=(2, 3),
+        runnable_events=(0, 1, 2, 3, 4),
+        silent_lines=(1,),
+    ),
+    # The recovered string evaluates to a Value and reports the lexical
+    # warning in one source line.
+    FixturePlan(
+        name="negative/unterminated_string",
+        runnable_lines=(1,),
+        runnable_events=(0, 1),
+    ),
     # The dangling `[` line is excluded: the oracle saw the capture-time
     # appended `quit` (`unexpected QUIT, expecting ']'`) where the CLI sees
     # EOF, so that event stays pending; the `4` line after it belongs to the
@@ -459,7 +479,11 @@ def validate_plan(
         else plan.runnable_events
     )
 
-    if len(runnable_lines) != len(runnable_events):
+    # One runnable line can produce several events (the verbose trace
+    # emits three stdout lines for one expression; a lexical warning rides
+    # along with the recovered value), so only the degenerate direction —
+    # a runnable line with no event at all — is invalid (mark it silent).
+    if len(runnable_events) < len(runnable_lines):
         errors.append("runnable source/event selection lengths differ")
     if any(line < 1 or line > len(source_lines) for line in runnable_lines):
         errors.append("runnable source line is outside the fixture")

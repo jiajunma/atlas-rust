@@ -539,7 +539,7 @@ impl<'a> Lexer<'a> {
                 span: self.source.span(start, self.offset),
             };
             self.pending = Some(recovered);
-            return Err(Diagnostic::new(
+            return Err(Diagnostic::warning(
                 ErrorKind::Lexical,
                 "Closing string denotation.",
                 Some(self.source.span(start, self.offset)),

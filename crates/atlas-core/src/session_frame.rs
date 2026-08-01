@@ -190,11 +190,18 @@ impl<P: FileProvider, S: FileSink> SessionFrame<P, S> {
             let token = match lexer.next_token() {
                 Ok(token) => token,
                 Err(diagnostic) => {
+                    // Lexical recovery (the unterminated-string warning) is
+                    // reported but neither dirties the session nor aborts
+                    // an include; real lexical errors keep the old
+                    // semantics (clean=false, abandon inside includes).
+                    let warning = diagnostic.is_warning();
                     events.push(SessionEvent::Diagnostic(diagnostic));
-                    self.clean = false;
-                    if depth > 0 {
-                        self.abandon(&source, &lexer, events);
-                        return Outcome::Abort;
+                    if !warning {
+                        self.clean = false;
+                        if depth > 0 {
+                            self.abandon(&source, &lexer, events);
+                            return Outcome::Abort;
+                        }
                     }
                     continue;
                 }

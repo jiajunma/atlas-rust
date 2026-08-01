@@ -19,6 +19,7 @@ use super::{
     ParsedLet, ParserToken, PatternTail, PostfixSuffix, Prim, Program, SlotTail, SpannedValue,
     TypeExpr, TypeField, TypeSpec, TypeVariantSlot, UnaryOp, Pattern, TypeDefinition,
     ParsedCaseSelect, ParsedCountedFor, ParsedIntCase,
+    set_option_command,
 };
 use crate::diagnostic::SourceSpan;
 use crate::formula::{FormulaOperator, FormulaStack};
@@ -57,6 +58,10 @@ pub Command: Command = {
     },
     <whattype:"whattype"> <target:Expr> => whattype_command(whattype, target),
     <showall:"showall"> => Command::ShowAll { span: showall },
+    // set option (parser.y:171-178): `set quiet` / `set verbose` — the
+    // command ends at the identifier, unlike the `set bindings` forms
+    // which continue with `=`/`:`/`(`.
+    <set:"set"> <name:"identifier"> => set_option_command(set, name),
     // set (parser.y:140): the `let` declaration forms, bound globally and
     // in parallel; function-typed leaves enter the overload table.
     <set:"set"> <operator:Operator> <open:"(">

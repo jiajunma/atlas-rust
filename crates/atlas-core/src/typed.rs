@@ -470,6 +470,65 @@ impl OverloadState {
     }
 }
 
+/// Compact rendering of a converted (typed) expression for the verbose
+/// analysis trace (main.w:528-540 `Converted expression:`). Mirrors the
+/// upstream `expression_base` prints for the node shapes the trace needs:
+/// denotations print their value, identifiers their name, and calls print
+/// `name(arg1,arg2)` (call_expression::print, axis.w:1912-1924). Other
+/// shapes are rendered structurally where cheap; the fallback keeps the
+/// trace parseable without claiming oracle fidelity for unverified nodes.
+fn compact_typed_expression(expression: &TypedExpr) -> String {
+    match expression {
+        TypedExpr::Denotation(value) => value.to_string(),
+        TypedExpr::GlobalIdent { name, .. } | TypedExpr::LocalIdent { name, .. } => name.clone(),
+        TypedExpr::BuiltinCall {
+            builtin, arguments, ..
+        } => {
+            let name = builtin_registry()[*builtin].name;
+            let mut out = String::from(name);
+            out.push('(');
+            for (index, argument) in arguments.iter().enumerate() {
+                if index > 0 {
+                    out.push(',');
+                }
+                out.push_str(&compact_typed_expression(argument));
+            }
+            out.push(')');
+            out
+        }
+        TypedExpr::TupleDisplay(elements) => {
+            let inner = elements
+                .iter()
+                .map(compact_typed_expression)
+                .collect::<Vec<_>>()
+                .join(",");
+            format!("({inner})")
+        }
+        TypedExpr::ListDisplay(elements) => {
+            let inner = elements
+                .iter()
+                .map(compact_typed_expression)
+                .collect::<Vec<_>>()
+                .join(",");
+            format!("[{inner}]")
+        }
+        TypedExpr::Conversion { inner, .. } => compact_typed_expression(inner),
+        TypedExpr::FunctionCall {
+            function, argument, ..
+        } => format!(
+            "{}({})",
+            compact_typed_expression(function),
+            compact_typed_expression(argument)
+        ),
+        TypedExpr::Sequence { first, second } => format!(
+            "{};{}",
+            compact_typed_expression(first),
+            compact_typed_expression(second)
+        ),
+        _ => "<expression>".to_string(),
+    }
+}
+
 /// One candidate in the merged overload view: a startup builtin or a user
 /// `set` definition, most specific first (the upstream single-table
 /// order).
@@ -548,6 +607,10 @@ pub enum TypedCommandEvent {
         text: String,
         span: SourceSpan,
     },
+    Output {
+        text: String,
+        span: SourceSpan,
+    },
 }
 
 /// Persistent state for command-at-a-time typed execution.
@@ -559,6 +622,10 @@ pub struct TypedContext {
     /// The overload table: startup overloads hidden by
     /// `forget name @ type` plus user `set` definitions.
     overloads: OverloadState,
+    /// The session verbosity (main.w `verbosity`): `set quiet` = 0,
+    /// `set verbose` = 1; the verbose analysis trace prints when this is
+    /// nonzero.
+    verbosity: u8,
 }
 
 impl TypedContext {
@@ -573,12 +640,39 @@ impl TypedContext {
     pub fn execute(&mut self, command: &Command) -> Result<Vec<TypedCommandEvent>, Diagnostic> {
         match command {
             Command::Expression(expression) => {
+                // The verbose analysis trace (main.w:495-516, 528-540):
+                // `Expression before type analysis` right after parsing,
+                // then `Type found` / `Converted expression` after
+                // analysis and before evaluation.
+                let mut events = Vec::new();
+                if self.verbosity == 1 {
+                    events.push(TypedCommandEvent::Output {
+                        text: format!(
+                            "Expression before type analysis: {}\n",
+                            compact_expression(expression)
+                        ),
+                        span: expression.span(),
+                    });
+                }
                 let mut type_ = Type::Undetermined;
                 let typed = convert_expr(
                     expression,
                     &mut type_,
                     &Analysis::new(&self.types, &self.globals, &self.overloads),
                 )?;
+                if self.verbosity > 0 {
+                    events.push(TypedCommandEvent::Output {
+                        text: format!("Type found: {}\n", type_.display(&self.types)),
+                        span: expression.span(),
+                    });
+                    events.push(TypedCommandEvent::Output {
+                        text: format!(
+                            "Converted expression: {}\n",
+                            compact_typed_expression(&typed)
+                        ),
+                        span: expression.span(),
+                    });
+                }
                 let value = match evaluate_command_expr(&typed, &mut self.evaluation) {
                     Ok(value) => value,
                     Err(diagnostic) => {
@@ -590,7 +684,7 @@ impl TypedContext {
                         return Err(diagnostic);
                     }
                 };
-                let mut events = self.drain_printed(expression.span());
+                events.extend(self.drain_printed(expression.span()));
                 events.push(TypedCommandEvent::Value {
                     value,
                     type_,
@@ -598,6 +692,24 @@ impl TypedContext {
                 });
                 Ok(events)
             }
+            Command::SetOption { option, .. } => match option.as_str() {
+                // The option identifiers are the first two entries of the
+                // main hash table (parser.y:171-178): `quiet` gives 0 and
+                // `verbose` gives 1; the flag persists across commands.
+                "quiet" => {
+                    self.verbosity = 0;
+                    Ok(vec![])
+                }
+                "verbose" => {
+                    self.verbosity = 1;
+                    Ok(vec![])
+                }
+                other => Err(Diagnostic::new(
+                    ErrorKind::Io,
+                    format!("'{other}' is not something one can set"),
+                    None,
+                )),
+            },
             Command::Define {
                 name, value, span, ..
             } => {

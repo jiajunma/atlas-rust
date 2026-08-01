@@ -95,6 +95,10 @@ pub struct Diagnostic {
     pub kind: ErrorKind,
     pub message: String,
     pub span: Option<SourceSpan>,
+    /// A warning is reported to the user but does not make the session
+    /// unclean (upstream lexical recovery prints to stderr without setting
+    /// the clean flag; exit status stays 0).
+    pub warning: bool,
 }
 
 impl Diagnostic {
@@ -103,7 +107,21 @@ impl Diagnostic {
             kind,
             message: message.into(),
             span,
+            warning: false,
         }
+    }
+
+    pub fn warning(kind: ErrorKind, message: impl Into<String>, span: Option<SourceSpan>) -> Self {
+        Self {
+            kind,
+            message: message.into(),
+            span,
+            warning: true,
+        }
+    }
+
+    pub fn is_warning(&self) -> bool {
+        self.warning
     }
 }
 

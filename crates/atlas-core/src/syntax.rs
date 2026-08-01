@@ -624,6 +624,14 @@ pub enum Command {
         bindings: Vec<LetBinding>,
         span: SourceSpan,
     },
+    /// `set quiet` / `set verbose` (parser.y:171-178): a session verbosity
+    /// option command; unknown options print
+    /// `'X' is not something one can set` and abort the command without
+    /// touching the verbosity.
+    SetOption {
+        option: String,
+        span: SourceSpan,
+    },
     /// `whattype id_op ?` (parser.y:187): lists the overload instances
     /// known for the identifier or operator.
     ShowOverloads {
@@ -647,6 +655,7 @@ impl Command {
             | Self::Forget { span, .. }
             | Self::ForgetOverload { span, .. }
             | Self::Set { span, .. }
+            | Self::SetOption { span, .. }
             | Self::ShowOverloads { span, .. }
             | Self::ShowAll { span } => *span,
         }
@@ -1216,6 +1225,10 @@ fn bison_expecting(token: &ParserToken, expected: &[String]) -> Option<&'static 
         // level expects the terminating newline.
         ParserToken::Integer(_) if has("]") => Some("']'"),
         ParserToken::Integer(_) => Some("'\\n'"),
+        // `let x := ...` and the other binding forms: the assignment
+        // operator is not a binding separator, so the state expects `=`.
+        ParserToken::Becomes(_) if has("=") => Some("'='"),
+        ParserToken::Becomes(_) => Some("'\\n'"),
         // `1 $ + 2`: `$` is a defined single-character token, so bison
         // names it `'$'`, and the command level expects the newline.
         ParserToken::Unsupported(_) if has("|") => Some("-> or '|'"),
@@ -1258,6 +1271,8 @@ fn bison_token_name(token: &ParserToken) -> Option<&'static str> {
         ParserToken::Dont(_) => Some("DONT"),
         ParserToken::Die(_) => Some("DIE"),
         ParserToken::Question(_) => Some("'?'"),
+        // Multi-character literal tokens print unquoted, like `:=`.
+        ParserToken::Becomes(_) => Some(":="),
         ParserToken::Set(_) => Some("SET"),
         ParserToken::SetType(_) => Some("SET_TYPE"),
         ParserToken::Whattype(_) => Some("WHATTYPE"),
@@ -1929,6 +1944,13 @@ fn set_command(set_span: SourceSpan, bindings: Vec<LetBinding>) -> Command {
     Command::Set {
         span: join_span(set_span, end),
         bindings,
+    }
+}
+
+fn set_option_command(set_span: SourceSpan, name: SpannedValue<String>) -> Command {
+    Command::SetOption {
+        option: name.value,
+        span: join_span(set_span, name.span),
     }
 }
 
