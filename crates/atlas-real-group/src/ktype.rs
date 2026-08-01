@@ -409,3 +409,135 @@ fn simple_generator(rc: &RepContext, simple: RootId) -> Result<usize, StructureE
             invariant: "simple root generator",
         })
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        AdjointFiberBudget, BasedRootDatum, CartanClassification, CartanClassificationBudget,
+        CartanId, Coweight, InnerClass, IntegerLatticeBudget, InvolutionTable,
+        InvolutionTableBudget, LatticeInvolution, RealFormSeed, RepContext,
+        StrongRealClassification, WeakRealFormId, Weight,
+    };
+
+    use super::*;
+
+    fn class_budget(weyl: usize) -> CartanClassificationBudget {
+        CartanClassificationBudget::new(
+            IntegerLatticeBudget::new(64, 100_000, 100_000, 128),
+            AdjointFiberBudget::new(
+                IntegerLatticeBudget::new(64, 100_000, 100_000, 128),
+                50_000,
+                100_000,
+            ),
+            weyl,
+            64,
+            64,
+        )
+    }
+
+    /// Inline split-A1 context builder; the tests keep the graph alive in
+    /// their own scope while the context borrows it.
+    fn with_split_a1<T>(f: impl FnOnce(&RepContext<'_>, &crate::KgbGraph) -> T) -> T {
+        let datum = BasedRootDatum::from_simple_data(
+            1,
+            vec![vec![2]],
+            vec![Weight::new(vec![2])],
+            vec![Coweight::new(vec![1])],
+        )
+        .unwrap();
+        let involution = LatticeInvolution::identity(&datum).unwrap();
+        let inner_class = InnerClass::new(datum, involution, 4).unwrap();
+        let classification = CartanClassification::build(&inner_class, &class_budget(4)).unwrap();
+        let strong = StrongRealClassification::build(&classification, 4_096).unwrap();
+        let mut table = InvolutionTable::new(
+            &inner_class,
+            InvolutionTableBudget::new(64, IntegerLatticeBudget::new(64, 100_000, 100_000, 128)),
+        )
+        .unwrap();
+        table.add_cartan(&classification, CartanId(0)).unwrap();
+        let seed = RealFormSeed::build(
+            &inner_class,
+            &classification,
+            &strong,
+            &table,
+            WeakRealFormId(0),
+            &IntegerLatticeBudget::new(64, 100_000, 100_000, 128),
+            4_096,
+        )
+        .unwrap();
+        let graph =
+            crate::KgbGraph::build(&inner_class, &classification, &strong, &mut table, &seed)
+                .unwrap();
+        let context = RepContext::new(&inner_class, &table, &graph).unwrap();
+        f(&context, &graph)
+    }
+
+    #[test]
+    fn split_a1_k_type_anchors_match_the_frozen_contract() {
+        with_split_a1(|rc, graph| {
+            // The quasisplit (split) SL(2,R) KGB has three elements.
+            assert_eq!(graph.size(), 3);
+            let x = KgbId(2);
+            let k = KType::sr_k(rc, x, &Weight::new(vec![0])).unwrap();
+
+            // Stored lambda-rho is [0] (displayed lambda = rho + lam_rho =
+            // [1]/1 for A1); the height of (1+theta)lambda is 0.
+            assert_eq!(k.lambda_rho(), &Weight::new(vec![0]));
+            assert_eq!(k.height(), 0);
+
+            assert!(k.is_standard(rc).unwrap());
+            assert!(k.is_dominant(rc).unwrap());
+            assert!(k.is_nonzero(rc).unwrap());
+            assert!(k.is_final(rc).unwrap());
+            assert!(k.is_semifinal(rc).unwrap());
+            assert!(k.is_normal(rc).unwrap());
+
+            // dominant/normal/theta_stable all fix this final K-type.
+            assert_eq!(k.made_dominant(rc).unwrap(), k);
+            assert_eq!(k.normalised(rc).unwrap(), k);
+            assert_eq!(k.made_theta_stable(rc).unwrap(), k);
+
+            // K_type(x,[2]) normalizes mod (1-theta)X* = 2X* for this x, so
+            // the two constructions are equal and SR-equivalent.
+            let k2 = KType::sr_k(rc, x, &Weight::new(vec![2])).unwrap();
+            assert_eq!(k2, k);
+            assert!(k.equivalent(rc, &k2).unwrap());
+        });
+    }
+
+    #[test]
+    fn split_a1_standard_repr_anchors_match_the_frozen_contract() {
+        with_split_a1(|rc, _graph| {
+            let x = KgbId(2);
+            // param(x,[0],[0]/1): gamma projects to [0]/1 on the split
+            // Cartan, and the third % component is that info character.
+            let parameter = rc
+                .sr(
+                    x,
+                    &Weight::new(vec![0]),
+                    &crate::RationalWeight::new(vec![0], 1).unwrap(),
+                )
+                .unwrap();
+            assert_eq!(parameter.x(), x);
+            assert_eq!(
+                parameter.gamma(),
+                &crate::RationalWeight::new(vec![0], 1).unwrap()
+            );
+            assert_eq!(parameter.height(), 0);
+            assert!(parameter.is_standard(rc).unwrap());
+            assert!(parameter.is_final(rc).unwrap());
+            assert!(parameter.is_nonzero(rc).unwrap());
+            assert!(parameter.is_normal(rc).unwrap());
+
+            // K_type(p) restricts back to the K-type above.
+            let k = rc.sr_k_of_standard(&parameter).unwrap();
+            assert_eq!(k.lambda_rho(), &Weight::new(vec![0]));
+
+            // param(K_type(x,[0])) = p: extending with nu = 0 returns the
+            // same standard module.
+            let k2 = KType::sr_k(rc, x, &Weight::new(vec![0])).unwrap();
+            let parameter2 = rc.sr_of_ktype(&k2).unwrap();
+            assert!(parameter.equivalent(rc, &parameter2).unwrap());
+        });
+    }
+}
