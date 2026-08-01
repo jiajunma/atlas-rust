@@ -5,7 +5,7 @@
   "reference_status": "verified_hpc_reference",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "oracle_exit_status": 0,
-  "rust_status": "implemented_local",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/structure/rootdata.cpp:830-885",
     "sources/interpreter/atlas-types.w:2254-2255"
@@ -17,5 +17,6 @@
   "fixture_sha256": "80ae0d3c4e5cf2087c008e67304e94441fda2b82953a6b0735c41cb9761af2ab",
   "oracle_stdout_sha256": "28b68bc97aa50b27a40bc057261eee501aeda65b25f31e71a75fb059304e8635",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "capture_artifacts_sha256": "28b68bc97aa50b27a40bc057261eee501aeda65b25f31e71a75fb059304e8635"
+  "capture_artifacts_sha256": "28b68bc97aa50b27a40bc057261eee501aeda65b25f31e71a75fb059304e8635",
+  "differential_job": "3506839"
 }

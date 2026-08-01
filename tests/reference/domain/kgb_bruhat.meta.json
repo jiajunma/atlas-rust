@@ -5,7 +5,7 @@
   "reference_status": "verified_hpc_reference",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "oracle_exit_status": 0,
-  "rust_status": "implemented_local",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/gkmod/kgb.cpp:848-893",
     "sources/io/kgb_io.cpp:150-274",
@@ -18,5 +18,6 @@
   "fixture_sha256": "af26825f6e523424aa920ae15ead1cdee3467817102dfc747026918447658628",
   "oracle_stdout_sha256": "53eaf05c9c1527919a56de82343b0708a6916df64661a96a58b1376f2538ab01",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "capture_artifacts_sha256": "53eaf05c9c1527919a56de82343b0708a6916df64661a96a58b1376f2538ab01"
+  "capture_artifacts_sha256": "53eaf05c9c1527919a56de82343b0708a6916df64661a96a58b1376f2538ab01",
+  "differential_job": "3506839"
 }
