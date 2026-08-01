@@ -90,6 +90,20 @@ cancels the remainder's copy (keeping the lead IN the remainder while
 subtracting is what terminates the loop). Negative bounds report
 `Maximum level in branch cannot be negative` before the no-value gate.
 
+The `deform` contract is FROZEN (fixture + events + meta, reference job
+`3506415`): `domain/deform.atlas` on A2 su(2,1) pins the nontrivial
+deformation of `param(x3/[0,0]/[1,1]1)` and `param(x4/[0,0]/[1,1]1)`
+(`(1-1s)*parameter(x=2,...)[4]` + `(1-1s)*parameter(x=0,...)[4]`, and
+the x4 variant with x=1/x=0) plus the length-0 empty sum. The next
+implementation slice is the block/KLV machinery:
+`Rep_table::lookup` (partial common block via `block_modifier`),
+`contributions(block, singular, y)`, `deformation_terms`
+(repr.cpp:1933-2025: KLV polynomials evaluated at q=-1 with the
+alternating-column signs, the `remainder`/`acc` inversion loop, and the
+orientation-number phases), the `kl::KL_table` (kl.cpp), and the
+`blocks::common_block` structure (blocks.cpp) — the largest remaining
+port.
+
 ## Live continuation - 2026-08-01 (K_type_formula: deform-family slice 2)
 
 The K-type formula surface is landed and HPC-verified. HEAD is the
