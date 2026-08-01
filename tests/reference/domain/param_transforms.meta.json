@@ -1,0 +1,21 @@
+{
+  "fixture": "domain/param_transforms",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3506620",
+  "source_archive_sha256": "2863d50eb4735162724581a0cb9ba7ce65a05f96",
+  "fixture_sha256": "be911d22f41015263db9724afaea30817de10233a44efedf9872beaccf87a10e",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "e082466594a3d9edcdc9ac52ed17bc77554e156b54112529915336c043deb586",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "747bab5fded797762cf15a3bcd1f72eeb8bcfd42917d93b20989871286948cea",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/gkmod/repr.cpp:1361-1572",
+    "sources/interpreter/atlas-types.w:7472-7502"
+  ],
+  "notes": "Param transforms surface (is_standard/is_dominant/is_semifinal/is_final predicates, dominant/normal transforms, and equivalence on parameters), captured verbatim by HPC job 3506620 against the frozen atlasofliegroups-4d3e9449 oracle."
+}

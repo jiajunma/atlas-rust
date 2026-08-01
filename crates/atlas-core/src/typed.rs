@@ -5063,8 +5063,31 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             ),
             domain_builtin_skip("height", primitive_type(Prim::Param), int_type(), 0),
             domain_builtin_skip("is_standard", primitive_type(Prim::Param), bool_type(), 0),
+            domain_builtin_skip("is_dominant", primitive_type(Prim::Param), bool_type(), 0),
+            domain_builtin_skip("is_semifinal", primitive_type(Prim::Param), bool_type(), 0),
             domain_builtin_skip("is_final", primitive_type(Prim::Param), bool_type(), 0),
             domain_builtin_skip("is_zero", primitive_type(Prim::Param), bool_type(), 0),
+            // Param dominant/normal transforms (atlas-types.w:7484-7485,
+            // hunger 3) and equivalence (atlas-types.w:7482), gated by
+            // the param_transforms contract.
+            domain_builtin_skip(
+                "dominant",
+                primitive_type(Prim::Param),
+                primitive_type(Prim::Param),
+                3,
+            ),
+            domain_builtin_skip(
+                "normal",
+                primitive_type(Prim::Param),
+                primitive_type(Prim::Param),
+                3,
+            ),
+            domain_builtin_validate(
+                "equivalent",
+                pair(primitive_type(Prim::Param)),
+                bool_type(),
+                0,
+            ),
             // KTypePol surface (atlas-types.w:6091-6117): the
             // fixture-gated subset. add/subtract_K_type_wrapper check the
             // real form identity before their no-value gates, so they

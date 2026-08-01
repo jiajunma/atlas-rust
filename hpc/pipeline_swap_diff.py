@@ -357,6 +357,8 @@ FIXTURE_PLANS = (
     # ParamPol/Param operations: K_type_pol(ParamPol), last_term, and the
     # (ParamPol,rat)/(Param,rat) scalings.
     FixturePlan(name="domain/param_pol_ops"),
+    # Param predicates, dominant/normal transforms, and equivalence.
+    FixturePlan(name="domain/param_transforms"),
     # Strong-real surface: the base contract plus the probes whose slices
     # have landed — the Cartan numbering adapter (a63dc32) covers the four
     # B2/C2 Cartan enumerations and all four rejected diagnostics, and the

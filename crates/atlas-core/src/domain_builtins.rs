@@ -4030,14 +4030,36 @@ pub(crate) fn validate(
         // its no-value gate (atlas-types.w:5325-5327).
         "equivalent" => {
             arity(name, arguments, 2, span)?;
-            let left = as_ktype(&arguments[0], span)?;
-            let right = as_ktype(&arguments[1], span)?;
-            require_same_form(
-                &left.context,
-                &right.context,
-                "Real form mismatch when testing equivalence",
-                span,
-            )?;
+            match (&arguments[0], &arguments[1]) {
+                (
+                    Value::Domain(DomainValue::KType(left)),
+                    Value::Domain(DomainValue::KType(right)),
+                ) => {
+                    require_same_form(
+                        &left.context,
+                        &right.context,
+                        "Real form mismatch when testing equivalence",
+                        span,
+                    )?;
+                }
+                (
+                    Value::Domain(DomainValue::Param(left)),
+                    Value::Domain(DomainValue::Param(right)),
+                ) => {
+                    require_same_form(
+                        &left.context,
+                        &right.context,
+                        "Real form mismatch when testing equivalence",
+                        span,
+                    )?;
+                }
+                _ => {
+                    return Err(type_error(
+                        span,
+                        "equivalent expects two KTypes or two Params",
+                    ));
+                }
+            }
         }
         // KGP_sum_wrapper's semifinal precondition precedes its no-value
         // gate (atlas-types.w:5997-6001).
@@ -5595,20 +5617,46 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
         // class (K_repr.cpp:159-171).
         "equivalent" => {
             arity(name, arguments, 2, span)?;
-            let left = as_ktype(&arguments[0], span)?;
-            let right = as_ktype(&arguments[1], span)?;
-            require_same_form(
-                &left.context,
-                &right.context,
-                "Real form mismatch when testing equivalence",
-                span,
-            )?;
-            let rc = rep_context(&left.context);
-            let result = left
-                .ktype
-                .equivalent(&rc, &right.ktype)
-                .map_err(|error| structure_diagnostic(error, span))?;
-            Ok(Value::Boolean(result))
+            match (&arguments[0], &arguments[1]) {
+                (
+                    Value::Domain(DomainValue::KType(left)),
+                    Value::Domain(DomainValue::KType(right)),
+                ) => {
+                    require_same_form(
+                        &left.context,
+                        &right.context,
+                        "Real form mismatch when testing equivalence",
+                        span,
+                    )?;
+                    let rc = rep_context(&left.context);
+                    let result = left
+                        .ktype
+                        .equivalent(&rc, &right.ktype)
+                        .map_err(|error| structure_diagnostic(error, span))?;
+                    Ok(Value::Boolean(result))
+                }
+                (
+                    Value::Domain(DomainValue::Param(left)),
+                    Value::Domain(DomainValue::Param(right)),
+                ) => {
+                    require_same_form(
+                        &left.context,
+                        &right.context,
+                        "Real form mismatch when testing equivalence",
+                        span,
+                    )?;
+                    let rc = rep_context(&left.context);
+                    let result = left
+                        .repr
+                        .equivalent(&rc, &right.repr)
+                        .map_err(|error| structure_diagnostic(error, span))?;
+                    Ok(Value::Boolean(result))
+                }
+                _ => Err(type_error(
+                    span,
+                    "equivalent expects two KTypes or two Params",
+                )),
+            }
         }
         // K_type_dominant/normal/theta_stable/to_canonical_fiber wrappers
         // (atlas-types.w:5397-5444): KType-preserving transforms computed
@@ -5617,20 +5665,40 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
         // `theta_stable` the form without complex descents.
         "dominant" | "normal" | "theta_stable" | "to_canonical_fiber" => {
             arity(name, arguments, 1, span)?;
-            let ktype = as_ktype(&arguments[0], span)?;
-            let rc = rep_context(&ktype.context);
-            let transformed = match name {
-                "dominant" => ktype.ktype.made_dominant(&rc),
-                "normal" => ktype.ktype.normalised(&rc),
-                "theta_stable" => ktype.ktype.made_theta_stable(&rc),
-                "to_canonical_fiber" => ktype.ktype.to_canonical_fiber(&rc),
-                _ => unreachable!(),
+            match (&arguments[0], name) {
+                (Value::Domain(DomainValue::KType(ktype)), _) => {
+                    let rc = rep_context(&ktype.context);
+                    let transformed = match name {
+                        "dominant" => ktype.ktype.made_dominant(&rc),
+                        "normal" => ktype.ktype.normalised(&rc),
+                        "theta_stable" => ktype.ktype.made_theta_stable(&rc),
+                        "to_canonical_fiber" => ktype.ktype.to_canonical_fiber(&rc),
+                        _ => unreachable!(),
+                    }
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                    Ok(Value::Domain(DomainValue::KType(KTypeValue {
+                        context: Arc::clone(&ktype.context),
+                        ktype: transformed,
+                    })))
+                }
+                (Value::Domain(DomainValue::Param(parameter)), "dominant" | "normal") => {
+                    let rc = rep_context(&parameter.context);
+                    let transformed = match name {
+                        "dominant" => parameter.repr.made_dominant(&rc),
+                        "normal" => parameter.repr.normalised(&rc),
+                        _ => unreachable!(),
+                    }
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                    Ok(Value::Domain(DomainValue::Param(ParamValue {
+                        context: Arc::clone(&parameter.context),
+                        repr: transformed,
+                    })))
+                }
+                _ => Err(type_error(
+                    span,
+                    format!("{name} expects a KType or Param, found {}", arguments[0]),
+                )),
             }
-            .map_err(|error| structure_diagnostic(error, span))?;
-            Ok(Value::Domain(DomainValue::KType(KTypeValue {
-                context: Arc::clone(&ktype.context),
-                ktype: transformed,
-            })))
         }
         // K_type_pol_wrapper / virtual_module_wrapper
         // (atlas-types.w:5537-5543, 7613-7620): the empty sum of one real
