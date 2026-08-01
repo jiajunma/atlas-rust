@@ -222,6 +222,9 @@ FIXTURE_PLANS = (
     # simple_roots/simple_coroots matrices, the is_Cartan_matrix predicate,
     # and dual_datum(InnerClass).
     FixturePlan(name="domain/simple_roots"),
+    # Batch 2 (KGB Bruhat printers): print_KGB_order (Hasse rows +
+    # comparable-pair count) and print_KGB_graph (Graphviz digraph).
+    FixturePlan(name="domain/kgb_bruhat"),
     # KGB headline observables: per-form KGB sizes and root statuses across
     # the A1/C2/A2 families, plus the inexistent-element and type rejections.
     FixturePlan(name="domain/kgb_generation"),

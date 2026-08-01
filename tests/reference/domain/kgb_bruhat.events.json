@@ -1,0 +1,140 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/kgb_bruhat",
+  "status": "local_oracle_reference",
+  "events": [
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ra': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'A2'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ic': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type A2, with involution defining\ninner class of type 'c', with 2 real forms and 1 dual real form"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rf': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "connected quasisplit real group with Lie algebra 'su(2,1)'"
+      }
+    },
+    {
+      "kind": "Output",
+      "text": "kgbsize: 6\n"
+    },
+    {
+      "kind": "Output",
+      "text": "0:\n"
+    },
+    {
+      "kind": "Output",
+      "text": "1: \n"
+    },
+    {
+      "kind": "Output",
+      "text": "2: \n"
+    },
+    {
+      "kind": "Output",
+      "text": "3: 0,2\n"
+    },
+    {
+      "kind": "Output",
+      "text": "4: 0,1\n"
+    },
+    {
+      "kind": "Output",
+      "text": "5: 3,4\n"
+    },
+    {
+      "kind": "Output",
+      "text": "Number of comparable pairs = 15\n"
+    },
+    {
+      "kind": "Output",
+      "text": "kgbsize: 6\n"
+    },
+    {
+      "kind": "Output",
+      "text": "digraph G {\n"
+    },
+    {
+      "kind": "Output",
+      "text": "ratio=\"1.5\"\n"
+    },
+    {
+      "kind": "Output",
+      "text": "size=\"7.5,10.0\"\n"
+    },
+    {
+      "kind": "Output",
+      "text": "v0\n"
+    },
+    {
+      "kind": "Output",
+      "text": "v1\n"
+    },
+    {
+      "kind": "Output",
+      "text": "v2\n"
+    },
+    {
+      "kind": "Output",
+      "text": "v3\n"
+    },
+    {
+      "kind": "Output",
+      "text": "v4\n"
+    },
+    {
+      "kind": "Output",
+      "text": "v5\n"
+    },
+    {
+      "kind": "Output",
+      "text": "v4 -> v0[color=blue] [arrowhead=none] [style=bold]\n"
+    },
+    {
+      "kind": "Output",
+      "text": "v3 -> v0[color=blue] [arrowhead=none] [style=bold]\n"
+    },
+    {
+      "kind": "Output",
+      "text": "v4 -> v1[color=blue] [arrowhead=none] [style=bold]\n"
+    },
+    {
+      "kind": "Output",
+      "text": "v3 -> v2[color=blue] [arrowhead=none] [style=bold]\n"
+    },
+    {
+      "kind": "Output",
+      "text": "v5 -> v3[color=black] [arrowhead=none] [style=bold]\n"
+    },
+    {
+      "kind": "Output",
+      "text": "v5 -> v4[color=black] [arrowhead=none] [style=bold]\n"
+    },
+    {
+      "kind": "Output",
+      "text": "}\n"
+    }
+  ]
+}

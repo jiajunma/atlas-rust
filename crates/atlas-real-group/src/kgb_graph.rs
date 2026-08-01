@@ -413,6 +413,78 @@ impl KgbGraph {
         self.elements.len()
     }
 
+    /// The Bruhat Hasse diagram of the KGB (kgb.cpp:848-893 `makeHasse`):
+    /// `hasse[y]` lists the elements covered by `y` (the immediate
+    /// down-neighbours). Elements are processed in ascending order; the
+    /// first descent of `x` gives the recursion target `sx`, and the
+    /// already-computed row of `sx` is lifted through the
+    /// imaginary-noncompact Cayley / complex-ascent cross links.
+    pub fn bruhat_hasse(&self) -> Vec<Vec<usize>> {
+        let size = self.size();
+        let rank = self.semisimple_rank();
+        let mut hasse = vec![Vec::new(); size];
+        for x in 0..size {
+            let id = KgbId(x);
+            let first = (0..rank)
+                .find(|&s| self.is_descent(id, s).unwrap_or(false))
+                .map_or(usize::MAX, |s| s);
+            if first == usize::MAX {
+                continue; // minimal in the Bruhat order
+            }
+            let mut row: std::collections::BTreeSet<usize> = std::collections::BTreeSet::new();
+            let sx = match self.status(id, first) {
+                Some(KgbStatus::Complex) => self.cross(id, first).expect("complex cross").index(),
+                _ => {
+                    let pair = self
+                        .inverse_cayley(id, first)
+                        .expect("real inverse Cayley")
+                        .expect("real element has a link");
+                    if let Some(second) = pair.1 {
+                        row.insert(second.index()); // real type I
+                    }
+                    pair.0.index()
+                }
+            };
+            row.insert(sx);
+            for &z in &hasse[sx] {
+                match self.status(KgbId(z), first) {
+                    Some(KgbStatus::ImaginaryNoncompact) => {
+                        if let Some(c) = self.cayley(KgbId(z), first).expect("cayley") {
+                            row.insert(c.index());
+                        }
+                    }
+                    Some(KgbStatus::Complex)
+                        if !self.is_descent(KgbId(z), first).expect("descent") =>
+                    {
+                        row.insert(self.cross(KgbId(z), first).expect("complex ascent").index());
+                    }
+                    _ => {}
+                }
+            }
+            hasse[x] = row.into_iter().collect();
+        }
+        hasse
+    }
+
+    /// The number of comparable pairs of the Bruhat poset, including each
+    /// element with itself (poset.cpp:197-229 `n_comparable_from_Hasse`):
+    /// the transitive closure size of every row, summed.
+    pub fn n_bruhat_comparable(hasse: &[Vec<usize>]) -> usize {
+        let n = hasse.len();
+        let mut closure: Vec<std::collections::BTreeSet<usize>> = Vec::with_capacity(n);
+        let mut count = 0_usize;
+        for row in hasse {
+            let mut cl = std::collections::BTreeSet::new();
+            cl.insert(closure.len());
+            for &j in row {
+                cl.extend(closure[j].iter().copied());
+            }
+            count += cl.len();
+            closure.push(cl);
+        }
+        count
+    }
+
     /// The element ids in ascending (sorted-numbering) order, for external
     /// consumers that cannot construct [`KgbId`] values directly.
     pub fn ids(&self) -> impl ExactSizeIterator<Item = KgbId> {

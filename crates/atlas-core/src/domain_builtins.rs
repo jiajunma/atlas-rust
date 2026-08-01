@@ -4255,6 +4255,85 @@ pub(crate) fn print_text(
             let (context, id) = as_cartan_class(&arguments[0], span)?;
             print_strong_real(context, id, span)
         }
+        // print_KGB_order / print_KGB_graph (atlas-types.w:9119-9131): the
+        // Bruhat Hasse rows and the Graphviz digraph of the KGB.
+        "print_KGB_order" | "print_KGB_graph" => {
+            arity(name, arguments, 1, span)?;
+            let context = as_real_form(&arguments[0], span)?;
+            let graph = &context.graph;
+            let hasse = graph.bruhat_hasse();
+            if name == "print_KGB_order" {
+                let mut text = format!("kgbsize: {}\n", graph.size());
+                text.push_str("0:\n");
+                for (y, row) in hasse.iter().enumerate().skip(1) {
+                    let entries = row
+                        .iter()
+                        .map(ToString::to_string)
+                        .collect::<Vec<_>>()
+                        .join(",");
+                    text.push_str(&format!("{y}: {entries}\n"));
+                }
+                text.push_str(&format!(
+                    "Number of comparable pairs = {}\n",
+                    KgbGraph::n_bruhat_comparable(&hasse)
+                ));
+                Ok(text)
+            } else {
+                // makeDotFile (kgb_io.cpp:182-274): one pass over the
+                // source elements and generators emits the cross/cayley
+                // edges (black/blue/green); a second pass adds gray
+                // closure edges for Hasse pairs not already covered.
+                let ids: Vec<KgbId> = graph.ids().collect();
+                let rank = graph.semisimple_rank();
+                let mut text = format!(
+                    "kgbsize: {}\ndigraph G {{\nratio=\"1.5\"\nsize=\"7.5,10.0\"\n",
+                    graph.size()
+                );
+                for i in 0..graph.size() {
+                    text.push_str(&format!("v{i}\n"));
+                }
+                let mut edges: Vec<std::collections::BTreeSet<usize>> =
+                    vec![std::collections::BTreeSet::new(); graph.size()];
+                for (i, &id) in ids.iter().enumerate() {
+                    for j in 0..rank {
+                        match graph.status(id, j) {
+                            Some(KgbStatus::Complex) => {
+                                let ca = graph.cross(id, j).expect("complex cross").index();
+                                if ca > i {
+                                    text.push_str(&format!(
+                                        "v{ca} -> v{i}[color=black] [arrowhead=none] [style=bold]\n"
+                                    ));
+                                    edges[ca].insert(i);
+                                }
+                            }
+                            Some(KgbStatus::ImaginaryNoncompact) => {
+                                let ca = graph.cross(id, j).expect("cross").index();
+                                let ct = graph
+                                    .cayley(ids[i], j)
+                                    .expect("cayley")
+                                    .expect("noncompact has a link")
+                                    .index();
+                                let color = if ca != i { "blue" } else { "green" };
+                                text.push_str(&format!(
+                                    "v{ct} -> v{i}[color={color}] [arrowhead=none] [style=bold]\n"
+                                ));
+                                edges[ct].insert(i);
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+                for i in 0..graph.size() {
+                    for &e in &hasse[i] {
+                        if !edges[i].contains(&e) {
+                            text.push_str(&format!("v{i} -> v{e}[color=gray] [arrowhead=none]\n"));
+                        }
+                    }
+                }
+                text.push_str("}\n");
+                Ok(text)
+            }
+        }
         other => panic!("printer dispatch saw {other}"),
     }
 }

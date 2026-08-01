@@ -4624,6 +4624,10 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                     Type::row(primitive_type(Prim::KgbElt)),
                 ]),
             ),
+            // print_KGB_order / print_KGB_graph (atlas-types.w:9122-9123):
+            // the Bruhat Hasse rows and the Graphviz digraph of the KGB.
+            domain_printer_builtin("print_KGB_order", primitive_type(Prim::RealForm)),
+            domain_printer_builtin("print_KGB_graph", primitive_type(Prim::RealForm)),
             domain_builtin_validate(
                 "KGB",
                 Type::tuple(vec![primitive_type(Prim::RealForm), int_type()]),

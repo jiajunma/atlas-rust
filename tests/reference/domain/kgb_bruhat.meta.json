@@ -1,0 +1,15 @@
+{
+  "fixture": "domain/kgb_bruhat",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "local_oracle_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "oracle_exit_status": 0,
+  "rust_status": "implemented_local",
+  "upstream_evidence": [
+    "sources/gkmod/kgb.cpp:848-893",
+    "sources/io/kgb_io.cpp:150-274",
+    "sources/utilities/poset.cpp:197-229"
+  ],
+  "notes": "Batch 2 of the remaining-builtin ledger: print_KGB_order (Bruhat Hasse rows + comparable-pair count) and print_KGB_graph (Graphviz digraph with cross/cayley/closure edges)."
+}
