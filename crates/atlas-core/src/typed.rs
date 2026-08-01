@@ -5154,6 +5154,15 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::KTypePol),
                 1,
             ),
+            // KGP_sum_wrapper (atlas-types.w:6120): the KGP set of a
+            // semifinal K-type; the semifinal precondition precedes the
+            // no-value gate, so it validates.
+            domain_builtin_validate(
+                "KGP_sum",
+                primitive_type(Prim::KType),
+                Type::row(Type::tuple(vec![int_type(), primitive_type(Prim::KType)])),
+                0,
+            ),
             // ParamPol surface (atlas-types.w:8542-8570): the
             // fixture-gated subset. add/subtract_module_wrapper check the
             // real form identity before their no-value gates.

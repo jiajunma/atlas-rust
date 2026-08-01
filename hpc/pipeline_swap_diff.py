@@ -345,6 +345,9 @@ FIXTURE_PLANS = (
     # truncate_above_height.
     FixturePlan(name="domain/ktypepol_arithmetic"),
     FixturePlan(name="domain/parampol_arithmetic"),
+    # The first deform-family surface: KGP_sum of a semifinal K-type
+    # (K_repr.cpp:398-464, atlas-types.w:5995-6010).
+    FixturePlan(name="domain/kgp_sum"),
     # Strong-real surface: the base contract plus the probes whose slices
     # have landed — the Cartan numbering adapter (a63dc32) covers the four
     # B2/C2 Cartan enumerations and all four rejected diagnostics, and the

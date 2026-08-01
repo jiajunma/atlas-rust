@@ -1,0 +1,21 @@
+{
+  "fixture": "domain/kgp_sum",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3506383",
+  "source_archive_sha256": "91777a649fa94b6554d21769ac9cd61719c8a45a",
+  "fixture_sha256": "77854cc2dfceb3cf693d306886dc54b02ce5985c54887f1e5b95eb9c0724434c",
+  "oracle_exit_status": 0,
+  "oracle_stdout_sha256": "5e259e94788159f3bc36b3605f486cdaaefa9a4f6a354efa0fd55140a33c6903",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "capture_artifacts_sha256": "bfd7b176b795c248934f47cc0b7e536fac6a96e99333659d2525bddd080590c4",
+  "rust_status": "not_implemented",
+  "upstream_evidence": [
+    "sources/gkmod/K_repr.cpp:398-464",
+    "sources/interpreter/atlas-types.w:5995-6010"
+  ],
+  "notes": "KGP_sum surface (the KGP set of a final/semifinal K-type as a row of length-parity-signed (int, KType) pairs), captured verbatim by HPC job 3506383 against the frozen atlasofliegroups-4d3e9449 oracle."
+}

@@ -4019,6 +4019,23 @@ pub(crate) fn validate(
                 span,
             )?;
         }
+        // KGP_sum_wrapper's semifinal precondition precedes its no-value
+        // gate (atlas-types.w:5997-6001).
+        "KGP_sum" => {
+            arity(name, arguments, 1, span)?;
+            let ktype = as_ktype(&arguments[0], span)?;
+            let rc = rep_context(&ktype.context);
+            if !ktype
+                .ktype
+                .is_semifinal(&rc)
+                .map_err(|error| structure_diagnostic(error, span))?
+            {
+                return Err(runtime(
+                    span,
+                    "K-type has parity real roots (so not semifinal)",
+                ));
+            }
+        }
         // add/subtract_K_type_wrapper and add/subtract_module_wrapper's
         // real-form identity checks precede their no-value gates
         // (atlas-types.w:5670-5673, 5684-5687, 7788-7791, 7800-7803).
@@ -5639,6 +5656,50 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                     format!("expected a KTypePol or ParamPol, found {other}"),
                 )),
             }
+        }
+        // KGP_sum_wrapper (atlas-types.w:5995-6010): the KGP set of a
+        // semifinal K-type as a row of length-parity-signed (int, KType)
+        // pairs; the semifinal precondition precedes the no-value gate.
+        "KGP_sum" => {
+            arity(name, arguments, 1, span)?;
+            let ktype = as_ktype(&arguments[0], span)?;
+            let rc = rep_context(&ktype.context);
+            if !ktype
+                .ktype
+                .is_semifinal(&rc)
+                .map_err(|error| structure_diagnostic(error, span))?
+            {
+                return Err(runtime(
+                    span,
+                    "K-type has parity real roots (so not semifinal)",
+                ));
+            }
+            let list = ktype
+                .ktype
+                .kgp_set(&rc)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let length = rc
+                .graph()
+                .length(ktype.ktype.x())
+                .ok_or_else(|| runtime(span, "Inexistent KGB element"))?;
+            let row = list
+                .into_iter()
+                .map(|term| {
+                    let term_length = rc
+                        .graph()
+                        .length(term.x())
+                        .expect("KGP terms are KGB elements of the same graph");
+                    let difference = length as i64 - term_length as i64;
+                    Value::Tuple(vec![
+                        Value::Integer(BigInt::from(if difference % 2 == 0 { 1 } else { -1 })),
+                        Value::Domain(DomainValue::KType(KTypeValue {
+                            context: Arc::clone(&ktype.context),
+                            ktype: term,
+                        })),
+                    ])
+                })
+                .collect();
+            Ok(Value::List(row))
         }
         // truncate_K_type_poly_above_wrapper /
         // truncate_param_poly_above_wrapper

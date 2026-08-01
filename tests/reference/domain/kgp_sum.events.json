@@ -1,0 +1,57 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/kgp_sum",
+  "status": "verified_hpc_reference",
+  "events": [
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rd': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "RootDatum",
+        "display": "simply connected root datum of Lie type 'A2'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ic': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "InnerClass",
+        "display": "Complex reductive group of type A2, with involution defining\ninner class of type 'c', with 2 real forms and 1 dual real form"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rf': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "domain",
+        "domain": "RealForm",
+        "display": "connected quasisplit real group with Lie algebra 'su(2,1)'"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "list",
+        "display": "[(1,final K-type K_type(x=3, lambda=[1,1]/1)),(-1,final K-type K_type(x=2, lambda=[1,1]/1)),(-1,final K-type K_type(x=0, lambda=[1,1]/1))]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "list",
+        "display": "[(1,final K-type K_type(x=4, lambda=[1,1]/1)),(-1,final K-type K_type(x=1, lambda=[1,1]/1)),(-1,final K-type K_type(x=0, lambda=[1,1]/1))]"
+      }
+    }
+  ]
+}

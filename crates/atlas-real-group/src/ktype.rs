@@ -526,6 +526,109 @@ impl KType {
         }
         Ok(result)
     }
+
+    /// `Rep_context::KGP_set` (K_repr.cpp:398-464): the KGP set of this
+    /// (final, or semifinal) K-type — the K-types reachable from the
+    /// theta-stable representative through inverse-Cayley splits and
+    /// complex crosses along the real-simple Levi generators, in the
+    /// upstream BFS discovery order. The caller is responsible for the
+    /// semifinal precondition (the wrapper checks it before calling).
+    pub fn kgp_set(&self, rc: &RepContext) -> Result<Vec<KType>, StructureError> {
+        let datum = rc.inner_class().datum();
+        let system = rc.inner_class().root_system();
+        let theta_stable = self.made_theta_stable(rc)?;
+        let simple_ids = system.simple_root_ids();
+        // The Levi generators: the real-simple simple roots at the
+        // theta-stable element (K_repr.cpp:404-411).
+        let real_simples = rc.real_simple_roots_at(theta_stable.x())?;
+        let mut levi_generators = Vec::new();
+        for &real_simple in &real_simples {
+            if let Some(generator) = simple_ids
+                .iter()
+                .position(|&candidate| candidate == real_simple)
+            {
+                levi_generators.push(generator);
+            }
+        }
+
+        let mut present = vec![false; rc.graph().size()];
+        present[theta_stable.x().index()] = true;
+        let mut result = vec![theta_stable.clone()];
+        let mut queue = std::collections::VecDeque::new();
+        queue.push_back((theta_stable.x(), theta_stable.lambda_rho().clone()));
+
+        while let Some((x, lam_rho)) = queue.pop_front() {
+            for &s in &levi_generators {
+                match rc.kgb_status(x, s)? {
+                    KgbStatus::Real => {
+                        // Non-parity (the final/semifinal precondition
+                        // guarantees an even evaluation): project to the
+                        // wall and split by inverse Cayley
+                        // (K_repr.cpp:434-453).
+                        let eval = pair(&lam_rho, &datum.simple_coroots()[s])?;
+                        let shift = eval / 2;
+                        let mut new_lr = Vec::new();
+                        new_lr.try_reserve_exact(lam_rho.rank()).map_err(|_| {
+                            StructureError::AllocationFailed {
+                                requested: lam_rho.rank(),
+                            }
+                        })?;
+                        for (&entry, &root_entry) in lam_rho
+                            .as_slice()
+                            .iter()
+                            .zip(datum.simple_roots()[s].as_slice())
+                        {
+                            new_lr.push(
+                                entry
+                                    .checked_sub(
+                                        root_entry
+                                            .checked_mul(shift)
+                                            .ok_or(StructureError::ArithmeticOverflow)?,
+                                    )
+                                    .ok_or(StructureError::ArithmeticOverflow)?,
+                            );
+                        }
+                        let new_lr = Weight::new(new_lr);
+                        let Some((first, second)) = rc.graph().inverse_cayley(x, s)? else {
+                            return Err(StructureError::RepInvariantViolation {
+                                invariant: "KGP real inverse Cayley",
+                            });
+                        };
+                        // With the first of the pair more likely to be
+                        // inserted, try it last (K_repr.cpp:438-450).
+                        if let Some(second) = second {
+                            if !present[second.index()] {
+                                present[second.index()] = true;
+                                result.push(KType::sr_k(rc, second, &new_lr)?);
+                                queue.push_back((second, new_lr.clone()));
+                            }
+                        }
+                        if !present[first.index()] {
+                            present[first.index()] = true;
+                            result.push(KType::sr_k(rc, first, &new_lr)?);
+                            queue.push_back((first, new_lr));
+                        }
+                    }
+                    KgbStatus::Complex => {
+                        let sx = rc.graph().cross(x, s).ok_or(
+                            StructureError::RepInvariantViolation {
+                                invariant: "KGP complex cross",
+                            },
+                        )?;
+                        if !present[sx.index()] {
+                            present[sx.index()] = true;
+                            let mut reflected = lam_rho.clone();
+                            rc.simple_reflect(s, &mut reflected, 0)?;
+                            result.push(KType::sr_k(rc, sx, &reflected)?);
+                            queue.push_back((sx, reflected));
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        Ok(result)
+    }
 }
 
 /// Recover a simple root's generator index from its [`RootId`].
