@@ -19,3 +19,17 @@ ic2 := inner_class(rc,[[1,0,0],[0,1,0],[0,0,1]])
 rfc : RealForm
 rfc := real_form(ic2,1)
 KGB_Hasse(rfc)
+rc : RootDatum
+rc := simply_connected(Lie_type("C3"),true)
+ic3 : InnerClass
+ic3 := inner_class(rc,[[1,0,0],[0,1,0],[0,0,1]])
+rfc : RealForm
+rfc := real_form(ic3,1)
+KGB_Hasse(rfc)
+rd : RootDatum
+rd := simply_connected(Lie_type("D4"),true)
+id4 : InnerClass
+id4 := inner_class(rd,[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
+rfd : RealForm
+rfd := real_form(id4,1)
+KGB_Hasse(rfd)
