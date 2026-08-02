@@ -1,0 +1,14 @@
+{
+  "fixture": "domain/partial_kl_block.atlas",
+  "fixture_sha256": "da25d37ac494f0f81c646af58a7bafb141c71bcf8dee3213cd230f936eecabd5",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "implemented_local",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:6998-7051",
+    "sources/gkmod/blocks.cpp:335-368"
+  ],
+  "rust_status": "implemented_local",
+  "oracle_exit_status": 0,
+  "notes": "Batch 6: partial_KL_block(Param) — the condensed KL matrix over the parameter's partial-block survivors (block_below descent closure, singular survives, finals_for), as (parameter list, index matrix, polynomial store starting at zero)."
+}
