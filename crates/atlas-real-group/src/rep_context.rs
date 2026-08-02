@@ -978,7 +978,6 @@ impl<'a> RepContext<'a> {
     /// reducibility fractions of a standard parameter, as (numerator,
     /// denominator) pairs sorted ascending.
     pub fn reducibility_points(&self, z: &StandardRepr) -> Result<Vec<(i64, i64)>, StructureError> {
-        let rd = self.inner_class.datum();
         let system = self.inner_class.root_system();
         let numer = z.gamma().numerator();
         let d = z.gamma().denominator();
@@ -1048,7 +1047,11 @@ impl<'a> RepContext<'a> {
             let num = vala - valb;
             if num != 0 {
                 let lwb = (vala + valb).unsigned_abs() / d as u64;
-                let table = if lwb % 2 == 0 { &mut evens } else { &mut odds };
+                let table = if lwb.is_multiple_of(2) {
+                    &mut evens
+                } else {
+                    &mut odds
+                };
                 let entry = table.entry(num.unsigned_abs() as i64).or_insert(0);
                 *entry = (*entry).min(lwb as i64);
             }
