@@ -31,3 +31,14 @@ z := KGB(rfc,0)
 r : Param
 r := param(z,[0,0],[0,0]/1)
 orientation_nr(r)
+rc : RootDatum
+rc := simply_connected(Lie_type("C3"),true)
+ic4 : InnerClass
+ic4 := inner_class(rc,[[1,0,0],[0,1,0],[0,0,1]])
+rfc : RealForm
+rfc := real_form(ic4,1)
+z3 : KGBElt
+z3 := KGB(rfc,0)
+r3 : Param
+r3 := param(z3,[0,0,0],[0,0,0]/1)
+orientation_nr(r3)
