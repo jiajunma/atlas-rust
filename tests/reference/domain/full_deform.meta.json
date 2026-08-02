@@ -1,6 +1,6 @@
 {
   "fixture": "domain/full_deform.atlas",
-  "fixture_sha256": "b71ee3b95fa784bcc234935243a2bc7ceb075378816a755ac02fd9dbe612efaf",
+  "fixture_sha256": "472a9ff1b95aab93096ef92c2e7c8a8f3c28871c9c828fd4839dbf03fe3ea4f5",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_status": "verified_hpc_reference",
@@ -13,8 +13,8 @@
   "notes": "Batch 7: full_deform(Param) — the full K-type deformation via finals_for(scale_0) and the reducibility-point recursion (scale/deform_readjust/deformation_terms), as a KTypePol.",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
-  "reference_job": "3510990",
-  "source_archive_sha256": "fa3c69ac7ca0755491bcc9e1ac9d83d85aec85f390da8911238792d25e9e58af",
-  "capture_artifacts_sha256": "1c15268906f26b314a7c36d6f66b70496c23325da8e03a6d083cfa8133fd24b4",
+  "reference_job": "3511567",
+  "source_archive_sha256": "7151136c781753ee50af57a8ff982ef3781f9ee8a3cbcba3ff9165f300816d93",
+  "capture_artifacts_sha256": "c6b6ea5d6f14bbf9c57a01054bcd1f7912b37817a389c93a14d8b1d367c7eaee",
   "differential_job": "3511044"
 }
