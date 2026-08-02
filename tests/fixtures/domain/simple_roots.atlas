@@ -7,3 +7,15 @@ is_Cartan_matrix([[1,0],[0,1]])
 ic : InnerClass
 ic := inner_class(ra,[[1,0],[0,1]])
 dual_datum(ic)
+rb : RootDatum
+rb := simply_connected(Lie_type("B2"),true)
+simple_roots(rb)
+simple_coroots(rb)
+rg : RootDatum
+rg := simply_connected(Lie_type("G2"),true)
+simple_roots(rg)
+simple_coroots(rg)
+rf : RootDatum
+rf := simply_connected(Lie_type("F4"),true)
+simple_roots(rf)
+is_Cartan_matrix([[2,-1,0,0],[-1,2,-2,0],[0,-1,2,-1],[0,0,-1,2]])
