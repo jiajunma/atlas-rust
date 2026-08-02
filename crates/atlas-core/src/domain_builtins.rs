@@ -6782,6 +6782,55 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             }
             Ok(Value::Integer(BigInt::from(count)))
         }
+        // block_Hasse (atlas-types.w:6825-6852): the full block of a
+        // standard parameter plus its Bruhat Hasse matrix. Each block
+        // element is reported as the parameter `sr(representative(z),
+        // bm, gamma)` — with the identity block modifier the lambda-rho is
+        // carried from the input parameter.
+        "block_Hasse" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "{name} has no matching overload for {} argument(s)",
+                        arguments.len()
+                    ),
+                ));
+            };
+            let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
+            let dual_quasisplit = dual_parent.order.quasisplit_external();
+            let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
+            let block = build_block(&parameter.context, &dual_rf, span)?;
+            let rc = rep_context(&parameter.context);
+            let lambda_rho = rc
+                .lambda_rho(&parameter.repr)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let gamma = parameter.repr.gamma().clone();
+            let mut param_list = Vec::with_capacity(block.graph.size());
+            for z in 0..block.graph.size() {
+                let x = block.graph.x(z).expect("in-range");
+                let repr = rc
+                    .sr_gamma(x, &lambda_rho, &gamma)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                param_list.push(Value::Domain(DomainValue::Param(ParamValue {
+                    context: Arc::clone(&parameter.context),
+                    repr,
+                })));
+            }
+            let n = block.graph.size();
+            let hasse = block.graph.bruhat_hasse();
+            let mut columns = vec![vec![0_i32; n]; n];
+            for (z, row) in hasse.iter().enumerate() {
+                for &down in row {
+                    columns[z][down] = 1;
+                }
+            }
+            Ok(Value::Tuple(vec![
+                Value::List(param_list),
+                columns_matrix_value(&columns, n, span)?,
+            ]))
+        }
         "Cartan_info" => {
             arity(name, arguments, 1, span)?;
             let (context, id) = as_cartan_class(&arguments[0], span)?;

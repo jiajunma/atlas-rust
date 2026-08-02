@@ -4843,6 +4843,17 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::Mat),
                 0,
             ),
+            // block_Hasse (atlas-types.w:7514): the full block of a
+            // standard parameter and its Bruhat Hasse matrix.
+            domain_builtin_skip(
+                "block_Hasse",
+                primitive_type(Prim::Param),
+                Type::tuple(vec![
+                    Type::row(primitive_type(Prim::Param)),
+                    primitive_type(Prim::Mat),
+                ]),
+                0,
+            ),
             // orientation_nr (atlas-types.w:6546-6552): the orientation
             // number of a standard parameter.
             domain_builtin_skip("orientation_nr", primitive_type(Prim::Param), int_type(), 0),

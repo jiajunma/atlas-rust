@@ -1,0 +1,14 @@
+{
+  "fixture": "domain/block_hasse.atlas",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "implemented_local",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:6825-6852",
+    "sources/gkmod/repr.cpp:1773-1794"
+  ],
+  "oracle_exit_status": 0,
+  "notes": "Batch 8: block_Hasse — the full block of a standard parameter (paired with its dual's quasisplit form) and the Bruhat Hasse matrix. Each element reports sr(representative(z), identity, gamma) with the input parameter's lambda-rho. Reference status pending HPC capture."
+}
