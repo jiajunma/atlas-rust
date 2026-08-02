@@ -6727,7 +6727,7 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                     .unwrap_or_default()
             });
             let mut count = 0_usize;
-            for (i, &alpha_index) in positive_indices.iter().enumerate() {
+            for &alpha_index in positive_indices.iter() {
                 let Some(coroot_alpha) = root_system.coroot(RootId::from_usize(alpha_index)) else {
                     continue;
                 };
