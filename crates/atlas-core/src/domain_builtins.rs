@@ -2375,7 +2375,7 @@ fn common_block_members(
     Ok(closed)
 }
 
-/// The transitive closure of a Hasse diagram as a `lesseq` matrix
+/// The transitive closure of a Hasse diagram as a `lesseq` matrix/// The transitive closure of a Hasse diagram as a `lesseq` matrix
 /// (poset.cpp:197-229 style, rows are the closure sets).
 fn bruhat_closure(hasse: &[Vec<usize>]) -> Vec<Vec<bool>> {
     let n = hasse.len();

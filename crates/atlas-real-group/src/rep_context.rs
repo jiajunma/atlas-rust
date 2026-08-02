@@ -566,6 +566,16 @@ impl<'a> RepContext<'a> {
         self.inner_class.datum().lattice_rank()
     }
 
+    /// The based root datum.
+    pub fn datum(&self) -> &crate::BasedRootDatum {
+        self.inner_class.datum()
+    }
+
+    /// The enumerated root system.
+    pub fn root_system(&self) -> &crate::RootSystem {
+        self.inner_class.root_system()
+    }
+
     pub fn graph(&self) -> &KgbGraph {
         self.graph
     }
@@ -1913,11 +1923,7 @@ impl<'a> RepContext<'a> {
 // ---------------------------------------------------------------------------
 
 impl RepContext<'_> {
-    pub(crate) fn kgb_status(
-        &self,
-        x: KgbId,
-        generator: usize,
-    ) -> Result<KgbStatus, StructureError> {
+    pub fn kgb_status(&self, x: KgbId, generator: usize) -> Result<KgbStatus, StructureError> {
         self.graph.status(x, generator).ok_or({
             StructureError::IndexOutOfRange {
                 index: x.index(),
@@ -2047,7 +2053,7 @@ impl RepContext<'_> {
 
     /// The positive real roots of `x`'s involution: upstream
     /// `i_tab.real_roots(i_x) & rd.posroot_set()` (repr.cpp:407-409).
-    pub(crate) fn positive_real_roots_at(&self, x: KgbId) -> Result<Vec<RootId>, StructureError> {
+    pub fn positive_real_roots_at(&self, x: KgbId) -> Result<Vec<RootId>, StructureError> {
         let involution = self.involution_of(x)?;
         let record = self
             .table
