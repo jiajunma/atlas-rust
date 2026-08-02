@@ -64,3 +64,25 @@ dfe := dual_real_form(ie,2)
 blke : Block
 blke := block(rfe,dfe)
 raw_KL(blke)
+rb : RootDatum
+rb := simply_connected(Lie_type("B3"),true)
+ib3 : InnerClass
+ib3 := inner_class(rb,[[1,0,0],[0,1,0],[0,0,1]])
+rfb : RealForm
+rfb := real_form(ib3,1)
+dfb : RealForm
+dfb := dual_real_form(ib3,1)
+blkb : Block
+blkb := block(rfb,dfb)
+raw_KL(blkb)
+rc : RootDatum
+rc := simply_connected(Lie_type("C3"),true)
+ic3 : InnerClass
+ic3 := inner_class(rc,[[1,0,0],[0,1,0],[0,0,1]])
+rfc : RealForm
+rfc := real_form(ic3,1)
+dfc : RealForm
+dfc := dual_real_form(ic3,1)
+blkc : Block
+blkc := block(rfc,dfc)
+raw_KL(blkc)
