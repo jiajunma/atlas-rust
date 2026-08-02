@@ -42,3 +42,15 @@ print_W_cells(blkg)
 print_KL_basis(blkg)
 print_KL_list(blkb)
 print_KL_list(blkg)
+rd : RootDatum
+rd := simply_connected(Lie_type("A3"),true)
+id : InnerClass
+id := inner_class(rd,[[1,0,0],[0,1,0],[0,0,1]])
+rfd : RealForm
+rfd := real_form(id,1)
+dfd : RealForm
+dfd := dual_real_form(id,1)
+blkd : Block
+blkd := block(rfd,dfd)
+print_KL_basis(blkd)
+print_KL_list(blkd)

@@ -1,7 +1,7 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "domain/kl_print",
-  "status": "verified_hpc_reference",
+  "status": "local_oracle_reference",
   "events": [
     {
       "kind": "ReportLine",
@@ -635,6 +635,105 @@
     {
       "kind": "Output",
       "text": "57 nonzero polynomials, and 8 zero polynomials,\n at 65 Bruhat-comparable pairs.\n1\n1\nq\nq+1\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rd': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'A3'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'id': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type A3, with involution defining\ninner class of type 'c', with 3 real forms and 2 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rfd': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "connected real group with Lie algebra 'su(3,1)'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'dfd': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "disconnected split real group with Lie algebra 'sl(4,R)'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'blkd': Block\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Block of 10 elements\nFull list of non-zero Kazhdan-Lusztig-Vogan polynomials:\n"
+      }
+    },
+    {
+      "kind": "Output",
+      "text": "0: 0: 1\n\n"
+    },
+    {
+      "kind": "Output",
+      "text": "1: 1: 1\n\n"
+    },
+    {
+      "kind": "Output",
+      "text": "2: 2: 1\n\n"
+    },
+    {
+      "kind": "Output",
+      "text": "3: 3: 1\n\n"
+    },
+    {
+      "kind": "Output",
+      "text": "4: 0: 1\n   2: 1\n   4: 1\n\n"
+    },
+    {
+      "kind": "Output",
+      "text": "5: 0: 1\n   1: 1\n   5: 1\n\n"
+    },
+    {
+      "kind": "Output",
+      "text": "6: 1: 1\n   3: 1\n   6: 1\n\n"
+    },
+    {
+      "kind": "Output",
+      "text": "7: 0: 1\n   1: 1\n   2: 1\n   4: 1\n   5: 1\n   7: 1\n\n"
+    },
+    {
+      "kind": "Output",
+      "text": "8: 0: 1\n   1: 1\n   3: 1\n   5: 1\n   6: 1\n   8: 1\n\n"
+    },
+    {
+      "kind": "Output",
+      "text": "9: 0: 1\n   1: 1\n   2: 1\n   3: 1\n   4: 1\n   5: 1\n   6: 1\n   7: 1\n   8: 1\n   9: 1\n\n"
+    },
+    {
+      "kind": "Output",
+      "text": "35 nonzero polynomials, and 0 zero polynomials,\n at 35 Bruhat-comparable pairs.\n1\n"
     }
   ]
 }
