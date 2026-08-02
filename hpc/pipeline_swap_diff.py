@@ -252,6 +252,8 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/raw_kl"),
     # Batch 5 (KL access): KL_sum_at_s.
     FixturePlan(name="domain/kl_sum_at_s"),
+    # Batch 7: full_deform.
+    FixturePlan(name="domain/full_deform"),
     # Batch 6: partial_KL_block (first extended-block surface).
     FixturePlan(name="domain/partial_kl_block"),
     # Batch 5: KL_column (partial block).
