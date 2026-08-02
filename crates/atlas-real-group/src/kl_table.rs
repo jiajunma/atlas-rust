@@ -277,7 +277,7 @@ impl<'a> KlTable<'a> {
                 }
                 BlockDescent::RealTypeI => {
                     // P_{sx.first,sy} + P_{sx.second,sy} + (q-1)P_{x,sy}
-                    let pair = self.support.block().inverse_cayley(s, x).ok_or(
+                    let pair = self.support.block().inverse_cayley(x, s).ok_or(
                         StructureError::BlockInvariantViolation {
                             invariant: "real type I inverse Cayley slot",
                         },
@@ -403,14 +403,14 @@ impl<'a> KlTable<'a> {
                         invariant: "primitive non-extremal ascent",
                     },
                 )?;
-                let pair = self
-                    .support
-                    .block()
-                    .cayley(s, x)
-                    .expect("cayley of primitive non-extremal");
-                let first = self.kl_pol_pool(pair.0.expect("first image"), y)?;
-                let second = self.kl_pol_pool(pair.1.expect("second image"), y)?;
-                let pxy = first.add(&second);
+                let mut pxy = KlPol::zero();
+                if let Some((Some(first_image), second)) = self.support.block().cayley(x, s) {
+                    pxy = self.kl_pol_pool(first_image, y)?;
+                    if let Some(second_image) = second {
+                        let second_pol = self.kl_pol_pool(second_image, y)?;
+                        pxy = pxy.add(&second_pol);
+                    }
+                }
                 column.push(self.pool.match_pol(&pxy));
             }
         }
@@ -510,15 +510,16 @@ impl<'a> KlTable<'a> {
             let prim_pos = self.support.prim_index(x, &desc_y);
             let mut pxy = KlPol::zero();
             if let Some(s) = self.support.ascent_descent(x, y) {
-                // Primitive but not extremal (kl.cpp:665-673).
-                let pair = self
-                    .support
-                    .block()
-                    .cayley(s, x)
-                    .expect("cayley of primitive");
-                pxy = kl_y(working, pair.0.expect("first image"));
-                let second = kl_y(working, pair.1.expect("second image"));
-                pxy = pxy.add(&second);
+                // Primitive but not extremal (kl.cpp:665-673). A missing
+                // Cayley image (outside the block) contributes zero, like
+                // KL_pol's UndefBlock handling (kl.cpp:127).
+                if let Some((Some(first_image), second)) = self.support.block().cayley(x, s) {
+                    pxy = kl_y(working, first_image);
+                    if let Some(second_image) = second {
+                        let second_pol = kl_y(working, second_image);
+                        pxy = pxy.add(&second_pol);
+                    }
+                }
                 working[prim_pos] = pxy;
                 continue;
             }
@@ -540,7 +541,7 @@ impl<'a> KlTable<'a> {
                         pxy = pxy.sub_shifted(&cross_pol, 1, 1);
                     }
                     BlockDescent::ImaginaryTypeII => {
-                        let pair = self.support.block().cayley(s, x).expect("cayley");
+                        let pair = self.support.block().cayley(x, s).expect("cayley");
                         let sum = kl_y(working, pair.0.expect("first image"))
                             .add(&kl_y(working, pair.1.expect("second image")));
                         pxy = pxy.add(&sum);
@@ -567,13 +568,13 @@ impl<'a> KlTable<'a> {
                 let st = self.first_endgame_pair(x, y);
                 if let Some((s, t)) = st {
                     pxy = self.mu_new_formula(x, y, s, &mu_pairs)?;
-                    let pair = self.support.block().cayley(s, x).expect("endgame cayley");
+                    let pair = self.support.block().cayley(x, s).expect("endgame cayley");
                     let p_xprime = kl_y(working, pair.0.expect("first image"));
                     pxy = pxy.add(&p_xprime);
                     pxy = pxy.sub_shifted(&p_xprime, 1, 1);
                     if let Some(t) = t {
-                        let sx = self.support.block().cross(s, x).expect("endgame cross");
-                        let up = self.support.block().cayley(t, sx).expect("endgame up");
+                        let sx = self.support.block().cross(x, s).expect("endgame cross");
+                        let up = self.support.block().cayley(sx, t).expect("endgame up");
                         if let Some(first) = up.0 {
                             pxy = pxy.sub(&kl_y(working, first));
                         }
@@ -652,7 +653,7 @@ impl<'a> KlTable<'a> {
             let dy_s = self.support.block().descent_value(y, s)?;
             let dx_s = self.support.block().descent_value(x, s)?;
             if dy_s == BlockDescent::RealNonparity && dx_s == BlockDescent::ImaginaryTypeI {
-                let sx = self.support.block().cross(s, x)?;
+                let sx = self.support.block().cross(x, s)?;
                 let dsx = self.support.block().descent_value(sx, s)?;
                 let _ = dsx;
                 for t in 0..r {
