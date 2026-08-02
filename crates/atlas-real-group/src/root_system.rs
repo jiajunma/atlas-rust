@@ -9,6 +9,18 @@ use crate::{pair, BasedRootDatum, Coweight, StructureError, Weight, WeylAction};
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct RootId(pub(crate) usize);
 
+impl RootId {
+    /// Construct a root index (crate-internal numbering).
+    pub fn from_usize(index: usize) -> Self {
+        Self(index)
+    }
+
+    /// The crate-internal root index.
+    pub fn index(&self) -> usize {
+        self.0
+    }
+}
+
 /// Caller-owned resource bounds for one ordinary-root closure.
 ///
 /// These are computational budgets for a single enumeration, not a

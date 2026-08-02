@@ -81,7 +81,7 @@ pub use integer_lattice::{
     RelationGenerator, RelationMatrix,
 };
 pub use involution::LatticeInvolution;
-pub use involution_classification::{classify_involution, InvolutionClassification};
+pub use involution_classification::{classify_involution, fiber_rank, InvolutionClassification};
 pub use involution_table::{
     InvolutionId, InvolutionRecord, InvolutionTable, InvolutionTableBudget,
 };

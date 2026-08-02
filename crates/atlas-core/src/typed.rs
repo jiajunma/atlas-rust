@@ -4843,6 +4843,24 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::Mat),
                 0,
             ),
+            // Cartan_info (atlas-types.w:4102-4160): the classify triple,
+            // the Cartan involution's Weyl word, the orbit/fiber sizes, and
+            // the three subsystem types.
+            domain_builtin_skip(
+                "Cartan_info",
+                primitive_type(Prim::CartanClass),
+                Type::tuple(vec![
+                    Type::tuple(vec![int_type(), int_type(), int_type()]),
+                    Type::row(int_type()),
+                    Type::tuple(vec![int_type(), int_type()]),
+                    Type::tuple(vec![
+                        primitive_type(Prim::LieType),
+                        primitive_type(Prim::LieType),
+                        primitive_type(Prim::LieType),
+                    ]),
+                ]),
+                0,
+            ),
             // basic_involution_wrapper (atlas-types.w:860-880, installed at
             // atlas-types.w:939-940): the permutation size check precedes
             // its no-value gate, so validation checks the size only.

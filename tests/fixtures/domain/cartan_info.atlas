@@ -1,0 +1,30 @@
+ra : RootDatum
+ra := simply_connected(Lie_type("A2"),true)
+ic : InnerClass
+ic := inner_class(ra,[[1,0],[0,1]])
+c0 : CartanClass
+c0 := Cartan_class(ic,0)
+Cartan_info(c0)
+c1 : CartanClass
+c1 := Cartan_class(ic,1)
+Cartan_info(c1)
+rb : RootDatum
+rb := simply_connected(Lie_type("B2"),true)
+ib : InnerClass
+ib := inner_class(rb,[[1,0],[0,1]])
+cb0 : CartanClass
+cb0 := Cartan_class(ib,0)
+Cartan_info(cb0)
+cb1 : CartanClass
+cb1 := Cartan_class(ib,1)
+Cartan_info(cb1)
+rg : RootDatum
+rg := simply_connected(Lie_type("G2"),true)
+ig : InnerClass
+ig := inner_class(rg,[[1,0],[0,1]])
+cg0 : CartanClass
+cg0 := Cartan_class(ig,0)
+Cartan_info(cg0)
+cg1 : CartanClass
+cg1 := Cartan_class(ig,1)
+Cartan_info(cg1)

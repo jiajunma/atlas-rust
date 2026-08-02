@@ -1,5 +1,5 @@
 use crate::grading::try_capacity;
-use crate::integer_lattice::{saturated_kernel, IntegerMatrix};
+use crate::integer_lattice::{reduce_basis_mod_two, saturated_kernel, IntegerMatrix};
 use crate::{IntegerLatticeBudget, ModTwoSubspace, ModTwoVector, StructureError};
 
 /// The compact, Complex, and split factor counts of an integral involution.
@@ -30,6 +30,52 @@ impl InvolutionClassification {
     pub const fn as_tuple(self) -> (usize, usize, usize) {
         (self.compact, self.complex, self.split)
     }
+}
+
+/// The `F_2`-dimension of the dual component group `dualPi0(-theta^T)`
+/// (tori.cpp:162-173, subquotient.h:79): `dim ker((q+I) mod 2) - dim
+/// span(plusBasis(q)) mod 2`, where `q = -theta^T`. This is the fiber size
+/// exponent printed by `Cartan_info`.
+pub fn fiber_rank(
+    weight_matrix: &[Vec<i32>],
+    budget: &IntegerLatticeBudget,
+) -> Result<usize, StructureError> {
+    let rank = weight_matrix.len();
+    if weight_matrix.iter().any(|row| row.len() != rank) {
+        return Err(StructureError::InvalidIntegerMatrixShape);
+    }
+    // q = -theta^T; the mod-2 kernel dimension of q + I.
+    let q_plus_i: Vec<Vec<i32>> = (0..rank)
+        .map(|row| {
+            (0..rank)
+                .map(|column| {
+                    let entry = -weight_matrix[column][row] + if row == column { 1 } else { 0 };
+                    entry.rem_euclid(2)
+                })
+                .collect()
+        })
+        .collect();
+    let mut image = ModTwoSubspace::new(rank)?;
+    for row in &q_plus_i {
+        let ones = row
+            .iter()
+            .enumerate()
+            .filter_map(|(index, &entry)| (entry != 0).then_some(index));
+        image.insert(ModTwoVector::from_ones(rank, ones)?)?;
+    }
+    let kernel_dim = rank - image.rank();
+    // The +1 eigenspace of q = ker_Z(q - I), reduced modulo two.
+    let q_minus_i: Vec<Vec<i32>> = (0..rank)
+        .map(|row| {
+            (0..rank)
+                .map(|column| -weight_matrix[column][row] - if row == column { 1 } else { 0 })
+                .collect()
+        })
+        .collect();
+    let matrix = IntegerMatrix::from_i32_rows(&q_minus_i, budget)?;
+    let basis = saturated_kernel(&matrix, budget)?;
+    let reduced = reduce_basis_mod_two(&basis)?;
+    Ok(kernel_dim.saturating_sub(reduced.rank()))
 }
 
 pub fn classify_involution(

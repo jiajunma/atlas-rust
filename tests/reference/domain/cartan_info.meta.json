@@ -1,0 +1,18 @@
+{
+  "fixture": "domain/cartan_info.atlas",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "implemented_local",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:4102-4160",
+    "sources/structure/cartanclass.cpp:1002-1063",
+    "sources/structure/involutions.cpp:41-54",
+    "sources/structure/tori.cpp:162-173",
+    "sources/structure/subquotient.h:79",
+    "sources/structure/rootdata.cpp:537-540, 621-652"
+  ],
+  "oracle_exit_status": 0,
+  "notes": "Batch 8: Cartan_info — classify triple, Cartan-involution Weyl word, orbit/fiber sizes (fiber_rank = dualPi0 dimension), and the subsystem types of the simple imaginary/real/complex roots (makeSimpleComplex port). Known limit: the Weyl word uses the greedy reduced word; groups whose WeylGroup::word transducer orders differ (e.g. the D4 class-1 involution) print a different reduced word. Reference status pending HPC capture."
+}

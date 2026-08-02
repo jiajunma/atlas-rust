@@ -26,17 +26,17 @@ use atlas_real_group::{
     adapted_relation_basis, annihilator_modulo as relation_annihilator_modulo, build_presentations,
     central_fiber, checked_inner_class_letters, classify_involution as domain_classify_involution,
     dual_cartan_correspondence, dual_inner_class, dual_involution as block_dual_involution,
-    elected_square_root, filter_relation_units as domain_filter_relation_units,
+    elected_square_root, fiber_rank, filter_relation_units as domain_filter_relation_units,
     inner_class_with_twisted_involution, layout_involution, longest_action, minimal_torus_part,
-    on_basis as lattice_on_basis, quotient_relation_basis as domain_quotient_relation_basis,
+    on_basis as lattice_on_basis, pair, quotient_relation_basis as domain_quotient_relation_basis,
     replace_relation_generators as domain_replace_relation_generators, AdjointFiberBudget,
     BasedRootDatum, BlockDescent, BlockGraph, CartanClass, CartanClassification,
     CartanClassificationBudget, CartanId, Coweight, ExternalFormOrder, InnerClass,
     InnerClassLayout, IntegerLatticeBudget, InvolutionTable, InvolutionTableBudget, KType,
     KgbGraph, KgbId, KgbStatus, KlPol, KlTable, LatticeInvolution, ModTwoVector, RationalWeight,
     RealFormPresentation, RealFormSeed, RelationBasis, RelationError, RelationGenerator,
-    RelationMatrix, RepContext, RootSystem, StandardRepr, StrongRealClassification, StructureError,
-    WeakRealFormId, Weight, WeylElement, WeylInterface,
+    RelationMatrix, RepContext, RootId, RootInvolutionData, RootKind, RootSystem, StandardRepr,
+    StrongRealClassification, StructureError, WeakRealFormId, Weight, WeylElement, WeylInterface,
 };
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
@@ -2186,6 +2186,208 @@ fn block_descent_set(graph: &BlockGraph, z: usize, _rank: usize, mask: &[bool]) 
     }
     out.push(']');
     out
+}
+
+/// The sum of the positive roots in `roots` (rootdata.h:746-748 `twoRho`).
+fn two_rho(root_system: &RootSystem, roots: &[RootId]) -> Weight {
+    let rank = root_system.lattice_rank();
+    let mut sum = vec![0_i32; rank];
+    for &id in roots {
+        if root_system.is_positive(id).unwrap_or(false) {
+            if let Some(root) = root_system.root(id) {
+                for (entry, &coordinate) in sum.iter_mut().zip(root.as_slice()) {
+                    *entry += coordinate;
+                }
+            }
+        }
+    }
+    Weight::new(sum)
+}
+
+/// Whether `weight` pairs trivially with the coroot of `root`.
+fn weight_orthogonal(root_system: &RootSystem, weight: &Weight, root: RootId) -> bool {
+    let Some(coroot) = root_system.coroot(root) else {
+        return false;
+    };
+    pair(weight, coroot).is_ok_and(|pair| pair == 0)
+}
+
+/// `RootSystem::simpleBasis` (rootdata.cpp:621-652), implemented by the
+/// positivity test: a positive root is simple in the subsystem spanned by
+/// `rs` iff no other positive root of `rs` has strictly smaller coordinates.
+fn simple_basis(root_system: &RootSystem, rs: &[RootId]) -> Result<Vec<RootId>, StructureError> {
+    let mut result = Vec::new();
+    for &alpha in rs {
+        if !root_system.is_positive(alpha).unwrap_or(false) {
+            continue;
+        }
+        let coords = root_system.simple_coordinates(alpha);
+        let Some(coords) = coords else {
+            continue;
+        };
+        let mut is_simple = true;
+        for &beta in rs {
+            if beta == alpha || !root_system.is_positive(beta).unwrap_or(false) {
+                continue;
+            }
+            let beta_coords = root_system.simple_coordinates(beta);
+            if let Some(beta_coords) = beta_coords {
+                if beta_coords.len() == coords.len()
+                    && beta_coords != coords
+                    && beta_coords.iter().zip(coords).all(|(b, a)| b <= a)
+                {
+                    is_simple = false;
+                    break;
+                }
+            }
+        }
+        if is_simple {
+            result.push(alpha);
+        }
+    }
+    Ok(result)
+}
+
+/// The connected components of a Cartan matrix (index sets).
+fn cartan_components(cartan: &[Vec<i32>]) -> Vec<Vec<usize>> {
+    let rank = cartan.len();
+    let mut seen = vec![false; rank];
+    let mut components = Vec::new();
+    for start in 0..rank {
+        if seen[start] {
+            continue;
+        }
+        let mut component = Vec::new();
+        let mut pending = vec![start];
+        seen[start] = true;
+        while let Some(row) = pending.pop() {
+            component.push(row);
+            for column in 0..rank {
+                if !seen[column] && (cartan[row][column] != 0 || cartan[column][row] != 0) {
+                    seen[column] = true;
+                    pending.push(column);
+                }
+            }
+        }
+        component.sort_unstable();
+        components.push(component);
+    }
+    components
+}
+
+/// `CartanClass::makeSimpleComplex` (cartanclass.cpp:1002-1043): a choice
+/// of simple roots for the complex factor `RC_0`, keeping one component of
+/// every pair interchanged by the Cartan involution.
+fn make_simple_complex(
+    inner: &InnerClass,
+    root_involution: &RootInvolutionData,
+) -> Result<Vec<RootId>, StructureError> {
+    let root_system = inner.root_system();
+    let imaginary: Vec<RootId> = root_involution.roots_of_kind(RootKind::Imaginary).collect();
+    let real: Vec<RootId> = root_involution.roots_of_kind(RootKind::Real).collect();
+    let tri = two_rho(root_system, &imaginary);
+    let trr = two_rho(root_system, &real);
+    let orthogonal_roots: Vec<RootId> = (0..root_system.roots().len())
+        .filter(|&index| {
+            let id = RootId::from_usize(index);
+            weight_orthogonal(root_system, &tri, id) && weight_orthogonal(root_system, &trr, id)
+        })
+        .map(RootId::from_usize)
+        .collect();
+    let basis = simple_basis(root_system, &orthogonal_roots)?;
+    if basis.is_empty() {
+        return Ok(Vec::new());
+    }
+    let cartan: Vec<Vec<i32>> = basis
+        .iter()
+        .map(|&root| {
+            basis
+                .iter()
+                .map(|&coroot| root_system.bracket(root, coroot))
+                .collect::<Result<Vec<_>, _>>()
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let components = cartan_components(&cartan);
+    let mut result = Vec::new();
+    let mut erased = vec![false; components.len()];
+    for (index, component) in components.iter().enumerate() {
+        if erased[index] {
+            continue;
+        }
+        for &root_index in component {
+            result.push(basis[root_index]);
+        }
+        let first = basis[component[0]];
+        let image =
+            root_involution
+                .image(first)
+                .ok_or_else(|| StructureError::IndexOutOfRange {
+                    index: first.index(),
+                    upper_bound: root_system.roots().len(),
+                })?;
+        let image_weight =
+            root_system
+                .root(image)
+                .ok_or_else(|| StructureError::IndexOutOfRange {
+                    index: image.index(),
+                    upper_bound: root_system.roots().len(),
+                })?;
+        for later in (index + 1)..components.len() {
+            if erased[later] {
+                continue;
+            }
+            let pairs = components[later].iter().any(|&root_index| {
+                let Some(coroot) = root_system.coroot(basis[root_index]) else {
+                    return false;
+                };
+                pair(image_weight, coroot).is_ok_and(|pair| pair != 0)
+            });
+            if pairs {
+                erased[later] = true;
+                break;
+            }
+        }
+    }
+    Ok(result)
+}
+
+/// `RootSystem::subsystem_type` (rootdata.cpp:537-540): the Lie type of
+/// the root subsystem spanned by `roots`, from its Cartan matrix.
+fn subsystem_type_value(
+    inner: &InnerClass,
+    roots: &[RootId],
+    span: SourceSpan,
+) -> Result<Value, Diagnostic> {
+    let root_system = inner.root_system();
+    // The subsystem simple roots arrive in ambient-coordinate order; the
+    // upstream `simpleBasis` returns datum root-number order (the long root
+    // first for B2), so order by the first nonzero datum-simple coordinate.
+    let mut ordered = roots.to_vec();
+    ordered.sort_by_key(|&root| {
+        let coordinates = root_system.simple_coordinates(root).unwrap_or_default();
+        (
+            coordinates
+                .iter()
+                .position(|&coordinate| coordinate != 0)
+                .unwrap_or(usize::MAX),
+            root.index(),
+        )
+    });
+    let cartan: Vec<Vec<i32>> = ordered
+        .iter()
+        .map(|&root| {
+            ordered
+                .iter()
+                .map(|&coroot| {
+                    root_system
+                        .bracket(root, coroot)
+                        .map_err(|error| structure_diagnostic(error, span))
+                })
+                .collect::<Result<Vec<_>, _>>()
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let lie_type = infer_lie_type(&cartan, cartan.len(), span)?;
+    Ok(Value::Domain(DomainValue::LieType(lie_type)))
 }
 
 /// `KL_table::primitives` (kl.cpp:163-170): every primitive `x` for the
@@ -6455,6 +6657,68 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 .and_then(|involution| context.table.record(involution))
                 .ok_or_else(|| runtime(span, "Inexistent KGB element"))?;
             matrix_value(involution.theta().weight_matrix(), span)
+        }
+        // Cartan_info (atlas-types.w:4102-4160): the classify triple, the
+        // Cartan involution's Weyl word, the orbit/fiber sizes, and the
+        // subsystem types of the imaginary, real and complex simple roots.
+        "Cartan_info" => {
+            arity(name, arguments, 1, span)?;
+            let (context, id) = as_cartan_class(&arguments[0], span)?;
+            let cartan = context
+                .classification
+                .cartan_class(id)
+                .expect("CartanClass values carry an in-range id");
+            let representative = cartan.representative();
+            let root_involution = representative.root_involution();
+            // tori::classify (atlas-types.w:4105-4112).
+            let classification = domain_classify_involution(
+                root_involution.involution().weight_matrix(),
+                &IntegerLatticeBudget::new(64, 1_000_000, 1_000_000, 256),
+            )
+            .map_err(|error| structure_diagnostic(error, span))?;
+            let (compact, _complex_torus, split) = classification.as_tuple();
+            // The Weyl word of the Cartan involution (Weyl_group().word).
+            let weyl = WeylElement::from_action(
+                context.inner_class.root_system(),
+                representative.weyl_action(),
+            )
+            .map_err(|error| structure_diagnostic(error, span))?;
+            let word = weyl_reduced_word(&context.inner_class, &weyl);
+            let word_value = Value::Vector(Vec32(
+                word.iter()
+                    .map(|&generator| generator as i32)
+                    .collect::<Vec<_>>(),
+            ));
+            // orbitSize and fiberSize (atlas-types.w:2143-2144).
+            let orbit_size = cartan.twisted_involution_count();
+            let fiber_rank = fiber_rank(
+                root_involution.involution().weight_matrix(),
+                &IntegerLatticeBudget::new(64, 1_000_000, 1_000_000, 256),
+            )
+            .map_err(|error| structure_diagnostic(error, span))?;
+            let fiber_size = 1_usize << fiber_rank;
+            // subsystem types of the simple imaginary / real / complex roots.
+            let imaginary = root_involution.imaginary_simple_roots();
+            let real = root_involution.real_simple_roots();
+            let complex = make_simple_complex(&context.inner_class, root_involution)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            Ok(Value::Tuple(vec![
+                Value::Tuple(vec![
+                    Value::Integer(BigInt::from(compact)),
+                    Value::Integer(BigInt::from(_complex_torus)),
+                    Value::Integer(BigInt::from(split)),
+                ]),
+                word_value,
+                Value::Tuple(vec![
+                    Value::Integer(BigInt::from(orbit_size)),
+                    Value::Integer(BigInt::from(fiber_size)),
+                ]),
+                Value::Tuple(vec![
+                    subsystem_type_value(&context.inner_class, imaginary, span)?,
+                    subsystem_type_value(&context.inner_class, real, span)?,
+                    subsystem_type_value(&context.inner_class, &complex, span)?,
+                ]),
+            ]))
         }
         "torus_factor" => {
             arity(name, arguments, 1, span)?;
