@@ -13,3 +13,15 @@ print_prim_KL(blk)
 print_KL_list(blk)
 print_W_graph(blk)
 print_W_cells(blk)
+rb : RootDatum
+rb := simply_connected(Lie_type("B2"),true)
+ib : InnerClass
+ib := inner_class(rb,[[1,0],[0,1]])
+rfb : RealForm
+rfb := real_form(ib,2)
+dfb : RealForm
+dfb := dual_real_form(ib,1)
+blkb : Block
+blkb := block(rfb,dfb)
+print_KL_basis(blkb)
+print_prim_KL(blkb)
