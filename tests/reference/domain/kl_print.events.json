@@ -1,7 +1,7 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "domain/kl_print",
-  "status": "verified_hpc_reference",
+  "status": "local_oracle_reference",
   "events": [
     {
       "kind": "ReportLine",
@@ -634,7 +634,7 @@
     },
     {
       "kind": "Output",
-      "text": "57 nonzero polynomials, and 8 zero polynomials,\n at 65 Bruhat-comparable pairs.\n"
+      "text": "57 nonzero polynomials, and 8 zero polynomials,\n at 65 Bruhat-comparable pairs.\n1\n1\nq\nq+1\n"
     }
   ]
 }
