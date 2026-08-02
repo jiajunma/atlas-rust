@@ -2334,7 +2334,6 @@ fn common_block_members(
 ) -> Result<Vec<bool>, Diagnostic> {
     let size = block.graph.size();
     let rank = block.graph.rank();
-    let datum = block.rf.parent.root_datum.datum.clone();
     // The gamma-lambda of the initial element (mod the cocharacter lattice).
     let z0_y_bits = match block.graph.x(z0).and_then(|x| block.rf.graph.element(x)) {
         Some(element) => rc
