@@ -42,3 +42,25 @@ z3 := KGB(rfg,0)
 r3 : Param
 r3 := param(z3,[0,0],[0,0]/1)
 full_deform(r3)
+rb : RootDatum
+rb := simply_connected(Lie_type("B3"),true)
+ib3 : InnerClass
+ib3 := inner_class(rb,[[1,0,0],[0,1,0],[0,0,1]])
+rfb : RealForm
+rfb := real_form(ib3,1)
+z3 : KGBElt
+z3 := KGB(rfb,0)
+p3 : Param
+p3 := param(z3,[0,0,0],[0,0,0]/1)
+full_deform(p3)
+rc : RootDatum
+rc := simply_connected(Lie_type("C3"),true)
+ic3 : InnerClass
+ic3 := inner_class(rc,[[1,0,0],[0,1,0],[0,0,1]])
+rfc : RealForm
+rfc := real_form(ic3,1)
+w3 : KGBElt
+w3 := KGB(rfc,0)
+q3 : Param
+q3 := param(w3,[0,0,0],[0,0,0]/1)
+full_deform(q3)
