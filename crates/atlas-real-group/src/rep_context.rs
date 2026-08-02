@@ -67,6 +67,19 @@ fn merge_ktype_terms(terms: &mut Vec<(KType, i32)>, term: KType, coefficient: i3
     }
 }
 
+/// The pairing of a coweight with a rational numerator, as an i64.
+fn dot_numerator(coweight: &Coweight, numerator: &[i64]) -> i64 {
+    let mut total = 0_i64;
+    for (index, &coordinate) in coweight.as_slice().iter().enumerate() {
+        if coordinate != 0 {
+            if let Some(&entry) = numerator.get(index) {
+                total += i64::from(coordinate) * entry;
+            }
+        }
+    }
+    total
+}
+
 /// Insert a term into the work queue ordered by decreasing height
 /// (repr.cpp:1300 `insert_into`).
 fn insert_into_by_height(
@@ -959,6 +972,103 @@ impl<'a> RepContext<'a> {
             eval2_numerator / denominator
         };
         Ok(parity_at_0 == (eval2 % 2 == 0))
+    }
+
+    /// `Rep_context::reducibility_points` (repr.cpp:825-925): the
+    /// reducibility fractions of a standard parameter, as (numerator,
+    /// denominator) pairs sorted ascending.
+    pub fn reducibility_points(&self, z: &StandardRepr) -> Result<Vec<(i64, i64)>, StructureError> {
+        let rd = self.inner_class.datum();
+        let system = self.inner_class.root_system();
+        let numer = z.gamma().numerator();
+        let d = z.gamma().denominator();
+        let lam_rho = self.lambda_rho(z)?;
+        let x = z.x();
+        let pos_real = self.positive_real_roots_at(x)?;
+        let two_rho_real = self.two_rho_of(&pos_real)?;
+        let involution = self.involution_of(x)?;
+        let record = self
+            .table
+            .record(involution)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: involution.0,
+                upper_bound: self.table.involution_count(),
+            })?;
+        let root_involution = record.twisted_involution().root_involution();
+        // (abs(num) -> strict lower bound lwb), split by parity of k.
+        let mut odds: std::collections::BTreeMap<i64, i64> = std::collections::BTreeMap::new();
+        let mut evens: std::collections::BTreeMap<i64, i64> = std::collections::BTreeMap::new();
+        for &alpha in &pos_real {
+            let coroot = system
+                .coroot(alpha)
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: alpha.index(),
+                    upper_bound: system.roots().len(),
+                })?;
+            let num = dot_numerator(coroot, numer);
+            if num != 0 {
+                let lam_alpha =
+                    i64::from(pair(&lam_rho, coroot)?) + i64::from(self.colevel(alpha)?);
+                let two_rho_dot = i64::from(pair(&two_rho_real, coroot)?);
+                let do_odd = (lam_alpha + two_rho_dot / 2) % 2 == 0;
+                (if do_odd { &mut odds } else { &mut evens })
+                    .entry(num.unsigned_abs() as i64)
+                    .or_insert(0);
+            }
+        }
+        // Complex positive roots: beta = theta(alpha).
+        let mut pos_complex = Vec::new();
+        for index in 0..system.roots().len() {
+            let id = RootId::from_usize(index);
+            if system.is_positive(id) == Some(true)
+                && root_involution.kind(id) == Some(RootKind::Complex)
+            {
+                pos_complex.push(id);
+            }
+        }
+        for &alpha in &pos_complex {
+            let beta = root_involution
+                .image(alpha)
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: alpha.index(),
+                    upper_bound: system.roots().len(),
+                })?;
+            let coroot_alpha = system
+                .coroot(alpha)
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: alpha.index(),
+                    upper_bound: system.roots().len(),
+                })?;
+            let coroot_beta = system.coroot(beta).ok_or(StructureError::IndexOutOfRange {
+                index: beta.index(),
+                upper_bound: system.roots().len(),
+            })?;
+            let vala = dot_numerator(coroot_alpha, numer);
+            let valb = dot_numerator(coroot_beta, numer);
+            let num = vala - valb;
+            if num != 0 {
+                let lwb = (vala + valb).unsigned_abs() / d as u64;
+                let table = if lwb % 2 == 0 { &mut evens } else { &mut odds };
+                let entry = table.entry(num.unsigned_abs() as i64).or_insert(0);
+                *entry = (*entry).min(lwb as i64);
+            }
+        }
+        let mut fracs: std::collections::BTreeSet<(i64, i64)> = std::collections::BTreeSet::new();
+        for (num, lwb) in &evens {
+            let mut s = d * (lwb + 2);
+            while s <= *num {
+                fracs.insert((s, *num));
+                s += 2 * d;
+            }
+        }
+        for (num, lwb) in &odds {
+            let mut s = if *lwb == 0 { d } else { d * (lwb + 2) };
+            while s <= *num {
+                fracs.insert((s, *num));
+                s += 2 * d;
+            }
+        }
+        Ok(fracs.into_iter().collect())
     }
 
     /// `Rep_context::finals_for` (repr.cpp:1205-1297): decompose a

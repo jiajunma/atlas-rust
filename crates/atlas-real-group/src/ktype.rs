@@ -838,6 +838,27 @@ mod tests {
     }
 
     #[test]
+    fn split_a1_reducibility_points_are_empty_for_gamma_half() {
+        with_split_a1(|rc, graph| {
+            // x=2 ([r] real) with gamma=[1]/2: the only positive real
+            // coroot pairing is 1, whose odds-table lower bound stays 0,
+            // so no fraction s/d with d*s<=1 exists: empty.
+            let x = crate::KgbId(2);
+            let lambda_rho = Weight::new(vec![1]);
+            let gamma = crate::RationalWeight::new(vec![1], 2).unwrap();
+            let sr = rc.sr_gamma(x, &lambda_rho, &gamma).unwrap();
+            assert!(rc.reducibility_points(&sr).unwrap().is_empty());
+            // x=1 ([n]) with gamma=[0]/1 has no real roots and no
+            // complex roots: empty.
+            let x1 = crate::KgbId(1);
+            let gamma0 = crate::RationalWeight::new(vec![0], 1).unwrap();
+            let sr1 = rc.sr_gamma(x1, &Weight::new(vec![0]), &gamma0).unwrap();
+            assert!(rc.reducibility_points(&sr1).unwrap().is_empty());
+            let _ = graph;
+        });
+    }
+
+    #[test]
     fn split_a1_standard_repr_anchors_match_the_frozen_contract() {
         with_split_a1(|rc, _graph| {
             let x = KgbId(2);
