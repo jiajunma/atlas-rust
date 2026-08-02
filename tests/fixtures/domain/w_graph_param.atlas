@@ -34,3 +34,15 @@ r : Param
 r := param(z,[0,0],[0,0]/1)
 W_graph(r)
 W_cells(r)
+rd : RootDatum
+rd := simply_connected(Lie_type("A3"),true)
+id : InnerClass
+id := inner_class(rd,[[1,0,0],[0,1,0],[0,0,1]])
+rfd : RealForm
+rfd := real_form(id,1)
+z2 : KGBElt
+z2 := KGB(rfd,0)
+r2 : Param
+r2 := param(z2,[0,0,0],[0,0,0]/1)
+W_graph(r2)
+W_cells(r2)
