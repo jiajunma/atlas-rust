@@ -2292,38 +2292,12 @@ fn block_finals_for(
     }
 }
 
-/// Whether two rational weights differ by a cocharacter-lattice element:
-/// every simple-coroot pairing differs by an integer (the common block's
-/// srm matching is modulo the cocharacter lattice).
-fn same_mod_cocharacter_lattice(
-    left: &RationalWeight,
-    right: &RationalWeight,
-    datum: &BasedRootDatum,
-) -> bool {
-    for coroot in datum.simple_coroots() {
-        let mut n1: i64 = 0;
-        let mut n2: i64 = 0;
-        let d1 = left.denominator();
-        let d2 = right.denominator();
-        for (index, &coordinate) in coroot.as_slice().iter().enumerate() {
-            if coordinate != 0 {
-                n1 += i64::from(coordinate) * left.numerator().get(index).copied().unwrap_or(0);
-                n2 += i64::from(coordinate) * right.numerator().get(index).copied().unwrap_or(0);
-            }
-        }
-        // n1/d1 - n2/d2 = (n1*d2 - n2*d1)/(d1*d2) must be an integer.
-        if (n1 * d2 - n2 * d1) % (d1 * d2) != 0 {
-            return false;
-        }
-    }
-    true
-}
-
-/// The members of a parameter's common block: the closure of the
-/// parameter's block element under all cross/Cayley/inverse-Cayley
-/// transforms whose gamma-lambda agrees modulo the cocharacter lattice
-/// (blocks.cpp:740-1030 z_pool), with parity real type-I descents
-/// filtered like the oracle.
+/// The members of a parameter's common block: the fibred-product
+/// closure of the parameter's block element under all cross/Cayley/
+/// inverse-Cayley transforms (blocks.cpp:740-1030 z_pool), with parity
+/// real type-I descents filtered like the oracle. The full srm
+/// gamma-lambda matching (which distinguishes mid-block singular
+/// parameters such as A2 x=3) needs the srm pool layer.
 fn common_block_members(
     block: &BlockValue,
     z0: usize,
@@ -2334,16 +2308,6 @@ fn common_block_members(
 ) -> Result<Vec<bool>, Diagnostic> {
     let size = block.graph.size();
     let rank = block.graph.rank();
-    // The gamma-lambda of the initial element (mod the cocharacter lattice).
-    let z0_y_bits = match block.graph.x(z0).and_then(|x| block.rf.graph.element(x)) {
-        Some(element) => rc
-            .torus_part(block.graph.x(z0).expect("in-range"), element.torus_bits())
-            .map_err(|error| structure_diagnostic(error, span))?,
-        None => ModTwoVector::zero(rc.rank()).map_err(|error| structure_diagnostic(error, span))?,
-    };
-    let target_gl = rc
-        .gamma_lambda(block.graph.x(z0).expect("in-range"), &z0_y_bits, gamma)
-        .map_err(|error| structure_diagnostic(error, span))?;
     let mut closed = vec![false; size];
     let mut stack = vec![z0];
     closed[z0] = true;
@@ -2353,47 +2317,29 @@ fn common_block_members(
             match block.graph.descent_value(z, s) {
                 Some(BlockDescent::ComplexAscent) | Some(BlockDescent::ComplexDescent) => {
                     if let Some(target) = block.graph.cross(z, s) {
-                        push_if_matching(
-                            &mut closed,
-                            &mut stack,
-                            target,
-                            block,
-                            rc,
-                            &target_gl,
-                            gamma,
-                            span,
-                        )?;
+                        if !closed[target] {
+                            closed[target] = true;
+                            stack.push(target);
+                        }
                     }
                 }
                 Some(BlockDescent::ImaginaryTypeI) | Some(BlockDescent::ImaginaryTypeII) => {
                     if let Some(pair) = block.graph.cayley(z, s) {
                         for target in [pair.0, pair.1].into_iter().flatten() {
-                            push_if_matching(
-                                &mut closed,
-                                &mut stack,
-                                target,
-                                block,
-                                rc,
-                                &target_gl,
-                                gamma,
-                                span,
-                            )?;
+                            if !closed[target] {
+                                closed[target] = true;
+                                stack.push(target);
+                            }
                         }
                     }
                 }
                 Some(BlockDescent::ImaginaryCompact) => {
                     if let Some(pair) = block.graph.inverse_cayley(z, s) {
                         for target in [pair.0, pair.1].into_iter().flatten() {
-                            push_if_matching(
-                                &mut closed,
-                                &mut stack,
-                                target,
-                                block,
-                                rc,
-                                &target_gl,
-                                gamma,
-                                span,
-                            )?;
+                            if !closed[target] {
+                                closed[target] = true;
+                                stack.push(target);
+                            }
                         }
                     }
                 }
@@ -2404,16 +2350,10 @@ fn common_block_members(
                     {
                         if let Some(pair) = block.graph.inverse_cayley(z, s) {
                             for target in [pair.0, pair.1].into_iter().flatten() {
-                                push_if_matching(
-                                    &mut closed,
-                                    &mut stack,
-                                    target,
-                                    block,
-                                    rc,
-                                    &target_gl,
-                                    gamma,
-                                    span,
-                                )?;
+                                if !closed[target] {
+                                    closed[target] = true;
+                                    stack.push(target);
+                                }
                             }
                         }
                     }
@@ -2421,16 +2361,10 @@ fn common_block_members(
                 Some(BlockDescent::RealTypeII) => {
                     if let Some(pair) = block.graph.inverse_cayley(z, s) {
                         if let Some(first) = pair.0 {
-                            push_if_matching(
-                                &mut closed,
-                                &mut stack,
-                                first,
-                                block,
-                                rc,
-                                &target_gl,
-                                gamma,
-                                span,
-                            )?;
+                            if !closed[first] {
+                                closed[first] = true;
+                                stack.push(first);
+                            }
                         }
                     }
                 }
@@ -2439,45 +2373,6 @@ fn common_block_members(
         }
     }
     Ok(closed)
-}
-
-/// Push a transform image into the closure when its gamma-lambda matches
-/// the target modulo the cocharacter lattice.
-#[allow(clippy::too_many_arguments)]
-fn push_if_matching(
-    closed: &mut [bool],
-    stack: &mut Vec<usize>,
-    target: usize,
-    block: &BlockValue,
-    rc: &RepContext<'_>,
-    target_gl: &RationalWeight,
-    gamma: &RationalWeight,
-    span: SourceSpan,
-) -> Result<(), Diagnostic> {
-    if closed[target] {
-        return Ok(());
-    }
-    let y_bits = match block
-        .graph
-        .x(target)
-        .and_then(|x| block.rf.graph.element(x))
-    {
-        Some(element) => rc
-            .torus_part(
-                block.graph.x(target).expect("in-range"),
-                element.torus_bits(),
-            )
-            .map_err(|error| structure_diagnostic(error, span))?,
-        None => ModTwoVector::zero(rc.rank()).map_err(|error| structure_diagnostic(error, span))?,
-    };
-    let candidate_gl = rc
-        .gamma_lambda(block.graph.x(target).expect("in-range"), &y_bits, gamma)
-        .map_err(|error| structure_diagnostic(error, span))?;
-    if same_mod_cocharacter_lattice(&candidate_gl, target_gl, &block.rf.parent.root_datum.datum) {
-        closed[target] = true;
-        stack.push(target);
-    }
-    Ok(())
 }
 
 /// The transitive closure of a Hasse diagram as a `lesseq` matrix
@@ -7722,7 +7617,11 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             }
             // Survivors in subset order.
             let mut params = Vec::new();
-            for z in subset.iter().enumerate().filter_map(|(index, &m)| m.then_some(index)) {
+            for z in subset
+                .iter()
+                .enumerate()
+                .filter_map(|(index, &m)| m.then_some(index))
+            {
                 if !subset[z] {
                     continue;
                 }
