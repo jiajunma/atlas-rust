@@ -7758,9 +7758,10 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 .finals_for_standard(&parameter.repr)
                 .map_err(|error| structure_diagnostic(error, span))?;
             let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
-            // The deform block pairs the real form with its dual's first
-            // (for A2, only) real form.
-            let dual_rf = build_real_form(&dual_parent, 0, span)?;
+            // The deform block pairs the real form with its dual's
+            // quasisplit form (matching lookup_full_block).
+            let dual_quasisplit = dual_parent.order.quasisplit_external();
+            let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
             let mut terms: Vec<(SplitValue, StandardRepr)> = Vec::new();
             for (final_sr, final_coef) in finals {
                 let block = BlockGraph::build(
