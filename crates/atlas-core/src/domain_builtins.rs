@@ -2112,6 +2112,77 @@ fn kl_pol_at(
         .ok_or_else(|| runtime(span, "internal KL pool miss"))
 }
 
+/// `Block_base::finals_for` (blocks.cpp:169-201): the survivors reached by
+/// descending through the singular generators' descents from `z`; empty
+/// when an ImaginaryCompact descent is met (the module vanishes).
+fn block_finals_for(
+    block: &BlockValue,
+    z: usize,
+    singular: u32,
+    kl_table: &KlTable<'_>,
+    span: SourceSpan,
+) -> Result<Vec<usize>, Diagnostic> {
+    let mut result = Vec::new();
+    let mut z = z;
+    let rank = kl_table.support().rank();
+    loop {
+        let mut descended = false;
+        for s in 0..rank {
+            if singular & (1 << s) == 0 {
+                continue;
+            }
+            match block.graph.descent_value(z, s) {
+                Some(BlockDescent::ImaginaryCompact) => {
+                    return Ok(Vec::new());
+                }
+                Some(BlockDescent::ComplexDescent) => {
+                    z = block
+                        .graph
+                        .cross(z, s)
+                        .ok_or_else(|| runtime(span, "finals cross"))?;
+                    descended = true;
+                    break;
+                }
+                Some(BlockDescent::RealTypeII) => {
+                    z = block
+                        .graph
+                        .inverse_cayley(z, s)
+                        .and_then(|pair| pair.0)
+                        .ok_or_else(|| runtime(span, "finals inverse Cayley"))?;
+                    descended = true;
+                    break;
+                }
+                Some(BlockDescent::RealTypeI) => {
+                    let pair = block
+                        .graph
+                        .inverse_cayley(z, s)
+                        .ok_or_else(|| runtime(span, "finals inverse"))?;
+                    match pair {
+                        (Some(z0), Some(z1)) => {
+                            result.extend(block_finals_for(block, z0, singular, kl_table, span)?);
+                            z = z1;
+                            descended = true;
+                            break;
+                        }
+                        (Some(z0), None) => {
+                            result.extend(block_finals_for(block, z0, singular, kl_table, span)?);
+                            return Ok(result);
+                        }
+                        (None, _) => {
+                            return Ok(result);
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        if !descended {
+            result.push(z);
+            return Ok(result);
+        }
+    }
+}
+
 /// The transitive closure of a Hasse diagram as a `lesseq` matrix
 /// (poset.cpp:197-229 style, rows are the closure sets).
 fn bruhat_closure(hasse: &[Vec<usize>]) -> Vec<Vec<bool>> {
@@ -7104,6 +7175,190 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             }
             let _ = start;
             Ok(Value::List(column))
+        }
+        // partial_KL_block (atlas-types.w:6998-7051, repr.cpp:2060-2075):
+        // the condensed KL matrix over the parameter's partial block
+        // survivors, plus the parameter and polynomial lists.
+        "partial_KL_block" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "{name} has no matching overload for {} argument(s)",
+                        arguments.len()
+                    ),
+                ));
+            };
+            let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
+            let dual_quasisplit = dual_parent.order.quasisplit_external();
+            let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
+            let block = build_block(&parameter.context, &dual_rf, span)?;
+            let mut kl_table =
+                KlTable::new(&block.graph).map_err(|error| structure_diagnostic(error, span))?;
+            kl_table
+                .fill(0)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let size = block.graph.size();
+            let datum = parameter.context.parent.root_datum.datum.clone();
+            let rc = rep_context(&parameter.context);
+            let lambda_rho = rc
+                .lambda_rho(&parameter.repr)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let gamma = parameter.repr.gamma().clone();
+            let z0 = (0..size)
+                .find(|&z| block.graph.x(z) == Some(parameter.repr.x()))
+                .ok_or_else(|| runtime(span, "parameter not in the common block"))?;
+            // Partial block: the KL descent closure of z0 (block_below).
+            let mut subset: Vec<bool> = vec![false; size];
+            let mut stack = vec![z0];
+            subset[z0] = true;
+            while let Some(z) = stack.pop() {
+                let z_x = block.graph.x(z).expect("in-range");
+                for s in 0..datum.semisimple_rank() {
+                    match block.graph.descent_value(z, s) {
+                        Some(BlockDescent::ComplexDescent) => {
+                            if let Some(target) = block.graph.cross(z, s) {
+                                if !subset[target] {
+                                    subset[target] = true;
+                                    stack.push(target);
+                                }
+                            }
+                        }
+                        Some(BlockDescent::RealTypeI) => {
+                            let parity = rc
+                                .is_parity(s, z_x, &lambda_rho, &gamma)
+                                .map_err(|error| structure_diagnostic(error, span))?;
+                            if !parity {
+                                continue;
+                            }
+                            if let Some(pair) = block.graph.inverse_cayley(z, s) {
+                                for target in [pair.0, pair.1].into_iter().flatten() {
+                                    if !subset[target] {
+                                        subset[target] = true;
+                                        stack.push(target);
+                                    }
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            // Singular coroots: <gamma, alpha_s^vee> non-integral.
+            let mut singular = 0_u32;
+            for s in 0..datum.semisimple_rank() {
+                let coroot = &datum.simple_coroots()[s];
+                let numerator = gamma.numerator();
+                let denominator = gamma.denominator();
+                let mut total: i64 = 0;
+                for (index, &coordinate) in coroot.as_slice().iter().enumerate() {
+                    if coordinate == 0 {
+                        continue;
+                    }
+                    let entry = numerator
+                        .get(index)
+                        .ok_or_else(|| runtime(span, "rational weight rank"))?;
+                    total += i64::from(coordinate) * *entry;
+                }
+                if denominator == 0 || total % denominator != 0 {
+                    singular |= 1 << s;
+                }
+            }
+            // Survivors in subset order (loc[z] = survivors.size()).
+            let mut loc = vec![usize::MAX; size];
+            let mut survivors: Vec<usize> = Vec::new();
+            for z in 0..size {
+                if !subset[z] {
+                    continue;
+                }
+                let mut survives = true;
+                for s in 0..datum.semisimple_rank() {
+                    if singular & (1 << s) != 0
+                        && block
+                            .graph
+                            .descent_value(z, s)
+                            .is_some_and(|d| d.is_descent())
+                    {
+                        survives = false;
+                        break;
+                    }
+                }
+                if survives {
+                    loc[z] = survivors.len();
+                    survivors.push(z);
+                }
+            }
+            let n = survivors.len();
+            // Condense the KL polynomials into M (atlas-types.w:6922-6948):
+            // M(loc[f], loc[y]) +=/-= KL_pol(x, y) over the finals of x.
+            let mut matrix: Vec<Vec<KlPol>> = vec![vec![KlPol::zero(); n]; n];
+            for x in 0..size {
+                for f in block_finals_for(&block, x, singular, &kl_table, span)? {
+                    let i = loc[f];
+                    if i == usize::MAX {
+                        continue;
+                    }
+                    let sign_even = block.graph.length(x).is_some_and(|lx| {
+                        (lx as i64 - block.graph.length(f).unwrap_or(0) as i64).rem_euclid(2) == 0
+                    });
+                    for (j, &y) in survivors.iter().enumerate() {
+                        let polynomial = kl_pol_at(&kl_table, x, y, span)?;
+                        if polynomial.is_zero() {
+                            continue;
+                        }
+                        if sign_even {
+                            matrix[i][j] = matrix[i][j].add(&polynomial);
+                        } else {
+                            matrix[i][j] = matrix[i][j].sub(&polynomial);
+                        }
+                    }
+                }
+            }
+            // Distinct polynomials: the oracle's store starts with the zero
+            // polynomial at index 0.
+            let mut polys: Vec<KlPol> = vec![KlPol::zero()];
+            let mut index_of: std::collections::HashMap<Vec<i32>, usize> =
+                std::collections::HashMap::new();
+            index_of.insert(Vec::new(), 0);
+            let mut index_matrix = vec![vec![0_usize; n]; n];
+            for row in 0..n {
+                for column in 0..n {
+                    let coefficients = matrix[row][column].as_slice().to_vec();
+                    let index = *index_of.entry(coefficients.clone()).or_insert_with(|| {
+                        polys.push(matrix[row][column].clone());
+                        polys.len() - 1
+                    });
+                    index_matrix[row][column] = index;
+                }
+            }
+            // Parameters of the survivors.
+            let mut params = Vec::new();
+            for &z in &survivors {
+                let sr = rc
+                    .sr_gamma(block.graph.x(z).expect("in-range"), &lambda_rho, &gamma)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                params.push(Value::Domain(DomainValue::Param(ParamValue {
+                    context: parameter.context.clone(),
+                    repr: sr,
+                })));
+            }
+            let rows: Vec<Vec<i32>> = index_matrix
+                .iter()
+                .map(|row| row.iter().map(|&index| index as i32).collect())
+                .collect();
+            let matrix_value = matrix_value(&rows, span)?;
+            let polys_value = Value::List(
+                polys
+                    .iter()
+                    .map(|pol| Value::Vector(Vec32(pol.as_slice().to_vec())))
+                    .collect(),
+            );
+            Ok(Value::Tuple(vec![
+                Value::List(params),
+                matrix_value,
+                polys_value,
+            ]))
         }
         // W_graph / W_cells (atlas-types.w:7147-7170, 7210-7245): the
         // W-graph of a standard parameter's full block, respectively its

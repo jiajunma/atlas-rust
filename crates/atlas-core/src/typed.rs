@@ -4921,6 +4921,18 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 ]),
                 0,
             ),
+            // partial_KL_block (atlas-types.w:6998-7051): the condensed KL
+            // matrix over a parameter's partial-block survivors.
+            domain_builtin_skip(
+                "partial_KL_block",
+                primitive_type(Prim::Param),
+                Type::tuple(vec![
+                    Type::row(primitive_type(Prim::Param)),
+                    primitive_type(Prim::Mat),
+                    Type::row(primitive_type(Prim::Vec)),
+                ]),
+                0,
+            ),
             // two_rho / two_rho_check (atlas-types.w:1409-1421): the sum of
             // the positive roots, respectively of the positive coroots.
             domain_builtin_skip(
