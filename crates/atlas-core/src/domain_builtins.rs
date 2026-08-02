@@ -2421,9 +2421,15 @@ fn kl_primitives(kl_table: &KlTable, y: usize) -> Vec<usize> {
 
 /// `polynomials::compare` on the coefficient vectors (least degree first).
 fn compare_klpol(a: &KlPol, b: &KlPol) -> std::cmp::Ordering {
-    let max = a.degree().max(b.degree());
-    for i in 0..=max {
-        let (ca, cb) = (a.coefficient(i), b.coefficient(i));
+    // polynomials::compare (polynomials_def.h:275-285): first by size
+    // (coefficient count), then by coefficients from highest to lowest.
+    let a_coeffs = a.as_slice();
+    let b_coeffs = b.as_slice();
+    if a_coeffs.len() != b_coeffs.len() {
+        return a_coeffs.len().cmp(&b_coeffs.len());
+    }
+    for i in (0..a_coeffs.len()).rev() {
+        let (ca, cb) = (a_coeffs[i], b_coeffs[i]);
         if ca != cb {
             return ca.cmp(&cb);
         }
