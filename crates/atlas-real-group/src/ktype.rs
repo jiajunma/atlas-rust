@@ -777,6 +777,67 @@ mod tests {
     }
 
     #[test]
+    fn split_a1_finals_for_a_final_parameter_is_itself() {
+        with_split_a1(|rc, graph| {
+            // x=2 ([r] real) with gamma=[1]/2: strictly dominant, so the
+            // parameter is already final and finals_for returns it once.
+            let x = crate::KgbId(2);
+            let lambda_rho = Weight::new(vec![1]);
+            let gamma = crate::RationalWeight::new(vec![1], 2).unwrap();
+            let sr = rc.sr_gamma(x, &lambda_rho, &gamma).unwrap();
+            let finals = rc.finals_for(&sr).unwrap();
+            assert_eq!(finals.len(), 1);
+            assert_eq!(finals[0].1, 1);
+            assert_eq!(finals[0].0.x(), x);
+            assert_eq!(finals[0].0.gamma(), &gamma);
+            let _ = graph;
+        });
+    }
+
+    #[test]
+    fn split_a1_finals_for_a_non_dominant_parameter_reflects() {
+        with_split_a1(|rc, graph| {
+            // x=1 ([n] noncompact) with gamma=[0]/1: the generator is
+            // singular (eval 0), which is left alone, so the parameter
+            // is already final.
+            let x = crate::KgbId(1);
+            let lambda_rho = Weight::new(vec![0]);
+            let gamma = crate::RationalWeight::new(vec![0], 1).unwrap();
+            let sr = rc.sr_gamma(x, &lambda_rho, &gamma).unwrap();
+            let finals = rc.finals_for(&sr).unwrap();
+            assert_eq!(finals.len(), 1);
+            assert_eq!(finals[0].0.x(), x);
+            let _ = graph;
+        });
+    }
+
+    #[test]
+    fn split_a1_finals_for_a_negative_parameter_descends() {
+        with_split_a1(|rc, graph| {
+            // x=1 ([n] noncompact) with gamma=[-1]/1: the generator is
+            // non-dominant (eval -1), so finals_for crosses to x=0 and
+            // reflects; the result must be final and integral.
+            let x = crate::KgbId(1);
+            let lambda_rho = Weight::new(vec![0]);
+            let gamma = crate::RationalWeight::new(vec![-1], 1).unwrap();
+            let sr = rc.sr_gamma(x, &lambda_rho, &gamma).unwrap();
+            let finals = rc.finals_for(&sr).unwrap();
+            // The noncompact imaginary descent produces two terms: the
+            // Cayley image (x=2, gamma=[-1]/1) and the crossed+reflected
+            // term (x=0, gamma=[1]/1 with coefficient -1).
+            assert_eq!(finals.len(), 2);
+            let mut by_x = std::collections::BTreeMap::new();
+            for (final_sr, coef) in &finals {
+                by_x.insert(final_sr.x().index(), (coef, final_sr.gamma().clone()));
+            }
+            assert_eq!(by_x[&0].0, &-1);
+            assert_eq!(by_x[&0].1, crate::RationalWeight::new(vec![1], 1).unwrap());
+            assert_eq!(by_x[&2].0, &1);
+            let _ = graph;
+        });
+    }
+
+    #[test]
     fn split_a1_standard_repr_anchors_match_the_frozen_contract() {
         with_split_a1(|rc, _graph| {
             let x = KgbId(2);

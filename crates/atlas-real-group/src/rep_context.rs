@@ -67,6 +67,23 @@ fn merge_ktype_terms(terms: &mut Vec<(KType, i32)>, term: KType, coefficient: i3
     }
 }
 
+/// Insert a term into the work queue ordered by decreasing height
+/// (repr.cpp:1300 `insert_into`).
+fn insert_into_by_height(
+    to_do: &mut Vec<(StandardRepr, i32)>,
+    term: StandardRepr,
+    coef: i32,
+) -> Result<(), StructureError> {
+    let position = to_do
+        .iter()
+        .position(|(candidate, _)| candidate.height() < term.height());
+    match position {
+        Some(index) => to_do.insert(index, (term, coef)),
+        None => to_do.push((term, coef)),
+    }
+    Ok(())
+}
+
 /// A standard-module parameter: upstream `repr::StandardRepr`
 /// (gkmod/repr.h:76-110).
 ///
@@ -880,6 +897,7 @@ impl<'a> RepContext<'a> {
     /// `Rep_context::sr_gamma` (repr.cpp:756-784): pack the torsion part
     /// of `lambda_rho` and store `gamma` with the height of
     /// `(1+theta)*gamma`.
+
     /// `Rep_context::is_parity` (repr.cpp:247-270): whether the real
     /// generator `s` at `x` is a parity descent for the parameter with
     /// `lambda_rho` and `gamma`.
@@ -942,6 +960,163 @@ impl<'a> RepContext<'a> {
             eval2_numerator / denominator
         };
         Ok(parity_at_0 == (eval2 % 2 == 0))
+    }
+
+    /// `Rep_context::finals_for` (repr.cpp:1205-1297): decompose a
+    /// (not necessarily final) standard parameter into its final
+    /// constituents with integral coefficients, by descending through
+    /// the non-dominant generators (reflections, Cayley and inverse
+    /// Cayley transforms) and recording the resulting final parameters.
+    pub fn finals_for(&self, z: &StandardRepr) -> Result<Vec<(StandardRepr, i32)>, StructureError> {
+        let rd = self.inner_class.datum();
+        let mut result: Vec<(StandardRepr, i32)> = Vec::new();
+        let mut to_do: Vec<(StandardRepr, i32)> = vec![(z.clone(), 1)];
+        while let Some((mut current, mut coef)) = to_do.pop() {
+            let mut x = current.x();
+            let mut lr = self.lambda_rho(&current)?;
+            let mut gamma_num = current.gamma().numerator().to_vec();
+            let denominator = current.gamma().denominator();
+            let mut drop = false;
+            'restart: loop {
+                for s in 0..rd.semisimple_rank() {
+                    let coroot = &rd.simple_coroots()[s];
+                    let mut eval: i64 = 0;
+                    for (index, &coordinate) in coroot.as_slice().iter().enumerate() {
+                        if coordinate != 0 {
+                            let entry = gamma_num.get(index).ok_or_else(|| {
+                                StructureError::RankMismatch {
+                                    expected: gamma_num.len(),
+                                    actual: coroot.as_slice().len(),
+                                }
+                            })?;
+                            eval += i64::from(coordinate) * *entry;
+                        }
+                    }
+                    if eval > 0 {
+                        continue;
+                    }
+                    match self.kgb_status(x, s)? {
+                        KgbStatus::ImaginaryCompact => {
+                            if eval == 0 {
+                                drop = true;
+                                break 'restart;
+                            }
+                            self.simple_reflect(s, &mut lr, 1)?;
+                            self.simple_reflect_numerator(s, &mut gamma_num)?;
+                            coef = -coef;
+                            continue 'restart;
+                        }
+                        KgbStatus::ImaginaryNoncompact => {
+                            if eval == 0 {
+                                continue;
+                            }
+                            let sx =
+                                self.graph
+                                    .cross(x, s)
+                                    .ok_or(StructureError::IndexOutOfRange {
+                                        index: x.index(),
+                                        upper_bound: self.graph.size(),
+                                    })?;
+                            let cx = self.graph.cayley(x, s)?.ok_or_else(|| {
+                                StructureError::RepInvariantViolation {
+                                    invariant: "noncompact imaginary Cayley image",
+                                }
+                            })?;
+                            let gamma = RationalWeight::new(gamma_num.clone(), denominator)?;
+                            let t1 = self.sr_gamma(cx, &lr, &gamma)?;
+                            insert_into_by_height(&mut to_do, t1, coef)?;
+                            if sx == x {
+                                let mut t2_coordinates = Vec::new();
+                                for (&entry, &root_entry) in
+                                    lr.as_slice().iter().zip(rd.simple_roots()[s].as_slice())
+                                {
+                                    t2_coordinates.push(entry + root_entry);
+                                }
+                                let t2_lr = Weight::new(t2_coordinates);
+                                let t2 = self.sr_gamma(cx, &t2_lr, &gamma)?;
+                                insert_into_by_height(&mut to_do, t2, coef)?;
+                            }
+                            x = sx;
+                            self.simple_reflect(s, &mut lr, 1)?;
+                            self.simple_reflect_numerator(s, &mut gamma_num)?;
+                            coef = -coef;
+                            continue 'restart;
+                        }
+                        KgbStatus::Complex => {
+                            if eval == 0 && !self.is_complex_descent(x, s)? {
+                                continue;
+                            }
+                            x = self
+                                .graph
+                                .cross(x, s)
+                                .ok_or(StructureError::IndexOutOfRange {
+                                    index: x.index(),
+                                    upper_bound: self.graph.size(),
+                                })?;
+                            self.simple_reflect(s, &mut lr, 1)?;
+                            self.simple_reflect_numerator(s, &mut gamma_num)?;
+                            continue 'restart;
+                        }
+                        KgbStatus::Real => {
+                            if eval == 0 {
+                                let mut eval_lr: i32 = pair(&lr, coroot)?;
+                                if eval_lr % 2 == 0 {
+                                    continue;
+                                }
+                                let shift = ((eval_lr + 1) / 2) as i64;
+                                let mut lr_coordinates = lr.as_slice().to_vec();
+                                for (entry, &root_entry) in lr_coordinates
+                                    .iter_mut()
+                                    .zip(rd.simple_roots()[s].as_slice())
+                                {
+                                    *entry -= (shift * i64::from(root_entry)) as i32;
+                                }
+                                lr = Weight::new(lr_coordinates);
+                                eval_lr = pair(&lr, coroot)?;
+                                let _ = eval_lr;
+                                let gamma = RationalWeight::new(gamma_num, denominator)?;
+                                let pair_image = self.graph.inverse_cayley(x, s)?;
+                                let (first, second) = match pair_image {
+                                    Some((first, Some(second))) => (Some(first), Some(second)),
+                                    Some((first, None)) => (Some(first), None),
+                                    None => (None, None),
+                                };
+                                if let Some(second) = second {
+                                    insert_into_by_height(
+                                        &mut to_do,
+                                        self.sr_gamma(second, &lr, &gamma)?,
+                                        coef,
+                                    )?;
+                                }
+                                if let Some(first) = first {
+                                    insert_into_by_height(
+                                        &mut to_do,
+                                        self.sr_gamma(first, &lr, &gamma)?,
+                                        coef,
+                                    )?;
+                                }
+                                drop = true;
+                                break 'restart;
+                            }
+                            self.simple_reflect(s, &mut lr, 0)?;
+                            self.simple_reflect_numerator(s, &mut gamma_num)?;
+                            continue 'restart;
+                        }
+                    }
+                }
+                // No generator handled: the current parameter is final.
+                let gamma = RationalWeight::new(gamma_num, denominator)?;
+                let final_sr = self.sr_gamma(x, &lr, &gamma)?;
+                result.push((final_sr, coef));
+                break;
+            }
+            if drop {
+                // Contribute nothing for this branch.
+            }
+        }
+        // result was built LIFO; upstream prepends at the front, so reverse.
+        result.reverse();
+        Ok(result)
     }
 
     pub fn sr_gamma(
