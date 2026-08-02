@@ -572,7 +572,7 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: `385cffb` (main). Working tree clean.
+HEAD at handoff: `b07a8a0` (main). Working tree clean.
 
 ### Since the 8d9837d handoff (2026-08-02 overnight + user ktype/param layer)
 
@@ -621,6 +621,13 @@ After the 01df48e handoff the overnight sprint continued:
 - Fixture extensions across kgb_hasse/cartan_info/orientation_nr/
   simple_roots/two_rho/kl_print (B2/G2/F4/D4/A3/B3/C3) all HPC-verified
   (swaps `3508458`, `3508475`, `3508482`, `3508486`, `3508490`).
+- **Batch 7 first name: full_deform** (`7a5c2a3`) — the full K-type
+  deformation (atlas-types.w:8213-8227) via the freshly ported
+  Rep_context::finals_for (repr.cpp:1205-1297, `0108799`) and
+  Rep_context::reducibility_points (repr.cpp:825-925, `ebe40de`), on top
+  of the existing scale/deform_readjust/deformation_terms. A1/A2/B2/G2/A3
+  byte-identical; fixture `domain/full_deform`, HPC `3511044` (183
+  fixtures, 0 FAIL).
 - The common-block experiment (block_Hasse over the srm closure) was
   reverted: the fibred-transform closure over-expands (A2 x=3 → 5
   elements vs the oracle's 1); matching needs the StandardReprMod
