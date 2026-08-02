@@ -12,9 +12,9 @@
   "oracle_exit_status": 0,
   "notes": "Batch 8 (misc): KGB_Hasse — the Bruhat Hasse matrix M[i][j]=1 when i is an immediate Bruhat predecessor of j, from KgbGraph::bruhat_hasse. Reference status pending HPC capture.",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
-  "reference_job": "3508305",
-  "source_archive_sha256": "55868aa5f8392470618d677861a4d48fb34677c8abff9dd3d160e00fa8d4b88d",
-  "fixture_sha256": "64312034b36e0b66f85bbc33ee96e83d859a4a8b7e7ea652352bcfd86e386b27",
-  "capture_artifacts_sha256": "69eb82f9a81ac3f7e78ff903b4598f4b74c6312bc9e15d3f66dbea3e32c1b69e",
+  "reference_job": "3511423",
+  "source_archive_sha256": "afbf3b18c6d08862d75607815bc4d6d7200b53ceb2c00abaa462400df21d7eff",
+  "fixture_sha256": "137afbbdee1e885c4586578794ddbc6ff78dec527793c72a2b811b21661fc8ed",
+  "capture_artifacts_sha256": "ad2f4deb86ab4ce6132ef2352d394a47ac9aaaff4c9d236f0d70b27ae965de2c",
   "differential_job": "3508458"
 }
