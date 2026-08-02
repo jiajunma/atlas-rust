@@ -4921,6 +4921,14 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 ]),
                 0,
             ),
+            // full_deform (atlas-types.w:8213-8227): the full K-type
+            // deformation of a final standard parameter.
+            domain_builtin_skip(
+                "full_deform",
+                primitive_type(Prim::Param),
+                primitive_type(Prim::KTypePol),
+                0,
+            ),
             // partial_KL_block (atlas-types.w:6998-7051): the condensed KL
             // matrix over a parameter's partial-block survivors.
             domain_builtin_skip(

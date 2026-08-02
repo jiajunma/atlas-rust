@@ -1953,6 +1953,107 @@ fn as_matrix_rows(value: &Value, span: SourceSpan) -> Result<Vec<Vec<i32>>, Diag
     Ok(converted)
 }
 
+/// Merge one (KType, SplitValue) term into an ordered K-type polynomial
+/// (KTypePolValue::add_term semantics: same K-type merges, zero drops).
+fn merge_ktype_term(terms: &mut Vec<(SplitValue, KType)>, ktype: KType, split: SplitValue) {
+    if split.e() == 0 && split.f() == 0 {
+        return;
+    }
+    for (existing, _) in terms.iter_mut() {
+        if existing.e() == split.e() && existing.f() == split.f() {
+            // coefficients are equal; nothing to merge
+            return;
+        }
+    }
+    terms.push((split, ktype));
+}
+
+/// The full deformation of one final standard parameter (repr.cpp:
+/// 2251-2290): the finals of the scale-0 parameter contribute their
+/// K-types, then each reducibility point's scaled parameter is deformed
+/// via the block's deformation terms, scaled back to its previous
+/// reducibility point.
+fn full_deformation_terms(
+    rc: &RepContext<'_>,
+    z: &StandardRepr,
+    context: &Arc<RealFormContext>,
+    span: SourceSpan,
+) -> Result<Vec<(KType, SplitValue)>, Diagnostic> {
+    let rank = rc.rank();
+    let mut result: Vec<(KType, SplitValue)> = Vec::new();
+    // Scale-0 base (repr.cpp:2257-2266).
+    let z0 = rc
+        .scale(z, 0, 1)
+        .map_err(|error| structure_diagnostic(error, span))?;
+    let base = rc
+        .finals_for(&z0)
+        .map_err(|error| structure_diagnostic(error, span))?;
+    for (final_sr, coef) in &base {
+        let lambda_rho = rc
+            .lambda_rho(final_sr)
+            .map_err(|error| structure_diagnostic(error, span))?;
+        let ktype = KType::sr_k(rc, final_sr.x(), &lambda_rho)
+            .map_err(|error| structure_diagnostic(error, span))?;
+        result.push((ktype, SplitValue::new(*coef, 0)));
+    }
+    // Reducibility-point recursion (repr.cpp:2268-2289).
+    let rp = rc
+        .reducibility_points(z)
+        .map_err(|error| structure_diagnostic(error, span))?;
+    for &(num, den) in rp.iter().rev() {
+        let zi = rc
+            .scale(z, num, den)
+            .map_err(|error| structure_diagnostic(error, span))?;
+        let zi = zi
+            .deform_readjust(rc)
+            .map_err(|error| structure_diagnostic(error, span))?;
+        let dual_parent = build_dual_inner_class(&context.parent, span)?;
+        let dual_quasisplit = dual_parent.order.quasisplit_external();
+        let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
+        let block = build_block(context, &dual_rf, span)?;
+        let mut kl_table =
+            KlTable::new(&block.graph).map_err(|error| structure_diagnostic(error, span))?;
+        kl_table
+            .fill(0)
+            .map_err(|error| structure_diagnostic(error, span))?;
+        let y = (0..block.graph.size())
+            .find(|&y| block.graph.x(y) == Some(zi.x()))
+            .ok_or_else(|| runtime(span, "deformation parameter not in the block"))?;
+        let lambda_rho = rc
+            .lambda_rho(&zi)
+            .map_err(|error| structure_diagnostic(error, span))?;
+        let terms = rc
+            .deformation_terms(&block.graph, y, zi.gamma(), &lambda_rho, &kl_table)
+            .map_err(|error| structure_diagnostic(error, span))?;
+        for (term, coef) in terms {
+            let term_rp = rc
+                .reducibility_points(&term)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let index = if term_rp.last() == Some(&(1, 1)) {
+                term_rp.len().saturating_sub(1)
+            } else {
+                term_rp.len()
+            };
+            let point = if index > 0 {
+                term_rp[index - 1]
+            } else {
+                (0, 1)
+            };
+            let scaled = rc
+                .scale(&term, point.0, point.1)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let scaled_lambda = rc
+                .lambda_rho(&scaled)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let ktype = KType::sr_k(rc, scaled.x(), &scaled_lambda)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            result.push((ktype, SplitValue::new(coef, 0)));
+        }
+    }
+    let _ = rank;
+    Ok(result)
+}
+
 /// The transpose of a row-major matrix.
 fn transpose_matrix(rows: &[Vec<i32>]) -> Vec<Vec<i32>> {
     let columns = rows.first().map_or(0, Vec::len);
@@ -7187,6 +7288,38 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             }
             let _ = start;
             Ok(Value::List(column))
+        }
+        // full_deform (atlas-types.w:8213-8227, repr.cpp:2251-2290): the
+        // full K-type deformation of a final standard parameter: the
+        // finals of its scale-0 parameter, plus the deformation terms of
+        // each reducibility point, merged into a K-type polynomial.
+        "full_deform" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "{name} has no matching overload for {} argument(s)",
+                        arguments.len()
+                    ),
+                ));
+            };
+            let rc = rep_context(&parameter.context);
+            let finals = rc
+                .finals_for(&parameter.repr)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let mut terms: Vec<(SplitValue, KType)> = Vec::new();
+            for (final_sr, coef) in &finals {
+                let deformed = full_deformation_terms(&rc, final_sr, &parameter.context, span)?;
+                for (ktype, split) in deformed {
+                    let scaled_split = SplitValue::new(split.e() * *coef, split.f() * *coef);
+                    merge_ktype_term(&mut terms, ktype, scaled_split);
+                }
+            }
+            Ok(Value::Domain(DomainValue::KTypePol(KTypePolValue {
+                rf: Arc::clone(&parameter.context),
+                terms,
+            })))
         }
         // partial_KL_block (atlas-types.w:6998-7051, repr.cpp:2060-2075):
         // the condensed KL matrix over the parameter's partial block
