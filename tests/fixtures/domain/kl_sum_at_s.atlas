@@ -44,3 +44,14 @@ z2 := KGB(rfd,0)
 r2 : Param
 r2 := param(z2,[0,0,0],[0,0,0]/1)
 KL_sum_at_s(r2)
+rg : RootDatum
+rg := simply_connected(Lie_type("G2"),true)
+ig : InnerClass
+ig := inner_class(rg,[[1,0],[0,1]])
+rfg : RealForm
+rfg := real_form(ig,1)
+z3 : KGBElt
+z3 := KGB(rfg,0)
+r3 : Param
+r3 := param(z3,[0,0],[0,0]/1)
+KL_sum_at_s(r3)
