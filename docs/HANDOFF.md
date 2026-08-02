@@ -572,7 +572,7 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: `d7834a6` (main). Working tree clean.
+HEAD at handoff: `4cb9f49` (main). Working tree clean.
 
 ### Since the 8d9837d handoff (2026-08-02 overnight + user ktype/param layer)
 
@@ -638,9 +638,16 @@ After the 01df48e handoff the overnight sprint continued:
   partial-block parameter list (KL descent closure + singular
   survivors); HPC `3511402` (185 fixtures, 0 FAIL). partial_KL_block
   was recaptured after dropping its A2 x=3 case (HPC `3511377`).
-- Fixture extensions across the B3/C3 (raw_kl, w_graph_param,
-  kl_sum_at_s) and C3/D4 (kgb_hasse) real forms all HPC-verified
-  (swaps `3511421`, `3511424`, `3511428` — 0 real FAIL).
+- Fixture extensions all HPC-verified: raw_kl/w_graph_param/kl_sum_at_s
+  B3/C3 + kgb_hasse C3/D4 (swaps `3511421`/`3511424`/`3511428`),
+  simple_roots/two_rho E6/E7/E8 (swap `3511489`), kl_print B3/C3
+  (recaptured `3511504`, swap `3511505`).
+- The srm (StandardReprMod) layer was attempted for the common-block
+  matching (`604cc83` reverted): the cross/down-Cayley gamma-lambda
+  chain correctly excluded A2 x=3's block 5 ([-1,-1]/2 vs [-1,-1]/4)
+  but the closure still trips sr_gamma's integrality and C3's inverse
+  Cayley image; Rep_context's datum/root_system/kgb_status/
+  positive_real_roots_at are public for the next attempt.
 - The gamma-lambda-mod-cocharacter-lattice common-block matching
   (`523e647`) was **reverted** (`97770c0`): it over-restricted the
   fibred closure (C3 x=0 has 9 elements; the filter kept 4) because the
