@@ -31,3 +31,15 @@ re8 : RootDatum
 re8 := simply_connected(Lie_type("E8"),true)
 simple_roots(re8)
 simple_coroots(re8)
+re : RootDatum
+re := simply_connected(Lie_type("E6"),true)
+simple_roots(re)
+simple_coroots(re)
+rc : RootDatum
+rc := simply_connected(Lie_type("C3"),true)
+simple_roots(rc)
+simple_coroots(rc)
+rb : RootDatum
+rb := simply_connected(Lie_type("B3"),true)
+simple_roots(rb)
+simple_coroots(rb)
