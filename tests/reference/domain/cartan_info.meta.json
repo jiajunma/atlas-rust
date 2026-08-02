@@ -4,7 +4,7 @@
   "stage": "typed-pipeline-swap",
   "reference_status": "verified_hpc_reference",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "rust_status": "implemented_local",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:4102-4160",
     "sources/structure/cartanclass.cpp:1002-1063",
@@ -19,5 +19,6 @@
   "reference_job": "3507851",
   "source_archive_sha256": "72d65457e68183220c408610b3fa203e6f4d12e8e967975558de0e76b895b63b",
   "fixture_sha256": "d904751a1e6e092de0e4135b60579de286ab6a92d34a3d70d31d0c5dba0a3c14",
-  "capture_artifacts_sha256": "ad7d6f9e7166916ad146fa413c029be08498dd2d84481c49c9c73cc516146d3b"
+  "capture_artifacts_sha256": "ad7d6f9e7166916ad146fa413c029be08498dd2d84481c49c9c73cc516146d3b",
+  "differential_job": "3507853"
 }
