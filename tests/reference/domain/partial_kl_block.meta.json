@@ -3,12 +3,17 @@
   "fixture_sha256": "da25d37ac494f0f81c646af58a7bafb141c71bcf8dee3213cd230f936eecabd5",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "implemented_local",
+  "reference_status": "verified_hpc_reference",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:6998-7051",
     "sources/gkmod/blocks.cpp:335-368"
   ],
   "rust_status": "implemented_local",
   "oracle_exit_status": 0,
-  "notes": "Batch 6: partial_KL_block(Param) — the condensed KL matrix over the parameter's partial-block survivors (block_below descent closure, singular survives, finals_for), as (parameter list, index matrix, polynomial store starting at zero)."
+  "notes": "Batch 6: partial_KL_block(Param) — the condensed KL matrix over the parameter's partial-block survivors (block_below descent closure, singular survives, finals_for), as (parameter list, index matrix, polynomial store starting at zero).",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3508262",
+  "source_archive_sha256": "71acdda0d11de6a8f7148390393b077b74e5dec6f86185bc01dffd4c888ee47a",
+  "capture_artifacts_sha256": "2907d73193fb42cf41b4dd25ef18c8619719dfe81ef7d72569edb14acc1f55a1"
 }
