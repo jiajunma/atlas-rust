@@ -5927,6 +5927,38 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
         }
         // dual_datum_of_inner_class_wrapper (atlas-types.w:3247-3251,
         // 3412-3413): the dual inner class's own root datum.
+        // two_rho / two_rho_check (atlas-types.w:1409-1421): the sum of
+        // the positive roots (respectively positive coroots).
+        "two_rho" | "two_rho_check" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::RootDatum(handle)) = &arguments[0] else {
+                return Err(type_error(span, "expected a RootDatum"));
+            };
+            let root_system = RootSystem::enumerate(&handle.datum, ROOT_BUDGET)
+                .map_err(|error| runtime(span, error.to_string()))?;
+            let positive: Vec<RootId> = (0..root_system.roots().len())
+                .filter(|&index| {
+                    root_system
+                        .is_positive(RootId::from_usize(index))
+                        .unwrap_or(false)
+                })
+                .map(RootId::from_usize)
+                .collect();
+            let coordinates = if name == "two_rho" {
+                two_rho(&root_system, &positive)
+            } else {
+                let mut sum = vec![0_i32; root_system.lattice_rank()];
+                for &root in &positive {
+                    if let Some(coroot) = root_system.coroot(root) {
+                        for (slot, &coordinate) in sum.iter_mut().zip(coroot.as_slice()) {
+                            *slot += coordinate;
+                        }
+                    }
+                }
+                Weight::new(sum)
+            };
+            Ok(Value::Vector(Vec32(coordinates.as_slice().to_vec())))
+        }
         "dual_datum" => {
             arity(name, arguments, 1, span)?;
             let Value::Domain(DomainValue::InnerClass(context)) = &arguments[0] else {

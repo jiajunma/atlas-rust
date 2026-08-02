@@ -4910,6 +4910,20 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 ]),
                 0,
             ),
+            // two_rho / two_rho_check (atlas-types.w:1409-1421): the sum of
+            // the positive roots, respectively of the positive coroots.
+            domain_builtin_skip(
+                "two_rho",
+                primitive_type(Prim::RootDatum),
+                primitive_type(Prim::Vec),
+                0,
+            ),
+            domain_builtin_skip(
+                "two_rho_check",
+                primitive_type(Prim::RootDatum),
+                primitive_type(Prim::Vec),
+                0,
+            ),
             // orientation_nr (atlas-types.w:6546-6552): the orientation
             // number of a standard parameter.
             domain_builtin_skip("orientation_nr", primitive_type(Prim::Param), int_type(), 0),

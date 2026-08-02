@@ -1,0 +1,8 @@
+ra : RootDatum
+ra := simply_connected(Lie_type("A2"),true)
+two_rho(ra)
+two_rho_check(ra)
+rb : RootDatum
+rb := simply_connected(Lie_type("B2"),true)
+two_rho(rb)
+two_rho_check(rb)
