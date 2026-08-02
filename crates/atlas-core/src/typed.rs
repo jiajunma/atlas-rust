@@ -4921,6 +4921,19 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 ]),
                 0,
             ),
+            // KL_block (atlas-types.w:6868-6912): the condensed KL matrix
+            // over the parameter's common block.
+            domain_builtin_skip(
+                "KL_block",
+                primitive_type(Prim::Param),
+                Type::tuple(vec![
+                    Type::row(primitive_type(Prim::Param)),
+                    primitive_type(Prim::Mat),
+                    Type::row(primitive_type(Prim::Vec)),
+                    primitive_type(Prim::Int),
+                ]),
+                0,
+            ),
             // full_deform (atlas-types.w:8213-8227): the full K-type
             // deformation of a final standard parameter.
             domain_builtin_skip(
