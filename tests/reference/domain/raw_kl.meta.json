@@ -1,0 +1,14 @@
+{
+  "fixture": "domain/raw_kl.atlas",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "implemented_local",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:9101-9102, 8424-8460",
+    "sources/gkmod/kl.cpp"
+  ],
+  "oracle_exit_status": 0,
+  "notes": "Batch 5: raw_KL(Block) — the KL table as (matrix of polynomial indices, the polynomial pool as coefficient vectors, length stops). Handles empty blocks (the 0x0 matrix). Reference status pending HPC capture."
+}

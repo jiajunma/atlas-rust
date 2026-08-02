@@ -4843,6 +4843,28 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::Mat),
                 0,
             ),
+            // raw_KL / dual_KL (atlas-types.w:9101-9102): the KL table of
+            // a block as (matrix, polynomial pool, length stops).
+            domain_builtin_skip(
+                "raw_KL",
+                primitive_type(Prim::Block),
+                Type::tuple(vec![
+                    primitive_type(Prim::Mat),
+                    Type::row(primitive_type(Prim::Vec)),
+                    primitive_type(Prim::Vec),
+                ]),
+                0,
+            ),
+            domain_builtin_skip(
+                "dual_KL",
+                primitive_type(Prim::Block),
+                Type::tuple(vec![
+                    primitive_type(Prim::Mat),
+                    Type::row(primitive_type(Prim::Vec)),
+                    primitive_type(Prim::Vec),
+                ]),
+                0,
+            ),
             // W_graph / W_cells (atlas-types.w:7494-7496): the W-graph and
             // its cell decomposition of a standard parameter's block.
             domain_builtin_skip(

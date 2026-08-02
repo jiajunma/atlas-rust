@@ -2390,6 +2390,21 @@ fn subsystem_type_value(
     Ok(Value::Domain(DomainValue::LieType(lie_type)))
 }
 
+/// `Block_base::length_first` (blocks.cpp:250-260): the first block
+/// element whose length is at least `l` (lower bound on the lengths).
+fn block_length_first(graph: &BlockGraph, l: usize) -> usize {
+    let (mut min, mut max) = (0_usize, graph.size());
+    while max > min {
+        let z = (min + max) / 2;
+        if graph.length(z).map_or(false, |length| length >= l) {
+            max = z;
+        } else {
+            min = z + 1;
+        }
+    }
+    min
+}
+
 /// `KL_table::primitives` (kl.cpp:163-170): every primitive `x` for the
 /// descent set of `y`, walked by `prim_back_up` from the length floor.
 fn kl_primitives(kl_table: &KlTable, y: usize) -> Vec<usize> {
@@ -6787,6 +6802,67 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
         // element is reported as the parameter `sr(representative(z),
         // bm, gamma)` — with the identity block modifier the lambda-rho is
         // carried from the input parameter.
+        // raw_KL / dual_KL (atlas-types.w:9101-9102, 8424-8460): the KL
+        // table of a block as (matrix of polynomial indices, polynomial
+        // pool as coefficient vectors, length stops).
+        "raw_KL" | "dual_KL" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::Block(block)) = &arguments[0] else {
+                return Err(type_error(span, "expected a Block"));
+            };
+            let mut kl_table =
+                KlTable::new(&block.graph).map_err(|error| structure_diagnostic(error, span))?;
+            kl_table
+                .fill(0)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let size = block.graph.size();
+            let mut columns = vec![vec![0_i32; size]; size];
+            for y in 1..size {
+                for x in 0..y {
+                    let index = kl_table
+                        .kl_pol(x, y)
+                        .map_err(|error| structure_diagnostic(error, span))?;
+                    columns[y][x] =
+                        i32::try_from(index).map_err(|_| runtime(span, "KL index overflow"))?;
+                }
+            }
+            // Diagonal entries P_{y,y} = 1 (index of the constant 1).
+            for y in 0..size {
+                let index = kl_table
+                    .kl_pol(y, y)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                columns[y][y] =
+                    i32::try_from(index).map_err(|_| runtime(span, "KL index overflow"))?;
+            }
+            let matrix = columns_matrix_value(&columns, size, span)?;
+            // The polynomial pool: every stored polynomial's coefficient
+            // vector, least degree first.
+            let pool = kl_table.pool();
+            let mut polys = Vec::new();
+            for index in 0..pool.len() {
+                let polynomial = pool.get(index).expect("in-range pool index");
+                let mut coefficients = Vec::new();
+                if !polynomial.is_zero() {
+                    for degree in 0..=polynomial.degree() {
+                        coefficients.push(polynomial.coefficient(degree));
+                    }
+                }
+                polys.push(Value::Vector(Vec32(coefficients)));
+            }
+            let polys_value = Value::List(polys);
+            // Length stops: [0, length_first(1), ..., length_first(max), size].
+            let max_length = if size == 0 {
+                0
+            } else {
+                block.graph.length(size - 1).unwrap_or_default()
+            };
+            let mut stops = vec![0_i32; max_length + 2];
+            for (index, stop) in stops.iter_mut().enumerate().skip(1) {
+                *stop = block_length_first(&block.graph, index) as i32;
+            }
+            let stops_value = Value::Vector(Vec32(stops));
+            Ok(Value::Tuple(vec![matrix, polys_value, stops_value]))
+        }
         // W_graph / W_cells (atlas-types.w:7147-7170, 7210-7245): the
         // W-graph of a standard parameter's full block, respectively its
         // cell decomposition. W_graph returns (start, vertices) with each
