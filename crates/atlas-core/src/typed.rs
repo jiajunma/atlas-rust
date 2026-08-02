@@ -4910,6 +4910,17 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 ]),
                 0,
             ),
+            // KL_column (atlas-types.w:6882-6905): the KL column of a final
+            // standard parameter, over its partial block.
+            domain_builtin_skip(
+                "KL_column",
+                primitive_type(Prim::Param),
+                Type::tuple(vec![
+                    primitive_type(Prim::Int),
+                    Type::row(Type::tuple(vec![])),
+                ]),
+                0,
+            ),
             // two_rho / two_rho_check (atlas-types.w:1409-1421): the sum of
             // the positive roots, respectively of the positive coroots.
             domain_builtin_skip(

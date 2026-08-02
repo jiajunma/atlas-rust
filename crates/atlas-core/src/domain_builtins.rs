@@ -6998,6 +6998,113 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             let stops_value = Value::Vector(Vec32(stops));
             Ok(Value::Tuple(vec![matrix, polys_value, stops_value]))
         }
+        // KL_column (atlas-types.w:6882-6905, repr.cpp:2060-2075): the
+        // Kazhdan-Lusztig column of a final standard parameter, restricted
+        // to the parameter's partial block (Bruhat-down closure filtered by
+        // the singular coroots' survives).
+        "KL_column" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "{name} has no matching overload for {} argument(s)",
+                        arguments.len()
+                    ),
+                ));
+            };
+            let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
+            let dual_quasisplit = dual_parent.order.quasisplit_external();
+            let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
+            let block = build_block(&parameter.context, &dual_rf, span)?;
+            let mut kl_table =
+                KlTable::new(&block.graph).map_err(|error| structure_diagnostic(error, span))?;
+            kl_table
+                .fill(0)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let size = block.graph.size();
+            let datum = parameter.context.parent.root_datum.datum.clone();
+            let rc = rep_context(&parameter.context);
+            let lambda_rho = rc
+                .lambda_rho(&parameter.repr)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let gamma = parameter.repr.gamma().clone();
+            let z0 = (0..size)
+                .find(|&z| block.graph.x(z) == Some(parameter.repr.x()))
+                .ok_or_else(|| runtime(span, "parameter not in the common block"))?;
+            // Partial block: the Bruhat-down closure of z0 (repr.cpp:2060-2062
+            // subset.back_up over the Hasse diagram).
+            // Partial block: the KL descent closure of z0
+            // (Bruhat_generator::block_below, repr.cpp:1476-1510): follow
+            // complex and real type-I descents downward.
+            let mut subset: Vec<bool> = vec![false; size];
+            let mut stack = vec![z0];
+            subset[z0] = true;
+            while let Some(z) = stack.pop() {
+                let z_x = block.graph.x(z).expect("in-range");
+                for s in 0..datum.semisimple_rank() {
+                    match block.graph.descent_value(z, s) {
+                        Some(BlockDescent::ComplexDescent) => {
+                            if let Some(target) = block.graph.cross(z, s) {
+                                if !subset[target] {
+                                    subset[target] = true;
+                                    stack.push(target);
+                                }
+                            }
+                        }
+                        Some(BlockDescent::RealTypeI) => {
+                            // A real type-I descent participates in the
+                            // closure only when it is a parity descent
+                            // (repr.cpp:1498 is_parity).
+                            let parity = rc
+                                .is_parity(s, z_x, &lambda_rho, &gamma)
+                                .map_err(|error| structure_diagnostic(error, span))?;
+                            if !parity {
+                                continue;
+                            }
+                            if let Some(pair) = block.graph.inverse_cayley(z, s) {
+                                for target in [pair.0, pair.1].into_iter().flatten() {
+                                    if !subset[target] {
+                                        subset[target] = true;
+                                        stack.push(target);
+                                    }
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            let mut loc = vec![usize::MAX; size];
+            let survivors: Vec<usize> = (0..size).filter(|&z| subset[z]).collect();
+            for (position, &z) in survivors.iter().enumerate() {
+                loc[z] = position;
+            }
+            let start = loc[z0];
+            // The KL column: P_{x,z0} over the survivors, skipping zeros.
+            let mut column = Vec::new();
+            for &z in &survivors {
+                let polynomial = kl_pol_at(&kl_table, z, z0, span)?;
+                if polynomial.is_zero() {
+                    continue;
+                }
+                let sr = rc
+                    .sr_gamma(block.graph.x(z).expect("in-range"), &lambda_rho, &gamma)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                let param_value = DomainValue::Param(ParamValue {
+                    context: parameter.context.clone(),
+                    repr: sr,
+                });
+                let poly_value = Value::Vector(Vec32(polynomial.as_slice().to_vec()));
+                column.push(Value::Tuple(vec![
+                    Value::Integer(BigInt::from(loc[z])),
+                    Value::Domain(param_value),
+                    poly_value,
+                ]));
+            }
+            let _ = start;
+            Ok(Value::List(column))
+        }
         // W_graph / W_cells (atlas-types.w:7147-7170, 7210-7245): the
         // W-graph of a standard parameter's full block, respectively its
         // cell decomposition. W_graph returns (start, vertices) with each

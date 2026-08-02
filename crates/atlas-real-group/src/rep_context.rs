@@ -880,6 +880,70 @@ impl<'a> RepContext<'a> {
     /// `Rep_context::sr_gamma` (repr.cpp:756-784): pack the torsion part
     /// of `lambda_rho` and store `gamma` with the height of
     /// `(1+theta)*gamma`.
+    /// `Rep_context::is_parity` (repr.cpp:247-270): whether the real
+    /// generator `s` at `x` is a parity descent for the parameter with
+    /// `lambda_rho` and `gamma`.
+    pub fn is_parity(
+        &self,
+        s: usize,
+        x: KgbId,
+        lambda_rho: &Weight,
+        gamma: &RationalWeight,
+    ) -> Result<bool, StructureError> {
+        let involution = self.involution_of(x)?;
+        let y_bits = self.y_pack(involution, lambda_rho)?;
+        let theta_1_lamrho = self.y_lift(involution, &y_bits)?;
+        // Non-real positive roots at x (repr.cpp:249 complement).
+        let real = self.positive_real_roots_at(x)?;
+        let system = self.inner_class.root_system();
+        let mut non_real = Vec::new();
+        for index in 0..system.roots().len() {
+            let id = RootId::from_usize(index);
+            if system.is_positive(id) == Some(true) && !real.contains(&id) {
+                non_real.push(id);
+            }
+        }
+        let two_rho_non_real = self.two_rho_of(&non_real)?;
+        let mut sum_coordinates = Vec::new();
+        for (left, &right) in theta_1_lamrho
+            .as_slice()
+            .iter()
+            .zip(two_rho_non_real.as_slice())
+        {
+            sum_coordinates.push(left + right);
+        }
+        let sum = Weight::new(sum_coordinates);
+        let coroot =
+            system
+                .coroot(RootId::from_usize(s))
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: s,
+                    upper_bound: system.roots().len(),
+                })?;
+        let eval = pair(&sum, coroot)?;
+        let parity_at_0 = eval % 4 != 0;
+        // eval2 = <gamma, coroot(s)>; integral because s is real.
+        let numerator = gamma.numerator();
+        let denominator = gamma.denominator();
+        let mut eval2_numerator: i64 = 0;
+        for (index, &coordinate) in coroot.as_slice().iter().enumerate() {
+            let entry = numerator.get(index).ok_or(StructureError::RankMismatch {
+                expected: gamma.rank(),
+                actual: coroot.as_slice().len(),
+            })?;
+            eval2_numerator += i64::from(coordinate) * *entry;
+        }
+        let eval2 = if denominator == 0 {
+            return Err(StructureError::RankMismatch {
+                expected: 1,
+                actual: 0,
+            });
+        } else {
+            eval2_numerator / denominator
+        };
+        Ok(parity_at_0 == (eval2 % 2 == 0))
+    }
+
     pub fn sr_gamma(
         &self,
         x: KgbId,
