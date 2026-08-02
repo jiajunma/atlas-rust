@@ -1953,6 +1953,14 @@ fn as_matrix_rows(value: &Value, span: SourceSpan) -> Result<Vec<Vec<i32>>, Diag
     Ok(converted)
 }
 
+/// The transpose of a row-major matrix.
+fn transpose_matrix(rows: &[Vec<i32>]) -> Vec<Vec<i32>> {
+    let columns = rows.first().map_or(0, Vec::len);
+    (0..columns)
+        .map(|column| rows.iter().map(|row| row[column]).collect())
+        .collect()
+}
+
 fn matrix_value(rows: &[Vec<i32>], span: SourceSpan) -> Result<Value, Diagnostic> {
     let row_count = rows.len();
     let column_count = rows.first().map_or(0, Vec::len);
@@ -5751,12 +5759,16 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                     .map(|coweight| coweight.as_slice().to_vec())
                     .collect()
             } else {
-                handle
+                // simple_roots prints the rows transposed: the oracle's
+                // matrix rows are the simple coroot coordinates of the
+                // simple roots (rootdata.cpp:1442-1455 posroots shape).
+                let columns = handle
                     .datum
                     .simple_roots()
                     .iter()
                     .map(|weight| weight.as_slice().to_vec())
-                    .collect()
+                    .collect::<Vec<_>>();
+                transpose_matrix(&columns)
             };
             matrix_value(&rows, span)
         }
