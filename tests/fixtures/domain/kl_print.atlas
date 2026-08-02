@@ -27,3 +27,16 @@ print_KL_basis(blkb)
 print_prim_KL(blkb)
 print_W_graph(blkb)
 print_W_cells(blkb)
+rg : RootDatum
+rg := simply_connected(Lie_type("G2"),true)
+ig : InnerClass
+ig := inner_class(rg,[[1,0],[0,1]])
+rfg : RealForm
+rfg := real_form(ig,1)
+dfg : RealForm
+dfg := dual_real_form(ig,1)
+blkg : Block
+blkg := block(rfg,dfg)
+print_W_graph(blkg)
+print_W_cells(blkg)
+print_KL_basis(blkg)
