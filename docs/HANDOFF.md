@@ -572,7 +572,7 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: `01df48e` (main). Working tree clean.
+HEAD at handoff: `5148ec3` (main). Working tree clean.
 
 ### Since the 8d9837d handoff (2026-08-02 overnight + user ktype/param layer)
 
@@ -603,7 +603,25 @@ HPC-verified:
   `domain/kl_sum_at_s`, HPC `3507981` (extended to B2, HPC `3508004`).
 - `719ed41` two_rho/two_rho_check — `domain/two_rho`, HPC `3507991`.
 
-Three important fixes:
+After the 01df48e handoff the overnight sprint continued with two more
+fixes and a major unlock:
+
+- `fbed749` — **the A3 grading fix**: verified_generator_map demanded
+  exactly one simple-imaginary position per adjoint-fiber bit, but the
+  oracle's shifts are coroot·root parities (realredgp.cpp:277-280) and
+  the A3 dual's single bit flips two. Taking the first flipped position
+  unlocks every classical-rank>=3 dual real form: A3/B3/C3/D4/F4
+  raw_KL, deform, W_graph/W_cells, KL_sum_at_s and the KL printers are
+  all byte-identical to the oracle (fixtures extended, HPC swaps
+  `3508109`, `3508132`, `3508138` — 0 FAIL). raw_kl covers
+  A2/B2/G2/A3/D4; w_graph_param/kl_sum_at_s/kl_print cover A3.
+- `dfd62ef` — print_W_cells (and W_cells) list each cell's vertices
+  ascending (the oracle's Partition traversal).
+- `f7bda08` — print_KL_list sorts by coefficient count then descending
+  coefficients (polynomials::compare).
+- `fbed749` also guards the KL printers against 0-element blocks.
+
+Three earlier important fixes:
 
 - `24ba188` — **the KL-table Cayley/inverse-Cayley/cross argument order**
   (the accessors take (element, generator) but the KL code called them
