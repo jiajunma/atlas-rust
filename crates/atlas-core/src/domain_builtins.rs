@@ -2396,7 +2396,7 @@ fn block_length_first(graph: &BlockGraph, l: usize) -> usize {
     let (mut min, mut max) = (0_usize, graph.size());
     while max > min {
         let z = (min + max) / 2;
-        if graph.length(z).map_or(false, |length| length >= l) {
+        if graph.length(z).is_some_and(|length| length >= l) {
             max = z;
         } else {
             min = z + 1;
