@@ -9,5 +9,10 @@
     "sources/interpreter/atlas-types.w:1409-1421"
   ],
   "oracle_exit_status": 0,
-  "notes": "two_rho / two_rho_check (RootDatum->vec): the sum of the positive roots, respectively of the positive coroots. Reference status pending HPC capture."
+  "notes": "two_rho / two_rho_check (RootDatum->vec): the sum of the positive roots, respectively of the positive coroots. Reference status pending HPC capture.",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3507989",
+  "source_archive_sha256": "b31dcd51bff733218b9d40be07cb804ba81f21484f1b71a7baf4d2e902e9ba4d",
+  "fixture_sha256": "ee4dde05a2e987b693897e2e6cc3f2c210596b553b8adf3b9253304712097456",
+  "capture_artifacts_sha256": "4efe0cb2caf449ed7a73be970bc4d3b5288cfefd238058fbba314edd229904ea"
 }
