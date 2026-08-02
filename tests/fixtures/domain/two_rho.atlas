@@ -6,3 +6,11 @@ rb : RootDatum
 rb := simply_connected(Lie_type("B2"),true)
 two_rho(rb)
 two_rho_check(rb)
+rb : RootDatum
+rb := simply_connected(Lie_type("B2"),true)
+two_rho(rb)
+two_rho_check(rb)
+rd : RootDatum
+rd := simply_connected(Lie_type("A3"),true)
+two_rho(rd)
+two_rho_check(rd)
