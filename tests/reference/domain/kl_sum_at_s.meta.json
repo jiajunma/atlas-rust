@@ -1,0 +1,14 @@
+{
+  "fixture": "domain/kl_sum_at_s.atlas",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "implemented_local",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:8350-8388",
+    "sources/gkmod/repr.cpp:2127-2210"
+  ],
+  "oracle_exit_status": 0,
+  "notes": "Batch 5: KL_sum_at_s(Param) and KL_sum_at_s_to_height(Param,int) — the KL column of a final parameter evaluated at q = s by Horner (repr.cpp:2152-2155), alternating the sign with the length difference, as a ParamPol. Identity block modifier with singleton contributions. Known limits: the full block is the fibred product with the dual's quasisplit form, so parameters whose oracle common_block is a proper sub-block differ; B2 (and higher-rank) KL columns with a real type-I inverse Cayley currently fail in KlTable. Reference status pending HPC capture."
+}

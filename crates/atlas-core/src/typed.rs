@@ -4843,6 +4843,20 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::Mat),
                 0,
             ),
+            // KL_sum_at_s / KL_sum_at_s_to_height (atlas-types.w:8583-8588):
+            // the KL column of a final parameter evaluated at q = s.
+            domain_builtin_skip(
+                "KL_sum_at_s",
+                primitive_type(Prim::Param),
+                primitive_type(Prim::ParamPol),
+                0,
+            ),
+            domain_builtin_skip(
+                "KL_sum_at_s_to_height",
+                Type::tuple(vec![primitive_type(Prim::Param), int_type()]),
+                primitive_type(Prim::ParamPol),
+                0,
+            ),
             // raw_KL / dual_KL (atlas-types.w:9101-9102): the KL table of
             // a block as (matrix, polynomial pool, length stops).
             domain_builtin_skip(

@@ -250,6 +250,8 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/w_graph_param"),
     # Batch 5 (KL access): raw_KL.
     FixturePlan(name="domain/raw_kl"),
+    # Batch 5 (KL access): KL_sum_at_s.
+    FixturePlan(name="domain/kl_sum_at_s"),
     # KGB headline observables: per-form KGB sizes and root statuses across
     # the A1/C2/A2 families, plus the inexistent-element and type rejections.
     FixturePlan(name="domain/kgb_generation"),

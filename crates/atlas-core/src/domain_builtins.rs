@@ -6802,6 +6802,100 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
         // element is reported as the parameter `sr(representative(z),
         // bm, gamma)` — with the identity block modifier the lambda-rho is
         // carried from the input parameter.
+        // KL_sum_at_s / KL_sum_at_s_to_height (atlas-types.w:8350-8388,
+        // repr.cpp:2127-2210): the KL column of a final parameter,
+        // evaluated at q = s, as a ParamPol. The identity block modifier
+        // and a regular infinitesimal character give each block element a
+        // singleton contribution.
+        "KL_sum_at_s" | "KL_sum_at_s_to_height" => {
+            let height_bound = if name == "KL_sum_at_s_to_height" {
+                let bound = as_integer(&arguments[1], span)?;
+                let narrowed = i32::try_from(&bound)
+                    .map_err(|_| runtime(span, "Integer value to big for conversion"))?;
+                if narrowed >= 0 {
+                    Some(narrowed as u32)
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+            let parameter = match &arguments[0] {
+                Value::Domain(DomainValue::Param(parameter)) => parameter,
+                _ => {
+                    return Err(type_error(
+                        span,
+                        format!(
+                            "{name} has no matching overload for {} argument(s)",
+                            arguments.len()
+                        ),
+                    ))
+                }
+            };
+            let rc = rep_context(&parameter.context);
+            let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
+            let dual_quasisplit = dual_parent.order.quasisplit_external();
+            let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
+            let block = build_block(&parameter.context, &dual_rf, span)?;
+            let mut kl_table =
+                KlTable::new(&block.graph).map_err(|error| structure_diagnostic(error, span))?;
+            kl_table
+                .fill(0)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let size = block.graph.size();
+            let z = (0..size)
+                .find(|&index| block.graph.x(index) == Some(parameter.repr.x()))
+                .ok_or_else(|| runtime(span, "parameter not in the common block"))?;
+            let z_length = block.graph.length(z).unwrap_or_default();
+            let lambda_rho = rc
+                .lambda_rho(&parameter.repr)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let gamma = parameter.repr.gamma().clone();
+            let mut terms: Vec<(SplitValue, StandardRepr)> = Vec::new();
+            let mut x = z + 1;
+            while x > 0 {
+                x -= 1;
+                let index = kl_table
+                    .kl_pol(x, z)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                let pol = kl_table
+                    .pool()
+                    .get(index)
+                    .cloned()
+                    .unwrap_or_else(KlPol::zero);
+                if pol.is_zero() {
+                    continue;
+                }
+                // Evaluate at q = s by Horner (repr.cpp:2152-2155):
+                // pol[d_high] * s + pol[d_high-1], the coefficients stored
+                // least degree first.
+                let mut eval = SplitValue::new(0, 0);
+                let s = SplitValue::new(0, 1);
+                let degree = pol.degree();
+                let mut d = degree + 1;
+                while d > 0 {
+                    d -= 1;
+                    eval = eval.mul(s).add(SplitValue::new(pol.coefficient(d), 0));
+                }
+                let x_length = block.graph.length(x).unwrap_or_default();
+                if (z_length - x_length) % 2 != 0 {
+                    eval = eval.neg();
+                }
+                if eval.is_zero() {
+                    continue;
+                }
+                let repr = rc
+                    .sr_gamma(block.graph.x(x).expect("in-range"), &lambda_rho, &gamma)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                if height_bound.is_none_or(|bound| repr.height() <= bound) {
+                    terms.push((eval, repr));
+                }
+            }
+            Ok(Value::Domain(DomainValue::ParamPol(ParamPolValue {
+                rf: Arc::clone(&parameter.context),
+                terms,
+            })))
+        }
         // raw_KL / dual_KL (atlas-types.w:9101-9102, 8424-8460): the KL
         // table of a block as (matrix of polynomial indices, polynomial
         // pool as coefficient vectors, length stops).
