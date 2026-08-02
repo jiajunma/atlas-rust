@@ -572,7 +572,7 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: `4cb9f49` (main). Working tree clean.
+HEAD at handoff: `417109f` (main). Working tree clean.
 
 ### Since the 8d9837d handoff (2026-08-02 overnight + user ktype/param layer)
 
@@ -645,9 +645,15 @@ After the 01df48e handoff the overnight sprint continued:
 - The srm (StandardReprMod) layer was attempted for the common-block
   matching (`604cc83` reverted): the cross/down-Cayley gamma-lambda
   chain correctly excluded A2 x=3's block 5 ([-1,-1]/2 vs [-1,-1]/4)
-  but the closure still trips sr_gamma's integrality and C3's inverse
-  Cayley image; Rep_context's datum/root_system/kgb_status/
-  positive_real_roots_at are public for the next attempt.
+  but needs StandardReprMod::build's real_unique (mod-X* representative
+  choice) — without it the cross chain reaches fibred elements the
+  oracle's pool excludes (A2 x=3's x=4). B3's block_Hasse also shows a
+  fibred inverse-Cayley gap (x=1 unreachable). Rep_context's
+  datum/root_system/kgb_status/positive_real_roots_at are public for
+  the next attempt.
+- More fixture extensions verified: cartan_info +C3, orientation_nr
+  +C3, kl_column +B3/C3, full_deform +B3/C3 (swaps `3511528`,
+  `3511532`, `3511570` — 0 real FAIL).
 - The gamma-lambda-mod-cocharacter-lattice common-block matching
   (`523e647`) was **reverted** (`97770c0`): it over-restricted the
   fibred closure (C3 x=0 has 9 elements; the filter kept 4) because the
