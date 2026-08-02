@@ -1,0 +1,6 @@
+{
+  "fixture": "domain/kl_column.atlas",
+  "fixture_sha256": "ed5623f65b687a18ae805d564511da28ffa0e1180dc907beeb21cf14217ee1a5",
+  "rust_status": "implemented_local",
+  "notes": "Batch 5: KL_column(Param) — the KL column of a final standard parameter over its partial block (Bruhat descent closure with parity real type-I descents), as (block index, parameter, KL coefficients) triples skipping zero polynomials."
+}
