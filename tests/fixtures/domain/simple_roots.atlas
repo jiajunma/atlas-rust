@@ -19,3 +19,7 @@ rf : RootDatum
 rf := simply_connected(Lie_type("F4"),true)
 simple_roots(rf)
 is_Cartan_matrix([[2,-1,0,0],[-1,2,-2,0],[0,-1,2,-1],[0,0,-1,2]])
+rd : RootDatum
+rd := simply_connected(Lie_type("D4"),true)
+simple_roots(rd)
+simple_coroots(rd)
