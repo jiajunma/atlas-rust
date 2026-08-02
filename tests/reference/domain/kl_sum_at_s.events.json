@@ -1,7 +1,7 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "domain/kl_sum_at_s",
-  "status": "verified_hpc_reference",
+  "status": "local_oracle_reference",
   "events": [
     {
       "kind": "ReportLine",
@@ -201,6 +201,68 @@
       "value": {
         "type": "display",
         "display": "\n1*parameter(x=0,lambda=[1,1]/1,nu=[0,0]/1) [7]"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rd': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'A3'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'id': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type A3, with involution defining\ninner class of type 'c', with 3 real forms and 2 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rfd': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "connected real group with Lie algebra 'su(3,1)'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'z2': KGBElt\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "KGB element #0"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'r2': Param\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "final parameter(x=0,lambda=[1,1,1]/1,nu=[0,0,0]/1)"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "\n1*parameter(x=0,lambda=[1,1,1]/1,nu=[0,0,0]/1) [10]"
       }
     }
   ]
