@@ -23,3 +23,11 @@ rd : RootDatum
 rd := simply_connected(Lie_type("D4"),true)
 simple_roots(rd)
 simple_coroots(rd)
+re : RootDatum
+re := simply_connected(Lie_type("E7"),true)
+simple_roots(re)
+simple_coroots(re)
+re8 : RootDatum
+re8 := simply_connected(Lie_type("E8"),true)
+simple_roots(re8)
+simple_coroots(re8)
