@@ -897,7 +897,6 @@ impl<'a> RepContext<'a> {
     /// `Rep_context::sr_gamma` (repr.cpp:756-784): pack the torsion part
     /// of `lambda_rho` and store `gamma` with the height of
     /// `(1+theta)*gamma`.
-
     /// `Rep_context::is_parity` (repr.cpp:247-270): whether the real
     /// generator `s` at `x` is a parity descent for the parameter with
     /// `lambda_rho` and `gamma`.
@@ -971,7 +970,7 @@ impl<'a> RepContext<'a> {
         let rd = self.inner_class.datum();
         let mut result: Vec<(StandardRepr, i32)> = Vec::new();
         let mut to_do: Vec<(StandardRepr, i32)> = vec![(z.clone(), 1)];
-        while let Some((mut current, mut coef)) = to_do.pop() {
+        while let Some((current, mut coef)) = to_do.pop() {
             let mut x = current.x();
             let mut lr = self.lambda_rho(&current)?;
             let mut gamma_num = current.gamma().numerator().to_vec();
@@ -1017,11 +1016,11 @@ impl<'a> RepContext<'a> {
                                         index: x.index(),
                                         upper_bound: self.graph.size(),
                                     })?;
-                            let cx = self.graph.cayley(x, s)?.ok_or_else(|| {
+                            let cx = self.graph.cayley(x, s)?.ok_or(
                                 StructureError::RepInvariantViolation {
                                     invariant: "noncompact imaginary Cayley image",
-                                }
-                            })?;
+                                },
+                            )?;
                             let gamma = RationalWeight::new(gamma_num.clone(), denominator)?;
                             let t1 = self.sr_gamma(cx, &lr, &gamma)?;
                             insert_into_by_height(&mut to_do, t1, coef)?;
