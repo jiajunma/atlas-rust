@@ -10,5 +10,10 @@
     "sources/gkmod/repr.cpp:2127-2210"
   ],
   "oracle_exit_status": 0,
-  "notes": "Batch 5: KL_sum_at_s(Param) and KL_sum_at_s_to_height(Param,int) — the KL column of a final parameter evaluated at q = s by Horner (repr.cpp:2152-2155), alternating the sign with the length difference, as a ParamPol. Identity block modifier with singleton contributions. Known limits: the full block is the fibred product with the dual's quasisplit form, so parameters whose oracle common_block is a proper sub-block differ; B2 (and higher-rank) KL columns with a real type-I inverse Cayley currently fail in KlTable. Reference status pending HPC capture."
+  "notes": "Batch 5: KL_sum_at_s(Param) and KL_sum_at_s_to_height(Param,int) — the KL column of a final parameter evaluated at q = s by Horner (repr.cpp:2152-2155), alternating the sign with the length difference, as a ParamPol. Identity block modifier with singleton contributions. Known limits: the full block is the fibred product with the dual's quasisplit form, so parameters whose oracle common_block is a proper sub-block differ; B2 (and higher-rank) KL columns with a real type-I inverse Cayley currently fail in KlTable. Reference status pending HPC capture.",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3507980",
+  "source_archive_sha256": "13dd345a2ebb57916e034a31761937b5ef213c237dd156bd5fe1c2fe43fb6551",
+  "fixture_sha256": "aa013a64e06c20a7d58113e89a4054b39903a3b9f4eba2883fbc1dfcc5f96503",
+  "capture_artifacts_sha256": "06590fb614ff6c8643dedefe0b82cc4934e18f1a77b69ce2a37b43b5e44b7edd"
 }
