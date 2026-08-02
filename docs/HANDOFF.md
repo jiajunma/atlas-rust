@@ -572,7 +572,7 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: `b07a8a0` (main). Working tree clean.
+HEAD at handoff: `bcbc18e` (main). Working tree clean.
 
 ### Since the 8d9837d handoff (2026-08-02 overnight + user ktype/param layer)
 
@@ -628,6 +628,18 @@ After the 01df48e handoff the overnight sprint continued:
   of the existing scale/deform_readjust/deformation_terms. A1/A2/B2/G2/A3
   byte-identical; fixture `domain/full_deform`, HPC `3511044` (183
   fixtures, 0 FAIL).
+- **Batch 7 second name: KL_block** (`32398d5`) — the condensed KL
+  matrix over the parameter's common block, unlocked by the
+  **common-block matching** (`523e647`): Rep_context::gamma_lambda
+  (repr.cpp:220-227) + torus_part (M_real packing of the KGB Tits
+  torus) + gamma-lambda-mod-cocharacter-lattice closure filtering, which
+  also fixes block_Hasse for A2 x=3. The singular-coroot survives now
+  follows repr.cpp:526-534 (coroot·gamma numerator == 0). A2 x=0 and
+  A1 x=2 KL_block byte-identical; HPC `3511377` (184 fixtures, 0 FAIL).
+  Known limits: singular parameters whose common-block descent statuses
+  come from the srm torsion (not the fibred y matching) — A2 x=3
+  dropped from partial_KL_block and excluded from KL_block; block_Hasse
+  B2 element 11's lambda needs the srm pool's gamma-lambda.
 - The common-block experiment (block_Hasse over the srm closure) was
   reverted: the fibred-transform closure over-expands (A2 x=3 → 5
   elements vs the oracle's 1); matching needs the StandardReprMod
