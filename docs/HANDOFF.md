@@ -572,7 +572,7 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: `5148ec3` (main). Working tree clean.
+HEAD at handoff: `329b0ec` (main). Working tree clean.
 
 ### Since the 8d9837d handoff (2026-08-02 overnight + user ktype/param layer)
 
@@ -603,8 +603,40 @@ HPC-verified:
   `domain/kl_sum_at_s`, HPC `3507981` (extended to B2, HPC `3508004`).
 - `719ed41` two_rho/two_rho_check — `domain/two_rho`, HPC `3507991`.
 
-After the 01df48e handoff the overnight sprint continued with two more
-fixes and a major unlock:
+After the 01df48e handoff the overnight sprint continued:
+
+- `fa8f325` KL_column — the KL column of a final standard parameter over
+  its partial block (Bruhat_generator::block_below with complex and
+  **parity** real type-I descents; Rep_context::is_parity ported) —
+  fixture `domain/kl_column`, HPC `3508248` (181 fixtures, 0 FAIL).
+- `3daca78` partial_KL_block — the condensed KL matrix over the
+  partial-block survivors with Block_base::finals_for (blocks.cpp:
+  335-368) and a zero-first polynomial store — fixture
+  `domain/partial_kl_block`, HPC `3508277` (182 fixtures, 0 FAIL).
+  First Batch 6 (extended blocks) name.
+- `4bfc4a5` kgb_hasse extended to B2/A3 (HPC `3508458` submitted).
+- The common-block experiment (block_Hasse over the srm closure) was
+  reverted: the fibred-transform closure over-expands (A2 x=3 → 5
+  elements vs the oracle's 1); matching needs the StandardReprMod
+  gamma-lambda layer. block_Hasse still uses the whole fibred block.
+
+Plus the earlier fixes:
+- `fbed749` — **the A3 grading fix**: verified_generator_map demanded
+  exactly one simple-imaginary position per adjoint-fiber bit, but the
+  oracle's shifts are coroot·root parities (realredgp.cpp:277-280) and
+  the A3 dual's single bit flips two. Taking the first flipped position
+  unlocks every classical-rank>=3 dual real form: A3/B3/C3/D4/F4
+  raw_KL, deform, W_graph/W_cells, KL_sum_at_s and the KL printers are
+  all byte-identical to the oracle (fixtures extended, HPC swaps
+  `3508109`, `3508132`, `3508138` — 0 FAIL). raw_kl covers
+  A2/B2/G2/A3/D4; w_graph_param/kl_sum_at_s/kl_print cover A3.
+- `dfd62ef` — print_W_cells (and W_cells) list each cell's vertices
+  ascending (the oracle's Partition traversal).
+- `f7bda08` — print_KL_list sorts by coefficient count then descending
+  coefficients (polynomials::compare).
+- `fbed749` also guards the KL printers against 0-element blocks.
+
+And the earlier important fixes:
 
 - `fbed749` — **the A3 grading fix**: verified_generator_map demanded
   exactly one simple-imaginary position per adjoint-fiber bit, but the
