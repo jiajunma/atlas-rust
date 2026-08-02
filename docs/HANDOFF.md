@@ -572,7 +572,64 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: `8d9837d` (main). Working tree clean. The language gate
+HEAD at handoff: `01df48e` (main). Working tree clean.
+
+### Since the 8d9837d handoff (2026-08-02 overnight + user ktype/param layer)
+
+The user completed the ktype/param language layer (KTypeValue /
+ParamValue / KTypePolValue / ParamPolValue, Display, typed.rs
+registration, on-demand RepContext evaluation) and the
+simple_roots/simple_coroots/is_Cartan_matrix builtins; all 13 ktype/param
+fixtures and domain/simple_roots are VERBATIM + HPC-verified.
+
+The overnight sprint delivered eight more builtins, all VERBATIM and
+HPC-verified:
+
+- `39c46cb` Cartan_info (classify triple, Weyl word, orbit/fiber sizes
+  with a real fiber_rank, make_simple_complex subsystem types) —
+  `domain/cartan_info`, HPC `3507853`.
+- `17dc5a0` orientation_nr (repr.cpp:455-493) — `domain/orientation_nr`,
+  HPC `3507866`.
+- `693dd96` block_Hasse (param list + Bruhat Hasse matrix; the full
+  block is the param's form paired with the dual's **quasisplit** form)
+  — `domain/block_hasse`, HPC `3507974`.
+- `c1958c8` W_graph/W_cells over a Param (descent sets + bidirectional
+  mu edges, strong-component cells) — `domain/w_graph_param`,
+  HPC `3507974` (extended to B2, HPC `3508032`).
+- `0df2942` raw_KL/dual_KL (KL index matrix, polynomial pool, length
+  stops) — `domain/raw_kl`, HPC `3507974` (extended to B2 12-element
+  and G2, HPC `3508004`).
+- `f199803` KL_sum_at_s/_to_height (KL column at q=s by Horner) —
+  `domain/kl_sum_at_s`, HPC `3507981` (extended to B2, HPC `3508004`).
+- `719ed41` two_rho/two_rho_check — `domain/two_rho`, HPC `3507991`.
+
+Three important fixes:
+
+- `24ba188` — **the KL-table Cayley/inverse-Cayley/cross argument order**
+  (the accessors take (element, generator) but the KL code called them
+  (s, x)); missing images outside the block now contribute the zero
+  polynomial. This unlocked B2/G2 KL columns, raw_KL 12-element blocks,
+  KL_sum_at_s B2, deform B2 and print_KL_basis B2 — all byte-identical
+  to the oracle (fixtures extended, HPC `3508004`).
+- `562f7e7` — deform pairs with the dual's **quasisplit** form (was
+  form 0; wrong for B2).
+- `ee73c17` — endgame mu-pairs require a nonzero polynomial
+  (KlPol::degree() saturates to 0 for zero), fixing B2 W_graph/W_cells.
+
+Known limits: the oracle's `lookup_full_block` is the parameter's own
+common_block (a proper sub-block for e.g. the A1 x=2 / A2 x=3 principal
+series) — the Rust block is the fibred product, so those parameters
+differ; KL_column needs the partial-block `lookup`; KL_sum_at_s uses
+the input parameter's lambda-rho for every block element (height-parity
+mismatch for mid-block parameters); A3+ `dual_real_form` fails with
+"real-form order single-bit grading shift" (a multi-bit grading shift in
+CartanGradingData); the Weyl word is the greedy reduced word (not the
+WeylGroup transducer); print_gradings / root_ladders / root_index need
+the oracle root numbering; print_X needs the global KGB; print_real_Weyl
+/ print_blockstabilizer need realweyl; the extended-block family and
+shift_flip / twisted_KL_sum_at_s need the ext_block layer.
+
+The language gate
 is complete: **166 of 166 frozen fixtures carry `verified_hpc`** — the
 last contract, `domain/deform`, passed the HPC differential `3506798`
 (165 PASS + the one known PARTIAL `container_syntax_errors`, zero FAIL)
