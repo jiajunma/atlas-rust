@@ -42,3 +42,9 @@ if4 := inner_class(rf4,[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
 cf0 : CartanClass
 cf0 := Cartan_class(if4,0)
 Cartan_info(cf0)
+rc : RootDatum
+rc := simply_connected(Lie_type("C3"),true)
+ic4 : InnerClass
+ic4 := inner_class(rc,[[1,0,0],[0,1,0],[0,0,1]])
+Cartan_info(Cartan_class(ic4,0))
+Cartan_info(Cartan_class(ic4,2))
