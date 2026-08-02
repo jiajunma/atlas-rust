@@ -28,3 +28,17 @@ Cartan_info(cg0)
 cg1 : CartanClass
 cg1 := Cartan_class(ig,1)
 Cartan_info(cg1)
+rd : RootDatum
+rd := simply_connected(Lie_type("D4"),true)
+id : InnerClass
+id := inner_class(rd,[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
+cd0 : CartanClass
+cd0 := Cartan_class(id,0)
+Cartan_info(cd0)
+rf4 : RootDatum
+rf4 := simply_connected(Lie_type("F4"),true)
+if4 : InnerClass
+if4 := inner_class(rf4,[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
+cf0 : CartanClass
+cf0 := Cartan_class(if4,0)
+Cartan_info(cf0)

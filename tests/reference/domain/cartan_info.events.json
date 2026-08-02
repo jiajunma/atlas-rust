@@ -1,7 +1,7 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "domain/cartan_info",
-  "status": "verified_hpc_reference",
+  "status": "local_oracle_reference",
   "events": [
     {
       "kind": "ReportLine",
@@ -175,6 +175,86 @@
       "value": {
         "type": "display",
         "display": "((0,1,0),[ 0, 1, 0, 1, 0 ],(3,1),(Lie type 'A1',Lie type 'A1',empty Lie type))"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rd': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'D4'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'id': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type D4, with involution defining\ninner class of type 'c', with 5 real forms and 5 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'cd0': CartanClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Cartan class #0, occurring for 5 real forms and for 1 dual real form"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "((4,0,0),[ ],(1,16),(Lie type 'D4',empty Lie type,empty Lie type))"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rf4': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected adjoint root datum of Lie type 'F4'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'if4': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type F4, with involution defining\ninner class of type 'c', with 3 real forms and 3 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'cf0': CartanClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Cartan class #0, occurring for 3 real forms and for 1 dual real form"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "((4,0,0),[ ],(1,16),(Lie type 'F4',empty Lie type,empty Lie type))"
       }
     }
   ]
