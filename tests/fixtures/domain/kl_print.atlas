@@ -25,3 +25,5 @@ blkb : Block
 blkb := block(rfb,dfb)
 print_KL_basis(blkb)
 print_prim_KL(blkb)
+print_W_graph(blkb)
+print_W_cells(blkb)
