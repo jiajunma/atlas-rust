@@ -277,12 +277,17 @@ impl<'a> KlTable<'a> {
                 }
                 BlockDescent::RealTypeI => {
                     // P_{sx.first,sy} + P_{sx.second,sy} + (q-1)P_{x,sy}
-                    let pair = self
-                        .support
-                        .block()
-                        .inverse_cayley(s, x)
-                        .expect("real type I inverse Cayley");
-                    let first = self.kl_pol_pool(pair.0.expect("first image"), sy)?;
+                    let pair = self.support.block().inverse_cayley(s, x).ok_or(
+                        StructureError::BlockInvariantViolation {
+                            invariant: "real type I inverse Cayley slot",
+                        },
+                    )?;
+                    let Some(first_image) = pair.0 else {
+                        return Err(StructureError::BlockInvariantViolation {
+                            invariant: "real type I inverse Cayley first slot",
+                        });
+                    };
+                    let first = self.kl_pol_pool(first_image, sy)?;
                     let mut result = first;
                     if let Some(second) = pair.1 {
                         let second_pol = self.kl_pol_pool(second, sy)?;
