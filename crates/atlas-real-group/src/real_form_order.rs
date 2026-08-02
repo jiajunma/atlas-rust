@@ -318,17 +318,16 @@ fn verified_generator_map(
                 .ok_or(StructureError::RealFormOrderInvariantViolation {
                     invariant: "grading shift",
                 })?;
+        // The oracle's shifts are coroot·root parities (realredgp.cpp:277-280)
+        // and can flip more than one simple-imaginary position (e.g. the
+        // A3 dual's single fiber bit). The tiebreak key only needs one
+        // representative generator, so take the first flipped position.
         let mut flipped = shift.noncompact_indices();
         let position = flipped
             .next()
             .ok_or(StructureError::RealFormOrderInvariantViolation {
-                invariant: "single-bit grading shift",
+                invariant: "empty grading shift",
             })?;
-        if flipped.next().is_some() {
-            return Err(StructureError::RealFormOrderInvariantViolation {
-                invariant: "single-bit grading shift",
-            });
-        }
         let root = grading.imaginary_simple_root(position).ok_or(
             StructureError::RealFormOrderInvariantViolation {
                 invariant: "grading shift",

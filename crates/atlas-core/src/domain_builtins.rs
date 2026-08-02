@@ -5072,7 +5072,7 @@ pub(crate) fn print_text(
                 .fill(0)
                 .map_err(|error| structure_diagnostic(error, span))?;
             let size = block.graph.size();
-            let width = digits(size - 1);
+            let width = digits(size.saturating_sub(1));
             let tab = 2;
             let mut text = String::new();
             if name == "print_KL_basis" {
@@ -7087,7 +7087,11 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                     }
                     oriented.push(targets);
                 }
-                let (partition, _induced) = strong_components(&oriented);
+                let (mut partition, _induced) = strong_components(&oriented);
+                // The oracle's Partition lists a cell's vertices ascending.
+                for members in partition.iter_mut() {
+                    members.sort_unstable();
+                }
                 let mut cells = Vec::new();
                 for members in &partition {
                     let mut relno = vec![0_usize; size];
