@@ -8,12 +8,13 @@
     "sources/interpreter/atlas-types.w:6868-6912",
     "sources/gkmod/blocks.cpp:701-719"
   ],
-  "rust_status": "implemented_local",
+  "rust_status": "verified_hpc",
   "oracle_exit_status": 0,
   "notes": "Batch 7: KL_block(Param) — the condensed KL matrix over the parameter's common block (lookup_full_block via gamma-lambda mod cocharacter-lattice matching), as (parameter list, start index, index matrix, polynomial store). Known limit: singular parameters whose common-block descent statuses differ from the fibred y matching (A2 x=3) are excluded.",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
   "reference_job": "3511312",
   "source_archive_sha256": "fbe927a371f6efdb1de7561251fe80c26e9de18d16415c984e8b96fe7ebf1e34",
-  "capture_artifacts_sha256": "8c6cfb66d2f49657c42c0f7b68e0b6026bf5e5e35da2cd9d6ab6534694e594d9"
+  "capture_artifacts_sha256": "8c6cfb66d2f49657c42c0f7b68e0b6026bf5e5e35da2cd9d6ab6534694e594d9",
+  "differential_job": "3511377"
 }
