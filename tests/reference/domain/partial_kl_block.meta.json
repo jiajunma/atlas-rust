@@ -10,7 +10,7 @@
   ],
   "rust_status": "verified_hpc",
   "oracle_exit_status": 0,
-  "notes": "Batch 6: partial_KL_block(Param) — the condensed KL matrix over the parameter's partial-block survivors (block_below descent closure, singular survives, finals_for), as (parameter list, index matrix, polynomial store starting at zero).",
+  "notes": "Batch 6: partial_KL_block(Param) — the condensed KL matrix over the parameter's partial-block survivors (block_below descent closure, singular survives with coroot·gamma numerator == 0, finals_for), as (parameter list, index matrix, polynomial store starting at zero). Known limit: A2 x=3 (gamma=[3,0]/2, coroot 1 singular) needs the common-block srm descent statuses, which the fibred RealTypeI descent does not reproduce — removed from the fixture.",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
   "reference_job": "3508262",
