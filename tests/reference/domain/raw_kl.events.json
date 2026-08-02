@@ -1,7 +1,7 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "domain/raw_kl",
-  "status": "verified_hpc_reference",
+  "status": "local_oracle_reference",
   "events": [
     {
       "kind": "ReportLine",
@@ -125,6 +125,130 @@
       "value": {
         "type": "display",
         "display": "(\n| 1, 0, 1, 0, 0 |\n| 0, 1, 0, 1, 0 |\n| 0, 0, 1, 0, 1 |\n| 0, 0, 0, 1, 1 |\n| 0, 0, 0, 0, 1 |\n,[[ ],[ 1 ]],[ 0, 0, 2, 4, 5 ])"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rc': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'B2'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ic2': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type B2, with involution defining\ninner class of type 'c', with 3 real forms and 3 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rfc': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "connected split real group with Lie algebra 'so(3,2)'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'dfc': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "disconnected split real group with Lie algebra 'sp(4,R)'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'blkc': Block\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Block of 12 elements"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "(\n| 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0 |\n| 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 2 |\n| 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0 |\n| 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 1, 2 |\n| 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0 |\n| 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 1, 0 |\n| 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0 |\n| 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1 |\n| 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0 |\n| 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0 |\n| 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0 |\n| 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 |\n,[[ ],[ 1 ],[ 0, 1 ]],[  0,  4,  7, 10, 12 ])"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rg': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected adjoint root datum of Lie type 'G2'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ig': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type G2, with involution defining\ninner class of type 'c', with 2 real forms and 2 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rfg': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "connected split real group with Lie algebra 'g2(R)'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'dfg': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "connected split real group with Lie algebra 'g2(R)'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'blkg': Block\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Block of 12 elements"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "(\n| 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 3, 3 |\n| 0, 1, 0, 0, 1, 1, 1, 2, 1, 1, 3, 0 |\n| 0, 0, 1, 1, 0, 1, 1, 1, 2, 1, 0, 3 |\n| 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 3 |\n| 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 3, 0 |\n| 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0 |\n| 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0 |\n| 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0 |\n| 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1 |\n| 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0 |\n| 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0 |\n| 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 |\n,[[ ],[ 1 ],[ 1, 1 ],[ 0, 1 ]],[  0,  3,  5,  7,  9, 12 ])"
       }
     }
   ]

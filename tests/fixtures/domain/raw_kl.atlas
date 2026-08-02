@@ -20,3 +20,25 @@ dfb := dual_real_form(ib,1)
 blkb : Block
 blkb := block(rfb,dfb)
 raw_KL(blkb)
+rc : RootDatum
+rc := simply_connected(Lie_type("B2"),true)
+ic2 : InnerClass
+ic2 := inner_class(rc,[[1,0],[0,1]])
+rfc : RealForm
+rfc := real_form(ic2,2)
+dfc : RealForm
+dfc := dual_real_form(ic2,2)
+blkc : Block
+blkc := block(rfc,dfc)
+raw_KL(blkc)
+rg : RootDatum
+rg := simply_connected(Lie_type("G2"),true)
+ig : InnerClass
+ig := inner_class(rg,[[1,0],[0,1]])
+rfg : RealForm
+rfg := real_form(ig,1)
+dfg : RealForm
+dfg := dual_real_form(ig,1)
+blkg : Block
+blkg := block(rfg,dfg)
+raw_KL(blkg)
