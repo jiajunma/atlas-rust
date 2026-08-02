@@ -22,3 +22,15 @@ re7 : RootDatum
 re7 := simply_connected(Lie_type("E7"),true)
 two_rho(re7)
 two_rho_check(re7)
+rb : RootDatum
+rb := simply_connected(Lie_type("B3"),true)
+two_rho(rb)
+two_rho_check(rb)
+rc : RootDatum
+rc := simply_connected(Lie_type("C3"),true)
+two_rho(rc)
+two_rho_check(rc)
+rf : RootDatum
+rf := simply_connected(Lie_type("F4"),true)
+two_rho(rf)
+two_rho_check(rf)
