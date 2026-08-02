@@ -48,3 +48,14 @@ ic4 : InnerClass
 ic4 := inner_class(rc,[[1,0,0],[0,1,0],[0,0,1]])
 Cartan_info(Cartan_class(ic4,0))
 Cartan_info(Cartan_class(ic4,2))
+rg : RootDatum
+rg := simply_connected(Lie_type("G2"),true)
+ig5 : InnerClass
+ig5 := inner_class(rg,[[1,0],[0,1]])
+Cartan_info(Cartan_class(ig5,0))
+Cartan_info(Cartan_class(ig5,1))
+rf : RootDatum
+rf := simply_connected(Lie_type("F4"),true)
+if4 : InnerClass
+if4 := inner_class(rf,[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
+Cartan_info(Cartan_class(if4,0))
