@@ -11,5 +11,10 @@
     "sources/gkmod/wgraph.cpp:58-116"
   ],
   "oracle_exit_status": 0,
-  "notes": "Batch 5: W_graph(Param) — (start, vertices) of the parameter's block W-graph (descent sets and bidirectional mu edges); W_cells(Param) — (start, [(members, vertices)]) via the oriented graph's strong components with cell-relabelled edges. Also fixes the KL column working size to nr_of_primitives (was col_size, which under-counts when y itself is primitive). Known limit: the full block is built as the fibred product with the dual's quasisplit form, so parameters whose oracle common_block is a proper sub-block (e.g. the A1 x=2 split principal series) differ. Reference status pending HPC capture."
+  "notes": "Batch 5: W_graph(Param) — (start, vertices) of the parameter's block W-graph (descent sets and bidirectional mu edges); W_cells(Param) — (start, [(members, vertices)]) via the oriented graph's strong components with cell-relabelled edges. Also fixes the KL column working size to nr_of_primitives (was col_size, which under-counts when y itself is primitive). Known limit: the full block is built as the fibred product with the dual's quasisplit form, so parameters whose oracle common_block is a proper sub-block (e.g. the A1 x=2 split principal series) differ. Reference status pending HPC capture.",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3507973",
+  "source_archive_sha256": "6ae9c84188eba1e2f7e61c51b9ab691cb7b13cabd8078dd2405ef0cf61b9d242",
+  "fixture_sha256": "288597d16c10f12a0abc50eceb08e1a9203c3dbb47a897d659ed46371f73aac2",
+  "capture_artifacts_sha256": "f998c089b29270bde1e63f552bd8ca8e7676704fc2a77e29ff0883bdde4a3f82"
 }

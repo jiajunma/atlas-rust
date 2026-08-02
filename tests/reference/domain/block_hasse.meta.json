@@ -10,5 +10,10 @@
     "sources/gkmod/repr.cpp:1773-1794"
   ],
   "oracle_exit_status": 0,
-  "notes": "Batch 8: block_Hasse — the full block of a standard parameter (paired with its dual's quasisplit form) and the Bruhat Hasse matrix. Each element reports sr(representative(z), identity, gamma) with the input parameter's lambda-rho. Reference status pending HPC capture."
+  "notes": "Batch 8: block_Hasse — the full block of a standard parameter (paired with its dual's quasisplit form) and the Bruhat Hasse matrix. Each element reports sr(representative(z), identity, gamma) with the input parameter's lambda-rho. Reference status pending HPC capture.",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3507973",
+  "source_archive_sha256": "6ae9c84188eba1e2f7e61c51b9ab691cb7b13cabd8078dd2405ef0cf61b9d242",
+  "fixture_sha256": "6f21f9abdb71b2d552a1be9f2373b9840f703ca77caf161a86de8b95231ee3ca",
+  "capture_artifacts_sha256": "b17089faf5b675eb4902c98a90e7740748681e19b65d44a41411f7bcafe786bb"
 }

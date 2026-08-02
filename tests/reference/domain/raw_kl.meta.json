@@ -10,5 +10,10 @@
     "sources/gkmod/kl.cpp"
   ],
   "oracle_exit_status": 0,
-  "notes": "Batch 5: raw_KL(Block) — the KL table as (matrix of polynomial indices, the polynomial pool as coefficient vectors, length stops). Handles empty blocks (the 0x0 matrix). Reference status pending HPC capture."
+  "notes": "Batch 5: raw_KL(Block) — the KL table as (matrix of polynomial indices, the polynomial pool as coefficient vectors, length stops). Handles empty blocks (the 0x0 matrix). Reference status pending HPC capture.",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3507973",
+  "source_archive_sha256": "6ae9c84188eba1e2f7e61c51b9ab691cb7b13cabd8078dd2405ef0cf61b9d242",
+  "fixture_sha256": "fd235a5adba071509cf06fc632d9466f9e6b8a1d8468050a093633c5c1f304a1",
+  "capture_artifacts_sha256": "b1467e0a1fed86fd64e0c73607fba1727478ccdf2c40624332e7674e8d575762"
 }
