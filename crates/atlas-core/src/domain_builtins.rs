@@ -7560,10 +7560,11 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             let n = survivors.len();
             // Condense the KL polynomials into M (atlas-types.w:6922-6948).
             let mut matrix: Vec<Vec<KlPol>> = vec![vec![KlPol::zero(); n]; n];
-            for x in 0..size {
-                if !members[x] {
-                    continue;
-                }
+            for x in members
+                .iter()
+                .enumerate()
+                .filter_map(|(index, &m)| m.then_some(index))
+            {
                 for f in block_finals_for(&block, x, singular, &kl_table, span)? {
                     let i = loc[f];
                     if i == usize::MAX {
