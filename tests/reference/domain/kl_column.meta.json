@@ -1,6 +1,14 @@
 {
   "fixture": "domain/kl_column.atlas",
   "fixture_sha256": "ed5623f65b687a18ae805d564511da28ffa0e1180dc907beeb21cf14217ee1a5",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "implemented_local",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:6882-6905",
+    "sources/gkmod/repr.cpp:1476-1510, 2234-2248"
+  ],
   "rust_status": "implemented_local",
+  "oracle_exit_status": 0,
   "notes": "Batch 5: KL_column(Param) — the KL column of a final standard parameter over its partial block (Bruhat descent closure with parity real type-I descents), as (block index, parameter, KL coefficients) triples skipping zero polynomials."
 }
