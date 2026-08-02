@@ -4934,6 +4934,14 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 ]),
                 0,
             ),
+            // partial_block (atlas-types.w:6786-6820): the partial-block
+            // parameters of a final standard parameter.
+            domain_builtin_skip(
+                "partial_block",
+                primitive_type(Prim::Param),
+                Type::row(primitive_type(Prim::Param)),
+                0,
+            ),
             // full_deform (atlas-types.w:8213-8227): the full K-type
             // deformation of a final standard parameter.
             domain_builtin_skip(

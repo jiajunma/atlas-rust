@@ -1,0 +1,14 @@
+{
+  "fixture": "domain/partial_block.atlas",
+  "fixture_sha256": "9c38cbe03e766444cd4632f7c94579cc0eb553ea1901c3c7c6bc5a7421098727",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "implemented_local",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:6786-6820",
+    "sources/gkmod/repr.cpp:1476-1510"
+  ],
+  "rust_status": "implemented_local",
+  "oracle_exit_status": 0,
+  "notes": "Batch 6: partial_block(Param) — the parameters of the partial block (KL descent closure of the start element restricted to singular-coroot survivors), as a [Param] list."
+}

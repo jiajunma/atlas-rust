@@ -7636,6 +7636,120 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 polys_value,
             ]))
         }
+        // partial_block (atlas-types.w:6786-6820, repr.cpp:2060-2075):
+        // the parameters of a final standard parameter's partial block:
+        // the KL descent closure of the start element, restricted to
+        // the singular-coroot survivors.
+        "partial_block" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "{name} has no matching overload for {} argument(s)",
+                        arguments.len()
+                    ),
+                ));
+            };
+            let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
+            let dual_quasisplit = dual_parent.order.quasisplit_external();
+            let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
+            let block = build_block(&parameter.context, &dual_rf, span)?;
+            let size = block.graph.size();
+            let datum = parameter.context.parent.root_datum.datum.clone();
+            let rc = rep_context(&parameter.context);
+            let lambda_rho = rc
+                .lambda_rho(&parameter.repr)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let gamma = parameter.repr.gamma().clone();
+            let z0 = (0..size)
+                .find(|&z| block.graph.x(z) == Some(parameter.repr.x()))
+                .ok_or_else(|| runtime(span, "parameter not in the common block"))?;
+            // Partial block: the KL descent closure of z0 (block_below).
+            let mut subset: Vec<bool> = vec![false; size];
+            let mut stack = vec![z0];
+            subset[z0] = true;
+            while let Some(z) = stack.pop() {
+                let z_x = block.graph.x(z).expect("in-range");
+                for s in 0..datum.semisimple_rank() {
+                    match block.graph.descent_value(z, s) {
+                        Some(BlockDescent::ComplexDescent) => {
+                            if let Some(target) = block.graph.cross(z, s) {
+                                if !subset[target] {
+                                    subset[target] = true;
+                                    stack.push(target);
+                                }
+                            }
+                        }
+                        Some(BlockDescent::RealTypeI) => {
+                            let parity = rc
+                                .is_parity(s, z_x, &lambda_rho, &gamma)
+                                .map_err(|error| structure_diagnostic(error, span))?;
+                            if !parity {
+                                continue;
+                            }
+                            if let Some(pair) = block.graph.inverse_cayley(z, s) {
+                                for target in [pair.0, pair.1].into_iter().flatten() {
+                                    if !subset[target] {
+                                        subset[target] = true;
+                                        stack.push(target);
+                                    }
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            // Singular coroots: <gamma, alpha_s^vee> == 0 (repr.cpp:526).
+            let mut singular = 0_u32;
+            for s in 0..datum.semisimple_rank() {
+                let coroot = &datum.simple_coroots()[s];
+                let numerator = gamma.numerator();
+                let mut total: i64 = 0;
+                for (index, &coordinate) in coroot.as_slice().iter().enumerate() {
+                    if coordinate == 0 {
+                        continue;
+                    }
+                    let entry = numerator
+                        .get(index)
+                        .ok_or_else(|| runtime(span, "rational weight rank"))?;
+                    total += i64::from(coordinate) * *entry;
+                }
+                if total == 0 {
+                    singular |= 1 << s;
+                }
+            }
+            // Survivors in subset order.
+            let mut params = Vec::new();
+            for z in subset.iter().enumerate().filter_map(|(index, &m)| m.then_some(index)) {
+                if !subset[z] {
+                    continue;
+                }
+                let mut survives = true;
+                for s in 0..datum.semisimple_rank() {
+                    if singular & (1 << s) != 0
+                        && block
+                            .graph
+                            .descent_value(z, s)
+                            .is_some_and(|d| d.is_descent())
+                    {
+                        survives = false;
+                        break;
+                    }
+                }
+                if survives {
+                    let sr = rc
+                        .sr_gamma(block.graph.x(z).expect("in-range"), &lambda_rho, &gamma)
+                        .map_err(|error| structure_diagnostic(error, span))?;
+                    params.push(Value::Domain(DomainValue::Param(ParamValue {
+                        context: parameter.context.clone(),
+                        repr: sr,
+                    })));
+                }
+            }
+            Ok(Value::List(params))
+        }
         // full_deform (atlas-types.w:8213-8227, repr.cpp:2251-2290): the
         // full K-type deformation of a final standard parameter: the
         // finals of its scale-0 parameter, plus the deformation terms of
