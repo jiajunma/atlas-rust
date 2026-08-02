@@ -246,6 +246,8 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/orientation_nr"),
     # Batch 8 (misc): block_Hasse.
     FixturePlan(name="domain/block_hasse"),
+    # Batch 5 (W-graph): W_graph/W_cells over a parameter.
+    FixturePlan(name="domain/w_graph_param"),
     # KGB headline observables: per-form KGB sizes and root statuses across
     # the A1/C2/A2 families, plus the inexistent-element and type rejections.
     FixturePlan(name="domain/kgb_generation"),

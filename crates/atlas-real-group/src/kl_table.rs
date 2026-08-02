@@ -478,7 +478,11 @@ impl<'a> KlTable<'a> {
     ) -> Result<(), StructureError> {
         let l_y = self.support.length(y);
         let desc_y = self.support.descent_set(y).clone();
-        let height = self.support.col_size(y);
+        // The column holds one slot per primitive element (klsupport.h
+        // `nr_of_primitives`), indexed by `prim_index`; `col_size` counts
+        // only primitives of strictly smaller length, which is too small
+        // when y itself is primitive.
+        let height = self.support.nr_of_primitives(&desc_y);
         working.clear();
         working.resize(height + 1, KlPol::zero());
         working[self.support.self_index(y)] = KlPol::monomial(0); // P_{y,y} = 1

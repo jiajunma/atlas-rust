@@ -4843,6 +4843,26 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::Mat),
                 0,
             ),
+            // W_graph / W_cells (atlas-types.w:7494-7496): the W-graph and
+            // its cell decomposition of a standard parameter's block.
+            domain_builtin_skip(
+                "W_graph",
+                primitive_type(Prim::Param),
+                Type::tuple(vec![int_type(), Type::row(primitive_type(Prim::Vec))]),
+                0,
+            ),
+            domain_builtin_skip(
+                "W_cells",
+                primitive_type(Prim::Param),
+                Type::tuple(vec![
+                    int_type(),
+                    Type::row(Type::tuple(vec![
+                        Type::row(int_type()),
+                        Type::row(primitive_type(Prim::Vec)),
+                    ])),
+                ]),
+                0,
+            ),
             // block_Hasse (atlas-types.w:7514): the full block of a
             // standard parameter and its Bruhat Hasse matrix.
             domain_builtin_skip(

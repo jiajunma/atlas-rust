@@ -6787,6 +6787,134 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
         // element is reported as the parameter `sr(representative(z),
         // bm, gamma)` — with the identity block modifier the lambda-rho is
         // carried from the input parameter.
+        // W_graph / W_cells (atlas-types.w:7147-7170, 7210-7245): the
+        // W-graph of a standard parameter's full block, respectively its
+        // cell decomposition. W_graph returns (start, vertices) with each
+        // vertex a (descent set, [(target, coefficient)]) pair; W_cells
+        // returns (start, [(members, vertices)]).
+        "W_graph" | "W_cells" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "{name} has no matching overload for {} argument(s)",
+                        arguments.len()
+                    ),
+                ));
+            };
+            let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
+            let dual_quasisplit = dual_parent.order.quasisplit_external();
+            let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
+            let block = build_block(&parameter.context, &dual_rf, span)?;
+            let mut kl_table =
+                KlTable::new(&block.graph).map_err(|error| structure_diagnostic(error, span))?;
+            kl_table
+                .fill(0)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let size = block.graph.size();
+            let start = (0..size)
+                .find(|&z| block.graph.x(z) == Some(parameter.repr.x()))
+                .ok_or_else(|| runtime(span, "parameter not in the common block"))?;
+            // kl::wGraph (kl.cpp:1042-1058): every mu pair contributes an
+            // edge in both directions.
+            let mut edges: Vec<Vec<(usize, i32)>> = vec![Vec::new(); size];
+            for y in 0..size {
+                for pair in kl_table.mu_column(y) {
+                    edges[y].push((pair.x, pair.coef));
+                    edges[pair.x].push((y, pair.coef));
+                }
+            }
+            for edges_z in edges.iter_mut() {
+                edges_z.sort_unstable();
+            }
+            let rank = block.graph.rank();
+            let vertex = |element: usize, targets: &[(usize, i32)]| -> Value {
+                let desc = kl_table.support().descent_set(element);
+                let descents = Value::List(
+                    (0..rank)
+                        .filter(|&generator| desc.is_set(generator))
+                        .map(|generator| Value::Integer(BigInt::from(generator)))
+                        .collect(),
+                );
+                let out_edges = Value::List(
+                    targets
+                        .iter()
+                        .map(|&(target, coef)| {
+                            Value::Tuple(vec![
+                                Value::Integer(BigInt::from(target)),
+                                Value::Integer(BigInt::from(coef)),
+                            ])
+                        })
+                        .collect(),
+                );
+                Value::Tuple(vec![descents, out_edges])
+            };
+            if name == "W_graph" {
+                let vertices = Value::List(
+                    edges
+                        .iter()
+                        .enumerate()
+                        .map(|(element, targets)| vertex(element, targets))
+                        .collect(),
+                );
+                Ok(Value::Tuple(vec![
+                    Value::Integer(BigInt::from(start)),
+                    vertices,
+                ]))
+            } else {
+                // DecomposedWGraph (wgraph.cpp:58-116): the oriented graph's
+                // strong components.
+                let mut oriented: Vec<Vec<usize>> = Vec::with_capacity(size);
+                for (x, edges_x) in edges.iter().enumerate() {
+                    let desc_x = kl_table.support().descent_set(x).clone();
+                    let mut targets = Vec::new();
+                    for &(y, _) in edges_x {
+                        if !kl_table.support().descent_set(y).contains(&desc_x) {
+                            targets.push(y);
+                        }
+                    }
+                    oriented.push(targets);
+                }
+                let (partition, _induced) = strong_components(&oriented);
+                let mut cells = Vec::new();
+                for members in &partition {
+                    let mut relno = vec![0_usize; size];
+                    for (position, &member) in members.iter().enumerate() {
+                        relno[member] = position;
+                    }
+                    let cell_members: std::collections::BTreeSet<usize> =
+                        members.iter().copied().collect();
+                    let vertices_list = Value::List(
+                        members
+                            .iter()
+                            .map(|&member| {
+                                let cell_edges: Vec<(usize, i32)> = edges[member]
+                                    .iter()
+                                    .copied()
+                                    .filter(|&(target, _)| cell_members.contains(&target))
+                                    .map(|(target, coef)| (relno[target], coef))
+                                    .collect();
+                                vertex(member, &cell_edges)
+                            })
+                            .collect(),
+                    );
+                    cells.push(Value::Tuple(vec![
+                        Value::List(
+                            members
+                                .iter()
+                                .map(|&member| Value::Integer(BigInt::from(member)))
+                                .collect(),
+                        ),
+                        vertices_list,
+                    ]));
+                }
+                Ok(Value::Tuple(vec![
+                    Value::Integer(BigInt::from(start)),
+                    Value::List(cells),
+                ]))
+            }
+        }
         "block_Hasse" => {
             arity(name, arguments, 1, span)?;
             let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
