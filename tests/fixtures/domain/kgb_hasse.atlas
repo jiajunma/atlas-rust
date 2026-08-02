@@ -5,3 +5,17 @@ ic := inner_class(ra,[[1,0],[0,1]])
 rf : RealForm
 rf := real_form(ic,1)
 KGB_Hasse(rf)
+rb : RootDatum
+rb := simply_connected(Lie_type("B2"),true)
+ib : InnerClass
+ib := inner_class(rb,[[1,0],[0,1]])
+rfb : RealForm
+rfb := real_form(ib,2)
+KGB_Hasse(rfb)
+rc : RootDatum
+rc := simply_connected(Lie_type("A3"),true)
+ic2 : InnerClass
+ic2 := inner_class(rc,[[1,0,0],[0,1,0],[0,0,1]])
+rfc : RealForm
+rfc := real_form(ic2,1)
+KGB_Hasse(rfc)
