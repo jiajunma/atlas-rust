@@ -1,0 +1,14 @@
+{
+  "fixture": "domain/kl_block.atlas",
+  "fixture_sha256": "0f2911e50105730e9ac4935f1627a2b3a6553c1d8c7afd51c74c1242ad23586d",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "implemented_local",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:6868-6912",
+    "sources/gkmod/blocks.cpp:701-719"
+  ],
+  "rust_status": "implemented_local",
+  "oracle_exit_status": 0,
+  "notes": "Batch 7: KL_block(Param) — the condensed KL matrix over the parameter's common block (lookup_full_block via gamma-lambda mod cocharacter-lattice matching), as (parameter list, start index, index matrix, polynomial store). Known limit: singular parameters whose common-block descent statuses differ from the fibred y matching (A2 x=3) are excluded."
+}
