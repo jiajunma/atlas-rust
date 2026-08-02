@@ -6817,22 +6817,20 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 .map_err(|error| structure_diagnostic(error, span))?;
             let size = block.graph.size();
             let mut columns = vec![vec![0_i32; size]; size];
-            for y in 1..size {
-                for x in 0..y {
+            for (y, column) in columns.iter_mut().enumerate().skip(1) {
+                for (x, slot) in column.iter_mut().enumerate().take(y) {
                     let index = kl_table
                         .kl_pol(x, y)
                         .map_err(|error| structure_diagnostic(error, span))?;
-                    columns[y][x] =
-                        i32::try_from(index).map_err(|_| runtime(span, "KL index overflow"))?;
+                    *slot = i32::try_from(index).map_err(|_| runtime(span, "KL index overflow"))?;
                 }
             }
             // Diagonal entries P_{y,y} = 1 (index of the constant 1).
-            for y in 0..size {
+            for (y, column) in columns.iter_mut().enumerate() {
                 let index = kl_table
                     .kl_pol(y, y)
                     .map_err(|error| structure_diagnostic(error, span))?;
-                columns[y][y] =
-                    i32::try_from(index).map_err(|_| runtime(span, "KL index overflow"))?;
+                column[y] = i32::try_from(index).map_err(|_| runtime(span, "KL index overflow"))?;
             }
             let matrix = columns_matrix_value(&columns, size, span)?;
             // The polynomial pool: every stored polynomial's coefficient
