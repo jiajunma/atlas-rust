@@ -974,6 +974,50 @@ impl<'a> RepContext<'a> {
         Ok(parity_at_0 == (eval2 % 2 == 0))
     }
 
+    /// The packed torsion part (dimension = the involution's `(1-theta)`
+    /// image rank) of a KGB element's Tits torus: `M_real * (torus mod 2)`
+    /// (involutions.h:211 `y_pack`), used by the common-block matching.
+    pub fn torus_part(
+        &self,
+        x: KgbId,
+        kgb_torus: &ModTwoVector,
+    ) -> Result<ModTwoVector, StructureError> {
+        let involution = self.involution_of(x)?;
+        let projection = self.projection(involution)?;
+        let mut ones = Vec::new();
+        for (row_index, row) in projection.m_real.iter().enumerate() {
+            let mut parity = 0_i64;
+            for (column, &entry) in row.iter().enumerate() {
+                if entry % 2 != 0 && kgb_torus.bit(column) == Some(true) {
+                    parity ^= 1;
+                }
+            }
+            if parity != 0 {
+                ones.push(row_index);
+            }
+        }
+        ModTwoVector::from_ones(projection.m_real.len(), ones)
+    }
+
+    /// `Rep_context::gamma_lambda` (repr.cpp:220-227): the lambda-shifted
+    /// infinitesimal character (gamma - lambda) of a parameter with the
+    /// given torsion part, used to match common-block elements.
+    pub fn gamma_lambda(
+        &self,
+        x: KgbId,
+        y_bits: &ModTwoVector,
+        gamma: &RationalWeight,
+    ) -> Result<RationalWeight, StructureError> {
+        let theta = self.theta_at(x)?;
+        let gamma_rho = gamma.sub(&self.rho())?;
+        let theta_gamma_rho = gamma_rho.apply_matrix(theta.weight_matrix())?;
+        let involution = self.involution_of(x)?;
+        let y_lift = self.y_lift(involution, y_bits)?;
+        let difference = gamma_rho.sub(&theta_gamma_rho)?;
+        let difference = difference.sub(&RationalWeight::from_weight(&y_lift)?)?;
+        Ok(difference.halve()?.normalized()?)
+    }
+
     /// `Rep_context::reducibility_points` (repr.cpp:825-925): the
     /// reducibility fractions of a standard parameter, as (numerator,
     /// denominator) pairs sorted ascending.
