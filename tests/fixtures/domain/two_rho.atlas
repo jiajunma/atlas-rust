@@ -14,3 +14,11 @@ rd : RootDatum
 rd := simply_connected(Lie_type("A3"),true)
 two_rho(rd)
 two_rho_check(rd)
+re : RootDatum
+re := simply_connected(Lie_type("E6"),true)
+two_rho(re)
+two_rho_check(re)
+re7 : RootDatum
+re7 := simply_connected(Lie_type("E7"),true)
+two_rho(re7)
+two_rho_check(re7)
