@@ -5221,7 +5221,12 @@ pub(crate) fn print_text(
                     }
                     oriented.push(targets);
                 }
-                let (partition, induced) = strong_components(&oriented);
+                let (mut partition, induced) = strong_components(&oriented);
+                // The oracle's Partition lists a cell's vertices in
+                // ascending order (Partition::iterator traversal).
+                for members in partition.iter_mut() {
+                    members.sort_unstable();
+                }
                 // Cells and their vertices.
                 text.push_str("// Cells and their vertices.\n");
                 for (i, members) in partition.iter().enumerate() {
