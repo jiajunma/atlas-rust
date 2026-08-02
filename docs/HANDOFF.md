@@ -572,7 +572,7 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: `329b0ec` (main). Working tree clean.
+HEAD at handoff: `385cffb` (main). Working tree clean.
 
 ### Since the 8d9837d handoff (2026-08-02 overnight + user ktype/param layer)
 
@@ -614,7 +614,13 @@ After the 01df48e handoff the overnight sprint continued:
   335-368) and a zero-first polynomial store — fixture
   `domain/partial_kl_block`, HPC `3508277` (182 fixtures, 0 FAIL).
   First Batch 6 (extended blocks) name.
-- `4bfc4a5` kgb_hasse extended to B2/A3 (HPC `3508458` submitted).
+- `4bfc4a5` kgb_hasse extended to B2/A3 (HPC `3508458`, 182 fixtures 0 FAIL).
+- `f77f73a` — simple_roots prints the **transposed** Cartan matrix (the
+  oracle's rows are simple coroot coordinates; B2/G2/F4/D4/E6 all match,
+  HPC `3508482`). is_Cartan_matrix handles F4/E6/C4.
+- Fixture extensions across kgb_hasse/cartan_info/orientation_nr/
+  simple_roots/two_rho/kl_print (B2/G2/F4/D4/A3/B3/C3) all HPC-verified
+  (swaps `3508458`, `3508475`, `3508482`, `3508486`, `3508490`).
 - The common-block experiment (block_Hasse over the srm closure) was
   reverted: the fibred-transform closure over-expands (A2 x=3 → 5
   elements vs the oracle's 1); matching needs the StandardReprMod
