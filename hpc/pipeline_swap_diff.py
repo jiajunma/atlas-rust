@@ -242,6 +242,8 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/kgb_hasse"),
     # Batch 8 (misc): Cartan_info.
     FixturePlan(name="domain/cartan_info"),
+    # Batch 8 (misc): orientation_nr.
+    FixturePlan(name="domain/orientation_nr"),
     # KGB headline observables: per-form KGB sizes and root statuses across
     # the A1/C2/A2 families, plus the inexistent-element and type rejections.
     FixturePlan(name="domain/kgb_generation"),

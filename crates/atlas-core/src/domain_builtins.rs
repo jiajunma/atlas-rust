@@ -6661,6 +6661,127 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
         // Cartan_info (atlas-types.w:4102-4160): the classify triple, the
         // Cartan involution's Weyl word, the orbit/fiber sizes, and the
         // subsystem types of the imaginary, real and complex simple roots.
+        // orientation_nr (atlas-types.w:6546-6552, repr.cpp:455-493): the
+        // orientation number of a standard parameter — the count of
+        // non-integral real roots whose coroot pairing with gamma is
+        // mis-oriented, plus one per conjugate complex pair.
+        "orientation_nr" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "{name} has no matching overload for {} argument(s)",
+                        arguments.len()
+                    ),
+                ));
+            };
+            let rc = rep_context(&parameter.context);
+            let root_system = rc.inner_class().root_system();
+            let z = &parameter.repr;
+            let involution_id = parameter
+                .context
+                .graph
+                .involution_of(z.x())
+                .ok_or_else(|| runtime(span, "Inexistent KGB element"))?;
+            let record = rc
+                .table()
+                .record(involution_id)
+                .ok_or_else(|| runtime(span, "Inexistent involution"))?;
+            let root_involution = record.twisted_involution().root_involution();
+            let real: std::collections::HashSet<usize> = root_involution
+                .roots_of_kind(RootKind::Real)
+                .map(|root| root.index())
+                .collect();
+            let all_roots: Vec<RootId> = (0..root_system.roots().len())
+                .map(RootId::from_usize)
+                .collect();
+            let two_rho_sum = two_rho(root_system, &all_roots);
+            let real_roots: Vec<RootId> = root_involution.roots_of_kind(RootKind::Real).collect();
+            let two_rho_real = two_rho(root_system, &real_roots);
+            let lifted = rc
+                .y_lift(involution_id, z.y_bits())
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let test_wt: Vec<i32> = lifted
+                .as_slice()
+                .iter()
+                .zip(two_rho_sum.as_slice())
+                .zip(two_rho_real.as_slice())
+                .map(|((&a, &b), &c)| a + b - c)
+                .collect();
+            let numer = z.gamma().numerator();
+            let denom = z.gamma().denominator();
+            // Positive-root indices in the root system's ambient order.
+            let mut positive_indices: Vec<usize> = (0..root_system.roots().len())
+                .filter(|&index| {
+                    root_system
+                        .is_positive(RootId::from_usize(index))
+                        .unwrap_or(false)
+                })
+                .collect();
+            positive_indices.sort_by_key(|&index| {
+                // rt_abs ordering: coroot coordinates, ascending.
+                root_system
+                    .coroot(RootId::from_usize(index))
+                    .map(|coroot| coroot.as_slice().to_vec())
+                    .unwrap_or_default()
+            });
+            let mut count = 0_usize;
+            for (i, &alpha_index) in positive_indices.iter().enumerate() {
+                let Some(coroot_alpha) = root_system.coroot(RootId::from_usize(alpha_index)) else {
+                    continue;
+                };
+                let num: i64 = coroot_alpha
+                    .as_slice()
+                    .iter()
+                    .zip(numer)
+                    .map(|(&c, &n)| i64::from(c) * n)
+                    .sum();
+                if num.rem_euclid(denom) != 0 {
+                    if real.contains(&alpha_index) {
+                        let test_pair: i64 = coroot_alpha
+                            .as_slice()
+                            .iter()
+                            .zip(&test_wt)
+                            .map(|(&c, &t)| i64::from(c) * i64::from(t))
+                            .sum();
+                        let eps = if test_pair.rem_euclid(4) == 0 {
+                            0
+                        } else {
+                            denom
+                        };
+                        let oriented = (num > 0) == ((num + eps).rem_euclid(2 * denom) < denom);
+                        if oriented {
+                            count += 1;
+                        }
+                    } else {
+                        let beta = root_involution
+                            .image(RootId::from_usize(alpha_index))
+                            .ok_or_else(|| runtime(span, "Inexistent root"))?;
+                        let beta_index = beta.index();
+                        let beta_coroot = root_system
+                            .coroot(beta)
+                            .ok_or_else(|| runtime(span, "Inexistent root"))?;
+                        let beta_pair: i64 = beta_coroot
+                            .as_slice()
+                            .iter()
+                            .zip(numer)
+                            .map(|(&c, &n)| i64::from(c) * n)
+                            .sum();
+                        // Consider only the first of the conjugate pair:
+                        // compare the positive-root order of alpha and beta.
+                        let alpha_order = positive_indices.iter().position(|&r| r == alpha_index);
+                        let beta_order = positive_indices.iter().position(|&r| r == beta_index);
+                        if let (Some(a), Some(b)) = (alpha_order, beta_order) {
+                            if a < b && (num > 0) != (beta_pair > 0) {
+                                count += 1;
+                            }
+                        }
+                    }
+                }
+            }
+            Ok(Value::Integer(BigInt::from(count)))
+        }
         "Cartan_info" => {
             arity(name, arguments, 1, span)?;
             let (context, id) = as_cartan_class(&arguments[0], span)?;

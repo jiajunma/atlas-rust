@@ -4843,6 +4843,9 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::Mat),
                 0,
             ),
+            // orientation_nr (atlas-types.w:6546-6552): the orientation
+            // number of a standard parameter.
+            domain_builtin_skip("orientation_nr", primitive_type(Prim::Param), int_type(), 0),
             // Cartan_info (atlas-types.w:4102-4160): the classify triple,
             // the Cartan involution's Weyl word, the orbit/fiber sizes, and
             // the three subsystem types.
