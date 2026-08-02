@@ -10,5 +10,10 @@
     "sources/gkmod/repr.cpp:455-493"
   ],
   "oracle_exit_status": 0,
-  "notes": "Batch 8: orientation_nr — the orientation number of a standard parameter (real-root coroot pairings mis-oriented relative to gamma plus one per conjugate complex pair). Reference status pending HPC capture."
+  "notes": "Batch 8: orientation_nr — the orientation number of a standard parameter (real-root coroot pairings mis-oriented relative to gamma plus one per conjugate complex pair). Reference status pending HPC capture.",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3507865",
+  "source_archive_sha256": "92d4dfe8f7f2f8289443fd3bd2288c40fe490e7e5964a4337cfe22e3c1357a29",
+  "fixture_sha256": "153f263410603f36403745fa993af8e2ecb5b202d6631bcfd48e203431238201",
+  "capture_artifacts_sha256": "c457a0ab224978e5b227f373e8fa86fe81a60a2516f1c1dcee96e82c9e985a26"
 }
