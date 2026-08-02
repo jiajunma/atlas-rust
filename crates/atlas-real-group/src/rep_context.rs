@@ -1009,13 +1009,13 @@ impl<'a> RepContext<'a> {
         gamma: &RationalWeight,
     ) -> Result<RationalWeight, StructureError> {
         let theta = self.theta_at(x)?;
-        let gamma_rho = gamma.sub(&self.rho())?;
+        let gamma_rho = gamma.sub(self.rho())?;
         let theta_gamma_rho = gamma_rho.apply_matrix(theta.weight_matrix())?;
         let involution = self.involution_of(x)?;
         let y_lift = self.y_lift(involution, y_bits)?;
         let difference = gamma_rho.sub(&theta_gamma_rho)?;
         let difference = difference.sub(&RationalWeight::from_weight(&y_lift)?)?;
-        Ok(difference.halve()?.normalized()?)
+        difference.halve()?.normalized()
     }
 
     /// `Rep_context::reducibility_points` (repr.cpp:825-925): the
