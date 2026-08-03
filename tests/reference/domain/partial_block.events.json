@@ -341,6 +341,68 @@
         "type": "display",
         "display": "[final parameter(x=0,lambda=[1,1,1,1]/1,nu=[0,0,0,0]/1)]"
       }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rd4': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'D4'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'id4': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type D4, with involution defining\ninner class of type 'c', with 5 real forms and 5 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rfd4': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "connected real group with Lie algebra 'so*(8)[0,1]'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'xd4': KGBElt\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "KGB element #0"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'pd4': Param\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "final parameter(x=0,lambda=[1,1,1,1]/1,nu=[0,0,0,0]/1)"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "[final parameter(x=0,lambda=[1,1,1,1]/1,nu=[0,0,0,0]/1)]"
+      }
     }
   ]
 }
