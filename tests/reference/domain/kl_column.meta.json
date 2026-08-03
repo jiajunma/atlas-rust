@@ -13,8 +13,8 @@
   "notes": "Batch 5: KL_column(Param) — the KL column of a final standard parameter over its partial block (Bruhat descent closure with parity real type-I descents), as (block index, parameter, KL coefficients) triples skipping zero polynomials.",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
-  "reference_job": "3511530",
-  "source_archive_sha256": "dacac1b596afe46aa6e32824b6cecc603371fcb5047d356fba65ef4b84d8ed88",
-  "capture_artifacts_sha256": "83a14331802e5b88a2f25f1b47f4aafd060af2b8e01850deb8ad14a3813a78a6",
+  "reference_job": "3512437",
+  "source_archive_sha256": "9e737fa778c65554f4cdc30cda2b2b939d78565d708be54444be9cf710887d9f",
+  "capture_artifacts_sha256": "8e9f548e6e4f9c90b62099bde9171cd581ed803640841c6c49bb4d00180fefb7",
   "differential_job": "3511532"
 }

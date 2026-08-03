@@ -13,8 +13,8 @@
   "notes": "Batch 6: partial_KL_block(Param) — the condensed KL matrix over the parameter's partial-block survivors (block_below descent closure, singular survives with coroot·gamma numerator == 0, finals_for), as (parameter list, index matrix, polynomial store starting at zero). Known limit: A2 x=3 (gamma=[3,0]/2, coroot 1 singular) needs the common-block srm descent statuses, which the fibred RealTypeI descent does not reproduce — removed from the fixture.",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
-  "reference_job": "3511359",
-  "source_archive_sha256": "f366da870b1374d1712036f674484161aca69245decd28955b7a6929a81ab0fd",
-  "capture_artifacts_sha256": "a07099f6aaf88857b1298a9ed930605112237b59a699b040ff8c9ddca7b31e76",
+  "reference_job": "3512439",
+  "source_archive_sha256": "136b498f4131ff87c5101ea21346a24abaa769cf1ab139d46b67013e87732193",
+  "capture_artifacts_sha256": "872256421eaf8a5ae55e63199b0068246293834cc9fd3afc12a3a45decb788c2",
   "differential_job": "3511377"
 }

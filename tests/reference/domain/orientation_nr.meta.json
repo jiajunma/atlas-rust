@@ -12,9 +12,9 @@
   "oracle_exit_status": 0,
   "notes": "Batch 8: orientation_nr — the orientation number of a standard parameter (real-root coroot pairings mis-oriented relative to gamma plus one per conjugate complex pair). Reference status pending HPC capture.",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
-  "reference_job": "3511524",
-  "source_archive_sha256": "ebdeadde65d1c1b894ebff54c21768a1817831f0a29fabafeb0ec36e024eca53",
+  "reference_job": "3512455",
+  "source_archive_sha256": "e36a33e97dd7d739f575e0cd7c39ea2ab58d9413cdb457ff514c50f3158cb453",
   "fixture_sha256": "037e9a533cb4065749b3ff887c330af45866d0e2add4774c0e5b1d4fd667d8b4",
-  "capture_artifacts_sha256": "6b98dac96bf662b32d8f32cfd53ba5cb026c91490def83f7d79020610aec340f",
+  "capture_artifacts_sha256": "4be209d968297bd0666c48840ec1a2a48b404bf0e5222e36b3be21b25fd31e53",
   "differential_job": "3511528"
 }

@@ -12,9 +12,9 @@
   "oracle_exit_status": 0,
   "notes": "Batch 5: raw_KL(Block) — the KL table as (matrix of polynomial indices, the polynomial pool as coefficient vectors, length stops). Covers the A2 quasisplit, B2 split (5- and 12-element blocks) and G2 blocks. Handles empty blocks.",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
-  "reference_job": "3511420",
-  "source_archive_sha256": "c4a3fa2ab94aa8d880fa3ecc14c82441c7b616d1da1043ae103a925f245bbcb9",
-  "fixture_sha256": "6950e38433826fc55edf1247e2840d19483e482b708d906a30e5b5e4a49897f6",
-  "capture_artifacts_sha256": "46cb3aea75e1afd8260e79d1e58c95817e6cae21c4a16fa49cf3825769244a74",
+  "reference_job": "3512499",
+  "source_archive_sha256": "9734329115e84fb11c4b212c56cafd8ff1eef33e97aea6e8263e25051dabca9f",
+  "fixture_sha256": "e1e53e684e1e956c62653293d4a330628659505058e1aba4104067959b280ce2",
+  "capture_artifacts_sha256": "806c8eaf532ab21d9a5dfb70b19a8378a7204d2b9a795b5037c6fde16d651c9d",
   "differential_job": "3511421"
 }

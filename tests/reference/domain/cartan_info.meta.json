@@ -16,9 +16,9 @@
   "oracle_exit_status": 0,
   "notes": "Batch 8: Cartan_info — classify triple, Cartan-involution Weyl word, orbit/fiber sizes (fiber_rank = dualPi0 dimension), and the subsystem types of the simple imaginary/real/complex roots (makeSimpleComplex port). Known limit: the Weyl word uses the greedy reduced word; groups whose WeylGroup::word transducer orders differ (e.g. the D4 class-1 involution) print a different reduced word. Reference status pending HPC capture.",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
-  "reference_job": "3511752",
-  "source_archive_sha256": "2b4ae7142420c974d398aab5136e69a622da5fc347ad3c43793c9fede93e74bf",
+  "reference_job": "3512454",
+  "source_archive_sha256": "b20bebd6fc8e14ddafa423a4279edd46c959ebaeb8e7d27887606c65ccc30cfb",
   "fixture_sha256": "b84e92b51b3d005e58fc52d3cdf3b8b8c22b2f1db03ad278dec931f49c2f9625",
-  "capture_artifacts_sha256": "dbca37f886bcb70a352cf2ec6fb0b9b7fa9b7a4e4788e4b33f3b2bbd512d7d93",
+  "capture_artifacts_sha256": "d7d7d5bd6d8e7c4a31e796cbeec35d007564014bc5ef95d4bc42fe17260ede77",
   "differential_job": "3511753"
 }
