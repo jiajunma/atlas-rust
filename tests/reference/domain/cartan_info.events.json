@@ -1,7 +1,7 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "domain/cartan_info",
-  "status": "verified_hpc_reference",
+  "status": "local_oracle_reference",
   "events": [
     {
       "kind": "ReportLine",
@@ -356,6 +356,64 @@
       "value": {
         "type": "display",
         "display": "((4,0,0),[ ],(1,16),(Lie type 'F4',empty Lie type,empty Lie type))"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ra3': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'A3'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ic3': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type A3, with involution defining\ninner class of type 'c', with 3 real forms and 2 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'cc3a': CartanClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Cartan class #0, occurring for 3 real forms and for 1 dual real form"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "((3,0,0),[ ],(1,8),(Lie type 'A3',empty Lie type,empty Lie type))"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'cc3b': CartanClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Cartan class #1, occurring for 2 real forms and for 1 dual real form"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "((1,1,0),[ 0, 1, 2, 1, 0 ],(6,2),(Lie type 'A1',Lie type 'A1',empty Lie type))"
       }
     }
   ]

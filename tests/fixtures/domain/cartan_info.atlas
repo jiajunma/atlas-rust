@@ -59,3 +59,13 @@ rf := simply_connected(Lie_type("F4"),true)
 if4 : InnerClass
 if4 := inner_class(rf,[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
 Cartan_info(Cartan_class(if4,0))
+ra3 : RootDatum
+ra3 := simply_connected(Lie_type("A3"),true)
+ic3 : InnerClass
+ic3 := inner_class(ra3,[[1,0,0],[0,1,0],[0,0,1]])
+cc3a : CartanClass
+cc3a := Cartan_class(ic3,0)
+Cartan_info(cc3a)
+cc3b : CartanClass
+cc3b := Cartan_class(ic3,1)
+Cartan_info(cc3b)
