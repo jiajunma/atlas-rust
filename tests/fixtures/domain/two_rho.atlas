@@ -34,3 +34,11 @@ rf : RootDatum
 rf := simply_connected(Lie_type("F4"),true)
 two_rho(rf)
 two_rho_check(rf)
+ra1 : RootDatum
+ra1 := simply_connected(Lie_type("A1"),true)
+two_rho(ra1)
+two_rho_check(ra1)
+rd4 : RootDatum
+rd4 := simply_connected(Lie_type("D4"),true)
+two_rho(rd4)
+two_rho_check(rd4)
