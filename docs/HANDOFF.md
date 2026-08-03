@@ -572,7 +572,7 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: `b2f82b1` (main). Working tree clean.
+HEAD at handoff: `9ae5ca4` (main). Working tree clean.
 
 ### Since the 8d9837d handoff (2026-08-02 overnight + user ktype/param layer)
 
@@ -642,6 +642,11 @@ After the 01df48e handoff the overnight sprint continued:
   B3/C3 + kgb_hasse C3/D4 (swaps `3511421`/`3511424`/`3511428`),
   simple_roots/two_rho E6/E7/E8 (swap `3511489`), kl_print B3/C3
   (recaptured `3511504`, swap `3511505`).
+- **default_extended is now COMPLETE** (`fab1593` + `6855ca2`) — the
+  generic twist is solved by matreduc::find_solution (an exact rational
+  Gaussian elimination port in the workspace); A2 identity + A3
+  non-identity byte-identical, HPC-verified (swap `3512392`, 0 FAIL).
+  This unlocks the ext_block layer's parameter model.
 - **extend(LieType) lands** (`9b0abbb`) — append a simple factor
   (add_simple_factor, atlas-types.w:280-289); A2+G2+D4 byte-identical,
   HPC-verified. **E7 KGB_Hasse was tried and dropped** (ec40b29): the
