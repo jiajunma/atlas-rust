@@ -572,7 +572,7 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: `7fcbc49` (main). Working tree clean.
+HEAD at handoff: `85664b8` (main). Working tree clean.
 
 ### Since the 8d9837d handoff (2026-08-02 overnight + user ktype/param layer)
 
@@ -642,6 +642,14 @@ After the 01df48e handoff the overnight sprint continued:
   B3/C3 + kgb_hasse C3/D4 (swaps `3511421`/`3511424`/`3511428`),
   simple_roots/two_rho E6/E7/E8 (swap `3511489`), kl_print B3/C3
   (recaptured `3511504`, swap `3511505`).
+- **default_extended lands** (`fab1593`, HPC `3511998`) — the first
+  Batch 6 name. The 4-tuple (lambda, tau, l, t) via the srm
+  gamma-lambda unique mod X* (StandardReprMod::mod_reduce with the new
+  real_unique, `7fcbc49`) and ell = base_grading_vector -
+  torus_factor (ext_block.cpp:215). A2 x=1/2/3 + B2 x=0 byte-identical
+  for the identity twist; the generic twist needs matreduc::find_solution
+  (recorded). The E6 KGB_Hasse fixture is now HPC-verified (`3511986`),
+  so the local-timeout constraint is lifted by the HPC node.
 - **Rep_context::real_unique lands** (`7fcbc49`) — the unique
   mod-X* representative (involutions.cpp:334-342). With it the srm
   common-block experiment makes A2 x=3's block_Hasse byte-identical,
