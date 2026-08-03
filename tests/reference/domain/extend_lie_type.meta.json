@@ -7,12 +7,13 @@
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:280-289"
   ],
-  "rust_status": "implemented_local",
+  "rust_status": "verified_hpc",
   "oracle_exit_status": 0,
   "notes": "Batch 6: extend(LieType, string, int) — append a simple factor to a Lie type (add_simple_factor).",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
   "reference_job": "3512009",
   "source_archive_sha256": "38ab257a069c26f9b392a8d739e5852386aaff60dfc1dc885848d455868305f8",
-  "capture_artifacts_sha256": "368b139159b78f0f98b7113e5355cb06b120f58ba8668905266f8e6833f71cf0"
+  "capture_artifacts_sha256": "368b139159b78f0f98b7113e5355cb06b120f58ba8668905266f8e6833f71cf0",
+  "differential_job": "3512149"
 }
