@@ -1,0 +1,14 @@
+{
+  "fixture": "domain/is_cartan_matrix.atlas",
+  "fixture_sha256": "802514a5f73ea77ea0ba3f5ebee503437c4aa7a9686eb01b254cf66061aab870",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "implemented_local",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:433",
+    "sources/structure/dynkin.cpp"
+  ],
+  "rust_status": "implemented_local",
+  "oracle_exit_status": 0,
+  "notes": "Batch 1: is_Cartan_matrix(Mat) — whether a matrix is a Cartan matrix of a semisimple Lie algebra (dynkin classification)."
+}

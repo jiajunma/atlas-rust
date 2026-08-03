@@ -1,0 +1,56 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/is_cartan_matrix",
+  "status": "local_oracle_reference",
+  "events": [
+    {
+      "kind": "Value",
+      "value": {
+        "type": "boolean",
+        "value": true
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "boolean",
+        "value": true
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "boolean",
+        "value": true
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "boolean",
+        "value": false
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "boolean",
+        "value": true
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "boolean",
+        "value": true
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "boolean",
+        "value": true
+      }
+    }
+  ]
+}
