@@ -572,7 +572,7 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: `3bdbeaf` (main). Working tree clean.
+HEAD at handoff: `7fcbc49` (main). Working tree clean.
 
 ### Since the 8d9837d handoff (2026-08-02 overnight + user ktype/param layer)
 
@@ -642,16 +642,14 @@ After the 01df48e handoff the overnight sprint continued:
   B3/C3 + kgb_hasse C3/D4 (swaps `3511421`/`3511424`/`3511428`),
   simple_roots/two_rho E6/E7/E8 (swap `3511489`), kl_print B3/C3
   (recaptured `3511504`, swap `3511505`).
-- The srm (StandardReprMod) layer was attempted for the common-block
-  matching (`604cc83` reverted): the cross/down-Cayley gamma-lambda
-  chain correctly excluded A2 x=3's block 5 ([-1,-1]/2 vs [-1,-1]/4)
-  but needs StandardReprMod::build's real_unique (mod-X* representative
-  choice) — without it the cross chain reaches fibred elements the
-  oracle's pool excludes (A2 x=3's x=4). B3's block_Hasse also shows a
-  fibred inverse-Cayley gap (x=1 unreachable). Rep_context's
-  datum/root_system/kgb_status/positive_real_roots_at are public for
-  the next attempt.
-- More fixture extensions verified: cartan_info +C3 (`3511528`),
+- **Rep_context::real_unique lands** (`7fcbc49`) — the unique
+  mod-X* representative (involutions.cpp:334-342). With it the srm
+  common-block experiment makes A2 x=3's block_Hasse byte-identical,
+  but the full common block still needs the srm chain's per-element
+  lambda-rho (the pool elements differ from the fibred elements), so
+  block_Hasse stays on the fibred closure; real_unique stays for the
+  ext_block layer (default_extended's mod_reduce). involution_of is
+  now public.- More fixture extensions verified: cartan_info +C3 (`3511528`),
   orientation_nr +C3 (`3511528`), kl_column +B3/C3 (`3511532`),
   full_deform +B3/C3 (`3511570`), simple_roots +E6/C3/B3 (`3511747`),
   two_rho +B3/C3/F4 (`3511750`), cartan_info +G2/F4 (`3511753`),
