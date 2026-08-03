@@ -572,7 +572,7 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: `85664b8` (main). Working tree clean.
+HEAD at handoff: `b2f82b1` (main). Working tree clean.
 
 ### Since the 8d9837d handoff (2026-08-02 overnight + user ktype/param layer)
 
@@ -642,6 +642,13 @@ After the 01df48e handoff the overnight sprint continued:
   B3/C3 + kgb_hasse C3/D4 (swaps `3511421`/`3511424`/`3511428`),
   simple_roots/two_rho E6/E7/E8 (swap `3511489`), kl_print B3/C3
   (recaptured `3511504`, swap `3511505`).
+- **extend(LieType) lands** (`9b0abbb`) — append a simple factor
+  (add_simple_factor, atlas-types.w:280-289); A2+G2+D4 byte-identical,
+  HPC-verified. **E7 KGB_Hasse was tried and dropped** (ec40b29): the
+  2.9M-element Weyl-group enumeration OOMs on the HPC node; the E6
+  fixture stays verified. The WEYL_BUDGET was raised to 4M for E7-scale
+  inner classes when memory allows, and the HPC swap timeout is now
+  driven by the TIMEOUT env (600s used for E7-scale).
 - **default_extended lands** (`fab1593`, HPC `3511998`) — the first
   Batch 6 name. The 4-tuple (lambda, tau, l, t) via the srm
   gamma-lambda unique mod X* (StandardReprMod::mod_reduce with the new
