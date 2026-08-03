@@ -41,3 +41,8 @@ x0 := KGB(rf3,0)
 q0 : Param
 q0 := param(x0,[0,0,0],[0,0,0]/1)
 default_extended(q0,[[0,0,1],[0,1,0],[1,0,0]])
+x0 : KGBElt
+x0 := KGB(rf,0)
+q0 : Param
+q0 := param(x0,[0,0],[0,0]/1)
+default_extended(q0,[[1,0],[0,1]])
