@@ -42,3 +42,14 @@ x3 := KGB(rf3,0)
 p3 : Param
 p3 := param(x3,[0,0,0],[0,0,0]/1)
 partial_KL_block(p3)
+rd4 : RootDatum
+rd4 := simply_connected(Lie_type("D4"),true)
+id4 : InnerClass
+id4 := inner_class(rd4,[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
+rfd4 : RealForm
+rfd4 := real_form(id4,2)
+xd4 : KGBElt
+xd4 := KGB(rfd4,0)
+pd4 : Param
+pd4 := param(xd4,[0,0,0,0],[0,0,0,0]/1)
+partial_KL_block(pd4)
