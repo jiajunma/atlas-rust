@@ -11,9 +11,9 @@
   "oracle_exit_status": 0,
   "notes": "two_rho / two_rho_check (RootDatum->vec): the sum of the positive roots, respectively of the positive coroots. Reference status pending HPC capture.",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
-  "reference_job": "3511748",
-  "source_archive_sha256": "24e128031dcf0fabd5b84383dfbbd6c16aad2a26d2616ced913536f096b85ba4",
-  "fixture_sha256": "642572fa733f30b431028093e438967e4b648ec108da1e0fadf839743a511be9",
-  "capture_artifacts_sha256": "dc51d91d86c8497c3b57c15aa065aaf66907affbfd1b73e5fc9a86d8ddd8daf6",
+  "reference_job": "3512037",
+  "source_archive_sha256": "219b29a1bf90d7b4e057fc996273161c764af00ea0cda215838de7abedcaeb05",
+  "fixture_sha256": "6ead40baab64e04463dee9cfcdaa8dbec9ff1caf2577cbb70f00965d56abdc6b",
+  "capture_artifacts_sha256": "b0b8e4be55cdca6138a86320b2abaa7455a29dec5207ae0d066028dc28c4f02c",
   "differential_job": "3511750"
 }
