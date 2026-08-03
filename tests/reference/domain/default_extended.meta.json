@@ -1,6 +1,6 @@
 {
   "fixture": "domain/default_extended.atlas",
-  "fixture_sha256": "4e426d344d20e0dac4f80ae15843fdeb17b568f916c31cb016695fed97c2b8c3",
+  "fixture_sha256": "e7262ae0307aafb789916583cef8958a1c513fbd7c2553ba1424bb1d20b69cdc",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_status": "verified_hpc_reference",
@@ -14,8 +14,8 @@
   "notes": "Batch 6: default_extended(Param, mat) — the 4-tuple (lambda, tau, l, t) of a default extended parameter, via the srm gamma-lambda unique modulo X* (real_unique) and ell = base_grading_vector - torus_factor. Known limit: the generic (non-identity) twist needs matreduc::find_solution; fixtures use the identity twist.",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
-  "reference_job": "3511995",
-  "source_archive_sha256": "9d9eea0be2f6dda257c4368153f7e37297ca7a4ee4c0d95ada07a42ef836708c",
-  "capture_artifacts_sha256": "6a243916ded30dbb17326d1ecf6b7cd7f8d993a39393d40d7a14fcc48514c855",
+  "reference_job": "3512190",
+  "source_archive_sha256": "66f91220184d21012b61574a176f5ad70045cb45fca68e549e8f23143b2af098",
+  "capture_artifacts_sha256": "af9ad92c5b35b1d592b6a2a4baa01585a08ca25b6918d375ac011c3779b8c903",
   "differential_job": "3512149"
 }
