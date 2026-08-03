@@ -141,3 +141,14 @@ dfg2 := dual_real_form(ig2,0)
 blkg2 : Block
 blkg2 := block(rfg2,dfg2)
 raw_KL(blkg2)
+rd4 : RootDatum
+rd4 := simply_connected(Lie_type("D4"),true)
+id4 : InnerClass
+id4 := inner_class(rd4,[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
+rfd4 : RealForm
+rfd4 := real_form(id4,2)
+dfd4 : RealForm
+dfd4 := dual_real_form(id4,2)
+blkd4 : Block
+blkd4 := block(rfd4,dfd4)
+raw_KL(blkd4)

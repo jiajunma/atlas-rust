@@ -1,7 +1,7 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "domain/raw_kl",
-  "status": "verified_hpc_reference",
+  "status": "local_oracle_reference",
   "events": [
     {
       "kind": "ReportLine",
@@ -807,6 +807,68 @@
       "value": {
         "type": "display",
         "display": "(\n| 1 |\n,[[ ],[ 1 ]],[ 0, 0, 0, 0, 0, 1 ])"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rd4': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'D4'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'id4': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type D4, with involution defining\ninner class of type 'c', with 5 real forms and 5 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rfd4': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "connected real group with Lie algebra 'so*(8)[0,1]'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'dfd4': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "disconnected real group with Lie algebra 'so*(8)[0,1]'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'blkd4': Block\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Block of 6 elements"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "(\n| 1, 1, 1, 0, 0, 0 |\n| 0, 1, 1, 1, 1, 0 |\n| 0, 0, 1, 0, 1, 1 |\n| 0, 0, 0, 1, 1, 0 |\n| 0, 0, 0, 0, 1, 1 |\n| 0, 0, 0, 0, 0, 1 |\n,[[ ],[ 1 ]],[ 0, 0, 0, 1, 2, 4, 5, 6 ])"
       }
     }
   ]
