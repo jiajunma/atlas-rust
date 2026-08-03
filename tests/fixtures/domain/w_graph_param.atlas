@@ -116,3 +116,4 @@ xf4 := KGB(rff4,0)
 pf4 : Param
 pf4 := param(xf4,[0,0,0,0],[0,0,0,0]/1)
 W_cells(pf4)
+W_graph(pf4)
