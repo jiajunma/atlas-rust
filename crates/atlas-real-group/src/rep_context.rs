@@ -602,7 +602,7 @@ impl<'a> RepContext<'a> {
             })
     }
 
-    pub(crate) fn involution_of(&self, x: KgbId) -> Result<InvolutionId, StructureError> {
+    pub fn involution_of(&self, x: KgbId) -> Result<InvolutionId, StructureError> {
         self.graph
             .involution_of(x)
             .ok_or(StructureError::IndexOutOfRange {
@@ -1007,6 +1007,47 @@ impl<'a> RepContext<'a> {
             }
         }
         ModTwoVector::from_ones(projection.m_real.len(), ones)
+    }
+
+    /// `InvolutionTable::real_unique` (involutions.cpp:334-342): the
+    /// unique representative modulo the cocharacter lattice of a
+    /// rational weight under `1-theta`: project to the `(1-theta)` image
+    /// basis, reduce coordinates modulo `2*denominator`, lift back and
+    /// halve. This is what `StandardReprMod::build/mod_reduce` apply to
+    /// gamma-lambda.
+    pub fn real_unique(
+        &self,
+        involution: InvolutionId,
+        y: &mut RationalWeight,
+    ) -> Result<(), StructureError> {
+        let projection = self.projection(involution)?;
+        let denominator = y.denominator();
+        let doubled_denominator = 2_i64
+            .checked_mul(denominator)
+            .ok_or(StructureError::ArithmeticOverflow)?;
+        let mut v = Vec::new();
+        v.try_reserve_exact(projection.m_real.len()).map_err(|_| {
+            StructureError::AllocationFailed {
+                requested: projection.m_real.len(),
+            }
+        })?;
+        for row in &projection.m_real {
+            let mut total = 0_i64;
+            for (column, &entry) in row.iter().enumerate() {
+                total = total
+                    .checked_add(
+                        entry
+                            .checked_mul(y.numerator().get(column).copied().unwrap_or(0))
+                            .ok_or(StructureError::ArithmeticOverflow)?,
+                    )
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+            }
+            v.push(total.rem_euclid(doubled_denominator));
+        }
+        let lifted = projection.lift(&v)?;
+        let normalized = RationalWeight::new(lifted, doubled_denominator)?;
+        *y = normalized.normalized()?;
+        Ok(())
     }
 
     /// `Rep_context::gamma_lambda` (repr.cpp:220-227): the lambda-shifted
