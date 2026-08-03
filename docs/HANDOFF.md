@@ -572,7 +572,7 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: `824a35a` (main). Working tree clean.
+HEAD at handoff: `87cb510` (main). Working tree clean.
 
 ### Since the 8d9837d handoff (2026-08-02 overnight + user ktype/param layer)
 
@@ -642,6 +642,12 @@ After the 01df48e handoff the overnight sprint continued:
   B3/C3 + kgb_hasse C3/D4 (swaps `3511421`/`3511424`/`3511428`),
   simple_roots/two_rho E6/E7/E8 (swap `3511489`), kl_print B3/C3
   (recaptured `3511504`, swap `3511505`).
+- **E6 column-echelon deep-dive** (5h, unresolved): proved that the
+  incremental port is not equivalent to C++'s one-shot `column_apply`,
+  that E6 involution 187 needs `ops(mindex,mindex)=-1` recorded, and
+  that `col` inversion needs Euclidean row reduction. Left blocked on
+  an A2-vs-E6 contradiction (same C++ code, different sign behavior;
+  full notes in REMAINING_BUILTINS.md).
 - **Batch 1 verification**: is_Cartan_matrix and dual_datum fixtures
   added (byte-identical locally). **Known limit recorded**: E6's
   `RealProjection::build` column-echelon port fails for involution 187
