@@ -139,3 +139,14 @@ xb4 := KGB(rfb4,0)
 pb4 : Param
 pb4 := param(xb4,[0,0,0,0],[0,0,0,0]/1)
 W_cells(pb4)
+rd4 : RootDatum
+rd4 := simply_connected(Lie_type("D4"),true)
+id4 : InnerClass
+id4 := inner_class(rd4,[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
+rfd4 : RealForm
+rfd4 := real_form(id4,2)
+xd4 : KGBElt
+xd4 := KGB(rfd4,0)
+pd4 : Param
+pd4 := param(xd4,[0,0,0,0],[0,0,0,0]/1)
+W_cells(pd4)
