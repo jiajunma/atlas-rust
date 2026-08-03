@@ -18,3 +18,14 @@ x3 := KGB(rf3,0)
 p3 : Param
 p3 := param(x3,[0,0,0],[0,0,0]/1)
 deform(p3)
+rg2 : RootDatum
+rg2 := simply_connected(Lie_type("G2"),true)
+ig2 : InnerClass
+ig2 := inner_class(rg2,[[1,0],[0,1]])
+rfg2 : RealForm
+rfg2 := real_form(ig2,1)
+xg2 : KGBElt
+xg2 := KGB(rfg2,0)
+pg2 : Param
+pg2 := param(xg2,[0,0],[0,0]/1)
+deform(pg2)
