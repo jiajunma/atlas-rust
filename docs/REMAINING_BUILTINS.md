@@ -33,6 +33,35 @@ freeze a fixture, implement, gate, HPC differential, meta upgrade.
 - `Cartan_info(CartanClass)` → `((2,0,0),[ ],(1,4),(A2,empty,empty))` on A2 — the first triple is
   `classify_involution` (already ported, identity A2 → (2,0,0) verified)
 
+## E6 column-echelon debugging notes (2026-08-03, unresolved)
+
+The `RealProjection::build` port of `matreduc::column_echelon` fails its
+`lift_mat * M_real == 1-theta` check for E6's involution 187. The
+investigation produced these verified facts (all in Python reproductions
+and Rust experiments):
+
+1. The original incremental port (`column_operation` mutating `a`
+   directly) is NOT equivalent to C++'s `column_apply(M, ops)` one-shot
+   semantics — the E6 factorization only holds with the one-shot ops.
+2. With one-shot ops, E6 involution 187 needs BOTH the local-pivot
+   flip (`row[mindex] = -row[mindex]`) AND `ops(mindex,mindex) = -1`
+   recorded: `flip+record` -> zero_columns=4 check=True;
+   `flip+no-record` -> zero_columns=2 check=False.
+3. `col` is unimodular but the plain Gauss-Jordan inverse with scaling
+   division breaks on non-±1 pivots; the Euclidean row-reduction inverse
+   (row swaps + subtractions only) is the working variant.
+4. CONTRADICTION: the A2 su(2,1) anchor `K_type(x4,[1,0])` gives
+   lambda_rho [1,0] in the oracle (== the no-record variant), while E6
+   needs the record variant. The same C++ code cannot produce both under
+   the current simulation — the A2 single-active-column flip+swap case
+   must cancel the recorded -1 differently in C++ (matrix.h
+   swapColumns/columnApply interplay), which the simulation misses.
+   Root-cause understanding of that cancellation is the open task.
+
+Suggested next step: instrument the real C++ `involutions.cpp` build for
+A2 x4 (or read `matrix.h`'s PID_Matrix swapColumns/columnApply once more
+for hidden sign flips), then reconcile the A2/E6 split.
+
 ## Known structural limit: E6-and-larger Rep_context
 
 The `RealProjection::build` column-echelon port (matreduc.h:129-161,
