@@ -2437,14 +2437,8 @@ fn find_solution(matrix: &[Vec<i64>], rhs: &[i64]) -> Result<Vec<i64>, String> {
     // Back-substitute: free variables are set to zero.
     let mut solution = vec![0_i64; cols];
     let mut pivot_positions: Vec<usize> = Vec::new();
-    for row in 0..pivot_row {
-        let mut position = None;
-        for column in 0..cols {
-            if aug[row][column] != 0 {
-                position = Some(column);
-                break;
-            }
-        }
+    for aug_row in aug.iter().take(pivot_row) {
+        let position = aug_row.iter().position(|&entry| entry != 0);
         if let Some(column) = position {
             pivot_positions.push(column);
         }
@@ -2454,7 +2448,7 @@ fn find_solution(matrix: &[Vec<i64>], rhs: &[i64]) -> Result<Vec<i64>, String> {
         let mut value = aug[index][cols].clone();
         for (other, &solution_entry) in solution.iter().enumerate().skip(column + 1) {
             if aug[index][other] != 0 {
-                value = value - aug[index][other].clone() * BigRational::from(solution_entry);
+                value -= aug[index][other].clone() * BigRational::from(solution_entry);
             }
         }
         let quotient = value / pivot;
