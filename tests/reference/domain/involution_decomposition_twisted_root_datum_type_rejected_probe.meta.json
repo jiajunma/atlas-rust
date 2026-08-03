@@ -20,5 +20,5 @@
     "twisted_involution rejects a LieType in the RootDatum position and reports the full argument tuple type"
   ],
   "notes": "Twisted-involution root-datum argument-type rejection captured verbatim by HPC job 3502476 against the pinned Atlas oracle. The event stores the normalized type diagnostic while the metadata hashes the full span-bearing stderr. Rust implementation verified by HPC differential job 3502550 (pipeline_swap_diff at commit 5346584ab0a946d1d3024f950358d12db35f6458): stdout, stderr diagnostics, and exit status match the frozen reference events exactly.",
-  "differential_job": "3512571"
+  "differential_job": "3512615"
 }

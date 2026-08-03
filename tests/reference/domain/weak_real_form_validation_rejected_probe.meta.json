@@ -25,5 +25,5 @@
     "an A1 identity involution with torus factor [1]/4 is rejected because its projected square is not central"
   ],
   "notes": "Synthetic-real-form validation order and batch recovery captured verbatim by HPC job 3502476 against the pinned Atlas oracle. The runtime sequence covers matrix shape, involutivity, root preservation, one accepted recovery line, and strong-torus centrality; Rust support remains unimplemented.",
-  "differential_job": "3512571"
+  "differential_job": "3512615"
 }
