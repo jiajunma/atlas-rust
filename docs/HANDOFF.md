@@ -572,7 +572,7 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: `6b54078` (main). Working tree clean.
+HEAD at handoff: `3bdbeaf` (main). Working tree clean.
 
 ### Since the 8d9837d handoff (2026-08-02 overnight + user ktype/param layer)
 
@@ -651,12 +651,14 @@ After the 01df48e handoff the overnight sprint continued:
   fibred inverse-Cayley gap (x=1 unreachable). Rep_context's
   datum/root_system/kgb_status/positive_real_roots_at are public for
   the next attempt.
-- More fixture extensions verified: cartan_info +C3 (swap `3511528`),
+- More fixture extensions verified: cartan_info +C3 (`3511528`),
   orientation_nr +C3 (`3511528`), kl_column +B3/C3 (`3511532`),
   full_deform +B3/C3 (`3511570`), simple_roots +E6/C3/B3 (`3511747`),
-  two_rho +B3/C3/F4 (`3511750`), cartan_info +G2/F4 (`3511753`) — all
-  185 fixtures, 0 real FAIL. root_ladder_bottoms needs the root_perm/
-  link tables (recorded as a known limit, rootdata.cpp:243-313).
+  two_rho +B3/C3/F4 (`3511750`), cartan_info +G2/F4 (`3511753`),
+  w_graph_param +G2 (`3511855`), kl_print +D4 (`3511862`),
+  kl_sum_at_s +D4 (`3511873`) — all 185 fixtures, 0 real FAIL.
+  root_ladder_bottoms needs the root_perm/link tables (recorded as a
+  known limit, rootdata.cpp:243-313).
 - The gamma-lambda-mod-cocharacter-lattice common-block matching
   (`523e647`) was **reverted** (`97770c0`): it over-restricted the
   fibred closure (C3 x=0 has 9 elements; the filter kept 4) because the
