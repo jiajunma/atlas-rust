@@ -33,3 +33,10 @@ id4 := inner_class(rd,[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
 rfd : RealForm
 rfd := real_form(id4,1)
 KGB_Hasse(rfd)
+re : RootDatum
+re := simply_connected(Lie_type("E6"),true)
+ie6 : InnerClass
+ie6 := inner_class(re,[[1,0,0,0,0,0],[0,1,0,0,0,0],[0,0,1,0,0,0],[0,0,0,1,0,0],[0,0,0,0,1,0],[0,0,0,0,0,1]])
+rfe : RealForm
+rfe := real_form(ie6,1)
+KGB_Hasse(rfe)
