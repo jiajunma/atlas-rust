@@ -18,5 +18,5 @@
     "sources/interpreter/atlas-types.w:8542-8570"
   ],
   "notes": "KTypePol arithmetic surface (binary sums/differences with like-term merging, Split-scaled products with zero-divisor filtering, the (Split,KType) term-list add, binary =/!=, truncate_above_height). Reference captured verbatim by HPC job 3506344 against the frozen atlasofliegroups-4d3e9449 oracle; implemented at commit ef109af. Differential pipeline_swap_diff job 3506368 reports PASS with zero regressions; metadata carries rust_status verified_hpc with differential_job 3506368.",
-  "differential_job": "3506368"
+  "differential_job": "3512571"
 }
