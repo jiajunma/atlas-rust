@@ -32,3 +32,15 @@ freeze a fixture, implement, gate, HPC differential, meta upgrade.
 - `root_ladder_bottoms(ra, 0)` → `[-3,-1,0,1]` on A2
 - `Cartan_info(CartanClass)` → `((2,0,0),[ ],(1,4),(A2,empty,empty))` on A2 — the first triple is
   `classify_involution` (already ported, identity A2 → (2,0,0) verified)
+
+## Known structural limit: E6-and-larger Rep_context
+
+The `RealProjection::build` column-echelon port (matreduc.h:129-161,
+the `1-theta` image basis) fails its `lift_mat * M_real == 1-theta`
+check for E6's involution 187 (packet 74): product 7 vs expected -1 at
+entry (0,5). Every smaller rank (A1..A4, B2..B4, C3/C4, G2, F4, D4)
+passes; the E6 class-1 real form's KL/deform surface is therefore
+unavailable (KGB_Hasse still works — it does not build a Rep_context).
+The failure is in the column-echelon port (or its divisor semantics),
+not in the KL machinery. Fixing it unlocks E6 KL_sum_at_s / deform /
+W_cells and is a 1-2 hour debugging task against upstream matreduc.
