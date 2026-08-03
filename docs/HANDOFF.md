@@ -572,7 +572,7 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: `773d4b7` (main). Working tree clean.
+HEAD at handoff: `4a6e2b5` (main). Working tree clean.
 
 ### Since the 8d9837d handoff (2026-08-02 overnight + user ktype/param layer)
 
@@ -642,6 +642,10 @@ After the 01df48e handoff the overnight sprint continued:
   B3/C3 + kgb_hasse C3/D4 (swaps `3511421`/`3511424`/`3511428`),
   simple_roots/two_rho E6/E7/E8 (swap `3511489`), kl_print B3/C3
   (recaptured `3511504`, swap `3511505`).
+- **The rank-4 classical series now verified**: W_cells(C4/B4),
+  raw_KL(C4/B4/D4), kl_column(D4), partial_kl_block(D4),
+  kl_print(F4). The KL/print/deform surface now covers
+  A1..A4/B2..B4/C3..C4/G2/F4/D4 — every series' split forms.
 - **G2 and F4 now swept across the whole KL/deform surface** —
   raw_kl(A1/G2), kl_column(G2), partial_block(G2), deform(G2),
   full_deform(F4). The KL family (raw_kl, kl_column, kl_sum_at_s,
