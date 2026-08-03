@@ -30,3 +30,14 @@ y := KGB(rfb,0)
 q : Param
 q := param(y,[0,0],[0,0]/1)
 default_extended(q,[[1,0],[0,1]])
+ra3 : RootDatum
+ra3 := simply_connected(Lie_type("A3"),true)
+ic3 : InnerClass
+ic3 := inner_class(ra3,[[1,0,0],[0,1,0],[0,0,1]])
+rf3 : RealForm
+rf3 := real_form(ic3,1)
+x0 : KGBElt
+x0 := KGB(rf3,0)
+q0 : Param
+q0 := param(x0,[0,0,0],[0,0,0]/1)
+default_extended(q0,[[0,0,1],[0,1,0],[1,0,0]])
