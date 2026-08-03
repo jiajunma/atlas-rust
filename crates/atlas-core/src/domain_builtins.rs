@@ -8239,6 +8239,70 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 .map(|row| row.iter().map(|&entry| i64::from(entry)).collect())
                 .collect();
             let datum = parameter.context.parent.root_datum.datum.clone();
+            // test_compatible (atlas-types.w:4627-4633): the twist must
+            // preserve the root datum.
+            {
+                let root_system = RootSystem::enumerate(&datum, ROOT_BUDGET)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                let simple_roots = datum.simple_roots().to_vec();
+                let simple_coroots = datum.simple_coroots().to_vec();
+                for (index, simple_root) in simple_roots.iter().enumerate() {
+                    let coordinates: Vec<i64> = simple_root
+                        .as_slice()
+                        .iter()
+                        .enumerate()
+                        .map(|(row, _entry)| {
+                            delta[row]
+                                .iter()
+                                .zip(simple_root.as_slice())
+                                .map(|(&d, &c)| d * i64::from(c))
+                                .sum::<i64>()
+                        })
+                        .collect();
+                    // The image must be a root: find it in the root system.
+                    let position = root_system.roots().iter().position(|root| {
+                        root.as_slice()
+                            .iter()
+                            .map(|&e| i64::from(e))
+                            .collect::<Vec<i64>>()
+                            == coordinates
+                    });
+                    let Some(position) = position else {
+                        return Err(runtime(
+                            span,
+                            format!("Matrix maps simple root {index} to non-root"),
+                        ));
+                    };
+                    // The coroot image must match: delta * coroot == coroot(image).
+                    let coroot_image: Vec<i64> = simple_coroots[index]
+                        .as_slice()
+                        .iter()
+                        .enumerate()
+                        .map(|(row, _entry)| {
+                            delta[row]
+                                .iter()
+                                .zip(simple_coroots[index].as_slice())
+                                .map(|(&d, &c)| d * i64::from(c))
+                                .sum::<i64>()
+                        })
+                        .collect();
+                    let expected = root_system
+                        .coroot(RootId::from_usize(position))
+                        .map(|c| {
+                            c.as_slice()
+                                .iter()
+                                .map(|&e| i64::from(e))
+                                .collect::<Vec<i64>>()
+                        })
+                        .unwrap_or_default();
+                    if coroot_image != expected {
+                        return Err(runtime(
+                            span,
+                            format!("Matrix does not map simple coroot {index} to coroot"),
+                        ));
+                    }
+                }
+            }
             let gamma = parameter.repr.gamma().clone();
             // The twist must fix the infinitesimal character.
             {
