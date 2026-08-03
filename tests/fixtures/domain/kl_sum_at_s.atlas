@@ -133,3 +133,14 @@ xb4 := KGB(rfb4,0)
 pb4 : Param
 pb4 := param(xb4,[0,0,0,0],[0,0,0,0]/1)
 KL_sum_at_s(pb4)
+rc4 : RootDatum
+rc4 := simply_connected(Lie_type("C4"),true)
+ic4 : InnerClass
+ic4 := inner_class(rc4,[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
+rfc4 : RealForm
+rfc4 := real_form(ic4,1)
+xc4 : KGBElt
+xc4 := KGB(rfc4,0)
+pc4 : Param
+pc4 := param(xc4,[0,0,0,0],[0,0,0,0]/1)
+KL_sum_at_s(pc4)
