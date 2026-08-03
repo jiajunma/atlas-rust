@@ -2379,6 +2379,96 @@ fn common_block_members(
     Ok(closed)
 }
 
+/// Integral solution of A x = b (matreduc::find_solution, matreduc.cpp:
+/// 403-437): Smith diagonalisation followed by back-substitution. This
+/// workspace version uses exact rational arithmetic, which is exact for
+/// the small rank-<=8 systems of the ext-block layer.
+fn find_solution(matrix: &[Vec<i64>], rhs: &[i64]) -> Result<Vec<i64>, String> {
+    let rows = matrix.len();
+    let cols = matrix.first().map_or(0, Vec::len);
+    // Augmented [A | b] with malachite rationals.
+    let mut aug: Vec<Vec<BigRational>> = Vec::new();
+    for (row, matrix_row) in matrix.iter().enumerate() {
+        let mut aug_row: Vec<BigRational> = matrix_row
+            .iter()
+            .map(|&entry| BigRational::from(entry))
+            .collect();
+        aug_row.push(BigRational::from(rhs.get(row).copied().unwrap_or(0)));
+        aug.push(aug_row);
+    }
+    let mut pivot_row = 0usize;
+    for column in 0..cols {
+        // Find a row at or below pivot_row with a nonzero entry in column.
+        let mut chosen = None;
+        for row in pivot_row..rows {
+            if aug[row][column] != BigRational::from(0) {
+                chosen = Some(row);
+                break;
+            }
+        }
+        let Some(chosen) = chosen else { continue };
+        aug.swap(pivot_row, chosen);
+        let pivot = aug[pivot_row][column].clone();
+        for row in 0..rows {
+            if row == pivot_row {
+                continue;
+            }
+            let factor = aug[row][column].clone() / pivot.clone();
+            if factor == BigRational::from(0) {
+                continue;
+            }
+            for entry in column..=cols {
+                let reduced =
+                    aug[row][entry].clone() - factor.clone() * aug[pivot_row][entry].clone();
+                aug[row][entry] = reduced;
+            }
+        }
+        pivot_row += 1;
+        if pivot_row == rows {
+            break;
+        }
+    }
+    // Consistency: rows below the pivot block must have zero rhs.
+    for row in pivot_row..rows {
+        if aug[row][cols] != BigRational::from(0) {
+            return Err("unsolvable integral system".into());
+        }
+    }
+    // Back-substitute: free variables are set to zero.
+    let mut solution = vec![0_i64; cols];
+    let mut pivot_positions: Vec<usize> = Vec::new();
+    for row in 0..pivot_row {
+        let mut position = None;
+        for column in 0..cols {
+            if aug[row][column] != BigRational::from(0) {
+                position = Some(column);
+                break;
+            }
+        }
+        if let Some(column) = position {
+            pivot_positions.push(column);
+        }
+    }
+    for (index, &column) in pivot_positions.iter().enumerate() {
+        let pivot = aug[index][column].clone();
+        let mut value = aug[index][cols].clone();
+        for other in (column + 1)..cols {
+            if aug[index][other] != BigRational::from(0) {
+                value = value - aug[index][other].clone() * BigRational::from(solution[other]);
+            }
+        }
+        let quotient = value / pivot;
+        let text = quotient.to_string();
+        if text.contains('/') {
+            return Err("unsolvable integral system".into());
+        }
+        solution[column] = text
+            .parse()
+            .map_err(|_| "solution out of range".to_string())?;
+    }
+    Ok(solution)
+}
+
 /// The transitive closure of a Hasse diagram as a `lesseq` matrix/// The transitive closure of a Hasse diagram as a `lesseq` matrix
 /// (poset.cpp:197-229 style, rows are the closure sets).
 fn bruhat_closure(hasse: &[Vec<usize>]) -> Vec<Vec<bool>> {
@@ -8229,25 +8319,57 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                     .ok_or_else(|| runtime(span, "l not integral"))?;
                 l.push(integer);
             }
-            // Identity twist: tau = t = 0 (the generic twist needs the
-            // integral-solution layer, recorded as a known limit).
-            let identity = delta.iter().enumerate().all(|(row, delta_row)| {
-                delta_row
-                    .iter()
-                    .enumerate()
-                    .all(|(column, &entry)| entry == i64::from(row == column))
-            });
-            let (tau, t): (Vec<i64>, Vec<i64>) = if identity {
-                (
-                    vec![0; datum.semisimple_rank()],
-                    vec![0; datum.semisimple_rank()],
-                )
-            } else {
-                return Err(runtime(
-                    span,
-                    "non-identity twist needs the integral-solution layer",
-                ));
+            // tau = find_solution(1-theta, (delta-1)*lambda_rho) and
+            // t = find_solution(theta^T+1, (delta-1)*l) via the
+            // integral-solution layer (ext_block.cpp:221-232).
+            let theta_id = rc
+                .involution_of(x)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let theta_rows = parameter
+                .context
+                .table
+                .record(theta_id)
+                .ok_or_else(|| runtime(span, "involution record"))?
+                .theta()
+                .weight_matrix();
+            let rank = datum.semisimple_rank();
+            let one_minus_theta: Vec<Vec<i64>> = (0..rank)
+                .map(|row| {
+                    (0..rank)
+                        .map(|column| {
+                            let entry = theta_rows[row].get(column).copied().unwrap_or(0) as i64;
+                            i64::from(row == column) - entry
+                        })
+                        .collect()
+                })
+                .collect();
+            let theta_transpose_plus: Vec<Vec<i64>> = (0..rank)
+                .map(|row| {
+                    (0..rank)
+                        .map(|column| {
+                            let entry = theta_rows[column].get(row).copied().unwrap_or(0) as i64;
+                            i64::from(row == column) + entry
+                        })
+                        .collect()
+                })
+                .collect();
+            let apply_delta_minus_one = |v: &[i64]| -> Vec<i64> {
+                (0..rank)
+                    .map(|row| {
+                        let mut image = -v[row];
+                        for (column, &entry) in delta[row].iter().enumerate() {
+                            image += entry * v.get(column).copied().unwrap_or(0);
+                        }
+                        image
+                    })
+                    .collect()
             };
+            let b_tau = apply_delta_minus_one(&lambda);
+            let tau = find_solution(&one_minus_theta, &b_tau)
+                .map_err(|message| runtime(span, message))?;
+            let b_t = apply_delta_minus_one(&l);
+            let t = find_solution(&theta_transpose_plus, &b_t)
+                .map_err(|message| runtime(span, message))?;
             Ok(Value::Tuple(vec![
                 Value::Vector(Vec32(lambda.iter().map(|&e| e as i32).collect())),
                 Value::Vector(Vec32(tau.iter().map(|&e| e as i32).collect())),
