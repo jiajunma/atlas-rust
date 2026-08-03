@@ -2400,27 +2400,27 @@ fn find_solution(matrix: &[Vec<i64>], rhs: &[i64]) -> Result<Vec<i64>, String> {
     for column in 0..cols {
         // Find a row at or below pivot_row with a nonzero entry in column.
         let mut chosen = None;
-        for row in pivot_row..rows {
-            if aug[row][column] != BigRational::from(0) {
+        for (row, aug_row) in aug.iter().enumerate().skip(pivot_row) {
+            if aug_row[column] != 0 {
                 chosen = Some(row);
                 break;
             }
         }
         let Some(chosen) = chosen else { continue };
         aug.swap(pivot_row, chosen);
-        let pivot = aug[pivot_row][column].clone();
-        for row in 0..rows {
+        let pivot_row_values = aug[pivot_row].clone();
+        let pivot = pivot_row_values[column].clone();
+        for (row, aug_row) in aug.iter_mut().enumerate() {
             if row == pivot_row {
                 continue;
             }
-            let factor = aug[row][column].clone() / pivot.clone();
-            if factor == BigRational::from(0) {
+            let factor = aug_row[column].clone() / pivot.clone();
+            if factor == 0 {
                 continue;
             }
-            for entry in column..=cols {
-                let reduced =
-                    aug[row][entry].clone() - factor.clone() * aug[pivot_row][entry].clone();
-                aug[row][entry] = reduced;
+            for (entry, value) in aug_row.iter_mut().enumerate().skip(column) {
+                let reduced = value.clone() - factor.clone() * pivot_row_values[entry].clone();
+                *value = reduced;
             }
         }
         pivot_row += 1;
@@ -2429,8 +2429,8 @@ fn find_solution(matrix: &[Vec<i64>], rhs: &[i64]) -> Result<Vec<i64>, String> {
         }
     }
     // Consistency: rows below the pivot block must have zero rhs.
-    for row in pivot_row..rows {
-        if aug[row][cols] != BigRational::from(0) {
+    for aug_row in aug.iter().skip(pivot_row) {
+        if aug_row[cols] != 0 {
             return Err("unsolvable integral system".into());
         }
     }
@@ -2440,7 +2440,7 @@ fn find_solution(matrix: &[Vec<i64>], rhs: &[i64]) -> Result<Vec<i64>, String> {
     for row in 0..pivot_row {
         let mut position = None;
         for column in 0..cols {
-            if aug[row][column] != BigRational::from(0) {
+            if aug[row][column] != 0 {
                 position = Some(column);
                 break;
             }
@@ -2452,9 +2452,9 @@ fn find_solution(matrix: &[Vec<i64>], rhs: &[i64]) -> Result<Vec<i64>, String> {
     for (index, &column) in pivot_positions.iter().enumerate() {
         let pivot = aug[index][column].clone();
         let mut value = aug[index][cols].clone();
-        for other in (column + 1)..cols {
-            if aug[index][other] != BigRational::from(0) {
-                value = value - aug[index][other].clone() * BigRational::from(solution[other]);
+        for (other, &solution_entry) in solution.iter().enumerate().skip(column + 1) {
+            if aug[index][other] != 0 {
+                value = value - aug[index][other].clone() * BigRational::from(solution_entry);
             }
         }
         let quotient = value / pivot;
