@@ -1,6 +1,6 @@
 {
   "fixture": "domain/partial_block.atlas",
-  "fixture_sha256": "0d726913a6620f5561c0e7c5b44bc4513765edc674574a30b5fc8e3ab581b9f9",
+  "fixture_sha256": "5b6efb61a3c48d6db4eeeb104e2029bd7f2c0b78ab467c208f82b5791a231889",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_status": "verified_hpc_reference",
