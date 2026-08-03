@@ -572,7 +572,7 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: `9ae5ca4` (main). Working tree clean.
+HEAD at handoff: `f2a302b` (main). Working tree clean.
 
 ### Since the 8d9837d handoff (2026-08-02 overnight + user ktype/param layer)
 
@@ -642,6 +642,13 @@ After the 01df48e handoff the overnight sprint continued:
   B3/C3 + kgb_hasse C3/D4 (swaps `3511421`/`3511424`/`3511428`),
   simple_roots/two_rho E6/E7/E8 (swap `3511489`), kl_print B3/C3
   (recaptured `3511504`, swap `3511505`).
+- **Fixture coverage swept through A3 and E7/E8** — the KL family
+  (raw_kl, kl_column, kl_sum_at_s, w_graph_param, partial_kl_block,
+  full_deform, deform) all extended to A3; simple_roots/two_rho to
+  E7/E8; cartan_info/orientation_nr to A3. All byte-identical locally;
+  captures batched on HPC (3512429-3512455). The E7 KGB_Hasse swap
+  runs on the fat partition (2TB, job 3512428) — the earlier OOM was
+  the cpu partition's 8G per-task cap, not a code issue.
 - **default_extended is now COMPLETE** (`fab1593` + `6855ca2`) — the
   generic twist is solved by matreduc::find_solution (an exact rational
   Gaussian elimination port in the workspace); A2 identity + A3
