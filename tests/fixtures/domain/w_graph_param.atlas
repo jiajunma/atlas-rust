@@ -117,3 +117,14 @@ pf4 : Param
 pf4 := param(xf4,[0,0,0,0],[0,0,0,0]/1)
 W_cells(pf4)
 W_graph(pf4)
+rc4 : RootDatum
+rc4 := simply_connected(Lie_type("C4"),true)
+ic4 : InnerClass
+ic4 := inner_class(rc4,[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
+rfc4 : RealForm
+rfc4 := real_form(ic4,1)
+xc4 : KGBElt
+xc4 := KGB(rfc4,0)
+pc4 : Param
+pc4 := param(xc4,[0,0,0,0],[0,0,0,0]/1)
+W_cells(pc4)
