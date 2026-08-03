@@ -55,3 +55,7 @@ re7 : RootDatum
 re7 := simply_connected(Lie_type("E7"),true)
 simple_roots(re7)
 simple_coroots(re7)
+re8 : RootDatum
+re8 := simply_connected(Lie_type("E8"),true)
+simple_roots(re8)
+simple_coroots(re8)
