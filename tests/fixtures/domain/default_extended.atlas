@@ -41,14 +41,3 @@ x0 := KGB(rf3,0)
 q0 : Param
 q0 := param(x0,[0,0,0],[0,0,0]/1)
 default_extended(q0,[[0,0,1],[0,1,0],[1,0,0]])
-ra4 : RootDatum
-ra4 := simply_connected(Lie_type("A4"),true)
-ic4 : InnerClass
-ic4 := inner_class(ra4,[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
-rf4 : RealForm
-rf4 := real_form(ic4,1)
-x4 : KGBElt
-x4 := KGB(rf4,0)
-q4 : Param
-q4 := param(x4,[0,0,0,0],[0,0,0,0]/1)
-default_extended(q4,[[0,0,1,0],[0,0,0,1],[1,0,0,0],[0,1,0,0]])
