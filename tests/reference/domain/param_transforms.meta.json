@@ -18,5 +18,5 @@
     "sources/interpreter/atlas-types.w:7472-7502"
   ],
   "notes": "Param transforms surface (is_standard/is_dominant/is_semifinal/is_final predicates, dominant/normal transforms, equivalence), captured verbatim by HPC job 3506620 against the frozen atlasofliegroups-4d3e9449 oracle. Implemented at the param_transforms commit (StandardRepr::made_dominant/normalised/equivalent). Differential pipeline_swap_diff job 3506622 reports PASS with zero regressions; metadata carries rust_status verified_hpc with differential_job 3506622.",
-  "differential_job": "3512615"
+  "differential_job": "3513333"
 }
