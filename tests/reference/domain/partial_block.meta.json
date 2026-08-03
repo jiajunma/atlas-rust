@@ -1,6 +1,6 @@
 {
   "fixture": "domain/partial_block.atlas",
-  "fixture_sha256": "035ee3289c1ac51a3ebdb4d3af1b609df3892e0db49122c401edc69b2064e71d",
+  "fixture_sha256": "0d726913a6620f5561c0e7c5b44bc4513765edc674574a30b5fc8e3ab581b9f9",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_status": "verified_hpc_reference",
@@ -13,8 +13,8 @@
   "notes": "Batch 6: partial_block(Param) — the parameters of the partial block (KL descent closure of the start element restricted to singular-coroot survivors), as a [Param] list.",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
-  "reference_job": "3511399",
-  "source_archive_sha256": "99ef2db4d7ade030a9dd525ef5267743b550ae9cdb2fdcabbaf81e06ac744ce0",
-  "capture_artifacts_sha256": "25353a02845204daf439066e9811a321d1031be43ada6ee80dda0acad73ce13b",
+  "reference_job": "3512548",
+  "source_archive_sha256": "aa478b56eac817b7c94d5e138ba694d36ba895f3b3524127377ff71abe9120c5",
+  "capture_artifacts_sha256": "7f6367c8ef5926d83979863fdc37d211bbfef9d2a0dcbdf5dc2898240186b087",
   "differential_job": "3511402"
 }
