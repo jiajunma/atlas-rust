@@ -46,3 +46,11 @@ re6 : RootDatum
 re6 := simply_connected(Lie_type("E6"),true)
 two_rho(re6)
 two_rho_check(re6)
+re7 : RootDatum
+re7 := simply_connected(Lie_type("E7"),true)
+two_rho(re7)
+two_rho_check(re7)
+re8 : RootDatum
+re8 := simply_connected(Lie_type("E8"),true)
+two_rho(re8)
+two_rho_check(re8)

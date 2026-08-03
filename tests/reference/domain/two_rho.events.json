@@ -302,6 +302,56 @@
         "type": "display",
         "display": "[ 16, 22, 30, 42, 30, 16 ]"
       }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 're7': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'E7'"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "[ 2, 2, 2, 2, 2, 2, 2 ]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "[ 34, 49, 66, 96, 75, 52, 27 ]"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 're8': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected adjoint root datum of Lie type 'E8'"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "[ 2, 2, 2, 2, 2, 2, 2, 2 ]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "[  92, 136, 182, 270, 220, 168, 114,  58 ]"
+      }
     }
   ]
 }
