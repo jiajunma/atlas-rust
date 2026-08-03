@@ -43,3 +43,11 @@ rb : RootDatum
 rb := simply_connected(Lie_type("B3"),true)
 simple_roots(rb)
 simple_coroots(rb)
+ra1 : RootDatum
+ra1 := simply_connected(Lie_type("A1"),true)
+simple_roots(ra1)
+simple_coroots(ra1)
+ra4 : RootDatum
+ra4 := simply_connected(Lie_type("A4"),true)
+simple_roots(ra4)
+simple_coroots(ra4)
