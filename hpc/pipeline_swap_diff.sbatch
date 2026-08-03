@@ -2,14 +2,14 @@
 # Compare the Rust typed pipeline with checked-in, HPC-frozen Atlas events.
 # Uncovered upstream overloads remain explicit pending coverage in the report.
 #SBATCH --job-name=atlas-pipeline-swap
-#SBATCH --partition=${PARTITION:-cpu}
+#SBATCH --partition=cpu
 #SBATCH --account=yushilingroup
 #SBATCH --qos=normal
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
-#SBATCH --mem=${SWAP_MEM:-8G}
-#SBATCH --time=${SWAP_TIME:-00:20:00}
+#SBATCH --mem=8G
+#SBATCH --time=00:20:00
 #SBATCH --output=atlas-pipeline-swap-%j.out
 
 set -euo pipefail
