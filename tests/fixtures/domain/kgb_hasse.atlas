@@ -40,10 +40,3 @@ ie6 := inner_class(re,[[1,0,0,0,0,0],[0,1,0,0,0,0],[0,0,1,0,0,0],[0,0,0,1,0,0],[
 rfe : RealForm
 rfe := real_form(ie6,1)
 KGB_Hasse(rfe)
-re7 : RootDatum
-re7 := simply_connected(Lie_type("E7"),true)
-ie7 : InnerClass
-ie7 := inner_class(re7,[[1,0,0,0,0,0,0],[0,1,0,0,0,0,0],[0,0,1,0,0,0,0],[0,0,0,1,0,0,0],[0,0,0,0,1,0,0],[0,0,0,0,0,1,0],[0,0,0,0,0,0,1]])
-rfe7 : RealForm
-rfe7 := real_form(ie7,1)
-KGB_Hasse(rfe7)
