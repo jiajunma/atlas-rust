@@ -572,7 +572,7 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: `87cb510` (main). Working tree clean.
+HEAD at handoff: `80f571d` (main). Working tree clean.
 
 ### Since the 8d9837d handoff (2026-08-02 overnight + user ktype/param layer)
 
@@ -642,6 +642,9 @@ After the 01df48e handoff the overnight sprint continued:
   B3/C3 + kgb_hasse C3/D4 (swaps `3511421`/`3511424`/`3511428`),
   simple_roots/two_rho E6/E7/E8 (swap `3511489`), kl_print B3/C3
   (recaptured `3511504`, swap `3511505`).
+- **More rank-4/exceptional coverage**: kl_print(G2),
+  partial_block(F4), partial_kl_block(F4) — all byte-identical locally,
+  captures submitted (3513227/3513240/3513252).
 - **E6 column-echelon deep-dive** (5h, unresolved): proved that the
   incremental port is not equivalent to C++'s one-shot `column_apply`,
   that E6 involution 187 needs `ops(mindex,mindex)=-1` recorded, and
