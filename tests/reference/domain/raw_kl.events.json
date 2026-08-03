@@ -870,6 +870,68 @@
         "type": "display",
         "display": "(\n| 1, 1, 1, 0, 0, 0 |\n| 0, 1, 1, 1, 1, 0 |\n| 0, 0, 1, 0, 1, 1 |\n| 0, 0, 0, 1, 1, 0 |\n| 0, 0, 0, 0, 1, 1 |\n| 0, 0, 0, 0, 0, 1 |\n,[[ ],[ 1 ]],[ 0, 0, 0, 1, 2, 4, 5, 6 ])"
       }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rc4': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'C4'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ic4': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type C4, with involution defining\ninner class of type 'c', with 4 real forms and 5 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rfc4': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "connected real group with Lie algebra 'sp(3,1)'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'dfc4': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "compact connected real group with Lie algebra 'so(9)'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'blkc4': Block\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Block of 0 elements"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "(The 0x0 matrix,[[ ],[ 1 ]],[ 0, 0 ])"
+      }
     }
   ]
 }
