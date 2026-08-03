@@ -2438,7 +2438,7 @@ fn find_solution(matrix: &[Vec<i64>], rhs: &[i64]) -> Result<Vec<i64>, String> {
     let mut solution = vec![0_i64; cols];
     let mut pivot_positions: Vec<usize> = Vec::new();
     for aug_row in aug.iter().take(pivot_row) {
-        let position = aug_row.iter().position(|&entry| entry != 0);
+        let position = aug_row.iter().position(|entry| *entry != 0);
         if let Some(column) = position {
             pivot_positions.push(column);
         }
