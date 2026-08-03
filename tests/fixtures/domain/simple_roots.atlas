@@ -51,3 +51,7 @@ ra4 : RootDatum
 ra4 := simply_connected(Lie_type("A4"),true)
 simple_roots(ra4)
 simple_coroots(ra4)
+re7 : RootDatum
+re7 := simply_connected(Lie_type("E7"),true)
+simple_roots(re7)
+simple_coroots(re7)
