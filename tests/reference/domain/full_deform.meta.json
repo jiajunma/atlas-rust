@@ -1,6 +1,6 @@
 {
   "fixture": "domain/full_deform.atlas",
-  "fixture_sha256": "472a9ff1b95aab93096ef92c2e7c8a8f3c28871c9c828fd4839dbf03fe3ea4f5",
+  "fixture_sha256": "137fa76a56b6d8f8a560f6d189e61429f4404fc722e3165bdfe6cc6e1fdf64a9",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_status": "verified_hpc_reference",
