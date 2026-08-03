@@ -1,0 +1,15 @@
+ra : RootDatum
+ra := simply_connected(Lie_type("A2"),true)
+ic : InnerClass
+ic := inner_class(ra,[[1,0],[0,1]])
+dual_datum(ic)
+rb : RootDatum
+rb := simply_connected(Lie_type("B2"),true)
+ib : InnerClass
+ib := inner_class(rb,[[1,0],[0,1]])
+dual_datum(ib)
+rc : RootDatum
+rc := simply_connected(Lie_type("C3"),true)
+icc : InnerClass
+icc := inner_class(rc,[[1,0,0],[0,1,0],[0,0,1]])
+dual_datum(icc)
