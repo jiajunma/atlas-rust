@@ -48,7 +48,7 @@ const RANK_MAX: usize = 32;
 const INTEGER_BUDGET: IntegerLatticeBudget =
     IntegerLatticeBudget::new(64, 1_000_000, 1_000_000, 256);
 /// Covers |W| up to E6 (51,840); larger groups need budget control first.
-const WEYL_BUDGET: usize = 200_000;
+const WEYL_BUDGET: usize = 4_000_000; // E7's Weyl group has 2,903,040 elements
 const FIBER_BUDGET: usize = 1 << 20;
 const ROOT_BUDGET: usize = 4_096;
 
