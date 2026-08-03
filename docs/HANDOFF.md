@@ -572,7 +572,7 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: `f2a302b` (main). Working tree clean.
+HEAD at handoff: `6de682c` (main). Working tree clean.
 
 ### Since the 8d9837d handoff (2026-08-02 overnight + user ktype/param layer)
 
@@ -642,6 +642,10 @@ After the 01df48e handoff the overnight sprint continued:
   B3/C3 + kgb_hasse C3/D4 (swaps `3511421`/`3511424`/`3511428`),
   simple_roots/two_rho E6/E7/E8 (swap `3511489`), kl_print B3/C3
   (recaptured `3511504`, swap `3511505`).
+- **More coverage**: W_cells(A3), raw_KL(B4), default_extended
+  twist-validity checks (test_compatible, `91b3762`). The A4
+  invalid-twist rejection is implemented but not frozen (the local
+  capture has no stderr diagnostics).
 - **Fixture coverage swept through A3 and E7/E8** — the KL family
   (raw_kl, kl_column, kl_sum_at_s, w_graph_param, partial_kl_block,
   full_deform, deform) all extended to A3; simple_roots/two_rho to
