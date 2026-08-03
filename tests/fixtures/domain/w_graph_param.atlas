@@ -70,3 +70,15 @@ q3 : Param
 q3 := param(y3,[0,0,0],[0,0,0]/1)
 W_graph(q3)
 W_cells(q3)
+rg : RootDatum
+rg := simply_connected(Lie_type("G2"),true)
+ig2 : InnerClass
+ig2 := inner_class(rg,[[1,0],[0,1]])
+rfg : RealForm
+rfg := real_form(ig2,1)
+zg : KGBElt
+zg := KGB(rfg,0)
+pg : Param
+pg := param(zg,[0,0],[0,0]/1)
+W_graph(pg)
+W_cells(pg)
