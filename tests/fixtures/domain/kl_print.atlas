@@ -100,3 +100,15 @@ df4 := dual_real_form(if4,0)
 blkf4 : Block
 blkf4 := block(rff4,df4)
 print_KL_basis(blkf4)
+rg2 : RootDatum
+rg2 := simply_connected(Lie_type("G2"),true)
+ig2 : InnerClass
+ig2 := inner_class(rg2,[[1,0],[0,1]])
+rfg2 : RealForm
+rfg2 := real_form(ig2,1)
+dfg2 : RealForm
+dfg2 := dual_real_form(ig2,0)
+blkg2 : Block
+blkg2 := block(rfg2,dfg2)
+print_KL_basis(blkg2)
+print_KL_list(blkg2)
