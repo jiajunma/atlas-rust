@@ -89,3 +89,14 @@ blkd : Block
 blkd := block(rfd,dfd)
 print_KL_basis(blkd)
 print_KL_list(blkd)
+rf4 : RootDatum
+rf4 := simply_connected(Lie_type("F4"),true)
+if4 : InnerClass
+if4 := inner_class(rf4,[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
+rff4 : RealForm
+rff4 := real_form(if4,1)
+df4 : RealForm
+df4 := dual_real_form(if4,0)
+blkf4 : Block
+blkf4 := block(rff4,df4)
+print_KL_basis(blkf4)
