@@ -333,7 +333,6 @@ python3 hpc/pipeline_swap_diff.py \
   --dirty-tree "$dirty_tree" \
   --detected-commit "$detected_commit" \
   --detected-dirty-tree "$detected_dirty_tree" \
-  --timeout 600 \
   --job-id "$job_id" \
   --source-snapshot-sha256 "$source_snapshot_sha256" \
   --expected-reference-revision "${ATLAS_REFERENCE_REVISION:-4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9}" \
