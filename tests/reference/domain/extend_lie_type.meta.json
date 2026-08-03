@@ -1,0 +1,13 @@
+{
+  "fixture": "domain/extend_lie_type.atlas",
+  "fixture_sha256": "0e473edf7a2c21096dd0ed56fd54858012e4244bb2eb86e2c7113418766ad176",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "implemented_local",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:280-289"
+  ],
+  "rust_status": "implemented_local",
+  "oracle_exit_status": 0,
+  "notes": "Batch 6: extend(LieType, string, int) — append a simple factor to a Lie type (add_simple_factor)."
+}

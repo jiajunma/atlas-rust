@@ -70,6 +70,10 @@ impl LieTypeValue {
             .filter(|&(letter, _)| letter != 'T')
     }
 
+    fn add_simple_factor(&mut self, letter: char, rank: usize) {
+        self.factors.push((letter, rank));
+    }
+
     fn render(&self) -> String {
         if self.factors.is_empty() {
             return String::new();
@@ -5781,6 +5785,19 @@ fn print_strong_real(
 /// Dispatch one named application. Unknown names are Name errors.
 pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<Value, Diagnostic> {
     match name {
+        // extend (atlas-types.w:280-289): append a simple factor to a
+        // Lie type.
+        "extend" => {
+            arity(name, arguments, 3, span)?;
+            let mut lie_type = as_lie_type(&arguments[0], span)?;
+            let Value::String(type_string) = &arguments[1] else {
+                return Err(type_error(span, "extend requires a string"));
+            };
+            let rank = as_usize(&arguments[2], span)?;
+            let letter = type_string.chars().next().unwrap_or('T');
+            lie_type.add_simple_factor(letter, rank);
+            Ok(Value::Domain(DomainValue::LieType(lie_type)))
+        }
         "Lie_type" => {
             arity(name, arguments, 1, span)?;
             let lie_type = match &arguments[0] {

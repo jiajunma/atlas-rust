@@ -1,0 +1,35 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/extend_lie_type",
+  "status": "local_oracle_reference",
+  "events": [
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Lie type 'A2.B2'"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Lie type 'A1.T1'"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Lie type 'G2.A1'"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Lie type 'D4.A3'"
+      }
+    }
+  ]
+}

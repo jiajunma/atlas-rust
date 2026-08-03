@@ -1,0 +1,4 @@
+extend(Lie_type("A2"),"B2",2)
+extend(Lie_type("A1"),"T",1)
+extend(Lie_type("G2"),"A1",1)
+extend(Lie_type("D4"),"A3",3)

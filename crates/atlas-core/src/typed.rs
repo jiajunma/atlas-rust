@@ -4343,6 +4343,17 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::LieType),
                 0,
             ),
+            // extend (atlas-types.w:280-289): append a simple factor.
+            domain_builtin_skip(
+                "extend",
+                Type::tuple(vec![
+                    primitive_type(Prim::LieType),
+                    string_type(),
+                    primitive_type(Prim::Int),
+                ]),
+                primitive_type(Prim::LieType),
+                0,
+            ),
             domain_builtin_skip(
                 "prefers_coroots",
                 primitive_type(Prim::RootDatum),
