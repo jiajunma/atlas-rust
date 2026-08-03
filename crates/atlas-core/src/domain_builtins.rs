@@ -8124,6 +8124,120 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 span,
             )?))
         }
+        // default_extended (atlas-types.w:7313-7337, ext_block.cpp:2352-
+        // 2420): the components of a default extended parameter for a
+        // delta-twisted group. The wrapper returns the 4-tuple
+        // (lambda, tau, l, t); with the identity twist tau and t vanish.
+        "default_extended" => {
+            arity(name, arguments, 2, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(span, "default_extended requires a Param"));
+            };
+            let delta: Vec<Vec<i64>> = as_matrix(&arguments[1], span)?
+                .iter()
+                .map(|row| row.iter().map(|&entry| i64::from(entry)).collect())
+                .collect();
+            let datum = parameter.context.parent.root_datum.datum.clone();
+            let gamma = parameter.repr.gamma().clone();
+            // The twist must fix the infinitesimal character.
+            {
+                let numerator = gamma.numerator();
+                let mut image = vec![0_i64; delta.len()];
+                for (row, delta_row) in delta.iter().enumerate() {
+                    for (column, &entry) in delta_row.iter().enumerate() {
+                        image[row] += entry * numerator.get(column).copied().unwrap_or(0);
+                    }
+                }
+                for (index, &entry) in numerator.iter().enumerate() {
+                    if image.get(index).copied().unwrap_or(0) != entry {
+                        return Err(runtime(
+                            span,
+                            "Involution does not fix infinitesimal character",
+                        ));
+                    }
+                }
+            }
+            let rc = rep_context(&parameter.context);
+            let x = parameter.repr.x();
+            // srm: gamma-lambda unique modulo X* (StandardReprMod::mod_reduce).
+            let bits = parameter
+                .context
+                .graph
+                .element(x)
+                .ok_or_else(|| runtime(span, "KGB element"))?;
+            let y_bits = rc
+                .torus_part(x, bits.torus_bits())
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let mut gamma_lambda = rc
+                .gamma_lambda(x, &y_bits, &gamma)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let involution = rc
+                .involution_of(x)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            rc.real_unique(involution, &mut gamma_lambda)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            // lambda = (gamma - gamma_lambda) in integer coordinates.
+            let d1 = gamma.denominator();
+            let d2 = gamma_lambda.denominator();
+            let mut lambda = Vec::new();
+            for index in 0..datum.semisimple_rank() {
+                let n1 = gamma.numerator().get(index).copied().unwrap_or(0);
+                let n2 = gamma_lambda.numerator().get(index).copied().unwrap_or(0);
+                let common = d1 * d2;
+                let diff = (n1 * d2 - n2 * d1) / common;
+                lambda.push(diff);
+            }
+            // l = base_grading_vector - torus_factor(x) (ell, ext_block.cpp:215).
+            let cocharacter = parameter.context.graph.cocharacter().to_rationals();
+            let factor = parameter
+                .context
+                .graph
+                .torus_factor(x, &parameter.context.table)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let factor_rat = factor.to_rationals();
+            let mut l = Vec::new();
+            for index in 0..datum.semisimple_rank() {
+                let c = cocharacter.get(index).cloned().unwrap_or_default();
+                let f = factor_rat.get(index).cloned().unwrap_or_default();
+                let diff = c - f;
+                let text = diff.to_string();
+                let integer: i64 = text
+                    .split_once('/')
+                    .and_then(|(n, d)| {
+                        let n: i64 = n.parse().ok()?;
+                        let d: i64 = d.parse().ok()?;
+                        (d == 1).then_some(n)
+                    })
+                    .or_else(|| text.parse().ok())
+                    .ok_or_else(|| runtime(span, "l not integral"))?;
+                l.push(integer);
+            }
+            // Identity twist: tau = t = 0 (the generic twist needs the
+            // integral-solution layer, recorded as a known limit).
+            let identity = delta.iter().enumerate().all(|(row, delta_row)| {
+                delta_row
+                    .iter()
+                    .enumerate()
+                    .all(|(column, &entry)| entry == i64::from(row == column))
+            });
+            let (tau, t): (Vec<i64>, Vec<i64>) = if identity {
+                (
+                    vec![0; datum.semisimple_rank()],
+                    vec![0; datum.semisimple_rank()],
+                )
+            } else {
+                return Err(runtime(
+                    span,
+                    "non-identity twist needs the integral-solution layer",
+                ));
+            };
+            Ok(Value::Tuple(vec![
+                Value::Vector(Vec32(lambda.iter().map(|&e| e as i32).collect())),
+                Value::Vector(Vec32(tau.iter().map(|&e| e as i32).collect())),
+                Value::Vector(Vec32(l.iter().map(|&e| e as i32).collect())),
+                Value::Vector(Vec32(t.iter().map(|&e| e as i32).collect())),
+            ]))
+        }
         // base_grading_vector_wrapper (atlas-types.w:3689): the form's
         // elected g_rho_check, already frozen into the KGB graph.
         "base_grading_vector" => {

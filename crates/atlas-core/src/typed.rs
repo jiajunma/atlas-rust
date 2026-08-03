@@ -4497,6 +4497,19 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 int_type(),
                 0,
             ),
+            // default_extended (atlas-types.w:7313-7337): the components
+            // of a default extended parameter.
+            domain_builtin_skip(
+                "default_extended",
+                Type::tuple(vec![primitive_type(Prim::Param), primitive_type(Prim::Mat)]),
+                Type::tuple(vec![
+                    primitive_type(Prim::Vec),
+                    primitive_type(Prim::Vec),
+                    primitive_type(Prim::Vec),
+                    primitive_type(Prim::Vec),
+                ]),
+                0,
+            ),
             // strong_components (atlas-types.w:7525-7527): the graph is a
             // row of rows of ints; the result is a pair of such rows.
             domain_builtin_skip(
