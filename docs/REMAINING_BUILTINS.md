@@ -33,7 +33,24 @@ freeze a fixture, implement, gate, HPC differential, meta upgrade.
 - `Cartan_info(CartanClass)` → `((2,0,0),[ ],(1,4),(A2,empty,empty))` on A2 — the first triple is
   `classify_involution` (already ported, identity A2 → (2,0,0) verified)
 
-## E6 column-echelon debugging notes (2026-08-03, unresolved)
+## E6/D5 column-echelon — RESOLVED (2026-08-04)
+
+The `RealProjection::build` port is fixed. Root cause: the incremental
+column-echelon port is not equivalent to C++'s one-shot `column_apply`.
+The fix (commit 248aeb9) combines:
+1. one-shot ops-matrix sweeps with `ops(mindex,mindex)=-1` recorded
+   (matreduc.h:70-122 + column_apply);
+2. Euclidean row-reduction inverse of the unimodular `col` matrix
+   (no scaling division);
+3. truncating division in `lambda_unique` (match `arithmetic::divide`:
+   `divide(-1,2)==0`, which is what the A2 su(2,1) anchors require —
+   the earlier A2/E6 "contradiction" was a div_euclid-vs-trunc artifact).
+E6 involution 187 and the D5 so*(10) real form now factor
+`lift_mat * M_real == 1-theta`; E6/D5 KL_column, deform, raw_KL,
+KL_sum_at_s all byte-identical vs the oracle. E7 kgb_hasse verified on
+HPC fat (swap 3515688: 506s, 12.4G peak RSS).
+
+## E6 column-echelon debugging notes (2026-08-03, resolved upstream)
 
 The `RealProjection::build` port of `matreduc::column_echelon` fails its
 `lift_mat * M_real == 1-theta` check for E6's involution 187. The
