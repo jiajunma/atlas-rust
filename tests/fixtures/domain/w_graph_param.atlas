@@ -186,3 +186,15 @@ pb4 : Param
 pb4 := param(xb4,[0,0,0,0],[0,0,0,0]/1)
 W_graph(pb4)
 W_cells(pb4)
+rc3 : RootDatum
+rc3 := simply_connected(Lie_type("C3"),true)
+ic3 : InnerClass
+ic3 := inner_class(rc3,[[1,0,0],[0,1,0],[0,0,1]])
+rfc3 : RealForm
+rfc3 := real_form(ic3,1)
+xc3 : KGBElt
+xc3 := KGB(rfc3,0)
+pc3 : Param
+pc3 := param(xc3,[0,0,0],[0,0,0]/1)
+W_graph(pc3)
+W_cells(pc3)
