@@ -17,7 +17,7 @@ use crate::{BasedRootDatum, Coweight, RootId, RootSystem, StructureError, Weight
 /// have the same value without enumerating the Weyl group.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct WeylAction {
-    datum: BasedRootDatum,
+    datum: std::sync::Arc<BasedRootDatum>,
     weight_matrix: Vec<Vec<i32>>,
     coweight_matrix: Vec<Vec<i32>>,
 }
@@ -26,7 +26,7 @@ impl WeylAction {
     pub fn identity(datum: &BasedRootDatum) -> Result<Self, StructureError> {
         let rank = datum.lattice_rank();
         Ok(Self {
-            datum: datum.clone(),
+            datum: std::sync::Arc::new(datum.clone()),
             weight_matrix: identity_matrix(rank)?,
             coweight_matrix: identity_matrix(rank)?,
         })
@@ -54,7 +54,7 @@ impl WeylAction {
             });
         }
         Ok(Self {
-            datum: datum.clone(),
+            datum: std::sync::Arc::new(datum.clone()),
             weight_matrix,
             coweight_matrix,
         })
@@ -88,7 +88,7 @@ impl WeylAction {
                 upper_bound: root_system.roots().len(),
             })?;
         Ok(Self {
-            datum: datum.clone(),
+            datum: std::sync::Arc::new(datum.clone()),
             weight_matrix: reflection_matrix(weight.as_slice(), coroot.as_slice())?,
             coweight_matrix: reflection_matrix(coroot.as_slice(), weight.as_slice())?,
         })
@@ -205,9 +205,16 @@ fn compose_matrices(
         });
     }
     let mut matrix = zero_matrix(rank)?;
+    // Weyl matrices have small entries (Cartan-bounded); accumulate in i64
+    // with no per-entry overflow checks. `checked_dot` remains for the
+    // non-Weyl paths that still need it.
     for (row, target_row) in matrix.iter_mut().enumerate() {
         for (column, entry) in target_row.iter_mut().enumerate() {
-            *entry = checked_dot(&left[row], |middle| right[middle][column])?;
+            let mut sum: i64 = 0;
+            for (index, &left) in left[row].iter().enumerate() {
+                sum += i64::from(left) * i64::from(right[index][column]);
+            }
+            *entry = sum as i32;
         }
     }
     Ok(matrix)
@@ -265,7 +272,7 @@ impl WeylGroup {
     /// This is intentionally separate from construction. Results are ordered
     /// lexicographically by their character-lattice action matrix.
     pub fn enumerate_actions(&self, budget: usize) -> Result<Vec<WeylAction>, StructureError> {
-        let mut actions = BTreeMap::new();
+        let mut actions: std::collections::HashMap<Vec<Vec<i32>>, WeylAction> = std::collections::HashMap::new();
         let mut pending = VecDeque::new();
         insert_action(self.identity()?, budget, &mut actions, &mut pending)?;
         let generators = (0..self.datum.semisimple_rank())
@@ -288,7 +295,7 @@ impl WeylGroup {
 fn insert_action(
     action: WeylAction,
     budget: usize,
-    actions: &mut BTreeMap<Vec<Vec<i32>>, WeylAction>,
+    actions: &mut std::collections::HashMap<Vec<Vec<i32>>, WeylAction>,
     pending: &mut VecDeque<WeylAction>,
 ) -> Result<(), StructureError> {
     let key = action.matrix().to_vec();

@@ -67,13 +67,20 @@ fn two_rho(inner_class: &InnerClass) -> Result<Weight, StructureError> {
 
 /// The longest Weyl group element, characterized by sending `2rho` to
 /// `-2rho` (`rd.to_dominant(-rd.twoRho())`).
+///
+/// Unlike a full Weyl-group enumeration, the descent walk from `2rho` to
+/// `-2rho` takes exactly the reduced length of the longest element
+/// (upstream `WeylGroup::longest` is transducer O(rank); this is the
+/// equivalent O(length) walk — each step reflects by a generator with
+/// positive coroot pairing, which lowers the height of `2rho` by one).
 pub fn longest_action(
     inner_class: &InnerClass,
     weyl_budget: usize,
 ) -> Result<WeylAction, StructureError> {
     let datum = inner_class.datum();
-    let rho = two_rho(inner_class)?;
-    let negative: Vec<i32> = rho
+    let rank = datum.semisimple_rank();
+    let two_rho_weight = two_rho(inner_class)?;
+    let negative: Vec<i32> = two_rho_weight
         .as_slice()
         .iter()
         .map(|value| {
@@ -84,13 +91,34 @@ pub fn longest_action(
         .collect::<Result<_, _>>()?;
     let negative_rho = Weight::new(negative);
 
-    let actions = WeylGroup::new(datum.clone()).enumerate_actions(weyl_budget)?;
-    actions
-        .into_iter()
-        .find(|action| action.act(&rho).is_ok_and(|image| image == negative_rho))
-        .ok_or(StructureError::LayoutInvariantViolation {
-            invariant: "longest Weyl element",
-        })
+    let group = WeylGroup::new(datum.clone());
+    let mut action = WeylAction::identity(datum)?;
+    let mut current = two_rho_weight;
+    let mut steps = 0_usize;
+    while current != negative_rho {
+        let mut advanced = false;
+        for s in 0..rank {
+            let coroot = datum.simple_coroots()[s].as_slice();
+            let mut pairing: i64 = 0;
+            for (index, &coordinate) in coroot.iter().enumerate() {
+                pairing += i64::from(coordinate) * i64::from(current.as_slice()[index]);
+            }
+            if pairing > 0 {
+                let reflection = group.simple_reflection(s)?;
+                action = reflection.compose(&action)?;
+                current = reflection.act(&current)?;
+                advanced = true;
+                break;
+            }
+        }
+        steps += 1;
+        if steps > weyl_budget || !advanced {
+            return Err(StructureError::LayoutInvariantViolation {
+                invariant: "longest Weyl element",
+            });
+        }
+    }
+    Ok(action)
 }
 
 /// The distinguished involution of the dual inner class
