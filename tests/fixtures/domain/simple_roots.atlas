@@ -62,3 +62,6 @@ simple_coroots(re8)
 rd5 : RootDatum
 rd5 := simply_connected(Lie_type("D5"),true)
 simple_roots(rd5)
+re6 : RootDatum
+re6 := simply_connected(Lie_type("E6"),true)
+simple_roots(re6)

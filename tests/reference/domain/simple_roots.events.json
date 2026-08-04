@@ -1,7 +1,7 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "domain/simple_roots",
-  "status": "verified_hpc_reference",
+  "status": "local_oracle_reference",
   "events": [
     {
       "kind": "ReportLine",
@@ -401,6 +401,24 @@
       "value": {
         "type": "display",
         "display": "\n|  2, -1,  0,  0,  0 |\n| -1,  2, -1,  0,  0 |\n|  0, -1,  2, -1, -1 |\n|  0,  0, -1,  2,  0 |\n|  0,  0, -1,  0,  2 |\n"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 're6': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'E6'"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "\n|  2,  0, -1,  0,  0,  0 |\n|  0,  2,  0, -1,  0,  0 |\n| -1,  0,  2, -1,  0,  0 |\n|  0, -1, -1,  2, -1,  0 |\n|  0,  0,  0, -1,  2, -1 |\n|  0,  0,  0,  0, -1,  2 |\n"
       }
     }
   ]

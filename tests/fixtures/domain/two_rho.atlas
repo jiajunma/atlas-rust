@@ -62,3 +62,7 @@ rd5 : RootDatum
 rd5 := simply_connected(Lie_type("D5"),true)
 two_rho(rd5)
 two_rho_check(rd5)
+re6 : RootDatum
+re6 := simply_connected(Lie_type("E6"),true)
+two_rho(re6)
+two_rho_check(re6)
