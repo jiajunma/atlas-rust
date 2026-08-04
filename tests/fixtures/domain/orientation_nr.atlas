@@ -53,3 +53,14 @@ x3 := KGB(rf3,0)
 p3 : Param
 p3 := param(x3,[0,0,0],[0,0,0]/1)
 orientation_nr(p3)
+ra4 : RootDatum
+ra4 := simply_connected(Lie_type("A4"),true)
+ia4 : InnerClass
+ia4 := inner_class(ra4,[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
+rfa4 : RealForm
+rfa4 := real_form(ia4,1)
+xa4 : KGBElt
+xa4 := KGB(rfa4,0)
+pa4 : Param
+pa4 := param(xa4,[0,0,0,0],[0,0,0,0]/1)
+orientation_nr(pa4)
