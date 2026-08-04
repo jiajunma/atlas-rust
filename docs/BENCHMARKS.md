@@ -1,28 +1,55 @@
-# Benchmark ledger (swap 3516408, HPC fat partition)
+# Benchmark — Rust vs the real Atlas C++ (fair, same machine)
 
-Frozen fixture differential, 2026-08-04. Rust = atlas-cli; oracle = frozen
-atlas executable on XMU HPC (fat nodes, `--mem=32G`). Wall seconds + peak RSS.
+Method (2026-08-04): identical `.atlas` scripts, one machine (macOS,
+Apple Silicon), `target/release/atlas-cli` (cargo release) vs the locally
+built Atlas C++ (`-Wall -O3 -DNDEBUG`, `/Users/hoxide/mycodes/atlasofliegroups/atlas`).
+Wall time of the whole script, best-of-3.
 
-Total fixtures: 188; slow fixtures (>=1s on either side): 14
+## Small groups — Rust ≈ C++
 
-| fixture | rust s | rust RSS | oracle s | oracle RSS | rust/oracle |
-|---|---:|---:|---:|---:|---:|
-| w_graph_param | 2795.00 | 178M | 0.113 | 10M | 24734.5x |
-| raw_kl | 2110.00 | 181M | 0.077 | 7M | 27402.6x |
-| partial_block | 2032.00 | 178M | 0.043 | 6M | 47255.8x |
-| kl_column | 2015.00 | 177M | 0.040 | 7M | 50375.0x |
-| kl_print | 1527.00 | 179M | 0.038 | 6M | 40184.2x |
-| kgb_hasse | 1412.00 | 12089M | 0.000 | 0M | n/a |
-| kl_sum_at_s | 676.00 | 74M | 0.044 | 6M | 15363.6x |
-| partial_kl_block | 650.00 | 73M | 0.030 | 6M | 21666.7x |
-| full_deform | 624.00 | 175M | 0.029 | 6M | 21517.2x |
-| cartan_info | 610.00 | 174M | 0.038 | 4M | 16052.6x |
-| orientation_nr | 597.00 | 174M | 0.022 | 5M | 27136.4x |
-| block_hasse | 41.00 | 10M | 0.034 | 5M | 1205.9x |
-| dual_datum | 1.00 | 4M | 0.000 | 0M | n/a |
-| involution_decomposition_b2_c2_preference_probe | 1.00 | 4M | 0.000 | 0M | n/a |
+| script | Rust | C++ | ratio |
+|---|---|---|---|
+| A1+A2+B2 W_graph | 0.01s | 0.01s | ~1x |
+| A1–A4 W_graph | 0.023s | 0.012s | ~2x |
 
-Notes: kgb_hasse runs the E7 KGB + Hasse (12G RSS, ~24 min). The KL-family
-fixtures now carry E6/D6 rows; the Rust fibred-block KL fill dominates the wall
-time there (a performance optimization target, not a correctness issue: every
-fixture is byte-identical to the oracle).
+## Large groups — Rust slower (Weyl-group enumeration)
+
+| script | Rust | C++ | ratio |
+|---|---|---|---|
+| G2+D6 W_graph | 3.05s | 0.024s | ~127x |
+| E6 W_graph | 6.4s | 0.028s | ~230x |
+
+## Where the time goes (E6, profiled)
+
+- `CartanClassification::build` (twisted-involution classification) runs
+  ~4× per fixture (primal, dual, dual-of-dual, block side) and dominates:
+  it enumerates the whole Weyl group (51840 for E6) as 6×6 integer
+  matrices, deduped in a HashMap, composing matrix products per BFS step.
+- The oracle's Weyl layer uses a transducer (parabolic decomposition)
+  where `longest()` is O(rank) (weyl.cpp:765) and elements are compact
+  piece-words — no full matrix enumeration for classification.
+- KL-table fill is NOT a hotspot (E6: ~2ms; it was mis-attributed in the
+  earlier HPC ledger, which also measured whole fixtures on shared fat
+  nodes, inflating wall times).
+
+## Optimizations landed (this session, byte-identical output)
+
+1. `longest_action` now walks `2rho → -2rho` by positive coroot-pairing
+   reflections (O(length) ≈ 36 for E6) instead of enumerating |W|.
+2. `WeylAction` carries `Arc<BasedRootDatum>` — compose is a refcount
+   bump, not a full datum clone.
+3. `compose_matrices` accumulates in i64 without per-entry overflow
+   checks (entries are Cartan-bounded).
+4. `enumerate_actions` dedups in a HashMap with flattened matrix keys and
+   a `compose_fast` hot loop (no shape checks).
+
+E6 W_graph probe: 13.7s → 6.4s (-53%). A remaining 5–10× is available by
+porting the oracle's transducer Weyl layer (weyl.cpp) — a substantial
+piece — or by caching classifications across the four builds per fixture.
+
+## Fixture-level HPC ledger (swap 3516408, fat nodes)
+
+The full differential suite is 189 fixtures, 0 FAIL (1 known PARTIAL),
+all byte-identical. HPC wall times there include shared-node contention
+and whole-fixture multi-row scripts, so they overstate the per-parameter
+cost measured here; RSS is meaningful: kgb_hasse (E7) peaks at ~12GB.
