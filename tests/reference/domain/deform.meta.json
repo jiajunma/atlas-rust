@@ -5,18 +5,20 @@
   "reference_status": "verified_hpc_reference",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
-  "reference_job": "3512549",
-  "source_archive_sha256": "d49503a22dcd483ee17531ecea7ac97a74207e32d9912c03f74199be7f06584c",
+  "reference_job": "3515469",
+  "source_archive_sha256": "9ad86a8fce2a515e10f14fbe5314ea40b965eabb1dad61100ccf352d2d622461",
   "fixture_sha256": "c0f1eefedd74a9079bb3d8d3b12fee79f061c9ddb74e2a354df74f29759146fc",
   "oracle_exit_status": 0,
   "oracle_stdout_sha256": "723d8504623ae8b247d1f0a48a7a4ce9fcebcbb5a3f37b9be1c2dbb24f8b8998",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "capture_artifacts_sha256": "723f6591d6c160c4e102fb8d40222e53e87b87d543290f40bdf2e9a16e311304",
+  "capture_artifacts_sha256": "a8c02b5deecce057e57354d21678bf8ab4991620874c415205f295dd47bb55f8",
   "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/gkmod/repr.cpp:1933-2025",
     "sources/interpreter/atlas-types.w:8084-8104"
   ],
   "notes": "deform surface (the deformation of a final parameter to its block), captured verbatim by HPC job 3506415 against the frozen atlasofliegroups-4d3e9449 oracle. Implementation requires the block/KLV machinery: Rep_table::lookup (partial common block), the contribution table, singular generators, KLV polynomials evaluated at q=-1, and orientation numbers.",
-  "differential_job": "3513333"
+  "differential_job": "3513333",
+  "oracle_seconds": 0.048,
+  "oracle_maxrss_kb": 4664
 }

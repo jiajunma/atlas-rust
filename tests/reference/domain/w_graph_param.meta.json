@@ -13,9 +13,11 @@
   "oracle_exit_status": 0,
   "notes": "Batch 5: W_graph(Param) — (start, vertices) of the parameter's block W-graph (descent sets and bidirectional mu edges); W_cells(Param) — (start, [(members, vertices)]) via the oriented graph's strong components with cell-relabelled edges. Also fixes the KL column working size to nr_of_primitives (was col_size, which under-counts when y itself is primitive). Known limit: the full block is built as the fibred product with the dual's quasisplit form, so parameters whose oracle common_block is a proper sub-block (e.g. the A1 x=2 split principal series) differ. Reference status pending HPC capture.",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
-  "reference_job": "3512572",
-  "source_archive_sha256": "7c67941f333b4c463ed02e6c783f1d5dfa047d417c411d73e71887297c0ceb78",
+  "reference_job": "3515470",
+  "source_archive_sha256": "9ad86a8fce2a515e10f14fbe5314ea40b965eabb1dad61100ccf352d2d622461",
   "fixture_sha256": "307c235a889be780ed37d6dc1c92c45b2ca66c87d000ca5cad42c5fcd45dde81",
-  "capture_artifacts_sha256": "f6122e0e915eac9d0c60fce14b2104aad3b62638e64cc8e3e92273671c64c9fd",
-  "differential_job": "3513333"
+  "capture_artifacts_sha256": "873c96265031ab5a2b30510e2602b38c26f812f045a86e5116388def229200c0",
+  "differential_job": "3513333",
+  "oracle_seconds": 0.056,
+  "oracle_maxrss_kb": 5436
 }
