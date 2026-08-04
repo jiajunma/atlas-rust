@@ -31,6 +31,24 @@ subsystem view; it also hit sr_gamma integrality failures because each
 block element needs its OWN lambda_rho = gamma - gamma_lambda_rho(srm)
 (repr.h:329-331), not the starting parameter's.
 
+## Progress 2026-08-04 (A2 x=3 mechanism verified, reverted)
+
+A working srm prototype was built and verified on A2 x=3:
+- `integrality_simples` via the Cartan pairing `<gamma, alpha_s^vee> =
+  sum_i gamma_i * C[i][s]` (the Rust simple coroots are the STANDARD basis
+  vectors; pairing needs the Cartan columns).
+- the srm closure selected by the primal KGB status (no conj pre-cross
+  for the whole-datum case), with each block element's own
+  `lambda_rho = gamma - gamma_lambda - rho` (repr.h:329-331).
+- A2 x=3 (su(2,1)): members = {x=3}, byte-identical to the oracle.
+- BUT A2 x=0 must be the whole 6-element block, and the prototype only
+  reached {0,3,4,5}: the oracle's `lookup_full_block` passes a
+  `block_modifier bm` whose integral subsystem (`bm.int_sys_nr`, the
+  image of a subsystem under `bm.w`) — NOT simply `integrality_simples(gamma)`
+  — governs which generators the z_pool may use (blocks.cpp:745,
+  common_context(rc, bm)). Porting the bm/int_sys selection is the
+  remaining sub-step before the prototype can replace the fibred closure.
+
 ## Slice steps (verify each)
 
 1. **`integrality_simples(rd, gamma)`** — the simple generators s with
