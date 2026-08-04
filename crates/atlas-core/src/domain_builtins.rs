@@ -1613,6 +1613,7 @@ fn build_inner_class_context(
         4_096,
     );
     let t_a = std::time::Instant::now();
+    let t_a = std::time::Instant::now();
     let classification = CartanClassification::build(&inner_class, &class_budget)
         .map_err(|error| runtime(span, error.to_string()))?;
     let strong = StrongRealClassification::build(&classification, FIBER_BUDGET)
@@ -1626,6 +1627,7 @@ fn build_inner_class_context(
     // dual class (upstream dual InnerClass constructor, innerclass.cpp:435).
     let dual_inner = dual_inner_class(&inner_class, WEYL_BUDGET, ROOT_BUDGET)
         .map_err(|error| runtime(span, error.to_string()))?;
+    let t_b = std::time::Instant::now();
     let dual_classification = CartanClassification::build(&dual_inner, &class_budget)
         .map_err(|error| runtime(span, error.to_string()))?;
     let dual_form_count = dual_classification.weak_real_form_count();

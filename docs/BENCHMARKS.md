@@ -17,7 +17,7 @@ Wall time of the whole script, best-of-3.
 | script | Rust | C++ | ratio |
 |---|---|---|---|
 | G2+D6 W_graph | 3.05s | 0.024s | ~127x |
-| E6 W_graph | 5.1s | 0.028s | ~180x |
+| E6 W_graph | 2.1s | 0.028s | ~75x |
 
 ## Where the time goes (E6, profiled)
 
@@ -43,14 +43,18 @@ Wall time of the whole script, best-of-3.
 4. `enumerate_actions` dedups in a HashMap with flattened matrix keys and
    a `compose_fast` hot loop (no shape checks).
 
-E6 W_graph probe: 13.7s → 5.1s (-63%). The transducer Weyl layer is
-ported (weyl_transducer.rs); enumerate_actions now enumerates compactly
-(E6 ~50ms vs ~1.1s) and materializes matrices in parallel (rayon) via
-precomputed piece matrices. Memory (max RSS): Rust 327MB vs C++ 7.2MB
-(E6 W_graph; the Rust side materializes all 51840 Weyl matrices per
-classification, C++ never does). Remaining gap: CartanClassification
-still materializes every Weyl matrix for its orbit computation — an
-action_permutation-in-compact pass would cut both time and memory.
+E6 W_graph probe: 13.7s → 2.1s (-85%). Timeline: rho-descent longest;
+Arc datum; i64 compose; compact transducer Weyl layer (weyl_transducer.rs,
+group orders + inverse + matrix-equivalence tests); parallel piece-matrix
+materialization (rayon); parallel no-alloc action permutations with a
+root-coordinate HashMap index; and finally the compact twisted-involution
+enumeration wired into CartanClassification (the orbit sweep needs the
+FULL enumeration's actions, not just the 892 candidates — that was the
+discovery bug). Byte-identical output throughout.
+Memory (max RSS): Rust 314MB vs C++ 7.2MB (E6 W_graph) — structural:
+Rust materializes 51840 Weyl matrices per classification and Vec/Arc
+nested allocation; C++ uses native arrays. A compact action-permutation
+pass (no matrix materialization) is the next memory+time lever.
 
 ## Fixture-level HPC ledger (swap 3516408, fat nodes)
 
