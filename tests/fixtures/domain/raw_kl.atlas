@@ -218,3 +218,14 @@ dfe6 := dual_real_form(ie6,0)
 ble6 : Block
 ble6 := block(rfe6,dfe6)
 raw_KL(ble6)
+rd6 : RootDatum
+rd6 := simply_connected(Lie_type("D6"),true)
+id6 : InnerClass
+id6 := inner_class(rd6,[[1,0,0,0,0,0],[0,1,0,0,0,0],[0,0,1,0,0,0],[0,0,0,1,0,0],[0,0,0,0,1,0],[0,0,0,0,0,1]])
+rfd6 : RealForm
+rfd6 := real_form(id6,2)
+dfd6 : RealForm
+dfd6 := dual_real_form(id6,0)
+bld6 : Block
+bld6 := block(rfd6,dfd6)
+raw_KL(bld6)
