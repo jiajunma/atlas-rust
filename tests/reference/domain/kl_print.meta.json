@@ -15,13 +15,13 @@
   "notes": "Batch 4 (KL printers): print_KL_basis (full KLV table with the Bruhat-comparable count), print_prim_KL (primitive-pair restriction via prim_back_up) and print_KL_list (distinct polynomials). Block bruhat_hasse (blocks.cpp complete_Hasse_diagram) added to BlockGraph. Reference status pending HPC capture.",
   "oracle_exit_status": 0,
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
-  "reference_job": "3515911",
-  "source_archive_sha256": "2f3e9dcda107c07b842ccb92173a8b10b985333499db645942bb5fb7d627c000",
+  "reference_job": "3515993",
+  "source_archive_sha256": "ee8a52eb0ac358c7427347ce043891d7dd523ea7a96082bdcc6fffc6cc889dc9",
   "fixture_sha256": "e1b0f5dc9d80cc2c86806615f92b76de2da997c0ab7c90fe880761a908e6ac04",
   "oracle_stdout_sha256": "8c3e0c43db97c5d579fc05feba3da5830a5b05cf6a98fc63538d1d1ec120e6f6",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "capture_artifacts_sha256": "8e11627018a2a5635013fd3eec3d6479cda3cd6fe2fa3ffa46e7d3d43eee7c98",
+  "capture_artifacts_sha256": "8d04ac22f84ed707749d3f5c4035ba9e865ba24edff5b6e1a07cdc248eceda25",
   "differential_job": "3515917",
-  "oracle_seconds": 0.04,
-  "oracle_maxrss_kb": 5268
+  "oracle_seconds": 0.038,
+  "oracle_maxrss_kb": 6144
 }

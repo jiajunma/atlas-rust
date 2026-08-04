@@ -13,11 +13,13 @@
   ],
   "notes": "Batch 1 of the remaining-builtin ledger (docs/REMAINING_BUILTINS.md): simple_roots, simple_coroots, is_Cartan_matrix, dual_datum(InnerClass).",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
-  "reference_job": "3512447",
-  "source_archive_sha256": "2bd3e68e0017351809129ccbae3e4c94dc8f1fa9f41382df6cf38ee78a46b17c",
+  "reference_job": "3515921",
+  "source_archive_sha256": "8ac42a382a06a01d2e59c7a1233100b7a32095142ddaeb68dd14c6346c37ebdb",
   "fixture_sha256": "98f0e9927b6e25db5d960ed8e0d5ef207d1236c6895f3112e69a9cad6bbea772",
   "oracle_stdout_sha256": "d58e6c5702c4aec322ce5a6d00ae3375093e1a322fdbfc2ad1009fb0eaf0ad4a",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "capture_artifacts_sha256": "d5e8399d7ca554d5848d7b389365c54d835fd2bbe32873a76cfbc15ecf45c3c4",
-  "differential_job": "3515917"
+  "capture_artifacts_sha256": "17fa7d252e8ee8b499a80cbd20dcfeec172096f84f5b0ddfdf95a09fcfc514eb",
+  "differential_job": "3515917",
+  "oracle_seconds": 0.02,
+  "oracle_maxrss_kb": 4660
 }

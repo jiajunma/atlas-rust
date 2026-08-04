@@ -13,10 +13,10 @@
   "notes": "Batch 6: partial_block(Param) — the parameters of the partial block (KL descent closure of the start element restricted to singular-coroot survivors), as a [Param] list.",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
-  "reference_job": "3515883",
-  "source_archive_sha256": "29e4df0b50bd6f8a12a13c1685e759e1153b1d93248e089b9f83e00e338bae31",
-  "capture_artifacts_sha256": "84e4c89becd05984fd8423bdbaf844b477891632f4368c801f8c1f317c2601d4",
+  "reference_job": "3515992",
+  "source_archive_sha256": "ee8a52eb0ac358c7427347ce043891d7dd523ea7a96082bdcc6fffc6cc889dc9",
+  "capture_artifacts_sha256": "293142f133b19019164ed8cf75375004457fdfdf6021d32b1034f912d11c6c1f",
   "differential_job": "3515917",
-  "oracle_seconds": 0.026,
-  "oracle_maxrss_kb": 5188
+  "oracle_seconds": 0.029,
+  "oracle_maxrss_kb": 5944
 }
