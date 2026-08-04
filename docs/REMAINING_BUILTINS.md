@@ -89,6 +89,18 @@ so the block graph itself is fine — only packet involutions of certain
 real forms trip the projection. Verified fixtures must avoid D5/D6+ real
 forms until the column-echelon port is reconciled.
 
+## Root-index builtins limit (2026-08-04)
+
+`root_expression`/`coroot_expression`/`root_permutation`/`root_involution`
+take an oracle RootNbr (internal_root_index: N + numPosRoots, positive
+roots only). The Rust `RootSystem::roots()` orders positive roots by
+ambient-coordinate lexicographic order, which differs from the oracle's
+`ri` (roots_at_level) order — and the oracle's B2 order ([1,0],[0,1],[1,2],
+[1,1]) is not the naive height/level order either, so a simple re-sort
+does not match. Porting the oracle's level-generation order (rootdata.cpp
+:144-219) is the open task; until then the root-index family stays
+unimplemented (fixtures avoid them).
+
 ## Known structural limit: E6-and-larger Rep_context
 
 The `RealProjection::build` column-echelon port (matreduc.h:129-161,
