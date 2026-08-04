@@ -24,5 +24,5 @@
     "the supplied representative is KGB element #10 and retains the negative-identity involution"
   ],
   "notes": "B2 descent and minimal-torus behavior captured verbatim by HPC job 3502476 against the pinned Atlas oracle. The case forces descent from the negative identity to the fundamental fiber; Rust support remains unimplemented.",
-  "differential_job": "3513333"
+  "differential_job": "3515688"
 }

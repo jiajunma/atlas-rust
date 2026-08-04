@@ -23,5 +23,5 @@
     "the negative root is rendered with Atlas's unsigned presentation number 4294967295"
   ],
   "notes": "Synthetic-real-form coroot-transport rejection captured verbatim by HPC job 3502476 against the pinned Atlas oracle. The exact unsigned root presentation number is part of the runtime diagnostic contract; Rust support remains unimplemented.",
-  "differential_job": "3513333"
+  "differential_job": "3515688"
 }
