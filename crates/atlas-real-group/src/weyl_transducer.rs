@@ -397,6 +397,12 @@ impl CompactWeyl {
         &self.d_out
     }
 
+    /// The component offset of the `i`-th transducer (for translating the
+    /// local letters of `word_of_piece` to global internal numbering).
+    pub(crate) fn piece_offset(&self, i: usize) -> usize {
+        self.transducers[i].offset
+    }
+
     /// Enumerate all group elements by breadth-first search (compact
     /// elements, cheap multiplication).
     pub(crate) fn enumerate(&self, budget: usize) -> Result<Vec<WeylElt>, StructureError> {
@@ -521,6 +527,25 @@ mod tests {
             eprintln!("A1A1 w={w:?} inv={is_inv} tw={is_tw} wi={:?} tw2={:?}", group.inverse(w), group.apply_twist(w, &twist));
             assert_eq!(is_tw, is_inv, "twisted/involution mismatch for {w:?}");
         }
+    }
+
+    #[test]
+    fn compact_e6_enumerates_the_full_group() {
+        // E6 has 51840 elements; the compact enumeration must reach all of
+        // them (and stay cheap) for the parallel matrix materialization.
+        let cartan: Vec<Vec<i32>> = vec![
+            vec![2, -1, 0, 0, 0, 0],
+            vec![-1, 2, -1, 0, 0, 0],
+            vec![0, -1, 2, -1, 0, -1],
+            vec![0, 0, -1, 2, -1, 0],
+            vec![0, 0, 0, -1, 2, 0],
+            vec![0, 0, -1, 0, 0, 2],
+        ];
+        let group = CompactWeyl::new(&cartan).unwrap();
+        let t = std::time::Instant::now();
+        let elements = group.enumerate(1 << 20).unwrap();
+        assert_eq!(elements.len(), 51_840);
+        assert!(t.elapsed() < std::time::Duration::from_secs(2), "compact E6 enumeration too slow: {:?}", t.elapsed());
     }
 
     #[test]

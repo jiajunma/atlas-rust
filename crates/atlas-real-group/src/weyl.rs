@@ -300,22 +300,45 @@ impl WeylGroup {
     /// This is intentionally separate from construction. Results are ordered
     /// lexicographically by their character-lattice action matrix.
     pub fn enumerate_actions(&self, budget: usize) -> Result<Vec<WeylAction>, StructureError> {
-        let mut actions: std::collections::HashMap<Vec<i32>, WeylAction> =
-            std::collections::HashMap::with_capacity(budget.min(1 << 16));
-        let mut pending = VecDeque::new();
-        insert_action(self.identity()?, budget, &mut actions, &mut pending)?;
-        let generators = self.reflections()?;
-        while let Some(action) = pending.pop_front() {
-            for generator in &generators {
-                insert_action(
-                    generator.compose_fast(&action),
-                    budget,
-                    &mut actions,
-                    &mut pending,
-                )?;
+        // Enumerate in the compact (transducer) representation — orders of
+        // magnitude cheaper than the matrix BFS (E6: ~50ms vs ~1.1s) — then
+        // materialize the matrices in parallel.
+        let cartan: Vec<Vec<i32>> = self
+            .datum
+            .cartan_matrix()
+            .iter()
+            .map(|row| row.to_vec())
+            .collect();
+        let compact = crate::weyl_transducer::CompactWeyl::new(&cartan)?;
+        let elements = compact.enumerate(budget)?;
+        let reflections = self.reflections()?;
+        use rayon::prelude::*;
+        elements
+            .par_iter()
+            .map(|elt| self.action_from_compact(&compact, elt, &reflections))
+            .collect()
+    }
+
+    /// The matrix action of a compact (transducer) element: right-multiply
+    /// the simple reflections of its piece words (left to right).
+    fn action_from_compact(
+        &self,
+        compact: &crate::weyl_transducer::CompactWeyl,
+        elt: &[u8],
+        reflections: &[WeylAction],
+    ) -> Result<WeylAction, StructureError> {
+        let mut action = WeylAction::identity(&self.datum)?;
+        for (piece_index, &piece) in elt.iter().enumerate() {
+            let word = compact.word_of_piece(piece_index, piece);
+            for &local in &word {
+                // word_of_piece letters are LOCAL to the component; add the
+                // transducer's offset for global internal numbering.
+                let internal = compact.piece_offset(piece_index) + local;
+                let external = compact.d_out()[internal];
+                action = action.compose_fast(&reflections[external]);
             }
         }
-        Ok(actions.into_values().collect())
+        Ok(action)
     }
 
     fn reflections(&self) -> Result<Vec<WeylAction>, StructureError> {

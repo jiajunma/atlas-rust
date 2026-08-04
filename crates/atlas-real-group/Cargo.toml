@@ -8,4 +8,5 @@ license.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
+rayon = "1.10"
 malachite = { version = "=0.10.0", default-features = false, features = ["std", "naturals_and_integers", "rationals"] }
