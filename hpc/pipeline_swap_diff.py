@@ -14,8 +14,13 @@ import hashlib
 import json
 import os
 import pathlib
+import platform
 import re
+import resource
+import shutil
 import subprocess
+import sys
+import tempfile
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -658,29 +663,22 @@ def run_fixture(
             expected["exit_status"] = metadata["oracle_exit_status"]
 
     timed_out = False
-    started = time.monotonic()
+    maxrss_kb = None
+    maxrss_approximate = False
     if configuration_errors:
         stdout = b""
         stderr = b""
         exit_status = None
+        elapsed = 0.0
     else:
-        try:
-            completed = subprocess.run(
+        stdout, stderr, exit_status, timed_out, elapsed, maxrss_kb, maxrss_approximate = (
+            measure_command(
                 [str(cli_bin), str(selected_path.resolve())],
                 cwd=workspace_root,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
                 timeout=timeout,
             )
-            stdout = completed.stdout
-            stderr = completed.stderr
-            exit_status = completed.returncode
-        except subprocess.TimeoutExpired as error:
-            timed_out = True
-            stdout = error.stdout or b""
-            stderr = error.stderr or b""
-            exit_status = None
-    elapsed = round(time.monotonic() - started, 3)
+        )
+        elapsed = round(elapsed, 3)
 
     stdout_path = artifact_dir / "rust.stdout"
     stderr_path = artifact_dir / "rust.stderr"
@@ -763,6 +761,8 @@ def run_fixture(
             "exit_status": exit_status,
             "timed_out": timed_out,
             "seconds": elapsed,
+            "maxrss_kb": maxrss_kb,
+            "maxrss_approximate": maxrss_approximate,
         },
         "configuration_errors": configuration_errors,
         "checks": checks,
@@ -774,6 +774,103 @@ def run_fixture(
 
 def parse_dirty_tree(value: str) -> bool | str:
     return {"true": True, "false": False}.get(value.lower(), value)
+
+
+def _parse_time_metrics(path: pathlib.Path) -> dict[str, Any] | None:
+    """Parse GNU time -v output: peak RSS (kbytes) and wall seconds."""
+    if not path.exists():
+        return None
+    text = path.read_text(encoding="utf-8", errors="replace")
+    rss = None
+    seconds = None
+    for line in text.splitlines():
+        lowered = line.lower()
+        if "maximum resident set size" in lowered:
+            parts = lowered.split(":")
+            if parts:
+                digits = re.sub(r"\D", "", parts[-1])
+                if digits:
+                    rss = int(digits)
+        if "elapsed (wall clock) time" in lowered:
+            parts = lowered.split(":")
+            if parts:
+                digits = re.sub(r"\D", "", parts[-1])
+                if digits:
+                    seconds = float(digits)
+    return {"maxrss_kb": rss, "wall_seconds": seconds}
+
+
+# /usr/bin/time -v (GNU coreutils) is available on the Linux HPC nodes; the
+# mac CI boxes only have the BSD variant, so fall back to the cumulative
+# child-process peak from getrusage (labelled approximate).
+_TIME_BIN = shutil.which("/usr/bin/time") or "/usr/bin/time"
+_USE_GNU_TIME = os.path.exists(_TIME_BIN) and platform.system() != "Darwin"
+
+
+def measure_command(
+    argv: list[str],
+    cwd: str | os.PathLike[str],
+    timeout: int,
+    input_bytes: bytes | None = None,
+) -> tuple[bytes, bytes, int | None, bool, float, int | None, bool]:
+    """Run a command and report (stdout, stderr, exit, timed_out, seconds,
+    maxrss_kb, maxrss_approximate)."""
+    timed_out = False
+    started = time.monotonic()
+    if _USE_GNU_TIME:
+        with tempfile.TemporaryDirectory() as directory:
+            metric_path = pathlib.Path(directory) / "time.metrics"
+            argv = [_TIME_BIN, "-v", "-o", str(metric_path)] + argv
+            try:
+                completed = subprocess.run(
+                    argv,
+                    cwd=cwd,
+                    input=input_bytes,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    timeout=timeout,
+                )
+                stdout = completed.stdout
+                stderr = completed.stderr
+                exit_status = completed.returncode
+            except subprocess.TimeoutExpired as error:
+                timed_out = True
+                stdout = error.stdout or b""
+                stderr = error.stderr or b""
+                exit_status = None
+            metrics = _parse_time_metrics(metric_path)
+            maxrss = metrics["maxrss_kb"] if metrics else None
+            seconds = (
+                metrics["wall_seconds"] if metrics and metrics["wall_seconds"]
+                else round(time.monotonic() - started, 3)
+            )
+            return stdout, stderr, exit_status, timed_out, seconds, maxrss, False
+    try:
+        completed = subprocess.run(
+            argv,
+            cwd=cwd,
+            input=input_bytes,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=timeout,
+        )
+        stdout = completed.stdout
+        stderr = completed.stderr
+        exit_status = completed.returncode
+    except subprocess.TimeoutExpired as error:
+        timed_out = True
+        stdout = error.stdout or b""
+        stderr = error.stderr or b""
+        exit_status = None
+    seconds = round(time.monotonic() - started, 3)
+    try:
+        rss = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
+        if sys.platform == "darwin":
+            rss //= 1024  # bytes -> KiB
+        maxrss = int(rss)
+    except (AttributeError, ValueError):
+        maxrss = None
+    return stdout, stderr, exit_status, timed_out, seconds, maxrss, True
 
 
 def main() -> int:

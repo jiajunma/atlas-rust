@@ -13,8 +13,13 @@ import hashlib
 import json
 import os
 import pathlib
+import platform
 import re
+import resource
+import shutil
 import subprocess
+import sys
+import tempfile
 import time
 from typing import Any
 
@@ -73,23 +78,48 @@ def capture_fixture(
     input_bytes = source + (b"" if source.endswith(b"\n") else b"\n") + b"quit\n"
     started = time.monotonic()
     timed_out = False
-    try:
-        completed = subprocess.run(
-            [str(atlas_bin)],
-            input=input_bytes,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            cwd=atlas_bin.parent / "atlas-scripts",
-            timeout=timeout,
-        )
-        stdout = completed.stdout
-        stderr = completed.stderr
-        exit_status = completed.returncode
-    except subprocess.TimeoutExpired as error:
-        timed_out = True
-        stdout = error.stdout or b""
-        stderr = error.stderr or b""
-        exit_status = None
+    maxrss_kb = None
+    maxrss_approximate = False
+    if _USE_GNU_TIME:
+        with tempfile.TemporaryDirectory() as directory:
+            metric_path = pathlib.Path(directory) / "time.metrics"
+            try:
+                completed = subprocess.run(
+                    [_TIME_BIN, "-v", "-o", str(metric_path), str(atlas_bin)],
+                    input=input_bytes,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    cwd=atlas_bin.parent / "atlas-scripts",
+                    timeout=timeout,
+                )
+                stdout = completed.stdout
+                stderr = completed.stderr
+                exit_status = completed.returncode
+            except subprocess.TimeoutExpired as error:
+                timed_out = True
+                stdout = error.stdout or b""
+                stderr = error.stderr or b""
+                exit_status = None
+            maxrss_kb = _parse_time_metrics(metric_path)
+    else:
+        try:
+            completed = subprocess.run(
+                [str(atlas_bin)],
+                input=input_bytes,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                cwd=atlas_bin.parent / "atlas-scripts",
+                timeout=timeout,
+            )
+            stdout = completed.stdout
+            stderr = completed.stderr
+            exit_status = completed.returncode
+        except subprocess.TimeoutExpired as error:
+            timed_out = True
+            stdout = error.stdout or b""
+            stderr = error.stderr or b""
+            exit_status = None
+        maxrss_kb, maxrss_approximate = _measured_maxrss()
 
     base = artifact_base(fixture, workspace_root, output_dir)
     base.parent.mkdir(parents=True, exist_ok=True)
@@ -121,9 +151,43 @@ def capture_fixture(
         "oracle_exit_status": exit_status,
         "timed_out": timed_out,
         "seconds": round(time.monotonic() - started, 3),
+        "maxrss_kb": maxrss_kb,
+        "maxrss_approximate": maxrss_approximate,
         "capture_status": "FAIL" if timed_out else "CAPTURED",
     }
     return entry, not timed_out
+
+
+def _parse_time_metrics(path: pathlib.Path) -> int | None:
+    if not path.exists():
+        return None
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        if "maximum resident set size" in line.lower():
+            digits = re.sub(r"\D", "", line.split(":", 1)[-1])
+            if digits:
+                return int(digits)
+    return None
+
+
+# /usr/bin/time -v (GNU coreutils) exists on the Linux HPC nodes; the mac
+# boxes only have the BSD variant, so fall back to the cumulative
+# child-process peak from getrusage (labelled approximate).
+_TIME_BIN = shutil.which("/usr/bin/time") or "/usr/bin/time"
+_USE_GNU_TIME = os.path.exists(_TIME_BIN) and platform.system() != "Darwin"
+
+
+def _measured_maxrss() -> tuple[int | None, bool]:
+    if _USE_GNU_TIME:
+        # The oracle itself was run before this call with GNU time; the
+        # metric file lives in a temp dir owned by the caller.
+        return None, False
+    try:
+        rss = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
+        if sys.platform == "darwin":
+            rss //= 1024
+        return int(rss), True
+    except (AttributeError, ValueError):
+        return None, True
 
 
 def parse_dirty_tree(value: str) -> bool | str:
