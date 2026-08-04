@@ -113,6 +113,19 @@ impl WeylAction {
         })
     }
 
+    /// Composition without shape checks, used by the enumeration hot loop
+    /// (the caller guarantees matching ranks and square matrices).
+    pub(crate) fn compose_fast(&self, right: &Self) -> Self {
+        Self {
+            datum: std::sync::Arc::clone(&self.datum),
+            weight_matrix: compose_matrices_fast(&self.weight_matrix, &right.weight_matrix),
+            coweight_matrix: compose_matrices_fast(
+                &self.coweight_matrix,
+                &right.coweight_matrix,
+            ),
+        }
+    }
+
     pub fn act(&self, weight: &Weight) -> Result<Weight, StructureError> {
         apply_matrix(&self.weight_matrix, weight.as_slice()).map(Weight::new)
     }
@@ -220,6 +233,21 @@ fn compose_matrices(
     Ok(matrix)
 }
 
+fn compose_matrices_fast(left: &[Vec<i32>], right: &[Vec<i32>]) -> Vec<Vec<i32>> {
+    let rank = left.len();
+    let mut matrix = vec![vec![0_i32; rank]; rank];
+    for (row, target_row) in matrix.iter_mut().enumerate() {
+        for (column, entry) in target_row.iter_mut().enumerate() {
+            let mut sum: i64 = 0;
+            for (index, &left_entry) in left[row].iter().enumerate() {
+                sum += i64::from(left_entry) * i64::from(right[index][column]);
+            }
+            *entry = sum as i32;
+        }
+    }
+    matrix
+}
+
 fn apply_matrix(matrix: &[Vec<i32>], coordinates: &[i32]) -> Result<Vec<i32>, StructureError> {
     let rank = matrix.len();
     if coordinates.len() != rank {
@@ -272,7 +300,8 @@ impl WeylGroup {
     /// This is intentionally separate from construction. Results are ordered
     /// lexicographically by their character-lattice action matrix.
     pub fn enumerate_actions(&self, budget: usize) -> Result<Vec<WeylAction>, StructureError> {
-        let mut actions: std::collections::HashMap<Vec<Vec<i32>>, WeylAction> = std::collections::HashMap::new();
+        let mut actions: std::collections::HashMap<Vec<i32>, WeylAction> =
+            std::collections::HashMap::with_capacity(budget.min(1 << 16));
         let mut pending = VecDeque::new();
         insert_action(self.identity()?, budget, &mut actions, &mut pending)?;
         let generators = (0..self.datum.semisimple_rank())
@@ -281,7 +310,7 @@ impl WeylGroup {
         while let Some(action) = pending.pop_front() {
             for generator in &generators {
                 insert_action(
-                    generator.compose(&action)?,
+                    generator.compose_fast(&action),
                     budget,
                     &mut actions,
                     &mut pending,
@@ -295,10 +324,10 @@ impl WeylGroup {
 fn insert_action(
     action: WeylAction,
     budget: usize,
-    actions: &mut std::collections::HashMap<Vec<Vec<i32>>, WeylAction>,
+    actions: &mut std::collections::HashMap<Vec<i32>, WeylAction>,
     pending: &mut VecDeque<WeylAction>,
 ) -> Result<(), StructureError> {
-    let key = action.matrix().to_vec();
+    let key: Vec<i32> = action.matrix().iter().flatten().copied().collect();
     if actions.contains_key(&key) {
         return Ok(());
     }
