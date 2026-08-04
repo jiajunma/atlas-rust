@@ -18,5 +18,5 @@
     "sources/gkmod/repr.cpp:1205-1297"
   ],
   "notes": "ParamPol non-final surface (expand_final when adding a parameter to a ParamPol). Reference captured verbatim by HPC job 3506276 against the frozen atlasofliegroups-4d3e9449 oracle. The crate port of Rep_context::expand_final (repr.cpp:1299-1309) over finals_for_standard (repr.cpp:1205-1297) plus the language-layer term merge landed at commit f4d5798. Differential pipeline_swap_diff job 3506331 reports PASS with zero regressions; metadata carries rust_status verified_hpc with differential_job 3506331.",
-  "differential_job": "3515999"
+  "differential_job": "3516408"
 }

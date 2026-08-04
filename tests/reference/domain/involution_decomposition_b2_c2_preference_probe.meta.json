@@ -24,5 +24,5 @@
     "all four compact inner classes expose the identity distinguished involution"
   ],
   "notes": "B2/C2 root-versus-coroot preference behavior captured verbatim by HPC job 3502479 against the pinned Atlas oracle after correcting Axis matrix literals to list columns. The stale job 3502476 capture used the pre-correction fixture and is intentionally superseded. Rust implementation verified by HPC differential job 3502550 (pipeline_swap_diff at commit 5346584ab0a946d1d3024f950358d12db35f6458): stdout, stderr diagnostics, and exit status match the frozen reference events exactly.",
-  "differential_job": "3515999"
+  "differential_job": "3516408"
 }
