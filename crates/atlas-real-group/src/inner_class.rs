@@ -657,25 +657,89 @@ impl InnerClass {
         &self,
         weyl_budget: usize,
     ) -> Result<(Vec<WeylAction>, Vec<TwistedInvolution>), StructureError> {
-        let actions = WeylGroup::new(self.datum.clone()).enumerate_actions(weyl_budget)?;
-        let involutions = actions
+        // TEMP: compact path with count, to compare twisted sets.
+        let cartan: Vec<Vec<i32>> = self
+            .datum
+            .cartan_matrix()
             .iter()
-            .cloned()
-            .filter_map(|action| {
-                match TwistedInvolution::new(
-                    &self.datum,
-                    &self.roots,
-                    self.distinguished_involution.involution(),
-                    action,
-                ) {
-                    Ok(involution) => Some(Ok(involution)),
-                    Err(StructureError::InvalidInvolution) => None,
-                    Err(error) => Some(Err(error)),
-                }
-            })
+            .map(|row| row.to_vec())
+            .collect();
+        let compact = crate::weyl_transducer::CompactWeyl::new(&cartan)?;
+        let elements = compact.enumerate(weyl_budget)?;
+        let twist = theta_generator_permutation(
+            &self.datum,
+            self.distinguished_involution.involution(),
+        )?;
+        let reflections = (0..self.datum.semisimple_rank())
+            .map(|generator| WeylAction::simple_reflection(&self.datum, generator))
             .collect::<Result<Vec<_>, _>>()?;
+        // The partition's orbit sweep needs the action of EVERY Weyl
+        // element (w . tw . w^-1 ranges over all w), so the returned
+        // actions vector must be the full enumeration; only the
+        // twisted-involution candidates are filtered.
+        let piece_matrices = compact.piece_matrices(&reflections)?;
+        use rayon::prelude::*;
+        let actions: Vec<WeylAction> = elements
+            .par_iter()
+            .map(|elt| {
+                let mut action = WeylAction::identity(&self.datum)?;
+                for (piece_index, &piece) in elt.iter().enumerate() {
+                    action = action.compose_fast(&piece_matrices[piece_index][piece as usize]);
+                }
+                Ok(action)
+            })
+            .collect::<Result<_, _>>()?;
+        let mut involutions = Vec::new();
+        for (index, elt) in elements.iter().enumerate() {
+            if !compact.is_twisted_involution(elt, &twist) {
+                continue;
+            }
+            match TwistedInvolution::new(
+                &self.datum,
+                &self.roots,
+                self.distinguished_involution.involution(),
+                actions[index].clone(),
+            ) {
+                Ok(involution) => involutions.push(involution),
+                Err(StructureError::InvalidInvolution) => {}
+                Err(error) => return Err(error),
+            }
+        }
         Ok((actions, involutions))
     }
+}
+
+/// The permutation of the simple generators induced by `theta` (a Cartan
+/// involution): `theta(alpha_i) = alpha_{perm[i]}` (theta preserves the
+/// positive roots).
+fn theta_generator_permutation(
+    datum: &BasedRootDatum,
+    theta: &LatticeInvolution,
+) -> Result<Vec<usize>, StructureError> {
+    let matrix = theta.weight_matrix();
+    let rank = datum.semisimple_rank();
+    let mut perm = vec![0_usize; rank];
+    for i in 0..rank {
+        let mut image = vec![0_i32; rank];
+        for (row, row_entries) in matrix.iter().enumerate() {
+            let mut total: i64 = 0;
+            for (column, &coordinate) in datum.simple_roots()[i].as_slice().iter().enumerate() {
+                total += i64::from(row_entries[column]) * i64::from(coordinate);
+            }
+            image[row] = total as i32;
+        }
+        let mut found = None;
+        for j in 0..rank {
+            if datum.simple_roots()[j].as_slice() == image {
+                found = Some(j);
+                break;
+            }
+        }
+        perm[i] = found.ok_or(StructureError::LayoutInvariantViolation {
+            invariant: "Cartan automorphism preserves simple roots",
+        })?;
+    }
+    Ok(perm)
 }
 
 fn positive_root_sum(
