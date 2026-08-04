@@ -1,7 +1,7 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "domain/raw_kl",
-  "status": "verified_hpc_reference",
+  "status": "local_oracle_reference",
   "events": [
     {
       "kind": "ReportLine",
@@ -931,6 +931,68 @@
       "value": {
         "type": "display",
         "display": "(The 0x0 matrix,[[ ],[ 1 ]],[ 0, 0 ])"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ra4': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'A4'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ia4': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type A4, with involution defining\ninner class of type 'c', with 3 real forms and 1 dual real form"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rfa4': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "connected real group with Lie algebra 'su(4,1)'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'dfa4': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "connected split real group with Lie algebra 'sl(5,R)'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'bla4': Block\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Block of 15 elements"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "(\n| 1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1 |\n| 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 |\n| 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1 |\n| 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1 |\n| 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1 |\n| 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1 |\n| 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1 |\n| 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1 |\n| 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1 |\n| 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1 |\n| 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1 |\n| 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1 |\n| 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1 |\n| 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1 |\n| 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 |\n,[[ ],[ 1 ]],[  0,  5,  9, 12, 14, 15 ])"
       }
     }
   ]
