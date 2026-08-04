@@ -668,6 +668,7 @@ impl InnerClass {
         let elements = compact.enumerate(weyl_budget)?;
         let twist = theta_generator_permutation(
             &self.datum,
+            &self.roots,
             self.distinguished_involution.involution(),
         )?;
         let reflections = (0..self.datum.semisimple_rank())
@@ -714,23 +715,49 @@ impl InnerClass {
 /// positive roots).
 fn theta_generator_permutation(
     datum: &BasedRootDatum,
+    root_system: &RootSystem,
     theta: &LatticeInvolution,
 ) -> Result<Vec<usize>, StructureError> {
+    // Work in the root coordinates (lattice basis, matching the involution
+    // matrix), NOT datum.simple_roots() which is semisimple-coordinate for
+    // data with a central torus.
     let matrix = theta.weight_matrix();
+    let mut id_by_coordinate = std::collections::HashMap::with_capacity(root_system.roots().len());
+    for (index, root) in root_system.roots().iter().enumerate() {
+        id_by_coordinate.insert(root.as_slice().to_vec(), index);
+    }
     let rank = datum.semisimple_rank();
     let mut perm = vec![0_usize; rank];
     for i in 0..rank {
-        let mut image = vec![0_i32; rank];
+        let simple = root_system
+            .simple_root_ids()
+            .get(i)
+            .copied()
+            .ok_or(StructureError::LayoutInvariantViolation {
+                invariant: "simple root index",
+            })?;
+        let coordinates = root_system
+            .root(simple)
+            .ok_or(StructureError::LayoutInvariantViolation {
+                invariant: "simple root coordinate",
+            })?;
+        let mut image = vec![0_i32; matrix.len()];
         for (row, row_entries) in matrix.iter().enumerate() {
             let mut total: i64 = 0;
-            for (column, &coordinate) in datum.simple_roots()[i].as_slice().iter().enumerate() {
+            for (column, &coordinate) in coordinates.as_slice().iter().enumerate() {
                 total += i64::from(row_entries[column]) * i64::from(coordinate);
             }
             image[row] = total as i32;
         }
+        let image_index = id_by_coordinate.get(&image).copied().ok_or(
+            StructureError::LayoutInvariantViolation {
+                invariant: "Cartan automorphism preserves the root system",
+            },
+        )?;
+        // map the root index back to its simple generator
         let mut found = None;
         for j in 0..rank {
-            if datum.simple_roots()[j].as_slice() == image {
+            if root_system.simple_root_ids().get(j).copied().map_or(false, |id| id.0 == image_index) {
                 found = Some(j);
                 break;
             }
