@@ -31,3 +31,14 @@ xa4 := KGB(rfa4,0)
 pa4 : Param
 pa4 := param(xa4,[0,0,0,0],[0,0,0,0]/1)
 block_Hasse(pa4)
+rd5 : RootDatum
+rd5 := simply_connected(Lie_type("D5"),true)
+id5 : InnerClass
+id5 := inner_class(rd5,[[1,0,0,0,0],[0,1,0,0,0],[0,0,1,0,0],[0,0,0,1,0],[0,0,0,0,1]])
+rfd5 : RealForm
+rfd5 := real_form(id5,2)
+xd5 : KGBElt
+xd5 := KGB(rfd5,0)
+pd5 : Param
+pd5 := param(xd5,[0,0,0,0,0],[0,0,0,0,0]/1)
+block_Hasse(pd5)
