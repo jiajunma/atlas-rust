@@ -189,3 +189,14 @@ xd5 := KGB(rfd5,0)
 pd5 : Param
 pd5 := param(xd5,[0,0,0,0,0],[0,0,0,0,0]/1)
 KL_sum_at_s(pd5)
+rd6 : RootDatum
+rd6 := simply_connected(Lie_type("D6"),true)
+id6 : InnerClass
+id6 := inner_class(rd6,[[1,0,0,0,0,0],[0,1,0,0,0,0],[0,0,1,0,0,0],[0,0,0,1,0,0],[0,0,0,0,1,0],[0,0,0,0,0,1]])
+rfd6 : RealForm
+rfd6 := real_form(id6,2)
+xd6 : KGBElt
+xd6 := KGB(rfd6,0)
+pd6 : Param
+pd6 := param(xd6,[0,0,0,0,0,0],[0,0,0,0,0,0]/1)
+KL_sum_at_s(pd6)
