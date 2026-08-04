@@ -21,5 +21,5 @@
     "C2 dual order probe in root coordinates"
   ],
   "notes": "Strong-real Cartan enumeration probe captured verbatim by HPC job 3502700 against the pinned atlasofliegroups-4d3e9449 oracle. Rust support remains unimplemented; the Cartan numbering adapter must land before these can pass.",
-  "differential_job": "3515917"
+  "differential_job": "3515999"
 }

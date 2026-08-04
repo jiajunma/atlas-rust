@@ -20,5 +20,5 @@
     "classify_involution rejects ragged vector columns during matrix conversion"
   ],
   "notes": "Ragged matrix-conversion rejection captured verbatim by HPC job 3502476 against the pinned Atlas oracle. Rust implementation verified by HPC differential job 3502550 (pipeline_swap_diff at commit 5346584ab0a946d1d3024f950358d12db35f6458): stdout, stderr diagnostics, and exit status match the frozen reference events exactly.",
-  "differential_job": "3515917"
+  "differential_job": "3515999"
 }

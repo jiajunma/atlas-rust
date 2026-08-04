@@ -18,5 +18,5 @@
     "sources/interpreter/atlas-types.w:5995-6010"
   ],
   "notes": "KGP_sum surface (the KGP set of a semifinal K-type as a row of length-parity-signed (int, KType) pairs), captured verbatim by HPC job 3506383 against the frozen atlasofliegroups-4d3e9449 oracle; implemented at the kgp_sum commit (KType::kgp_set, K_repr.cpp:398-464). Differential pipeline_swap_diff job 3506387 reports PASS with zero regressions; metadata carries rust_status verified_hpc with differential_job 3506387.",
-  "differential_job": "3515917"
+  "differential_job": "3515999"
 }
