@@ -17,7 +17,7 @@ Wall time of the whole script, best-of-3.
 | script | Rust | C++ | ratio |
 |---|---|---|---|
 | G2+D6 W_graph | 3.05s | 0.024s | ~127x |
-| E6 W_graph | 6.4s | 0.028s | ~230x |
+| E6 W_graph | 5.1s | 0.028s | ~180x |
 
 ## Where the time goes (E6, profiled)
 
@@ -43,9 +43,14 @@ Wall time of the whole script, best-of-3.
 4. `enumerate_actions` dedups in a HashMap with flattened matrix keys and
    a `compose_fast` hot loop (no shape checks).
 
-E6 W_graph probe: 13.7s → 6.4s (-53%). A remaining 5–10× is available by
-porting the oracle's transducer Weyl layer (weyl.cpp) — a substantial
-piece — or by caching classifications across the four builds per fixture.
+E6 W_graph probe: 13.7s → 5.1s (-63%). The transducer Weyl layer is
+ported (weyl_transducer.rs); enumerate_actions now enumerates compactly
+(E6 ~50ms vs ~1.1s) and materializes matrices in parallel (rayon) via
+precomputed piece matrices. Memory (max RSS): Rust 327MB vs C++ 7.2MB
+(E6 W_graph; the Rust side materializes all 51840 Weyl matrices per
+classification, C++ never does). Remaining gap: CartanClassification
+still materializes every Weyl matrix for its orbit computation — an
+action_permutation-in-compact pass would cut both time and memory.
 
 ## Fixture-level HPC ledger (swap 3516408, fat nodes)
 
