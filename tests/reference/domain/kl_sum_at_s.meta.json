@@ -12,11 +12,11 @@
   "oracle_exit_status": 0,
   "notes": "Batch 5: KL_sum_at_s(Param) and KL_sum_at_s_to_height(Param,int) — the KL column of a final parameter evaluated at q = s by Horner (repr.cpp:2152-2155), alternating the sign with the length difference, as a ParamPol. Identity block modifier with singleton contributions. Known limits: the full block is the fibred product with the dual's quasisplit form, so parameters whose oracle common_block is a proper sub-block differ; B2 (and higher-rank) KL columns with a real type-I inverse Cayley currently fail in KlTable. Reference status pending HPC capture.",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
-  "reference_job": "3515884",
-  "source_archive_sha256": "29e4df0b50bd6f8a12a13c1685e759e1153b1d93248e089b9f83e00e338bae31",
+  "reference_job": "3516122",
+  "source_archive_sha256": "fe16043cfdb45e0066d0bdcdb4c737ba9fc588d4310b70261ecd47df9fc3e5ce",
   "fixture_sha256": "21474b79caf28d345ba0da908ebb88144906ffc4e25087ba2efdcd9ff967990d",
-  "capture_artifacts_sha256": "3e9da1b5a9e1141b7642ac825ee7345c6e5f3fcdc00a403b21b4d9e82991ef4a",
+  "capture_artifacts_sha256": "f2201974fd385d51491817996e63a0c17814aad86fc364cd9e5e2e45a0bfcbaf",
   "differential_job": "3515999",
-  "oracle_seconds": 0.031,
-  "oracle_maxrss_kb": 5564
+  "oracle_seconds": 0.044,
+  "oracle_maxrss_kb": 6136
 }
