@@ -136,3 +136,15 @@ bld5 : Block
 bld5 := block(rfd5,dfd5)
 print_KL_basis(bld5)
 print_KL_list(bld5)
+re6 : RootDatum
+re6 := simply_connected(Lie_type("E6"),true)
+ie6 : InnerClass
+ie6 := inner_class(re6,[[1,0,0,0,0,0],[0,1,0,0,0,0],[0,0,1,0,0,0],[0,0,0,1,0,0],[0,0,0,0,1,0],[0,0,0,0,0,1]])
+rfe6 : RealForm
+rfe6 := real_form(ie6,1)
+dfe6 : RealForm
+dfe6 := dual_real_form(ie6,0)
+ble6 : Block
+ble6 := block(rfe6,dfe6)
+print_KL_basis(ble6)
+print_KL_list(ble6)
