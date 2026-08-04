@@ -584,9 +584,37 @@ impl InnerClass {
             .enumerate()
             .map(|(index, permutation)| (permutation.clone(), index))
             .collect::<BTreeMap<_, _>>();
+        // id_of is a linear scan per root; index the root coordinates once
+        // (the permutation loop is |W| x |roots|).
+        let mut id_by_coordinate = std::collections::HashMap::with_capacity(self.roots.roots().len());
+        for (index, root) in self.roots.roots().iter().enumerate() {
+            id_by_coordinate.insert(root.as_slice().to_vec(), index);
+        }
+        let rank = self.datum.lattice_rank();
+        use rayon::prelude::*;
         let weyl_permutations = weyl_actions
-            .iter()
-            .map(|action| self.roots.action_permutation(action))
+            .par_iter()
+            .map(|action| {
+                let matrix = action.matrix();
+                let mut image = [0_i32; 8];
+                self.roots
+                    .roots()
+                    .iter()
+                    .map(|root| {
+                        for (row, entries) in matrix.iter().enumerate() {
+                            let mut total: i64 = 0;
+                            for (column, &coordinate) in root.as_slice().iter().enumerate() {
+                                total += i64::from(entries[column]) * i64::from(coordinate);
+                            }
+                            image[row] = total as i32;
+                        }
+                        id_by_coordinate
+                            .get(&image[..rank])
+                            .map(|&index| crate::RootId::from_usize(index))
+                            .ok_or(StructureError::InvalidRootAutomorphism)
+                    })
+                    .collect::<Result<Vec<_>, _>>()
+            })
             .collect::<Result<Vec<_>, _>>()?;
         let mut visited = vec![false; candidates.len()];
         let mut classes = Vec::new();
