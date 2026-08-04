@@ -185,13 +185,15 @@ impl RealProjection {
             a.push(converted);
         }
         let mut col = identity_matrix(rank)?;
-        let mut col_inverse = identity_matrix(rank)?;
 
         // Row sweep, bottom row first; the pivot of each processed row
-        // lands at column `limit - 1` (matreduc.h:136-148).
+        // lands at column `limit - 1` (matreduc.h:136-148). Each sweep
+        // builds an `l x l` ops matrix (negation + column operations +
+        // final swap) and applies it to `a` and `col` at once, exactly
+        // like `column_echelon`'s `column_apply`.
         let mut limit = rank;
         for row in (0..rank).rev() {
-            let pivot = gcd_sweep(&mut a, row, limit, &mut col, &mut col_inverse)?;
+            let pivot = gcd_sweep(&mut a, &mut col, row, limit)?;
             if pivot == 0 {
                 continue; // partial row already zero: no pivot in this row
             }
@@ -201,8 +203,7 @@ impl RealProjection {
         // Erase the `limit` zero columns, rotating the corresponding
         // kernel columns of `col` towards the right end one at a time
         // (matreduc.h:150-158): columns already parked at the right are
-        // not touched again. `col_inverse` rows get the mirrored cyclic
-        // shift, keeping `col * col_inverse == id`.
+        // not touched again.
         let zero_columns = limit;
         let mut erased = 0_usize;
         while limit > 0 {
@@ -220,13 +221,15 @@ impl RealProjection {
             for (k, col_row) in col.iter_mut().enumerate() {
                 col_row[m_columns] = cc[k];
             }
-            let rotated_row = col_inverse.remove(limit);
-            col_inverse.insert(m_columns, rotated_row);
             erased += 1;
         }
         debug_assert_eq!(erased, zero_columns);
 
         let image_rank = rank - zero_columns;
+        // `M_real = col.inverse().block(0,0,image_rank,rank)`
+        // (involutions.cpp:203): the integer inverse of the (unimodular)
+        // column-operation matrix, computed by Euclidean row reduction.
+        let col_inverse = invert_integer_matrix(&col)?;
         let m_real: Vec<Vec<i64>> = col_inverse[..image_rank].to_vec();
         let projection = Self {
             lift_mat: a,
@@ -323,86 +326,24 @@ fn identity_matrix(rank: usize) -> Result<Vec<Vec<i64>>, StructureError> {
 /// One elementary column operation `column_j += c * column_k` on `a` and
 /// `col`, mirrored by the inverse row operation `row_k -= c * row_j` on
 /// `col_inverse`, keeping `col * col_inverse == id` throughout.
-fn column_operation(
-    a: &mut [Vec<i64>],
-    col: &mut [Vec<i64>],
-    col_inverse: &mut [Vec<i64>],
-    j: usize,
-    k: usize,
-    c: i64,
-) -> Result<(), StructureError> {
-    if c == 0 {
-        return Ok(());
-    }
-    for row in 0..a.len() {
-        a[row][j] = a[row][j]
-            .checked_add(
-                c.checked_mul(a[row][k])
-                    .ok_or(StructureError::ArithmeticOverflow)?,
-            )
-            .ok_or(StructureError::ArithmeticOverflow)?;
-        col[row][j] = col[row][j]
-            .checked_add(
-                c.checked_mul(col[row][k])
-                    .ok_or(StructureError::ArithmeticOverflow)?,
-            )
-            .ok_or(StructureError::ArithmeticOverflow)?;
-    }
-    let source_row = col_inverse[j].clone();
-    for (inverse_entry, &source_entry) in col_inverse[k].iter_mut().zip(&source_row) {
-        *inverse_entry = inverse_entry
-            .checked_sub(
-                c.checked_mul(source_entry)
-                    .ok_or(StructureError::ArithmeticOverflow)?,
-            )
-            .ok_or(StructureError::ArithmeticOverflow)?;
-    }
-    Ok(())
-}
-
-fn swap_columns(
-    a: &mut [Vec<i64>],
-    col: &mut [Vec<i64>],
-    col_inverse: &mut [Vec<i64>],
-    left: usize,
-    right: usize,
-) {
-    if left == right {
-        return;
-    }
-    for row in 0..a.len() {
-        a[row].swap(left, right);
-        col[row].swap(left, right);
-    }
-    col_inverse.swap(left, right);
-}
-
-/// The gcd sweep of `matreduc::gcd` (matreduc.h:70-122) on the partial
-/// row `a[row][0..limit]`, recording the column operations into `col` and
-/// their inverses into `col_inverse`. Returns the (positive) pivot, or 0
-/// when the partial row is zero. The pivot is left at column `dest =
-/// limit - 1`, matching the `column_echelon` call site (matreduc.h:139).
 fn gcd_sweep(
     a: &mut [Vec<i64>],
+    col: &mut [Vec<i64>],
     row: usize,
     limit: usize,
-    col: &mut [Vec<i64>],
-    col_inverse: &mut [Vec<i64>],
 ) -> Result<i64, StructureError> {
     let dest = limit
         .checked_sub(1)
         .ok_or(StructureError::RepInvariantViolation {
             invariant: "echelon pivot column",
         })?;
-    // Upstream `gcd` reduces a COPY of the partial row (`row` by value,
-    // matreduc.h:70-122); the elementary column operations are recorded in
-    // the ops matrix and applied to the working matrix M only afterwards.
-    // The oracle build therefore negates ONLY the local pivot entry (the
-    // pivot sign is never recorded in ops): M keeps the un-negated pivot
-    // column, which fixes the sign of the elected lambda-rho representative
-    // (the image-basis identity `lift_mat*M_real == 1-theta` holds either
-    // way). The local copy also keeps the Euclidean reductions off the
-    // working matrix, which is what terminates the sweep.
+    // Upstream `gcd` (matreduc.h:70-122) reduces a COPY of the partial row
+    // and records the elementary operations in an `l x l` ops matrix that
+    // `column_echelon` then applies to M and col at once (matreduc.h:143-144).
+    // The oracle negates the LOCAL pivot and records `ops(mindex,mindex)=-1`;
+    // together with the column operations and the final `swapColumns` this
+    // lands on the pivot column that `column_apply` produces. The E6
+    // involution-187 factorization only holds with that recorded sign.
     let mut local_row = a[row][..limit].to_vec();
     let mut active: Vec<usize> = Vec::new();
     let mut min = 0_i64;
@@ -420,12 +361,10 @@ fn gcd_sweep(
     if active.is_empty() {
         return Ok(0);
     }
+    let mut ops = identity_matrix(limit)?;
     if local_row[mindex] < 0 {
-        // Force a positive LOCAL pivot (matreduc.h:93-98): upstream flips
-        // the sign of the copied row entry only; the release oracle does
-        // not record `col(mindex,mindex) = -1`, so the matrices keep the
-        // un-negated pivot column.
         local_row[mindex] = -local_row[mindex];
+        ops[mindex][mindex] = -1;
     }
 
     while active.len() > 1 {
@@ -442,8 +381,18 @@ fn gcd_sweep(
                 survivors.push(j);
                 continue;
             }
-            let quotient = local_row[j].div_euclid(pivot);
-            column_operation(a, col, col_inverse, j, current, -quotient)?;
+            // C++ `arithmetic::divide` truncates toward zero.
+            let quotient = local_row[j] / pivot;
+            // ops: column j -= q * column current.
+            for r in 0..limit {
+                ops[r][j] = ops[r][j]
+                    .checked_sub(
+                        quotient
+                            .checked_mul(ops[r][current])
+                            .ok_or(StructureError::ArithmeticOverflow)?,
+                    )
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+            }
             local_row[j] = local_row[j]
                 .checked_sub(
                     pivot
@@ -462,8 +411,143 @@ fn gcd_sweep(
         active = survivors;
     }
 
-    swap_columns(a, col, col_inverse, dest, mindex);
+    if mindex != dest {
+        for r in 0..limit {
+            ops[r].swap(dest, mindex);
+        }
+    }
+
+    // column_apply(M, ops, 0): M' = M * ops on the first `limit` columns.
+    apply_column_ops(a, &ops, limit)?;
+    apply_column_ops(col, &ops, limit)?;
     Ok(min)
+}
+
+/// `M' = M * ops` on the first `limit` columns (matrix.h:496-510).
+fn apply_column_ops(
+    matrix: &mut [Vec<i64>],
+    ops: &[Vec<i64>],
+    limit: usize,
+) -> Result<(), StructureError> {
+    let rows = matrix.len();
+    let mut fresh = vec![vec![0_i64; limit]; rows];
+    for c in 0..limit {
+        for k in 0..limit {
+            let weight = ops[k][c];
+            if weight == 0 {
+                continue;
+            }
+            for r in 0..rows {
+                fresh[r][c] = fresh[r][c]
+                    .checked_add(
+                        weight
+                            .checked_mul(matrix[r][k])
+                            .ok_or(StructureError::ArithmeticOverflow)?,
+                    )
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+            }
+        }
+    }
+    for r in 0..rows {
+        for c in 0..limit {
+            matrix[r][c] = fresh[r][c];
+        }
+    }
+    Ok(())
+}
+
+/// Integer inverse of a unimodular matrix by Euclidean row reduction
+/// (no scaling division: the pivots are reduced by row swaps and row
+/// subtractions, which keeps every intermediate entry integral).
+fn invert_integer_matrix(matrix: &[Vec<i64>]) -> Result<Vec<Vec<i64>>, StructureError> {
+    let rank = matrix.len();
+    if matrix.iter().any(|row| row.len() != rank) {
+        return Err(StructureError::InvalidIntegerMatrixShape);
+    }
+    let mut augmented: Vec<Vec<i64>> = Vec::new();
+    augmented.try_reserve_exact(rank).map_err(|_| {
+        StructureError::AllocationFailed {
+            requested: rank,
+        }
+    })?;
+    for (row_index, row) in matrix.iter().enumerate() {
+        let mut extended = row.to_vec();
+        extended
+            .try_reserve_exact(rank)
+            .map_err(|_| StructureError::AllocationFailed { requested: rank })?;
+        for column_index in 0..rank {
+            extended.push(i64::from(row_index == column_index));
+        }
+        augmented.push(extended);
+    }
+    for pivot in 0..rank {
+        let Some(best) = (pivot..rank)
+            .filter(|&r| augmented[r][pivot] != 0)
+            .min_by_key(|&r| augmented[r][pivot].abs())
+        else {
+            return Err(StructureError::RepInvariantViolation {
+                invariant: "non-singular column operations matrix",
+            });
+        };
+        augmented.swap(pivot, best);
+        let mut changed = true;
+        while changed {
+            changed = false;
+            for r in 0..rank {
+                if r == pivot || augmented[r][pivot] == 0 {
+                    continue;
+                }
+                if augmented[r][pivot].abs() >= augmented[pivot][pivot].abs() {
+                    let quotient = augmented[r][pivot] / augmented[pivot][pivot];
+                    if quotient != 0 {
+                        for c in 0..2 * rank {
+                            augmented[r][c] -= quotient * augmented[pivot][c];
+                        }
+                        changed = true;
+                    }
+                } else if augmented[pivot][pivot].abs() > 1 {
+                    augmented.swap(pivot, r);
+                    changed = true;
+                }
+            }
+        }
+    }
+    for pivot in 0..rank {
+        let diagonal = augmented[pivot][pivot];
+        if diagonal == -1 {
+            for entry in augmented[pivot].iter_mut() {
+                *entry = -*entry;
+            }
+        } else if diagonal != 1 {
+            return Err(StructureError::RepInvariantViolation {
+                invariant: "unimodular column operations matrix",
+            });
+        }
+    }
+    let inverse: Vec<Vec<i64>> = augmented
+        .into_iter()
+        .map(|row| row[rank..].to_vec())
+        .collect();
+    for r in 0..rank {
+        for c in 0..rank {
+            let mut product = 0_i64;
+            for k in 0..rank {
+                product = product
+                    .checked_add(
+                        matrix[r][k]
+                            .checked_mul(inverse[k][c])
+                            .ok_or(StructureError::ArithmeticOverflow)?,
+                    )
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+            }
+            if product != i64::from(r == c) {
+                return Err(StructureError::RepInvariantViolation {
+                    invariant: "integer matrix inverse",
+                });
+            }
+        }
+    }
+    Ok(inverse)
 }
 
 /// The representation context of one real form: upstream `Rep_context`
@@ -700,7 +784,9 @@ impl<'a> RepContext<'a> {
         }
         let projection = self.projection(involution)?;
         let coordinates = projection.coordinates(lam_rho)?;
-        let halves: Vec<i64> = coordinates.iter().map(|&v| v.div_euclid(2)).collect();
+        // C++ `arithmetic::divide` truncates toward zero (involutions.cpp:325),
+        // unlike Rust's div_euclid; the A2 su(2,1) anchors pin this sign.
+        let halves: Vec<i64> = coordinates.iter().map(|&v| v / 2).collect();
         let correction = projection.lift(&halves)?;
         let mut normalized = Vec::new();
         normalized.try_reserve_exact(lam_rho.rank()).map_err(|_| {
