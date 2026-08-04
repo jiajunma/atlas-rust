@@ -572,7 +572,7 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: `80f571d` (main). Working tree clean.
+HEAD at handoff: `286f236` (main). Working tree clean.
 
 ### Since the 8d9837d handoff (2026-08-02 overnight + user ktype/param layer)
 
@@ -1663,4 +1663,14 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
 - Add/update fixture and reference metadata before implementation claims.
 - Never hand-edit generated CWEB or parser output.
 - Keep root-data and real-group invariants in their owned domain layer.
-- Preserve unrelated user changes and do not commit unverified HPC output.
+- Preserve unrelated user changes and do not commit unverified HPC output.## Remaining work after these slices:
+- **Batch coverage sweep (2026-08-04)**: A4/B4/C4 + C3 + D5 + G2/D4 KL
+  family extended (KL_column, KL_sum_at_s, raw_KL, kl_print, W_graph/W_cells,
+  partial_block, partial_kl_block, full_deform, deform, block_hasse,
+  cartan_info, orientation_nr, two_rho). print_KL_list now enumerates the
+  pool (empty blocks print the constant one). HPC captures 3515466-75,
+  3515630-35, 3515698-99 verified; E7 kgb_hasse swap 3515688 RUNNING on fat
+  (TIMEOUT=3600). New limit: D5 real forms hit the same column-echelon bug
+  as E6 involution 187 (see REMAINING_BUILTINS.md).
+
+
