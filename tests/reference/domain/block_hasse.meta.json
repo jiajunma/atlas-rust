@@ -12,11 +12,11 @@
   "oracle_exit_status": 0,
   "notes": "Batch 8: block_Hasse — the full block of a standard parameter (paired with its dual's quasisplit form) and the Bruhat Hasse matrix. Each element reports sr(representative(z), identity, gamma) with the input parameter's lambda-rho. Reference status pending HPC capture.",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
-  "reference_job": "3515475",
-  "source_archive_sha256": "9ad86a8fce2a515e10f14fbe5314ea40b965eabb1dad61100ccf352d2d622461",
+  "reference_job": "3515913",
+  "source_archive_sha256": "2f3e9dcda107c07b842ccb92173a8b10b985333499db645942bb5fb7d627c000",
   "fixture_sha256": "6779c9a629332273ef19a59e71d522681221ecaee7904a88428e62bcb3aefafb",
-  "capture_artifacts_sha256": "669eca10ec0aeeac65aa6f7e3f3cbd84138b403151541c2449b3c98cfcedf554",
+  "capture_artifacts_sha256": "f10664f1e2cf13002a87c5a35f4cc5aa60f7dbaf6dd5ec5ba6420ebd4ff19615",
   "differential_job": "3515893",
-  "oracle_seconds": 0.042,
-  "oracle_maxrss_kb": 4472
+  "oracle_seconds": 0.034,
+  "oracle_maxrss_kb": 4844
 }
