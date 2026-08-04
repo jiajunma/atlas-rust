@@ -13,10 +13,10 @@
   "notes": "Batch 7: full_deform(Param) — the full K-type deformation via finals_for(scale_0) and the reducibility-point recursion (scale/deform_readjust/deformation_terms), as a KTypePol.",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
-  "reference_job": "3515633",
-  "source_archive_sha256": "a29583bd6337b30b7f0470ef3103dd8aa301fde11c970f310edde5f550003b28",
-  "capture_artifacts_sha256": "c4047ff302938ac6ecf5914ed37d0ade8f14b7794797892d2f376c5d3d9b7c79",
+  "reference_job": "3515882",
+  "source_archive_sha256": "29e4df0b50bd6f8a12a13c1685e759e1153b1d93248e089b9f83e00e338bae31",
+  "capture_artifacts_sha256": "052229169c8c53ea62e0a2cc73eeb3015db0e6ed0c4f019fce7f512411f473c8",
   "differential_job": "3515688",
-  "oracle_seconds": 0.023,
-  "oracle_maxrss_kb": 4884
+  "oracle_seconds": 0.026,
+  "oracle_maxrss_kb": 5116
 }
