@@ -1664,6 +1664,21 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
 - Never hand-edit generated CWEB or parser output.
 - Keep root-data and real-group invariants in their owned domain layer.
 - Preserve unrelated user changes and do not commit unverified HPC output.## Remaining work after these slices:
+- **D6 unlocked**: the column-echelon fix extends to rank 6 — D6
+  kl_column, kl_sum_at_s, raw_KL, W_graph, partial_block all byte-identical
+  (HPC captures 3516121-22, 3516175-77; final swap 3516180 in flight).
+  D6 deform/full_deform/kl_print deferred (local oracle too slow);
+  D6 block_Hasse differs under the fibred closure (needs the srm pool).
+- **E6 coverage complete**: KL family + cartan_info/orientation_nr/
+  simple_roots/two_rho (captures 3516083-84, 3516092-93).
+- Next: the common-block srm pool (lookup_full_block z_pool) — the one
+  remaining architectural blocker for KL_block/block_deform/extended_block
+  and for mid-block block_Hasse. A simplified srm layer over-approximates
+  (uses the real KGB x instead of the common_context subsystem view); a
+  faithful port needs  (sub = integral subsystem of the
+  dual), then z_pool BFS + srm_hash matching.
+
+## Remaining work after these slices:
 - **Full suite HPC-verified**: swap 3515917 — 189 fixtures, 0 FAIL, 1
   known PARTIAL (container_syntax_errors). E7 kgb_hasse, E6/D5 families all
   byte-identical. Meta ledger at verified_hpc/3515917.
