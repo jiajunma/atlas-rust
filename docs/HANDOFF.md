@@ -572,7 +572,7 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: `286f236` (main). Working tree clean.
+HEAD at handoff: `466c366` (main). Working tree clean.
 
 ### Since the 8d9837d handoff (2026-08-02 overnight + user ktype/param layer)
 
@@ -1664,6 +1664,21 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
 - Never hand-edit generated CWEB or parser output.
 - Keep root-data and real-group invariants in their owned domain layer.
 - Preserve unrelated user changes and do not commit unverified HPC output.## Remaining work after these slices:
+- **COLUMN-ECHELON FIX (2026-08-04, 248aeb9)**: the E6/D5 "image basis
+  factorization" failure and the A2 anchor mismatch shared one root cause —
+  the incremental column-echelon port is not equivalent to C++'s one-shot
+  `column_apply`. Fix = one-shot ops matrix with `ops(mindex,mindex)=-1`
+  recorded + Euclidean row-reduction inverse + truncating division in
+  `lambda_unique` (matches `arithmetic::divide`; the earlier A2/E6
+  "contradiction" was a div_euclid artifact). A2, E6, D5 all pass; E7
+  kgb_hasse verified on HPC fat (swap 3515688: 506s, 12.4G peak RSS).
+- **Coverage sweep**: E6/D5 families (KL_column, KL_sum_at_s, raw_KL,
+  kl_print, W_graph, partial_block, partial_kl_block, full_deform, deform)
+  + A4/B4/C4/C3 extended; all byte-identical. print_KL_list enumerates the
+  pool (empty blocks print the constant one). Final full swap 3515893 on
+  fat (TIMEOUT=3600) in flight.
+
+## Remaining work after these slices:
 - **Batch coverage sweep (2026-08-04)**: A4/B4/C4 + C3 + D5 + G2/D4 KL
   family extended (KL_column, KL_sum_at_s, raw_KL, kl_print, W_graph/W_cells,
   partial_block, partial_kl_block, full_deform, deform, block_hasse,
