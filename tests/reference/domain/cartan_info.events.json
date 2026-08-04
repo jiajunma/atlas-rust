@@ -1,7 +1,7 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "domain/cartan_info",
-  "status": "verified_hpc_reference",
+  "status": "local_oracle_reference",
   "events": [
     {
       "kind": "ReportLine",
@@ -472,6 +472,46 @@
       "value": {
         "type": "display",
         "display": "((0,2,0),[ 1, 0, 2, 1, 0, 3, 2, 1 ],(15,1),(empty Lie type,Lie type 'A1.A1',Lie type 'A1'))"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 're6': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'E6'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ie6': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type E6, with involution defining\ninner class of type 'c', with 3 real forms and 2 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'cc6': CartanClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Cartan class #1, occurring for 2 real forms and for 1 dual real form"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "((4,1,0),[ 1, 3, 2, 0, 4, 3, 1, 2, 3, 4, 5, 4, 3, 1, 2, 0, 3, 2, 4, 3, 1 ],(36,16),(Lie type 'A5',Lie type 'A1',empty Lie type))"
       }
     }
   ]

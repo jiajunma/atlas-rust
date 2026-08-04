@@ -79,3 +79,10 @@ Cartan_info(cc4)
 cc5 : CartanClass
 cc5 := Cartan_class(ia4,2)
 Cartan_info(cc5)
+re6 : RootDatum
+re6 := simply_connected(Lie_type("E6"),true)
+ie6 : InnerClass
+ie6 := inner_class(re6,[[1,0,0,0,0,0],[0,1,0,0,0,0],[0,0,1,0,0,0],[0,0,0,1,0,0],[0,0,0,0,1,0],[0,0,0,0,0,1]])
+cc6 : CartanClass
+cc6 := Cartan_class(ie6,1)
+Cartan_info(cc6)
