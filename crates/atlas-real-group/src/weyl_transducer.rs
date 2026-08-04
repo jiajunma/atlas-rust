@@ -13,7 +13,7 @@ use crate::StructureError;
 
 pub(crate) type Generator = usize;
 pub(crate) type EltPiece = u16;
-type WeylElt = Vec<u8>;
+pub(crate) type WeylElt = Vec<u8>;
 
 const UNDEF_PIECE: EltPiece = u16::MAX;
 const UNDEF_GEN: u16 = u16::MAX;
@@ -257,13 +257,13 @@ impl CompactWeyl {
         let mut min_star = vec![0_usize; rank];
         for s in 0..rank {
             min_star[s] = s;
+            let comp = comps
+                .iter()
+                .find(|c| c.offset() <= s && s < c.offset() + c.position.len())
+                .expect("in-range");
             let mut t = s;
-            while t > 0 {
+            while t > comp.offset() {
                 t -= 1;
-                let comp = comps
-                    .iter()
-                    .find(|c| c.offset() <= s && s < c.offset() + c.position.len())
-                    .expect("in-range");
                 let cox = coxeter_entry(comp.letter, s - comp.offset(), t - comp.offset());
                 if cox >= 3 {
                     min_star[s] = t;
@@ -333,6 +333,49 @@ impl CompactWeyl {
 
     fn identity(&self) -> WeylElt {
         vec![0_u8; self.transducers.len()]
+    }
+
+    /// The inverse of `w` (weyl.cpp:751-763): right-multiply by the
+    /// unshift letters of the pieces, right to left.
+    pub(crate) fn inverse(&self, w: &WeylElt) -> WeylElt {
+        let mut wi = self.identity();
+        for i in (0..self.transducers.len()).rev() {
+            let tr = &self.transducers[i];
+            let mut x = w[i] as EltPiece;
+            while x > 0 {
+                let right = tr.unshift(x);
+                let external = self.d_out[tr.offset + right];
+                self.inner_mult(&mut wi, external);
+                x = tr.shift(x, right);
+            }
+        }
+        wi
+    }
+
+    /// Apply the diagram automorphism `twist` (external generator
+    /// permutation) to `w`: apply it to the letters of a word for `w`.
+    pub(crate) fn apply_twist(&self, w: &WeylElt, twist: &[usize]) -> WeylElt {
+        let mut result = self.identity();
+        for i in 0..self.transducers.len() {
+            let word = self.word_of_piece(i, w[i]);
+            for &local in &word {
+                // word_of_piece letters are LOCAL to the transducer's
+                // component; add the component offset for the global
+                // internal numbering, then map to external.
+                let internal = self.transducers[i].offset + local;
+                let external = self.d_out[internal];
+                let twisted_external = twist[external];
+                self.inner_mult(&mut result, twisted_external);
+            }
+        }
+        result
+    }
+
+    /// Whether `w` is a twisted involution: `w^{-1} = twist(w)`.
+    pub(crate) fn is_twisted_involution(&self, w: &WeylElt, twist: &[usize]) -> bool {
+        let wi = self.inverse(w);
+        let tw = self.apply_twist(w, twist);
+        wi == tw
     }
 
     /// The word (internal generators, left to right) of one piece.
@@ -407,6 +450,77 @@ mod tests {
             vec![0, -1, 0, 2],
         ];
         assert_eq!(compact_order(&d4), 192);
+    }
+
+    #[test]
+    fn compact_inverse_satisfies_the_group_law() {
+        let a2: Vec<Vec<i32>> = vec![vec![2, -1], vec![-1, 2]];
+        let group = CompactWeyl::new(&a2).unwrap();
+        let elements = group.enumerate(1 << 10).unwrap();
+        for w in &elements {
+            let wi = group.inverse(w);
+            let mut prod = w.clone();
+            group.multiply(&mut prod, &wi);
+            assert_eq!(prod, group.identity(), "w * w^-1 != e for {w:?}");
+        }
+        // twisted involutions for the identity twist are the involutions
+        let twist = [0_usize, 1];
+        for w in &elements {
+            let is_tw = group.is_twisted_involution(w, &twist);
+            let mut sq = w.clone();
+            group.multiply(&mut sq, w);
+            let is_inv = sq == group.identity();
+            assert_eq!(is_tw, is_inv, "mismatch for {w:?}");
+        }
+    }
+
+    #[test]
+    fn compact_matrices_match_the_matrix_enumeration() {
+        use crate::weyl::WeylGroup;
+        let cartan: Vec<Vec<i32>> = vec![vec![2, 0], vec![0, 2]];
+        let datum = crate::BasedRootDatum::standard(cartan.clone()).unwrap();
+        let compact = CompactWeyl::new(&cartan).unwrap();
+        let elements = compact.enumerate(1 << 10).unwrap();
+        let reflections: Vec<_> = (0..2)
+            .map(|g| crate::weyl::WeylAction::simple_reflection(&datum, g).unwrap())
+            .collect();
+        for elt in &elements {
+            let mut action = crate::weyl::WeylAction::identity(&datum).unwrap();
+            for (pi, &piece) in elt.iter().enumerate() {
+                for &internal in &compact.word_of_piece(pi, piece) {
+                    let external = compact.d_out()[internal];
+                    action = action.compose_fast(&reflections[external]);
+                }
+            }
+            // the element as a Weyl group element must have w^2 == e and
+            // match the matrix enumeration's action
+            let actions = WeylGroup::new(datum.clone()).enumerate_actions(1 << 10).unwrap();
+            let found = actions.iter().find(|a| a.matrix() == action.matrix());
+            assert!(found.is_some(), "compact matrix not in enumeration: {elt:?}");
+        }
+    }
+
+    #[test]
+    fn compact_a1xa1_inverse_and_twisted_checks() {
+        let cartan: Vec<Vec<i32>> = vec![vec![2, 0], vec![0, 2]];
+        let group = CompactWeyl::new(&cartan).unwrap();
+        let elements = group.enumerate(1 << 10).unwrap();
+        assert_eq!(elements.len(), 4);
+        for w in &elements {
+            let wi = group.inverse(w);
+            let mut prod = w.clone();
+            group.multiply(&mut prod, &wi);
+            assert_eq!(prod, group.identity(), "w*w^-1 != e for {w:?}");
+        }
+        let twist = [0_usize, 1];
+        for w in &elements {
+            let mut sq = w.clone();
+            group.multiply(&mut sq, w);
+            let is_inv = sq == group.identity();
+            let is_tw = group.is_twisted_involution(w, &twist);
+            eprintln!("A1A1 w={w:?} inv={is_inv} tw={is_tw} wi={:?} tw2={:?}", group.inverse(w), group.apply_twist(w, &twist));
+            assert_eq!(is_tw, is_inv, "twisted/involution mismatch for {w:?}");
+        }
     }
 
     #[test]
