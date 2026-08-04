@@ -572,7 +572,7 @@ separate elected `x0_torus_part` construction.
 
 ## Start here (next agent)
 
-HEAD at handoff: `f770bda` (main). Working tree clean.
+HEAD at handoff: `0cdc0b3` (main). Working tree clean.
 
 ### Since the 8d9837d handoff (2026-08-02 overnight + user ktype/param layer)
 
@@ -1664,6 +1664,18 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
 - Never hand-edit generated CWEB or parser output.
 - Keep root-data and real-group invariants in their owned domain layer.
 - Preserve unrelated user changes and do not commit unverified HPC output.## Remaining work after these slices:
+- **Full suite HPC-verified**: swap 3515917 — 189 fixtures, 0 FAIL, 1
+  known PARTIAL (container_syntax_errors). E7 kgb_hasse, E6/D5 families all
+  byte-identical. Meta ledger at verified_hpc/3515917.
+- **Coverage now spans** A1-A4/B2-B4/C3-C4/D4-D5/E6/G2/F4 for the KL family
+  (KL_column, KL_sum_at_s, raw_KL, kl_print, W_graph/W_cells,
+  partial_block, partial_kl_block, full_deform, deform, block_hasse) plus
+  cartan_info/orientation_nr/two_rho/simple_roots (A2-A4/B2-B4/C3/D4-D5/F4).
+- Next big module: the common-block srm pool (lookup_full_block z_pool,
+  needs the common_context subsystem view; C3 mid-block params still differ
+  under the fibred closure). Then ext_block, twisted deform, print family.
+
+## Remaining work after these slices:
 - **COLUMN-ECHELON FIX (2026-08-04, 248aeb9)**: the E6/D5 "image basis
   factorization" failure and the A2 anchor mismatch shared one root cause —
   the incremental column-echelon port is not equivalent to C++'s one-shot
