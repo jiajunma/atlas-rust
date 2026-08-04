@@ -53,6 +53,7 @@ pub use topology::dual_component_group_rank;
 mod twisted_involution;
 mod weak_real_form;
 mod weyl;
+mod weyl_transducer;
 mod weyl_element;
 // Consumer is the parked task #9 (docs/ON_DEMAND_PARTITION_DESIGN.md);
 // the allow lifts when the on-demand partition lands.

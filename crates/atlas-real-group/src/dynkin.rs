@@ -20,6 +20,13 @@ pub(crate) struct DynkinComponent {
     pub(crate) position: Vec<usize>,
 }
 
+impl DynkinComponent {
+    /// The lowest datum vertex of this component (upstream `offset`).
+    pub(crate) fn offset(&self) -> usize {
+        *self.support.iter().next().expect("nonempty Dynkin support")
+    }
+}
+
 fn first(set: &BTreeSet<usize>) -> usize {
     *set.iter()
         .next()

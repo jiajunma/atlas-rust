@@ -304,9 +304,7 @@ impl WeylGroup {
             std::collections::HashMap::with_capacity(budget.min(1 << 16));
         let mut pending = VecDeque::new();
         insert_action(self.identity()?, budget, &mut actions, &mut pending)?;
-        let generators = (0..self.datum.semisimple_rank())
-            .map(|generator| self.simple_reflection(generator))
-            .collect::<Result<Vec<_>, _>>()?;
+        let generators = self.reflections()?;
         while let Some(action) = pending.pop_front() {
             for generator in &generators {
                 insert_action(
@@ -318,6 +316,12 @@ impl WeylGroup {
             }
         }
         Ok(actions.into_values().collect())
+    }
+
+    fn reflections(&self) -> Result<Vec<WeylAction>, StructureError> {
+        (0..self.datum.semisimple_rank())
+            .map(|generator| WeylAction::simple_reflection(&self.datum, generator))
+            .collect()
     }
 }
 

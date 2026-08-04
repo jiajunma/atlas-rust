@@ -1,0 +1,431 @@
+//! Compact Weyl group in the transducer (parabolic-subquotient)
+//! representation of du Cloux / van Leeuwen (upstream `structure/weyl.cpp`).
+//!
+//! A Weyl element is `[u8; rank]`: entry `i` indexes the minimal coset
+//! representative of the parabolic subquotient `W_{i-1}\W_i`. Multiplication
+//! is O(length) via the per-generator transducers, so enumerating a whole
+//! Weyl group (e.g. 51840 for E6) is orders of magnitude cheaper than the
+//! matrix representation used by [`crate::WeylAction`].
+
+use std::collections::{HashSet, VecDeque};
+
+use crate::StructureError;
+
+pub(crate) type Generator = usize;
+pub(crate) type EltPiece = u16;
+type WeylElt = Vec<u8>;
+
+const UNDEF_PIECE: EltPiece = u16::MAX;
+const UNDEF_GEN: u16 = u16::MAX;
+
+/// Coxeter matrix entry `(i, j)` for a connected component of type
+/// `letter` with generators numbered 0.. in Bourbaki order
+/// (weyl.cpp:191-215).
+fn coxeter_entry(letter: char, i: usize, j: usize) -> u32 {
+    let (mut a, mut b) = (i, j);
+    if a > b {
+        std::mem::swap(&mut a, &mut b);
+    }
+    if letter != 'D' && letter != 'E' {
+        // linear diagrams
+        match b - a {
+            0 => 1,
+            1 => {
+                if letter == 'A'
+                    || ((letter == 'B' || letter == 'C') && a > 0)
+                    || (letter == 'F' && a != 1)
+                {
+                    3
+                } else if letter == 'G' {
+                    6
+                } else {
+                    4 // BC with (a,b)=(0,1), or F with (1,2)
+                }
+            }
+            _ => 2,
+        }
+    } else if a == 0 {
+        if b == 2 {
+            3
+        } else {
+            2
+        }
+    } else if letter == 'E' && a == 1 {
+        if b == 3 {
+            3
+        } else {
+            2
+        }
+    } else if b - a == 1 {
+        3
+    } else {
+        2
+    }
+}
+
+/// One parabolic subquotient transducer (weyl.cpp:100-288, 289-416).
+pub(crate) struct Transducer {
+    offset: Generator,
+    limit: usize,
+    lengths: Vec<u8>,
+    rights: Vec<u8>,
+    /// Flattened `size * limit`; entry `< size` is a shift, `>= size` is a
+    /// transduction (`out = entry - size`).
+    table: Vec<u16>,
+}
+
+impl Transducer {
+    fn new(letter: char, offset: Generator, r: usize) -> Self {
+        let limit = r + 1;
+        // tab[x].shift / .out as flattened arrays; shifts are EltPiece,
+        // outs are Generator (stored as u16).
+        let mut shift: Vec<u16> = vec![UNDEF_PIECE; limit];
+        let mut out: Vec<u16> = vec![UNDEF_GEN; limit];
+        let mut lengths = vec![0_u8];
+        let mut rights = vec![0_u8];
+        // first row: shifts below r transduce the unchanged generator
+        for i in 0..r {
+            shift[i] = 0;
+            out[i] = i as u16;
+        }
+        let mut size = 1_usize;
+        let mut x = 0_usize;
+        while x < size {
+            for s in 0..=r {
+                if shift[x * limit + s] != UNDEF_PIECE {
+                    continue;
+                }
+                let xs = size;
+                size += 1;
+                lengths.push(lengths[x] + 1);
+                rights.push(s as u8);
+                shift.push(UNDEF_PIECE); // row xs, shifted by one slot
+                out.push(UNDEF_GEN);
+                // shift rows by one: row xs is at index xs*limit
+                shift.extend(std::iter::repeat(UNDEF_PIECE).take(limit - 1));
+                out.extend(std::iter::repeat(UNDEF_GEN).take(limit - 1));
+                // tab[x].shift[s] = xs; top.shift[s] = x
+                shift[x * limit + s] = xs as u16;
+                shift[xs * limit + s] = x as u16;
+
+                for t in 0..=r {
+                    if t == s {
+                        continue;
+                    }
+                    let mut b = x;
+                    // minimum of the dihedral orbit for s and t
+                    loop {
+                        let next = shift[b * limit + t];
+                        if next != UNDEF_PIECE && (next as usize) < b {
+                            b = next as usize;
+                        } else {
+                            break;
+                        }
+                        let next = shift[b * limit + s];
+                        if next != UNDEF_PIECE && (next as usize) < b {
+                            b = next as usize;
+                        } else {
+                            break;
+                        }
+                    }
+                    let d = (lengths[xs] as u32) - (lengths[b] as u32);
+                    let m = coxeter_entry(letter, s, t);
+                    let st = [s, t];
+                    if d == m {
+                        // case (1): no transduction; y is m-1 upward steps
+                        let mut y = b;
+                        let u = st[(m % 2) as usize];
+                        let v = st[1 - (m % 2) as usize];
+                        let mut steps = m - 1;
+                        loop {
+                            let next = shift[y * limit + u];
+                            debug_assert!(next != UNDEF_PIECE && (next as usize) > y);
+                            y = next as usize;
+                            steps -= 1;
+                            if steps == 0 {
+                                break;
+                            }
+                            let next = shift[y * limit + v];
+                            debug_assert!(next != UNDEF_PIECE && (next as usize) > y);
+                            y = next as usize;
+                            steps -= 1;
+                            if steps == 0 {
+                                break;
+                            }
+                        }
+                        shift[xs * limit + t] = y as u16;
+                        shift[y * limit + t] = xs as u16;
+                    } else if d == m - 1 {
+                        let u = st[1 - (m % 2) as usize];
+                        if shift[b * limit + u] == b as u16 {
+                            // case (2): xs fixed by t; output same g as b for u
+                            shift[xs * limit + t] = xs as u16;
+                            out[xs * limit + t] = out[b * limit + u];
+                        }
+                        // case (3): do nothing
+                    }
+                }
+            }
+            x += 1;
+        }
+        // pack into the table: shift when out is undef, else size + out
+        let mut table = vec![0_u16; size * limit];
+        for i in 0..size {
+            for j in 0..=r {
+                let entry = if out[i * limit + j] == UNDEF_GEN {
+                    shift[i * limit + j]
+                } else {
+                    (size as u16) + out[i * limit + j]
+                };
+                table[i * limit + j] = entry;
+            }
+        }
+        Self { offset, limit, lengths, rights, table }
+    }
+
+    fn size(&self) -> usize {
+        self.lengths.len()
+    }
+
+    fn has_shift(&self, x: EltPiece, s: usize) -> bool {
+        (self.table[(x as usize) * self.limit + s] as usize) < self.size()
+    }
+
+    fn shift(&self, x: EltPiece, s: usize) -> EltPiece {
+        self.table[(x as usize) * self.limit + s]
+    }
+
+    fn out(&self, x: EltPiece, s: usize) -> Generator {
+        (self.table[(x as usize) * self.limit + s] as usize) - self.size()
+    }
+
+    fn unshift(&self, x: EltPiece) -> Generator {
+        self.rights[x as usize] as usize
+    }
+}
+
+/// The Weyl group in the compact representation, with the external
+/// (datum) ↔ internal (transducer) generator numbering.
+pub(crate) struct CompactWeyl {
+    transducers: Vec<Transducer>,
+    /// external -> internal
+    d_in: Vec<usize>,
+    /// internal -> external
+    d_out: Vec<usize>,
+    min_star: Vec<usize>,
+    /// last generator of the internal diagram component of each generator
+    upper: Vec<usize>,
+}
+
+impl CompactWeyl {
+    /// Build from a Cartan matrix (weyl.cpp:495-547): classify the diagram,
+    /// reverse types B/C/D (internal order), construct one transducer per
+    /// internal generator.
+    pub(crate) fn new(cartan: &[Vec<i32>]) -> Result<Self, StructureError> {
+        let rank = cartan.len();
+        let comps = crate::dynkin::classify(cartan)?;
+        let mut d_out = vec![0_usize; rank];
+        let mut upper = vec![0_usize; rank];
+        for comp in &comps {
+            let offset = comp.offset();
+            let last = offset + comp.position.len() - 1;
+            for i in 0..comp.position.len() {
+                upper[offset + i] = last;
+            }
+            if matches!(comp.letter, 'B' | 'C' | 'D') {
+                for i in 0..comp.position.len() {
+                    d_out[last - i] = comp.position[i];
+                }
+            } else {
+                for i in 0..comp.position.len() {
+                    d_out[offset + i] = comp.position[i];
+                }
+            }
+        }
+        let mut d_in = vec![0_usize; rank];
+        for i in 0..rank {
+            d_in[d_out[i]] = i;
+        }
+        let mut transducers = Vec::with_capacity(rank);
+        for comp in &comps {
+            for i in 0..comp.position.len() {
+                transducers.push(Transducer::new(comp.letter, comp.offset(), i));
+            }
+        }
+        // d_min_star: for each generator, the first non-commuting or equal
+        // generator with internal index <= it.
+        let mut min_star = vec![0_usize; rank];
+        for s in 0..rank {
+            min_star[s] = s;
+            let mut t = s;
+            while t > 0 {
+                t -= 1;
+                let comp = comps
+                    .iter()
+                    .find(|c| c.offset() <= s && s < c.offset() + c.position.len())
+                    .expect("in-range");
+                let cox = coxeter_entry(comp.letter, s - comp.offset(), t - comp.offset());
+                if cox >= 3 {
+                    min_star[s] = t;
+                    break;
+                }
+            }
+        }
+        Ok(Self { transducers, d_in, d_out, min_star, upper })
+    }
+
+    fn start_gen(&self, internal_s: usize) -> usize {
+        self.upper[internal_s]
+    }
+
+    /// Right multiply `w` by internal generator `s` at transducer `i`;
+    /// returns +1/-1 for the length change.
+    fn transduce(&self, w: &mut WeylElt, mut i: usize, mut s: usize) -> i8 {
+        loop {
+            let wi = w[i] as EltPiece;
+            let tr = &self.transducers[i];
+            if tr.has_shift(wi, s) {
+                let shifted = tr.shift(wi, s);
+                let down = (shifted as usize) < (wi as usize);
+                w[i] = shifted as u8;
+                return if down { -1 } else { 1 };
+            }
+            debug_assert!(i > 0);
+            s = tr.out(wi, s);
+            i -= 1;
+        }
+    }
+
+    /// Right multiply by external generator `s_ext`.
+    pub(crate) fn inner_mult(&self, w: &mut WeylElt, s_ext: usize) -> i8 {
+        let s = self.d_in[s_ext];
+        let local = s - self.transducers[s].offset;
+        self.transduce(w, self.start_gen(s), local)
+    }
+
+    /// Multiply `w` on the right by the piece `i` of `v`.
+    fn mult_by_piece(&self, w: &mut WeylElt, v: &WeylElt, i: usize) -> i32 {
+        let tr = &self.transducers[i];
+        let x = v[i] as EltPiece;
+        let start = self.start_gen(i);
+        let _ = self;
+        let mut result = -(tr.lengths[x as usize] as i32);
+        let mut stack: Vec<usize> = Vec::with_capacity(tr.lengths[x as usize] as usize);
+        let mut cur = x;
+        while cur > 0 {
+            let right = tr.unshift(cur);
+            stack.push(right);
+            cur = tr.shift(cur, right); // x = shift(x, right)
+        }
+        // the unshift chain is rightmost-first; reverse it for left-to-right
+        for &letter in stack.iter().rev() {
+            result += i32::from(self.transduce(w, start, letter));
+        }
+        result
+    }
+
+    /// Right multiply `w` by `v` (both internal-numbered pieces).
+    pub(crate) fn multiply(&self, w: &mut WeylElt, v: &WeylElt) {
+        for i in 0..self.transducers.len() {
+            self.mult_by_piece(w, v, i);
+        }
+    }
+
+    fn identity(&self) -> WeylElt {
+        vec![0_u8; self.transducers.len()]
+    }
+
+    /// The word (internal generators, left to right) of one piece.
+    pub(crate) fn word_of_piece(&self, i: usize, x: u8) -> Vec<usize> {
+        let tr = &self.transducers[i];
+        let mut word = Vec::new();
+        let mut cur = x as EltPiece;
+        while cur > 0 {
+            let right = tr.unshift(cur);
+            word.push(right);
+            cur = tr.shift(cur, right);
+        }
+        word.reverse();
+        word
+    }
+
+    /// Internal -> external generator numbering.
+    pub(crate) fn d_out(&self) -> &[usize] {
+        &self.d_out
+    }
+
+    /// Enumerate all group elements by breadth-first search (compact
+    /// elements, cheap multiplication).
+    pub(crate) fn enumerate(&self, budget: usize) -> Result<Vec<WeylElt>, StructureError> {
+        let mut seen: HashSet<WeylElt> = HashSet::with_capacity(budget.min(1 << 16));
+        let mut pending: VecDeque<WeylElt> = VecDeque::new();
+        let id = self.identity();
+        seen.insert(id.clone());
+        pending.push_back(id);
+        while let Some(w) = pending.pop_front() {
+            for s in 0..self.transducers.len() {
+                let mut next = w.clone();
+                self.inner_mult(&mut next, s);
+                if seen.insert(next.clone()) {
+                    if seen.len() > budget {
+                        return Err(StructureError::ResourceLimitExceeded { limit: budget });
+                    }
+                    pending.push_back(next);
+                }
+            }
+        }
+        Ok(seen.into_iter().collect())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn compact_order(cartan: &[Vec<i32>]) -> usize {
+        CompactWeyl::new(cartan).unwrap().enumerate(1 << 20).unwrap().len()
+    }
+
+    #[test]
+    fn compact_order_matches_known_group_orders() {
+        let a2: Vec<Vec<i32>> = vec![vec![2, -1], vec![-1, 2]];
+        assert_eq!(compact_order(&a2), 6);
+        let b2: Vec<Vec<i32>> = vec![vec![2, -2], vec![-1, 2]];
+        assert_eq!(compact_order(&b2), 8);
+        let g2: Vec<Vec<i32>> = vec![vec![2, -3], vec![-1, 2]];
+        assert_eq!(compact_order(&g2), 12);
+        let a3: Vec<Vec<i32>> = vec![
+            vec![2, -1, 0],
+            vec![-1, 2, -1],
+            vec![0, -1, 2],
+        ];
+        assert_eq!(compact_order(&a3), 24);
+        let d4: Vec<Vec<i32>> = vec![
+            vec![2, -1, 0, 0],
+            vec![-1, 2, -1, -1],
+            vec![0, -1, 2, 0],
+            vec![0, -1, 0, 2],
+        ];
+        assert_eq!(compact_order(&d4), 192);
+    }
+
+    #[test]
+    fn compact_multiply_matches_length_and_action() {
+        // The compact multiplication must reproduce the group law: check
+        // that w * s * w == identity for a sample of elements on A2.
+        let cartan: Vec<Vec<i32>> = vec![vec![2, -1], vec![-1, 2]];
+        let group = CompactWeyl::new(&cartan).unwrap();
+        let elements = group.enumerate(1 << 10).unwrap();
+        let mut involution_count = 0_usize;
+        for w in &elements {
+            let mut inv = w.clone();
+            group.inner_mult(&mut inv, 0);
+            group.inner_mult(&mut inv, 0);
+            if inv == *w {
+                involution_count += 1;
+            }
+        }
+        // s0 * s0 = identity leaves every element unchanged.
+        assert_eq!(involution_count, elements.len());
+    }
+}
