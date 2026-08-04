@@ -126,6 +126,11 @@ impl WeylAction {
         }
     }
 
+    /// The shared datum behind this action (Arc refcount bump).
+    pub fn datum_arc(&self) -> &std::sync::Arc<BasedRootDatum> {
+        &self.datum
+    }
+
     pub fn act(&self, weight: &Weight) -> Result<Weight, StructureError> {
         apply_matrix(&self.weight_matrix, weight.as_slice()).map(Weight::new)
     }
@@ -312,33 +317,18 @@ impl WeylGroup {
         let compact = crate::weyl_transducer::CompactWeyl::new(&cartan)?;
         let elements = compact.enumerate(budget)?;
         let reflections = self.reflections()?;
+        let piece_matrices = compact.piece_matrices(&reflections)?;
         use rayon::prelude::*;
         elements
             .par_iter()
-            .map(|elt| self.action_from_compact(&compact, elt, &reflections))
+            .map(|elt| {
+                let mut action = WeylAction::identity(&self.datum)?;
+                for (piece_index, &piece) in elt.iter().enumerate() {
+                    action = action.compose_fast(&piece_matrices[piece_index][piece as usize]);
+                }
+                Ok(action)
+            })
             .collect()
-    }
-
-    /// The matrix action of a compact (transducer) element: right-multiply
-    /// the simple reflections of its piece words (left to right).
-    fn action_from_compact(
-        &self,
-        compact: &crate::weyl_transducer::CompactWeyl,
-        elt: &[u8],
-        reflections: &[WeylAction],
-    ) -> Result<WeylAction, StructureError> {
-        let mut action = WeylAction::identity(&self.datum)?;
-        for (piece_index, &piece) in elt.iter().enumerate() {
-            let word = compact.word_of_piece(piece_index, piece);
-            for &local in &word {
-                // word_of_piece letters are LOCAL to the component; add the
-                // transducer's offset for global internal numbering.
-                let internal = compact.piece_offset(piece_index) + local;
-                let external = compact.d_out()[internal];
-                action = action.compose_fast(&reflections[external]);
-            }
-        }
-        Ok(action)
     }
 
     fn reflections(&self) -> Result<Vec<WeylAction>, StructureError> {

@@ -1684,8 +1684,7 @@ fn build_dual_inner_class(
     span: SourceSpan,
 ) -> Result<Arc<InnerClassContext>, Diagnostic> {
     let inner_class = dual_inner_class(&parent.inner_class, WEYL_BUDGET, ROOT_BUDGET)
-        .map_err(|error| runtime(span, error.to_string()))?;
-    let datum = inner_class.datum().clone();
+        .map_err(|error| runtime(span, error.to_string()))?;    let datum = inner_class.datum().clone();
     // The dual inner class carries the dual datum (inner_class_value::dual,
     // atlas-types.w:3152-3156): its coroot preference is switched
     // (RootSystem DualTag, rootdata.cpp:341) and its Lie type is the
@@ -7985,15 +7984,15 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 ));
             };
             let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
-            let dual_quasisplit = dual_parent.order.quasisplit_external();
+            let ta = std::time::Instant::now();            let dual_quasisplit = dual_parent.order.quasisplit_external();
             let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
-            let block = build_block(&parameter.context, &dual_rf, span)?;
-            let mut kl_table =
+            let tb = std::time::Instant::now();            let block = build_block(&parameter.context, &dual_rf, span)?;
+            let t1 = std::time::Instant::now();            let mut kl_table =
                 KlTable::new(&block.graph).map_err(|error| structure_diagnostic(error, span))?;
             kl_table
                 .fill(0)
                 .map_err(|error| structure_diagnostic(error, span))?;
-            let size = block.graph.size();
+            let t3 = std::time::Instant::now();            let size = block.graph.size();
             let start = (0..size)
                 .find(|&z| block.graph.x(z) == Some(parameter.repr.x()))
                 .ok_or_else(|| runtime(span, "parameter not in the common block"))?;

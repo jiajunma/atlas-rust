@@ -403,6 +403,32 @@ impl CompactWeyl {
         self.transducers[i].offset
     }
 
+    /// One matrix per (transducer, piece): the product of the simple
+    /// reflections of the piece word. Element matrices are then the product
+    /// of these per-piece matrices (rank matrix products instead of one per
+    /// word letter).
+    pub(crate) fn piece_matrices(
+        &self,
+        reflections: &[crate::weyl::WeylAction],
+    ) -> Result<Vec<Vec<crate::weyl::WeylAction>>, StructureError> {
+        let mut result = Vec::with_capacity(self.transducers.len());
+        for (i, tr) in self.transducers.iter().enumerate() {
+            let mut per_transducer = Vec::with_capacity(tr.lengths.len());
+            for piece in 0..tr.lengths.len() {
+                let word = self.word_of_piece(i, piece as u8);
+                let mut action = crate::weyl::WeylAction::identity(&reflections[0].datum_arc())?;
+                for &local in &word {
+                    let internal = tr.offset + local;
+                    let external = self.d_out[internal];
+                    action = action.compose_fast(&reflections[external]);
+                }
+                per_transducer.push(action);
+            }
+            result.push(per_transducer);
+        }
+        Ok(result)
+    }
+
     /// Enumerate all group elements by breadth-first search (compact
     /// elements, cheap multiplication).
     pub(crate) fn enumerate(&self, budget: usize) -> Result<Vec<WeylElt>, StructureError> {
