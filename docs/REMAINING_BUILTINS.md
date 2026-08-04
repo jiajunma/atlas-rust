@@ -62,6 +62,16 @@ Suggested next step: instrument the real C++ `involutions.cpp` build for
 A2 x4 (or read `matrix.h`'s PID_Matrix swapColumns/columnApply once more
 for hidden sign flips), then reconcile the A2/E6 split.
 
+## D5 column-echelon limit (2026-08-04)
+
+The E6 involution-187 `RealProjection` failure also hits D5: the so*(10)
+real form's `KL_sum_at_s` panics on "image basis factorization". The
+same root cause (incremental column-echelon port vs C++ one-shot
+`column_apply`, see the E6 notes below). `raw_KL` on the D5 block passes,
+so the block graph itself is fine — only packet involutions of certain
+real forms trip the projection. Verified fixtures must avoid D5/D6+ real
+forms until the column-echelon port is reconciled.
+
 ## Known structural limit: E6-and-larger Rep_context
 
 The `RealProjection::build` column-echelon port (matreduc.h:129-161,
