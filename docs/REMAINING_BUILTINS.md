@@ -89,6 +89,18 @@ so the block graph itself is fine — only packet involutions of certain
 real forms trip the projection. Verified fixtures must avoid D5/D6+ real
 forms until the column-echelon port is reconciled.
 
+## Root-index builtins limit (2026-08-04, detail)
+
+The oracle's B2 positive-root order is [1,0],[0,1],[1,2],[1,1] (probe):
+root_expression(rb,2) = [1,2] = alpha_1 + 2 alpha_2, so the oracle's B2
+uses the Bourbaki numbering (alpha_1 SHORT), while Rust's standard B2
+Cartan [[2,-2],[-1,2]] has alpha_1 LONG. The oracle `ri` order is the
+roots_at_level generation order (rootdata.cpp:144-219), which depends on
+this numbering; mapping oracle RootNbrs to Rust roots therefore needs the
+Bourbaki simple-root renumbering first. That renumbering would touch the
+whole RootDatum surface (simple_roots, Cartan_matrix, KGB block orders),
+so the root-index family stays unimplemented and fixtures avoid it.
+
 ## Root-index builtins limit (2026-08-04)
 
 `root_expression`/`coroot_expression`/`root_permutation`/`root_involution`
