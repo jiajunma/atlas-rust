@@ -118,3 +118,14 @@ xc3 := KGB(rfc3,0)
 pc3 : Param
 pc3 := param(xc3,[0,0,0],[0,0,0]/1)
 KL_column(pc3)
+rb4 : RootDatum
+rb4 := simply_connected(Lie_type("B4"),true)
+ib4 : InnerClass
+ib4 := inner_class(rb4,[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
+rfb4 : RealForm
+rfb4 := real_form(ib4,1)
+xb4 : KGBElt
+xb4 := KGB(rfb4,0)
+pb4 : Param
+pb4 := param(xb4,[0,0,0,0],[0,0,0,0]/1)
+KL_column(pb4)

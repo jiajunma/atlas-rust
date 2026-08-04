@@ -1,6 +1,6 @@
 {
   "fixture": "domain/kl_column.atlas",
-  "fixture_sha256": "7ca3b31885c65c1ed11ce2a9a9d7ab75d75dc05739a0459a5ff9d9b27eb714f0",
+  "fixture_sha256": "986e0ced3d4be3dab4a8027397a99e7d0927b4c8321761f97e4ca5fe372499b9",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_status": "verified_hpc_reference",
