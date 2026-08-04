@@ -23,5 +23,5 @@
     "both constructed A1 inner classes expose the identity as their distinguished involution"
   ],
   "notes": "Rank-one twisted and distinguished involution behavior captured verbatim by HPC job 3502476 against the pinned Atlas oracle. This freezes the decomposition pair ordering, canonical Weyl displays, and distinguished-matrix presentation. Rust implementation verified by HPC differential job 3502550 (pipeline_swap_diff at commit 5346584ab0a946d1d3024f950358d12db35f6458): stdout, stderr diagnostics, and exit status match the frozen reference events exactly.",
-  "differential_job": "3515893"
+  "differential_job": "3515917"
 }

@@ -22,5 +22,5 @@
     "pins the parabolic-pieces involution ordering at C2, isomorphic to B2"
   ],
   "notes": "C2 full KGB print captured verbatim by HPC job 3502734 against the pinned atlasofliegroups-4d3e9449 oracle; suggested by the KGB pieces-key slice to pin C2 numbering explicitly.",
-  "differential_job": "3515893"
+  "differential_job": "3515917"
 }

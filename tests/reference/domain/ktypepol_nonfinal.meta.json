@@ -18,5 +18,5 @@
     "sources/gkmod/repr.cpp:1205-1297"
   ],
   "notes": "KTypePol non-final surface (finals_for expansion when adding a K-type to a KTypePol). Reference captured verbatim by HPC job 3506276 against the frozen atlasofliegroups-4d3e9449 oracle. The crate port of Rep_context::finals_for (K_repr.cpp:290-396) plus the language-layer term merge in the upstream pol order landed at commit f4d5798, together with the projection-sweep fixes (local row copy + unrecorded pivot negation) that the su(2,1) elections exposed. Differential pipeline_swap_diff job 3506331 reports PASS with zero regressions; metadata carries rust_status verified_hpc with differential_job 3506331.",
-  "differential_job": "3515893"
+  "differential_job": "3515917"
 }

@@ -24,5 +24,5 @@
     "adding an integral lattice vector to the first torus factor normalizes back to [1,2]/3 and yields an equal RealForm"
   ],
   "notes": "Corrected noncanonical A2 behavior captured verbatim by HPC job 3502479 against the pinned Atlas oracle. Job 3502476 used stale row-oriented matrix literals, failed root preservation, and is intentionally excluded from this reference; Rust support remains unimplemented.",
-  "differential_job": "3515893"
+  "differential_job": "3515917"
 }
