@@ -1056,6 +1056,68 @@
         "type": "display",
         "display": "(The 0x0 matrix,[[ ],[ 1 ]],[ 0, 0 ])"
       }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rb4': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'B4'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ib4': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type B4, with involution defining\ninner class of type 'c', with 5 real forms and 4 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rfb4': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "connected real group with Lie algebra 'so(8,1)'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'dfb4': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "compact connected real group with Lie algebra 'sp(4)'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'blb4': Block\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Block of 0 elements"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "(The 0x0 matrix,[[ ],[ 1 ]],[ 0, 0 ])"
+      }
     }
   ]
 }
