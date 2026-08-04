@@ -102,3 +102,14 @@ xd5 := KGB(rfd5,0)
 pd5 : Param
 pd5 := param(xd5,[0,0,0,0,0],[0,0,0,0,0]/1)
 partial_block(pd5)
+re6 : RootDatum
+re6 := simply_connected(Lie_type("E6"),true)
+ie6 : InnerClass
+ie6 := inner_class(re6,[[1,0,0,0,0,0],[0,1,0,0,0,0],[0,0,1,0,0,0],[0,0,0,1,0,0],[0,0,0,0,1,0],[0,0,0,0,0,1]])
+rfe6 : RealForm
+rfe6 := real_form(ie6,1)
+xe6 : KGBElt
+xe6 := KGB(rfe6,0)
+pe6 : Param
+pe6 := param(xe6,[0,0,0,0,0,0],[0,0,0,0,0,0]/1)
+partial_block(pe6)
