@@ -58,3 +58,7 @@ ra4 : RootDatum
 ra4 := simply_connected(Lie_type("A4"),true)
 two_rho(ra4)
 two_rho_check(ra4)
+rd5 : RootDatum
+rd5 := simply_connected(Lie_type("D5"),true)
+two_rho(rd5)
+two_rho_check(rd5)

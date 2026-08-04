@@ -13,7 +13,7 @@
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
   "reference_job": "3515472",
   "source_archive_sha256": "9ad86a8fce2a515e10f14fbe5314ea40b965eabb1dad61100ccf352d2d622461",
-  "fixture_sha256": "b1644bc34217fa5825b902006b538311b3a052ee243a824026736c966a35eceb",
+  "fixture_sha256": "04b06a8669d1aa83b84c9023b3a74053ec5dab7bbb1f36e968a0036cc92311ce",
   "capture_artifacts_sha256": "7740c25fea9b76e7ef29cdb849b12ea4cc87b70bb59ee56bee33ff4bdd549596",
   "differential_job": "3515893",
   "oracle_seconds": 0.043,
