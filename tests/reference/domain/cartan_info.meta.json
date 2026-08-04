@@ -18,7 +18,7 @@
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
   "reference_job": "3512454",
   "source_archive_sha256": "b20bebd6fc8e14ddafa423a4279edd46c959ebaeb8e7d27887606c65ccc30cfb",
-  "fixture_sha256": "b84e92b51b3d005e58fc52d3cdf3b8b8c22b2f1db03ad278dec931f49c2f9625",
+  "fixture_sha256": "9b242b15939778e56fc05f7d46a10042602a10d1f996f9c38bc51cea9a820d42",
   "capture_artifacts_sha256": "d7d7d5bd6d8e7c4a31e796cbeec35d007564014bc5ef95d4bc42fe17260ede77",
   "differential_job": "3513333"
 }
