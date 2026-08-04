@@ -48,6 +48,31 @@ not a source-level C++ translation.
 6. Commit source, fixtures, and report metadata; never commit unverified local
    output.
 
+## Working conventions (user directives, 2026-08-04)
+
+1. **Submit, do not wait.** Once an HPC job is submitted (`sbatch`), move on
+   to the next task immediately. Never block the local loop on a pending job;
+   results are collected later in batches (a periodic poll is fine, but the
+   default is to keep producing work).
+2. **Heavy fixtures run on HPC with a generous timeout.** E7 and similar
+   Weyl-heavy work go to the `fat` partition with a large `--timeout`
+   (e.g. `TIMEOUT=1200`); the `cpu` partition's per-task 8G limit OOMs on
+   E7. `#SBATCH` lines do not expand env vars — override via sbatch CLI flags
+   (`--partition=fat --mem=32G --export=ALL,TIMEOUT=1200`).
+3. **Benchmark every differential comparison.** The drivers
+   (`hpc/pipeline_swap_diff.py`, `hpc/reference_capture.py`) record wall
+   time AND peak RSS per fixture for both the Rust CLI and the oracle: GNU
+   `time -v` on Linux (exact), `getrusage` fallback on macOS (approximate,
+   cumulative child peak). Fields: `seconds`, `maxrss_kb`,
+   `maxrss_approximate`. Keep this benchmark data in every report.
+4. **Keep iterating until the whole Atlas is ported to Rust.** Do not stop
+   at one milestone; after a fixture/commit lands, immediately pick the next
+   builtin or coverage extension (see `docs/REMAINING_BUILTINS.md`).
+5. **Record conventions and puzzles.** Anything a future agent must know
+   (blockers, root causes, disproven hypotheses, HPC quirks) goes into
+   `docs/REMAINING_BUILTINS.md` and `docs/HANDOFF.md`; do not rely on
+   session scratch files for project state.
+
 ## Verified repair guard
 
 ### Owned `LatticeInvolution` builders
