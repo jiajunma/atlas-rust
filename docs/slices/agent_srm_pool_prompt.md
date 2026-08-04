@@ -49,6 +49,25 @@ A working srm prototype was built and verified on A2 x=3:
   common_context(rc, bm)). Porting the bm/int_sys selection is the
   remaining sub-step before the prototype can replace the fibred closure.
 
+## Performance slice: compact Weyl layer (2026-08-04, partial)
+
+- New `weyl_transducer.rs`: the du Cloux/van Leeuwen parabolic-subquotient
+  representation (Transducer build weyl.cpp:100-547, O(length)
+  multiplication). Tests: group orders A2/B2/G2/A3/D4, inverse group law,
+  compact-vs-matrix action equality, twisted-involution equivalence on
+  A1xA1/A2 — all pass.
+- `longest_action` now walks 2rho -> -2rho (O(36) for E6 instead of |W|).
+- `WeylAction` datum is Arc; compose_matrices is i64-accumulated;
+  enumerate_actions uses precomputed reflections. E6 W_graph probe:
+  13.7s -> 6.5s (C++ -O3: 0.028s; the remaining gap is the
+  twisted-involution classification, which still enumerates matrices).
+- NOT WIRED: compact twisted-involution enumeration. Debugging found the
+  partition (enumeration members) vs classification canonicalized
+  representatives use DIFFERENT image-permutations, so
+  `class_by_permutation` misses canonical keys. Next round: canonicalize
+  each candidate in the partition (or look up by orbit membership) so
+  `class_of` always hits. This unlocks E6 classification ~1.1s -> ~0.05s.
+
 ## Slice steps (verify each)
 
 1. **`integrality_simples(rd, gamma)`** — the simple generators s with
