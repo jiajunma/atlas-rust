@@ -5640,14 +5640,16 @@ pub(crate) fn print_text(
                     text.push('\n');
                 }
             } else {
-                // print_KL_list: the sorted distinct nonzero polynomials.
+                // print_KL_list (kl_io.cpp:155-170): the sorted distinct
+                // nonzero polynomials of the KL store (the whole pool,
+                // which for an empty block still holds the constant one).
                 let mut polynomials: Vec<KlPol> = Vec::new();
-                for y in 0..size {
-                    for x in 0..=y {
-                        let polynomial = kl_pol_at(&kl_table, x, y, span)?;
-                        if !polynomial.is_zero() && !polynomials.contains(&polynomial) {
-                            polynomials.push(polynomial);
-                        }
+                for index in 0..kl_table.pool().len() {
+                    let Some(polynomial) = kl_table.pool().get(index) else {
+                        continue;
+                    };
+                    if !polynomial.is_zero() && !polynomials.contains(polynomial) {
+                        polynomials.push(polynomial.clone());
                     }
                 }
                 polynomials.sort_by(compare_klpol);
