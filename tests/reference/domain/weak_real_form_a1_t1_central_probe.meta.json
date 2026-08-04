@@ -24,5 +24,5 @@
     "the supplied strong representative is KGB element #2 with the requested involution and torus factor"
   ],
   "notes": "A1.T1 central-coordinate behavior captured verbatim by HPC job 3502476 against the pinned Atlas oracle. This freezes projection and minimal-torus behavior when the lattice has a non-semisimple coordinate; Rust support remains unimplemented.",
-  "differential_job": "3515688"
+  "differential_job": "3515893"
 }

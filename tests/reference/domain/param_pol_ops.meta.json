@@ -21,5 +21,5 @@
     "sources/gkmod/repr.cpp:1161-1170"
   ],
   "notes": "ParamPol/Param operation surface (K_type_pol(ParamPol) restriction, last_term, (ParamPol,rat)/(Param,rat) scalings), captured verbatim by HPC job 3506427 against the frozen atlasofliegroups-4d3e9449 oracle. Implemented at the param_pol_ops commit (RepContext::scale, repr.cpp:701-709, plus the pol re-expansion of repr.cpp:1161-1170). Differential pipeline_swap_diff job 3506433 reports PASS with zero regressions; metadata carries rust_status verified_hpc with differential_job 3506433.",
-  "differential_job": "3515688"
+  "differential_job": "3515893"
 }

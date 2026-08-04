@@ -18,7 +18,7 @@
     "sources/interpreter/atlas-types.w:8084-8104"
   ],
   "notes": "deform surface (the deformation of a final parameter to its block), captured verbatim by HPC job 3506415 against the frozen atlasofliegroups-4d3e9449 oracle. Implementation requires the block/KLV machinery: Rep_table::lookup (partial common block), the contribution table, singular generators, KLV polynomials evaluated at q=-1, and orientation numbers.",
-  "differential_job": "3515688",
+  "differential_job": "3515893",
   "oracle_seconds": 0.031,
   "oracle_maxrss_kb": 5724
 }

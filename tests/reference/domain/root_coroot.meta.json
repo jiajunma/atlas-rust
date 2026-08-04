@@ -13,7 +13,7 @@
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "capture_artifacts_sha256": "c3440e2d3773b9dc8fda074c5555be36b0fc27b1adfb193bbaacf963034f74f1",
   "rust_status": "verified_hpc",
-  "differential_job": "3515688",
+  "differential_job": "3515893",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:2224",
     "sources/interpreter/atlas-types.w:2228-2237"
