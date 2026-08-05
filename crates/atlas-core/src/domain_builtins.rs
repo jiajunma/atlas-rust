@@ -6808,7 +6808,7 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 derived_coweights,
             )
             .map_err(|error| runtime(span, error.to_string()))?;
-            let lie_type = infer_lie_type(&derived.cartan_matrix(), rank, span)?;
+            let lie_type = infer_lie_type(derived.cartan_matrix(), rank, span)?;
             let isogeny = DatumIsogeny::SimplyConnected;
             let derived_value = Value::Domain(DomainValue::RootDatum(RootDatumHandle {
                 datum: std::sync::Arc::new(derived),
