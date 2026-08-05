@@ -6638,7 +6638,7 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             let rank = cartan.len();
             let datum = BasedRootDatum::standard(cartan)
                 .map_err(|error| runtime(span, error.to_string()))?;
-            let lie_type = infer_lie_type(&datum.cartan_matrix(), rank, span)?;
+            let lie_type = infer_lie_type(datum.cartan_matrix(), rank, span)?;
             // The integrality datum is the simply-connected subsystem
             // (oracle integrality_datum prints "simply connected root datum
             // of Lie type ...").
