@@ -145,83 +145,86 @@ impl KgbGraph {
             &mut cayley_raw,
         )?;
         let mut cursor = 0_usize;
+        use rayon::prelude::*;
+        const KGB_BLOCK: usize = 64;
         while cursor < elements.len() {
-            let current = elements[cursor].clone();
-            let source_length = table
-                .record(current.involution())
-                .ok_or(StructureError::KgbInvariantViolation {
-                    invariant: "status classification",
-                })?
-                .involution_length();
-            for generator in 0..rank {
-                let kind = table
-                    .simple_root_kind(current.involution(), generator)
+            let window_end = (cursor + KGB_BLOCK).min(elements.len());
+            // Phase 1: parallel pure computation over the window (table and
+            // coset are read-only during the BFS; intern is deferred).
+            let computed: Vec<
+                Result<Vec<(KgbStatus, Option<TitsElement>, Option<TitsElement>)>, StructureError>,
+            > = (cursor..window_end)
+                .into_par_iter()
+                .map(|i| {
+                    let current = &elements[i];
+                    let mut results = Vec::with_capacity(rank);
+                    for generator in 0..rank {
+                        let kind = table
+                            .simple_root_kind(current.involution(), generator)
+                            .ok_or(StructureError::KgbInvariantViolation {
+                                invariant: "status classification",
+                            })?;
+                        let crossed = coset.cross_pregated(table, generator, current)?;
+                        let status = match kind {
+                            RootKind::Complex => {
+                                if crossed.involution() == current.involution() {
+                                    return Err(StructureError::KgbInvariantViolation {
+                                        invariant: "status classification",
+                                    });
+                                }
+                                KgbStatus::Complex
+                            }
+                            RootKind::Real => {
+                                if crossed != *current {
+                                    return Err(StructureError::KgbInvariantViolation {
+                                        invariant: "real cross fixed",
+                                    });
+                                }
+                                KgbStatus::Real
+                            }
+                            RootKind::Imaginary => {
+                                if coset.simple_grading_pregated(current, generator)? {
+                                    KgbStatus::ImaginaryNoncompact
+                                } else {
+                                    KgbStatus::ImaginaryCompact
+                                }
+                            }
+                        };
+                        let cayleyed = if status == KgbStatus::ImaginaryNoncompact {
+                            Some(coset.cayley_pregated(table, generator, current)?.ok_or(
+                                StructureError::KgbInvariantViolation {
+                                    invariant: "cayley target missing",
+                                },
+                            )?)
+                        } else {
+                            None
+                        };
+                        results.push((status, Some(crossed), cayleyed));
+                    }
+                    Ok(results)
+                })
+                .collect::<Vec<_>>();
+            // Phase 2: sequential intern (preserves ids and write-once).
+            for (offset, result) in computed.into_iter().enumerate() {
+                let i = cursor + offset;
+                let results = result?;
+                let current = &elements[i];
+                let source_length = table
+                    .record(current.involution())
                     .ok_or(StructureError::KgbInvariantViolation {
                         invariant: "status classification",
-                    })?;
-                let crossed = coset.cross_pregated(table, generator, &current)?;
-                let status = match kind {
-                    RootKind::Complex => {
-                        if crossed.involution() == current.involution() {
-                            return Err(StructureError::KgbInvariantViolation {
-                                invariant: "status classification",
-                            });
-                        }
-                        KgbStatus::Complex
-                    }
-                    RootKind::Real => {
-                        if crossed != current {
-                            return Err(StructureError::KgbInvariantViolation {
-                                invariant: "real cross fixed",
-                            });
-                        }
-                        KgbStatus::Real
-                    }
-                    RootKind::Imaginary => {
-                        if coset.simple_grading_pregated(&current, generator)? {
-                            KgbStatus::ImaginaryNoncompact
-                        } else {
-                            KgbStatus::ImaginaryCompact
-                        }
-                    }
-                };
-                let slot = cursor * rank + generator;
-                if statuses[slot].is_some() {
-                    return Err(StructureError::KgbInvariantViolation {
-                        invariant: "status write-once",
-                    });
-                }
-                statuses[slot] = Some(status);
-                let cross_target = intern(
-                    crossed,
-                    expected,
-                    rank,
-                    &mut elements,
-                    &mut index,
-                    &mut statuses,
-                    &mut cross_raw,
-                    &mut cayley_raw,
-                )?;
-                cross_raw[slot] = Some(cross_target);
-                if status == KgbStatus::ImaginaryNoncompact {
-                    let cayleyed = coset.cayley_pregated(table, generator, &current)?.ok_or(
-                        StructureError::KgbInvariantViolation {
-                            invariant: "cayley target missing",
-                        },
-                    )?;
-                    let target_length = table
-                        .record(cayleyed.involution())
-                        .ok_or(StructureError::KgbInvariantViolation {
-                            invariant: "Cayley length step",
-                        })?
-                        .involution_length();
-                    if target_length != source_length + 1 {
+                    })?
+                    .involution_length();
+                for (generator, (status, crossed, cayleyed)) in results.into_iter().enumerate() {
+                    let slot = i * rank + generator;
+                    if statuses[slot].is_some() {
                         return Err(StructureError::KgbInvariantViolation {
-                            invariant: "Cayley length step",
+                            invariant: "status write-once",
                         });
                     }
-                    let cayley_target = intern(
-                        cayleyed,
+                    statuses[slot] = Some(status);
+                    let cross_target = intern(
+                        crossed.expect("crossed always set"),
                         expected,
                         rank,
                         &mut elements,
@@ -230,10 +233,35 @@ impl KgbGraph {
                         &mut cross_raw,
                         &mut cayley_raw,
                     )?;
-                    cayley_raw[slot] = Some(cayley_target);
+                    cross_raw[slot] = Some(cross_target);
+                    if status == KgbStatus::ImaginaryNoncompact {
+                        let cayleyed = cayleyed.expect("cayleyed set for noncompact");
+                        let target_length = table
+                            .record(cayleyed.involution())
+                            .ok_or(StructureError::KgbInvariantViolation {
+                                invariant: "Cayley length step",
+                            })?
+                            .involution_length();
+                        if target_length != source_length + 1 {
+                            return Err(StructureError::KgbInvariantViolation {
+                                invariant: "Cayley length step",
+                            });
+                        }
+                        let cayley_target = intern(
+                            cayleyed,
+                            expected,
+                            rank,
+                            &mut elements,
+                            &mut index,
+                            &mut statuses,
+                            &mut cross_raw,
+                            &mut cayley_raw,
+                        )?;
+                        cayley_raw[slot] = Some(cayley_target);
+                    }
                 }
             }
-            cursor += 1;
+            cursor = window_end;
         }
         drop(index);
         if elements.len() != expected {
