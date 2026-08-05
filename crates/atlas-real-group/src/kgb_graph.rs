@@ -291,16 +291,18 @@ impl KgbGraph {
         }
         let interface = WeylInterface::new(inner_class.datum().cartan_matrix())?;
         let pieces = ParabolicPieces::build(table.root_system(), &interface)?;
-        let mut keyed = try_capacity(involutions.len())?;
-        for id in involutions {
-            let record = table.record(id).expect("sorted involutions exist");
-            keyed.push((
-                record.involution_length(),
-                record.weyl_length(),
-                pieces.key(table.root_system(), &interface, record.weyl_element())?,
-                id.0,
-            ));
-        }
+        let mut keyed: Vec<(usize, usize, Vec<usize>, usize)> = involutions
+            .par_iter()
+            .map(|&id| {
+                let record = table.record(id).expect("sorted involutions exist");
+                Ok((
+                    record.involution_length(),
+                    record.weyl_length(),
+                    pieces.key(table.root_system(), &interface, record.weyl_element())?,
+                    id.0,
+                ))
+            })
+            .collect::<Result<_, StructureError>>()?;
         keyed.sort_unstable();
         let involutions: Vec<InvolutionId> = keyed
             .into_iter()
