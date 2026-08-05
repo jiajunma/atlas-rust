@@ -4426,6 +4426,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 0,
             ),
             domain_builtin_skip("rank", primitive_type(Prim::RootDatum), int_type(), 0),
+            domain_builtin_skip("rank", primitive_type(Prim::LieType), int_type(), 0),
             domain_builtin(
                 "root",
                 Type::tuple(vec![primitive_type(Prim::RootDatum), int_type()]),

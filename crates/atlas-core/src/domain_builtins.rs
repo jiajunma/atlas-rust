@@ -6285,8 +6285,15 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
         }
         "rank" => {
             arity(name, arguments, 1, span)?;
-            let handle = as_root_datum(&arguments[0], span)?;
-            Ok(Value::Integer(BigInt::from(handle.datum.lattice_rank())))
+            match &arguments[0] {
+                Value::Domain(DomainValue::RootDatum(handle)) => Ok(Value::Integer(BigInt::from(
+                    handle.datum.lattice_rank(),
+                ))),
+                Value::Domain(DomainValue::LieType(lie)) => Ok(Value::Integer(BigInt::from(
+                    lie.factors.iter().map(|(_, rank)| *rank).sum::<usize>(),
+                ))),
+                _ => Err(type_error(span, "expected a RootDatum or LieType")),
+            }
         }
         "root" | "coroot" => {
             arity(name, arguments, 2, span)?;
