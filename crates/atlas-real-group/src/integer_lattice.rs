@@ -68,10 +68,10 @@ impl BezoutTransform {
 
 /// A rectangular matrix over Malachite integers in row-major storage.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct IntegerMatrix {
-    rows: usize,
-    columns: usize,
-    entries: Vec<Integer>,
+pub struct IntegerMatrix {
+    pub rows: usize,
+    pub columns: usize,
+    pub entries: Vec<Integer>,
 }
 
 impl IntegerMatrix {
@@ -1495,10 +1495,10 @@ fn try_usize_vec(capacity: usize) -> Result<Vec<usize>, StructureError> {
 /// column span is exactly `span{ diagonal[t] * B.column(t) }` — so the FIRST
 /// `diagonal.len()` columns of `B` span the SATURATION of that image.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct AdaptedBasis {
-    pub(crate) basis: IntegerMatrix,
-    pub(crate) inverse: IntegerMatrix,
-    pub(crate) diagonal: Vec<Integer>,
+pub struct AdaptedBasis {
+    pub basis: IntegerMatrix,
+    pub inverse: IntegerMatrix,
+    pub diagonal: Vec<Integer>,
 }
 
 /// Faithful port of upstream `matreduc::adapted_basis` (matreduc.cpp:262-336
@@ -1510,7 +1510,7 @@ pub(crate) struct AdaptedBasis {
 /// step, and the kept-rows-first reordering — because the elected basis is
 /// OBSERVABLE-BEARING: it fixes the `stable_log` representative, hence
 /// `g_rho_check` and every `torus_factor` rational downstream.
-pub(crate) fn adapted_basis(
+pub fn adapted_basis(
     rows: &[Vec<i32>],
     budget: &IntegerLatticeBudget,
 ) -> Result<AdaptedBasis, StructureError> {

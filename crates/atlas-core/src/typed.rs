@@ -5017,6 +5017,24 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 0,
             ),
             domain_builtin_skip(
+                "derived_info",
+                primitive_type(Prim::RootDatum),
+                Type::Tuple(vec![
+                    primitive_type(Prim::RootDatum),
+                    primitive_type(Prim::Mat),
+                ]),
+                0,
+            ),
+            domain_builtin_skip(
+                "mod_central_torus_info",
+                primitive_type(Prim::RootDatum),
+                Type::Tuple(vec![
+                    primitive_type(Prim::RootDatum),
+                    primitive_type(Prim::Mat),
+                ]),
+                0,
+            ),
+            domain_builtin_skip(
                 "integrality_rank",
                 Type::tuple(vec![
                     primitive_type(Prim::RootDatum),

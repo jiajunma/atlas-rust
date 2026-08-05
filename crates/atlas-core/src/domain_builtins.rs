@@ -23,6 +23,7 @@ use std::sync::Arc;
 use malachite::{Integer as BigInt, Rational as BigRational};
 
 use atlas_real_group::{
+    adapted_basis,
     adapted_relation_basis, annihilator_modulo as relation_annihilator_modulo, build_presentations,
     central_fiber, checked_inner_class_letters, classify_involution as domain_classify_involution,
     dual_cartan_correspondence, dual_inner_class, dual_involution as block_dual_involution,
@@ -2775,6 +2776,71 @@ fn positive_coroot_pairing(root_system: &RootSystem, id: RootId, gamma: &RatVec)
             .map(|(g, &c)| g * i64::from(c))
             .sum(),
     )
+}
+
+/// Convert a pub-fielded IntegerMatrix to row-major i32.
+fn integer_matrix_i32(matrix: &atlas_real_group::IntegerMatrix) -> Vec<Vec<i32>> {
+    let rows = matrix.rows;
+    let cols = matrix.columns;
+    (0..rows)
+        .map(|row| {
+            (0..cols)
+                .map(|column| {
+                    matrix.entries[row * cols + column]
+                        .to_string()
+                        .parse::<i32>()
+                        .unwrap_or(i32::MAX)
+                })
+                .collect()
+        })
+        .collect()
+}
+
+/// Transpose a row-major matrix.
+fn transpose_matrix_i32(matrix: &[Vec<i32>]) -> Vec<Vec<i32>> {
+    let rows = matrix.len();
+    let cols = matrix.first().map_or(0, Vec::len);
+    (0..cols)
+        .map(|column| (0..rows).map(|row| matrix[row][column]).collect())
+        .collect()
+}
+
+/// The first `rows` rows of a row-major matrix (block(0,0,rows,cols)).
+fn block_rows(matrix: &[Vec<i32>], rows: usize) -> Vec<Vec<i32>> {
+    matrix.iter().take(rows).cloned().collect()
+}
+
+/// The first `rows` rows and `cols` columns of a row-major matrix.
+fn block_rows_cols(matrix: &[Vec<i32>], rows: usize, cols: usize) -> Vec<Vec<i32>> {
+    matrix
+        .iter()
+        .take(rows)
+        .map(|row| row.iter().take(cols).copied().collect())
+        .collect()
+}
+
+/// Row-major matrix product (left rows x left cols, right rows x right cols).
+fn mat_mul_i32(left: &[Vec<i32>], right: &[Vec<i32>]) -> Result<Vec<Vec<i32>>, String> {
+    let left_rows = left.len();
+    let left_cols = left.first().map_or(0, Vec::len);
+    let right_rows = right.len();
+    let right_cols = right.first().map_or(0, Vec::len);
+    if left_cols != right_rows {
+        return Err(format!(
+            "matrix shape mismatch: {left_rows}x{left_cols} * {right_rows}x{right_cols}"
+        ));
+    }
+    let mut out = vec![vec![0; right_cols]; left_rows];
+    for row in 0..left_rows {
+        for column in 0..right_cols {
+            let mut total = 0_i64;
+            for k in 0..left_cols {
+                total += i64::from(left[row][k]) * i64::from(right[k][column]);
+            }
+            out[row][column] = total as i32;
+        }
+    }
+    Ok(out)
 }
 
 fn simple_basis(root_system: &RootSystem, rs: &[RootId]) -> Result<Vec<RootId>, StructureError> {
@@ -6663,6 +6729,104 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 ),
                 Value::Integer(BigInt::from(attitude)),
             ]))
+        }
+        "derived_info" | "mod_central_torus_info" => {
+            arity(name, arguments, 1, span)?;
+            let handle = as_root_datum(&arguments[0], span)?;
+            let datum = &handle.datum;
+            let semisimple = datum.semisimple_rank();
+            let lattice = datum.lattice_rank();
+            let roots_matrix: Vec<Vec<i32>> = datum
+                .simple_roots()
+                .iter()
+                .map(|root| root.as_slice().to_vec())
+                .collect();
+            let coroots_matrix: Vec<Vec<i32>> = datum
+                .simple_coroots()
+                .iter()
+                .map(|coroot| coroot.as_slice().to_vec())
+                .collect();
+            let (projector, derived_roots, derived_coroots) = if name == "derived_info" {
+                // DerivedTag (prerootdata.cpp:67-82): M = adapted_basis(coroots);
+                // projector = M^T rows 0..s; section = M^-1 rows 0..s.
+                let adapted = adapted_basis(&coroots_matrix, &INTEGER_BUDGET)
+                    .map_err(|error| runtime(span, error.to_string()))?;
+                let m = integer_matrix_i32(&adapted.basis);
+                let minv = integer_matrix_i32(&adapted.inverse);
+                let projector = block_rows(&transpose_matrix_i32(&m), semisimple);
+                let section = block_rows(&minv, semisimple);
+                // simple_roots/projector are stored root-as-row; C++ multiplies
+                // the r x s column-root matrices, so use the transposed product.
+                let derived_roots = mat_mul_i32(&roots_matrix, &transpose_matrix_i32(&projector))
+                    .map_err(|error| runtime(span, error))?;
+                let derived_coroots =
+                    mat_mul_i32(&coroots_matrix, &transpose_matrix_i32(&section))
+                        .map_err(|error| runtime(span, error))?;
+                (projector, derived_roots, derived_coroots)
+            } else {
+                // CoderivedTag (prerootdata.cpp:84-97): M = adapted_basis(roots);
+                // injector = M block(0,0,r,s); cosection = M^-1 rows 0..s.
+                let adapted = adapted_basis(&roots_matrix, &INTEGER_BUDGET)
+                    .map_err(|error| runtime(span, error.to_string()))?;
+                let m = integer_matrix_i32(&adapted.basis);
+                let minv = integer_matrix_i32(&adapted.inverse);
+                let injector = block_rows_cols(&m, lattice, semisimple);
+                let cosection = block_rows(&minv, semisimple);
+                let derived_roots = mat_mul_i32(&roots_matrix, &transpose_matrix_i32(&cosection))
+                    .map_err(|error| runtime(span, error))?;
+                let derived_coroots = mat_mul_i32(&coroots_matrix, &injector)
+                    .map_err(|error| runtime(span, error))?;
+                (injector, derived_roots, derived_coroots)
+            };
+            // The derived datum is semisimple of rank = semisimple_rank.
+            let rank = derived_roots.len();
+            let cartan: Vec<Vec<i32>> = (0..rank)
+                .map(|row| {
+                    (0..rank)
+                        .map(|column| {
+                            derived_roots[row]
+                                .iter()
+                                .zip(&derived_coroots[column])
+                                .map(|(r, c)| r * c)
+                                .sum()
+                        })
+                        .collect()
+                })
+                .collect();
+            let derived_weights: Vec<Weight> = derived_roots
+                .iter()
+                .map(|row| Weight::new(row.clone()))
+                .collect();
+            let derived_coweights: Vec<Coweight> = derived_coroots
+                .iter()
+                .map(|row| Coweight::new(row.clone()))
+                .collect();
+            let derived = BasedRootDatum::from_simple_data(
+                rank,
+                cartan,
+                derived_weights,
+                derived_coweights,
+            )
+            .map_err(|error| runtime(span, error.to_string()))?;
+            let lie_type = infer_lie_type(&derived.cartan_matrix(), rank, span)?;
+            let isogeny = DatumIsogeny::SimplyConnected;
+            let derived_value = Value::Domain(DomainValue::RootDatum(RootDatumHandle {
+                datum: std::sync::Arc::new(derived),
+                lie_type,
+                isogeny,
+                prefers_coroots: false,
+            }));
+            let matrix_rows = projector.len();
+            let matrix_cols = projector.first().map_or(0, Vec::len);
+            let matrix_value = Value::Matrix(
+                Matrix::from_columns(
+                    matrix_rows,
+                    matrix_cols,
+                    projector.into_iter().flatten().collect(),
+                )
+                .expect("derived projector is rectangular"),
+            );
+            Ok(Value::Tuple(vec![derived_value, matrix_value]))
         }
         "integrality_rank" => {
             arity(name, arguments, 2, span)?;
