@@ -39,6 +39,11 @@ pub struct CartanClassificationBudget {
 }
 
 impl CartanClassificationBudget {
+    /// The Weyl-enumeration limit (part of the classification cache key).
+    pub fn weyl_budget(&self) -> usize {
+        self.weyl_budget
+    }
+
     pub const fn new(
         integer_lattice: IntegerLatticeBudget,
         adjoint_fiber: AdjointFiberBudget,
