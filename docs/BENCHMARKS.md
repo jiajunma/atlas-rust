@@ -16,7 +16,7 @@ Wall time of the whole script, best-of-3.
 
 | script | Rust | C++ | ratio |
 |---|---|---|---|
-| G2+D6 W_graph | 3.05s | 0.024s | ~127x |
+| G2+D6 W_graph | 1.42s | 0.024s | ~59x |
 | E6 W_graph | 1.5s | 0.028s | ~53x |
 
 ## Where the time goes (E6, profiled)
