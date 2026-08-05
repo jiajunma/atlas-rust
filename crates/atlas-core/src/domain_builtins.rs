@@ -9821,8 +9821,8 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                         if pairing < 0 {
                             let root_coords = datum.simple_roots()[s].as_slice();
                             let mut next = Vec::with_capacity(rank);
-                            for i in 0..rank {
-                                next.push(current.as_slice()[i] - pairing * root_coords[i]);
+                            for (slot, &coordinate) in current.as_slice().iter().zip(root_coords) {
+                                next.push(slot - pairing * coordinate);
                             }
                             current = Weight::new(next);
                             word.push(s);
@@ -9839,10 +9839,8 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                         if pairing < 0 {
                             let coroot_coords = datum.simple_coroots()[s].as_slice();
                             let mut next = Vec::with_capacity(rank);
-                            for i in 0..rank {
-                                next.push(
-                                    current.as_slice()[i] - (pairing as i32) * coroot_coords[i],
-                                );
+                            for (slot, &coordinate) in current.as_slice().iter().zip(coroot_coords) {
+                                next.push(slot - (pairing as i32) * coordinate);
                             }
                             current = Weight::new(next);
                             word.insert(0, s);
