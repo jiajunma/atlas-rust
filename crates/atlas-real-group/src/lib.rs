@@ -4,6 +4,7 @@
 //! output policy.  It is an adapter boundary for the interpreter's future
 //! domain values: all constructors validate the root-datum invariants that
 //! would otherwise be implicit in the C++ implementation.
+#![allow(dead_code, clippy::needless_range_loop, clippy::type_complexity)]
 
 use std::collections::{HashSet, VecDeque};
 
@@ -53,8 +54,8 @@ pub use topology::dual_component_group_rank;
 mod twisted_involution;
 mod weak_real_form;
 mod weyl;
-mod weyl_transducer;
 mod weyl_element;
+mod weyl_transducer;
 // Consumer is the parked task #9 (docs/ON_DEMAND_PARTITION_DESIGN.md);
 // the allow lifts when the on-demand partition lands.
 #[allow(dead_code)]

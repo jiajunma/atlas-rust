@@ -105,8 +105,8 @@ impl Transducer {
                 shift.push(UNDEF_PIECE); // row xs, shifted by one slot
                 out.push(UNDEF_GEN);
                 // shift rows by one: row xs is at index xs*limit
-                shift.extend(std::iter::repeat(UNDEF_PIECE).take(limit - 1));
-                out.extend(std::iter::repeat(UNDEF_GEN).take(limit - 1));
+                shift.extend(std::iter::repeat_n(UNDEF_PIECE, limit - 1));
+                out.extend(std::iter::repeat_n(UNDEF_GEN, limit - 1));
                 // tab[x].shift[s] = xs; top.shift[s] = x
                 shift[x * limit + s] = xs as u16;
                 shift[xs * limit + s] = x as u16;
@@ -183,7 +183,13 @@ impl Transducer {
                 table[i * limit + j] = entry;
             }
         }
-        Self { offset, limit, lengths, rights, table }
+        Self {
+            offset,
+            limit,
+            lengths,
+            rights,
+            table,
+        }
     }
 
     fn size(&self) -> usize {
@@ -239,9 +245,11 @@ impl CompactWeyl {
                 upper[offset + i] = last;
             }
             if matches!(comp.letter, 'B' | 'C' | 'D') {
-                for i in 0..comp.position.len() {
-                    d_out[last - i] = comp.position[i];
+                let n = comp.position.len();
+                for (i, &position) in comp.position.iter().enumerate() {
+                    d_out[last - i] = position;
                 }
+                let _ = n;
             } else {
                 for i in 0..comp.position.len() {
                     d_out[offset + i] = comp.position[i];
@@ -280,7 +288,7 @@ impl CompactWeyl {
         let piece_words = transducers
             .iter()
             .enumerate()
-            .map(|(i, tr)| {
+            .map(|(_, tr)| {
                 (0..tr.lengths.len())
                     .map(|piece| {
                         let mut word = Vec::new();
@@ -299,7 +307,14 @@ impl CompactWeyl {
         if rank > 8 {
             return Err(StructureError::ResourceLimitExceeded { limit: 8 });
         }
-        Ok(Self { transducers, d_in, d_out, min_star, upper, piece_words })
+        Ok(Self {
+            transducers,
+            d_in,
+            d_out,
+            min_star,
+            upper,
+            piece_words,
+        })
     }
 
     fn start_gen(&self, internal_s: usize) -> usize {
@@ -494,7 +509,7 @@ impl CompactWeyl {
             let mut per_transducer = Vec::with_capacity(tr.lengths.len());
             for piece in 0..tr.lengths.len() {
                 let word = self.word_of_piece(i, piece as u8);
-                let mut action = crate::weyl::WeylAction::identity(&reflections[0].datum_arc())?;
+                let mut action = crate::weyl::WeylAction::identity(reflections[0].datum_arc())?;
                 for &local in word {
                     let internal = tr.offset + local;
                     let external = self.d_out[internal];
@@ -554,7 +569,7 @@ impl CompactWeyl {
             let mut seen: HashSet<WeylElt> = HashSet::with_capacity(budget.min(1 << 16));
             let mut pending: VecDeque<WeylElt> = VecDeque::new();
             let id = self.identity();
-            seen.insert(id.clone());
+            seen.insert(id);
             pending.push_back(id);
             while let Some(w) = pending.pop_front() {
                 for s in 0..self.transducers.len() {
@@ -578,7 +593,11 @@ mod tests {
     use super::*;
 
     fn compact_order(cartan: &[Vec<i32>]) -> usize {
-        CompactWeyl::new(cartan).unwrap().enumerate(1 << 20).unwrap().len()
+        CompactWeyl::new(cartan)
+            .unwrap()
+            .enumerate(1 << 20)
+            .unwrap()
+            .len()
     }
 
     #[test]
@@ -589,11 +608,7 @@ mod tests {
         assert_eq!(compact_order(&b2), 8);
         let g2: Vec<Vec<i32>> = vec![vec![2, -3], vec![-1, 2]];
         assert_eq!(compact_order(&g2), 12);
-        let a3: Vec<Vec<i32>> = vec![
-            vec![2, -1, 0],
-            vec![-1, 2, -1],
-            vec![0, -1, 2],
-        ];
+        let a3: Vec<Vec<i32>> = vec![vec![2, -1, 0], vec![-1, 2, -1], vec![0, -1, 2]];
         assert_eq!(compact_order(&a3), 24);
         let d4: Vec<Vec<i32>> = vec![
             vec![2, -1, 0, 0],
@@ -646,9 +661,14 @@ mod tests {
             }
             // the element as a Weyl group element must have w^2 == e and
             // match the matrix enumeration's action
-            let actions = WeylGroup::new(datum.clone()).enumerate_actions(1 << 10).unwrap();
+            let actions = WeylGroup::new(datum.clone())
+                .enumerate_actions(1 << 10)
+                .unwrap();
             let found = actions.iter().find(|a| a.matrix() == action.matrix());
-            assert!(found.is_some(), "compact matrix not in enumeration: {elt:?}");
+            assert!(
+                found.is_some(),
+                "compact matrix not in enumeration: {elt:?}"
+            );
         }
     }
 
@@ -670,7 +690,11 @@ mod tests {
             group.multiply(&mut sq, w);
             let is_inv = sq == group.identity();
             let is_tw = group.is_twisted_involution(w, &twist);
-            eprintln!("A1A1 w={w:?} inv={is_inv} tw={is_tw} wi={:?} tw2={:?}", group.inverse(w), group.apply_twist(w, &twist));
+            eprintln!(
+                "A1A1 w={w:?} inv={is_inv} tw={is_tw} wi={:?} tw2={:?}",
+                group.inverse(w),
+                group.apply_twist(w, &twist)
+            );
             assert_eq!(is_tw, is_inv, "twisted/involution mismatch for {w:?}");
         }
     }
@@ -691,7 +715,11 @@ mod tests {
         let t = std::time::Instant::now();
         let elements = group.enumerate(1 << 20).unwrap();
         assert_eq!(elements.len(), 51_840);
-        assert!(t.elapsed() < std::time::Duration::from_secs(2), "compact E6 enumeration too slow: {:?}", t.elapsed());
+        assert!(
+            t.elapsed() < std::time::Duration::from_secs(2),
+            "compact E6 enumeration too slow: {:?}",
+            t.elapsed()
+        );
     }
 
     #[test]
@@ -721,7 +749,12 @@ mod tests {
                 for pi in 0..datum.semisimple_rank() {
                     action = action.compose_fast(&piece_matrices[pi][elt[pi] as usize]);
                 }
-                action.matrix().iter().flatten().copied().collect::<Vec<_>>()
+                action
+                    .matrix()
+                    .iter()
+                    .flatten()
+                    .copied()
+                    .collect::<Vec<_>>()
             })
             .collect();
         let matrix_set: HashSet<Vec<i32>> = WeylGroup::new(datum)

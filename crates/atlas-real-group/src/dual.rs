@@ -75,7 +75,7 @@ fn two_rho(inner_class: &InnerClass) -> Result<Weight, StructureError> {
 /// positive coroot pairing, which lowers the height of `2rho` by one).
 pub fn longest_action(
     inner_class: &InnerClass,
-    weyl_budget: usize,
+    _weyl_budget: usize,
 ) -> Result<WeylAction, StructureError> {
     let datum = inner_class.datum();
     let rank = datum.semisimple_rank();
@@ -126,7 +126,7 @@ pub fn longest_action(
 /// `W0` the action matrix of the longest Weyl element.
 fn dual_involution(
     inner_class: &InnerClass,
-    weyl_budget: usize,
+    _weyl_budget: usize,
 ) -> Result<Vec<Vec<i32>>, StructureError> {
     let longest = longest_action(inner_class, weyl_budget)?;
     // M = q * W0; the dual involution is -M^t (the coweight action -M is
@@ -141,7 +141,7 @@ fn dual_involution(
 /// `root_budget` bounds the dual root-system closure.
 pub fn dual_inner_class(
     inner_class: &InnerClass,
-    weyl_budget: usize,
+    _weyl_budget: usize,
     root_budget: usize,
 ) -> Result<InnerClass, StructureError> {
     let dual = dual_datum(inner_class.datum())?;
@@ -190,7 +190,7 @@ pub fn dual_cartan_correspondence(
     classification: &CartanClassification,
     dual: &InnerClass,
     dual_classification: &CartanClassification,
-    weyl_budget: usize,
+    _weyl_budget: usize,
 ) -> Result<Vec<(CartanId, usize)>, StructureError> {
     let original_fundamental = classification.cartan_ids().next().ok_or(
         StructureError::CartanClassificationInvariantViolation {
@@ -309,7 +309,7 @@ pub fn dual_cartan_correspondence(
 /// (`InnerClass::numDualRealForms`).
 pub fn dual_real_form_count(
     inner_class: &InnerClass,
-    weyl_budget: usize,
+    _weyl_budget: usize,
     integer_budget: &IntegerLatticeBudget,
     adjoint_budget: &AdjointFiberBudget,
     fiber_budget: usize,

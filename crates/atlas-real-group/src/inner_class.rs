@@ -5,7 +5,7 @@ use crate::twisted_involution::compose_matrices;
 use crate::{
     pair, BasedRootDatum, Coweight, LatticeInvolution, RootId, RootInvolutionData, RootKind,
     RootSystem, StructureError, TwistedConjugacyClass, TwistedConjugacyPartition,
-    TwistedInvolution, Weight, WeylAction, WeylElement, WeylGroup,
+    TwistedInvolution, Weight, WeylAction, WeylElement,
 };
 
 /// Shared structural data at the beginning of an Atlas inner-class computation.
@@ -723,18 +723,17 @@ fn theta_generator_permutation(
     let rank = datum.semisimple_rank();
     let mut perm = vec![0_usize; rank];
     for i in 0..rank {
-        let simple = root_system
-            .simple_root_ids()
-            .get(i)
-            .copied()
-            .ok_or(StructureError::LayoutInvariantViolation {
+        let simple = root_system.simple_root_ids().get(i).copied().ok_or(
+            StructureError::LayoutInvariantViolation {
                 invariant: "simple root index",
-            })?;
-        let coordinates = root_system
-            .root(simple)
-            .ok_or(StructureError::LayoutInvariantViolation {
-                invariant: "simple root coordinate",
-            })?;
+            },
+        )?;
+        let coordinates =
+            root_system
+                .root(simple)
+                .ok_or(StructureError::LayoutInvariantViolation {
+                    invariant: "simple root coordinate",
+                })?;
         let mut image = vec![0_i32; matrix.len()];
         for (row, row_entries) in matrix.iter().enumerate() {
             let mut total: i64 = 0;
@@ -751,7 +750,12 @@ fn theta_generator_permutation(
         // map the root index back to its simple generator
         let mut found = None;
         for j in 0..rank {
-            if root_system.simple_root_ids().get(j).copied().map_or(false, |id| id.0 == image_index) {
+            if root_system
+                .simple_root_ids()
+                .get(j)
+                .copied()
+                .map_or(false, |id| id.0 == image_index)
+            {
                 found = Some(j);
                 break;
             }
@@ -963,13 +967,17 @@ fn left_reflect(
     Ok((reflected_weight, reflected_coweight))
 }
 
-fn inverse_permutation<T: Copy + TryInto<usize>>(permutation: &[T]) -> Result<Vec<usize>, StructureError>
+fn inverse_permutation<T: Copy + TryInto<usize>>(
+    permutation: &[T],
+) -> Result<Vec<usize>, StructureError>
 where
     <T as TryInto<usize>>::Error: std::fmt::Debug,
 {
     let mut inverse = vec![None; permutation.len()];
     for (source, image) in permutation.iter().enumerate() {
-        let value = (*image).try_into().map_err(|_| StructureError::InvalidRootAutomorphism)?;
+        let value = (*image)
+            .try_into()
+            .map_err(|_| StructureError::InvalidRootAutomorphism)?;
         let target = inverse
             .get_mut(value)
             .ok_or(StructureError::InvalidRootAutomorphism)?;

@@ -4993,21 +4993,16 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::RootDatum),
                 primitive_type(Prim::Vec),
                 0,
-            ),            domain_builtin_skip(
+            ),
+            domain_builtin_skip(
                 "fundamental_weight",
-                Type::tuple(vec![
-                    primitive_type(Prim::RootDatum),
-                    int_type(),
-                ]),
+                Type::tuple(vec![primitive_type(Prim::RootDatum), int_type()]),
                 primitive_type(Prim::RatVec),
                 0,
             ),
             domain_builtin_skip(
                 "fundamental_coweight",
-                Type::tuple(vec![
-                    primitive_type(Prim::RootDatum),
-                    int_type(),
-                ]),
+                Type::tuple(vec![primitive_type(Prim::RootDatum), int_type()]),
                 primitive_type(Prim::RatVec),
                 0,
             ),
@@ -5029,7 +5024,6 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 ]),
                 0,
             ),
-
             domain_builtin_skip(
                 "two_rho_check",
                 primitive_type(Prim::RootDatum),

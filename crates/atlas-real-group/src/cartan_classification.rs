@@ -100,7 +100,8 @@ impl CartanClassification {
         let datum = inner_class.datum();
         let root_system = inner_class.root_system();
         let delta = inner_class.distinguished_involution().involution();
-        let partition = std::sync::Arc::new(inner_class.twisted_conjugacy_partition(budget.weyl_budget)?);
+        let partition =
+            std::sync::Arc::new(inner_class.twisted_conjugacy_partition(budget.weyl_budget)?);
         let class_count = partition.classes().len();
 
         // Atlas Cartan order (innerclass.cpp:218-291, task 1): BFS discovery.

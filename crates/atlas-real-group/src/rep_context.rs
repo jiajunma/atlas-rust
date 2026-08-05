@@ -465,11 +465,9 @@ fn invert_integer_matrix(matrix: &[Vec<i64>]) -> Result<Vec<Vec<i64>>, Structure
         return Err(StructureError::InvalidIntegerMatrixShape);
     }
     let mut augmented: Vec<Vec<i64>> = Vec::new();
-    augmented.try_reserve_exact(rank).map_err(|_| {
-        StructureError::AllocationFailed {
-            requested: rank,
-        }
-    })?;
+    augmented
+        .try_reserve_exact(rank)
+        .map_err(|_| StructureError::AllocationFailed { requested: rank })?;
     for (row_index, row) in matrix.iter().enumerate() {
         let mut extended = row.to_vec();
         extended

@@ -1620,10 +1620,10 @@ static CLASSIFICATION_CACHE: std::sync::OnceLock<
     >,
 > = std::sync::OnceLock::new();
 
-fn classification_cache(
-) -> &'static std::sync::Mutex<std::collections::HashMap<ClassificationFingerprint, std::sync::Arc<CartanClassification>>> {
-    CLASSIFICATION_CACHE
-        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+fn classification_cache() -> &'static std::sync::Mutex<
+    std::collections::HashMap<ClassificationFingerprint, std::sync::Arc<CartanClassification>>,
+> {
+    CLASSIFICATION_CACHE.get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
 }
 
 fn classification_cached(
@@ -1678,9 +1678,9 @@ fn build_inner_class_context(
         4_096,
         4_096,
     );
-    let t_a = std::time::Instant::now();
-    let t_a = std::time::Instant::now();
-    let t_a = std::time::Instant::now();
+    let _t_a = std::time::Instant::now();
+    let _t_a = std::time::Instant::now();
+    let _t_a = std::time::Instant::now();
     let classification = classification_cached(&inner_class, &class_budget, span)?;
     let strong = StrongRealClassification::build(&classification, FIBER_BUDGET)
         .map_err(|error| runtime(span, error.to_string()))?;
@@ -1693,10 +1693,10 @@ fn build_inner_class_context(
     // dual class (upstream dual InnerClass constructor, innerclass.cpp:435).
     let dual_inner = dual_inner_class(&inner_class, WEYL_BUDGET, ROOT_BUDGET)
         .map_err(|error| runtime(span, error.to_string()))?;
-    let t_b = std::time::Instant::now();
+    let _t_b = std::time::Instant::now();
     let dual_classification = classification_cached(&dual_inner, &class_budget, span)?;
     let dual_form_count = dual_classification.weak_real_form_count();
-    let t_dc = std::time::Instant::now();
+    let _t_dc = std::time::Instant::now();
     let dual_cartans = dual_cartan_correspondence(
         &inner_class,
         &classification,
@@ -1753,7 +1753,8 @@ fn build_dual_inner_class(
     span: SourceSpan,
 ) -> Result<Arc<InnerClassContext>, Diagnostic> {
     let inner_class = dual_inner_class(&parent.inner_class, WEYL_BUDGET, ROOT_BUDGET)
-        .map_err(|error| runtime(span, error.to_string()))?;    let datum = inner_class.datum().clone();
+        .map_err(|error| runtime(span, error.to_string()))?;
+    let datum = inner_class.datum().clone();
     // The dual inner class carries the dual datum (inner_class_value::dual,
     // atlas-types.w:3152-3156): its coroot preference is switched
     // (RootSystem DualTag, rootdata.cpp:341) and its Lie type is the
@@ -6454,7 +6455,7 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             let cartan = handle.datum.cartan_matrix();
             let mut rhs = vec![0_i32; cartan.len()];
             rhs[index] = 1;
-            let (mut numerator, denominator) = cramer_solution(&cartan, &rhs)
+            let (mut numerator, denominator) = cramer_solution(cartan, &rhs)
                 .ok_or_else(|| runtime(span, "singular Cartan matrix"))?;
             numerator.resize(handle.datum.lattice_rank(), 0);
             let value = RatVec::new(numerator, denominator.unsigned_abs())
@@ -6483,7 +6484,12 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             let permutation: Vec<i64> = (0..matrix.len()).map(|index| index as i64).collect();
             Ok(Value::Tuple(vec![
                 Value::Domain(DomainValue::LieType(lie_type)),
-                Value::List(permutation.into_iter().map(|index| Value::Integer(index.into())).collect()),
+                Value::List(
+                    permutation
+                        .into_iter()
+                        .map(|index| Value::Integer(index.into()))
+                        .collect(),
+                ),
             ]))
         }
         "two_rho" | "two_rho_check" => {
@@ -8160,22 +8166,26 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                     ),
                 ));
             };
-    let t0 = std::time::Instant::now();
+            let t0 = std::time::Instant::now();
             let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
-            let ta = std::time::Instant::now();    let t1 = std::time::Instant::now();
+            let _ta = std::time::Instant::now();
+            let t1 = std::time::Instant::now();
             eprintln!("WG3 dual_ic={:?}", t1.duration_since(t0));
             let dual_quasisplit = dual_parent.order.quasisplit_external();
             let t2 = std::time::Instant::now();
             let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
-            let tb = std::time::Instant::now();    let t3 = std::time::Instant::now();
+            let _tb = std::time::Instant::now();
+            let t3 = std::time::Instant::now();
             eprintln!("WG3 dual_rf={:?}", t3.duration_since(t2));
             let block = build_block(&parameter.context, &dual_rf, span)?;
-            let t1 = std::time::Instant::now();    let mut kl_table =
+            let _t1 = std::time::Instant::now();
+            let mut kl_table =
                 KlTable::new(&block.graph).map_err(|error| structure_diagnostic(error, span))?;
             kl_table
                 .fill(0)
                 .map_err(|error| structure_diagnostic(error, span))?;
-            let t3 = std::time::Instant::now();            let t4 = std::time::Instant::now();
+            let t3 = std::time::Instant::now();
+            let t4 = std::time::Instant::now();
             eprintln!("WG3 block+kl={:?}", t4.duration_since(t3));
             let size = block.graph.size();
             let start = (0..size)

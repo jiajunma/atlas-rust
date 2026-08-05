@@ -7,7 +7,7 @@
 //! lives in `weyl_element.rs`; the two layers are mutually checkable
 //! through [`RootSystem::action_permutation`].
 
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::VecDeque;
 
 use crate::{BasedRootDatum, Coweight, RootId, RootSystem, StructureError, Weight};
 
@@ -119,10 +119,7 @@ impl WeylAction {
         Self {
             datum: std::sync::Arc::clone(&self.datum),
             weight_matrix: compose_matrices_fast(&self.weight_matrix, &right.weight_matrix),
-            coweight_matrix: compose_matrices_fast(
-                &self.coweight_matrix,
-                &right.coweight_matrix,
-            ),
+            coweight_matrix: compose_matrices_fast(&self.coweight_matrix, &right.coweight_matrix),
         }
     }
 
@@ -324,8 +321,8 @@ impl WeylGroup {
             .map(|elt| {
                 let mut action = WeylAction::identity(&self.datum)?;
                 for piece_index in 0..self.datum.semisimple_rank() {
-                    action =
-                        action.compose_fast(&piece_matrices[piece_index][elt[piece_index] as usize]);
+                    action = action
+                        .compose_fast(&piece_matrices[piece_index][elt[piece_index] as usize]);
                 }
                 Ok(action)
             })
