@@ -1614,6 +1614,7 @@ fn build_inner_class_context(
     );
     let t_a = std::time::Instant::now();
     let t_a = std::time::Instant::now();
+    let t_a = std::time::Instant::now();
     let classification = CartanClassification::build(&inner_class, &class_budget)
         .map_err(|error| runtime(span, error.to_string()))?;
     let strong = StrongRealClassification::build(&classification, FIBER_BUDGET)

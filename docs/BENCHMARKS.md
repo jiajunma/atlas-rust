@@ -17,7 +17,7 @@ Wall time of the whole script, best-of-3.
 | script | Rust | C++ | ratio |
 |---|---|---|---|
 | G2+D6 W_graph | 3.05s | 0.024s | ~127x |
-| E6 W_graph | 2.1s | 0.028s | ~75x |
+| E6 W_graph | 1.5s | 0.028s | ~53x |
 
 ## Where the time goes (E6, profiled)
 
@@ -43,18 +43,20 @@ Wall time of the whole script, best-of-3.
 4. `enumerate_actions` dedups in a HashMap with flattened matrix keys and
    a `compose_fast` hot loop (no shape checks).
 
-E6 W_graph probe: 13.7s → 2.1s (-85%). Timeline: rho-descent longest;
+E6 W_graph probe: 13.7s → 1.5s (-89%). Timeline: rho-descent longest;
 Arc datum; i64 compose; compact transducer Weyl layer (weyl_transducer.rs,
 group orders + inverse + matrix-equivalence tests); parallel piece-matrix
 materialization (rayon); parallel no-alloc action permutations with a
-root-coordinate HashMap index; and finally the compact twisted-involution
-enumeration wired into CartanClassification (the orbit sweep needs the
-FULL enumeration's actions, not just the 892 candidates — that was the
-discovery bug). Byte-identical output throughout.
-Memory (max RSS): Rust 314MB vs C++ 7.2MB (E6 W_graph) — structural:
-Rust materializes 51840 Weyl matrices per classification and Vec/Arc
-nested allocation; C++ uses native arrays. A compact action-permutation
-pass (no matrix materialization) is the next memory+time lever.
+root-coordinate HashMap index; compact twisted-involution enumeration
+wired into CartanClassification (orbit sweep needs the FULL enumeration,
+not just the candidates — the discovery bug); and the final lever: the
+orbit sweep's root permutations now compose from the compact enumeration
+(simple-reflection perms → per-piece perms → parallel element perms), so
+only the ~892 twisted involutions materialize matrices.
+Memory (max RSS): Rust 69MB vs C++ 7.2MB (E6 W_graph) — 9.6x, down from
+44x; the remaining gap is Vec/Arc nested allocation vs native arrays.
+Next levers: classification caching (dual builds repeat), KGB build
+parallelization.
 
 ## Fixture-level HPC ledger (swap 3516408, fat nodes)
 
