@@ -228,7 +228,7 @@ pub fn dual_cartan_correspondence(
     // each classification class (its representative's permutation is a member
     // key; the fundamental class's normalized identity is the identity
     // permutation, also a member key).
-    let partition = dual.twisted_conjugacy_partition(weyl_budget)?;
+    let partition = std::sync::Arc::clone(dual_classification.twisted_partition());
     let permutation_of = |dual_class: &crate::CartanClass| {
         dual_class
             .representative()

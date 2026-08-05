@@ -1632,6 +1632,7 @@ fn build_inner_class_context(
     let dual_classification = CartanClassification::build(&dual_inner, &class_budget)
         .map_err(|error| runtime(span, error.to_string()))?;
     let dual_form_count = dual_classification.weak_real_form_count();
+    let t_dc = std::time::Instant::now();
     let dual_cartans = dual_cartan_correspondence(
         &inner_class,
         &classification,
@@ -7987,11 +7988,11 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                     ),
                 ));
             };
-            let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
-            let ta = std::time::Instant::now();            let dual_quasisplit = dual_parent.order.quasisplit_external();
+    let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
+            let ta = std::time::Instant::now();    let dual_quasisplit = dual_parent.order.quasisplit_external();
             let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
-            let tb = std::time::Instant::now();            let block = build_block(&parameter.context, &dual_rf, span)?;
-            let t1 = std::time::Instant::now();            let mut kl_table =
+            let tb = std::time::Instant::now();    let block = build_block(&parameter.context, &dual_rf, span)?;
+            let t1 = std::time::Instant::now();    let mut kl_table =
                 KlTable::new(&block.graph).map_err(|error| structure_diagnostic(error, span))?;
             kl_table
                 .fill(0)

@@ -76,6 +76,9 @@ pub struct CartanClassification {
     cartan_sets: Vec<Vec<CartanId>>,
     most_split: Vec<CartanId>,
     twisted_involution_count: usize,
+    /// The twisted-conjugacy partition (reused by the dual correspondence
+    /// and the dual-side classification instead of rebuilding it).
+    partition: std::sync::Arc<crate::TwistedConjugacyPartition>,
 }
 
 impl CartanClassification {
@@ -87,7 +90,7 @@ impl CartanClassification {
         let datum = inner_class.datum();
         let root_system = inner_class.root_system();
         let delta = inner_class.distinguished_involution().involution();
-        let partition = inner_class.twisted_conjugacy_partition(budget.weyl_budget)?;
+        let partition = std::sync::Arc::new(inner_class.twisted_conjugacy_partition(budget.weyl_budget)?);
         let class_count = partition.classes().len();
 
         // Atlas Cartan order (innerclass.cpp:218-291, task 1): BFS discovery.
@@ -312,7 +315,13 @@ impl CartanClassification {
             cartan_sets,
             most_split,
             twisted_involution_count,
+            partition,
         })
+    }
+
+    /// The twisted-conjugacy partition built for this classification.
+    pub fn twisted_partition(&self) -> &std::sync::Arc<crate::TwistedConjugacyPartition> {
+        &self.partition
     }
 
     pub fn cartan_classes(&self) -> &[CartanClass] {
