@@ -245,14 +245,12 @@ impl CompactWeyl {
                 upper[offset + i] = last;
             }
             if matches!(comp.letter, 'B' | 'C' | 'D') {
-                let n = comp.position.len();
-                for (i, &position) in comp.position.iter().enumerate() {
+                for (i, &position) in comp.position.iter().rev().enumerate() {
                     d_out[last - i] = position;
                 }
-                let _ = n;
             } else {
-                for i in 0..comp.position.len() {
-                    d_out[offset + i] = comp.position[i];
+                for (i, &position) in comp.position.iter().enumerate() {
+                    d_out[offset + i] = position;
                 }
             }
         }
@@ -288,7 +286,7 @@ impl CompactWeyl {
         let piece_words = transducers
             .iter()
             .enumerate()
-            .map(|(_, tr)| {
+            .map(|tr| {
                 (0..tr.lengths.len())
                     .map(|piece| {
                         let mut word = Vec::new();
@@ -573,9 +571,9 @@ impl CompactWeyl {
             pending.push_back(id);
             while let Some(w) = pending.pop_front() {
                 for s in 0..self.transducers.len() {
-                    let mut next = w.clone();
+                    let mut next = w;
                     self.inner_mult(&mut next, s);
-                    if seen.insert(next.clone()) {
+                    if seen.insert(next) {
                         if seen.len() > budget {
                             return Err(StructureError::ResourceLimitExceeded { limit: budget });
                         }

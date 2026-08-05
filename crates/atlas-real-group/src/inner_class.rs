@@ -753,8 +753,7 @@ fn theta_generator_permutation(
             if root_system
                 .simple_root_ids()
                 .get(j)
-                .copied()
-                .map_or(false, |id| id.0 == image_index)
+                .is_some_and(|id| id.0 == image_index)
             {
                 found = Some(j);
                 break;
