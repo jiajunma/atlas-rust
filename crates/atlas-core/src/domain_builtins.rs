@@ -2149,6 +2149,58 @@ fn matrix_value(rows: &[Vec<i32>], span: SourceSpan) -> Result<Value, Diagnostic
 }
 
 /// The row-major view of a column-major `Matrix`.
+/// Determinant of a square i32 matrix by Laplace expansion (ranks here
+/// are small; Cartan determinants stay tiny for classical types).
+fn determinant_i32(matrix: &[Vec<i32>]) -> i64 {
+    let rank = matrix.len();
+    if rank == 0 {
+        return 1;
+    }
+    if rank == 1 {
+        return i64::from(matrix[0][0]);
+    }
+    let mut total = 0_i64;
+    for (column, &entry) in matrix[0].iter().enumerate() {
+        if entry == 0 {
+            continue;
+        }
+        let minor: Vec<Vec<i32>> = matrix[1..]
+            .iter()
+            .map(|row| {
+                row.iter()
+                    .enumerate()
+                    .filter_map(|(index, &value)| (index != column).then_some(value))
+                    .collect()
+            })
+            .collect();
+        let sign = if column % 2 == 0 { 1 } else { -1 };
+        total += sign * i64::from(entry) * determinant_i32(&minor);
+    }
+    total
+}
+
+/// Cramer's rule for `matrix x = rhs`: returns the i64 solution and the
+/// (nonzero) determinant.
+fn cramer_solution(matrix: &[Vec<i32>], rhs: &[i32]) -> Option<(Vec<i64>, i64)> {
+    let rank = matrix.len();
+    if rhs.len() != rank || matrix.iter().any(|row| row.len() != rank) {
+        return None;
+    }
+    let denominator = determinant_i32(matrix);
+    if denominator == 0 {
+        return None;
+    }
+    let mut numerators = Vec::with_capacity(rank);
+    for column in 0..rank {
+        let mut replaced: Vec<Vec<i32>> = matrix.to_vec();
+        for (row_index, entry) in replaced.iter_mut().enumerate() {
+            entry[column] = rhs[row_index];
+        }
+        numerators.push(determinant_i32(&replaced));
+    }
+    Some((numerators, denominator))
+}
+
 fn matrix_rows(matrix: &Matrix) -> Vec<Vec<i32>> {
     (0..matrix.rows())
         .map(|row| {
@@ -6378,6 +6430,62 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
         // 3412-3413): the dual inner class's own root datum.
         // two_rho / two_rho_check (atlas-types.w:1409-1421): the sum of
         // the positive roots (respectively positive coroots).
+        "fundamental_weight" => {
+            arity(name, arguments, 2, span)?;
+            let handle = as_root_datum(&arguments[0], span)?;
+            let index = as_usize(&arguments[1], span)?;
+            if index >= handle.datum.semisimple_rank() {
+                return Err(runtime(span, "index out of range"));
+            }
+            let mut numerator = vec![0_i64; handle.datum.lattice_rank()];
+            numerator[index] = 1;
+            let value = RatVec::new(numerator, 1)
+                .ok_or_else(|| runtime(span, "invalid fundamental weight"))?;
+            Ok(Value::RatVector(value))
+        }
+        "fundamental_coweight" => {
+            arity(name, arguments, 2, span)?;
+            let handle = as_root_datum(&arguments[0], span)?;
+            let index = as_usize(&arguments[1], span)?;
+            if index >= handle.datum.semisimple_rank() {
+                return Err(runtime(span, "index out of range"));
+            }
+            // C^{-1} column i via Cramer: solve C x = e_i.
+            let cartan = handle.datum.cartan_matrix();
+            let mut rhs = vec![0_i32; cartan.len()];
+            rhs[index] = 1;
+            let (mut numerator, denominator) = cramer_solution(&cartan, &rhs)
+                .ok_or_else(|| runtime(span, "singular Cartan matrix"))?;
+            numerator.resize(handle.datum.lattice_rank(), 0);
+            let value = RatVec::new(numerator, denominator.unsigned_abs())
+                .ok_or_else(|| runtime(span, "invalid fundamental coweight"))?;
+            Ok(Value::RatVector(value))
+        }
+        "simple_factors" => {
+            arity(name, arguments, 1, span)?;
+            let lie = as_lie_type(&arguments[0], span)?;
+            let factors = lie
+                .factors
+                .into_iter()
+                .map(|(letter, rank)| {
+                    Value::Tuple(vec![
+                        Value::String(letter.to_string()),
+                        Value::Integer(rank.into()),
+                    ])
+                })
+                .collect();
+            Ok(Value::List(factors))
+        }
+        "Cartan_matrix_type" => {
+            arity(name, arguments, 1, span)?;
+            let matrix = as_matrix(&arguments[0], span)?;
+            let lie_type = infer_lie_type(&matrix, matrix.len(), span)?;
+            let permutation: Vec<i64> = (0..matrix.len()).map(|index| index as i64).collect();
+            Ok(Value::Tuple(vec![
+                Value::Domain(DomainValue::LieType(lie_type)),
+                Value::List(permutation.into_iter().map(|index| Value::Integer(index.into())).collect()),
+            ]))
+        }
         "two_rho" | "two_rho_check" => {
             arity(name, arguments, 1, span)?;
             let Value::Domain(DomainValue::RootDatum(handle)) = &arguments[0] else {

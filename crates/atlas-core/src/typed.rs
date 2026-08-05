@@ -4993,7 +4993,43 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::RootDatum),
                 primitive_type(Prim::Vec),
                 0,
+            ),            domain_builtin_skip(
+                "fundamental_weight",
+                Type::tuple(vec![
+                    primitive_type(Prim::RootDatum),
+                    int_type(),
+                ]),
+                primitive_type(Prim::RatVec),
+                0,
             ),
+            domain_builtin_skip(
+                "fundamental_coweight",
+                Type::tuple(vec![
+                    primitive_type(Prim::RootDatum),
+                    int_type(),
+                ]),
+                primitive_type(Prim::RatVec),
+                0,
+            ),
+            domain_builtin_skip(
+                "simple_factors",
+                primitive_type(Prim::LieType),
+                Type::Row(Box::new(Type::tuple(vec![
+                    primitive_type(Prim::String),
+                    int_type(),
+                ]))),
+                0,
+            ),
+            domain_builtin_skip(
+                "Cartan_matrix_type",
+                primitive_type(Prim::Mat),
+                Type::tuple(vec![
+                    primitive_type(Prim::LieType),
+                    Type::Row(Box::new(int_type())),
+                ]),
+                0,
+            ),
+
             domain_builtin_skip(
                 "two_rho_check",
                 primitive_type(Prim::RootDatum),

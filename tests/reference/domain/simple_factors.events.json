@@ -1,0 +1,28 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/simple_factors",
+  "status": "local_oracle_reference",
+  "events": [
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "[(\"A\",2)]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "[(\"B\",3)]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "[(\"D\",4)]"
+      }
+    }
+  ]
+}

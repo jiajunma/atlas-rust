@@ -1,0 +1,11 @@
+ra : RootDatum
+ra := simply_connected(Lie_type("A2"),true)
+Cartan_matrix_type(Cartan_matrix(ra))
+Cartan_matrix_type([[2,-2],[-1,2]])
+ra3 : RootDatum
+ra3 := simply_connected(Lie_type("A3"),true)
+Cartan_matrix_type(Cartan_matrix(ra3))
+rb : RootDatum
+rb := simply_connected(Lie_type("B2"),true)
+Cartan_matrix_type(Cartan_matrix(rb))
+Cartan_matrix_type([[2,-1],[-2,2]])

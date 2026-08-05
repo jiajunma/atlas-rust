@@ -1,0 +1,19 @@
+ra : RootDatum
+ra := simply_connected(Lie_type("A2"),true)
+fundamental_weight(ra,0)
+fundamental_weight(ra,1)
+fundamental_coweight(ra,0)
+fundamental_coweight(ra,1)
+rb : RootDatum
+rb := simply_connected(Lie_type("B2"),true)
+fundamental_weight(rb,0)
+fundamental_weight(rb,1)
+fundamental_coweight(rb,0)
+fundamental_coweight(rb,1)
+ra3 : RootDatum
+ra3 := simply_connected(Lie_type("A3"),true)
+fundamental_weight(ra3,0)
+fundamental_weight(ra3,1)
+fundamental_weight(ra3,2)
+fundamental_coweight(ra3,0)
+fundamental_coweight(ra3,2)

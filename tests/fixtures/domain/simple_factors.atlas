@@ -1,0 +1,4 @@
+simple_factors(Lie_type("A2"))
+simple_factors(Lie_type("B3"))
+simple_factors(Lie_type("A1xA2"))
+simple_factors(Lie_type("D4"))
