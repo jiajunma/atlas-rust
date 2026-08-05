@@ -263,7 +263,6 @@ impl KgbGraph {
             }
             cursor = window_end;
         }
-        drop(index);
         if elements.len() != expected {
             return Err(StructureError::KgbInvariantViolation {
                 invariant: "kgb size",
