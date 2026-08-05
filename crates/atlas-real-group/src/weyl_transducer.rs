@@ -496,26 +496,68 @@ impl CompactWeyl {
     }
 
     /// Enumerate all group elements by breadth-first search (compact
-    /// elements, cheap multiplication).
+    /// elements, cheap multiplication). For rank <= 8 the element is
+    /// encoded in one u64 (one byte per piece) so the dedup set is a flat
+    /// integer hash set.
     pub(crate) fn enumerate(&self, budget: usize) -> Result<Vec<WeylElt>, StructureError> {
-        let mut seen: HashSet<WeylElt> = HashSet::with_capacity(budget.min(1 << 16));
-        let mut pending: VecDeque<WeylElt> = VecDeque::new();
-        let id = self.identity();
-        seen.insert(id.clone());
-        pending.push_back(id);
-        while let Some(w) = pending.pop_front() {
-            for s in 0..self.transducers.len() {
-                let mut next = w.clone();
-                self.inner_mult(&mut next, s);
-                if seen.insert(next.clone()) {
-                    if seen.len() > budget {
-                        return Err(StructureError::ResourceLimitExceeded { limit: budget });
+        let rank = self.transducers.len();
+        let use_u64 = rank <= 8;
+        if use_u64 {
+            let mut seen: HashSet<u64> = HashSet::with_capacity(budget.min(1 << 16));
+            let mut pending: VecDeque<u64> = VecDeque::new();
+            let id = 0_u64;
+            seen.insert(id);
+            pending.push_back(id);
+            while let Some(w) = pending.pop_front() {
+                let mut bytes = vec![0_u8; rank];
+                for i in 0..rank {
+                    bytes[i] = ((w >> (8 * i)) & 0xff) as u8;
+                }
+                for s in 0..rank {
+                    let mut next_bytes = bytes.clone();
+                    self.inner_mult(&mut next_bytes, s);
+                    let mut next = 0_u64;
+                    for i in 0..rank {
+                        next |= u64::from(next_bytes[i]) << (8 * i);
                     }
-                    pending.push_back(next);
+                    if seen.insert(next) {
+                        if seen.len() > budget {
+                            return Err(StructureError::ResourceLimitExceeded { limit: budget });
+                        }
+                        pending.push_back(next);
+                    }
                 }
             }
+            Ok(seen
+                .into_iter()
+                .map(|w| {
+                    let mut bytes = vec![0_u8; rank];
+                    for i in 0..rank {
+                        bytes[i] = ((w >> (8 * i)) & 0xff) as u8;
+                    }
+                    bytes
+                })
+                .collect())
+        } else {
+            let mut seen: HashSet<WeylElt> = HashSet::with_capacity(budget.min(1 << 16));
+            let mut pending: VecDeque<WeylElt> = VecDeque::new();
+            let id = self.identity();
+            seen.insert(id.clone());
+            pending.push_back(id);
+            while let Some(w) = pending.pop_front() {
+                for s in 0..self.transducers.len() {
+                    let mut next = w.clone();
+                    self.inner_mult(&mut next, s);
+                    if seen.insert(next.clone()) {
+                        if seen.len() > budget {
+                            return Err(StructureError::ResourceLimitExceeded { limit: budget });
+                        }
+                        pending.push_back(next);
+                    }
+                }
+            }
+            Ok(seen.into_iter().collect())
         }
-        Ok(seen.into_iter().collect())
     }
 }
 
