@@ -17,7 +17,7 @@ Wall time of the whole script, best-of-3.
 | script | Rust | C++ | ratio |
 |---|---|---|---|
 | G2+D6 W_graph | 0.71s | 0.024s | ~30x |
-| E6 W_graph | 0.9s | 0.028s | ~32x |
+| E6 W_graph | 0.69s | 0.028s | ~25x |
 
 ## Where the time goes (E6, profiled)
 
@@ -43,7 +43,7 @@ Wall time of the whole script, best-of-3.
 4. `enumerate_actions` dedups in a HashMap with flattened matrix keys and
    a `compose_fast` hot loop (no shape checks).
 
-E6 W_graph probe: 13.7s → 0.9s (-93%). Timeline: rho-descent longest;
+E6 W_graph probe: 13.7s → 0.69s (-95%). Timeline: rho-descent longest;
 Arc datum; i64 compose; compact transducer Weyl layer (weyl_transducer.rs,
 group orders + inverse + matrix-equivalence tests); parallel piece-matrix
 materialization (rayon); parallel no-alloc action permutations with a
@@ -55,7 +55,9 @@ perms → per-piece perms → parallel element perms), so only the ~892
 twisted involutions materialize matrices; and the orbit conjugation
 itself is parallelized per Weyl element; and the dual Cartan
 correspondence reuses the classification's stored twisted-conjugacy
-partition instead of rebuilding it (a second ~125ms per side).
+partition instead of rebuilding it (a second ~125ms per side); and the
+twisted-involution scan over all 51840 compact elements is parallelized
+(pure per-element test + candidate matrix build).
 Memory (max RSS): Rust 69MB vs C++ 7.2MB (E6 W_graph) — 9.6x, down from
 44x; the remaining gap is Vec/Arc nested allocation vs native arrays.
 Next levers: classification caching (dual builds repeat), KGB build

@@ -668,31 +668,38 @@ impl InnerClass {
         let reflections = (0..self.datum.semisimple_rank())
             .map(|generator| WeylAction::simple_reflection(&self.datum, generator))
             .collect::<Result<Vec<_>, _>>()?;
-        let mut involutions = Vec::new();
-        for elt in &elements {
-            if !compact.is_twisted_involution(elt, &twist) {
-                continue;
-            }
-            let mut action = WeylAction::identity(&self.datum)?;
-            for (piece_index, &piece) in elt.iter().enumerate() {
-                let word = compact.word_of_piece(piece_index, piece);
-                for &local in &word {
-                    let internal = compact.piece_offset(piece_index) + local;
-                    let external = compact.d_out()[internal];
-                    action = action.compose_fast(&reflections[external]);
+        // The twisted-involution test is a pure function of the compact
+        // element; parallelize the scan, then build the few candidate
+        // matrices (for TwistedInvolution) in the same parallel pass.
+        use rayon::prelude::*;
+        let candidates: Vec<Option<TwistedInvolution>> = elements
+            .par_iter()
+            .map(|elt| {
+                if !compact.is_twisted_involution(elt, &twist) {
+                    return Ok(None);
                 }
-            }
-            match TwistedInvolution::new(
-                &self.datum,
-                &self.roots,
-                self.distinguished_involution.involution(),
-                action,
-            ) {
-                Ok(involution) => involutions.push(involution),
-                Err(StructureError::InvalidInvolution) => {}
-                Err(error) => return Err(error),
-            }
-        }
+                let mut action = WeylAction::identity(&self.datum)?;
+                for (piece_index, &piece) in elt.iter().enumerate() {
+                    let word = compact.word_of_piece(piece_index, piece);
+                    for &local in &word {
+                        let internal = compact.piece_offset(piece_index) + local;
+                        let external = compact.d_out()[internal];
+                        action = action.compose_fast(&reflections[external]);
+                    }
+                }
+                match TwistedInvolution::new(
+                    &self.datum,
+                    &self.roots,
+                    self.distinguished_involution.involution(),
+                    action,
+                ) {
+                    Ok(involution) => Ok(Some(involution)),
+                    Err(StructureError::InvalidInvolution) => Ok(None),
+                    Err(error) => Err(error),
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let involutions: Vec<TwistedInvolution> = candidates.into_iter().flatten().collect();
         Ok((compact, elements, involutions))
     }
 }
