@@ -7,6 +7,26 @@ implementation batches. Each batch follows the per-slice loop: probe
 the oracle (local `/Users/hoxide/mycodes/atlasofliegroups/atlas` works),
 freeze a fixture, implement, gate, HPC differential, meta upgrade.
 
+## Batch status (2026-08-05)
+
+| Batch | scope | status |
+|---|---|---|
+| 1 | root-datum surface | DONE (simple_roots/simple_coroots/is_Cartan_matrix/dual_datum, two_rho, fundamental_weight/coweight, simple_factors, Cartan_matrix_type) |
+| 3 | root/radical data | DONE except root_ladder_bottoms/coroot_ladder_bottoms (need root_perm/link); integrality_rank/integrality_datum/is_integrally_dominant DONE `174ae58` (fixture `domain/integrality` VERBATIM; integrality_points implemented but its RatVec-list display differs from the oracle RatNum list — recorded in meta) |
+| 4 | print family | NOT STARTED (needs global KGB, realweyl, srm pools) |
+| 5 | W-cells/KL | DONE except twisted_KL_sum_at_s (needs ext_block) |
+| 6 | extended blocks | PARTIAL (default_extended/extend/partial_block/partial_KL_block done; rest need ext_block layer) |
+| 7 | deform variants | PARTIAL (full_deform done; rest need block_deformation_to_height / common-block srm pool) |
+| 8 | misc | DONE except shift_flip (needs ext_block); Cartan_matrix_type done |
+
+Remaining (recorded): walls/walls_attitude (weyl::wall_set), from_dominant (WeylElt decompose),
+derived_info / mod_central_torus_info (PreRootDatum projector), cofolded (construct_cofolded),
+Weyl_orbit family, alcove_center/alcove_root_vertex, FPP_numers/FPP_w_shifts, root_expression/
+root_index/root_permutation (oracle root numbering), then the ext_block / print / block_deform
+layers. Performance work (2026-08-04/05) is in docs/BENCHMARKS.md: E6 13.7s->0.45s warm, E7 10.3s/4.1GB
+->8.4s/2.2GB via rho-descent longest, compact [u8;8] WeylElt, u8 root permutations, full-content
+classification cache, rayon parallelization (7 sites).
+
 ## Batch status (2026-08-01)
 
 | Batch | scope | status |
