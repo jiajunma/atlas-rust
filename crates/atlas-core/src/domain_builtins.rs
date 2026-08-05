@@ -2687,6 +2687,51 @@ fn weight_orthogonal(root_system: &RootSystem, weight: &Weight, root: RootId) ->
 /// `RootSystem::simpleBasis` (rootdata.cpp:621-652), implemented by the
 /// positivity test: a positive root is simple in the subsystem spanned by
 /// `rs` iff no other positive root of `rs` has strictly smaller coordinates.
+/// The simple roots of the integrality subsystem of `gamma`
+/// (rootdata.cpp:1483-1501): positive coroots with integral pairing, then
+/// the minimal positive roots spanning them.
+fn integrality_simples_roots(
+    handle: &RootDatumHandle,
+    gamma: &RatVec,
+    span: SourceSpan,
+) -> Result<Vec<RootId>, Diagnostic> {
+    let root_system = RootSystem::enumerate(&handle.datum, ROOT_BUDGET)
+        .map_err(|error| runtime(span, error.to_string()))?;
+    let denominator = gamma.denominator() as i64;
+    let mut integral = Vec::new();
+    for index in 0..root_system.roots().len() {
+        let id = RootId::from_usize(index);
+        if !root_system.is_positive(id).unwrap_or(false) {
+            continue;
+        }
+        if let Some(coroot) = root_system.coroot(id) {
+            let dot = gamma
+                .numerators()
+                .iter()
+                .zip(coroot.as_slice())
+                .map(|(g, &c)| g * i64::from(c))
+                .sum::<i64>();
+            if dot % denominator == 0 {
+                integral.push(id);
+            }
+        }
+    }
+    simple_basis(&root_system, &integral).map_err(|error| runtime(span, error.to_string()))
+}
+
+/// <gamma, alpha^vee> for a positive coroot (rootdata.cpp `posCoroot(i).dot`).
+fn positive_coroot_pairing(root_system: &RootSystem, id: RootId, gamma: &RatVec) -> Option<i64> {
+    let coroot = root_system.coroot(id)?;
+    Some(
+        gamma
+            .numerators()
+            .iter()
+            .zip(coroot.as_slice())
+            .map(|(g, &c)| g * i64::from(c))
+            .sum(),
+    )
+}
+
 fn simple_basis(root_system: &RootSystem, rs: &[RootId]) -> Result<Vec<RootId>, StructureError> {
     let mut result = Vec::new();
     for &alpha in rs {
@@ -6491,6 +6536,119 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                         .collect(),
                 ),
             ]))
+        }
+        "integrality_rank" => {
+            arity(name, arguments, 2, span)?;
+            let handle = as_root_datum(&arguments[0], span)?;
+            let Value::RatVector(gamma) = &arguments[1] else {
+                return Err(type_error(span, "expected a rational vector"));
+            };
+            let simple = integrality_simples_roots(handle, gamma, span)?;
+            Ok(Value::Integer(simple.len().into()))
+        }
+        "is_integrally_dominant" => {
+            arity(name, arguments, 2, span)?;
+            let handle = as_root_datum(&arguments[0], span)?;
+            let Value::RatVector(gamma) = &arguments[1] else {
+                return Err(type_error(span, "expected a rational vector"));
+            };
+            let root_system = RootSystem::enumerate(&handle.datum, ROOT_BUDGET)
+                .map_err(|error| runtime(span, error.to_string()))?;
+            let simple = integrality_simples_roots(handle, gamma, span)?;
+            for &root in &simple {
+                if let Some(dot) = positive_coroot_pairing(&root_system, root, gamma) {
+                    if dot < 0 {
+                        return Ok(Value::Boolean(false));
+                    }
+                }
+            }
+            Ok(Value::Boolean(true))
+        }
+        "integrality_points" => {
+            arity(name, arguments, 2, span)?;
+            let handle = as_root_datum(&arguments[0], span)?;
+            let Value::RatVector(gamma) = &arguments[1] else {
+                return Err(type_error(span, "expected a rational vector"));
+            };
+            let root_system = RootSystem::enumerate(&handle.datum, ROOT_BUDGET)
+                .map_err(|error| runtime(span, error.to_string()))?;
+            let denominator = gamma.denominator();
+            let mut products: std::collections::BTreeSet<i64> = std::collections::BTreeSet::new();
+            for index in 0..root_system.roots().len() {
+                let id = RootId::from_usize(index);
+                if !root_system.is_positive(id).unwrap_or(false) {
+                    continue;
+                }
+                if let Some(dot) = positive_coroot_pairing(&root_system, id, gamma) {
+                    if dot != 0 {
+                        products.insert(dot.abs());
+                    }
+                }
+            }
+            let mut fracs: std::collections::BTreeSet<(i64, i64)> =
+                std::collections::BTreeSet::new();
+            for &p in &products {
+                let mut s = denominator as i64;
+                while s <= p {
+                    fracs.insert((s, p));
+                    s += denominator as i64;
+                }
+            }
+            let values = fracs
+                .into_iter()
+                .map(|(s, p)| {
+                    // RatVec::new normalises by the gcd.
+                    Value::RatVector(RatVec::new(vec![s], p as u64).expect("valid"))
+                })
+                .collect();
+            Ok(Value::List(values))
+        }
+        "integrality_datum" => {
+            arity(name, arguments, 2, span)?;
+            let handle = as_root_datum(&arguments[0], span)?;
+            let Value::RatVector(gamma) = &arguments[1] else {
+                return Err(type_error(span, "expected a rational vector"));
+            };
+            let simple = integrality_simples_roots(handle, gamma, span)?;
+            let root_system = RootSystem::enumerate(&handle.datum, ROOT_BUDGET)
+                .map_err(|error| runtime(span, error.to_string()))?;
+            // Order the simple roots by their first nonzero datum-simple
+            // coordinate (the oracle's simpleBasis RootNbr order), so the
+            // subsystem Cartan classifies with the oracle's B/C convention.
+            let mut ordered = simple.clone();
+            ordered.sort_by_key(|&root| {
+                let coordinates = root_system.simple_coordinates(root).unwrap_or_default();
+                (
+                    coordinates
+                        .iter()
+                        .position(|&coordinate| coordinate != 0)
+                        .unwrap_or(usize::MAX),
+                    root.index(),
+                )
+            });
+            let cartan: Vec<Vec<i32>> = ordered
+                .iter()
+                .map(|&alpha| {
+                    ordered
+                        .iter()
+                        .map(|&beta| root_system.bracket(alpha, beta).unwrap_or(0))
+                        .collect()
+                })
+                .collect();
+            let rank = cartan.len();
+            let datum = BasedRootDatum::standard(cartan)
+                .map_err(|error| runtime(span, error.to_string()))?;
+            let lie_type = infer_lie_type(&datum.cartan_matrix(), rank, span)?;
+            // The integrality datum is the simply-connected subsystem
+            // (oracle integrality_datum prints "simply connected root datum
+            // of Lie type ...").
+            let isogeny = DatumIsogeny::SimplyConnected;
+            Ok(Value::Domain(DomainValue::RootDatum(RootDatumHandle {
+                datum: std::sync::Arc::new(datum),
+                lie_type,
+                isogeny,
+                prefers_coroots: false,
+            })))
         }
         "two_rho" | "two_rho_check" => {
             arity(name, arguments, 1, span)?;

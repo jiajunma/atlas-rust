@@ -5016,6 +5016,42 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 0,
             ),
             domain_builtin_skip(
+                "integrality_rank",
+                Type::tuple(vec![
+                    primitive_type(Prim::RootDatum),
+                    primitive_type(Prim::RatVec),
+                ]),
+                int_type(),
+                0,
+            ),
+            domain_builtin_skip(
+                "is_integrally_dominant",
+                Type::tuple(vec![
+                    primitive_type(Prim::RootDatum),
+                    primitive_type(Prim::RatVec),
+                ]),
+                bool_type(),
+                0,
+            ),
+            domain_builtin_skip(
+                "integrality_points",
+                Type::tuple(vec![
+                    primitive_type(Prim::RootDatum),
+                    primitive_type(Prim::RatVec),
+                ]),
+                Type::Row(Box::new(primitive_type(Prim::RatVec))),
+                0,
+            ),
+            domain_builtin_skip(
+                "integrality_datum",
+                Type::tuple(vec![
+                    primitive_type(Prim::RootDatum),
+                    primitive_type(Prim::RatVec),
+                ]),
+                primitive_type(Prim::RootDatum),
+                0,
+            ),
+            domain_builtin_skip(
                 "Cartan_matrix_type",
                 primitive_type(Prim::Mat),
                 Type::tuple(vec![

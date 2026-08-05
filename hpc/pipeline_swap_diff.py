@@ -280,6 +280,7 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/fundamental"),
     FixturePlan(name="domain/simple_factors"),
     FixturePlan(name="domain/cartan_matrix_type"),
+    FixturePlan(name="domain/integrality"),
     # KGB headline observables: per-form KGB sizes and root statuses across
     # the A1/C2/A2 families, plus the inexistent-element and type rejections.
     FixturePlan(name="domain/kgb_generation"),
