@@ -567,6 +567,7 @@ impl InnerClass {
         &self,
         weyl_budget: usize,
     ) -> Result<TwistedConjugacyPartition, StructureError> {
+        use rayon::prelude::*;
         let (compact, elements, candidates) = self.enumerated_twisted_involutions(weyl_budget)?;
         let permutations = candidates
             .iter()
@@ -606,21 +607,21 @@ impl InnerClass {
             let candidate_permutation = candidate.root_involution().image_permutation();
             let candidate_indices: Vec<usize> =
                 candidate_permutation.iter().map(|id| id.0).collect();
-            let orbit =
-                weyl_permutations
-                    .iter()
-                    .try_fold(BTreeSet::new(), |mut orbit, action| {
-                        let inverse = inverse_permutation(action)?;
-                        let conjugate = (0..action.len())
-                            .map(|root| action[candidate_indices[inverse[root]]])
-                            .collect::<Vec<_>>();
-                        let conjugate_index = candidate_by_permutation
-                            .get(&conjugate)
-                            .copied()
-                            .ok_or(StructureError::InvalidRootAutomorphism)?;
-                        orbit.insert(conjugate_index);
-                        Ok(orbit)
-                    })?;
+            let orbit: BTreeSet<usize> = weyl_permutations
+                .par_iter()
+                .map(|action| {
+                    let inverse = inverse_permutation(action)?;
+                    let conjugate = (0..action.len())
+                        .map(|root| action[candidate_indices[inverse[root]]])
+                        .collect::<Vec<_>>();
+                    candidate_by_permutation
+                        .get(&conjugate)
+                        .copied()
+                        .ok_or(StructureError::InvalidRootAutomorphism)
+                })
+                .collect::<Result<Vec<_>, _>>()?
+                .into_iter()
+                .collect();
             for member in &orbit {
                 visited[*member] = true;
                 class_by_permutation.insert(permutations[*member].clone(), classes.len());
