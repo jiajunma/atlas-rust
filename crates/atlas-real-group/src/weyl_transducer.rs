@@ -245,7 +245,7 @@ impl CompactWeyl {
                 upper[offset + i] = last;
             }
             if matches!(comp.letter, 'B' | 'C' | 'D') {
-                for (i, &position) in comp.position.iter().rev().enumerate() {
+                for (i, &position) in comp.position.iter().enumerate() {
                     d_out[last - i] = position;
                 }
             } else {
