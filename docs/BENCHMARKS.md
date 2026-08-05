@@ -17,7 +17,7 @@ Wall time of the whole script, best-of-3.
 | script | Rust | C++ | ratio |
 |---|---|---|---|
 | G2+D6 W_graph | 0.34s | 0.024s | ~14x |
-| E6 W_graph | 0.45s | 0.028s | ~16x |
+| E6 W_graph | 0.33s (warm) | 0.021s | ~16x |
 
 ## Where the time goes (E6, profiled)
 
@@ -43,7 +43,7 @@ Wall time of the whole script, best-of-3.
 4. `enumerate_actions` dedups in a HashMap with flattened matrix keys and
    a `compose_fast` hot loop (no shape checks).
 
-E6 W_graph probe: 13.7s → 0.45s (-97%). Timeline: rho-descent longest;
+E6 W_graph probe: 13.7s → 0.33s warm (-98%). Timeline: rho-descent longest;
 Arc datum; i64 compose; compact transducer Weyl layer (weyl_transducer.rs,
 group orders + inverse + matrix-equivalence tests); parallel piece-matrix
 materialization (rayon); parallel no-alloc action permutations with a
@@ -59,7 +59,11 @@ partition instead of rebuilding it (a second ~125ms per side); and the
 twisted-involution scan over all 51840 compact elements is parallelized
 (pure per-element test + candidate matrix build); the KGB BFS runs
 two-phase (parallel status/cross/cayley computation, sequential intern);
-and the involution-key construction (piece words) is parallelized.
+the involution-key construction (piece words) is parallelized; and the
+Cartan classification is cached by FULL datum content (lattice rank +
+Cartan + simple roots + coroots — the first attempt keyed only Cartan,
+conflating simply-connected/adjoint data) + theta matrices + budget
+(0.45s cold -> 0.33s warm on repeated fixtures).
 Remaining levers recorded: the KGB post-processing (involution sort +
 piece keys + graph fill, ~160ms for the E6 dual) and the structural
 memory gap (Vec/Arc nesting vs native arrays).

@@ -44,6 +44,16 @@ impl CartanClassificationBudget {
         self.weyl_budget
     }
 
+    /// The fiber-element limit (cache key).
+    pub fn max_fiber_elements(&self) -> usize {
+        self.max_fiber_elements
+    }
+
+    /// The peeling-step limit (cache key).
+    pub fn max_peeling_steps(&self) -> usize {
+        self.max_peeling_steps
+    }
+
     pub const fn new(
         integer_lattice: IntegerLatticeBudget,
         adjoint_fiber: AdjointFiberBudget,

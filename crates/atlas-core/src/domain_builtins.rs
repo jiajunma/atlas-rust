@@ -145,7 +145,7 @@ impl DatumIsogeny {
 pub struct InnerClassContext {
     root_datum: RootDatumHandle,
     inner_class: InnerClass,
-    classification: CartanClassification,
+    classification: std::sync::Arc<CartanClassification>,
     strong: StrongRealClassification,
     order: ExternalFormOrder,
     layout: InnerClassLayout,
@@ -1600,6 +1600,72 @@ fn is_unimodular(matrix: &[Vec<i32>]) -> bool {
     })
 }
 
+/// Cache of Cartan classifications keyed by the FULL datum content
+/// (lattice rank + Cartan + simple roots + coroots — the earlier attempt
+/// keyed only the Cartan matrix, which conflated e.g. simply-connected
+/// and adjoint data and broke datum-equality checks), the theta matrices,
+/// and the budget limits.
+type ClassificationFingerprint = (
+    atlas_real_group::BasedRootDatum,
+    Vec<Vec<i32>>,
+    Vec<Vec<i32>>,
+    usize,
+    usize,
+    usize,
+);
+
+static CLASSIFICATION_CACHE: std::sync::OnceLock<
+    std::sync::Mutex<
+        std::collections::HashMap<ClassificationFingerprint, std::sync::Arc<CartanClassification>>,
+    >,
+> = std::sync::OnceLock::new();
+
+fn classification_cache(
+) -> &'static std::sync::Mutex<std::collections::HashMap<ClassificationFingerprint, std::sync::Arc<CartanClassification>>> {
+    CLASSIFICATION_CACHE
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+}
+
+fn classification_cached(
+    inner_class: &InnerClass,
+    class_budget: &CartanClassificationBudget,
+    span: SourceSpan,
+) -> Result<std::sync::Arc<CartanClassification>, Diagnostic> {
+    let fingerprint = (
+        inner_class.datum().clone(),
+        inner_class
+            .distinguished_involution()
+            .involution()
+            .weight_matrix()
+            .to_vec(),
+        inner_class
+            .distinguished_involution()
+            .involution()
+            .coweight_matrix()
+            .to_vec(),
+        class_budget.weyl_budget(),
+        class_budget.max_fiber_elements(),
+        class_budget.max_peeling_steps(),
+    );
+    if let Some(existing) = classification_cache()
+        .lock()
+        .expect("classification cache poisoned")
+        .get(&fingerprint)
+    {
+        return Ok(std::sync::Arc::clone(existing));
+    }
+    let classification = std::sync::Arc::new(
+        CartanClassification::build(inner_class, class_budget)
+            .map_err(|error| runtime(span, error.to_string()))?,
+    );
+    let _ = span;
+    classification_cache()
+        .lock()
+        .expect("classification cache poisoned")
+        .insert(fingerprint, std::sync::Arc::clone(&classification));
+    Ok(classification)
+}
+
 fn build_inner_class_context(
     handle: &RootDatumHandle,
     inner_class: InnerClass,
@@ -1615,8 +1681,7 @@ fn build_inner_class_context(
     let t_a = std::time::Instant::now();
     let t_a = std::time::Instant::now();
     let t_a = std::time::Instant::now();
-    let classification = CartanClassification::build(&inner_class, &class_budget)
-        .map_err(|error| runtime(span, error.to_string()))?;
+    let classification = classification_cached(&inner_class, &class_budget, span)?;
     let strong = StrongRealClassification::build(&classification, FIBER_BUDGET)
         .map_err(|error| runtime(span, error.to_string()))?;
     let order = ExternalFormOrder::build(&inner_class, &classification)
@@ -1629,8 +1694,7 @@ fn build_inner_class_context(
     let dual_inner = dual_inner_class(&inner_class, WEYL_BUDGET, ROOT_BUDGET)
         .map_err(|error| runtime(span, error.to_string()))?;
     let t_b = std::time::Instant::now();
-    let dual_classification = CartanClassification::build(&dual_inner, &class_budget)
-        .map_err(|error| runtime(span, error.to_string()))?;
+    let dual_classification = classification_cached(&dual_inner, &class_budget, span)?;
     let dual_form_count = dual_classification.weak_real_form_count();
     let t_dc = std::time::Instant::now();
     let dual_cartans = dual_cartan_correspondence(
@@ -7988,16 +8052,24 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                     ),
                 ));
             };
-    let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
-            let ta = std::time::Instant::now();    let dual_quasisplit = dual_parent.order.quasisplit_external();
+    let t0 = std::time::Instant::now();
+            let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
+            let ta = std::time::Instant::now();    let t1 = std::time::Instant::now();
+            eprintln!("WG3 dual_ic={:?}", t1.duration_since(t0));
+            let dual_quasisplit = dual_parent.order.quasisplit_external();
+            let t2 = std::time::Instant::now();
             let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
-            let tb = std::time::Instant::now();    let block = build_block(&parameter.context, &dual_rf, span)?;
+            let tb = std::time::Instant::now();    let t3 = std::time::Instant::now();
+            eprintln!("WG3 dual_rf={:?}", t3.duration_since(t2));
+            let block = build_block(&parameter.context, &dual_rf, span)?;
             let t1 = std::time::Instant::now();    let mut kl_table =
                 KlTable::new(&block.graph).map_err(|error| structure_diagnostic(error, span))?;
             kl_table
                 .fill(0)
                 .map_err(|error| structure_diagnostic(error, span))?;
-            let t3 = std::time::Instant::now();            let size = block.graph.size();
+            let t3 = std::time::Instant::now();            let t4 = std::time::Instant::now();
+            eprintln!("WG3 block+kl={:?}", t4.duration_since(t3));
+            let size = block.graph.size();
             let start = (0..size)
                 .find(|&z| block.graph.x(z) == Some(parameter.repr.x()))
                 .ok_or_else(|| runtime(span, "parameter not in the common block"))?;

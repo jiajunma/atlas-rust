@@ -77,6 +77,12 @@ fn print_events(frame: &SessionFrame<FsProvider, FsSink>, events: &[SessionEvent
 }
 
 fn main() -> ExitCode {
+    // The parallel passes (Weyl enumeration, orbit conjugation, KGB BFS)
+    // are iterative, so a modest rayon worker stack keeps RSS down
+    // (default 8MiB per worker vs ~1-2MiB actually used).
+    let _ = rayon::ThreadPoolBuilder::new()
+        .stack_size(2 * 1024 * 1024)
+        .build_global();
     let mut search_path = Vec::new();
     let mut files = Vec::new();
     for argument in std::env::args().skip(1) {
