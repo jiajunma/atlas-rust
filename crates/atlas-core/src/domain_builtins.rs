@@ -9771,6 +9771,107 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
         },
         // W_elt_wrapper (atlas-types.w:2361-2368): the word check runs
         // before the no_value gate upstream, so validation stays eager.
+        "from_dominant" => {
+            arity(name, arguments, 2, span)?;
+            // Two overloads: (RootDatum, vec) -> (WeylElt, vec) decompose, and
+            // (vec, RootDatum) -> (vec, WeylElt) codecompose.
+            let decompose =
+                matches!(&arguments[0], Value::Domain(DomainValue::RootDatum(_)));
+            let vector_value = if decompose {
+                &arguments[1]
+            } else {
+                &arguments[0]
+            };
+            let coords: Vec<i32> = match vector_value {
+                Value::List(entries) => {
+                    let mut out = Vec::with_capacity(entries.len());
+                    for entry in entries {
+                        out.push(as_integer(entry, span)?.to_string().parse::<i32>().unwrap_or(i32::MAX));
+                    }
+                    out
+                }
+                Value::Vector(Vec32(entries)) => entries.clone(),
+                other => {
+                    return Err(type_error(span, format!("expected a vec, found {other}")));
+                }
+            };
+            let (handle, coords) = if decompose {
+                (as_root_datum(&arguments[0], span)?, coords)
+            } else {
+                (as_root_datum(&arguments[1], span)?, coords)
+            };
+            let rank = handle.datum.semisimple_rank();
+            if coords.len() != rank {
+                return Err(runtime(
+                    span,
+                    format!("Rank and weight size mismatch {}:{}", rank, coords.len()),
+                ));
+            }
+            let datum = &handle.datum;
+            let mut current = Weight::new(coords);
+            let mut word: Vec<usize> = Vec::new();
+            loop {
+                let mut acted = false;
+                for s in 0..rank {
+                    if decompose {
+                        // factor_dominant (rootdata.cpp:1117-1135): reflect while
+                        // <v, alpha_s^vee> < 0, accumulating the word.
+                        let pairing = pair(&current, &datum.simple_coroots()[s])
+                            .map_err(|error| runtime(span, error.to_string()))?;
+                        if pairing < 0 {
+                            let root_coords = datum.simple_roots()[s].as_slice();
+                            let mut next = Vec::with_capacity(rank);
+                            for i in 0..rank {
+                                next.push(current.as_slice()[i] - pairing * root_coords[i]);
+                            }
+                            current = Weight::new(next);
+                            word.push(s);
+                            acted = true;
+                            break;
+                        }
+                    } else {
+                        // factor_codominant (rootdata.cpp:1138-1155): reflect across
+                        // the coroot while <v, alpha_s> < 0; the word is prepended.
+                        let cartan = datum.cartan_matrix();
+                        let pairing: i64 = (0..rank)
+                            .map(|i| i64::from(current.as_slice()[i]) * i64::from(cartan[s][i]))
+                            .sum();
+                        if pairing < 0 {
+                            let coroot_coords = datum.simple_coroots()[s].as_slice();
+                            let mut next = Vec::with_capacity(rank);
+                            for i in 0..rank {
+                                next.push(
+                                    current.as_slice()[i] - (pairing as i32) * coroot_coords[i],
+                                );
+                            }
+                            current = Weight::new(next);
+                            word.insert(0, s);
+                            acted = true;
+                            break;
+                        }
+                    }
+                }
+                if !acted {
+                    break;
+                }
+            }
+            let context = build_weyl_context(handle, span)?;
+            let mut element = WeylElement::identity(&context.system)
+                .map_err(|error| runtime(span, error.to_string()))?;
+            for generator in word {
+                let (next, _) = element
+                    .right_multiply_simple(&context.system, generator)
+                    .map_err(|error| runtime(span, error.to_string()))?;
+                element = next;
+            }
+            let weyl = weyl_elt_value(context, element, span)?;
+            let vec = Value::Vector(Vec32(current.as_slice().to_vec()));
+            if decompose {
+                Ok(Value::Tuple(vec![weyl, vec]))
+            } else {
+                Ok(Value::Tuple(vec![vec, weyl]))
+            }
+        }
         "W_elt" => {
             arity(name, arguments, 2, span)?;
             let handle = as_root_datum(&arguments[0], span)?;

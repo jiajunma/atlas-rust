@@ -4795,6 +4795,18 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             // generator-product operators. Binary =/!= are domain
             // relations registered in the relation block below.
             domain_builtin(
+                "from_dominant",
+                Type::tuple(vec![primitive_type(Prim::RootDatum), Type::row(int_type())]),
+                Type::Tuple(vec![primitive_type(Prim::WeylElt), Type::row(int_type())]),
+                0,
+            ),
+            domain_builtin(
+                "from_dominant",
+                Type::tuple(vec![Type::row(int_type()), primitive_type(Prim::RootDatum)]),
+                Type::Tuple(vec![Type::row(int_type()), primitive_type(Prim::WeylElt)]),
+                0,
+            ),
+            domain_builtin(
                 "W_elt",
                 Type::tuple(vec![primitive_type(Prim::RootDatum), Type::row(int_type())]),
                 primitive_type(Prim::WeylElt),
