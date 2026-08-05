@@ -569,17 +569,17 @@ impl InnerClass {
     ) -> Result<TwistedConjugacyPartition, StructureError> {
         use rayon::prelude::*;
         let (compact, elements, candidates) = self.enumerated_twisted_involutions(weyl_budget)?;
-        let permutations = candidates
+        let permutations: Vec<Vec<u8>> = candidates
             .iter()
             .map(|candidate| {
                 candidate
                     .root_involution()
                     .image_permutation()
                     .iter()
-                    .map(|id| id.0)
-                    .collect::<Vec<_>>()
+                    .map(|id| id.0 as u8)
+                    .collect()
             })
-            .collect::<Vec<_>>();
+            .collect();
         let candidate_by_permutation = permutations
             .iter()
             .enumerate()
@@ -589,11 +589,11 @@ impl InnerClass {
         // root permutations from the compact representation directly (no
         // 51840 matrices): simple-reflection root permutations, per-piece
         // permutations, then parallel element compositions.
-        let mut reflection_perms: Vec<Vec<usize>> = Vec::with_capacity(self.datum.semisimple_rank());
+        let mut reflection_perms: Vec<Vec<u8>> = Vec::with_capacity(self.datum.semisimple_rank());
         for generator in 0..self.datum.semisimple_rank() {
             let reflection = WeylAction::simple_reflection(&self.datum, generator)?;
             let permutation = self.roots.action_permutation(&reflection)?;
-            reflection_perms.push(permutation.into_iter().map(|id| id.0).collect());
+            reflection_perms.push(permutation.into_iter().map(|id| id.0 as u8).collect());
         }
         let piece_perms = compact.piece_root_permutations(&reflection_perms);
         let weyl_permutations = compact.element_root_permutations(&elements, &piece_perms);
@@ -605,15 +605,15 @@ impl InnerClass {
                 continue;
             }
             let candidate_permutation = candidate.root_involution().image_permutation();
-            let candidate_indices: Vec<usize> =
-                candidate_permutation.iter().map(|id| id.0).collect();
+            let candidate_indices: Vec<u8> =
+                candidate_permutation.iter().map(|id| id.0 as u8).collect();
             let orbit: BTreeSet<usize> = weyl_permutations
                 .par_iter()
                 .map(|action| {
                     let inverse = inverse_permutation(action)?;
                     let conjugate = (0..action.len())
-                        .map(|root| action[candidate_indices[inverse[root]]])
-                        .collect::<Vec<_>>();
+                        .map(|root| action[candidate_indices[inverse[root]] as usize])
+                        .collect::<Vec<u8>>();
                     candidate_by_permutation
                         .get(&conjugate)
                         .copied()

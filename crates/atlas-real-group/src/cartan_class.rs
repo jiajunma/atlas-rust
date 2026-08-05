@@ -58,7 +58,7 @@ pub struct TwistedConjugacyPartition {
     datum: BasedRootDatum,
     distinguished: RootInvolutionData,
     classes: Vec<TwistedConjugacyClass>,
-    class_by_permutation: BTreeMap<Vec<usize>, usize>,
+    class_by_permutation: BTreeMap<Vec<u8>, usize>,
 }
 
 impl TwistedConjugacyPartition {
@@ -66,7 +66,7 @@ impl TwistedConjugacyPartition {
         datum: BasedRootDatum,
         distinguished: RootInvolutionData,
         classes: Vec<TwistedConjugacyClass>,
-        class_by_permutation: BTreeMap<Vec<usize>, usize>,
+        class_by_permutation: BTreeMap<Vec<u8>, usize>,
     ) -> Self {
         Self {
             datum,
@@ -84,7 +84,7 @@ impl TwistedConjugacyPartition {
     /// root-image permutation is `permutation`: the map lookup behind
     /// [`Self::class_of`] without the provenance gates, for consumers that
     /// derive the permutation from a lattice involution directly.
-    pub(crate) fn class_index_of_permutation(&self, permutation: &[usize]) -> Option<usize> {
+    pub(crate) fn class_index_of_permutation(&self, permutation: &[u8]) -> Option<usize> {
         self.class_by_permutation.get(permutation).copied()
     }
 
@@ -104,11 +104,11 @@ impl TwistedConjugacyPartition {
         {
             return Err(StructureError::DistinguishedInvolutionMismatch);
         }
-        let key: Vec<usize> = twisted
+        let key: Vec<u8> = twisted
             .root_involution()
             .image_permutation()
             .iter()
-            .map(|id| id.0)
+            .map(|id| id.0 as u8)
             .collect();
         self.class_by_permutation.get(&key).copied().ok_or(
             StructureError::CartanClassificationInvariantViolation {

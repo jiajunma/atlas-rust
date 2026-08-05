@@ -235,7 +235,7 @@ pub fn dual_cartan_correspondence(
             .root_involution()
             .image_permutation()
             .iter()
-            .map(|id| id.0)
+            .map(|id| id.0 as u8)
             .collect::<Vec<_>>()
     };
     let mut cartan_of_raw = vec![None; partition.classes().len()];
@@ -284,7 +284,7 @@ pub fn dual_cartan_correspondence(
                 },
             )?);
         }
-        let permutation: Vec<usize> = permutation.iter().map(|id| id.0).collect();
+        let permutation: Vec<u8> = permutation.iter().map(|id| id.0 as u8).collect();
         let raw = partition.class_index_of_permutation(&permutation).ok_or(
             StructureError::CartanClassificationInvariantViolation {
                 invariant: "dual Cartan correspondence",

@@ -423,9 +423,10 @@ impl CompactWeyl {
         self.transducers[i].offset
     }
 
-    /// Compose two root permutations: `(left after right)`.
-    fn compose_perms(left: &[usize], right: &[usize]) -> Vec<usize> {
-        right.iter().map(|&r| left[r]).collect()
+    /// Compose two root permutations (u8-encoded root indices): `(left
+    /// after right)`.
+    fn compose_perms(left: &[u8], right: &[u8]) -> Vec<u8> {
+        right.iter().map(|&r| left[r as usize]).collect()
     }
 
     /// One root permutation per (transducer, piece): the composition of the
@@ -433,8 +434,8 @@ impl CompactWeyl {
     /// permutations are then compositions of these (no matrix needed).
     pub(crate) fn piece_root_permutations(
         &self,
-        reflection_perms: &[Vec<usize>],
-    ) -> Vec<Vec<Vec<usize>>> {
+        reflection_perms: &[Vec<u8>],
+    ) -> Vec<Vec<Vec<u8>>> {
         self.transducers
             .iter()
             .enumerate()
@@ -442,7 +443,9 @@ impl CompactWeyl {
                 (0..tr.lengths.len())
                     .map(|piece| {
                         let word = self.word_of_piece(i, piece as u8);
-                        let mut perm: Vec<usize> = (0..reflection_perms[0].len()).collect();
+                        let mut perm: Vec<u8> = (0..reflection_perms[0].len())
+                            .map(|index| index as u8)
+                            .collect();
                         for &local in word {
                             let internal = tr.offset + local;
                             let refl = &reflection_perms[self.d_out[internal]];
@@ -460,14 +463,16 @@ impl CompactWeyl {
     pub(crate) fn element_root_permutations(
         &self,
         elements: &[WeylElt],
-        piece_perms: &[Vec<Vec<usize>>],
-    ) -> Vec<Vec<usize>> {
+        piece_perms: &[Vec<Vec<u8>>],
+    ) -> Vec<Vec<u8>> {
         use rayon::prelude::*;
         let rank = self.transducers.len();
         elements
             .par_iter()
             .map(|elt| {
-                let mut perm: Vec<usize> = (0..piece_perms[0][0].len()).collect();
+                let mut perm: Vec<u8> = (0..piece_perms[0][0].len())
+                    .map(|index| index as u8)
+                    .collect();
                 for i in 0..rank {
                     perm = Self::compose_perms(&piece_perms[i][elt[i] as usize], &perm);
                 }
