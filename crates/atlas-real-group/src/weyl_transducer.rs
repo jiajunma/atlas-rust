@@ -215,6 +215,9 @@ pub(crate) struct CompactWeyl {
     min_star: Vec<usize>,
     /// last generator of the internal diagram component of each generator
     upper: Vec<usize>,
+    /// Precomputed piece words (local generators, left to right) per
+    /// (transducer, piece): every element's inverse/twist scans reuse these.
+    piece_words: Vec<Vec<Vec<usize>>>,
 }
 
 impl CompactWeyl {
@@ -271,7 +274,26 @@ impl CompactWeyl {
                 }
             }
         }
-        Ok(Self { transducers, d_in, d_out, min_star, upper })
+        let piece_words = transducers
+            .iter()
+            .enumerate()
+            .map(|(i, tr)| {
+                (0..tr.lengths.len())
+                    .map(|piece| {
+                        let mut word = Vec::new();
+                        let mut cur = piece as EltPiece;
+                        while cur > 0 {
+                            let right = tr.unshift(cur);
+                            word.push(right);
+                            cur = tr.shift(cur, right);
+                        }
+                        word.reverse();
+                        word
+                    })
+                    .collect()
+            })
+            .collect();
+        Ok(Self { transducers, d_in, d_out, min_star, upper, piece_words })
     }
 
     fn start_gen(&self, internal_s: usize) -> usize {
@@ -358,7 +380,7 @@ impl CompactWeyl {
         let mut result = self.identity();
         for i in 0..self.transducers.len() {
             let word = self.word_of_piece(i, w[i]);
-            for &local in &word {
+            for &local in word {
                 // word_of_piece letters are LOCAL to the transducer's
                 // component; add the component offset for the global
                 // internal numbering, then map to external.
@@ -378,18 +400,10 @@ impl CompactWeyl {
         wi == tw
     }
 
-    /// The word (internal generators, left to right) of one piece.
-    pub(crate) fn word_of_piece(&self, i: usize, x: u8) -> Vec<usize> {
-        let tr = &self.transducers[i];
-        let mut word = Vec::new();
-        let mut cur = x as EltPiece;
-        while cur > 0 {
-            let right = tr.unshift(cur);
-            word.push(right);
-            cur = tr.shift(cur, right);
-        }
-        word.reverse();
-        word
+    /// The word (local generators, left to right) of one piece, from the
+    /// precomputed table (no allocation).
+    pub(crate) fn word_of_piece(&self, i: usize, x: u8) -> &[usize] {
+        &self.piece_words[i][x as usize]
     }
 
     /// Internal -> external generator numbering.
@@ -423,7 +437,7 @@ impl CompactWeyl {
                     .map(|piece| {
                         let word = self.word_of_piece(i, piece as u8);
                         let mut perm: Vec<usize> = (0..reflection_perms[0].len()).collect();
-                        for &local in &word {
+                        for &local in word {
                             let internal = tr.offset + local;
                             let refl = &reflection_perms[self.d_out[internal]];
                             perm = Self::compose_perms(refl, &perm);
@@ -469,7 +483,7 @@ impl CompactWeyl {
             for piece in 0..tr.lengths.len() {
                 let word = self.word_of_piece(i, piece as u8);
                 let mut action = crate::weyl::WeylAction::identity(&reflections[0].datum_arc())?;
-                for &local in &word {
+                for &local in word {
                     let internal = tr.offset + local;
                     let external = self.d_out[internal];
                     action = action.compose_fast(&reflections[external]);
