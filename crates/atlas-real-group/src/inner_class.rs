@@ -542,7 +542,7 @@ impl InnerClass {
         &self,
         weyl_budget: usize,
     ) -> Result<Vec<TwistedInvolution>, StructureError> {
-        Ok(self.enumerated_twisted_involutions(weyl_budget)?.1)
+        Ok(self.enumerated_twisted_involutions(weyl_budget)?.2)
     }
 
     /// Deterministic Weyl twisted-conjugacy orbits of twisted involutions.
@@ -567,7 +567,7 @@ impl InnerClass {
         &self,
         weyl_budget: usize,
     ) -> Result<TwistedConjugacyPartition, StructureError> {
-        let (weyl_actions, candidates) = self.enumerated_twisted_involutions(weyl_budget)?;
+        let (compact, elements, candidates) = self.enumerated_twisted_involutions(weyl_budget)?;
         let permutations = candidates
             .iter()
             .map(|candidate| {
@@ -584,38 +584,18 @@ impl InnerClass {
             .enumerate()
             .map(|(index, permutation)| (permutation.clone(), index))
             .collect::<BTreeMap<_, _>>();
-        // id_of is a linear scan per root; index the root coordinates once
-        // (the permutation loop is |W| x |roots|).
-        let mut id_by_coordinate = std::collections::HashMap::with_capacity(self.roots.roots().len());
-        for (index, root) in self.roots.roots().iter().enumerate() {
-            id_by_coordinate.insert(root.as_slice().to_vec(), index);
+        // The orbit sweep conjugates by EVERY Weyl element. Compute their
+        // root permutations from the compact representation directly (no
+        // 51840 matrices): simple-reflection root permutations, per-piece
+        // permutations, then parallel element compositions.
+        let mut reflection_perms: Vec<Vec<usize>> = Vec::with_capacity(self.datum.semisimple_rank());
+        for generator in 0..self.datum.semisimple_rank() {
+            let reflection = WeylAction::simple_reflection(&self.datum, generator)?;
+            let permutation = self.roots.action_permutation(&reflection)?;
+            reflection_perms.push(permutation.into_iter().map(|id| id.0).collect());
         }
-        let rank = self.datum.lattice_rank();
-        use rayon::prelude::*;
-        let weyl_permutations = weyl_actions
-            .par_iter()
-            .map(|action| {
-                let matrix = action.matrix();
-                let mut image = [0_i32; 8];
-                self.roots
-                    .roots()
-                    .iter()
-                    .map(|root| {
-                        for (row, entries) in matrix.iter().enumerate() {
-                            let mut total: i64 = 0;
-                            for (column, &coordinate) in root.as_slice().iter().enumerate() {
-                                total += i64::from(entries[column]) * i64::from(coordinate);
-                            }
-                            image[row] = total as i32;
-                        }
-                        id_by_coordinate
-                            .get(&image[..rank])
-                            .map(|&index| crate::RootId::from_usize(index))
-                            .ok_or(StructureError::InvalidRootAutomorphism)
-                    })
-                    .collect::<Result<Vec<_>, _>>()
-            })
-            .collect::<Result<Vec<_>, _>>()?;
+        let piece_perms = compact.piece_root_permutations(&reflection_perms);
+        let weyl_permutations = compact.element_root_permutations(&elements, &piece_perms);
         let mut visited = vec![false; candidates.len()];
         let mut classes = Vec::new();
         let mut class_by_permutation = BTreeMap::new();
@@ -624,13 +604,15 @@ impl InnerClass {
                 continue;
             }
             let candidate_permutation = candidate.root_involution().image_permutation();
+            let candidate_indices: Vec<usize> =
+                candidate_permutation.iter().map(|id| id.0).collect();
             let orbit =
                 weyl_permutations
                     .iter()
                     .try_fold(BTreeSet::new(), |mut orbit, action| {
                         let inverse = inverse_permutation(action)?;
                         let conjugate = (0..action.len())
-                            .map(|root| action[candidate_permutation[inverse[root]].0].0)
+                            .map(|root| action[candidate_indices[inverse[root]]])
                             .collect::<Vec<_>>();
                         let conjugate_index = candidate_by_permutation
                             .get(&conjugate)
@@ -656,8 +638,19 @@ impl InnerClass {
     fn enumerated_twisted_involutions(
         &self,
         weyl_budget: usize,
-    ) -> Result<(Vec<WeylAction>, Vec<TwistedInvolution>), StructureError> {
-        // TEMP: compact path with count, to compare twisted sets.
+    ) -> Result<
+        (
+            crate::weyl_transducer::CompactWeyl,
+            Vec<crate::weyl_transducer::WeylElt>,
+            Vec<TwistedInvolution>,
+        ),
+        StructureError,
+    > {
+        // Enumerate in the compact (transducer) representation and test the
+        // twisted-involution condition there (w^{-1} = twist(w)); only the
+        // twisted involutions pay for a matrix materialization (their
+        // TwistedInvolution). The partition's orbit sweep consumes the
+        // compact elements directly (root permutations, no matrices).
         let cartan: Vec<Vec<i32>> = self
             .datum
             .cartan_matrix()
@@ -674,39 +667,32 @@ impl InnerClass {
         let reflections = (0..self.datum.semisimple_rank())
             .map(|generator| WeylAction::simple_reflection(&self.datum, generator))
             .collect::<Result<Vec<_>, _>>()?;
-        // The partition's orbit sweep needs the action of EVERY Weyl
-        // element (w . tw . w^-1 ranges over all w), so the returned
-        // actions vector must be the full enumeration; only the
-        // twisted-involution candidates are filtered.
-        let piece_matrices = compact.piece_matrices(&reflections)?;
-        use rayon::prelude::*;
-        let actions: Vec<WeylAction> = elements
-            .par_iter()
-            .map(|elt| {
-                let mut action = WeylAction::identity(&self.datum)?;
-                for (piece_index, &piece) in elt.iter().enumerate() {
-                    action = action.compose_fast(&piece_matrices[piece_index][piece as usize]);
-                }
-                Ok(action)
-            })
-            .collect::<Result<_, _>>()?;
         let mut involutions = Vec::new();
-        for (index, elt) in elements.iter().enumerate() {
+        for elt in &elements {
             if !compact.is_twisted_involution(elt, &twist) {
                 continue;
+            }
+            let mut action = WeylAction::identity(&self.datum)?;
+            for (piece_index, &piece) in elt.iter().enumerate() {
+                let word = compact.word_of_piece(piece_index, piece);
+                for &local in &word {
+                    let internal = compact.piece_offset(piece_index) + local;
+                    let external = compact.d_out()[internal];
+                    action = action.compose_fast(&reflections[external]);
+                }
             }
             match TwistedInvolution::new(
                 &self.datum,
                 &self.roots,
                 self.distinguished_involution.involution(),
-                actions[index].clone(),
+                action,
             ) {
                 Ok(involution) => involutions.push(involution),
                 Err(StructureError::InvalidInvolution) => {}
                 Err(error) => return Err(error),
             }
         }
-        Ok((actions, involutions))
+        Ok((compact, elements, involutions))
     }
 }
 
@@ -969,11 +955,15 @@ fn left_reflect(
     Ok((reflected_weight, reflected_coweight))
 }
 
-fn inverse_permutation(permutation: &[RootId]) -> Result<Vec<usize>, StructureError> {
+fn inverse_permutation<T: Copy + TryInto<usize>>(permutation: &[T]) -> Result<Vec<usize>, StructureError>
+where
+    <T as TryInto<usize>>::Error: std::fmt::Debug,
+{
     let mut inverse = vec![None; permutation.len()];
     for (source, image) in permutation.iter().enumerate() {
+        let value = (*image).try_into().map_err(|_| StructureError::InvalidRootAutomorphism)?;
         let target = inverse
-            .get_mut(image.0)
+            .get_mut(value)
             .ok_or(StructureError::InvalidRootAutomorphism)?;
         if target.replace(source).is_some() {
             return Err(StructureError::InvalidRootAutomorphism);
@@ -1035,7 +1025,7 @@ mod tests {
         inner_class: &InnerClass,
         weyl_budget: usize,
     ) {
-        let (_, involutions) = inner_class
+        let (_, _, involutions) = inner_class
             .enumerated_twisted_involutions(weyl_budget)
             .unwrap();
         assert!(!involutions.is_empty());
@@ -1567,7 +1557,7 @@ mod tests {
             12,
         )
         .unwrap();
-        let (_, involutions) = inner_class.enumerated_twisted_involutions(24).unwrap();
+        let (_, _, involutions) = inner_class.enumerated_twisted_involutions(24).unwrap();
         let mut witnessed = false;
 
         for involution in involutions {

@@ -403,6 +403,58 @@ impl CompactWeyl {
         self.transducers[i].offset
     }
 
+    /// Compose two root permutations: `(left after right)`.
+    fn compose_perms(left: &[usize], right: &[usize]) -> Vec<usize> {
+        right.iter().map(|&r| left[r]).collect()
+    }
+
+    /// One root permutation per (transducer, piece): the composition of the
+    /// simple-reflection root permutations of the piece word. Element root
+    /// permutations are then compositions of these (no matrix needed).
+    pub(crate) fn piece_root_permutations(
+        &self,
+        reflection_perms: &[Vec<usize>],
+    ) -> Vec<Vec<Vec<usize>>> {
+        self.transducers
+            .iter()
+            .enumerate()
+            .map(|(i, tr)| {
+                (0..tr.lengths.len())
+                    .map(|piece| {
+                        let word = self.word_of_piece(i, piece as u8);
+                        let mut perm: Vec<usize> = (0..reflection_perms[0].len()).collect();
+                        for &local in &word {
+                            let internal = tr.offset + local;
+                            let refl = &reflection_perms[self.d_out[internal]];
+                            perm = Self::compose_perms(refl, &perm);
+                        }
+                        perm
+                    })
+                    .collect()
+            })
+            .collect()
+    }
+
+    /// The root permutation of every element, composed from the per-piece
+    /// permutations, in parallel.
+    pub(crate) fn element_root_permutations(
+        &self,
+        elements: &[WeylElt],
+        piece_perms: &[Vec<Vec<usize>>],
+    ) -> Vec<Vec<usize>> {
+        use rayon::prelude::*;
+        elements
+            .par_iter()
+            .map(|elt| {
+                let mut perm: Vec<usize> = (0..piece_perms[0][0].len()).collect();
+                for (i, &piece) in elt.iter().enumerate() {
+                    perm = Self::compose_perms(&piece_perms[i][piece as usize], &perm);
+                }
+                perm
+            })
+            .collect()
+    }
+
     /// One matrix per (transducer, piece): the product of the simple
     /// reflections of the piece word. Element matrices are then the product
     /// of these per-piece matrices (rank matrix products instead of one per
@@ -572,6 +624,49 @@ mod tests {
         let elements = group.enumerate(1 << 20).unwrap();
         assert_eq!(elements.len(), 51_840);
         assert!(t.elapsed() < std::time::Duration::from_secs(2), "compact E6 enumeration too slow: {:?}", t.elapsed());
+    }
+
+    #[test]
+    fn compact_e6_matrices_match_the_matrix_enumeration_exactly() {
+        use crate::weyl::{WeylAction, WeylGroup};
+        use std::collections::HashSet;
+        let cartan: Vec<Vec<i32>> = vec![
+            vec![2, -1, 0, 0, 0, 0],
+            vec![-1, 2, -1, 0, 0, 0],
+            vec![0, -1, 2, -1, 0, -1],
+            vec![0, 0, -1, 2, -1, 0],
+            vec![0, 0, 0, -1, 2, 0],
+            vec![0, 0, -1, 0, 0, 2],
+        ];
+        let datum = crate::BasedRootDatum::standard(cartan.clone()).unwrap();
+        let compact = CompactWeyl::new(&cartan).unwrap();
+        let elements = compact.enumerate(1 << 20).unwrap();
+        assert_eq!(elements.len(), 51_840);
+        let reflections: Vec<_> = (0..6)
+            .map(|g| WeylAction::simple_reflection(&datum, g).unwrap())
+            .collect();
+        let piece_matrices = compact.piece_matrices(&reflections).unwrap();
+        let mut compact_set: HashSet<Vec<i32>> = elements
+            .iter()
+            .map(|elt| {
+                let mut action = WeylAction::identity(&datum).unwrap();
+                for (pi, &piece) in elt.iter().enumerate() {
+                    action = action.compose_fast(&piece_matrices[pi][piece as usize]);
+                }
+                action.matrix().iter().flatten().copied().collect::<Vec<_>>()
+            })
+            .collect();
+        let matrix_set: HashSet<Vec<i32>> = WeylGroup::new(datum)
+            .enumerate_actions(1 << 20)
+            .unwrap()
+            .iter()
+            .map(|a| a.matrix().iter().flatten().copied().collect::<Vec<_>>())
+            .collect();
+        assert_eq!(matrix_set.len(), 51_840);
+        let missing: Vec<_> = matrix_set.difference(&compact_set).take(3).collect();
+        let extra: Vec<_> = compact_set.difference(&matrix_set).take(3).collect();
+        assert!(missing.is_empty(), "compact missing {missing:?}");
+        assert!(extra.is_empty(), "compact extra {extra:?}");
     }
 
     #[test]
