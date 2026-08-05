@@ -285,7 +285,6 @@ impl CompactWeyl {
         }
         let piece_words = transducers
             .iter()
-            .enumerate()
             .map(|tr| {
                 (0..tr.lengths.len())
                     .map(|piece| {
