@@ -627,7 +627,7 @@ mod tests {
         for elt in &elements {
             let mut action = crate::weyl::WeylAction::identity(&datum).unwrap();
             for (pi, &piece) in elt.iter().enumerate() {
-                for &internal in &compact.word_of_piece(pi, piece) {
+                for &internal in compact.word_of_piece(pi, piece) {
                     let external = compact.d_out()[internal];
                     action = action.compose_fast(&reflections[external]);
                 }
