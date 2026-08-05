@@ -679,8 +679,8 @@ impl InnerClass {
                     return Ok(None);
                 }
                 let mut action = WeylAction::identity(&self.datum)?;
-                for (piece_index, &piece) in elt.iter().enumerate() {
-                    let word = compact.word_of_piece(piece_index, piece);
+                for piece_index in 0..self.datum.semisimple_rank() {
+                    let word = compact.word_of_piece(piece_index, elt[piece_index]);
                     for &local in word {
                         let internal = compact.piece_offset(piece_index) + local;
                         let external = compact.d_out()[internal];

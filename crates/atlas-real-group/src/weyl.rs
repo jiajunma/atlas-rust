@@ -323,8 +323,9 @@ impl WeylGroup {
             .par_iter()
             .map(|elt| {
                 let mut action = WeylAction::identity(&self.datum)?;
-                for (piece_index, &piece) in elt.iter().enumerate() {
-                    action = action.compose_fast(&piece_matrices[piece_index][piece as usize]);
+                for piece_index in 0..self.datum.semisimple_rank() {
+                    action =
+                        action.compose_fast(&piece_matrices[piece_index][elt[piece_index] as usize]);
                 }
                 Ok(action)
             })

@@ -13,7 +13,10 @@ use crate::StructureError;
 
 pub(crate) type Generator = usize;
 pub(crate) type EltPiece = u16;
-pub(crate) type WeylElt = Vec<u8>;
+/// A Weyl element as a fixed stack array (rank <= 8, one byte per piece) -
+/// the C++ `std::array<unsigned char, RANK_MAX>` equivalent, zero heap
+/// allocation in the enumeration/twisted scan.
+pub(crate) type WeylElt = [u8; 8];
 
 const UNDEF_PIECE: EltPiece = u16::MAX;
 const UNDEF_GEN: u16 = u16::MAX;
@@ -293,6 +296,9 @@ impl CompactWeyl {
                     .collect()
             })
             .collect();
+        if rank > 8 {
+            return Err(StructureError::ResourceLimitExceeded { limit: 8 });
+        }
         Ok(Self { transducers, d_in, d_out, min_star, upper, piece_words })
     }
 
@@ -354,7 +360,7 @@ impl CompactWeyl {
     }
 
     fn identity(&self) -> WeylElt {
-        vec![0_u8; self.transducers.len()]
+        [0_u8; 8]
     }
 
     /// The inverse of `w` (weyl.cpp:751-763): right-multiply by the
@@ -457,12 +463,13 @@ impl CompactWeyl {
         piece_perms: &[Vec<Vec<usize>>],
     ) -> Vec<Vec<usize>> {
         use rayon::prelude::*;
+        let rank = self.transducers.len();
         elements
             .par_iter()
             .map(|elt| {
                 let mut perm: Vec<usize> = (0..piece_perms[0][0].len()).collect();
-                for (i, &piece) in elt.iter().enumerate() {
-                    perm = Self::compose_perms(&piece_perms[i][piece as usize], &perm);
+                for i in 0..rank {
+                    perm = Self::compose_perms(&piece_perms[i][elt[i] as usize], &perm);
                 }
                 perm
             })
@@ -509,12 +516,12 @@ impl CompactWeyl {
             seen.insert(id);
             pending.push_back(id);
             while let Some(w) = pending.pop_front() {
-                let mut bytes = vec![0_u8; rank];
+                let mut bytes = [0_u8; 8];
                 for i in 0..rank {
                     bytes[i] = ((w >> (8 * i)) & 0xff) as u8;
                 }
                 for s in 0..rank {
-                    let mut next_bytes = bytes.clone();
+                    let mut next_bytes = bytes;
                     self.inner_mult(&mut next_bytes, s);
                     let mut next = 0_u64;
                     for i in 0..rank {
@@ -531,7 +538,7 @@ impl CompactWeyl {
             Ok(seen
                 .into_iter()
                 .map(|w| {
-                    let mut bytes = vec![0_u8; rank];
+                    let mut bytes = [0_u8; 8];
                     for i in 0..rank {
                         bytes[i] = ((w >> (8 * i)) & 0xff) as u8;
                     }
@@ -626,8 +633,8 @@ mod tests {
             .collect();
         for elt in &elements {
             let mut action = crate::weyl::WeylAction::identity(&datum).unwrap();
-            for (pi, &piece) in elt.iter().enumerate() {
-                for &internal in compact.word_of_piece(pi, piece) {
+            for pi in 0..datum.semisimple_rank() {
+                for &internal in compact.word_of_piece(pi, elt[pi]) {
                     let external = compact.d_out()[internal];
                     action = action.compose_fast(&reflections[external]);
                 }
@@ -706,8 +713,8 @@ mod tests {
             .iter()
             .map(|elt| {
                 let mut action = WeylAction::identity(&datum).unwrap();
-                for (pi, &piece) in elt.iter().enumerate() {
-                    action = action.compose_fast(&piece_matrices[pi][piece as usize]);
+                for pi in 0..datum.semisimple_rank() {
+                    action = action.compose_fast(&piece_matrices[pi][elt[pi] as usize]);
                 }
                 action.matrix().iter().flatten().copied().collect::<Vec<_>>()
             })
