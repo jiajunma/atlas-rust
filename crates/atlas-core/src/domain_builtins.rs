@@ -2720,6 +2720,51 @@ fn integrality_simples_roots(
 }
 
 /// <gamma, alpha^vee> for a positive coroot (rootdata.cpp `posCoroot(i).dot`).
+/// gamma.dot_Q(coroot).mod1() as a fraction s/d in [0,1) (alcoves.cpp:36-41);
+/// negative coroots with integral evaluation round up to 1.
+fn frac_eval_value(
+    root_system: &RootSystem,
+    id: RootId,
+    gamma: &RatVec,
+) -> Option<(i64, i64)> {
+    let coroot = root_system.coroot(id)?;
+    let denominator = gamma.denominator() as i64;
+    let dot = gamma
+        .numerators()
+        .iter()
+        .zip(coroot.as_slice())
+        .map(|(g, &c)| g * i64::from(c))
+        .sum::<i64>();
+    let mut s = dot.rem_euclid(denominator);
+    if s == 0 && !root_system.is_positive(id).unwrap_or(false) {
+        s = denominator; // negative coroots round up
+    }
+    Some((s, denominator))
+}
+
+/// Is `beta`'s coroot a summand of `alpha`'s coroot (min_coroots_for filter)?
+fn is_coroot_summand(root_system: &RootSystem, alpha: RootId, beta: RootId) -> bool {
+    if !root_system.is_positive(beta).unwrap_or(false) {
+        return false;
+    }
+    let Some(alpha_coroot) = root_system.coroot(alpha) else { return false; };
+    let Some(beta_coroot) = root_system.coroot(beta) else { return false; };
+    for index in 0..root_system.roots().len() {
+        let gamma = RootId::from_usize(index);
+        let Some(gamma_coroot) = root_system.coroot(gamma) else { continue; };
+        let sum: Vec<i32> = beta_coroot
+            .as_slice()
+            .iter()
+            .zip(gamma_coroot.as_slice())
+            .map(|(b, g)| b + g)
+            .collect();
+        if sum == alpha_coroot.as_slice() {
+            return true;
+        }
+    }
+    false
+}
+
 fn positive_coroot_pairing(root_system: &RootSystem, id: RootId, gamma: &RatVec) -> Option<i64> {
     let coroot = root_system.coroot(id)?;
     Some(
@@ -6542,6 +6587,81 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                         .map(|index| Value::Integer(index.into()))
                         .collect(),
                 ),
+            ]))
+        }
+        "walls" => {
+            arity(name, arguments, 2, span)?;
+            let handle = as_root_datum(&arguments[0], span)?;
+            let Value::RatVector(gamma) = &arguments[1] else {
+                return Err(type_error(span, "expected a rational vector"));
+            };
+            let root_system = RootSystem::enumerate(&handle.datum, ROOT_BUDGET)
+                .map_err(|error| runtime(span, error.to_string()))?;
+            let num_roots = root_system.roots().len();
+            let num_pos = (0..num_roots)
+                .filter(|&i| root_system.is_positive(RootId::from_usize(i)).unwrap_or(false))
+                .count();
+            // levels: (root, (s, d)) sorted stably by level
+            let mut levels: Vec<(usize, (i64, i64))> = (0..num_roots)
+                .filter_map(|i| {
+                    let id = RootId::from_usize(i);
+                    frac_eval_value(&root_system, id, gamma).map(|level| (i, level))
+                })
+                .collect();
+            let mut walls = vec![false; num_roots];
+            let mut integrals = vec![false; num_roots];
+            let mut guard = 0usize;
+            while !levels.is_empty() && guard < num_roots + 2 {
+                guard += 1;
+                // get_minima: the minimal level (levels are unsorted by
+                // construction; scan for the minimum like the C++ list scan).
+                let min_level = levels.iter().map(|(_, level)| *level).min().unwrap();
+                levels.sort_by_key(|(_, level)| (*level == min_level) as u8);
+                let mut n_min = levels
+                    .iter()
+                    .take_while(|(_, level)| *level == min_level)
+                    .count();
+                while n_min > 0 {
+                    if levels.is_empty() {
+                        break;
+                    }
+                    let (alpha_index, level) = levels.remove(0);
+                    let alpha = RootId::from_usize(alpha_index);
+                    if level.0 == 0 {
+                        integrals[alpha_index] = true;
+                    }
+                    walls[alpha_index] = true;
+                    n_min -= 1;
+                    // filter_up: drop non-summands of alpha's coroot; filtered
+                    // copies of the minimum count against n_min.
+                    let mut kept = Vec::new();
+                    for item in levels.drain(..) {
+                        if is_coroot_summand(&root_system, alpha, RootId::from_usize(item.0)) {
+                            kept.push(item);
+                        } else if item.1 == min_level {
+                            n_min = n_min.saturating_sub(1);
+                        }
+                    }
+                    levels = kept;
+                }
+            }
+            let mut signed: Vec<i64> = (0..num_roots)
+                .filter(|&i| walls[i])
+                .map(|i| (i as i64) - (num_pos as i64))
+                .collect();
+            // oracle: integral walls first, then non-integral (sorted_by_label
+            // approximates RootNbr order for the small classical fixtures)
+            signed.sort_by_key(|&value| {
+                let index = (value + num_pos as i64) as usize;
+                let integral_rank = usize::from(integrals[index]);
+                (integral_rank, value)
+            });
+            let attitude = integrals.iter().filter(|&&v| v).count();
+            Ok(Value::Tuple(vec![
+                Value::List(
+                    signed.into_iter().map(|value| Value::Integer(BigInt::from(value))).collect(),
+                ),
+                Value::Integer(BigInt::from(attitude)),
             ]))
         }
         "integrality_rank" => {
