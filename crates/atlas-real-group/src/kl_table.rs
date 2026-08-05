@@ -335,8 +335,8 @@ impl<'a> KlTable<'a> {
         working: &mut [KlPol],
     ) -> Result<(), StructureError> {
         let ly = self.support.length(sy) + 1;
-        let mcol = self.mu_columns[sy].clone(); // iterate decreasing
-        for &MuPair { x: z, coef: mu } in mcol.iter().rev() {
+        // Iterate decreasing without cloning the column.
+        for &MuPair { x: z, coef: mu } in self.mu_columns[sy].iter().rev() {
             let sz = self
                 .support
                 .block()
