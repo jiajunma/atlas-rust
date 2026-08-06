@@ -5194,7 +5194,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::Mat),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "block_sizes",
                 primitive_type(Prim::InnerClass),
                 primitive_type(Prim::Mat),
