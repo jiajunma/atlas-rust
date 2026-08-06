@@ -9968,14 +9968,10 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             // Build the folded Cartan matrix from the folded simple data.
             let folded_rank = folded_roots.len();
             let mut cartan = vec![vec![0_i32; folded_rank]; folded_rank];
-            for i in 0..folded_rank {
-                for j in 0..folded_rank {
-                    let root = Weight::new(
-                        folded_roots[i].iter().map(|&x| x as i32).collect(),
-                    );
-                    let coroot = Coweight::new(
-                        folded_coroots[j].iter().map(|&x| x as i32).collect(),
-                    );
+            for (i, folded_root) in folded_roots.iter().enumerate() {
+                for (j, folded_coroot) in folded_coroots.iter().enumerate() {
+                    let root = Weight::new(folded_root.iter().map(|&x| x as i32).collect());
+                    let coroot = Coweight::new(folded_coroot.iter().map(|&x| x as i32).collect());
                     cartan[i][j] =
                         pair(&root, &coroot).map_err(|e| runtime(span, e.to_string()))?;
                 }
