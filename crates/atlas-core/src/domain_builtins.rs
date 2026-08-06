@@ -6234,6 +6234,12 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             Ok(Value::Domain(DomainValue::RootDatum(handle)))
         }
         "root_datum" => match arguments {
+            [Value::Domain(DomainValue::InnerClass(context))] => {
+                // root_datum_of_inner_class_wrapper: G->datum.
+                Ok(Value::Domain(DomainValue::RootDatum(
+                    context.root_datum.clone(),
+                )))
+            }
             [Value::Domain(DomainValue::LieType(lie_type)), lattice, Value::Boolean(prefers_coroots)] =>
             {
                 let lattice = as_matrix_rows(lattice, span)?;
