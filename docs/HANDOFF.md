@@ -572,10 +572,13 @@ separate elected `x0_torus_part` construction.
 
 ## Live continuation - 2026-08-06 (overnight builtin sweep)
 
-HEAD: `34f05e7` (main). HPC differential `3519983` submitted (fat,
-TIMEOUT=1800) to re-verify the whole fixture set after ~30 new builtins
-landed; all local gates green (230 atlas-core + 316 atlas-real-group
-tests, clippy 0 warnings, fmt clean).
+HEAD: `401a78a` (main). HPC differential `3520179` (fat, TIMEOUT=1800,
+`cargo build --offline` after syncing the local cargo cache/index to the
+HPC node; earlier submissions 3519983/3519989/3519995/3520003/3520154/
+3520168 failed on crates.io access, fixed by pinning crossbeam-deque
+0.8.6 + offline + full cache/index sync) re-verifies the whole fixture
+set after ~100 more builtins were live-ized; all local gates green (230
+atlas-core + 316 atlas-real-group tests, clippy 0 warnings, fmt clean).
 
 Builtins landed this sweep (each VERBATIM against the local oracle on
 A2/B2/G2/A3/A1A1 probes):
