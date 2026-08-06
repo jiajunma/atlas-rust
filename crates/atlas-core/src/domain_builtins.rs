@@ -10113,6 +10113,50 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             let rf = build_real_form(&parent, external, span)?;
             Ok(Value::Domain(DomainValue::RealForm(rf)))
         }
+        "dual" => {
+            arity(name, arguments, 1, span)?;
+            match &arguments[0] {
+                Value::Domain(DomainValue::RootDatum(handle)) => {
+                    // dual_datum_wrapper (atlas-types.w:3412): rd->dual().
+                    let dual = dual_datum(&handle.datum)
+                        .map_err(|e| runtime(span, e.to_string()))?;
+                    let lie_type = infer_lie_type(dual.cartan_matrix(), dual.lattice_rank(), span)?;
+                    let isogeny = classify_isogeny(&dual);
+                    Ok(Value::Domain(DomainValue::RootDatum(RootDatumHandle {
+                        datum: Arc::new(dual),
+                        lie_type,
+                        isogeny,
+                        prefers_coroots: handle.prefers_coroots(),
+                    })))
+                }
+                Value::Domain(DomainValue::InnerClass(context)) => {
+                    // dual_inner_class_wrapper (atlas-types.w:3267): G->dual().
+                    let dual_parent = build_dual_inner_class(context, span)?;
+                    Ok(Value::Domain(DomainValue::InnerClass(dual_parent)))
+                }
+                other => Err(type_error(
+                    span,
+                    format!("dual expects a RootDatum or InnerClass, found {other}"),
+                )),
+            }
+        }
+        "form_names" | "dual_form_names" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::InnerClass(context)) = &arguments[0] else {
+                return Err(type_error(span, "expected an InnerClass"));
+            };
+            let parent = if name == "dual_form_names" {
+                build_dual_inner_class(context, span)?
+            } else {
+                context.clone()
+            };
+            let names: Vec<Value> = parent
+                .forms
+                .iter()
+                .map(|form| Value::String(form.name.clone()))
+                .collect();
+            Ok(Value::List(names))
+        }
         "W_elt" => {
             arity(name, arguments, 2, span)?;
             let handle = as_root_datum(&arguments[0], span)?;

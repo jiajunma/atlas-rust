@@ -4608,13 +4608,13 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::InnerClass),
                 3,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "form_names",
                 primitive_type(Prim::InnerClass),
                 Type::row(string_type()),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "dual_form_names",
                 primitive_type(Prim::InnerClass),
                 Type::row(string_type()),
