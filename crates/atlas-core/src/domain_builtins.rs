@@ -8043,6 +8043,29 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 // W_length_wrapper (atlas-types.w:2391-2394).
                 return Ok(Value::Integer(BigInt::from(value.element.length())));
             }
+            if let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] {
+                // param_length_wrapper (atlas-types.w:6368-6373):
+                // Rep_table::length — the height of the parameter's
+                // representative inside its partial block (repr.cpp:1435).
+                let rc = rep_context(&parameter.context);
+                let z = parameter
+                    .repr
+                    .made_dominant(&rc)
+                    .map_err(|e| runtime(span, e.to_string()))?;
+                let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
+                let dual_quasisplit = dual_parent.order.quasisplit_external();
+                let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
+                let block = build_block(&parameter.context, &dual_rf, span)?;
+                let size = block.graph.size();
+                let z0 = (0..size)
+                    .find(|&candidate| block.graph.x(candidate) == Some(z.x()))
+                    .ok_or_else(|| runtime(span, "parameter not in the common block"))?;
+                let length = block
+                    .graph
+                    .length(z0)
+                    .ok_or_else(|| runtime(span, "block length unavailable"))?;
+                return Ok(Value::Integer(length.into()));
+            }
             let (context, id) = as_kgb_element(&arguments[0], span)?;
             let length = context
                 .graph

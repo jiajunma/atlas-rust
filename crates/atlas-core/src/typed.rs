@@ -4738,7 +4738,8 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 int_type(),
                 0,
             ),
-            domain_builtin("length", primitive_type(Prim::KgbElt), int_type(), 0),
+            domain_builtin("length", primitive_type(Prim::KgbElt), int_type(), 0),            domain_builtin("length", primitive_type(Prim::Param), int_type(), 0),
+
             domain_builtin_skip(
                 "involution",
                 primitive_type(Prim::KgbElt),
