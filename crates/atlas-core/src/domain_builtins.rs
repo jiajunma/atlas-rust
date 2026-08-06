@@ -10180,6 +10180,32 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 .weight_matrix();
             matrix_value(matrix, span)
         }
+        "central_fiber" => {
+            arity(name, arguments, 1, span)?;
+            let rf = as_real_form(&arguments[0], span)?;
+            let fiber = central_fiber(
+                &rf.parent.classification,
+                &rf.parent.strong,
+                rf.internal,
+            )
+            .map_err(|e| runtime(span, e.to_string()))?;
+            let dimension = rf.parent.inner_class.datum().lattice_rank();
+            let rows: Vec<Value> = fiber
+                .iter()
+                .map(|vector| {
+                    let coords: Vec<i32> = (0..dimension)
+                        .map(|index| i32::from(vector.bit(index).unwrap_or(false)))
+                        .collect();
+                    Value::Vector(Vec32(coords))
+                })
+                .collect();
+            Ok(Value::List(rows))
+        }
+        "KGB_size" => {
+            arity(name, arguments, 1, span)?;
+            let rf = as_real_form(&arguments[0], span)?;
+            Ok(Value::Integer(rf.graph.size().into()))
+        }
         "W_elt" => {
             arity(name, arguments, 2, span)?;
             let handle = as_root_datum(&arguments[0], span)?;

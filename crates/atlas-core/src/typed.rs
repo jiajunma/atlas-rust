@@ -4658,10 +4658,10 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 0,
             ),
             domain_builtin_skip("form_number", primitive_type(Prim::RealForm), int_type(), 0),
-            domain_builtin_skip("KGB_size", primitive_type(Prim::RealForm), int_type(), 0),
+            domain_builtin("KGB_size", primitive_type(Prim::RealForm), int_type(), 0),
             // central_fiber_wrapper (atlas-types.w:3915-3929): only the type
             // layer's conform error precedes its no-value gate, so skip.
-            domain_builtin_skip(
+            domain_builtin(
                 "central_fiber",
                 primitive_type(Prim::RealForm),
                 Type::row(primitive_type(Prim::Vec)),
