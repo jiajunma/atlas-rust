@@ -9031,13 +9031,11 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
             let _ta = std::time::Instant::now();
             let t1 = std::time::Instant::now();
-            eprintln!("WG3 dual_ic={:?}", t1.duration_since(t0));
             let dual_quasisplit = dual_parent.order.quasisplit_external();
             let t2 = std::time::Instant::now();
             let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
             let _tb = std::time::Instant::now();
             let t3 = std::time::Instant::now();
-            eprintln!("WG3 dual_rf={:?}", t3.duration_since(t2));
             let block = build_block(&parameter.context, &dual_rf, span)?;
             let _t1 = std::time::Instant::now();
             let mut kl_table =
@@ -9047,7 +9045,6 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 .map_err(|error| structure_diagnostic(error, span))?;
             let t3 = std::time::Instant::now();
             let t4 = std::time::Instant::now();
-            eprintln!("WG3 block+kl={:?}", t4.duration_since(t3));
             let size = block.graph.size();
             let start = (0..size)
                 .find(|&z| block.graph.x(z) == Some(parameter.repr.x()))

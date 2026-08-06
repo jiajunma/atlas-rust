@@ -558,9 +558,6 @@ impl<'a> KlTable<'a> {
                     }
                 }
                 if !pxy.is_zero() && l_y == l_x + 2 * pxy.degree() + 1 {
-                    if y == 11 && (x == 8 || x == 9) {
-                        eprintln!("push11 x={x} l_x={l_x} l_y={l_y} pxy={:?}", pxy);
-                    }
                     mu_pairs.push(MuPair {
                         x,
                         coef: pxy.coefficient(pxy.degree()),
