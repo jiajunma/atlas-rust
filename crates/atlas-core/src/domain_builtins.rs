@@ -6930,7 +6930,6 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                         .collect()
                 })
                 .collect();
-            let rank = cartan.len();
             // The subsystem lives in the original lattice (the oracle's
             // integrality_datum prints the full lattice, e.g. 'A1.T1' for
             // A2 at a half-integral character).
