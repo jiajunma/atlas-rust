@@ -278,6 +278,7 @@ FIXTURE_PLANS = (
     # Batch 3 (root data): two_rho / two_rho_check.
     FixturePlan(name="domain/two_rho"),
     FixturePlan(name="domain/cofolded"),
+    FixturePlan(name="domain/block_sizes"),
     FixturePlan(name="domain/fundamental"),
     FixturePlan(name="domain/simple_factors"),
     FixturePlan(name="domain/cartan_matrix_type"),

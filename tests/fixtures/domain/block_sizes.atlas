@@ -1,0 +1,11 @@
+ra : RootDatum
+ra := simply_connected(Lie_type("A2"),true)
+ic : InnerClass
+ic := inner_class(ra,[[1,0],[0,1]])
+block_sizes(ic)
+block_size(ic,0,0)
+rb : RootDatum
+rb := simply_connected(Lie_type("B2"),true)
+ib : InnerClass
+ib := inner_class(rb,[[1,0],[0,1]])
+block_sizes(ib)

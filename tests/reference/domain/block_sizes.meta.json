@@ -1,0 +1,7 @@
+{
+  "fixture": "domain/block_sizes",
+  "fixture_sha256": "4511ad04789c9731248d4a5e78ef655377d296a6a1694afe6932a22d223ae58d",
+  "rust_status": "implemented_local",
+  "reference_status": "captured_local",
+  "note": "block_sizes/block_size via fiber-partition sums"
+}
