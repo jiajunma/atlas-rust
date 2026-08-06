@@ -4967,8 +4967,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             ),
             // KL_block (atlas-types.w:6868-6912): the condensed KL matrix
             // over the parameter's common block.
-            domain_builtin(
-                "KL_block",
+            domain_builtin_skip("KL_block",
                 primitive_type(Prim::Param),
                 Type::tuple(vec![
                     Type::row(primitive_type(Prim::Param)),
@@ -5534,8 +5533,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 ]),
                 0,
             ),
-            domain_builtin(
-                "truncate_above_height",
+            domain_builtin_skip("truncate_above_height",
                 Type::tuple(vec![primitive_type(Prim::KTypePol), int_type()]),
                 primitive_type(Prim::KTypePol),
                 1,
@@ -5633,16 +5631,14 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 ]),
                 0,
             ),
-            domain_builtin(
-                "truncate_above_height",
+            domain_builtin_skip("truncate_above_height",
                 Type::tuple(vec![primitive_type(Prim::ParamPol), int_type()]),
                 primitive_type(Prim::ParamPol),
                 1,
             ),
             // param_poly_to_K_type_poly_wrapper (atlas-types.w:8546): the
             // K-type restriction of a ParamPol.
-            domain_builtin(
-                "K_type_pol",
+            domain_builtin_skip("K_type_pol",
                 primitive_type(Prim::ParamPol),
                 primitive_type(Prim::KTypePol),
                 0,
