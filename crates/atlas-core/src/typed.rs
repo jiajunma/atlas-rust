@@ -4602,7 +4602,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             // dual_inner_class_wrapper (atlas-types.w:3254-3258, installed
             // with hunger 3 at atlas-types.w:3414): the no-value gate
             // precedes the dual build, so skip.
-            domain_builtin_skip(
+            domain_builtin(
                 "dual",
                 primitive_type(Prim::InnerClass),
                 primitive_type(Prim::InnerClass),
@@ -5151,7 +5151,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::Mat),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "real_forms",
                 primitive_type(Prim::CartanClass),
                 Type::row(primitive_type(Prim::RealForm)),
