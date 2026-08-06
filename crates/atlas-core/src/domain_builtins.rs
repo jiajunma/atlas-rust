@@ -10157,6 +10157,23 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 .collect();
             Ok(Value::List(names))
         }
+        "form_number" => {
+            arity(name, arguments, 1, span)?;
+            let rf = as_real_form(&arguments[0], span)?;
+            Ok(Value::Integer(rf.external.into()))
+        }
+        "distinguished_involution" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::InnerClass(context)) = &arguments[0] else {
+                return Err(type_error(span, "expected an InnerClass"));
+            };
+            let matrix = context
+                .inner_class
+                .distinguished_involution()
+                .involution()
+                .weight_matrix();
+            matrix_value(matrix, span)
+        }
         "W_elt" => {
             arity(name, arguments, 2, span)?;
             let handle = as_root_datum(&arguments[0], span)?;
