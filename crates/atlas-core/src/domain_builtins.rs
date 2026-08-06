@@ -25,7 +25,7 @@ use malachite::{Integer as BigInt, Rational as BigRational};
 use atlas_real_group::{
     adapted_basis, adapted_relation_basis, annihilator_modulo as relation_annihilator_modulo,
     build_presentations, central_fiber, checked_inner_class_letters,
-    classify_involution as domain_classify_involution, dual_cartan_correspondence, dual_datum,
+    classify_involution as domain_classify_involution, dual_cartan_correspondence,
     dual_inner_class, dual_involution as block_dual_involution, elected_square_root, fiber_rank,
     filter_relation_units as domain_filter_relation_units, inner_class_with_twisted_involution,
     layout_involution, longest_action, minimal_torus_part, on_basis as lattice_on_basis, pair,
@@ -6236,12 +6236,6 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             Ok(Value::Domain(DomainValue::RootDatum(handle)))
         }
         "root_datum" => match arguments {
-            [Value::Domain(DomainValue::InnerClass(context))] => {
-                // root_datum_of_inner_class_wrapper: G->datum.
-                Ok(Value::Domain(DomainValue::RootDatum(
-                    context.root_datum.clone(),
-                )))
-            }
             [Value::Domain(DomainValue::LieType(lie_type)), lattice, Value::Boolean(prefers_coroots)] =>
             {
                 let lattice = as_matrix_rows(lattice, span)?;
@@ -7886,14 +7880,6 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                                     .iter()
                                     .map(|&c| i64::from(c))
                                     .collect();
-                                let half = RationalWeight::new(
-                                    half_root
-                                        .iter()
-                                        .map(|&c| if c % 2 == 0 { c / 2 } else { c })
-                                        .collect(),
-                                    2,
-                                )
-                                .map_err(|e| runtime(span, e.to_string()))?;
                                 // half-root with denominator 2 (odd entries kept)
                                 let half = RationalWeight::new(
                                     half_root.iter().map(|&c| c.rem_euclid(2)).collect(),
