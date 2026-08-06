@@ -570,9 +570,54 @@ imaginary grading orbit, filters by the target weak-form compact grading, and
 selects the numerically least torus part. `central_fiber` is part of the
 separate elected `x0_torus_part` construction.
 
+## Live continuation - 2026-08-06 (overnight builtin sweep)
+
+HEAD: `34f05e7` (main). HPC differential `3519983` submitted (fat,
+TIMEOUT=1800) to re-verify the whole fixture set after ~30 new builtins
+landed; all local gates green (230 atlas-core + 316 atlas-real-group
+tests, clippy 0 warnings, fmt clean).
+
+Builtins landed this sweep (each VERBATIM against the local oracle on
+A2/B2/G2/A3/A1A1 probes):
+
+- `cofolded` (InnerClass->RootDatum): fold_orbits + cofold via
+  `RootInvolutionData::image_permutation`; B2 identity, A2/G2/A3 split
+  (A1.T1), and the orthogonal A1A1 two-type pair byte-identical.
+- KType predicates: height/is_standard/is_dominant/is_zero/is_final/
+  is_semifinal/dominant/to_canonical_fiber (live registrations; the
+  dominant/normal/theta_stable/to_canonical_fiber transform arm already
+  existed). Param predicates: same six on StandardRepr.
+- dual_datum (InnerClass->RootDatum), quasisplit_form / dual_quasisplit_form
+  (InnerClass->RealForm), dual overloads (RootDatum rd->dual via the now-pub
+  `dual::dual_datum`, InnerClass G->dual, Block->Block), form_names /
+  dual_form_names, form_number, distinguished_involution, root_datum
+  InnerClass coercion, central_fiber (strong_real::central_fiber), KGB_size.
+- cross (int, Param): repr.cpp:891-910 port (made_dominant + gamma_lambda
+  - pos_neg real-root correction + simple reflection + sr_gamma).
+- Cayley (int, Param): repr.cpp:943-1002 port (ImaginaryNoncompact raise
+  with parity/rho_r corrections, real inverse-Cayley with parity gate;
+  Cayley_error passes the input parameter back unchanged).
+- length (Param): Rep_table::length via the partial-block representative
+  height. Live registrations for rank (RootDatum/LieType), length
+  (KGBElt), orientation_nr (Param) whose arms already existed.
+
+Also: `RationalWeight::add/sub` made pub (lattice.rs) for the cross/Cayley
+ports; `dual::dual_datum` made pub + exported.
+
+Remaining (all recorded in docs/REMAINING_BUILTINS.md, mostly gated on the
+common-block srm pool / global KGB / ext_block layers): extended_block,
+finalize_extended, partial_extended_KL_block, dual_KL_block,
+K_type_pol_extended, scale_extended, raw_ext_KL, shift_flip, block_deform,
+twisted_deform, twisted_full_deform, KL_block, twisted_KL_sum_at_s,
+print_X/print_gradings/print_real_Weyl/print_blockstabilizer/
+print_common_block, Weyl_orbit family, alcove_center/alcove_root_vertex,
+walls/walls_attitude, FPP_numers/FPP_w_shifts, root_expression/root_index/
+root_permutation (oracle root numbering), root_ladder_bottoms/
+coroot_ladder_bottoms.
+
 ## Start here (next agent)
 
-HEAD at handoff: `95748f5` (main). Working tree clean.
+HEAD at handoff: `34f05e7` (main). Working tree clean.
 
 ### Since the 8d9837d handoff (2026-08-02 overnight + user ktype/param layer)
 
