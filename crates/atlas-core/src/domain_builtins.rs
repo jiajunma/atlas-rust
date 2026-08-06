@@ -10393,67 +10393,6 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 prefers_coroots: false,
             })))
         }
-        "initial_torus_bits" => {
-            arity(name, arguments, 1, span)?;
-            let rf = as_real_form(&arguments[0], span)?;
-            let seed = rf.graph.seed_element();
-            let dimension = rf.parent.inner_class.datum().lattice_rank();
-            let coords: Vec<i32> = (0..dimension)
-                .map(|index| i32::from(seed.torus_bits().bit(index).unwrap_or(false)))
-                .collect();
-            Ok(Value::Vector(Vec32(coords)))
-        }
-        "base_grading_vector" => {
-            arity(name, arguments, 1, span)?;
-            let rf = as_real_form(&arguments[0], span)?;
-            // base_grading_vector_wrapper: rf->val.g_rho_check(); the Rust
-            // KGB's base_grading carries the same g_rho_check bits.
-            let coords: Vec<i32> = rf
-                .graph
-                .base_grading()
-                .iter()
-                .map(|&bit| i32::from(bit))
-                .collect();
-            let ratvec = RatVec::new(
-                coords.into_iter().map(|x| x.into()).collect(),
-                1,
-            )
-            .ok_or_else(|| runtime(span, "invalid grading vector".to_string()))?;
-            Ok(Value::RatVector(ratvec))
-        }
-        "torus_factor" | "torus_bits" => {
-            arity(name, arguments, 1, span)?;
-            let (context, id) = as_kgb_element(&arguments[0], span)?;
-            if name == "torus_factor" {
-                // torus_factor_wrapper: KGBElt -> RatVec.
-                let factor = context
-                    .graph
-                    .torus_factor(id, &context.table)
-                    .map_err(|e| runtime(span, e.to_string()))?;
-                let rationals = factor.to_rationals();
-                let numerators: Vec<i64> = rationals
-                    .iter()
-                    .map(|value| {
-                        let text = value.to_string();
-                        text.parse::<i64>().unwrap_or(0)
-                    })
-                    .collect();
-                let ratvec = RatVec::new(numerators, 1)
-                    .ok_or_else(|| runtime(span, "invalid torus factor".to_string()))?;
-                Ok(Value::RatVector(ratvec))
-            } else {
-                // torus_bits_wrapper: KGBElt -> Vec of 0/1.
-                let element = context
-                    .graph
-                    .element(id)
-                    .ok_or_else(|| runtime(span, "Inexistent KGB element"))?;
-                let dimension = context.parent.inner_class.datum().lattice_rank();
-                let coords: Vec<i32> = (0..dimension)
-                    .map(|index| i32::from(element.torus_bits().bit(index).unwrap_or(false)))
-                    .collect();
-                Ok(Value::Vector(Vec32(coords)))
-            }
-        }
         "W_elt" => {
             arity(name, arguments, 2, span)?;
             let handle = as_root_datum(&arguments[0], span)?;
