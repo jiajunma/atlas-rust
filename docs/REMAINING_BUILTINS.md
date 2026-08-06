@@ -1,5 +1,20 @@
 # Remaining builtin coverage (post-language-gate)
 
+## Batch status (2026-08-06, updated 02:50)
+
+Second sweep round: 56 more skip-registrations live-ized (arms already
+implemented) — Cartan_* family, integrality family, simple_roots/
+simple_factors/simply_connected/adjoint/derived_info/fundamental_*/
+is_Cartan_matrix, Smith_Cartan, posroots/nr_of_*/prefers_coroots,
+occurrence_matrix, partial_block, raw_KL, two_rho, strong_components,
+normal/theta_stable/to_canonical_fiber/dominant, torus_*, dual_real_form(s).
+All 82 non-rejected domain fixtures diff clean; the 42 rejected fixtures
+differ only in the known L1 Runtime-error line format. Reverted (kept
+skip) where arms were partial: first_term, K_type_pol, truncate_above_height,
+KL_block (common-block/PolP gaps). `integrality_datum` now keeps the full
+lattice (A1.T1 at half-integral) with SC/Other isogeny. HPC differential
+`3520179` running (cargo offline + synced cache/index).
+
 ## Batch status (2026-08-06)
 
 Overnight sweep (00:40-01:05 local) landed ~25 more builtins, all
