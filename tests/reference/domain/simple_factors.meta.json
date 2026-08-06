@@ -2,12 +2,13 @@
   "fixture": "domain/simple_factors.atlas",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "implemented_local",
+  "reference_status": "verified_hpc_reference",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "rust_status": "implemented_local",
+  "rust_status": "verified_hpc_reference",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w"
   ],
   "oracle_exit_status": 0,
-  "notes": "local oracle capture; HPC verification pending"
+  "notes": "local oracle capture; HPC verification pending",
+  "reference_job": "3520217"
 }

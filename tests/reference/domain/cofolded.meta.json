@@ -1,7 +1,11 @@
 {
   "fixture": "domain/cofolded",
   "fixture_sha256": "5c7bb8d8a398f3276a0697ca4146d7b6909abb2d7c2fae3d878afc25b11b6fd6",
-  "rust_status": "implemented_local",
-  "reference_status": "captured_local",
-  "note": "cofolded (InnerClass->RootDatum): B2 identity, A2 split (A1.T1), G2 identity"
+  "rust_status": "verified_hpc_reference",
+  "reference_status": "verified_hpc_reference",
+  "note": "cofolded (InnerClass->RootDatum): B2 identity, A2 split (A1.T1), G2 identity",
+  "reference_job": "3520214",
+  "oracle": "atlas",
+  "oracle_exit_status": 0,
+  "stage": "typed-pipeline-swap"
 }

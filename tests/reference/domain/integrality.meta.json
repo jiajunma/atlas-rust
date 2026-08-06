@@ -2,13 +2,14 @@
   "fixture": "domain/integrality.atlas",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "implemented_local",
+  "reference_status": "verified_hpc_reference",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "rust_status": "implemented_local",
+  "rust_status": "verified_hpc_reference",
   "upstream_evidence": [
     "sources/structure/rootdata.cpp:1483-1510",
     "sources/interpreter/atlas-types.w:1783-1805"
   ],
   "oracle_exit_status": 0,
-  "notes": "integrality_rank/datum + is_integrally_dominant VERBATIM; integrality_points display differs (Rust RatVec list [[ 1 ]/1] vs oracle RatNum list [1/1])"
+  "notes": "integrality_rank/datum + is_integrally_dominant VERBATIM; integrality_points display differs (Rust RatVec list [[ 1 ]/1] vs oracle RatNum list [1/1])",
+  "reference_job": "3520219"
 }
