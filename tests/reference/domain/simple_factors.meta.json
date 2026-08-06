@@ -10,5 +10,6 @@
   ],
   "oracle_exit_status": 0,
   "notes": "local oracle capture; HPC verification pending",
-  "reference_job": "3520217"
+  "reference_job": "3520217",
+  "fixture_sha256": "37aec1c41c4080bdba1cc501153d39fd2aece3859aa2e6e4e5bf87c9d86a60bb"
 }

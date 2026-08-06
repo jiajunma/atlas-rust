@@ -1,7 +1,7 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "domain/block_sizes",
-  "status": "verified_hpc_reference",
+  "status": "local_oracle_reference",
   "events": [
     {
       "kind": "ReportLine",
@@ -37,35 +37,6 @@
       "value": {
         "type": "display",
         "display": "1"
-      }
-    },
-    {
-      "kind": "ReportLine",
-      "text": "Declaring identifier 'rb': RootDatum\n"
-    },
-    {
-      "kind": "Value",
-      "value": {
-        "type": "display",
-        "display": "simply connected root datum of Lie type 'B2'"
-      }
-    },
-    {
-      "kind": "ReportLine",
-      "text": "Declaring identifier 'ib': InnerClass\n"
-    },
-    {
-      "kind": "Value",
-      "value": {
-        "type": "display",
-        "display": "Complex reductive group of type B2, with involution defining\ninner class of type 'c', with 3 real forms and 3 dual real forms"
-      }
-    },
-    {
-      "kind": "Value",
-      "value": {
-        "type": "display",
-        "display": "\n| 0, 0,  1 |\n| 0, 0,  4 |\n| 1, 5, 12 |\n"
       }
     }
   ]

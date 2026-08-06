@@ -11,5 +11,6 @@
   ],
   "oracle_exit_status": 0,
   "notes": "integrality_rank/datum + is_integrally_dominant VERBATIM; integrality_points display differs (Rust RatVec list [[ 1 ]/1] vs oracle RatNum list [1/1])",
-  "reference_job": "3520219"
+  "reference_job": "3520219",
+  "fixture_sha256": "d9252a431ed55ef0b42f7d5bb1be601c2f65be3c25087897b76dcb3c45f891e1"
 }
