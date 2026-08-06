@@ -6953,10 +6953,15 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             )
             .map_err(|error| runtime(span, error.to_string()))?;
             let lie_type = infer_lie_type(datum.cartan_matrix(), datum.lattice_rank(), span)?;
-            // The integrality datum keeps the full lattice (e.g. 'A1.T1'
-            // for A2), so its isogeny is neither simply connected nor
-            // adjoint (oracle prints "root datum of Lie type ...").
-            let isogeny = DatumIsogeny::Other;
+            // The integrality datum keeps the full lattice. With no torus
+            // factor it is simply connected (oracle prints "simply
+            // connected root datum ..."); with a torus (e.g. 'A1.T1' for
+            // A2 at a half-integral character) it is neither.
+            let isogeny = if datum.lattice_rank() == datum.semisimple_rank() {
+                DatumIsogeny::SimplyConnected
+            } else {
+                DatumIsogeny::Other
+            };
             Ok(Value::Domain(DomainValue::RootDatum(RootDatumHandle {
                 datum: std::sync::Arc::new(datum),
                 lie_type,
