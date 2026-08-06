@@ -7591,7 +7591,102 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             Ok(Value::Integer(BigInt::from(z)))
         }
         "cross" => {
-            if arguments.len() == 3 {
+            if arguments.len() == 2 {
+                // parameter_cross_wrapper (atlas-types.w:3849-3869):
+                // (int, Param -> Param), the simple-reflection cross on the
+                // standard parameter (repr.cpp:891-910).
+                let s = as_usize(&arguments[0], span)?;
+                let Value::Domain(DomainValue::Param(parameter)) = &arguments[1] else {
+                    return Err(type_error(span, "cross expects (int, Param)"));
+                };
+                let rc = rep_context(&parameter.context);
+                let z = parameter
+                    .repr
+                    .made_dominant(&rc)
+                    .map_err(|e| runtime(span, e.to_string()))?;
+                let datum = rc.datum();
+                let gamma = z.gamma();
+                let denominator = gamma.denominator();
+                let integrality_rank = (0..datum.semisimple_rank())
+                    .filter(|&t| {
+                        let coroot = &datum.simple_coroots()[t];
+                        let dot = gamma
+                            .numerator()
+                            .iter()
+                            .zip(coroot.as_slice())
+                            .map(|(g, &c)| g * i64::from(c))
+                            .sum::<i64>();
+                        dot.rem_euclid(denominator) == 0
+                    })
+                    .count();
+                if s >= integrality_rank {
+                    return Err(runtime(
+                        span,
+                        format!("Illegal simple reflection: {s}, should be <{integrality_rank}"),
+                    ));
+                }
+                // pos_neg = the positive real roots of z that go negative
+                // under the simple reflection s (<root, coroot_s> > 0),
+                // summed; subtract their sum from gamma_lambda.
+                let system = RootSystem::enumerate(datum, ROOT_BUDGET)
+                    .map_err(|e| runtime(span, e.to_string()))?;
+                let coroot_s = datum.simple_coroots()[s].clone();
+                let pos_real = rc
+                    .positive_real_roots_at(z.x())
+                    .map_err(|e| runtime(span, e.to_string()))?;
+                let mut pos_neg_sum: Vec<i64> = vec![0; datum.lattice_rank()];
+                for &root_id in &pos_real {
+                    let Some(root) = system.root(root_id) else { continue; };
+                    let pairing = pair(root, &coroot_s).map_err(|e| runtime(span, e.to_string()))?;
+                    if pairing <= 0 {
+                        continue;
+                    }
+                    for (slot, &coordinate) in pos_neg_sum.iter_mut().zip(root.as_slice()) {
+                        *slot += i64::from(coordinate);
+                    }
+                }
+                let pos_neg_weight = Weight::new(
+                    pos_neg_sum.iter().map(|&x| x as i32).collect(),
+                );
+                let mut gamma_lambda = rc
+                    .gamma_lambda(z.x(), z.y_bits(), gamma)
+                    .map_err(|e| runtime(span, e.to_string()))?;
+                gamma_lambda = gamma_lambda
+                    .sub(&RationalWeight::from_weight(&pos_neg_weight).map_err(|e| runtime(span, e.to_string()))?)
+                    .map_err(|e| runtime(span, e.to_string()))?;
+                // Reflect the numerator by the simple root and rebuild.
+                let reflected = datum
+                    .reflect_weight(
+                        s,
+                        &Weight::new(gamma_lambda.numerator().iter().map(|&x| x as i32).collect()),
+                    )
+                    .map_err(|e| runtime(span, e.to_string()))?;
+                let reflected_gl = RationalWeight::from_weight(&reflected)
+                    .map_err(|e| runtime(span, e.to_string()))?;
+                let gl_plus_rho = reflected_gl
+                    .add(rc.rho())
+                    .map_err(|e| runtime(span, e.to_string()))?;
+                let lambda_rho_coords = gamma
+                    .sub(&gl_plus_rho)
+                    .map_err(|e| runtime(span, e.to_string()))?
+                    .numerator()
+                    .to_vec();
+                let new_x = rc
+                    .graph()
+                    .cross(z.x(), s)
+                    .ok_or_else(|| runtime(span, "cross image missing".to_string()))?;
+                let result = rc
+                    .sr_gamma(
+                        new_x,
+                        &Weight::new(lambda_rho_coords.iter().map(|&x| x as i32).collect()),
+                        gamma,
+                    )
+                    .map_err(|e| runtime(span, e.to_string()))?;
+                return Ok(Value::Domain(DomainValue::Param(ParamValue {
+                    context: parameter.context.clone(),
+                    repr: result,
+                })));
+            } else if arguments.len() == 3 {
                 // block_cross_wrapper (atlas-types.w:4920-4937).
                 let block = as_block(&arguments[1], span)?;
                 let generator = block_generator_check(block, &arguments[0], span)?;

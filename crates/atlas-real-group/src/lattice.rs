@@ -226,11 +226,11 @@ impl RationalWeight {
         self.numerator.iter().all(|&entry| entry == 0)
     }
 
-    pub(crate) fn add(&self, right: &Self) -> Result<Self, StructureError> {
+    pub fn add(&self, right: &Self) -> Result<Self, StructureError> {
         self.combine(right, 1)
     }
 
-    pub(crate) fn sub(&self, right: &Self) -> Result<Self, StructureError> {
+    pub fn sub(&self, right: &Self) -> Result<Self, StructureError> {
         self.combine(right, -1)
     }
 
