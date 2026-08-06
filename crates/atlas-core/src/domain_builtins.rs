@@ -7596,9 +7596,7 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 // (int, Param -> Param), the simple-reflection cross on the
                 // standard parameter (repr.cpp:891-910).
                 let s = as_usize(&arguments[0], span)?;
-                let Value::Domain(DomainValue::Param(parameter)) = &arguments[1] else {
-                    return Err(type_error(span, "cross expects (int, Param)"));
-                };
+                if let Value::Domain(DomainValue::Param(parameter)) = &arguments[1] {
                 let rc = rep_context(&parameter.context);
                 let z = parameter
                     .repr
@@ -7682,10 +7680,11 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                         gamma,
                     )
                     .map_err(|e| runtime(span, e.to_string()))?;
-                return Ok(Value::Domain(DomainValue::Param(ParamValue {
-                    context: parameter.context.clone(),
-                    repr: result,
-                })));
+                    return Ok(Value::Domain(DomainValue::Param(ParamValue {
+                        context: parameter.context.clone(),
+                        repr: result,
+                    })));
+                }
             } else if arguments.len() == 3 {
                 // block_cross_wrapper (atlas-types.w:4920-4937).
                 let block = as_block(&arguments[1], span)?;
@@ -7717,9 +7716,7 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 // (repr.cpp:943-1002). A Cayley_error returns the input
                 // parameter unchanged.
                 let s = as_usize(&arguments[0], span)?;
-                let Value::Domain(DomainValue::Param(parameter)) = &arguments[1] else {
-                    return Err(type_error(span, "Cayley expects (int, Param)"));
-                };
+                if let Value::Domain(DomainValue::Param(parameter)) = &arguments[1] {
                 let rc = rep_context(&parameter.context);
                 let z = parameter
                     .repr
@@ -7952,10 +7949,11 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                         gamma,
                     )
                     .map_err(|e| runtime(span, e.to_string()))?;
-                return Ok(Value::Domain(DomainValue::Param(ParamValue {
-                    context: parameter.context.clone(),
-                    repr: result,
-                })));
+                    return Ok(Value::Domain(DomainValue::Param(ParamValue {
+                        context: parameter.context.clone(),
+                        repr: result,
+                    })));
+                }
             } else if arguments.len() == 3 {
                 // block_Cayley_wrapper (atlas-types.w:4939-4963): an
                 // undefined Cayley returns the INPUT index as the signal.
