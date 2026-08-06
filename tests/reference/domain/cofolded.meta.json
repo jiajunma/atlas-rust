@@ -7,5 +7,6 @@
   "reference_job": "3520214",
   "oracle": "atlas",
   "oracle_exit_status": 0,
-  "stage": "typed-pipeline-swap"
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
 }
