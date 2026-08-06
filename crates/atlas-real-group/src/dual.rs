@@ -24,7 +24,7 @@ use crate::{
 
 /// The based root datum dual to `datum`: transposed Cartan matrix, simple
 /// roots and simple coroots interchanged.
-fn dual_datum(datum: &BasedRootDatum) -> Result<BasedRootDatum, StructureError> {
+pub fn dual_datum(datum: &BasedRootDatum) -> Result<BasedRootDatum, StructureError> {
     let semisimple_rank = datum.semisimple_rank();
     let cartan = datum.cartan_matrix();
     let transposed: Vec<Vec<i32>> = (0..semisimple_rank)

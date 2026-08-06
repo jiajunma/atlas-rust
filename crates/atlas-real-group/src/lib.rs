@@ -71,7 +71,7 @@ pub use cartan_classification::{CartanClassification, CartanClassificationBudget
 pub use cartan_fiber::{CartanFiber, CartanFiberElement};
 pub use cayley_cross::CayleyCrossDecomposition;
 pub use dual::{
-    dual_cartan_correspondence, dual_inner_class, dual_real_form_count, longest_action,
+    dual_cartan_correspondence, dual_datum, dual_inner_class, dual_real_form_count, longest_action,
 };
 pub use error::StructureError;
 pub use form_name::form_type_name;

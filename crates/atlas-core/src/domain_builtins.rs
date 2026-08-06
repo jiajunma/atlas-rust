@@ -32,7 +32,7 @@ use atlas_real_group::{
     on_basis as lattice_on_basis, pair, quotient_relation_basis as domain_quotient_relation_basis,
     replace_relation_generators as domain_replace_relation_generators, AdjointFiberBudget,
     BasedRootDatum, BlockDescent, BlockGraph, CartanClass, CartanClassification,
-    CartanClassificationBudget, CartanId, Coweight, ExternalFormOrder, InnerClass,
+    CartanClassificationBudget, CartanId, Coweight, dual_datum, ExternalFormOrder, InnerClass,
     InnerClassLayout, IntegerLatticeBudget, InvolutionTable, InvolutionTableBudget, KType,
     KgbGraph, KgbId, KgbStatus, KlPol, KlTable, LatticeInvolution, ModTwoVector, RationalWeight,
     RealFormPresentation, RealFormSeed, RelationBasis, RelationError, RelationGenerator,
@@ -10081,6 +10081,37 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                     format!("{name} expects a KType or Param, found {other}"),
                 )),
             }
+        }
+        "dual_datum" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::InnerClass(context)) = &arguments[0] else {
+                return Err(type_error(span, "expected an InnerClass"));
+            };
+            // dual_datum_of_inner_class_wrapper: G->dual_datum.
+            let dual_parent = build_dual_inner_class(context, span)?;
+            let dual = dual_parent.inner_class.datum().clone();
+            let lie_type = infer_lie_type(dual.cartan_matrix(), dual.lattice_rank(), span)?;
+            let isogeny = classify_isogeny(&dual);
+            Ok(Value::Domain(DomainValue::RootDatum(RootDatumHandle {
+                datum: Arc::new(dual),
+                lie_type,
+                isogeny,
+                prefers_coroots: false,
+            })))
+        }
+        "quasisplit_form" | "dual_quasisplit_form" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::InnerClass(context)) = &arguments[0] else {
+                return Err(type_error(span, "expected an InnerClass"));
+            };
+            let parent = if name == "dual_quasisplit_form" {
+                build_dual_inner_class(context, span)?
+            } else {
+                context.clone()
+            };
+            let external = parent.order.quasisplit_external();
+            let rf = build_real_form(&parent, external, span)?;
+            Ok(Value::Domain(DomainValue::RealForm(rf)))
         }
         "W_elt" => {
             arity(name, arguments, 2, span)?;

@@ -4534,7 +4534,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 0,
             ),
             // dual_datum_of_inner_class_wrapper (atlas-types.w:3412-3413).
-            domain_builtin_skip(
+            domain_builtin(
                 "dual_datum",
                 primitive_type(Prim::InnerClass),
                 primitive_type(Prim::RootDatum),
@@ -4645,13 +4645,13 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::RealForm),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "quasisplit_form",
                 primitive_type(Prim::InnerClass),
                 primitive_type(Prim::RealForm),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "dual_quasisplit_form",
                 primitive_type(Prim::InnerClass),
                 primitive_type(Prim::RealForm),
