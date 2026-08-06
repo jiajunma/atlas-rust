@@ -9990,7 +9990,7 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             )
             .map_err(|error| runtime(span, error.to_string()))?;
             let folded_lie_type =
-                infer_lie_type(&folded_datum.cartan_matrix(), datum.lattice_rank(), span)?;
+                infer_lie_type(folded_datum.cartan_matrix(), datum.lattice_rank(), span)?;
             let folded_isogeny = classify_isogeny(&folded_datum);
             Ok(Value::Domain(DomainValue::RootDatum(RootDatumHandle {
                 datum: Arc::new(folded_datum),
@@ -9998,6 +9998,60 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 isogeny: folded_isogeny,
                 prefers_coroots: false,
             })))
+        }
+        "height" | "is_standard" | "is_dominant" | "is_zero" | "is_final" | "is_semifinal"
+        | "dominant" | "to_canonical_fiber" => {
+            arity(name, arguments, 1, span)?;
+            let ktype_value = as_ktype(&arguments[0], span)?;
+            let rc = rep_context(&ktype_value.context);
+            match name {
+                "height" => Ok(Value::Integer(ktype_value.ktype.height().into())),
+                "is_standard" => Ok(Value::Boolean(
+                    ktype_value
+                        .ktype
+                        .is_standard(&rc)
+                        .map_err(|e| runtime(span, e.to_string()))?,
+                )),
+                "is_dominant" => Ok(Value::Boolean(
+                    ktype_value
+                        .ktype
+                        .is_dominant(&rc)
+                        .map_err(|e| runtime(span, e.to_string()))?,
+                )),
+                "is_zero" => Ok(Value::Boolean(
+                    !ktype_value
+                        .ktype
+                        .is_nonzero(&rc)
+                        .map_err(|e| runtime(span, e.to_string()))?,
+                )),
+                "is_final" => Ok(Value::Boolean(
+                    ktype_value
+                        .ktype
+                        .is_final(&rc)
+                        .map_err(|e| runtime(span, e.to_string()))?,
+                )),
+                "is_semifinal" => Ok(Value::Boolean(
+                    ktype_value
+                        .ktype
+                        .is_semifinal(&rc)
+                        .map_err(|e| runtime(span, e.to_string()))?,
+                )),
+                "dominant" => Ok(Value::Domain(DomainValue::KType(KTypeValue {
+                    context: ktype_value.context.clone(),
+                    ktype: ktype_value
+                        .ktype
+                        .made_dominant(&rc)
+                        .map_err(|e| runtime(span, e.to_string()))?,
+                }))),
+                "to_canonical_fiber" => Ok(Value::Domain(DomainValue::KType(KTypeValue {
+                    context: ktype_value.context.clone(),
+                    ktype: ktype_value
+                        .ktype
+                        .to_canonical_fiber(&rc)
+                        .map_err(|e| runtime(span, e.to_string()))?,
+                }))),
+                _ => unreachable!(),
+            }
         }
         "W_elt" => {
             arity(name, arguments, 2, span)?;
