@@ -4425,8 +4425,8 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 int_type(),
                 0,
             ),
-            domain_builtin_skip("rank", primitive_type(Prim::RootDatum), int_type(), 0),
-            domain_builtin_skip("rank", primitive_type(Prim::LieType), int_type(), 0),
+            domain_builtin("rank", primitive_type(Prim::RootDatum), int_type(), 0),
+            domain_builtin("rank", primitive_type(Prim::LieType), int_type(), 0),
             domain_builtin(
                 "root",
                 Type::tuple(vec![primitive_type(Prim::RootDatum), int_type()]),
@@ -4738,7 +4738,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 int_type(),
                 0,
             ),
-            domain_builtin_skip("length", primitive_type(Prim::KgbElt), int_type(), 0),
+            domain_builtin("length", primitive_type(Prim::KgbElt), int_type(), 0),
             domain_builtin_skip(
                 "involution",
                 primitive_type(Prim::KgbElt),
@@ -5105,7 +5105,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             ),
             // orientation_nr (atlas-types.w:6546-6552): the orientation
             // number of a standard parameter.
-            domain_builtin_skip("orientation_nr", primitive_type(Prim::Param), int_type(), 0),
+            domain_builtin("orientation_nr", primitive_type(Prim::Param), int_type(), 0),
             // Cartan_info (atlas-types.w:4102-4160): the classify triple,
             // the Cartan involution's Weyl word, the orbit/fiber sizes, and
             // the three subsystem types.
