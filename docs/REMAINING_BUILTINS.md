@@ -1,5 +1,49 @@
 # Remaining builtin coverage (post-language-gate)
 
+## Batch status (2026-08-06)
+
+Overnight sweep (00:40-01:05 local) landed ~25 more builtins, all
+VERBATIM against the oracle on A2/B2/G2/A3/A1A1 probes:
+
+- `cofolded` (InnerClass->RootDatum): fold_orbits + cofold via
+  `RootInvolutionData::image_permutation`; B2 identity, A2/G2/A3 split
+  (A1.T1), and the orthogonal A1A1 two-type pair all byte-identical.
+- KType predicates: `height`, `is_standard`, `is_dominant`, `is_zero`,
+  `is_final`, `is_semifinal`, `dominant`, `to_canonical_fiber` (live
+  registrations; the dominant/normal/theta_stable/to_canonical_fiber
+  transform arm already existed).
+- Param predicates: `height`, `is_standard`, `is_dominant`, `is_zero`,
+  `is_final`, `is_semifinal` (StandardRepr methods 2500-2603).
+- `dual_datum` (InnerClass->RootDatum, G->dual_datum),
+  `quasisplit_form`/`dual_quasisplit_form` (InnerClass->RealForm via
+  build_real_form + quasisplit_external).
+- `dual` overloads (RootDatum->RootDatum rd->dual(), InnerClass->InnerClass
+  G->dual(), Block->Block) — the RootDatum arm uses `dual::dual_datum`
+  (now `pub`).
+- `form_names`/`dual_form_names` (InnerClass->[string] via
+  RealFormPresentation::name), `form_number`, `distinguished_involution`.
+- `root_datum` InnerClass coercion (G->datum), `central_fiber`
+  (strong_real::central_fiber -> [vec]), `KGB_size`.
+- `cross` (int, Param -> Param): repr.cpp:891-910 port (made_dominant +
+  gamma_lambda - pos_neg real-root correction + simple reflection +
+  sr_gamma). `Cayley` (int, Param -> Param): repr.cpp:943-1002 port
+  (ImaginaryNoncompact raise with parity/rho_r corrections, or real
+  inverse-Cayley with parity gate; Cayley_error passes the input
+  parameter back unchanged).
+- Live registrations for `rank` (RootDatum/LieType), `length`
+  (KGBElt), `orientation_nr` (Param) — arms already existed.
+
+Remaining (unchanged): walls/walls_attitude, Weyl_orbit family,
+alcove_center/alcove_root_vertex, FPP_numers/FPP_w_shifts,
+root_expression/root_index/root_permutation (oracle root numbering),
+root_ladder_bottoms/coroot_ladder_bottoms (root_perm/link), then the
+ext_block layer (extended_block/finalize_extended/partial_extended_KL_block/
+dual_KL_block/K_type_pol_extended/scale_extended/raw_ext_KL/shift_flip),
+block_deform series (block_deform/twisted_deform/twisted_full_deform/
+KL_block/twisted_KL_sum_at_s), and the print family (print_X/
+print_gradings/print_real_Weyl/print_blockstabilizer/print_common_block).
+
+
 The language gate is complete (166/166 frozen fixtures verified_hpc).
 The upstream interpreter registers 132 distinct builtin names; the Rust
 typed layer registers 102. This ledger tracks the 50 missing names in
