@@ -4301,7 +4301,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 ScalarOp::NullMatrix,
             ),
             domain_builtin("Lie_type", string_type(), primitive_type(Prim::LieType), 0),
-            domain_builtin_skip(
+            domain_builtin(
                 "Smith_Cartan",
                 primitive_type(Prim::LieType),
                 Type::tuple(vec![primitive_type(Prim::Mat), primitive_type(Prim::Vec)]),
@@ -4344,7 +4344,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 0,
             ),
             // extend (atlas-types.w:280-289): append a simple factor.
-            domain_builtin_skip(
+            domain_builtin(
                 "extend",
                 Type::tuple(vec![
                     primitive_type(Prim::LieType),
@@ -4354,13 +4354,13 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::LieType),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "prefers_coroots",
                 primitive_type(Prim::RootDatum),
                 bool_type(),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "simply_connected",
                 Type::tuple(vec![primitive_type(Prim::LieType), bool_type()]),
                 primitive_type(Prim::RootDatum),
@@ -4407,19 +4407,19 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::RootDatum),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "Cartan_matrix",
                 primitive_type(Prim::LieType),
                 primitive_type(Prim::Mat),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "Cartan_matrix",
                 primitive_type(Prim::RootDatum),
                 primitive_type(Prim::Mat),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "nr_of_posroots",
                 primitive_type(Prim::RootDatum),
                 int_type(),
@@ -4454,7 +4454,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             // positive_roots_wrapper / positive_coroots_wrapper
             // (atlas-types.w:1656-1671): the no-value gate precedes the
             // by-columns matrix build, so skip.
-            domain_builtin_skip(
+            domain_builtin(
                 "posroots",
                 primitive_type(Prim::RootDatum),
                 primitive_type(Prim::Mat),
@@ -4469,7 +4469,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             // simple_roots/simple_coroots (atlas-types.w:1638-1658):
             // one row per simple (co)root; the no-value gate precedes the
             // matrix build, so skip.
-            domain_builtin_skip(
+            domain_builtin(
                 "simple_roots",
                 primitive_type(Prim::RootDatum),
                 primitive_type(Prim::Mat),
@@ -4482,7 +4482,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 0,
             ),
             // root_coradical / coroot_radical (atlas-types.w:2254-2255).
-            domain_builtin_skip(
+            domain_builtin(
                 "root_coradical",
                 primitive_type(Prim::RootDatum),
                 primitive_type(Prim::Mat),
@@ -4496,14 +4496,14 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             ),
             // is_Cartan_matrix (atlas-types.w:368-375, 433): a Cartan
             // matrix iff its Dynkin classification succeeds.
-            domain_builtin_skip(
+            domain_builtin(
                 "is_Cartan_matrix",
                 primitive_type(Prim::Mat),
                 bool_type(),
                 0,
             ),
             // components_rank (atlas-types.w:3936).
-            domain_builtin_skip(
+            domain_builtin(
                 "components_rank",
                 primitive_type(Prim::RealForm),
                 int_type(),
@@ -4511,7 +4511,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             ),
             // default_extended (atlas-types.w:7313-7337): the components
             // of a default extended parameter.
-            domain_builtin_skip(
+            domain_builtin(
                 "default_extended",
                 Type::tuple(vec![primitive_type(Prim::Param), primitive_type(Prim::Mat)]),
                 Type::tuple(vec![
@@ -4524,7 +4524,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             ),
             // strong_components (atlas-types.w:7525-7527): the graph is a
             // row of rows of ints; the result is a pair of such rows.
-            domain_builtin_skip(
+            domain_builtin(
                 "strong_components",
                 Type::row(Type::row(int_type())),
                 Type::tuple(vec![
@@ -4581,19 +4581,19 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 ]),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "distinguished_involution",
                 primitive_type(Prim::InnerClass),
                 primitive_type(Prim::Mat),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "nr_of_real_forms",
                 primitive_type(Prim::InnerClass),
                 int_type(),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "nr_of_dual_real_forms",
                 primitive_type(Prim::InnerClass),
                 int_type(),
@@ -4639,7 +4639,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::RealForm),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "dual_real_form",
                 Type::tuple(vec![primitive_type(Prim::InnerClass), int_type()]),
                 primitive_type(Prim::RealForm),
@@ -4657,7 +4657,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::RealForm),
                 0,
             ),
-            domain_builtin_skip("form_number", primitive_type(Prim::RealForm), int_type(), 0),
+            domain_builtin("form_number", primitive_type(Prim::RealForm), int_type(), 0),
             domain_builtin("KGB_size", primitive_type(Prim::RealForm), int_type(), 0),
             // central_fiber_wrapper (atlas-types.w:3915-3929): only the type
             // layer's conform error precedes its no-value gate, so skip.
@@ -4686,7 +4686,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             domain_printer_builtin("print_blockd", primitive_type(Prim::Block)),
             domain_printer_builtin("print_blocku", primitive_type(Prim::Block)),
             // KGB_Hasse (atlas-types.w:3735-3743): the Bruhat Hasse matrix.
-            domain_builtin_skip(
+            domain_builtin(
                 "KGB_Hasse",
                 primitive_type(Prim::RealForm),
                 primitive_type(Prim::Mat),
@@ -4746,7 +4746,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::Mat),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "torus_factor",
                 primitive_type(Prim::KgbElt),
                 primitive_type(Prim::RatVec),
@@ -4764,7 +4764,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::Vec),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "torus_bits",
                 primitive_type(Prim::KgbElt),
                 primitive_type(Prim::Vec),
@@ -4863,19 +4863,19 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::CartanClass),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "nr_of_Cartan_classes",
                 primitive_type(Prim::InnerClass),
                 int_type(),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "nr_of_Cartan_classes",
                 primitive_type(Prim::RealForm),
                 int_type(),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "most_split_Cartan",
                 primitive_type(Prim::RealForm),
                 primitive_type(Prim::CartanClass),
@@ -4889,7 +4889,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             ),
             // KL_sum_at_s / KL_sum_at_s_to_height (atlas-types.w:8583-8588):
             // the KL column of a final parameter evaluated at q = s.
-            domain_builtin_skip(
+            domain_builtin(
                 "KL_sum_at_s",
                 primitive_type(Prim::Param),
                 primitive_type(Prim::ParamPol),
@@ -4903,7 +4903,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             ),
             // raw_KL / dual_KL (atlas-types.w:9101-9102): the KL table of
             // a block as (matrix, polynomial pool, length stops).
-            domain_builtin_skip(
+            domain_builtin(
                 "raw_KL",
                 primitive_type(Prim::Block),
                 Type::tuple(vec![
@@ -4925,7 +4925,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             ),
             // W_graph / W_cells (atlas-types.w:7494-7496): the W-graph and
             // its cell decomposition of a standard parameter's block.
-            domain_builtin_skip(
+            domain_builtin(
                 "W_graph",
                 primitive_type(Prim::Param),
                 Type::tuple(vec![int_type(), Type::row(primitive_type(Prim::Vec))]),
@@ -4945,7 +4945,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             ),
             // block_Hasse (atlas-types.w:7514): the full block of a
             // standard parameter and its Bruhat Hasse matrix.
-            domain_builtin_skip(
+            domain_builtin(
                 "block_Hasse",
                 primitive_type(Prim::Param),
                 Type::tuple(vec![
@@ -4956,7 +4956,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             ),
             // KL_column (atlas-types.w:6882-6905): the KL column of a final
             // standard parameter, over its partial block.
-            domain_builtin_skip(
+            domain_builtin(
                 "KL_column",
                 primitive_type(Prim::Param),
                 Type::tuple(vec![
@@ -4967,7 +4967,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             ),
             // KL_block (atlas-types.w:6868-6912): the condensed KL matrix
             // over the parameter's common block.
-            domain_builtin_skip(
+            domain_builtin(
                 "KL_block",
                 primitive_type(Prim::Param),
                 Type::tuple(vec![
@@ -4980,7 +4980,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             ),
             // partial_block (atlas-types.w:6786-6820): the partial-block
             // parameters of a final standard parameter.
-            domain_builtin_skip(
+            domain_builtin(
                 "partial_block",
                 primitive_type(Prim::Param),
                 Type::row(primitive_type(Prim::Param)),
@@ -4988,7 +4988,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             ),
             // full_deform (atlas-types.w:8213-8227): the full K-type
             // deformation of a final standard parameter.
-            domain_builtin_skip(
+            domain_builtin(
                 "full_deform",
                 primitive_type(Prim::Param),
                 primitive_type(Prim::KTypePol),
@@ -4996,7 +4996,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             ),
             // partial_KL_block (atlas-types.w:6998-7051): the condensed KL
             // matrix over a parameter's partial-block survivors.
-            domain_builtin_skip(
+            domain_builtin(
                 "partial_KL_block",
                 primitive_type(Prim::Param),
                 Type::tuple(vec![
@@ -5008,25 +5008,25 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             ),
             // two_rho / two_rho_check (atlas-types.w:1409-1421): the sum of
             // the positive roots, respectively of the positive coroots.
-            domain_builtin_skip(
+            domain_builtin(
                 "two_rho",
                 primitive_type(Prim::RootDatum),
                 primitive_type(Prim::Vec),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "fundamental_weight",
                 Type::tuple(vec![primitive_type(Prim::RootDatum), int_type()]),
                 primitive_type(Prim::RatVec),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "fundamental_coweight",
                 Type::tuple(vec![primitive_type(Prim::RootDatum), int_type()]),
                 primitive_type(Prim::RatVec),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "simple_factors",
                 primitive_type(Prim::LieType),
                 Type::Row(Box::new(Type::tuple(vec![
@@ -5035,7 +5035,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 ]))),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "derived_info",
                 primitive_type(Prim::RootDatum),
                 Type::Tuple(vec![
@@ -5053,7 +5053,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 ]),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "integrality_rank",
                 Type::tuple(vec![
                     primitive_type(Prim::RootDatum),
@@ -5062,7 +5062,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 int_type(),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "is_integrally_dominant",
                 Type::tuple(vec![
                     primitive_type(Prim::RootDatum),
@@ -5071,7 +5071,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 bool_type(),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "integrality_points",
                 Type::tuple(vec![
                     primitive_type(Prim::RootDatum),
@@ -5080,7 +5080,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 Type::Row(Box::new(primitive_type(Prim::RatVec))),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "integrality_datum",
                 Type::tuple(vec![
                     primitive_type(Prim::RootDatum),
@@ -5089,7 +5089,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::RootDatum),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "Cartan_matrix_type",
                 primitive_type(Prim::Mat),
                 Type::tuple(vec![
@@ -5110,7 +5110,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             // Cartan_info (atlas-types.w:4102-4160): the classify triple,
             // the Cartan involution's Weyl word, the orbit/fiber sizes, and
             // the three subsystem types.
-            domain_builtin_skip(
+            domain_builtin(
                 "Cartan_info",
                 primitive_type(Prim::CartanClass),
                 Type::tuple(vec![
@@ -5157,13 +5157,13 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 Type::row(primitive_type(Prim::RealForm)),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "dual_real_forms",
                 primitive_type(Prim::CartanClass),
                 Type::row(primitive_type(Prim::RealForm)),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "square_classes",
                 primitive_type(Prim::CartanClass),
                 Type::row(Type::row(int_type())),
@@ -5182,13 +5182,13 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             // occurrence/block_sizes/Cartan_order only read and print values
             // behind their upstream no-value gates, so they skip; block_size
             // bounds-checks before its gate, so it validates.
-            domain_builtin_skip(
+            domain_builtin(
                 "occurrence_matrix",
                 primitive_type(Prim::InnerClass),
                 primitive_type(Prim::Mat),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "dual_occurrence_matrix",
                 primitive_type(Prim::InnerClass),
                 primitive_type(Prim::Mat),
@@ -5210,7 +5210,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 int_type(),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "Cartan_order",
                 primitive_type(Prim::RealForm),
                 primitive_type(Prim::Mat),
@@ -5365,25 +5365,25 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             domain_builtin("is_zero", primitive_type(Prim::KType), bool_type(), 0),
             domain_builtin("is_semifinal", primitive_type(Prim::KType), bool_type(), 0),
             domain_builtin("is_final", primitive_type(Prim::KType), bool_type(), 0),
-            domain_builtin_skip(
+            domain_builtin(
                 "dominant",
                 primitive_type(Prim::KType),
                 primitive_type(Prim::KType),
                 3,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "normal",
                 primitive_type(Prim::KType),
                 primitive_type(Prim::KType),
                 3,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "theta_stable",
                 primitive_type(Prim::KType),
                 primitive_type(Prim::KType),
                 3,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "to_canonical_fiber",
                 primitive_type(Prim::KType),
                 primitive_type(Prim::KType),
@@ -5434,13 +5434,13 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             // Param dominant/normal transforms (atlas-types.w:7484-7485,
             // hunger 3) and equivalence (atlas-types.w:7482), gated by
             // the param_transforms contract.
-            domain_builtin_skip(
+            domain_builtin(
                 "dominant",
                 primitive_type(Prim::Param),
                 primitive_type(Prim::Param),
                 3,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "normal",
                 primitive_type(Prim::Param),
                 primitive_type(Prim::Param),
@@ -5456,7 +5456,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             // fixture-gated subset. add/subtract_K_type_wrapper check the
             // real form identity before their no-value gates, so they
             // validate; the rest run behind the gate.
-            domain_builtin_skip(
+            domain_builtin(
                 "null_K_module",
                 primitive_type(Prim::RealForm),
                 primitive_type(Prim::KTypePol),
@@ -5517,7 +5517,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::KTypePol),
                 1,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "first_term",
                 primitive_type(Prim::KTypePol),
                 Type::tuple(vec![
@@ -5535,7 +5535,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 ]),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "truncate_above_height",
                 Type::tuple(vec![primitive_type(Prim::KTypePol), int_type()]),
                 primitive_type(Prim::KTypePol),
@@ -5626,7 +5626,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::ParamPol),
                 1,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "first_term",
                 primitive_type(Prim::ParamPol),
                 Type::tuple(vec![
@@ -5635,7 +5635,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 ]),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "truncate_above_height",
                 Type::tuple(vec![primitive_type(Prim::ParamPol), int_type()]),
                 primitive_type(Prim::ParamPol),
@@ -5643,7 +5643,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             ),
             // param_poly_to_K_type_poly_wrapper (atlas-types.w:8546): the
             // K-type restriction of a ParamPol.
-            domain_builtin_skip(
+            domain_builtin(
                 "K_type_pol",
                 primitive_type(Prim::ParamPol),
                 primitive_type(Prim::KTypePol),
