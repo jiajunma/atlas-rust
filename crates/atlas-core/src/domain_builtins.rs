@@ -7711,7 +7711,252 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
             )))
         }
         "Cayley" => {
-            if arguments.len() == 3 {
+            if arguments.len() == 2 {
+                // parameter_Cayley_wrapper (atlas-types.w:3871-3887):
+                // (int, Param -> Param), the KL Cayley transform
+                // (repr.cpp:943-1002). A Cayley_error returns the input
+                // parameter unchanged.
+                let s = as_usize(&arguments[0], span)?;
+                let Value::Domain(DomainValue::Param(parameter)) = &arguments[1] else {
+                    return Err(type_error(span, "Cayley expects (int, Param)"));
+                };
+                let rc = rep_context(&parameter.context);
+                let z = parameter
+                    .repr
+                    .made_dominant(&rc)
+                    .map_err(|e| runtime(span, e.to_string()))?;
+                let datum = rc.datum();
+                let gamma = z.gamma();
+                let denominator = gamma.denominator();
+                let integrality_rank = (0..datum.semisimple_rank())
+                    .filter(|&t| {
+                        let coroot = &datum.simple_coroots()[t];
+                        let dot = gamma
+                            .numerator()
+                            .iter()
+                            .zip(coroot.as_slice())
+                            .map(|(g, &c)| g * i64::from(c))
+                            .sum::<i64>();
+                        dot.rem_euclid(denominator) == 0
+                    })
+                    .count();
+                if s >= integrality_rank {
+                    return Err(runtime(
+                        span,
+                        format!("Illegal simple reflection: {s}, should be <{integrality_rank}"),
+                    ));
+                }
+                let system = RootSystem::enumerate(datum, ROOT_BUDGET)
+                    .map_err(|e| runtime(span, e.to_string()))?;
+                let coroot_s = datum.simple_coroots()[s].clone();
+                let parent_root = datum.simple_roots()[s].clone();
+                let alpha_hat = &datum.simple_coroots()[s];
+                let pos_real = rc
+                    .positive_real_roots_at(z.x())
+                    .map_err(|e| runtime(span, e.to_string()))?;
+                let mut pos_neg_sum: Vec<i64> = vec![0; datum.lattice_rank()];
+                for &root_id in &pos_real {
+                    let Some(root) = system.root(root_id) else { continue; };
+                    let pairing = pair(root, &coroot_s).map_err(|e| runtime(span, e.to_string()))?;
+                    if pairing <= 0 {
+                        continue;
+                    }
+                    for (slot, &coordinate) in pos_neg_sum.iter_mut().zip(root.as_slice()) {
+                        *slot += i64::from(coordinate);
+                    }
+                }
+                let pos_neg_weight = Weight::new(
+                    pos_neg_sum.iter().map(|&x| x as i32).collect(),
+                );
+                let mut gamma_lambda = rc
+                    .gamma_lambda(z.x(), z.y_bits(), gamma)
+                    .map_err(|e| runtime(span, e.to_string()))?;
+                gamma_lambda = gamma_lambda
+                    .sub(&RationalWeight::from_weight(&pos_neg_weight).map_err(|e| runtime(span, e.to_string()))?)
+                    .map_err(|e| runtime(span, e.to_string()))?;
+                let real_roots_of = |x: KgbId| -> Result<Vec<RootId>, Diagnostic> {
+                    let involution = rc.involution_of(x).map_err(|e| runtime(span, e.to_string()))?;
+                    let record = rc
+                        .table()
+                        .record(involution)
+                        .ok_or_else(|| runtime(span, "involution record".to_string()))?;
+                    Ok(record
+                        .twisted_involution()
+                        .root_involution()
+                        .roots_of_kind(RootKind::Real)
+                        .collect())
+                };
+                let conj_x = rc
+                    .graph()
+                    .cross(z.x(), s)
+                    .ok_or_else(|| runtime(span, "cross image missing".to_string()))?;
+                let dot = |numerator: &[i64]| -> i64 {
+                    numerator
+                        .iter()
+                        .zip(alpha_hat.as_slice())
+                        .map(|(g, &c)| g * i64::from(c))
+                        .sum()
+                };
+                let add_root_sum = |gamma_lambda: &mut RationalWeight,
+                                    root_ids: &[RootId]|
+                 -> Result<(), Diagnostic> {
+                    let mut sum: Vec<i64> = vec![0; datum.lattice_rank()];
+                    for &root_id in root_ids {
+                        let Some(root) = system.root(root_id) else { continue; };
+                        for (slot, &coordinate) in sum.iter_mut().zip(root.as_slice()) {
+                            *slot += i64::from(coordinate);
+                        }
+                    }
+                    let summed = RationalWeight::from_weight(&Weight::new(
+                        sum.iter().map(|&x| x as i32).collect(),
+                    ))
+                    .map_err(|e| runtime(span, e.to_string()))?;
+                    *gamma_lambda = gamma_lambda
+                        .add(&summed)
+                        .map_err(|e| runtime(span, e.to_string()))?;
+                    Ok(())
+                };
+                let new_x = match rc
+                    .graph()
+                    .status(conj_x, s)
+                    .ok_or_else(|| runtime(span, "descent status".to_string()))?
+                {
+                    KgbStatus::ImaginaryNoncompact => {
+                        let cayley_first = match rc.graph().cayley(conj_x, s) {
+                            Ok(Some(first)) => first,
+                            _ => {
+                                return Ok(Value::Domain(DomainValue::Param(ParamValue {
+                                    context: parameter.context.clone(),
+                                    repr: parameter.repr.clone(),
+                                })));
+                            }
+                        };
+                        let upstairs = rc
+                            .graph()
+                            .cross(cayley_first, s)
+                            .ok_or_else(|| runtime(span, "cross image missing".to_string()))?;
+                        let upstairs_real = real_roots_of(upstairs)?;
+                        let downstairs_real = real_roots_of(z.x())?;
+                        let real_flip: Vec<RootId> = upstairs_real
+                            .iter()
+                            .filter(|id| !downstairs_real.contains(id))
+                            .copied()
+                            .collect();
+                        // pos_neg &= real_flip; gamma_lambda += root_sum.
+                        let filtered: Vec<RootId> = pos_real
+                            .iter()
+                            .filter(|id| real_flip.contains(id))
+                            .copied()
+                            .collect();
+                        add_root_sum(&mut gamma_lambda, &filtered)?;
+                        // Parity correction: half the parent root if the
+                        // raised gamma_lambda fails the parity condition.
+                        let two_rho_up = two_rho(&system, &upstairs_real);
+                        let rho_r_corr = dot(
+                            &two_rho_up.as_slice().iter().map(|&c| i64::from(c)).collect::<Vec<_>>(),
+                        ) / 2;
+                        let eval = dot(gamma_lambda.numerator());
+                        if (eval + rho_r_corr).rem_euclid(2) == 0 {
+                            let half_root: Vec<i64> = parent_root
+                                .as_slice()
+                                .iter()
+                                .map(|&c| i64::from(c))
+                                .collect();
+                            let half = RationalWeight::new(
+                                half_root.iter().map(|&c| if c % 2 == 0 { c / 2 } else { c }).collect(),
+                                2,
+                            )
+                            .map_err(|e| runtime(span, e.to_string()))?;
+                            // half-root with denominator 2 (odd entries kept)
+                            let half = RationalWeight::new(
+                                half_root.iter().map(|&c| c.rem_euclid(2)).collect(),
+                                2,
+                            )
+                            .map_err(|e| runtime(span, e.to_string()))?;
+                            gamma_lambda = gamma_lambda
+                                .add(&half)
+                                .map_err(|e| runtime(span, e.to_string()))?;
+                        }
+                        upstairs
+                    }
+                    _ => {
+                        // Real (type I) inverse Cayley, with the parity and
+                        // real-parent checks of repr.cpp:980-989.
+                        let real_roots = real_roots_of(z.x())?;
+                        let parent_s_id = RootId::from_usize(s);
+                        if !real_roots.contains(&parent_s_id) {
+                            return Ok(Value::Domain(DomainValue::Param(ParamValue {
+                                context: parameter.context.clone(),
+                                repr: parameter.repr.clone(),
+                            })));
+                        }
+                        let eval = dot(gamma_lambda.numerator());
+                        let two_rho_real = two_rho(&system, &real_roots);
+                        let rho_r_corr = dot(
+                            &two_rho_real.as_slice().iter().map(|&c| i64::from(c)).collect::<Vec<_>>(),
+                        ) / 2;
+                        if (eval + rho_r_corr).rem_euclid(2) == 0 {
+                            return Ok(Value::Domain(DomainValue::Param(ParamValue {
+                                context: parameter.context.clone(),
+                                repr: parameter.repr.clone(),
+                            })));
+                        }
+                        let inverse_first = match rc.graph().inverse_cayley(conj_x, s) {
+                            Ok(Some((first, _))) => first,
+                            _ => {
+                                return Ok(Value::Domain(DomainValue::Param(ParamValue {
+                                    context: parameter.context.clone(),
+                                    repr: parameter.repr.clone(),
+                                })));
+                            }
+                        };
+                        let downstairs = rc
+                            .graph()
+                            .cross(inverse_first, s)
+                            .ok_or_else(|| runtime(span, "cross image missing".to_string()))?;
+                        let new_real = real_roots_of(downstairs)?;
+                        let real_flip: Vec<RootId> = new_real
+                            .iter()
+                            .filter(|id| !real_roots.contains(id))
+                            .copied()
+                            .collect();
+                        let filtered: Vec<RootId> = pos_real
+                            .iter()
+                            .filter(|id| real_flip.contains(id))
+                            .copied()
+                            .collect();
+                        add_root_sum(&mut gamma_lambda, &filtered)?;
+                        downstairs
+                    }
+                };
+                let reflected = datum
+                    .reflect_weight(
+                        s,
+                        &Weight::new(gamma_lambda.numerator().iter().map(|&x| x as i32).collect()),
+                    )
+                    .map_err(|e| runtime(span, e.to_string()))?;
+                let reflected_gl = RationalWeight::from_weight(&reflected)
+                    .map_err(|e| runtime(span, e.to_string()))?;
+                let gl_plus_rho = reflected_gl
+                    .add(rc.rho())
+                    .map_err(|e| runtime(span, e.to_string()))?;
+                let lambda_rho_coords = gamma
+                    .sub(&gl_plus_rho)
+                    .map_err(|e| runtime(span, e.to_string()))?
+                    .numerator()
+                    .to_vec();
+                let result = rc
+                    .sr_gamma(
+                        new_x,
+                        &Weight::new(lambda_rho_coords.iter().map(|&x| x as i32).collect()),
+                        gamma,
+                    )
+                    .map_err(|e| runtime(span, e.to_string()))?;
+                return Ok(Value::Domain(DomainValue::Param(ParamValue {
+                    context: parameter.context.clone(),
+                    repr: result,
+                })));
+            } else if arguments.len() == 3 {
                 // block_Cayley_wrapper (atlas-types.w:4939-4963): an
                 // undefined Cayley returns the INPUT index as the signal.
                 let block = as_block(&arguments[1], span)?;
