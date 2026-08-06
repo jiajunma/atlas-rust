@@ -9870,6 +9870,139 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 Ok(Value::Tuple(vec![vec, weyl]))
             }
         }
+        "cofolded" => {
+            arity(name, arguments, 1, span)?;
+            let context = match &arguments[0] {
+                Value::Domain(DomainValue::InnerClass(context)) => context.clone(),
+                other => return Err(type_error(span, format!("expected an InnerClass, found {other}"))),
+            };
+            let datum = &context.inner_class.datum();
+            let rank = datum.semisimple_rank();
+            let system = RootSystem::enumerate(datum, ROOT_BUDGET)
+                .map_err(|error| runtime(span, error.to_string()))?;
+            let distinguished = context.inner_class.distinguished_involution();
+            let image = distinguished.image_permutation();
+            let simple_ids: Vec<RootId> = datum
+                .simple_roots()
+                .iter()
+                .map(|root| {
+                    system
+                        .id_of(root)
+                        .ok_or_else(|| runtime(span, "simple root not found".to_string()))
+                })
+                .collect::<Result<_, _>>()?;
+            let simple_coroots: Vec<Vec<i64>> = datum
+                .simple_coroots()
+                .iter()
+                .map(|coroot| coroot.as_slice().iter().map(|&x| i64::from(x)).collect())
+                .collect();
+            let simple_roots: Vec<Vec<i64>> = datum
+                .simple_roots()
+                .iter()
+                .map(|root| root.as_slice().iter().map(|&x| i64::from(x)).collect())
+                .collect();
+            let mut used = vec![false; rank];
+            let mut folded_roots: Vec<Vec<i64>> = Vec::new();
+            let mut folded_coroots: Vec<Vec<i64>> = Vec::new();
+            for s in 0..rank {
+                if used[s] {
+                    continue;
+                }
+                let alpha_id = simple_ids[s];
+                let image_id = image[alpha_id.index()];
+                if image_id == alpha_id {
+                    // ext_gen::one: the simple root is fixed by the twist.
+                    folded_roots.push(simple_roots[s].clone());
+                    folded_coroots.push(simple_coroots[s].clone());
+                    used[s] = true;
+                    continue;
+                }
+                let image_simple = (0..rank).find(|&t| simple_ids[t] == image_id);
+                let Some(t) = image_simple else {
+                    return Err(runtime(span, "Not a distinguished involution".to_string()));
+                };
+                let (s0, s1) = if alpha_id.index() < image_id.index() {
+                    (s, t)
+                } else {
+                    (t, s)
+                };
+                used[s0] = true;
+                used[s1] = true;
+                // Is the pair orthogonal? (pair(alpha_s0, coroot(s1)) == 0)
+                let root0 = Weight::new(
+                    simple_roots[s0].iter().map(|&x| x as i32).collect(),
+                );
+                let coroot1 = Coweight::new(
+                    simple_coroots[s1].iter().map(|&x| x as i32).collect(),
+                );
+                let orthogonal =
+                    pair(&root0, &coroot1).map_err(|e| runtime(span, e.to_string()))? == 0;
+                if orthogonal {
+                    // ext_gen::two: the coroot is not folded.
+                    folded_roots.push(
+                        simple_roots[s0]
+                            .iter()
+                            .zip(&simple_roots[s1])
+                            .map(|(a, b)| a + b)
+                            .collect(),
+                    );
+                    folded_coroots.push(simple_coroots[s0].clone());
+                } else {
+                    // ext_gen::three: both root and coroot are folded.
+                    folded_roots.push(
+                        simple_roots[s0]
+                            .iter()
+                            .zip(&simple_roots[s1])
+                            .map(|(a, b)| a + b)
+                            .collect(),
+                    );
+                    folded_coroots.push(
+                        simple_coroots[s0]
+                            .iter()
+                            .zip(&simple_coroots[s1])
+                            .map(|(a, b)| a + b)
+                            .collect(),
+                    );
+                }
+            }
+            // Build the folded Cartan matrix from the folded simple data.
+            let folded_rank = folded_roots.len();
+            let mut cartan = vec![vec![0_i32; folded_rank]; folded_rank];
+            for i in 0..folded_rank {
+                for j in 0..folded_rank {
+                    let root = Weight::new(
+                        folded_roots[i].iter().map(|&x| x as i32).collect(),
+                    );
+                    let coroot = Coweight::new(
+                        folded_coroots[j].iter().map(|&x| x as i32).collect(),
+                    );
+                    cartan[i][j] =
+                        pair(&root, &coroot).map_err(|e| runtime(span, e.to_string()))?;
+                }
+            }
+            let folded_datum = BasedRootDatum::from_simple_data(
+                datum.lattice_rank(),
+                cartan,
+                folded_roots
+                    .iter()
+                    .map(|row| Weight::new(row.iter().map(|&x| x as i32).collect()))
+                    .collect(),
+                folded_coroots
+                    .iter()
+                    .map(|row| Coweight::new(row.iter().map(|&x| x as i32).collect()))
+                    .collect(),
+            )
+            .map_err(|error| runtime(span, error.to_string()))?;
+            let folded_lie_type =
+                infer_lie_type(&folded_datum.cartan_matrix(), datum.lattice_rank(), span)?;
+            let folded_isogeny = classify_isogeny(&folded_datum);
+            Ok(Value::Domain(DomainValue::RootDatum(RootDatumHandle {
+                datum: Arc::new(folded_datum),
+                lie_type: folded_lie_type,
+                isogeny: folded_isogeny,
+                prefers_coroots: false,
+            })))
+        }
         "W_elt" => {
             arity(name, arguments, 2, span)?;
             let handle = as_root_datum(&arguments[0], span)?;

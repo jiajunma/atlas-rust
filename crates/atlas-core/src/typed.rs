@@ -4807,6 +4807,12 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 0,
             ),
             domain_builtin(
+                "cofolded",
+                primitive_type(Prim::InnerClass),
+                primitive_type(Prim::RootDatum),
+                0,
+            ),
+            domain_builtin(
                 "W_elt",
                 Type::tuple(vec![primitive_type(Prim::RootDatum), Type::row(int_type())]),
                 primitive_type(Prim::WeylElt),
