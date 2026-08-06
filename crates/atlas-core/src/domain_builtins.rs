@@ -10393,6 +10393,34 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 prefers_coroots: false,
             })))
         }
+        "initial_torus_bits" => {
+            arity(name, arguments, 1, span)?;
+            let rf = as_real_form(&arguments[0], span)?;
+            let seed = rf.graph.seed_element();
+            let dimension = rf.parent.inner_class.datum().lattice_rank();
+            let coords: Vec<i32> = (0..dimension)
+                .map(|index| i32::from(seed.torus_bits().bit(index).unwrap_or(false)))
+                .collect();
+            Ok(Value::Vector(Vec32(coords)))
+        }
+        "base_grading_vector" => {
+            arity(name, arguments, 1, span)?;
+            let rf = as_real_form(&arguments[0], span)?;
+            // base_grading_vector_wrapper: rf->val.g_rho_check(); the Rust
+            // KGB's base_grading carries the same g_rho_check bits.
+            let coords: Vec<i32> = rf
+                .graph
+                .base_grading()
+                .iter()
+                .map(|&bit| i32::from(bit))
+                .collect();
+            let ratvec = RatVec::new(
+                coords.into_iter().map(|x| x.into()).collect(),
+                1,
+            )
+            .ok_or_else(|| runtime(span, "invalid grading vector".to_string()))?;
+            Ok(Value::RatVector(ratvec))
+        }
         "W_elt" => {
             arity(name, arguments, 2, span)?;
             let handle = as_root_datum(&arguments[0], span)?;

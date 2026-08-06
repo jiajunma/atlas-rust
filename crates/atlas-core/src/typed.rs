@@ -4752,13 +4752,13 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::RatVec),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "base_grading_vector",
                 primitive_type(Prim::RealForm),
                 primitive_type(Prim::RatVec),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "initial_torus_bits",
                 primitive_type(Prim::RealForm),
                 primitive_type(Prim::Vec),
