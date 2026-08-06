@@ -10001,41 +10001,85 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
         }
         "height" | "is_standard" | "is_dominant" | "is_zero" | "is_final" | "is_semifinal" => {
             arity(name, arguments, 1, span)?;
-            let ktype_value = as_ktype(&arguments[0], span)?;
-            let rc = rep_context(&ktype_value.context);
-            match name {
-                "height" => Ok(Value::Integer(ktype_value.ktype.height().into())),
-                "is_standard" => Ok(Value::Boolean(
-                    ktype_value
-                        .ktype
-                        .is_standard(&rc)
-                        .map_err(|e| runtime(span, e.to_string()))?,
+            match &arguments[0] {
+                Value::Domain(DomainValue::KType(ktype_value)) => {
+                    let rc = rep_context(&ktype_value.context);
+                    match name {
+                        "height" => Ok(Value::Integer(ktype_value.ktype.height().into())),
+                        "is_standard" => Ok(Value::Boolean(
+                            ktype_value
+                                .ktype
+                                .is_standard(&rc)
+                                .map_err(|e| runtime(span, e.to_string()))?,
+                        )),
+                        "is_dominant" => Ok(Value::Boolean(
+                            ktype_value
+                                .ktype
+                                .is_dominant(&rc)
+                                .map_err(|e| runtime(span, e.to_string()))?,
+                        )),
+                        "is_zero" => Ok(Value::Boolean(
+                            !ktype_value
+                                .ktype
+                                .is_nonzero(&rc)
+                                .map_err(|e| runtime(span, e.to_string()))?,
+                        )),
+                        "is_final" => Ok(Value::Boolean(
+                            ktype_value
+                                .ktype
+                                .is_final(&rc)
+                                .map_err(|e| runtime(span, e.to_string()))?,
+                        )),
+                        "is_semifinal" => Ok(Value::Boolean(
+                            ktype_value
+                                .ktype
+                                .is_semifinal(&rc)
+                                .map_err(|e| runtime(span, e.to_string()))?,
+                        )),
+                        _ => unreachable!(),
+                    }
+                }
+                Value::Domain(DomainValue::Param(parameter)) => {
+                    let rc = rep_context(&parameter.context);
+                    match name {
+                        "height" => Ok(Value::Integer(parameter.repr.height().into())),
+                        "is_standard" => Ok(Value::Boolean(
+                            parameter
+                                .repr
+                                .is_standard(&rc)
+                                .map_err(|e| runtime(span, e.to_string()))?,
+                        )),
+                        "is_dominant" => Ok(Value::Boolean(
+                            parameter
+                                .repr
+                                .is_dominant(&rc)
+                                .map_err(|e| runtime(span, e.to_string()))?,
+                        )),
+                        "is_zero" => Ok(Value::Boolean(
+                            !parameter
+                                .repr
+                                .is_nonzero(&rc)
+                                .map_err(|e| runtime(span, e.to_string()))?,
+                        )),
+                        "is_final" => Ok(Value::Boolean(
+                            parameter
+                                .repr
+                                .is_final(&rc)
+                                .map_err(|e| runtime(span, e.to_string()))?,
+                        )),
+                        "is_semifinal" => Ok(Value::Boolean(
+                            parameter
+                                .repr
+                                .is_semifinal(&rc)
+                                .map_err(|e| runtime(span, e.to_string()))?,
+                        )),
+                        _ => unreachable!(),
+                    }
+                }
+                other => Err(type_error(
+                    span,
+                    format!("{name} expects a KType or Param, found {other}"),
                 )),
-                "is_dominant" => Ok(Value::Boolean(
-                    ktype_value
-                        .ktype
-                        .is_dominant(&rc)
-                        .map_err(|e| runtime(span, e.to_string()))?,
-                )),
-                "is_zero" => Ok(Value::Boolean(
-                    !ktype_value
-                        .ktype
-                        .is_nonzero(&rc)
-                        .map_err(|e| runtime(span, e.to_string()))?,
-                )),
-                "is_final" => Ok(Value::Boolean(
-                    ktype_value
-                        .ktype
-                        .is_final(&rc)
-                        .map_err(|e| runtime(span, e.to_string()))?,
-                )),
-                "is_semifinal" => Ok(Value::Boolean(
-                    ktype_value
-                        .ktype
-                        .is_semifinal(&rc)
-                        .map_err(|e| runtime(span, e.to_string()))?,
-                )),
-                _ => unreachable!(),
             }
         }
         "W_elt" => {

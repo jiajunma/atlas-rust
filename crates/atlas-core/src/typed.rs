@@ -5424,12 +5424,12 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::RealForm),
                 0,
             ),
-            domain_builtin_skip("height", primitive_type(Prim::Param), int_type(), 0),
-            domain_builtin_skip("is_standard", primitive_type(Prim::Param), bool_type(), 0),
-            domain_builtin_skip("is_dominant", primitive_type(Prim::Param), bool_type(), 0),
-            domain_builtin_skip("is_semifinal", primitive_type(Prim::Param), bool_type(), 0),
-            domain_builtin_skip("is_final", primitive_type(Prim::Param), bool_type(), 0),
-            domain_builtin_skip("is_zero", primitive_type(Prim::Param), bool_type(), 0),
+            domain_builtin("height", primitive_type(Prim::Param), int_type(), 0),
+            domain_builtin("is_standard", primitive_type(Prim::Param), bool_type(), 0),
+            domain_builtin("is_dominant", primitive_type(Prim::Param), bool_type(), 0),
+            domain_builtin("is_semifinal", primitive_type(Prim::Param), bool_type(), 0),
+            domain_builtin("is_final", primitive_type(Prim::Param), bool_type(), 0),
+            domain_builtin("is_zero", primitive_type(Prim::Param), bool_type(), 0),
             // Param dominant/normal transforms (atlas-types.w:7484-7485,
             // hunger 3) and equivalence (atlas-types.w:7482), gated by
             // the param_transforms contract.
