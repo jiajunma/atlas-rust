@@ -319,7 +319,7 @@ cd "$snapshot_dir"
 echo "host=$(hostname) job=$job_id cpus=${SLURM_CPUS_PER_TASK:-unavailable} date=$(date)"
 echo "== build frozen atlas-cli =="
 failure_phase="building_atlas_cli"
-cargo build --release -p atlas-cli --locked
+cargo build --release -p atlas-cli --locked --offline
 cli_bin="$CARGO_TARGET_DIR/release/atlas-cli"
 
 failure_phase="running_differential"
