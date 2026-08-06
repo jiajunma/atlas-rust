@@ -5517,8 +5517,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::KTypePol),
                 1,
             ),
-            domain_builtin(
-                "first_term",
+            domain_builtin_skip("first_term",
                 primitive_type(Prim::KTypePol),
                 Type::tuple(vec![
                     primitive_type(Prim::Split),
@@ -5626,8 +5625,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::ParamPol),
                 1,
             ),
-            domain_builtin(
-                "first_term",
+            domain_builtin_skip("first_term",
                 primitive_type(Prim::ParamPol),
                 Type::tuple(vec![
                     primitive_type(Prim::Split),

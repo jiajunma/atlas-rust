@@ -6931,13 +6931,33 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 })
                 .collect();
             let rank = cartan.len();
-            let datum = BasedRootDatum::standard(cartan)
-                .map_err(|error| runtime(span, error.to_string()))?;
-            let lie_type = infer_lie_type(datum.cartan_matrix(), rank, span)?;
-            // The integrality datum is the simply-connected subsystem
-            // (oracle integrality_datum prints "simply connected root datum
-            // of Lie type ...").
-            let isogeny = DatumIsogeny::SimplyConnected;
+            // The subsystem lives in the original lattice (the oracle's
+            // integrality_datum prints the full lattice, e.g. 'A1.T1' for
+            // A2 at a half-integral character).
+            let mut simple_weights = Vec::with_capacity(ordered.len());
+            let mut simple_coweights = Vec::with_capacity(ordered.len());
+            for &id in &ordered {
+                let Some(root) = root_system.root(id) else {
+                    return Err(runtime(span, "subsystem root missing".to_string()));
+                };
+                let Some(coroot) = root_system.coroot(id) else {
+                    return Err(runtime(span, "subsystem coroot missing".to_string()));
+                };
+                simple_weights.push(root.clone());
+                simple_coweights.push(coroot.clone());
+            }
+            let datum = BasedRootDatum::from_simple_data(
+                handle.datum.lattice_rank(),
+                cartan,
+                simple_weights,
+                simple_coweights,
+            )
+            .map_err(|error| runtime(span, error.to_string()))?;
+            let lie_type = infer_lie_type(datum.cartan_matrix(), datum.lattice_rank(), span)?;
+            // The integrality datum keeps the full lattice (e.g. 'A1.T1'
+            // for A2), so its isogeny is neither simply connected nor
+            // adjoint (oracle prints "root datum of Lie type ...").
+            let isogeny = DatumIsogeny::Other;
             Ok(Value::Domain(DomainValue::RootDatum(RootDatumHandle {
                 datum: std::sync::Arc::new(datum),
                 lie_type,
