@@ -9999,8 +9999,7 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 prefers_coroots: false,
             })))
         }
-        "height" | "is_standard" | "is_dominant" | "is_zero" | "is_final" | "is_semifinal"
-        | "dominant" | "to_canonical_fiber" => {
+        "height" | "is_standard" | "is_dominant" | "is_zero" | "is_final" | "is_semifinal" => {
             arity(name, arguments, 1, span)?;
             let ktype_value = as_ktype(&arguments[0], span)?;
             let rc = rep_context(&ktype_value.context);
@@ -10036,20 +10035,6 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                         .is_semifinal(&rc)
                         .map_err(|e| runtime(span, e.to_string()))?,
                 )),
-                "dominant" => Ok(Value::Domain(DomainValue::KType(KTypeValue {
-                    context: ktype_value.context.clone(),
-                    ktype: ktype_value
-                        .ktype
-                        .made_dominant(&rc)
-                        .map_err(|e| runtime(span, e.to_string()))?,
-                }))),
-                "to_canonical_fiber" => Ok(Value::Domain(DomainValue::KType(KTypeValue {
-                    context: ktype_value.context.clone(),
-                    ktype: ktype_value
-                        .ktype
-                        .to_canonical_fiber(&rc)
-                        .map_err(|e| runtime(span, e.to_string()))?,
-                }))),
                 _ => unreachable!(),
             }
         }
