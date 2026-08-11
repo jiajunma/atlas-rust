@@ -1,0 +1,67 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("A2"),true)
+ic : InnerClass
+ic := inner_class(rd,[[1,0],[0,1]])
+rf : RealForm
+rf := real_form(ic,1)
+p : Param
+p := param(KGB(rf,0),[0,0],[0,0]/1)
+p
+extended_block(p,[[1,0],[0,1]])
+raw_ext_KL(p,[[1,0],[0,1]])
+partial_extended_KL_block(p,[[1,0],[0,1]])
+extended_block(p,[[0,1],[1,0]])
+raw_ext_KL(p,[[0,1],[1,0]])
+pz : Param
+pz := param(KGB(rf,5),[-1,-1],[1,1]/1)
+pz
+partial_extended_KL_block(pz,[[1,0],[0,1]])
+ic2 : InnerClass
+ic2 := inner_class(rd,[[0,1],[1,0]])
+r3 : RealForm
+r3 := real_form(ic2,0)
+q : Param
+q := param(KGB(r3,0),[0,0],[0,0]/1)
+extended_block(q,[[0,1],[1,0]])
+raw_ext_KL(q,[[0,1],[1,0]])
+partial_extended_KL_block(q,[[0,1],[1,0]])
+q3 : Param
+q3 := param(KGB(r3,3),[0,0],[0,0]/1)
+partial_extended_KL_block(q3,[[0,1],[1,0]])
+raw_ext_KL(q3,[[0,1],[1,0]])
+p2 : Param
+p2 := param(KGB(r3,0),[0,0],[1,0]/1)
+raw_ext_KL(p2,[[0,1],[1,0]])
+ra : RootDatum
+ra := simply_connected(Lie_type("A1"),true)
+ia : InnerClass
+ia := inner_class(ra,[[1]])
+fa : RealForm
+fa := real_form(ia,1)
+pa : Param
+pa := param(KGB(fa,0),[0],[0]/1)
+extended_block(pa,[[1]])
+raw_ext_KL(pa,[[1]])
+partial_extended_KL_block(pa,[[1]])
+n2 : Param
+n2 := param(KGB(fa,2),[0],[0]/1)
+partial_extended_KL_block(n2,[[1]])
+raw_ext_KL(n2,[[1]])
+ca : RealForm
+ca := real_form(ia,0)
+pc : Param
+pc := param(KGB(ca,0),[0],[0]/1)
+extended_block(pc,[[1]])
+raw_ext_KL(pc,[[1]])
+partial_extended_KL_block(pc,[[1]])
+rc2 : RootDatum
+rc2 := simply_connected(Lie_type("C2"),true)
+icc : InnerClass
+icc := inner_class(rc2,[[1,0],[0,1]])
+fs : RealForm
+fs := real_form(icc,2)
+ps : Param
+ps := param(KGB(fs,0),[0,0],[0,0]/1)
+extended_block(ps,[[1,0],[0,1]])
+raw_ext_KL(ps,[[1,0],[0,1]])
+partial_extended_KL_block(ps,[[1,0],[0,1]])

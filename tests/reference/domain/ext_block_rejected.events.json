@@ -1,0 +1,173 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/ext_block_rejected",
+  "status": "pending_hpc_reference",
+  "events": [
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rd': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'A2'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ic': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type A2, with involution defining\ninner class of type 'c', with 2 real forms and 1 dual real form"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rf': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "connected quasisplit real group with Lie algebra 'su(2,1)'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'p': Param\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "final parameter(x=0,lambda=[1,1]/1,nu=[0,0]/1)"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ic2': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type A2, with involution defining\ninner class of type 's', with 1 real form and 2 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'r3': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "connected split real group with Lie algebra 'sl(3,R)'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'p2': Param\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "final parameter(x=0,lambda=[1,1]/1,nu=[1,-1]/2)\nDelta does not fix gamma=[3,1]/2."
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ra': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'A1'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ia': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type A1, with involution defining\ninner class of type 'c', with 2 real forms and 2 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'fa': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "connected split real group with Lie algebra 'sl(2,R)'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'n3': Param\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "non-standard parameter(x=1,lambda=[-1]/1,nu=[0]/1)"
+      }
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Given transformation is not an involution"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Involution should be a 2x2 matrix; received a 3x3 matrix"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Root datum involution is not distinguished"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Matrix maps simple root 0 to non-root"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Involution does not fix infinitesimal character"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "No valid extended block"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Cannot generate block:\nnon-standard parameter(x=1,lambda=[-1]/1,nu=[0]/1)\nParameter not standard"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Cannot generate block:\nnon-standard parameter(x=1,lambda=[-1]/1,nu=[0]/1)\nParameter not standard"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Cannot generate extended block:\nnon-standard parameter(x=1,lambda=[-1]/1,nu=[0]/1)\nParameter not standard"
+    }
+  ]
+}
