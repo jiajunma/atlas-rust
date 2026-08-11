@@ -2,10 +2,11 @@
   "fixture": "domain/block_deform",
   "fixture_sha256": "f175da0ed4e584c8c32cab360d61b2bd239fae059439798ad5d3d01c5fe1d350",
   "rust_status": "pending_hpc_differential",
-  "reference_status": "pending_hpc_reference",
-  "note": "block_deform(Param,ParamPol,int->ParamPol,ParamPol) on SU(2,1): (1-1s) Split coefficients, pair flips at height boundary (h<=3 -> (Empty,d), h>=4 -> (d,Empty)), heights 0/3/4/5. Local pinned-oracle capture; HPC reference capture pending byte-verification.",
+  "reference_status": "verified_hpc_reference",
+  "note": "block_deform(Param,ParamPol,int->ParamPol,ParamPol) on SU(2,1): (1-1s) Split coefficients, pair flips at height boundary (h<=3 -> (Empty,d), h>=4 -> (d,Empty)), heights 0/3/4/5. HPC reference capture 3536583 byte-identical to local pinned-oracle capture (stdout+stderr).",
   "oracle": "atlas",
   "oracle_exit_status": 0,
   "stage": "typed-pipeline-swap",
-  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_job": "3536583"
 }
