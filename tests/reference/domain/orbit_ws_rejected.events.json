@@ -1,0 +1,63 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/orbit_ws_rejected",
+  "status": "pending_hpc_reference",
+  "events": [
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rb': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'B2'"
+      }
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Index too large for given list of root numbers"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Roots 1 and 2 have acute angle."
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Roots 0 and 3 have acute angle."
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Roots 0 and 0 have acute angle."
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Roots 0 and -2 have acute angle."
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Illegal root index 4"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Rank and rational weight size mismatch 2:3"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Illegal root index 4"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Illegal coroot index -5"
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/root_numbering_rejected",
+  "status": "pending_hpc_reference",
+  "events": [
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rd': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "adjoint root datum of Lie type 'B2'"
+      }
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Illegal root index 4"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Illegal coroot index -5"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Illegal root index 4"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Illegal root index -5"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "found (RootDatum,int) while (RootDatum,vec) was needed."
+    }
+  ]
+}

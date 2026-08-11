@@ -1,0 +1,76 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/print_gradings_rejected",
+  "status": "pending_hpc_reference",
+  "events": [
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rb': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'B2'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ib': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type B2, with involution defining\ninner class of type 'c', with 3 real forms and 3 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'cb1': CartanClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Cartan class #1, occurring for 1 real form and for 2 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'cb2': CartanClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Cartan class #2, occurring for 2 real forms and for 1 dual real form"
+      }
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Cartan class not defined for this real form"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Cartan class not defined for this real form"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Cartan class not defined for this real form"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "found CartanClass while (CartanClass,RealForm) was needed."
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "found (RealForm,CartanClass) while (CartanClass,RealForm) was needed."
+    }
+  ]
+}

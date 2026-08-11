@@ -1,0 +1,43 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/coroot_queries_rejected",
+  "status": "pending_hpc_reference",
+  "events": [
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'sc': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'B2'"
+      }
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "found int while RootDatum was needed."
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "found (RootDatum,[int]) while RootDatum was needed."
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "found (RootDatum,RootDatum) while RootDatum was needed."
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "found RootDatum while Param was needed."
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "found (RootDatum,[int]) while RootDatum was needed."
+    }
+  ]
+}
