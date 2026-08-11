@@ -1,0 +1,115 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/real_weyl_print_rejected",
+  "status": "pending_hpc_reference",
+  "events": [
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ra': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'A1'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ic': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type A1, with involution defining\ninner class of type 'c', with 2 real forms and 2 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ca0': CartanClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Cartan class #0, occurring for 2 real forms and for 1 dual real form"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ca1': CartanClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Cartan class #1, occurring for 1 real form and for 2 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rb': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'B2'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ib': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type B2, with involution defining\ninner class of type 'c', with 3 real forms and 3 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'cb0': CartanClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Cartan class #0, occurring for 3 real forms and for 1 dual real form"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'Ba': Block\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Block of 3 elements"
+      }
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Cartan class not defined for real form"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Inner class mismatch between arguments"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "found (CartanClass,RealForm) while (RealForm,CartanClass) was needed."
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "found (CartanClass,Block) while (Block,CartanClass) was needed."
+    }
+  ]
+}

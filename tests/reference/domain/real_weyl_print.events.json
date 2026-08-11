@@ -1,0 +1,219 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/real_weyl_print",
+  "status": "pending_hpc_reference",
+  "events": [
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ra': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'A1'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ic': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type A1, with involution defining\ninner class of type 'c', with 2 real forms and 2 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ca0': CartanClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Cartan class #0, occurring for 2 real forms and for 1 dual real form"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "real weyl group is W^C.((A.W_ic) x W^R), where:\nW^C is trivial\nA is trivial\nW_ic is a Weyl group of type A1\nW^R is trivial\n\ngenerators for W_ic:\n1\nreal weyl group is W^C.((A.W_ic) x W^R), where:\nW^C is trivial\nA is trivial\nW_ic is trivial\nW^R is trivial\n\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ca1': CartanClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Cartan class #1, occurring for 1 real form and for 2 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "real weyl group is W^C.((A.W_ic) x W^R), where:\nW^C is trivial\nA is trivial\nW_ic is trivial\nW^R is a Weyl group of type A1\n\ngenerators for W^R:\n1\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'Ba': Block\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Block of 3 elements"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "block stabilizer is W^C.((A_i.W_ic) x (A_r.W_rc)), where:\nW^C is trivial\nA_i is trivial\nW_ic is trivial\nA_r is trivial\nW_rc is trivial\n\nblock stabilizer is W^C.((A_i.W_ic) x (A_r.W_rc)), where:\nW^C is trivial\nA_i is trivial\nW_ic is trivial\nA_r is an elementary abelian 2-group of rank 1\nW_rc is trivial\n\ngenerators for A_r\n1\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rb': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'B2'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ib': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type B2, with involution defining\ninner class of type 'c', with 3 real forms and 3 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'cb0': CartanClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Cartan class #0, occurring for 3 real forms and for 1 dual real form"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "real weyl group is W^C.((A.W_ic) x W^R), where:\nW^C is trivial\nA is trivial\nW_ic is a Weyl group of type B2\nW^R is trivial\n\ngenerators for W_ic:\n1\n2\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'cb1': CartanClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Cartan class #1, occurring for 1 real form and for 2 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "real weyl group is W^C.((A.W_ic) x W^R), where:\nW^C is trivial\nA is trivial\nW_ic is trivial\nW^R is a Weyl group of type A1\n\ngenerators for W^R:\n2,1,2\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'cb2': CartanClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Cartan class #2, occurring for 2 real forms and for 1 dual real form"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "real weyl group is W^C.((A.W_ic) x W^R), where:\nW^C is trivial\nA is trivial\nW_ic is a Weyl group of type A1\nW^R is a Weyl group of type A1\n\ngenerators for W_ic:\n2\ngenerators for W^R:\n1,2,1\nreal weyl group is W^C.((A.W_ic) x W^R), where:\nW^C is trivial\nA is an elementary abelian 2-group of rank 1\nW_ic is trivial\nW^R is a Weyl group of type A1\n\ngenerators for A\n2\ngenerators for W^R:\n1,2,1\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'Bb': Block\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Block of 12 elements"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "block stabilizer is W^C.((A_i.W_ic) x (A_r.W_rc)), where:\nW^C is trivial\nA_i is trivial\nW_ic is a Weyl group of type A1\nA_r is trivial\nW_rc is trivial\n\ngenerators for W_ic:\n1,2,1\nblock stabilizer is W^C.((A_i.W_ic) x (A_r.W_rc)), where:\nW^C is trivial\nA_i is trivial\nW_ic is trivial\nA_r is an elementary abelian 2-group of rank 1\nW_rc is trivial\n\ngenerators for A_r\n2,1,2\nblock stabilizer is W^C.((A_i.W_ic) x (A_r.W_rc)), where:\nW^C is trivial\nA_i is an elementary abelian 2-group of rank 1\nW_ic is trivial\nA_r is an elementary abelian 2-group of rank 1\nW_rc is trivial\n\ngenerators for A_i\n2\ngenerators for A_r\n1,2,1\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rc': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'C2'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'icc': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type C2, with involution defining\ninner class of type 'c', with 3 real forms and 3 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rf_sp': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "connected split real group with Lie algebra 'sp(4,R)'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'cc3': CartanClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Cartan class #3, occurring for 1 real form and for 3 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "real weyl group is W^C.((A.W_ic) x W^R), where:\nW^C is trivial\nA is trivial\nW_ic is trivial\nW^R is a Weyl group of type B2\n\ngenerators for W^R:\n1\n2\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'Bc': Block\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Block of 12 elements"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "block stabilizer is W^C.((A_i.W_ic) x (A_r.W_rc)), where:\nW^C is trivial\nA_i is trivial\nW_ic is trivial\nA_r is an elementary abelian 2-group of rank 1\nW_rc is a Weyl group of type A1\n\ngenerators for A_r\n2\ngenerators for W_rc:\n1,2,1\n"
+    }
+  ]
+}

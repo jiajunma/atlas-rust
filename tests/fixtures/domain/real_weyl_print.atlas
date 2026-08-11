@@ -1,0 +1,46 @@
+ra : RootDatum
+ra := simply_connected(Lie_type("A1"),true)
+ic : InnerClass
+ic := inner_class(ra,[[1]])
+ca0 : CartanClass
+ca0 := Cartan_class(ic,0)
+print_real_Weyl(real_form(ic,0),ca0)
+print_real_Weyl(real_form(ic,1),ca0)
+ca1 : CartanClass
+ca1 := Cartan_class(ic,1)
+print_real_Weyl(real_form(ic,1),ca1)
+Ba : Block
+Ba := block(real_form(ic,1),dual_real_form(ic,1))
+print_blockstabilizer(Ba,ca0)
+print_blockstabilizer(Ba,ca1)
+rb : RootDatum
+rb := simply_connected(Lie_type("B2"),true)
+ib : InnerClass
+ib := inner_class(rb,[[1,0],[0,1]])
+cb0 : CartanClass
+cb0 := Cartan_class(ib,0)
+print_real_Weyl(real_form(ib,0),cb0)
+cb1 : CartanClass
+cb1 := Cartan_class(ib,1)
+print_real_Weyl(real_form(ib,2),cb1)
+cb2 : CartanClass
+cb2 := Cartan_class(ib,2)
+print_real_Weyl(real_form(ib,1),cb2)
+print_real_Weyl(real_form(ib,2),cb2)
+Bb : Block
+Bb := block(real_form(ib,2),dual_real_form(ib,2))
+print_blockstabilizer(Bb,cb0)
+print_blockstabilizer(Bb,cb1)
+print_blockstabilizer(Bb,cb2)
+rc : RootDatum
+rc := simply_connected(Lie_type("C2"),true)
+icc : InnerClass
+icc := inner_class(rc,[[1,0],[0,1]])
+rf_sp : RealForm
+rf_sp := real_form(icc,2)
+cc3 : CartanClass
+cc3 := Cartan_class(icc,3)
+print_real_Weyl(rf_sp,cc3)
+Bc : Block
+Bc := block(rf_sp,dual_real_form(icc,2))
+print_blockstabilizer(Bc,cc3)
