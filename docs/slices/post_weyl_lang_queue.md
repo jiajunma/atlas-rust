@@ -244,6 +244,23 @@ global_KGB——print_X 需要新的 crate 切片（估 600+ 行），不能复�
   和 external `(Param,mat->ParamPol)`（:8420，安装 :8589）
 - `block_deform (Param,ParamPol,int->ParamPol,ParamPol)`（:8178，安装 :8574）
 - `dual_KL_block (Param->[Param],int,mat,[vec])`（wrapper :7053，安装 :7517）
+
+**finalise 三件套（2026-08-11 补查，归 ext_param+star 大切片）**：
+- `scale_extended (Param,mat,rat->Param,bool)`（:8449-8472，安装 :8591）：
+  ext_block::scaled_extended_finalise（ext_block.cpp:2736-2807，~70 行，
+  **crate 缺**）；校验：test_final("Cannot scale extended parameter")、
+  `"Factor in scale_extended must be positive"`、test_compatible、
+  `"Parameter to be scaled not fixed by given involution"`。
+- `K_type_pol_extended (Param,mat->KTypePol)`（:8487-8500，安装 :8593）：
+  ext_block::extended_restrict_to_K（**crate 缺**）；
+  `"Parameter not fixed by given involution"`。
+- `finalize_extended (Param,mat->ParamPol)`（:8514-8537，安装 :8595）：
+  ext_block::extended_finalise（**crate 缺**）；额外对合交换性检查
+  `"Involution of parameter does not commute with delta"`；
+  flip 项系数 Split_integer(0,1)=s，非 flip Split_integer(1,0)。
+- 相邻已 live：KL_column（:5052）。三件套与 twisted 族共享
+  scaled_extended_finalise/extended_finalise 两个 crate 缺口，合并进
+  ext_param+star 切片最划算。
 - `print_common_block (Param->)`（print_c_block_wrapper，安装 :7505）、
   `print_partial_block (Param->)`（:7507）、
   `print_partial_common_block (Param->)`（:7509）——均绑 common-block
