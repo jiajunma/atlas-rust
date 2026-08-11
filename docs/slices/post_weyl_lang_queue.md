@@ -64,15 +64,55 @@ wrapper 位置：atlas-types.w:1945（alcove_center）、:1994
 安装 :2279-2290。fixture 构造 Param 用 `param(KGB(rf,n),lambda,nu)`
 （参照 full_deform.atlas）。
 
-## 3. ext_block builtin 注册（agent-33 ext_kl 验收后）
+## 3. ext_block builtin 注册（ext_kl 已落地 602fce6，预研 agent-34 已完）
 
-`extended_block (Param,mat->[Param],mat,mat,mat)`（wrapper
-atlas-types.w:7366-7431，纯格式转换）+ agent-33 交付后的
-`raw_ext_KL`（:8682-8728）/`partial_extended_KL_block`（:7445-7468）。
-crate 侧 ext_block.rs（28e6109）+ ext_kl.rs（agent-33 在途）已备。
-注意 oracle 的 delta 约定：打印列作为像，传参行作为像（要转置），
-且必须是 distinguished（SL(3,R) 的 distinguished 打印 [[1,0],[1,-1]]，
-传参 [[1,1],[0,-1]]）。
+三个 builtin 签名均为 `(Param,mat)`（wrapper 先 pop mat）：
+
+- `extended_block (Param,mat->[Param],mat,mat,mat)`（atlas-types.w:7366-7431，
+  安装 :7531）：test_standard → test_compatible → gamma-fix 检查
+  （`"Involution does not fix infinitesimal character"`）→ 建全 block。
+  **quirk 必须复制**：扩展用的是 `rc.inner_class().distinguished()` 而非用户
+  的 delta（:7392），用户 delta 只做校验门。返回 [Param]（逐元素
+  lambda_rho_z = (gamma-rho).integer_diff(gamma_lambda(z))，rc.sr_gamma）、
+  types 矩阵（DescValue 0..31）、links0/links1（compact/nonparity→size 哨兵；
+  否则 cross 或 Cayley，epsilon<0 时取 -1-link；links1 在 link_count==1 时
+  为 size，否则 Cayleys.second 或 cross）。
+- `raw_ext_KL (Param,mat->mat,[vec],vec)`（:8682-8728，安装 :9103）：delta 不
+  固定 gamma 时**返回空三元组**（不报错）；否则用**用户的** delta 建扩展块，
+  KL 表填满；mat 条目 `flip ? -inx : inx`（符号取反池索引）；[vec] 池系数
+  向量（最低次在前，:6980-6989）；vec length_stops 长 parent_max_length+2，
+  `stops[i]=eb.length_first(i)`。
+- `partial_extended_KL_block (Param,mat->[Param],mat,[vec])`（:7445-7468，
+  安装 :7533）：走 `ext_kl::ext_KL_matrix`（crate 已备，ext_kl.rs:1159）；
+  `size=eb.element(entry_element+1)`；singular=与 gamma 配对为 0 的简单
+  余根；凝聚→survivors→奇偶长度取负；params 用 `rc.sr(representative, gamma)`。
+  delta 不固定 gamma 时上游**先往 stdout 打印** `Delta does not fix gamma=...`
+  再抛 `"No valid extended block"`——差分会比对 stdout，需决定是否复制该打印。
+
+**预研结论（agent-34）**：三者均不需要 common-block 切片——语言层已有全块
+替代模式（partial_KL_block/KL_column/W_graph 用 build_block + x 坐标定位，
+domain_builtins.rs:10764/:10349）。ext_kl.rs:36-43 标注的 deferred 边界
+（从 StandardRepr 建扩展块）只挡 ext_param/star 和 pool swallow。crate 调用：
+`ExtBlock::build`（ext_block.rs:676）、`ExtKlTable::new/fill_columns/
+kl_pol_index/polys`（ext_kl.rs:433/668/495/473）、`ext_kl_matrix`
+（ext_kl.rs:1159）；对偶侧配方见 ext_block.rs 测试 :1821/:1839（转置
+delta + based_involution_twist）。`compatible_outer_twist`
+（domain_builtins.rs:5921）已是 test_compatible 逐字移植，直接复用。
+
+三个 soft flag：
+1. `test_standard` helper 不存在，需新写：`"{descr}:\n  {param}\n  Parameter
+   not standard"`（用 StandardRepr::is_standard + Param Display）。
+2. 逐元素 lambda_rho：已验证的 partial_KL_block 对所有 survivor 用单个
+   lambda_rho；extended_block oracle 是逐元素算——差分定夺。
+3. 注册模式照抄 raw_KL（typed.rs:4958-4969 + domain_builtins.rs:10289），
+   纯 domain_builtin（BuildAndDrop）；无需新值类型，输出全是既有 Prim。
+
+fixture 建议：A1/A2(SU(2,1)) identity delta（crate 锚点 ext_block.rs:1983/
+:2068）、SL(3,R) 翻转 distinguished（打印列约定，传参要转置 [[1,1],[0,-1]]）、
+Sp4 12 元素非退化（agent-33 锚点）、raw_ext_KL 空三元组情形、
+partial 在 singular/regular gamma 各一例；rejected：非 standard Param、
+四种 compatible_outer_twist 措辞、extended_block 的 gamma-fix 拒绝、
+partial 的 stdout 打印+异常情形。
 
 ## 4. print 族（顺序见 agent31 侦察报告 §6）
 
