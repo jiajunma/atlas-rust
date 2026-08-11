@@ -2,10 +2,11 @@
   "fixture": "domain/twisted_family_rejected",
   "fixture_sha256": "78f910ad82af2cd827a49a995ba22c919afcdd49facbd1d7e016527a615088fc",
   "rust_status": "pending_hpc_differential",
-  "reference_status": "pending_hpc_reference",
-  "note": "twisted family conform rejections: single-overload \"found RealForm while Param was needed\" (twisted_deform) vs multi-overload \"Failed to match\" wording (twisted_full_deform, twisted_KL_sum_at_s(Param,RealForm)). Local pinned-oracle capture; HPC reference capture pending byte-verification.",
+  "reference_status": "verified_hpc_reference",
+  "note": "twisted family conform rejections: single-overload \"found RealForm while Param was needed\" (twisted_deform) vs multi-overload \"Failed to match\" wording (twisted_full_deform, twisted_KL_sum_at_s(Param,RealForm)). HPC reference capture 3536421 byte-identical to local pinned-oracle capture (stdout+stderr).",
   "oracle": "atlas",
   "oracle_exit_status": 1,
   "stage": "typed-pipeline-swap",
-  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_job": "3536421"
 }

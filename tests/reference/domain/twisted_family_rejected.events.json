@@ -1,7 +1,7 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "domain/twisted_family_rejected",
-  "status": "pending_hpc_reference",
+  "status": "verified_hpc_reference",
   "events": [
     {
       "kind": "ReportLine",
