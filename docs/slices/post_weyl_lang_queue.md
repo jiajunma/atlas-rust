@@ -270,15 +270,29 @@ wrapper 全在 atlas-types.w:1487-1560/:2604-2618，安装 :2230-2239/:2649：
 - root_involution(rb,2) → `[ 5, 6, 7, 3, 4, 0, 1, 2 ]`（长 numRoots=8，
   内部 RootNbr）；root_involution(rb,3) → `[ 7, 4, 2, 6, 1, 5, 3, 0 ]`。
 
-**开放问题（实现切片必须先解）**：`root_index`/`coroot_index` 的 vec
-坐标解释反直觉——prefer_coroots=false 的 sc-B2 上：
-root_index([1,0])=2，而 [1,1]/[1,2]/[2,1]/[-1,-1] 全部返回 4；
-coroot_index([1,0])=0、([2,1])=2、([1,2])=4。返回 4=npos 疑似
-find_index 未命中时 internal=numRoots → signed=4 的哨兵，但 [1,1]、
-[1,2] 明明是根却"未命中"，说明 vec 的坐标基不是表面上的简单根坐标
-（可能是 ambient/权重格坐标，或与 RootSystem 构造用的 Cartan 约定有关）。
-实现前用追加探针（每个已知根向量逐个试 + posroots 输出对照）+
-Rust 侧 RootNumbering 实验确定精确语义，差分定夺。
+~~开放问题~~ **已解（2026-08-11 追加探针 /tmp/probe_rootidx2.at）**：
+无 bug，vec 坐标基就是 datum 各自的原生格基，之前的"反直觉"全部
+来自 sc/ad 两种 datum 的基不同：
+- **adjoint datum**（`adjoint(Lie_type("B2"))`）：根 = 简单根坐标，
+  posroots `[1,0],[0,1],[1,1],[1,2]`，root_index 依次 0/1/2/3；
+  余根 = 基本余权重坐标（Cartan 的列），poscoroots
+  `[2,-1],[-2,2],[2,0],[0,1]`，coroot_index([0,1])=3，
+  `([1,0])=([1,1])=([1,2])=4`（未命中哨兵）。
+- **simply_connected datum**（`simply_connected(Lie_type("B2"),true)`）：
+  根 = 基本权重坐标（Cartan 的行，C=[[2,-2],[-1,2]]），posroots
+  `[2,-2],[-1,2],[0,2],[1,0]`，root_index([1,0])=3，
+  `([0,1])=([1,1])=([2,1])=4`；余根 = 简单余根坐标，poscoroots
+  `[1,0],[0,1],[1,1],[2,1]`，coroot_index 依次 0/1/2/3（[2,1]→3）。
+- **符号编号**：正根 0..numPos-1（= posroots 显示序 = 内部 d_roots
+  序）；负根 -1..-numPos，`-k` = posroot `k-1` 的负（rootMinus
+  `numRoots-1-i`）；`root(rd,-1)`/`coroot(rd,-1)` 均已验证。
+- **未命中哨兵**：find_index miss → internal=numRoots →
+  signed=numPosRoots（B2 上即 4），无错误。
+- **越界错误**：`root(sc,4)` → Runtime error `Illegal root index 4`
+  （internal_root_index 校验，atlas-types.w:1428-1439）。
+- 之前探针的 root_index([1,0])=2 来自另一种 datum 构造（Cartan 约定
+  不同），与本次自洽数据不矛盾。fixture 应同时覆盖 sc 与 ad 两种 datum，
+  并含负根、miss、越界错误三态。
 
 ### 5.6 根编号族解封（2026-08-11 查证，原"阻塞"状态过期）
 
