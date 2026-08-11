@@ -216,6 +216,9 @@ verified_hpc_reference，capture 3535636）**：
     # print_gradings (slice C).
     FixturePlan(name="domain/print_gradings"),
     FixturePlan(name="domain/print_gradings_rejected"),
+    # print_real_Weyl + print_blockstabilizer (slice C; RealWeyl crate 51b9d83).
+    FixturePlan(name="domain/real_weyl_print"),
+    FixturePlan(name="domain/real_weyl_print_rejected"),
 ```
 
 ### 5.1 root_ladder_bottoms/coroot_ladder_bottoms（小件，可独立切片）
