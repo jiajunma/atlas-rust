@@ -1,11 +1,12 @@
 {
   "fixture": "domain/block_sizes",
   "fixture_sha256": "4511ad04789c9731248d4a5e78ef655377d296a6a1694afe6932a22d223ae58d",
-  "rust_status": "pending_hpc_differential",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
-  "note": "block_sizes/block_size via strong-real fiber orbit sizes; B2 rows restored after the fiber_size switch (oracle 4/5/12). Local pinned-oracle capture; HPC differential pending.",
+  "note": "block_sizes/block_size via strong-real fiber orbit sizes; B2 rows restored after the fiber_size switch (oracle 4/5/12). Local pinned-oracle capture; HPC differential job 3533446 PASS (199 fixtures: 198 PASS, 1 known PARTIAL, 0 FAIL).",
   "oracle": "atlas",
   "oracle_exit_status": 0,
   "stage": "typed-pipeline-swap",
-  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "differential_job": "3533446"
 }

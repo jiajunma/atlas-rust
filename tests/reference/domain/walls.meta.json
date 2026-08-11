@@ -1,11 +1,12 @@
 {
   "fixture": "domain/walls",
   "fixture_sha256": "e24cee1b5fdcc31ff4bac0f45e3d138637f5201524d67d90eb866a03f5a0027b",
-  "rust_status": "pending_hpc_differential",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
-  "note": "walls/walls_attitude (alcoves.cpp:112-236) and from_dominant on A2/B2/A1.A1/A1.T1. Local pinned-oracle capture; HPC differential pending.",
+  "note": "walls/walls_attitude (alcoves.cpp:112-236) and from_dominant on A2/B2/A1.A1/A1.T1. Local pinned-oracle capture; HPC differential job 3533446 PASS (199 fixtures: 198 PASS, 1 known PARTIAL, 0 FAIL).",
   "oracle": "atlas",
   "oracle_exit_status": 0,
   "stage": "typed-pipeline-swap",
-  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "differential_job": "3533446"
 }

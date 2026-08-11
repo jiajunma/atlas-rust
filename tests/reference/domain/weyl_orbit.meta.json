@@ -1,11 +1,12 @@
 {
   "fixture": "domain/weyl_orbit",
   "fixture_sha256": "5ea28225966a8c9b5e98fdddce0f5598180b34a4750c78e2b93ae4eae6d46023",
-  "rust_status": "pending_hpc_differential",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
-  "note": "Weyl_orbit/Weyl_orbit_ws both argument orders (rootdata.cpp:1690-1876) on A2/B2/A1.A1/A1.T1. Local pinned-oracle capture; HPC differential pending.",
+  "note": "Weyl_orbit/Weyl_orbit_ws both argument orders (rootdata.cpp:1690-1876) on A2/B2/A1.A1/A1.T1. Local pinned-oracle capture; HPC differential job 3533446 PASS (199 fixtures: 198 PASS, 1 known PARTIAL, 0 FAIL).",
   "oracle": "atlas",
   "oracle_exit_status": 0,
   "stage": "typed-pipeline-swap",
-  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "differential_job": "3533446"
 }
