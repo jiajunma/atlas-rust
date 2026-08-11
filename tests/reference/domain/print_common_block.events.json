@@ -1,0 +1,163 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/print_common_block",
+  "status": "pending_hpc_reference",
+  "events": [
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rd': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'A1'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ic': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type A1, with involution defining\ninner class of type 'c', with 2 real forms and 2 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rf': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "connected split real group with Lie algebra 'sl(2,R)'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'p': Param\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "final parameter(x=2,lambda=[2]/1,nu=[1]/2)"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Parameter defines element 0 of the following common block,\nas transformed by <>:\n0:  0  []   *(x=2,gamma-lambda=  [1]/2)  1^e\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'q': Param\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "final parameter(x=0,lambda=[2]/1,nu=[0]/1)"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Parameter defines element 0 of the following common block,\nas transformed by <>:\n0:  0  [i1]  1   (2,*)  *(x=0,gamma-lambda=  [0]/1)  e\n1:  0  [i1]  0   (2,*)  *(x=1,gamma-lambda=  [0]/1)  e\n2:  1  [r1]  2   (0,1)  *(x=2,gamma-lambda=  [0]/1)  1^e\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'q2': Param\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "final parameter(x=1,lambda=[4]/1,nu=[0]/1)"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Parameter defines element 1 of the following common block,\nas transformed by <>:\n0:  0  [i1]  1   (2,*)  *(x=0,gamma-lambda=  [0]/1)  e\n1:  0  [i1]  0   (2,*)  *(x=1,gamma-lambda=  [0]/1)  e\n2:  1  [r1]  2   (0,1)  *(x=2,gamma-lambda=  [0]/1)  1^e\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'q3': Param\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "non-final parameter(x=2,lambda=[2]/1,nu=[0]/1)"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Parameter defines element 2 of the following common block,\nas transformed by <>:\n0:  0  [i1]  1   (2,*)  *(x=0,gamma-lambda=  [0]/1)  e\n1:  0  [i1]  0   (2,*)  *(x=1,gamma-lambda=  [0]/1)  e\n2:  1  [r1]  2   (0,1)   (x=2,gamma-lambda=  [0]/1)  1^e\nParameter defines element 0 of the following block:\n0:  0  []   *(x=2,gamma-lambda=  [1]/2)  1^e\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rb': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'B2'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ib': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type B2, with involution defining\ninner class of type 'c', with 3 real forms and 3 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rfb': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "connected split real group with Lie algebra 'so(3,2)'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'pb': Param\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "final parameter(x=0,lambda=[2,2]/1,nu=[0,0]/1)"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Parameter defines element 0 of the following common block,\nas transformed by <>:\n 0:  0  [i1,i1]   1   2   ( 4, *)  ( 6, *)  *(x= 0,gamma-lambda=   [0,0]/1)  e\n 1:  0  [i1,ic]   0   1   ( 4, *)  ( *, *)  *(x= 1,gamma-lambda=   [0,0]/1)  e\n 2:  0  [i1,i1]   3   0   ( 5, *)  ( 6, *)  *(x= 2,gamma-lambda=   [0,0]/1)  e\n 3:  0  [i1,ic]   2   3   ( 5, *)  ( *, *)  *(x= 3,gamma-lambda=   [0,0]/1)  e\n 4:  1  [r1,C+]   4   8   ( 0, 1)  ( *, *)  *(x= 4,gamma-lambda=   [0,0]/1)  1^e\n 5:  1  [r1,C+]   5   9   ( 2, 3)  ( *, *)  *(x= 5,gamma-lambda=   [0,0]/1)  1^e\n 6:  1  [C+,r1]   7   6   ( *, *)  ( 0, 2)  *(x= 6,gamma-lambda=   [0,0]/1)  2^e\n 7:  2  [C-,i2]   6   7   ( *, *)  (10,11)  *(x= 7,gamma-lambda=   [0,0]/1)  1x2^e\n 8:  2  [i1,C-]   9   4   (10, *)  ( *, *)  *(x= 8,gamma-lambda=   [0,0]/1)  2x1^e\n 9:  2  [i1,C-]   8   5   (10, *)  ( *, *)  *(x= 9,gamma-lambda=   [0,0]/1)  2x1^e\n10:  3  [r1,r2]  10  11   ( 8, 9)  ( 7, *)  *(x=10,gamma-lambda=   [0,0]/1)  1^2x1^e\n11:  3  [rn,r2]  11  10   ( *, *)  ( 7, *)  *(x=10,gamma-lambda=   [1,0]/1)  1^2x1^e\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'pb2': Param\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "non-final parameter(x=5,lambda=[2,2]/1,nu=[0,0]/1)"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Parameter defines element 5 of the following common block,\nas transformed by <>:\n 0:  0  [i1,i1]   1   2   ( 4, *)  ( 6, *)  *(x= 0,gamma-lambda=   [0,0]/1)  e\n 1:  0  [i1,ic]   0   1   ( 4, *)  ( *, *)  *(x= 1,gamma-lambda=   [0,0]/1)  e\n 2:  0  [i1,i1]   3   0   ( 5, *)  ( 6, *)  *(x= 2,gamma-lambda=   [0,0]/1)  e\n 3:  0  [i1,ic]   2   3   ( 5, *)  ( *, *)  *(x= 3,gamma-lambda=   [0,0]/1)  e\n 4:  1  [r1,C+]   4   8   ( 0, 1)  ( *, *)   (x= 4,gamma-lambda=   [0,0]/1)  1^e\n 5:  1  [r1,C+]   5   9   ( 2, 3)  ( *, *)   (x= 5,gamma-lambda=   [0,0]/1)  1^e\n 6:  1  [C+,r1]   7   6   ( *, *)  ( 0, 2)  *(x= 6,gamma-lambda=   [0,0]/1)  2^e\n 7:  2  [C-,i2]   6   7   ( *, *)  (10,11)   (x= 7,gamma-lambda=   [0,0]/1)  1x2^e\n 8:  2  [i1,C-]   9   4   (10, *)  ( *, *)  *(x= 8,gamma-lambda=   [0,0]/1)  2x1^e\n 9:  2  [i1,C-]   8   5   (10, *)  ( *, *)  *(x= 9,gamma-lambda=   [0,0]/1)  2x1^e\n10:  3  [r1,r2]  10  11   ( 8, 9)  ( 7, *)   (x=10,gamma-lambda=   [0,0]/1)  1^2x1^e\n11:  3  [rn,r2]  11  10   ( *, *)  ( 7, *)  *(x=10,gamma-lambda=   [1,0]/1)  1^2x1^e\n"
+    }
+  ]
+}

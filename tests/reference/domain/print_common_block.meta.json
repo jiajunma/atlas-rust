@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/print_common_block",
+  "fixture_sha256": "2a72b84b4b30990c9de5625dd51ad4f4f73094238cb9d3e05e75e41e32000441",
+  "rust_status": "pending_hpc_differential",
+  "reference_status": "pending_hpc_reference",
+  "note": "print_common_block(Param) + print_block(Param) on SL(2,R)/B2: common-block table layout, pool reuse across params (elements 0/1/2/5 in stored block), trivial transforms observed only (non-trivial \"as transformed by <w>\" path not triggered by small cases). Pinned rev has only print_block(Param)+print_common_block(Param); no print_partial_* variants. Local pinned-oracle capture; HPC reference capture pending byte-verification.",
+  "oracle": "atlas",
+  "oracle_exit_status": 0,
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+}
