@@ -4807,6 +4807,60 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 Type::Tuple(vec![Type::row(int_type()), primitive_type(Prim::WeylElt)]),
                 0,
             ),
+            // Weyl orbit / alcove walls surface (atlas-types.w:2271-2281):
+            // both argument orders of Weyl_orbit and Weyl_orbit_ws, plus
+            // the alcove wall set and the attitude element.
+            domain_builtin(
+                "Weyl_orbit",
+                Type::tuple(vec![
+                    primitive_type(Prim::RootDatum),
+                    primitive_type(Prim::Vec),
+                ]),
+                primitive_type(Prim::Mat),
+                0,
+            ),
+            domain_builtin(
+                "Weyl_orbit",
+                Type::tuple(vec![
+                    primitive_type(Prim::Vec),
+                    primitive_type(Prim::RootDatum),
+                ]),
+                primitive_type(Prim::Mat),
+                0,
+            ),
+            domain_builtin(
+                "Weyl_orbit_ws",
+                Type::tuple(vec![
+                    primitive_type(Prim::RootDatum),
+                    primitive_type(Prim::Vec),
+                ]),
+                Type::row(primitive_type(Prim::WeylElt)),
+                0,
+            ),
+            domain_builtin(
+                "Weyl_orbit_ws",
+                Type::tuple(vec![
+                    primitive_type(Prim::Vec),
+                    primitive_type(Prim::RootDatum),
+                ]),
+                Type::row(primitive_type(Prim::WeylElt)),
+                0,
+            ),
+            domain_builtin(
+                "walls",
+                Type::tuple(vec![
+                    primitive_type(Prim::RootDatum),
+                    primitive_type(Prim::RatVec),
+                ]),
+                Type::Tuple(vec![Type::row(int_type()), int_type()]),
+                0,
+            ),
+            domain_builtin(
+                "walls_attitude",
+                Type::tuple(vec![primitive_type(Prim::RootDatum), Type::row(int_type())]),
+                primitive_type(Prim::WeylElt),
+                0,
+            ),
             domain_builtin(
                 "cofolded",
                 primitive_type(Prim::InnerClass),
