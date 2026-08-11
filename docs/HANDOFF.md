@@ -4,6 +4,38 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-11c (alcove/FPP verified; 4 fixture pairs prepped)
+
+- **Differential 3533851 PASS**: 201 fixtures, 200 PASS / 1 known PARTIAL
+  (container_syntax_errors) / 0 FAIL; alcove_fpp(+_rejected) metas now
+  verified_hpc (`7032dd9`).
+- **Four fixture pairs prepped and committed** (oracle-validated under
+  true harness conditions — NO basic.at preload, source+quit):
+  root_numbering(+_rejected) and coroot_queries(+_rejected) (`e6829d8`),
+  orbit_ws(+_rejected) (`6de7f27`), print_gradings(+_rejected)
+  (`b8ee71a`). They wait for their implementation slices; events/meta/
+  FixturePlan registration belong to those slices. Probe facts are in
+  queue §5.7/§5.3/§5.2/§4. Gotcha recorded: two_rho_check's [int]/
+  predicate overloads are basic.at script-level, unavailable in fixtures;
+  adjoint(LieType-with-torus) errors "Sub-lattice matrix should have
+  size 2x2" (Cartan_matrix(lt) is semisimple-sized); basic_orbit_ws
+  convention is v[0..stab_rank]=stab walls + v[stab_rank]=final root.
+- **Recon now covers every remaining family**: twisted/deform crate gaps
+  = ext contributions (repr.cpp:1901-1931), scaled_extended_finalise
+  (ext_block.cpp:2736-2807), extended_finalise, extended_restrict_to_K,
+  twisted_KL_column_at_s (~2300-2424), block_deformation_to_height
+  (repr.cpp:2027-2124); finalise three scoped (queue §5.5); language
+  emulation template = full_deformation_terms (domain_builtins.rs:2050).
+  Note: pinned atlas has NO ext_param/star builtins — "ext_param+star"
+  names the C++ machinery slice = shift_flip + finalise three + twisted
+  family.
+- In flight: agent-35 RealWeyl crate slice (exclusive on
+  atlas-real-group); agent-36 ext three-builtin registration
+  (extended_block/raw_ext_KL/partial_extended_KL_block, exclusive on
+  atlas-core). Next after agent-36: small sweep (8 near-flips) +
+  root-numbering 6 (fixtures ready), then orbit/ladder (fixture ready),
+  then print_gradings (fixture ready).
+
 ## Checkpoint - 2026-08-11b (alcove/FPP landed; ext slice in flight)
 
 - **alcove/FPP slice landed (`53581d8`, agent-30)**: alcove_center,
