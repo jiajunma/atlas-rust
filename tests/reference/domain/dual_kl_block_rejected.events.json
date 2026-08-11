@@ -1,7 +1,7 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "domain/dual_kl_block_rejected",
-  "status": "pending_hpc_reference",
+  "status": "verified_hpc_reference",
   "events": [
     {
       "kind": "ReportLine",
