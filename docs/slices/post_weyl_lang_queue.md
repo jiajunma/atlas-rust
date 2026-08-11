@@ -294,6 +294,32 @@ global_KGB——print_X 需要新的 crate 切片（估 600+ 行），不能复�
 缺口标签（REMAINING 2026-08-06）：Split 定稿 + common-block srm pool +
 PolP；实现切片按签名逐个补齐并用差分定夺。
 
+**twisted 族 crate 缺口清单（2026-08-11 补查）**：
+- `twisted_deform`（:8120-8150）：核心是 `Rep_table::
+  twisted_deformation_terms`（repr.cpp:2426-2520，~95 行）——依赖
+  ext_block 版 `contributions`（repr.cpp:1901-1931，~30 行，用
+  first_descent_among/descent_type/is_like_compact/has_double_image/
+  Cayleys/some_scent/epsilon + "October surprise" 长度变 2 符号）、
+  ExtKlTable（已有）、pool 在 q=-1 求值、orientation_number（语言层
+  orientation_nr 已 live，repr.cpp:455-493 已移植）、exp_i。
+  **crate 缺**：ext contributions；其余齐。
+- `twisted_full_deform`（:8229+）：`Rep_table::twisted_deformation`
+  （repr.cpp:2552-2653）= scale-0 + reducibility 递归（对照语言层
+  full_deformation_terms :2050 模板）+ `ext_block::
+  scaled_extended_finalise`（ext_block.cpp:2736-2807，~70 行）+
+  alcove_center（已 live）。**crate 缺**：scaled_extended_finalise。
+- `twisted_KL_sum_at_s` 两重载（:8370/:8420）：`twisted_KL_column_at_s`
+  （repr.cpp:~2300-2424）。
+- `block_deform`（:8178-8204）：`Rep_table::block_deformation_to_height`
+  （repr.cpp:2027-2124，~100 行）+ reducibility_points 下滑（crate
+  已有 reducibility_points/scale）。
+- is_delta_fixed 检查（两 wrapper 都有）：错误文本
+  `"Parameter not fixed by inner class involution"`；test_final 文本
+  `"Twisted deformation requires final parameter"`。
+- 语言层仿真模板已验证：full_deformation_terms（domain_builtins.rs:
+  2050-2110）按 reducibility point 逐点建块 + crate
+  deformation_terms，无需真 Rep_table 池。twisted 族可同构仿真。
+
 ### 5.7 根编号族六个 builtin（wrapper 锚点 + 探针数据 + 开放问题）
 
 wrapper 全在 atlas-types.w:1487-1560/:2604-2618，安装 :2230-2239/:2649：
