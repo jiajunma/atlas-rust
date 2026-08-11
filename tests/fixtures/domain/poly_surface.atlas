@@ -1,0 +1,46 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("A1"),true)
+ic : InnerClass
+ic := inner_class(rd,[[1]])
+rf : RealForm
+rf := real_form(ic,1)
+V : ParamPol
+V := null_module(rf)
+V
+#V
+real_form(V)
+x : KGBElt
+x := KGB(rf,2)
+p : Param
+p := param(x,[0],[1]/2)
+W : ParamPol
+W := V+p
+W
+#W
+first_term(W)
+last_term(W)
+truncate_above_height(W,100)
+K : KTypePol
+K := K_type_pol(W)
+K
+#K
+real_form(K)
+first_term(K)
+last_term(K)
+truncate_above_height(K,100)
+W_cells(p)
+p0 : Param
+p0 := param(KGB(rf,0),[0],[0]/1)
+p1 : Param
+p1 := param(KGB(rf,1),[0],[0]/1)
+height(p0)
+height(p)
+W2 : ParamPol
+W2 := V+p0+p1+p
+W2
+truncate_above_height(W2,1)
+truncate_above_height(W2,0)
+K2 : KTypePol
+K2 := K_type_pol(W2)
+truncate_above_height(K2,1)
+truncate_above_height(K2,0)
