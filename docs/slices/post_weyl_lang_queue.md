@@ -337,15 +337,28 @@ root_permutation/root_involution 可以做了——直接用既有 RootNumbering
 G2/F4/E 型的排序细节（[2,1] 先于 [1,1] 这类非纯 level 序）由首次
 差分定夺，fixture 要覆盖这些型。
 
-### 5.2 affine_orbit_ws/basic_orbit_ws（中等 crate 切片）
+### 5.2 affine_orbit_ws/basic_orbit_ws（~~crate 切片~~ 已降级为语言层切片）
 
 wrapper atlas-types.w:2014-2060（安装 :2241 附近；basic_orbit_ws
 `(RootDatum,[int],int->[W_elt])`，affine_orbit_ws `(RootDatum,ratvec->[W_elt])`）。
-需要 weyl.cpp 的三个未移植函数：`affine_orbit_ws`、
-`complete_affine_component`、`finite_subquotient`（crate weyl.rs 目前只有
-WeylAction/WeylGroup 枚举，无轨道生成器）。basic_orbit_ws 的校验：
-`"Index too large for given list of root numbers"`、锐角检查
-`"Roots {a} and {b} have acute angle."`；to_affine_orbit 判定（final 的
-余根是否依赖 stab 的余根 + stab 与 final 所在 Dynkin 分量求交）。
+**2026-08-11 复查**：alcove/FPP 切片（53581d8）已把几乎全部机制搬进
+domain_builtins.rs helper 层——wall_set(:2915)、extend_orbit_words(:3574)、
+basic_orbit_adjoint(:4070)、vertex_orbit(:4095)、reflection_word(:4167)、
+list_roots_and_labels(:4258)、components(:6370，签名是 Cartan 矩阵版，
+C++ rootdata::components 是 (rd,S) 根子集版，需薄适配)。
+**不再需要 crate 切片**；缺的只是三个薄顶层：
+`extend_affine_component`（alcoves.cpp:665-697，组合
+list_roots_and_labels + extend_orbit_words + vertex_orbit）、
+`finite_subquotient`(:699-711)/`complete_affine_component`(:713-722)、
+`affine_orbit_ws`(:725-738，wall_set + components + 逐分量
+extend_affine_component)。
+basic_orbit_ws 的校验：`"Index too large for given list of root numbers"`、
+锐角检查 `"Roots {a} and {b} have acute angle."`（atlas-types.w:2068-2090，
+内部号转符号号输出）；to_affine_orbit 判定（:2100-2116，分量内余根
+Cartan 子阵 kernel 维数>0，stab 与 final 分量求交）。
 affine_orbit_ws 尺寸检查 `"Rank and rational weight size mismatch {r}:{s}"`。
 W_elt 渲染已存在（Weyl_orbit 切片）。
+**另**：root_ladder_bottoms/coroot_ladder_bottoms 需要 RootSystem 加
+`min_roots_for`/`min_coroots_for`（rootdata.h:154-157 语义，wrapper
+:1569-1597，RootNbrSet → 符号根号 [int] 输出）——这是本族唯一需要
+碰 crate 结构体的部分，量很小，可与上述合并为一个语言层切片。
