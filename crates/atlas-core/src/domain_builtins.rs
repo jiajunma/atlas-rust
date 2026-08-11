@@ -31,7 +31,7 @@ use atlas_real_group::{
     layout_involution, longest_action, minimal_torus_part, on_basis as lattice_on_basis, pair,
     quotient_relation_basis as domain_quotient_relation_basis,
     replace_relation_generators as domain_replace_relation_generators, AdjointFiberBudget,
-    BasedRootDatum, BlockDescent, BlockGraph, CartanClass, CartanClassification,
+    BasedRootDatum, BlockDescent, BlockGraph, CartanClassification,
     CartanClassificationBudget, CartanId, Coweight, ExternalFormOrder, InnerClass,
     InnerClassLayout, IntegerLatticeBudget, InvolutionTable, InvolutionTableBudget, KType,
     KgbGraph, KgbId, KgbStatus, KlPol, KlTable, LatticeInvolution, ModTwoVector, RationalWeight,
@@ -4478,33 +4478,22 @@ fn block_size_numbers(
     Ok((form, dual_form))
 }
 
-/// fiberSize/dualFiberSize (innerclass.cpp:603-640): the per-form count of
-/// adjoint-fiber elements at one Cartan, enumerated by the fiber's
-/// canonical masks exactly like `fiber_partition`.
+/// fiberSize/dualFiberSize (innerclass.cpp:603-614): the class size of the
+/// form's strong-real fiber orbit at one Cartan — the full fiber group
+/// partitioned by central square classes (`fiber_partition(square_class)
+/// .classSize`), NOT the adjoint weak partition. The B2 simply-connected
+/// complex inner class separates the two (oracle 4/5/12 vs the adjoint
+/// count 3/3/8).
 fn fiber_size(
-    cartan: &CartanClass,
+    strong: &StrongRealClassification,
     form: WeakRealFormId,
+    cartan: CartanId,
     span: SourceSpan,
 ) -> Result<u64, Diagnostic> {
-    let dimension = cartan.grading().adjoint_fiber().dimension();
-    // The partition's mask-bits bound keeps this shift in range.
-    let element_count = 1_u64
-        .checked_shl(
-            u32::try_from(dimension)
-                .map_err(|_| runtime(span, "internal fiber dimension overflow"))?,
-        )
-        .ok_or_else(|| runtime(span, "internal fiber dimension overflow"))?;
-    let mut count = 0_u64;
-    for mask in 0..element_count {
-        let local = cartan
-            .partition()
-            .class_of_mask(mask)
-            .map_err(|error| runtime(span, error.to_string()))?;
-        if cartan.labels().label(local) == Some(form) {
-            count += 1;
-        }
-    }
-    Ok(count)
+    let size = strong
+        .fiber_size(form, cartan)
+        .ok_or_else(|| runtime(span, "internal strong-real range error"))?;
+    u64::try_from(size).map_err(|_| runtime(span, "internal fiber size overflow"))
 }
 
 /// InnerClass::block_size (innerclass.cpp:1100-1114): the sum, over the
@@ -4541,14 +4530,10 @@ fn block_size_sum(
             .classification
             .cartan_class(id)
             .expect("Cartan ids enumerate in-range classes");
-        let dual_cartan = dual
-            .classification
-            .cartan_class(*dual_id)
-            .expect("the correspondence covers every Cartan class");
         let orbit = u64::try_from(cartan.twisted_involution_count())
             .map_err(|_| runtime(span, "internal block size overflow"))?;
-        let factor = fiber_size(cartan, internal, span)?;
-        let dual_factor = fiber_size(dual_cartan, dual_internal, span)?;
+        let factor = fiber_size(&context.strong, internal, id, span)?;
+        let dual_factor = fiber_size(&dual.strong, dual_internal, *dual_id, span)?;
         let term = orbit
             .checked_mul(factor)
             .and_then(|product| product.checked_mul(dual_factor))
