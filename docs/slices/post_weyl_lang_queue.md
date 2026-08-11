@@ -247,6 +247,39 @@ global_KGB——print_X 需要新的 crate 切片（估 600+ 行），不能复�
 缺口标签（REMAINING 2026-08-06）：Split 定稿 + common-block srm pool +
 PolP；实现切片按签名逐个补齐并用差分定夺。
 
+### 5.7 根编号族六个 builtin（wrapper 锚点 + 探针数据 + 开放问题）
+
+wrapper 全在 atlas-types.w:1487-1560/:2604-2618，安装 :2230-2239/:2649：
+- `root_index (RootDatum,vec->int)`：`find_index(d_roots, r)` 线性查找
+  （rootdata.h:523-524）+ convert_to_signed_root_index（:1478-1485）。
+- `coroot_index (RootDatum,vec->int)`：同构（rootdata.h:536-537）。
+- `root_expression (RootDatum,int->vec)`：`root_expr(alpha)` 简单坐标
+  （rootdata.h:221，internal_root_index 校验）。
+- `coroot_expression (RootDatum,int->vec)`：同构（rootdata.h:222）。
+- `root_involution (RootDatum,int->vec)`：
+  `simple_root_permutation(rt_abs(alpha))`——任意正根号的反射排列。
+- `root_permutation (WeylElt->vec)`：`permuted_root` 全体正根 +
+  rootMinus 负根镜像，返回长 numRoots 的**内部 RootNbr（无符号）**向量。
+
+探针捕获（/tmp/rootnum_probe.at、/tmp/rootidx_probe.at，oracle 4d3e9449）：
+- root_expression B2 prefer_coroots=true：序 [1,0],[0,1],[1,2],[1,1]
+  （余根键排序，[1,2] 先于 [1,1]）；G2：[1,0],[0,1],[3,1],[3,2],[1,1],[2,1]。
+- B2 prefer_coroots=false（fixture 约定）：posroots 列 [1,0],[0,1],[1,1],
+  [1,2]（根坐标 level 序）——与 prefer_coroots=true 的序不同，两边都已
+  与 Rust 已验证行为一致（rootdata.cpp:164-167 对偶 Cartan 语义）。
+- root_involution(rb,2) → `[ 5, 6, 7, 3, 4, 0, 1, 2 ]`（长 numRoots=8，
+  内部 RootNbr）；root_involution(rb,3) → `[ 7, 4, 2, 6, 1, 5, 3, 0 ]`。
+
+**开放问题（实现切片必须先解）**：`root_index`/`coroot_index` 的 vec
+坐标解释反直觉——prefer_coroots=false 的 sc-B2 上：
+root_index([1,0])=2，而 [1,1]/[1,2]/[2,1]/[-1,-1] 全部返回 4；
+coroot_index([1,0])=0、([2,1])=2、([1,2])=4。返回 4=npos 疑似
+find_index 未命中时 internal=numRoots → signed=4 的哨兵，但 [1,1]、
+[1,2] 明明是根却"未命中"，说明 vec 的坐标基不是表面上的简单根坐标
+（可能是 ambient/权重格坐标，或与 RootSystem 构造用的 Cartan 约定有关）。
+实现前用追加探针（每个已知根向量逐个试 + posroots 输出对照）+
+Rust 侧 RootNumbering 实验确定精确语义，差分定夺。
+
 ### 5.6 根编号族解封（2026-08-11 查证，原"阻塞"状态过期）
 
 REMAINING 2026-08-04 两条"Root-index builtins limit"已过期。证据：
