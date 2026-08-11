@@ -4,7 +4,34 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
-## Checkpoint - 2026-08-09 (B2 fiber root cause + ext_block core landed)
+## Checkpoint - 2026-08-09 (Weyl builtins + B2 fiber fix landed)
+
+- **Weyl layer (`9111b7d`, agent-30)**: walls/walls_attitude
+  (alcoves.cpp:112-236), Weyl_orbit/Weyl_orbit_ws both orders
+  (rootdata.cpp:1690-1876), from_dominant corrected (lattice_rank torus
+  pass-through; real simple-root pairings; split error wordings).
+  RootNumbering keys on coroot coordinates when the datum prefers
+  coroots (rootdata.cpp:164-167). Fixtures frozen (`afce162`):
+  weyl_orbit(+_rejected)/walls(+_rejected), events from the local pinned
+  oracle via /tmp/stdout_to_events.py (converter: ReportLine/Value display
+  folding/Diagnostic parsing), harness plans registered.
+- **B2 block_sizes root cause fixed (`e83eea2`)**: fiberSize is the
+  strong-real fiber orbit class size (innerclass.cpp:603-614), not the
+  adjoint weak partition; `fiber_size` now delegates to
+  `StrongRealClassification::fiber_size` (B2 rows restored in the
+  fixture; oracle 4/5/12 reproduced). Local replay: 199 fixtures, 196
+  PASS + the two known local FAILs (fromfile_accepted_b10, kgb_hasse
+  30s timeout) + the known PARTIAL.
+- **HPC differential `3533446`** submitted on fat (TIMEOUT=3600,
+  --mem=32G) at dfb4366; on 0 FAIL upgrade the five metas
+  (block_sizes + four weyl) from pending_hpc_differential to
+  verified_hpc.
+- **Known gap queued**: Weyl_orbit oversize-vector semantics
+  (docs/slices/post_weyl_lang_queue.md §1.5); post-Weyl language queue
+  in the same file (alcove/FPP anchors, ext_block registration, print
+  family order).
+- In flight: agent-33 ext_kl crate slice (ext_kl.cpp KL_table +
+  descent_table + ext_KL_matrix); agent-30 alcove/FPP language slice.
 
 - **ext_block core committed (`28e6109`)**: agent-32's slice — DescValue
   32-value classification + predicates, `extended_type`, `ExtBlock::build`
