@@ -174,3 +174,27 @@ root_expression/root_index/root_permutation（oracle 根编号阻塞）、
 root_ladder_bottoms/coroot_ladder_bottoms、shift_flip（见 §4 依赖修正，
 绑 ext_param+star）、twisted_KL_sum_at_s、twisted_deform 族、
 block_deform/KL_block/dual_KL_block（common-block srm pool 语义）。
+
+### 5.1 root_ladder_bottoms/coroot_ladder_bottoms（小件，可独立切片）
+
+wrapper atlas-types.w:1569-1599（安装 :2241-2244），签名
+`(RootDatum,int->[int])`。语义：`min_roots_for(α)`/`min_coroots_for(α)`
+= 使 β-α 不是根的 β 集合（含 α 自身），返回有符号根号列表。
+语言层已有 internal_root_index/convert_to_signed_root_index 等价物
+（domain_builtins.rs:2901/:6562/:8597，walls 切片落地）；crate 缺
+`min_roots_for`/`min_coroots_for`（root_system.rs 预计算，小块新增）。
+oracle 探针（/tmp/ladder_probe.at，B2）：`root_ladder_bottoms(rb,0)` →
+`[-4,-3,-1,0,1,2]`；越界报 `"Illegal root index 4"`。
+
+### 5.2 affine_orbit_ws/basic_orbit_ws（中等 crate 切片）
+
+wrapper atlas-types.w:2014-2060（安装 :2241 附近；basic_orbit_ws
+`(RootDatum,[int],int->[W_elt])`，affine_orbit_ws `(RootDatum,ratvec->[W_elt])`）。
+需要 weyl.cpp 的三个未移植函数：`affine_orbit_ws`、
+`complete_affine_component`、`finite_subquotient`（crate weyl.rs 目前只有
+WeylAction/WeylGroup 枚举，无轨道生成器）。basic_orbit_ws 的校验：
+`"Index too large for given list of root numbers"`、锐角检查
+`"Roots {a} and {b} have acute angle."`；to_affine_orbit 判定（final 的
+余根是否依赖 stab 的余根 + stab 与 final 所在 Dynkin 分量求交）。
+affine_orbit_ws 尺寸检查 `"Rank and rational weight size mismatch {r}:{s}"`。
+W_elt 渲染已存在（Weyl_orbit 切片）。
