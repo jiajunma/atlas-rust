@@ -208,6 +208,29 @@ oracle 探针（/tmp/ladder_probe.at，B2）：`root_ladder_bottoms(rb,0)` →
 rep_context.rs:1156-1159 已移植（repr.cpp:825-925），只差注册 + 薄
 wrapper（atlas-types.w:6561-6568，安装 :7500-7501）。
 
+**print_X wrapper 事实（atlas-types.w:8999-9008，安装 :9124）**：签名
+`(InnerClass->)`。`kgb::global_KGB kgb(G)`（全 square classes 的全局
+Tits KGB，kgb.h:213-266 + kgb.cpp 部分，共 ~1280 行文件）+
+`kgb_io::print_X` 布局（kgb_io.cpp，全文件 277 行）。crate 里停放的
+global_tits.rs（551 行）是合成 real-form 的有理环面运输层，**不是**
+global_KGB——print_X 需要新的 crate 切片（估 600+ 行），不能复用停放件。
+
+### 5.5 twisted/deform 族 + print 三件套签名锚点
+
+- `twisted_deform (Param->ParamPol)`（wrapper :8120，安装 :8573）
+- `twisted_full_deform` 两重载：`(Param->KTypePol)`（:8229，安装 :8577）
+  和 timed `(Param,int->|KTypePol)`（:8293，安装 :8581）
+- `twisted_KL_sum_at_s` 两重载：`(Param->ParamPol)`（:8370，安装 :8586）
+  和 external `(Param,mat->ParamPol)`（:8420，安装 :8589）
+- `block_deform (Param,ParamPol,int->ParamPol,ParamPol)`（:8178，安装 :8574）
+- `dual_KL_block (Param->[Param],int,mat,[vec])`（wrapper :7053，安装 :7517）
+- `print_common_block (Param->)`（print_c_block_wrapper，安装 :7505）、
+  `print_partial_block (Param->)`（:7507）、
+  `print_partial_common_block (Param->)`（:7509）——均绑 common-block
+  srm pool，最后做
+相关已 live 兄弟：full_deform 两安装行（:8575/:8578）、KL_sum_at_s
+（:8583）、block/partial_block（common_block_wrapper 系）。
+
 ### 5.4 deform/KL 族部分签名（臂存在但 partial，需真实现，非翻转）
 
 08-06 sweep 记录"arms were partial"的精确签名地图（typed.rs skip 行 →
