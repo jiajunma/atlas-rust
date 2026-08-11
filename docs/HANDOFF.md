@@ -1475,19 +1475,24 @@ a future cleanup pass rather than schema migration.
   （alcove_center/alcove_root_vertex/FPP_numers/FPP_w_shifts，实现
   `53581d8`，差分 **3533851** 全绿：201 fixtures，200 PASS / 1 已知
   PARTIAL container_syntax_errors / 0 FAIL；meta 升级 `7032dd9`）。
-- 五批后续切片的 reference 已全部 `verified_hpc_reference`（本地 pinned
-  oracle 捕获与 HPC reference_capture **3535636** 字节一致；`e045ec1`
-  + `d1a73b0`）：`root_numbering`（根编号族 6 个）、`coroot_queries`
-  （小件 sweep 8 个）、`orbit_ws`（orbit/ladder 4 个）、`print_gradings`、
-  `poly_surface`（ParamPol/KTypePol skip 重载 ~10 个）。rust_status 均
-  `pending_hpc_differential`；**实现切片收尾时自行在
-  hpc/pipeline_swap_diff.py 注册 FixturePlan**（不要提前注册，未实现会
-  FAIL 污染其他切片的差分）。预研事实见
-  docs/slices/post_weyl_lang_queue.md §5。
+- 后续切片的 reference 已**全部** `verified_hpc_reference`（本地 pinned
+  oracle 捕获与 HPC reference_capture 3535636/3535942/3536119/3536288/
+  3536369/3536421/3536583 字节一致；`e045ec1`+`d1a73b0` 起）：
+  `root_numbering`（根编号族 6 个）、`coroot_queries`（小件 sweep 8 个）、
+  `orbit_ws`（orbit/ladder 4 个）、`print_gradings`、`poly_surface`
+  （ParamPol/KTypePol skip 重载 ~10 个）、`real_weyl_print`
+  （print_real_Weyl/print_blockstabilizer）、`print_x`（global KGB 表）、
+  `print_common_block`、`dual_kl_block`、`twisted_family`
+  （twisted_deform/twisted_full_deform/twisted_KL_sum_at_s）、
+  `block_deform`。rust_status 均 `pending_hpc_differential`；
+  **实现切片收尾时自行在 hpc/pipeline_swap_diff.py 注册 FixturePlan**
+  （片段在 docs/slices/post_weyl_lang_queue.md §5 开头；不要提前注册，
+  未实现会 FAIL 污染其他切片的差分）。预研事实见同文档 §4/§5。
 - 在飞切片（串行纪律：atlas-core 归 ext agent，atlas-real-group 归
   RealWeyl agent）：extended_block/raw_ext_KL/partial_extended_KL_block
-  三注册（语言层）；RealWeyl crate 切片（print_real_Weyl/
-  print_blockstabilizer 的前置）。
+  三注册（语言层，实现已写完编译干净，收尾验收中）；RealWeyl crate
+  切片**已交付** `51b9d83`（real_weyl.rs 1858 行，10 个字节级锚点；
+  对偶侧精确 -θ fiber 链的坑见 REMAINING_BUILTINS.md）。
 - 后续顺序：切片 A（coroot_queries 8 + root_numbering 6）→ 切片 B
   （orbit/ladder + poly 表层）→ 切片 C（print_gradings，等 RealWeyl）
   → dual_KL_block + KL_block 第二重载 → deform/twisted 族 +
