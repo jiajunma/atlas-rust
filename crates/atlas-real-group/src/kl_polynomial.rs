@@ -175,8 +175,10 @@ impl KlPol {
         Self(coefficients)
     }
 
-    /// Test-friendly constructor from coefficients.
-    #[cfg(test)]
+    /// Constructor from coefficients, trimming trailing zeros (the empty
+    /// vector is the zero polynomial). `ext_kl` builds polynomials
+    /// coefficient-by-coefficient (e.g. `extract_M`), which the shift/scale
+    /// combinators cannot express.
     pub fn from_coefficients(coefficients: Vec<i32>) -> Self {
         Self::trim(coefficients)
     }

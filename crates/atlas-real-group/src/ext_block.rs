@@ -1582,6 +1582,13 @@ impl SPol {
         SPol(coefficients)
     }
 
+    /// The raw coefficient vector (coefficient of `q^i` at index `i`);
+    /// `ext_kl::product_comp` needs it to convert a `T_coef` result into
+    /// the `KlPol` world (ext_kl.cpp:209-212).
+    pub fn as_slice(&self) -> &[i64] {
+        &self.0
+    }
+
     /// Set the coefficient of `q^degree` (upstream `result[k]=c`).
     fn set(&mut self, degree: usize, coefficient: i64) {
         if self.0.len() <= degree {

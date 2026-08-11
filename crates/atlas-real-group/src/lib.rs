@@ -18,6 +18,7 @@ mod dual;
 mod dynkin;
 mod error;
 pub mod ext_block;
+pub mod ext_kl;
 mod form_name;
 // Consumer is the synthetic-real-form builder; the carrier lands first so
 // its rational transport can be reviewed independently.
