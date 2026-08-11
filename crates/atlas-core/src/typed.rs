@@ -4861,6 +4861,44 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::WeylElt),
                 0,
             ),
+            // Alcove center / FPP enumerations (atlas-types.w:2279,
+            // 2282-2283, 2287-2290).
+            domain_builtin(
+                "alcove_center",
+                primitive_type(Prim::Param),
+                primitive_type(Prim::Param),
+                0,
+            ),
+            domain_builtin(
+                "alcove_root_vertex",
+                Type::tuple(vec![
+                    primitive_type(Prim::RootDatum),
+                    primitive_type(Prim::RatVec),
+                ]),
+                primitive_type(Prim::Vec),
+                0,
+            ),
+            domain_builtin(
+                "FPP_numers",
+                Type::tuple(vec![
+                    primitive_type(Prim::RootDatum),
+                    primitive_type(Prim::RatVec),
+                ]),
+                Type::row(primitive_type(Prim::Vec)),
+                0,
+            ),
+            domain_builtin(
+                "FPP_w_shifts",
+                Type::tuple(vec![
+                    primitive_type(Prim::RootDatum),
+                    primitive_type(Prim::RatVec),
+                ]),
+                Type::row(Type::Tuple(vec![
+                    primitive_type(Prim::WeylElt),
+                    Type::row(primitive_type(Prim::Vec)),
+                ])),
+                0,
+            ),
             domain_builtin(
                 "cofolded",
                 primitive_type(Prim::InnerClass),

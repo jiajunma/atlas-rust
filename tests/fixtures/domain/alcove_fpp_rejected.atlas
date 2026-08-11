@@ -1,0 +1,7 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("A2"),true)
+alcove_root_vertex(rd,[1,2,3])
+FPP_numers(rd,[1,2,3])
+FPP_w_shifts(rd,[1,2,3])
+FPP_w_shifts(rd,[-1,0])
+FPP_numers(rd,[-1,0])

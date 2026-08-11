@@ -31,13 +31,13 @@ use atlas_real_group::{
     layout_involution, longest_action, minimal_torus_part, on_basis as lattice_on_basis, pair,
     quotient_relation_basis as domain_quotient_relation_basis,
     replace_relation_generators as domain_replace_relation_generators, AdjointFiberBudget,
-    BasedRootDatum, BlockDescent, BlockGraph, CartanClassification,
-    CartanClassificationBudget, CartanId, Coweight, ExternalFormOrder, InnerClass,
-    InnerClassLayout, IntegerLatticeBudget, InvolutionTable, InvolutionTableBudget, KType,
-    KgbGraph, KgbId, KgbStatus, KlPol, KlTable, LatticeInvolution, ModTwoVector, RationalWeight,
-    RealFormPresentation, RealFormSeed, RelationBasis, RelationError, RelationGenerator,
-    RelationMatrix, RepContext, RootId, RootInvolutionData, RootKind, RootSystem, StandardRepr,
-    StrongRealClassification, StructureError, WeakRealFormId, Weight, WeylElement, WeylInterface,
+    BasedRootDatum, BlockDescent, BlockGraph, CartanClassification, CartanClassificationBudget,
+    CartanId, Coweight, ExternalFormOrder, InnerClass, InnerClassLayout, IntegerLatticeBudget,
+    InvolutionTable, InvolutionTableBudget, KType, KgbGraph, KgbId, KgbStatus, KlPol, KlTable,
+    LatticeInvolution, ModTwoVector, RationalWeight, RealFormPresentation, RealFormSeed,
+    RelationBasis, RelationError, RelationGenerator, RelationMatrix, RepContext, RootId,
+    RootInvolutionData, RootKind, RootSystem, StandardRepr, StrongRealClassification,
+    StructureError, WeakRealFormId, Weight, WeylElement, WeylInterface,
 };
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
@@ -3723,6 +3723,1024 @@ fn simple_basis(root_system: &RootSystem, rs: &[RootId]) -> Result<Vec<RootId>, 
         }
     }
     Ok(result)
+}
+
+// ============================================================
+// alcove/FPP layer (alcoves.cpp): root vertices, the center
+// classifier, facet orbits, and the FPP generation loops.
+// ============================================================
+
+/// Determinant and adjugate of an integer matrix, by fraction-free
+/// Bareiss elimination for the determinant and cofactor expansion for
+/// the adjugate (ranks here stay <= 9). `adj / det` is the inverse.
+fn adjugate_det(matrix: &[Vec<i32>]) -> (Vec<Vec<i64>>, i64) {
+    let n = matrix.len();
+    if n == 0 {
+        return (Vec::new(), 1);
+    }
+    fn minor_det(matrix: &[Vec<i64>], skip_row: usize, skip_col: usize) -> i64 {
+        let n = matrix.len();
+        let mut sub: Vec<Vec<i64>> = Vec::with_capacity(n - 1);
+        for (row, line) in matrix.iter().enumerate() {
+            if row == skip_row {
+                continue;
+            }
+            sub.push(
+                line.iter()
+                    .enumerate()
+                    .filter(|(col, _)| *col != skip_col)
+                    .map(|(_, &entry)| entry)
+                    .collect(),
+            );
+        }
+        bareiss_det(&sub)
+    }
+    let wide: Vec<Vec<i64>> = matrix
+        .iter()
+        .map(|row| row.iter().map(|&entry| i64::from(entry)).collect())
+        .collect();
+    let det = bareiss_det(&wide);
+    let mut adj = vec![vec![0i64; n]; n];
+    for (column, adj_row) in adj.iter_mut().enumerate() {
+        for (row, slot) in adj_row.iter_mut().enumerate() {
+            let sign = if (row + column) % 2 == 0 { 1 } else { -1 };
+            // adjugate is the transpose of the cofactor matrix.
+            *slot = sign * minor_det(&wide, row, column);
+        }
+    }
+    (adj, det)
+}
+
+/// Fraction-free Bareiss determinant.
+fn bareiss_det(matrix: &[Vec<i64>]) -> i64 {
+    let n = matrix.len();
+    if n == 0 {
+        return 1;
+    }
+    let mut a: Vec<Vec<i64>> = matrix.to_vec();
+    let mut sign = 1i64;
+    let mut previous = 1i64;
+    for pivot in 0..n - 1 {
+        if a[pivot][pivot] == 0 {
+            let Some(swap) = (pivot + 1..n).find(|&row| a[row][pivot] != 0) else {
+                return 0;
+            };
+            a.swap(pivot, swap);
+            sign = -sign;
+        }
+        let pivot_value = a[pivot][pivot];
+        for row in pivot + 1..n {
+            for column in pivot + 1..n {
+                a[row][column] =
+                    (a[row][column] * pivot_value - a[row][pivot] * a[pivot][column]) / previous;
+            }
+        }
+        previous = pivot_value;
+    }
+    sign * a[n - 1][n - 1]
+}
+
+/// weyl::root_vertex_simple (alcoves.cpp:345-408): the unique vertex of
+/// the alcove's projection on one wall component that lies in the root
+/// lattice. `ev_floors` holds the integer parts of the wall evaluations.
+fn root_vertex_simple(
+    root_system: &RootSystem,
+    numbering: &RootNumbering,
+    component: &[usize],
+    ev_floors: &[i64],
+) -> Result<Vec<i32>, String> {
+    let datum = root_system.datum();
+    let rank = datum.lattice_rank();
+    let labels = labels_for_component(root_system, numbering, component)?;
+    // The first label-1 wall serves as the "lowest coroot" wall; the
+    // others generate the finite part of the component.
+    let first_one = labels
+        .iter()
+        .position(|&label| label == 1)
+        .ok_or_else(|| "alcove wall component has no label-1 wall".to_string())?;
+    let mut generators: Vec<usize> = Vec::new();
+    let mut labels_one: Vec<usize> = Vec::new();
+    let mut floors: Vec<i64> = Vec::new();
+    for (index, &nbr) in component.iter().enumerate() {
+        if index == first_one {
+            continue;
+        }
+        generators.push(nbr);
+        if labels[index] == 1 {
+            labels_one.push(generators.len() - 1);
+        }
+        floors.push(ev_floors[index]);
+    }
+    let cartan: Vec<Vec<i32>> = generators
+        .iter()
+        .map(|&alpha| {
+            generators
+                .iter()
+                .map(|&beta| {
+                    root_system
+                        .bracket(numbering.id(alpha), numbering.id(beta))
+                        .unwrap_or(0)
+                })
+                .collect()
+        })
+        .collect();
+    let (numer, denom) = inverse_cartan(&transpose_matrix_i32(&cartan));
+    let scale = |extra_column: Option<usize>| -> Vec<i64> {
+        (0..generators.len())
+            .map(|row| {
+                let mut total = numer[row]
+                    .iter()
+                    .zip(&floors)
+                    .map(|(&entry, &floor)| entry * floor)
+                    .sum::<i64>();
+                if let Some(column) = extra_column {
+                    total += numer[row][column];
+                }
+                total
+            })
+            .collect()
+    };
+    let mut result = vec![0i32; rank];
+    let mut try_vertex = |extra_column: Option<usize>| -> bool {
+        let scaled = scale(extra_column);
+        if !scaled.iter().all(|&entry| entry % denom == 0) {
+            return false;
+        }
+        for (index, &nbr) in generators.iter().enumerate() {
+            let coefficient = scaled[index] / denom;
+            let root = root_system
+                .root(numbering.id(nbr))
+                .expect("every root has an ambient vector");
+            for (slot, &coordinate) in result.iter_mut().zip(root.as_slice()) {
+                *slot += (coefficient as i32) * coordinate;
+            }
+        }
+        true
+    };
+    if try_vertex(None) {
+        return Ok(result);
+    }
+    for &column in &labels_one {
+        if try_vertex(Some(column)) {
+            return Ok(result);
+        }
+    }
+    Err("no root lattice vertex found for alcove component".to_string())
+}
+
+/// center_classifier (alcoves.cpp:793-870): tabulates the subsets of
+/// fundamental weights whose sum lies in the root lattice, grouped by
+/// root-lattice coset (adjoint-coordinate fractional part). All
+/// arithmetic is on the adjugate/determinant representation of the
+/// inverse Cartan, matching upstream's `C_denom` exactly.
+struct CenterClassifier {
+    det: i64,
+    /// Root-lattice coset fractional parts, sorted (the `table`).
+    table: Vec<(Vec<u8>, Vec<u32>)>,
+    /// Coset index per subset of generators (`rts_tab[..].cls`).
+    class_of: Vec<usize>,
+    /// Adjoint-integral part of each subset sum (`rts_tab[..].shift`).
+    shift_of: Vec<Vec<i64>>,
+}
+
+impl CenterClassifier {
+    fn new(cartan: &[Vec<i32>]) -> Self {
+        let rank = cartan.len();
+        let (adj, det) = adjugate_det(cartan);
+        let mut buckets: std::collections::BTreeMap<Vec<u8>, Vec<u32>> =
+            std::collections::BTreeMap::new();
+        let mut shift_of = vec![vec![0i64; rank]; 1 << rank];
+        for subset in 0u32..(1 << rank) {
+            let mut sum = vec![0i64; rank];
+            for (s, adj_row) in adj.iter().enumerate() {
+                if subset & (1 << s) != 0 {
+                    for (entry, &adj_entry) in sum.iter_mut().zip(adj_row) {
+                        *entry += adj_entry;
+                    }
+                }
+            }
+            let fractional: Vec<u8> = sum
+                .iter()
+                .map(|&entry| entry.rem_euclid(det) as u8)
+                .collect();
+            shift_of[subset as usize] = sum.iter().map(|&entry| entry.div_euclid(det)).collect();
+            buckets.entry(fractional).or_default().push(subset);
+        }
+        let table: Vec<(Vec<u8>, Vec<u32>)> = buckets.into_iter().collect();
+        let mut class_of = vec![0usize; 1 << rank];
+        for (class, (_, subsets)) in table.iter().enumerate() {
+            for &subset in subsets {
+                class_of[subset as usize] = class;
+            }
+        }
+        CenterClassifier {
+            det,
+            table,
+            class_of,
+            shift_of,
+        }
+    }
+
+    /// center_classifier::shifts (alcoves.cpp:846-869): the root-lattice
+    /// shifts `fw(fix+A)-fw(B)` for subsets A of `pos` and B of `neg`,
+    /// in adjoint (simple root) coordinates.
+    fn shifts(&self, fix: u32, pos: u32, neg: u32) -> Vec<Vec<i64>> {
+        let fix_ev = &self.table[self.class_of[fix as usize]].0;
+        let base = self.shift_of[fix as usize].clone();
+        let neg_bits: Vec<u32> = (0..32).filter(|&s| neg & (1 << s) != 0).collect();
+        let mut result = Vec::new();
+        for bits in 0u32..(1 << neg_bits.len()) {
+            let mut negset = 0u32;
+            for (index, &bit) in neg_bits.iter().enumerate() {
+                if bits & (1 << index) != 0 {
+                    negset |= 1 << bit;
+                }
+            }
+            let mut rts: Vec<i64> = base
+                .iter()
+                .zip(&self.shift_of[negset as usize])
+                .map(|(a, b)| a - b)
+                .collect();
+            let mut diff: Vec<i64> = self.table[self.class_of[negset as usize]]
+                .0
+                .iter()
+                .map(|&entry| i64::from(entry))
+                .collect();
+            for (index, entry) in diff.iter_mut().enumerate() {
+                let fix_entry = i64::from(fix_ev[index]);
+                if fix_entry <= *entry {
+                    *entry -= fix_entry;
+                } else {
+                    rts[index] += 1;
+                    *entry -= fix_entry - self.det;
+                }
+            }
+            let diff_bytes: Vec<u8> = diff.iter().map(|&entry| entry as u8).collect();
+            if let Ok(class) = self
+                .table
+                .binary_search_by(|probe| probe.0.cmp(&diff_bytes))
+            {
+                for &subset in &self.table[class].1 {
+                    if pos & subset == subset {
+                        result.push(
+                            rts.iter()
+                                .zip(&self.shift_of[subset as usize])
+                                .map(|(a, b)| a + b)
+                                .collect(),
+                        );
+                    }
+                }
+            }
+        }
+        result
+    }
+}
+
+/// orbit_elem (alcoves.cpp:437-445) for the adjoint-coordinate orbits.
+#[derive(Clone, Debug)]
+struct AdjOrbitElem {
+    v: Vec<i32>,
+    s: usize,
+    seen: u64,
+    prev: usize,
+}
+
+/// Shared BFS core of basic_orbit/vertex_orbit (alcoves.cpp:480-565):
+/// new elements are inserted after `finish` keeping the tail DECREASING,
+/// and each finished level is reversed to increasing order.
+#[allow(clippy::too_many_arguments)]
+fn adjoint_orbit_bfs(
+    width: usize,
+    generators: usize,
+    vertex: Vec<i32>,
+    reflect: impl Fn(&[i32], usize) -> Option<(i32, Vec<i32>)>,
+) -> Vec<AdjOrbitElem> {
+    let mut result: Vec<AdjOrbitElem> = vec![AdjOrbitElem {
+        v: vertex,
+        s: usize::MAX,
+        seen: 0,
+        prev: usize::MAX,
+    }];
+    let mut start = 0;
+    let mut finish = 1;
+    let mut count = 0;
+    loop {
+        let mut index = start;
+        while index < finish {
+            for s in 0..generators {
+                if result[index].seen & (1 << s) != 0 {
+                    continue;
+                }
+                let Some((_, wt)) = reflect(&result[index].v, s) else {
+                    continue;
+                };
+                let mut jt = finish;
+                while jt < result.len() && wt < result[jt].v {
+                    jt += 1;
+                }
+                if jt < result.len() && wt == result[jt].v {
+                    result[jt].seen |= 1 << s;
+                } else {
+                    result.insert(
+                        jt,
+                        AdjOrbitElem {
+                            v: wt,
+                            s,
+                            seen: 1 << s,
+                            prev: count,
+                        },
+                    );
+                }
+            }
+            count += 1;
+            index += 1;
+        }
+        if finish == result.len() {
+            return result;
+        }
+        result[finish..].reverse();
+        start = finish;
+        finish = result.len();
+        let _ = width;
+    }
+}
+
+/// basic_orbit (alcoves.cpp:526-565): Levi subquotient orbit in adjoint
+/// coordinates for the first `i+1` generators of `cartan`.
+fn basic_orbit_adjoint(cartan: &[Vec<i32>], i: usize) -> Vec<AdjOrbitElem> {
+    let n = i + 1;
+    let adj_coroot: Vec<Vec<i32>> = (0..cartan.len())
+        .map(|column| (0..n).map(|row| cartan[row][column]).collect())
+        .collect();
+    let sub: Vec<Vec<i32>> = cartan[..n].iter().map(|row| row[..n].to_vec()).collect();
+    let (adj, _det) = adjugate_det(&sub);
+    let vertex: Vec<i32> = adj[i].iter().map(|&entry| entry as i32).collect();
+    adjoint_orbit_bfs(n, n, vertex, |v, s| {
+        let level: i64 = adj_coroot[s]
+            .iter()
+            .zip(v)
+            .map(|(&a, &b)| i64::from(a) * i64::from(b))
+            .sum();
+        if level == 0 {
+            return None;
+        }
+        let mut wt = v.to_vec();
+        wt[s] -= level as i32;
+        Some((level as i32, wt))
+    })
+}
+
+/// vertex_orbit (alcoves.cpp:458-518): the modular variant used for the
+/// final extension along a label > 1.
+fn vertex_orbit(cartan: &[Vec<i32>], i: usize, label: i64) -> Vec<AdjOrbitElem> {
+    let rank = cartan.len();
+    let adj_coroot: Vec<Vec<i32>> = (0..rank)
+        .map(|column| (0..rank).map(|row| cartan[row][column]).collect())
+        .collect();
+    let (adj, det) = adjugate_det(cartan);
+    let modulus = det * label;
+    let vertex: Vec<i32> = adj[i]
+        .iter()
+        .map(|&entry| entry.rem_euclid(modulus) as i32)
+        .collect();
+    adjoint_orbit_bfs(rank, rank, vertex, |v, s| {
+        let level: i64 = adj_coroot[s]
+            .iter()
+            .zip(v)
+            .map(|(&a, &b)| i64::from(a) * i64::from(b))
+            .sum();
+        if level % modulus == 0 {
+            return None;
+        }
+        let mut wt = v.to_vec();
+        wt[s] = (i64::from(wt[s]) - level).rem_euclid(modulus) as i32;
+        Some((level as i32, wt))
+    })
+}
+
+/// convert_to_words (alcoves.cpp:746-774): expand the identity through
+/// the coset tree, LEFT-multiplying each step's reflection word onto the
+/// parent segment entry.
+fn convert_to_words(cosets: &[AdjOrbitElem], reflections: &[Vec<usize>]) -> Vec<Vec<usize>> {
+    let orbit: Vec<Vec<usize>> = vec![Vec::new()];
+    let mut result: Vec<Vec<usize>> = Vec::new();
+    for word in &orbit {
+        let mut segment: Vec<Vec<usize>> = vec![word.clone()];
+        for elem in &cosets[1..] {
+            let mut extended = reflections[elem.s].clone();
+            extended.extend_from_slice(&segment[elem.prev]);
+            segment.push(extended);
+        }
+        result.extend(segment);
+    }
+    result
+}
+
+/// The reflection across simple root `s` applied to a RootNbr.
+fn simple_reflect_root_nbr(
+    root_system: &RootSystem,
+    numbering: &RootNumbering,
+    s: usize,
+    nbr: usize,
+) -> usize {
+    let datum = root_system.datum();
+    let id = numbering.id(nbr);
+    let pairing = root_system
+        .bracket(id, numbering.id(numbering.npos + s))
+        .unwrap_or(0);
+    let reflected: Vec<i32> = root_system
+        .root(id)
+        .expect("every root has an ambient vector")
+        .as_slice()
+        .iter()
+        .zip(datum.simple_roots()[s].as_slice())
+        .map(|(&coordinate, &simple)| coordinate - pairing * simple)
+        .collect();
+    let reflected_id = root_system
+        .id_of(&Weight::new(reflected))
+        .expect("a reflected root is a root");
+    numbering.nbr(reflected_id)
+}
+
+/// RootSystem::reflection_word (rootdata.cpp:601-618): descend along the
+/// first descent until simple, then mirror the path.
+fn reflection_word(root_system: &RootSystem, numbering: &RootNumbering, nbr: usize) -> Vec<usize> {
+    let datum = root_system.datum();
+    let rank = datum.semisimple_rank();
+    let npos = numbering.npos;
+    // make_positive: work with the positive partner.
+    let mut alpha = if numbering.is_negative(nbr) {
+        2 * npos - 1 - nbr
+    } else {
+        nbr
+    };
+    let mut word = Vec::new();
+    while alpha >= npos + rank {
+        let id = numbering.id(alpha);
+        let s = (0..rank)
+            .find(|&s| root_system.bracket(id, numbering.id(npos + s)).unwrap_or(0) > 0)
+            .expect("a non-simple positive root has a descent");
+        word.push(s);
+        alpha = simple_reflect_root_nbr(root_system, numbering, s, alpha);
+    }
+    word.push(alpha - npos);
+    let mirror: Vec<usize> = word[..word.len() - 1].to_vec();
+    word.extend(mirror);
+    word
+}
+
+/// RootSystem::permuted_root (rootdata.h:313-318): a Weyl word acts on a
+/// root with the LAST letter applied first.
+fn word_act_root(
+    root_system: &RootSystem,
+    numbering: &RootNumbering,
+    word: &[usize],
+    nbr: usize,
+) -> usize {
+    let mut current = nbr;
+    for &s in word.iter().rev() {
+        current = simple_reflect_root_nbr(root_system, numbering, s, current);
+    }
+    current
+}
+
+/// WeylGroup::act on a weight (weyl.cpp:1071-1082): the same convention.
+fn word_act_weight(datum: &BasedRootDatum, word: &[usize], weight: &mut [i32]) {
+    for &s in word.iter().rev() {
+        simple_reflect(datum, s, weight);
+    }
+}
+
+/// RootSystem::fundamental_alcove_walls (rootdata.cpp:474-481): the
+/// simple roots plus, per Dynkin component, the negative root whose
+/// coroot no simple coroot can be subtracted from.
+fn fundamental_alcove_walls(
+    root_system: &RootSystem,
+    numbering: &RootNumbering,
+) -> BTreeSet<usize> {
+    let datum = root_system.datum();
+    let rank = datum.semisimple_rank();
+    let npos = numbering.npos;
+    let num_roots = root_system.roots().len();
+    let coroot_table: BTreeSet<Vec<i32>> = (0..num_roots)
+        .filter_map(|index| {
+            root_system
+                .coroot(RootId::from_usize(index))
+                .map(|coroot| coroot.as_slice().to_vec())
+        })
+        .collect();
+    let coroot_of = |nbr: usize| {
+        root_system
+            .coroot(numbering.id(nbr))
+            .expect("every root has a coroot")
+            .as_slice()
+            .to_vec()
+    };
+    let mut walls: BTreeSet<usize> = (0..npos).collect();
+    for s in 0..rank {
+        let simple_coroot = coroot_of(npos + s);
+        walls.retain(|&beta| {
+            let difference: Vec<i32> = coroot_of(beta)
+                .iter()
+                .zip(&simple_coroot)
+                .map(|(&b, &a)| b - a)
+                .collect();
+            !coroot_table.contains(&difference)
+        });
+    }
+    walls.extend(npos..npos + rank);
+    walls
+}
+
+/// list_roots_and_labels (alcoves.cpp:677-707): the component's roots
+/// with `stab` first, the rest sorted by decreasing label (RootNbr
+/// ascending on ties), labels aligned.
+fn list_roots_and_labels(
+    root_system: &RootSystem,
+    numbering: &RootNumbering,
+    component: &BTreeSet<usize>,
+    stab: &BTreeSet<usize>,
+) -> Result<(Vec<usize>, Vec<i64>), String> {
+    let stab_size = stab.len();
+    let mut roots: Vec<usize> = stab
+        .iter()
+        .copied()
+        .chain(component.difference(stab).copied())
+        .collect();
+    let mut labels = labels_for_component(root_system, numbering, &roots)?;
+    let comp_size = roots.len();
+    if comp_size > stab_size + 1 {
+        let mut pairs: Vec<(i64, usize)> = (stab_size..comp_size)
+            .map(|index| (labels[index], roots[index]))
+            .collect();
+        pairs.sort_by(|left, right| right.0.cmp(&left.0).then(left.1.cmp(&right.1)));
+        for (offset, (label, root)) in pairs.into_iter().enumerate() {
+            labels[stab_size + offset] = label;
+            roots[stab_size + offset] = root;
+        }
+    }
+    Ok((roots, labels))
+}
+
+/// The Cartan bracket matrix of a RootNbr list.
+fn cartan_of_roots(
+    root_system: &RootSystem,
+    numbering: &RootNumbering,
+    roots: &[usize],
+) -> Vec<Vec<i32>> {
+    roots
+        .iter()
+        .map(|&alpha| {
+            roots
+                .iter()
+                .map(|&beta| {
+                    root_system
+                        .bracket(numbering.id(alpha), numbering.id(beta))
+                        .unwrap_or(0)
+                })
+                .collect()
+        })
+        .collect()
+}
+
+/// facet_orbit_ws (alcoves.cpp:894-943): the per-component coset word
+/// lists for the quotient of W by a facet's stabiliser.
+fn facet_orbit_ws(
+    root_system: &RootSystem,
+    numbering: &RootNumbering,
+    stabilising_walls: &BTreeSet<usize>,
+) -> Result<Vec<Vec<Vec<usize>>>, String> {
+    let walls = fundamental_alcove_walls(root_system, numbering);
+    let comps = root_components(root_system, numbering, &walls);
+    let mut coset_lists: Vec<Vec<Vec<usize>>> = Vec::new();
+    for comp in comps {
+        let comp_set: BTreeSet<usize> = comp.into_iter().collect();
+        let stab: BTreeSet<usize> = stabilising_walls.intersection(&comp_set).copied().collect();
+        let stab_size = stab.len();
+        let (mut roots, labels) = list_roots_and_labels(root_system, numbering, &comp_set, &stab)?;
+        let last = roots
+            .pop()
+            .ok_or_else(|| "empty fundamental alcove component".to_string())?;
+        let cartan = cartan_of_roots(root_system, numbering, &roots);
+        let reflections: Vec<Vec<usize>> = roots
+            .iter()
+            .map(|&root| reflection_word(root_system, numbering, root))
+            .collect();
+        for s in stab_size..roots.len() {
+            coset_lists.push(convert_to_words(
+                &basic_orbit_adjoint(&cartan, s),
+                &reflections,
+            ));
+        }
+        if *labels.last().expect("nonempty labels") > 1 {
+            // The final extension replaces the largest-index label-1
+            // stabilised root by the "affine" root |last|.
+            let mut index = stab_size;
+            let chosen = loop {
+                if index == 0 {
+                    return Err("no label-1 stabilised wall for affine extension".to_string());
+                }
+                index -= 1;
+                if labels[index] == 1 {
+                    break index;
+                }
+            };
+            let mut affine_roots = roots.clone();
+            affine_roots[chosen] = last;
+            let affine_cartan = cartan_of_roots(root_system, numbering, &affine_roots);
+            let mut affine_reflections = reflections.clone();
+            affine_reflections[chosen] = reflection_word(root_system, numbering, last);
+            coset_lists.push(convert_to_words(
+                &vertex_orbit(
+                    &affine_cartan,
+                    chosen,
+                    *labels.last().expect("nonempty labels"),
+                ),
+                &affine_reflections,
+            ));
+        }
+    }
+    Ok(coset_lists)
+}
+
+/// rootdata::additive_closure (rootdata.cpp:685-707, default
+/// `for_coroots=true` as used by FPP, alcoves.cpp:980): close a root set
+/// under negation and COROOT addition — the sum test and insertion are
+/// done on coroot coordinates, not root coordinates.
+fn additive_closure(
+    root_system: &RootSystem,
+    numbering: &RootNumbering,
+    generators: &BTreeSet<usize>,
+) -> BTreeSet<usize> {
+    let npos = numbering.npos;
+    let coroot_id: std::collections::BTreeMap<Vec<i32>, RootId> = (0..root_system.roots().len())
+        .filter_map(|index| {
+            let id = RootId::from_usize(index);
+            root_system
+                .coroot(id)
+                .map(|coroot| (coroot.as_slice().to_vec(), id))
+        })
+        .collect();
+    let coroot_of = |nbr: usize| {
+        root_system
+            .coroot(numbering.id(nbr))
+            .expect("every root has a coroot")
+            .as_slice()
+            .to_vec()
+    };
+    let mut set: BTreeSet<usize> = generators
+        .iter()
+        .flat_map(|&nbr| [nbr, 2 * npos - 1 - nbr])
+        .collect();
+    loop {
+        let current: Vec<usize> = set.iter().copied().collect();
+        let mut grew = false;
+        for (i, &alpha) in current.iter().enumerate() {
+            for &beta in &current[i + 1..] {
+                let sum: Vec<i32> = coroot_of(alpha)
+                    .iter()
+                    .zip(coroot_of(beta))
+                    .map(|(&a, b)| a + b)
+                    .collect();
+                if let Some(&id) = coroot_id.get(&sum) {
+                    if set.insert(numbering.nbr(id)) {
+                        grew = true;
+                    }
+                }
+            }
+        }
+        if !grew {
+            return set;
+        }
+    }
+}
+
+/// to_positive_system (rootdata.cpp:1329-1347): the reflection steps
+/// that make every entry of `delta` positive, applied as they are found.
+fn to_positive_system(
+    root_system: &RootSystem,
+    numbering: &RootNumbering,
+    delta: &mut [usize],
+) -> Vec<(usize, usize)> {
+    let mut steps = Vec::new();
+    'scan: loop {
+        for s in 0..delta.len() {
+            if numbering.is_negative(delta[s]) {
+                steps.push((s, delta[s]));
+                let word = reflection_word(root_system, numbering, delta[s]);
+                for entry in delta.iter_mut() {
+                    *entry = word_act_root(root_system, numbering, &word, *entry);
+                }
+                continue 'scan;
+            }
+        }
+        return steps;
+    }
+}
+
+/// One FPP orbit node: a Weyl word and its root-lattice shift vectors.
+type FppShiftOrbit = Vec<(Vec<usize>, Vec<Vec<i32>>)>;
+
+/// weyl::FPP_w_shifts (alcoves.cpp:945-1058): the orbit of a fundamental
+/// alcove point as (Weyl word, root-lattice shifts) pairs. Weyl words
+/// stand for upstream WeylElts throughout (product = concatenation,
+/// action = last letter first); display canonicalization happens at the
+/// value boundary.
+fn fpp_w_shifts(
+    datum: &BasedRootDatum,
+    root_system: &RootSystem,
+    numbering: &RootNumbering,
+    gamma: &RatVec,
+) -> Result<FppShiftOrbit, String> {
+    let rank = datum.lattice_rank();
+    let semisimple = datum.semisimple_rank();
+    let npos = numbering.npos;
+    let denominator = gamma.denominator() as i64;
+    let numer: Vec<i32> = gamma
+        .numerators()
+        .iter()
+        .map(|&entry| entry as i32)
+        .collect();
+    let walls = fundamental_alcove_walls(root_system, numbering);
+    let mut stabilising_walls = BTreeSet::new();
+    for &alpha in &walls {
+        let coroot = root_system
+            .coroot(numbering.id(alpha))
+            .expect("every root has a coroot");
+        let mut evaluation: i64 = gamma
+            .numerators()
+            .iter()
+            .zip(coroot.as_slice())
+            .map(|(&g, &c)| g * i64::from(c))
+            .sum();
+        if !(npos..npos + semisimple).contains(&alpha) {
+            evaluation += denominator; // ev += 1 for the affine walls
+        }
+        if evaluation == 0 {
+            stabilising_walls.insert(alpha);
+        }
+    }
+    let coset_lists = facet_orbit_ws(root_system, numbering, &stabilising_walls)?;
+    let classifier = CenterClassifier::new(datum.cartan_matrix());
+    // integrality_simples (rootdata.cpp:1494-1499): the simple roots of
+    // the integral root system, in ascending RootNbr order.
+    let integral_ids: Vec<RootId> = (0..root_system.roots().len())
+        .map(RootId::from_usize)
+        .filter(|&id| {
+            root_system.is_positive(id).unwrap_or(false)
+                && root_system.coroot(id).is_some_and(|coroot| {
+                    gamma
+                        .numerators()
+                        .iter()
+                        .zip(coroot.as_slice())
+                        .map(|(&g, &c)| g * i64::from(c))
+                        .sum::<i64>()
+                        % denominator
+                        == 0
+                })
+        })
+        .collect();
+    let simple_ids = simple_basis(root_system, &integral_ids)
+        .map_err(|error| format!("integrality simple basis failed: {error}"))?;
+    let mut delta: Vec<usize> = simple_ids.iter().map(|&id| numbering.nbr(id)).collect();
+    delta.sort_unstable();
+    let int_gens: Vec<Vec<usize>> = delta
+        .iter()
+        .map(|&nbr| reflection_word(root_system, numbering, nbr))
+        .collect();
+    let init = additive_closure(root_system, numbering, &stabilising_walls);
+
+    #[derive(Clone)]
+    struct State {
+        w: Vec<usize>,
+        image: Vec<usize>,
+        integral_roots: BTreeSet<usize>,
+        it: usize,
+    }
+    let mut states: Vec<State> = (0..=coset_lists.len())
+        .map(|_| State {
+            w: Vec::new(),
+            image: delta.clone(),
+            integral_roots: init.clone(),
+            it: 0,
+        })
+        .collect();
+    let mut result: FppShiftOrbit = Vec::new();
+    loop {
+        let mut w = states.last().expect("sentinel state").w.clone();
+        let steps = to_positive_system(
+            root_system,
+            numbering,
+            &mut states.last_mut().expect("sentinel state").image.clone(),
+        );
+        for &(first, _) in &steps {
+            w.extend_from_slice(&int_gens[first]);
+        }
+        let mut image_weight = numer.clone();
+        word_act_weight(datum, &w, &mut image_weight);
+        let last = states.last().expect("sentinel state");
+        let mut fix = 0u32;
+        let mut ups = 0u32;
+        let mut downs = 0u32;
+        for s in 0..semisimple {
+            if last.integral_roots.contains(&(npos + s)) {
+                let evaluation: i32 = datum.simple_coroots()[s]
+                    .as_slice()
+                    .iter()
+                    .zip(&image_weight)
+                    .map(|(&c, &v)| c * v)
+                    .sum();
+                if evaluation >= 0 {
+                    if evaluation == 0 {
+                        ups |= 1 << s;
+                    } else {
+                        downs |= 1 << s;
+                    }
+                } else {
+                    fix |= 1 << s;
+                    ups |= 1 << s;
+                }
+            } else {
+                // W.has_descent(s,w) is a LEFT descent (ell(s*w)<ell(w)),
+                // i.e. w^{-1} sends alpha_s negative; the inverse element
+                // acts through the reversed word.
+                let mut inverse = w.clone();
+                inverse.reverse();
+                let image_root = word_act_root(root_system, numbering, &inverse, npos + s);
+                if numbering.is_negative(image_root) {
+                    fix |= 1 << s;
+                }
+            }
+        }
+        let mut node_shifts: Vec<Vec<i32>> = Vec::new();
+        for shift in classifier.shifts(fix, ups, downs) {
+            let mut v = vec![0i32; rank];
+            for (s, &coefficient) in shift.iter().enumerate() {
+                if coefficient != 0 {
+                    for (slot, &coordinate) in v.iter_mut().zip(datum.simple_roots()[s].as_slice())
+                    {
+                        *slot += (coefficient as i32) * coordinate;
+                    }
+                }
+            }
+            node_shifts.push(v);
+        }
+        result.push((w, node_shifts));
+        // Odometer increment over the coset lists (alcoves.cpp:1034-1050).
+        let mut i = states.len();
+        let exhausted = loop {
+            let greater = i > 1;
+            i -= 1;
+            if !greater {
+                break true;
+            }
+            states[i].it += 1;
+            if states[i].it < coset_lists[i - 1].len() {
+                break false;
+            }
+            states[i].it = 0;
+        };
+        if exhausted {
+            break;
+        }
+        let word = coset_lists[i - 1][states[i].it].clone();
+        let mut next_w = word.clone();
+        next_w.extend_from_slice(&states[i - 1].w);
+        let next_image: Vec<usize> = states[i - 1]
+            .image
+            .iter()
+            .map(|&nbr| word_act_root(root_system, numbering, &word, nbr))
+            .collect();
+        let next_integrals: BTreeSet<usize> = states[i - 1]
+            .integral_roots
+            .iter()
+            .map(|&nbr| word_act_root(root_system, numbering, &word, nbr))
+            .collect();
+        states[i].w = next_w;
+        states[i].image = next_image;
+        states[i].integral_roots = next_integrals;
+        i += 1;
+        while i < states.len() {
+            states[i].w = states[i - 1].w.clone();
+            states[i].image = states[i - 1].image.clone();
+            states[i].integral_roots = states[i - 1].integral_roots.clone();
+            i += 1;
+        }
+    }
+    Ok(result)
+}
+
+/// RatNum-style floor of `<gamma, coroot>`; negative roots round UP
+/// (floor_eval, alcoves.cpp:29-33).
+fn floor_eval_nbr(
+    root_system: &RootSystem,
+    numbering: &RootNumbering,
+    nbr: usize,
+    gamma: &RatVec,
+) -> i64 {
+    let coroot = root_system
+        .coroot(numbering.id(nbr))
+        .expect("every root has a coroot");
+    let dot: i64 = gamma
+        .numerators()
+        .iter()
+        .zip(coroot.as_slice())
+        .map(|(&g, &c)| g * i64::from(c))
+        .sum();
+    let denominator = gamma.denominator() as i64;
+    let floor = dot.div_euclid(denominator);
+    if numbering.is_negative(nbr) && dot.rem_euclid(denominator) == 0 {
+        floor - 1
+    } else {
+        floor
+    }
+}
+
+/// barycentre_eq (alcoves.cpp:244-274): per-wall fractional parts of the
+/// alcove barycentre, equidistributed within each component when weighted
+/// by the coroot-relation labels. Returns (numerator, denominator) pairs
+/// aligned with the ascending wall list.
+fn barycentre_eq(
+    root_system: &RootSystem,
+    numbering: &RootNumbering,
+    walls: &BTreeSet<usize>,
+    integrals: &BTreeSet<usize>,
+) -> Result<Vec<(i64, i64)>, String> {
+    let wall_list: Vec<usize> = walls.iter().copied().collect();
+    let mut result = vec![(0i64, 1i64); wall_list.len()];
+    for comp in root_components(root_system, numbering, walls) {
+        let labels = labels_for_component(root_system, numbering, &comp)?;
+        let off_walls: Vec<usize> = comp
+            .iter()
+            .copied()
+            .filter(|nbr| !integrals.contains(nbr))
+            .collect();
+        let n_off = off_walls.len() as i64;
+        for nbr in off_walls {
+            let label = labels[comp
+                .iter()
+                .position(|&entry| entry == nbr)
+                .expect("component member")];
+            let slot = wall_list
+                .iter()
+                .position(|&entry| entry == nbr)
+                .expect("wall member");
+            result[slot] = (1, n_off * label);
+        }
+    }
+    Ok(result)
+}
+
+/// Solve an overdetermined integer system `A x = b` (m >= n rows, full
+/// column rank) over the rationals; the unique solution or `None`.
+fn solve_rational_system(rows: &[(Vec<i64>, i64)], columns: usize) -> Option<Vec<BigRational>> {
+    let m = rows.len();
+    let mut aug: Vec<Vec<BigRational>> = rows
+        .iter()
+        .map(|(coefficients, rhs)| {
+            coefficients
+                .iter()
+                .map(|&entry| BigRational::from(entry))
+                .chain(std::iter::once(BigRational::from(*rhs)))
+                .collect()
+        })
+        .collect();
+    let mut pivot_rows = Vec::with_capacity(columns);
+    let mut pivot_row = 0;
+    for column in 0..columns {
+        let found = (pivot_row..m).find(|&row| aug[row][column] != 0)?;
+        aug.swap(pivot_row, found);
+        let pivot = aug[pivot_row][column].clone();
+        for entry in &mut aug[pivot_row] {
+            *entry /= &pivot;
+        }
+        for row in 0..m {
+            if row == pivot_row || aug[row][column] == 0 {
+                continue;
+            }
+            let factor = aug[row][column].clone();
+            let (pivot_line, target) = if row < pivot_row {
+                let (head, tail) = aug.split_at_mut(pivot_row);
+                (&tail[0], &mut head[row])
+            } else {
+                let (head, tail) = aug.split_at_mut(row);
+                (&head[pivot_row], &mut tail[0])
+            };
+            for (target_entry, pivot_entry) in target.iter_mut().zip(pivot_line.iter()) {
+                let subtracted = pivot_entry.clone() * &factor;
+                *target_entry -= subtracted;
+            }
+        }
+        pivot_rows.push(pivot_row);
+        pivot_row += 1;
+    }
+    // Read the solution only after all eliminations: later column sweeps
+    // still update earlier pivot rows.
+    let mut solution = vec![BigRational::from(0); columns];
+    for (column, &row) in pivot_rows.iter().enumerate() {
+        solution[column] = aug[row][columns].clone();
+    }
+    Some(solution)
 }
 
 /// The connected components of a Cartan matrix (index sets).
@@ -7668,6 +8686,284 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 }
                 Ok(Value::List(result))
             }
+        }
+        // alcove_root_vertex_wrapper (atlas-types.w:1994-2011): the
+        // unique root-lattice vertex of the alcove containing `gamma`.
+        "alcove_root_vertex" => {
+            arity(name, arguments, 2, span)?;
+            let handle = as_root_datum(&arguments[0], span)?;
+            let Value::RatVector(gamma) = &arguments[1] else {
+                return Err(type_error(span, "expected a rational vector"));
+            };
+            let rank = handle.datum.lattice_rank();
+            if gamma.numerators().len() != rank {
+                return Err(runtime(
+                    span,
+                    format!(
+                        "Rational weight size mismatch: {}:{}",
+                        gamma.numerators().len(),
+                        rank
+                    ),
+                ));
+            }
+            let root_system = RootSystem::enumerate(&handle.datum, ROOT_BUDGET)
+                .map_err(|error| runtime(span, error.to_string()))?;
+            let numbering = RootNumbering::new(&root_system, handle.prefers_coroots());
+            let (walls, _integrals) = wall_set(&root_system, &numbering, gamma);
+            let mut vertex = vec![0i32; rank];
+            for comp in root_components(&root_system, &numbering, &walls) {
+                let floors: Vec<i64> = comp
+                    .iter()
+                    .map(|&nbr| {
+                        gamma
+                            .numerators()
+                            .iter()
+                            .zip(
+                                root_system
+                                    .coroot(numbering.id(nbr))
+                                    .expect("every root has a coroot")
+                                    .as_slice(),
+                            )
+                            .map(|(&g, &c)| g * i64::from(c))
+                            .sum::<i64>()
+                            .div_euclid(gamma.denominator() as i64)
+                    })
+                    .collect();
+                let piece = root_vertex_simple(&root_system, &numbering, &comp, &floors)
+                    .map_err(|error| runtime(span, error))?;
+                for (slot, value) in vertex.iter_mut().zip(piece) {
+                    *slot += value;
+                }
+            }
+            Ok(Value::Vector(Vec32(vertex)))
+        }
+        // FPP_numers_wrapper/FPP_w_shifts_wrapper (atlas-types.w:2122-2196):
+        // both share the size and fundamental-alcove checks before the
+        // no-value gate.
+        "FPP_numers" | "FPP_w_shifts" => {
+            arity(name, arguments, 2, span)?;
+            let handle = as_root_datum(&arguments[0], span)?;
+            let Value::RatVector(gamma) = &arguments[1] else {
+                return Err(type_error(span, "expected a rational vector"));
+            };
+            let rank = handle.datum.lattice_rank();
+            if gamma.numerators().len() != rank {
+                return Err(runtime(
+                    span,
+                    format!(
+                        "Rank and rational weight size mismatch {}:{}",
+                        rank,
+                        gamma.numerators().len()
+                    ),
+                ));
+            }
+            let root_system = RootSystem::enumerate(&handle.datum, ROOT_BUDGET)
+                .map_err(|error| runtime(span, error.to_string()))?;
+            let numbering = RootNumbering::new(&root_system, handle.prefers_coroots());
+            let semisimple = handle.datum.semisimple_rank();
+            let denominator = gamma.denominator() as i64;
+            for &alpha in &fundamental_alcove_walls(&root_system, &numbering) {
+                let mut evaluation: i64 = gamma
+                    .numerators()
+                    .iter()
+                    .zip(
+                        root_system
+                            .coroot(numbering.id(alpha))
+                            .expect("every root has a coroot")
+                            .as_slice(),
+                    )
+                    .map(|(&g, &c)| g * i64::from(c))
+                    .sum::<i64>();
+                if !(numbering.npos..numbering.npos + semisimple).contains(&alpha) {
+                    evaluation += denominator;
+                }
+                if evaluation < 0 {
+                    let divisor = gcd(evaluation.abs(), denominator);
+                    return Err(runtime(
+                        span,
+                        format!(
+                            "Rational weight is not in fundamental alcove (coroot {}, value {}/{})",
+                            numbering.signed(alpha),
+                            evaluation / divisor,
+                            denominator / divisor
+                        ),
+                    ));
+                }
+            }
+            let pairs = fpp_w_shifts(&handle.datum, &root_system, &numbering, gamma)
+                .map_err(|error| runtime(span, error))?;
+            let numer: Vec<i32> = gamma
+                .numerators()
+                .iter()
+                .map(|&entry| entry as i32)
+                .collect();
+            if name == "FPP_numers" {
+                // FPP_orbit_numers (alcoves.cpp:1060-1075).
+                let mut result = Vec::new();
+                for (word, shifts) in &pairs {
+                    if shifts.is_empty() {
+                        continue;
+                    }
+                    let mut image = numer.clone();
+                    word_act_weight(&handle.datum, word, &mut image);
+                    for shift in shifts {
+                        result.push(Value::Vector(Vec32(
+                            image
+                                .iter()
+                                .zip(shift)
+                                .map(|(&base, &step)| base + step * denominator as i32)
+                                .collect(),
+                        )));
+                    }
+                }
+                Ok(Value::List(result))
+            } else {
+                let context = build_weyl_context(handle, span)?;
+                let mut result = Vec::new();
+                for (word, shifts) in &pairs {
+                    if shifts.is_empty() {
+                        continue;
+                    }
+                    let mut element = WeylElement::identity(&context.system)
+                        .map_err(|error| runtime(span, error.to_string()))?;
+                    for &generator in word {
+                        let (next, _) = element
+                            .right_multiply_simple(&context.system, generator)
+                            .map_err(|error| runtime(span, error.to_string()))?;
+                        element = next;
+                    }
+                    let weyl_value = weyl_elt_value(Arc::clone(&context), element, span)?;
+                    let shift_values: Vec<Value> = shifts
+                        .iter()
+                        .map(|shift| Value::Vector(Vec32(shift.clone())))
+                        .collect();
+                    result.push(Value::Tuple(vec![weyl_value, Value::List(shift_values)]));
+                }
+                Ok(Value::List(result))
+            }
+        }
+        // alcove_center_wrapper (atlas-types.w:1945-1952,
+        // alcoves.cpp:277-341): solve for the alcove barycentre keeping
+        // the coradical coordinates, then rebuild the parameter there.
+        "alcove_center" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "{name} has no matching overload for {} argument(s)",
+                        arguments.len()
+                    ),
+                ));
+            };
+            let rc = rep_context(&parameter.context);
+            let datum = rc.datum();
+            let root_system = rc.root_system();
+            let rank = datum.lattice_rank();
+            let gamma = parameter.repr.gamma();
+            let gamma_ratvec = RatVec::new(gamma.numerator().to_vec(), gamma.denominator() as u64)
+                .ok_or_else(|| runtime(span, "invalid parameter gamma".to_string()))?;
+            let numbering = RootNumbering::new(
+                root_system,
+                parameter.context.parent.root_datum.prefers_coroots(),
+            );
+            let (walls, integrals) = wall_set(root_system, &numbering, &gamma_ratvec);
+            let fracs = barycentre_eq(root_system, &numbering, &walls, &integrals)
+                .map_err(|error| runtime(span, error))?;
+            let mut rows: Vec<(Vec<i64>, i64)> = Vec::new();
+            for (index, &nbr) in walls.iter().enumerate() {
+                let coroot = root_system
+                    .coroot(numbering.id(nbr))
+                    .expect("every root has a coroot");
+                let scale = fracs[index].1;
+                rows.push((
+                    coroot
+                        .as_slice()
+                        .iter()
+                        .map(|&c| i64::from(c) * scale)
+                        .collect(),
+                    fracs[index].0
+                        + floor_eval_nbr(root_system, &numbering, nbr, &gamma_ratvec) * scale,
+                ));
+            }
+            let radical = datum
+                .radical_basis()
+                .map_err(|error| runtime(span, error.to_string()))?;
+            for element in &radical {
+                rows.push((
+                    element
+                        .as_slice()
+                        .iter()
+                        .map(|&c| i64::from(c) * gamma.denominator())
+                        .collect(),
+                    gamma
+                        .numerator()
+                        .iter()
+                        .zip(element.as_slice())
+                        .map(|(&g, &c)| g * i64::from(c))
+                        .sum(),
+                ));
+            }
+            let solution = solve_rational_system(&rows, rank).ok_or_else(|| {
+                runtime(
+                    span,
+                    "alcove center equations have no unique solution".to_string(),
+                )
+            })?;
+            let mut factor = 1i64;
+            for entry in &solution {
+                factor = lcm(
+                    factor,
+                    i64::try_from(entry.denominator_ref())
+                        .map_err(|_| runtime(span, "alcove center denominator overflow"))?,
+                );
+            }
+            let mut numerators = Vec::with_capacity(rank);
+            for entry in &solution {
+                let scaled = entry * BigRational::from(factor);
+                numerators.push(
+                    i64::try_from(scaled.numerator_ref())
+                        .map_err(|_| runtime(span, "alcove center numerator overflow"))?,
+                );
+            }
+            let new_gamma = RationalWeight::new(numerators, factor)
+                .map_err(|error| runtime(span, error.to_string()))?;
+            // Upstream guards the correction against leaving the
+            // -theta-fixed subspace (alcoves.cpp:317-321).
+            let theta = parameter
+                .context
+                .graph
+                .involution_of(parameter.repr.x())
+                .and_then(|id| parameter.context.table.record(id))
+                .map(|record| record.theta())
+                .ok_or_else(|| runtime(span, "alcove center involution lookup failed"))?;
+            let difference = new_gamma
+                .sub(gamma)
+                .map_err(|error| runtime(span, error.to_string()))?;
+            for (row, theta_row) in theta.weight_matrix().iter().enumerate() {
+                let total: i64 = theta_row
+                    .iter()
+                    .zip(difference.numerator())
+                    .map(|(&t, &d)| i64::from(t) * d)
+                    .sum::<i64>()
+                    + difference.numerator()[row];
+                if total != 0 {
+                    return Err(runtime(
+                        span,
+                        "Attempted correction off -theta fixed subspace",
+                    ));
+                }
+            }
+            let lambda_rho = rc
+                .lambda_rho(&parameter.repr)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let centered = rc
+                .sr_gamma(parameter.repr.x(), &lambda_rho, &new_gamma)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            Ok(Value::Domain(DomainValue::Param(ParamValue {
+                context: Arc::clone(&parameter.context),
+                repr: centered,
+            })))
         }
         "derived_info" | "mod_central_torus_info" => {
             arity(name, arguments, 1, span)?;

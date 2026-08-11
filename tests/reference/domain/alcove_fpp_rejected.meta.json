@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/alcove_fpp_rejected",
+  "fixture_sha256": "8b643c9d6d088b1c7eea04ba40e531aaa79470dc195a6db36f3d2cd886a63fea",
+  "rust_status": "pending_hpc_differential",
+  "reference_status": "verified_hpc_reference",
+  "note": "alcove_root_vertex/FPP_numers/FPP_w_shifts runtime rejections (weight size mismatch, rank mismatch, outside fundamental alcove). Local pinned-oracle capture, verbatim error text; HPC differential pending.",
+  "oracle": "atlas",
+  "oracle_exit_status": 1,
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+}

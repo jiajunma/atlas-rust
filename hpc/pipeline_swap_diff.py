@@ -453,6 +453,11 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/weyl_orbit_rejected"),
     FixturePlan(name="domain/walls"),
     FixturePlan(name="domain/walls_rejected"),
+    # Alcove/FPP layer (agent-31): alcove_center/alcove_root_vertex/
+    # FPP_numers/FPP_w_shifts (alcoves.cpp:277-341, 345-408, 945-1075) and
+    # their size/alcove rejections.
+    FixturePlan(name="domain/alcove_fpp"),
+    FixturePlan(name="domain/alcove_fpp_rejected"),
     # Early scalar-era fixtures: verified verbatim locally and included so
     # the HPC differential upgrades their reference metadata.
     FixturePlan(name="eval/scalars"),
