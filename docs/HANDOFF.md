@@ -4,6 +4,37 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-06 (post-sweep repair)
+
+HPC differential `3520281` (195 fixtures) reported 189 PASS / 5 FAIL /
+1 PARTIAL. Root cause analysis and repair (`fe657cf`):
+
+- `fundamental` / `cartan_matrix_type` / `integrality`: stale-tree config
+  artifacts (the job ran mid-trim); all three PASS locally and need no
+  code change.
+- `block_sizes` / `simple_factors`: the `8097c05` trim left their
+  events.json at `local_oracle_reference` status and block_sizes.meta.json
+  with the pre-trim fixture sha — harness configuration errors, not
+  behavior diffs. Repaired in place (status -> `verified_hpc_reference`,
+  fixture sha refreshed); both fixtures byte-exact locally.
+- The uncommitted `fiber_size` debug `eprintln` (B2 fiber-count
+  investigation) was reverted; the WG3 timing leftovers in the W_graph
+  builtin arm and the weyl_transducer test debug eprintln/clone-on-Copy
+  were removed so clippy `-D warnings` and fmt are clean again (the
+  `9b3d988` revert had also left typed.rs unformatted).
+- Local replay: 192 PASS + the known `fromfile_accepted_b10` FAIL (HPC
+  paths) + `kgb_hasse` local-timeout FAIL (E7 needs the HPC fat node,
+  506s/12.4G in swap 3515688; harness default timeout is 30s). Gates:
+  230 + 316 lib tests, clippy/fmt clean, harness 10/10.
+- Repair differential submitted as job `3531606`; on zero FAIL the six
+  3520214-3520219 fixtures (cofolded, block_sizes, fundamental,
+  simple_factors, cartan_matrix_type, integrality) get `verified_hpc`.
+- Open follow-up: the B2 fiber undercount that motivated the block_sizes
+  trim (oracle `| 0, 0, 4 |`/`| 1, 5, 12 |` vs Rust `| 0, 0, 3 |`/
+  `| 1, 3, 8 |`) is a REAL behavior gap parked by the A2-only trim —
+  `fiber_size`/`CartanClass` label mapping undercounts weak forms in a
+  fiber. Re-expand block_sizes to B2 once fixed.
+
 ## Checkpoint - 2026-07-31 (usage-limit handoff)
 
 This checkpoint was committed while three slice agents were interrupted by a
