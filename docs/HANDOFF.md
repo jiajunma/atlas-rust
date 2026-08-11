@@ -1469,6 +1469,30 @@ a future cleanup pass rather than schema migration.
 
 ## Current state
 
+**2026-08-11 checkpoint**（最新状态以此为准，下方旧段落仅作历史）：
+
+- HEAD `d1a73b0`。最近 verified 切片：alcove/FPP
+  （alcove_center/alcove_root_vertex/FPP_numers/FPP_w_shifts，实现
+  `53581d8`，差分 **3533851** 全绿：201 fixtures，200 PASS / 1 已知
+  PARTIAL container_syntax_errors / 0 FAIL；meta 升级 `7032dd9`）。
+- 五批后续切片的 reference 已全部 `verified_hpc_reference`（本地 pinned
+  oracle 捕获与 HPC reference_capture **3535636** 字节一致；`e045ec1`
+  + `d1a73b0`）：`root_numbering`（根编号族 6 个）、`coroot_queries`
+  （小件 sweep 8 个）、`orbit_ws`（orbit/ladder 4 个）、`print_gradings`、
+  `poly_surface`（ParamPol/KTypePol skip 重载 ~10 个）。rust_status 均
+  `pending_hpc_differential`；**实现切片收尾时自行在
+  hpc/pipeline_swap_diff.py 注册 FixturePlan**（不要提前注册，未实现会
+  FAIL 污染其他切片的差分）。预研事实见
+  docs/slices/post_weyl_lang_queue.md §5。
+- 在飞切片（串行纪律：atlas-core 归 ext agent，atlas-real-group 归
+  RealWeyl agent）：extended_block/raw_ext_KL/partial_extended_KL_block
+  三注册（语言层）；RealWeyl crate 切片（print_real_Weyl/
+  print_blockstabilizer 的前置）。
+- 后续顺序：切片 A（coroot_queries 8 + root_numbering 6）→ 切片 B
+  （orbit/ladder + poly 表层）→ 切片 C（print_gradings，等 RealWeyl）
+  → dual_KL_block + KL_block 第二重载 → deform/twisted 族 +
+  ext_param+star → print_X（global_KGB）+ print_common_block 三件套。
+
 - Branch: `main`.
 - B3a non-recursive functions, B3b recursive functions / definition sugar,
   B3c parameter patterns, B3d selectors, B4 loops, B5 `set_type`, B6

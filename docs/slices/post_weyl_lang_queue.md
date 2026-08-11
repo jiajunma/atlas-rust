@@ -208,11 +208,16 @@ oracle 探针（/tmp/ladder_probe.at，B2）：`root_ladder_bottoms(rb,0)` →
 rep_context.rs:1156-1159 已移植（repr.cpp:825-925），只差注册 + 薄
 wrapper（atlas-types.w:6561-6568，安装 :7500-7501）。
 
-**fixture 已备（2026-08-11，未跟踪文件，等实现切片）**：
+**fixture 已备（2026-08-11；reference 已 verified_hpc_reference）**：
 `tests/fixtures/domain/coroot_queries.atlas(+_rejected)` 与
 `root_numbering.atlas(+_rejected)`，均已按 harness 真实条件（无 basic.at
 预载，source+quit）在 pinned oracle 上验证：accepted 0 错误，rejected
-错误逐条确认。探针事实：
+错误逐条确认。events.json + meta.json 已入库（e045ec1），HPC
+reference_capture **3535636** 与本地 pinned-oracle 捕获全部字节一致，
+已升 `verified_hpc_reference`（d1a73b0）；rust_status 仍
+`pending_hpc_differential`。**实现切片收尾时须自己在
+hpc/pipeline_swap_diff.py 注册 FixturePlan 条目**（未注册前差分不会跑
+这些 fixture；注册后未实现会 FAIL，所以不要提前注册）。探针事实：
 - `reducibility_points` 非空样例：SL(2,R)（rd1=sc-A1，ic=inner_class(rd1,
   [[1]])，rf1=real_form(ic1,1)=split）x=KGB(rf1,2) 上 nu=[3]/2→[2/3]、
   [2]/1→[1/2]、[5]/2→[2/5]、[4]/1→[1/4,3/4]；nu=[1]/2 与 SU(2,1) 平凡
@@ -440,7 +445,9 @@ W_elt 渲染已存在（Weyl_orbit 切片）。
 :1569-1597，RootNbrSet → 符号根号 [int] 输出）——这是本族唯一需要
 碰 crate 结构体的部分，量很小，可与上述合并为一个语言层切片。
 
-**fixture 已备（2026-08-11，commit 6de7f27）**：
+**fixture 已备（2026-08-11，commit 6de7f27；reference 已
+verified_hpc_reference，capture 3535636 / d1a73b0，实现切片自行注册
+FixturePlan）**：
 `tests/fixtures/domain/orbit_ws.atlas(+_rejected)`，harness 条件（无
 basic.at）oracle 验证通过。探针事实：
 - `basic_orbit_ws(rd, v, stab_rank)` 约定：v 前 stab_rank 项是 stab 墙，
