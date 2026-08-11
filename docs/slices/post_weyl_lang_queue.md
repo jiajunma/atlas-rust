@@ -225,6 +225,10 @@ verified_hpc_reference，capture 3535636）**：
     # dual_KL_block (Bare_block::dual + KL packing shared with KL_block).
     FixturePlan(name="domain/dual_kl_block"),
     FixturePlan(name="domain/dual_kl_block_rejected"),
+    # Twisted family (twisted_deform/twisted_full_deform/twisted_KL_sum_at_s
+    # + external (Param,mat) overload; big ext_param+star slice).
+    FixturePlan(name="domain/twisted_family"),
+    FixturePlan(name="domain/twisted_family_rejected"),
 ```
 
 ### 5.1 root_ladder_bottoms/coroot_ladder_bottoms（小件，可独立切片）
