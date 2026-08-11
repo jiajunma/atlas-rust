@@ -1,0 +1,11 @@
+ra : RootDatum
+ra := simply_connected(Lie_type("A1"),true)
+ic : InnerClass
+ic := inner_class(ra,[[1]])
+rf : RealForm
+rf := real_form(ic,1)
+twisted_deform(rf)
+twisted_full_deform(rf)
+p : Param
+p := param(KGB(rf,0),[1],[0]/1)
+twisted_KL_sum_at_s(p,rf)
