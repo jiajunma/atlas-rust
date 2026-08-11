@@ -237,7 +237,14 @@ so the block graph itself is fine — only packet involutions of certain
 real forms trip the projection. Verified fixtures must avoid D5/D6+ real
 forms until the column-echelon port is reconciled.
 
-## Root-index builtins limit (2026-08-04, detail)
+## Root-index builtins limit (2026-08-04, detail) — STALE, unblocked 2026-08-11
+
+**2026-08-11 update: this limit is stale.** RootNumbering
+(domain_builtins.rs:2809-2880) now ports the oracle order and is
+differential-verified on B2 (fixtures 3516408 posroots order
+`[1,0],[0,1],[2,1],[1,1]`, 3533446 walls). See
+docs/slices/post_weyl_lang_queue.md §5.6. The notes below are kept for
+history.
 
 The oracle's B2 positive-root order is [1,0],[0,1],[1,2],[1,1] (probe):
 root_expression(rb,2) = [1,2] = alpha_1 + 2 alpha_2, so the oracle's B2
@@ -249,7 +256,9 @@ Bourbaki simple-root renumbering first. That renumbering would touch the
 whole RootDatum surface (simple_roots, Cartan_matrix, KGB block orders),
 so the root-index family stays unimplemented and fixtures avoid it.
 
-## Root-index builtins limit (2026-08-04)
+## Root-index builtins limit (2026-08-04) — STALE, unblocked 2026-08-11
+
+See the 2026-08-11 note on the detail section above; kept for history.
 
 `root_expression`/`coroot_expression`/`root_permutation`/`root_involution`
 take an oracle RootNbr (internal_root_index: N + numPosRoots, positive
