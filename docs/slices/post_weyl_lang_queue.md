@@ -364,6 +364,19 @@ pool.index(KL_pol(last-x,last-y))`（池初始 {0,1}，Pol 转 signed）→
   追加 `, simple reflections permuted (i->j,...)`，再 `:` 换行；
   `block.shift(bm.shift)` 后用 `block.singular(bm,gamma)` 打印，打完
   shift 回去。
+
+**gamma_lambda 传播锚点（2026-08-11 补查 repr.cpp，ext/common-block
+切片共用；agent-36 曾在此处踩坑——简化传播漏了 ρ_r 修正）**：
+- `Rep_context::cross(s,z)`（repr.cpp:890-909）：先 make_dominant；
+  `gamma_lambda -= root_sum(pos_to_neg(refl) ∩ real_roots(z))`，再按
+  积分系父根号反射；`lambda_rho = gamma.integer_diff(gl + ρ)`。
+- `Rep_context::cross(alpha,z)`（:911-936）：shift by ρ_R/2（z 处实根
+  twoRho），反射，再在目标 i_x 处 shift 回。
+- `Rep_context::Cayley(s,z)`（:938-995）：想象非紧时
+  `gamma_lambda += root_sum(pos_neg ∩ real_flip)`（real_flip = 楼上实根
+  XOR 楼下实根）；**parity 修正**：`(eval + ρ_r_corr) % 2 == 0` 时
+  `gamma_lambda += root(parent_s)/2`（半根！）；实根分支非 parity 抛
+  Cayley_error。
 - `print_pc_block_wrapper`（:6713-6739）：`rt().lookup(val,init,bm)`
   （partial）+ bruhatOrder().poset().below(init)；位图满且非末元素时
   打 `Elements <= N of following block\n`，否则打
