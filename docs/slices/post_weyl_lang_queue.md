@@ -208,6 +208,26 @@ oracle 探针（/tmp/ladder_probe.at，B2）：`root_ladder_bottoms(rb,0)` →
 rep_context.rs:1156-1159 已移植（repr.cpp:825-925），只差注册 + 薄
 wrapper（atlas-types.w:6561-6568，安装 :7500-7501）。
 
+**fixture 已备（2026-08-11，未跟踪文件，等实现切片）**：
+`tests/fixtures/domain/coroot_queries.atlas(+_rejected)` 与
+`root_numbering.atlas(+_rejected)`，均已按 harness 真实条件（无 basic.at
+预载，source+quit）在 pinned oracle 上验证：accepted 0 错误，rejected
+错误逐条确认。探针事实：
+- `reducibility_points` 非空样例：SL(2,R)（rd1=sc-A1，ic=inner_class(rd1,
+  [[1]])，rf1=real_form(ic1,1)=split）x=KGB(rf1,2) 上 nu=[3]/2→[2/3]、
+  [2]/1→[1/2]、[5]/2→[2/5]、[4]/1→[1/4,3/4]；nu=[1]/2 与 SU(2,1) 平凡
+  参数 → []。语义（repr.cpp:825-888）：实根 |num|≥d 才有点，
+  fracs=RatNum(s,num)，s 按奇偶表步进 2d。
+- `adjoint(Lie_type("A1.T1"),false)` → Runtime error `"Sub-lattice matrix
+  should have size 2x2"`（Cartan_matrix(lt) 对带环面型只给半单尺寸）——
+  好 rejected 案例。带环面 datum 用 `root_datum([[2,0]],[[1,0]],true)`。
+- `coroot_radical` = 简单余根 ++ radical_basis（rank×rank 列矩阵，
+  atlas-types.w:1691-1698）；sc-B2 上是单位阵。`root_coradical` 已 live。
+- `two_rho_check` 的 [int]/bool 第二参数重载是 basic.at 脚本层定义，
+  harness 不可用——rejected fixture 里 `two_rho_check(sc,[1,0])` 在
+  无 basic.at 时是类型错误 `"found (RootDatum,[int]) while RootDatum
+  was needed"`。
+
 **print_X wrapper 事实（atlas-types.w:8999-9008，安装 :9124）**：签名
 `(InnerClass->)`。`kgb::global_KGB kgb(G)`（全 square classes 的全局
 Tits KGB，kgb.h:213-266 + kgb.cpp 部分，共 ~1280 行文件）+

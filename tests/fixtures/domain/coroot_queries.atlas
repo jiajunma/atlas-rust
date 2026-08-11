@@ -1,0 +1,41 @@
+sc : RootDatum
+sc := simply_connected(Lie_type("B2"),true)
+ad : RootDatum
+ad := adjoint(Lie_type("B2"),false)
+poscoroots(sc)
+simple_coroots(sc)
+coroot_radical(sc)
+two_rho_check(sc)
+semisimple_rank(sc)
+poscoroots(ad)
+simple_coroots(ad)
+coroot_radical(ad)
+two_rho_check(ad)
+semisimple_rank(ad)
+at : RootDatum
+at := root_datum([[2,0]],[[1,0]],true)
+semisimple_rank(at)
+coroot_radical(at)
+root_coradical(at)
+mod_central_torus_info(at)
+poscoroots(at)
+simple_coroots(at)
+two_rho_check(at)
+rd1 : RootDatum
+rd1 := simply_connected(Lie_type("A1"),true)
+ic1 : InnerClass
+ic1 := inner_class(rd1,[[1]])
+rf1 : RealForm
+rf1 := real_form(ic1,1)
+x2 : KGBElt
+x2 := KGB(rf1,2)
+reducibility_points(param(x2,[0],[3]/2))
+reducibility_points(param(x2,[0],[2]/1))
+reducibility_points(param(x2,[0],[5]/2))
+reducibility_points(param(x2,[0],[4]/1))
+reducibility_points(param(x2,[0],[1]/2))
+ic2 : InnerClass
+ic2 := inner_class(simply_connected(Lie_type("A2"),true),[[1,0],[0,1]])
+rf2 : RealForm
+rf2 := real_form(ic2,1)
+reducibility_points(param(KGB(rf2,0),[0,0],[0,0]/1))

@@ -1,0 +1,7 @@
+rd : RootDatum
+rd := adjoint(Lie_type("B2"),false)
+root_expression(rd,4)
+coroot_expression(rd,-5)
+root_involution(rd,4)
+root_involution(rd,-5)
+root_index(rd,3)

@@ -1,0 +1,7 @@
+sc : RootDatum
+sc := simply_connected(Lie_type("B2"),true)
+poscoroots(3)
+two_rho_check(sc,[1,0])
+semisimple_rank(sc,sc)
+reducibility_points(sc)
+mod_central_torus_info(sc,[1])
