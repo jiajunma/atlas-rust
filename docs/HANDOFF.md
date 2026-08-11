@@ -4,6 +4,34 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-11d (ext references verified; global_KGB crate dispatched)
+
+- **ext_block(+_rejected) references verified**: fixtures + pending
+  metadata committed `c342494`; HPC reference capture **3536831** PASS,
+  stdout+stderr byte-identical to local pinned-oracle captures for both
+  fixtures; metas/events upgraded to verified_hpc_reference (`9fb7eb8`).
+  Quirk: first capture submission 3536828 FAILED at
+  validating_declared_source_state — after `git archive HEAD | ssh tar -xf -`
+  the HPC checkout is CLEAN even when the local tree has uncommitted
+  agent edits, so always declare `ATLAS_DIRTY_TREE=false` for archive-laid
+  trees (the sbatch compares declared vs detected and rejects mismatches).
+- **All remaining-slice fixtures now verified_hpc_reference** (11 pairs):
+  root_numbering, coroot_queries, orbit_ws, print_gradings, poly_surface,
+  real_weyl_print, print_x, print_common_block, dual_kl_block,
+  twisted_family, block_deform (+_rejected each). FixturePlan snippets sit
+  at queue §5 head — register only with the implementing slice.
+- In flight: agent-36 ext three-builtin registration (exclusive on
+  atlas-core, third run — fixing a gamma_lambda propagation panic: got
+  [-1,-1]/1, expected [-3,0]/2, missing rho_r correction semantics,
+  anchors at queue §gamma_lambda/repr.cpp:890-995); agent-37 global_KGB
+  crate slice for print_X (new module in atlas-real-group, upstream refs
+  kgb.h:213-266 + kgb.cpp + kgb_io.cpp; fixture print_x.events.json gives
+  byte-exact layout targets).
+- Next after agent-36: acceptance gates (three gates + PROP-eprintln
+  sweep + local CLI replay byte-diff vs /tmp/ext_ext_block*.stdout/stderr,
+  sha fingerprints in /tmp/ext_fixture_sha.txt), then I commit +
+  FixturePlan registration + HPC differential (fat, TIMEOUT=3600).
+
 ## Checkpoint - 2026-08-11c (alcove/FPP verified; 4 fixture pairs prepped)
 
 - **Differential 3533851 PASS**: 201 fixtures, 200 PASS / 1 known PARTIAL
