@@ -245,6 +245,20 @@ global_KGB——print_X 需要新的 crate 切片（估 600+ 行），不能复�
 - `block_deform (Param,ParamPol,int->ParamPol,ParamPol)`（:8178，安装 :8574）
 - `dual_KL_block (Param->[Param],int,mat,[vec])`（wrapper :7053，安装 :7517）
 
+**dual_KL_block 补查（2026-08-11）**：wrapper :7053-7090 语义——
+lookup_full_block（srm 仿真已有 common_block_members）→
+`blocks::Bare_block::dual(block)`（blocks.cpp:474-509，~35 行**纯数据
+变换**：元素倒序、length=max_len-length、descent 取 `DescentStatus::
+dual(rank)`、cross/Cayley 链接 size-1-原值，**crate 缺但很小**）→
+dual 块上填满 KlTable（已有）→ survivors 照常（singular(bm,gamma)
++ survives）→ 下三角池索引矩阵 `M[loc[x],loc[y]] =
+pool.index(KL_pol(last-x,last-y))`（池初始 {0,1}，Pol 转 signed）→
+[Param] 用 survivor 对应参数（`rc.sr(representative,bm,gamma)`，块内
+编号注意反转对应关系 last-x）+ `loc[start] ?? -1` + [vec] 池系数。
+语言层可镜像 KL_block 臂（:10749 一带）；KL_block 第二重载
+（`block(p)` 返回值 + KL 矩阵，§5.4 臂 :10774）与本件共享大部分打包
+逻辑，适合合并为一个切片。
+
 **finalise 三件套（2026-08-11 补查，归 ext_param+star 大切片）**：
 - `scale_extended (Param,mat,rat->Param,bool)`（:8449-8472，安装 :8591）：
   ext_block::scaled_extended_finalise（ext_block.cpp:2736-2807，~70 行，
