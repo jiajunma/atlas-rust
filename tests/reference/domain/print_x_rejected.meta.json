@@ -2,10 +2,11 @@
   "fixture": "domain/print_x_rejected",
   "fixture_sha256": "b6f72f1b08c553e093b3c98ba8037d8e6bff9c1ef393bda3962bbf23aaa6bc6f",
   "rust_status": "pending_hpc_differential",
-  "reference_status": "pending_hpc_reference",
-  "note": "print_X conform rejections: RootDatum argument, (InnerClass,InnerClass) argument tuple. Local pinned-oracle capture; HPC reference capture pending byte-verification.",
+  "reference_status": "verified_hpc_reference",
+  "note": "print_X conform rejections: RootDatum argument, (InnerClass,InnerClass) argument tuple. HPC reference capture 3536119 byte-identical to local pinned-oracle capture (stdout+stderr).",
   "oracle": "atlas",
   "oracle_exit_status": 1,
   "stage": "typed-pipeline-swap",
-  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_job": "3536119"
 }
