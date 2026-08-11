@@ -228,6 +228,33 @@ global_KGB——print_X 需要新的 crate 切片（估 600+ 行），不能复�
   `print_partial_block (Param->)`（:7507）、
   `print_partial_common_block (Param->)`（:7509）——均绑 common-block
   srm pool，最后做
+
+**srm pool 语义锚点（2026-08-11 补查，repr.h/atlas-types.w）**：
+- "srm pool" = `Rep_table`（repr.h:534）：common_block 池，键为
+  `Reduced_param` 哈希（reduced_hash → place → block_list 迭代器 +
+  块内元素号）。参数命中已存 Reduced_param 时，存储块与用户块同构，
+  `block_modifier` 记录回变换。
+- `block_modifier`（repr.h:493）：继承 `locator`（repr.h:485：
+  `int_sys_nr` 积分系序号、`w` WeylElt（作用于基本 alcove 积分系）、
+  `simp_int` 单积分根像、`simple_pi` 置换）+ `RatWeight shift`。
+- `print_c_block_wrapper`（:6668-6695）：`rt().lookup_full_block(val,
+  init, bm)`；输出头 `Parameter defines element N of the following
+  common block,\nas transformed by <w0.w1...>`，bm.simple_pi 非单位时
+  追加 `, simple reflections permuted (i->j,...)`，再 `:` 换行；
+  `block.shift(bm.shift)` 后用 `block.singular(bm,gamma)` 打印，打完
+  shift 回去。
+- `print_pc_block_wrapper`（:6713-6739）：`rt().lookup(val,init,bm)`
+  （partial）+ bruhatOrder().poset().below(init)；位图满且非末元素时
+  打 `Elements <= N of following block\n`，否则打
+  `Subset {n,...,init} in the following common block:\n`，再 shift+打印。
+- `common_block_wrapper`/`partial_common_block_wrapper`（:6748/:6786，
+  已 live）：survivors = `block.survives(z, singular(bm,gamma))`，
+  回变换 `rc.sr(block.representative(z), bm, gamma)`。
+- **Rust 现状**：block/partial_block 用 `common_block_members`（按
+  gamma-lambda mod 余特征格的反射闭包）仿真 lookup_full_block，
+  差分已验；但仿真**不产生 bm 显示数据**（w 字、simple_pi、shift），
+  print 两件套恰恰要打这些——实现切片必须补一个最小 bm 等价物
+  （变换记录），或另寻差分等价的显示路径。差分定夺。
 相关已 live 兄弟：full_deform 两安装行（:8575/:8578）、KL_sum_at_s
 （:8583）、block/partial_block（common_block_wrapper 系）。
 
