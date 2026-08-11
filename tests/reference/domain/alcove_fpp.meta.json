@@ -1,9 +1,10 @@
 {
   "fixture": "domain/alcove_fpp",
   "fixture_sha256": "57e17635f2be2016795c2239722e3c1a82bd4e9e50e6e8b200fd6e1d0468a496",
-  "rust_status": "pending_hpc_differential",
+  "rust_status": "verified_hpc",
+  "differential_job": "3533851",
   "reference_status": "verified_hpc_reference",
-  "note": "alcove_center/alcove_root_vertex/FPP_numers/FPP_w_shifts (alcoves.cpp:277-341, 345-408, 945-1075) on A2 (SU(2,1) params) /B2/G2/A1.A1/A1.T1. Local pinned-oracle capture, byte-identical stdout; HPC differential pending.",
+  "note": "alcove_center/alcove_root_vertex/FPP_numers/FPP_w_shifts (alcoves.cpp:277-341, 345-408, 945-1075) on A2 (SU(2,1) params) /B2/G2/A1.A1/A1.T1. HPC differential 3533851 PASS (201 fixtures, 200 PASS / 1 known PARTIAL / 0 FAIL).",
   "oracle": "atlas",
   "oracle_exit_status": 0,
   "stage": "typed-pipeline-swap",
