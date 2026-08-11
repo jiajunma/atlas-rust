@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/weyl_orbit_rejected",
+  "fixture_sha256": "0e61b50b16f485a1ecb57386bef67aa2454ec663e43bfb9bdc188e0d32493e76",
+  "rust_status": "pending_hpc_differential",
+  "reference_status": "verified_hpc_reference",
+  "note": "Weyl_orbit/Weyl_orbit_ws type-mismatch rejections. Local pinned-oracle capture; HPC differential pending.",
+  "oracle": "atlas",
+  "oracle_exit_status": 1,
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+}

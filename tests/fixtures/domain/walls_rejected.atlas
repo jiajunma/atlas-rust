@@ -1,0 +1,7 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("A2"),true)
+walls_attitude(rd,[0,1])
+walls_attitude(rd,[0,1,4])
+walls(rd,[1/2])
+from_dominant(rd,[1,2,3])
+from_dominant([1,2,3],rd)

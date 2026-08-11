@@ -447,6 +447,12 @@ FIXTURE_PLANS = (
     # matches the oracle's element numbering exactly.
     FixturePlan(name="domain/strong_real_b2_full_kgb_probe"),
     FixturePlan(name="domain/strong_real_c2_full_kgb_probe"),
+    # Weyl layer (agent-30): Weyl_orbit/Weyl_orbit_ws both argument orders,
+    # walls/walls_attitude (alcoves.cpp), and from_dominant rejections.
+    FixturePlan(name="domain/weyl_orbit"),
+    FixturePlan(name="domain/weyl_orbit_rejected"),
+    FixturePlan(name="domain/walls"),
+    FixturePlan(name="domain/walls_rejected"),
     # Early scalar-era fixtures: verified verbatim locally and included so
     # the HPC differential upgrades their reference metadata.
     FixturePlan(name="eval/scalars"),

@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/walls_rejected",
+  "fixture_sha256": "36fb206865b64329071ad87239a6dd71857229354ee8289ab1c79c47cc15a285",
+  "rust_status": "pending_hpc_differential",
+  "reference_status": "verified_hpc_reference",
+  "note": "walls/walls_attitude/from_dominant runtime rejections (acute angle, too few walls, size mismatches). Local pinned-oracle capture; HPC differential pending.",
+  "oracle": "atlas",
+  "oracle_exit_status": 1,
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+}
