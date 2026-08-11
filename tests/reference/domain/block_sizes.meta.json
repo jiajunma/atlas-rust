@@ -1,6 +1,6 @@
 {
   "fixture": "domain/block_sizes",
-  "fixture_sha256": "4511ad04789c9731248d4a5e78ef655377d296a6a1694afe6932a22d223ae58d",
+  "fixture_sha256": "e65b815f377228efccb09a51b06137013b1828f7189b6d786262844dcdbbc82c",
   "rust_status": "verified_hpc_reference",
   "reference_status": "verified_hpc_reference",
   "note": "block_sizes/block_size via fiber-partition sums",

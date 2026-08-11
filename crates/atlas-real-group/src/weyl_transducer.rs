@@ -623,7 +623,7 @@ mod tests {
         let elements = group.enumerate(1 << 10).unwrap();
         for w in &elements {
             let wi = group.inverse(w);
-            let mut prod = w.clone();
+            let mut prod = *w;
             group.multiply(&mut prod, &wi);
             assert_eq!(prod, group.identity(), "w * w^-1 != e for {w:?}");
         }
@@ -631,7 +631,7 @@ mod tests {
         let twist = [0_usize, 1];
         for w in &elements {
             let is_tw = group.is_twisted_involution(w, &twist);
-            let mut sq = w.clone();
+            let mut sq = *w;
             group.multiply(&mut sq, w);
             let is_inv = sq == group.identity();
             assert_eq!(is_tw, is_inv, "mismatch for {w:?}");
@@ -677,21 +677,16 @@ mod tests {
         assert_eq!(elements.len(), 4);
         for w in &elements {
             let wi = group.inverse(w);
-            let mut prod = w.clone();
+            let mut prod = *w;
             group.multiply(&mut prod, &wi);
             assert_eq!(prod, group.identity(), "w*w^-1 != e for {w:?}");
         }
         let twist = [0_usize, 1];
         for w in &elements {
-            let mut sq = w.clone();
+            let mut sq = *w;
             group.multiply(&mut sq, w);
             let is_inv = sq == group.identity();
             let is_tw = group.is_twisted_involution(w, &twist);
-            eprintln!(
-                "A1A1 w={w:?} inv={is_inv} tw={is_tw} wi={:?} tw2={:?}",
-                group.inverse(w),
-                group.apply_twist(w, &twist)
-            );
             assert_eq!(is_tw, is_inv, "twisted/involution mismatch for {w:?}");
         }
     }
@@ -739,7 +734,7 @@ mod tests {
             .map(|g| WeylAction::simple_reflection(&datum, g).unwrap())
             .collect();
         let piece_matrices = compact.piece_matrices(&reflections).unwrap();
-        let mut compact_set: HashSet<Vec<i32>> = elements
+        let compact_set: HashSet<Vec<i32>> = elements
             .iter()
             .map(|elt| {
                 let mut action = WeylAction::identity(&datum).unwrap();
@@ -776,7 +771,7 @@ mod tests {
         let elements = group.enumerate(1 << 10).unwrap();
         let mut involution_count = 0_usize;
         for w in &elements {
-            let mut inv = w.clone();
+            let mut inv = *w;
             group.inner_mult(&mut inv, 0);
             group.inner_mult(&mut inv, 0);
             if inv == *w {
