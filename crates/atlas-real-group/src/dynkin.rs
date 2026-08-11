@@ -320,6 +320,53 @@ fn classify_component(
     })
 }
 
+/// The Cartan matrix of the diagram folded by a `delta`-orbit list of
+/// simple generators (upstream `DynkinDiagram::folded`,
+/// structure/dynkin.cpp:222-261, computed here via the `cofold` Cartan
+/// formulas of structure/rootdata.cpp:1578-1604, which determine the same
+/// edge multiplicities). The folded simple root of an orbit is the sum of
+/// its members; the folded simple coroot is the first member's coroot for
+/// orbits of commuting members (length 2), the sum of both coroots for
+/// non-commuting ones (length 3). `cartan[i][j]` is `<alpha_i, alpha_j^v>`
+/// (the crate convention), so the folded entry `C(i,j)` sums
+/// `cartan[a][b]` over folded roots `a` of orbit `j` and folded coroots
+/// `b` of orbit `i`.
+pub(crate) fn folded_cartan(
+    cartan: &[Vec<i32>],
+    orbits: &[crate::ext_block::ExtGen],
+) -> Result<Vec<Vec<i32>>, StructureError> {
+    let rank = cartan.len();
+    let mut folded = vec![vec![0i32; orbits.len()]; orbits.len()];
+    for (i, orbit_i) in orbits.iter().enumerate() {
+        // Folded coroot support of orbit i.
+        let mut coroots = vec![orbit_i.s0];
+        if orbit_i.kind == crate::ext_block::ExtGenKind::Three {
+            coroots.push(orbit_i.s1);
+        }
+        // Folded root support of each orbit j.
+        for (j, orbit_j) in orbits.iter().enumerate() {
+            let mut roots = vec![orbit_j.s0];
+            if orbit_j.kind != crate::ext_block::ExtGenKind::One {
+                roots.push(orbit_j.s1);
+            }
+            let mut entry = 0i32;
+            for &a in &roots {
+                for &b in &coroots {
+                    if a >= rank || b >= rank {
+                        return Err(StructureError::IndexOutOfRange {
+                            index: a.max(b),
+                            upper_bound: rank,
+                        });
+                    }
+                    entry += cartan[a][b];
+                }
+            }
+            folded[i][j] = entry;
+        }
+    }
+    Ok(folded)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
