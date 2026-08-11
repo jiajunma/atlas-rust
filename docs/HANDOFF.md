@@ -4,6 +4,48 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-09 (B2 fiber root cause + ext_block core landed)
+
+- **ext_block core committed (`28e6109`)**: agent-32's slice — DescValue
+  32-value classification + predicates, `extended_type`, `ExtBlock::build`
+  (trivial block modifier), `induced`, `tune_signs` over an injected
+  `StarOracle` seam, debug `check_quadratic`/`check_braid`; 322 lib tests,
+  clippy/fmt clean. Both A2 anchors verified byte-for-byte against the live
+  oracle: `extended_block(trivial(SU(2,1)), id)` (types
+  [[2,2],[2,9],[9,2],[0,3],[3,0],[1,1]], links with UndefBlock=6) and the
+  flip case (types |26|,|27|; fixed elements x=0,x=3). Oracle note: for
+  SL(3,R) the distinguished involution prints as `[[1,0],[1,-1]]`
+  (columns-as-images), and `extended_block` wants the rows-as-images
+  transpose `[[1,1],[0,-1]]`; the raw diagram flip is rejected
+  ("not distinguished").
+- **B2 `block_sizes` root cause FOUND (was the "B2 fiber undercount"
+  follow-up below)**: the oracle's `fiberSize` (innerclass.cpp:603-614) is
+  the STRONG-real full-fiber orbit class size, but
+  `domain_builtins.rs:4398` `fiber_size` counts ADJOINT-fiber elements of
+  the weak partition. The crate's strong-real machinery is CORRECT: a
+  probe (`crates/atlas-real-group/examples/fiber_probe.rs`, uncommitted)
+  reproduces all nine oracle entries `| 0, 0, 1 | / | 0, 0, 4 | /
+  | 1, 5, 12 |` for sc-B2 complex when fiber sizes come from
+  `StrongRealClassification`, and per-Cartan square classes/orbits match
+  upstream `print_strong_real` on BOTH the sc-B2 side and the adjoint-C2
+  dual side, Cartan numbering included. Fix queued: switch `fiber_size`
+  (and only it) to `context.strong.fiber_size(form, cartan)`, re-expand
+  the block_sizes fixture with the B2 rows (old version at
+  `git show 8097c05^:tests/fixtures/domain/block_sizes.atlas`),
+  recapture + differential. Blocked only on agent-30's in-flight
+  domain_builtins.rs edits (serial discipline).
+- **False alarm retired**: the "adjoint B2 Cartan C1/C2 swap" suspicion was
+  a probe artifact — the dual of sc-B2 is adjoint **C2**, not adjoint B2;
+  against `adjoint(Lie_type("C2"),true)` the crate's numbering, involution
+  matrices, occurrence counts and strong-real data all match upstream.
+- Probe scripts (local oracle, run from `atlas-scripts/` with
+  `< basic.at` + `< groups.at` preloaded): `/tmp/sr_b2.atlas`,
+  `/tmp/sr_c2_adj.atlas`, `/tmp/eb_a2d.atlas`, `/tmp/eb_a2i.atlas`.
+- agent-30 (Weyl builtins: walls/from_dominant/Weyl_orbit) still in
+  flight on typed.rs/domain_builtins.rs; agent-32's ext_block follow-ups
+  (ext_kl table, star/ext_param, twisted_deform) are next in the
+  atlas-real-group lane.
+
 ## Checkpoint - 2026-08-06 (post-sweep repair)
 
 HPC differential `3520281` (195 fixtures) reported 189 PASS / 5 FAIL /
