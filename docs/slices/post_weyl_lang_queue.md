@@ -229,6 +229,9 @@ verified_hpc_reference，capture 3535636）**：
     # + external (Param,mat) overload; big ext_param+star slice).
     FixturePlan(name="domain/twisted_family"),
     FixturePlan(name="domain/twisted_family_rejected"),
+    # block_deform (deform-to-height pair; same big slice).
+    FixturePlan(name="domain/block_deform"),
+    FixturePlan(name="domain/block_deform_rejected"),
 ```
 
 ### 5.1 root_ladder_bottoms/coroot_ladder_bottoms（小件，可独立切片）
