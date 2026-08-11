@@ -186,6 +186,25 @@ wrapper atlas-types.w:1569-1599（安装 :2241-2244），签名
 oracle 探针（/tmp/ladder_probe.at，B2）：`root_ladder_bottoms(rb,0)` →
 `[-4,-3,-1,0,1,2]`；越界报 `"Illegal root index 4"`。
 
+### 5.3 小件 sweep（臂已存在，注册翻转 + 1 个新臂；语言层空出后即可做）
+
+2026-08-11 查证：以下 skip 占位的臂已全部存在并与 live 兄弟共享，
+只需把 domain_builtin_skip 翻成 domain_builtin（照 08-06 sweep 模式），
+外加 fixture/差分：
+- `poscoroots`（共享 posroots 臂，domain_builtins.rs:8165）
+- `simple_coroots`（共享 simple_roots 臂，:8178）
+- `two_rho_check`（共享 two_rho 臂，:9212；上游 two_rho_check 推的是
+  dual_twoRho()，atlas-types.w:1415-1420，注意区分）
+- `coroot_radical`（共享 root_coradical 臂，:8205；= 简单余根矩阵 +
+  radical_basis，atlas-types.w:1691-1706）
+- `mod_central_torus_info`（共享 derived_info 臂，:8982）
+- `adjoint (LieType,bool->RootDatum)`（共享 simply_connected 臂，:8085；
+  上游 wrapper atlas-types.w:1346-1360 纯组合：Cartan 转置 + 零对角补 1）
+- `semisimple_rank (RootDatum->int)`：从未注册，需新注册 + 小臂
+  （crate root_datum.rs:94 已有 semisimple_rank()；上游 wrapper
+  atlas-types.w:1397-1400，安装 :2222）
+适合派给轻量 subagent；fixture 走既有流程，可与下一语言切片合并差分。
+
 ### 5.2 affine_orbit_ws/basic_orbit_ws（中等 crate 切片）
 
 wrapper atlas-types.w:2014-2060（安装 :2241 附近；basic_orbit_ws
