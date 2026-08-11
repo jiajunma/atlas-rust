@@ -247,6 +247,22 @@ global_KGB——print_X 需要新的 crate 切片（估 600+ 行），不能复�
 缺口标签（REMAINING 2026-08-06）：Split 定稿 + common-block srm pool +
 PolP；实现切片按签名逐个补齐并用差分定夺。
 
+### 5.6 根编号族解封（2026-08-11 查证，原"阻塞"状态过期）
+
+REMAINING 2026-08-04 两条"Root-index builtins limit"已过期。证据：
+1. `RootNumbering`（domain_builtins.rs:2809-2880）已完整移植 oracle 的
+   （level, root_compare 末坐标向前）排序（rootdata.cpp:118-129），
+   prefer_coroots 时用余根坐标做键（rootdata.cpp:164-167），
+   rootMinus 约定 RootNbr `npos-1-p`（rootdata.h:264-265）。
+2. B2 posroots/poscoroots 探针 fixture verified_hpc（差分 3516408）：
+   正根顺序 `[1,0],[0,1],[2,1],[1,1]` 与 oracle 逐字节一致。
+3. walls fixture（差分 3533446）在 B2 上验证用户可见根号。
+故 root_expression/coroot_expression/root_index/coroot_index/
+root_permutation/root_involution 可以做了——直接用既有 RootNumbering。
+**保留 caveat**：已验证的根号案例集中在简单根和 B2；非简单正根、
+G2/F4/E 型的排序细节（[2,1] 先于 [1,1] 这类非纯 level 序）由首次
+差分定夺，fixture 要覆盖这些型。
+
 ### 5.2 affine_orbit_ws/basic_orbit_ws（中等 crate 切片）
 
 wrapper atlas-types.w:2014-2060（安装 :2241 附近；basic_orbit_ws
