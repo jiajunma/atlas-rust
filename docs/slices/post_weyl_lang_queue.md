@@ -382,3 +382,23 @@ W_elt 渲染已存在（Weyl_orbit 切片）。
 `min_roots_for`/`min_coroots_for`（rootdata.h:154-157 语义，wrapper
 :1569-1597，RootNbrSet → 符号根号 [int] 输出）——这是本族唯一需要
 碰 crate 结构体的部分，量很小，可与上述合并为一个语言层切片。
+
+**fixture 已备（2026-08-11，commit 6de7f27）**：
+`tests/fixtures/domain/orbit_ws.atlas(+_rejected)`，harness 条件（无
+basic.at）oracle 验证通过。探针事实：
+- `basic_orbit_ws(rd, v, stab_rank)` 约定：v 前 stab_rank 项是 stab 墙，
+  v[stab_rank] 是 final 根——`v.size()<=stab_rank` 才报
+  `"Index too large for given list of root numbers"`（`[0],1` 也报）。
+- 有限分支样例：B2 `[0,1],1` → `[<>,<1>,<0.1>,<1.0.1>]`；
+  `[0,2],1` → `[<>,<1.0.1>]`；G2 `[0,1],1` → 6 元。
+- 仿射分支（final 余根依赖 stab 余根）：B2 `[0,1,-3],2`、`[0,1,-4],2`、
+  A1 `[0,-1],1`、G2 `[0,1,-6],2` 均 → `[<>]`（stab 满秩时轨道平凡，
+  属正常）；fixture 以此覆盖 to_affine_orbit=true 路径。
+- 锐角拒绝：B2 根对 (1,2)/(0,3)/(0,0)/(0,-2) 全报
+  `"Roots {a} and {b} have acute angle."`（符号号输出）。
+- ladder 样例：B2 root_ladder_bottoms(0) → `[-4,-3,-1,0,1,2]`，
+  coroot_ladder_bottoms(0) → `[-4,-1,0,1]`；G2 root_ladder_bottoms(5)
+  → `[-6,-5,-4,-3,-2,-1,0,5]`。
+- affine_orbit_ws：B2 `[0,0]/1` → `[<>]`、`[1,0]/2` → `[<>,<1.0.1>]`、
+  `[1,1]/3` → 4 元；尺寸错报 `"Rank and rational weight size
+  mismatch 2:3"`。
