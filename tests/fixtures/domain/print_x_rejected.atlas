@@ -1,0 +1,6 @@
+ra : RootDatum
+ra := simply_connected(Lie_type("A1"),true)
+print_X(ra)
+ic : InnerClass
+ic := inner_class(ra,[[1]])
+print_X(ic,ic)

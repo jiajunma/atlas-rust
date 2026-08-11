@@ -1,0 +1,39 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/print_x_rejected",
+  "status": "pending_hpc_reference",
+  "events": [
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ra': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'A1'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ic': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type A1, with involution defining\ninner class of type 'c', with 2 real forms and 2 dual real forms"
+      }
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "found RootDatum while InnerClass was needed."
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "found (InnerClass,InnerClass) while InnerClass was needed."
+    }
+  ]
+}

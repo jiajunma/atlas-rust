@@ -1,0 +1,15 @@
+ra : RootDatum
+ra := simply_connected(Lie_type("A1"),true)
+ic : InnerClass
+ic := inner_class(ra,[[1]])
+print_X(ic)
+rb : RootDatum
+rb := adjoint(Lie_type("A1"),false)
+ib : InnerClass
+ib := inner_class(rb,[[1]])
+print_X(ib)
+rc : RootDatum
+rc := simply_connected(Lie_type("B2"),true)
+ic2 : InnerClass
+ic2 := inner_class(rc,[[1,0],[0,1]])
+print_X(ic2)
