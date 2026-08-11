@@ -35,8 +35,11 @@ root_permutation/root_involution (oracle root numbering blocked),
 twisted_deform/twisted_full_deform/twisted_KL_sum_at_s/block_deform/
 dual_KL_block (+KL_block/dual_KL/KL_sum_at_s_to_height/
 truncate_above_height partial signatures, common-block srm pool),
-print_gradings/print_real_Weyl/print_blockstabilizer (shared RealWeyl
-~500 lines), print_X (GlobalTitsGroup 600+), print_common_block/
+print_gradings/print_real_Weyl/print_blockstabilizer (RealWeyl crate
+**已移植** `51b9d83`：real_weyl.rs 1858 行含 10 个字节级锚点测试；坑：
+对偶侧必须用精确 `-θ` fiber 链——取 primal 代表元 canonical word 在
+对偶 datum 重放后右乘对偶最长元，不能用对偶 classification 的
+canonical 代表元，cartanclass.cpp:121；尚缺语言层 wrapper 注册), print_X (GlobalTitsGroup 600+), print_common_block/
 print_partial_block/print_partial_common_block (srm pool, last),
 reducibility_points, KType/Rep skips (K_type_pol/first_term/last_term/
 null_module/W_cells), small items (semisimple_rank/two_rho_check/
@@ -141,7 +144,7 @@ freeze a fixture, implement, gate, HPC differential, meta upgrade.
 |---|---|---|
 | 1 | root-datum surface | DONE (simple_roots/simple_coroots/is_Cartan_matrix/dual_datum, two_rho, fundamental_weight/coweight, simple_factors, Cartan_matrix_type) |
 | 3 | root/radical data | DONE except root_ladder_bottoms/coroot_ladder_bottoms (need root_perm/link); integrality_rank/integrality_datum/is_integrally_dominant DONE `174ae58` (fixture `domain/integrality` VERBATIM; integrality_points implemented but its RatVec-list display differs from the oracle RatNum list — recorded in meta) |
-| 4 | print family | NOT STARTED (needs global KGB, realweyl, srm pools) |
+| 4 | print family | PARTIAL (RealWeyl crate ported `51b9d83`; still needs global KGB for print_X, srm pools for print_common_block, language-layer wrappers for the rest) |
 | 5 | W-cells/KL | DONE except twisted_KL_sum_at_s (needs ext_block) |
 | 6 | extended blocks | PARTIAL (default_extended/extend/partial_block/partial_KL_block done; rest need ext_block layer) |
 | 7 | deform variants | PARTIAL (full_deform done; rest need block_deformation_to_height / common-block srm pool) |
