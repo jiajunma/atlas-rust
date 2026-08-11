@@ -44,6 +44,16 @@ impl CartanClassificationBudget {
         self.weyl_budget
     }
 
+    /// The integer-lattice budget of the per-Cartan fiber chains (cache key).
+    pub const fn integer_lattice(&self) -> &IntegerLatticeBudget {
+        &self.integer_lattice
+    }
+
+    /// The adjoint-fiber budget of the per-Cartan fiber chains (cache key).
+    pub const fn adjoint_fiber(&self) -> &AdjointFiberBudget {
+        &self.adjoint_fiber
+    }
+
     /// The fiber-element limit (cache key).
     pub fn max_fiber_elements(&self) -> usize {
         self.max_fiber_elements
@@ -613,7 +623,9 @@ fn rational_dot(coordinates: &[i32], factor: &[Rational]) -> Result<Rational, St
 /// order, which walks coordinates from the LAST index down; the crate's own
 /// root order is ambient-lexicographic instead, so BFS consumers sort by
 /// this key explicitly.
-fn upstream_positive_key(coordinates: &[i32]) -> Result<(i32, Vec<i32>), StructureError> {
+pub(crate) fn upstream_positive_key(
+    coordinates: &[i32],
+) -> Result<(i32, Vec<i32>), StructureError> {
     let mut reversed = try_capacity(coordinates.len())?;
     let mut height = 0_i32;
     for &coordinate in coordinates.iter().rev() {

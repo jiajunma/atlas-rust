@@ -129,6 +129,7 @@ pub enum StructureError {
         expected: i32,
         actual: i32,
     },
+    RealFormNotDefinedOnCartan,
 }
 
 impl fmt::Display for StructureError {
@@ -304,6 +305,9 @@ impl fmt::Display for StructureError {
                 f,
                 "root pairing ({row},{column}) is {actual}, expected {expected}"
             ),
+            Self::RealFormNotDefinedOnCartan => {
+                write!(f, "Cartan class not defined for real form")
+            }
         }
     }
 }

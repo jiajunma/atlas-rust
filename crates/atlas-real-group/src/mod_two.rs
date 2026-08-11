@@ -309,6 +309,19 @@ impl ModTwoSubspace {
         Ok(kernel)
     }
 
+    /// Pivot rows with their pivot coordinates, in ascending pivot order.
+    ///
+    /// This is exactly the sorted canonical basis upstream `Gauss_Jordan`
+    /// commits (bitvector.cpp:673-697); the R-group kernel construction of
+    /// `real_weyl.rs` reads generator bits off these rows, where
+    /// [`Self::right_kernel`] would re-reduce them into a fresh subspace.
+    pub(crate) fn pivot_rows(&self) -> impl Iterator<Item = (usize, &ModTwoVector)> {
+        self.pivots
+            .iter()
+            .enumerate()
+            .filter_map(|(pivot, row)| row.as_ref().map(|row| (pivot, row)))
+    }
+
     pub(crate) fn basis_vectors(&self) -> impl Iterator<Item = &ModTwoVector> {
         self.pivots.iter().filter_map(Option::as_ref)
     }

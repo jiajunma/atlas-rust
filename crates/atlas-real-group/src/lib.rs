@@ -44,6 +44,7 @@ mod primitive_involution;
 mod real_form_labels;
 mod real_form_order;
 mod real_form_seed;
+pub mod real_weyl;
 mod rep_context;
 mod restricted_roots;
 mod root_datum;
