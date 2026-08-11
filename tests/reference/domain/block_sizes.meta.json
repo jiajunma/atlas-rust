@@ -1,12 +1,13 @@
 {
   "fixture": "domain/block_sizes",
   "fixture_sha256": "e65b815f377228efccb09a51b06137013b1828f7189b6d786262844dcdbbc82c",
-  "rust_status": "verified_hpc_reference",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
   "note": "block_sizes/block_size via fiber-partition sums",
   "reference_job": "3520215",
   "oracle": "atlas",
   "oracle_exit_status": 0,
   "stage": "typed-pipeline-swap",
-  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "differential_job": "3531617"
 }

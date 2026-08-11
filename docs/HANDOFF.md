@@ -29,6 +29,15 @@ HPC differential `3520281` (195 fixtures) reported 189 PASS / 5 FAIL /
 - Repair differential submitted as job `3531606`; on zero FAIL the six
   3520214-3520219 fixtures (cofolded, block_sizes, fundamental,
   simple_factors, cartan_matrix_type, integrality) get `verified_hpc`.
+  DONE: `3531606` (cpu partition) passed all six but FAILED `kgb_hasse`
+  on the 30s harness timeout (E7 needs fat; CPU-time ~2571s with rayon);
+  resubmitted on fat as `3531617` (`TIMEOUT=3600 sbatch --partition=fat
+  --time=01:00:00 --mem=32G`) — **194 PASS / 1 PARTIAL / 0 FAIL**, and the
+  six metas now carry `rust_status: verified_hpc` +
+  `differential_job: 3531617`. All 197 reference metas are verified_hpc.
+  Submission note: after a new local commit, re-archive the tree to HPC
+  before sbatch or the dirty-tree guard aborts ("declared Atlas-Rust
+  source state does not match the submit checkout").
 - Open follow-up: the B2 fiber undercount that motivated the block_sizes
   trim (oracle `| 0, 0, 4 |`/`| 1, 5, 12 |` vs Rust `| 0, 0, 3 |`/
   `| 1, 3, 8 |`) is a REAL behavior gap parked by the A2-only trim —

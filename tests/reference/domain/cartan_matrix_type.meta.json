@@ -4,12 +4,13 @@
   "stage": "typed-pipeline-swap",
   "reference_status": "verified_hpc_reference",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "rust_status": "verified_hpc_reference",
+  "rust_status": "verified_hpc",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w"
   ],
   "oracle_exit_status": 0,
   "notes": "local oracle capture; HPC verification pending",
   "reference_job": "3520218",
-  "fixture_sha256": "4b61f25cded19998cb2f626d994209512e4fab1e844dd204773b99b35814f4e5"
+  "fixture_sha256": "4b61f25cded19998cb2f626d994209512e4fab1e844dd204773b99b35814f4e5",
+  "differential_job": "3531617"
 }
