@@ -9,7 +9,13 @@ DescentTable + ExtKlTable (KL_table) + condense + ext_kl_matrix with
 A2-trivial/A2-flip/Sp4 oracle anchors. Crate side of the ext family is
 now complete (ext_block `28e6109` + ext_kl); language registration of
 extended_block/raw_ext_KL/partial_extended_KL_block is the next slice
-once agent-30's alcove/FPP slice frees atlas-core.
+once agent-30's alcove/FPP slice frees atlas-core. Per-slice recon for
+ALL 50 missing builtins is now complete in
+docs/slices/post_weyl_lang_queue.md (§3 ext registration, §4 print
+family + shift_flip dependency correction, §5.1-5.5 ladder/orbit/
+small-sweep/deform anchors): 8 near-flips (skip arms already shared
+with live siblings + semisimple_rank + reducibility_points), the rest
+mapped to concrete crate/language gaps.
 
 Reconciliation vs upstream atlas-types.w (178 install_function names):
 128 live in typed.rs, 50 missing (28 never registered + 22
