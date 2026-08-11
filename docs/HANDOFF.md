@@ -1491,7 +1491,7 @@ a future cleanup pass rather than schema migration.
 - 后续顺序：切片 A（coroot_queries 8 + root_numbering 6）→ 切片 B
   （orbit/ladder + poly 表层）→ 切片 C（print_gradings，等 RealWeyl）
   → dual_KL_block + KL_block 第二重载 → deform/twisted 族 +
-  ext_param+star → print_X（global_KGB）+ print_common_block 三件套。
+  ext_param+star → print_X（global_KGB）+ print_common_block（两件套：print_block(Param)/print_common_block）。
 
 - Branch: `main`.
 - B3a non-recursive functions, B3b recursive functions / definition sugar,

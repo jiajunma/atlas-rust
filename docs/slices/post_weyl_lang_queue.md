@@ -329,10 +329,16 @@ pool.index(KL_pol(last-x,last-y))`（池初始 {0,1}，Pol 转 signed）→
 - 相邻已 live：KL_column（:5052）。三件套与 twisted 族共享
   scaled_extended_finalise/extended_finalise 两个 crate 缺口，合并进
   ext_param+star 切片最划算。
-- `print_common_block (Param->)`（print_c_block_wrapper，安装 :7505）、
-  `print_partial_block (Param->)`（:7507）、
-  `print_partial_common_block (Param->)`（:7509）——均绑 common-block
-  srm pool，最后做
+- `print_common_block (Param->)`（print_c_block_wrapper，安装 :7505）——
+  绑 common-block srm pool，最后做。**2026-08-11 探针修正**：钉住版只
+  装了 `print_block(Param)`（:7504，print_param_block_wrapper，布局
+  `"Parameter defines element N of the following block:"`，无 common/
+  transformed 行）与 `print_common_block(Param)` 两个 Param 打印机；
+  **print_partial_block/print_partial_common_block 在钉住版未安装**
+  （:7507/:7509 不存在）。fixture `domain/print_common_block.atlas`
+  已备（无 rejected：param() 构造器会规范化 nu，test_standard 拒绝路径
+  在小组上探不出来；池复用命中路径已覆盖，非平凡
+  `"as transformed by <w>"` 小样例未触发）。
 
 **srm pool 语义锚点（2026-08-11 补查，repr.h/atlas-types.w）**：
 - "srm pool" = `Rep_table`（repr.h:534）：common_block 池，键为

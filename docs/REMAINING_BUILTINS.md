@@ -40,7 +40,7 @@ print_gradings/print_real_Weyl/print_blockstabilizer (RealWeyl crate
 对偶侧必须用精确 `-θ` fiber 链——取 primal 代表元 canonical word 在
 对偶 datum 重放后右乘对偶最长元，不能用对偶 classification 的
 canonical 代表元，cartanclass.cpp:121；尚缺语言层 wrapper 注册), print_X (GlobalTitsGroup 600+), print_common_block/
-print_partial_block/print_partial_common_block (srm pool, last),
+print_block(Param)/print_common_block (srm pool, last; print_partial_* 钉住版未安装),
 reducibility_points, KType/Rep skips (K_type_pol/first_term/last_term/
 null_module/W_cells), small items (semisimple_rank/two_rho_check/
 simple_coroots/poscoroots/coroot_radical/mod_central_torus_info/adjoint).
