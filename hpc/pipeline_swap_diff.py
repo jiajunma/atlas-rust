@@ -549,6 +549,14 @@ def parse_cli_diagnostics(stderr: str) -> tuple[list[dict[str, str]], list[str]]
             )
         elif line.startswith("  | ") or not line.strip():
             continue
+        elif line.startswith("  ") and diagnostics:
+            # Multi-line message continuation (e.g. the oracle's three-line
+            # "Cannot generate block:\n  non-standard parameter(...)\n
+            # Parameter not standard" rendered by the CLI with the same
+            # two-space indent). Source excerpts carry the "  | " prefix
+            # handled above, so plain indented lines extend the current
+            # diagnostic's message verbatim.
+            diagnostics[-1]["message"] += "\n" + line[2:]
         else:
             unparsed.append(line)
     return diagnostics, unparsed
