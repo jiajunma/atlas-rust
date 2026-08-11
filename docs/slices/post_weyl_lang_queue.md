@@ -157,6 +157,21 @@ simpleImaginary 根的子系 Cartan 矩阵过 DynkinDiagram 取 Bourbaki
 grading `[01]`（空时 `[]`）。注意根号 4,5 是 RootNbr（全根系编号），
 不是简单根下标。多个 real form 共享 Cartan 类时每类只打对应 part。
 
+**print_real_Weyl / print_blockstabilizer wrapper 事实
+（atlas-types.w:8830-8847 / :8898-8916，安装 :9110-9118；RealWeyl crate
+已移植 51b9d83）**：
+- `print_real_Weyl`：签名 **`(RealForm,CartanClass->)`**（先 pop cc 再
+  pop rf；与 print_gradings 的参数序相反！）。错误措辞与 print_gradings
+  **不同**：`"Inner class mismatch between arguments"`（print_gradings
+  是 `"...between real form and Cartan class"`）、
+  `"Cartan class not defined for real form"`（print_gradings 多一个
+  `this`）。主体 `output::printRealWeyl(os,rf->val,cc->number)`。
+- `print_blockstabilizer`：签名 **`(Block,CartanClass->)`**（先 pop cc
+  再 pop Block）；wrapper 无任何检查，块本身不直接用，只取
+  `b->rf->val` 与 `b->dual_rf->val.realForm()` 调
+  `output::printBlockStabilizer(os,rf,cc->number,dual_rf_num)`。
+- 两个 wrapper 都是 single_value 时 wrap_tuple<0>()（语言层 void 惯例）。
+
 **shift_flip 依赖修正（2026-08-11 查证）**：队列旧注"最便宜 ~50 行"
 不成立。wrapper（atlas-types.w:7341-7362，`(Param,mat,ratvec->bool)`，
 安装 :7530）需要 per-parameter 扩展：
