@@ -458,6 +458,11 @@ FIXTURE_PLANS = (
     # their size/alcove rejections.
     FixturePlan(name="domain/alcove_fpp"),
     FixturePlan(name="domain/alcove_fpp_rejected"),
+    # Extended-block layer (agent-36): extended_block/raw_ext_KL/
+    # partial_extended_KL_block on A2 (ic=c and ic=u) + A1; rejections cover
+    # delta not fixing gamma and type mismatches.
+    FixturePlan(name="domain/ext_block"),
+    FixturePlan(name="domain/ext_block_rejected"),
     # Early scalar-era fixtures: verified verbatim locally and included so
     # the HPC differential upgrades their reference metadata.
     FixturePlan(name="eval/scalars"),
