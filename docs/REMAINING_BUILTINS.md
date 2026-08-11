@@ -19,8 +19,9 @@ lack only partial signatures).
 Remaining: alcove_center/alcove_root_vertex/FPP_numers/FPP_w_shifts (in
 flight, agent-30), extended_block/raw_ext_KL/partial_extended_KL_block
 (crate ready, wrappers atlas-types.w:7366-7431/8682-8728/7445-7468),
-shift_flip (cheapest ext item, same_sign ~50 lines), ext_param+star
-(largest single block ~1000-1200 lines), finalise three
+shift_flip (NOT cheap: needs per-parameter shifted_default_extension —
+belongs to the ext_param+star slice, post_weyl_lang_queue.md §4),
+ext_param+star (largest single block ~1000-1200 lines), finalise three
 (finalize_extended/K_type_pol_extended/scale_extended), affine_orbit_ws/
 basic_orbit_ws, root_ladder_bottoms/coroot_ladder_bottoms,
 root_expression/root_index/coroot_expression/coroot_index/
