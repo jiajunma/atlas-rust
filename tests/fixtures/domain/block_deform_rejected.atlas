@@ -1,0 +1,13 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("A2"),true)
+ic : InnerClass
+ic := inner_class(rd,[[1,0],[0,1]])
+rf : RealForm
+rf := real_form(ic,1)
+p : Param
+p := param(KGB(rf,3),[0,0],[1,1]/1)
+d : ParamPol
+d := deform(p)
+block_deform(p,d,-1)
+block_deform(p,d)
+block_deform(rf,d,0)

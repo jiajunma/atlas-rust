@@ -1,0 +1,79 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/block_deform_rejected",
+  "status": "pending_hpc_reference",
+  "events": [
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rd': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'A2'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ic': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type A2, with involution defining\ninner class of type 'c', with 2 real forms and 1 dual real form"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rf': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "connected quasisplit real group with Lie algebra 'su(2,1)'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'p': Param\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "final parameter(x=3,lambda=[1,1]/1,nu=[-1,2]/2)"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'd': ParamPol\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "\n(1-1s)*parameter(x=2,lambda=[1,1]/1,nu=[0,0]/1) [4]\n(1-1s)*parameter(x=0,lambda=[1,1]/1,nu=[0,0]/1) [4]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "(\n(1-1s)*parameter(x=2,lambda=[1,1]/1,nu=[0,0]/1) [4]\n(1-1s)*parameter(x=0,lambda=[1,1]/1,nu=[0,0]/1) [4],Empty sum of standard modules)"
+      }
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "found (Param,ParamPol) while (Param,ParamPol,int) was needed."
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "found (RealForm,ParamPol,int) while (Param,ParamPol,int) was needed."
+    }
+  ]
+}
