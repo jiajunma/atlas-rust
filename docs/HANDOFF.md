@@ -4,6 +4,42 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-11b (alcove/FPP landed; ext slice in flight)
+
+- **alcove/FPP slice landed (`53581d8`, agent-30)**: alcove_center,
+  alcove_root_vertex, FPP_numers, FPP_w_shifts registered
+  (typed.rs:4864-4898; helpers domain_builtins.rs ~3736-4730 +
+  arms ~8680-9030). Three real bugs fixed by oracle comparison:
+  additive_closure defaults for_coroots=true (rootdata.h:119-120);
+  CenterClassifier shifts unslice maps bit *positions* not masks;
+  has_descent is left descent (w^-1 action). Fixtures alcove_fpp
+  (+_rejected) byte-identical to oracle locally; 230 lib tests,
+  clippy/fmt clean. HPC differential **3533851** submitted (fat, 201
+  fixtures) — on PASS upgrade the two metas to verified_hpc with
+  differential_job=3533851.
+- **root_index coordinate question RESOLVED** (queue §5.7, commit
+  eae26a3): no bug — vec coordinates are in each datum's native lattice
+  basis (adjoint: roots in simple-root coords, coroots in fundamental
+  coweight coords = Cartan columns; simply_connected: roots in
+  fundamental-weight coords = Cartan rows, coroots in simple-coroot
+  coords). Miss sentinel = signed numPosRoots (B2: 4), no dimension
+  check. Negative index -k = negative of posroot k-1. Fixtures
+  root_numbering.atlas(+_rejected) drafted and oracle-validated
+  (untracked, for the root-numbering implementation slice; 6 builtins:
+  root_expression/coroot_expression/root_index/coroot_index/
+  root_involution/root_permutation — root/coroot/is_long_root already
+  live).
+- **srm pool anchors** (queue §5.5, commit fd2b4c1): print_common_block
+  family needs Rep_table/block_modifier semantics (repr.h:485-499,
+  534+); Rust block/partial_block emulate lookup_full_block via
+  common_block_members but produce no bm display data (w word,
+  simple_pi, shift) — that is the real gap for the print trio.
+- In flight: agent-35 RealWeyl crate slice (exclusive on
+  atlas-real-group); agent-36 ext three-builtin registration
+  (extended_block/raw_ext_KL/partial_extended_KL_block, exclusive on
+  atlas-core). Next after agent-36: small sweep (8 near-flips) +
+  root-numbering 6 (fixtures ready), one combined language slice.
+
 ## Checkpoint - 2026-08-11 (199/199 verified; ext_kl landed; builtin reconciliation)
 
 - **HPC differential `3533446` PASS**: 199 fixtures, 198 PASS / 1 PARTIAL
