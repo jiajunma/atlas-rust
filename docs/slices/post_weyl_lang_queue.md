@@ -222,6 +222,9 @@ verified_hpc_reference，capture 3535636）**：
     # print_X (global KGB slice).
     FixturePlan(name="domain/print_x"),
     FixturePlan(name="domain/print_x_rejected"),
+    # dual_KL_block (Bare_block::dual + KL packing shared with KL_block).
+    FixturePlan(name="domain/dual_kl_block"),
+    FixturePlan(name="domain/dual_kl_block_rejected"),
 ```
 
 ### 5.1 root_ladder_bottoms/coroot_ladder_bottoms（小件，可独立切片）
