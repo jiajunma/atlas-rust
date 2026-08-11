@@ -2,10 +2,11 @@
   "fixture": "domain/root_numbering",
   "fixture_sha256": "47eda56d6a6120dadda8283ffeca2c99ea8b8c479d3b45381134e1060daa2973",
   "rust_status": "pending_hpc_differential",
-  "reference_status": "pending_hpc_reference",
-  "note": "root_expression/coroot_expression/root_index/coroot_index/root_involution/root_permutation on adjoint+sc B2; vec coords in datum-native lattice basis, sentinel = signed numPosRoots, negative root k = -posroot(k-1), OOB \"Illegal (co)root index N\". Local pinned-oracle capture; HPC reference capture job 3535636 pending byte-verification.",
+  "reference_status": "verified_hpc_reference",
+  "note": "root_expression/coroot_expression/root_index/coroot_index/root_involution/root_permutation on adjoint+sc B2; vec coords in datum-native lattice basis, sentinel = signed numPosRoots, negative root k = -posroot(k-1), OOB \"Illegal (co)root index N\". HPC reference capture 3535636 byte-identical to local pinned-oracle capture (stdout+stderr, all 10 files).",
   "oracle": "atlas",
   "oracle_exit_status": 0,
   "stage": "typed-pipeline-swap",
-  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_job": "3535636"
 }

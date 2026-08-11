@@ -2,10 +2,11 @@
   "fixture": "domain/coroot_queries_rejected",
   "fixture_sha256": "40b0d00a2d6e59881228ce1e58465ac7fe60e98118c99caa48e89e69fd0325b8",
   "rust_status": "pending_hpc_differential",
-  "reference_status": "pending_hpc_reference",
-  "note": "coroot_queries type conform rejections (wrong argument types for poscoroots/two_rho_check/coroot_radical/mod_central_torus_info/reducibility_points). Local pinned-oracle capture; HPC reference capture job 3535636 pending byte-verification.",
+  "reference_status": "verified_hpc_reference",
+  "note": "coroot_queries type conform rejections (wrong argument types for poscoroots/two_rho_check/coroot_radical/mod_central_torus_info/reducibility_points). HPC reference capture 3535636 byte-identical to local pinned-oracle capture (stdout+stderr, all 10 files).",
   "oracle": "atlas",
   "oracle_exit_status": 1,
   "stage": "typed-pipeline-swap",
-  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_job": "3535636"
 }

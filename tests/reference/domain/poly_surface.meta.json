@@ -2,10 +2,11 @@
   "fixture": "domain/poly_surface",
   "fixture_sha256": "4af8eccc579f3067a0b852edf954ebe949160e6164d17f63b7a95f4637cda3fe",
   "rust_status": "pending_hpc_differential",
-  "reference_status": "pending_hpc_reference",
-  "note": "ParamPol/KTypePol skip overloads: null_module, real_form, #, first_term/last_term, truncate_above_height, K_type_pol, W_cells on SU(2,1)/SL(2,R) blocks. Local pinned-oracle capture; HPC reference capture job 3535636 pending byte-verification.",
+  "reference_status": "verified_hpc_reference",
+  "note": "ParamPol/KTypePol skip overloads: null_module, real_form, #, first_term/last_term, truncate_above_height, K_type_pol, W_cells on SU(2,1)/SL(2,R) blocks. HPC reference capture 3535636 byte-identical to local pinned-oracle capture (stdout+stderr, all 10 files).",
   "oracle": "atlas",
   "oracle_exit_status": 0,
   "stage": "typed-pipeline-swap",
-  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_job": "3535636"
 }

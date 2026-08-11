@@ -2,10 +2,11 @@
   "fixture": "domain/poly_surface_rejected",
   "fixture_sha256": "6edbc57f909b1a0a9d7e384cad5e796cf7809cfac069f7eb6c3c26f4a222f6bb",
   "rust_status": "pending_hpc_differential",
-  "reference_status": "pending_hpc_reference",
-  "note": "poly_surface rejections: empty-module first/last term (ParamPol+KTypePol), ParamPol/RealForm overload match failures, (ParamPol,ParamPol) conform failure. Local pinned-oracle capture; HPC reference capture job 3535636 pending byte-verification.",
+  "reference_status": "verified_hpc_reference",
+  "note": "poly_surface rejections: empty-module first/last term (ParamPol+KTypePol), ParamPol/RealForm overload match failures, (ParamPol,ParamPol) conform failure. HPC reference capture 3535636 byte-identical to local pinned-oracle capture (stdout+stderr, all 10 files).",
   "oracle": "atlas",
   "oracle_exit_status": 1,
   "stage": "typed-pipeline-swap",
-  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_job": "3535636"
 }

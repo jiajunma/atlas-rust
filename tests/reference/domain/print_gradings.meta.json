@@ -2,10 +2,11 @@
   "fixture": "domain/print_gradings",
   "fixture_sha256": "d90e0b559768fdbdb36f82e00e534e5cbfbf584f406cf1b1a2ca968c23cc73b1",
   "rust_status": "pending_hpc_differential",
-  "reference_status": "pending_hpc_reference",
-  "note": "print_gradings(CartanClass,RealForm) layout: imaginary root system type + simple roots, weak-real element rows; A1/B2 Cartan sweeps. Local pinned-oracle capture; HPC reference capture job 3535636 pending byte-verification.",
+  "reference_status": "verified_hpc_reference",
+  "note": "print_gradings(CartanClass,RealForm) layout: imaginary root system type + simple roots, weak-real element rows; A1/B2 Cartan sweeps. HPC reference capture 3535636 byte-identical to local pinned-oracle capture (stdout+stderr, all 10 files).",
   "oracle": "atlas",
   "oracle_exit_status": 0,
   "stage": "typed-pipeline-swap",
-  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_job": "3535636"
 }
