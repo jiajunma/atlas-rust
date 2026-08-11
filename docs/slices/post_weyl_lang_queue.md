@@ -204,6 +204,25 @@ oracle 探针（/tmp/ladder_probe.at，B2）：`root_ladder_bottoms(rb,0)` →
   （crate root_datum.rs:94 已有 semisimple_rank()；上游 wrapper
   atlas-types.w:1397-1400，安装 :2222）
 适合派给轻量 subagent；fixture 走既有流程，可与下一语言切片合并差分。
+追加：`reducibility_points (Param->[rat])` 也是近翻转——crate
+rep_context.rs:1156-1159 已移植（repr.cpp:825-925），只差注册 + 薄
+wrapper（atlas-types.w:6561-6568，安装 :7500-7501）。
+
+### 5.4 deform/KL 族部分签名（臂存在但 partial，需真实现，非翻转）
+
+08-06 sweep 记录"arms were partial"的精确签名地图（typed.rs skip 行 →
+共享臂位置）：
+- `KL_sum_at_s_to_height (Param,int)` → 共享 KL_sum_at_s 臂（:10516）
+- `dual_KL` → 共享 raw_KL 臂（:10608）
+- `W_cells` → 共享 W_graph 臂（:11269）
+- `null_module` → 共享 null_K_module 臂（:12002）
+- `first_term`/`last_term (Split,KType)` 与 `(Split,Param)` → 臂 :12021
+  （KType/Param 两分支都在，缺口在 Split-int 定稿语义）
+- `K_type_pol (Split,Param)` → 臂 :12074
+- `truncate_above_height (KTypePol,int)`/`(ParamPol,int)` → 臂 :12310
+- `KL_block` 第二重载 → 臂 :10774（common-block/PolP 缺口）
+缺口标签（REMAINING 2026-08-06）：Split 定稿 + common-block srm pool +
+PolP；实现切片按签名逐个补齐并用差分定夺。
 
 ### 5.2 affine_orbit_ws/basic_orbit_ws（中等 crate 切片）
 
