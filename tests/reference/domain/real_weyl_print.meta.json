@@ -2,10 +2,11 @@
   "fixture": "domain/real_weyl_print",
   "fixture_sha256": "a5a831f506fa7088e5952f3e07a8c8a1a53287a981562a1c2d53fb906eb742b6",
   "rust_status": "pending_hpc_differential",
-  "reference_status": "pending_hpc_reference",
-  "note": "print_real_Weyl(RealForm,CartanClass) + print_blockstabilizer(Block,CartanClass) on A1/B2/C2: W^C/A/W_ic/W^R decomposition, generator words, Sp(4,R) \"W^R is a Weyl group of type B2\" quirk, A_i/A_r/W_rc stabilizer factors. Local pinned-oracle capture; HPC reference capture pending byte-verification.",
+  "reference_status": "verified_hpc_reference",
+  "note": "print_real_Weyl(RealForm,CartanClass) + print_blockstabilizer(Block,CartanClass) on A1/B2/C2: W^C/A/W_ic/W^R decomposition, generator words, Sp(4,R) \"W^R is a Weyl group of type B2\" quirk, A_i/A_r/W_rc stabilizer factors. HPC reference capture 3535942 byte-identical to local pinned-oracle capture (stdout+stderr).",
   "oracle": "atlas",
   "oracle_exit_status": 0,
   "stage": "typed-pipeline-swap",
-  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_job": "3535942"
 }
