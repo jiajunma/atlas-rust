@@ -4,6 +4,51 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-11 (199/199 verified; ext_kl landed; builtin reconciliation)
+
+- **HPC differential `3533446` PASS**: 199 fixtures, 198 PASS / 1 PARTIAL
+  (the two permanent container_syntax_errors pendings) / 0 FAIL. The five
+  metas (block_sizes, weyl_orbit, weyl_orbit_rejected, walls,
+  walls_rejected) are upgraded to verified_hpc with
+  differential_job=3533446 (`7a5eba5`). Every fixture in the harness is
+  now verified_hpc.
+- **ext_kl crate slice landed (`602fce6`, agent-33)**:
+  crates/atlas-real-group/src/ext_kl.rs (1761 lines) — DescentTable
+  (ext_kl.cpp:20-118, DEAD_END sentinel, prim_flip bitmap), ExtKlTable
+  (KL_table :120-841 incl. do_new_recursion all seven tsx cases),
+  condense (ext_block.cpp:2015-2048), ext_kl_matrix (:939-1020, survivors
+  + parity sign flips). Sign convention: sign lives in
+  descent_table::prim_flip, not the pool index; kl_pol_index returns
+  (KLIndex, bool) mirroring upstream pair<KLIndex,bool>. Oracle anchors:
+  A2 trivial-delta 6x6, A2 flip-delta (SL(3,R), transpose convention),
+  Sp4 12-element non-degenerate (pool {0,1,q}, stops [0,4,7,10,12]);
+  325 lib tests, clippy/fmt clean. One real bug found and fixed in
+  review: get_mp/mu must read the in-progress working column during
+  do_new_recursion (upstream loads column[y] before recursing,
+  ext_kl.cpp:517). Frontend boundary deferred to the common-block slice:
+  StandardRepr->extended-block entry, survivors->StandardRepr map,
+  singular-orbit computation.
+- **Builtin reconciliation (178 upstream vs 128 live, 50 missing)**:
+  upstream atlas-types.w has 178 install_function names; typed.rs has
+  128 live; 50 missing = 28 never registered + 22 skip-placeholder only.
+  Note: several skip names (dual, inner_class, param, real_form,
+  involution, twist, KL_block, dual_KL, K_type_pol, first_term,
+  last_term, null_module, W_cells, two_rho_check, simple_coroots,
+  poscoroots, coroot_radical, mod_central_torus_info, adjoint,
+  KL_sum_at_s_to_height, truncate_above_height) have their MAIN overloads
+  live — skip marks only partial signatures. Family breakdown of the 50:
+  in-flight alcove/FPP (4, agent-30); Weyl remainder (affine_orbit_ws,
+  basic_orbit_ws, root_ladder_bottoms, coroot_ladder_bottoms); root
+  numbering family (6, oracle-root-numbering blocked); ext family (7 —
+  crate side now ready: ext_block 28e6109 + ext_kl 602fce6);
+  deform/twisted (8); print family (7); KType/Rep (6, mostly skip);
+  small items (semisimple_rank etc).
+- In flight: agent-30 alcove/FPP language slice (exclusive on
+  atlas-core). Next language slice once atlas-core frees up:
+  extended_block/raw_ext_KL/partial_extended_KL_block registration
+  (wrappers atlas-types.w:7366-7431/8682-8728/7445-7468, pure format
+  conversion over the now-complete crate side).
+
 ## Checkpoint - 2026-08-09 (Weyl builtins + B2 fiber fix landed)
 
 - **Weyl layer (`9111b7d`, agent-30)**: walls/walls_attitude

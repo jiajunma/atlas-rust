@@ -1,5 +1,40 @@
 # Remaining builtin coverage (post-language-gate)
 
+## Batch status (2026-08-11)
+
+Differential `3533446` PASS (199 fixtures: 198 PASS, 1 known PARTIAL, 0
+FAIL); the five Weyl/B2 metas upgraded to verified_hpc (`7a5eba5`) — all
+harness fixtures now verified_hpc. ext_kl crate slice landed (`602fce6`):
+DescentTable + ExtKlTable (KL_table) + condense + ext_kl_matrix with
+A2-trivial/A2-flip/Sp4 oracle anchors. Crate side of the ext family is
+now complete (ext_block `28e6109` + ext_kl); language registration of
+extended_block/raw_ext_KL/partial_extended_KL_block is the next slice
+once agent-30's alcove/FPP slice frees atlas-core.
+
+Reconciliation vs upstream atlas-types.w (178 install_function names):
+128 live in typed.rs, 50 missing (28 never registered + 22
+skip-placeholder only; several skip names have main overloads live and
+lack only partial signatures).
+
+Remaining: alcove_center/alcove_root_vertex/FPP_numers/FPP_w_shifts (in
+flight, agent-30), extended_block/raw_ext_KL/partial_extended_KL_block
+(crate ready, wrappers atlas-types.w:7366-7431/8682-8728/7445-7468),
+shift_flip (cheapest ext item, same_sign ~50 lines), ext_param+star
+(largest single block ~1000-1200 lines), finalise three
+(finalize_extended/K_type_pol_extended/scale_extended), affine_orbit_ws/
+basic_orbit_ws, root_ladder_bottoms/coroot_ladder_bottoms,
+root_expression/root_index/coroot_expression/coroot_index/
+root_permutation/root_involution (oracle root numbering blocked),
+twisted_deform/twisted_full_deform/twisted_KL_sum_at_s/block_deform/
+dual_KL_block (+KL_block/dual_KL/KL_sum_at_s_to_height/
+truncate_above_height partial signatures, common-block srm pool),
+print_gradings/print_real_Weyl/print_blockstabilizer (shared RealWeyl
+~500 lines), print_X (GlobalTitsGroup 600+), print_common_block/
+print_partial_block/print_partial_common_block (srm pool, last),
+reducibility_points, KType/Rep skips (K_type_pol/first_term/last_term/
+null_module/W_cells), small items (semisimple_rank/two_rho_check/
+simple_coroots/poscoroots/coroot_radical/mod_central_torus_info/adjoint).
+
 ## Batch status (2026-08-09)
 
 Weyl layer landed (`9111b7d`, agent-30): walls/walls_attitude
