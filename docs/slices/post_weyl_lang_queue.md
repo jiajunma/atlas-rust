@@ -145,9 +145,32 @@ print_gradings → print_real_Weyl + print_blockstabilizer → print_X →
 print_common_block（最后，绑 srm pool）。print_strong_real 已存在
 （typed.rs:5275），勿重复。
 
+**print_gradings wrapper 事实（atlas-types.w:4260-4300，安装 :9108）**：
+签名 `(CartanClass,RealForm->)`（wrapper 先 pop rf 再 cc）。错误：
+`"Inner class mismatch between real form and Cartan class"`、
+`"Cartan class not defined for this real form"`。用
+fiber().weakReal() 分块 + realFormLabels 翻译分块号→real form，
+simpleImaginary 根的子系 Cartan 矩阵过 DynkinDiagram 取 Bourbaki
+编号排列 sigma。oracle 布局（探针 /tmp/gradings_probe{,2}.at，B2/A2）：
+`Imaginary root system is of type B2, with simple roots 4,5.`（空时
+`Imaginary root system is empty.`），随后每个 weak-real 元素一行
+grading `[01]`（空时 `[]`）。注意根号 4,5 是 RootNbr（全根系编号），
+不是简单根下标。多个 real form 共享 Cartan 类时每类只打对应 part。
+
+**shift_flip 依赖修正（2026-08-11 查证）**：队列旧注"最便宜 ~50 行"
+不成立。wrapper（atlas-types.w:7341-7362，`(Param,mat,ratvec->bool)`，
+安装 :7530）需要 per-parameter 扩展：
+`ext_block::shifted_default_extension(ctxt,p,gamma)` +
+`ext_block::is_default` + `Ext_rep_context`——crate 侧 ext_block.rs 只有
+块级 ExtBlock + StarOracle::same_sign 缝（ext_block.rs:1356-1378），
+没有 per-parameter default_extend/shifted_default_extension。故
+shift_flip 归属 ext_param+star 大切片（~1000-1200 行），不是独立小件。
+两个 gamma 检查的措辞不同：`"Involution does not fix rational weight"`
+（对 ratvec 参数）vs `"...infinitesimal character"`（对 p 自带 gamma）。
+
 ## 5. 其余（REMAINING_BUILTINS.md）
 
 root_expression/root_index/root_permutation（oracle 根编号阻塞）、
-root_ladder_bottoms/coroot_ladder_bottoms、shift_flip（最便宜的 ext 族，
-只需 same_sign ~50 行）、twisted_KL_sum_at_s、twisted_deform 族、
+root_ladder_bottoms/coroot_ladder_bottoms、shift_flip（见 §4 依赖修正，
+绑 ext_param+star）、twisted_KL_sum_at_s、twisted_deform 族、
 block_deform/KL_block/dual_KL_block（common-block srm pool 语义）。
