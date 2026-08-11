@@ -1,5 +1,32 @@
 # Remaining builtin coverage (post-language-gate)
 
+## Batch status (2026-08-09)
+
+Weyl layer landed (`9111b7d`, agent-30): walls/walls_attitude
+(alcoves.cpp:112-236), Weyl_orbit/Weyl_orbit_ws both argument orders
+(rootdata.cpp:1690-1876), from_dominant corrected (lattice_rank torus
+pass-through, true simple-root pairings). RootNumbering keys on coroot
+level/coordinates when the datum prefers coroots (rootdata.cpp:164-167).
+Fixtures weyl_orbit(+_rejected)/walls(+_rejected) frozen from the local
+pinned oracle; HPC differential pending.
+**B2 block_sizes root cause fixed**: fiberSize is the STRONG-real fiber
+orbit class size (innerclass.cpp:603-614), not the adjoint weak partition;
+`fiber_size` switched to `StrongRealClassification::fiber_size`, B2 rows
+restored in the block_sizes fixture (oracle 4/5/12 now reproduced).
+Known gap: Weyl_orbit/Weyl_orbit_ws oversize-vector semantics (wrapper
+does no size check; v.size()!=rank output diverges from the oracle,
+details in docs/slices/post_weyl_lang_queue.md §1.5).
+
+Remaining (unchanged): alcove_center/alcove_root_vertex,
+FPP_numers/FPP_w_shifts, root_expression/root_index/root_permutation
+(oracle root numbering), root_ladder_bottoms/coroot_ladder_bottoms, the
+ext_block builtins (extended_block/raw_ext_KL/partial_extended_KL_block —
+crate side landed 28e6109 + ext_kl in flight; shift_flip;
+finalize_extended/K_type_pol_extended/scale_extended; dual_KL_block),
+block_deform series (block_deform/twisted_deform/twisted_full_deform/
+KL_block/twisted_KL_sum_at_s), and the print family (print_X/
+print_gradings/print_real_Weyl/print_blockstabilizer/print_common_block).
+
 ## Batch status (2026-08-06, updated 02:50)
 
 Second sweep round: 56 more skip-registrations live-ized (arms already
