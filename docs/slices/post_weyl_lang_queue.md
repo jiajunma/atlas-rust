@@ -114,6 +114,31 @@ partial 在 singular/regular gamma 各一例；rejected：非 standard Param、
 四种 compatible_outer_twist 措辞、extended_block 的 gamma-fix 拒绝、
 partial 的 stdout 打印+异常情形。
 
+**oracle 探针捕获（2026-08-11，/tmp/ext_*_probe.at，本地钉住 oracle 4d3e9449）**：
+
+- SU(2,1) 构造：`simply_connected(Lie_type("A2"),true)` + 单位对合的
+  inner_class + `real_form(ic,1)`（打印 'su(2,1)'）；标准参数
+  `param(KGB(rf,0),[0,0],[0,0]/1)`（归一化为 lambda=[1,1]/1,nu=[0,0]/1）。
+  extended_block(p,id) 的 types 矩阵与 crate 锚点逐字节一致
+  （[[2,2],[2,9],[9,2],[0,3],[3,0],[1,1]]）；raw_ext_KL pool [[],[1]]、
+  stops [0,3,5,6]；partial 在 gamma=0（全 singular）凝聚为 1 survivor。
+- SL(3,R) 构造：`inner_class(rd,[[0,1],[1,0]])`，只有 1 个 real form
+  （'sl(3,R)'），distinguished 即图自同构 [[0,1],[1,0]]。
+  extended_block(p,[[0,1],[1,0]]) → 2 元素，types |26|,|27|（与 crate
+  锚点一致）。传 [[1,1],[0,-1]] 在此 inner class 下报
+  `"Matrix maps simple root 0 to non-root"`（新措辞，来自 test_compatible
+  的 based-root-datum 校验；agent-33 的 [[1,1],[0,-1]] 锚点属于
+  groups.at trivial(SL(3,R)) 的另一种 inner class 构造，勿混用）。
+- gamma 不固定（p2=param(KGB(rf,0),[0,0],[1,0]/1)，nu 归一化 [1,-1]/2，
+  delta=[[0,1],[1,0]]）三种行为逐字节确认：
+  - raw_ext_KL → `Value: (The 0x0 matrix,[],[ ])`（空三元组，无错）
+  - extended_block → Runtime error `"Involution does not fix infinitesimal
+    character"`
+  - partial_extended_KL_block → **stdout 先打印** `Delta does not fix
+    gamma=[3,1]/2.`（gamma 经归一化，不是 nu 原样）**再抛** Runtime error
+    `"No valid extended block"`——Rust wrapper 必须复制该 stdout 行
+  - partial(p2, id) → 1 survivor，pool [[],[1]]
+
 ## 4. print 族（顺序见 agent31 侦察报告 §6）
 
 print_gradings → print_real_Weyl + print_blockstabilizer → print_X →
