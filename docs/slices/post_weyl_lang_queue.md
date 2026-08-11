@@ -175,6 +175,34 @@ root_ladder_bottoms/coroot_ladder_bottoms、shift_flip（见 §4 依赖修正，
 绑 ext_param+star）、twisted_KL_sum_at_s、twisted_deform 族、
 block_deform/KL_block/dual_KL_block（common-block srm pool 语义）。
 
+**FixturePlan 注册片段（实现切片收尾时按需粘贴到
+hpc/pipeline_swap_diff.py 的 domain 段末尾；reference 均已
+verified_hpc_reference，capture 3535636）**：
+
+```python
+    # Root numbering family (slice A): root/coroot expression+index,
+    # root_involution/root_permutation; datum-native lattice basis coords.
+    FixturePlan(name="domain/root_numbering"),
+    FixturePlan(name="domain/root_numbering_rejected"),
+    # Small-item sweep (slice A): poscoroots/simple_coroots/two_rho_check/
+    # coroot_radical/mod_central_torus_info/adjoint(LieType,bool)/
+    # semisimple_rank/reducibility_points.
+    FixturePlan(name="domain/coroot_queries"),
+    FixturePlan(name="domain/coroot_queries_rejected"),
+    # Orbit/ladder (slice B): root_ladder_bottoms/coroot_ladder_bottoms/
+    # basic_orbit_ws/affine_orbit_ws.
+    FixturePlan(name="domain/orbit_ws"),
+    FixturePlan(name="domain/orbit_ws_rejected"),
+    # Poly surface (slice B): ParamPol/KTypePol skip overloads
+    # (null_module/real_form/#/first_term/last_term/truncate_above_height/
+    # K_type_pol/W_cells).
+    FixturePlan(name="domain/poly_surface"),
+    FixturePlan(name="domain/poly_surface_rejected"),
+    # print_gradings (slice C).
+    FixturePlan(name="domain/print_gradings"),
+    FixturePlan(name="domain/print_gradings_rejected"),
+```
+
 ### 5.1 root_ladder_bottoms/coroot_ladder_bottoms（小件，可独立切片）
 
 wrapper atlas-types.w:1569-1599（安装 :2241-2244），签名
