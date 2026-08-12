@@ -752,11 +752,12 @@ pub fn shifted_default_extension(
 ) -> Result<ExtParam, StructureError> {
     let mut result = default_extend(ctx, sr)?;
     let shift = new_gamma.sub(sr.gamma())?;
-    if cfg!(debug_assertions) {
-        let theta = result.theta(ctx)?;
-        let theta_shift = shift.apply_matrix(theta.weight_matrix())?;
-        debug_assert!(theta_shift.add(&shift)?.is_zero());
-    }
+    // Upstream keeps `assert((1+theta_x)*shift == 0)` here (ext_block.h:352-361),
+    // but the oracle is compiled with -DNDEBUG (upstream Makefile) so it never
+    // fires. The precondition is not implied for shift_flip-reachable calls
+    // (theta_x = +1 at a compact Cartan makes any nonzero shift trip it), so a
+    // debug_assert would panic where the reference returns a well-defined
+    // result. Intentionally omitted to keep debug builds oracle-compatible.
     result.gamma_lambda = result.gamma_lambda.add(&shift)?;
     Ok(result)
 }
@@ -805,7 +806,11 @@ pub fn same_standard_reps(
 /// Upstream `same_sign` (ext_block.cpp:936-948): Proposition 16 of
 /// "Parameters for twisted representations".
 pub fn same_sign(ctx: &ExtRepContext, e: &ExtParam, f: &ExtParam) -> bool {
-    debug_assert!(matches!(same_standard_reps(ctx, e, f), Ok(true)));
+    // Upstream asserts same_standard_reps(E,F) here (ext_block.cpp:938), but
+    // the oracle is built with -DNDEBUG and shift_flip reaches this via
+    // is_default with a shifted parameter that can violate it (e.g. nonzero
+    // shift at a compact Cartan). Omit the assert so debug builds stay
+    // oracle-compatible; callers that rely on the precondition are unaffected.
     let delta = ctx.delta();
     let kappa_of = |tau: &Weight| -> Vec<i32> {
         let delta_tau = delta.act_on_weight(tau).expect("same_sign: delta on tau");
