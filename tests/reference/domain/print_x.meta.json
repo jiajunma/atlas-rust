@@ -1,12 +1,14 @@
 {
   "fixture": "domain/print_x",
   "fixture_sha256": "968c60b5358a36e040c96628d46388a0a337a769c590650791d79fd0cadc7b21",
-  "rust_status": "pending_hpc_differential",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
   "note": "print_X(InnerClass) on sc-A1/adj-A1/sc-B2: global KGB table over all square classes (cross actions, Cayleys, torus factors, canonical involution words), exp(i*pi*rho_check) header. HPC reference capture 3536119 byte-identical to local pinned-oracle capture (stdout+stderr).",
   "oracle": "atlas",
   "oracle_exit_status": 0,
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "reference_job": "3536119"
+  "reference_job": "3536119",
+  "differential_job": "3540739",
+  "differential_commit": "3908db46cf5e86d51a16ba27b82c3faa60e1e018"
 }
