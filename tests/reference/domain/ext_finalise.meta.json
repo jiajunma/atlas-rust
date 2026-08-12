@@ -1,12 +1,14 @@
 {
   "fixture": "domain/ext_finalise",
   "fixture_sha256": "c0b720961f5ec3d428addbf8e5685ba3f8700142889baf793ffc862a2849f0c8",
-  "rust_status": "pending_hpc_differential",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
   "note": "finalise trio (scale_extended/K_type_pol_extended/finalize_extended) on SL(2,R)/SU(2,1)/SL(3,R)/SO(3,2): (Param,bool) tuple with real nu scaling ([1]/1 -> [3]/2), flip coefficient 1s* (non-default extension) on SL(3,R) non-final standard parameter(x=3,lambda=[2,2]/1), 2-term finalize/K_type_pol on B2 split x=8. HPC reference capture 3538977 byte-identical to local pinned-oracle capture (stdout+stderr).",
   "oracle": "atlas",
   "oracle_exit_status": 0,
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "reference_job": "3538977"
+  "reference_job": "3538977",
+  "differential_job": "3542388",
+  "differential_commit": "638cfed66bc3d1ef022f9de681d8204509cdafea"
 }
