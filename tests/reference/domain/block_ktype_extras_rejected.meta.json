@@ -2,10 +2,11 @@
   "fixture": "domain/block_ktype_extras_rejected",
   "fixture_sha256": "427843f8a2f5a5dc714502e2d843b08c94334ff38c4d4d8b76685fe83c7ea191",
   "rust_status": "pending_hpc_differential",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "note": "to_canonical_fiber/index rejections: string vs KType, (int,int,int) and (Block,KGBElt) arity/type mismatches, then 'Dual real form not in inner class of block' runtime gate (block_index_wrapper gates, atlas-types.w:4861-4872); session continues.",
   "oracle": "atlas",
   "oracle_exit_status": 1,
   "stage": "typed-pipeline-swap",
-  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_job": "3542485"
 }
