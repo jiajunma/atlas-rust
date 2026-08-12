@@ -299,16 +299,23 @@ impl<'a> KlTable<'a> {
                     result
                 }
                 BlockDescent::RealTypeII => {
-                    // P_{sx,sy} + qP_{x,sy} - P_{s.x,sy}
-                    let first = self.kl_pol_pool(sx, sy)?;
-                    let second = self.kl_pol_pool(x, sy)?;
-                    let third = self.kl_pol_pool(
-                        self.support
-                            .block()
-                            .cross(x, s)
-                            .expect("cross of real type II"),
-                        sy,
+                    // P_{sx.first,sy} + qP_{x,sy} - P_{s.x,sy}
+                    // (kl.cpp:416-425): the first term is the inverse
+                    // Cayley image of x, NOT the cross image; `cross` is
+                    // only used for the subtraction term.
+                    let pair = self.support.block().inverse_cayley(x, s).ok_or(
+                        StructureError::BlockInvariantViolation {
+                            invariant: "real type II inverse Cayley slot",
+                        },
                     )?;
+                    let Some(first_image) = pair.0 else {
+                        return Err(StructureError::BlockInvariantViolation {
+                            invariant: "real type II inverse Cayley first slot",
+                        });
+                    };
+                    let first = self.kl_pol_pool(first_image, sy)?;
+                    let second = self.kl_pol_pool(x, sy)?;
+                    let third = self.kl_pol_pool(sx, sy)?;
                     first.add_shifted(&second, 1).sub(&third)
                 }
                 _ => {
@@ -376,18 +383,23 @@ impl<'a> KlTable<'a> {
     ) -> Result<(), StructureError> {
         let desc_y = self.support.descent_set(y).clone();
         let ly = self.support.length(y);
-        let mut column: Vec<KlIndex> = Vec::with_capacity(self.support.col_size(y));
+        // Write each slot at its primitive index (kl.cpp:547 KL.resize +
+        // the backward write): the primitive non-extremal case reads the
+        // Cayley images' slots of THIS column, which the backward pass
+        // has already written ("in current row, above", kl.cpp:567).
+        let mut column: Vec<KlIndex> = vec![0; self.support.col_size(y)];
         let mut mu_pairs: Vec<MuPair> = Vec::new();
 
         // Traverse primitives of y with length < ly backwards.
         let mut x = self.support.length_floor(y);
         let mut work_index = working.len(); // we read `working` backwards
         while self.support.prim_back_up(&mut x, &desc_y) {
+            let position = self.support.prim_index(x, &desc_y);
             if self.support.is_extremal(x, &desc_y) {
                 work_index -= 1;
                 let pxy = &working[work_index];
                 let index = self.pool.match_pol(pxy);
-                column.push(index);
+                column[position] = index;
                 let lx = self.support.length(x);
                 if !pxy.is_zero() && ly == lx + 2 * pxy.degree() + 1 {
                     mu_pairs.push(MuPair {
@@ -397,7 +409,8 @@ impl<'a> KlTable<'a> {
                 }
             } else {
                 // Primitive non-extremal: sum of the two cayley images'
-                // polynomials (kl.cpp:566-574).
+                // polynomials (kl.cpp:566-574), looked up in the current
+                // column above the traversal point.
                 let s = self.support.ascent_descent(x, y).ok_or(
                     StructureError::RepInvariantViolation {
                         invariant: "primitive non-extremal ascent",
@@ -405,16 +418,15 @@ impl<'a> KlTable<'a> {
                 )?;
                 let mut pxy = KlPol::zero();
                 if let Some((Some(first_image), second)) = self.support.block().cayley(x, s) {
-                    pxy = self.kl_pol_pool(first_image, y)?;
+                    pxy = self.current_column_pol(&column, &desc_y, first_image, y);
                     if let Some(second_image) = second {
-                        let second_pol = self.kl_pol_pool(second_image, y)?;
+                        let second_pol = self.current_column_pol(&column, &desc_y, second_image, y);
                         pxy = pxy.add(&second_pol);
                     }
                 }
-                column.push(self.pool.match_pol(&pxy));
+                column[position] = self.pool.match_pol(&pxy);
             }
         }
-        column.reverse(); // we wrote backwards
 
         // Add the down_set of y with μ=1 (kl.cpp:578-585).
         let downs: Vec<MuPair> = self
@@ -695,6 +707,31 @@ impl<'a> KlTable<'a> {
             column[prim]
         };
         Ok(self.pool.get(index).cloned().unwrap_or_else(KlPol::zero))
+    }
+
+    /// `KL_pol(x, y)` against the column being written by
+    /// `complete_primitives` (kl.cpp:566-570 reads the in-progress
+    /// `d_KL[y]`): slots above the backward traversal point are final,
+    /// and the out-of-range cases are the identity at `y` and zero —
+    /// exactly the kl.cpp:129-131 logic over the partial column.
+    fn current_column_pol(
+        &self,
+        column: &[KlIndex],
+        desc_y: &RankFlags,
+        x: BlockElt,
+        y: BlockElt,
+    ) -> KlPol {
+        let prim = self.support.prim_index(x, desc_y);
+        let index = if prim >= column.len() {
+            if prim == self.support.self_index(y) {
+                1 // P_{y,y} = 1
+            } else {
+                0 // zero polynomial
+            }
+        } else {
+            column[prim]
+        };
+        self.pool.get(index).cloned().unwrap_or_else(KlPol::zero)
     }
 }
 #[cfg(test)]
@@ -988,5 +1025,122 @@ mod tests {
         let mut xs4: Vec<usize> = terms4.iter().map(|(sr, _)| sr.x().index()).collect();
         xs4.sort_unstable();
         assert_eq!(xs4, vec![0, 1], "deform(x=4) sources, terms={terms4:?}");
+    }
+
+    /// The B2 `dual_KL_block` oracle anchor (tests/reference/domain/
+    /// dual_kl_block.events.json, verified_hpc_reference): the block of the
+    /// split form (KGB 11) against the dual class's quasisplit form
+    /// (KGB 7) has 12 elements; the KL table of its DUAL block reproduces
+    /// the oracle's polynomial pool `[[ ], [1], [0,1], [2]]` and the full
+    /// 12x12 index matrix. The pinned values P(1,5) = 2, P(2,5) =
+    /// P(3,5) = 1 exercise the RealTypeII arm of `recursion_column`
+    /// (kl.cpp:416-425), whose first term is the inverse-Cayley image of
+    /// x — taking the cross image there instead zeroes exactly these
+    /// polynomials.
+    #[test]
+    fn b2_dual_block_klv_matches_the_oracle_pool_and_matrix() {
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2, -2], vec![-1, 2]],
+            vec![Weight::new(vec![2, -2]), Weight::new(vec![-1, 2])],
+            vec![Coweight::new(vec![1, 0]), Coweight::new(vec![0, 1])],
+        )
+        .unwrap();
+        let involution = LatticeInvolution::identity(&datum).unwrap();
+        let inner_class = crate::InnerClass::new(datum, involution, 8).unwrap();
+        let classification = CartanClassification::build(&inner_class, &class_budget(8)).unwrap();
+        let strong = StrongRealClassification::build(&classification, 4_096).unwrap();
+        let mut table = InvolutionTable::new(
+            &inner_class,
+            InvolutionTableBudget::new(64, IntegerLatticeBudget::new(64, 100_000, 100_000, 128)),
+        )
+        .unwrap();
+        let (graph, primal_table) =
+            graph_with_size(&inner_class, &classification, &strong, &mut table, 11);
+        let dual_class = crate::dual::dual_inner_class(&inner_class, 8, 64).unwrap();
+        let dual_classification =
+            CartanClassification::build(&dual_class, &class_budget(8)).unwrap();
+        let dual_strong = StrongRealClassification::build(&dual_classification, 4_096).unwrap();
+        let mut dual_table = InvolutionTable::new(
+            &dual_class,
+            InvolutionTableBudget::new(64, IntegerLatticeBudget::new(64, 100_000, 100_000, 128)),
+        )
+        .unwrap();
+        let (dual_graph, dual_table) = graph_with_size(
+            &dual_class,
+            &dual_classification,
+            &dual_strong,
+            &mut dual_table,
+            7,
+        );
+        let block = BlockGraph::build(
+            &graph,
+            &primal_table,
+            &dual_graph,
+            &dual_table,
+            &dual_class,
+            8,
+        )
+        .unwrap();
+        assert_eq!(block.size(), 12, "B2 split x dual quasisplit block");
+        let dual_block = block.dual();
+        assert_eq!(dual_block.size(), 12);
+        let mut kl = KlTable::new(&dual_block).unwrap();
+        kl.fill(0).unwrap();
+
+        // The focused anchors the bug report pins on the dual block.
+        let pol_at = |x: usize, y: usize| {
+            kl.pool
+                .get(kl.kl_pol(x, y).unwrap())
+                .cloned()
+                .unwrap()
+                .as_slice()
+                .to_vec()
+        };
+        assert_eq!(pol_at(2, 5), vec![1], "P(2,5)");
+        assert_eq!(pol_at(3, 5), vec![1], "P(3,5)");
+        assert_eq!(pol_at(1, 5), vec![2], "P(1,5)");
+
+        // The full oracle comparison: deduplicate column-major over all
+        // twelve elements (pool seeded with 0 and 1), exactly like the
+        // dual_KL_block builtin (atlas-types.w:7053-7133).
+        let last = dual_block.size() - 1;
+        let mut polys: Vec<Vec<i32>> = vec![vec![], vec![1]];
+        let mut index_of: std::collections::HashMap<Vec<i32>, usize> =
+            std::collections::HashMap::new();
+        index_of.insert(vec![], 0);
+        index_of.insert(vec![1], 1);
+        let mut index_matrix = vec![vec![0_usize; 12]; 12];
+        for j in 0..12 {
+            for i in j..12 {
+                let coefficients = pol_at(last - i, last - j);
+                let index = *index_of.entry(coefficients.clone()).or_insert_with(|| {
+                    polys.push(coefficients);
+                    polys.len() - 1
+                });
+                index_matrix[i][j] = index;
+            }
+        }
+        assert_eq!(
+            polys,
+            vec![vec![], vec![1], vec![0, 1], vec![2]],
+            "oracle polynomial pool"
+        );
+        #[rustfmt::skip]
+        let expected: Vec<Vec<usize>> = vec![
+            vec![1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            vec![0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            vec![0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            vec![0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+            vec![1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+            vec![0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0],
+            vec![1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+            vec![1, 0, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0],
+            vec![1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0],
+            vec![0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0],
+            vec![1, 0, 1, 0, 1, 1, 3, 1, 1, 1, 1, 0],
+            vec![1, 2, 1, 2, 1, 1, 1, 1, 0, 0, 0, 1],
+        ];
+        assert_eq!(index_matrix, expected, "oracle KL index matrix");
     }
 }

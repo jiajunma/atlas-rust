@@ -2,18 +2,22 @@
 //!
 //! Per-Cartan contiguous orbits of twisted involutions, each record carrying
 //! the word-level element, the matrix-level [`TwistedInvolution`] (theta plus
-//! root classification), the mod-2 dedup subspace, `(1+theta)rho`, and both
-//! lengths. Every record field is derived canonically from theta at entry —
-//! ONE entry path, no path-dependent fields — a documented divergence from
-//! upstream's transported `M_real`/`lift_mat`, which are deferred entirely
-//! to the parameter layer. Numbering is the caller's Cartan add order (the
-//! documented discipline is ascending [`CartanId`]) with an external-order
-//! BFS inside each orbit.
+//! root classification), the mod-2 dedup subspace, `(1+theta)rho`, both
+//! lengths, and the `(1-theta)X^*` image-basis pair (`lift_mat`, `M_real`).
+//! Every record field is derived canonically from theta at entry EXCEPT the
+//! image-basis pair: matching upstream's `InvolutionTable` record
+//! (involutions.h:104-105), it is seeded by the echelon reduction of
+//! `1-theta` at the orbit's canonical involution (involutions.cpp:196-208)
+//! and transported along the cross-action BFS (involutions.cpp:242-243),
+//! because the basis is path-dependent and `y_lift`'s signs depend on it.
+//! Numbering is the caller's Cartan add order (the documented discipline is
+//! ascending [`CartanId`]) with an external-order BFS inside each orbit.
 
 use std::collections::BTreeMap;
 
 use crate::grading::try_capacity;
 use crate::integer_lattice::{negative_coweight_eigenspace, reduce_basis_mod_two};
+use crate::real_projection::RealProjection;
 use crate::{
     CartanClassification, CartanId, CayleyCrossDecomposition, InnerClass, IntegerLatticeBudget,
     LatticeInvolution, ModTwoSubspace, RootId, RootKind, RootSystem, StructureError,
@@ -41,7 +45,8 @@ impl InvolutionTableBudget {
     }
 }
 
-/// One twisted involution's canonical-from-theta data.
+/// One twisted involution's record: canonical-from-theta data plus the
+/// path-transported `(1-theta)X^*` image-basis pair.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InvolutionRecord {
     element: WeylElement,
@@ -50,6 +55,7 @@ pub struct InvolutionRecord {
     theta_plus_one_rho: Weight,
     involution_length: usize,
     weyl_length: usize,
+    projection: RealProjection,
 }
 
 impl InvolutionRecord {
@@ -82,6 +88,15 @@ impl InvolutionRecord {
 
     pub fn theta_plus_one_rho(&self) -> &Weight {
         &self.theta_plus_one_rho
+    }
+
+    /// The `(1-theta)X^*` image-basis pair (upstream `record`'s
+    /// `M_real`/`lift_mat`): seeded from theta at the orbit's canonical
+    /// involution, then transported along the cross-action BFS
+    /// (involutions.cpp:242-243), so it carries the path-dependent signs
+    /// the oracle's `y_lift` relies on.
+    pub(crate) fn projection(&self) -> &RealProjection {
+        &self.projection
     }
 }
 
@@ -233,6 +248,7 @@ impl InvolutionTable {
             seed_element,
             representative.weyl_action().clone(),
             length_sum / 2,
+            None,
         )?;
 
         // External-order BFS. Cross links are filled at each node's visit,
@@ -244,6 +260,7 @@ impl InvolutionTable {
             let current_element = self.records[cursor].element.clone();
             let current_action = self.records[cursor].involution.weyl_action().clone();
             let current_length = self.records[cursor].involution_length;
+            let current_projection = self.records[cursor].projection().clone();
             let mut links = try_capacity(semisimple_rank)?;
             for generator in 0..semisimple_rank {
                 let neighbor = self.reflections[generator]
@@ -262,6 +279,11 @@ impl InvolutionTable {
                 let new_action = self.reflection_actions[generator]
                     .compose(&current_action)?
                     .compose(&self.reflection_actions[self.twist[generator]])?;
+                // Transport the image basis across the cross edge
+                // (involutions.cpp:242-243): the PLAIN generator s, not
+                // twist(s) — delta is already incorporated in theta.
+                let transported =
+                    current_projection.transported(self.reflection_actions[generator].matrix())?;
                 let id = push_record(
                     &self.inner_class,
                     &self.budget,
@@ -271,6 +293,7 @@ impl InvolutionTable {
                     neighbor,
                     new_action,
                     new_length,
+                    Some(transported),
                 )?;
                 links.push(id);
             }
@@ -447,8 +470,12 @@ fn stepped_length(
     }
 }
 
-/// The single canonical entry path: every record field is derived fresh from
-/// theta, so nothing in a record depends on the BFS path that reached it.
+/// The single entry path: every record field except the image-basis pair is
+/// derived fresh from theta; the pair is seeded from theta at the orbit's
+/// canonical involution and thereafter TRANSPORTED along the cross edge that
+/// first reached the record (`Some`), matching upstream's `add_involution` /
+/// `add_cross` split — the basis is path-dependent, so it is never
+/// re-derived from theta away from the seed.
 /// A free function over disjoint table fields so the BFS can hold the
 /// reflection caches while inserting.
 #[allow(clippy::too_many_arguments)]
@@ -461,6 +488,7 @@ fn push_record(
     element: WeylElement,
     action: WeylAction,
     involution_length: usize,
+    transported_projection: Option<RealProjection>,
 ) -> Result<InvolutionId, StructureError> {
     if records.len() == budget.max_involutions {
         return Err(StructureError::InvolutionTableResourceLimit {
@@ -491,6 +519,16 @@ fn push_record(
         }
         coordinates.push(sum / 2);
     }
+    let projection = match transported_projection {
+        Some(projection) => {
+            // The transport preserves lift_mat*m_real == 1-theta
+            // algebraically; verify the edge math against this record's
+            // freshly derived theta.
+            projection.check_against(theta)?;
+            projection
+        }
+        None => RealProjection::build(theta)?,
+    };
     let weyl_length = element.length();
     let id = InvolutionId(records.len());
     let mut key = try_capacity(element.image_permutation().len())?;
@@ -503,6 +541,7 @@ fn push_record(
         theta_plus_one_rho: Weight::new(coordinates),
         involution_length,
         weyl_length,
+        projection,
     });
     Ok(id)
 }
@@ -510,8 +549,8 @@ fn push_record(
 #[cfg(test)]
 mod tests {
     use crate::{
-        AdjointFiberBudget, BasedRootDatum, CartanClassificationBudget, LatticeInvolution,
-        ModTwoVector,
+        AdjointFiberBudget, BasedRootDatum, CartanClassificationBudget, Coweight,
+        LatticeInvolution, ModTwoVector,
     };
 
     use super::*;
@@ -723,6 +762,42 @@ mod tests {
             .collect();
         sizes.sort_unstable();
         assert_eq!(sizes, vec![1, 3]);
+    }
+
+    /// The B2 x=4 oracle anchor (pinned arm64 oracle run): the involution
+    /// theta=[[-1,0],[2,1]] is reached from its Cartan orbit's seed along
+    /// cross edges, and the oracle's TRANSPORTED lift_mat column is
+    /// [2,-2] — while a fresh echelon reduction of 1-theta gives [-2,2].
+    /// The record must carry the transported basis (involutions.cpp:
+    /// 242-243), since y_lift's sign depends on it. The datum is the
+    /// simply-connected B2 of the dual_KL_block fixture (fundamental-
+    /// weight lattice basis).
+    #[test]
+    fn b2_projection_is_transported_not_recomputed() {
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2, -2], vec![-1, 2]],
+            vec![Weight::new(vec![2, -2]), Weight::new(vec![-1, 2])],
+            vec![Coweight::new(vec![1, 0]), Coweight::new(vec![0, 1])],
+        )
+        .unwrap();
+        let involution = LatticeInvolution::identity(&datum).unwrap();
+        let inner_class = InnerClass::new(datum, involution, 8).unwrap();
+        let classification = CartanClassification::build(&inner_class, &class_budget(8)).unwrap();
+        let table = filled_table(&inner_class, &classification, 8);
+        let target = vec![vec![-1, 0], vec![2, 1]];
+        let record = (0..table.involution_count())
+            .map(InvolutionId)
+            .map(|id| table.record(id).unwrap())
+            .find(|record| record.theta().weight_matrix() == target.as_slice())
+            .expect("B2 table holds theta=[[-1,0],[2,1]]");
+        assert_eq!(record.projection().lift_mat, vec![vec![2], vec![-2]]);
+        assert_eq!(record.projection().m_real, vec![vec![1, 0]]);
+        // The fresh echelon build lands on the opposite sign — the value
+        // the parameter layer used to compute on the spot.
+        let recomputed = RealProjection::build(record.theta()).unwrap();
+        assert_eq!(recomputed.lift_mat, vec![vec![-2], vec![2]]);
+        assert_ne!(recomputed, *record.projection());
     }
 
     #[test]
