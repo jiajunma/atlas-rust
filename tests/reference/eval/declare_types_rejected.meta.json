@@ -1,0 +1,11 @@
+{
+  "fixture": "eval/declare_types_rejected",
+  "fixture_sha256": "6f1f3f32439be08714484f52fdc09da648c1732158d8de06587bc186f18b295c",
+  "rust_status": "pending_hpc_differential",
+  "reference_status": "pending_hpc_reference",
+  "note": "Ascription mismatch rejections after full-type declarations: string into (int,int), int/rat/string into the union (int|rat) (upstream rejects bare injections too), int into [int]; session continues after each.",
+  "oracle": "atlas",
+  "oracle_exit_status": 1,
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+}

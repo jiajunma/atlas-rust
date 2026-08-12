@@ -634,6 +634,10 @@ FIXTURE_PLANS = (
     ),
     # Early scalar-era fixtures: verified verbatim locally and included so
     # the HPC differential upgrades their reference metadata.
+    # declare_types(±): full type grammar in identifier ascriptions
+    # (tuple/row/function/void/wild-row/union) — parser.y:162 parity.
+    FixturePlan(name="eval/declare_types"),
+    FixturePlan(name="eval/declare_types_rejected"),
     FixturePlan(name="eval/scalars"),
     FixturePlan(name="eval/scalar_overloads"),
     FixturePlan(name="eval/scalar_error_fraction_zero"),

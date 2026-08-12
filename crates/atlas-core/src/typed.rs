@@ -735,7 +735,15 @@ impl TypedContext {
                 span,
                 ..
             } => {
-                let type_ = Type::Primitive(*value_type);
+                // parser.y:162: any type expression may ascribe a declared
+                // identifier (tuples, rows, function types included).
+                let type_ = value_type.resolve_in(&self.types).map_err(|unknown| {
+                    Diagnostic::new(
+                        ErrorKind::Name,
+                        format!("undefined type name '{}'", unknown.value),
+                        Some(unknown.span),
+                    )
+                })?;
                 self.globals
                     .define(name.clone(), type_.clone(), crate::frames::unset_global());
                 Ok(vec![TypedCommandEvent::ReportLine {

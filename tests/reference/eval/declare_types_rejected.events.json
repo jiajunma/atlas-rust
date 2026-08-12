@@ -1,0 +1,44 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "eval/declare_types_rejected",
+ "status": "pending_hpc_reference",
+ "events": [
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 't': (int,int)\n"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "found string while int was needed."
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'u': (int|rat)\n"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "found int while (int|rat) was needed."
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "found rat while (int|rat) was needed."
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "found string while (int|rat) was needed."
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'r': [int]\n"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "found int while [int] was needed."
+  }
+ ]
+}

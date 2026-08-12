@@ -584,7 +584,7 @@ pub enum Command {
     Declare {
         name: String,
         name_span: SourceSpan,
-        value_type: Prim,
+        value_type: TypeExpr,
         span: SourceSpan,
     },
     /// `set_type Name = spec` and `set_type [ Name = spec, … ]`
@@ -2187,12 +2187,12 @@ fn type_function(
     }
 }
 
-fn declaration(target: SpannedValue<String>, value_type: SpannedValue<Prim>) -> Command {
+fn declaration(target: SpannedValue<String>, value_type: TypeExpr) -> Command {
     Command::Declare {
+        span: join_span(target.span, value_type.span()),
         name: target.value,
         name_span: target.span,
-        span: join_span(target.span, value_type.span),
-        value_type: value_type.value,
+        value_type,
     }
 }
 

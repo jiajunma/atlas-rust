@@ -39,7 +39,10 @@ pub Program: Program = {
 // separate from Program prevents a syntax error in a later command from
 // discarding values already produced by earlier commands.
 pub Command: Command = {
-    <name:"identifier"> <_colon:":"> <value_type:"primitive_type"> => declaration(name, value_type),
+    // parser.y:162 `IDENT ':' type`: the full type grammar (tuple, row,
+    // function, void), not just a primitive name. Named types stay out
+    // (the lexer has no type-table token), matching TypeExprNode.
+    <name:"identifier"> <_colon:":"> <value_type:TypeExprNode> => declaration(name, value_type),
     <name:"identifier"> <_colon:":"> <value:Expr> => definition(name, value),
     // set_type (parser.y:163-167): the single-name form aliases and the
     // bracketed form enters the tabled type map.

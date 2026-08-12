@@ -1,0 +1,8 @@
+t : (int,int)
+t := (1,"x")
+u : (int|rat)
+u := 3
+u := 3/4
+u := "s"
+r : [int]
+r := 5
