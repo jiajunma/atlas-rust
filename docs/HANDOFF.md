@@ -26,23 +26,38 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 - **shift_flip FixturePlan registered (`8f1043f`)**: 45 lines/45 events,
   alignment pre-analysed; harness unittest OK. Differential **3541888**
   @ 8f1043f in flight (fat partition, TIMEOUT=3600).
-- **LANGUAGE.md counters refreshed (`cd45130`)**: 222 of 231 fixture
-  contracts verified_hpc; 9 pending (all domain, no rejected by design):
-  ext_finalise(±), twisted_family(±), block_deform(±), shift_flip(±),
+- **shift_flip(±) CLOSED**: differential **3541896** @ f4b1391 — 221
+  PASS, 0 FAIL; both metas verified_hpc (`1bac17d`). (First submission
+  3541888 failed on configuration only: events.json status was still
+  pending_hpc_reference — fixed by HPC capture 3541893 + byte-exact
+  round-trip + status flip `f4b1391`. Lesson: registering a FixturePlan
+  requires BOTH meta.reference_status AND events.status
+  verified_hpc_reference.)
+- **LANGUAGE.md counters refreshed (`cd45130`)**: 224 of 231 fixture
+  contracts verified_hpc; 7 pending (all domain, no rejected by design):
+  ext_finalise(±), twisted_family(±), block_deform(±),
   print_partial_block.
-- **In flight**: agent-56 (E3 crate drivers, atlas-real-group);
-  agent-57 (E2 language layer: scale_extended/K_type_pol_extended/
-  finalize_extended, atlas-core, brief /tmp/slice_e2_brief.md).
-- **Queue**: (1) collect 3541888 → shift_flip metas verified_hpc;
-  (2) agent-57 delivery → ext_finalise FixturePlan (snippet in queue
-  doc) + differential; (3) agent-56 delivery → E3 language layer
-  (brief /tmp/slice_e3_brief.md) → twisted_family + block_deform
-  differentials; (4) print_partial_block language layer (brief
-  /tmp/slice_ppb_brief.md — needs Rep_table::Bruhat_below port +
-  srm-level common_context ops, render reuses pcb's
-  render_common_block); (5) final matrix audit + user decision on the
-  two documented exclusions (readline completion TTY-only; KL binary
-  file formats — no language builtin touches them).
+- **E3 crate drivers landed (`4246006`, agent-56)**: new deform.rs —
+  SplitInteger, integral_block_scope (Singleton/Full/ProperSubsystem),
+  twisted_deformation_terms, twisted_kl_sum + twisted_kl_column_at_s,
+  twisted_deformation (lookup closure for reducibility recursion),
+  block_deformation_to_height. 387 crate tests (12 new replaying oracle
+  jobs 3536421/3536583), clippy/fmt clean. Language-layer note: Singleton
+  scope short-circuits (twisted_deform → empty pol, twisted_KL_sum_at_s
+  → 1*p); ProperSubsystem must be a loud runtime error;
+  alcove_center not ported (NotYetImplemented when
+  gamma.denominator() > 2^rank — fixtures never trigger).
+- **In flight**: agent-57 (E2 language layer: scale_extended/
+  K_type_pol_extended/finalize_extended, atlas-core); agent-58
+  (print_partial Bruhat_below crate port, atlas-real-group, brief
+  /tmp/slice_ppb_brief.md).
+- **Queue**: (1) agent-57 delivery → ext_finalise FixturePlan (snippet
+  in queue doc) + differential; (2) agent-58 delivery → print_partial
+  language arms (render reuses pcb's render_common_block) → FixturePlan
+  + differential; (3) E3 language layer (brief /tmp/slice_e3_brief.md)
+  → twisted_family + block_deform differentials; (4) final matrix audit
+  + user decision on the two documented exclusions (readline completion
+  TTY-only; KL binary file formats).
 
 ## Checkpoint - 2026-08-12e (dual_KL verified; pcb landed; E2 crate landed; skip-tail retracted)
 
