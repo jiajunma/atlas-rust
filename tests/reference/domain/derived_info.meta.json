@@ -2,10 +2,11 @@
   "fixture": "domain/derived_info",
   "fixture_sha256": "2400e5ec3fd5177a496c796af862654dc661cd7ab4760b34eca09bc2909fbba8",
   "rust_status": "pending_hpc_differential",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "note": "derived_info/mod_central_torus_info (RootDatum->RootDatum,mat) on B2 simply-connected, B2 adjoint, mixed-rank A1.T1 (root_datum([[1,0]],[[2,0]],true)), and G2 (simply connected adjoint). Regression pins for the three repair-commit fixes: Matrix::from_columns row/column-major transpose in the shared arm display, adapted_basis fed coroots-as-rows instead of coroots-as-columns in the DerivedTag arm (invisible while fixtures only hit r==s symmetric-coroot data), and the hardcoded SimplyConnected isogeny label replaced by classify_isogeny (adjoint B2 stays adjoint; G2 classifies Both).",
   "oracle": "atlas",
   "oracle_exit_status": 0,
   "stage": "typed-pipeline-swap",
-  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_job": "3542469"
 }
