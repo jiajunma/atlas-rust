@@ -1,12 +1,14 @@
 {
   "fixture": "domain/shift_flip",
   "fixture_sha256": "0e7f48f79d7e21fdffe5b0ba60eb578e5b507d0a6369a7ca394d2e85506e1508",
-  "rust_status": "pending_hpc_differential",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
   "note": "shift_flip(Param,mat,ratvec->bool): default-extension sign under rational gamma shift on SL(2,R)/SU(2,1)/SL(3,R)/SO(3,2), identity and diagram-flip deltas, integral and half-integral fixed gammas. All probed cases return false: no true case found in rank<=2 sweeps (~1300 oracle calls, KGB-wide on A2 split with nu in {[1,1],[2,2],[1,1]/2,[3,3]/2}); upstream uses shift_flip nowhere in scripts, and the ext_finalise 1s* flip arises from star finalisation, not plain shifts. HPC reference capture 3539225 byte-identical to local pinned-oracle capture (stdout+stderr).",
   "oracle": "atlas",
   "oracle_exit_status": 0,
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "reference_job": "3539225"
+  "reference_job": "3539225",
+  "differential_job": "3541896",
+  "differential_commit": "f4b13913b28478273723d548850516a7ac5b5499"
 }
