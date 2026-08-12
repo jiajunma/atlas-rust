@@ -7925,6 +7925,263 @@ pub(crate) fn validate(
     Ok(())
 }
 
+/// One row of a common-block print: the `do_print` fields (block_io.cpp:
+/// 54-110, traditional=false so no local `(x,y):` prefix) plus the data for
+/// the `common_block::print` suffix (block_io.cpp:128-147). Cross/Cayley
+/// entries are indices into the row list itself.
+struct CommonBlockRow {
+    x: KgbId,
+    length: usize,
+    descents: Vec<BlockDescent>,
+    crosses: Vec<Option<usize>>,
+    cayleys: Vec<(Option<usize>, Option<usize>)>,
+    gamma_lambda: RationalWeight,
+    survives: bool,
+}
+
+/// printInvolution of the KGB involution at `x` (prettyprint.cpp:219-232):
+/// one-based generator digits, '^' for crosses, 'x' for conjugations, `e`
+/// closing.
+fn involution_expression(context: &RealFormContext, x: KgbId) -> String {
+    let record = context
+        .table
+        .record(context.graph.involution_of(x).expect("in-range"))
+        .expect("in-range");
+    let word = context
+        .parent
+        .inner_class
+        .canonical_involution_expr(record.weyl_element())
+        .expect("a KGB involution is a twisted involution of the class");
+    let mut text = String::new();
+    for entry in word {
+        if entry >= 0 {
+            text.push(char::from(
+                b'1' + u8::try_from(entry).expect("generator rank"),
+            ));
+            text.push('^');
+        } else {
+            text.push(char::from(
+                b'1' + u8::try_from(!entry).expect("generator rank"),
+            ));
+            text.push('x');
+        }
+    }
+    text.push('e');
+    text
+}
+
+/// The shared engine of print_param_block_wrapper and print_c_block_wrapper
+/// (atlas-types.w:6653-6695): the rows of the common block of `sr`'s srm,
+/// fresh-built per call — upstream's Rep_table pool (repr.cpp:1773-1794) is
+/// memoization only, and for a dominant gamma the block modifier it
+/// maintains is trivial (identity transform word, zero shift), so a fresh
+/// build prints identically (the partial_block/KL_block precedent).
+/// Returns the rows in block order and the init index: the row whose
+/// `(x, gamma-lambda)` matches the srm — matching on `x` alone is ambiguous
+/// within an R-packet.
+fn common_block_rows(
+    context: &Arc<RealFormContext>,
+    sr: &StandardRepr,
+    span: SourceSpan,
+) -> Result<(Vec<CommonBlockRow>, usize), Diagnostic> {
+    let rc = rep_context(context);
+    let datum = context.parent.root_datum.datum.clone();
+    let gamma = sr.gamma().clone();
+    let (seed_x, seed_gamma_lambda) = rc
+        .mod_reduce(sr)
+        .map_err(|error| structure_diagnostic(error, span))?;
+    if !gamma_is_integral(&datum, &gamma) {
+        // Upstream builds the common block on the integral subsystem of
+        // gamma (common_context/SubSystem, repr.cpp:2666-2670); that slice
+        // is not ported. Only the rank-0 case is reproduced: the block is
+        // the seed element alone, with no generators.
+        let system = rc.inner_class().root_system();
+        let numerator = gamma.numerator();
+        let denominator = gamma.denominator();
+        let has_integral_root = (0..system.roots().len())
+            .map(RootId::from_usize)
+            .filter(|&id| system.is_positive(id) == Some(true))
+            .any(|id| {
+                let coroot = system.coroot(id).expect("in-range root");
+                let pairing: i64 = coroot
+                    .as_slice()
+                    .iter()
+                    .zip(numerator.iter())
+                    .map(|(&c, &g)| i64::from(c) * g)
+                    .sum();
+                pairing % denominator == 0
+            });
+        if has_integral_root {
+            return Err(runtime(
+                span,
+                "common block at a non-integral infinitesimal character is not yet implemented",
+            ));
+        }
+        let row = CommonBlockRow {
+            x: seed_x,
+            length: 0,
+            descents: Vec::new(),
+            crosses: Vec::new(),
+            cayleys: Vec::new(),
+            gamma_lambda: seed_gamma_lambda,
+            survives: true,
+        };
+        return Ok((vec![row], 0));
+    }
+    let dual_parent = build_dual_inner_class(&context.parent, span)?;
+    let dual_quasisplit = dual_parent.order.quasisplit_external();
+    let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
+    let block = build_block(context, &dual_rf, span)?;
+    let size = block.graph.size();
+    let rank = block.graph.rank();
+    // For an integral gamma the common block is the full block
+    // (atlas-types.w:7093-7107); its per-element gamma-lambda values are
+    // the z_pool entries (blocks.cpp:733-1076), reproduced by the srm
+    // propagation — computing them from the full block's (x,y) pairs
+    // directly (common_block_gamma_lambdas) diverges at singular elements,
+    // where the common block's element is a different y-class of the same
+    // x (the KL_block arm has the same split).
+    let lambda_rho = rc
+        .lambda_rho(sr)
+        .map_err(|error| structure_diagnostic(error, span))?;
+    let z0 = (0..size)
+        .find(|&z| block.graph.x(z) == Some(seed_x))
+        .ok_or_else(|| runtime(span, "parameter not in the common block"))?;
+    let srms = common_block_srms(&block, z0, &rc, &lambda_rho, &gamma, span)?;
+    // init_index matches the input srm on (x, gamma-lambda), not on x
+    // alone (R-packets); the anchor z0 always carries the seed value, so
+    // the fallback is unreachable but keeps the tie-breaking explicit.
+    let init = (0..size)
+        .find(|&z| block.graph.x(z) == Some(seed_x) && srms[z].as_ref() == Some(&seed_gamma_lambda))
+        .unwrap_or(z0);
+    // common_block::singular (blocks.cpp:701-720) with a trivial block
+    // modifier: the simply-integral roots are the datum's simple roots, so
+    // generator s is singular iff <gamma, alpha_s^vee> vanishes.
+    let singular: Vec<bool> = (0..rank)
+        .map(|s| {
+            let pairing: i64 = datum.simple_coroots()[s]
+                .as_slice()
+                .iter()
+                .zip(gamma.numerator().iter())
+                .map(|(&c, &g)| i64::from(c) * g)
+                .sum();
+            pairing == 0
+        })
+        .collect();
+    let mut rows = Vec::with_capacity(size);
+    for (z, srm) in srms.iter().enumerate() {
+        let mut descents = Vec::with_capacity(rank);
+        let mut crosses = Vec::with_capacity(rank);
+        let mut cayleys = Vec::with_capacity(rank);
+        let mut survives = true;
+        for (s, &is_singular) in singular.iter().enumerate() {
+            let descent = block.graph.descent_value(z, s).expect("in-range");
+            if is_singular && descent.is_descent() {
+                survives = false;
+            }
+            descents.push(descent);
+            crosses.push(block.graph.cross(z, s));
+            // do_print (block_io.cpp:96-102): the inverse Cayley at weak
+            // descents, the Cayley transform otherwise.
+            cayleys.push(if descent.is_descent() {
+                block.graph.inverse_cayley(z, s).expect("in-range")
+            } else {
+                block.graph.cayley(z, s).expect("in-range")
+            });
+        }
+        rows.push(CommonBlockRow {
+            x: block.graph.x(z).expect("in-range"),
+            length: block.graph.length(z).expect("in-range"),
+            descents,
+            crosses,
+            cayleys,
+            gamma_lambda: srm
+                .clone()
+                .expect("every full-block element carries an srm value"),
+            survives,
+        });
+    }
+    Ok((rows, init))
+}
+
+/// The common-block print (block_io.cpp:54-110 `do_print` with
+/// traditional=false, then `common_block::print` at :128-147):
+/// `z: length [descents] cross... (cayley,...) *(x=..,gamma-lambda=..)
+/// involution-word`. The gamma-lambda field width is 3*rk+4 with rk the
+/// FULL datum's semisimple rank (common_block::print uses
+/// root_datum().semisimple_rank(), not the block rank), which shows on
+/// rank-0 integral subsystems.
+fn render_common_block(context: &RealFormContext, rows: &[CommonBlockRow]) -> String {
+    let datum_rank = context.parent.root_datum.datum.semisimple_rank();
+    let size = rows.len();
+    let width = digits(size - 1);
+    let lwidth = digits(rows[size - 1].length);
+    let xwidth = digits(rows.iter().map(|row| row.x.index()).max().unwrap_or(0));
+    let gwidth = 3 * datum_rank + 4;
+    let pad = 2;
+    let mut text = String::new();
+    for (z, row) in rows.iter().enumerate() {
+        text.push_str(&format!("{:width$}:", z));
+        text.push_str(&format!("{:width$}", row.length, width = lwidth + pad));
+        text.push_str(&" ".repeat(pad));
+        text.push('[');
+        for (s, descent) in row.descents.iter().enumerate() {
+            if s > 0 {
+                text.push(',');
+            }
+            text.push_str(block_descent_code(*descent));
+        }
+        text.push(']');
+        for cross in &row.crosses {
+            match cross {
+                Some(target) => text.push_str(&format!("{:width$}", target, width = width + pad)),
+                // Rust left-aligns char under a width; upstream's setw
+                // right-aligns the undef marker like any other field.
+                None => {
+                    text.push_str(&" ".repeat(width + pad - 1));
+                    text.push('*');
+                }
+            }
+        }
+        text.push_str(&" ".repeat(pad + 1));
+        for pair in &row.cayleys {
+            text.push('(');
+            match pair.0 {
+                Some(first) => text.push_str(&format!("{:width$}", first)),
+                None => {
+                    text.push_str(&" ".repeat(width - 1));
+                    text.push('*');
+                }
+            }
+            text.push(',');
+            match pair.1 {
+                Some(second) => text.push_str(&format!("{:width$}", second)),
+                None => {
+                    text.push_str(&" ".repeat(width - 1));
+                    text.push('*');
+                }
+            }
+            text.push(')');
+            text.push_str(&" ".repeat(pad));
+        }
+        text.push(if row.survives { '*' } else { ' ' });
+        text.push_str(&format!("(x={:xwidth$}", row.x.index()));
+        text.push_str(",gamma-lambda=");
+        // The gamma-lambda values are gcd-normalized by construction
+        // (RationalWeight::new), so the explicit `normalize()` upstream
+        // applies at print time (block_io.cpp:137) is a no-op here.
+        text.push_str(&format!(
+            "{:>gwidth$}",
+            rational_weight_display(&row.gamma_lambda)
+        ));
+        text.push(')');
+        text.push_str(&" ".repeat(2));
+        text.push_str(&involution_expression(context, row.x));
+        text.push('\n');
+    }
+    text
+}
+
 /// Printer wrappers (atlas-types.w:8944-8957, 8850-8859): the report text
 /// of one `print_*` builtin. Upstream prints unconditionally, so the text
 /// is produced at both evaluation levels; no diagnostics precede the
@@ -8087,6 +8344,21 @@ pub(crate) fn print_text(
         // reduced expression (as_invol_expr=true).
         "print_block" | "print_blockd" => {
             arity(name, arguments, 1, span)?;
+            // print_param_block_wrapper (atlas-types.w:6653-6666,
+            // blocks.cpp:1272-1286): the common block of the parameter's
+            // own srm (no make_dominant), with the singular flags of the
+            // parameter's own gamma (block.singular(p->val.gamma())).
+            if name == "print_block" {
+                if let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] {
+                    test_standard(parameter, "Cannot generate block", span)?;
+                    let (rows, init) =
+                        common_block_rows(&parameter.context, &parameter.repr, span)?;
+                    let mut text =
+                        format!("Parameter defines element {init} of the following block:\n");
+                    text.push_str(&render_common_block(&parameter.context, &rows));
+                    return Ok(text);
+                }
+            }
             let Value::Domain(DomainValue::Block(block)) = &arguments[0] else {
                 return Err(type_error(span, "expected a Block"));
             };
@@ -8230,6 +8502,36 @@ pub(crate) fn print_text(
                 }
                 text.push('\n');
             }
+            Ok(text)
+        }
+        // print_c_block_wrapper (atlas-types.w:6668-6695): test_standard,
+        // then lookup_full_block (repr.cpp:1773-1794) makes the parameter
+        // dominant in place — the block and the singular flags both use
+        // that dominant gamma. The header's transform word is always empty
+        // here: the block modifier is trivial for a dominant gamma and the
+        // Rep_table pool is memoization only (fresh-build-per-call).
+        "print_common_block" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "{name} has no matching overload for {} argument(s)",
+                        arguments.len()
+                    ),
+                ));
+            };
+            test_standard(parameter, "Cannot generate block", span)?;
+            let rc = rep_context(&parameter.context);
+            let dominant = parameter
+                .repr
+                .made_dominant(&rc)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let (rows, init) = common_block_rows(&parameter.context, &dominant, span)?;
+            let mut text = format!(
+                "Parameter defines element {init} of the following common block,\nas transformed by <>:\n"
+            );
+            text.push_str(&render_common_block(&parameter.context, &rows));
             Ok(text)
         }
         // print_blocku (atlas-types.w:8894-8917, block_io.cpp:282-369):
@@ -15499,6 +15801,122 @@ mod tests {
             .expect("KGB element");
             let twisted = call("twist", std::slice::from_ref(&element), span()).expect("twist");
             assert_eq!(twisted, element);
+        }
+    }
+
+    fn sl2r_param(real: &Value, x: i64, lambda: &[i32], nu: &[i64], nu_denominator: u64) -> Value {
+        let element = call(
+            "KGB",
+            &[real.clone(), Value::Integer(BigInt::from(x))],
+            span(),
+        )
+        .expect("KGB element");
+        call(
+            "param",
+            &[
+                element,
+                Value::Vector(Vec32(lambda.to_vec())),
+                Value::RatVector(RatVec::new(nu.to_vec(), nu_denominator).expect("ratvec")),
+            ],
+            span(),
+        )
+        .expect("param")
+    }
+
+    // The strings below are the verified HPC oracle output of
+    // tests/fixtures/domain/print_common_block.atlas.
+    #[test]
+    fn print_common_block_reports_the_sl2r_blocks() {
+        let real = sl2r_split_form();
+        // param(KGB(rf,2),[1],[1]/2): non-integral gamma, rank-0 integral
+        // subsystem, so the common block is the seed element alone.
+        let p = sl2r_param(&real, 2, &[1], &[1], 2);
+        assert_eq!(
+            print_text("print_common_block", std::slice::from_ref(&p), span()).expect("print"),
+            "Parameter defines element 0 of the following common block,\nas transformed by <>:\n0:  0  []   *(x=2,gamma-lambda=  [1]/2)  1^e\n"
+        );
+        // The print_block(Param) overload (atlas-types.w:6653-6666) prints
+        // the same block under the plain header.
+        assert_eq!(
+            print_text("print_block", std::slice::from_ref(&p), span()).expect("print"),
+            "Parameter defines element 0 of the following block:\n0:  0  []   *(x=2,gamma-lambda=  [1]/2)  1^e\n"
+        );
+        // param(KGB(rf,0),[1],[0]/1): gamma = lambda = [2], no singular
+        // coroot, so every element survives.
+        let q = sl2r_param(&real, 0, &[1], &[0], 1);
+        assert_eq!(
+            print_text("print_common_block", std::slice::from_ref(&q), span()).expect("print"),
+            "Parameter defines element 0 of the following common block,\nas transformed by <>:\n0:  0  [i1]  1   (2,*)  *(x=0,gamma-lambda=  [0]/1)  e\n1:  0  [i1]  0   (2,*)  *(x=1,gamma-lambda=  [0]/1)  e\n2:  1  [r1]  2   (0,1)  *(x=2,gamma-lambda=  [0]/1)  1^e\n"
+        );
+        // param(KGB(rf,2),[1],[0]/1): gamma = nu = [0], the simple coroot
+        // is singular, so the r1 descent at z=2 drops the star.
+        let q3 = sl2r_param(&real, 2, &[1], &[0], 1);
+        assert_eq!(
+            print_text("print_common_block", std::slice::from_ref(&q3), span()).expect("print"),
+            "Parameter defines element 2 of the following common block,\nas transformed by <>:\n0:  0  [i1]  1   (2,*)  *(x=0,gamma-lambda=  [0]/1)  e\n1:  0  [i1]  0   (2,*)  *(x=1,gamma-lambda=  [0]/1)  e\n2:  1  [r1]  2   (0,1)   (x=2,gamma-lambda=  [0]/1)  1^e\n"
+        );
+    }
+
+    #[test]
+    fn print_common_block_star_column_uses_each_parameters_own_gamma() {
+        let lie_type = call("Lie_type", &[Value::String("B2".into())], span()).expect("Lie type");
+        let datum = call(
+            "simply_connected",
+            &[lie_type, Value::Boolean(true)],
+            span(),
+        )
+        .expect("root datum");
+        let matrix = Value::Matrix(
+            Matrix::from_columns(2, 2, vec![1, 0, 0, 1]).expect("identity involution"),
+        );
+        let inner = call("inner_class", &[datum, matrix], span()).expect("inner class");
+        let real = call(
+            "real_form",
+            &[inner, Value::Integer(BigInt::from(2))],
+            span(),
+        )
+        .expect("split real form");
+        let b2_param = |x: i64| {
+            let element = call(
+                "KGB",
+                &[real.clone(), Value::Integer(BigInt::from(x))],
+                span(),
+            )
+            .expect("KGB element");
+            call(
+                "param",
+                &[
+                    element,
+                    Value::Vector(Vec32(vec![1, 1])),
+                    Value::RatVector(RatVec::new(vec![0, 0], 1).expect("ratvec")),
+                ],
+                span(),
+            )
+            .expect("param")
+        };
+        // pb = param(KGB(rfb,0),[1,1],[0,0]/1): gamma = lambda = [2,2], no
+        // singular coroot, so all twelve rows keep the star.
+        let pb = print_text("print_common_block", &[b2_param(0)], span()).expect("print");
+        assert!(pb.starts_with(
+            "Parameter defines element 0 of the following common block,\nas transformed by <>:\n"
+        ));
+        let pb_rows: Vec<&str> = pb.lines().skip(2).collect();
+        assert_eq!(pb_rows.len(), 12);
+        assert!(pb_rows.iter().all(|line| line.contains("*(x=")));
+        // pb2 = param(KGB(rfb,5),[1,1],[0,0]/1): gamma = (1+theta_5)[1,1]
+        // is singular on coroot 0, so the rows with a descent at generator
+        // 0 (4, 5, 7, 10) lose the star while the table is unchanged.
+        let pb2 = print_text("print_common_block", &[b2_param(5)], span()).expect("print");
+        assert!(pb2.starts_with(
+            "Parameter defines element 5 of the following common block,\nas transformed by <>:\n"
+        ));
+        let pb2_rows: Vec<&str> = pb2.lines().skip(2).collect();
+        assert_eq!(pb2_rows.len(), 12);
+        for (z, (left, right)) in pb_rows.iter().zip(&pb2_rows).enumerate() {
+            let starred = ![4, 5, 7, 10].contains(&z);
+            assert_eq!(right.contains("*(x="), starred, "row {z}");
+            // Dropping the star is the only difference between the tables.
+            assert_eq!(right.replacen(" (x=", "*(x=", 1), *left, "row {z}");
         }
     }
 

@@ -4774,6 +4774,12 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             domain_printer_builtin("print_block", primitive_type(Prim::Block)),
             domain_printer_builtin("print_blockd", primitive_type(Prim::Block)),
             domain_printer_builtin("print_blocku", primitive_type(Prim::Block)),
+            // print_param_block_wrapper / print_c_block_wrapper
+            // (atlas-types.w:6653-6695, installed at 7504-7505): the common
+            // block of a Param, fresh-built per call (the Rep_table pool is
+            // memoization only).
+            domain_printer_builtin("print_block", primitive_type(Prim::Param)),
+            domain_printer_builtin("print_common_block", primitive_type(Prim::Param)),
             // KGB_Hasse (atlas-types.w:3735-3743): the Bruhat Hasse matrix.
             domain_builtin(
                 "KGB_Hasse",
