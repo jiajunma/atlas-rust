@@ -1,12 +1,14 @@
 {
   "fixture": "domain/dual_kl_block_rejected",
   "fixture_sha256": "48f703564fb6f99f4ec2a410dd0889a65cc672bb0d949f1c911ded888d589974",
-  "rust_status": "pending_hpc_differential",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
   "note": "dual_KL_block conform rejections: RealForm argument, (RealForm,RealForm) argument tuple. HPC reference capture 3536369 byte-identical to local pinned-oracle capture (stdout+stderr).",
   "oracle": "atlas",
   "oracle_exit_status": 1,
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "reference_job": "3536369"
+  "reference_job": "3536369",
+  "differential_job": "3541634",
+  "differential_commit": "dafdc035cebe063eb0005efeb8e111fe625ce01a"
 }

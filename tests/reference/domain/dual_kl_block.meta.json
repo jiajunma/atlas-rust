@@ -1,12 +1,14 @@
 {
   "fixture": "domain/dual_kl_block",
   "fixture_sha256": "bed1bfb1603f587bc7bb96c715532792f8d53142f76d44c67e50b195e3aa5106",
-  "rust_status": "pending_hpc_differential",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
   "note": "dual_KL_block(Param->[Param],int,mat,[vec]) on SL(2,R)/SU(2,1)/B2-split: dual block via Bare_block::dual + KL matrix packing (shared with KL_block), non-trivial coefficients (3,2) and pool rows [[ ],[1],[0,1],[2]] on the 12-element B2 block. HPC reference capture 3536369 byte-identical to local pinned-oracle capture (stdout+stderr).",
   "oracle": "atlas",
   "oracle_exit_status": 0,
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "reference_job": "3536369"
+  "reference_job": "3536369",
+  "differential_job": "3541634",
+  "differential_commit": "dafdc035cebe063eb0005efeb8e111fe625ce01a"
 }
