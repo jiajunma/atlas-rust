@@ -38,6 +38,13 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   E1a/E1b/E1c); agent-49 (dual_KL_block language layer, exclusive
   atlas-core, brief /tmp/slice_d_brief.md). Both resumed at ~16:25
   with 2h timeouts; on timeout resume the same agent id.
+- **shift_flip fixtures closed the last fixture gap** (`ca88ac1` +
+  `5a2e324`): every remaining builtin now has a verified_hpc_reference
+  fixture; only implementation + differential remain. shift_flip
+  itself needs E1 (shifted_default_extension + is_default); accepted
+  cases all return false — ~1300 oracle probes found no true case
+  (noted in meta + queue doc §4). print_x FixturePlan line alignment
+  pre-analysed into the queue doc snippet (`7a19b87`).
 - Per-slice closure recipe unchanged: three gates → local replay
   byte-compare → commit → register FixturePlan (watch print-fixture
   line/event alignment, silent_lines pattern from d19090a) → rsync +
