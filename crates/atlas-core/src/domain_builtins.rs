@@ -35,10 +35,10 @@ use atlas_real_group::{
     replace_relation_generators as domain_replace_relation_generators, AdjointFiberBudget,
     BasedRootDatum, BlockDescent, BlockGraph, CartanClassification, CartanClassificationBudget,
     CartanId, Coweight, ExternalFormOrder, InnerClass, InnerClassLayout, IntegerLatticeBudget,
-    InvolutionTable, InvolutionTableBudget, KType, KgbGraph, KgbId, KgbStatus, KlPol, KlTable,
-    LatticeInvolution, ModTwoVector, RankFlags, RationalWeight, RealFormPresentation, RealFormSeed,
-    RelationBasis, RelationError, RelationGenerator, RelationMatrix, RepContext, RootId,
-    RootInvolutionData, RootKind, RootSystem, StandardRepr, StrongRealClassification,
+    InvolutionId, InvolutionTable, InvolutionTableBudget, KType, KgbGraph, KgbId, KgbStatus, KlPol,
+    KlTable, LatticeInvolution, ModTwoVector, RankFlags, RationalWeight, RealFormPresentation,
+    RealFormSeed, RelationBasis, RelationError, RelationGenerator, RelationMatrix, RepContext,
+    RootId, RootInvolutionData, RootKind, RootSystem, StandardRepr, StrongRealClassification,
     StructureError, WeakRealFormId, Weight, WeylAction, WeylElement, WeylInterface,
 };
 
@@ -2661,6 +2661,303 @@ fn common_block_gamma_lambdas(
         rc.real_unique(involution, &mut value)
             .map_err(|error| structure_diagnostic(error, span))?;
         gl[z] = Some(value);
+    }
+    Ok(gl)
+}
+
+/// The common block's per-element `gamma_lambda` values (upstream's
+/// `z_pool`, blocks.cpp:733-1076), reconstructed with
+/// `common_context::cross/down_Cayley/up_Cayley` (repr.cpp:2694-2776)
+/// specialised to a full integral subsystem: for integral `gamma` the
+/// conjugation words are trivial, so the `pos_to_neg` corrections vanish
+/// except the simple-root term of `cross`. Valid only for integral
+/// `gamma`; the caller gates on `gamma_is_integral`.
+///
+/// The propagation mirrors the full block constructor: the seed srm is
+/// moved up to the most split fiber (step 2, blocks.cpp:760-786), the top
+/// involution packet is saturated through real cross links (step 3), and
+/// values flow downward through complex cross descents and parity-gated
+/// real Cayley descents (step 4). Within an involution packet the value
+/// depends only on the y-column (the bundle alignment invariant,
+/// blocks.cpp:857-870), so every assignment is spread across its column.
+/// Every value is normalised per involution with `StandardReprMod::build`
+/// (repr.cpp:61-67), so revisits must agree; a disagreement or an
+/// unassigned element means the port is wrong and is reported rather than
+/// silently emitting wrong parameters.
+fn common_block_srms(
+    block: &BlockValue,
+    z0: usize,
+    rc: &RepContext<'_>,
+    lambda_rho: &Weight,
+    gamma: &RationalWeight,
+    span: SourceSpan,
+) -> Result<Vec<Option<RationalWeight>>, Diagnostic> {
+    let size = block.graph.size();
+    let rank = block.graph.rank();
+    let datum = rc.datum();
+    let system = rc.inner_class().root_system();
+    let x_of = |z: usize| block.graph.x(z).expect("in-range block element");
+    let coroot_of = |s: usize| datum.simple_coroots()[s].as_slice().to_vec();
+    // `<g, alpha_s^vee>`, exact at numerator level.
+    let eval_at = |g: &RationalWeight, s: usize| -> Result<i64, Diagnostic> {
+        let numerator: i64 = coroot_of(s)
+            .iter()
+            .zip(g.numerator().iter())
+            .map(|(&c, &coord)| i64::from(c) * coord)
+            .sum();
+        if numerator % g.denominator() != 0 {
+            return Err(runtime(
+                span,
+                "non-integral coroot evaluation in common block",
+            ));
+        }
+        Ok(numerator / g.denominator())
+    };
+    // `root_sum(pos_to_neg) ∩ real` correction check plus
+    // `subsys().simple_reflect(s, numerator)`, both with trivial
+    // conjugation: `reflect_s(g - [alpha_s if real at x])`
+    // (repr.cpp:2694-2709).
+    let cross_value =
+        |x: KgbId, s: usize, g: &RationalWeight| -> Result<RationalWeight, Diagnostic> {
+            let mut shifted = g.clone();
+            let simple_id = system
+                .id_of(&datum.simple_roots()[s])
+                .ok_or_else(|| runtime(span, "simple root missing from root system"))?;
+            let reals = rc
+                .positive_real_roots_at(x)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            if reals.contains(&simple_id) {
+                let alpha = RationalWeight::from_weight(&datum.simple_roots()[s])
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                shifted = shifted
+                    .sub(&alpha)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+            }
+            let eval = eval_at(&shifted, s)?;
+            let alpha = datum.simple_roots()[s].as_slice();
+            let numerator = shifted
+                .numerator()
+                .iter()
+                .zip(alpha.iter())
+                .map(|(&coord, &a)| coord - eval * i64::from(a))
+                .collect();
+            RationalWeight::new(numerator, shifted.denominator())
+                .map_err(|error| structure_diagnostic(error, span))
+        };
+    // `common_context::is_parity` (repr.cpp:2712-2723) for a simple
+    // integral generator that is real at `x`.
+    let is_parity = |x: KgbId, s: usize, g: &RationalWeight| -> Result<bool, Diagnostic> {
+        let eval = eval_at(g, s)?;
+        let reals = rc
+            .positive_real_roots_at(x)
+            .map_err(|error| structure_diagnostic(error, span))?;
+        let two_rho_real = two_rho(system, &reals);
+        let corr_twice: i64 = two_rho_real
+            .as_slice()
+            .iter()
+            .zip(coroot_of(s).iter())
+            .map(|(&coord, &c)| i64::from(coord) * i64::from(c))
+            .sum();
+        if corr_twice % 2 != 0 {
+            return Err(runtime(span, "rho_r parity correction not integral"));
+        }
+        Ok((eval + corr_twice / 2) % 2 != 0)
+    };
+    // The `up_Cayley` parity correction (repr.cpp:2744-2776): when
+    // `<gamma_lambda, alpha_s^vee> + rho_r_corr` is even, add `alpha_s/2`.
+    let up_cayley_value =
+        |x2: KgbId, s: usize, g: &RationalWeight| -> Result<RationalWeight, Diagnostic> {
+            let reals = rc
+                .positive_real_roots_at(x2)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let two_rho_real = two_rho(system, &reals);
+            let corr_twice: i64 = two_rho_real
+                .as_slice()
+                .iter()
+                .zip(coroot_of(s).iter())
+                .map(|(&coord, &c)| i64::from(coord) * i64::from(c))
+                .sum();
+            if corr_twice % 2 != 0 {
+                return Err(runtime(span, "up Cayley rho_r correction not integral"));
+            }
+            let eval = eval_at(g, s)?;
+            if (eval + corr_twice / 2) % 2 == 0 {
+                let alpha = datum.simple_roots()[s].as_slice();
+                let numerator = g
+                    .numerator()
+                    .iter()
+                    .zip(alpha.iter())
+                    .map(|(&coord, &a)| 2 * coord + g.denominator() * i64::from(a))
+                    .collect();
+                RationalWeight::new(numerator, 2 * g.denominator())
+                    .map_err(|error| structure_diagnostic(error, span))
+            } else {
+                Ok(g.clone())
+            }
+        };
+    // Seed: `StandardReprMod::mod_reduce` (repr.cpp:58-67): gamma-lambda-rho
+    // made real_unique at the seed involution and normalised. This equals
+    // `z_pool[z0]` because the block modifier is trivial for an integral
+    // dominant gamma (repr.cpp:1773-1794 with identity locator).
+    let seed = {
+        let lambda = RationalWeight::from_weight(lambda_rho)
+            .map_err(|error| structure_diagnostic(error, span))?;
+        let diff = gamma
+            .sub(rc.rho())
+            .and_then(|value| value.sub(&lambda))
+            .map_err(|error| structure_diagnostic(error, span))?;
+        rc.build_srm(x_of(z0), &diff)
+            .map_err(|error| structure_diagnostic(error, span))?
+    };
+    // Step 2 (blocks.cpp:760-786): move up towards the most split fiber,
+    // through complex ascents and imaginary noncompact Cayleys.
+    let mut z_top = z0;
+    let mut g_top = seed;
+    'move_up: loop {
+        for s in 0..rank {
+            match block.graph.descent_value(z_top, s) {
+                Some(BlockDescent::ComplexAscent) => {
+                    let target = block
+                        .graph
+                        .cross(z_top, s)
+                        .ok_or_else(|| runtime(span, "missing cross link in common block"))?;
+                    g_top = rc
+                        .build_srm(x_of(target), &cross_value(x_of(z_top), s, &g_top)?)
+                        .map_err(|error| structure_diagnostic(error, span))?;
+                    z_top = target;
+                    continue 'move_up;
+                }
+                Some(BlockDescent::ImaginaryTypeI) | Some(BlockDescent::ImaginaryTypeII) => {
+                    if let Some((Some(target), _)) = block.graph.cayley(z_top, s) {
+                        let x2 = x_of(target);
+                        g_top = rc
+                            .build_srm(x2, &up_cayley_value(x2, s, &g_top)?)
+                            .map_err(|error| structure_diagnostic(error, span))?;
+                        z_top = target;
+                        continue 'move_up;
+                    }
+                }
+                _ => {}
+            }
+        }
+        break;
+    }
+    // Involution packets with y-columns: within a packet (elements whose x
+    // share the involution) the rows correspond to distinct x values and
+    // the columns to distinct y values; `gamma_lambda` is constant along
+    // each column (blocks.cpp:857-870).
+    let mut packets: std::collections::BTreeMap<InvolutionId, Vec<usize>> =
+        std::collections::BTreeMap::new();
+    for z in 0..size {
+        let involution = rc
+            .involution_of(x_of(z))
+            .map_err(|error| structure_diagnostic(error, span))?;
+        packets.entry(involution).or_default().push(z);
+    }
+    let mut column_of = vec![usize::MAX; size];
+    let mut packet_columns: Vec<Vec<Vec<usize>>> = Vec::new();
+    let mut packet_of = vec![usize::MAX; size];
+    for elements in packets.into_values() {
+        let packet = packet_columns.len();
+        let mut ys: Vec<usize> = elements
+            .iter()
+            .map(|&z| block.graph.y(z).expect("in-range block element").index())
+            .collect();
+        ys.sort_unstable();
+        ys.dedup();
+        let mut columns: Vec<Vec<usize>> = vec![Vec::new(); ys.len()];
+        for z in elements {
+            let y = block.graph.y(z).expect("in-range block element").index();
+            let column = ys
+                .binary_search(&y)
+                .map_err(|_| runtime(span, "packet y lookup failed"))?;
+            column_of[z] = column;
+            packet_of[z] = packet;
+            columns[column].push(z);
+        }
+        packet_columns.push(columns);
+    }
+    let mut gl: Vec<Option<RationalWeight>> = vec![None; size];
+    let mut assignments: Vec<(usize, RationalWeight)> = vec![(z_top, g_top)];
+    let mut edge_queue: Vec<usize> = Vec::new();
+    loop {
+        while let Some((z, raw)) = assignments.pop() {
+            for &mate in &packet_columns[packet_of[z]][column_of[z]] {
+                let normalised = rc
+                    .build_srm(x_of(mate), &raw)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                match &gl[mate] {
+                    Some(previous) if *previous == normalised => {}
+                    Some(_) => {
+                        return Err(runtime(
+                            span,
+                            "inconsistent gamma_lambda propagation in common block",
+                        ))
+                    }
+                    None => {
+                        gl[mate] = Some(normalised);
+                        edge_queue.push(mate);
+                    }
+                }
+            }
+        }
+        let Some(z) = edge_queue.pop() else {
+            break;
+        };
+        let g = gl[z].clone().expect("assigned element");
+        let x_z = x_of(z);
+        for s in 0..rank {
+            match block.graph.descent_value(z, s) {
+                // Step 4 cross into a packet below (blocks.cpp:918-944).
+                Some(BlockDescent::ComplexDescent) => {
+                    if let Some(target) = block.graph.cross(z, s) {
+                        assignments.push((target, cross_value(x_z, s, &g)?));
+                    }
+                }
+                Some(descent @ (BlockDescent::RealTypeI | BlockDescent::RealTypeII)) => {
+                    // Real reflection cross within the packet (step 3's
+                    // fiber saturation, blocks.cpp:800-840); fixed for
+                    // type I, moving to another column for type II.
+                    if let Some(target) = block.graph.cross(z, s) {
+                        if target != z {
+                            assignments.push((target, cross_value(x_z, s, &g)?));
+                        }
+                    }
+                    // Parity-gated down Cayley (blocks.cpp:1037-1058).
+                    if is_parity(x_z, s, &g)? {
+                        if let Some(pair) = block.graph.inverse_cayley(z, s) {
+                            if let Some(first) = pair.0 {
+                                // `down_Cayley` leaves gamma_lambda
+                                // unchanged (repr.cpp:2724-2742 with
+                                // trivial conjugation).
+                                assignments.push((first, g.clone()));
+                                if descent == BlockDescent::RealTypeI {
+                                    if let Some(second) = pair.1 {
+                                        // The type I second image is the
+                                        // cross of the first (blocks.cpp
+                                        // :1047-1052).
+                                        let first_normalised = rc
+                                            .build_srm(x_of(first), &g)
+                                            .map_err(|error| structure_diagnostic(error, span))?;
+                                        assignments.push((
+                                            second,
+                                            cross_value(x_of(first), s, &first_normalised)?,
+                                        ));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    if gl.iter().any(Option::is_none) {
+        return Err(runtime(
+            span,
+            "common block propagation left elements unassigned",
+        ));
     }
     Ok(gl)
 }
@@ -11867,6 +12164,177 @@ pub(crate) fn call_with_printed(
             for &z in &survivors {
                 let sr = rc
                     .sr_gamma(block.graph.x(z).expect("in-range"), &lambda_rho, &gamma)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                params.push(Value::Domain(DomainValue::Param(ParamValue {
+                    context: parameter.context.clone(),
+                    repr: sr,
+                })));
+            }
+            let rows: Vec<Vec<i32>> = index_matrix
+                .iter()
+                .map(|row| row.iter().map(|&index| index as i32).collect())
+                .collect();
+            let matrix_value = matrix_value(&rows, span)?;
+            let polys_value = Value::List(
+                polys
+                    .iter()
+                    .map(|pol| Value::Vector(Vec32(pol.as_slice().to_vec())))
+                    .collect(),
+            );
+            let start_value = Value::Integer(BigInt::from(if loc[z0] == usize::MAX {
+                -1
+            } else {
+                loc[z0] as i64
+            }));
+            Ok(Value::Tuple(vec![
+                Value::List(params),
+                start_value,
+                matrix_value,
+                polys_value,
+            ]))
+        }
+        // dual_KL_block (atlas-types.w:7053-7133, blocks.cpp:474-509
+        // `Bare_block::dual`): the KL matrix of the dual block over the
+        // parameter's common-block survivors, with no condensing; the
+        // polynomial pool is seeded with {0, 1} and the matrix entry
+        // M[loc[x]][loc[y]] is the pool index of the dual polynomial
+        // P_{last-x,last-y}.
+        "dual_KL_block" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "{name} has no matching overload for {} argument(s)",
+                        arguments.len()
+                    ),
+                ));
+            };
+            let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
+            let dual_quasisplit = dual_parent.order.quasisplit_external();
+            let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
+            let block = build_block(&parameter.context, &dual_rf, span)?;
+            let dual_graph = block.graph.dual();
+            let mut dual_kl =
+                KlTable::new(&dual_graph).map_err(|error| structure_diagnostic(error, span))?;
+            dual_kl
+                .fill(0)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let size = block.graph.size();
+            let datum = parameter.context.parent.root_datum.datum.clone();
+            let rc = rep_context(&parameter.context);
+            let lambda_rho = rc
+                .lambda_rho(&parameter.repr)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let gamma = parameter.repr.gamma().clone();
+            let z0 = (0..size)
+                .find(|&z| block.graph.x(z) == Some(parameter.repr.x()))
+                .ok_or_else(|| runtime(span, "parameter not in the common block"))?;
+            // The common block: for integral gamma it is the full block
+            // (upstream then considers every element for survival,
+            // atlas-types.w:7093-7107) and per-element gamma_lambda values
+            // come from the z_pool propagation. For non-integral gamma
+            // upstream builds the block on the proper integral subsystem;
+            // that slice is deferred, so the parity-gated closure with the
+            // uniform seed lambda_rho is kept there (the rank-0 integral
+            // systems exercised so far make both coincide).
+            let integral_gamma = gamma_is_integral(&datum, &gamma);
+            let srms = if integral_gamma {
+                common_block_srms(&block, z0, &rc, &lambda_rho, &gamma, span)?
+            } else {
+                Vec::new()
+            };
+            let members = if integral_gamma {
+                vec![true; size]
+            } else {
+                common_block_members(&block, z0, &rc, &lambda_rho, &gamma, span)?
+            };
+            // Singular coroots: <gamma, alpha_s^vee> vanishes.
+            let mut singular = 0_u32;
+            for s in 0..datum.semisimple_rank() {
+                let coroot = &datum.simple_coroots()[s];
+                let numerator = gamma.numerator();
+                let _denominator = gamma.denominator();
+                let mut total: i64 = 0;
+                for (index, &coordinate) in coroot.as_slice().iter().enumerate() {
+                    if coordinate == 0 {
+                        continue;
+                    }
+                    let entry = numerator
+                        .get(index)
+                        .ok_or_else(|| runtime(span, "rational weight rank"))?;
+                    total += i64::from(coordinate) * *entry;
+                }
+                if total == 0 {
+                    singular |= 1 << s;
+                }
+            }
+            // Survivors of the common block (loc[z] = survivors.size()),
+            // computed on the original block.
+            let mut loc = vec![usize::MAX; size];
+            let mut survivors: Vec<usize> = Vec::new();
+            for z in 0..size {
+                if !members[z] {
+                    continue;
+                }
+                let mut survives = true;
+                for s in 0..datum.semisimple_rank() {
+                    if singular & (1 << s) != 0
+                        && block
+                            .graph
+                            .descent_value(z, s)
+                            .is_some_and(|d| d.is_descent())
+                    {
+                        survives = false;
+                        break;
+                    }
+                }
+                if survives {
+                    loc[z] = survivors.len();
+                    survivors.push(z);
+                }
+            }
+            let n = survivors.len();
+            let last = size - 1;
+            // The pool starts with the zero polynomial and the constant 1
+            // (atlas-types.w:7113-7133). Filled column-major over the
+            // survivors (y outer, x from y on) so that hash.match assigns
+            // pool indices in the oracle's order.
+            let mut polys: Vec<KlPol> = vec![KlPol::zero(), KlPol::monomial(0)];
+            let mut index_of: std::collections::HashMap<Vec<i32>, usize> =
+                std::collections::HashMap::new();
+            index_of.insert(Vec::new(), 0);
+            index_of.insert(vec![1], 1);
+            let mut index_matrix = vec![vec![0_usize; n]; n];
+            for (j, &y) in survivors.iter().enumerate() {
+                for (i, &x) in survivors.iter().enumerate().skip(j) {
+                    let polynomial = kl_pol_at(&dual_kl, last - x, last - y, span)?;
+                    let coefficients = polynomial.as_slice().to_vec();
+                    let index = *index_of.entry(coefficients).or_insert_with(|| {
+                        polys.push(polynomial.clone());
+                        polys.len() - 1
+                    });
+                    index_matrix[i][j] = index;
+                }
+            }
+            // Parameters of the survivors, in original-block order:
+            // rc.sr(z_pool[z], bm, gamma) with trivial bm (atlas-types.w
+            // shared chunk at :6951-6962).
+            let gamma_rho = gamma
+                .sub(rc.rho())
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let mut params = Vec::new();
+            for &z in &survivors {
+                let lambda_rho_z = if integral_gamma {
+                    let gl = srms[z]
+                        .as_ref()
+                        .ok_or_else(|| runtime(span, "survivor outside the common block"))?;
+                    integer_diff_weight(&gamma_rho, gl, span)?
+                } else {
+                    lambda_rho.clone()
+                };
+                let sr = rc
+                    .sr_gamma(block.graph.x(z).expect("in-range"), &lambda_rho_z, &gamma)
                     .map_err(|error| structure_diagnostic(error, span))?;
                 params.push(Value::Domain(DomainValue::Param(ParamValue {
                     context: parameter.context.clone(),

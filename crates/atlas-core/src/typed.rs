@@ -5224,6 +5224,20 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 ]),
                 0,
             ),
+            // dual_KL_block (atlas-types.w:7053-7133, installed :7517):
+            // the KL matrix of the dual block over the parameter's common
+            // block survivors, with no condensing.
+            domain_builtin(
+                "dual_KL_block",
+                primitive_type(Prim::Param),
+                Type::tuple(vec![
+                    Type::row(primitive_type(Prim::Param)),
+                    int_type(),
+                    primitive_type(Prim::Mat),
+                    Type::row(primitive_type(Prim::Vec)),
+                ]),
+                0,
+            ),
             // partial_block (atlas-types.w:6786-6820): the partial-block
             // parameters of a final standard parameter.
             domain_builtin(
