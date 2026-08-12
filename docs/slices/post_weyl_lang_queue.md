@@ -228,8 +228,16 @@ verified_hpc_reference，capture 3535636）**：
     # print_real_Weyl + print_blockstabilizer (slice C; RealWeyl crate 51b9d83).
     FixturePlan(name="domain/real_weyl_print"),
     FixturePlan(name="domain/real_weyl_print_rejected"),
-    # print_X (global KGB slice).
-    FixturePlan(name="domain/print_x"),
+    # print_X (global KGB slice). Line alignment pre-analysed against
+    # print_x.events.json (2026-08-12): each print_X call emits one
+    # standalone ReportLine; the three print texts differ so no dedup
+    # gap; type ascriptions silent. Verify with the harness unittest
+    # before submitting the differential (slice C lesson).
+    FixturePlan(
+        name="domain/print_x",
+        runnable_lines=(2, 4, 5, 7, 9, 10, 12, 14, 15),
+        silent_lines=(1, 3, 6, 8, 11, 13),
+    ),
     FixturePlan(name="domain/print_x_rejected"),
     # dual_KL_block (Bare_block::dual + KL packing shared with KL_block).
     FixturePlan(name="domain/dual_kl_block"),
