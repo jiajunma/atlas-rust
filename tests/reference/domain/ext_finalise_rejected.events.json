@@ -1,0 +1,171 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/ext_finalise_rejected",
+  "status": "pending_hpc_reference",
+  "events": [
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rd': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'A2'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ic': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type A2, with involution defining\ninner class of type 's', with 1 real form and 2 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rf': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "connected split real group with Lie algebra 'sl(3,R)'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'p': Param\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "non-final parameter(x=3,lambda=[2,2]/1,nu=[0,0]/1)"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'p2': Param\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "final parameter(x=0,lambda=[1,1]/1,nu=[1,-1]/2)"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ra': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'A1'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ia': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type A1, with involution defining\ninner class of type 'c', with 2 real forms and 2 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'fa': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "connected split real group with Lie algebra 'sl(2,R)'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'n3': Param\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "non-standard parameter(x=1,lambda=[-1]/1,nu=[0]/1)"
+      }
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Cannot scale extended parameter:\nnon-final parameter(x=3,lambda=[2,2]/1,nu=[0,0]/1)\nParameter is not semifinal"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Factor in scale_extended must be positive"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Parameter to be scaled not fixed by given involution"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Parameter not fixed by given involution"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Involution of parameter does not commute with delta"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Given transformation is not an involution"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Involution should be a 2x2 matrix; received a 3x3 matrix"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Cannot finalize extended parameter:\nnon-standard parameter(x=1,lambda=[-1]/1,nu=[0]/1)\nParameter not standard"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Parameter in K_type_pol_extended| must be standard:\nnon-standard parameter(x=1,lambda=[-1]/1,nu=[0]/1)\nParameter not standard"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Cannot scale extended parameter:\nnon-standard parameter(x=1,lambda=[-1]/1,nu=[0]/1)\nParameter is not dominant"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "found (RealForm,[[int]]) while (Param,mat) was needed."
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "found (RealForm,[[int]],rat) while (Param,mat,rat) was needed."
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "found (RealForm,[[int]]) while (Param,mat) was needed."
+    }
+  ]
+}
