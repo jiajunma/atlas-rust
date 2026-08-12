@@ -4,11 +4,14 @@
 
 Reconciliation vs upstream atlas-types.w (187 unique install_function
 names — count via a multiline-tolerant scan; an earlier strict regex
-undercounted at 152): **170 live in typed.rs, 3 skip-only, 10 never
-registered** (operator names like `!= # ## % * + - / =` are live via
-the operator layer; `classify_involution`/`element`/`index` are live
-via `domain_builtin_validate`, which name-based scans must treat as a
-real registration).
+undercounted at 152): **170+ live in typed.rs, 10 never registered.
+A first-pass "3 skip-only + 12 partial-skip arms" finding was retracted
+after empirical probing — those typed.rs skip registrations are dead
+code shadowed by live arms** (see below; operator names like `!= # ##
+% * + - / =` are live via the operator layer;
+`classify_involution`/`element`/`index` are live via
+`domain_builtin_validate`, which name-based scans must treat as a real
+registration).
 
 Never registered:
 - E2: scale_extended, K_type_pol_extended, finalize_extended
@@ -20,27 +23,20 @@ Never registered:
   them; no fixture yet — fold into the print_common_block slice or a
   small follow-up)
 
-Skip-only (no fixtures yet — the post-queue tail):
-- KL_block, dual_KL, KL_sum_at_s_to_height
+Skip-only / partial-signature skips — **retracted (2026-08-12
+empirical)**: probing every upstream signature on the committed tree
+(dafdc03) shows the "skip" arms in typed.rs are dead registrations
+shadowed by live ones. dual(RootDatum), inner_class(RealForm),
+involution(KGBElt/CartanClass), twist(KGBElt), twist(KGBElt,mat),
+K_type(Param), param(KType), real_form(Param/KType), dual(Block),
+`#`(Block), KL_block(Param), dual_KL(Block — the only upstream
+signature, atlas-types.w:9102), KL_sum_at_s_to_height(Param,int) ALL
+evaluate correctly. There is no skip-arm tail. (These conversion arms
+are live but several lack dedicated fixtures — a coverage gap, not an
+implementation gap.)
 
-Partial-signature skips (main overload live, these arms skipped;
-no fixtures yet):
-- K_type(Param->KType) typed.rs:5643
-- dual(RootDatum->RootDatum) :4635, dual(Block->Block) :5575
-- inner_class(RealForm->InnerClass) :4650
-- involution(KgbElt->Mat) :4839, involution(CartanClass->Mat) :5102
-- param(KType->Param) :5714
-- real_form(KType->RealForm) :5658, real_form(Param->RealForm) :5730
-- twist(KgbElt->KgbElt) :4875, twist((KgbElt,...)) :4881
-- `#`(Block->int) :5554
-
-After the 11 pending fixture contracts close, the remaining work is:
-fixtures + oracle capture for the 3 skip-only names, the 2
-print_partial_* printers, and the 12 skipped overload arms above, then
-implementation + differential. Several are conversion-trivial
-(inner_class(RealForm), real_form(Param/KType), dual(RootDatum));
-K_type(Param)/param(KType)/twist/involution need crate hooks that
-mostly exist already.
+So the entire remaining builtin surface is the 10 never-registered
+names above.
 
 ## Batch status (2026-08-12)
 
