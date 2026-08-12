@@ -5175,6 +5175,21 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 ]),
                 0,
             ),
+            // shift_flip (atlas-types.w:7341-7362, installed :7530):
+            // whether the parameter's default extension, shifted to the
+            // given rational weight, is opposite to the default extension
+            // at that weight. test_compatible and both gamma-fix checks
+            // precede the wrapper's no_value gate, so it validates.
+            domain_builtin_validate(
+                "shift_flip",
+                Type::tuple(vec![
+                    primitive_type(Prim::Param),
+                    primitive_type(Prim::Mat),
+                    primitive_type(Prim::RatVec),
+                ]),
+                bool_type(),
+                0,
+            ),
             // W_graph / W_cells (atlas-types.w:7494-7496): the W-graph and
             // its cell decomposition of a standard parameter's block.
             domain_builtin(

@@ -24,6 +24,7 @@ use malachite::{Integer as BigInt, Rational as BigRational};
 
 use atlas_real_group::ext_block::ExtBlock;
 use atlas_real_group::ext_kl::ExtKlTable;
+use atlas_real_group::ext_param::{is_default, shifted_default_extension, ExtRepContext};
 use atlas_real_group::{
     adapted_basis, adapted_relation_basis, annihilator_modulo as relation_annihilator_modulo,
     bourbaki_permutation, build_presentations, central_fiber, checked_inner_class_letters,
@@ -6711,6 +6712,35 @@ fn compatible_outer_twist(
     Ok((delta, twist))
 }
 
+/// Shared gates of `shift_flip_wrapper` (interpreter/atlas-types.w:
+/// 7341-7362): `test_compatible`, then the two delta-fix checks, in the
+/// upstream order and with the upstream wordings — the user's rational
+/// weight first, then the parameter's own infinitesimal character. All
+/// three precede the wrapper's no_value gate, so both `call` and
+/// `validate` run them. Returns the validated involution and the user's
+/// gamma as a rational weight.
+fn shift_flip_gates(
+    parameter: &ParamValue,
+    matrix: &Value,
+    gamma: &Value,
+    span: SourceSpan,
+) -> Result<(LatticeInvolution, RationalWeight), Diagnostic> {
+    let (delta, _twist) = compatible_outer_twist(&parameter.context, matrix, span)?;
+    let gamma = as_rational_weight(gamma, span)?;
+    if !involution_fixes_gamma(delta.weight_matrix(), &gamma) {
+        // atlas-types.w:7351-7352.
+        return Err(runtime(span, "Involution does not fix rational weight"));
+    }
+    if !involution_fixes_gamma(delta.weight_matrix(), parameter.repr.gamma()) {
+        // atlas-types.w:7353-7354.
+        return Err(runtime(
+            span,
+            "Involution does not fix infinitesimal character",
+        ));
+    }
+    Ok((delta, gamma))
+}
+
 /// Shared tail of both `twist` wrappers: apply the crate twist and rewrap
 /// the target in the same real-form context. `Ok(None)` from the crate is
 /// upstream's `UndefKGB`, surfaced with the established inexistent
@@ -7630,6 +7660,16 @@ pub(crate) fn validate(
             arity(name, arguments, 2, span)?;
             let (context, _) = as_kgb_element(&arguments[0], span)?;
             compatible_outer_twist(context, &arguments[1], span)?;
+        }
+        // shift_flip_wrapper runs test_compatible and both gamma-fix
+        // checks BEFORE its no_value gate (atlas-types.w:7348-7355), so
+        // validation runs the same gates and drops the result.
+        "shift_flip" => {
+            arity(name, arguments, 3, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(span, "expected a Param"));
+            };
+            shift_flip_gates(parameter, &arguments[1], &arguments[2], span)?;
         }
         // Both Cartan_class wrappers bounds-check before their no_value gate
         // (atlas-types.w:4025-4033, 4046-4056).
@@ -13309,6 +13349,34 @@ pub(crate) fn call_with_printed(
                 columns_matrix_value(&columns, n, span)?,
             ]))
         }
+        // shift_flip (atlas-types.w:7341-7362): whether the default
+        // extension of the parameter, shifted to the given rational weight,
+        // is opposite to the default extension at that weight. No
+        // test_standard/test_final: the three `shift_flip_gates` checks
+        // run in the upstream order, then the work is
+        // Ext_rep_context + shifted_default_extension + is_default
+        // (repr.h:682-714, ext_block.h:352-364).
+        "shift_flip" => {
+            arity(name, arguments, 3, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "{name} has no matching overload for {} argument(s)",
+                        arguments.len()
+                    ),
+                ));
+            };
+            let (delta, gamma) = shift_flip_gates(parameter, &arguments[1], &arguments[2], span)?;
+            let rc = rep_context(&parameter.context);
+            let context = ExtRepContext::new(&rc, delta)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let extension = shifted_default_extension(&context, &parameter.repr, &gamma)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let flipped = !is_default(&context, &extension)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            Ok(Value::Boolean(flipped))
+        }
         // extended_block (atlas-types.w:7366-7431), raw_ext_KL
         // (atlas-types.w:8682-8728), partial_extended_KL_block
         // (atlas-types.w:7445-7468, ext_kl.cpp:939-1018): the extended
@@ -15960,6 +16028,145 @@ mod tests {
         assert_eq!(
             error.message,
             "Involution should be a 1x1 matrix; received a 1x2 matrix"
+        );
+    }
+
+    #[test]
+    fn shift_flip_matches_the_oracle_gates_and_sign() {
+        // A2 simply connected, split inner class (the diagram flip as
+        // distinguished involution), split real form: the setup of
+        // tests/fixtures/domain/shift_flip{,_rejected}.atlas.
+        let datum = fixture_datum("A2", true);
+        let flip = matrix(2, 2, vec![0, 1, 1, 0]);
+        let split_class =
+            call("inner_class", &[datum.clone(), flip.clone()], span()).expect("split inner class");
+        let form = call("real_form", &[split_class, int(0)], span()).expect("split real form");
+        let element = call("KGB", &[form, int(0)], span()).expect("KGB element");
+        let ratvec =
+            |entries: &[i64]| Value::RatVector(RatVec::new(entries.to_vec(), 1).expect("ratvec"));
+        let param = |nu: &[i64]| {
+            call(
+                "param",
+                &[
+                    element.clone(),
+                    Value::Vector(Vec32(vec![0, 0])),
+                    ratvec(nu),
+                ],
+                span(),
+            )
+            .expect("param")
+        };
+
+        // Zero shift (new_gamma == p.gamma()): the extension is the
+        // default one, hence not flipped. NOTE: nonzero shifts at a
+        // compact Cartan (theta_x = +1) trip the debug_assert in
+        // shifted_default_extension (ext_param.rs:754-759), whose
+        // precondition the upstream wrapper does NOT guarantee — the
+        // oracle builds with -DNDEBUG (upstream Makefile:86-87) and
+        // returns false for e.g. shift_flip(pa,[[1]],[0]/1). That crate
+        // fix is outside this slice.
+        let q = param(&[0, 0]);
+        assert_eq!(
+            call(
+                "shift_flip",
+                &[q.clone(), flip.clone(), ratvec(&[1, 1])],
+                span()
+            ),
+            Ok(Value::Boolean(false))
+        );
+
+        // (1-delta)*[1,0] = [1,-1] != 0: the rational-weight check fires,
+        // identically on the no-value validation path.
+        for result in [
+            call(
+                "shift_flip",
+                &[q.clone(), flip.clone(), ratvec(&[1, 0])],
+                span(),
+            ),
+            validate(
+                "shift_flip",
+                &[q.clone(), flip.clone(), ratvec(&[1, 0])],
+                span(),
+            )
+            .map(|()| Value::Tuple(Vec::new())),
+        ] {
+            assert_eq!(
+                result.expect_err("gamma is not delta-fixed").message,
+                "Involution does not fix rational weight"
+            );
+        }
+
+        // p2's own gamma normalises to [1,-1]/2, which the flip does not
+        // fix: the infinitesimal-character check fires once the
+        // rational-weight check has passed.
+        let p2 = param(&[1, 0]);
+        let error = call("shift_flip", &[p2, flip.clone(), ratvec(&[0, 0])], span())
+            .expect_err("the parameter's gamma is not delta-fixed");
+        assert_eq!(
+            error.message,
+            "Involution does not fix infinitesimal character"
+        );
+
+        // test_compatible fires first of all: non-involutive and
+        // wrong-size matrices are rejected before either gamma check.
+        let non_involution = matrix(2, 2, vec![1, 0, 1, 1]);
+        let error = call(
+            "shift_flip",
+            &[q.clone(), non_involution, ratvec(&[0, 0])],
+            span(),
+        )
+        .expect_err("non-involution is rejected");
+        assert_eq!(error.message, "Given transformation is not an involution");
+        let three_by_three = matrix(3, 3, vec![1, 0, 0, 0, 1, 0, 0, 0, 1]);
+        let error = call(
+            "shift_flip",
+            &[q.clone(), three_by_three, ratvec(&[0, 0])],
+            span(),
+        )
+        .expect_err("wrong-size matrix is rejected");
+        assert_eq!(
+            error.message,
+            "Involution should be a 2x2 matrix; received a 3x3 matrix"
+        );
+
+        // The flip is ACCEPTED by test_compatible on the compact
+        // (identity) inner class (oracle probe, shift_flip_rejected.
+        // meta.json): the call evaluates rather than erroring. Zero
+        // shift, so the default extension is not flipped.
+        let compact_class = call(
+            "inner_class",
+            &[datum, matrix(2, 2, vec![1, 0, 0, 1])],
+            span(),
+        )
+        .expect("compact inner class");
+        let compact_form =
+            call("real_form", &[compact_class, int(1)], span()).expect("quasisplit real form");
+        let compact_element = call("KGB", &[compact_form, int(0)], span()).expect("KGB element");
+        let qc = call(
+            "param",
+            &[
+                compact_element,
+                Value::Vector(Vec32(vec![0, 0])),
+                ratvec(&[0, 0]),
+            ],
+            span(),
+        )
+        .expect("param");
+        assert_eq!(
+            call("shift_flip", &[qc, flip, ratvec(&[1, 1])], span()),
+            Ok(Value::Boolean(false))
+        );
+
+        // A real shift at the SPLIT Cartan (theta_x = -1, so the crate's
+        // debug_assert holds): shift_flip(pa2,[[1]],[0]/1) on SL(2,R),
+        // fixture line 13, oracle answer false.
+        let sl2r = sl2r_split_form();
+        let pa2 = sl2r_param(&sl2r, 2, &[0], &[1], 1);
+        let zero = Value::RatVector(RatVec::new(vec![0], 1).expect("ratvec"));
+        let identity = matrix(1, 1, vec![1]);
+        assert_eq!(
+            call("shift_flip", &[pa2, identity, zero], span()),
+            Ok(Value::Boolean(false))
         );
     }
 
