@@ -1,0 +1,22 @@
+rc : RootDatum
+rc := simply_connected(Lie_type("A2"),true)
+ic2 : InnerClass
+ic2 := inner_class(rc,[[0,1],[1,0]])
+rs : RealForm
+rs := real_form(ic2,0)
+q : Param
+q := param(KGB(rs,0),[0,0],[0,0]/1)
+p2 : Param
+p2 := param(KGB(rs,0),[0,0],[1,0]/1)
+shift_flip(q,[[0,1],[1,0]],[1,0]/1)
+shift_flip(p2,[[0,1],[1,0]],[0,0]/1)
+ic : InnerClass
+ic := inner_class(rc,[[1,0],[0,1]])
+rf : RealForm
+rf := real_form(ic,1)
+qc : Param
+qc := param(KGB(rf,0),[0,0],[0,0]/1)
+shift_flip(qc,[[0,1],[1,0]],[0,0]/1)
+shift_flip(q,[[1,1],[0,1]],[0,0]/1)
+shift_flip(q,[[1,0,0],[0,1,0],[0,0,1]],[0,0]/1)
+shift_flip(rs,[[0,1],[1,0]],[0,0]/1)
