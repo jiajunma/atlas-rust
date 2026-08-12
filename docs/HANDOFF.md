@@ -51,6 +51,12 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   stand-alone utilities; zero interpreter references — no Atlas-language
   builtin reads/writes KL files). Both need a user decision at
   completion time; neither blocks the 7-pair queue.
+- **Acceptance ordering with both crates dirty**: when agent-49
+  delivers, commit ONLY crates/atlas-core paths (dual_KL_block slice);
+  atlas-real-group stays dirty for agent-47. cargo test -p atlas-core
+  needs atlas-real-group to compile — agent-47's checkpoint discipline
+  (E1a/E1b/E1c each all-green) keeps it compiling; if it is mid-checkpoint
+  red, wait for its next green checkpoint rather than touching its files.
 - **In flight**: agent-47 (E1 ext_param+star crate, exclusive
   atlas-real-group, brief /tmp/slice_e_brief.md, checkpointed
   E1a/E1b/E1c); agent-49 (dual_KL_block language layer, exclusive
