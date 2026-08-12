@@ -1,5 +1,39 @@
 # Remaining builtin coverage (post-language-gate)
 
+## Batch status (2026-08-12 late — full reconciliation)
+
+Reconciliation vs upstream atlas-types.w (152 unique install_function
+names, 267 calls): **132 live in typed.rs, 3 skip-only, 8 never
+registered, 9 operator names handled by the operator layer** (`!= # ##
+% * + - / =`).
+
+Never registered (all fixtured, in the active queue):
+- E2: scale_extended, K_type_pol_extended, finalize_extended
+- E3: twisted_deform, twisted_full_deform, twisted_KL_sum_at_s,
+  block_deform
+- shift_flip (crate pieces landed with E1 `f12b27b`; language layer
+  ~40 lines, brief /tmp/slice_shift_flip_brief.md)
+
+Skip-only (no fixtures yet — the post-queue tail):
+- KL_block, dual_KL, KL_sum_at_s_to_height
+
+Partial-signature skips (main overload live, these signatures skipped;
+no fixtures yet):
+- K_type(Param->KType) typed.rs:5643
+- dual(RootDatum->RootDatum) :4635, dual(Block->Block) :5575
+- inner_class(RealForm->InnerClass) :4650
+- involution(KgbElt->Mat) :4839, involution(CartanClass->Mat) :5102
+- param(KType->Param) :5714
+- real_form(KType->RealForm) :5658, real_form(Param->RealForm) :5730
+- twist(KgbElt->KgbElt) :4875, twist((KgbElt,...)) :4881
+
+After the 11 pending fixture contracts close, the remaining work is:
+fixtures + oracle capture for the 3 skip-only names and the 10 skipped
+overloads above, then implementation + differential. Several are
+conversion-trivial (inner_class(RealForm), real_form(Param/KType),
+dual(RootDatum)); K_type(Param)/param(KType)/twist/involution need
+crate hooks that mostly exist already.
+
 ## Batch status (2026-08-12)
 
 Landed and verified_hpc since 08-11: ext three-builtin registration
