@@ -30,21 +30,23 @@ use atlas_real_group::ext_param::{
 };
 use atlas_real_group::{
     adapted_basis, adapted_relation_basis, annihilator_modulo as relation_annihilator_modulo,
-    bourbaki_permutation, build_presentations, central_fiber, checked_inner_class_letters,
-    classify_involution as domain_classify_involution, dual_cartan_correspondence,
-    dual_inner_class, dual_involution as block_dual_involution, elected_square_root, fiber_rank,
-    filter_relation_units as domain_filter_relation_units, inner_class_with_twisted_involution,
-    layout_involution, longest_action, minimal_torus_part, on_basis as lattice_on_basis, pair,
+    block_deformation_to_height, bourbaki_permutation, build_presentations, central_fiber,
+    checked_inner_class_letters, classify_involution as domain_classify_involution,
+    dual_cartan_correspondence, dual_inner_class, dual_involution as block_dual_involution,
+    elected_square_root, fiber_rank, filter_relation_units as domain_filter_relation_units,
+    inner_class_with_twisted_involution, integral_block_scope, layout_involution, longest_action,
+    minimal_torus_part, on_basis as lattice_on_basis, pair,
     quotient_relation_basis as domain_quotient_relation_basis,
-    replace_relation_generators as domain_replace_relation_generators, AdjointFiberBudget,
-    BasedRootDatum, BlockDescent, BlockGraph, CartanClassification, CartanClassificationBudget,
-    CartanId, Coweight, ExternalFormOrder, GlobalKgb, InnerClass, InnerClassLayout,
-    IntegerLatticeBudget, InvolutionId, InvolutionTable, InvolutionTableBudget, KType, KgbGraph,
-    KgbId, KgbStatus, KlPol, KlTable, LatticeInvolution, ModTwoVector, RankFlags, RationalWeight,
-    RealFormPresentation, RealFormSeed, RelationBasis, RelationError, RelationGenerator,
-    RelationMatrix, RepContext, RootId, RootInvolutionData, RootKind, RootSystem, StandardRepr,
-    StrongRealClassification, StructureError, WeakRealFormId, Weight, WeylAction, WeylElement,
-    WeylInterface,
+    replace_relation_generators as domain_replace_relation_generators, singular_orbits_at,
+    twisted_deformation, twisted_deformation_terms, twisted_kl_column_at_s, twisted_kl_sum,
+    AdjointFiberBudget, BasedRootDatum, BlockDescent, BlockGraph, CartanClassification,
+    CartanClassificationBudget, CartanId, Coweight, ExternalFormOrder, GlobalKgb, InnerClass,
+    InnerClassLayout, IntegerLatticeBudget, IntegralBlockScope, InvolutionId, InvolutionTable,
+    InvolutionTableBudget, KType, KgbGraph, KgbId, KgbStatus, KlPol, KlTable, LatticeInvolution,
+    ModTwoVector, RankFlags, RationalWeight, RealFormPresentation, RealFormSeed, RelationBasis,
+    RelationError, RelationGenerator, RelationMatrix, RepContext, RootId, RootInvolutionData,
+    RootKind, RootSystem, SplitInteger, StandardRepr, StrongRealClassification, StructureError,
+    WeakRealFormId, Weight, WeylAction, WeylElement, WeylInterface,
 };
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
@@ -6940,6 +6942,252 @@ fn finalize_extended_gates(
     Ok(delta)
 }
 
+/// Gates of `twisted_deform_wrapper` (interpreter/atlas-types.w:
+/// 8120-8134), in the upstream order: `test_standard`, the
+/// distinguished-involution fix check, then `test_final`. All three
+/// precede the wrapper's no_value gate, so both `call` and `validate`
+/// run them.
+fn twisted_deform_gates(parameter: &ParamValue, span: SourceSpan) -> Result<(), Diagnostic> {
+    test_standard(parameter, "Cannot compute twisted deformation terms", span)?;
+    let rc = rep_context(&parameter.context);
+    if !rc.is_delta_fixed(&parameter.repr) {
+        return Err(runtime(
+            span,
+            "Parameter not fixed by inner class involution",
+        ));
+    }
+    test_final(
+        parameter,
+        "Twisted deformation requires final parameter",
+        span,
+    )?;
+    Ok(())
+}
+
+/// Gates of `twisted_full_deform_wrapper` (atlas-types.w:8229-8240) —
+/// and of the timed second overload (:8609-8621), whose preconditions
+/// are identical: `test_standard`, then the distinguished-involution
+/// fix check. No `test_final` (unlike `twisted_deform`).
+fn twisted_full_deform_gates(parameter: &ParamValue, span: SourceSpan) -> Result<(), Diagnostic> {
+    test_standard(parameter, "Cannot compute full twisted deformation", span)?;
+    let rc = rep_context(&parameter.context);
+    if !rc.is_delta_fixed(&parameter.repr) {
+        return Err(runtime(
+            span,
+            "Parameter not fixed by inner class involution",
+        ));
+    }
+    Ok(())
+}
+
+/// Gates of the distinguished-involution `twisted_KL_sum_at_s_wrapper`
+/// (atlas-types.w:8370-8382): `test_standard` and `test_final`, BOTH
+/// with descr "Cannot compute Kazhdan-Lusztig sum", then the delta-fix
+/// check on a made-dominant COPY of the parameter (the computation runs
+/// on that copy). Returns the dominant parameter.
+fn twisted_kl_sum_gates(
+    parameter: &ParamValue,
+    span: SourceSpan,
+) -> Result<StandardRepr, Diagnostic> {
+    test_standard(parameter, "Cannot compute Kazhdan-Lusztig sum", span)?;
+    test_final(parameter, "Cannot compute Kazhdan-Lusztig sum", span)?;
+    let rc = rep_context(&parameter.context);
+    let sr = parameter
+        .repr
+        .made_dominant(&rc)
+        .map_err(|error| structure_diagnostic(error, span))?;
+    if !rc.is_delta_fixed(&sr) {
+        return Err(runtime(
+            span,
+            "Parameter not fixed by inner class involution",
+        ));
+    }
+    Ok(sr)
+}
+
+/// Gates of `external_twisted_KL_sum_at_s_wrapper` (atlas-types.w:
+/// 8420-8431): the same `test_standard`/`test_final` pair, then
+/// `test_compatible`, then the fix check against the USER's involution
+/// (`Rep_context::is_fixed`, ported as [`ext_is_fixed`]). Returns the
+/// validated involution and its simple-root twist.
+fn external_twisted_kl_sum_gates(
+    parameter: &ParamValue,
+    matrix: &Value,
+    span: SourceSpan,
+) -> Result<(LatticeInvolution, Vec<usize>), Diagnostic> {
+    test_standard(parameter, "Cannot compute Kazhdan-Lusztig sum", span)?;
+    test_final(parameter, "Cannot compute Kazhdan-Lusztig sum", span)?;
+    let (delta, twist) = compatible_outer_twist(&parameter.context, matrix, span)?;
+    if !ext_is_fixed(&parameter.context, &parameter.repr, &delta, &twist, span)? {
+        return Err(runtime(span, "Parameter not fixed by given involution"));
+    }
+    Ok((delta, twist))
+}
+
+/// The parameter's full block against the dual quasisplit form — the
+/// `lookup_full_block` shape shared by the deform arms (matching the
+/// verified `deform` arm).
+fn full_block_of(parameter: &ParamValue, span: SourceSpan) -> Result<BlockValue, Diagnostic> {
+    let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
+    let dual_quasisplit = dual_parent.order.quasisplit_external();
+    let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
+    build_block(&parameter.context, &dual_rf, span)
+}
+
+/// The loud rejection of a proper-integral-subsystem common block (no
+/// `SubSystem`/`simp_int` port exists; the crate's
+/// [`IntegralBlockScope::ProperSubsystem`] case).
+fn proper_subsystem_diagnostic(span: SourceSpan) -> Diagnostic {
+    structure_diagnostic(
+        StructureError::NotYetImplemented {
+            feature: "common block on a proper integral subsystem",
+        },
+        span,
+    )
+}
+
+/// Locate `sr` in its full block, as `Rep_table::lookup` reports it: an
+/// x-coordinate match that is present in the extended block and whose
+/// reconstruction at `sr`'s own data equals `sr` (the `block_element_of`
+/// helper semantics of the crate's deform.rs tests).
+fn twisted_block_index(
+    block: &BlockGraph,
+    eblock: &ExtBlock,
+    rc: &RepContext<'_>,
+    sr: &StandardRepr,
+    lambda_rho: &Weight,
+    span: SourceSpan,
+) -> Result<usize, Diagnostic> {
+    (0..block.size())
+        .find(|&z| {
+            block.x(z) == Some(sr.x())
+                && eblock.is_present(z)
+                && rc.sr_gamma(sr.x(), lambda_rho, sr.gamma()).ok().as_ref() == Some(sr)
+        })
+        .ok_or_else(|| runtime(span, "parameter not in the common block"))
+}
+
+/// The `rt.lookup(zi, index, bm)` + `block.extended_block(bm, ...)` step
+/// of `Rep_table::twisted_deformation` at a reducibility point with
+/// INTEGRAL gamma (repr.cpp:2617-2633, trivial block modifier): rebuild
+/// `zi`'s full block against the dual class's quasisplit form, the
+/// extended block over `ctx`'s delta, and `zi`'s parent block index.
+/// Crate calls only, so the closure [`twisted_deformation`] expects can
+/// stay `StructureError`-typed.
+fn twisted_reducibility_lookup(
+    context: &Arc<RealFormContext>,
+    rc: &RepContext<'_>,
+    delta: &LatticeInvolution,
+    twist: &[usize],
+    zi: &StandardRepr,
+) -> Result<(BlockGraph, ExtBlock, usize), StructureError> {
+    let parent = &context.parent;
+    let dual_inner = dual_inner_class(&parent.inner_class, WEYL_BUDGET, ROOT_BUDGET)?;
+    let dual_classification =
+        CartanClassification::build(&dual_inner, &cartan_classification_budget())?;
+    let dual_strong = StrongRealClassification::build(&dual_classification, FIBER_BUDGET)?;
+    let dual_order = ExternalFormOrder::build(&dual_inner, &dual_classification)?;
+    let dual_internal = dual_order
+        .internal(dual_order.quasisplit_external())
+        .ok_or(StructureError::RepInvariantViolation {
+            invariant: "dual inner class has no quasisplit form",
+        })?;
+    let mut dual_table = InvolutionTable::new(
+        &dual_inner,
+        InvolutionTableBudget::new(FIBER_BUDGET, INTEGER_BUDGET),
+    )?;
+    let fundamental =
+        dual_classification
+            .cartan_ids()
+            .next()
+            .ok_or(StructureError::RepInvariantViolation {
+                invariant: "empty Cartan classification",
+            })?;
+    dual_table.add_cartan(&dual_classification, fundamental)?;
+    let seed = RealFormSeed::build(
+        &dual_inner,
+        &dual_classification,
+        &dual_strong,
+        &dual_table,
+        dual_internal,
+        &INTEGER_BUDGET,
+        FIBER_BUDGET,
+    )?;
+    let dual_graph = KgbGraph::build(
+        &dual_inner,
+        &dual_classification,
+        &dual_strong,
+        &mut dual_table,
+        &seed,
+    )?;
+    let block = BlockGraph::build(
+        &context.graph,
+        &context.table,
+        &dual_graph,
+        &dual_table,
+        &dual_inner,
+        WEYL_BUDGET,
+    )?;
+    // build_ext_block's dual twist data (ext_block.cpp:618-668).
+    let matrix = delta.weight_matrix();
+    let dual_delta =
+        LatticeInvolution::new(dual_inner.datum(), transpose(matrix), matrix.to_vec())?;
+    let dual_twist = dual_inner.based_involution_twist(dual_delta.clone())?;
+    let eblock = ExtBlock::build(
+        &block,
+        &context.graph,
+        &context.table,
+        &dual_graph,
+        &dual_table,
+        delta,
+        twist,
+        &dual_delta,
+        &dual_twist,
+        parent.root_datum.datum.cartan_matrix(),
+    )?;
+    let lambda_rho = rc.lambda_rho(zi)?;
+    let index = (0..block.size())
+        .find(|&z| {
+            block.x(z) == Some(zi.x())
+                && eblock.is_present(z)
+                && rc.sr_gamma(zi.x(), &lambda_rho, zi.gamma()).ok().as_ref() == Some(zi)
+        })
+        .ok_or(StructureError::RepInvariantViolation {
+            invariant: "twisted deformation: reducibility parameter not in its block",
+        })?;
+    Ok((block, eblock, index))
+}
+
+/// Shared tail of the three twisted wrappers after their gates: run
+/// `compute` on the full block plus the extended block over `delta`, or
+/// short-circuit the rank-0 integral subsystem (the common block is the
+/// singleton `{p}` of length 0 — empty deformation terms, and `1*p` for
+/// the KL sums, repr.cpp:2435-2436). A proper integral subsystem fails
+/// loudly (no `SubSystem` port).
+fn with_integral_block<T>(
+    parameter: &ParamValue,
+    rc: &RepContext<'_>,
+    sr: &StandardRepr,
+    twist_data: &(LatticeInvolution, Vec<usize>),
+    span: SourceSpan,
+    singleton: impl FnOnce() -> T,
+    compute: impl FnOnce(&BlockGraph, &ExtBlock, usize, &Weight) -> Result<T, Diagnostic>,
+) -> Result<T, Diagnostic> {
+    match integral_block_scope(rc, sr.gamma()).map_err(|error| structure_diagnostic(error, span))? {
+        IntegralBlockScope::Singleton => Ok(singleton()),
+        IntegralBlockScope::ProperSubsystem => Err(proper_subsystem_diagnostic(span)),
+        IntegralBlockScope::Full => {
+            let block = full_block_of(parameter, span)?;
+            let eblock = build_ext_block(&block, parameter, &twist_data.0, &twist_data.1, span)?;
+            let lambda_rho = rc
+                .lambda_rho(sr)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let y0 = twisted_block_index(&block.graph, &eblock, rc, sr, &lambda_rho, span)?;
+            compute(&block.graph, &eblock, y0, &lambda_rho)
+        }
+    }
+}
+
 /// Shared tail of both `twist` wrappers: apply the crate twist and rewrap
 /// the target in the same real-form context. `Ok(None)` from the crate is
 /// upstream's `UndefKGB`, surfaced with the established inexistent
@@ -7896,6 +8144,52 @@ pub(crate) fn validate(
                 return Err(type_error(span, "expected a Param"));
             };
             finalize_extended_gates(parameter, &arguments[1], span)?;
+        }
+        // The twisted-deformation wrappers run every precondition before
+        // their no_value gates (atlas-types.w:8120-8134, 8229-8240,
+        // 8370-8382, 8420-8431 — the timed twisted_full_deform overload
+        // gates identically), so validation runs the same gates and drops
+        // the result. block_deform is absent here: its no_value gate
+        // comes FIRST (atlas-types.w:8182), so it is registered Skip.
+        "twisted_deform" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(span, "expected a Param"));
+            };
+            twisted_deform_gates(parameter, span)?;
+        }
+        "twisted_full_deform" => {
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(span, "expected a Param"));
+            };
+            match arguments.len() {
+                1 | 2 => twisted_full_deform_gates(parameter, span)?,
+                count => {
+                    return Err(type_error(
+                        span,
+                        format!("twisted_full_deform expects 1 or 2 argument(s), found {count}"),
+                    ));
+                }
+            }
+        }
+        "twisted_KL_sum_at_s" => {
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(span, "expected a Param"));
+            };
+            match arguments.len() {
+                1 => {
+                    twisted_kl_sum_gates(parameter, span)?;
+                }
+                2 => {
+                    external_twisted_kl_sum_gates(parameter, &arguments[1], span)?;
+                }
+                count => {
+                    return Err(type_error(
+                        span,
+                        format!("twisted_KL_sum_at_s expects 1 or 2 argument(s), found {count}"),
+                    ));
+                }
+            }
         }
         // Both Cartan_class wrappers bounds-check before their no_value gate
         // (atlas-types.w:4025-4033, 4046-4056).
@@ -14982,6 +15276,303 @@ pub(crate) fn call_with_printed(
                 terms,
             })))
         }
+        // twisted_deform_wrapper (atlas-types.w:8120-8150): the twisted
+        // deformation terms of a final, delta-fixed parameter, over the
+        // common block on the INTEGRAL subsystem of gamma and the
+        // distinguished-twist extended block. The crate's
+        // twisted_deformation_terms returns integer coefficients; the
+        // wrapper maps each to `Split_integer(c, -c)` = c(1-s)
+        // (atlas-types.w:8146-8147). The rank-0 integral subsystem (the
+        // A1 nu=[1]/2 case) is the singleton block, whose terms are
+        // empty (repr.cpp:2435-2436); a proper subsystem is not ported.
+        "twisted_deform" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "{name} has no matching overload for {} argument(s)",
+                        arguments.len()
+                    ),
+                ));
+            };
+            twisted_deform_gates(parameter, span)?;
+            let rc = rep_context(&parameter.context);
+            let (delta, twist) = distinguished_twist(parameter, span)?;
+            let mut terms: Vec<(SplitValue, StandardRepr)> = with_integral_block(
+                parameter,
+                &rc,
+                &parameter.repr,
+                &(delta, twist),
+                span,
+                Vec::new,
+                |block, eblock, y0, lambda_rho| {
+                    let gamma = parameter.repr.gamma();
+                    let singular_orbits = singular_orbits_at(&rc, eblock, gamma)
+                        .map_err(|error| structure_diagnostic(error, span))?;
+                    let raw = twisted_deformation_terms(
+                        &rc,
+                        block,
+                        eblock,
+                        y0,
+                        &singular_orbits,
+                        gamma,
+                        lambda_rho,
+                    )
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                    let mut terms = Vec::new();
+                    for (term_sr, coefficient) in raw {
+                        merge_pol_term(
+                            &mut terms,
+                            SplitValue::new(coefficient, coefficient.wrapping_neg()),
+                            term_sr,
+                        );
+                    }
+                    Ok(terms)
+                },
+            )?;
+            sort_parampol_terms(&mut terms);
+            Ok(Value::Domain(DomainValue::ParamPol(ParamPolValue {
+                rf: Arc::clone(&parameter.context),
+                terms,
+            })))
+        }
+        // twisted_KL_sum_at_s (atlas-types.w:8370-8382 distinguished
+        // overload, :8420-8431 external-delta overload): the alternating
+        // twisted KL column sum at q = s. The distinguished path runs on
+        // a made-dominant copy and signs by the PARENT block's length
+        // function (`twisted_kl_column_at_s`, repr.cpp:2371-2423); the
+        // external-delta path builds the extended block over the USER's
+        // delta and signs by the extended block's own lengths
+        // (`twisted_kl_sum`, repr.cpp:2304-2350). The rank-0 integral
+        // subsystem's singleton block gives `1*p` (P_{y,y} = 1).
+        "twisted_KL_sum_at_s" => {
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "{name} has no matching overload for {} argument(s)",
+                        arguments.len()
+                    ),
+                ));
+            };
+            let rc = rep_context(&parameter.context);
+            let (sr, twist_data) = match arguments.len() {
+                1 => {
+                    let sr = twisted_kl_sum_gates(parameter, span)?;
+                    let (delta, twist) = distinguished_twist(parameter, span)?;
+                    (sr, (delta, twist))
+                }
+                2 => {
+                    let (delta, twist) =
+                        external_twisted_kl_sum_gates(parameter, &arguments[1], span)?;
+                    (parameter.repr.clone(), (delta, twist))
+                }
+                count => {
+                    return Err(type_error(
+                        span,
+                        format!("{name} has no matching overload for {count} argument(s)"),
+                    ));
+                }
+            };
+            let distinguished = arguments.len() == 1;
+            let mut terms: Vec<(SplitValue, StandardRepr)> = with_integral_block(
+                parameter,
+                &rc,
+                &sr,
+                &twist_data,
+                span,
+                // The singleton column sum is 1*sr (repr.cpp:2435-2436
+                // leaves only the x == y entry of the KL table).
+                || vec![(SplitValue::new(1, 0), sr.clone())],
+                |block, eblock, y0, lambda_rho| {
+                    let gamma = sr.gamma();
+                    let raw = if distinguished {
+                        twisted_kl_column_at_s(&rc, eblock, block, y0, gamma, lambda_rho)
+                    } else {
+                        let ext_y = eblock.element(y0);
+                        twisted_kl_sum(&rc, eblock, ext_y, block, gamma, lambda_rho)
+                    }
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                    let mut terms = Vec::new();
+                    for (term_sr, coefficient) in raw {
+                        let coefficient: (i32, i32) = coefficient.into();
+                        merge_pol_term(
+                            &mut terms,
+                            SplitValue::new(coefficient.0, coefficient.1),
+                            term_sr,
+                        );
+                    }
+                    Ok(terms)
+                },
+            )?;
+            sort_parampol_terms(&mut terms);
+            Ok(Value::Domain(DomainValue::ParamPol(ParamPolValue {
+                rf: Arc::clone(&parameter.context),
+                terms,
+            })))
+        }
+        // twisted_full_deform_wrapper (atlas-types.w:8229-8251): the full
+        // recursive twisted K-type deformation over the distinguished
+        // involution — extended_finalise (E2) followed by
+        // `Rep_table::twisted_deformation` (repr.cpp:2552-2653) of each
+        // final, added with Split(0,1) when the finalise and deformation
+        // flips differ and Split(1,0) when they agree
+        // (atlas-types.w:8245-8246). The timed second overload
+        // ("(Param,int->|KTypePol)") is registered for overload
+        // resolution only; its timer semantics are not ported.
+        "twisted_full_deform" => {
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "{name} has no matching overload for {} argument(s)",
+                        arguments.len()
+                    ),
+                ));
+            };
+            if arguments.len() != 1 {
+                return Err(runtime(
+                    span,
+                    "timed twisted_full_deform is not yet implemented",
+                ));
+            }
+            twisted_full_deform_gates(parameter, span)?;
+            let rc = rep_context(&parameter.context);
+            let (delta, twist) = distinguished_twist(parameter, span)?;
+            let context = ExtRepContext::new(&rc, delta.clone())
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let finals = extended_finalise(&context, &parameter.repr)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let real_form = &parameter.context;
+            let mut lookup =
+                |zi: &StandardRepr| twisted_reducibility_lookup(real_form, &rc, &delta, &twist, zi);
+            let mut terms: Vec<(SplitValue, KType)> = Vec::new();
+            for (final_sr, finalise_flip) in &finals {
+                let (deformed, flip) = twisted_deformation(&context, final_sr, &mut lookup)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                let coefficient = if flip != *finalise_flip {
+                    SplitValue::new(0, 1)
+                } else {
+                    SplitValue::new(1, 0)
+                };
+                for (ktype, split) in deformed {
+                    let split: (i32, i32) = split.into();
+                    let scaled = SplitValue::new(split.0, split.1).mul(coefficient);
+                    merge_pol_term(&mut terms, scaled, ktype);
+                }
+            }
+            sort_ktypepol_terms(&mut terms);
+            Ok(Value::Domain(DomainValue::KTypePol(KTypePolValue {
+                rf: Arc::clone(&parameter.context),
+                terms,
+            })))
+        }
+        // block_deform_wrapper (atlas-types.w:8178-8204): deform the
+        // terms of p's block found in the accumulator, to the given
+        // height bound (negative = maximal level), then slide each
+        // deformed term down its reducibility points (drop a trailing
+        // 1/1, scale to the previous point or to nu = 0,
+        // atlas-types.w:8192-8198). NO test_standard/test_final; the
+        // wrapper's no_value gate comes first (registered Skip). The
+        // block's terms are EXTRACTED from the accumulator
+        // (repr.cpp:2040-2056 queue.erase): the second component is the
+        // accumulator minus the consumed terms, recomputed fresh on each
+        // call since Atlas values are immutable. Push order: deformed
+        // FIRST, then the remainder, wrapped as a pair.
+        "block_deform" => {
+            arity(name, arguments, 3, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "{name} has no matching overload for {} argument(s)",
+                        arguments.len()
+                    ),
+                ));
+            };
+            let Value::Domain(DomainValue::ParamPol(accumulator)) = &arguments[1] else {
+                return Err(type_error(span, "expected a ParamPol"));
+            };
+            let bound = i32::try_from(&as_integer(&arguments[2], span)?)
+                .map_err(|_| runtime(span, "Integer value to big for conversion"))?;
+            let height_bound = if bound < 0 { u32::MAX } else { bound as u32 };
+            let rc = rep_context(&parameter.context);
+            let mut deformed_terms: Vec<(SplitValue, StandardRepr)> = Vec::new();
+            let mut remainder_terms = accumulator.terms.clone();
+            let nu = rc
+                .nu(&parameter.repr)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            if nu.numerator().iter().any(|&entry| entry != 0) {
+                // lookup_full_block makes p dominant (repr.cpp:2035).
+                let p = parameter
+                    .repr
+                    .made_dominant(&rc)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                let gamma = p.gamma().clone();
+                let lambda_rho = rc
+                    .lambda_rho(&p)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                let block = full_block_of(parameter, span)?;
+                let accumulator_terms: Vec<(StandardRepr, SplitInteger)> = accumulator
+                    .terms
+                    .iter()
+                    .map(|(coefficient, sr)| {
+                        (
+                            sr.clone(),
+                            SplitInteger::new(coefficient.e(), coefficient.f()),
+                        )
+                    })
+                    .collect();
+                let (raw, consumed) = block_deformation_to_height(
+                    &rc,
+                    &block.graph,
+                    &gamma,
+                    &lambda_rho,
+                    height_bound,
+                    &accumulator_terms,
+                )
+                .map_err(|error| structure_diagnostic(error, span))?;
+                for (sr, coefficient) in raw {
+                    let rps = rc
+                        .reducibility_points(&sr)
+                        .map_err(|error| structure_diagnostic(error, span))?;
+                    let index = if rps.last() == Some(&(1, 1)) {
+                        rps.len().saturating_sub(1)
+                    } else {
+                        rps.len()
+                    };
+                    let (num, den) = if index > 0 { rps[index - 1] } else { (0, 1) };
+                    let scaled = rc
+                        .scale(&sr, num, den)
+                        .map_err(|error| structure_diagnostic(error, span))?;
+                    let coefficient: (i32, i32) = coefficient.into();
+                    merge_pol_term(
+                        &mut deformed_terms,
+                        SplitValue::new(coefficient.0, coefficient.1),
+                        scaled,
+                    );
+                }
+                remainder_terms = accumulator
+                    .terms
+                    .iter()
+                    .zip(&consumed)
+                    .filter(|(_, &used)| !used)
+                    .map(|((coefficient, sr), _)| (*coefficient, sr.clone()))
+                    .collect();
+            }
+            sort_parampol_terms(&mut deformed_terms);
+            Ok(Value::Tuple(vec![
+                Value::Domain(DomainValue::ParamPol(ParamPolValue {
+                    rf: Arc::clone(&parameter.context),
+                    terms: deformed_terms,
+                })),
+                Value::Domain(DomainValue::ParamPol(ParamPolValue {
+                    rf: Arc::clone(&accumulator.rf),
+                    terms: remainder_terms,
+                })),
+            ]))
+        }
         // truncate_K_type_poly_above_wrapper /
         // truncate_param_poly_above_wrapper
         // (atlas-types.w:5945-5976, 8033-8056): keep the terms whose
@@ -16834,6 +17425,145 @@ mod tests {
             "Cannot scale extended parameter:\n  \
              non-standard parameter(x=1,lambda=[-1]/1,nu=[0]/1)\n  \
              Parameter is not dominant"
+        );
+    }
+
+    // The strings below are the verified HPC oracle output of
+    // tests/fixtures/domain/twisted_family.atlas (job 3536421) and
+    // tests/fixtures/domain/block_deform.atlas (job 3536583).
+    fn su21_quasisplit_form() -> Value {
+        let datum = fixture_datum("A2", true);
+        let inner = call(
+            "inner_class",
+            &[datum, matrix(2, 2, vec![1, 0, 0, 1])],
+            span(),
+        )
+        .expect("compact inner class");
+        call("real_form", &[inner, int(1)], span()).expect("quasisplit su(2,1)")
+    }
+
+    fn su21_param(real: &Value, x: i64, lambda: &[i32], nu: &[i64], nu_denominator: u64) -> Value {
+        let element = call("KGB", &[real.clone(), int(x)], span()).expect("KGB element");
+        call(
+            "param",
+            &[
+                element,
+                Value::Vector(Vec32(lambda.to_vec())),
+                Value::RatVector(RatVec::new(nu.to_vec(), nu_denominator).expect("ratvec")),
+            ],
+            span(),
+        )
+        .expect("param")
+    }
+
+    #[test]
+    fn twisted_family_matches_the_oracle_anchors() {
+        let sl2r = sl2r_split_form();
+        // p = param(KGB(rf,2),[0],[1]/2): non-integral gamma with a
+        // rank-0 integral subsystem — the singleton common block.
+        let p = sl2r_param(&sl2r, 2, &[0], &[1], 2);
+        assert_eq!(
+            call("twisted_deform", std::slice::from_ref(&p), span())
+                .expect("twisted_deform(p)")
+                .to_string(),
+            "Empty sum of standard modules"
+        );
+        assert_eq!(
+            call("twisted_KL_sum_at_s", std::slice::from_ref(&p), span())
+                .expect("twisted_KL_sum_at_s(p)")
+                .to_string(),
+            "\n1*parameter(x=2,lambda=[1]/1,nu=[1]/2) [0]"
+        );
+        // q = param(KGB(rf,0),[1],[0]/1): the discrete series, integral.
+        let q = sl2r_param(&sl2r, 0, &[1], &[0], 1);
+        assert_eq!(
+            call("twisted_deform", std::slice::from_ref(&q), span())
+                .expect("twisted_deform(q)")
+                .to_string(),
+            "Empty sum of standard modules"
+        );
+        assert_eq!(
+            call("twisted_KL_sum_at_s", std::slice::from_ref(&q), span())
+                .expect("twisted_KL_sum_at_s(q)")
+                .to_string(),
+            "\n1*parameter(x=0,lambda=[2]/1,nu=[0]/1) [2]"
+        );
+        assert_eq!(
+            call("twisted_full_deform", std::slice::from_ref(&q), span())
+                .expect("twisted_full_deform(q)")
+                .to_string(),
+            "\n1* K_type(x=0, lambda=[2]/1) [2]"
+        );
+        // q2 = param(KGB(rfb,0),[0,0],[0,0]/1) in su(2,1).
+        let su21 = su21_quasisplit_form();
+        let q2 = su21_param(&su21, 0, &[0, 0], &[0, 0], 1);
+        assert_eq!(
+            call("twisted_deform", std::slice::from_ref(&q2), span())
+                .expect("twisted_deform(q2)")
+                .to_string(),
+            "Empty sum of standard modules"
+        );
+        assert_eq!(
+            call("twisted_full_deform", std::slice::from_ref(&q2), span())
+                .expect("twisted_full_deform(q2)")
+                .to_string(),
+            "\n1* K_type(x=0, lambda=[1,1]/1) [4]"
+        );
+        // The two twisted_KL_sum_at_s overloads print identically.
+        let identity = matrix(2, 2, vec![1, 0, 0, 1]);
+        for arguments in [vec![q2.clone()], vec![q2.clone(), identity]] {
+            assert_eq!(
+                call("twisted_KL_sum_at_s", &arguments, span())
+                    .expect("twisted_KL_sum_at_s(q2)")
+                    .to_string(),
+                "\n1*parameter(x=0,lambda=[1,1]/1,nu=[0,0]/1) [4]"
+            );
+        }
+        // The no-value path runs the same gates without computing.
+        for name in [
+            "twisted_deform",
+            "twisted_full_deform",
+            "twisted_KL_sum_at_s",
+        ] {
+            validate(name, std::slice::from_ref(&q), span())
+                .unwrap_or_else(|error| panic!("{name} validates: {error:?}"));
+        }
+    }
+
+    #[test]
+    fn block_deform_matches_the_oracle_height_boundary() {
+        // p = param(KGB(rf,3),[0,0],[1,1]/1) in su(2,1); d = deform(p)
+        // holds the two height-4 terms with (1-1s) coefficients.
+        let su21 = su21_quasisplit_form();
+        let p = su21_param(&su21, 3, &[0, 0], &[1, 1], 1);
+        let d = call("deform", std::slice::from_ref(&p), span()).expect("deform(p)");
+        let d_text = "\n(1-1s)*parameter(x=2,lambda=[1,1]/1,nu=[0,0]/1) [4]\n(1-1s)*parameter(x=0,lambda=[1,1]/1,nu=[0,0]/1) [4]";
+        assert_eq!(d.to_string(), d_text);
+        // Bounds 0 and 3 keep both height-4 terms in the accumulator;
+        // 4, 5, and the negative bound's maximal level move them.
+        for bound in [0, 3] {
+            let result = call("block_deform", &[p.clone(), d.clone(), int(bound)], span())
+                .expect("block_deform");
+            assert_eq!(
+                result.to_string(),
+                format!("(Empty sum of standard modules,{d_text})"),
+                "bound {bound}"
+            );
+        }
+        for bound in [4, 5, -1] {
+            let result = call("block_deform", &[p.clone(), d.clone(), int(bound)], span())
+                .expect("block_deform");
+            assert_eq!(
+                result.to_string(),
+                format!("({d_text},Empty sum of standard modules)"),
+                "bound {bound}"
+            );
+        }
+        // The accumulator is immutable: reusing d reproduces the split.
+        let again = call("block_deform", &[p, d, int(4)], span()).expect("block_deform again");
+        assert_eq!(
+            again.to_string(),
+            format!("({d_text},Empty sum of standard modules)")
         );
     }
 

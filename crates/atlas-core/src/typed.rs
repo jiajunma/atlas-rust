@@ -5926,6 +5926,63 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::ParamPol),
                 1,
             ),
+            // The twisted deformation family (atlas-types.w:8120-8150,
+            // 8178-8204, 8229-8251, 8370-8382, 8420-8431; installed
+            // :8572-8590). Every gate of twisted_deform,
+            // twisted_full_deform, and both twisted_KL_sum_at_s wrappers
+            // precedes the wrapper's no_value gate, so they validate;
+            // block_deform's no_value gate comes FIRST
+            // (atlas-types.w:8182), so it skips (precedent:
+            // KL_sum_at_s_to_height at :5115).
+            domain_builtin_validate(
+                "twisted_deform",
+                primitive_type(Prim::Param),
+                primitive_type(Prim::ParamPol),
+                1,
+            ),
+            domain_builtin_skip(
+                "block_deform",
+                Type::tuple(vec![
+                    primitive_type(Prim::Param),
+                    primitive_type(Prim::ParamPol),
+                    int_type(),
+                ]),
+                Type::tuple(vec![
+                    primitive_type(Prim::ParamPol),
+                    primitive_type(Prim::ParamPol),
+                ]),
+                0,
+            ),
+            domain_builtin_validate(
+                "twisted_full_deform",
+                primitive_type(Prim::Param),
+                primitive_type(Prim::KTypePol),
+                1,
+            ),
+            // The timed variant (installed as a second
+            // "twisted_full_deform" overload, atlas-types.w:8585-8586,
+            // "(Param,int->|KTypePol)"): only the overload's PRESENCE is
+            // fixture-observable (twisted_family_rejected's multi-variant
+            // "Failed to match" wording); the timed computation itself is
+            // not ported and the dispatch arm fails loudly.
+            domain_builtin_validate(
+                "twisted_full_deform",
+                Type::tuple(vec![primitive_type(Prim::Param), int_type()]),
+                Type::Union(vec![Type::void(), primitive_type(Prim::KTypePol)]),
+                1,
+            ),
+            domain_builtin_validate(
+                "twisted_KL_sum_at_s",
+                primitive_type(Prim::Param),
+                primitive_type(Prim::ParamPol),
+                1,
+            ),
+            domain_builtin_validate(
+                "twisted_KL_sum_at_s",
+                Type::tuple(vec![primitive_type(Prim::Param), primitive_type(Prim::Mat)]),
+                primitive_type(Prim::ParamPol),
+                1,
+            ),
             // ParamPol surface (atlas-types.w:8542-8570): the
             // fixture-gated subset. add/subtract_module_wrapper check the
             // real form identity before their no-value gates.
@@ -7933,6 +7990,55 @@ mod tests {
         )
         .expect("a valid discarded constructor does not assemble its result pair");
         assert_eq!(value, Value::Integer(BigInt::from(7)));
+    }
+
+    #[test]
+    fn twisted_family_overload_mismatch_wordings_are_exact() {
+        // The oracle-pinned type diagnostics of
+        // tests/fixtures/domain/twisted_family_rejected.atlas (job
+        // 3536421) and block_deform_rejected.atlas (job 3536583): a
+        // single-variant builtin reports "found … while … was needed.",
+        // while the multi-variant names (twisted_full_deform carries the
+        // timed second overload, twisted_KL_sum_at_s the external-delta
+        // overload) report "Failed to match …".
+        let rf_a1 = "real_form(inner_class(simply_connected(Lie_type(\"A1\"),true),[[1]]),1)";
+        let rf_a2 =
+            "real_form(inner_class(simply_connected(Lie_type(\"A2\"),true),[[1,0],[0,1]]),1)";
+        let p_a1 = format!("param(KGB({rf_a1},0),[1],[0]/1)");
+        let p_a2 = format!("param(KGB({rf_a2},3),[0,0],[1,1]/1)");
+        let d_a2 = format!("deform({p_a2})");
+        let cases = [
+            (
+                format!("twisted_deform({rf_a1})"),
+                "found RealForm while Param was needed.".to_string(),
+            ),
+            (
+                format!("twisted_full_deform({rf_a1})"),
+                "Failed to match 'twisted_full_deform' with argument type RealForm".to_string(),
+            ),
+            (
+                format!("twisted_KL_sum_at_s({p_a1},{rf_a1})"),
+                "Failed to match 'twisted_KL_sum_at_s' with argument type (Param,RealForm)"
+                    .to_string(),
+            ),
+            (
+                format!("block_deform({p_a2},{d_a2})"),
+                "found (Param,ParamPol) while (Param,ParamPol,int) was needed.".to_string(),
+            ),
+            (
+                format!("block_deform({rf_a2},{d_a2},0)"),
+                "found (RealForm,ParamPol,int) while (Param,ParamPol,int) was needed.".to_string(),
+            ),
+        ];
+        for (source, expected) in cases {
+            assert_eq!(
+                convert_and_run(&source)
+                    .expect_err("overload does not match")
+                    .message,
+                expected,
+                "source: {source}"
+            );
+        }
     }
 
     #[test]
