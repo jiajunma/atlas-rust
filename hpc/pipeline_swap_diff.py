@@ -463,6 +463,14 @@ FIXTURE_PLANS = (
     # delta not fixing gamma and type mismatches.
     FixturePlan(name="domain/ext_block"),
     FixturePlan(name="domain/ext_block_rejected"),
+    # Slice A (agent-40): coroot_queries sweep (poscoroots/simple_coroots/
+    # two_rho_check/coroot_radical/mod_central_torus_info/adjoint/
+    # semisimple_rank/reducibility_points) and the root numbering family
+    # (root/coroot expression+index, root_involution/root_permutation).
+    FixturePlan(name="domain/coroot_queries"),
+    FixturePlan(name="domain/coroot_queries_rejected"),
+    FixturePlan(name="domain/root_numbering"),
+    FixturePlan(name="domain/root_numbering_rejected"),
     # Early scalar-era fixtures: verified verbatim locally and included so
     # the HPC differential upgrades their reference metadata.
     FixturePlan(name="eval/scalars"),
