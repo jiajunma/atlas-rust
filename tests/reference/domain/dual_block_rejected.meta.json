@@ -1,12 +1,14 @@
 {
   "fixture": "domain/dual_block_rejected",
   "fixture_sha256": "612ad8ff5e77ca584c3efd2485357d8b6e98c2000f70ded4f38c179feb17878c",
-  "rust_status": "pending_hpc_differential",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
   "note": "dual overload resolution rejections: int, string, and (RootDatum,RootDatum) arities all fail analysis with 'Failed to match ...' type diagnostics; session continues after each.",
   "oracle": "atlas",
   "oracle_exit_status": 1,
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "reference_job": "3542446"
+  "reference_job": "3542446",
+  "differential_job": "3542449",
+  "differential_commit": "373858ca861c1051fe69127cdcc9fa79be3e6335"
 }
