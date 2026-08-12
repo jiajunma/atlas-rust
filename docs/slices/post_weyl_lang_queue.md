@@ -240,15 +240,66 @@ verified_hpc_reference，capture 3535636）**：
     ),
     FixturePlan(name="domain/print_x_rejected"),
     # dual_KL_block (Bare_block::dual + KL packing shared with KL_block).
-    FixturePlan(name="domain/dual_kl_block"),
+    # Line alignment pre-analysed (2026-08-12): ascriptions silent, each
+    # `:=` -> Declaring+Value, each bare call -> 1 event (33 lines/33
+    # events, no folding/dedup).
+    FixturePlan(
+        name="domain/dual_kl_block",
+        runnable_lines=(
+            2, 4, 6, 8, 10, 11, 13, 15, 17, 19, 21, 22, 24, 26, 28, 30,
+            32, 33,
+        ),
+        silent_lines=(1, 3, 5, 7, 9, 12, 14, 16, 18, 20, 23, 25, 27, 29, 31),
+    ),
     FixturePlan(name="domain/dual_kl_block_rejected"),
     # Twisted family (twisted_deform/twisted_full_deform/twisted_KL_sum_at_s
     # + external (Param,mat) overload; big ext_param+star slice).
-    FixturePlan(name="domain/twisted_family"),
+    # Line alignment: 29 lines/29 events, standard pattern.
+    FixturePlan(
+        name="domain/twisted_family",
+        runnable_lines=(
+            2, 4, 6, 8, 9, 10, 12, 13, 14, 15, 17, 19, 21, 23, 25, 26, 27,
+            28, 29,
+        ),
+        silent_lines=(1, 3, 5, 7, 11, 16, 18, 20, 22, 24),
+    ),
     FixturePlan(name="domain/twisted_family_rejected"),
     # block_deform (deform-to-height pair; same big slice).
-    FixturePlan(name="domain/block_deform"),
+    # Line alignment: 15 lines/15 events, standard pattern.
+    FixturePlan(
+        name="domain/block_deform",
+        runnable_lines=(2, 4, 6, 8, 10, 11, 12, 13, 14, 15),
+        silent_lines=(1, 3, 5, 7, 9),
+    ),
     FixturePlan(name="domain/block_deform_rejected"),
+    # ext_finalise trio (scale_extended/K_type_pol_extended/
+    # finalize_extended; same big slice).
+    # Line alignment: 54 lines/54 events, standard pattern.
+    FixturePlan(
+        name="domain/ext_finalise",
+        runnable_lines=(
+            2, 4, 6, 8, 9, 10, 11, 12, 14, 15, 16, 18, 20, 22, 24, 25, 26,
+            27, 28, 30, 32, 34, 35, 36, 37, 38, 40, 41, 42, 43, 45, 47, 49,
+            51, 52, 53, 54,
+        ),
+        silent_lines=(
+            1, 3, 5, 7, 13, 17, 19, 21, 23, 29, 31, 33, 39, 44, 46, 48, 50,
+        ),
+    ),
+    FixturePlan(name="domain/ext_finalise_rejected"),
+    # print_common_block + print_block(Param) (srm pool/Rep_table, last).
+    # Line alignment: 31 lines/30 events — print_block(p) at line 19
+    # prints byte-identical text to the preceding print_common_block(p)
+    # (verified against oracle 2026-08-12) and is deduped silent, same
+    # pattern as real_weyl_print.
+    FixturePlan(
+        name="domain/print_common_block",
+        runnable_lines=(
+            2, 4, 6, 8, 9, 11, 12, 14, 15, 17, 18, 21, 23, 25, 27, 28, 30,
+            31,
+        ),
+        silent_lines=(1, 3, 5, 7, 10, 13, 16, 19, 20, 22, 24, 26, 29),
+    ),
 ```
 
 ### 5.1 root_ladder_bottoms/coroot_ladder_bottoms（小件，可独立切片）
