@@ -12928,33 +12928,79 @@ pub(crate) fn call_with_printed(
                 terms,
             })))
         }
-        // raw_KL / dual_KL (atlas-types.w:9101-9102, 8424-8460): the KL
+        // raw_KL / dual_KL (atlas-types.w:9101-9102, 8603-8674): the KL
         // table of a block as (matrix of polynomial indices, polynomial
-        // pool as coefficient vectors, length stops).
+        // pool as coefficient vectors, length stops). dual_KL builds the
+        // block on the SWAPPED real forms and pulls its polynomials through
+        // blocks::dual_map (blocks.cpp:1715-1725): entry (x,y) is
+        // KL_pol_index(dual[y], dual[x]) in the dual block's table, with
+        // the pool of that dual table; the length stops stay the original
+        // block's.
         "raw_KL" | "dual_KL" => {
             arity(name, arguments, 1, span)?;
             let Value::Domain(DomainValue::Block(block)) = &arguments[0] else {
                 return Err(type_error(span, "expected a Block"));
             };
+            let size = block.graph.size();
+            // The dual table borrows the swapped block, which therefore
+            // outlives it in this scope.
+            let dual_block = if name == "dual_KL" {
+                Some(build_block(&block.dual_rf, &block.rf, span)?)
+            } else {
+                None
+            };
+            let kl_graph = dual_block.as_ref().map_or(&block.graph, |dual| &dual.graph);
             let mut kl_table =
-                KlTable::new(&block.graph).map_err(|error| structure_diagnostic(error, span))?;
+                KlTable::new(kl_graph).map_err(|error| structure_diagnostic(error, span))?;
             kl_table
                 .fill(0)
                 .map_err(|error| structure_diagnostic(error, span))?;
-            let size = block.graph.size();
+            let dual_permutation = match &dual_block {
+                Some(dual) => {
+                    let mut permutation = Vec::with_capacity(size);
+                    for z in 0..size {
+                        let x = block
+                            .graph
+                            .x(z)
+                            .ok_or_else(|| runtime(span, "block element x lookup failed"))?;
+                        let y = block
+                            .graph
+                            .y(z)
+                            .ok_or_else(|| runtime(span, "block element y lookup failed"))?;
+                        // dual_b.element(b.y(z), b.x(z)): swapped coordinates.
+                        permutation.push(
+                            dual.graph
+                                .element(y, x)
+                                .map_err(|error| structure_diagnostic(error, span))?,
+                        );
+                    }
+                    Some(permutation)
+                }
+                None => None,
+            };
             let mut columns = vec![vec![0_i32; size]; size];
             for (y, column) in columns.iter_mut().enumerate().skip(1) {
                 for (x, slot) in column.iter_mut().enumerate().take(y) {
+                    let (row, col) = match &dual_permutation {
+                        // dual reverses the Bruhat order: y > x maps to
+                        // dual[y] < dual[x] in the dual block.
+                        Some(permutation) => (permutation[y], permutation[x]),
+                        None => (x, y),
+                    };
                     let index = kl_table
-                        .kl_pol(x, y)
+                        .kl_pol(row, col)
                         .map_err(|error| structure_diagnostic(error, span))?;
                     *slot = i32::try_from(index).map_err(|_| runtime(span, "KL index overflow"))?;
                 }
             }
             // Diagonal entries P_{y,y} = 1 (index of the constant 1).
             for (y, column) in columns.iter_mut().enumerate() {
+                let diagonal = match &dual_permutation {
+                    Some(permutation) => permutation[y],
+                    None => y,
+                };
                 let index = kl_table
-                    .kl_pol(y, y)
+                    .kl_pol(diagonal, diagonal)
                     .map_err(|error| structure_diagnostic(error, span))?;
                 column[y] = i32::try_from(index).map_err(|_| runtime(span, "KL index overflow"))?;
             }

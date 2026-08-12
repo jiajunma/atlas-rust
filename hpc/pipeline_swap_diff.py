@@ -481,6 +481,10 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/integrality_points_rejected"),
     FixturePlan(name="domain/block_ktype_extras"),
     FixturePlan(name="domain/block_ktype_extras_rejected"),
+    # dual_kl_raw(±): dual_KL through the swapped-forms block and
+    # blocks::dual_map (atlas-types.w:8640-8674), raw_KL cross-check.
+    FixturePlan(name="domain/dual_kl_raw"),
+    FixturePlan(name="domain/dual_kl_raw_rejected"),
     FixturePlan(name="domain/root_numbering"),
     FixturePlan(name="domain/root_numbering_rejected"),
     # Orbit/ladder (slice B, agent-43): root_ladder_bottoms/

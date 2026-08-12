@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/dual_kl_raw",
+  "fixture_sha256": "3bee306945ac8b62c248294b555bd8385bd02a0e91611ab61d566bd7327c9c61",
+  "rust_status": "pending_hpc_differential",
+  "reference_status": "pending_hpc_reference",
+  "note": "dual_KL(Block->mat,[vec],vec) on A2 (6-element) and B2 (12-element) blocks, with raw_KL cross-check. Regression pin for the dual-map repair: the shared arm previously returned the PRIMAL table for dual_KL; upstream raw_dual_KL_wrapper builds the block on swapped real forms and pulls entries through blocks::dual_map (atlas-types.w:8640-8674, blocks.cpp:1715-1725).",
+  "oracle": "atlas",
+  "oracle_exit_status": 0,
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+}
