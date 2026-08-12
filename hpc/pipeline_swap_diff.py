@@ -560,6 +560,22 @@ FIXTURE_PLANS = (
         ),
     ),
     FixturePlan(name="domain/shift_flip_rejected"),
+    # ext_finalise trio (scale_extended/K_type_pol_extended/
+    # finalize_extended; upstream gate order test_final →
+    # factor-positive → compatible → is_fixed). Line alignment
+    # pre-analysed 2026-08-12: 54 lines/54 events, standard pattern.
+    FixturePlan(
+        name="domain/ext_finalise",
+        runnable_lines=(
+            2, 4, 6, 8, 9, 10, 11, 12, 14, 15, 16, 18, 20, 22, 24, 25, 26,
+            27, 28, 30, 32, 34, 35, 36, 37, 38, 40, 41, 42, 43, 45, 47, 49,
+            51, 52, 53, 54,
+        ),
+        silent_lines=(
+            1, 3, 5, 7, 13, 17, 19, 21, 23, 29, 31, 33, 39, 44, 46, 48, 50,
+        ),
+    ),
+    FixturePlan(name="domain/ext_finalise_rejected"),
     # Early scalar-era fixtures: verified verbatim locally and included so
     # the HPC differential upgrades their reference metadata.
     FixturePlan(name="eval/scalars"),
