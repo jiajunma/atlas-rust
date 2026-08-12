@@ -2,10 +2,11 @@
   "fixture": "domain/print_partial_block",
   "fixture_sha256": "4b3306e073040b1f69352419bba0d9e43e7f153822ba98ce4698bb5c16d81c40",
   "rust_status": "pending_hpc_differential",
-  "reference_status": "pending_hpc_reference",
-  "note": "print_partial_block/print_partial_common_block(Param->) on SL(2,R) and SO(3,2): partial common block over the Bruhat interval below the seed (atlas-types.w:6700-6735), singleton and 3-element intervals; the two printers agree on every probed case (no header triggered: seed is always interval-maximal so init_index+1==size). Local pinned-oracle capture; HPC reference capture pending byte-verification.",
+  "reference_status": "verified_hpc_reference",
+  "note": "print_partial_block/print_partial_common_block(Param->) on SL(2,R) and SO(3,2): partial common block over the Bruhat interval below the seed (atlas-types.w:6700-6735), singleton and 3-element intervals; the two printers agree on every probed case (no header triggered: seed is always interval-maximal so init_index+1==size). HPC reference capture 3541704 byte-identical to local pinned-oracle capture (stdout+stderr).",
   "oracle": "atlas",
   "oracle_exit_status": 0,
   "stage": "typed-pipeline-swap",
-  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_job": "3541704"
 }
