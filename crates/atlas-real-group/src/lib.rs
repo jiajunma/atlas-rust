@@ -43,6 +43,7 @@ mod layout;
 mod matreduc;
 mod minimal_torus;
 mod mod_two;
+mod partial_block;
 mod presentation;
 mod primitive_involution;
 mod real_form_labels;
@@ -112,6 +113,9 @@ pub use lattice::{pair, Coweight, RationalCoweight, RationalWeight, Weight};
 pub use layout::InnerClassLayout;
 pub use minimal_torus::{elected_square_root, minimal_torus_part};
 pub use mod_two::{ModTwoSubspace, ModTwoVector};
+pub use partial_block::{
+    bruhat_below, CommonContext, IntegralSubsystem, PartialBlock, StandardReprMod,
+};
 pub use presentation::{build_presentations, RealFormPresentation};
 pub use primitive_involution::{
     checked_inner_class_letters, layout_involution, on_basis, InnerClassLetterError,
