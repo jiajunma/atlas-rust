@@ -1,12 +1,14 @@
 {
   "fixture": "domain/ext_block",
   "fixture_sha256": "1992a2dd5346eac69273cd26c6afd9ade3c0c245e24769a1d17886b38b13d84f",
-  "rust_status": "pending_hpc_differential",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
   "note": "extended_block/raw_ext_KL/partial_extended_KL_block on A2 (ic=c and ic=u) + A1: distinguished vs non-distinguished delta, gamma fixed/not-fixed, non-integral gamma rejection, KGB element 5 partial block. HPC reference capture 3536831 byte-identical to local pinned-oracle capture (stdout+stderr).",
   "oracle": "atlas",
   "oracle_exit_status": 0,
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "reference_job": "3536831"
+  "reference_job": "3536831",
+  "differential_job": "3537192",
+  "differential_commit": "64048ac78059cda8c8b1c0f6a4a1f39c933418ca"
 }

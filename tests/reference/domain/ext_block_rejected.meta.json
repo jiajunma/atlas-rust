@@ -1,12 +1,14 @@
 {
   "fixture": "domain/ext_block_rejected",
   "fixture_sha256": "9cbfad2381d3f0a32c57ac6290c049e64f737a54d29998dffe729ee36c17ad96",
-  "rust_status": "pending_hpc_differential",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
   "note": "ext builtins rejections: delta not fixing gamma (stdout 'Delta does not fix gamma=...' then 'No valid extended block'), wrong arg types/counts. 9 runtime/type diagnostics. HPC reference capture 3536831 byte-identical to local pinned-oracle capture (stdout+stderr).",
   "oracle": "atlas",
   "oracle_exit_status": 1,
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "reference_job": "3536831"
+  "reference_job": "3536831",
+  "differential_job": "3537192",
+  "differential_commit": "64048ac78059cda8c8b1c0f6a4a1f39c933418ca"
 }
