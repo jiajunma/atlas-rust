@@ -192,6 +192,16 @@ test_compatible（"Given transformation is not an involution"）+
 矩阵尺寸 + 参数类型错。注意：flip delta 在 A2 compact inner class
 上被 test_compatible 接受（返回 false）。
 
+**shift_flip 解锁（2026-08-12 再查）**：E1 落地（`f12b27b`）后
+crate 三件套已齐——`ext_param.rs:344` ExtRepContext、`:454`
+ExtRepContext::shift_flip（repr.cpp:2824-2836 移植）、`:740`
+shifted_default_extension、`:757` is_default。剩余工作只有语言层
+~40 行（typed.rs 注册 + domain_builtins 臂，wrapper 顺序
+test_compatible→rational weight→infinitesimal character→no_value
+gate，无 test_standard/test_final）。完整实施简报
+/tmp/slice_shift_flip_brief.md；FixturePlan 片段已在本文件 §fixture
+注册段（45 行/45 事件）。
+
 ## 5. 其余（REMAINING_BUILTINS.md）
 
 root_expression/root_index/root_permutation（oracle 根编号阻塞）、
