@@ -2,10 +2,11 @@
   "fixture": "domain/shift_flip_rejected",
   "fixture_sha256": "203a032eacf4ff2f88d959eb68c62cafd662594878d4110b79a7c96d98e7f237",
   "rust_status": "pending_hpc_differential",
-  "reference_status": "pending_hpc_reference",
-  "note": "shift_flip rejections: rational weight not delta-fixed, infinitesimal character not delta-fixed (param normalises nu [1,0] -> [1,-1]/2), non-involution matrix, wrong-size (3x3 on rank 2) matrix, wrong argument type (RealForm for Param). Note: flip delta on the compact A2 inner class is ACCEPTED by test_compatible (returns false). Local pinned-oracle capture; HPC reference capture pending byte-verification.",
+  "reference_status": "verified_hpc_reference",
+  "note": "shift_flip rejections: rational weight not delta-fixed, infinitesimal character not delta-fixed (param normalises nu [1,0] -> [1,-1]/2), non-involution matrix, wrong-size (3x3 on rank 2) matrix, wrong argument type (RealForm for Param). Note: flip delta on the compact A2 inner class is ACCEPTED by test_compatible (returns false). HPC reference capture 3539225 byte-identical to local pinned-oracle capture (stdout+stderr).",
   "oracle": "atlas",
   "oracle_exit_status": 1,
   "stage": "typed-pipeline-swap",
-  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_job": "3539225"
 }
