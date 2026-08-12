@@ -240,6 +240,12 @@ verified_hpc_reference，capture 3535636）**：
     ),
     FixturePlan(name="domain/print_x_rejected"),
     # dual_KL_block (Bare_block::dual + KL packing shared with KL_block).
+    # Acceptance pin (2026-08-12, verified against reference events):
+    # the return tuple is upstream-ordered ([Param],int,mat,[vec]) —
+    # dual_kl_block.events.json:10 shows
+    # "([final parameter(...)],0,| 1 |,[[ ],[ 1 ]])". The typed.rs
+    # KL_block skip registration order is known-misaligned; the new arm
+    # must NOT inherit it.
     # Line alignment pre-analysed (2026-08-12): ascriptions silent, each
     # `:=` -> Declaring+Value, each bare call -> 1 event (33 lines/33
     # events, no folding/dedup).
