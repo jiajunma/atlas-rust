@@ -19,6 +19,7 @@ mod dynkin;
 mod error;
 pub mod ext_block;
 pub mod ext_kl;
+pub mod ext_param;
 mod form_name;
 mod global_kgb;
 // Consumer is the synthetic-real-form builder; the carrier lands first so
@@ -38,6 +39,7 @@ mod kl_table;
 mod ktype;
 mod lattice;
 mod layout;
+mod matreduc;
 mod minimal_torus;
 mod mod_two;
 mod presentation;

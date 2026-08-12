@@ -1653,7 +1653,7 @@ mod tests {
     use crate::{
         AdjointFiberBudget, BasedRootDatum, CartanClassification, CartanClassificationBudget,
         CartanId, Coweight, InnerClass, IntegerLatticeBudget, InvolutionTableBudget, RealFormSeed,
-        StrongRealClassification, WeakRealFormId, Weight,
+        RepContext, StrongRealClassification, WeakRealFormId, Weight,
     };
 
     fn class_budget(weyl: usize) -> CartanClassificationBudget {
@@ -2262,5 +2262,121 @@ mod tests {
         assert_eq!(induced(&orbits, &[1, 0, 3, 2]), vec![1, 0]);
         // The identity permutation induces the identity.
         assert_eq!(induced(&orbits, &[0, 1, 2, 3]), vec![0, 1]);
+    }
+
+    /// Per-element coherent `gamma_lambda` family at `gamma = rho` (the
+    /// trivial representation's infinitesimal character), replicating the
+    /// language layer's `common_block_gamma_lambdas`
+    /// (domain_builtins.rs): torsion part from the dual element's torus
+    /// bits, `gamma_lambda(x, y_bits, gamma)`, then `real_unique`.
+    fn coherent_gamma_lambdas(
+        fixture: &BlockFixture,
+        rc: &RepContext,
+    ) -> Vec<crate::RationalWeight> {
+        let gamma = rc.rho().clone();
+        let mut result = Vec::new();
+        for z in 0..fixture.block.size() {
+            let x = fixture.block.x(z).unwrap();
+            let y = fixture.block.y(z).unwrap();
+            let dual_bits = fixture.dual_graph.element(y).unwrap().torus_bits().clone();
+            let y_bits = rc.torus_part(x, &dual_bits).unwrap();
+            let mut value = rc.gamma_lambda(x, &y_bits, &gamma).unwrap();
+            let involution = rc.involution_of(x).unwrap();
+            rc.real_unique(involution, &mut value).unwrap();
+            result.push(value);
+        }
+        result
+    }
+
+    /// Run `tune_signs` with the genuine ext_param/star oracle and assert
+    /// success (which already includes the per-`(n, s)` type comparison
+    /// and the debug quadratic/braid gates).
+    fn tune_with_real_oracle(fixture: &BlockFixture, delta: &LatticeInvolution, eb: &mut ExtBlock) {
+        let rc = RepContext::new(&fixture.primal_class, &fixture.table, &fixture.graph).unwrap();
+        let ctx = crate::ext_param::ExtRepContext::new(&rc, delta.clone()).unwrap();
+        let gamma_lambdas = coherent_gamma_lambdas(fixture, &rc);
+        let simply_ints: Vec<usize> = rc
+            .root_system()
+            .simple_root_ids()
+            .iter()
+            .map(|id| id.index())
+            .collect();
+        let mut oracle =
+            crate::ext_param::ExtParamOracle::new(&ctx, &fixture.block, &gamma_lambdas);
+        assert!(eb.tune_signs(&mut oracle, &simply_ints));
+    }
+
+    #[test]
+    fn a1_tune_signs_with_ext_param_oracle() {
+        let fixture = a1_block();
+        let (delta, twist, dual_delta, dual_twist) = identity_twists(&fixture);
+        let mut eb = ExtBlock::build(
+            &fixture.block,
+            &fixture.graph,
+            &fixture.table,
+            &fixture.dual_graph,
+            &fixture.dual_table,
+            &delta,
+            &twist,
+            &dual_delta,
+            &dual_twist,
+            &[vec![2]],
+        )
+        .unwrap();
+        tune_with_real_oracle(&fixture, &delta, &mut eb);
+        // Trivial delta at gamma = rho: no edge is flipped.
+        let (_, links0, links1) = wrapper_tables(&eb);
+        for row in links0.iter().chain(&links1) {
+            assert!(row.iter().all(|&link| link >= 0));
+        }
+    }
+
+    #[test]
+    fn a2_equal_rank_tune_signs_with_ext_param_oracle() {
+        let fixture = a2_equal_rank_block();
+        let (delta, twist, dual_delta, dual_twist) = identity_twists(&fixture);
+        let cartan = vec![vec![2, -1], vec![-1, 2]];
+        let mut eb = ExtBlock::build(
+            &fixture.block,
+            &fixture.graph,
+            &fixture.table,
+            &fixture.dual_graph,
+            &fixture.dual_table,
+            &delta,
+            &twist,
+            &dual_delta,
+            &dual_twist,
+            &cartan,
+        )
+        .unwrap();
+        tune_with_real_oracle(&fixture, &delta, &mut eb);
+        // Trivial delta at gamma = rho: no edge is flipped.
+        let (_, links0, links1) = wrapper_tables(&eb);
+        for row in links0.iter().chain(&links1) {
+            assert!(row.iter().all(|&link| link >= 0));
+        }
+    }
+
+    #[test]
+    fn a2_flip_tune_signs_with_ext_param_oracle() {
+        // Exercises the star length-3 cases (3Ci at element 0, 3r at
+        // element 1) through the genuine oracle.
+        let fixture = a2_flipped_block();
+        let (delta, twist, dual_delta, dual_twist) = flip_twists(&fixture);
+        let cartan = vec![vec![2, -1], vec![-1, 2]];
+        let mut eb = ExtBlock::build(
+            &fixture.block,
+            &fixture.graph,
+            &fixture.table,
+            &fixture.dual_graph,
+            &fixture.dual_table,
+            &delta,
+            &twist,
+            &dual_delta,
+            &dual_twist,
+            &cartan,
+        )
+        .unwrap();
+        tune_with_real_oracle(&fixture, &delta, &mut eb);
     }
 }

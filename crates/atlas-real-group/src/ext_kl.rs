@@ -1211,6 +1211,97 @@ pub fn ext_kl_matrix(
     })
 }
 
+/// Upstream `flip` (repr.cpp:1849-1853): multiply every coefficient by
+/// `sign` (a no-op for `sign == 1`), preserving the ascending order.
+fn flip(sign: i32, list: Vec<(BlockElt, i32)>) -> Vec<(BlockElt, i32)> {
+    if sign == 1 {
+        list
+    } else {
+        list.into_iter()
+            .map(|(z, coefficient)| (z, coefficient.wrapping_mul(sign)))
+            .collect()
+    }
+}
+
+/// Upstream `combine` (repr.cpp:1833-1847): merge two ascending-by-element
+/// lists, accumulating the coefficients of like terms (which stay adjacent
+/// after the merge; zero sums are *not* dropped, matching upstream).
+fn combine(a: Vec<(BlockElt, i32)>, b: Vec<(BlockElt, i32)>) -> Vec<(BlockElt, i32)> {
+    let mut merged = Vec::with_capacity(a.len() + b.len());
+    let (mut i, mut j) = (0, 0);
+    while i < a.len() && j < b.len() {
+        if a[i].0 <= b[j].0 {
+            merged.push(a[i]);
+            i += 1;
+        } else {
+            merged.push(b[j]);
+            j += 1;
+        }
+    }
+    merged.extend_from_slice(&a[i..]);
+    merged.extend_from_slice(&b[j..]);
+
+    let mut result: Vec<(BlockElt, i32)> = Vec::with_capacity(merged.len());
+    for (z, coefficient) in merged {
+        match result.last_mut() {
+            Some((last_z, last_c)) if *last_z == z => {
+                *last_c = last_c.wrapping_add(coefficient);
+            }
+            _ => result.push((z, coefficient)),
+        }
+    }
+    result
+}
+
+/// Upstream `contributions` for an extended block (repr.cpp:1901-1931):
+/// expand the block elements `0..=y` into the extended-final ones for the
+/// `singular_orbits` system, with the twisted signs: the October-surprise
+/// sign from the link length change and each link's tuned `epsilon`.
+/// Every returned list is sorted ascending by element.
+pub fn contributions(
+    eblock: &ExtBlock,
+    singular_orbits: &RankFlags,
+    y: BlockElt,
+) -> Vec<Vec<(BlockElt, i32)>> {
+    let mut result: Vec<Vec<(BlockElt, i32)>> = vec![Vec::new(); y + 1];
+    for z in 0..=y {
+        let Some(s) = eblock.first_descent_among(singular_orbits, z) else {
+            // Extended final element: unit contribution to ourselves.
+            result[z].push((z, 1));
+            continue;
+        };
+        let kind = eblock.descent_type(s, z);
+        if kind.is_like_compact() {
+            continue; // no descents, |z| represents zero
+        }
+        let scent = eblock.some_scent(s, z).expect("descent has a scent link");
+        // True link length change; the 2-case is the October surprise.
+        let sign: i32 = if eblock.l(z, scent) == 2 { -1 } else { 1 };
+        if kind.has_double_image() {
+            // 1r1f, 2r11.
+            let (first, second) = eblock.cayleys(s, z);
+            let first = first.expect("double image has a first Cayley");
+            let second = second.expect("double image has a second Cayley");
+            result[z] = combine(
+                flip(
+                    sign.wrapping_mul(eblock.epsilon(s, first, z)),
+                    result[first].clone(),
+                ),
+                flip(
+                    sign.wrapping_mul(eblock.epsilon(s, second, z)),
+                    result[second].clone(),
+                ),
+            );
+        } else {
+            result[z] = flip(
+                sign.wrapping_mul(eblock.epsilon(s, scent, z)),
+                result[scent].clone(),
+            );
+        }
+    }
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1338,6 +1429,20 @@ mod tests {
             dual_table,
             block,
         }
+    }
+
+    /// The A1 block of the SL(2,R) side (KGB 3) against the PGL(2,R) side
+    /// (KGB 2): 3 elements, as anchored in block.rs/ext_block.rs tests.
+    fn a1_block() -> BlockFixture {
+        let datum = BasedRootDatum::from_simple_data(
+            1,
+            vec![vec![2]],
+            vec![Weight::new(vec![2])],
+            vec![Coweight::new(vec![1])],
+        )
+        .unwrap();
+        let involution = LatticeInvolution::identity(&datum).unwrap();
+        fixture(InnerClass::new(datum, involution, 2).unwrap(), 3, 2, 2)
     }
 
     /// The A2 root-lattice datum used by the ext_block.rs anchors.
@@ -1757,5 +1862,68 @@ mod tests {
         ];
         let survivors: Vec<usize> = (0..=10).collect();
         assert_condensed(&result, &expected_pm, &survivors, &[0, 1, -1]);
+    }
+
+    #[test]
+    fn contributions_a1_trivial_delta() {
+        // The A1 extended block (trivial delta): z0, z1 are 1i1 (final for
+        // the singular generator), z2 is 1r1f with Cayleys (z0, z1), both
+        // length distance 1 and unflipped, so z2 expands to z0 + z1.
+        let fixture = a1_block();
+        let eb = ext_block_of(&fixture, &identity_twists(&fixture), &[vec![2]]);
+        let mut singular = RankFlags::empty();
+        singular.set(0);
+        assert_eq!(
+            contributions(&eb, &singular, 2),
+            vec![vec![(0, 1)], vec![(1, 1)], vec![(0, 1), (1, 1)],]
+        );
+        // With no singular orbits every element is final.
+        assert_eq!(
+            contributions(&eb, &RankFlags::empty(), 2),
+            vec![vec![(0, 1)], vec![(1, 1)], vec![(2, 1)]]
+        );
+    }
+
+    #[test]
+    fn contributions_a2_equal_rank_trivial_delta() {
+        // Types per (element, generator) from the ext_block.rs anchors:
+        // z0 [1i1,1i1], z1 [1i1,1iC], z2 [1iC,1i1], z3 [1C+,1r1f],
+        // z4 [1r1f,1C+], z5 [1C-,1C-]. For the all-singular system: z0 is
+        // final; z1, z2 are like-compact (zero); z3 and z4 expand to z0
+        // via their 1r1f pair (the other image is a zero element); z5
+        // expands through its 1C- cross to z3, hence to z0.
+        let fixture = a2_equal_rank_block();
+        let cartan = vec![vec![2, -1], vec![-1, 2]];
+        let eb = ext_block_of(&fixture, &identity_twists(&fixture), &cartan);
+        let mut singular = RankFlags::empty();
+        singular.set(0);
+        singular.set(1);
+        assert_eq!(
+            contributions(&eb, &singular, 5),
+            vec![
+                vec![(0, 1)],
+                vec![],
+                vec![],
+                vec![(0, 1)],
+                vec![(0, 1)],
+                vec![(0, 1)],
+            ]
+        );
+    }
+
+    #[test]
+    fn contributions_a2_flip_october_sign() {
+        // The folded A2 block: element 0 is 3Ci (final), element 1 is 3r
+        // with its link at length distance 2 (the October surprise), so
+        // the untuned expansion is z1 -> -z0.
+        let fixture = a2_flipped_block();
+        let cartan = vec![vec![2, -1], vec![-1, 2]];
+        let eb = ext_block_of(&fixture, &flip_twists(&fixture), &cartan);
+        let mut singular = RankFlags::empty();
+        singular.set(0);
+        assert_eq!(
+            contributions(&eb, &singular, 1),
+            vec![vec![(0, 1)], vec![(0, -1)]]
+        );
     }
 }
