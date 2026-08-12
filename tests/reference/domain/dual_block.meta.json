@@ -2,10 +2,11 @@
   "fixture": "domain/dual_block",
   "fixture_sha256": "c60ac3548d6959ae3500c683f0a48462894f02087a35babca52ae96f96cee701",
   "rust_status": "pending_hpc_differential",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "note": "dual(Block->Block) on A1 (3-element) and B2 split (12-element) blocks, plus dual(RealForm->InnerClass); #dB/%dB/dB on the dual block. Fills the last dedicated-fixture gap among live conversion arms (all others covered: dual(RootDatum)/dual(InnerClass) dual_datum+strong_real probes, #(Block) block_basic, KL_block(Param) kl_block, involution(KGBElt/CartanClass) kgb_operations+strong_real, twist(KGBElt)/(KGBElt,mat) kgb/tits_operations, K_type(Param)/param(KType)/real_form(Param/KType) param_basic/ktype_basic, dual_KL(Block) dual_kl_block, KL_sum_at_s_to_height kl_sum_at_s).",
   "oracle": "atlas",
   "oracle_exit_status": 0,
   "stage": "typed-pipeline-swap",
-  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_job": "3542446"
 }
