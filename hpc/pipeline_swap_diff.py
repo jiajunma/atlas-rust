@@ -596,6 +596,17 @@ FIXTURE_PLANS = (
         silent_lines=(1, 3, 5, 7, 9),
     ),
     FixturePlan(name="domain/block_deform_rejected"),
+    # dual_block(±): dual(Block->Block) + dual(RealForm->InnerClass)
+    # coverage-gap closure. 32 lines/32 events; ascriptions silent.
+    FixturePlan(
+        name="domain/dual_block",
+        runnable_lines=(
+            2, 4, 6, 8, 10, 12, 13, 14, 15, 17, 19, 21, 23, 25, 27, 29,
+            30, 31, 32,
+        ),
+        silent_lines=(1, 3, 5, 7, 9, 11, 16, 18, 20, 22, 24, 26, 28),
+    ),
+    FixturePlan(name="domain/dual_block_rejected"),
     # print_partial_block / print_partial_common_block (interval blocks;
     # language arms 6fb1c30 on crate port f11f48a). Line alignment:
     # 28 lines/24 events — each printer pair on the same param is
