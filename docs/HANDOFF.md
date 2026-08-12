@@ -4,6 +4,51 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-12e (dual_KL verified; pcb landed; E2 crate landed; skip-tail retracted)
+
+- **dual_kl_block(±) closed**: differential **3541634** @ dafdc03 —
+  219 fixtures, 218 PASS, 0 FAIL; metas verified_hpc (`0f1789a`).
+- **print_common_block landed (`ab811fa`, agent-53)**:
+  common_block_rows engine + byte-exact render (block_io.cpp:54-147,
+  right-aligned `*` markers), print_block(Param) branch; replay
+  byte-exact, 232 atlas-core tests. Registered in FixturePlan
+  (`946a97a`); differential **3541690** in flight (cron 0beadea7).
+  Agent-flagged pre-existing hazard (not touched): print_block(Block)/
+  print_blockd `*` padding left-aligns — a future Block fixture with
+  undefined Cayley at width>1 would misalign.
+- **E2 crate drivers landed (`be0e16c`, agent-54)**:
+  extended_restrict_to_k / extended_finalise / scaled_extended_finalise
+  (ext_block.cpp:2435-2807), purely additive, 6 tests replaying pinned
+  ext_finalise values, 375 crate tests green. E2 language layer
+  (typed.rs wrappers, precondition order per /tmp/slice_e2_brief.md) is
+  the remaining E2 work, queued behind shift_flip for atlas-core.
+- **Builtin reconciliation corrected (`a8a314e`)**: 187 upstream
+  install_function names; empirical probes on committed binaries show
+  every "skip arm" in typed.rs is a dead registration shadowed by a
+  live one (dual/inner_class/involution/twist/K_type/param/re_form
+  conversions, `#`(Block), KL_block(Param), dual_KL(Block),
+  KL_sum_at_s_to_height all evaluate correctly). The entire remaining
+  builtin surface is exactly the 10 never-registered names: E2 trio +
+  E3 four + shift_flip (in flight) + print_partial_block/
+  print_partial_common_block (no fixture yet). Conversion arms are live
+  but several lack dedicated fixtures — coverage gap, noted in
+  REMAINING_BUILTINS.md.
+- **Interpreter semantics pin (oracle-verified)**: implicit
+  definition `x:=2` without prior `name : Type` ascription is REJECTED
+  by the oracle ("Undefined identifier 'x' in assignment") — the Rust
+  CLI matches. Probe files must ascribe types first (all fixtures do).
+- **In flight**: agent-55 (shift_flip language layer, atlas-core,
+  brief /tmp/slice_shift_flip_brief.md); agent-56 (E3 crate drivers:
+  twisted_deformation_terms/twisted_KL_sum/twisted_deformation/
+  block_deformation_to_height, atlas-real-group, brief
+  /tmp/slice_e3_brief.md — rank-0 integral-subsystem path only,
+  twisted_full_deform builds on be0e16c's extended_finalise).
+- **Queue**: (1) collect 3541690 → pcb meta; (2) agent-55 delivery →
+  shift_flip FixturePlan (snippet in queue doc) + differential;
+  (3) E2 language layer → ext_finalise FixturePlan + differential;
+  (4) agent-56 delivery → E3 language layer → twisted_family +
+  block_deform differentials; (5) print_partial_* fixtures.
+
 ## Checkpoint - 2026-08-12d (print_x verified_hpc; crate bugs fixed; dual_KL differential in flight)
 
 - **print_x(±) closed**: differential **3540739** @ 3908db4 — 217
