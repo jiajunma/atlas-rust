@@ -4,6 +4,46 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-12f (shift_flip landed + differential in flight; NDEBUG assert lesson)
+
+- **shift_flip language layer landed (`46963fd`, agent-55)**:
+  registration in typed.rs (Validate level matching atlas-types.w:7341-7362),
+  shared gate helper (test_compatible → "Involution does not fix rational
+  weight" → "Involution does not fix infinitesimal character", upstream
+  order/strings), call arm via ExtRepContext::shifted_default_extension +
+  is_default. 233 atlas-core tests, clippy/fmt clean, release AND debug
+  replay byte-identical.
+- **NDEBUG assert lesson (`f668589`)**: two debug_asserts in
+  atlas-real-group ext_param.rs (shifted_default_extension's
+  `(1+theta_x)*shift==0` and same_sign's `same_standard_reps`) encode
+  upstream `assert`s that the oracle NEVER checks (upstream Makefile
+  builds with -DNDEBUG). Both are reachable-via-shift_flip with
+  violating inputs (nonzero shift at a compact Cartan) and panicked the
+  debug CLI where the oracle returns a well-defined `false`. Rule of
+  thumb: before porting any upstream `assert` as a Rust (debug_)assert,
+  check whether the wrapper layer can reach it with violating inputs —
+  if yes, omit it with a comment citing the NDEBUG parity.
+- **shift_flip FixturePlan registered (`8f1043f`)**: 45 lines/45 events,
+  alignment pre-analysed; harness unittest OK. Differential **3541888**
+  @ 8f1043f in flight (fat partition, TIMEOUT=3600).
+- **LANGUAGE.md counters refreshed (`cd45130`)**: 222 of 231 fixture
+  contracts verified_hpc; 9 pending (all domain, no rejected by design):
+  ext_finalise(±), twisted_family(±), block_deform(±), shift_flip(±),
+  print_partial_block.
+- **In flight**: agent-56 (E3 crate drivers, atlas-real-group);
+  agent-57 (E2 language layer: scale_extended/K_type_pol_extended/
+  finalize_extended, atlas-core, brief /tmp/slice_e2_brief.md).
+- **Queue**: (1) collect 3541888 → shift_flip metas verified_hpc;
+  (2) agent-57 delivery → ext_finalise FixturePlan (snippet in queue
+  doc) + differential; (3) agent-56 delivery → E3 language layer
+  (brief /tmp/slice_e3_brief.md) → twisted_family + block_deform
+  differentials; (4) print_partial_block language layer (brief
+  /tmp/slice_ppb_brief.md — needs Rep_table::Bruhat_below port +
+  srm-level common_context ops, render reuses pcb's
+  render_common_block); (5) final matrix audit + user decision on the
+  two documented exclusions (readline completion TTY-only; KL binary
+  file formats — no language builtin touches them).
+
 ## Checkpoint - 2026-08-12e (dual_KL verified; pcb landed; E2 crate landed; skip-tail retracted)
 
 - **dual_kl_block(±) closed**: differential **3541634** @ dafdc03 —

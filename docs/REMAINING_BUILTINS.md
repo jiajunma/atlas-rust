@@ -17,11 +17,20 @@ Never registered:
 - E2: scale_extended, K_type_pol_extended, finalize_extended
 - E3: twisted_deform, twisted_full_deform, twisted_KL_sum_at_s,
   block_deform
-- shift_flip (crate pieces landed with E1 `f12b27b`; language layer
-  ~40 lines, brief /tmp/slice_shift_flip_brief.md)
+- shift_flip — **LANDED 2026-08-12 (`46963fd`)**, differential 3541888
+  in flight
 - print_partial_block, print_partial_common_block (upstream installs
-  them; no fixture yet — fold into the print_common_block slice or a
-  small follow-up)
+  them; fixture + reference captured, language layer pending — brief
+  /tmp/slice_ppb_brief.md)
+
+**NDEBUG assert parity lesson (2026-08-12, `f668589`)**: upstream
+`assert`s (e.g. ext_block.h:356 `(1+theta_x)*shift==0`,
+ext_block.cpp:938 `same_standard_reps` in same_sign) are compiled out
+in the oracle (-DNDEBUG). The shift_flip wrapper reaches both with
+violating inputs; as Rust debug_asserts they panicked where the oracle
+returns `false`. When porting, omit any upstream assert that the
+wrapper layer can reach with violating inputs, with a comment citing
+NDEBUG parity.
 
 Skip-only / partial-signature skips — **retracted (2026-08-12
 empirical)**: probing every upstream signature on the committed tree
