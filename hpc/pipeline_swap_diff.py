@@ -576,6 +576,26 @@ FIXTURE_PLANS = (
         ),
     ),
     FixturePlan(name="domain/ext_finalise_rejected"),
+    # Twisted family (twisted_deform/twisted_full_deform/twisted_KL_sum_at_s
+    # + external (Param,mat) overload; E3 language layer 0cfba0b).
+    # Line alignment: 29 lines/29 events, standard pattern.
+    FixturePlan(
+        name="domain/twisted_family",
+        runnable_lines=(
+            2, 4, 6, 8, 9, 10, 12, 13, 14, 15, 17, 19, 21, 23, 25, 26, 27,
+            28, 29,
+        ),
+        silent_lines=(1, 3, 5, 7, 11, 16, 18, 20, 22, 24),
+    ),
+    FixturePlan(name="domain/twisted_family_rejected"),
+    # block_deform (deform-to-height pair; same E3 slice).
+    # Line alignment: 15 lines/15 events, standard pattern.
+    FixturePlan(
+        name="domain/block_deform",
+        runnable_lines=(2, 4, 6, 8, 10, 11, 12, 13, 14, 15),
+        silent_lines=(1, 3, 5, 7, 9),
+    ),
+    FixturePlan(name="domain/block_deform_rejected"),
     # Early scalar-era fixtures: verified verbatim locally and included so
     # the HPC differential upgrades their reference metadata.
     FixturePlan(name="eval/scalars"),
