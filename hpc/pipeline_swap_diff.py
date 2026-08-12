@@ -531,6 +531,19 @@ FIXTURE_PLANS = (
         silent_lines=(1, 3, 5, 7, 9, 12, 14, 16, 18, 20, 23, 25, 27, 29, 31),
     ),
     FixturePlan(name="domain/dual_kl_block_rejected"),
+    # print_common_block + print_block(Param) (ab811fa): 31 lines/30
+    # events — print_block(p) at line 19 prints byte-identical text to
+    # the preceding print_common_block(p) and is deduped silent (same
+    # pattern as real_weyl_print). No rejected fixture by documented
+    # design.
+    FixturePlan(
+        name="domain/print_common_block",
+        runnable_lines=(
+            2, 4, 6, 8, 9, 11, 12, 14, 15, 17, 18, 21, 23, 25, 27, 28, 30,
+            31,
+        ),
+        silent_lines=(1, 3, 5, 7, 10, 13, 16, 19, 20, 22, 24, 26, 29),
+    ),
     # Early scalar-era fixtures: verified verbatim locally and included so
     # the HPC differential upgrades their reference metadata.
     FixturePlan(name="eval/scalars"),
