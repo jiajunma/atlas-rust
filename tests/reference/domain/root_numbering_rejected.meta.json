@@ -1,12 +1,14 @@
 {
   "fixture": "domain/root_numbering_rejected",
   "fixture_sha256": "8f49325c8693133bff4f35c4d941a6c52f8697d4e2c3d1521dad6c261170e76d",
-  "rust_status": "pending_hpc_differential",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
   "note": "root_numbering runtime rejections (Illegal root/coroot index, both signs) plus the (RootDatum,int) type conform failure. HPC reference capture 3535636 byte-identical to local pinned-oracle capture (stdout+stderr, all 10 files).",
   "oracle": "atlas",
   "oracle_exit_status": 1,
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "reference_job": "3535636"
+  "reference_job": "3535636",
+  "differential_job": "3537366",
+  "differential_commit": "f253738"
 }

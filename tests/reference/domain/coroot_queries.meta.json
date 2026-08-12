@@ -1,12 +1,14 @@
 {
   "fixture": "domain/coroot_queries",
   "fixture_sha256": "70ad69514bffc84f9c3cf0682c061c9fed802cf7274af0cc9c3c0a123214d080",
-  "rust_status": "pending_hpc_differential",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
   "note": "poscoroots/simple_coroots/two_rho_check/coroot_radical/mod_central_torus_info/adjoint(LieType,bool)/semisimple_rank/reducibility_points on B2/A1 families; SL(2,R) reducibility sample points. HPC reference capture 3535636 byte-identical to local pinned-oracle capture (stdout+stderr, all 10 files).",
   "oracle": "atlas",
   "oracle_exit_status": 0,
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "reference_job": "3535636"
+  "reference_job": "3535636",
+  "differential_job": "3537366",
+  "differential_commit": "f253738"
 }
