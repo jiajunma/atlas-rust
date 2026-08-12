@@ -4,7 +4,62 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
-## Checkpoint - 2026-08-13b (DOMAIN SURFACE CLOSED — 231/231 verified_hpc)
+## Checkpoint - 2026-08-13c (post-closure coverage sweep: 4 latent bugs found and fixed)
+
+The 233/233 verified matrix was NOT the end: a sweep of live arms with
+absent/thin fixture coverage found four real divergences, all fixed,
+all dual-arm byte-verified locally, fixtures pinned:
+
+1. **derived_info/mod_central_torus_info shared arm** (`cfe8420`):
+   (a) the (RootDatum,mat) tuple flattened row-major data into
+   `Matrix::from_columns` (column-major) — displayed the TRANSPOSE,
+   invisible on single-column injectors (the only prior coverage was
+   A1.T1 in coroot_queries); (b) the DerivedTag arm fed adapted_basis
+   coroots-as-rows instead of upstream's coroots-as-columns
+   (prerootdata.cpp:67-82), diverging on adjoint data; (c) the derived
+   datum isogeny was hardcoded SimplyConnected — now classify_isogeny
+   (adjoint B2 stays adjoint, G2 classifies Both). Fixtures
+   domain/derived_info(±).
+2. **integrality_points** (`add126c`): declared [ratvec] instead of
+   upstream's [rat] (atlas-types.w:2268); fractions were not
+   normalised/deduped (2/2 didn't fold into 1/1) nor value-ordered —
+   upstream collects std::set<RatNum> (rootdata.cpp:1508-1527), now
+   BTreeSet<BigRational>; the rank-length precheck
+   (atlas-types.w:1808-1819) was missing entirely.
+3. **dual_KL(Block)** (`37656ac`): the shared raw_KL arm returned the
+   PRIMAL table; upstream raw_dual_KL_wrapper builds
+   Block::build(dual_rf, rf) and maps entries through blocks::dual_map
+   = dual_b.element(b.y(z), b.x(z)) (atlas-types.w:8640-8674,
+   blocks.cpp:1715-1725). The dual_kl_block fixture only exercised the
+   script-level dual_KL_block wrapper, masking this. Fixtures
+   domain/dual_kl_raw(±).
+4. **Identifier ascriptions accepted only primitive types** (`9c8c1ff`):
+   `t : (int,int)` was a syntax error; parser.y:162 allows the full
+   type grammar. Command::Declare now carries a TypeExpr. Named-type
+   ascriptions (`x : MyType`) remain unsupported — the lexer has no
+   type-table token (upstream lexes TYPE_ID contextually); no fixture
+   or basic.at path needs it, recorded as a known limitation. Fixtures
+   eval/declare_types(±).
+
+Also pinned first dedicated coverage for index(Block,KGBElt,KGBElt) and
+to_canonical_fiber(KType) (domain/block_ktype_extras(±)) — both were
+already correct.
+
+**Process lessons**:
+- The differential REFUSES fixtures whose reference metadata is not
+  verified_hpc_reference ("reference metadata is not HPC-verified" in
+  configuration_errors; differential 3542470 failed exactly this way).
+  Sequence is: capture PASS → bump reference_status → THEN differential.
+- Probe harness gotcha: `printf fmt arg - <<<"quit"` replays the format
+  on `-`, emitting ghost lines; always `{ printf '%s\n' ...; echo quit; }`.
+- Audit pattern for matrix display: any `Matrix::from_columns` fed a
+  row-major `.into_iter().flatten()` is a transpose bug; the remaining
+  call sites (941, 2159, 10853) were checked and are correct.
+
+**In flight**: capture 3542509 (dual_kl_raw±); after it passes, one
+differential over the 8 new fixtures upgrades all metas to verified_hpc.
+
+
 
 - **print_partial_block CLOSED — the last contract**: differential
   **3542430** @ 516f8c6 — 228 PASS, 0 FAIL (container_syntax_errors
