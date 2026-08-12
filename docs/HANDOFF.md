@@ -33,6 +33,14 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
      only language-layer registration left (atlas-core).
   6. print_common_block — last; needs srm pool/Rep_table; no rejected
      fixture by documented design.
+- **Completion-criterion audit (2026-08-12)**: LANGUAGE.md matrix rows —
+  all language rows supported; "domain objects" partial = exactly the
+  remaining queue below. Two rows are explicitly deferred OUTSIDE the
+  language-only gate by the doc itself (LANGUAGE.md:66-68): readline
+  completion (TTY) and KL binary file formats (filekl.w is used only by
+  stand-alone utilities; zero interpreter references — no Atlas-language
+  builtin reads/writes KL files). Both need a user decision at
+  completion time; neither blocks the 7-pair queue.
 - **In flight**: agent-47 (E1 ext_param+star crate, exclusive
   atlas-real-group, brief /tmp/slice_e_brief.md, checkpointed
   E1a/E1b/E1c); agent-49 (dual_KL_block language layer, exclusive
