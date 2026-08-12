@@ -4,6 +4,45 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-12a (ext builtins landed; global_KGB landed; differential 3537192 in flight)
+
+- **agent-36 ext three-builtin registration delivered and committed
+  (`9ba51f0`)**: extended_block/raw_ext_KL/partial_extended_KL_block.
+  Acceptance: local replay byte-identical stdout on both fixtures
+  (accepted exit 0, rejected exit 1); rejected stderr differs only by
+  CLI diagnostic framing (established convention) — 9/9 Diagnostic
+  messages match reference events via parse_cli_diagnostics. Three
+  gates clean (230 atlas-core lib tests, clippy -D warnings, fmt).
+  Root causes fixed this run: RealTypeII parity gate in
+  common_block_members (blocks.cpp:914), fiber-relative length
+  normalization for raw_ext_KL stops, entry-fiber truncation for
+  partial_extended_KL_block (ext_kl.cpp:962-963). Soft flags for the
+  differential: parity gate uses entry lambda_rho (not per-element
+  srm); in-fiber condense untested on singular-gamma + high-entry
+  cases; partial KLV from full-block submatrix.
+- **agent-37 global_KGB delivered and committed (`64048ac`)**:
+  crates/atlas-real-group/src/global_kgb.rs (1370 lines) — upstream
+  kgb::global_KGB + kgb_io::print_X layout; render() byte-identical to
+  the three verified print_x reference outputs (SC A1/adj A1/SC B2).
+  339 crate tests pass. Known gaps (deferred): second constructor from
+  a GlobalTitsElement seed, lookup/compact/descent storage, non-id
+  delta base-fiber basis order, semisimple-rank-0 edge (blocked by a
+  weyl_transducer.rs:485 panic in shared infra).
+- **HPC differential 3537192 submitted** (fat, TIMEOUT=3600,
+  ATLAS_DIRTY_TREE=false) covering the two pre-registered ext_block
+  FixturePlans. On 0 FAIL: bump ext_block metas to verified_hpc.
+- **Slice briefs staged**: /tmp/slice_a_brief.md (coroot_queries +
+  root_numbering, 14 items), /tmp/slice_b_brief.md (orbit_ws 4 +
+  poly_surface 8; queue doc corrected — K_type_pol has only the
+  (ParamPol->KTypePol) overload, first/last_term arms are complete and
+  flip-ready), /tmp/slice_c_brief.md (print_gradings + print_real_Weyl
+  + print_blockstabilizer; real_weyl.rs API sufficient).
+- **Dispatched**: agent-40 slice A implementation (exclusive
+  atlas-core); agent-41 atlas-real-group patch (RootSystem
+  min_roots_for/min_coroots_for for slice B + public
+  bourbaki_permutation for slice C — the two crate gaps the briefs
+  identified).
+
 ## Checkpoint - 2026-08-11d (ext references verified; global_KGB crate dispatched)
 
 - **ext_block(+_rejected) references verified**: fixtures + pending
