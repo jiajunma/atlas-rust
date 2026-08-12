@@ -183,6 +183,15 @@ shift_flip 归属 ext_param+star 大切片（~1000-1200 行），不是独立小
 两个 gamma 检查的措辞不同：`"Involution does not fix rational weight"`
 （对 ratvec 参数）vs `"...infinitesimal character"`（对 p 自带 gamma）。
 
+**shift_flip fixture 已入库（2026-08-12, `ca88ac1`）**：
+shift_flip(±rejected)，pending_hpc_reference，HPC 捕获 3539225。
+accepted 侧全部为 false——rank≤2 扫掠 ~1300 次 oracle 调用未找到
+true 情形（上游脚本也从未使用 shift_flip；ext_finalise 的 1s* 翻号
+来自 star finalise 而非纯 shift）。rejected 锁定两条 gamma 检查 +
+test_compatible（"Given transformation is not an involution"）+
+矩阵尺寸 + 参数类型错。注意：flip delta 在 A2 compact inner class
+上被 test_compatible 接受（返回 false）。
+
 ## 5. 其余（REMAINING_BUILTINS.md）
 
 root_expression/root_index/root_permutation（oracle 根编号阻塞）、
