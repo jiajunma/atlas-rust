@@ -42,7 +42,10 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 - **HPC offline + differential 3540635 FAILED (12s)**: "declared
   Atlas-Rust source state does not match the submit checkout". Root
   cause: rsync excludes .git, so HPC HEAD sat at 4f363ef while the job
-  declared DIRTY_TREE=false. Correct flow (hpc/README.md:42-57): push
+  declared DIRTY_TREE=false. Also: **HPC could not fetch — origin used
+  git@github.com and the cluster has no deploy key; origin has been
+  switched to https://github.com/jiajunma/atlas-rust.git (repo is public,
+  https fetch verified working)**. Correct flow (hpc/README.md:42-57): push
   origin → on HPC `git fetch origin && git checkout <sha>` (**HPC git is
   old: `checkout --detach <sha>` fails with "does not take a path
   argument"; plain `git checkout <sha>` works**) → `git status --porcelain
