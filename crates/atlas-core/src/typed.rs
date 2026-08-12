@@ -5498,6 +5498,9 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                     primitive_type(Prim::RealForm),
                 ]),
             ),
+            // print_X_wrapper (atlas-types.w:8999-9008, installed :9124):
+            // global Tits group X* table, unconditional like print_KGB.
+            domain_printer_builtin("print_X", primitive_type(Prim::InnerClass)),
             // print_real_Weyl_wrapper (atlas-types.w:8831-8847, installed
             // :9110-9111) — note the argument order is (RealForm,CartanClass),
             // the reverse of print_gradings.

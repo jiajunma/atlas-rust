@@ -34,12 +34,13 @@ use atlas_real_group::{
     quotient_relation_basis as domain_quotient_relation_basis,
     replace_relation_generators as domain_replace_relation_generators, AdjointFiberBudget,
     BasedRootDatum, BlockDescent, BlockGraph, CartanClassification, CartanClassificationBudget,
-    CartanId, Coweight, ExternalFormOrder, InnerClass, InnerClassLayout, IntegerLatticeBudget,
-    InvolutionId, InvolutionTable, InvolutionTableBudget, KType, KgbGraph, KgbId, KgbStatus, KlPol,
-    KlTable, LatticeInvolution, ModTwoVector, RankFlags, RationalWeight, RealFormPresentation,
-    RealFormSeed, RelationBasis, RelationError, RelationGenerator, RelationMatrix, RepContext,
-    RootId, RootInvolutionData, RootKind, RootSystem, StandardRepr, StrongRealClassification,
-    StructureError, WeakRealFormId, Weight, WeylAction, WeylElement, WeylInterface,
+    CartanId, Coweight, ExternalFormOrder, GlobalKgb, InnerClass, InnerClassLayout,
+    IntegerLatticeBudget, InvolutionId, InvolutionTable, InvolutionTableBudget, KType, KgbGraph,
+    KgbId, KgbStatus, KlPol, KlTable, LatticeInvolution, ModTwoVector, RankFlags, RationalWeight,
+    RealFormPresentation, RealFormSeed, RelationBasis, RelationError, RelationGenerator,
+    RelationMatrix, RepContext, RootId, RootInvolutionData, RootKind, RootSystem, StandardRepr,
+    StrongRealClassification, StructureError, WeakRealFormId, Weight, WeylAction, WeylElement,
+    WeylInterface,
 };
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
@@ -7973,6 +7974,15 @@ pub(crate) fn print_text(
             let form = as_real_form(&arguments[1], span)?;
             print_gradings(context, id, form, span)
         }
+        // print_X_wrapper (atlas-types.w:8999-9008): no checks upstream;
+        // `kgb::global_KGB kgb(G)` builds a fresh InvolutionTable per call.
+        "print_X" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::InnerClass(context)) = &arguments[0] else {
+                return Err(type_error(span, "expected an InnerClass"));
+            };
+            print_x(context, span)
+        }
         // print_real_Weyl_wrapper (atlas-types.w:8831-8847): the checks run
         // in the arm, in the wrapper's wording and order, before the crate
         // print — a foreign external form number would otherwise translate
@@ -8833,6 +8843,25 @@ fn fold_line(line: &str) -> String {
         output.push_str(&line[point..]);
     }
     output
+}
+
+/// print_X_wrapper (atlas-types.w:8999-9008, installed :9124): the global
+/// Tits group X* table of the inner class, unconditional like print_KGB;
+/// upstream builds a fresh InvolutionTable inside `global_KGB kgb(G)`.
+fn print_x(context: &Arc<InnerClassContext>, span: SourceSpan) -> Result<String, Diagnostic> {
+    let mut table = InnerClassContext::fresh_table(context)
+        .map_err(|error| runtime(span, error.to_string()))?;
+    let kgb = GlobalKgb::build(
+        &context.inner_class,
+        &context.classification,
+        &mut table,
+        &INTEGER_BUDGET,
+    )
+    .map_err(|error| runtime(span, error.to_string()))?;
+    Ok(kgb
+        .print_layout()
+        .map_err(|error| runtime(span, error.to_string()))?
+        .render())
 }
 
 /// print_gradings_wrapper (atlas-types.w:4260-4300): the guard clauses are
