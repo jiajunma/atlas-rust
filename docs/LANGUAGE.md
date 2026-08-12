@@ -37,8 +37,8 @@ differential report naming the job.
 | exceptions and runtime errors | supported | B12 + rejected companions across all slices; `3501467`, `3501643` |
 | Atlas commands and batch files | supported | B7 forget/die, B9 redirect, B10 include, B13 dont, showall, quit, set quiet/verbose; `3501467`, `3501643`, `3506272` |
 | interactive input and completion | partial | TTY banner/prompt implemented; readline completion remains pending |
-| domain objects and mathematical operations | partial | 86 of 86 frozen domain contracts verified: display `3501467`, root_coroot/kgb_generation `3501555`, real_group `3501779`, kgb_operations/tits_operations `3501870`, grading `3501915`, weyl_element `3502034`, cartan_aggregation `3502126`, seed_x0 `3502176`, involution_table `3502272`, adjoint_fiber `3502318`, real_form_labels `3502375`, relations `3502506`, involution_decomposition `3502550`, weak_real_form `3502697`/`3502969`, strong_real `3502718`/`3502731`/`3502736`, block `3503231`, involution_primitive `3503322`, ktype/param family `3506258`, non-final pol expansion `3506331`, pol arithmetic `3506368`, KGP_sum `3506387`, K_type_formula `3506400`, branch `3506410`, param_pol_ops `3506433`, param_transforms `3506622` |
-| KL and file formats | planned | explicit filekl adapter coupled to the pending Block/KL math layer |
+| domain objects and mathematical operations | partial | 139 of 150 domain contracts verified_hpc (from display `3501467` through block/KL/param-transforms/ext slices; latest: print_gradings/real_weyl_print `3538976`, print_X `3540739`). Remaining 11 pending_hpc_differential: dual_kl_block(±) — differential 3541634 in flight; print_common_block, ext_finalise(±), twisted_family(±), block_deform(±), shift_flip(±) — implementations in flight, see docs/HANDOFF.md |
+| KL and file formats | planned | filekl.w is used only by stand-alone utilities; zero interpreter references — no Atlas-language builtin reads/writes KL binary files. Deferred outside the language-only gate pending a user decision (HANDOFF 2026-08-12b) |
 
 No row moves to `supported` merely because Rust compiles. It needs a reference
 corpus, Rust implementation, and HPC differential report.
@@ -54,18 +54,22 @@ covered by direct CLI/session checks. The eval family is complete through
 `split_basic` (`3502718`), and the 21 legacy command/eval contracts
 (declarations, assignments, let, containers, subscriptions, slices, exact
 bignum numerics, name/type rejections, error recovery) are verified by
-`3503356`. The domain layer is now complete: all 77 frozen domain
-contracts are verified, the last six — the K-type/standard-parameter
-family (`ktype_basic{,_rejected}`, `param_basic{,_rejected}`,
-`ktypepol_basic`, `parampol_basic`) — by differential `3506258` on top of
-the Rep_context crate milestone. The two last legacy contracts — the
-`set quiet`/`set verbose` option commands with the verbose trace
-(`lex/basic`) and the unterminated-string lexical recovery
-(`negative/unterminated_string`) — are verified by differential
-`3506272`; every frozen contract from the 2026-07-31 checkpoint is now
-landed. Readline completion and KL binary formats remain outside the
-language-only gate because they depend on the unfinished Block/KL domain
-values (`deform`, `finals_for`/`expand_final`, filekl).
+`3503356`. The 77 frozen domain contracts of the 2026-07-31 checkpoint
+are all verified (the last six — the K-type/standard-parameter family —
+by differential `3506258`; the two last legacy contracts by `3506272`).
+Since then the block/KL/extended-parameter wave landed: block
+(`3503231`), strong_real, branch, KGP_sum, K_type_formula,
+param_transforms, ext_block/ext_KL family (`3537192`),
+print_gradings/real_weyl_print (`3538976`), and print_X (`3540739`).
+As of 2026-08-12, 219 of 230 fixture contracts across
+{commands,domain,eval,lex,negative,parse} are verified_hpc; the 11
+pending contracts are all domain: dual_kl_block(±) (differential
+`3541634` in flight), print_common_block, ext_finalise(±),
+twisted_family(±), block_deform(±), and shift_flip(±) — see
+docs/HANDOFF.md for the live queue. Readline completion (TTY-only) and
+KL binary file formats (no Atlas-language builtin touches them; filekl.w
+serves stand-alone utilities only) remain deferred outside the
+language-only gate pending a user decision.
 
 ## Source compatibility rules
 
