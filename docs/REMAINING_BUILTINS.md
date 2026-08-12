@@ -1,5 +1,35 @@
 # Remaining builtin coverage (post-language-gate)
 
+## Batch status (2026-08-12)
+
+Landed and verified_hpc since 08-11: ext three-builtin registration
+(extended_block/raw_ext_KL/partial_extended_KL_block, differential
+3537192), slice A (coroot_queries sweep + root numbering family,
+differential 3537366). Slice B (orbit/ladder + poly surface) committed
+`53872bb`, differential 3538136 in flight. Crate additions:
+RootSystem min_roots_for/min_coroots_for + bourbaki_permutation
+(`57049ca`), global_KGB + print_X layout (`64048ac`),
+BlockDescent::dual + BlockGraph::dual (`1e7fcc4`).
+
+New known gap (slice B, agent-43): W_graph/W_cells on a parameter with
+non-integral gamma now builds the common block on the gamma-integral
+root system (lookup_full_block semantics), but imaginary
+compact/noncompact grading for that case is NOT ported — the arm
+raises a loud "not yet supported" error instead of silently producing
+wrong values. No current fixture covers non-integral gamma with
+imaginary roots in the integral system; add coverage when the grading
+port lands.
+
+Slice E recon (agent-45, /tmp/slice_e_brief.md) revised the
+ext_param+star estimate upward: the whole ext_param layer including
+star (ext_block.cpp:990-2280, ~1300 lines C++) is missing from the
+crate — estimated 1400-1800 lines of Rust. Split plan: E1 crate
+ext_param+star core → E2 finalise three-piece set (needs new fixtures
++ HPC probe capture first) → E3 twisted family + block_deform
+(fixtures already verified_hpc_reference). Correction: dual_KL is NOT
+unlocked by BlockGraph::dual — upstream raw_dual_KL_wrapper uses a
+block with swapped real forms + dual_map.
+
 ## Batch status (2026-08-11)
 
 Differential `3533446` PASS (199 fixtures: 198 PASS, 1 known PARTIAL, 0
