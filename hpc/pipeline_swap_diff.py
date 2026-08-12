@@ -509,6 +509,15 @@ FIXTURE_PLANS = (
         ),
     ),
     FixturePlan(name="domain/real_weyl_print_rejected"),
+    # print_X (a2979ad): each print_X call emits one standalone ReportLine;
+    # the three print texts differ so no dedup gap; type ascriptions silent
+    # (alignment pre-analysed against print_x.events.json, 2026-08-12).
+    FixturePlan(
+        name="domain/print_x",
+        runnable_lines=(2, 4, 5, 7, 9, 10, 12, 14, 15),
+        silent_lines=(1, 3, 6, 8, 11, 13),
+    ),
+    FixturePlan(name="domain/print_x_rejected"),
     # Early scalar-era fixtures: verified verbatim locally and included so
     # the HPC differential upgrades their reference metadata.
     FixturePlan(name="eval/scalars"),
