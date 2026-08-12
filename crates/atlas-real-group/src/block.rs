@@ -69,6 +69,24 @@ impl BlockDescent {
         self.index() & 0x4 != 0
     }
 
+    /// Upstream `DescentStatus::dual` (descents.h:74-79): the status of the
+    /// corresponding generator in the dual block — ComplexAscent↔
+    /// ComplexDescent, RealNonparity↔ImaginaryCompact, ImaginaryTypeI↔
+    /// RealTypeII, ImaginaryTypeII↔RealTypeI.
+    pub fn dual(self) -> BlockDescent {
+        const DUAL: [BlockDescent; 8] = [
+            BlockDescent::ComplexDescent,
+            BlockDescent::ImaginaryCompact,
+            BlockDescent::RealTypeII,
+            BlockDescent::RealTypeI,
+            BlockDescent::RealNonparity,
+            BlockDescent::ComplexAscent,
+            BlockDescent::ImaginaryTypeI,
+            BlockDescent::ImaginaryTypeII,
+        ];
+        DUAL[self.index()]
+    }
+
     /// The Atlas-language status code: the renumbering
     /// `tab = {4,5,6,7,1,0,3,2}` of `block_status_wrapper`
     /// (interpreter/atlas-types.w:4911-4913), i.e. 0=C-, 1=ic, 2=r1, 3=r2,
@@ -267,23 +285,7 @@ impl BlockGraph {
         }
 
         // compute_first_zs (blocks.cpp:630-643); x values weakly increase.
-        let xrange = graph.size();
-        let mut first_z_of_x: Vec<usize> = try_capacity(xrange + 1)?;
-        first_z_of_x.resize(xrange + 1, 0);
-        let mut xx = 0_usize;
-        for (z, &x) in xs.iter().enumerate() {
-            while xx < x.index() {
-                xx += 1;
-                first_z_of_x[xx] = z;
-            }
-        }
-        loop {
-            xx += 1;
-            first_z_of_x[xx] = size;
-            if xx >= xrange {
-                break;
-            }
-        }
+        let first_z_of_x = first_zs(&xs, graph.size());
 
         // Cross and Cayley tables (blocks.cpp:565-593).
         let mut cross: Vec<usize> = try_capacity(size * rank.max(1))?;
@@ -372,6 +374,68 @@ impl BlockGraph {
             lengths,
             first_z_of_x,
         })
+    }
+
+    /// Upstream `Bare_block::dual` (gkmod/blocks.cpp:474-509): the block of
+    /// the same two real forms with their roles swapped, a pure data
+    /// transform. Element order reverses (`z' = size-1-z`), the `x`/`y`
+    /// coordinates swap, lengths reflect as `max_len - length(z)` with
+    /// `max_len = length(size-1)`, each descent status maps by
+    /// [`BlockDescent::dual`], and every cross/Cayley link `c` maps to
+    /// `size-1-c` (a Cayley second image is mapped only when the first is
+    /// defined). Upstream's `orbits`/`dd` fields (marked "probably not
+    /// right" there) have no Rust counterpart and are not reproduced.
+    pub fn dual(&self) -> BlockGraph {
+        let rank = self.rank;
+        let size = self.size();
+        let max_len = self.lengths.last().copied().unwrap_or(0);
+
+        let mut xs: Vec<KgbId> = Vec::with_capacity(size);
+        let mut ys: Vec<KgbId> = Vec::with_capacity(size);
+        let mut descent: Vec<BlockDescent> = Vec::with_capacity(size * rank);
+        let mut lengths: Vec<usize> = Vec::with_capacity(size);
+        for z in (0..size).rev() {
+            xs.push(self.ys[z]);
+            ys.push(self.xs[z]);
+            lengths.push(max_len - self.lengths[z]);
+            for generator in 0..rank {
+                descent.push(self.descent[z * rank + generator].dual());
+            }
+        }
+
+        // Cross and Cayley tables, kept in the flat `s * size + z` layout.
+        let mut cross: Vec<usize> = vec![0; size * rank];
+        let mut cayley_first: Vec<Option<usize>> = vec![None; size * rank];
+        let mut cayley_second: Vec<Option<usize>> = vec![None; size * rank];
+        for generator in 0..rank {
+            for z in (0..size).rev() {
+                let source = generator * size + z;
+                let target = generator * size + (size - 1 - z);
+                cross[target] = size - 1 - self.cross[source];
+                if let Some(first) = self.cayley_first[source] {
+                    cayley_first[target] = Some(size - 1 - first);
+                    if let Some(second) = self.cayley_second[source] {
+                        cayley_second[target] = Some(size - 1 - second);
+                    }
+                }
+            }
+        }
+
+        // Upstream sizes the dual's x-range as `max_y + 1`.
+        let xrange = xs.iter().map(|x| x.index() + 1).max().unwrap_or(0);
+        let first_z_of_x = first_zs(&xs, xrange);
+
+        BlockGraph {
+            rank,
+            xs,
+            ys,
+            descent,
+            cross,
+            cayley_first,
+            cayley_second,
+            lengths,
+            first_z_of_x,
+        }
     }
 
     pub fn size(&self) -> usize {
@@ -632,6 +696,26 @@ fn descents(
             }
         }
     }
+}
+
+/// Upstream `compute_first_zs` (blocks.cpp:630-643): for each `x` the first
+/// block element with `x(z) >= x`, with a size sentinel; `xs` values weakly
+/// increase. The result has length `xrange + 1`.
+fn first_zs(xs: &[KgbId], xrange: usize) -> Vec<usize> {
+    let size = xs.len();
+    let mut first_z_of_x = vec![0; xrange + 1];
+    let mut xx = 0_usize;
+    for (z, &x) in xs.iter().enumerate() {
+        while xx < x.index() {
+            xx += 1;
+            first_z_of_x[xx] = z;
+        }
+    }
+    while xx < xrange {
+        xx += 1;
+        first_z_of_x[xx] = size;
+    }
+    first_z_of_x
 }
 
 /// Upstream `Block::element` (blocks.cpp:242-248) on bare tables.
@@ -909,5 +993,173 @@ mod tests {
         assert_eq!(block.inverse_cayley(1, 0), Some((Some(0), None)));
         assert_eq!(block.inverse_cayley(2, 0), Some((Some(0), None)));
         assert_eq!(block.cross(0, 0), Some(0));
+    }
+
+    /// The two A1 blocks of the fixtures above: block(SL(2,R), PGL(2,R)) and
+    /// block(PGL(2,R), SL(2,R)).
+    fn a1_blocks() -> (BlockGraph, BlockGraph) {
+        let mut primal = pipeline(sc_a1_datum(), 2, 2);
+        let (graph, table) = graph_with_size(&mut primal, 3);
+        let dual_class = crate::dual::dual_inner_class(&primal.inner_class, 2, 64).unwrap();
+        let mut dual = pipeline_with_class(dual_class.clone(), 2);
+        let (dual_graph, dual_table) = graph_with_size(&mut dual, 2);
+        let block = BlockGraph::build(
+            &graph,
+            &table,
+            &dual_graph,
+            &dual_table,
+            &dual.inner_class,
+            2,
+        )
+        .unwrap();
+
+        let adjoint = BasedRootDatum::standard(vec![vec![2]]).unwrap();
+        let mut dual_primal = pipeline(adjoint, 2, 2);
+        let (graph, table) = graph_with_size(&mut dual_primal, 2);
+        let dual_class = crate::dual::dual_inner_class(&dual_primal.inner_class, 2, 64).unwrap();
+        let mut dual = pipeline_with_class(dual_class.clone(), 2);
+        let (dual_graph, dual_table) = graph_with_size(&mut dual, 3);
+        let dual_block = BlockGraph::build(
+            &graph,
+            &table,
+            &dual_graph,
+            &dual_table,
+            &dual.inner_class,
+            2,
+        )
+        .unwrap();
+        (block, dual_block)
+    }
+
+    #[test]
+    fn block_descent_dual_matches_the_upstream_static_table() {
+        // The d[] table of DescentStatus::dual (descents.h:74-79), indexed by
+        // the Value order that BlockDescent::ALL reproduces.
+        use BlockDescent::*;
+        let expected = [
+            (ComplexAscent, ComplexDescent),
+            (RealNonparity, ImaginaryCompact),
+            (ImaginaryTypeI, RealTypeII),
+            (ImaginaryTypeII, RealTypeI),
+            (ImaginaryCompact, RealNonparity),
+            (ComplexDescent, ComplexAscent),
+            (RealTypeII, ImaginaryTypeI),
+            (RealTypeI, ImaginaryTypeII),
+        ];
+        for (value, dual) in expected {
+            assert_eq!(value.dual(), dual);
+            assert_eq!(dual.dual(), value, "dual is an involution");
+        }
+    }
+
+    #[test]
+    fn block_dual_reverses_swaps_and_maps_the_links() {
+        // Bare_block::dual (blocks.cpp:474-509) on block(SL(2,R), PGL(2,R)).
+        let (block, _) = a1_blocks();
+        let dual = block.dual();
+        let size = block.size();
+        assert_eq!(dual.size(), size);
+        assert_eq!(dual.rank(), block.rank());
+        let max_len = block.length(size - 1).unwrap();
+        for z in 0..size {
+            let zd = size - 1 - z;
+            // Element order reverses and the x/y coordinates swap.
+            assert_eq!(dual.x(zd), block.y(z));
+            assert_eq!(dual.y(zd), block.x(z));
+            assert_eq!(dual.length(zd), Some(max_len - block.length(z).unwrap()));
+            for generator in 0..block.rank() {
+                // Descent statuses map pointwise by DescentStatus::dual.
+                assert_eq!(
+                    dual.descent_value(zd, generator),
+                    block.descent_value(z, generator).map(BlockDescent::dual)
+                );
+                // Cross links map to size-1 minus the original image.
+                assert_eq!(
+                    dual.cross(zd, generator),
+                    block.cross(z, generator).map(|c| size - 1 - c)
+                );
+                // The raw Cayley slots map pointwise; the second image only
+                // when the first is defined (blocks.cpp:497-501).
+                let slot = generator * size + z;
+                let dual_slot = generator * size + zd;
+                match block.cayley_first[slot] {
+                    Some(first) => {
+                        assert_eq!(dual.cayley_first[dual_slot], Some(size - 1 - first));
+                        assert_eq!(
+                            dual.cayley_second[dual_slot],
+                            block.cayley_second[slot].map(|second| size - 1 - second)
+                        );
+                    }
+                    None => {
+                        assert_eq!(dual.cayley_first[dual_slot], None);
+                        assert_eq!(dual.cayley_second[dual_slot], None);
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn block_dual_agrees_with_the_natively_built_dual_block() {
+        // block(SL(2,R), PGL(2,R)).dual() against the natively built
+        // block(PGL(2,R), SL(2,R)). The dual transform reverses the element
+        // order while the native build numbers by its own packets, so the
+        // comparison goes through `element` lookup; upstream's dual does
+        // not reorder double-valued Cayley pairs either, so those compare
+        // as unordered sets.
+        let (block, native) = a1_blocks();
+        let dual = block.dual();
+        assert_eq!(dual.size(), native.size());
+        let native_z = |dual_z: usize| {
+            native
+                .element(dual.x(dual_z).unwrap(), dual.y(dual_z).unwrap())
+                .unwrap()
+        };
+        // Unordered pair, mapped into the native numbering before sorting
+        // (the renumbering is not order-preserving).
+        let native_pair = |pair: (Option<usize>, Option<usize>)| {
+            let mut values: Vec<usize> = [pair.0, pair.1]
+                .into_iter()
+                .flatten()
+                .map(native_z)
+                .collect();
+            values.sort_unstable();
+            values
+        };
+        let sorted_pair = |pair: (Option<usize>, Option<usize>)| {
+            let mut values: Vec<usize> = [pair.0, pair.1].into_iter().flatten().collect();
+            values.sort_unstable();
+            values
+        };
+        for z in 0..dual.size() {
+            let nz = native_z(z);
+            assert_eq!(dual.length(z), native.length(nz));
+            for generator in 0..dual.rank() {
+                assert_eq!(
+                    dual.descent_value(z, generator),
+                    native.descent_value(nz, generator)
+                );
+                // The cross link commutes with the renumbering.
+                assert_eq!(
+                    native_z(dual.cross(z, generator).unwrap()),
+                    native.cross(nz, generator).unwrap()
+                );
+                // Cayley and inverse Cayley pairs as unordered sets: the
+                // dual block's images map into the native numbering, the
+                // native block's only need sorting.
+                assert_eq!(
+                    native_pair(dual.cayley(z, generator).unwrap()),
+                    sorted_pair(native.cayley(nz, generator).unwrap())
+                );
+                assert_eq!(
+                    native_pair(dual.inverse_cayley(z, generator).unwrap()),
+                    sorted_pair(native.inverse_cayley(nz, generator).unwrap())
+                );
+            }
+        }
+        // Both blocks cover their full KGB ranges, so dual is a literal
+        // involution here — including the first_z_of_x tables.
+        assert_eq!(block.dual().dual(), block);
+        assert_eq!(native.dual().dual(), native);
     }
 }
