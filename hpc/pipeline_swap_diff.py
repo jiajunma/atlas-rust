@@ -596,6 +596,19 @@ FIXTURE_PLANS = (
         silent_lines=(1, 3, 5, 7, 9),
     ),
     FixturePlan(name="domain/block_deform_rejected"),
+    # print_partial_block / print_partial_common_block (interval blocks;
+    # language arms 6fb1c30 on crate port f11f48a). Line alignment:
+    # 28 lines/24 events — each printer pair on the same param is
+    # byte-identical in the oracle capture, so the consecutive identical
+    # prints merged into single ReportLines in events.json.
+    FixturePlan(
+        name="domain/print_partial_block",
+        runnable_lines=(
+            2, 4, 6, 8, 9, 10, 12, 13, 14, 16, 18, 20, 22, 23, 24, 26, 27,
+            28,
+        ),
+        silent_lines=(1, 3, 5, 7, 11, 15, 17, 19, 21, 25),
+    ),
     # Early scalar-era fixtures: verified verbatim locally and included so
     # the HPC differential upgrades their reference metadata.
     FixturePlan(name="eval/scalars"),
