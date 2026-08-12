@@ -2,22 +2,28 @@
 
 ## Batch status (2026-08-12 late — full reconciliation)
 
-Reconciliation vs upstream atlas-types.w (152 unique install_function
-names, 267 calls): **132 live in typed.rs, 3 skip-only, 8 never
-registered, 9 operator names handled by the operator layer** (`!= # ##
-% * + - / =`).
+Reconciliation vs upstream atlas-types.w (187 unique install_function
+names — count via a multiline-tolerant scan; an earlier strict regex
+undercounted at 152): **170 live in typed.rs, 3 skip-only, 10 never
+registered** (operator names like `!= # ## % * + - / =` are live via
+the operator layer; `classify_involution`/`element`/`index` are live
+via `domain_builtin_validate`, which name-based scans must treat as a
+real registration).
 
-Never registered (all fixtured, in the active queue):
+Never registered:
 - E2: scale_extended, K_type_pol_extended, finalize_extended
 - E3: twisted_deform, twisted_full_deform, twisted_KL_sum_at_s,
   block_deform
 - shift_flip (crate pieces landed with E1 `f12b27b`; language layer
   ~40 lines, brief /tmp/slice_shift_flip_brief.md)
+- print_partial_block, print_partial_common_block (upstream installs
+  them; no fixture yet — fold into the print_common_block slice or a
+  small follow-up)
 
 Skip-only (no fixtures yet — the post-queue tail):
 - KL_block, dual_KL, KL_sum_at_s_to_height
 
-Partial-signature skips (main overload live, these signatures skipped;
+Partial-signature skips (main overload live, these arms skipped;
 no fixtures yet):
 - K_type(Param->KType) typed.rs:5643
 - dual(RootDatum->RootDatum) :4635, dual(Block->Block) :5575
@@ -26,13 +32,15 @@ no fixtures yet):
 - param(KType->Param) :5714
 - real_form(KType->RealForm) :5658, real_form(Param->RealForm) :5730
 - twist(KgbElt->KgbElt) :4875, twist((KgbElt,...)) :4881
+- `#`(Block->int) :5554
 
 After the 11 pending fixture contracts close, the remaining work is:
-fixtures + oracle capture for the 3 skip-only names and the 10 skipped
-overloads above, then implementation + differential. Several are
-conversion-trivial (inner_class(RealForm), real_form(Param/KType),
-dual(RootDatum)); K_type(Param)/param(KType)/twist/involution need
-crate hooks that mostly exist already.
+fixtures + oracle capture for the 3 skip-only names, the 2
+print_partial_* printers, and the 12 skipped overload arms above, then
+implementation + differential. Several are conversion-trivial
+(inner_class(RealForm), real_form(Param/KType), dual(RootDatum));
+K_type(Param)/param(KType)/twist/involution need crate hooks that
+mostly exist already.
 
 ## Batch status (2026-08-12)
 
