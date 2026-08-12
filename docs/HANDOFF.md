@@ -4,6 +4,42 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-13b (DOMAIN SURFACE CLOSED — 231/231 verified_hpc)
+
+- **print_partial_block CLOSED — the last contract**: differential
+  **3542430** @ 516f8c6 — 228 PASS, 0 FAIL (container_syntax_errors
+  PARTIAL is the permanent known item); meta verified_hpc (`989f2df`).
+  Language arms (`6fb1c30`, agent-60): print_partial_block +
+  print_partial_common_block via partial_block_rows helper on the
+  f11f48a crate port; byte-exact replay. Notes from delivery: the
+  "Subset {...}" header branch is unimplemented (requires a cross-call
+  block-cache hit the fresh-build-per-call design never produces —
+  documented in the arm); the brief's header text was wrong (upstream
+  prints init_index, not init_index+1 — moot, no captured case emits a
+  header); the partial path supports arbitrary gamma incl. rank>0
+  non-integral subsystems, exceeding common_block_rows.
+- **Meta scan: 231 verified_hpc, 0 pending.** LANGUAGE.md domain row
+  moved to `supported`. The full upstream install_function surface
+  (187 names) is live and differential-verified.
+- **Remaining open items (none block the language matrix)**:
+  1. readline completion (TTY-only interactive feature) — deferred
+     outside the language-only gate, needs user decision;
+  2. KL binary file formats (filekl.w; zero language builtins touch
+     them) — deferred, needs user decision;
+  3. Known non-blocking hazards on record: print_block(Block)/print_blockd
+     `*` left-align padding (agent-53; no fixture triggers it);
+     typed.rs:5216 KL_block dead skip registration order (harmless);
+     W_graph non-integer gamma imaginary grading not ported (loud
+     error, no fixture); timed twisted_full_deform runtime arm is a
+     loud "not yet implemented" (registration needed for overload
+     wording); proper-integral-subsystem common block is a loud error
+     path (IntegralBlockScope::ProperSubsystem); block_modifier-based
+     common_context ctor not ported (print_partial caveat);
+     alcove_center not ported (denominator > 2^rank → loud error).
+  4. Suggested crate refactor (not required): crate-owned
+     `RepContext::is_fixed_normalised` to replace the language-side
+     shim in domain_builtins.rs (agent-57 note).
+
 ## Checkpoint - 2026-08-13a (ext_finalise closed; E3 language layer landed; print_partial in flight)
 
 - **ext_finalise(±) CLOSED**: differential **3542388** @ 638cfed — 223
