@@ -37,7 +37,7 @@ differential report naming the job.
 | exceptions and runtime errors | supported | B12 + rejected companions across all slices; `3501467`, `3501643` |
 | Atlas commands and batch files | supported | B7 forget/die, B9 redirect, B10 include, B13 dont, showall, quit, set quiet/verbose; `3501467`, `3501643`, `3506272` |
 | interactive input and completion | partial | TTY banner/prompt implemented; readline completion remains pending |
-| domain objects and mathematical operations | partial | 147 of 152 domain contracts verified_hpc (226 of 231 across all categories; from display `3501467` through block/KL/param-transforms/ext/print slices; latest: shift_flip `3541896`, ext_finalise `3542388`). Remaining 5 pending_hpc_differential: twisted_family(±), block_deform(±), print_partial_block — implementations in flight, see docs/HANDOFF.md |
+| domain objects and mathematical operations | partial | 151 of 152 domain contracts verified_hpc (230 of 231 across all categories; from display `3501467` through block/KL/param-transforms/ext/print slices; latest: ext_finalise `3542388`, twisted_family/block_deform `3542417`). Remaining 1 pending_hpc_differential: print_partial_block — implementation in flight, see docs/HANDOFF.md |
 | KL and file formats | planned | filekl.w is used only by stand-alone utilities; zero interpreter references — no Atlas-language builtin reads/writes KL binary files. Deferred outside the language-only gate pending a user decision (HANDOFF 2026-08-12b) |
 
 No row moves to `supported` merely because Rust compiles. It needs a reference
@@ -62,11 +62,12 @@ Since then the block/KL/extended-parameter wave landed: block
 param_transforms, ext_block/ext_KL family (`3537192`),
 print_gradings/real_weyl_print (`3538976`), print_X (`3540739`),
 dual_KL_block (`3541634`), print_common_block (`3541690`),
-shift_flip (`3541896`), and ext_finalise (`3542388`).
-As of 2026-08-13, 226 of 231 fixture contracts across
-{commands,domain,eval,lex,negative,parse} are verified_hpc; the 5
-pending contracts are all domain: twisted_family(±), block_deform(±),
-and print_partial_block — see docs/HANDOFF.md for the live queue. Readline completion (TTY-only) and
+shift_flip (`3541896`), ext_finalise (`3542388`), and
+twisted_family/block_deform (`3542417`).
+As of 2026-08-13, 230 of 231 fixture contracts across
+{commands,domain,eval,lex,negative,parse} are verified_hpc; the last
+pending contract is domain/print_partial_block (language layer in
+flight) — see docs/HANDOFF.md for the live queue. Readline completion (TTY-only) and
 KL binary file formats (no Atlas-language builtin touches them; filekl.w
 serves stand-alone utilities only) remain deferred outside the
 language-only gate pending a user decision.
