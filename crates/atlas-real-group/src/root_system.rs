@@ -69,6 +69,74 @@ impl RootSystemBudget {
     }
 }
 
+/// A set of root IDs stored as a bitset over the stable root order.
+///
+/// This is the crate's analogue of the upstream `RootNbrSet` bitmap: ladder
+/// tables such as [`RootSystem::min_roots_for`] are precomputed per root and
+/// shared by reference, so the set itself stays a read-only value.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct RootSet {
+    blocks: Vec<u64>,
+    len: usize,
+}
+
+impl RootSet {
+    /// An empty set over a universe of `count` root IDs.
+    fn with_capacity(count: usize) -> Result<Self, StructureError> {
+        let block_count = count.div_ceil(64);
+        let mut blocks = Vec::new();
+        blocks
+            .try_reserve_exact(block_count)
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: block_count,
+            })?;
+        blocks.resize(block_count, 0);
+        Ok(Self { blocks, len: 0 })
+    }
+
+    fn insert(&mut self, id: RootId) {
+        let block = id.0 / 64;
+        let bit = id.0 % 64;
+        if self.blocks[block] & (1u64 << bit) == 0 {
+            self.blocks[block] |= 1u64 << bit;
+            self.len += 1;
+        }
+    }
+
+    /// Whether `id` is a member.
+    pub fn contains(&self, id: RootId) -> bool {
+        self.blocks
+            .get(id.0 / 64)
+            .is_some_and(|block| block & (1u64 << (id.0 % 64)) != 0)
+    }
+
+    /// Number of members.
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    /// Whether the set is empty.
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
+    /// Members in ascending stable root order.
+    pub fn iter(&self) -> impl Iterator<Item = RootId> + '_ {
+        self.blocks
+            .iter()
+            .enumerate()
+            .flat_map(|(block_index, &block)| {
+                (0..64).filter_map(move |bit| {
+                    if block & (1u64 << bit) != 0 {
+                        Some(RootId(block_index * 64 + bit))
+                    } else {
+                        None
+                    }
+                })
+            })
+    }
+}
+
 /// The finite ordinary root system generated from a based root datum.
 ///
 /// Roots, coroots, and simple-root coordinates are index-aligned under
@@ -91,6 +159,13 @@ pub struct RootSystem {
     /// Stable IDs of the simple roots in generator order, so descent
     /// queries need no per-call binary search.
     simple_ids: Vec<RootId>,
+    /// Ladder-bottom sets per root, precomputed like the upstream
+    /// `RootSystem` constructor's `d_minRoots`/`d_minCoroots` tables
+    /// (rootdata.h:154-157): `min_roots[alpha]` flags every root `beta`
+    /// for which `beta - alpha` is not a root, `min_coroots[alpha]` the
+    /// same relation on the paired coroots.
+    min_roots: Vec<RootSet>,
+    min_coroots: Vec<RootSet>,
 }
 
 impl RootSystem {
@@ -197,6 +272,7 @@ impl RootSystem {
                 })?;
             simple_ids.push(id);
         }
+        let (min_roots, min_coroots) = build_ladder_bottoms(&roots, &coroots)?;
         Ok(Self {
             datum,
             roots,
@@ -204,6 +280,8 @@ impl RootSystem {
             simple_coordinates,
             positive,
             simple_ids,
+            min_roots,
+            min_coroots,
         })
     }
 
@@ -297,6 +375,93 @@ impl RootSystem {
             .ok()
             .map(RootId)
     }
+
+    /// Ladder-bottom roots for `alpha`: every root `beta` such that
+    /// `beta - alpha` is not a root (`alpha` itself included), in the
+    /// stable root order. This is the upstream `RootSystem::min_roots_for`
+    /// relation (rootdata.h:270-271) behind `root_ladder_bottoms`.
+    pub fn min_roots_for(&self, alpha: RootId) -> Option<&RootSet> {
+        self.min_roots.get(alpha.0)
+    }
+
+    /// Ladder-bottom coroots for `alpha`, the [`RootSystem::min_roots_for`]
+    /// relation transported to the paired coroots (upstream
+    /// `min_coroots_for`, rootdata.h:272-273): `beta` is flagged exactly
+    /// when `coroot(beta) - coroot(alpha)` is not a coroot.
+    pub fn min_coroots_for(&self, alpha: RootId) -> Option<&RootSet> {
+        self.min_coroots.get(alpha.0)
+    }
+}
+
+/// Precompute both ladder-bottom tables: `min_roots[alpha]` flags `beta`
+/// when `roots[beta] - roots[alpha]` is not a root, and `min_coroots`
+/// likewise on coroot coordinates. Root membership binary-searches the
+/// sorted `roots`; coroots are unsorted (they follow the root order), so a
+/// coordinate map is built once.
+fn build_ladder_bottoms(
+    roots: &[Weight],
+    coroots: &[Coweight],
+) -> Result<(Vec<RootSet>, Vec<RootSet>), StructureError> {
+    let count = roots.len();
+    let mut coroot_ids: BTreeMap<&[i32], usize> = BTreeMap::new();
+    for (index, coroot) in coroots.iter().enumerate() {
+        coroot_ids.insert(coroot.as_slice(), index);
+    }
+    let mut min_roots = Vec::new();
+    min_roots
+        .try_reserve_exact(count)
+        .map_err(|_| StructureError::AllocationFailed { requested: count })?;
+    let mut min_coroots = Vec::new();
+    min_coroots
+        .try_reserve_exact(count)
+        .map_err(|_| StructureError::AllocationFailed { requested: count })?;
+    let mut difference = Vec::new();
+    for alpha in 0..count {
+        let mut root_bottoms = RootSet::with_capacity(count)?;
+        let mut coroot_bottoms = RootSet::with_capacity(count)?;
+        for beta in 0..count {
+            subtract_coordinates(
+                roots[beta].as_slice(),
+                roots[alpha].as_slice(),
+                &mut difference,
+            )?;
+            if roots
+                .binary_search_by(|candidate| candidate.as_slice().cmp(difference.as_slice()))
+                .is_err()
+            {
+                root_bottoms.insert(RootId(beta));
+            }
+            subtract_coordinates(
+                coroots[beta].as_slice(),
+                coroots[alpha].as_slice(),
+                &mut difference,
+            )?;
+            if !coroot_ids.contains_key(difference.as_slice()) {
+                coroot_bottoms.insert(RootId(beta));
+            }
+        }
+        min_roots.push(root_bottoms);
+        min_coroots.push(coroot_bottoms);
+    }
+    Ok((min_roots, min_coroots))
+}
+
+/// `out = left - right` entrywise, with checked subtraction.
+fn subtract_coordinates(
+    left: &[i32],
+    right: &[i32],
+    out: &mut Vec<i32>,
+) -> Result<(), StructureError> {
+    debug_assert_eq!(left.len(), right.len());
+    out.clear();
+    out.try_reserve_exact(left.len())
+        .map_err(|_| StructureError::AllocationFailed {
+            requested: left.len(),
+        })?;
+    for (&a, &b) in left.iter().zip(right) {
+        out.push(a.checked_sub(b).ok_or(StructureError::ArithmeticOverflow)?);
+    }
+    Ok(())
 }
 
 /// One closure record: a root key with its paired coroot and simple-root
@@ -635,6 +800,130 @@ mod tests {
             roots.coroot(negative).unwrap(),
             &Coweight::new(vec![-2, -1])
         );
+    }
+
+    /// Members of a ladder-bottom set as root coordinate vectors, sorted.
+    fn ladder_member_vectors(roots: &RootSystem, set: &RootSet) -> Vec<Vec<i32>> {
+        let mut members: Vec<Vec<i32>> = set
+            .iter()
+            .map(|id| roots.root(id).unwrap().as_slice().to_vec())
+            .collect();
+        members.sort();
+        members
+    }
+
+    // The expected sets below pin the upstream `root_ladder_bottoms` probe
+    // values (slice-B fixtures, HPC capture 3535636). Atlas signed root
+    // numbers are translated through the upstream positive-root order,
+    // which for `simply_connected(B2, prefer_coroots=true)` follows the
+    // dual system's generation order: B2 positives are
+    // ri = [1,0], [0,1], [1,2], [1,1] and signed -k is -ri[k-1].
+    #[test]
+    fn b2_min_roots_match_the_oracle_ladder_bottoms() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -2], vec![-1, 2]]).unwrap();
+        let roots = RootSystem::enumerate(&datum, 8).unwrap();
+        // Atlas root 0 = ri[0] = [1,0]: oracle `[-4,-3,-1,0,1,2]`, i.e.
+        // {ri0, ri1, ri2, -ri0, -ri2, -ri3}.
+        let alpha = roots.id_of(&Weight::new(vec![1, 0])).unwrap();
+        let expected = [
+            vec![-1, -2],
+            vec![-1, -1],
+            vec![-1, 0],
+            vec![0, 1],
+            vec![1, 0],
+            vec![1, 2],
+        ];
+        assert_eq!(
+            ladder_member_vectors(&roots, roots.min_roots_for(alpha).unwrap()),
+            expected
+        );
+    }
+
+    #[test]
+    fn b2_min_coroots_match_the_oracle_ladder_bottoms() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -2], vec![-1, 2]]).unwrap();
+        let roots = RootSystem::enumerate(&datum, 8).unwrap();
+        // Atlas coroot 0 (paired with ri[0] = [1,0]): oracle `[-4,-1,0,1]`,
+        // i.e. {ri0, ri1, -ri0, -ri3}; members are identified by their roots.
+        let alpha = roots.id_of(&Weight::new(vec![1, 0])).unwrap();
+        let expected = [vec![-1, -1], vec![-1, 0], vec![0, 1], vec![1, 0]];
+        assert_eq!(
+            ladder_member_vectors(&roots, roots.min_coroots_for(alpha).unwrap()),
+            expected
+        );
+    }
+
+    // For `adjoint(G2, prefer_coroots=false)` the upstream positive-root
+    // order is plain generation order on the transposed lietype Cartan:
+    // ri = [1,0], [0,1], [1,1], [2,1], [3,1], [3,2].
+    #[test]
+    fn g2_min_roots_match_the_oracle_ladder_bottoms() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-3, 2]]).unwrap();
+        let roots = RootSystem::enumerate(&datum, 12).unwrap();
+        // Atlas root 5 = ri[5] = [3,2] (highest root): oracle
+        // `[-6,-5,-4,-3,-2,-1,0,5]`, i.e. ri0 and ri5 plus every negative.
+        let alpha = roots.id_of(&Weight::new(vec![3, 2])).unwrap();
+        let expected = [
+            vec![-3, -2],
+            vec![-3, -1],
+            vec![-2, -1],
+            vec![-1, -1],
+            vec![-1, 0],
+            vec![0, -1],
+            vec![1, 0],
+            vec![3, 2],
+        ];
+        assert_eq!(
+            ladder_member_vectors(&roots, roots.min_roots_for(alpha).unwrap()),
+            expected
+        );
+    }
+
+    #[test]
+    fn ladder_bottoms_match_brute_force_subtraction() {
+        for datum in [
+            BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap(),
+            BasedRootDatum::standard(vec![vec![2, -2], vec![-1, 2]]).unwrap(),
+            BasedRootDatum::standard(vec![vec![2, -1], vec![-3, 2]]).unwrap(),
+        ] {
+            let roots = RootSystem::enumerate(&datum, 12).unwrap();
+            for (alpha, _, _) in roots.entries() {
+                let min_roots = roots.min_roots_for(alpha).unwrap();
+                let min_coroots = roots.min_coroots_for(alpha).unwrap();
+                assert_eq!(min_roots.len(), min_roots.iter().count());
+                for (beta, _, _) in roots.entries() {
+                    let root_expected =
+                        !matches!(combine_roots(&roots, beta, alpha, true), Ok(Some(_)));
+                    assert_eq!(min_roots.contains(beta), root_expected);
+                    let difference: Vec<i32> = roots
+                        .coroot(beta)
+                        .unwrap()
+                        .as_slice()
+                        .iter()
+                        .zip(roots.coroot(alpha).unwrap().as_slice())
+                        .map(|(&a, &b)| a - b)
+                        .collect();
+                    let coroot_expected = !roots
+                        .entries()
+                        .any(|(_, _, coroot)| coroot.as_slice() == difference);
+                    assert_eq!(min_coroots.contains(beta), coroot_expected);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn ladder_bottoms_reject_an_out_of_range_id() {
+        let roots = RootSystem::enumerate(&a2(), 6).unwrap();
+        assert_eq!(roots.min_roots_for(RootId(6)), None);
+        assert_eq!(roots.min_coroots_for(RootId(6)), None);
+    }
+
+    #[test]
+    fn a_pure_torus_has_empty_ladder_tables() {
+        let datum = BasedRootDatum::from_simple_data(3, vec![], vec![], vec![]).unwrap();
+        let roots = RootSystem::enumerate(&datum, 0).unwrap();
+        assert_eq!(roots.min_roots_for(RootId(0)), None);
     }
 
     #[test]

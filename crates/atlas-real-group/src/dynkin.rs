@@ -320,6 +320,19 @@ fn classify_component(
     })
 }
 
+/// The permutation from the datum's simple-root order to the Bourbaki
+/// order of the classified type (upstream `DynkinDiagram::perm()`,
+/// structure/dynkin.cpp:289-295): the concatenation of each component's
+/// `position` list, so `result[i]` is the datum vertex taking Bourbaki
+/// position `i`. The language layer needs it to print gradings in
+/// Bourbaki numbering.
+pub fn bourbaki_permutation(cartan: &[Vec<i32>]) -> Result<Vec<usize>, StructureError> {
+    Ok(classify(cartan)?
+        .iter()
+        .flat_map(|component| component.position.iter().copied())
+        .collect())
+}
+
 /// The Cartan matrix of the diagram folded by a `delta`-orbit list of
 /// simple generators (upstream `DynkinDiagram::folded`,
 /// structure/dynkin.cpp:222-261, computed here via the `cofold` Cartan
@@ -479,5 +492,34 @@ mod tests {
         let comps = classify(&cartan).unwrap();
         assert_eq!(letters(&comps), "AA");
         assert_eq!(positions(&comps), vec![0, 1, 2]);
+    }
+
+    #[test]
+    fn bourbaki_permutation_straightens_permuted_diagrams() {
+        // A3 relabeled by [1, 0, 2]: vertex 0 becomes the middle of the
+        // chain, so the Bourbaki order is non-trivial.
+        let a3 = vec![vec![2, -1, -1], vec![-1, 2, 0], vec![-1, 0, 2]];
+        assert_eq!(bourbaki_permutation(&a3).unwrap(), vec![1, 0, 2]);
+
+        // D4 relabeled by [0, 2, 1, 3]: the fork moves from vertex 1 to
+        // vertex 2 (triality makes extremity relabeling invisible).
+        let d4 = vec![
+            vec![2, 0, -1, 0],
+            vec![0, 2, -1, 0],
+            vec![-1, -1, 2, -1],
+            vec![0, 0, -1, 2],
+        ];
+        assert_eq!(bourbaki_permutation(&d4).unwrap(), vec![0, 2, 1, 3]);
+    }
+
+    #[test]
+    fn bourbaki_permutation_is_trivial_on_canonical_rank_two() {
+        // B2/C2 in canonical order have no visible diagram automorphism.
+        let b2 = vec![vec![2, -2], vec![-1, 2]];
+        assert_eq!(bourbaki_permutation(&b2).unwrap(), vec![0, 1]);
+        let c2 = vec![vec![2, -1], vec![-2, 2]];
+        assert_eq!(bourbaki_permutation(&c2).unwrap(), vec![0, 1]);
+        let empty: Vec<Vec<i32>> = vec![];
+        assert_eq!(bourbaki_permutation(&empty).unwrap(), Vec::<usize>::new());
     }
 }

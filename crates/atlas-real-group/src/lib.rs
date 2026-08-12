@@ -77,6 +77,7 @@ pub use cayley_cross::CayleyCrossDecomposition;
 pub use dual::{
     dual_cartan_correspondence, dual_datum, dual_inner_class, dual_real_form_count, longest_action,
 };
+pub use dynkin::bourbaki_permutation;
 pub use error::StructureError;
 pub use form_name::form_type_name;
 pub use global_kgb::{GlobalKgb, GlobalKgbPrint, GlobalKgbPrintRow};
@@ -113,7 +114,7 @@ pub use rep_context::{RepContext, StandardRepr};
 pub use restricted_roots::{RestrictedRoot, RestrictedRootSystem, RestrictedWeight};
 pub use root_datum::BasedRootDatum;
 pub use root_involution::{RootInvolutionData, RootKind};
-pub use root_system::{RootId, RootSystem, RootSystemBudget};
+pub use root_system::{RootId, RootSet, RootSystem, RootSystemBudget};
 pub use strong_real::{
     central_fiber, strong_real_class_prints, SquareClassId, StrongRealClassPrint,
     StrongRealClassification, StrongRealData, StrongRealFormRep,
