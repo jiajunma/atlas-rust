@@ -47,17 +47,27 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   → 1*p); ProperSubsystem must be a loud runtime error;
   alcove_center not ported (NotYetImplemented when
   gamma.denominator() > 2^rank — fixtures never trigger).
+- **print_partial crate port landed (`f11f48a`, agent-58)**: new
+  partial_block.rs — StandardReprMod, IntegralSubsystem (upstream
+  generator-order re-sort fix for B2), CommonContext srm-level
+  cross/is_parity/down_cayley/up_cayley, bruhat_below interval
+  generator, PartialBlock::build+sort, singular_flags/survives. 392
+  crate tests (5 new replaying print_partial_block oracle rows: x-sets,
+  descents, cross/Cayley links, lengths, gamma_lambdas). Language call
+  path documented in the module (mod_reduce → CommonContext::integral →
+  bruhat_below → PartialBlock::build → singular_flags). Caveat: only
+  the gamma-based common_context ctor ported; the block_modifier-based
+  one (repr.cpp:2672-2677) is not — irrelevant for the current fixture.
 - **In flight**: agent-57 (E2 language layer: scale_extended/
-  K_type_pol_extended/finalize_extended, atlas-core); agent-58
-  (print_partial Bruhat_below crate port, atlas-real-group, brief
-  /tmp/slice_ppb_brief.md).
+  K_type_pol_extended/finalize_extended, atlas-core).
 - **Queue**: (1) agent-57 delivery → ext_finalise FixturePlan (snippet
-  in queue doc) + differential; (2) agent-58 delivery → print_partial
-  language arms (render reuses pcb's render_common_block) → FixturePlan
-  + differential; (3) E3 language layer (brief /tmp/slice_e3_brief.md)
-  → twisted_family + block_deform differentials; (4) final matrix audit
-  + user decision on the two documented exclusions (readline completion
-  TTY-only; KL binary file formats).
+  in queue doc) + differential; (2) E3 language layer (brief
+  /tmp/slice_e3_brief.md) → twisted_family + block_deform
+  differentials; (3) print_partial language arms (render reuses pcb's
+  render_common_block; call path in partial_block.rs docs) →
+  FixturePlan + differential; (4) final matrix audit + user decision on
+  the two documented exclusions (readline completion TTY-only; KL
+  binary file formats).
 
 ## Checkpoint - 2026-08-12e (dual_KL verified; pcb landed; E2 crate landed; skip-tail retracted)
 
