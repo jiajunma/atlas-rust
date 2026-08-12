@@ -4,6 +4,46 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-12b (slice C closed; final queue is 6 fixture pairs)
+
+- **Slice C closed (`f612507`)**: differential **3538976** (commit
+  d19090a) — 215 fixtures, 0 FAIL (container_syntax_errors PARTIAL is
+  the permanent known item). print_gradings/print_gradings_rejected/
+  real_weyl_print/real_weyl_print_rejected bumped to verified_hpc.
+  Note: print_blockstabilizer was folded into the print_gradings
+  fixture; no separate fixture exists.
+- **ext_finalise(+_rejected) reference verified**: HPC capture
+  **3538977** byte-identical to local pinned-oracle captures
+  (stdout+stderr, all 4 files); metas bumped to
+  verified_hpc_reference. rust_status stays pending_hpc_differential
+  until the E1 crate lands (scale_extended/K_type_pol_extended/
+  finalize_extended need ext_param + star).
+- **Remaining queue — every remaining fixture already has
+  verified_hpc_reference; only rust implementation + differential
+  left** (6 pairs):
+  1. dual_kl_block (±rejected) — agent-49 in flight (atlas-core).
+     Crate dual landed 1e7fcc4. Pitfall: typed.rs KL_block skip
+     registration return order is misaligned with upstream; new arms
+     must follow upstream `([Param],int,mat,[vec])` order.
+  2. block_deform (±rejected) — E3, blocked on E1 crate.
+  3. twisted_family (±rejected) — E3, blocked on E1 crate.
+  4. ext_finalise (±rejected) — E2, blocked on E1 crate.
+  5. print_x (±rejected) — global_KGB crate landed 64048ac
+     (GlobalKgbPrint::render() byte-identical to the 3 references);
+     only language-layer registration left (atlas-core).
+  6. print_common_block — last; needs srm pool/Rep_table; no rejected
+     fixture by documented design.
+- **In flight**: agent-47 (E1 ext_param+star crate, exclusive
+  atlas-real-group, brief /tmp/slice_e_brief.md, checkpointed
+  E1a/E1b/E1c); agent-49 (dual_KL_block language layer, exclusive
+  atlas-core, brief /tmp/slice_d_brief.md). Both resumed at ~16:25
+  with 2h timeouts; on timeout resume the same agent id.
+- Per-slice closure recipe unchanged: three gates → local replay
+  byte-compare → commit → register FixturePlan (watch print-fixture
+  line/event alignment, silent_lines pattern from d19090a) → rsync +
+  archive + sbatch fat differential (ATLAS_DIRTY_TREE=false) → on
+  0 FAIL bump metas.
+
 ## Checkpoint - 2026-08-12a (ext builtins landed; global_KGB landed; differential 3537192 in flight)
 
 - **agent-36 ext three-builtin registration delivered and committed
