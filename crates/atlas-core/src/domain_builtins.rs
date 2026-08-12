@@ -26,7 +26,7 @@ use atlas_real_group::ext_block::ExtBlock;
 use atlas_real_group::ext_kl::ExtKlTable;
 use atlas_real_group::{
     adapted_basis, adapted_relation_basis, annihilator_modulo as relation_annihilator_modulo,
-    build_presentations, central_fiber, checked_inner_class_letters,
+    bourbaki_permutation, build_presentations, central_fiber, checked_inner_class_letters,
     classify_involution as domain_classify_involution, dual_cartan_correspondence,
     dual_inner_class, dual_involution as block_dual_involution, elected_square_root, fiber_rank,
     filter_relation_units as domain_filter_relation_units, inner_class_with_twisted_involution,
@@ -1669,21 +1669,24 @@ fn classification_cached(
     Ok(classification)
 }
 
-fn build_inner_class_context(
-    handle: &RootDatumHandle,
-    inner_class: InnerClass,
-    span: SourceSpan,
-) -> Result<Arc<InnerClassContext>, Diagnostic> {
-    let class_budget = CartanClassificationBudget::new(
+/// The session-constant Cartan classification budget, shared by the inner
+/// class pipeline and the ad-hoc dual fiber chains of the RealWeyl prints.
+fn cartan_classification_budget() -> CartanClassificationBudget {
+    CartanClassificationBudget::new(
         INTEGER_BUDGET,
         AdjointFiberBudget::new(INTEGER_BUDGET, 1_000_000, 10_000_000),
         WEYL_BUDGET,
         4_096,
         4_096,
-    );
-    let _t_a = std::time::Instant::now();
-    let _t_a = std::time::Instant::now();
-    let _t_a = std::time::Instant::now();
+    )
+}
+
+fn build_inner_class_context(
+    handle: &RootDatumHandle,
+    inner_class: InnerClass,
+    span: SourceSpan,
+) -> Result<Arc<InnerClassContext>, Diagnostic> {
+    let class_budget = cartan_classification_budget();
     let classification = classification_cached(&inner_class, &class_budget, span)?;
     let strong = StrongRealClassification::build(&classification, FIBER_BUDGET)
         .map_err(|error| runtime(span, error.to_string()))?;
@@ -1696,10 +1699,8 @@ fn build_inner_class_context(
     // dual class (upstream dual InnerClass constructor, innerclass.cpp:435).
     let dual_inner = dual_inner_class(&inner_class, WEYL_BUDGET, ROOT_BUDGET)
         .map_err(|error| runtime(span, error.to_string()))?;
-    let _t_b = std::time::Instant::now();
     let dual_classification = classification_cached(&dual_inner, &class_budget, span)?;
     let dual_form_count = dual_classification.weak_real_form_count();
-    let _t_dc = std::time::Instant::now();
     let dual_cartans = dual_cartan_correspondence(
         &inner_class,
         &classification,
@@ -7667,6 +7668,32 @@ pub(crate) fn print_text(
             let (context, id) = as_cartan_class(&arguments[0], span)?;
             print_strong_real(context, id, span)
         }
+        // print_gradings_wrapper (atlas-types.w:4260-4300): the imaginary
+        // root subsystem line, then the gradings of the real form's part.
+        "print_gradings" => {
+            arity(name, arguments, 2, span)?;
+            let (context, id) = as_cartan_class(&arguments[0], span)?;
+            let form = as_real_form(&arguments[1], span)?;
+            print_gradings(context, id, form, span)
+        }
+        // print_real_Weyl_wrapper (atlas-types.w:8831-8847): the checks run
+        // in the arm, in the wrapper's wording and order, before the crate
+        // print — a foreign external form number would otherwise translate
+        // silently through ExternalFormOrder.
+        "print_real_Weyl" => {
+            arity(name, arguments, 2, span)?;
+            let form = as_real_form(&arguments[0], span)?;
+            let (context, id) = as_cartan_class(&arguments[1], span)?;
+            print_real_weyl(context, id, form, span)
+        }
+        // print_blockstabilizer_wrapper (atlas-types.w:8920-8932): no checks
+        // upstream; the block only donates its two real forms.
+        "print_blockstabilizer" => {
+            arity(name, arguments, 2, span)?;
+            let block = as_block(&arguments[0], span)?;
+            let (context, id) = as_cartan_class(&arguments[1], span)?;
+            print_blockstabilizer(block, context, id, span)
+        }
         // print_KGB_order / print_KGB_graph (atlas-types.w:9119-9131): the
         // Bruhat Hasse rows and the Graphviz digraph of the KGB.
         "print_KGB_order" | "print_KGB_graph" => {
@@ -8468,6 +8495,237 @@ fn print_strong_real(
         }
     }
     Ok(text)
+}
+
+/// ioutils::foldLine (ioutils.cpp:67-127) as `print_gradings` calls it:
+/// pre-hyphens empty, post-hyphen ",", indent 4, line size 79. Breaks land
+/// just after a comma; with no comma in range the break is brutal.
+fn fold_line(line: &str) -> String {
+    const LINE_SIZE: usize = 79;
+    const INDENT: usize = 4;
+    if line.len() <= LINE_SIZE {
+        return line.to_string();
+    }
+    let bytes = line.as_bytes(); // the gradings line is pure ASCII
+    let rfind_comma = |pos: usize| {
+        let last = pos.min(bytes.len() - 1);
+        (0..=last).rev().find(|&index| bytes[index] == b',')
+    };
+    let mut output = String::new();
+    let mut point = 0_usize;
+    loop {
+        let old_break = point;
+        let indent = if old_break == 0 { 0 } else { INDENT };
+        if let Some(bp) = rfind_comma(old_break + LINE_SIZE - indent) {
+            if bp + 1 > point {
+                point = bp + 1;
+            }
+        }
+        if point == old_break {
+            point += LINE_SIZE - indent;
+        }
+        output.push_str(&" ".repeat(indent));
+        output.push_str(&line[old_break..point]);
+        output.push('\n');
+        if line.len() <= point + LINE_SIZE - INDENT {
+            break;
+        }
+    }
+    if point < line.len() {
+        output.push_str(&" ".repeat(INDENT));
+        output.push_str(&line[point..]);
+    }
+    output
+}
+
+/// print_gradings_wrapper (atlas-types.w:4260-4300): the guard clauses are
+/// fiber_partition's, then the imaginary subsystem header in Bourbaki order
+/// and one grading bit string per fiber element of the real form's part
+/// (upstream `sigma.pull_back(gr)`: printed bit i is bit sigma[i]).
+fn print_gradings(
+    context: &Arc<InnerClassContext>,
+    id: CartanId,
+    form: &Arc<RealFormContext>,
+    span: SourceSpan,
+) -> Result<String, Diagnostic> {
+    fiber_partition_membership(context, id, form, span)?;
+    let cartan = context
+        .classification
+        .cartan_class(id)
+        .expect("CartanClass values carry an in-range id");
+    let grading_data = cartan.grading();
+    let root_system = context.inner_class.root_system();
+    let numbering = RootNumbering::new(root_system, context.root_datum.prefers_coroots());
+    // Upstream `si` is the fiber's simpleImaginary in RootNbr-ascending
+    // order (the oracle prints B2's compact Cartan as "simple roots 4,5").
+    // The crate list order differs, but the GRADING bits stay aligned with
+    // it, so each entry carries its bit index along.
+    let mut simples: Vec<(RootId, usize)> = grading_data
+        .imaginary_simple_roots()
+        .iter()
+        .copied()
+        .enumerate()
+        .map(|(bit, root)| (root, bit))
+        .collect();
+    simples.sort_by_key(|&(root, _)| numbering.nbr(root));
+    // root_datum().Cartan_matrix(si): the subsystem Cartan matrix in si
+    // order; sigma is its Bourbaki numbering (DynkinDiagram(cm).perm()).
+    let cartan_matrix = simples
+        .iter()
+        .map(|&(root, _)| {
+            simples
+                .iter()
+                .map(|&(coroot, _)| {
+                    root_system
+                        .bracket(root, coroot)
+                        .map_err(|error| runtime(span, error.to_string()))
+                })
+                .collect::<Result<Vec<_>, _>>()
+        })
+        .collect::<Result<Vec<Vec<_>>, _>>()?;
+    let sigma =
+        bourbaki_permutation(&cartan_matrix).map_err(|error| runtime(span, error.to_string()))?;
+    let mut text = String::from("Imaginary root system is ");
+    if simples.is_empty() {
+        text.push_str("empty.\n");
+    } else {
+        // dynkin::Lie_type(cm): the letter of a rank-two double edge is
+        // decided by the GIVEN order (dynkin.cpp:113), so the type comes
+        // from the unpermuted matrix.
+        let lie_type = infer_lie_type(&cartan_matrix, cartan_matrix.len(), span)?;
+        write!(
+            text,
+            "of type {}, with simple root{}",
+            lie_type.render(),
+            if simples.len() == 1 { " " } else { "s " }
+        )
+        .expect("string write");
+        for (position, &source) in sigma.iter().enumerate() {
+            write!(
+                text,
+                "{}{}",
+                numbering.nbr(simples[source].0),
+                if position + 1 < sigma.len() {
+                    ","
+                } else {
+                    ".\n"
+                }
+            )
+            .expect("string write");
+        }
+    }
+    let fiber = grading_data.adjoint_fiber();
+    let dimension = fiber.dimension();
+    // The partition's mask-bits bound keeps this shift in range.
+    let element_count = 1_u64
+        .checked_shl(
+            u32::try_from(dimension)
+                .map_err(|_| runtime(span, "internal fiber dimension overflow"))?,
+        )
+        .ok_or_else(|| runtime(span, "internal fiber dimension overflow"))?;
+    let mut line = String::new();
+    let mut first = true;
+    for mask in 0..element_count {
+        let local = cartan
+            .partition()
+            .class_of_mask(mask)
+            .map_err(|error| runtime(span, error.to_string()))?;
+        if cartan.labels().label(local) != Some(form.internal) {
+            continue;
+        }
+        line.push(if first { '[' } else { ',' });
+        first = false;
+        // The fiber element of this mask (weak_real_form's element_of
+        // recipe): xor the basis representatives of the set bits, then
+        // interpret the ambient class as an adjoint fiber element.
+        let mut representative = ModTwoVector::zero(fiber.datum().rank())
+            .map_err(|error| runtime(span, error.to_string()))?;
+        for (index, basis) in fiber.basis_representatives().iter().enumerate() {
+            if mask & (1_u64 << index) != 0 {
+                representative
+                    .xor_assign(basis)
+                    .map_err(|error| runtime(span, error.to_string()))?;
+            }
+        }
+        let element = fiber
+            .element_from_ambient(representative)
+            .map_err(|error| runtime(span, error.to_string()))?;
+        let grading = grading_data
+            .grading(&element)
+            .map_err(|error| runtime(span, error.to_string()))?;
+        for &source in &sigma {
+            let noncompact = grading
+                .is_noncompact(simples[source].1)
+                .expect("sigma indexes the imaginary simple roots");
+            line.push(if noncompact { '1' } else { '0' });
+        }
+    }
+    line.push_str("]\n");
+    text.push_str(&fold_line(&line));
+    Ok(text)
+}
+
+/// print_real_Weyl_wrapper (atlas-types.w:8831-8847): mismatch and
+/// membership checks in the wrapper's wording and order, then the crate
+/// print on the primal/dual inner-class pair.
+fn print_real_weyl(
+    context: &Arc<InnerClassContext>,
+    id: CartanId,
+    form: &Arc<RealFormContext>,
+    span: SourceSpan,
+) -> Result<String, Diagnostic> {
+    if context.inner_class != form.parent.inner_class {
+        return Err(runtime(span, "Inner class mismatch between arguments"));
+    }
+    let occurs = form
+        .parent
+        .classification
+        .cartan_set(form.internal)
+        .expect("a real form's internal number is in range")
+        .contains(&id);
+    if !occurs {
+        return Err(runtime(span, "Cartan class not defined for real form"));
+    }
+    let dual = build_dual_inner_class(context, span)?;
+    let budget = cartan_classification_budget();
+    let cartan = cartan_number(context, id).expect("CartanClass values carry an in-range id");
+    let print = atlas_real_group::real_weyl::RealWeylContext {
+        inner_class: &context.inner_class,
+        classification: &context.classification,
+        dual_inner_class: &dual.inner_class,
+        dual_classification: &dual.classification,
+        budget: &budget,
+    }
+    .real_weyl_print(form.external, cartan)
+    .map_err(|error| runtime(span, error.to_string()))?;
+    Ok(print.render())
+}
+
+/// print_blockstabilizer_wrapper (atlas-types.w:8920-8932): upstream runs
+/// no checks; the context is the BLOCK's inner class (dual rebuilt from
+/// it), paired with the Cartan class's raw number from its own context
+/// (output::printBlockStabilizer, output.cpp:361-390).
+fn print_blockstabilizer(
+    block: &BlockValue,
+    cartan_context: &Arc<InnerClassContext>,
+    id: CartanId,
+    span: SourceSpan,
+) -> Result<String, Diagnostic> {
+    let parent = &block.rf.parent;
+    let dual = build_dual_inner_class(parent, span)?;
+    let budget = cartan_classification_budget();
+    let cartan =
+        cartan_number(cartan_context, id).expect("CartanClass values carry an in-range id");
+    let print = atlas_real_group::real_weyl::RealWeylContext {
+        inner_class: &parent.inner_class,
+        classification: &parent.classification,
+        dual_inner_class: &dual.inner_class,
+        dual_classification: &dual.classification,
+        budget: &budget,
+    }
+    .block_stabilizer_print(block.rf.external, cartan, block.dual_rf.external)
+    .map_err(|error| runtime(span, error.to_string()))?;
+    Ok(print.render())
 }
 
 /// Dispatch one named application. Unknown names are Name errors.

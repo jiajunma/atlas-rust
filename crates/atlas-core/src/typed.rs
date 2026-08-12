@@ -5474,6 +5474,35 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             // print_strongreal_wrapper (atlas-types.w:8850-8859):
             // output::printStrongReal, unconditional like print_KGB.
             domain_printer_builtin("print_strong_real", primitive_type(Prim::CartanClass)),
+            // print_gradings_wrapper (atlas-types.w:4260-4300, installed
+            // :9108-9109): the imaginary subsystem line plus one grading bit
+            // string per fiber element of the real form's partition class.
+            domain_printer_builtin(
+                "print_gradings",
+                Type::tuple(vec![
+                    primitive_type(Prim::CartanClass),
+                    primitive_type(Prim::RealForm),
+                ]),
+            ),
+            // print_real_Weyl_wrapper (atlas-types.w:8831-8847, installed
+            // :9110-9111) — note the argument order is (RealForm,CartanClass),
+            // the reverse of print_gradings.
+            domain_printer_builtin(
+                "print_real_Weyl",
+                Type::tuple(vec![
+                    primitive_type(Prim::RealForm),
+                    primitive_type(Prim::CartanClass),
+                ]),
+            ),
+            // print_blockstabilizer_wrapper (atlas-types.w:8920-8932,
+            // installed :9117-9118).
+            domain_printer_builtin(
+                "print_blockstabilizer",
+                Type::tuple(vec![
+                    primitive_type(Prim::Block),
+                    primitive_type(Prim::CartanClass),
+                ]),
+            ),
             // Block surface (atlas-types.w:4994-5005): the Fokko
             // constructor (is_dual gated), the (rf, dual_rf) decomposition,
             // the size, the element/index pair, the dual block, and the
