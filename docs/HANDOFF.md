@@ -4,6 +4,73 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-12c (E1 crate + dual_KL + print_X landed; two crate bugs found; HPC offline)
+
+- **E1 crate landed (`f12b27b`, agent-47)**: `ext_param.rs` (2329 lines,
+  full length-3 `star` cases + ExtParamOracle), `matreduc.rs`, `ext_kl.rs`
+  contributions, `rep_context.rs` `orientation_number`. 366
+  atlas-real-group tests green. Key fix: malachite 0.10 `Rational`
+  numerator is unsigned — `rational_coweight_dot` was dropping signs.
+- **dual_KL_block language layer (`ced33b8`, agent-49)**: typed.rs
+  registers `dual_KL_block: Param -> ([Param],int,mat,[vec])` in UPSTREAM
+  order (the acceptance pitfall was avoided); domain_builtins.rs arm at
+  :12202 + `common_block_srms` helper (:2680, faithful port of
+  blocks.cpp:733-1076). Replay: A1/A2/rejected byte-identical; **B2 has
+  2 diffs = crate bugs** (below).
+- **print_X (`a2979ad`)**: ~25 lines — typed.rs
+  `domain_printer_builtin("print_X", InnerClass)` + print_text arm +
+  `print_x` helper (GlobalKgb::build + print_layout().render()). Replay
+  print_x(±) all pass. **Reminder: `cargo build -p atlas-cli` before any
+  replay** — the scripts call ./target/debug/atlas-cli, stale binaries
+  report "Undefined identifier".
+- **print_x registered in FixturePlan (`b0fc234`)**:
+  hpc/pipeline_swap_diff.py runnable=(2,4,5,7,9,10,12,14,15),
+  silent=(1,3,6,8,11,13); harness unit tests 10/10 green. All four
+  commits pushed to origin/main (HEAD b0fc234).
+- **Two crate bugs exposed by dual_KL B2 — agent-52 in flight fixing
+  (exclusive atlas-real-group)**:
+  - Bug 1: kl_table.rs RT2 arm first term must be
+    `inverse_cayley(x,s).0`, not `cross` (kl.cpp:416-425).
+  - Bug 2: rep_context.rs:633 RealProjection lift must NOT be recomputed
+    from θ; per involutions.cpp:242-243 the lift_mat must be transported
+    along the generation path via simple_reflect. Evidence: B2 x=4
+    θ=[[-1,0],[2,1]] γ=[2,2], oracle lift column [2,-2]ᵀ vs crate
+    [-2,2] → λ printed [0,4] should be [2,2].
+- **print_common_block language layer — agent-53 in flight** (exclusive
+  atlas-core, brief /tmp/slice_pcb_brief.md). Reminded that the lift bug
+  may cause λ diffs: record precisely, do not work around.
+- **HPC offline + differential 3540635 FAILED (12s)**: "declared
+  Atlas-Rust source state does not match the submit checkout". Root
+  cause: rsync excludes .git, so HPC HEAD sat at 4f363ef while the job
+  declared DIRTY_TREE=false. Correct flow (hpc/README.md:42-57): push
+  origin → on HPC `git fetch origin && git checkout <sha>` (**HPC git is
+  old: `checkout --detach <sha>` fails with "does not take a path
+  argument"; plain `git checkout <sha>` works**) → `git status --porcelain
+  --untracked-files=all` → then sbatch. SSH to majj@10.26.14.64 timed out
+  mid-fetch (was fine 40 min earlier; login node flapping). On recovery:
+  fetch+checkout b0fc234, then resubmit
+  `ATLAS_DIRTY_TREE=false sbatch --partition=fat --time=01:00:00
+  --mem=32G --export=ALL,TIMEOUT=3600 hpc/pipeline_swap_diff.sbatch`
+  (print_x already registered). If status shows untracked leftovers
+  (e.g. fiber_probe.rs) making the tree detected-dirty, declare true to
+  stay consistent.
+- **Side findings logged, not touched**: typed.rs:5216 KL_block skip
+  registration order is misaligned `([Param],mat,[vec],int)` vs upstream
+  `([Param],int,mat,[vec])` — KL_block still skipped, harmless.
+  common_block_gamma_lambdas/torus_part give wrong gamlam for this
+  block's z=6,7,10 — deprecated.
+- **Queue after these land**: (1) HPC recovery → resubmit differential →
+  print_x meta → verified_hpc; (2) agent-52 delivery → three gates + B2
+  replay → commit atlas-real-group → E2 crate drivers (brief
+  /tmp/slice_e2_brief.md); (3) agent-53 delivery → three gates + pcb
+  replay → commit atlas-core → dual_KL+pcb FixturePlan registration
+  (snippet in docs/slices/post_weyl_lang_queue.md:242) → differential →
+  metas; (4) E2 language layer → E3 twisted family + block_deform
+  (brief /tmp/slice_e3_brief.md; E3 depends on E2's extended_finalise).
+- Ownership discipline unchanged: one agent per crate at a time;
+  examples/fiber_probe.rs is agent-47 debug residue — never commit,
+  never delete.
+
 ## Checkpoint - 2026-08-12b (slice C closed; final queue is 6 fixture pairs)
 
 - **Slice C closed (`f612507`)**: differential **3538976** (commit
