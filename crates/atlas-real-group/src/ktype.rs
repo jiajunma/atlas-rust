@@ -63,7 +63,7 @@ impl KType {
 
     /// `Rep_context::theta_plus_1_lambda` (K_repr.cpp:16-23):
     /// `(1+theta_x)*lambda = lambda_rho + theta*lambda_rho + (1+theta)rho`.
-    fn theta_plus_1_lambda(&self, rc: &RepContext) -> Result<Weight, StructureError> {
+    pub(crate) fn theta_plus_1_lambda(&self, rc: &RepContext) -> Result<Weight, StructureError> {
         let theta = rc.theta_at(self.x)?;
         checked_add_weights(
             &checked_add_weights(&self.lam_rho, &theta.act_on_weight(&self.lam_rho)?)?,

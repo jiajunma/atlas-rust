@@ -10,6 +10,13 @@
 //! (ext_block.cpp:858-907), and the central [`star`] computation
 //! (ext_block.cpp:990-1705).
 //!
+//! On top of that sit the three parameter-level finalisation drivers
+//! [`extended_restrict_to_k`] (ext_block.cpp:2435-2547),
+//! [`extended_finalise`] (ext_block.cpp:2598-2721), and
+//! [`scaled_extended_finalise`] (ext_block.cpp:2736-2807), whose queue loops
+//! replay folded-orbit reflections and `star` descents while tracking the
+//! net flip against the default extension.
+//!
 //! Two porting conventions matter for fidelity:
 //!
 //! - All `Weight`/`Coweight`/`int` arithmetic uses two's-complement
@@ -22,17 +29,18 @@
 //!   under `NDEBUG`; genuine data-dependent failures surface as
 //!   [`StructureError`].
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, VecDeque};
 
 use malachite::{Integer, Rational};
 
-use crate::ext_block::{DescValue, StarOracle};
-use crate::lattice::RationalWeight;
+use crate::ext_block::{fold_orbits, DescValue, ExtGen, ExtGenKind, StarOracle};
+use crate::lattice::{checked_sub_weights, RationalWeight};
 use crate::matreduc::{find_solution, has_solution, in_left_image, in_right_image, IntMatrix};
 use crate::twisted_involution::compose_matrices;
 use crate::{
-    BlockGraph, Coweight, InvolutionId, InvolutionTable, KgbId, LatticeInvolution, ModTwoVector,
-    RepContext, RootId, RootKind, RootSystem, StandardRepr, StructureError, Weight, WeylElement,
+    BlockGraph, Coweight, InvolutionId, InvolutionTable, KType, KgbId, LatticeInvolution,
+    ModTwoVector, RepContext, RootId, RootKind, RootSystem, StandardRepr, StructureError, Weight,
+    WeylElement,
 };
 
 // ---------------------------------------------------------------------------
@@ -2338,5 +2346,898 @@ impl StarOracle for ExtParamOracle<'_> {
 
     fn same_sign(&self, a: &ExtParam, b: &ExtParam) -> bool {
         same_sign(self.ctx, a, b)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Parameter-level finalisation drivers (ext_block.cpp:2435-2807).
+// ---------------------------------------------------------------------------
+
+/// The Weyl word of a folded orbit's `kappa` (upstream `ext_gen::w_kappa`,
+/// lietype.h:159-167): `[s]`, `[s,t]` for commuting pairs, `[s,t,s]` for
+/// linked pairs.
+fn kappa_word(orbit: &ExtGen) -> Vec<usize> {
+    match orbit.kind {
+        ExtGenKind::One => vec![orbit.s0],
+        ExtGenKind::Two => vec![orbit.s0, orbit.s1],
+        ExtGenKind::Three => vec![orbit.s0, orbit.s1, orbit.s0],
+    }
+}
+
+/// The enumerated root id of a simple root (upstream `simpleRootNbr`).
+fn simple_root_id(system: &RootSystem, generator: usize) -> Result<RootId, StructureError> {
+    system
+        .simple_root_ids()
+        .get(generator)
+        .copied()
+        .ok_or(StructureError::IndexOutOfRange {
+            index: generator,
+            upper_bound: system.simple_root_ids().len(),
+        })
+}
+
+/// The kind of a simple root under an involution (upstream
+/// `InvolutionTable::{is_complex_simple,is_real_simple,is_imaginary_simple}`).
+fn simple_kind(
+    table: &InvolutionTable,
+    theta: InvolutionId,
+    generator: usize,
+) -> Result<RootKind, StructureError> {
+    table
+        .simple_root_kind(theta, generator)
+        .ok_or(StructureError::IndexOutOfRange {
+            index: generator,
+            upper_bound: table.root_system().simple_root_ids().len(),
+        })
+}
+
+/// Upstream `InvolutionTable::complex_is_descent` (involutions.cpp:273-276)
+/// at a simple (positive) root: whether the involution negates it.
+fn simple_complex_is_descent(
+    rc: &RepContext,
+    theta: InvolutionId,
+    generator: usize,
+) -> Result<bool, StructureError> {
+    let system = rc.root_system();
+    let simple = simple_root_id(system, generator)?;
+    let image =
+        rc.root_involution_data(theta)?
+            .image(simple)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: simple.index(),
+                upper_bound: system.roots().len(),
+            })?;
+    Ok(system.is_positive(image) == Some(false))
+}
+
+/// `rd.simple_reflect(s, numerator, offset)` (rootdata.h:617-618) on a
+/// rational weight's i64 numerator: `v -= (<v, alpha_s^v> + offset) * alpha_s`.
+fn reflect_numerator(
+    system: &RootSystem,
+    generator: usize,
+    numerator: &mut [i64],
+    offset: i64,
+) -> Result<(), StructureError> {
+    let simple = simple_root_id(system, generator)?;
+    let coroot = coroot_coords(system, simple)?;
+    let mut pairing = offset;
+    for (&entry, &coroot_entry) in numerator.iter().zip(coroot) {
+        let product = entry
+            .checked_mul(i64::from(coroot_entry))
+            .ok_or(StructureError::ArithmeticOverflow)?;
+        pairing = pairing
+            .checked_add(product)
+            .ok_or(StructureError::ArithmeticOverflow)?;
+    }
+    let root = root_coords(system, simple)?.to_vec();
+    for (entry, &root_entry) in numerator.iter_mut().zip(&root) {
+        let shift = pairing
+            .checked_mul(i64::from(root_entry))
+            .ok_or(StructureError::ArithmeticOverflow)?;
+        *entry = entry
+            .checked_sub(shift)
+            .ok_or(StructureError::ArithmeticOverflow)?;
+    }
+    Ok(())
+}
+
+/// Upstream `RootDatum::act(ww, gamma)` for a rational weight
+/// (rootdata.h:665 + rootdata.cpp:1179-1180): the numerator is reflected
+/// letter by letter in reverse word order, the denominator is kept.
+fn act_word_rational(
+    system: &RootSystem,
+    kappa: &[usize],
+    value: &RationalWeight,
+) -> Result<RationalWeight, StructureError> {
+    let mut numerator = value.numerator().to_vec();
+    for &generator in kappa.iter().rev() {
+        reflect_numerator(system, generator, &mut numerator, 0)?;
+    }
+    RationalWeight::new(numerator, value.denominator())
+}
+
+/// Upstream `RootDatum::act(ww, v)` (rootdata.h:651-657) on an integral
+/// weight: simple reflections in reverse word order.
+fn act_word_weight(
+    system: &RootSystem,
+    kappa: &[usize],
+    value: &mut [i32],
+) -> Result<(), StructureError> {
+    for &generator in kappa.iter().rev() {
+        reflect_coords(system, simple_root_id(system, generator)?, value)?;
+    }
+    Ok(())
+}
+
+/// The complex-orbit kappa reflection of an extended parameter (the
+/// `eval<0` branch shared by all three drivers, ext_block.cpp:2480-2490,
+/// 2632-2644, 2769-2781): twisted conjugation of `tw` (reverse word order,
+/// weyl.h:549-555), `rd.act` on `gamma_lambda` and `tau`, the
+/// rho-check-shifted simple coreflections of `l`, `dual_act` (forward word
+/// order, rootdata.h:697-700) on `t`, and the flip recording every
+/// two-generator (2C) orbit reflection.
+fn kappa_reflect(
+    ctx: &ExtRepContext,
+    e: &mut ExtParam,
+    kappa: &[usize],
+    inner_twist: &[usize],
+) -> Result<(), StructureError> {
+    let rc = ctx.rc();
+    let system = rc.root_system();
+    for &generator in kappa.iter().rev() {
+        e.tw = e.tw.twisted_conjugate(system, generator, inner_twist)?;
+    }
+    e.gamma_lambda = act_word_rational(system, kappa, &e.gamma_lambda)?;
+    let mut tau = e.tau.as_slice().to_vec();
+    act_word_weight(system, kappa, &mut tau)?;
+    e.tau = Weight::new(tau);
+    let mut l = e.l.as_slice().to_vec();
+    for &generator in kappa {
+        let simple = simple_root_id(system, generator)?;
+        let shift =
+            rational_coweight_dot(rc.g_rho_check().coordinates(), root_coords(system, simple)?)?
+                .wrapping_neg();
+        coreflect_coords(system, simple, &mut l, shift)?;
+    }
+    e.l = Coweight::new(l);
+    let mut t = e.t.as_slice().to_vec();
+    for &generator in kappa {
+        coreflect_coords(system, simple_root_id(system, generator)?, &mut t, 0)?;
+    }
+    e.t = Coweight::new(t);
+    e.flip(kappa.len() == 2); // record flip for every 2C+/2C- done
+    Ok(())
+}
+
+/// The singular complex descent step shared by all three drivers
+/// (ext_block.cpp:2493-2504, 2650-2661, 2787-2798): `star` at the orbit of
+/// the simple root produces the unique cross/Cayley link, and the extra
+/// flip `star` records on October surprises is undone.
+fn singular_complex_descent(
+    ctx: &ExtRepContext,
+    e: &mut ExtParam,
+    orbit: &ExtGen,
+) -> Result<(), StructureError> {
+    let n_alpha = simple_root_id(ctx.rc().root_system(), orbit.s0)?.index();
+    let (dtype, links) = star(ctx, e, orbit.length(), n_alpha)?;
+    debug_assert!(
+        dtype.is_complex() || matches!(dtype, DescValue::TwoSemiReal | DescValue::ThreeSemiReal)
+    );
+    debug_assert_eq!(links.len(), 1); // just one cross or Cayley link
+    let mut next = links
+        .into_iter()
+        .next()
+        .ok_or(StructureError::RepInvariantViolation {
+            invariant: "extended finalise complex descent link",
+        })?;
+    next.flip(dtype.has_october_surprise()); // undo the extra flip in |star|
+    *e = next;
+    Ok(())
+}
+
+/// Upstream `ext_param::restrict_K` (ext_block.cpp:2413-2420): the K-type
+/// `sr_K(x, (gamma2 - 2*rho)/2 - gamma_lambda)` at twice-gamma `gamma2`.
+fn restrict_k(ctx: &ExtRepContext, e: &ExtParam, gamma2: &Weight) -> Result<KType, StructureError> {
+    let rc = ctx.rc();
+    let doubled = checked_sub_weights(gamma2, rc.two_rho())?; // now 2*(gamma-rho)
+    let numerator = doubled.as_slice().iter().map(|&c| i64::from(c)).collect();
+    let gamma_rho = RationalWeight::new(numerator, 2)?;
+    let lambda_rho = integer_diff(&gamma_rho, &e.gamma_lambda)?;
+    KType::sr_k(rc, e.x(ctx)?, &Weight::new(lambda_rho))
+}
+
+/// Scalar multiple of a rational weight by `num/den` (upstream
+/// `RatWeight * RatNum`).
+fn scale_rational_weight(
+    value: &RationalWeight,
+    num: i64,
+    den: i64,
+) -> Result<RationalWeight, StructureError> {
+    let mut numerator = Vec::new();
+    numerator
+        .try_reserve_exact(value.rank())
+        .map_err(|_| StructureError::AllocationFailed {
+            requested: value.rank(),
+        })?;
+    for &entry in value.numerator() {
+        numerator.push(
+            entry
+                .checked_mul(num)
+                .ok_or(StructureError::ArithmeticOverflow)?,
+        );
+    }
+    let denominator = value
+        .denominator()
+        .checked_mul(den)
+        .ok_or(StructureError::ArithmeticOverflow)?;
+    RationalWeight::new(numerator, denominator)
+}
+
+/// Upstream `ext_block::extended_restrict_to_K` (ext_block.cpp:2435-2547):
+/// restrict the extended parameter at `sr` to `K`, pushing `nu` to zero and
+/// finalising the resulting twice-gamma `gamma2 = (1+theta)*lambda` through
+/// folded-orbit reflections and descents, tracking the inherited extension
+/// data to detect the net flip against the default extension. `sr` must be
+/// standard and fixed by `ctx`'s `delta` (both language-layer checked).
+///
+/// Returns the surviving K-types with their `Split` coefficients as
+/// `(e, f)` pairs (`(1,0)` for a default-aligned survivor, `(0,1)` for a
+/// flipped one), like terms merged as upstream's `K_type_pol::add_term`
+/// does.
+pub fn extended_restrict_to_k(
+    ctx: &ExtRepContext,
+    sr: &StandardRepr,
+) -> Result<Vec<(KType, (i32, i32))>, StructureError> {
+    let rc = ctx.rc();
+    debug_assert!(matches!(sr.is_standard(rc), Ok(true)));
+    debug_assert!(rc.is_fixed(sr, ctx.delta())); // delta-fixed
+    let system = rc.root_system();
+    let table = rc.table();
+    let orbits = fold_orbits(rc.datum().cartan_matrix(), &ctx.twist)?;
+
+    // The K-type of `sr` at nu==0, and twice its gamma (theta-fixed).
+    let restricted_sr = rc.sr_k_of_standard(sr)?;
+    let gamma2_start = restricted_sr.theta_plus_1_lambda(rc)?;
+
+    let e0 = shifted_default_extension(
+        ctx,
+        sr,
+        &RationalWeight::new(
+            gamma2_start
+                .as_slice()
+                .iter()
+                .map(|&c| i64::from(c))
+                .collect(),
+            2,
+        )?,
+    )?;
+
+    let mut result: Vec<(KType, (i32, i32))> = Vec::new();
+    let mut to_do: VecDeque<(ExtParam, Weight)> = VecDeque::new();
+    to_do.push_back((e0, gamma2_start));
+    let inner_twist = ctx.inner_twist()?;
+    while let Some((mut e, mut gamma2)) = to_do.pop_front() {
+        let mut i_theta = e.theta_id(ctx)?;
+        let mut dropped = false;
+        // Upstream's `restart:` label: any state change re-scans all orbits.
+        'restart: loop {
+            for orbit in &orbits {
+                let s = orbit.s0;
+                match simple_kind(table, i_theta, s)? {
+                    RootKind::Complex => {
+                        let eval =
+                            vec_dot(gamma2.as_slice(), rc.datum().simple_coroots()[s].as_slice());
+                        if eval < 0 {
+                            // Complex reflections: anti-dominant to dominant.
+                            let kappa = kappa_word(orbit);
+                            let mut coordinates = gamma2.as_slice().to_vec();
+                            act_word_weight(system, &kappa, &mut coordinates)?;
+                            gamma2 = Weight::new(coordinates);
+                            kappa_reflect(ctx, &mut e, &kappa, &inner_twist)?;
+                            i_theta = e.theta_id(ctx)?;
+                            continue 'restart;
+                        } else if eval == 0 && simple_complex_is_descent(rc, i_theta, s)? {
+                            singular_complex_descent(ctx, &mut e, orbit)?;
+                            i_theta = e.theta_id(ctx)?;
+                            continue 'restart;
+                        }
+                        // else a complex ascent; skip this orbit
+                    }
+                    RootKind::Real => {
+                        debug_assert_eq!(
+                            vec_dot(gamma2.as_slice(), rc.datum().simple_coroots()[s].as_slice()),
+                            0
+                        ); // so gamma2 is unchanged
+                        let simple = simple_root_id(system, s)?;
+                        if rat_dot(&e.gamma_lambda, coroot_coords(system, simple)?) % 2 != 0 {
+                            continue; // nonparity: an ascent; skip this orbit
+                        }
+                        let (dtype, links) = star(ctx, &e, orbit.length(), simple.index())?;
+                        if dtype.is_like_compact() {
+                            // Real parity switched has zero descents.
+                            dropped = true;
+                            break 'restart;
+                        }
+                        debug_assert!(!links.is_empty());
+                        let flip = dtype.has_october_surprise();
+                        let mut links = links.into_iter();
+                        let mut next =
+                            links.next().ok_or(StructureError::RepInvariantViolation {
+                                invariant: "extended restrict_to_K real descent link",
+                            })?;
+                        i_theta = next.theta_id(ctx)?;
+                        next.flip(flip); // undo the extra flip in |star|
+                        e = next;
+                        if dtype.has_double_image() {
+                            // Queue the second image with the same undo.
+                            let mut second =
+                                links.next().ok_or(StructureError::RepInvariantViolation {
+                                    invariant: "extended restrict_to_K double image link",
+                                })?;
+                            second.flip(flip);
+                            to_do.push_back((second, gamma2.clone()));
+                        }
+                        continue 'restart;
+                    }
+                    RootKind::Imaginary => {
+                        let eval =
+                            vec_dot(gamma2.as_slice(), rc.datum().simple_coroots()[s].as_slice());
+                        debug_assert!(eval >= 0); // the K-type remains standard
+                        if eval == 0 {
+                            // Singular: drop when compact.
+                            let simple = simple_root_id(system, s)?;
+                            let gml = g_minus_l(ctx, &e.l);
+                            if rational_coweight_dot(&gml, root_coords(system, simple)?)? % 2 != 0 {
+                                dropped = true;
+                                break 'restart;
+                            }
+                        }
+                    }
+                }
+            }
+            break 'restart;
+        }
+        if dropped {
+            continue; // upstream's `drop:` label
+        }
+        // Contribute with coefficient s^(not is_default(E)).
+        let ktype = restrict_k(ctx, &e, &gamma2)?;
+        let coefficient = if is_default(ctx, &e)? { (1, 0) } else { (0, 1) };
+        if let Some(term) = result.iter_mut().find(|(k, _)| *k == ktype) {
+            term.1 .0 = term.1 .0.wrapping_add(coefficient.0);
+            term.1 .1 = term.1 .1.wrapping_add(coefficient.1);
+        } else {
+            result.push((ktype, coefficient));
+        }
+    }
+    Ok(result)
+}
+
+/// Upstream `ext_block::extended_finalise` (ext_block.cpp:2598-2721): make
+/// `gamma` dominant and the parameter final through folded-orbit
+/// reflections and descents, keeping `nu` (real anti-dominance is fixed by
+/// `-rho`-centered reflections of `gamma_lambda`, marked experimental
+/// upstream), and return each survivor paired with its net flip against the
+/// default extension (`not is_default(E)`). `sr` must be standard and fixed
+/// by `ctx`'s `delta` (both language-layer checked).
+///
+/// The result is in upstream queue order, NOT merged or sorted; the
+/// language layer merges like terms and sorts with the `SR_poly`
+/// comparator (repr.cpp:41-54).
+pub fn extended_finalise(
+    ctx: &ExtRepContext,
+    sr: &StandardRepr,
+) -> Result<Vec<(StandardRepr, bool)>, StructureError> {
+    let rc = ctx.rc();
+    debug_assert!(matches!(sr.is_standard(rc), Ok(true)));
+    debug_assert!(rc.is_fixed(sr, ctx.delta())); // delta-fixed
+    let system = rc.root_system();
+    let table = rc.table();
+    let orbits = fold_orbits(rc.datum().cartan_matrix(), &ctx.twist)?;
+
+    let e0 = default_extend(ctx, sr)?; // start extension at |sr|
+
+    let mut result: Vec<(StandardRepr, bool)> = Vec::new();
+    let mut to_do: VecDeque<(ExtParam, RationalWeight)> = VecDeque::new();
+    to_do.push_back((e0, sr.gamma().clone()));
+    let inner_twist = ctx.inner_twist()?;
+    while let Some((mut e, mut gamma)) = to_do.pop_front() {
+        let mut i_theta = e.theta_id(ctx)?;
+        let mut dropped = false;
+        // Upstream's `restart:` label: any state change re-scans all orbits.
+        'restart: loop {
+            for orbit in &orbits {
+                let s = orbit.s0;
+                match simple_kind(table, i_theta, s)? {
+                    RootKind::Complex => {
+                        let eval = rc.simple_coroot_numerator_pairing(s, gamma.numerator())?;
+                        if eval < 0 {
+                            // Complex reflections: anti-dominant to dominant.
+                            let kappa = kappa_word(orbit);
+                            gamma = act_word_rational(system, &kappa, &gamma)?;
+                            kappa_reflect(ctx, &mut e, &kappa, &inner_twist)?;
+                            i_theta = e.theta_id(ctx)?;
+                            continue 'restart;
+                        } else if eval == 0 && simple_complex_is_descent(rc, i_theta, s)? {
+                            // The reflections fix gamma; only E descends.
+                            singular_complex_descent(ctx, &mut e, orbit)?;
+                            i_theta = e.theta_id(ctx)?;
+                            continue 'restart;
+                        }
+                        // else a complex ascent; skip this orbit
+                    }
+                    RootKind::Real => {
+                        let eval = rc.simple_coroot_numerator_pairing(s, gamma.numerator())?;
+                        if eval < 0 {
+                            let kappa = kappa_word(orbit);
+                            gamma = act_word_rational(system, &kappa, &gamma)?;
+                            // The $-\rho$-centered reflections on
+                            // gamma_lambda (per letter, forward order).
+                            let mut numerator = e.gamma_lambda.numerator().to_vec();
+                            let denominator = e.gamma_lambda.denominator();
+                            for &generator in &kappa {
+                                reflect_numerator(system, generator, &mut numerator, denominator)?;
+                            }
+                            e.gamma_lambda = RationalWeight::new(numerator, denominator)?;
+                            let mut tau = e.tau.as_slice().to_vec();
+                            act_word_weight(system, &kappa, &mut tau)?;
+                            e.tau = Weight::new(tau);
+                            e.flip(kappa.len() == 2); // one flip per "two real" reflection
+                            continue 'restart;
+                        } else if eval == 0 {
+                            let simple = simple_root_id(system, s)?;
+                            if rat_dot(&e.gamma_lambda, coroot_coords(system, simple)?) % 2 != 0 {
+                                continue; // nonparity: an ascent; skip this orbit
+                            }
+                            let (dtype, links) = star(ctx, &e, orbit.length(), simple.index())?;
+                            if dtype.is_like_compact() {
+                                // Real parity switched has zero descents.
+                                dropped = true;
+                                break 'restart;
+                            }
+                            debug_assert!(!links.is_empty());
+                            let flip = dtype.has_october_surprise();
+                            let mut links = links.into_iter();
+                            let mut next =
+                                links.next().ok_or(StructureError::RepInvariantViolation {
+                                    invariant: "extended finalise real descent link",
+                                })?;
+                            i_theta = next.theta_id(ctx)?;
+                            next.flip(flip); // undo the extra flip in |star|
+                            e = next;
+                            if dtype.has_double_image() {
+                                // Queue the second image with the same undo.
+                                let mut second =
+                                    links.next().ok_or(StructureError::RepInvariantViolation {
+                                        invariant: "extended finalise double image link",
+                                    })?;
+                                second.flip(flip);
+                                to_do.push_back((second, gamma.clone()));
+                            }
+                            continue 'restart;
+                        }
+                        // else a real ascent; skip this orbit
+                    }
+                    RootKind::Imaginary => {
+                        let eval = rc.simple_coroot_numerator_pairing(s, gamma.numerator())?;
+                        debug_assert!(eval >= 0); // parameters remain standard here
+                        if eval == 0 {
+                            // Singular: drop when compact.
+                            let simple = simple_root_id(system, s)?;
+                            let gml = g_minus_l(ctx, &e.l);
+                            if rational_coweight_dot(&gml, root_coords(system, simple)?)? % 2 != 0 {
+                                dropped = true;
+                                break 'restart;
+                            }
+                        }
+                    }
+                }
+            }
+            break 'restart;
+        }
+        if dropped {
+            continue; // upstream's `drop:` label
+        }
+        // Contribute E here with Boolean |not is_default(E)|.
+        let flipped = !is_default(ctx, &e)?;
+        result.push((e.restrict(ctx, &gamma)?, flipped));
+    }
+    Ok(result)
+}
+
+/// Upstream `ext_block::scaled_extended_finalise` (ext_block.cpp:2736-2807):
+/// scale `nu` by the strictly positive `factor_num/factor_den` and rewrite
+/// as a final parameter at the extended-parameter level, returning the net
+/// flip of the default extension choice. Since the factor is positive, no
+/// regular real root becomes singular, so only complex orbits are treated
+/// (for dominance and for finality). `sr` must be final and fixed by
+/// `ctx`'s `delta` (both language-layer checked).
+pub fn scaled_extended_finalise(
+    ctx: &ExtRepContext,
+    sr: &StandardRepr,
+    factor_num: i64,
+    factor_den: i64,
+) -> Result<(StandardRepr, bool), StructureError> {
+    let rc = ctx.rc();
+    debug_assert!(matches!(sr.is_final(rc), Ok(true)));
+    debug_assert!(factor_num > 0 && factor_den > 0); // no real root becomes singular
+    debug_assert!(rc.is_fixed(sr, ctx.delta())); // delta-fixed
+    let system = rc.root_system();
+    let table = rc.table();
+    let orbits = fold_orbits(rc.datum().cartan_matrix(), &ctx.twist)?;
+
+    // First approximation to the result is the scaled input; importantly,
+    // lambda (equivalently lambda_rho) is held fixed here.
+    let scaled_nu = scale_rational_weight(sr.gamma(), factor_num, factor_den)?;
+    let scaled_sr = rc.sr(sr.x(), &rc.lambda_rho(sr)?, &scaled_nu)?;
+    let mut gamma = scaled_sr.gamma().clone();
+
+    let mut e = default_extend(ctx, sr)?; // start extension at |sr|
+                                          // Shift gamma_lambda by the nu change.
+    e.gamma_lambda = e.gamma_lambda.add(&gamma.sub(sr.gamma())?)?;
+
+    // Only complex coroots need treatment (both for dominance and for
+    // finality); upstream's `restart:` label re-scans all orbits on change.
+    let inner_twist = ctx.inner_twist()?;
+    let mut i_theta = e.theta_id(ctx)?;
+    'restart: loop {
+        for orbit in &orbits {
+            let s = orbit.s0;
+            if simple_kind(table, i_theta, s)? != RootKind::Complex {
+                continue; // no |else| upstream: real/imaginary need no work
+            }
+            let eval = rc.simple_coroot_numerator_pairing(s, gamma.numerator())?;
+            if eval < 0 {
+                // Complex reflections: anti-dominant to dominant.
+                let kappa = kappa_word(orbit);
+                gamma = act_word_rational(system, &kappa, &gamma)?;
+                kappa_reflect(ctx, &mut e, &kappa, &inner_twist)?;
+                i_theta = e.theta_id(ctx)?;
+                continue 'restart;
+            } else if eval == 0 && simple_complex_is_descent(rc, i_theta, s)? {
+                // The reflections fix gamma; only E descends.
+                singular_complex_descent(ctx, &mut e, orbit)?;
+                i_theta = e.theta_id(ctx)?;
+                continue 'restart;
+            }
+            // else a complex ascent; skip this orbit
+        }
+        break 'restart;
+    }
+    let flipped = !is_default(ctx, &e)?;
+    Ok((e.restrict(ctx, &gamma)?, flipped))
+}
+
+// ---------------------------------------------------------------------------
+// Tests.
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        AdjointFiberBudget, BasedRootDatum, CartanClassification, CartanClassificationBudget,
+        CartanId, InnerClass, IntegerLatticeBudget, InvolutionTableBudget, KgbGraph, RealFormSeed,
+        StrongRealClassification, WeakRealFormId,
+    };
+
+    fn class_budget(weyl: usize) -> CartanClassificationBudget {
+        CartanClassificationBudget::new(
+            IntegerLatticeBudget::new(64, 100_000, 100_000, 128),
+            AdjointFiberBudget::new(
+                IntegerLatticeBudget::new(64, 100_000, 100_000, 128),
+                50_000,
+                100_000,
+            ),
+            weyl,
+            64,
+            64,
+        )
+    }
+
+    fn graph_with_size(
+        inner_class: &InnerClass,
+        classification: &CartanClassification,
+        strong: &StrongRealClassification,
+        table: &mut InvolutionTable,
+        size: usize,
+    ) -> KgbGraph {
+        for form in 0..classification.weak_real_form_count() {
+            if strong.kgb_size(WeakRealFormId(form)) != Some(size) {
+                continue;
+            }
+            table.add_cartan(classification, CartanId(0)).unwrap();
+            let seed = RealFormSeed::build(
+                inner_class,
+                classification,
+                strong,
+                table,
+                WeakRealFormId(form),
+                &IntegerLatticeBudget::new(64, 100_000, 100_000, 128),
+                4_096,
+            )
+            .unwrap();
+            return KgbGraph::build(inner_class, classification, strong, table, &seed).unwrap();
+        }
+        panic!("no real form with KGB size {size}");
+    }
+
+    /// Owns the values a `RepContext` borrows, for fixture construction.
+    struct ContextFixture {
+        inner_class: InnerClass,
+        table: InvolutionTable,
+        graph: KgbGraph,
+    }
+
+    impl ContextFixture {
+        fn rc(&self) -> RepContext<'_> {
+            RepContext::new(&self.inner_class, &self.table, &self.graph).unwrap()
+        }
+    }
+
+    fn fixture(
+        datum: BasedRootDatum,
+        involution: LatticeInvolution,
+        weyl: usize,
+        kgb_size: usize,
+    ) -> ContextFixture {
+        let inner_class = InnerClass::new(datum, involution, weyl).unwrap();
+        let classification =
+            CartanClassification::build(&inner_class, &class_budget(weyl)).unwrap();
+        let strong = StrongRealClassification::build(&classification, 4_096).unwrap();
+        let mut table = InvolutionTable::new(
+            &inner_class,
+            InvolutionTableBudget::new(64, IntegerLatticeBudget::new(64, 100_000, 100_000, 128)),
+        )
+        .unwrap();
+        let graph = graph_with_size(&inner_class, &classification, &strong, &mut table, kgb_size);
+        ContextFixture {
+            inner_class,
+            table,
+            graph,
+        }
+    }
+
+    /// The simply connected A1 datum (root = twice the fundamental weight).
+    fn a1_datum() -> BasedRootDatum {
+        BasedRootDatum::from_simple_data(
+            1,
+            vec![vec![2]],
+            vec![Weight::new(vec![2])],
+            vec![Coweight::new(vec![1])],
+        )
+        .unwrap()
+    }
+
+    /// The split sl(2,R) context (compact inner class, KGB size 3).
+    fn a1_fixture() -> ContextFixture {
+        let datum = a1_datum();
+        let involution = LatticeInvolution::identity(&datum).unwrap();
+        fixture(datum, involution, 2, 3)
+    }
+
+    /// The simply connected A2 datum (roots in the weight lattice).
+    fn a2_datum() -> BasedRootDatum {
+        BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2, -1], vec![-1, 2]],
+            vec![Weight::new(vec![2, -1]), Weight::new(vec![-1, 2])],
+            vec![Coweight::new(vec![1, 0]), Coweight::new(vec![0, 1])],
+        )
+        .unwrap()
+    }
+
+    /// The quasisplit su(2,1) context (compact inner class, KGB size 6).
+    fn a2_compact_fixture() -> ContextFixture {
+        let datum = a2_datum();
+        let involution = LatticeInvolution::identity(&datum).unwrap();
+        fixture(datum, involution, 8, 6)
+    }
+
+    /// The split sl(3,R) context (split inner class, KGB size 4).
+    fn a2_split_fixture() -> ContextFixture {
+        let datum = a2_datum();
+        let swap = LatticeInvolution::new(
+            &datum,
+            vec![vec![0, 1], vec![1, 0]],
+            vec![vec![0, 1], vec![1, 0]],
+        )
+        .unwrap();
+        fixture(datum, swap, 8, 4)
+    }
+
+    /// The simply connected B2 datum (roots are Cartan rows).
+    fn b2_datum() -> BasedRootDatum {
+        BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2, -2], vec![-1, 2]],
+            vec![Weight::new(vec![2, -2]), Weight::new(vec![-1, 2])],
+            vec![Coweight::new(vec![1, 0]), Coweight::new(vec![0, 1])],
+        )
+        .unwrap()
+    }
+
+    /// The split so(3,2) context (compact inner class, KGB size 11).
+    fn b2_fixture() -> ContextFixture {
+        let datum = b2_datum();
+        let involution = LatticeInvolution::identity(&datum).unwrap();
+        fixture(datum, involution, 8, 11)
+    }
+
+    fn identity_delta(rc: &RepContext) -> LatticeInvolution {
+        LatticeInvolution::identity(rc.datum()).unwrap()
+    }
+
+    fn swap_delta(rc: &RepContext) -> LatticeInvolution {
+        LatticeInvolution::new(
+            rc.datum(),
+            vec![vec![0, 1], vec![1, 0]],
+            vec![vec![0, 1], vec![1, 0]],
+        )
+        .unwrap()
+    }
+
+    fn weight(coordinates: &[i32]) -> Weight {
+        Weight::new(coordinates.to_vec())
+    }
+
+    fn rational(coordinates: &[i64], denominator: i64) -> RationalWeight {
+        RationalWeight::new(coordinates.to_vec(), denominator).unwrap()
+    }
+
+    fn param(rc: &RepContext, x: usize, lambda_rho: &[i32], nu: &[i64], den: i64) -> StandardRepr {
+        rc.sr(KgbId(x), &weight(lambda_rho), &rational(nu, den))
+            .unwrap()
+    }
+
+    /// Sort `(StandardRepr, flip)` terms by descending `x` (the `SR_poly`
+    /// display order) for order-independent comparison.
+    fn sorted_params(terms: &[(StandardRepr, bool)]) -> Vec<(usize, StandardRepr, bool)> {
+        let mut keyed: Vec<(usize, StandardRepr, bool)> = terms
+            .iter()
+            .map(|(sr, flip)| (sr.x().0, sr.clone(), *flip))
+            .collect();
+        keyed.sort_by_key(|a| std::cmp::Reverse(a.0));
+        keyed
+    }
+
+    /// Sort `(KType, coef)` terms by ascending `x` (the `K_type_pol` display
+    /// order) for order-independent comparison.
+    fn sorted_ktypes(terms: &[(KType, (i32, i32))]) -> Vec<(usize, KType, (i32, i32))> {
+        let mut keyed: Vec<(usize, KType, (i32, i32))> = terms
+            .iter()
+            .map(|(k, c)| (k.x().0, k.clone(), *c))
+            .collect();
+        keyed.sort_by_key(|a| a.0);
+        keyed
+    }
+
+    // Oracle-pinned values from the verified fixture `domain/ext_finalise`
+    // (reference capture job 3538977, oracle rev 4d3e944).
+
+    #[test]
+    fn scaled_a1_compact_cartan_is_unchanged() {
+        // scale_extended(pa,[[1]],2/1) = (pa,false), pa = (x=0,[0],[0]/1).
+        let fixture = a1_fixture();
+        let rc = fixture.rc();
+        let pa = param(&rc, 0, &[0], &[0], 1);
+        assert!(matches!(pa.is_final(&rc), Ok(true)));
+        let ctx = ExtRepContext::new(&rc, identity_delta(&rc)).unwrap();
+        let (result, flip) = scaled_extended_finalise(&ctx, &pa, 2, 1).unwrap();
+        assert_eq!(result, pa);
+        assert!(!flip);
+    }
+
+    #[test]
+    fn scaled_a1_split_cartan_scales_nu() {
+        // scale_extended(pa2,[[1]],3/2) = (param(x=2,nu=[3]/2),false).
+        let fixture = a1_fixture();
+        let rc = fixture.rc();
+        let pa2 = param(&rc, 2, &[0], &[1], 1);
+        assert!(matches!(pa2.is_final(&rc), Ok(true)));
+        let ctx = ExtRepContext::new(&rc, identity_delta(&rc)).unwrap();
+        let (result, flip) = scaled_extended_finalise(&ctx, &pa2, 3, 2).unwrap();
+        assert_eq!(result, param(&rc, 2, &[0], &[3], 2));
+        assert!(!flip);
+    }
+
+    #[test]
+    fn a2_quasisplit_trivial_drivers() {
+        // qc = (x=0,[0,0],[0,0]/1) in su(2,1), delta identity:
+        // scale 2 -> (qc,false); finalize -> 1*qc; K-pol -> 1*K_type(x=0).
+        let fixture = a2_compact_fixture();
+        let rc = fixture.rc();
+        let qc = param(&rc, 0, &[0, 0], &[0, 0], 1);
+        let ctx = ExtRepContext::new(&rc, identity_delta(&rc)).unwrap();
+
+        let (scaled, flip) = scaled_extended_finalise(&ctx, &qc, 2, 1).unwrap();
+        assert_eq!(scaled, qc);
+        assert!(!flip);
+
+        let terms = extended_finalise(&ctx, &qc).unwrap();
+        assert_eq!(terms, vec![(qc.clone(), false)]);
+
+        let kterms = extended_restrict_to_k(&ctx, &qc).unwrap();
+        let expected = KType::sr_k(&rc, KgbId(0), &weight(&[0, 0])).unwrap();
+        assert_eq!(kterms, vec![(expected, (1, 0))]);
+    }
+
+    #[test]
+    fn a2_split_trivial_drivers() {
+        // q = (x=0,[0,0],[0,0]/1) in sl(3,R), delta the diagram swap:
+        // scale 2 -> (q,false); finalize -> 1*q; K-pol -> 1*K_type(x=0).
+        let fixture = a2_split_fixture();
+        let rc = fixture.rc();
+        let q = param(&rc, 0, &[0, 0], &[0, 0], 1);
+        let ctx = ExtRepContext::new(&rc, swap_delta(&rc)).unwrap();
+
+        let (scaled, flip) = scaled_extended_finalise(&ctx, &q, 2, 1).unwrap();
+        assert_eq!(scaled, q);
+        assert!(!flip);
+
+        let terms = extended_finalise(&ctx, &q).unwrap();
+        assert_eq!(terms, vec![(q.clone(), false)]);
+
+        let kterms = extended_restrict_to_k(&ctx, &q).unwrap();
+        let expected = KType::sr_k(&rc, KgbId(0), &weight(&[0, 0])).unwrap();
+        assert_eq!(kterms, vec![(expected, (1, 0))]);
+    }
+
+    #[test]
+    fn a2_split_nonfinal_flips_to_compact_term() {
+        // p = (x=3,[1,1],[0,0]/1) in sl(3,R), delta the swap:
+        // finalize -> 1s*param(x=0,lambda=[0,0]) and
+        // K-pol -> 1s*K_type(x=0,lambda=[0,0]) (lambda=[0,0] displays;
+        // lambda_rho = [0,0]-rho = [-1,-1]).
+        let fixture = a2_split_fixture();
+        let rc = fixture.rc();
+        let p = param(&rc, 3, &[1, 1], &[0, 0], 1);
+        assert!(matches!(p.is_standard(&rc), Ok(true)));
+        let ctx = ExtRepContext::new(&rc, swap_delta(&rc)).unwrap();
+
+        let terms = extended_finalise(&ctx, &p).unwrap();
+        let expected = param(&rc, 0, &[-1, -1], &[0, 0], 1);
+        assert_eq!(terms, vec![(expected, true)]);
+
+        let kterms = extended_restrict_to_k(&ctx, &p).unwrap();
+        let expected_k = KType::sr_k(&rc, KgbId(0), &weight(&[-1, -1])).unwrap();
+        assert_eq!(kterms, vec![(expected_k, (0, 1))]);
+    }
+
+    #[test]
+    fn b2_split_nondominant_two_term_expansion() {
+        // pb = (x=8,[0,0],[0,0]/1) in so(3,2), delta identity:
+        // finalize -> 1*param(x=1,lambda=[0,1]) + 1*param(x=0,lambda=[0,1])
+        // (ParamPol display order: height asc, then x DESC) and
+        // K-pol -> 1*K_type(x=0) + 1*K_type(x=1) (x ASC);
+        // lambda=[0,1] means lambda_rho = [0,1]-rho = [-1,0].
+        let fixture = b2_fixture();
+        let rc = fixture.rc();
+        let pb = param(&rc, 8, &[0, 0], &[0, 0], 1);
+        assert!(matches!(pb.is_standard(&rc), Ok(true)));
+        assert!(matches!(pb.is_dominant(&rc), Ok(false)));
+        let ctx = ExtRepContext::new(&rc, identity_delta(&rc)).unwrap();
+
+        let terms = extended_finalise(&ctx, &pb).unwrap();
+        let expected: Vec<(usize, StandardRepr, bool)> = vec![
+            (1, param(&rc, 1, &[-1, 0], &[0, 0], 1), false),
+            (0, param(&rc, 0, &[-1, 0], &[0, 0], 1), false),
+        ];
+        assert_eq!(sorted_params(&terms), expected);
+
+        let kterms = extended_restrict_to_k(&ctx, &pb).unwrap();
+        let expected_k: Vec<(usize, KType, (i32, i32))> = vec![
+            (
+                0,
+                KType::sr_k(&rc, KgbId(0), &weight(&[-1, 0])).unwrap(),
+                (1, 0),
+            ),
+            (
+                1,
+                KType::sr_k(&rc, KgbId(1), &weight(&[-1, 0])).unwrap(),
+                (1, 0),
+            ),
+        ];
+        assert_eq!(sorted_ktypes(&kterms), expected_k);
     }
 }
