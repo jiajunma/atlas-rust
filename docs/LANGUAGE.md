@@ -37,7 +37,7 @@ differential report naming the job.
 | exceptions and runtime errors | supported | B12 + rejected companions across all slices; `3501467`, `3501643` |
 | Atlas commands and batch files | supported | B7 forget/die, B9 redirect, B10 include, B13 dont, showall, quit, set quiet/verbose; `3501467`, `3501643`, `3506272` |
 | interactive input and completion | partial | TTY banner/prompt implemented; readline completion remains pending |
-| domain objects and mathematical operations | supported | 152 of 152 domain contracts verified_hpc (231 of 231 across all categories; from display `3501467` through block/KL/param-transforms/ext/print slices; latest: ext_finalise `3542388`, twisted_family/block_deform `3542417`, print_partial_block `3542430`) |
+| domain objects and mathematical operations | supported | 154 of 154 domain contracts verified_hpc (233 of 233 across all categories; from display `3501467` through block/KL/param-transforms/ext/print slices; latest: print_partial_block `3542430`, dual_block `3542449`) |
 | KL and file formats | planned | filekl.w is used only by stand-alone utilities; zero interpreter references — no Atlas-language builtin reads/writes KL binary files. Deferred outside the language-only gate pending a user decision (HANDOFF 2026-08-12b) |
 
 No row moves to `supported` merely because Rust compiles. It needs a reference
@@ -63,12 +63,13 @@ param_transforms, ext_block/ext_KL family (`3537192`),
 print_gradings/real_weyl_print (`3538976`), print_X (`3540739`),
 dual_KL_block (`3541634`), print_common_block (`3541690`),
 shift_flip (`3541896`), ext_finalise (`3542388`), and
-twisted_family/block_deform (`3542417`), and print_partial_block
-(`3542430`).
-As of 2026-08-13, all 231 fixture contracts across
+twisted_family/block_deform (`3542417`), print_partial_block
+(`3542430`), and dual_block (`3542449`).
+As of 2026-08-13, all 233 fixture contracts across
 {commands,domain,eval,lex,negative,parse} are verified_hpc — the
 domain surface is fully closed (every upstream install_function name
-is live and differential-verified). Readline completion (TTY-only) and
+is live and differential-verified; dual_block closed the last
+dedicated-fixture gap among the live conversion arms). Readline completion (TTY-only) and
 KL binary file formats (no Atlas-language builtin touches them; filekl.w
 serves stand-alone utilities only) remain deferred outside the
 language-only gate pending a user decision.
