@@ -544,6 +544,22 @@ FIXTURE_PLANS = (
         ),
         silent_lines=(1, 3, 5, 7, 10, 13, 16, 19, 20, 22, 24, 26, 29),
     ),
+    # shift_flip (wrapper gates + shifted_default_extension/is_default;
+    # accepted cases all return false — ~1300 oracle probes found no true
+    # case). Line alignment pre-analysed 2026-08-12 against
+    # shift_flip.events.json: 45 lines/45 events; ascriptions silent,
+    # each `:=` -> Declaring+Value, each bare call -> 1 Value event.
+    FixturePlan(
+        name="domain/shift_flip",
+        runnable_lines=(
+            2, 4, 6, 8, 9, 10, 12, 13, 15, 17, 19, 21, 22, 23, 25, 27, 29,
+            30, 31, 33, 34, 35, 37, 39, 41, 43, 44, 45,
+        ),
+        silent_lines=(
+            1, 3, 5, 7, 11, 14, 16, 18, 20, 24, 26, 28, 32, 36, 38, 40, 42,
+        ),
+    ),
+    FixturePlan(name="domain/shift_flip_rejected"),
     # Early scalar-era fixtures: verified verbatim locally and included so
     # the HPC differential upgrades their reference metadata.
     FixturePlan(name="eval/scalars"),
