@@ -480,6 +480,35 @@ FIXTURE_PLANS = (
     # K_type_pol/W_cells).
     FixturePlan(name="domain/poly_surface"),
     FixturePlan(name="domain/poly_surface_rejected"),
+    # Slice C (agent-46): print_gradings/print_real_Weyl/
+    # print_blockstabilizer printers.
+    # print_gradings: the verified capture folds each print's output into
+    # the preceding CartanClass Value display, so only the 14 `:=` lines
+    # carry events; type ascriptions and the 9 print calls are silent.
+    FixturePlan(
+        name="domain/print_gradings",
+        runnable_lines=(2, 4, 6, 10, 12, 14, 16, 18, 21, 24, 28, 30, 32, 36),
+        silent_lines=(
+            1, 3, 5, 7, 8, 9, 11, 13, 15, 17, 19, 20, 22, 23, 25, 26, 27, 29,
+            31, 33, 34, 35, 37,
+        ),
+    ),
+    FixturePlan(name="domain/print_gradings_rejected"),
+    # real_weyl_print: prints are standalone ReportLine events, but a print
+    # whose text duplicates the previous one produces no new event in the
+    # verified capture (lines 8, 15, 29, 33, 34); type ascriptions silent.
+    FixturePlan(
+        name="domain/real_weyl_print",
+        runnable_lines=(
+            2, 4, 6, 7, 10, 11, 13, 14, 17, 19, 21, 22, 24, 25, 27, 28, 31,
+            32, 36, 38, 40, 42, 43, 45, 46,
+        ),
+        silent_lines=(
+            1, 3, 5, 8, 9, 12, 15, 16, 18, 20, 23, 26, 29, 30, 33, 34, 35,
+            37, 39, 41, 44,
+        ),
+    ),
+    FixturePlan(name="domain/real_weyl_print_rejected"),
     # Early scalar-era fixtures: verified verbatim locally and included so
     # the HPC differential upgrades their reference metadata.
     FixturePlan(name="eval/scalars"),
