@@ -518,6 +518,19 @@ FIXTURE_PLANS = (
         silent_lines=(1, 3, 6, 8, 11, 13),
     ),
     FixturePlan(name="domain/print_x_rejected"),
+    # dual_KL_block (ced33b8 + f399fc8): ascriptions silent, each `:=` ->
+    # Declaring+Value, each bare call -> 1 event (33 lines/33 events, no
+    # folding/dedup; alignment pre-analysed against
+    # dual_kl_block.events.json, 2026-08-12).
+    FixturePlan(
+        name="domain/dual_kl_block",
+        runnable_lines=(
+            2, 4, 6, 8, 10, 11, 13, 15, 17, 19, 21, 22, 24, 26, 28, 30,
+            32, 33,
+        ),
+        silent_lines=(1, 3, 5, 7, 9, 12, 14, 16, 18, 20, 23, 25, 27, 29, 31),
+    ),
+    FixturePlan(name="domain/dual_kl_block_rejected"),
     # Early scalar-era fixtures: verified verbatim locally and included so
     # the HPC differential upgrades their reference metadata.
     FixturePlan(name="eval/scalars"),
