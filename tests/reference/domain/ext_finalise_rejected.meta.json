@@ -2,10 +2,11 @@
   "fixture": "domain/ext_finalise_rejected",
   "fixture_sha256": "ad5e44d6ab742efe2d406e25909a9ae983347b701ae80ddb31325b5ce1302e74",
   "rust_status": "pending_hpc_differential",
-  "reference_status": "pending_hpc_reference",
-  "note": "finalise trio rejections: test_final chains ('Cannot scale extended parameter' + not semifinal/not dominant), non-positive factor, gamma not fixed by delta (scale vs K_type_pol wording), theta-delta non-commutation, non-involution/3x3 mats, test_standard chains incl. the upstream typo 'Parameter in K_type_pol_extended| must be standard', three single-overload type errors. 10 runtime + 3 type diagnostics; session continues after each. Local pinned-oracle capture; HPC reference capture pending byte-verification.",
+  "reference_status": "verified_hpc_reference",
+  "note": "finalise trio rejections: test_final chains ('Cannot scale extended parameter' + not semifinal/not dominant), non-positive factor, gamma not fixed by delta (scale vs K_type_pol wording), theta-delta non-commutation, non-involution/3x3 mats, test_standard chains incl. the upstream typo 'Parameter in K_type_pol_extended| must be standard', three single-overload type errors. 10 runtime + 3 type diagnostics; session continues after each. HPC reference capture 3538977 byte-identical to local pinned-oracle capture (stdout+stderr).",
   "oracle": "atlas",
   "oracle_exit_status": 1,
   "stage": "typed-pipeline-swap",
-  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_job": "3538977"
 }

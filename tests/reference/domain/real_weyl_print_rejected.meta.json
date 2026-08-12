@@ -1,12 +1,14 @@
 {
   "fixture": "domain/real_weyl_print_rejected",
   "fixture_sha256": "97803ed6dc1b3f804b232b3262ecc04421ff455ff064d251a40cbc3e220b0561",
-  "rust_status": "pending_hpc_differential",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
   "note": "print_real_Weyl rejections: Cartan class not defined for real form, Inner class mismatch between arguments, (RealForm,CartanClass) argument-order conform; print_blockstabilizer (Block,CartanClass) argument-order conform. HPC reference capture 3535942 byte-identical to local pinned-oracle capture (stdout+stderr).",
   "oracle": "atlas",
   "oracle_exit_status": 1,
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "reference_job": "3535942"
+  "reference_job": "3535942",
+  "differential_job": "3538976",
+  "differential_commit": "d19090ab1d9048dab656c7fb5b95ffa8c1cdc2ac"
 }

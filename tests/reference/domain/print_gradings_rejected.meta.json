@@ -1,12 +1,14 @@
 {
   "fixture": "domain/print_gradings_rejected",
   "fixture_sha256": "5a0047e92f0cd12a4443dd72c0e9162aa0ef0768841c8d4b05ccda0a7ab2fe10",
-  "rust_status": "pending_hpc_differential",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
   "note": "print_gradings rejections: Cartan class not defined for this real form; (CartanClass,RealForm) argument-order conform failures. HPC reference capture 3535636 byte-identical to local pinned-oracle capture (stdout+stderr, all 10 files).",
   "oracle": "atlas",
   "oracle_exit_status": 1,
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "reference_job": "3535636"
+  "reference_job": "3535636",
+  "differential_job": "3538976",
+  "differential_commit": "d19090ab1d9048dab656c7fb5b95ffa8c1cdc2ac"
 }
