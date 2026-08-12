@@ -31,8 +31,18 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   5. print_x (±rejected) — global_KGB crate landed 64048ac
      (GlobalKgbPrint::render() byte-identical to the 3 references);
      only language-layer registration left (atlas-core).
-  6. print_common_block — last; needs srm pool/Rep_table; no rejected
-     fixture by documented design.
+  6. print_common_block — **recon done (agent-50, brief
+     /tmp/slice_pcb_brief.md)**: the feared srm pool/Rep_table port is
+     NOT needed — the pool is pure memoization, fresh-build-per-call is
+     output-equivalent for dominant gamma (same precedent as
+     partial_block/KL_block). Real work: ~180-260 lines
+     domain_builtins.rs render helper + ~12 lines typed.rs (new
+     print_common_block arm + print_block(Param) overload branch).
+     Pitfalls: header N matched on (x,gamma-lambda) not x alone;
+     content/stars gamma split (made-dominant for block, original gamma
+     for `*`); print_block(Param) at fixture line 19 dedups silent.
+     Depends on agent-49's uncommitted srm helpers → lands after
+     dual_KL_block. No rejected fixture by documented design.
 - **Completion-criterion audit (2026-08-12)**: LANGUAGE.md matrix rows —
   all language rows supported; "domain objects" partial = exactly the
   remaining queue below. Two rows are explicitly deferred OUTSIDE the
