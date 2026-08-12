@@ -1,12 +1,14 @@
 {
   "fixture": "domain/orbit_ws",
   "fixture_sha256": "6aab186978a14335e98ac25ae1cd1a6b0a702a0a3853841b221bd9bc19200890",
-  "rust_status": "pending_hpc_differential",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
   "note": "root_ladder_bottoms/coroot_ladder_bottoms/basic_orbit_ws/affine_orbit_ws on B2; v prefix = stab walls, v[stab_rank] = final root; affine branch trivial at full-rank stab. HPC reference capture 3535636 byte-identical to local pinned-oracle capture (stdout+stderr, all 10 files).",
   "oracle": "atlas",
   "oracle_exit_status": 0,
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "reference_job": "3535636"
+  "reference_job": "3535636",
+  "differential_job": "3538136",
+  "differential_commit": "32c44ee"
 }
