@@ -4524,6 +4524,23 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::Vec),
                 0,
             ),
+            // root_ladder_bottoms/coroot_ladder_bottoms
+            // (atlas-types.w:1569-1597, installed :2241-2244): the
+            // (co)roots beta for which beta-alpha is not a (co)root
+            // (rootdata.h min_roots_for/min_coroots_for), as signed root
+            // numbers in ascending internal order.
+            domain_builtin(
+                "root_ladder_bottoms",
+                Type::tuple(vec![primitive_type(Prim::RootDatum), int_type()]),
+                Type::row(int_type()),
+                0,
+            ),
+            domain_builtin(
+                "coroot_ladder_bottoms",
+                Type::tuple(vec![primitive_type(Prim::RootDatum), int_type()]),
+                Type::row(int_type()),
+                0,
+            ),
             // positive_roots_wrapper / positive_coroots_wrapper
             // (atlas-types.w:1656-1671): the positive (co)root table as a
             // by-columns matrix.
@@ -4933,6 +4950,28 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::WeylElt),
                 0,
             ),
+            // basic_orbit_ws / affine_orbit_ws (atlas-types.w:2014-2063,
+            // installed :2284-2287): the Weyl-word representatives of a
+            // pseudo-Levi subquotient, finite or completed affine.
+            domain_builtin(
+                "basic_orbit_ws",
+                Type::tuple(vec![
+                    primitive_type(Prim::RootDatum),
+                    Type::row(int_type()),
+                    int_type(),
+                ]),
+                Type::row(primitive_type(Prim::WeylElt)),
+                0,
+            ),
+            domain_builtin(
+                "affine_orbit_ws",
+                Type::tuple(vec![
+                    primitive_type(Prim::RootDatum),
+                    primitive_type(Prim::RatVec),
+                ]),
+                Type::row(primitive_type(Prim::WeylElt)),
+                0,
+            ),
             // Alcove center / FPP enumerations (atlas-types.w:2279,
             // 2282-2283, 2287-2290).
             domain_builtin(
@@ -5138,7 +5177,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 Type::tuple(vec![int_type(), Type::row(primitive_type(Prim::Vec))]),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "W_cells",
                 primitive_type(Prim::Param),
                 Type::tuple(vec![
@@ -5671,20 +5710,20 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             // KTypePol surface (atlas-types.w:6091-6117): the
             // fixture-gated subset. add/subtract_K_type_wrapper check the
             // real form identity before their no-value gates, so they
-            // validate; the rest run behind the gate.
+            // validate.
             domain_builtin(
                 "null_K_module",
                 primitive_type(Prim::RealForm),
                 primitive_type(Prim::KTypePol),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "real_form",
                 primitive_type(Prim::KTypePol),
                 primitive_type(Prim::RealForm),
                 0,
             ),
-            domain_builtin_skip("#", primitive_type(Prim::KTypePol), int_type(), 0),
+            domain_builtin("#", primitive_type(Prim::KTypePol), int_type(), 0),
             domain_builtin_validate(
                 "+",
                 Type::tuple(vec![
@@ -5733,7 +5772,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::KTypePol),
                 1,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "first_term",
                 primitive_type(Prim::KTypePol),
                 Type::tuple(vec![
@@ -5742,7 +5781,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 ]),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "last_term",
                 primitive_type(Prim::KTypePol),
                 Type::tuple(vec![
@@ -5751,7 +5790,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 ]),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "truncate_above_height",
                 Type::tuple(vec![primitive_type(Prim::KTypePol), int_type()]),
                 primitive_type(Prim::KTypePol),
@@ -5793,19 +5832,19 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             // ParamPol surface (atlas-types.w:8542-8570): the
             // fixture-gated subset. add/subtract_module_wrapper check the
             // real form identity before their no-value gates.
-            domain_builtin_skip(
+            domain_builtin(
                 "null_module",
                 primitive_type(Prim::RealForm),
                 primitive_type(Prim::ParamPol),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "real_form",
                 primitive_type(Prim::ParamPol),
                 primitive_type(Prim::RealForm),
                 0,
             ),
-            domain_builtin_skip("#", primitive_type(Prim::ParamPol), int_type(), 0),
+            domain_builtin("#", primitive_type(Prim::ParamPol), int_type(), 0),
             domain_builtin_validate(
                 "+",
                 Type::tuple(vec![
@@ -5842,7 +5881,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::ParamPol),
                 1,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "first_term",
                 primitive_type(Prim::ParamPol),
                 Type::tuple(vec![
@@ -5851,7 +5890,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 ]),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "truncate_above_height",
                 Type::tuple(vec![primitive_type(Prim::ParamPol), int_type()]),
                 primitive_type(Prim::ParamPol),
@@ -5859,13 +5898,13 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             ),
             // param_poly_to_K_type_poly_wrapper (atlas-types.w:8546): the
             // K-type restriction of a ParamPol.
-            domain_builtin_skip(
+            domain_builtin(
                 "K_type_pol",
                 primitive_type(Prim::ParamPol),
                 primitive_type(Prim::KTypePol),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "last_term",
                 primitive_type(Prim::ParamPol),
                 Type::tuple(vec![
