@@ -24,7 +24,10 @@ use malachite::{Integer as BigInt, Rational as BigRational};
 
 use atlas_real_group::ext_block::ExtBlock;
 use atlas_real_group::ext_kl::ExtKlTable;
-use atlas_real_group::ext_param::{is_default, shifted_default_extension, ExtRepContext};
+use atlas_real_group::ext_param::{
+    extended_finalise, extended_restrict_to_k, is_default, scaled_extended_finalise,
+    shifted_default_extension, ExtRepContext,
+};
 use atlas_real_group::{
     adapted_basis, adapted_relation_basis, annihilator_modulo as relation_annihilator_modulo,
     bourbaki_permutation, build_presentations, central_fiber, checked_inner_class_letters,
@@ -2586,6 +2589,43 @@ fn test_standard(parameter: &ParamValue, descr: &str, span: SourceSpan) -> Resul
     Err(runtime(
         span,
         format!("{descr}:\n  {shown}\n  Parameter not standard"),
+    ))
+}
+
+/// `test_final` for module parameters (atlas-types.w:6632-6647): reject a
+/// non-final parameter with the oracle's two-line diagnostic. Unlike
+/// `test_standard` there is no "not standard" case — the reason chain is
+/// dominant, then normal, then nonzero, then semifinal.
+fn test_final(parameter: &ParamValue, descr: &str, span: SourceSpan) -> Result<(), Diagnostic> {
+    let rc = rep_context(&parameter.context);
+    let repr = &parameter.repr;
+    let reason = if !repr
+        .is_dominant(&rc)
+        .map_err(|error| structure_diagnostic(error, span))?
+    {
+        "not dominant"
+    } else if !repr
+        .is_normal(&rc)
+        .map_err(|error| structure_diagnostic(error, span))?
+    {
+        "not normal"
+    } else if !repr
+        .is_nonzero(&rc)
+        .map_err(|error| structure_diagnostic(error, span))?
+    {
+        "not nonzero"
+    } else if !repr
+        .is_semifinal(&rc)
+        .map_err(|error| structure_diagnostic(error, span))?
+    {
+        "not semifinal"
+    } else {
+        return Ok(());
+    };
+    let shown = DomainValue::Param(parameter.clone()).to_string();
+    Err(runtime(
+        span,
+        format!("{descr}:\n  {shown}\n  Parameter is {reason}"),
     ))
 }
 
@@ -6741,6 +6781,165 @@ fn shift_flip_gates(
     Ok((delta, gamma))
 }
 
+/// `Rep_context::is_fixed` (gkmod/repr.cpp:669-675) as the ext_finalise
+/// wrappers use it: normalise the parameter (`make_dominant`, then move to
+/// the singular-canonical involution) and require the delta-twist to be
+/// the identity — `z == twisted(z,delta)` (repr.cpp:1132-1143).
+///
+/// The crate's `RepContext::is_fixed` is the raw gamma check of the
+/// ext_block wrappers (extended_block uses
+/// `(1-delta)*gamma.numerator()==0` directly, atlas-types.w:7372), NOT
+/// this predicate, and the crate keeps `to_singular_canonical` and the
+/// `y_act` transport private. The language layer therefore normalises
+/// with the public `StandardRepr::normalised` (repr.cpp:659-667 — the
+/// same two steps plus the singular complex descent crosses, a
+/// deterministic function of the canonical form). For the comparison it
+/// uses a convention-free equivalent of the `y_act(i,i,y,delta) == y`
+/// condition: `twisted(z,delta)` has `lambda_rho' == delta*lambda_rho`
+/// (its `y_lift' == (1-theta)*delta*y_lift/2`, and `(1+theta)*y_lift == 0`
+/// since theta is an involution), so the twisted parameter is rebuilt
+/// with `RepContext::sr_gamma` — which repacks `y_bits` from `lambda_rho`
+/// through the crate-private `y_pack` — and compared componentwise
+/// (`x`, `y_bits`, `gamma`; repr.cpp:36-40), exactly `z == twisted(z,delta)`.
+fn ext_is_fixed(
+    context: &Arc<RealFormContext>,
+    parameter: &StandardRepr,
+    delta: &LatticeInvolution,
+    twist: &[usize],
+    span: SourceSpan,
+) -> Result<bool, Diagnostic> {
+    let rc = rep_context(context);
+    let z = parameter
+        .normalised(&rc)
+        .map_err(|error| structure_diagnostic(error, span))?;
+    // x: the twisted element must be z's own; `None` is upstream's
+    // UndefKGB, which never equals a real element number.
+    let Some(twisted_x) = context
+        .graph
+        .twisted(z.x(), &context.table, delta, twist)
+        .map_err(|error| structure_diagnostic(error, span))?
+    else {
+        return Ok(false);
+    };
+    let matrix = delta.weight_matrix();
+    // gamma: the twisted infinitesimal character is delta*gamma.
+    let gamma = z.gamma();
+    let gamma_image: Vec<i64> = matrix
+        .iter()
+        .map(|row| {
+            row.iter()
+                .zip(gamma.numerator())
+                .map(|(&factor, &coordinate)| i64::from(factor) * coordinate)
+                .sum()
+        })
+        .collect();
+    let twisted_gamma = RationalWeight::new(gamma_image, gamma.denominator())
+        .map_err(|error| structure_diagnostic(error, span))?;
+    // lambda_rho: the twisted lambda_rho is delta*lambda_rho (doc comment).
+    // Rebuild twisted(z,delta) with `sr_gamma` — it packs y_bits from
+    // lambda_rho via the crate-private `y_pack` — and compare (x, y_bits,
+    // gamma; repr.cpp:36-40), exactly upstream's `z == twisted(z,delta)`.
+    let lambda_rho = rc
+        .lambda_rho(&z)
+        .map_err(|error| structure_diagnostic(error, span))?;
+    let mut lambda_image = Vec::with_capacity(matrix.len());
+    for row in matrix {
+        let image: i64 = row
+            .iter()
+            .zip(lambda_rho.as_slice())
+            .map(|(&factor, &coordinate)| i64::from(factor) * i64::from(coordinate))
+            .sum();
+        lambda_image.push(
+            i32::try_from(image)
+                .map_err(|_| structure_diagnostic(StructureError::ArithmeticOverflow, span))?,
+        );
+    }
+    match rc.sr_gamma(twisted_x, &Weight::new(lambda_image), &twisted_gamma) {
+        Ok(twisted) => Ok(twisted == z),
+        // A twisted datum whose torsion part does not pack is not a valid
+        // parameter, hence cannot equal z.
+        Err(_) => Ok(false),
+    }
+}
+
+/// Gates of `scale_extended_wrapper` (interpreter/atlas-types.w:8449-8472),
+/// in the upstream order: `test_final`, then the strictly-positive factor
+/// check (`is_positive`, so 0 is rejected), then `test_compatible`, then
+/// the delta-fix test on the parameter. All four precede the wrapper's
+/// no_value gate, so both `call` and `validate` run them. Returns the
+/// validated involution and the narrowed factor.
+fn scale_extended_gates(
+    parameter: &ParamValue,
+    matrix: &Value,
+    factor: &BigRational,
+    span: SourceSpan,
+) -> Result<(LatticeInvolution, i64, i64), Diagnostic> {
+    test_final(parameter, "Cannot scale extended parameter", span)?;
+    let (numerator, denominator) = rational_pair(factor, span)?;
+    if numerator <= 0 {
+        return Err(runtime(span, "Factor in scale_extended must be positive"));
+    }
+    let (delta, twist) = compatible_outer_twist(&parameter.context, matrix, span)?;
+    if !ext_is_fixed(&parameter.context, &parameter.repr, &delta, &twist, span)? {
+        return Err(runtime(
+            span,
+            "Parameter to be scaled not fixed by given involution",
+        ));
+    }
+    Ok((delta, numerator, denominator))
+}
+
+/// Gates of `K_type_pol_extended_wrapper` (interpreter/atlas-types.w:
+/// 8487-8500): `test_standard` (whose descr carries the upstream literal
+/// "|" typo, preserved verbatim in the recorded oracle events), then
+/// `test_compatible`, then the delta-fix test.
+fn k_type_pol_extended_gates(
+    parameter: &ParamValue,
+    matrix: &Value,
+    span: SourceSpan,
+) -> Result<LatticeInvolution, Diagnostic> {
+    test_standard(
+        parameter,
+        "Parameter in K_type_pol_extended| must be standard",
+        span,
+    )?;
+    let (delta, twist) = compatible_outer_twist(&parameter.context, matrix, span)?;
+    if !ext_is_fixed(&parameter.context, &parameter.repr, &delta, &twist, span)? {
+        return Err(runtime(span, "Parameter not fixed by given involution"));
+    }
+    Ok(delta)
+}
+
+/// Gates of `finalize_extended_wrapper` (interpreter/atlas-types.w:
+/// 8514-8537): `test_standard`, `test_compatible`, the delta-fix test, and
+/// finally the commutation of the parameter's Cartan involution with
+/// delta.
+fn finalize_extended_gates(
+    parameter: &ParamValue,
+    matrix: &Value,
+    span: SourceSpan,
+) -> Result<LatticeInvolution, Diagnostic> {
+    test_standard(parameter, "Cannot finalize extended parameter", span)?;
+    let (delta, twist) = compatible_outer_twist(&parameter.context, matrix, span)?;
+    if !ext_is_fixed(&parameter.context, &parameter.repr, &delta, &twist, span)? {
+        return Err(runtime(span, "Parameter not fixed by given involution"));
+    }
+    // atlas-types.w:8528-8532: theta = i_tab.matrix(kgb.involution(x)).
+    let rc = rep_context(&parameter.context);
+    let theta = rc
+        .theta(&parameter.repr)
+        .map_err(|error| structure_diagnostic(error, span))?;
+    if integer_matrix_product(theta.weight_matrix(), delta.weight_matrix())
+        != integer_matrix_product(delta.weight_matrix(), theta.weight_matrix())
+    {
+        return Err(runtime(
+            span,
+            "Involution of parameter does not commute with delta",
+        ));
+    }
+    Ok(delta)
+}
+
 /// Shared tail of both `twist` wrappers: apply the crate twist and rewrap
 /// the target in the same real-form context. `Ok(None)` from the crate is
 /// upstream's `UndefKGB`, surfaced with the established inexistent
@@ -7670,6 +7869,33 @@ pub(crate) fn validate(
                 return Err(type_error(span, "expected a Param"));
             };
             shift_flip_gates(parameter, &arguments[1], &arguments[2], span)?;
+        }
+        // The ext_finalise wrappers run every precondition before their
+        // no_value gates (atlas-types.w:8449-8537), so validation runs the
+        // same gates and drops the result.
+        "scale_extended" => {
+            arity(name, arguments, 3, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(span, "expected a Param"));
+            };
+            let Value::Rational(factor) = &arguments[2] else {
+                return Err(type_error(span, "expected a rat"));
+            };
+            scale_extended_gates(parameter, &arguments[1], factor, span)?;
+        }
+        "K_type_pol_extended" => {
+            arity(name, arguments, 2, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(span, "expected a Param"));
+            };
+            k_type_pol_extended_gates(parameter, &arguments[1], span)?;
+        }
+        "finalize_extended" => {
+            arity(name, arguments, 2, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(span, "expected a Param"));
+            };
+            finalize_extended_gates(parameter, &arguments[1], span)?;
         }
         // Both Cartan_class wrappers bounds-check before their no_value gate
         // (atlas-types.w:4025-4033, 4046-4056).
@@ -13791,6 +14017,118 @@ pub(crate) fn call_with_printed(
                 }
             }
         }
+        // scale_extended_wrapper (atlas-types.w:8449-8472): scale the
+        // infinitesimal character of a final parameter by a positive
+        // rational at the extended-parameter level
+        // (ext_block::scaled_extended_finalise, ext_block.cpp:2736-2807),
+        // returning the final parameter paired with the net flip of the
+        // default extension choice. Upstream pushes the Param FIRST, then
+        // whether(flip), then wraps the pair.
+        "scale_extended" => {
+            arity(name, arguments, 3, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "{name} has no matching overload for {} argument(s)",
+                        arguments.len()
+                    ),
+                ));
+            };
+            let Value::Rational(factor) = &arguments[2] else {
+                return Err(type_error(
+                    span,
+                    format!("expected a rat, found {}", arguments[2]),
+                ));
+            };
+            let (delta, factor_num, factor_den) =
+                scale_extended_gates(parameter, &arguments[1], factor, span)?;
+            let rc = rep_context(&parameter.context);
+            let context = ExtRepContext::new(&rc, delta)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let (repr, flip) =
+                scaled_extended_finalise(&context, &parameter.repr, factor_num, factor_den)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+            Ok(Value::Tuple(vec![
+                Value::Domain(DomainValue::Param(ParamValue {
+                    context: Arc::clone(&parameter.context),
+                    repr,
+                })),
+                Value::Boolean(flip),
+            ]))
+        }
+        // K_type_pol_extended_wrapper (atlas-types.w:8487-8500): restrict
+        // the extended parameter to K
+        // (ext_block::extended_restrict_to_K, ext_block.cpp:2435-2547).
+        // Each survivor contributes with Split(1,0) when it is
+        // default-aligned, Split(0,1) when flipped; like terms merge and
+        // the sum is ordered with the K_type_pol comparator
+        // (K_repr.h:59-70).
+        "K_type_pol_extended" => {
+            arity(name, arguments, 2, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "{name} has no matching overload for {} argument(s)",
+                        arguments.len()
+                    ),
+                ));
+            };
+            let delta = k_type_pol_extended_gates(parameter, &arguments[1], span)?;
+            let rc = rep_context(&parameter.context);
+            let context = ExtRepContext::new(&rc, delta)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let restricted = extended_restrict_to_k(&context, &parameter.repr)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let mut terms: Vec<(SplitValue, KType)> = Vec::new();
+            for (ktype, (e, f)) in restricted {
+                merge_pol_term(&mut terms, SplitValue::new(e, f), ktype);
+            }
+            sort_ktypepol_terms(&mut terms);
+            Ok(Value::Domain(DomainValue::KTypePol(KTypePolValue {
+                rf: Arc::clone(&parameter.context),
+                terms,
+            })))
+        }
+        // finalize_extended_wrapper (atlas-types.w:8514-8537): finalize the
+        // extended parameter into an SR_poly
+        // (ext_block::extended_finalise, ext_block.cpp:2598-2721). A
+        // flipped survivor contributes Split(0,1) ("1s*"), a
+        // default-aligned one Split(1,0); the sum is ordered with the
+        // SR_poly comparator (repr.cpp:41-54).
+        "finalize_extended" => {
+            arity(name, arguments, 2, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "{name} has no matching overload for {} argument(s)",
+                        arguments.len()
+                    ),
+                ));
+            };
+            let delta = finalize_extended_gates(parameter, &arguments[1], span)?;
+            let rc = rep_context(&parameter.context);
+            let context = ExtRepContext::new(&rc, delta)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let finalized = extended_finalise(&context, &parameter.repr)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let mut terms: Vec<(SplitValue, StandardRepr)> = Vec::new();
+            for (repr, flip) in finalized {
+                let coefficient = if flip {
+                    SplitValue::new(0, 1)
+                } else {
+                    SplitValue::new(1, 0)
+                };
+                merge_pol_term(&mut terms, coefficient, repr);
+            }
+            sort_parampol_terms(&mut terms);
+            Ok(Value::Domain(DomainValue::ParamPol(ParamPolValue {
+                rf: Arc::clone(&parameter.context),
+                terms,
+            })))
+        }
         "Cartan_info" => {
             arity(name, arguments, 1, span)?;
             let (context, id) = as_cartan_class(&arguments[0], span)?;
@@ -16170,6 +16508,335 @@ mod tests {
         );
     }
 
+    // The strings below are the verified HPC oracle output of
+    // tests/fixtures/domain/ext_finalise.atlas (job 3538977).
+    #[test]
+    fn ext_finalise_trio_matches_the_oracle_anchors() {
+        // A1, compact inner class, split form SL(2,R): the x=0 and x=2
+        // accepted cases (fixture lines 10-16).
+        let sl2r = sl2r_split_form();
+        let identity = matrix(1, 1, vec![1]);
+        let pa = sl2r_param(&sl2r, 0, &[0], &[0], 1);
+        let expected_pa = "final parameter(x=0,lambda=[1]/1,nu=[0]/1)";
+        assert_eq!(
+            call(
+                "scale_extended",
+                &[pa.clone(), identity.clone(), rat(2, 1)],
+                span()
+            )
+            .expect("scale_extended")
+            .to_string(),
+            format!("({expected_pa},false)")
+        );
+        assert_eq!(
+            call(
+                "K_type_pol_extended",
+                &[pa.clone(), identity.clone()],
+                span()
+            )
+            .expect("K_type_pol_extended")
+            .to_string(),
+            "\n1* K_type(x=0, lambda=[1]/1) [1]"
+        );
+        assert_eq!(
+            call("finalize_extended", &[pa, identity], span())
+                .expect("finalize_extended")
+                .to_string(),
+            "\n1*parameter(x=0,lambda=[1]/1,nu=[0]/1) [1]"
+        );
+        let pa2 = sl2r_param(&sl2r, 2, &[0], &[1], 1);
+        assert_eq!(
+            call(
+                "scale_extended",
+                &[pa2, matrix(1, 1, vec![1]), rat(3, 2)],
+                span()
+            )
+            .expect("scale_extended")
+            .to_string(),
+            "(final parameter(x=2,lambda=[1]/1,nu=[3]/2),false)"
+        );
+
+        // A2, both inner classes, x=0 (fixture lines 26-38): same output
+        // for the compact and the split inner class.
+        let datum = fixture_datum("A2", true);
+        let flip = matrix(2, 2, vec![0, 1, 1, 0]);
+        let identity2 = matrix(2, 2, vec![1, 0, 0, 1]);
+        for (twist, form_number) in [(identity2.clone(), 1), (flip.clone(), 0)] {
+            let class = call("inner_class", &[datum.clone(), twist], span()).expect("inner class");
+            let form = call("real_form", &[class, int(form_number)], span()).expect("real form");
+            let element = call("KGB", &[form, int(0)], span()).expect("KGB element");
+            let q = call(
+                "param",
+                &[
+                    element,
+                    Value::Vector(Vec32(vec![0, 0])),
+                    Value::RatVector(RatVec::new(vec![0, 0], 1).expect("ratvec")),
+                ],
+                span(),
+            )
+            .expect("param");
+            let delta = matrix(2, 2, vec![1, 0, 0, 1]);
+            let delta = if form_number == 0 {
+                flip.clone()
+            } else {
+                delta
+            };
+            assert_eq!(
+                call(
+                    "scale_extended",
+                    &[q.clone(), delta.clone(), rat(2, 1)],
+                    span()
+                )
+                .expect("scale_extended")
+                .to_string(),
+                "(final parameter(x=0,lambda=[1,1]/1,nu=[0,0]/1),false)"
+            );
+            assert_eq!(
+                call("K_type_pol_extended", &[q.clone(), delta.clone()], span())
+                    .expect("K_type_pol_extended")
+                    .to_string(),
+                "\n1* K_type(x=0, lambda=[1,1]/1) [4]"
+            );
+            assert_eq!(
+                call("finalize_extended", &[q, delta], span())
+                    .expect("finalize_extended")
+                    .to_string(),
+                "\n1*parameter(x=0,lambda=[1,1]/1,nu=[0,0]/1) [4]"
+            );
+        }
+
+        // SL(3,R), x=3 (fixture lines 42-43): the flip case — both polys
+        // carry the Split(0,1) "1s*" coefficient.
+        let split_class =
+            call("inner_class", &[datum.clone(), flip.clone()], span()).expect("split inner class");
+        let split_form = call("real_form", &[split_class, int(0)], span()).expect("split form");
+        let element3 = call("KGB", &[split_form, int(3)], span()).expect("KGB element");
+        let p = call(
+            "param",
+            &[
+                element3,
+                Value::Vector(Vec32(vec![1, 1])),
+                Value::RatVector(RatVec::new(vec![0, 0], 1).expect("ratvec")),
+            ],
+            span(),
+        )
+        .expect("param");
+        assert_eq!(
+            call("finalize_extended", &[p.clone(), flip.clone()], span())
+                .expect("finalize_extended")
+                .to_string(),
+            "\n1s*parameter(x=0,lambda=[0,0]/1,nu=[0,0]/1) [0]"
+        );
+        assert_eq!(
+            call("K_type_pol_extended", &[p, flip], span())
+                .expect("K_type_pol_extended")
+                .to_string(),
+            "\n1s* K_type(x=0, lambda=[0,0]/1) [0]"
+        );
+
+        // B2, split form so(3,2), x=8 (fixture lines 53-54): the two-term
+        // case; ParamPol orders x descending, KTypePol x ascending.
+        let datum_b2 = fixture_datum("B2", true);
+        let class_b2 =
+            call("inner_class", &[datum_b2, identity2.clone()], span()).expect("inner class");
+        let form_b2 = call("real_form", &[class_b2, int(2)], span()).expect("real form");
+        let element8 = call("KGB", &[form_b2, int(8)], span()).expect("KGB element");
+        let pb = call(
+            "param",
+            &[
+                element8,
+                Value::Vector(Vec32(vec![0, 0])),
+                Value::RatVector(RatVec::new(vec![0, 0], 1).expect("ratvec")),
+            ],
+            span(),
+        )
+        .expect("param");
+        assert_eq!(
+            call(
+                "finalize_extended",
+                &[pb.clone(), identity2.clone()],
+                span()
+            )
+            .expect("finalize_extended")
+            .to_string(),
+            "\n1*parameter(x=1,lambda=[0,1]/1,nu=[0,0]/1) [3]\
+             \n1*parameter(x=0,lambda=[0,1]/1,nu=[0,0]/1) [3]"
+        );
+        assert_eq!(
+            call("K_type_pol_extended", &[pb, identity2], span())
+                .expect("K_type_pol_extended")
+                .to_string(),
+            "\n1* K_type(x=0, lambda=[0,1]/1) [3]\
+             \n1* K_type(x=1, lambda=[0,1]/1) [3]"
+        );
+    }
+
+    // The messages below are the verified HPC oracle diagnostics of
+    // tests/fixtures/domain/ext_finalise_rejected.atlas, with the
+    // two-space continuation indents the comparison pipeline strips.
+    #[test]
+    fn ext_finalise_rejections_match_the_oracle_gates() {
+        let datum = fixture_datum("A2", true);
+        let flip = matrix(2, 2, vec![0, 1, 1, 0]);
+        let split_class =
+            call("inner_class", &[datum, flip.clone()], span()).expect("split inner class");
+        let split_form = call("real_form", &[split_class, int(0)], span()).expect("split form");
+        let param = |x: i64, nu: &[i64]| {
+            let element = call("KGB", &[split_form.clone(), int(x)], span()).expect("KGB element");
+            call(
+                "param",
+                &[
+                    element,
+                    Value::Vector(Vec32(vec![1, 1])),
+                    Value::RatVector(RatVec::new(nu.to_vec(), 1).expect("ratvec")),
+                ],
+                span(),
+            )
+            .expect("param")
+        };
+        let p = param(3, &[0, 0]);
+        let p2 = {
+            let element = call("KGB", &[split_form.clone(), int(0)], span()).expect("KGB element");
+            call(
+                "param",
+                &[
+                    element,
+                    Value::Vector(Vec32(vec![0, 0])),
+                    Value::RatVector(RatVec::new(vec![1, 0], 1).expect("ratvec")),
+                ],
+                span(),
+            )
+            .expect("param")
+        };
+
+        // test_final fires first of all (rejected line 11).
+        let error = call(
+            "scale_extended",
+            &[p.clone(), flip.clone(), rat(2, 1)],
+            span(),
+        )
+        .expect_err("non-final parameter is rejected");
+        assert_eq!(
+            error.message,
+            "Cannot scale extended parameter:\n  \
+             non-final parameter(x=3,lambda=[2,2]/1,nu=[0,0]/1)\n  \
+             Parameter is not semifinal"
+        );
+
+        // The factor check precedes test_compatible and is_fixed
+        // (rejected line 12), identically on the no-value path.
+        for result in [
+            call(
+                "scale_extended",
+                &[p2.clone(), flip.clone(), rat(0, 1)],
+                span(),
+            ),
+            validate(
+                "scale_extended",
+                &[p2.clone(), flip.clone(), rat(0, 1)],
+                span(),
+            )
+            .map(|()| Value::Tuple(Vec::new())),
+        ] {
+            assert_eq!(
+                result.expect_err("a zero factor is rejected").message,
+                "Factor in scale_extended must be positive"
+            );
+        }
+
+        // p2's gamma [1,-1]/2 is not fixed by the distinguished delta
+        // (rejected lines 13-14).
+        let error = call(
+            "scale_extended",
+            &[p2.clone(), flip.clone(), rat(2, 1)],
+            span(),
+        )
+        .expect_err("not delta-fixed");
+        assert_eq!(
+            error.message,
+            "Parameter to be scaled not fixed by given involution"
+        );
+        let error = call("K_type_pol_extended", &[p2.clone(), flip.clone()], span())
+            .expect_err("not delta-fixed");
+        assert_eq!(error.message, "Parameter not fixed by given involution");
+
+        // The x=1 parameter IS delta-fixed, but its Cartan involution does
+        // not commute with delta (rejected line 15).
+        let non_commuting = {
+            let element = call("KGB", &[split_form.clone(), int(1)], span()).expect("KGB element");
+            call(
+                "param",
+                &[
+                    element,
+                    Value::Vector(Vec32(vec![0, 0])),
+                    Value::RatVector(RatVec::new(vec![0, 0], 1).expect("ratvec")),
+                ],
+                span(),
+            )
+            .expect("param")
+        };
+        let error = call("finalize_extended", &[non_commuting, flip.clone()], span())
+            .expect_err("non-commuting involution is rejected");
+        assert_eq!(
+            error.message,
+            "Involution of parameter does not commute with delta"
+        );
+
+        // test_compatible rejections (rejected lines 16-17).
+        let error = call(
+            "scale_extended",
+            &[p2.clone(), matrix(2, 2, vec![1, 0, 1, 1]), rat(2, 1)],
+            span(),
+        )
+        .expect_err("non-involution is rejected");
+        assert_eq!(error.message, "Given transformation is not an involution");
+        let error = call(
+            "scale_extended",
+            &[p2, matrix(3, 3, vec![1, 0, 0, 0, 1, 0, 0, 0, 1]), rat(2, 1)],
+            span(),
+        )
+        .expect_err("wrong-size matrix is rejected");
+        assert_eq!(
+            error.message,
+            "Involution should be a 2x2 matrix; received a 3x3 matrix"
+        );
+
+        // A1, the non-standard n3 (rejected lines 26-28): test_standard
+        // fires for finalize/K_type_pol (the latter keeps the upstream "|"
+        // typo), while scale_extended's test_final reports "not dominant".
+        let sl2r = sl2r_split_form();
+        let n3 = sl2r_param(&sl2r, 1, &[-2], &[0], 1);
+        let identity = matrix(1, 1, vec![1]);
+        let error = call("finalize_extended", &[n3.clone(), identity.clone()], span())
+            .expect_err("non-standard parameter is rejected");
+        assert_eq!(
+            error.message,
+            "Cannot finalize extended parameter:\n  \
+             non-standard parameter(x=1,lambda=[-1]/1,nu=[0]/1)\n  \
+             Parameter not standard"
+        );
+        let error = call(
+            "K_type_pol_extended",
+            &[n3.clone(), identity.clone()],
+            span(),
+        )
+        .expect_err("non-standard parameter is rejected");
+        assert_eq!(
+            error.message,
+            "Parameter in K_type_pol_extended| must be standard:\n  \
+             non-standard parameter(x=1,lambda=[-1]/1,nu=[0]/1)\n  \
+             Parameter not standard"
+        );
+        let error = call("scale_extended", &[n3, identity, rat(2, 1)], span())
+            .expect_err("non-dominant parameter is rejected");
+        assert_eq!(
+            error.message,
+            "Cannot scale extended parameter:\n  \
+             non-standard parameter(x=1,lambda=[-1]/1,nu=[0]/1)\n  \
+             Parameter is not dominant"
+        );
+    }
+
     fn fixture_datum(lie_type: &str, prefers_coroots: bool) -> Value {
         let lie_type =
             call("Lie_type", &[Value::String(lie_type.into())], span()).expect("Lie type");
@@ -16183,6 +16850,10 @@ mod tests {
 
     fn int(value: i64) -> Value {
         Value::Integer(BigInt::from(value))
+    }
+
+    fn rat(numerator: i64, denominator: i64) -> Value {
+        Value::Rational(BigRational::from_signeds(numerator, denominator))
     }
 
     fn matrix(rows: usize, columns: usize, column_major: Vec<i32>) -> Value {

@@ -5190,6 +5190,36 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 bool_type(),
                 0,
             ),
+            // scale_extended / K_type_pol_extended / finalize_extended
+            // (atlas-types.w:8449-8537, installed :8591-8596): the
+            // ext_finalise trio — scale a final parameter at the extended
+            // level, restrict an extended parameter to K, and finalize an
+            // extended parameter into an SR_poly. Every precondition
+            // (test_final/test_standard, the factor check,
+            // test_compatible, is_fixed, commutation) precedes each
+            // wrapper's no_value gate, so they validate.
+            domain_builtin_validate(
+                "scale_extended",
+                Type::tuple(vec![
+                    primitive_type(Prim::Param),
+                    primitive_type(Prim::Mat),
+                    rat_type(),
+                ]),
+                Type::tuple(vec![primitive_type(Prim::Param), bool_type()]),
+                1,
+            ),
+            domain_builtin_validate(
+                "K_type_pol_extended",
+                Type::tuple(vec![primitive_type(Prim::Param), primitive_type(Prim::Mat)]),
+                primitive_type(Prim::KTypePol),
+                1,
+            ),
+            domain_builtin_validate(
+                "finalize_extended",
+                Type::tuple(vec![primitive_type(Prim::Param), primitive_type(Prim::Mat)]),
+                primitive_type(Prim::ParamPol),
+                1,
+            ),
             // W_graph / W_cells (atlas-types.w:7494-7496): the W-graph and
             // its cell decomposition of a standard parameter's block.
             domain_builtin(
