@@ -4780,6 +4780,12 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             // memoization only).
             domain_printer_builtin("print_block", primitive_type(Prim::Param)),
             domain_printer_builtin("print_common_block", primitive_type(Prim::Param)),
+            // print_part_param_block_wrapper / print_pc_block_wrapper
+            // (atlas-types.w:6700-6735, installed at 7506-7509): the Bruhat
+            // interval below a Param as a partial common block;
+            // print_partial_common_block normalises the seed first.
+            domain_printer_builtin("print_partial_block", primitive_type(Prim::Param)),
+            domain_printer_builtin("print_partial_common_block", primitive_type(Prim::Param)),
             // KGB_Hasse (atlas-types.w:3735-3743): the Bruhat Hasse matrix.
             domain_builtin(
                 "KGB_Hasse",

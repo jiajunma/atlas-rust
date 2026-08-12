@@ -30,8 +30,8 @@ use atlas_real_group::ext_param::{
 };
 use atlas_real_group::{
     adapted_basis, adapted_relation_basis, annihilator_modulo as relation_annihilator_modulo,
-    block_deformation_to_height, bourbaki_permutation, build_presentations, central_fiber,
-    checked_inner_class_letters, classify_involution as domain_classify_involution,
+    block_deformation_to_height, bourbaki_permutation, bruhat_below, build_presentations,
+    central_fiber, checked_inner_class_letters, classify_involution as domain_classify_involution,
     dual_cartan_correspondence, dual_inner_class, dual_involution as block_dual_involution,
     elected_square_root, fiber_rank, filter_relation_units as domain_filter_relation_units,
     inner_class_with_twisted_involution, integral_block_scope, layout_involution, longest_action,
@@ -40,13 +40,14 @@ use atlas_real_group::{
     replace_relation_generators as domain_replace_relation_generators, singular_orbits_at,
     twisted_deformation, twisted_deformation_terms, twisted_kl_column_at_s, twisted_kl_sum,
     AdjointFiberBudget, BasedRootDatum, BlockDescent, BlockGraph, CartanClassification,
-    CartanClassificationBudget, CartanId, Coweight, ExternalFormOrder, GlobalKgb, InnerClass,
-    InnerClassLayout, IntegerLatticeBudget, IntegralBlockScope, InvolutionId, InvolutionTable,
-    InvolutionTableBudget, KType, KgbGraph, KgbId, KgbStatus, KlPol, KlTable, LatticeInvolution,
-    ModTwoVector, RankFlags, RationalWeight, RealFormPresentation, RealFormSeed, RelationBasis,
-    RelationError, RelationGenerator, RelationMatrix, RepContext, RootId, RootInvolutionData,
-    RootKind, RootSystem, SplitInteger, StandardRepr, StrongRealClassification, StructureError,
-    WeakRealFormId, Weight, WeylAction, WeylElement, WeylInterface,
+    CartanClassificationBudget, CartanId, CommonContext, Coweight, ExternalFormOrder, GlobalKgb,
+    InnerClass, InnerClassLayout, IntegerLatticeBudget, IntegralBlockScope, InvolutionId,
+    InvolutionTable, InvolutionTableBudget, KType, KgbGraph, KgbId, KgbStatus, KlPol, KlTable,
+    LatticeInvolution, ModTwoVector, PartialBlock, RankFlags, RationalWeight, RealFormPresentation,
+    RealFormSeed, RelationBasis, RelationError, RelationGenerator, RelationMatrix, RepContext,
+    RootId, RootInvolutionData, RootKind, RootSystem, SplitInteger, StandardRepr, StandardReprMod,
+    StrongRealClassification, StructureError, WeakRealFormId, Weight, WeylAction, WeylElement,
+    WeylInterface,
 };
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
@@ -8664,6 +8665,83 @@ fn common_block_rows(
     Ok((rows, init))
 }
 
+/// The seed-to-rows path of the partial-block printers
+/// (atlas-types.w:6700-6735): `StandardReprMod::mod_reduce` of `seed_repr`
+/// (repr.cpp:52-58), the `common_context` on its gamma_lambda
+/// (repr.cpp:2666-2670), the Bruhat interval below the seed
+/// (`Rep_table::Bruhat_below`, repr.cpp:1565-1573), and the partial
+/// `common_block` over that interval (blocks.cpp:1086-1248) — one row per
+/// element, renumbered by the block's final `(length, x, y)` sort. The
+/// survives flag uses `block.singular(gamma)` (blocks.cpp:701-708) with the
+/// CALLER's gamma: both wrappers pass `p->val.gamma()`, even when the seed
+/// was normalised first (print_pc_block_wrapper). Also returns the seed's
+/// row number (upstream's `init_index`), used by the partial-common header.
+fn partial_block_rows(
+    context: &Arc<RealFormContext>,
+    seed_repr: &StandardRepr,
+    gamma: &RationalWeight,
+    span: SourceSpan,
+) -> Result<(Vec<CommonBlockRow>, usize), Diagnostic> {
+    let rc = rep_context(context);
+    let seed = StandardReprMod::mod_reduce(&rc, seed_repr)
+        .map_err(|error| structure_diagnostic(error, span))?;
+    let ctxt = CommonContext::integral(&rc, seed.gamma_lambda())
+        .map_err(|error| structure_diagnostic(error, span))?;
+    let interval = bruhat_below(&ctxt, &seed).map_err(|error| structure_diagnostic(error, span))?;
+    let block =
+        PartialBlock::build(&ctxt, &interval).map_err(|error| structure_diagnostic(error, span))?;
+    let singular = ctxt
+        .singular_flags(gamma)
+        .map_err(|error| structure_diagnostic(error, span))?;
+    let rank = block.rank();
+    let mut rows = Vec::with_capacity(block.size());
+    for z in 0..block.size() {
+        let mut descents = Vec::with_capacity(rank);
+        let mut crosses = Vec::with_capacity(rank);
+        let mut cayleys = Vec::with_capacity(rank);
+        for s in 0..rank {
+            descents.push(
+                block
+                    .descent(z, s)
+                    .ok_or_else(|| runtime(span, "partial block descent out of range"))?,
+            );
+            crosses.push(block.cross(s, z));
+            // do_print (block_io.cpp:96-102) switches between inverseCayley
+            // and cayley by the weak descent, but both accessors return the
+            // stored pair of their side and undef otherwise (blocks.h:
+            // 143-157), so the stored pair is always what prints.
+            cayleys.push(
+                block
+                    .cayley(s, z)
+                    .ok_or_else(|| runtime(span, "partial block Cayley link out of range"))?,
+            );
+        }
+        rows.push(CommonBlockRow {
+            x: block
+                .x(z)
+                .ok_or_else(|| runtime(span, "partial block element out of range"))?,
+            length: block
+                .length(z)
+                .ok_or_else(|| runtime(span, "partial block element out of range"))?,
+            descents,
+            crosses,
+            cayleys,
+            gamma_lambda: block
+                .gamma_lambda(z)
+                .cloned()
+                .ok_or_else(|| runtime(span, "partial block element out of range"))?,
+            survives: block.survives(z, &singular),
+        });
+    }
+    // The seed generates last and has the maximal length in the interval,
+    // so it sorts to the final row; upstream asserts this via
+    // `which == last(subset)` (repr.cpp:1819). Report instead of assuming.
+    let init = block
+        .lookup(&seed)
+        .ok_or_else(|| runtime(span, "seed missing from its Bruhat interval"))?;
+    Ok((rows, init))
+}
+
 /// The common-block print (block_io.cpp:54-110 `do_print` with
 /// traditional=false, then `common_block::print` at :128-147):
 /// `z: length [descents] cross... (cayley,...) *(x=..,gamma-lambda=..)
@@ -9094,6 +9172,76 @@ pub(crate) fn print_text(
             text.push_str(&render_common_block(&parameter.context, &rows));
             Ok(text)
         }
+        // print_part_param_block_wrapper (atlas-types.w:6700-6711): the
+        // Bruhat interval below the parameter's own srm, printed as a
+        // partial common block with no header.
+        "print_partial_block" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "{name} has no matching overload for {} argument(s)",
+                        arguments.len()
+                    ),
+                ));
+            };
+            test_standard(parameter, "Cannot generate block", span)?;
+            let (rows, _) = partial_block_rows(
+                &parameter.context,
+                &parameter.repr,
+                parameter.repr.gamma(),
+                span,
+            )?;
+            Ok(render_common_block(&parameter.context, &rows))
+        }
+        // print_pc_block_wrapper (atlas-types.w:6713-6735): `Rep_table::
+        // lookup` (repr.cpp:1796-1824) normalises the parameter and, on a
+        // fresh table, builds only the Bruhat interval below it
+        // (add_block_below, repr.cpp:1585-1645); the block modifier is then
+        // cleared ("relative to ourselves"), so the shift is a no-op and
+        // the singular flags use the parameter's own gamma. The seed is the
+        // top element of its interval, so below(init_index) is full with
+        // init_index == size-1 and NO header prints: the "Elements <= ..."
+        // header (atlas-types.w:6721-6722) needs init_index+1 < size, and
+        // the "Subset ..." branch needs a non-full below-set, which only a
+        // cross-call block cache hit can produce — the fresh-build-per-call
+        // design has no such cache.
+        "print_partial_common_block" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "{name} has no matching overload for {} argument(s)",
+                        arguments.len()
+                    ),
+                ));
+            };
+            test_standard(parameter, "Cannot generate block", span)?;
+            let normalised = {
+                let rc = rep_context(&parameter.context);
+                parameter
+                    .repr
+                    .normalised(&rc)
+                    .map_err(|error| structure_diagnostic(error, span))?
+            };
+            let (rows, init) = partial_block_rows(
+                &parameter.context,
+                &normalised,
+                parameter.repr.gamma(),
+                span,
+            )?;
+            let mut text = String::new();
+            if init + 1 < rows.len() {
+                text.push_str(&format!("Elements <= {init} of following block\n"));
+            }
+            text.push_str(&render_common_block(&parameter.context, &rows));
+            Ok(text)
+        }
+        // only the unitary block elements (the involution support is
+        // contained in the weak descents), with the filtered descent sets
+        // and the twisted reduced expression.
         // print_blocku (atlas-types.w:8894-8917, block_io.cpp:282-369):
         // only the unitary block elements (the involution support is
         // contained in the weak descents), with the filtered descent sets
@@ -16914,6 +17062,104 @@ mod tests {
             assert_eq!(right.contains("*(x="), starred, "row {z}");
             // Dropping the star is the only difference between the tables.
             assert_eq!(right.replacen(" (x=", "*(x=", 1), *left, "row {z}");
+        }
+    }
+
+    // The strings below are the verified HPC oracle output of
+    // tests/fixtures/domain/print_partial_block.atlas; the two partial
+    // printers emit byte-identical text per parameter.
+    #[test]
+    fn print_partial_block_reports_the_sl2r_intervals() {
+        let real = sl2r_split_form();
+        // param(KGB(rf,2),[1],[1]/2): half-integral gamma, rank-0 integral
+        // subsystem, so the interval is the seed element alone.
+        let p = sl2r_param(&real, 2, &[1], &[1], 2);
+        let p_rows = "0:  0  []   *(x=2,gamma-lambda=  [1]/2)  1^e\n";
+        assert_eq!(
+            print_text("print_partial_block", std::slice::from_ref(&p), span()).expect("print"),
+            p_rows
+        );
+        assert_eq!(
+            print_text(
+                "print_partial_common_block",
+                std::slice::from_ref(&p),
+                span()
+            )
+            .expect("print"),
+            p_rows
+        );
+        // param(KGB(rf,2),[1],[0]/1): gamma = nu = [0], the simple coroot
+        // is singular, so the r1 descent at row 2 drops the star.
+        let q3 = sl2r_param(&real, 2, &[1], &[0], 1);
+        let q3_rows = "0:  0  [i1]  1   (2,*)  *(x=0,gamma-lambda=  [0]/1)  e\n1:  0  [i1]  0   (2,*)  *(x=1,gamma-lambda=  [0]/1)  e\n2:  1  [r1]  2   (0,1)   (x=2,gamma-lambda=  [0]/1)  1^e\n";
+        assert_eq!(
+            print_text("print_partial_block", std::slice::from_ref(&q3), span()).expect("print"),
+            q3_rows
+        );
+        assert_eq!(
+            print_text(
+                "print_partial_common_block",
+                std::slice::from_ref(&q3),
+                span()
+            )
+            .expect("print"),
+            q3_rows
+        );
+    }
+
+    #[test]
+    fn print_partial_block_reports_the_b2_intervals() {
+        let lie_type = call("Lie_type", &[Value::String("B2".into())], span()).expect("Lie type");
+        let datum = call(
+            "simply_connected",
+            &[lie_type, Value::Boolean(true)],
+            span(),
+        )
+        .expect("root datum");
+        let matrix = Value::Matrix(
+            Matrix::from_columns(2, 2, vec![1, 0, 0, 1]).expect("identity involution"),
+        );
+        let inner = call("inner_class", &[datum, matrix], span()).expect("inner class");
+        let real = call(
+            "real_form",
+            &[inner, Value::Integer(BigInt::from(2))],
+            span(),
+        )
+        .expect("split real form");
+        let b2_param = |x: i64| {
+            let element = call(
+                "KGB",
+                &[real.clone(), Value::Integer(BigInt::from(x))],
+                span(),
+            )
+            .expect("KGB element");
+            call(
+                "param",
+                &[
+                    element,
+                    Value::Vector(Vec32(vec![1, 1])),
+                    Value::RatVector(RatVec::new(vec![0, 0], 1).expect("ratvec")),
+                ],
+                span(),
+            )
+            .expect("param")
+        };
+        // pb = param(KGB(rfb,0),[1,1],[0,0]/1): the most compact element
+        // has only imaginary ascents, so the interval is the singleton.
+        let pb_rows = "0:  0  [i1,i1]  *  *   (*,*)  (*,*)  *(x=0,gamma-lambda=   [0,0]/1)  e\n";
+        // pb2 = param(KGB(rfb,5),[1,1],[0,0]/1): the 3-row interval
+        // x=2,3,5; gamma = (1+theta_5)[1,1] is singular on coroot 0, so
+        // the r1 descent at row 2 drops the star.
+        let pb2_rows = "0:  0  [i1,i1]  1  *   (2,*)  (*,*)  *(x=2,gamma-lambda=   [0,0]/1)  e\n1:  0  [i1,ic]  0  1   (2,*)  (*,*)  *(x=3,gamma-lambda=   [0,0]/1)  e\n2:  1  [r1,C+]  2  *   (0,1)  (*,*)   (x=5,gamma-lambda=   [0,0]/1)  1^e\n";
+        for name in ["print_partial_block", "print_partial_common_block"] {
+            assert_eq!(
+                print_text(name, &[b2_param(0)], span()).expect("print"),
+                pb_rows
+            );
+            assert_eq!(
+                print_text(name, &[b2_param(5)], span()).expect("print"),
+                pb2_rows
+            );
         }
     }
 
