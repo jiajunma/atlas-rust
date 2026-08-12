@@ -4,6 +4,42 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-12d (print_x verified_hpc; crate bugs fixed; dual_KL differential in flight)
+
+- **print_x(±) closed**: differential **3540739** @ 3908db4 — 217
+  fixtures, 216 PASS, 0 FAIL (container_syntax_errors PARTIAL is the
+  permanent known item). Both metas bumped to verified_hpc (`c3ba84a`).
+- **agent-52 crate fixes verified + committed (`f399fc8`)**: kl_table
+  RT2 arm uses inverse_Cayley first term; complete_primitives reads the
+  in-progress column (kl.cpp:129-131/566-574); RealProjection is seeded
+  at the canonical involution and transported along cross-action BFS
+  (involutions.cpp:242-243) via new `real_projection.rs` — B2 x=4
+  λ=[2,2] now correct. dual_KL replay (incl. B2) byte-identical;
+  369 crate tests + 230 atlas-core tests + clippy/fmt all green.
+- **dual_KL registered + differential in flight**: FixturePlan entries
+  (33 lines/33 events) committed `dafdc03`, harness 10/10. Differential
+  **3541634** submitted on a clean dafdc03 checkout.
+- **HPC sync lesson — use git bundle, not fetch**: HPC→GitHub https
+  fetch is flaky (worked once, then silent failures). Deterministic
+  path: local `git bundle create /tmp/x.bundle <base-sha>..main` →
+  scp → HPC `git fetch /tmp/x.bundle main && git checkout -f <sha>` →
+  verify `git status --porcelain --untracked-files=all` empty (watch
+  for stray `atlas-pipeline-swap-*.out` files making the tree dirty) →
+  sbatch. Local sync uses a clean worktree `/tmp/atlas-hpc-sync`
+  (`git worktree add --detach`) so agents' dirty trees never leak into
+  the rsync.
+- **In flight**: agent-53 (print_common_block language layer,
+  atlas-core, resumed after a provider-quota kill); agent-54 (E2 crate
+  drivers scaled_extended_finalise/extended_restrict_to_K/
+  extended_finalise, atlas-real-group, purely additive constraint).
+- **Queue**: (1) collect 3541634 → dual_KL metas; (2) agent-53 delivery
+  → pcb FixturePlan registration (snippet ready in
+  docs/slices/post_weyl_lang_queue.md:296-308) + differential; (3)
+  agent-54 delivery → E2 language layer (typed.rs wrappers per
+  /tmp/slice_e2_brief.md precondition order); (4) E3 twisted family +
+  block_deform (/tmp/slice_e3_brief.md, depends on E2's
+  extended_finalise).
+
 ## Checkpoint - 2026-08-12c (E1 crate + dual_KL + print_X landed; two crate bugs found; HPC offline)
 
 - **E1 crate landed (`f12b27b`, agent-47)**: `ext_param.rs` (2329 lines,
