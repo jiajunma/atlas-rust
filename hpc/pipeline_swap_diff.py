@@ -471,6 +471,15 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/coroot_queries_rejected"),
     FixturePlan(name="domain/root_numbering"),
     FixturePlan(name="domain/root_numbering_rejected"),
+    # Orbit/ladder (slice B, agent-43): root_ladder_bottoms/
+    # coroot_ladder_bottoms/basic_orbit_ws/affine_orbit_ws.
+    FixturePlan(name="domain/orbit_ws"),
+    FixturePlan(name="domain/orbit_ws_rejected"),
+    # Poly surface (slice B, agent-43): ParamPol/KTypePol skip overloads
+    # (null_module/real_form/#/first_term/last_term/truncate_above_height/
+    # K_type_pol/W_cells).
+    FixturePlan(name="domain/poly_surface"),
+    FixturePlan(name="domain/poly_surface_rejected"),
     # Early scalar-era fixtures: verified verbatim locally and included so
     # the HPC differential upgrades their reference metadata.
     FixturePlan(name="eval/scalars"),
