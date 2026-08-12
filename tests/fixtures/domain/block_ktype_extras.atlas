@@ -1,0 +1,19 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("A2"),true)
+ic : InnerClass
+ic := inner_class(rd,[[1,0],[0,1]])
+rf : RealForm
+rf := real_form(ic,1)
+df : RealForm
+df := dual_real_form(ic,0)
+blk : Block
+blk := block(rf,df)
+x0 : KGBElt
+x0 := KGB(rf,0)
+y3 : KGBElt
+y3 := KGB(df,3)
+index(blk,x0,y3)
+K : KType
+K := K_type(x0,[1,0])
+to_canonical_fiber(K)
+to_canonical_fiber(dominant(K))

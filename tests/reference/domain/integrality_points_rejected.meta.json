@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/integrality_points_rejected",
+  "fixture_sha256": "80d2adb0ab750fffcbe2b9c76def5cc2f36e6af93d14570e048552cbeea8ba39",
+  "rust_status": "pending_hpc_differential",
+  "reference_status": "pending_hpc_reference",
+  "note": "integrality_points rejections: (int,[int]) type mismatch, rank-length runtime error 'Length 3 of rational vector differs from rank 2', then accepted [int]->ratvec coercion line continuing the session.",
+  "oracle": "atlas",
+  "oracle_exit_status": 1,
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+}

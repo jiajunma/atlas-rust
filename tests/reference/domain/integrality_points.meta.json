@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/integrality_points",
+  "fixture_sha256": "b9cd3ca75469d17dead91ac8a948cc24d6feb49d45a1d3afa1b75f4718b2b3bc",
+  "rust_status": "pending_hpc_differential",
+  "reference_status": "pending_hpc_reference",
+  "note": "integrality_points(RootDatum,ratvec->[rat]) on B2 sc ([1,1]/2,[1,0],[1,1]/3) and G2 adjoint ([1,1]/6). Regression pin for the repair: declared return type corrected [ratvec]->[rat] (atlas-types.w:2268), RatNum normalisation+value-order via BTreeSet<BigRational> (rootdata.cpp:1508-1527), and the rank-length precheck (atlas-types.w:1808-1819).",
+  "oracle": "atlas",
+  "oracle_exit_status": 0,
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+}

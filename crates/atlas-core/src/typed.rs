@@ -5394,7 +5394,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                     primitive_type(Prim::RootDatum),
                     primitive_type(Prim::RatVec),
                 ]),
-                Type::Row(Box::new(primitive_type(Prim::RatVec))),
+                Type::Row(Box::new(primitive_type(Prim::Rat))),
                 0,
             ),
             domain_builtin(

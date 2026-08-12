@@ -474,6 +474,13 @@ FIXTURE_PLANS = (
     # regression pins for the transpose/orientation/isogeny repair.
     FixturePlan(name="domain/derived_info"),
     FixturePlan(name="domain/derived_info_rejected"),
+    # Coverage-gap closure (2026-08-12 sweep): integrality_points return-type/
+    # normalisation repair pins; index(Block,KGBElt,KGBElt) and
+    # to_canonical_fiber(KType) first dedicated coverage.
+    FixturePlan(name="domain/integrality_points"),
+    FixturePlan(name="domain/integrality_points_rejected"),
+    FixturePlan(name="domain/block_ktype_extras"),
+    FixturePlan(name="domain/block_ktype_extras_rejected"),
     FixturePlan(name="domain/root_numbering"),
     FixturePlan(name="domain/root_numbering_rejected"),
     # Orbit/ladder (slice B, agent-43): root_ladder_bottoms/

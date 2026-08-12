@@ -1,0 +1,116 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "domain/block_ktype_extras",
+ "status": "pending_hpc_reference",
+ "events": [
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'rd': RootDatum\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "simply connected root datum of Lie type 'A2'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'ic': InnerClass\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "Complex reductive group of type A2, with involution defining\ninner class of type 'c', with 2 real forms and 1 dual real form"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'rf': RealForm\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "connected quasisplit real group with Lie algebra 'su(2,1)'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'df': RealForm\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "connected split real group with Lie algebra 'sl(3,R)'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'blk': Block\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "Block of 6 elements"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'x0': KGBElt\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "KGB element #0"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'y3': KGBElt\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "KGB element #3"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "0"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'K': KType\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "final K-type K_type(x=0, lambda=[2,1]/1)"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "final K-type K_type(x=0, lambda=[2,1]/1)"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "final K-type K_type(x=0, lambda=[2,1]/1)"
+   }
+  }
+ ]
+}

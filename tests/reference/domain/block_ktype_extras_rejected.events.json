@@ -1,0 +1,104 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "domain/block_ktype_extras_rejected",
+ "status": "pending_hpc_reference",
+ "events": [
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "found string while KType was needed."
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "found (int,int,int) while (Block,KGBElt,KGBElt) was needed."
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'rd': RootDatum\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "simply connected root datum of Lie type 'B2'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'ic': InnerClass\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "Complex reductive group of type B2, with involution defining\ninner class of type 'c', with 3 real forms and 3 dual real forms"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'rf': RealForm\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "connected real group with Lie algebra 'so(4,1)'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'df': RealForm\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "compact connected real group with Lie algebra 'sp(2)'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'blk': Block\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "Block of 0 elements"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'x': KGBElt\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "KGB element #0"
+   }
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "found (Block,KGBElt) while (Block,KGBElt,KGBElt) was needed."
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'y': KGBElt\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "KGB element #0"
+   }
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Dual real form not in inner class of block"
+  }
+ ]
+}

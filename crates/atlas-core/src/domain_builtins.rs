@@ -11405,6 +11405,18 @@ pub(crate) fn call_with_printed(
             let Value::RatVector(gamma) = &arguments[1] else {
                 return Err(type_error(span, "expected a rational vector"));
             };
+            // atlas-types.w:1808-1819: the wrapper rejects a vector whose
+            // length differs from the datum rank BEFORE evaluating.
+            if gamma.numerators().len() != handle.datum.lattice_rank() {
+                return Err(runtime(
+                    span,
+                    format!(
+                        "Length {} of rational vector differs from rank {}",
+                        gamma.numerators().len(),
+                        handle.datum.lattice_rank()
+                    ),
+                ));
+            }
             let root_system = RootSystem::enumerate(&handle.datum, ROOT_BUDGET)
                 .map_err(|error| runtime(span, error.to_string()))?;
             let denominator = gamma.denominator();
@@ -11420,22 +11432,20 @@ pub(crate) fn call_with_printed(
                     }
                 }
             }
-            let mut fracs: std::collections::BTreeSet<(i64, i64)> =
+            // rootdata.cpp:1508-1527: fracs is a std::set<RatNum>, so the
+            // rationals are NORMALISED (2/2 folds into 1/1) and sorted by
+            // value. BigRational normalises on construction and orders by
+            // value, so a BTreeSet<BigRational> reproduces both behaviours.
+            let mut fracs: std::collections::BTreeSet<BigRational> =
                 std::collections::BTreeSet::new();
             for &p in &products {
                 let mut s = denominator as i64;
                 while s <= p {
-                    fracs.insert((s, p));
+                    fracs.insert(BigRational::from_integers(BigInt::from(s), BigInt::from(p)));
                     s += denominator as i64;
                 }
             }
-            let values = fracs
-                .into_iter()
-                .map(|(s, p)| {
-                    // RatVec::new normalises by the gcd.
-                    Value::RatVector(RatVec::new(vec![s], p as u64).expect("valid"))
-                })
-                .collect();
+            let values = fracs.into_iter().map(Value::Rational).collect();
             Ok(Value::List(values))
         }
         "integrality_datum" => {

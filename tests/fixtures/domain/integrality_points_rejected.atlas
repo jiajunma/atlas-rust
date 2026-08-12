@@ -1,0 +1,5 @@
+integrality_points(42,[1])
+rd : RootDatum
+rd := simply_connected(Lie_type("B2"),true)
+integrality_points(rd,[1,0,1]/2)
+integrality_points(rd,[1,0])

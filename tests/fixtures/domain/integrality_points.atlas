@@ -1,0 +1,8 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("B2"),true)
+integrality_points(rd,[1,1]/2)
+integrality_points(rd,[1,0])
+integrality_points(rd,[1,1]/3)
+ra : RootDatum
+ra := adjoint(Lie_type("G2"),true)
+integrality_points(ra,[1,1]/6)
