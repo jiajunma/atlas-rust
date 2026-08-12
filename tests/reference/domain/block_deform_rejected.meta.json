@@ -1,12 +1,14 @@
 {
   "fixture": "domain/block_deform_rejected",
   "fixture_sha256": "2171f16d48c024e252a062ef0d2f5ea61f224541440c6ae522c0ce6357988d90",
-  "rust_status": "pending_hpc_differential",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
   "note": "block_deform conform rejections (missing int, RealForm first arg); negative height accepted (everything in first component). HPC reference capture 3536583 byte-identical to local pinned-oracle capture (stdout+stderr).",
   "oracle": "atlas",
   "oracle_exit_status": 1,
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "reference_job": "3536583"
+  "reference_job": "3536583",
+  "differential_job": "3542417",
+  "differential_commit": "537aaf5d4ad9f809a926d69aa3d734a0530c5a2c"
 }

@@ -1,12 +1,14 @@
 {
   "fixture": "domain/twisted_family",
   "fixture_sha256": "d4d3ffdeb4ecc9f0d75bdfd7d6c4242e8e6c0ed8006911791e9f7f0dec6f9ddd",
-  "rust_status": "pending_hpc_differential",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
   "note": "twisted_deform/twisted_full_deform/twisted_KL_sum_at_s (Param) + external twisted_KL_sum_at_s(Param,mat) on SL(2,R)/SU(2,1): empty-sum discrete series, KTypePol/ParamPol twisted finals. HPC reference capture 3536421 byte-identical to local pinned-oracle capture (stdout+stderr).",
   "oracle": "atlas",
   "oracle_exit_status": 0,
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "reference_job": "3536421"
+  "reference_job": "3536421",
+  "differential_job": "3542417",
+  "differential_commit": "537aaf5d4ad9f809a926d69aa3d734a0530c5a2c"
 }
