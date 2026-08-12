@@ -123,6 +123,12 @@ pub enum StructureError {
         limit: usize,
     },
     ArithmeticOverflow,
+    /// A code path whose behavior the upstream oracle defines but this
+    /// crate has not ported yet; raised loudly instead of computing on a
+    /// wrong approximation.
+    NotYetImplemented {
+        feature: &'static str,
+    },
     RootPairingMismatch {
         row: usize,
         column: usize,
@@ -296,6 +302,7 @@ impl fmt::Display for StructureError {
                 write!(f, "adjoint-fiber {resource} exceeded its limit of {limit}")
             }
             Self::ArithmeticOverflow => write!(f, "root-system arithmetic overflow"),
+            Self::NotYetImplemented { feature } => write!(f, "{feature} is not yet implemented"),
             Self::RootPairingMismatch {
                 row,
                 column,

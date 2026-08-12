@@ -61,7 +61,7 @@ impl IntMatrix {
         self.data[i * self.columns + j]
     }
 
-    fn set(&mut self, i: usize, j: usize, value: i32) {
+    pub(crate) fn set(&mut self, i: usize, j: usize, value: i32) {
         self.data[i * self.columns + j] = value;
     }
 

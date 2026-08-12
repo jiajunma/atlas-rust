@@ -14,6 +14,7 @@ mod cartan_class;
 mod cartan_classification;
 mod cartan_fiber;
 mod cayley_cross;
+pub mod deform;
 mod dual;
 mod dynkin;
 mod error;
@@ -77,6 +78,11 @@ pub use cartan_class::{CartanClass, TwistedConjugacyClass, TwistedConjugacyParti
 pub use cartan_classification::{CartanClassification, CartanClassificationBudget, CartanId};
 pub use cartan_fiber::{CartanFiber, CartanFiberElement};
 pub use cayley_cross::CayleyCrossDecomposition;
+pub use deform::{
+    block_deformation_to_height, integral_block_scope, singular_orbits_at, twisted_deformation,
+    twisted_deformation_terms, twisted_kl_column_at_s, twisted_kl_sum, IntegralBlockScope,
+    SplitInteger,
+};
 pub use dual::{
     dual_cartan_correspondence, dual_datum, dual_inner_class, dual_real_form_count, longest_action,
 };
