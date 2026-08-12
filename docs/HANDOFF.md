@@ -4,6 +4,36 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-13a (ext_finalise closed; E3 language layer landed; print_partial in flight)
+
+- **ext_finalise(±) CLOSED**: differential **3542388** @ 638cfed — 223
+  PASS, 0 FAIL; metas verified_hpc (`225216a`). E2 language layer
+  (`f6efd3b`, agent-57): trio registered via domain_builtin_validate,
+  upstream gate order, literal "|" typo kept in K_type_pol_extended
+  descr. **Deviation worth knowing**: the brief's suggested crate
+  `RepContext::is_fixed` was WRONG for this slice (raw gamma check);
+  the wrappers need repr.cpp:669-675's normalising is_fixed —
+  implemented language-side on public APIs (`z.normalised` + rebuild
+  twisted via graph.twisted/sr_gamma, PartialEq compare). Suggested
+  follow-up: crate-owned `RepContext::is_fixed_normalised`.
+- **E3 language layer landed (`0cfba0b`, agent-59)**:
+  twisted_deform/twisted_full_deform(+timed overload)/twisted_KL_sum_at_s
+  (both arities)/block_deform. 238 atlas-core tests, replay 12/12
+  byte-exact. Notable: timed `(Param,int)->|KTypePol` overload
+  registered because the rejected fixture's multi-variant wording
+  requires it (runtime arm fails loudly "timed twisted_full_deform is
+  not yet implemented"); ProperSubsystem maps to loud "common block on
+  a proper integral subsystem is not yet implemented". FixturePlans
+  registered (`537aaf5`); differential **3542417** in flight.
+- **In flight**: agent-60 (print_partial_block +
+  print_partial_common_block language arms — the LAST never-registered
+  builtin surface; crate machinery from f11f48a, renderer reuses
+  pcb's render_common_block).
+- **Queue**: (1) collect 3542417 → twisted_family/block_deform metas;
+  (2) agent-60 delivery → print_partial FixturePlan + differential;
+  (3) final matrix audit + user decision on the two documented
+  exclusions (readline completion TTY-only; KL binary file formats).
+
 ## Checkpoint - 2026-08-12f (shift_flip landed + differential in flight; NDEBUG assert lesson)
 
 - **shift_flip language layer landed (`46963fd`, agent-55)**:
