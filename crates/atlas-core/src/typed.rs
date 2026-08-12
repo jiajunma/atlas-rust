@@ -676,11 +676,9 @@ impl TypedContext {
                 let value = match evaluate_command_expr(&typed, &mut self.evaluation) {
                     Ok(value) => value,
                     Err(diagnostic) => {
-                        // Upstream keeps text printed before the failure;
-                        // this port has no channel for events alongside a
-                        // diagnostic, so the buffer is dropped instead of
-                        // leaking into the next command.
-                        self.evaluation.take_printed();
+                        // Upstream keeps text printed before the failure
+                        // (ext_kl.cpp:947); the buffer survives here and the
+                        // session layer drains it ahead of the diagnostic.
                         return Err(diagnostic);
                     }
                 };
@@ -722,7 +720,8 @@ impl TypedContext {
                 let value = match evaluate_command_expr(&typed, &mut self.evaluation) {
                     Ok(value) => value,
                     Err(diagnostic) => {
-                        self.evaluation.take_printed();
+                        // Printed text survives the failure (see the
+                        // expression-command branch above).
                         return Err(diagnostic);
                     }
                 };
@@ -888,6 +887,28 @@ impl TypedContext {
             .collect()
     }
 
+    /// Printer output buffered by an evaluation that then FAILED: upstream
+    /// writes to `*output_stream` before the error is thrown
+    /// (ext_kl.cpp:947), so the session layer drains these ahead of the
+    /// diagnostic instead of dropping them.
+    pub(crate) fn drain_failed_printed(
+        &mut self,
+        span: Option<SourceSpan>,
+    ) -> Vec<TypedCommandEvent> {
+        // Runtime diagnostics always carry the call span; the anonymous
+        // fallback only guards against a spanless diagnostic.
+        let fallback = || {
+            SourceSpan::new(
+                crate::diagnostic::SourceId::anonymous(),
+                0,
+                0,
+                crate::diagnostic::SourcePosition { line: 1, column: 1 },
+                crate::diagnostic::SourcePosition { line: 1, column: 1 },
+            )
+        };
+        self.drain_printed(span.unwrap_or_else(fallback))
+    }
+
     /// Bind a global value and report `(Constant|Variable) name: type`
     /// (global_define_identifier and the identifier-table branch of
     /// `do_global_set`, global.w:911-994). A redefinition notes the
@@ -989,7 +1010,8 @@ impl TypedContext {
             let value = match evaluate_command_expr(&pending.typed, &mut self.evaluation) {
                 Ok(value) => value,
                 Err(diagnostic) => {
-                    self.evaluation.take_printed();
+                    // Printed text survives the failure (see the
+                    // expression-command branch above).
                     return Err(diagnostic);
                 }
             };
@@ -3283,7 +3305,7 @@ impl Builtin {
                         DomainNoValue::BuildAndDrop => {}
                     }
                 }
-                domain_builtins::call(name, &arguments, span)
+                domain_builtins::call_with_printed(name, &arguments, span, context.printed_buffer())
                     .map(|value| at_builtin_level(level, || value))
                     .map_err(Control::Runtime)
             }
@@ -5012,6 +5034,41 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                     primitive_type(Prim::Mat),
                     Type::row(primitive_type(Prim::Vec)),
                     primitive_type(Prim::Vec),
+                ]),
+                0,
+            ),
+            // extended_block / partial_extended_KL_block
+            // (atlas-types.w:7531-7534) and raw_ext_KL
+            // (atlas-types.w:9103): the extended block of a standard
+            // parameter, its condensed KLV matrix, and its raw KLV table.
+            domain_builtin(
+                "extended_block",
+                Type::tuple(vec![primitive_type(Prim::Param), primitive_type(Prim::Mat)]),
+                Type::tuple(vec![
+                    Type::row(primitive_type(Prim::Param)),
+                    primitive_type(Prim::Mat),
+                    primitive_type(Prim::Mat),
+                    primitive_type(Prim::Mat),
+                ]),
+                0,
+            ),
+            domain_builtin(
+                "raw_ext_KL",
+                Type::tuple(vec![primitive_type(Prim::Param), primitive_type(Prim::Mat)]),
+                Type::tuple(vec![
+                    primitive_type(Prim::Mat),
+                    Type::row(primitive_type(Prim::Vec)),
+                    primitive_type(Prim::Vec),
+                ]),
+                0,
+            ),
+            domain_builtin(
+                "partial_extended_KL_block",
+                Type::tuple(vec![primitive_type(Prim::Param), primitive_type(Prim::Mat)]),
+                Type::tuple(vec![
+                    Type::row(primitive_type(Prim::Param)),
+                    primitive_type(Prim::Mat),
+                    Type::row(primitive_type(Prim::Vec)),
                 ]),
                 0,
             ),

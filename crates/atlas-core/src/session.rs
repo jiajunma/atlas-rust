@@ -99,16 +99,33 @@ pub(crate) fn execute_tokens(
     tokens.clear();
 
     match context.execute(&command) {
-        Ok(command_events) => events.extend(command_events.into_iter().map(|event| match event {
-            TypedCommandEvent::Value { value, type_, span } => SessionEvent::Value {
-                value,
-                is_void_type: type_.is_void(),
-                span,
-            },
-            TypedCommandEvent::ReportLine { text, span } => SessionEvent::ReportLine { text, span },
-            TypedCommandEvent::Output { text, span } => SessionEvent::Output { text, span },
-        })),
-        Err(diagnostic) => events.push(SessionEvent::Diagnostic(diagnostic)),
+        Ok(command_events) => events.extend(command_events.into_iter().map(session_event)),
+        Err(diagnostic) => {
+            // Upstream's mid-evaluation stdout writes survive a runtime
+            // error (ext_kl.cpp:947): drain them ahead of the diagnostic.
+            let span = diagnostic.span;
+            events.extend(
+                context
+                    .drain_failed_printed(span)
+                    .into_iter()
+                    .map(session_event),
+            );
+            events.push(SessionEvent::Diagnostic(diagnostic));
+        }
+    }
+}
+
+/// Lift one typed-command event to the session layer (the value/report/
+/// output shapes are identical; only the value keeps its void flag).
+fn session_event(event: TypedCommandEvent) -> SessionEvent {
+    match event {
+        TypedCommandEvent::Value { value, type_, span } => SessionEvent::Value {
+            value,
+            is_void_type: type_.is_void(),
+            span,
+        },
+        TypedCommandEvent::ReportLine { text, span } => SessionEvent::ReportLine { text, span },
+        TypedCommandEvent::Output { text, span } => SessionEvent::Output { text, span },
     }
 }
 

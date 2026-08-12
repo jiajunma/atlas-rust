@@ -22,6 +22,8 @@ use std::sync::Arc;
 
 use malachite::{Integer as BigInt, Rational as BigRational};
 
+use atlas_real_group::ext_block::ExtBlock;
+use atlas_real_group::ext_kl::ExtKlTable;
 use atlas_real_group::{
     adapted_basis, adapted_relation_basis, annihilator_modulo as relation_annihilator_modulo,
     build_presentations, central_fiber, checked_inner_class_letters,
@@ -34,7 +36,7 @@ use atlas_real_group::{
     BasedRootDatum, BlockDescent, BlockGraph, CartanClassification, CartanClassificationBudget,
     CartanId, Coweight, ExternalFormOrder, InnerClass, InnerClassLayout, IntegerLatticeBudget,
     InvolutionTable, InvolutionTableBudget, KType, KgbGraph, KgbId, KgbStatus, KlPol, KlTable,
-    LatticeInvolution, ModTwoVector, RationalWeight, RealFormPresentation, RealFormSeed,
+    LatticeInvolution, ModTwoVector, RankFlags, RationalWeight, RealFormPresentation, RealFormSeed,
     RelationBasis, RelationError, RelationGenerator, RelationMatrix, RepContext, RootId,
     RootInvolutionData, RootKind, RootSystem, StandardRepr, StrongRealClassification,
     StructureError, WeakRealFormId, Weight, WeylElement, WeylInterface,
@@ -2485,8 +2487,15 @@ fn common_block_members(
                     }
                 }
                 Some(BlockDescent::RealTypeII) => {
-                    if let Some(pair) = block.graph.inverse_cayley(z, s) {
-                        if let Some(first) = pair.0 {
+                    // Upstream gates the real descents of both flavors on
+                    // the parity condition (blocks.cpp:914, `down_Cayley`).
+                    let parity = rc
+                        .is_parity(s, z_x, lambda_rho, gamma)
+                        .map_err(|error| structure_diagnostic(error, span))?;
+                    if parity {
+                        if let Some(first) =
+                            block.graph.inverse_cayley(z, s).and_then(|pair| pair.0)
+                        {
                             if !closed[first] {
                                 closed[first] = true;
                                 stack.push(first);
@@ -2499,6 +2508,215 @@ fn common_block_members(
         }
     }
     Ok(closed)
+}
+
+/// `test_standard` (atlas-types.w:6605-6611): reject a non-standard
+/// parameter with the oracle's two-line diagnostic; `descr` is
+/// "Cannot generate block" or "Cannot generate extended block".
+fn test_standard(parameter: &ParamValue, descr: &str, span: SourceSpan) -> Result<(), Diagnostic> {
+    let rc = rep_context(&parameter.context);
+    let standard = parameter
+        .repr
+        .is_standard(&rc)
+        .map_err(|error| structure_diagnostic(error, span))?;
+    if standard {
+        return Ok(());
+    }
+    let shown = DomainValue::Param(parameter.clone()).to_string();
+    Err(runtime(
+        span,
+        format!("{descr}:\n  {shown}\n  Parameter not standard"),
+    ))
+}
+
+/// The `(1-delta)*gamma == 0` test of the ext-block wrappers
+/// (atlas-types.w:7372, 8697; ext_kl.cpp:945), at numerator level.
+fn involution_fixes_gamma(matrix: &[Vec<i32>], gamma: &RationalWeight) -> bool {
+    let numerator = gamma.numerator();
+    numerator.iter().enumerate().all(|(row, &entry)| {
+        let image: i64 = matrix[row]
+            .iter()
+            .zip(numerator.iter())
+            .map(|(&factor, &coordinate)| i64::from(factor) * coordinate)
+            .sum();
+        image == entry
+    })
+}
+
+/// Whether `gamma` pairs integrally with every simple coroot. Upstream
+/// builds the common block on the integral subsystem when this fails
+/// (common_context, repr.cpp:2666-2670); that slice is deferred, so the
+/// ext-block wrappers stop at this gate instead.
+fn gamma_is_integral(datum: &BasedRootDatum, gamma: &RationalWeight) -> bool {
+    let numerator = gamma.numerator();
+    let denominator = gamma.denominator();
+    datum.simple_coroots().iter().all(|coroot| {
+        let pairing: i64 = coroot
+            .as_slice()
+            .iter()
+            .zip(numerator.iter())
+            .map(|(&c, &g)| i64::from(c) * g)
+            .sum();
+        pairing % denominator == 0
+    })
+}
+
+/// The common block's per-element `gamma_lambda` field, computed
+/// directly from each element's `(x, y)` pair: the dual KGB element's
+/// Tits torus bits are packed into the torsion part of `x`'s involution
+/// (`InvolutionTable::y_pack`, involutions.h:211), giving the
+/// `StandardReprMod` value `gamma_lambda(x, y_bits, gamma)`
+/// (repr.cpp:206-218), reduced to its canonical representative modulo
+/// the `(1-theta)` image (`InvolutionTable::real_unique`,
+/// involutions.cpp:334-342) exactly as upstream's `z_pool` stores it
+/// (blocks.cpp:935,1013, StandardReprMod::build repr.cpp:61-67).
+fn common_block_gamma_lambdas(
+    block: &BlockValue,
+    members: &[bool],
+    rc: &RepContext<'_>,
+    gamma: &RationalWeight,
+    span: SourceSpan,
+) -> Result<Vec<Option<RationalWeight>>, Diagnostic> {
+    let size = block.graph.size();
+    let mut gl: Vec<Option<RationalWeight>> = vec![None; size];
+    for z in 0..size {
+        if !members[z] {
+            continue;
+        }
+        let x = block.graph.x(z).expect("in-range block element");
+        let y = block.graph.y(z).expect("in-range block element");
+        let dual_bits = block
+            .dual_rf
+            .graph
+            .element(y)
+            .ok_or_else(|| runtime(span, "dual KGB element out of range"))?
+            .torus_bits();
+        let y_bits = rc
+            .torus_part(x, dual_bits)
+            .map_err(|error| structure_diagnostic(error, span))?;
+        let mut value = rc
+            .gamma_lambda(x, &y_bits, gamma)
+            .map_err(|error| structure_diagnostic(error, span))?;
+        let involution = rc
+            .involution_of(x)
+            .map_err(|error| structure_diagnostic(error, span))?;
+        rc.real_unique(involution, &mut value)
+            .map_err(|error| structure_diagnostic(error, span))?;
+        gl[z] = Some(value);
+    }
+    Ok(gl)
+}
+
+/// `gamma_rho.integer_diff<int>` (atlas-types.w:7402): the exact integral
+/// difference of two rational weights, as a `Weight`.
+fn integer_diff_weight(
+    gamma_rho: &RationalWeight,
+    gl: &RationalWeight,
+    span: SourceSpan,
+) -> Result<Weight, Diagnostic> {
+    let diff = gamma_rho
+        .sub(gl)
+        .map_err(|e| structure_diagnostic(e, span))?;
+    if diff.denominator() != 1 {
+        return Err(runtime(span, "non-integral lambda shift in common block"));
+    }
+    Ok(Weight::new(
+        diff.numerator().iter().map(|&v| v as i32).collect(),
+    ))
+}
+
+/// The ext-block fiber over the common block: the extended elements whose
+/// parent block element is a common-block member, in extended order
+/// (ext_block.cpp:630-635 collects the delta-fixed points; intersecting
+/// with the common block mirrors upstream's `common_block::extended_block`
+/// built directly over the common block). Returns the fiber list and the
+/// old-to-fiber index map.
+fn ext_fiber(eb: &ExtBlock, members: &[bool]) -> (Vec<usize>, Vec<usize>) {
+    let mut loc = vec![usize::MAX; eb.size()];
+    let mut fiber = Vec::new();
+    for n in 0..eb.size() {
+        if members[eb.z(n)] {
+            loc[n] = fiber.len();
+            fiber.push(n);
+        }
+    }
+    (fiber, loc)
+}
+
+/// `M.rowOperation(target, source, c)`: `row[target] += c * row[source]`
+/// (mirrors the private helper of `ext_kl::condense`, ext_kl.cpp:2031).
+fn kl_row_operation(m: &mut [Vec<KlPol>], target: usize, source: usize, c: i32) {
+    debug_assert!(target != source);
+    let (target_row, source_row) = if target < source {
+        let (low, high) = m.split_at_mut(source);
+        (&mut low[target], &high[0])
+    } else {
+        let (low, high) = m.split_at_mut(target);
+        (&mut high[0], &low[source])
+    };
+    for (entry, contribution) in target_row.iter_mut().zip(source_row.iter()) {
+        if !contribution.is_zero() {
+            *entry = entry.add(&contribution.scaled(c));
+        }
+    }
+}
+
+/// The distinguished-involution twist data of the parameter's inner class
+/// (the `extended_block` wrapper builds over the distinguished involution
+/// regardless of the user's delta — atlas-types.w:7392).
+fn distinguished_twist(
+    parameter: &ParamValue,
+    span: SourceSpan,
+) -> Result<(LatticeInvolution, Vec<usize>), Diagnostic> {
+    let inner_class = &parameter.context.parent.inner_class;
+    let delta = inner_class.distinguished_involution().involution().clone();
+    let twist = inner_class
+        .based_involution_twist(delta.clone())
+        .map_err(|error| match error {
+            StructureError::InvalidBasedAutomorphism => runtime(
+                span,
+                "Root datum involution is not distinguished".to_string(),
+            ),
+            other => structure_diagnostic(other, span),
+        })?;
+    Ok((delta, twist))
+}
+
+/// Build the extended block over the parameter's full block with the given
+/// twist data (ext_block::ext_block constructor, ext_block.cpp:618-668).
+fn build_ext_block(
+    block: &BlockValue,
+    parameter: &ParamValue,
+    delta: &LatticeInvolution,
+    twist: &[usize],
+    span: SourceSpan,
+) -> Result<ExtBlock, Diagnostic> {
+    let dual_parent = &block.dual_rf.parent;
+    let matrix = delta.weight_matrix();
+    let dual_delta = LatticeInvolution::new(
+        dual_parent.inner_class.datum(),
+        transpose(matrix),
+        matrix.to_vec(),
+    )
+    .map_err(|e| structure_diagnostic(e, span))?;
+    let dual_twist = dual_parent
+        .inner_class
+        .based_involution_twist(dual_delta.clone())
+        .map_err(|e| structure_diagnostic(e, span))?;
+    let cartan = parameter.context.parent.root_datum.datum.cartan_matrix();
+    ExtBlock::build(
+        &block.graph,
+        &block.rf.graph,
+        &block.rf.table,
+        &block.dual_rf.graph,
+        &block.dual_rf.table,
+        delta,
+        twist,
+        &dual_delta,
+        &dual_twist,
+        cartan,
+    )
+    .map_err(|e| structure_diagnostic(e, span))
 }
 
 /// Integral solution of A x = b (matreduc::find_solution, matreduc.cpp:
@@ -5974,6 +6192,11 @@ fn compatible_outer_twist(
                     StructureError::InvalidBasedAutomorphism => {
                         "Root datum involution is not distinguished".to_string()
                     }
+                    // check_root_datum_involution wordings
+                    // (atlas-types.w:2764-2785).
+                    StructureError::SimpleRootImageNotRoot { simple_root } => {
+                        format!("Matrix maps simple root {simple_root} to non-root")
+                    }
                     other => other.to_string(),
                 },
             )
@@ -7999,6 +8222,17 @@ fn print_strong_real(
 
 /// Dispatch one named application. Unknown names are Name errors.
 pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<Value, Diagnostic> {
+    call_with_printed(name, arguments, span, &mut Vec::new())
+}
+
+/// `call` with a side channel for mid-evaluation stdout writes; only
+/// `partial_extended_KL_block` uses it (ext_kl.cpp:945-948).
+pub(crate) fn call_with_printed(
+    name: &str,
+    arguments: &[Value],
+    span: SourceSpan,
+    printed: &mut Vec<String>,
+) -> Result<Value, Diagnostic> {
     match name {
         // extend (atlas-types.w:280-289): append a simple factor to a
         // Lie type.
@@ -11424,6 +11658,420 @@ pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<
                 Value::List(param_list),
                 columns_matrix_value(&columns, n, span)?,
             ]))
+        }
+        // extended_block (atlas-types.w:7366-7431), raw_ext_KL
+        // (atlas-types.w:8682-8728), partial_extended_KL_block
+        // (atlas-types.w:7445-7468, ext_kl.cpp:939-1018): the extended
+        // block of a standard parameter, its raw KLV table, and its
+        // condensed partial KLV matrix. All three build the parameter's
+        // common block as a fiber of the full block, then the extended
+        // block over it; `extended_block` uses the inner class's
+        // DISTINGUISHED involution for the construction (the user's delta
+        // only gates the gamma-fix test), the KLV wrappers use the user's
+        // delta.
+        "extended_block" | "raw_ext_KL" | "partial_extended_KL_block" => {
+            arity(name, arguments, 2, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "{name} has no matching overload for {} argument(s)",
+                        arguments.len()
+                    ),
+                ));
+            };
+            // test_standard (atlas-types.w:6605-6611): each wrapper passes
+            // its own description string.
+            let descr = if name == "partial_extended_KL_block" {
+                "Cannot generate extended block"
+            } else {
+                "Cannot generate block"
+            };
+            test_standard(parameter, descr, span)?;
+            // test_compatible (atlas-types.w:4627-4633).
+            let (delta, twist) = compatible_outer_twist(&parameter.context, &arguments[1], span)?;
+            let gamma = parameter.repr.gamma().clone();
+            if !involution_fixes_gamma(delta.weight_matrix(), &gamma) {
+                match name {
+                    "extended_block" => {
+                        // atlas-types.w:7372-7373.
+                        return Err(runtime(
+                            span,
+                            "Involution does not fix infinitesimal character",
+                        ));
+                    }
+                    "raw_ext_KL" => {
+                        // Block not globally stable: empty values
+                        // (atlas-types.w:8697-8702).
+                        return Ok(Value::Tuple(vec![
+                            matrix_value(&[], span)?,
+                            Value::List(Vec::new()),
+                            Value::Vector(Vec32(Vec::new())),
+                        ]));
+                    }
+                    _ => {
+                        // ext_kl.cpp:945-948: the report goes to standard
+                        // output before the error is thrown.
+                        printed.push(format!(
+                            "Delta does not fix gamma={}.\n",
+                            rational_weight_display(&gamma)
+                        ));
+                        return Err(runtime(span, "No valid extended block"));
+                    }
+                }
+            }
+            let datum = parameter.context.parent.root_datum.datum.clone();
+            if !gamma_is_integral(&datum, &gamma) {
+                return Err(runtime(
+                    span,
+                    format!(
+                        "{name} at a non-integral infinitesimal character is not yet implemented"
+                    ),
+                ));
+            }
+            let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
+            let dual_quasisplit = dual_parent.order.quasisplit_external();
+            let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
+            let block = build_block(&parameter.context, &dual_rf, span)?;
+            let rc = rep_context(&parameter.context);
+            let lambda_rho = rc
+                .lambda_rho(&parameter.repr)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let z0 = (0..block.graph.size())
+                .find(|&z| block.graph.x(z) == Some(parameter.repr.x()))
+                .ok_or_else(|| runtime(span, "parameter not in the common block"))?;
+            let members = common_block_members(&block, z0, &rc, &lambda_rho, &gamma, span)?;
+            // The per-element gamma_lambda field, computed directly from
+            // each member's (x, y) pair.
+            let gamma_lambdas = common_block_gamma_lambdas(&block, &members, &rc, &gamma, span)?;
+            let gamma_rho = gamma
+                .sub(rc.rho())
+                .map_err(|error| structure_diagnostic(error, span))?;
+            // The per-element parameters of the fiber (atlas-types.w:
+            // 7398-7404, ext_kl.cpp:1005-1007).
+            let fiber_param = |z: usize,
+                               gamma_lambdas: &Vec<Option<RationalWeight>>|
+             -> Result<Value, Diagnostic> {
+                let gl = gamma_lambdas[z]
+                    .as_ref()
+                    .expect("fiber elements carry gamma_lambda");
+                let lambda_rho_z = integer_diff_weight(&gamma_rho, gl, span)?;
+                let repr = rc
+                    .sr_gamma(block.graph.x(z).expect("in-range"), &lambda_rho_z, &gamma)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                Ok(Value::Domain(DomainValue::Param(ParamValue {
+                    context: Arc::clone(&parameter.context),
+                    repr,
+                })))
+            };
+            match name {
+                "extended_block" => {
+                    // Upstream constructs over the distinguished involution
+                    // (atlas-types.w:7392), ignoring the user's delta.
+                    let (eff_delta, eff_twist) = distinguished_twist(parameter, span)?;
+                    let eb = build_ext_block(&block, parameter, &eff_delta, &eff_twist, span)?;
+                    let (fiber, loc) = ext_fiber(&eb, &members);
+                    let size = fiber.len();
+                    let signed = |eb: &ExtBlock, s: usize, n: usize, link: Option<usize>| -> i32 {
+                        match link {
+                            None => size as i32,
+                            Some(m) => {
+                                let mapped = loc[m];
+                                debug_assert!(mapped != usize::MAX, "links stay in the fiber");
+                                let mapped = if mapped == usize::MAX { size } else { mapped };
+                                if eb.epsilon(s, n, m) < 0 {
+                                    -1 - mapped as i32
+                                } else {
+                                    mapped as i32
+                                }
+                            }
+                        }
+                    };
+                    let mut params = Vec::with_capacity(size);
+                    let mut types = vec![vec![0_i32; eb.rank()]; size];
+                    let mut links0 = vec![vec![0_i32; eb.rank()]; size];
+                    let mut links1 = vec![vec![0_i32; eb.rank()]; size];
+                    for (new_n, &n) in fiber.iter().enumerate() {
+                        params.push(fiber_param(eb.z(n), &gamma_lambdas)?);
+                        for s in 0..eb.rank() {
+                            let kind = eb.descent_type(s, n);
+                            types[new_n][s] = kind as usize as i32;
+                            // The wrapper encoding (atlas-types.w:7405-7424).
+                            if kind.is_like_compact() || kind.is_like_nonparity() {
+                                links0[new_n][s] = size as i32;
+                                links1[new_n][s] = size as i32;
+                            } else {
+                                let first = if kind.is_complex() {
+                                    eb.cross(s, n)
+                                } else {
+                                    eb.cayley(s, n)
+                                };
+                                links0[new_n][s] = signed(&eb, s, n, first);
+                                if kind.link_count() == 1 {
+                                    links1[new_n][s] = size as i32;
+                                } else {
+                                    let second = if kind.has_double_image() {
+                                        eb.cayleys(s, n).1
+                                    } else {
+                                        eb.cross(s, n)
+                                    };
+                                    links1[new_n][s] = signed(&eb, s, n, second);
+                                }
+                            }
+                        }
+                    }
+                    Ok(Value::Tuple(vec![
+                        Value::List(params),
+                        matrix_value(&types, span)?,
+                        matrix_value(&links0, span)?,
+                        matrix_value(&links1, span)?,
+                    ]))
+                }
+                "raw_ext_KL" => {
+                    let eb = build_ext_block(&block, parameter, &delta, &twist, span)?;
+                    let (fiber, loc) = ext_fiber(&eb, &members);
+                    let size = fiber.len();
+                    let mut table =
+                        ExtKlTable::new(&eb).map_err(|e| structure_diagnostic(e, span))?;
+                    table
+                        .fill_columns(0)
+                        .map_err(|e| structure_diagnostic(e, span))?;
+                    // Rebuild the printed pool in insertion order (columns
+                    // ascending, each from the back); the crate's pool may
+                    // order multi-fiber recursion intermediates
+                    // differently. Entries 0 and 1 are the primed zero and
+                    // one polynomials.
+                    let mut polys: Vec<KlPol> = vec![KlPol::zero(), KlPol::monomial(0)];
+                    let mut index_of: std::collections::HashMap<Vec<i32>, usize> =
+                        std::collections::HashMap::new();
+                    index_of.insert(Vec::new(), 0);
+                    index_of.insert(vec![1], 1);
+                    let mut matrix = vec![vec![0_i32; size]; size];
+                    for (new_y, &y) in fiber.iter().enumerate() {
+                        // int_Matrix(klt.size()) is the identity
+                        // (matrix.h:287); only x<y entries are overwritten.
+                        matrix[new_y][new_y] = 1;
+                        for x in table.nonzero_column(y) {
+                            if x == y {
+                                continue;
+                            }
+                            let new_x = loc[x];
+                            if new_x == usize::MAX {
+                                continue;
+                            }
+                            let (pool_index, flip) = table.kl_pol_index(x, y);
+                            let pol = table
+                                .polys()
+                                .get(pool_index)
+                                .expect("in-range pool index")
+                                .clone();
+                            let key = pol.as_slice().to_vec();
+                            let new_index = *index_of.entry(key).or_insert_with(|| {
+                                polys.push(pol);
+                                polys.len() - 1
+                            });
+                            matrix[new_x][new_y] = if flip {
+                                -(new_index as i32)
+                            } else {
+                                new_index as i32
+                            };
+                        }
+                    }
+                    // Length stops over the fiber, indexed by length
+                    // within the common block: upstream generates the
+                    // block below the entry element and assigns fresh
+                    // lengths there, which for the members of one fiber
+                    // equals the full-block length minus the fiber
+                    // minimum (blocks.cpp:976-990; atlas-types.w:8717).
+                    let min_length = fiber
+                        .iter()
+                        .filter_map(|&n| block.graph.length(eb.z(n)))
+                        .min()
+                        .unwrap_or(0);
+                    let adjusted: Vec<usize> = fiber
+                        .iter()
+                        .map(|&n| block.graph.length(eb.z(n)).unwrap_or(0) - min_length)
+                        .collect();
+                    let max_length = adjusted.iter().copied().max().unwrap_or(0);
+                    let mut stops = vec![0_i32; max_length + 2];
+                    for (i, stop) in stops.iter_mut().enumerate().skip(1) {
+                        *stop = adjusted
+                            .iter()
+                            .position(|&length| length >= i)
+                            .map_or(size as i32, |position| position as i32);
+                    }
+                    Ok(Value::Tuple(vec![
+                        matrix_value(&matrix, span)?,
+                        Value::List(
+                            polys
+                                .iter()
+                                .map(|pol| Value::Vector(Vec32(pol.as_slice().to_vec())))
+                                .collect(),
+                        ),
+                        Value::Vector(Vec32(stops)),
+                    ]))
+                }
+                _ => {
+                    // partial_extended_KL_block.
+                    let eb = build_ext_block(&block, parameter, &delta, &twist, span)?;
+                    let size_big = eb.element(z0 + 1);
+                    // B.singular(gamma): the simply-singular coroots.
+                    let mut singular = RankFlags::empty();
+                    for (s, coroot) in datum.simple_coroots().iter().enumerate() {
+                        let pairing: i64 = coroot
+                            .as_slice()
+                            .iter()
+                            .zip(gamma.numerator().iter())
+                            .map(|(&c, &g)| i64::from(c) * g)
+                            .sum();
+                        if pairing == 0 {
+                            singular.set(s);
+                        }
+                    }
+                    let singular_orbits = eb.singular_orbits(&singular);
+                    // Upstream truncates the extended block at the entry
+                    // element's fiber: `size = eblock.element(
+                    // entry_element+1)` (ext_kl.cpp:962-963), so only
+                    // extended elements at or below the entry participate.
+                    let (fiber, loc) = {
+                        let (fiber, loc) = ext_fiber(&eb, &members);
+                        (
+                            fiber
+                                .into_iter()
+                                .filter(|&n| n < size_big)
+                                .collect::<Vec<_>>(),
+                            loc,
+                        )
+                    };
+                    let fiber_size = fiber.len();
+                    let mut table =
+                        ExtKlTable::new(&eb).map_err(|e| structure_diagnostic(e, span))?;
+                    table
+                        .fill_columns(size_big)
+                        .map_err(|e| structure_diagnostic(e, span))?;
+                    // Upstream builds the extended block over the common
+                    // block itself, so the KLV matrix and the condensation
+                    // see only member elements (ext_kl.cpp:955-970). Here
+                    // the table comes from the full block; the fiber
+                    // submatrix is used instead, and descents whose links
+                    // the parity gate kept out of the common block count
+                    // as nonparity ascents (no descent) there.
+                    let mut p_mat = vec![vec![KlPol::zero(); fiber_size]; fiber_size];
+                    for (i, row) in p_mat.iter_mut().enumerate() {
+                        for (j, entry) in row.iter_mut().enumerate().skip(i + 1) {
+                            *entry = table.p(fiber[i], fiber[j]);
+                        }
+                    }
+                    // A singular descent of `y` inside the common block:
+                    // compact descents count (the row represents zero);
+                    // linked descents count only when their first link
+                    // stayed in the fiber.
+                    let restricted_descent = |s: usize, y: usize| -> Option<usize> {
+                        let kind = eb.descent_type(s, y);
+                        if !kind.is_descent() {
+                            return None;
+                        }
+                        if kind.is_like_compact() {
+                            return Some(y);
+                        }
+                        let first = if kind.has_double_image() {
+                            eb.cayleys(s, y).0
+                        } else {
+                            eb.some_scent(s, y)
+                        };
+                        match first {
+                            Some(x) if loc[x] != usize::MAX => Some(x),
+                            _ => None,
+                        }
+                    };
+                    // condense (ext_block.cpp:2015-2048): push every row
+                    // with a singular descent down to its descent rows
+                    // (sign `-epsilon`); the reverse loop is essential.
+                    let mut survivors = Vec::new();
+                    for yi in (0..fiber_size).rev() {
+                        let y = fiber[yi];
+                        let Some(s) = (0..eb.rank()).find(|&s| {
+                            singular_orbits.is_set(s) && restricted_descent(s, y).is_some()
+                        }) else {
+                            survivors.push(y);
+                            continue;
+                        };
+                        let kind = eb.descent_type(s, y);
+                        if kind.is_like_compact() {
+                            continue; // no descents: `y` represents zero
+                        }
+                        if kind.has_double_image() {
+                            let (first, second) = eb.cayleys(s, y);
+                            for target in [first, second].into_iter().flatten() {
+                                let ti = loc[target];
+                                debug_assert!(ti != usize::MAX);
+                                kl_row_operation(&mut p_mat, ti, yi, -eb.epsilon(s, target, y));
+                            }
+                        } else {
+                            let x = eb.some_scent(s, y).expect("condense: descent has a link");
+                            let xi = loc[x];
+                            debug_assert!(xi != usize::MAX);
+                            kl_row_operation(&mut p_mat, xi, yi, -eb.epsilon(s, x, y));
+                        }
+                    }
+                    survivors.reverse(); // pushed in decreasing order
+                    let n = survivors.len();
+                    // Compress to the surviving rows and columns, then flip
+                    // signs for odd length distance (ext_kl.cpp:982-1003);
+                    // the fiber shares a constant length offset, so the
+                    // full-block lengths give the same parities.
+                    let mut matrix = vec![vec![KlPol::zero(); n]; n];
+                    for (i, &si) in survivors.iter().enumerate() {
+                        for (j, &sj) in survivors.iter().enumerate().skip(i) {
+                            matrix[i][j] = p_mat[loc[si]][loc[sj]].clone();
+                        }
+                    }
+                    for j in 0..n {
+                        let parity = eb.length(survivors[j]) % 2;
+                        for i in 0..j {
+                            if eb.length(survivors[i]) % 2 != parity {
+                                matrix[i][j] = matrix[i][j].scaled(-1);
+                            }
+                        }
+                    }
+                    // Rebuild the pool and index matrix over the condensed
+                    // matrix (ext_kl.cpp:1009-1016): entries 0 and 1 are
+                    // the primed zero and one; P_index_mat starts as the
+                    // identity, only i<j entries are matched.
+                    let mut polys: Vec<KlPol> = vec![KlPol::zero(), KlPol::monomial(0)];
+                    let mut index_of: std::collections::HashMap<Vec<i32>, usize> =
+                        std::collections::HashMap::new();
+                    index_of.insert(Vec::new(), 0);
+                    index_of.insert(vec![1], 1);
+                    let mut index_matrix = vec![vec![0_i32; n]; n];
+                    for j in 0..n {
+                        index_matrix[j][j] = 1;
+                        for i in 0..j {
+                            let pol = matrix[i][j].clone();
+                            let key = pol.as_slice().to_vec();
+                            let index = *index_of.entry(key).or_insert_with(|| {
+                                polys.push(pol);
+                                polys.len() - 1
+                            });
+                            index_matrix[i][j] = index as i32;
+                        }
+                    }
+                    let mut params = Vec::with_capacity(n);
+                    for &survivor in &survivors {
+                        params.push(fiber_param(eb.z(survivor), &gamma_lambdas)?);
+                    }
+                    Ok(Value::Tuple(vec![
+                        Value::List(params),
+                        matrix_value(&index_matrix, span)?,
+                        Value::List(
+                            polys
+                                .iter()
+                                .map(|pol| Value::Vector(Vec32(pol.as_slice().to_vec())))
+                                .collect(),
+                        ),
+                    ]))
+                }
+            }
         }
         "Cartan_info" => {
             arity(name, arguments, 1, span)?;

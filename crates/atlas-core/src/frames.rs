@@ -57,6 +57,13 @@ impl EvaluationContext {
         std::mem::take(&mut self.printed)
     }
 
+    /// Direct buffer access for domain builtins that both print and throw
+    /// mid-evaluation (ext_kl.cpp:945-948 prints `Delta does not fix
+    /// gamma=...` before raising `No valid extended block`).
+    pub fn printed_buffer(&mut self) -> &mut Vec<String> {
+        &mut self.printed
+    }
+
     /// The current chain head, for capture into a closure value.
     pub fn capture(&self) -> Option<Rc<Frame>> {
         self.current.clone()
