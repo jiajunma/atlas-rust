@@ -39,7 +39,7 @@ use atlas_real_group::{
     LatticeInvolution, ModTwoVector, RankFlags, RationalWeight, RealFormPresentation, RealFormSeed,
     RelationBasis, RelationError, RelationGenerator, RelationMatrix, RepContext, RootId,
     RootInvolutionData, RootKind, RootSystem, StandardRepr, StrongRealClassification,
-    StructureError, WeakRealFormId, Weight, WeylElement, WeylInterface,
+    StructureError, WeakRealFormId, Weight, WeylAction, WeylElement, WeylInterface,
 };
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
@@ -2975,7 +2975,6 @@ fn simple_coroot_coordinates(root_system: &RootSystem, id: RootId) -> Option<Vec
             line
         })
         .collect();
-    let mut coordinates = vec![0i32; semisimple];
     let mut pivot_row = 0;
     for column in 0..semisimple {
         let found = (pivot_row..ambient).find(|&row| aug[row][column] != 0)?;
@@ -3001,13 +3000,19 @@ fn simple_coroot_coordinates(root_system: &RootSystem, id: RootId) -> Option<Vec
                 *target_entry -= subtracted;
             }
         }
-        let value = &aug[pivot_row][semisimple];
+        pivot_row += 1;
+    }
+    // The pivot row of column `c` is row `c`; only after the full
+    // Gauss-Jordan sweep is its solution entry final (later column
+    // eliminations still rewrite earlier pivot rows).
+    let mut coordinates = vec![0i32; semisimple];
+    for (column, entry) in coordinates.iter_mut().enumerate() {
+        let value = &aug[column][semisimple];
         let denominator = i64::try_from(value.denominator_ref()).ok()?;
         if denominator != 1 {
             return None;
         }
-        coordinates[column] = i32::try_from(value.numerator_ref()).ok()?;
-        pivot_row += 1;
+        *entry = i32::try_from(value.numerator_ref()).ok()?;
     }
     Some(coordinates)
 }
@@ -6824,6 +6829,57 @@ fn length_query(
     Ok(Value::Boolean(flag))
 }
 
+/// The enumerated root system of one datum plus its upstream `RootNbr`
+/// numbering: the shared setup of the signed root-numbering builtins
+/// (atlas-types.w:1478-1485).
+fn signed_roots(
+    handle: &RootDatumHandle,
+    span: SourceSpan,
+) -> Result<(RootSystem, RootNumbering), Diagnostic> {
+    let system = RootSystem::enumerate(&handle.datum, ROOT_BUDGET)
+        .map_err(|error| runtime(span, error.to_string()))?;
+    let numbering = RootNumbering::new(&system, handle.prefers_coroots());
+    Ok((system, numbering))
+}
+
+/// The internal `RootNbr` of a user (co)root index, reusing the signed
+/// convention check of [`positive_slot`].
+fn internal_root_nbr(
+    index: &BigInt,
+    numbering: &RootNumbering,
+    coroot: bool,
+    span: SourceSpan,
+) -> Result<usize, Diagnostic> {
+    let (positive, negate) = positive_slot(index, numbering.npos, coroot, span)?;
+    Ok(if negate {
+        numbering.npos - 1 - positive
+    } else {
+        numbering.npos + positive
+    })
+}
+
+/// Images of every root under a Weyl action, listed in internal `RootNbr`
+/// order (upstream `permuted_root` over `0..numRoots`, rootdata.cpp).
+fn weyl_root_permutation(
+    system: &RootSystem,
+    numbering: &RootNumbering,
+    action: &WeylAction,
+    span: SourceSpan,
+) -> Result<Value, Diagnostic> {
+    let images = system
+        .action_permutation(action)
+        .map_err(|error| runtime(span, error.to_string()))?;
+    let mut entries = Vec::with_capacity(system.roots().len());
+    for nbr in 0..system.roots().len() {
+        let image = images[numbering.id(nbr).index()];
+        entries.push(
+            i32::try_from(numbering.nbr(image))
+                .map_err(|_| runtime(span, "internal root index overflow"))?,
+        );
+    }
+    Ok(Value::Vector(Vec32(entries)))
+}
+
 fn as_integer(value: &Value, span: SourceSpan) -> Result<BigInt, Diagnostic> {
     match value {
         Value::Integer(value) => Ok(value.clone()),
@@ -8396,12 +8452,13 @@ pub(crate) fn call_with_printed(
             };
             columns_matrix_value(columns, handle.datum.lattice_rank(), span)
         }
-        // simple_roots/simple_coroots (atlas-types.w:1638-1658): one row
-        // per simple (co)root.
+        // simple_roots/simple_coroots (atlas-types.w:1638-1658): the
+        // oracle prints the simple (co)roots as matrix COLUMNS
+        // (rootdata.cpp:1442-1455 posroots shape).
         "simple_roots" | "simple_coroots" => {
             arity(name, arguments, 1, span)?;
             let handle = as_root_datum(&arguments[0], span)?;
-            let rows: Vec<Vec<i32>> = if name == "simple_coroots" {
+            let columns: Vec<Vec<i32>> = if name == "simple_coroots" {
                 handle
                     .datum
                     .simple_coroots()
@@ -8409,59 +8466,55 @@ pub(crate) fn call_with_printed(
                     .map(|coweight| coweight.as_slice().to_vec())
                     .collect()
             } else {
-                // simple_roots prints the rows transposed: the oracle's
-                // matrix rows are the simple coroot coordinates of the
-                // simple roots (rootdata.cpp:1442-1455 posroots shape).
-                let columns = handle
+                handle
                     .datum
                     .simple_roots()
                     .iter()
                     .map(|weight| weight.as_slice().to_vec())
-                    .collect::<Vec<_>>();
-                transpose_matrix(&columns)
+                    .collect()
             };
-            matrix_value(&rows, span)
+            matrix_value(&transpose_matrix(&columns), span)
         }
         // root_coradical / coroot_radical (atlas-types.w:2254-2255): the
         // simple roots/coroots followed by a basis of the kernel of the
-        // coroots/roots (the coradical/radical), as matrix rows.
+        // coroots/roots (the coradical/radical). root_coradical prints its
+        // vectors as matrix rows; coroot_radical as matrix columns.
         "root_coradical" | "coroot_radical" => {
             arity(name, arguments, 1, span)?;
             let handle = as_root_datum(&arguments[0], span)?;
-            let mut rows: Vec<Vec<i32>> = if name == "coroot_radical" {
-                handle
+            if name == "coroot_radical" {
+                let mut columns: Vec<Vec<i32>> = handle
                     .datum
                     .simple_coroots()
                     .iter()
                     .map(|coweight| coweight.as_slice().to_vec())
-                    .collect()
-            } else {
-                handle
-                    .datum
-                    .simple_roots()
-                    .iter()
-                    .map(|weight| weight.as_slice().to_vec())
-                    .collect()
-            };
-            let extra: Vec<Vec<i32>> = if name == "coroot_radical" {
-                handle
+                    .collect();
+                let extra: Vec<Vec<i32>> = handle
                     .datum
                     .radical_basis()
                     .map_err(|error| structure_diagnostic(error, span))?
                     .iter()
                     .map(|coweight| coweight.as_slice().to_vec())
-                    .collect()
+                    .collect();
+                columns.extend(extra);
+                columns_matrix_value(&columns, handle.datum.lattice_rank(), span)
             } else {
-                handle
+                let mut rows: Vec<Vec<i32>> = handle
+                    .datum
+                    .simple_roots()
+                    .iter()
+                    .map(|weight| weight.as_slice().to_vec())
+                    .collect();
+                let extra: Vec<Vec<i32>> = handle
                     .datum
                     .coradical_basis()
                     .map_err(|error| structure_diagnostic(error, span))?
                     .iter()
                     .map(|weight| weight.as_slice().to_vec())
-                    .collect()
-            };
-            rows.extend(extra);
-            matrix_value(&rows, span)
+                    .collect();
+                rows.extend(extra);
+                matrix_value(&rows, span)
+            }
         }
         // is_Cartan_matrix (atlas-types.w:368-375): the matrix is a Cartan
         // matrix iff its Dynkin classification succeeds.
@@ -8492,6 +8545,13 @@ pub(crate) fn call_with_printed(
                 _ => Err(type_error(span, "expected a RootDatum or LieType")),
             }
         }
+        // semisimple_rank (atlas-types.w:1397-1400): the number of simple
+        // roots.
+        "semisimple_rank" => {
+            arity(name, arguments, 1, span)?;
+            let handle = as_root_datum(&arguments[0], span)?;
+            Ok(Value::Integer(BigInt::from(handle.datum.semisimple_rank())))
+        }
         "root" | "coroot" => {
             arity(name, arguments, 2, span)?;
             let handle = as_root_datum(&arguments[0], span)?;
@@ -8503,6 +8563,87 @@ pub(crate) fn call_with_printed(
             let handle = as_root_datum(&arguments[0], span)?;
             let index = as_integer(&arguments[1], span)?;
             length_query(handle, &index, name == "is_long_coroot", span)
+        }
+        // root_expression/coroot_expression (atlas-types.w:1487-1504):
+        // root_expr/coroot_expr — the simple (co)root coordinates of the
+        // (co)root with the given signed number.
+        "root_expression" | "coroot_expression" => {
+            arity(name, arguments, 2, span)?;
+            let handle = as_root_datum(&arguments[0], span)?;
+            let index = as_integer(&arguments[1], span)?;
+            let coroot = name == "coroot_expression";
+            let (system, numbering) = signed_roots(handle, span)?;
+            let id = numbering.id(internal_root_nbr(&index, &numbering, coroot, span)?);
+            let coordinates = if coroot {
+                simple_coroot_coordinates(&system, id)
+            } else {
+                system.simple_coordinates(id).map(<[i32]>::to_vec)
+            }
+            .ok_or_else(|| runtime(span, "missing simple coordinates"))?;
+            Ok(Value::Vector(Vec32(coordinates)))
+        }
+        // root_index/coroot_index (atlas-types.w:1505-1518): find_index
+        // over the datum's (co)root list in its native lattice basis,
+        // then convert_to_signed_root_index; a miss yields numPosRoots.
+        "root_index" | "coroot_index" => {
+            arity(name, arguments, 2, span)?;
+            let handle = as_root_datum(&arguments[0], span)?;
+            let coordinates = as_weight_coordinates(&arguments[1], span)?;
+            let table = RootTable::build(handle, span)?;
+            let vectors = if name == "coroot_index" {
+                &table.coroots
+            } else {
+                &table.roots
+            };
+            let npos = vectors.len();
+            let signed = if let Some(positive) = vectors.iter().position(|v| *v == coordinates) {
+                i64::try_from(positive).map_err(|_| runtime(span, "root index overflow"))?
+            } else {
+                let negated: Vec<i32> = coordinates.iter().map(|entry| -entry).collect();
+                match vectors.iter().position(|v| *v == negated) {
+                    Some(positive) => {
+                        -1 - i64::try_from(positive)
+                            .map_err(|_| runtime(span, "root index overflow"))?
+                    }
+                    None => {
+                        i64::try_from(npos).map_err(|_| runtime(span, "root index overflow"))?
+                    }
+                }
+            };
+            Ok(Value::Integer(BigInt::from(signed)))
+        }
+        // root_involution (atlas-types.w:1519-1526): the reflection in
+        // |alpha| as a permutation of all roots, in internal RootNbr order.
+        "root_involution" => {
+            arity(name, arguments, 2, span)?;
+            let handle = as_root_datum(&arguments[0], span)?;
+            let index = as_integer(&arguments[1], span)?;
+            let (system, numbering) = signed_roots(handle, span)?;
+            // rt_abs: a root and its negative define the same reflection.
+            let (positive, _) = positive_slot(&index, numbering.npos, false, span)?;
+            let alpha = numbering.id(numbering.npos + positive);
+            let action = WeylAction::root_reflection(&handle.datum, &system, alpha)
+                .map_err(|error| runtime(span, error.to_string()))?;
+            weyl_root_permutation(&system, &numbering, &action, span)
+        }
+        // root_permutation (atlas-types.w:2604-2618): the images of all
+        // roots under w, in internal RootNbr order.
+        "root_permutation" => {
+            arity(name, arguments, 1, span)?;
+            let value = as_weyl_elt(&arguments[0], span)?;
+            let context = &value.context;
+            let datum = &*context.handle.datum;
+            let mut action =
+                WeylAction::identity(datum).map_err(|error| runtime(span, error.to_string()))?;
+            for &generator in &value.word {
+                let reflection = WeylAction::simple_reflection(datum, generator)
+                    .map_err(|error| runtime(span, error.to_string()))?;
+                action = action
+                    .compose(&reflection)
+                    .map_err(|error| runtime(span, error.to_string()))?;
+            }
+            let numbering = RootNumbering::new(&context.system, context.handle.prefers_coroots());
+            weyl_root_permutation(&context.system, &numbering, &action, span)
         }
         "inner_class" => match arguments {
             [Value::Domain(DomainValue::RealForm(context))] => Ok(Value::Domain(
@@ -9232,9 +9373,10 @@ pub(crate) fn call_with_printed(
                     .map_err(|error| runtime(span, error))?;
                 (projector, derived_roots, derived_coroots)
             } else {
-                // CoderivedTag (prerootdata.cpp:84-97): M = adapted_basis(roots);
+                // CoderivedTag (prerootdata.cpp:84-97): M = adapted_basis of
+                // the simple roots as COLUMNS (the upstream r x s layout);
                 // injector = M block(0,0,r,s); cosection = M^-1 rows 0..s.
-                let adapted = adapted_basis(&roots_matrix, &INTEGER_BUDGET)
+                let adapted = adapted_basis(&transpose_matrix_i32(&roots_matrix), &INTEGER_BUDGET)
                     .map_err(|error| runtime(span, error.to_string()))?;
                 let m = integer_matrix_i32(&adapted.basis);
                 let minv = integer_matrix_i32(&adapted.inverse);
@@ -10596,6 +10738,32 @@ pub(crate) fn call_with_printed(
         // orientation number of a standard parameter — the count of
         // non-integral real roots whose coroot pairing with gamma is
         // mis-oriented, plus one per conjugate complex pair.
+        // reducibility_points (atlas-types.w:6561-6568, repr.cpp:825-925):
+        // the reducibility fractions of a standard parameter, ascending.
+        "reducibility_points" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "{name} has no matching overload for {} argument(s)",
+                        arguments.len()
+                    ),
+                ));
+            };
+            let rc = rep_context(&parameter.context);
+            let points = rc
+                .reducibility_points(&parameter.repr)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            Ok(Value::List(
+                points
+                    .iter()
+                    .map(|&(numerator, denominator)| {
+                        Value::Rational(BigRational::from_signeds(numerator, denominator))
+                    })
+                    .collect(),
+            ))
+        }
         "orientation_nr" => {
             arity(name, arguments, 1, span)?;
             let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {

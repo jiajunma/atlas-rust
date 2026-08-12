@@ -4388,7 +4388,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::RootDatum),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "adjoint",
                 Type::tuple(vec![primitive_type(Prim::LieType), bool_type()]),
                 primitive_type(Prim::RootDatum),
@@ -4449,6 +4449,14 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             ),
             domain_builtin("rank", primitive_type(Prim::RootDatum), int_type(), 0),
             domain_builtin("rank", primitive_type(Prim::LieType), int_type(), 0),
+            // semisimple_rank (atlas-types.w:1397-1400, installed :2222):
+            // the number of simple roots.
+            domain_builtin(
+                "semisimple_rank",
+                primitive_type(Prim::RootDatum),
+                int_type(),
+                0,
+            ),
             domain_builtin(
                 "root",
                 Type::tuple(vec![primitive_type(Prim::RootDatum), int_type()]),
@@ -4473,31 +4481,73 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 bool_type(),
                 0,
             ),
+            // root_expression/coroot_expression (atlas-types.w:1487-1504):
+            // the simple (co)root coordinates of a signed root number;
+            // root_index/coroot_index (:1505-1518): the signed number of a
+            // (co)root in the datum's native lattice basis, with the miss
+            // sentinel numPosRoots; root_involution (:1519-1526): the
+            // reflection in |alpha| as a permutation of all roots in
+            // internal RootNbr order.
+            domain_builtin(
+                "root_expression",
+                Type::tuple(vec![primitive_type(Prim::RootDatum), int_type()]),
+                primitive_type(Prim::Vec),
+                0,
+            ),
+            domain_builtin(
+                "coroot_expression",
+                Type::tuple(vec![primitive_type(Prim::RootDatum), int_type()]),
+                primitive_type(Prim::Vec),
+                0,
+            ),
+            domain_builtin(
+                "root_index",
+                Type::tuple(vec![
+                    primitive_type(Prim::RootDatum),
+                    primitive_type(Prim::Vec),
+                ]),
+                int_type(),
+                0,
+            ),
+            domain_builtin(
+                "coroot_index",
+                Type::tuple(vec![
+                    primitive_type(Prim::RootDatum),
+                    primitive_type(Prim::Vec),
+                ]),
+                int_type(),
+                0,
+            ),
+            domain_builtin(
+                "root_involution",
+                Type::tuple(vec![primitive_type(Prim::RootDatum), int_type()]),
+                primitive_type(Prim::Vec),
+                0,
+            ),
             // positive_roots_wrapper / positive_coroots_wrapper
-            // (atlas-types.w:1656-1671): the no-value gate precedes the
-            // by-columns matrix build, so skip.
+            // (atlas-types.w:1656-1671): the positive (co)root table as a
+            // by-columns matrix.
             domain_builtin(
                 "posroots",
                 primitive_type(Prim::RootDatum),
                 primitive_type(Prim::Mat),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "poscoroots",
                 primitive_type(Prim::RootDatum),
                 primitive_type(Prim::Mat),
                 0,
             ),
             // simple_roots/simple_coroots (atlas-types.w:1638-1658):
-            // one row per simple (co)root; the no-value gate precedes the
-            // matrix build, so skip.
+            // one row per simple (co)root.
             domain_builtin(
                 "simple_roots",
                 primitive_type(Prim::RootDatum),
                 primitive_type(Prim::Mat),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "simple_coroots",
                 primitive_type(Prim::RootDatum),
                 primitive_type(Prim::Mat),
@@ -4510,7 +4560,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::Mat),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "coroot_radical",
                 primitive_type(Prim::RootDatum),
                 primitive_type(Prim::Mat),
@@ -4939,6 +4989,14 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 Type::row(int_type()),
                 0,
             ),
+            // root_permutation (atlas-types.w:2604-2618, installed :2649):
+            // the images of all roots under w, in internal RootNbr order.
+            domain_builtin(
+                "root_permutation",
+                primitive_type(Prim::WeylElt),
+                primitive_type(Prim::Vec),
+                0,
+            ),
             domain_builtin(
                 "root_datum",
                 primitive_type(Prim::WeylElt),
@@ -5193,7 +5251,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 ]),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "mod_central_torus_info",
                 primitive_type(Prim::RootDatum),
                 Type::Tuple(vec![
@@ -5247,7 +5305,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 ]),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin(
                 "two_rho_check",
                 primitive_type(Prim::RootDatum),
                 primitive_type(Prim::Vec),
@@ -5256,6 +5314,15 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             // orientation_nr (atlas-types.w:6546-6552): the orientation
             // number of a standard parameter.
             domain_builtin("orientation_nr", primitive_type(Prim::Param), int_type(), 0),
+            // reducibility_points (atlas-types.w:6561-6568, installed
+            // :7500-7501): the reducibility fractions of a standard
+            // parameter.
+            domain_builtin(
+                "reducibility_points",
+                primitive_type(Prim::Param),
+                Type::row(rat_type()),
+                0,
+            ),
             // Cartan_info (atlas-types.w:4102-4160): the classify triple,
             // the Cartan involution's Weyl word, the orbit/fiber sizes, and
             // the three subsystem types.
