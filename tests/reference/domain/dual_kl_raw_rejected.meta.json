@@ -2,10 +2,11 @@
   "fixture": "domain/dual_kl_raw_rejected",
   "fixture_sha256": "60113b67549f3553fc07f9ab63faacf592c77deca200322b4f27a9579d1de7d7",
   "rust_status": "pending_hpc_differential",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "note": "dual_KL overload rejections: int, string, RootDatum all fail analysis with 'found <t> while Block was needed.' type diagnostics; session continues after each.",
   "oracle": "atlas",
   "oracle_exit_status": 1,
   "stage": "typed-pipeline-swap",
-  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_job": "3542509"
 }
