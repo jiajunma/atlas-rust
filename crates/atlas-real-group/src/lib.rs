@@ -20,6 +20,7 @@ mod error;
 pub mod ext_block;
 pub mod ext_kl;
 mod form_name;
+mod global_kgb;
 // Consumer is the synthetic-real-form builder; the carrier lands first so
 // its rational transport can be reviewed independently.
 #[allow(dead_code)]
@@ -78,6 +79,7 @@ pub use dual::{
 };
 pub use error::StructureError;
 pub use form_name::form_type_name;
+pub use global_kgb::{GlobalKgb, GlobalKgbPrint, GlobalKgbPrintRow};
 pub use grading::{CartanGradingData, Grading};
 pub use inner_class::{inner_class_with_twisted_involution, InnerClass};
 pub use integer_lattice::{adapted_basis, AdaptedBasis, IntegerMatrix};
