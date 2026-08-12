@@ -469,6 +469,11 @@ FIXTURE_PLANS = (
     # (root/coroot expression+index, root_involution/root_permutation).
     FixturePlan(name="domain/coroot_queries"),
     FixturePlan(name="domain/coroot_queries_rejected"),
+    # derived_info(±): derived_info/mod_central_torus_info projector+injector
+    # matrices and derived-datum isogeny labels on B2 sc/adjoint, A1.T1, G2 —
+    # regression pins for the transpose/orientation/isogeny repair.
+    FixturePlan(name="domain/derived_info"),
+    FixturePlan(name="domain/derived_info_rejected"),
     FixturePlan(name="domain/root_numbering"),
     FixturePlan(name="domain/root_numbering_rejected"),
     # Orbit/ladder (slice B, agent-43): root_ladder_bottoms/

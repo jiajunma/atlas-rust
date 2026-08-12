@@ -1,0 +1,38 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "domain/derived_info_rejected",
+ "status": "pending_hpc_reference",
+ "events": [
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "found int while RootDatum was needed."
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "found string while RootDatum was needed."
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'sc': RootDatum\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "simply connected root datum of Lie type 'A1'"
+   }
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "found (RootDatum,RootDatum) while RootDatum was needed."
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "found void while RootDatum was needed."
+  }
+ ]
+}

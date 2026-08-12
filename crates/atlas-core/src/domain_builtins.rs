@@ -11284,10 +11284,12 @@ pub(crate) fn call_with_printed(
                 .map(|coroot| coroot.as_slice().to_vec())
                 .collect();
             let (projector, derived_roots, derived_coroots) = if name == "derived_info" {
-                // DerivedTag (prerootdata.cpp:67-82): M = adapted_basis(coroots);
+                // DerivedTag (prerootdata.cpp:67-82): M = adapted_basis of the
+                // simple coroots as COLUMNS (the upstream r x s layout);
                 // projector = M^T rows 0..s; section = M^-1 rows 0..s.
-                let adapted = adapted_basis(&coroots_matrix, &INTEGER_BUDGET)
-                    .map_err(|error| runtime(span, error.to_string()))?;
+                let adapted =
+                    adapted_basis(&transpose_matrix_i32(&coroots_matrix), &INTEGER_BUDGET)
+                        .map_err(|error| runtime(span, error.to_string()))?;
                 let m = integer_matrix_i32(&adapted.basis);
                 let minv = integer_matrix_i32(&adapted.inverse);
                 let projector = block_rows(&transpose_matrix_i32(&m), semisimple);
@@ -11342,20 +11344,29 @@ pub(crate) fn call_with_printed(
                 BasedRootDatum::from_simple_data(rank, cartan, derived_weights, derived_coweights)
                     .map_err(|error| runtime(span, error.to_string()))?;
             let lie_type = infer_lie_type(derived.cartan_matrix(), rank, span)?;
-            let isogeny = DatumIsogeny::SimplyConnected;
+            // The derived/mod-central-torus datum keeps whatever isogeny its
+            // simple (co)roots span (adjoint B2 stays adjoint), so classify
+            // from the datum rather than assuming simply connected.
+            let isogeny = classify_isogeny(&derived);
             let derived_value = Value::Domain(DomainValue::RootDatum(RootDatumHandle {
                 datum: std::sync::Arc::new(derived),
                 lie_type,
                 isogeny,
                 prefers_coroots: false,
             }));
+            // `projector` is stored row-major; `Matrix::from_columns` wants
+            // column-major data, so flatten the transpose (prerootdata.cpp
+            // pushes the projector/injector int_Matrix with its own layout).
             let matrix_rows = projector.len();
             let matrix_cols = projector.first().map_or(0, Vec::len);
             let matrix_value = Value::Matrix(
                 Matrix::from_columns(
                     matrix_rows,
                     matrix_cols,
-                    projector.into_iter().flatten().collect(),
+                    transpose_matrix_i32(&projector)
+                        .into_iter()
+                        .flatten()
+                        .collect(),
                 )
                 .expect("derived projector is rectangular"),
             );

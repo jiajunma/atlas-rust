@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/derived_info_rejected",
+  "fixture_sha256": "e3e19117616ae1022b31737e8b80b0bfd27c872e8ac493faa7013f37c2d42f64",
+  "rust_status": "pending_hpc_differential",
+  "reference_status": "pending_hpc_reference",
+  "note": "derived_info/mod_central_torus_info overload rejections: int, string, (RootDatum,RootDatum) arity-2, and void arity-0 all fail analysis with 'found <t> while RootDatum was needed.' type diagnostics; session continues after each.",
+  "oracle": "atlas",
+  "oracle_exit_status": 1,
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9"
+}

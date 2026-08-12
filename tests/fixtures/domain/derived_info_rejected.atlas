@@ -1,0 +1,6 @@
+derived_info(42)
+mod_central_torus_info("x")
+sc : RootDatum
+sc := simply_connected(Lie_type("A1"),true)
+derived_info(sc,sc)
+mod_central_torus_info()

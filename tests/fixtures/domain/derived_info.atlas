@@ -1,0 +1,16 @@
+sc : RootDatum
+sc := simply_connected(Lie_type("B2"),true)
+derived_info(sc)
+mod_central_torus_info(sc)
+ad : RootDatum
+ad := adjoint(Lie_type("B2"),true)
+derived_info(ad)
+mod_central_torus_info(ad)
+mx : RootDatum
+mx := root_datum([[1,0]],[[2,0]],true)
+derived_info(mx)
+mod_central_torus_info(mx)
+g2 : RootDatum
+g2 := simply_connected(Lie_type("G2"),true)
+derived_info(g2)
+mod_central_torus_info(g2)
