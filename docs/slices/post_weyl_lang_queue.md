@@ -334,15 +334,16 @@ verified_hpc_reference，capture 3535636）**：
     FixturePlan(name="domain/shift_flip_rejected"),
     # print_partial_block / print_partial_common_block (interval blocks;
     # needs Rep_table::Bruhat_below port, brief /tmp/slice_ppb_brief.md).
-    # Line alignment: 26 lines/24 events — each printer pair on the same
+    # Line alignment: 28 lines/24 events — each printer pair on the same
     # param is byte-identical in the oracle capture, so the consecutive
     # identical prints merged into single ReportLines in events.json.
     FixturePlan(
         name="domain/print_partial_block",
         runnable_lines=(
-            2, 4, 6, 8, 9, 10, 12, 13, 15, 17, 19, 21, 22, 24, 25, 26,
+            2, 4, 6, 8, 9, 10, 12, 13, 14, 16, 18, 20, 22, 23, 24, 26, 27,
+            28,
         ),
-        silent_lines=(1, 3, 5, 7, 11, 14, 16, 18, 20, 23),
+        silent_lines=(1, 3, 5, 7, 11, 15, 17, 19, 21, 25),
     ),
 ```
 
