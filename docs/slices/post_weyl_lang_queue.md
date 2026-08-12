@@ -323,6 +323,17 @@ pool.index(KL_pol(last-x,last-y))`（池初始 {0,1}，Pol 转 signed）→
 （`block(p)` 返回值 + KL 矩阵，§5.4 臂 :10774）与本件共享大部分打包
 逻辑，适合合并为一个切片。
 
+**dual_KL_block 再查（2026-08-12，agent-42，推翻上行"第二重载"）**：
+上游 atlas-types.w 全文件只有一处 KL_block wrapper（:6868）和一处安装
+（:7515），"第二重载"不存在。真实坑是 typed.rs KL_block skip 注册
+（:5177 一带）的返回序 `([Param],mat,[vec],int)` 与上游
+`([Param],int,mat,[vec])` 错位，翻转时必须先修正。另：
+domain_builtins.rs :11185 注释误称 singular 为 "non-integral"（代码实
+为分子==0）；`dual_KL`（skip）与 raw_KL 共享臂目前不做对偶化，
+BlockGraph::dual 落地后可顺手解锁（分叉不在 dual_KL_block 切片范围）。
+crate 缺口确认：BlockDescent 无 dual（descents.h:74-80 静态表）、
+BlockGraph 无 dual——已由 agent-44 实现。
+
 **finalise 三件套（2026-08-11 补查，归 ext_param+star 大切片）**：
 - `scale_extended (Param,mat,rat->Param,bool)`（:8449-8472，安装 :8591）：
   ext_block::scaled_extended_finalise（ext_block.cpp:2736-2807，~70 行，
