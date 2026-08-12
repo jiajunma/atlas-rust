@@ -1,0 +1,33 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/dual_block_rejected",
+  "status": "pending_hpc_reference",
+  "events": [
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "Failed to match 'dual' with argument type int"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "Failed to match 'dual' with argument type string"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rd': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'A1'"
+      }
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "Failed to match 'dual' with argument type (RootDatum,RootDatum)"
+    }
+  ]
+}

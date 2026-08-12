@@ -1,0 +1,5 @@
+dual(42)
+dual("x")
+rd : RootDatum
+rd := simply_connected(Lie_type("A1"),true)
+dual(rd,rd)
