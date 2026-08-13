@@ -5,14 +5,20 @@
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "rust_status": "unimplemented",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
+  "reference_job": "3545170",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "source_archive_sha256": "37922864d206469c881fe7ac7a5d3a817997fe7003d599bcd7ba0d92b251e781",
   "oracle_exit_status": 0,
-  "local_oracle_binary_sha256": "23371d61f97e59a693a0d27b586157c59303cb10dfe3e63769ad1c9253443565",
-  "local_oracle_stdout_sha256": "3e85d8546d5547c233cf9e038aa23184f23ac09329dd07b13a31ac868587b980",
-  "local_oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "oracle_seconds": 0.016,
+  "oracle_maxrss_kb": 4364,
+  "oracle_maxrss_approximate": false,
+  "oracle_stdout_sha256": "3e85d8546d5547c233cf9e038aa23184f23ac09329dd07b13a31ac868587b980",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "reference_report_sha256": "b2139d49c7f7a6f3d3bcf0137e8c24292f81b33e24e2738a8477c9207151f9cd",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:6474-6518",
     "sources/interpreter/atlas-types.w:7494-7496"
   ],
-  "note": "Pinned A2 contract for cross(vec,Param) and Cayley(vec,Param): simple, non-simple positive, and negative roots; undefined Cayley returns the original parameter. Discarded invalid calls pin the exact CWEB no_value gate: wrong-rank and nonintegral-root validation is skipped for both wrappers. Exact stdout/stderr confirmed with the local Atlas build at pinned revision 4d3e9449; frozen HPC-binary provenance and benchmarks remain pending."
+  "note": "Pinned A2 contract for cross(vec,Param) and Cayley(vec,Param): simple, non-simple positive, and negative roots; undefined Cayley returns the original parameter. Discarded invalid calls pin the exact CWEB no_value gate: wrong-rank and nonintegral-root validation is skipped for both wrappers. Frozen HPC reference job 3545170 confirms the pinned binary output and benchmark."
 }

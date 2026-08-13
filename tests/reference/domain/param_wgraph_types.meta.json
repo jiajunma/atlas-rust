@@ -4,7 +4,7 @@
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "rust_status": "pending",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
   "reference_job": "3543933",
   "note": "Static Param W-graph contracts: W_graph returns (int,[([int],[(int,int)])]) and W_cells returns (int,[([int],[([int],[(int,int)])])]). The fixture uses explicit identifier types, nested destructuring, indexing, and an edge (target,coefficient) tuple rather than relying only on display output.",
@@ -14,5 +14,11 @@
   "oracle_maxrss_approximate": false,
   "oracle_stdout_sha256": "442bd97da58b7d87eec7fe623e31c0e5de207b00f80cc7e9d1dd08f7fbd47ffc",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "reference_report_sha256": "1751ae86e97bb21d51c31db2f7a914b7bdb88f2a6cf9521971e773631a12c24d"
+  "reference_report_sha256": "1751ae86e97bb21d51c31db2f7a914b7bdb88f2a6cf9521971e773631a12c24d",
+  "differential_job": "3545169",
+  "differential_source_commit": "cd1c9c9e70ae40236baa840c0e207314903de467",
+  "differential_report_sha256": "155f7a3da22fcdb48218a941dbdfc6d4dc78d1f9b53d138f4d78b4706bba33e2",
+  "rust_seconds": 0.006,
+  "rust_maxrss_kb": 7208,
+  "rust_maxrss_approximate": false
 }

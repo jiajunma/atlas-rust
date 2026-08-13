@@ -2667,3 +2667,21 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   checkout and assert its length is 40 before `sbatch`; corrected jobs are
   `3545169` (Param W-graph differential), `3545170` (root-transform oracle),
   and `3545171` (hunger oracle).  Never promote metadata from the failed jobs.
+- Corrected Param W-graph job `3545169` is valid: both new static-contract
+  fixtures PASS, the corpus has 256 PASS / 3 declared PARTIAL / 0 FAIL, and
+  report SHA256 is `155f7a3da22fcdb48218a941dbdfc6d4dc78d1f9b53d138f4d78b4706bba33e2`.
+  Corrected root-transform reference job `3545170` is also valid; report SHA
+  `b2139d49c7f7a6f3d3bcf0137e8c24292f81b33e24e2738a8477c9207151f9cd`.
+- Hunger job `3545171` is invalid evidence despite its capture report saying
+  PASS: all four oracle invocations failed in the loader on `cu013` for missing
+  `GLIBCXX_3.4.26/.29`.  A capture harness PASS only proves artifacts were
+  written; always inspect oracle exit/stderr and plausible RSS/time before
+  promoting reference metadata.  Job `3545182` re-runs on known-good `cu007`.
+- `3545182` and the hunger-assignment capture `3545198` reproduced the same
+  loader failure even on `cu007`.  The operational root cause is inherited
+  compiler-module state combined with `module load misc/gcc/12.1 || true`:
+  a module conflict was silently ignored and the script selected the system
+  GCC 8 `libstdc++`.  `reference_capture.sbatch` now purges inherited modules,
+  requires GCC 12.1 to load, and verifies `GLIBCXX_3.4.29` before running any
+  oracle.  Capture report PASS alone remains insufficient; inspect each raw
+  oracle exit and stderr.

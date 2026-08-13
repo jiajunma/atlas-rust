@@ -14,8 +14,19 @@
 #SBATCH --output=atlas-reference-capture-%j.out
 
 source /etc/profile >/dev/null 2>&1 || true
-module load misc/gcc/12.1 >/dev/null 2>&1 || true
+if ! module purge >/dev/null 2>&1; then
+  echo "failed to purge inherited compiler modules" >&2
+  exit 2
+fi
+if ! module load misc/gcc/12.1 >/dev/null 2>&1; then
+  echo "failed to load required compiler module misc/gcc/12.1" >&2
+  exit 2
+fi
 gcc_lib="$(dirname "$(gcc -print-file-name=libstdc++.so.6)")"
+if ! strings "$gcc_lib/libstdc++.so.6" | grep -q '^GLIBCXX_3\.4\.29$'; then
+  echo "required GLIBCXX_3.4.29 is absent from $gcc_lib/libstdc++.so.6" >&2
+  exit 2
+fi
 export LD_LIBRARY_PATH="$gcc_lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
 set -euo pipefail

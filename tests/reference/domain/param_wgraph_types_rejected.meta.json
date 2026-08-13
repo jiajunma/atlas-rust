@@ -4,7 +4,7 @@
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "rust_status": "pending",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
   "reference_job": "3543933",
   "note": "Rejected companion pins the exact inferred Param W_graph/W_cells return types through assignments to deliberately incompatible nested row types.",
@@ -14,5 +14,11 @@
   "oracle_maxrss_approximate": false,
   "oracle_stdout_sha256": "90efb60eaf6c212a88e0d0b32ee9379dc3cfd04a07ebbe7192ba52ce6bdd3f97",
   "oracle_stderr_sha256": "2544eef2ed864c6d092ff618d7132a9299e1807b85897047d145701679295e1b",
-  "reference_report_sha256": "1751ae86e97bb21d51c31db2f7a914b7bdb88f2a6cf9521971e773631a12c24d"
+  "reference_report_sha256": "1751ae86e97bb21d51c31db2f7a914b7bdb88f2a6cf9521971e773631a12c24d",
+  "differential_job": "3545169",
+  "differential_source_commit": "cd1c9c9e70ae40236baa840c0e207314903de467",
+  "differential_report_sha256": "155f7a3da22fcdb48218a941dbdfc6d4dc78d1f9b53d138f4d78b4706bba33e2",
+  "rust_seconds": 0.005,
+  "rust_maxrss_kb": 6924,
+  "rust_maxrss_approximate": false
 }
