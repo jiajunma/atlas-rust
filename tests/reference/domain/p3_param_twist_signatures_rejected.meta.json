@@ -5,7 +5,8 @@
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "rust_status": "unimplemented",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
+  "reference_job": "3543702",
   "note": "Rejected P3 cases pin outer-twist compatibility validation before the no-value gate and overload rejection on RealForm.",
   "oracle_exit_status": 1
 }
