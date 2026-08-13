@@ -26,6 +26,27 @@ locators, not in individual builtin callers.  Required sequence fixtures are
 `KL_block -> KL_column`, `print_common_block -> KL_column`, a related parameter
 in the same family, and a changed-gamma/block-modifier case.
 
+The first faithful implementation slice may support the full-integral,
+identity-locator domain, but it must already use an explicit
+`ReducedParamKey { x, integral_system: Full, residue }`. Compute `residue`
+from the transported `RealProjection::lift_mat` and the Smith-diagonal codec,
+using Euclidean remainders and upstream's wrapping `u32` mixed-radix packing.
+Register every representative of a materialized block through `co_reduce`
+(reverse insertion so the smallest row wins); registering only the queried
+seed is still the rejected seed cache in disguise.
+
+The complete pool belongs to the shared real-form value and needs stable block
+IDs, reduced-key `Place`s, locators/modifiers, and partial/full promotion. Keep
+the mutex structural: reduce/probe under a short lock, materialize block/KL
+data outside it, then re-probe and atomically commit. Full materializers
+include `print_common_block`, `block(Param)`, `block_Hasse`, `KL_block`,
+`dual_KL_block`, Param `W_graph`/`W_cells`, and `KL_sum_at_s_to_height`;
+partial consumers include `length`, partial block/KL operations, `KL_column`,
+`KL_sum_at_s`, and deformation recursion. `print_block(Param)`,
+`print_partial_block`, and standalone external-delta extended computations do
+not install entries. Tests must also prove same-context default-form sharing,
+custom-form isolation, and isolation between separate `TypedContext`s.
+
 The name-level closure below was insufficient: upstream `atlas-types.w`
 registers **305 distinct `(name, argument type, result type)` signatures**
 across 187 names. A fresh comparison against the Rust registry found:
