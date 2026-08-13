@@ -4,7 +4,7 @@
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "rust_status": "known_incorrect",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
   "reference_job": "3543807",
   "note": "full_deform must merge output coefficients by KType key; distinct K-types with equal Split coefficients both survive.",
@@ -14,5 +14,11 @@
   "oracle_maxrss_approximate": false,
   "oracle_stdout_sha256": "13a0def925bb1d8dd66213392316d749c9158a0cfde0a7f1d36d3ee8ece362c1",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "reference_report_sha256": "d1bf1f78059ac54b45b75c333b7a666599d7a05405c59d54456c2102e45292c2"
+  "reference_report_sha256": "d1bf1f78059ac54b45b75c333b7a666599d7a05405c59d54456c2102e45292c2",
+  "differential_job": "3543928",
+  "differential_source_commit": "5269fb6763e5919d85ab25a8cfbf128ad1f92d66",
+  "differential_report_sha256": "0b6346282fdac558b595f2953854a7d33a5f5463503d585b5da764578f576734",
+  "rust_seconds": 0.005,
+  "rust_maxrss_kb": 7056,
+  "rust_maxrss_approximate": false
 }

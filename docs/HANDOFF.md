@@ -2641,3 +2641,8 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   job `3543807` proves that two distinct KTypes with coefficient `1` both
   survive. Keep the claim narrow: the remaining deformation subsystem and
   timed overloads still require their architectural ports.
+- The outer KTypePol accumulation repair is differential-verified by fat job
+  `3543928` at source `5269fb6`: accepted/rejected both PASS exact, no FAIL in
+  the corpus, 0.005s and 7056/6932 KiB peak RSS. Report SHA256
+  `0b6346282fdac558b595f2953854a7d33a5f5463503d585b5da764578f576734`.
+  This closes only the merge contract, not the remaining deformation engine.
