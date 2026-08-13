@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/p3_kgb_twist_undefined",
+  "fixture_sha256": "7c69a64e4c41227eb65768927bbbb9b386f81d9a9a3096d53fa7eef79810c852",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "unimplemented",
+  "reference_status": "pending_hpc_reference",
+  "note": "P3 KGB undefined outer twist preserves the UndefKGB sentinel as element 4294967295.",
+  "oracle_exit_status": 0
+}
