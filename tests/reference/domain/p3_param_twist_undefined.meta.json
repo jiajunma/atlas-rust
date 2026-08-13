@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/p3_param_twist_undefined",
+  "fixture_sha256": "06441a2f0da935c809c77ebaee346c6a42f8958139bdd5f2ee0096c3566bcacc",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "unimplemented",
+  "reference_status": "pending_hpc_reference",
+  "note": "P3 undefined outer twist: Atlas preserves the UndefKGB sentinel as x=4294967295 in a printable final Param.",
+  "oracle_exit_status": 0
+}
