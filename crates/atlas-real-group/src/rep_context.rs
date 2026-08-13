@@ -442,6 +442,76 @@ impl<'a> RepContext<'a> {
         Ok(Weight::new(weight))
     }
 
+    /// `InvolutionTable::y_act` (involutions.h:219-221): transport the
+    /// packed torsion part of a parameter from `source` to
+    /// `destination = delta * source * delta`.  The lift belongs to the
+    /// source involution, while unpacking MUST use the transported
+    /// projection stored at the destination involution.
+    pub(crate) fn y_act(
+        &self,
+        source: InvolutionId,
+        destination: InvolutionId,
+        y_bits: &ModTwoVector,
+        delta: &LatticeInvolution,
+    ) -> Result<ModTwoVector, StructureError> {
+        let lifted = self.y_lift(source, y_bits)?;
+        let transported = delta.act_on_weight(&lifted)?;
+        let coordinates = self.projection(destination)?.coordinates(&transported)?;
+        if coordinates.iter().any(|entry| entry % 2 != 0) {
+            return Err(StructureError::RepInvariantViolation {
+                invariant: "y_act parity",
+            });
+        }
+        ModTwoVector::from_ones(
+            coordinates.len(),
+            coordinates
+                .iter()
+                .enumerate()
+                .filter_map(|(index, entry)| ((entry / 2).rem_euclid(2) != 0).then_some(index)),
+        )
+    }
+
+    /// `Rep_context::twisted` (repr.cpp:1132-1143): apply a compatible
+    /// based outer involution to a parameter WITHOUT first making it
+    /// dominant.  The returned `None` is upstream's `UndefKGB`; callers own
+    /// the language-level policy for that sentinel.
+    pub fn twisted(
+        &self,
+        z: &StandardRepr,
+        delta: &LatticeInvolution,
+        simple_twist: &[usize],
+    ) -> Result<Option<StandardRepr>, StructureError> {
+        let source_involution = self.involution_of(z.x)?;
+        let Some(x) = self.graph.twisted(z.x, self.table, delta, simple_twist)? else {
+            return Ok(None);
+        };
+        let destination_involution = self.involution_of(x)?;
+        let y_bits = self.y_act(source_involution, destination_involution, &z.y_bits, delta)?;
+        let gamma = z.gamma.apply_matrix(delta.weight_matrix())?;
+        Ok(Some(StandardRepr {
+            x,
+            y_bits,
+            gamma,
+            height: z.height,
+        }))
+    }
+
+    /// `Rep_context::inner_twisted` (repr.cpp:1126-1130): first move the
+    /// parameter to a dominant representative, then apply the inner class's
+    /// distinguished involution.  This dominance step is intentionally NOT
+    /// part of [`Self::twisted`], because Atlas's explicit-matrix overload
+    /// operates on the parameter exactly as supplied.
+    pub fn inner_twisted(&self, z: &StandardRepr) -> Result<Option<StandardRepr>, StructureError> {
+        let dominant = z.made_dominant(self)?;
+        let delta = self
+            .inner_class
+            .distinguished_involution()
+            .involution()
+            .clone();
+        let simple_twist = self.inner_class.based_involution_twist(delta.clone())?;
+        self.twisted(&dominant, &delta, &simple_twist)
+    }
+
     /// `height` (repr.cpp:160-166): `<2rho^v, w>/2` with `w` made
     /// dominant, where `w = (1+theta)*gamma` (an integral weight).
     pub fn height(&self, theta_plus_1_gamma: &Weight) -> Result<u32, StructureError> {
@@ -2885,5 +2955,92 @@ mod tests {
             rc.lambda(&z).unwrap(),
             RationalWeight::new(vec![2, 2], 1).unwrap()
         );
+    }
+
+    #[test]
+    fn raw_parameter_twist_transports_every_stored_component() {
+        let datum = a2_datum();
+        let delta = LatticeInvolution::new(
+            &datum,
+            vec![vec![0, 1], vec![1, 0]],
+            vec![vec![0, 1], vec![1, 0]],
+        )
+        .unwrap();
+        let flipped = fixture(datum, delta.clone(), 8, 4);
+        let rc = flipped.rc();
+        let twist = flipped
+            .inner_class
+            .based_involution_twist(delta.clone())
+            .unwrap();
+        let source = rc
+            .sr(
+                KgbId(1),
+                &Weight::new(vec![1, 0]),
+                &RationalWeight::new(vec![1, -1], 2).unwrap(),
+            )
+            .unwrap();
+        assert!(
+            !source.y_bits().is_zero(),
+            "the transport anchor must exercise nontrivial torsion"
+        );
+        let source_lambda_rho = rc.lambda_rho(&source).unwrap();
+        let expected_lambda_rho = delta.act_on_weight(&source_lambda_rho).unwrap();
+        let expected_gamma = source.gamma().apply_matrix(delta.weight_matrix()).unwrap();
+
+        let target = rc
+            .twisted(&source, &delta, &twist)
+            .unwrap()
+            .expect("a compatible A2 twist stays in the real form");
+
+        assert_eq!(target.x(), KgbId(2));
+        assert_eq!(target.gamma(), &expected_gamma);
+        assert_eq!(target.height(), source.height());
+        // lambda_rho is elected separately at the destination involution;
+        // its packed torsion class, rather than its coordinates, transports
+        // literally under delta.
+        assert_eq!(
+            target.y_bits(),
+            &rc.y_pack(rc.involution_of(target.x()).unwrap(), &expected_lambda_rho)
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn inner_parameter_twist_makes_the_source_dominant_first() {
+        let datum = a2_datum();
+        let delta = LatticeInvolution::new(
+            &datum,
+            vec![vec![0, 1], vec![1, 0]],
+            vec![vec![0, 1], vec![1, 0]],
+        )
+        .unwrap();
+        let flipped = fixture(datum, delta.clone(), 8, 4);
+        let rc = flipped.rc();
+        let twist = flipped
+            .inner_class
+            .based_involution_twist(delta.clone())
+            .unwrap();
+        let source = rc
+            .sr(
+                KgbId(1),
+                &Weight::new(vec![0, 0]),
+                &RationalWeight::zero(2).unwrap(),
+            )
+            .unwrap();
+        assert!(!source.is_dominant(&rc).unwrap());
+
+        let raw = rc
+            .twisted(&source, &delta, &twist)
+            .unwrap()
+            .expect("raw distinguished twist stays in the A2 form");
+        let inner = rc
+            .inner_twisted(&source)
+            .unwrap()
+            .expect("inner distinguished twist stays in the A2 form");
+
+        assert_eq!(raw.x(), KgbId(2), "explicit twist remains non-dominant");
+        assert_eq!(inner.x(), KgbId(0), "unary twist first makes dominant");
+        assert!(inner.is_final(&rc).unwrap());
+        assert_eq!(inner.height(), source.height());
     }
 }
