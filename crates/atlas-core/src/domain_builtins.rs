@@ -18,8 +18,7 @@ use std::collections::BTreeSet;
 use std::fmt;
 use std::fmt::Write as _;
 use std::num::{NonZeroI32, NonZeroU64};
-use std::sync::atomic::{AtomicU64, Ordering as AtomicOrdering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, Weak};
 
 use malachite::{Integer as BigInt, Rational as BigRational};
 
@@ -48,9 +47,9 @@ use atlas_real_group::{
     InvolutionId, InvolutionTable, InvolutionTableBudget, KType, KgbGraph, KgbId, KgbStatus, KlPol,
     KlTable, LatticeInvolution, ModTwoVector, PartialBlock, RankFlags, RationalWeight,
     RealFormPresentation, RealFormSeed, RelationBasis, RelationError, RelationGenerator,
-    RelationMatrix, RepContext, RootId, RootInvolutionData, RootKind, RootSystem, SplitInteger,
-    StandardRepr, StandardReprMod, StrongRealClassification, StructureError, WeakRealFormId,
-    Weight, WeylAction, WeylElement, WeylInterface,
+    RelationMatrix, RepContext, RepTableOwner, RootId, RootInvolutionData, RootKind, RootSystem,
+    SplitInteger, StandardRepr, StandardReprMod, StrongRealClassification, StructureError,
+    WeakRealFormId, Weight, WeylAction, WeylElement, WeylInterface,
 };
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
@@ -154,6 +153,36 @@ impl DatumIsogeny {
     }
 }
 
+#[cfg(test)]
+#[derive(Clone)]
+struct CanonicalBuildTestGate {
+    reached: std::sync::mpsc::Sender<()>,
+    release: Arc<Mutex<std::sync::mpsc::Receiver<()>>>,
+}
+
+#[cfg(test)]
+impl fmt::Debug for CanonicalBuildTestGate {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("CanonicalBuildTestGate")
+    }
+}
+
+#[cfg(test)]
+impl CanonicalBuildTestGate {
+    fn wait(&self) -> Result<(), &'static str> {
+        use std::time::Duration;
+
+        self.reached
+            .send(())
+            .map_err(|_| "canonical real form test gate disconnected")?;
+        self.release
+            .lock()
+            .map_err(|_| "canonical real form test gate poisoned")?
+            .recv_timeout(Duration::from_secs(5))
+            .map_err(|_| "canonical real form test gate timed out")
+    }
+}
+
 /// The per-inner-class pipeline shared by every real form of the class.
 #[derive(Debug)]
 pub struct InnerClassContext {
@@ -169,6 +198,11 @@ pub struct InnerClassContext {
     /// `numDualRealForms` of the class's dual fiber.
     dual_cartans: Vec<(CartanId, usize)>,
     forms: Vec<RealFormPresentation>,
+    /// Upstream memoizes each canonical real-form owner inside its inner
+    /// class. Weak entries avoid a parent -> form -> parent ownership cycle.
+    canonical_forms: Mutex<Vec<Weak<RealFormContext>>>,
+    #[cfg(test)]
+    canonical_build_test_gate: Mutex<Option<CanonicalBuildTestGate>>,
 }
 
 /// One real form's frozen pipeline: seed, completed table, and KGB graph.
@@ -177,22 +211,10 @@ pub struct RealFormContext {
     parent: Arc<InnerClassContext>,
     external: usize,
     internal: WeakRealFormId,
-    owner: RealFormOwner,
-    table: InvolutionTable,
-    graph: KgbGraph,
+    table: Arc<InvolutionTable>,
+    graph: Arc<KgbGraph>,
+    rep: Arc<RepTableOwner>,
 }
-
-/// The identity of upstream's owning `shared_real_form` handle. Default
-/// real forms are memoized by mathematical form, while every genuinely
-/// custom seed owns a fresh handle even when its structure equals another
-/// custom seed.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum RealFormOwner {
-    Canonical,
-    Custom(u64),
-}
-
-static NEXT_CUSTOM_REAL_FORM_OWNER: AtomicU64 = AtomicU64::new(1);
 
 /// A Block value: the owning real form and dual real form contexts with
 /// the fibred-product graph (upstream `Block_value`,
@@ -432,17 +454,11 @@ fn same_real_form(left: &RealFormContext, right: &RealFormContext) -> bool {
 }
 
 /// Pointer-owner equality used by wrappers that compare their
-/// `shared_real_form` fields directly. Canonical forms model upstream's
-/// memoized values; custom constructions compare only through their unique
-/// owner token, which clones preserve through the surrounding `Arc`.
+/// `shared_real_form` fields directly. Canonical construction shares one
+/// `RepTableOwner` through the parent weak cache; custom construction always
+/// creates a fresh owner even when the mathematical real forms are equal.
 fn same_real_form_owner(left: &RealFormContext, right: &RealFormContext) -> bool {
-    match (left.owner, right.owner) {
-        (RealFormOwner::Canonical, RealFormOwner::Canonical) => {
-            left.parent.inner_class == right.parent.inner_class && left.internal == right.internal
-        }
-        (RealFormOwner::Custom(left), RealFormOwner::Custom(right)) => left == right,
-        _ => false,
-    }
+    Arc::ptr_eq(&left.rep, &right.rep)
 }
 
 impl fmt::Display for DomainValue {
@@ -599,12 +615,11 @@ impl fmt::Display for DomainValue {
     }
 }
 
-/// Bind the representation context of a real form's frozen pipeline. The
-/// `RealFormContext` owns exactly the borrow triple the crate `RepContext`
-/// needs (parent inner class, involution table, KGB graph).
+/// Borrow the representation context of a real form's frozen pipeline from
+/// its shared owner. The owner keeps the table, graph, derived invariants, and
+/// future common-block cache on the same lifetime boundary.
 fn rep_context(context: &RealFormContext) -> RepContext<'_> {
-    RepContext::new(&context.parent.inner_class, &context.table, &context.graph)
-        .expect("a constructed real form yields a valid Rep_context")
+    context.rep.context()
 }
 
 /// The 6-way adjective chain for a K-type (atlas-types.w:5228-5235).
@@ -1771,6 +1786,11 @@ fn build_inner_class_context(
         &INTEGER_BUDGET,
     )
     .map_err(|error| runtime(span, error.to_string()))?;
+    let canonical_forms = Mutex::new(
+        std::iter::repeat_with(Weak::new)
+            .take(order.form_count())
+            .collect(),
+    );
     Ok(Arc::new(InnerClassContext {
         root_datum: handle.clone(),
         inner_class,
@@ -1781,6 +1801,9 @@ fn build_inner_class_context(
         dual_form_count,
         dual_cartans,
         forms,
+        canonical_forms,
+        #[cfg(test)]
+        canonical_build_test_gate: Mutex::new(None),
     }))
 }
 
@@ -1899,6 +1922,18 @@ fn build_real_form(
         .order
         .internal(external)
         .ok_or_else(|| runtime(span, format!("Illegal real form number: {external}")))?;
+    {
+        let canonical_forms = parent
+            .canonical_forms
+            .lock()
+            .map_err(|_| runtime(span, "canonical real form cache poisoned"))?;
+        if let Some(existing) = canonical_forms.get(external).and_then(Weak::upgrade) {
+            return Ok(existing);
+        }
+    }
+
+    // Construct outside the cache lock. KGB completion can be expensive, and
+    // concurrent callers must not serialize unrelated real forms behind it.
     let mut table =
         InnerClassContext::fresh_table(parent).map_err(|error| runtime(span, error.to_string()))?;
     let fundamental = parent
@@ -1927,14 +1962,47 @@ fn build_real_form(
         &seed,
     )
     .map_err(|error| runtime(span, error.to_string()))?;
-    Ok(Arc::new(RealFormContext {
+    let table = Arc::new(table);
+    let graph = Arc::new(graph);
+    let rep = Arc::new(
+        RepTableOwner::from_shared(Arc::clone(&table), Arc::clone(&graph))
+            .map_err(|error| runtime(span, error.to_string()))?,
+    );
+    let candidate = Arc::new(RealFormContext {
         parent: Arc::clone(parent),
         external,
         internal,
-        owner: RealFormOwner::Canonical,
         table,
         graph,
-    }))
+        rep,
+    });
+
+    #[cfg(test)]
+    {
+        let gate = parent
+            .canonical_build_test_gate
+            .lock()
+            .map_err(|_| runtime(span, "canonical real form test gate poisoned"))?
+            .clone();
+        if let Some(gate) = gate {
+            gate.wait().map_err(|message| runtime(span, message))?;
+        }
+    }
+
+    // A concurrent builder may have installed the same form while this KGB
+    // graph was being completed. Preserve the first live canonical owner.
+    let mut canonical_forms = parent
+        .canonical_forms
+        .lock()
+        .map_err(|_| runtime(span, "canonical real form cache poisoned"))?;
+    let slot = canonical_forms
+        .get_mut(external)
+        .ok_or_else(|| runtime(span, "canonical real form cache is inconsistent"))?;
+    if let Some(existing) = slot.upgrade() {
+        return Ok(existing);
+    }
+    *slot = Arc::downgrade(&candidate);
+    Ok(candidate)
 }
 
 /// The custom-seed construction of `real_form_value::build`
@@ -1974,15 +2042,19 @@ fn build_custom_real_form(
         &seed,
     )
     .map_err(|error| runtime(span, error.to_string()))?;
+    let table = Arc::new(table);
+    let graph = Arc::new(graph);
+    let rep = Arc::new(
+        RepTableOwner::from_shared(Arc::clone(&table), Arc::clone(&graph))
+            .map_err(|error| runtime(span, error.to_string()))?,
+    );
     Ok(Arc::new(RealFormContext {
         parent: Arc::clone(parent),
         external: plan.external,
         internal: plan.internal,
-        owner: RealFormOwner::Custom(
-            NEXT_CUSTOM_REAL_FORM_OWNER.fetch_add(1, AtomicOrdering::Relaxed),
-        ),
         table,
         graph,
+        rep,
     }))
 }
 
@@ -19235,9 +19307,8 @@ mod tests {
             "Real form mismatch when adding terms to a K_type"
         );
 
-        // Default forms are upstream-memoized even though Rust rebuilds their
-        // immutable graph contexts, so independent canonical construction
-        // shares the logical owner.
+        // Default forms are upstream-memoized, so independent canonical
+        // construction shares the same cached context and owner.
         let canonical_left = call("real_form", &[inner.clone(), int(0)], span()).expect("form");
         let canonical_right = call("real_form", &[inner, int(0)], span()).expect("form");
         let zero = call("null_module", std::slice::from_ref(&canonical_left), span())
@@ -19264,6 +19335,174 @@ mod tests {
             span(),
         )
         .expect("canonical forms share their logical owner");
+    }
+
+    #[test]
+    fn canonical_real_forms_share_the_cached_context_and_rep_owner() {
+        let datum = fixture_datum("A1", true);
+        let identity = matrix(1, 1, vec![1]);
+        let inner = call("inner_class", &[datum, identity], span()).expect("inner class");
+        let Value::Domain(DomainValue::InnerClass(parent)) = inner else {
+            panic!("inner_class must return an InnerClass")
+        };
+
+        let first = build_real_form(&parent, 0, span()).expect("first canonical form");
+        let second = build_real_form(&parent, 0, span()).expect("cached canonical form");
+
+        assert!(Arc::ptr_eq(&first, &second));
+        assert!(Arc::ptr_eq(&first.rep, &second.rep));
+        assert!(std::ptr::eq(first.table.as_ref(), first.rep.table()));
+        assert!(std::ptr::eq(first.graph.as_ref(), first.rep.graph()));
+    }
+
+    #[test]
+    fn concurrent_canonical_builders_converge_at_the_second_cache_check() {
+        use std::sync::mpsc;
+        use std::time::Duration;
+
+        let datum = fixture_datum("A1", true);
+        let identity = matrix(1, 1, vec![1]);
+        let inner = call("inner_class", &[datum, identity], span()).expect("inner class");
+        let Value::Domain(DomainValue::InnerClass(parent)) = inner else {
+            panic!("inner_class must return an InnerClass")
+        };
+
+        let (reached_tx, reached_rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel();
+        *parent
+            .canonical_build_test_gate
+            .lock()
+            .expect("test gate lock") = Some(CanonicalBuildTestGate {
+            reached: reached_tx,
+            release: Arc::new(Mutex::new(release_rx)),
+        });
+
+        let builders = (0..2)
+            .map(|_| {
+                let parent = Arc::clone(&parent);
+                std::thread::spawn(move || build_real_form(&parent, 0, span()))
+            })
+            .collect::<Vec<_>>();
+
+        for _ in 0..2 {
+            reached_rx
+                .recv_timeout(Duration::from_secs(5))
+                .expect("both candidates reach the pre-commit gate");
+        }
+        release_tx.send(()).expect("release first builder");
+        release_tx.send(()).expect("release second builder");
+
+        let mut builders = builders.into_iter();
+        let first = builders
+            .next()
+            .expect("first builder handle")
+            .join()
+            .expect("first builder does not panic")
+            .expect("first canonical form");
+        let second = builders
+            .next()
+            .expect("second builder handle")
+            .join()
+            .expect("second builder does not panic")
+            .expect("second canonical form");
+        assert!(Arc::ptr_eq(&first, &second));
+        assert!(Arc::ptr_eq(&first.rep, &second.rep));
+
+        let cached = parent.canonical_forms.lock().expect("canonical cache lock")[0]
+            .upgrade()
+            .expect("winner remains cached while handles are live");
+        assert!(Arc::ptr_eq(&first, &cached));
+        assert!(Arc::ptr_eq(&first.rep, &cached.rep));
+    }
+
+    #[test]
+    fn canonical_real_form_cache_is_weak_and_rebuilds_after_last_handle_drops() {
+        let datum = fixture_datum("A1", true);
+        let identity = matrix(1, 1, vec![1]);
+        let inner = call("inner_class", &[datum, identity], span()).expect("inner class");
+        let Value::Domain(DomainValue::InnerClass(parent)) = inner else {
+            panic!("inner_class must return an InnerClass")
+        };
+
+        let first = build_real_form(&parent, 0, span()).expect("first canonical form");
+        let context_weak = Arc::downgrade(&first);
+        let rep_weak = Arc::downgrade(&first.rep);
+        drop(first);
+        assert!(context_weak.upgrade().is_none());
+        assert!(rep_weak.upgrade().is_none());
+
+        let rebuilt = build_real_form(&parent, 0, span()).expect("rebuilt canonical form");
+        assert!(std::ptr::eq(rebuilt.table.as_ref(), rebuilt.rep.table()));
+        assert!(std::ptr::eq(rebuilt.graph.as_ref(), rebuilt.rep.graph()));
+    }
+
+    #[test]
+    fn canonical_real_form_cache_poison_is_a_stable_runtime_diagnostic() {
+        let datum = fixture_datum("A1", true);
+        let identity = matrix(1, 1, vec![1]);
+        let inner = call("inner_class", &[datum, identity], span()).expect("inner class");
+        let Value::Domain(DomainValue::InnerClass(parent)) = inner else {
+            panic!("inner_class must return an InnerClass")
+        };
+
+        let poisoned_parent = Arc::clone(&parent);
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
+            let _guard = poisoned_parent
+                .canonical_forms
+                .lock()
+                .expect("cache starts healthy");
+            panic!("poison canonical cache for the diagnostic contract");
+        }));
+        assert!(result.is_err());
+
+        let error = build_real_form(&parent, 0, span()).expect_err("poison must be diagnosed");
+        assert_eq!(error.message, "canonical real form cache poisoned");
+    }
+
+    #[test]
+    fn real_form_owner_caches_are_isolated_for_custom_and_distinct_inner_contexts() {
+        let datum = fixture_datum("A1", true);
+        let identity = matrix(1, 1, vec![1]);
+        let first_inner =
+            call("inner_class", &[datum.clone(), identity.clone()], span()).expect("inner class");
+        let second_inner =
+            call("inner_class", &[datum, identity.clone()], span()).expect("inner class");
+        let Value::Domain(DomainValue::InnerClass(first_parent)) = first_inner.clone() else {
+            panic!("inner_class must return an InnerClass")
+        };
+        let Value::Domain(DomainValue::InnerClass(second_parent)) = second_inner else {
+            panic!("inner_class must return an InnerClass")
+        };
+
+        let first_canonical =
+            build_real_form(&first_parent, 0, span()).expect("first canonical form");
+        let second_canonical =
+            build_real_form(&second_parent, 0, span()).expect("second canonical form");
+        assert!(!Arc::ptr_eq(&first_canonical, &second_canonical));
+        assert!(!Arc::ptr_eq(&first_canonical.rep, &second_canonical.rep));
+
+        let custom = || {
+            call(
+                "real_form",
+                &[
+                    first_inner.clone(),
+                    identity.clone(),
+                    Value::RatVector(RatVec::new(vec![3], 2).expect("ratvec")),
+                ],
+                span(),
+            )
+            .expect("custom real form")
+        };
+        let Value::Domain(DomainValue::RealForm(first_custom)) = custom() else {
+            panic!("real_form must return a RealForm")
+        };
+        let Value::Domain(DomainValue::RealForm(second_custom)) = custom() else {
+            panic!("real_form must return a RealForm")
+        };
+        assert!(same_real_form(&first_custom, &second_custom));
+        assert!(!Arc::ptr_eq(&first_custom, &second_custom));
+        assert!(!Arc::ptr_eq(&first_custom.rep, &second_custom.rep));
+        assert!(!same_real_form_owner(&first_custom, &second_custom));
     }
 
     #[test]
