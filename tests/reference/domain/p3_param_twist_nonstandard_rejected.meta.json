@@ -4,7 +4,7 @@
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "rust_status": "unimplemented",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
   "reference_job": "3543783",
   "note": "Rejected P3 case pins the exact make_dominant failure for unary twist on a non-standard parameter.",
@@ -14,5 +14,11 @@
   "oracle_maxrss_approximate": false,
   "oracle_stdout_sha256": "41aa14fe4f15b9e388e1f7180f12863dc4df8f598f7635535d3a17012fc75536",
   "oracle_stderr_sha256": "d78549db3dfb736b2856f97a02ac533fd947e0ea7ba91a39d0a4af6c09f8a773",
-  "reference_report_sha256": "81238f21313e2630dfc7671d90be41a33a7907c3e3ed7fe6edd3cccba602463e"
+  "reference_report_sha256": "81238f21313e2630dfc7671d90be41a33a7907c3e3ed7fe6edd3cccba602463e",
+  "differential_job": "3543916",
+  "differential_source_commit": "ee44bd01cbc4385dcbc70928b9c3933d09242069",
+  "differential_report_sha256": "cd1618a82cd3e43dec23bf81376f04c7509c17f4262a48c744e61c1f95b1f065",
+  "rust_seconds": 0.005,
+  "rust_maxrss_kb": 6892,
+  "rust_maxrss_approximate": false
 }

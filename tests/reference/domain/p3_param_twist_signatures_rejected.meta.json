@@ -4,9 +4,15 @@
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "rust_status": "unimplemented",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
   "reference_job": "3543702",
   "note": "Rejected P3 cases pin outer-twist compatibility validation before the no-value gate and overload rejection on RealForm.",
-  "oracle_exit_status": 1
+  "oracle_exit_status": 1,
+  "differential_job": "3543916",
+  "differential_source_commit": "ee44bd01cbc4385dcbc70928b9c3933d09242069",
+  "differential_report_sha256": "cd1618a82cd3e43dec23bf81376f04c7509c17f4262a48c744e61c1f95b1f065",
+  "rust_seconds": 0.005,
+  "rust_maxrss_kb": 7004,
+  "rust_maxrss_approximate": false
 }

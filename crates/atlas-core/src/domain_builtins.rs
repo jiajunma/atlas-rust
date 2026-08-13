@@ -2090,16 +2090,7 @@ fn as_matrix_rows(value: &Value, span: SourceSpan) -> Result<Vec<Vec<i32>>, Diag
 /// Merge one (KType, SplitValue) term into an ordered K-type polynomial
 /// (KTypePolValue::add_term semantics: same K-type merges, zero drops).
 fn merge_ktype_term(terms: &mut Vec<(SplitValue, KType)>, ktype: KType, split: SplitValue) {
-    if split.e() == 0 && split.f() == 0 {
-        return;
-    }
-    for (existing, _) in terms.iter_mut() {
-        if existing.e() == split.e() && existing.f() == split.f() {
-            // coefficients are equal; nothing to merge
-            return;
-        }
-    }
-    terms.push((split, ktype));
+    merge_pol_term(terms, split, ktype);
 }
 
 /// The full deformation of one final standard parameter (repr.cpp:
@@ -13769,6 +13760,7 @@ pub(crate) fn call_with_printed(
                     merge_ktype_term(&mut terms, ktype, scaled_split);
                 }
             }
+            sort_ktypepol_terms(&mut terms);
             Ok(Value::Domain(DomainValue::KTypePol(KTypePolValue {
                 rf: Arc::clone(&parameter.context),
                 terms,
@@ -19156,6 +19148,66 @@ mod tests {
             span(),
         )
         .expect("canonical forms share their logical owner");
+    }
+
+    #[test]
+    fn full_deform_outer_merge_uses_ktype_keys_and_drops_zero_sums() {
+        let datum = fixture_datum("A2", true);
+        let identity = matrix(2, 2, vec![1, 0, 0, 1]);
+        let inner = call("inner_class", &[datum, identity], span()).expect("inner class");
+        let form = call("real_form", &[inner, int(1)], span()).expect("compact form");
+        let make_ktype = |x, lambda| {
+            let value = call(
+                "K_type",
+                &[
+                    call("KGB", &[form.clone(), int(x)], span()).expect("KGB element"),
+                    Value::Vector(Vec32(lambda)),
+                ],
+                span(),
+            )
+            .expect("K-type");
+            let Value::Domain(DomainValue::KType(value)) = value else {
+                panic!("K_type must return KType")
+            };
+            value.ktype
+        };
+        let first = make_ktype(0, vec![0, 0]);
+        let second = make_ktype(1, vec![0, 0]);
+        assert_ne!(first, second);
+
+        let mut terms = Vec::new();
+        merge_ktype_term(&mut terms, second.clone(), SplitValue::new(1, 1));
+        merge_ktype_term(&mut terms, first.clone(), SplitValue::new(1, 1));
+        assert_eq!(terms.len(), 2, "equal coefficients do not identify terms");
+
+        merge_ktype_term(&mut terms, first.clone(), SplitValue::new(2, -1));
+        let first_coefficient = terms
+            .iter()
+            .find(|(_, term)| *term == first)
+            .map(|(coefficient, _)| *coefficient);
+        assert_eq!(first_coefficient, Some(SplitValue::new(3, 0)));
+
+        merge_ktype_term(&mut terms, first.clone(), SplitValue::new(-3, 0));
+        assert!(terms.iter().all(|(_, term)| *term != first));
+        assert_eq!(terms, vec![(SplitValue::new(1, 1), second)]);
+
+        let parameter = call(
+            "param",
+            &[
+                call("KGB", &[form, int(5)], span()).expect("KGB element"),
+                Value::Vector(Vec32(vec![2, 0])),
+                Value::RatVector(RatVec::new(vec![0, 0], 1).expect("ratvec")),
+            ],
+            span(),
+        )
+        .expect("parameter");
+        assert_eq!(
+            call("full_deform", &[parameter], span())
+                .expect("full deformation")
+                .to_string(),
+            "\n1* K_type(x=0, lambda=[0,1]/1) [2]\
+             \n1* K_type(x=1, lambda=[0,1]/1) [2]"
+        );
     }
 
     #[test]

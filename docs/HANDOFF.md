@@ -2632,6 +2632,11 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   `3543906`. A blanket sentinel rejection was disproved: strict equality,
   `%`, `height(Param)`, and `real_form(Param)` are valid upstream and must stay
   on storage-only paths.
+- P3 is differential-verified by fat job `3543916` at source `ee44bd0`: all
+  six P3 plans PASS exact stdout/diagnostics/exit checks, and the full run has
+  no FAIL fixture (overall PARTIAL only for previously declared pending
+  cases). Rust wall times are 0.005-0.006s and peak RSS 6892-7252 KiB; report
+  SHA256 `cd1618a82cd3e43dec23bf81376f04c7509c17f4262a48c744e61c1f95b1f065`.
 - The next bounded repair is `full_deform` outer KTypePol accumulation. Oracle
   job `3543807` proves that two distinct KTypes with coefficient `1` both
   survive. Keep the claim narrow: the remaining deformation subsystem and

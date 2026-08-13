@@ -4,7 +4,7 @@
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "rust_status": "known_incorrect",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
   "reference_job": "3543906",
   "note": "UndefKGB strict equality and field-only wrappers remain valid; only graph-indexing follow-up operations may reject the sentinel.",
@@ -14,5 +14,11 @@
   "oracle_maxrss_approximate": false,
   "oracle_stdout_sha256": "2da0b159f7bd6daa40703054f9040189b72eb4acc7268ac6c656f38866add391",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "reference_report_sha256": "036410359c60ceac074c3409cd9c73f9ecfc64387d94231a3e588a7275a21473"
+  "reference_report_sha256": "036410359c60ceac074c3409cd9c73f9ecfc64387d94231a3e588a7275a21473",
+  "differential_job": "3543916",
+  "differential_source_commit": "ee44bd01cbc4385dcbc70928b9c3933d09242069",
+  "differential_report_sha256": "cd1618a82cd3e43dec23bf81376f04c7509c17f4262a48c744e61c1f95b1f065",
+  "rust_seconds": 0.006,
+  "rust_maxrss_kb": 7252,
+  "rust_maxrss_approximate": false
 }

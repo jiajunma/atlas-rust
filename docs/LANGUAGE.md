@@ -37,7 +37,7 @@ differential report naming the job.
 | exceptions and runtime errors | supported | B12 + rejected companions across all slices; `3501467`, `3501643` |
 | Atlas commands and batch files | supported | B7 forget/die, B9 redirect, B10 include, B13 dont, showall, quit, set quiet/verbose; `3501467`, `3501643`, `3506272` |
 | interactive input and completion | partial | TTY banner/prompt implemented; readline completion remains pending |
-| domain objects and mathematical operations | supported | 154 of 154 domain contracts verified_hpc (233 of 233 across all categories; from display `3501467` through block/KL/param-transforms/ext/print slices; latest: print_partial_block `3542430`, dual_block `3542449`) |
+| domain objects and mathematical operations | partial | Broad fixture coverage is HPC-verified, including P3 parameter twist `3543916`, but registry/NYI audits still find missing signatures, result/hunger mismatches, explicit unsupported paths, and silent deformation approximations; see `REMAINING_BUILTINS.md`. |
 | KL and file formats | planned | filekl.w is used only by stand-alone utilities; zero interpreter references — no Atlas-language builtin reads/writes KL binary files. Deferred outside the language-only gate pending a user decision (HANDOFF 2026-08-12b) |
 
 No row moves to `supported` merely because Rust compiles. It needs a reference
@@ -65,11 +65,12 @@ dual_KL_block (`3541634`), print_common_block (`3541690`),
 shift_flip (`3541896`), ext_finalise (`3542388`), and
 twisted_family/block_deform (`3542417`), print_partial_block
 (`3542430`), and dual_block (`3542449`).
-As of 2026-08-13, all 233 fixture contracts across
-{commands,domain,eval,lex,negative,parse} are verified_hpc — the
-domain surface is fully closed (every upstream install_function name
-is live and differential-verified; dual_block closed the last
-dedicated-fixture gap among the live conversion arms). Readline completion (TTY-only) and
+As of 2026-08-13, the historical fixture corpus is broadly verified, but this
+does not close the upstream builtin registry. The current mechanical audit
+finds 299/305 exact `(name,args,result)` registrations, 12 hunger/coercion-mask
+differences, 12 registered signatures with reachable explicit NYI paths, plus
+silent approximations in the deformation/block family. Therefore the domain
+surface remains partial even where existing contracts pass. Readline completion (TTY-only) and
 KL binary file formats (no Atlas-language builtin touches them; filekl.w
 serves stand-alone utilities only) remain deferred outside the
 language-only gate pending a user decision.
