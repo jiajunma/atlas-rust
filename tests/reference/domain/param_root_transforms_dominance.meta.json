@@ -1,0 +1,18 @@
+{
+  "fixture": "domain/param_root_transforms_dominance",
+  "fixture_sha256": "e847fbd73300613946088b5c9cabe7ff75a30342d093d8ba6f7384d9fcaa472b",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "implemented_local_unverified_hpc",
+  "reference_status": "pending_hpc_reference",
+  "oracle_exit_status": 0,
+  "local_oracle_binary_sha256": "23371d61f97e59a693a0d27b586157c59303cb10dfe3e63769ad1c9253443565",
+  "local_oracle_stdout_sha256": "8e7f19f5cc9623feb09a2b38dd7bdcf78391155ba5764d8bc4ad03a8dfd31326",
+  "local_oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "upstream_evidence": [
+    "sources/gkmod/repr.cpp:1025-1124",
+    "sources/structure/rootdata.h:320-324"
+  ],
+  "note": "Pinned A3 successful any_Cayley path. The source parameter is standard but integrally non-dominant; its doubled infinitesimal-character pairings are [8,-4,-4], so upstream make_dominant records the noncommuting subsystem word [1,2,1] before transporting root [-1,1,1]. Exact local oracle output is frozen; HPC provenance and benchmarks remain pending."
+}
