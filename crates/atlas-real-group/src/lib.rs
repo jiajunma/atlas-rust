@@ -57,6 +57,7 @@ mod rep_table;
 mod restricted_roots;
 mod root_datum;
 mod root_involution;
+mod root_reflection;
 mod root_system;
 mod strong_real;
 mod tits_element;

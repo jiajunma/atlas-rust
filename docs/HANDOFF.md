@@ -4,6 +4,28 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-13f (full common-block constructor foundation)
+
+- `PartialBlock::build_full` now implements rank-zero singleton blocks and the
+  full-integral, identity-locator common-block constructor from pinned
+  `blocks.cpp:733-1081`.  The implementation preserves top-ascent restart,
+  real-root `y` orbit generation, FIFO packets, Cayley completion, global `y`
+  numbering, reversed lengths, sort/remap, and full-SRM lookup.
+- Differential-shaped crate goldens cover A1 from `x=0/1/2` with exact init,
+  and all 12 pinned B2 rows.  B2 explicitly fixes both `x=10` rows with their
+  distinct `gamma_lambda`, the global `y` sequence, every status/cross/Cayley
+  cell, and seed-independent construction.  Proper nonempty integral
+  subsystems remain a loud NYI.
+- The arbitrary-root `reflection_word` helper moved from `ext_param.rs` to a
+  shared crate-private module without changing its wrapping arithmetic or word
+  convention.  Both independent spec and Rust-quality reviews approved the
+  final slice; the latter required decomposing the initial 300-line state
+  machine into four auditable phases around a `FullBlockBuilder` state.
+- Do not connect this constructor directly to `block(Param)`: the shared
+  per-real-form `RepTable` pool, reduced-key row registration, locator/modifier,
+  partial/full promotion, and sequence contracts are still missing.  The next
+  integration target remains `rep_table_sequence{,_rejected}`.
+
 ## Checkpoint - 2026-08-13e (signature audit + multi-assignment)
 
 - The builtin completion target is now signature-level: 305 upstream

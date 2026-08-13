@@ -71,6 +71,18 @@ recursion, so malformed topology returns a structural error instead of
 panicking.  This is infrastructure only; it does not materialize or cache a
 full common block yet.
 
+The first full common-block constructor is now present behind the language
+boundary as `PartialBlock::build_full`.  Its verified implementation domain is
+rank zero and the full-integral, identity-locator subsystem.  It ports the
+upstream top ascent, real-root orbit, FIFO involution packets, Cayley fiber
+completion, global `y` numbering, length reversal, sort/remap, and lookup by
+the complete `StandardReprMod`.  A1 seeds at all three rows and the pinned B2
+12-row block agree, including the two distinct rows with `x=10`; a proper
+nonempty subsystem still returns an explicit `NotYetImplemented`.  This is
+crate infrastructure only: it does not yet install a shared `RepTable` block,
+provide a locator/modifier, register `block(Param)`, or establish an HPC
+language-compatibility claim.
+
 ### P2 Block W-graph status (2026-08-13)
 
 `W_graph(Block)` and `W_cells(Block)` are implemented and locally match the

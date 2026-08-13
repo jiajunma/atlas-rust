@@ -36,6 +36,7 @@ use malachite::{Integer, Rational};
 use crate::ext_block::{fold_orbits, DescValue, ExtGen, ExtGenKind, StarOracle};
 use crate::lattice::{checked_sub_weights, RationalWeight};
 use crate::matreduc::{find_solution, has_solution, in_left_image, in_right_image, IntMatrix};
+use crate::root_reflection::reflection_word;
 use crate::twisted_involution::compose_matrices;
 use crate::{
     BlockGraph, Coweight, InvolutionId, InvolutionTable, KType, KgbId, LatticeInvolution,
@@ -244,39 +245,6 @@ fn reflect_rational(
         .map(|(&a, &b)| a.wrapping_sub(factor.wrapping_mul(i64::from(b))))
         .collect();
     RationalWeight::new(numerator, value.denominator())
-}
-
-/// Upstream `RootDatum::reflection_word` (rootdata.cpp:1092-1095):
-/// `to_dominant(reflection(alpha, twoRho))` — reflect `2rho` in `alpha`,
-/// greedily make dominant, reverse the word.
-fn reflection_word(rc: &RepContext, alpha: RootId) -> Result<Vec<usize>, StructureError> {
-    let system = rc.root_system();
-    let rank = system.simple_root_ids().len();
-    let factor = vec_dot(rc.two_rho().as_slice(), coroot_coords(system, alpha)?);
-    let mut v = rc.two_rho().as_slice().to_vec();
-    vec_add_scaled(&mut v, root_coords(system, alpha)?, -factor);
-    let mut word = Vec::new();
-    loop {
-        let mut reflected = false;
-        for generator in 0..rank {
-            let simple = system.simple_root_ids()[generator];
-            if vec_dot(&v, coroot_coords(system, simple)?) < 0 {
-                word.push(generator);
-                let root = root_coords(system, simple)?.to_vec();
-                let coroot = coroot_coords(system, simple)?;
-                let factor = vec_dot(&v, coroot);
-                vec_add_scaled(&mut v, &root, -factor);
-                reflected = true;
-                break;
-            }
-        }
-        if !reflected {
-            return Ok({
-                word.reverse();
-                word
-            });
-        }
-    }
 }
 
 /// Upstream `RootSystem::pos_to_neg` (rootdata.cpp:1415-1439): the set of
