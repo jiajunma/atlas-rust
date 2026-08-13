@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/p3_twist_undefined_fields",
+  "fixture_sha256": "3e7bd05cfa8351a2ac1af4a165f4d09a44f627cc05e5b3c683e692f2d7a38d23",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "known_incorrect",
+  "reference_status": "pending_hpc_reference",
+  "note": "UndefKGB strict equality and field-only wrappers remain valid; only graph-indexing follow-up operations may reject the sentinel.",
+  "oracle_exit_status": 0
+}

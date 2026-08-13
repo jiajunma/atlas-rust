@@ -1,0 +1,20 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("A3"),true)
+ic : InnerClass
+ic := inner_class(rd,[[1,0,0],[0,1,0],[0,0,1]])
+rf : RealForm
+rf := real_form(ic,0)
+u : KGBElt
+u := twist(KGB(rf,0),[[0,0,1],[0,1,0],[1,0,0]])
+u=u
+u!=u
+%u
+p : Param
+p := param(KGB(rf,0),[0,0,0],[0,0,0]/1)
+q : Param
+q := twist(p,[[0,0,1],[0,1,0],[1,0,0]])
+q=q
+q!=q
+height(q)
+real_form(q)
+%q
