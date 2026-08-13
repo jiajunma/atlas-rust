@@ -84,6 +84,37 @@ FIXTURE_PLANS = (
     # were frozen by HPC oracle capture 3543697 before the Rust port.
     FixturePlan(name="domain/p1_simple_signatures"),
     FixturePlan(name="domain/p1_simple_signatures_rejected"),
+    # P2 Block W-graph overloads captured by HPC oracle 3543699.  The
+    # `block(Param)` event stays explicit pending coverage until the shared
+    # RepTable/ReducedParam pool can reproduce upstream common-block lookup.
+    FixturePlan(
+        name="domain/p2_block_graph_signatures",
+        runnable_lines=(2, 4, 6, 8, 10, 11, 12, 14, 16, 17),
+        runnable_events=(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16),
+        pending=(
+            PendingCase(
+                feature="block(Param) shared common-block lookup",
+                source_line=15,
+                reference_event=14,
+                reason="faithful evaluation requires the session RepTable ReducedParam pool",
+            ),
+        ),
+        silent_lines=(1, 3, 5, 7, 9, 13),
+    ),
+    FixturePlan(
+        name="domain/p2_block_graph_signatures_rejected",
+        runnable_lines=(2, 4, 6, 8, 9),
+        runnable_events=(0, 1, 2, 3, 4, 5, 7, 8),
+        pending=(
+            PendingCase(
+                feature="block(Param) overload-set rejection wording",
+                source_line=7,
+                reference_event=6,
+                reason="the missing Param overload changes block(RealForm) candidate diagnostics",
+            ),
+        ),
+        silent_lines=(1, 3, 5),
+    ),
     # B3d selectors: unit selector and operator selectors.
     FixturePlan(name="eval/selectors_b3d"),
     FixturePlan(name="eval/selectors_b3d_rejected"),

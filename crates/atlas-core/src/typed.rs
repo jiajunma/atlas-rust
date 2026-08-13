@@ -5580,6 +5580,33 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 ]),
                 0,
             ),
+            // block_W_graph_wrapper / block_W_cells_wrapper
+            // (atlas-types.w:8738-8808, installed :9104-9106): unlike the
+            // Param overloads these expose the full Block graph directly,
+            // without a distinguished start index.  The upstream wrappers
+            // assign their result before testing `no_value`, so discarded
+            // calls still perform the graph computation.
+            domain_builtin(
+                "W_graph",
+                primitive_type(Prim::Block),
+                Type::row(Type::tuple(vec![
+                    Type::row(int_type()),
+                    Type::row(Type::tuple(vec![int_type(), int_type()])),
+                ])),
+                0,
+            ),
+            domain_builtin(
+                "W_cells",
+                primitive_type(Prim::Block),
+                Type::row(Type::tuple(vec![
+                    Type::row(int_type()),
+                    Type::row(Type::tuple(vec![
+                        Type::row(int_type()),
+                        Type::row(Type::tuple(vec![int_type(), int_type()])),
+                    ])),
+                ])),
+                0,
+            ),
             // block_Hasse (atlas-types.w:7514): the full block of a
             // standard parameter and its Bruhat Hasse matrix.
             domain_builtin(
@@ -8558,6 +8585,74 @@ mod tests {
             let arguments = Type::tuple(vec![param_pol.clone(), terms]);
             assert!(signatures("+").contains(&(arguments.clone(), param_pol.clone(),)));
             assert_eq!(no_value_policy("+", &arguments), policy);
+        }
+    }
+
+    #[test]
+    fn p2_block_graph_signatures_match_the_upstream_install_table() {
+        let signatures = |name: &str| {
+            builtin_registry()
+                .iter()
+                .filter(|builtin| builtin.name == name)
+                .map(|builtin| (builtin.arg_type.clone(), builtin.result.clone()))
+                .collect::<Vec<_>>()
+        };
+        let no_value_policy = |name: &str, arguments: &Type| {
+            let builtin = builtin_registry()
+                .iter()
+                .find(|builtin| builtin.name == name && &builtin.arg_type == arguments)
+                .unwrap_or_else(|| panic!("missing {name}({arguments:?})"));
+            match builtin.implementation {
+                BuiltinImpl::Domain {
+                    no_value: DomainNoValue::BuildAndDrop,
+                    ..
+                } => "build",
+                BuiltinImpl::Domain {
+                    no_value: DomainNoValue::Skip,
+                    ..
+                } => "skip",
+                BuiltinImpl::Domain {
+                    no_value: DomainNoValue::Validate,
+                    ..
+                } => "validate",
+                _ => "other",
+            }
+        };
+
+        let int = int_type();
+        let block = primitive_type(Prim::Block);
+        let edge = Type::tuple(vec![int.clone(), int.clone()]);
+        let vertex = Type::tuple(vec![Type::row(int.clone()), Type::row(edge)]);
+        let graph = Type::row(vertex.clone());
+        let cell = Type::tuple(vec![Type::row(int.clone()), Type::row(vertex)]);
+
+        assert!(signatures("W_graph").contains(&(block.clone(), graph.clone())));
+        assert!(signatures("W_cells").contains(&(block.clone(), Type::row(cell))));
+        assert_eq!(no_value_policy("W_graph", &block), "build");
+        assert_eq!(no_value_policy("W_cells", &block), "build");
+    }
+
+    #[test]
+    fn p2_block_graph_values_match_the_a1_oracle_contract() {
+        let datum = "simply_connected(Lie_type(\"A1\"),true)";
+        let inner = format!("inner_class({datum},[[1]])");
+        let real = format!("real_form({inner},1)");
+        let dual = format!("dual_real_form({inner},1)");
+        let block = format!("block({real},{dual})");
+        let (_, graph) = convert_and_run(&format!("W_graph({block})")).expect("block W-graph");
+        assert_eq!(
+            graph.to_string(),
+            "[([],[(2,1)]),([],[(2,1)]),([0],[(0,1),(1,1)])]"
+        );
+        let (_, cells) = convert_and_run(&format!("W_cells({block})")).expect("block W-cells");
+        assert_eq!(
+            cells.to_string(),
+            "[([0],[([],[])]),([1],[([],[])]),([2],[([0],[])])]"
+        );
+        for (call, expected) in [("W_graph", 7), ("W_cells", 8)] {
+            let (_, value) = convert_and_run(&format!("begin {call}({block});{expected} end"))
+                .expect("discarded Block graph call still completes");
+            assert_eq!(value, Value::Integer(BigInt::from(expected)));
         }
     }
 

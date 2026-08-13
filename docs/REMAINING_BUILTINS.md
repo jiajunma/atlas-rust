@@ -47,6 +47,26 @@ partial consumers include `length`, partial block/KL operations, `KL_column`,
 not install entries. Tests must also prove same-context default-form sharing,
 custom-form isolation, and isolation between separate `TypedContext`s.
 
+### P2 Block W-graph status (2026-08-13)
+
+`W_graph(Block)` and `W_cells(Block)` are implemented and locally match the
+HPC-captured A1 values, rejected calls, and upstream's observable no-value
+assignment bug (the graph is still built before its value is dropped).
+`block(Param)` remains deliberately unregistered.  A tempting implementation
+through `common_block_srms`/the classic Block graph is not a compatible
+subset: the legal A1 parameter `param(KGB(rf,2),[1],[1]/2)` triggers Rust's
+height-parity invariant although upstream returns a one-element common block,
+and a non-standard parameter must fail the upstream `test_standard` gate even
+when the result is discarded.  Exact completion is part of the shared
+RepTable/ReducedParam work above, not a builtin-local approximation.
+
+The P2 pipeline plans therefore run the Block graph/cell events and declare
+both the accepted `block(Param)` event and the affected `block(RealForm)`
+overload-rejection event pending.  Removing one overload changes Atlas's
+candidate-set diagnostic, so rejected fixtures must be rechecked whenever a
+signature is temporarily withheld; preserving only the runtime call lines is
+not sufficient evidence of language compatibility.
+
 The name-level closure below was insufficient: upstream `atlas-types.w`
 registers **305 distinct `(name, argument type, result type)` signatures**
 across 187 names. A fresh comparison against the Rust registry found:

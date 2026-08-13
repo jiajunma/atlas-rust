@@ -2339,6 +2339,137 @@ pub(crate) fn strong_components(graph: &[Vec<usize>]) -> (Vec<Vec<usize>>, Vec<V
     (partition, induced)
 }
 
+/// Build the full W-graph exposed by the Block overloads of `W_graph` and
+/// `W_cells` (atlas-types.w:8738-8808).  The vertices retain Block numbering;
+/// every nonzero mu-pair contributes an undirected labelled edge.
+type WGraphDescentSets = Vec<BTreeSet<usize>>;
+type WGraphEdges = Vec<Vec<(usize, i32)>>;
+
+fn block_w_graph_data(
+    block: &BlockValue,
+    span: SourceSpan,
+) -> Result<(WGraphDescentSets, WGraphEdges), Diagnostic> {
+    let mut kl_table =
+        KlTable::new(&block.graph).map_err(|error| structure_diagnostic(error, span))?;
+    kl_table
+        .fill(0)
+        .map_err(|error| structure_diagnostic(error, span))?;
+    let size = block.graph.size();
+    let rank = block.graph.rank();
+    let descent_sets = (0..size)
+        .map(|z| {
+            let descents = kl_table.support().descent_set(z);
+            (0..rank)
+                .filter(|&generator| descents.is_set(generator))
+                .collect()
+        })
+        .collect();
+    let mut edges: Vec<Vec<(usize, i32)>> = vec![Vec::new(); size];
+    for y in 0..size {
+        for pair in kl_table.mu_column(y) {
+            edges[y].push((pair.x, pair.coef));
+            edges[pair.x].push((y, pair.coef));
+        }
+    }
+    for targets in &mut edges {
+        targets.sort_unstable();
+    }
+    Ok((descent_sets, edges))
+}
+
+fn w_graph_vertex_value(
+    element: usize,
+    targets: &[(usize, i32)],
+    descent_sets: &[BTreeSet<usize>],
+) -> Value {
+    Value::Tuple(vec![
+        Value::List(
+            descent_sets[element]
+                .iter()
+                .map(|&generator| Value::Integer(BigInt::from(generator)))
+                .collect(),
+        ),
+        Value::List(
+            targets
+                .iter()
+                .map(|&(target, coefficient)| {
+                    Value::Tuple(vec![
+                        Value::Integer(BigInt::from(target)),
+                        Value::Integer(BigInt::from(coefficient)),
+                    ])
+                })
+                .collect(),
+        ),
+    ])
+}
+
+fn block_w_graph_value(
+    name: &str,
+    block: &BlockValue,
+    span: SourceSpan,
+) -> Result<Value, Diagnostic> {
+    let (descent_sets, edges) = block_w_graph_data(block, span)?;
+    if name == "W_graph" {
+        return Ok(Value::List(
+            edges
+                .iter()
+                .enumerate()
+                .map(|(element, targets)| w_graph_vertex_value(element, targets, &descent_sets))
+                .collect(),
+        ));
+    }
+
+    // DecomposedWGraph (wgraph.cpp:58-116): retain precisely the edges
+    // oriented out of a vertex whose target descent set is not a superset.
+    let oriented: Vec<Vec<usize>> = edges
+        .iter()
+        .enumerate()
+        .map(|(x, targets)| {
+            targets
+                .iter()
+                .filter_map(|&(y, _)| (!descent_sets[y].is_superset(&descent_sets[x])).then_some(y))
+                .collect()
+        })
+        .collect();
+    let (mut partition, _induced) = strong_components(&oriented);
+    for members in &mut partition {
+        members.sort_unstable();
+    }
+    Ok(Value::List(
+        partition
+            .iter()
+            .map(|members| {
+                let mut relative = vec![0_usize; edges.len()];
+                for (position, &member) in members.iter().enumerate() {
+                    relative[member] = position;
+                }
+                let member_set: BTreeSet<usize> = members.iter().copied().collect();
+                let vertices = members
+                    .iter()
+                    .map(|&member| {
+                        let targets: Vec<(usize, i32)> = edges[member]
+                            .iter()
+                            .copied()
+                            .filter(|&(target, _)| member_set.contains(&target))
+                            .map(|(target, coefficient)| (relative[target], coefficient))
+                            .collect();
+                        w_graph_vertex_value(member, &targets, &descent_sets)
+                    })
+                    .collect();
+                Value::Tuple(vec![
+                    Value::List(
+                        members
+                            .iter()
+                            .map(|&member| Value::Integer(BigInt::from(member)))
+                            .collect(),
+                    ),
+                    Value::List(vertices),
+                ])
+            })
+            .collect(),
+    ))
+}
+
 /// The upstream KLV polynomial printing (polynomials_def.h:300-331,
 /// `printMonomial` + `Polynomial::print`): least-degree-first coefficients,
 /// printed highest degree down, `q`/`q^d` monomials with a `+` separator for
@@ -13783,6 +13914,11 @@ pub(crate) fn call_with_printed(
         // returns (start, [(members, vertices)]).
         "W_graph" | "W_cells" => {
             arity(name, arguments, 1, span)?;
+            if let Value::Domain(DomainValue::Block(block)) = &arguments[0] {
+                // The Block overloads return the graph/cell list itself;
+                // unlike the Param overloads there is no start index.
+                return block_w_graph_value(name, block, span);
+            }
             let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
                 return Err(type_error(
                     span,
