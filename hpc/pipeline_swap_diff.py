@@ -693,6 +693,11 @@ FIXTURE_PLANS = (
         silent_lines=(1, 3, 5, 7, 11, 16, 18, 20, 22, 24),
     ),
     FixturePlan(name="domain/twisted_family_rejected"),
+    # Denominator > 2^rank preprocessing for ordinary and twisted full
+    # deformation.  Oracle expectations and benchmarks were frozen by
+    # reference-capture job 3546215 before the Rust implementation.
+    FixturePlan(name="domain/deform_alcove_shrink"),
+    FixturePlan(name="domain/deform_alcove_shrink_rejected"),
     # block_deform (deform-to-height pair; same E3 slice).
     # Line alignment: 15 lines/15 events, standard pattern.
     FixturePlan(
