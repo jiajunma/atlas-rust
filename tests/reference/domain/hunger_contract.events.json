@@ -1,0 +1,31 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/hunger_contract",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind":"ReportLine","text":"Declaring identifier 'lt': LieType\n"},
+    {"kind":"Value","value":{"type":"display","display":"Lie type 'A1'"}},
+    {"kind":"ReportLine","text":"Declaring identifier 'lt_alias': LieType\n"},
+    {"kind":"Value","value":{"type":"display","display":"Lie type 'A1'"}},
+    {"kind":"Value","value":{"type":"display","display":"Lie type 'A1.A1'"}},
+    {"kind":"Value","value":{"type":"display","display":"Lie type 'A1.A1'"}},
+    {"kind":"Value","value":{"type":"display","display":"Lie type 'A1'"}},
+    {"kind":"ReportLine","text":"Declaring identifier 'rd': RootDatum\n"},
+    {"kind":"Value","value":{"type":"display","display":"simply connected root datum of Lie type 'A2'"}},
+    {"kind":"ReportLine","text":"Declaring identifier 'w': WeylElt\n"},
+    {"kind":"Value","value":{"type":"display","display":"<0>"}},
+    {"kind":"ReportLine","text":"Declaring identifier 'v': vec\n"},
+    {"kind":"Value","value":{"type":"display","display":"[ 1, 2 ]"}},
+    {"kind":"ReportLine","text":"Declaring identifier 'v_alias': vec\n"},
+    {"kind":"Value","value":{"type":"display","display":"[ 1, 2 ]"}},
+    {"kind":"Value","value":{"type":"display","display":"[ -1,  3 ]"}},
+    {"kind":"Value","value":{"type":"display","display":"[ -1,  3 ]"}},
+    {"kind":"Value","value":{"type":"display","display":"[ 1, 2 ]"}},
+    {"kind":"Value","value":{"type":"display","display":"[ 4, 3 ]"}},
+    {"kind":"Value","value":{"type":"display","display":"[ 4, 3 ]"}},
+    {"kind":"Value","value":{"type":"display","display":"[ 1, 2 ]"}},
+    {"kind":"Value","value":{"type":"display","display":"7"}},
+    {"kind":"Value","value":{"type":"display","display":"8"}},
+    {"kind":"Value","value":{"type":"display","display":"9"}}
+  ]
+}

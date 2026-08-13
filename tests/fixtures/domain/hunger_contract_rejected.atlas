@@ -1,0 +1,8 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("A2"),true)
+w : WeylElt
+w := W_elt(rd,[0])
+w*[1]
+[1]*w
+begin w*[1];7 end
+begin [1]*w;8 end

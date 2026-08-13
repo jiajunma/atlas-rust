@@ -1,0 +1,13 @@
+{
+  "fixture": "domain/hunger_contract_domain",
+  "fixture_sha256": "19d8134d6c85b0b59dcabd9d5d218971e544e5f6001872ce4b5dcdaed77fae71",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "pending",
+  "reference_status": "pending_hpc_reference",
+  "note": "Safe A1 value contracts for eight domain signatures whose Rust hunger metadata differs. Their result types differ from the marked Param operand, so upstream's simple-assignment pilfer optimisation is unreachable and the hunger value has no language-visible effect.",
+  "oracle_exit_status": 0,
+  "local_oracle_stdout_sha256": "bfebd5a71c88e4f69d9047224fbbeaf14f39989a0e478cbe1f7898cdb15f2241",
+  "local_oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

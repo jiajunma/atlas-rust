@@ -1,0 +1,13 @@
+{
+  "fixture": "domain/hunger_contract",
+  "fixture_sha256": "4c30abd5dc14d1873a129b737be43a3d2134c2fa7affa4e3770748e33800aea2",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "unimplemented",
+  "reference_status": "pending_hpc_reference",
+  "note": "Observable value, alias-preservation, and no-value contracts for the three audited hunger mismatches whose result can be assigned back to the hungry operand type. Hunger is an in-place/pilfer optimisation hint, not an overload or coercion mask. Rust registers all three signatures but their runtime arms are currently absent.",
+  "oracle_exit_status": 0,
+  "local_oracle_stdout_sha256": "299d79e29dc0a3390317bfccaf4db70d917b29d30a6ab4935a5257b5ec0e0e2a",
+  "local_oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}
