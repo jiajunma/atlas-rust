@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/p3_param_twist_signatures",
+  "fixture_sha256": "efd3b00a65ac5132c4c30685d51e23d7c589b0de13718f9716f236a27b30c120",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "unimplemented",
+  "reference_status": "pending_hpc_reference",
+  "note": "P3 Param twist overloads: distinguished inner twist, explicit compatible outer twists, and discarded-result behavior.",
+  "oracle_exit_status": 0
+}

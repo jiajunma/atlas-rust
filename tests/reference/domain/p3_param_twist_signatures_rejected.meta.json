@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/p3_param_twist_signatures_rejected",
+  "fixture_sha256": "304586ceea2bca5b911160b6418da50063aad3003915a329cb473188857181e8",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "unimplemented",
+  "reference_status": "pending_hpc_reference",
+  "note": "Rejected P3 cases pin outer-twist compatibility validation before the no-value gate and overload rejection on RealForm.",
+  "oracle_exit_status": 1
+}
