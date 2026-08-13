@@ -2700,8 +2700,11 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   keeps aliases copy-on-write.  The five runnable hunger fixtures have
   `verified_hpc_reference` events and are registered in the swap runner;
   `hunger_contract_timed_nyi` deliberately remains outside it until timed
-  deformation exists.  Run the smallest fat differential after committing
-  this slice and record its report/benchmarks here.
+  deformation exists.  Fat differential `3545729` at `196dd7c` passed all
+  five hunger fixtures exactly (full stage status remains PARTIAL only for the
+  four declared project-wide pending features). Rust used 0.004-0.006s and
+  5920-7316 KiB per hunger fixture; report SHA256 is
+  `b0285ed87cf6898c245edbc1ea476d21b90468277c86c10e53f25a7f6b634bda`.
 - Arbitrary-root Param transforms are implemented at `cc9e285`. Reference job
   `3545170` pins the A2 contract; job `3545520` pins successful three-step A3
   integral dominance and nonstandard-first rejection (report SHA
