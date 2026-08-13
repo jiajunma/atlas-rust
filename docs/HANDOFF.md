@@ -2738,3 +2738,9 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   and key hashing.  Do not mistake this for a pool or `block(Param)` support;
   the next stage is the full `CommonBlock`/`BlockTopology` and all-row
   registration boundary.
+- The KL half of that next boundary is implemented: sealed `BlockTopology`
+  adapters for `BlockGraph` and `PartialBlock`, generic borrowed/`Arc` KL
+  storage, and eager validation of rank/order/cells/link targets.  A B2 test
+  drops the original `Arc<PartialBlock>` and still fills/queries its owned KL
+  table, proving the future RepTable record needs no self-reference.  The full
+  common-block packet constructor remains the next algorithmic step.

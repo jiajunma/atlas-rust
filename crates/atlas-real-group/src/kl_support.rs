@@ -14,8 +14,8 @@
 
 use std::collections::BTreeMap;
 
-use crate::block::{BlockDescent, BlockGraph};
-use crate::StructureError;
+use crate::block::BlockDescent;
+use crate::{BlockTopology, StructureError};
 
 /// A bitset over the simple generators, matching the `RankFlags` semantics
 /// used by the KL algorithm (upstream `RankFlags`). The rank is ≤32.
@@ -67,8 +67,8 @@ impl RankFlags {
 
 /// Per-block-element KL support data, mirroring `klsupport::KLSupport`
 /// (klsupport.h).
-pub struct KlSupport<'a> {
-    block: &'a BlockGraph,
+pub struct KlSupport<B: BlockTopology> {
+    block: B,
     descents: Vec<RankFlags>,
     good_ascents: Vec<RankFlags>,
     length_stop: Vec<usize>,
@@ -86,8 +86,9 @@ struct PrimIndexRecord {
     range: usize,
 }
 
-impl<'a> KlSupport<'a> {
-    pub fn new(block: &'a BlockGraph) -> Result<Self, StructureError> {
+impl<B: BlockTopology> KlSupport<B> {
+    pub fn new(block: B) -> Result<Self, StructureError> {
+        validate_topology(&block)?;
         let rank = block.rank();
         let size = block.size();
         let mut descents = Vec::with_capacity(size);
@@ -96,12 +97,10 @@ impl<'a> KlSupport<'a> {
             let mut desc = RankFlags::empty();
             let mut good_asc = RankFlags::empty();
             for s in 0..rank {
-                let value = block
-                    .descent_value(z, s)
-                    .ok_or(StructureError::IndexOutOfRange {
-                        index: z * rank + s,
-                        upper_bound: size * rank,
-                    })?;
+                let value = block.descent(z, s).ok_or(StructureError::IndexOutOfRange {
+                    index: z * rank + s,
+                    upper_bound: size * rank,
+                })?;
                 if value.is_descent() {
                     desc.set(s);
                 } else if value != BlockDescent::ImaginaryTypeII {
@@ -140,8 +139,8 @@ impl<'a> KlSupport<'a> {
         })
     }
 
-    pub fn block(&self) -> &'a BlockGraph {
-        self.block
+    pub fn block(&self) -> &B {
+        &self.block
     }
 
     pub fn size(&self) -> usize {
@@ -225,7 +224,7 @@ impl<'a> KlSupport<'a> {
     /// `unique_ascent`): the cross image for a complex ascent, the first
     /// Cayley image for an imaginary type I ascent.
     pub fn unique_ascent(&self, s: usize, z: usize) -> Option<usize> {
-        let value = self.block.descent_value(z, s)?;
+        let value = self.block.descent(z, s)?;
         match value {
             BlockDescent::ComplexAscent => self.block.cross(z, s),
             BlockDescent::ImaginaryTypeI => self.block.cayley(z, s)?.0,
@@ -274,7 +273,7 @@ impl<'a> KlSupport<'a> {
                 continue;
             }
             let s = good.first_bit().expect("nonempty good ascent");
-            let value = self.block.descent_value(x, s).expect("valid generator");
+            let value = self.block.descent(x, s).expect("valid generator");
             if value == BlockDescent::RealNonparity {
                 index[x] = DEAD_END;
             } else {
@@ -298,9 +297,117 @@ impl<'a> KlSupport<'a> {
     }
 }
 
+/// Validate every invariant that the KL recursion later treats as trusted.
+/// This keeps malformed topology at the fallible construction boundary
+/// instead of allowing an indexing or `expect` panic deep in a column fill.
+fn validate_topology(block: &impl BlockTopology) -> Result<(), StructureError> {
+    const RANK_FLAGS_CAPACITY: usize = u32::BITS as usize;
+
+    if block.rank() > RANK_FLAGS_CAPACITY {
+        return Err(StructureError::BlockInvariantViolation {
+            invariant: "KL topology rank exceeds RankFlags capacity",
+        });
+    }
+
+    let size = block.size();
+    let mut previous_length = None;
+    for element in 0..size {
+        let length = block
+            .length(element)
+            .ok_or(StructureError::BlockInvariantViolation {
+                invariant: "KL topology element has no length",
+            })?;
+        if previous_length.is_some_and(|previous| length < previous) {
+            return Err(StructureError::BlockInvariantViolation {
+                invariant: "KL topology lengths are not nondecreasing",
+            });
+        }
+        previous_length = Some(length);
+
+        for generator in 0..block.rank() {
+            block
+                .descent(element, generator)
+                .ok_or(StructureError::BlockInvariantViolation {
+                    invariant: "KL topology element has no descent status",
+                })?;
+            validate_target(block.cross(element, generator), size)?;
+            let cayley = block.cayley(element, generator).ok_or(
+                StructureError::BlockInvariantViolation {
+                    invariant: "KL topology element has no Cayley cell",
+                },
+            )?;
+            validate_target(cayley.0, size)?;
+            validate_target(cayley.1, size)?;
+            let inverse = block.inverse_cayley(element, generator).ok_or(
+                StructureError::BlockInvariantViolation {
+                    invariant: "KL topology element has no inverse-Cayley cell",
+                },
+            )?;
+            validate_target(inverse.0, size)?;
+            validate_target(inverse.1, size)?;
+        }
+    }
+    Ok(())
+}
+
+fn validate_target(target: Option<usize>, size: usize) -> Result<(), StructureError> {
+    if target.is_some_and(|target| target >= size) {
+        return Err(StructureError::BlockInvariantViolation {
+            invariant: "KL topology link target is outside the block",
+        });
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    struct FakeTopology {
+        rank: usize,
+        lengths: Vec<usize>,
+        cross_target: usize,
+    }
+
+    impl crate::block_access::sealed::Sealed for FakeTopology {}
+
+    impl crate::BlockTopology for FakeTopology {
+        fn size(&self) -> usize {
+            self.lengths.len()
+        }
+
+        fn rank(&self) -> usize {
+            self.rank
+        }
+
+        fn length(&self, element: usize) -> Option<usize> {
+            self.lengths.get(element).copied()
+        }
+
+        fn descent(&self, element: usize, generator: usize) -> Option<BlockDescent> {
+            (element < self.size() && generator < self.rank).then_some(BlockDescent::ComplexAscent)
+        }
+
+        fn cross(&self, element: usize, generator: usize) -> Option<usize> {
+            (element < self.size() && generator < self.rank).then_some(self.cross_target)
+        }
+
+        fn cayley(
+            &self,
+            element: usize,
+            generator: usize,
+        ) -> Option<(Option<usize>, Option<usize>)> {
+            (element < self.size() && generator < self.rank).then_some((None, None))
+        }
+
+        fn inverse_cayley(
+            &self,
+            element: usize,
+            generator: usize,
+        ) -> Option<(Option<usize>, Option<usize>)> {
+            (element < self.size() && generator < self.rank).then_some((None, None))
+        }
+    }
 
     #[test]
     fn rank_flags_set_and_query() {
@@ -311,5 +418,50 @@ mod tests {
         assert_eq!(flags.first_bit(), Some(2));
         let other = RankFlags::empty();
         assert!(flags.contains(&other)); // the empty set is contained
+    }
+
+    #[test]
+    fn rejects_topology_rank_above_rank_flags_capacity() {
+        let result = KlSupport::new(FakeTopology {
+            rank: 33,
+            lengths: vec![0],
+            cross_target: 0,
+        });
+        assert!(matches!(
+            result,
+            Err(StructureError::BlockInvariantViolation {
+                invariant: "KL topology rank exceeds RankFlags capacity"
+            })
+        ));
+    }
+
+    #[test]
+    fn rejects_topology_not_sorted_by_length() {
+        let result = KlSupport::new(FakeTopology {
+            rank: 1,
+            lengths: vec![1, 0],
+            cross_target: 0,
+        });
+        assert!(matches!(
+            result,
+            Err(StructureError::BlockInvariantViolation {
+                invariant: "KL topology lengths are not nondecreasing"
+            })
+        ));
+    }
+
+    #[test]
+    fn rejects_topology_link_target_outside_the_block() {
+        let result = KlSupport::new(FakeTopology {
+            rank: 1,
+            lengths: vec![0],
+            cross_target: 1,
+        });
+        assert!(matches!(
+            result,
+            Err(StructureError::BlockInvariantViolation {
+                invariant: "KL topology link target is outside the block"
+            })
+        ));
     }
 }

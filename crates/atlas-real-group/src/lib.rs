@@ -10,6 +10,7 @@ use std::collections::{HashSet, VecDeque};
 
 mod adjoint_fiber;
 mod block;
+mod block_access;
 mod cartan_class;
 mod cartan_classification;
 mod cartan_fiber;
@@ -76,6 +77,7 @@ pub use adjoint_fiber::{
     AdjointFiberElement, AdjointProjection, AmbientCoweight, FiberToAdjoint,
 };
 pub use block::{dual_involution, BlockDescent, BlockGraph};
+pub use block_access::BlockTopology;
 pub use cartan_class::{CartanClass, TwistedConjugacyClass, TwistedConjugacyPartition};
 pub use cartan_classification::{CartanClassification, CartanClassificationBudget, CartanId};
 pub use cartan_fiber::{CartanFiber, CartanFiberElement};

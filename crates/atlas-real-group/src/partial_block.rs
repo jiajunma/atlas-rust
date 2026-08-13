@@ -1484,6 +1484,23 @@ mod tests {
         assert!((0..3).all(|z| block.survives(z, &singular)));
     }
 
+    #[test]
+    fn kl_table_can_own_an_arc_partial_block() {
+        let b2 = b2_fixture();
+        let rc = b2.rc();
+        let gamma = rw(&[2, 2], 1);
+        let (seed, ctxt) = seed_and_context(&rc, 5, &[1, 1], &gamma);
+        let interval = bruhat_below(&ctxt, &seed).unwrap();
+        let block = std::sync::Arc::new(PartialBlock::build(&ctxt, &interval).unwrap());
+
+        let mut kl = crate::KlTable::from_handle(std::sync::Arc::clone(&block)).unwrap();
+        drop(block);
+
+        assert_eq!(kl.support().size(), 3);
+        kl.fill(0).unwrap();
+        assert_eq!(kl.kl_pol(2, 2).unwrap(), 1);
+    }
+
     /// The seed of a proper half-integral subsystem: B2 with gamma
     /// `[3,1]/2` is integral only for the coroots pairing to even values,
     /// exercising `IntegralSubsystem` beyond the full/empty extremes.

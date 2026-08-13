@@ -62,6 +62,15 @@ partial consumers include `length`, partial block/KL operations, `KL_column`,
 not install entries. Tests must also prove same-context default-form sharing,
 custom-form isolation, and isolation between separate `TypedContext`s.
 
+The KL ownership boundary is now ready for stored common blocks.  A sealed
+`BlockTopology` trait covers classic and partial common blocks plus borrowed
+and `Arc` handles; `KlSupport`/`KlTable` store the handle generically rather
+than borrowing only `BlockGraph`.  Construction validates the KL rank,
+nondecreasing length order, complete cells, and in-range links before any
+recursion, so malformed topology returns a structural error instead of
+panicking.  This is infrastructure only; it does not materialize or cache a
+full common block yet.
+
 ### P2 Block W-graph status (2026-08-13)
 
 `W_graph(Block)` and `W_cells(Block)` are implemented and locally match the

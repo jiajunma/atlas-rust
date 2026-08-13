@@ -17,7 +17,7 @@
 use crate::block::BlockDescent;
 use crate::kl_polynomial::{KlHashTable, KlPol};
 use crate::kl_support::{KlSupport, RankFlags};
-use crate::StructureError;
+use crate::{BlockGraph, BlockTopology, StructureError};
 
 pub type BlockElt = usize;
 pub type KlIndex = usize;
@@ -30,9 +30,10 @@ pub struct MuPair {
     pub coef: MuCoeff,
 }
 
-/// The KLV polynomial table for one block.
-pub struct KlTable<'a> {
-    support: KlSupport<'a>,
+/// Storage behind the source-compatible [`KlTable`] alias.
+#[doc(hidden)]
+pub struct KlTableHandle<B: BlockTopology> {
+    support: KlSupport<B>,
     /// Columns yet to compute (kl.h:72 `d_holes`).
     holes: Vec<bool>,
     /// `d_KL[y]`: per primitive element of `y`, the pool index of
@@ -44,14 +45,30 @@ pub struct KlTable<'a> {
     pool: KlHashTable,
 }
 
-impl<'a> KlTable<'a> {
+/// The KLV polynomial table for one block.
+///
+/// The lifetime parameter is retained only in this compatibility alias so
+/// existing `KlTable<'_>` annotations continue to mean a table borrowing a
+/// [`BlockGraph`]. The storage itself is generic solely over its handle type.
+pub type KlTable<'a, B = &'a BlockGraph> = KlTableHandle<B>;
+
+impl<'a> KlTableHandle<&'a BlockGraph> {
     /// `KL_table::KL_table` (kl.cpp:94-104): allocate columns for the
     /// whole block, mark every column as a hole, and seed the pool.
     /// Every element's descent set gets its primitive-index table now,
     /// so the recursion can look up any shorter column.
-    pub fn new(block: &'a crate::BlockGraph) -> Result<Self, StructureError> {
-        let mut support = KlSupport::new(block)?;
+    pub fn new(block: &'a BlockGraph) -> Result<Self, StructureError> {
+        Self::from_handle(block)
+    }
+}
+
+impl<B: BlockTopology> KlTableHandle<B> {
+    /// Construct a KL table that stores an arbitrary borrowed or owned block
+    /// handle. `new` remains the compatibility constructor for
+    /// `&BlockGraph`; owned callers use this entry point.
+    pub fn from_handle(block: B) -> Result<Self, StructureError> {
         let size = block.size();
+        let mut support = KlSupport::new(block)?;
         let pool = KlHashTable::new();
         for y in 0..size {
             let desc_y = support.descent_set(y).clone();
@@ -66,7 +83,7 @@ impl<'a> KlTable<'a> {
         })
     }
 
-    pub fn support(&self) -> &KlSupport<'a> {
+    pub fn support(&self) -> &KlSupport<B> {
         &self.support
     }
 
@@ -173,11 +190,7 @@ impl<'a> KlTable<'a> {
     /// `rank()` when none.
     fn first_direct_recursion(&self, y: BlockElt) -> usize {
         for s in 0..self.support.rank() {
-            let value = self
-                .support
-                .block()
-                .descent_value(y, s)
-                .expect("valid generator");
+            let value = self.support.block().descent(y, s).expect("valid generator");
             if matches!(
                 value,
                 BlockDescent::ComplexDescent | BlockDescent::RealTypeI
@@ -193,17 +206,9 @@ impl<'a> KlTable<'a> {
     /// or compact imaginary for `x`; `rank()` when none.
     fn first_nice_and_real(&self, x: BlockElt, y: BlockElt) -> usize {
         for s in 0..self.support.rank() {
-            let dy = self
-                .support
-                .block()
-                .descent_value(y, s)
-                .expect("valid generator");
+            let dy = self.support.block().descent(y, s).expect("valid generator");
             if dy == BlockDescent::RealNonparity {
-                let dx = self
-                    .support
-                    .block()
-                    .descent_value(x, s)
-                    .expect("valid generator");
+                let dx = self.support.block().descent(x, s).expect("valid generator");
                 if matches!(
                     dx,
                     BlockDescent::ComplexAscent
@@ -227,12 +232,7 @@ impl<'a> KlTable<'a> {
     ) -> Result<(), StructureError> {
         working.clear();
         let desc_y = self.support.descent_set(y).clone();
-        let sy = match self
-            .support
-            .block()
-            .descent_value(y, s)
-            .expect("valid generator")
-        {
+        let sy = match self.support.block().descent(y, s).expect("valid generator") {
             BlockDescent::ComplexDescent => self
                 .support
                 .block()
@@ -258,11 +258,7 @@ impl<'a> KlTable<'a> {
 
         for &x in &extremals {
             let sx = self.support.block().cross(x, s).expect("cross of extremal");
-            let value = self
-                .support
-                .block()
-                .descent_value(x, s)
-                .expect("valid generator");
+            let value = self.support.block().descent(x, s).expect("valid generator");
             let pxy = match value {
                 BlockDescent::ImaginaryCompact => {
                     // (q+1)P_{x,sy}
@@ -344,11 +340,7 @@ impl<'a> KlTable<'a> {
         let ly = self.support.length(sy) + 1;
         // Iterate decreasing without cloning the column.
         for &MuPair { x: z, coef: mu } in self.mu_columns[sy].iter().rev() {
-            let sz = self
-                .support
-                .block()
-                .descent_value(z, s)
-                .expect("valid generator");
+            let sz = self.support.block().descent(z, s).expect("valid generator");
             if !sz.is_descent() {
                 continue;
             }
@@ -454,7 +446,7 @@ impl<'a> KlTable<'a> {
         let block = self.support.block();
         let mut result = Vec::new();
         for s in 0..self.support.rank() {
-            match block.descent_value(y, s).expect("valid generator") {
+            match block.descent(y, s).expect("valid generator") {
                 BlockDescent::ComplexDescent => {
                     let z = block.cross(y, s).expect("complex descent cross");
                     result.push(z);
@@ -541,12 +533,7 @@ impl<'a> KlTable<'a> {
             let s = self.first_nice_and_real(x, y);
             if s < self.support.rank() {
                 pxy = self.mu_new_formula(x, y, s, &mu_pairs)?;
-                match self
-                    .support
-                    .block()
-                    .descent_value(x, s)
-                    .expect("valid generator")
-                {
+                match self.support.block().descent(x, s).expect("valid generator") {
                     BlockDescent::ComplexAscent => {
                         let cross_pol =
                             kl_y(working, self.support.block().cross(x, s).expect("cross"));
@@ -642,11 +629,7 @@ impl<'a> KlTable<'a> {
             if lz <= lx {
                 break;
             }
-            let sz = self
-                .support
-                .block()
-                .descent_value(z, s)
-                .expect("valid generator");
+            let sz = self.support.block().descent(z, s).expect("valid generator");
             if !sz.is_descent() {
                 continue;
             }
@@ -662,18 +645,18 @@ impl<'a> KlTable<'a> {
     fn first_endgame_pair(&self, x: BlockElt, y: BlockElt) -> Option<(usize, Option<usize>)> {
         let r = self.support.rank();
         for s in 0..r {
-            let dy_s = self.support.block().descent_value(y, s)?;
-            let dx_s = self.support.block().descent_value(x, s)?;
+            let dy_s = self.support.block().descent(y, s)?;
+            let dx_s = self.support.block().descent(x, s)?;
             if dy_s == BlockDescent::RealNonparity && dx_s == BlockDescent::ImaginaryTypeI {
                 let sx = self.support.block().cross(x, s)?;
-                let dsx = self.support.block().descent_value(sx, s)?;
+                let dsx = self.support.block().descent(sx, s)?;
                 let _ = dsx;
                 for t in 0..r {
-                    let dy_t = self.support.block().descent_value(y, t)?;
+                    let dy_t = self.support.block().descent(y, t)?;
                     if dy_t != BlockDescent::RealTypeII {
                         continue;
                     }
-                    let dsx_t = self.support.block().descent_value(sx, t)?;
+                    let dsx_t = self.support.block().descent(sx, t)?;
                     if matches!(
                         dsx_t,
                         BlockDescent::ImaginaryTypeI | BlockDescent::ImaginaryTypeII
