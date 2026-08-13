@@ -3,10 +3,18 @@
   "fixture_sha256": "c53d43d29b6a7e40ba09f33495c953cb84f927d5636c52b8794cf6ca84cb7aff",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "rust_status": "unimplemented",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3547426",
+  "reference_commit": "1a3e2e23c5fbe641c989e6c3d5755db3aa81630d",
+  "reference_report_sha256": "97931b44e402672b0704a1caca595fcb4e5c91582d95325ab3ff82536fb75b04",
+  "oracle_exit_status": 0,
+  "oracle_seconds": 0.01,
+  "oracle_maxrss_kb": 4344,
+  "oracle_maxrss_approximate": false,
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:8262-8291",
     "sources/interpreter/atlas-types.w:8579"
@@ -23,7 +31,7 @@
     "maxrss_approximate": true,
     "verification": "unverified_local_draft_binary_differs_from_frozen_hpc_pin_and_upstream_tree_is_dirty"
   },
-  "notes": "Fresh-process 0 ms probe. It must never share an oracle process with a warming unary full_deform call, because RepTable deformation caching changes the result.",
+  "notes": "HPC job 3547426 verifies the fresh-process 0 ms timeout. It must never share an oracle process with a warming unary full_deform call, because RepTable deformation caching changes the result. Rust remains unimplemented.",
   "hpc_capture": {
     "fresh_process_required": true,
     "timeout_seconds": 30,

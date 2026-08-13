@@ -3,10 +3,18 @@
   "fixture_sha256": "24e8f90bb5ad823b71ccb9e11ea24473c0953485e2d7ca036bc79611ac619fa5",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "rust_status": "unimplemented",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3547426",
+  "reference_commit": "1a3e2e23c5fbe641c989e6c3d5755db3aa81630d",
+  "reference_report_sha256": "97931b44e402672b0704a1caca595fcb4e5c91582d95325ab3ff82536fb75b04",
+  "oracle_exit_status": 0,
+  "oracle_seconds": 0.009,
+  "oracle_maxrss_kb": 4352,
+  "oracle_maxrss_approximate": false,
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:8262-8291",
     "sources/interpreter/atlas-types.w:8579"
@@ -23,7 +31,7 @@
     "maxrss_approximate": true,
     "verification": "unverified_local_draft_binary_differs_from_frozen_hpc_pin_and_upstream_tree_is_dirty"
   },
-  "notes": "Fresh-process -1 ms probe. Kept separate from the 0 ms probe to prevent both cache and timer-state observations from being conflated.",
+  "notes": "HPC job 3547426 verifies the fresh-process -1 ms timeout. It stays separate from the 0 ms probe to prevent cache and timer-state observations from being conflated. Rust remains unimplemented.",
   "hpc_capture": {
     "fresh_process_required": true,
     "timeout_seconds": 30,
