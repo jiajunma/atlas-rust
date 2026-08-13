@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/p1_simple_signatures_rejected",
+  "fixture_sha256": "b2ba8ebe57158ddfdb0acae05c68d44f728f6b3fe23b9e273bb93cca97055e7f",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "unimplemented",
+  "reference_status": "pending_hpc_reference",
+  "note": "Rejected companion for P1 signatures: generator/Weyl-word bounds plus Cartan_class, unary polynomial, and polynomial term-shape overload failures.",
+  "oracle_exit_status": 1
+}

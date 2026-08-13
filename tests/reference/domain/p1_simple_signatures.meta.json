@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/p1_simple_signatures",
+  "fixture_sha256": "da873a41cd00727d88a045ce77197e5b401db4e35e8e2e061b225356a9ccfe89",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "unimplemented",
+  "reference_status": "pending_hpc_reference",
+  "note": "P1 signature reconciliation: left generator/Weyl-word products, Cartan_class(KGBElt), unary KTypePol/ParamPol zero tests, KTypePol term-list addition, and ParamPol tuple/list addition.",
+  "oracle_exit_status": 0
+}

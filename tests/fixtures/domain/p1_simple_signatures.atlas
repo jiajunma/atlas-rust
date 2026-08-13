@@ -1,0 +1,36 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("A2"),true)
+w : WeylElt
+w := W_elt(rd,[0])
+word(1#w)
+word(w##[1])
+word([1]##w)
+ic : InnerClass
+ic := inner_class(rd,[[1,0],[0,1]])
+rf : RealForm
+rf := real_form(ic,1)
+x : KGBElt
+x := KGB(rf,4)
+Cartan_class(x)
+k : KType
+k := K_type(x,[1,0])
+zk : KTypePol
+zk := null_K_module(rf)
+=zk
+!=zk
+kp : KTypePol
+kp := zk+[(1,k),(2,k)]
+=kp
+!=kp
+p : Param
+p := param(KGB(rf,5),[0,0],[0,0]/1)
+zp : ParamPol
+zp := null_module(rf)
+=zp
+!=zp
+pp1 : ParamPol
+pp1 := zp+(1,p)
+pp2 : ParamPol
+pp2 := zp+[(1,p),(2,p)]
+=pp2
+!=pp2
