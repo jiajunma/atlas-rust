@@ -215,7 +215,7 @@ impl Transducer {
 
 /// The Weyl group in the compact representation, with the external
 /// (datum) ↔ internal (transducer) generator numbering.
-pub(crate) struct CompactWeyl {
+pub struct CompactWeyl {
     transducers: Vec<Transducer>,
     /// external -> internal
     d_in: Vec<usize>,
@@ -233,7 +233,7 @@ impl CompactWeyl {
     /// Build from a Cartan matrix (weyl.cpp:495-547): classify the diagram,
     /// reverse types B/C/D (internal order), construct one transducer per
     /// internal generator.
-    pub(crate) fn new(cartan: &[Vec<i32>]) -> Result<Self, StructureError> {
+    pub fn new(cartan: &[Vec<i32>]) -> Result<Self, StructureError> {
         let rank = cartan.len();
         let comps = crate::dynkin::classify(cartan)?;
         let mut d_out = vec![0_usize; rank];
@@ -422,6 +422,26 @@ impl CompactWeyl {
     /// precomputed table (no allocation).
     pub(crate) fn word_of_piece(&self, i: usize, x: u8) -> &[usize] {
         &self.piece_words[i][x as usize]
+    }
+
+    /// The group's canonical elected word (weyl.cpp:944-958
+    /// `WeylGroup::word`) of the element represented by `external_word` —
+    /// ANY word for it in external (datum) generator numbering, reduced or
+    /// not. The element is rebuilt via `inner_mult`, then the elected piece
+    /// words are concatenated in increasing piece order with letters mapped
+    /// back through `d_out`; the result depends only on the element.
+    pub fn canonical_word(&self, external_word: &[usize]) -> Vec<usize> {
+        let mut elt: WeylElt = [0; 8];
+        for &generator in external_word {
+            self.inner_mult(&mut elt, generator);
+        }
+        let mut result = Vec::new();
+        for (i, transducer) in self.transducers.iter().enumerate() {
+            for &local in self.word_of_piece(i, elt[i]) {
+                result.push(self.d_out[transducer.offset + local]);
+            }
+        }
+        result
     }
 
     /// Internal -> external generator numbering.

@@ -137,6 +137,7 @@ pub use twisted_involution::TwistedInvolution;
 pub use weak_real_form::{weak_real_form_at_representative, WeakRealFormId, WeakRealFormPartition};
 pub use weyl::{WeylAction, WeylGroup};
 pub use weyl_element::{ParabolicPieces, WeylElement, WeylInterface};
+pub use weyl_transducer::CompactWeyl;
 
 /// Legacy untyped coordinate vector used only by the A1 migration prototype.
 ///

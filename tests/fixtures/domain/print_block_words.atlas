@@ -1,0 +1,23 @@
+rb : RootDatum
+rb := simply_connected(Lie_type("B2"),true)
+ib : InnerClass
+ib := inner_class(rb,[[1,0],[0,1]])
+rfb : RealForm
+rfb := real_form(ib,2)
+dfb : RealForm
+dfb := dual_real_form(ib,0)
+blk : Block
+blk := block(rfb,dfb)
+print_block(blk)
+rc : RootDatum
+rc := simply_connected(Lie_type("D4"),true)
+ic : InnerClass
+ic := inner_class(rc,[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
+rfc : RealForm
+rfc := real_form(ic,4)
+dfc : RealForm
+dfc := dual_real_form(ic,1)
+blk2 : Block
+blk2 := block(rfc,dfc)
+print_block(blk2)
+print_blockd(blk2)

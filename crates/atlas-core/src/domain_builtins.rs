@@ -28,6 +28,7 @@ use atlas_real_group::ext_param::{
     extended_finalise, extended_restrict_to_k, is_default, scaled_extended_finalise,
     shifted_default_extension, ExtRepContext,
 };
+use atlas_real_group::CompactWeyl;
 use atlas_real_group::{
     adapted_basis, adapted_relation_basis, annihilator_modulo as relation_annihilator_modulo,
     block_deformation_to_height, bourbaki_permutation, bruhat_below, build_presentations,
@@ -9023,6 +9024,26 @@ pub(crate) fn print_text(
             let lwidth = digits(last_length);
             let pad = 2;
             let rank = graph.rank();
+            // The word column reproduces WeylGroup::word's ELECTED canonical
+            // expression (weyl.cpp:944-958), not an arbitrary reduced word
+            // (greedy smallest-descent diverges, e.g. w0 of B2); build the
+            // transducer group once per print.
+            let compact_weyl = if name == "print_block" {
+                Some(
+                    CompactWeyl::new(
+                        block
+                            .rf
+                            .parent
+                            .inner_class
+                            .root_system()
+                            .datum()
+                            .cartan_matrix(),
+                    )
+                    .map_err(|error| structure_diagnostic(error, span))?,
+                )
+            } else {
+                None
+            };
             let mut text = String::new();
             for z in 0..size {
                 let x = graph.x(z).expect("in-range").index();
@@ -9048,7 +9069,7 @@ pub(crate) fn print_text(
                         Some(target) => {
                             text.push_str(&format!("{:width$}", target, width = width + pad))
                         }
-                        None => text.push_str(&format!("{:width$}", '*', width = width + pad)),
+                        None => text.push_str(&format!("{:>width$}", '*', width = width + pad)),
                     }
                 }
                 text.push_str(&" ".repeat(pad + 1));
@@ -9066,12 +9087,14 @@ pub(crate) fn print_text(
                     text.push('(');
                     match pair.0 {
                         Some(first) => text.push_str(&format!("{:width$}", first)),
-                        None => text.push_str(&format!("{:width$}", '*')),
+                        // block_io.cpp:197/205: setw right-aligns the '*'
+                        // (chars left-align in Rust fmt, so say so).
+                        None => text.push_str(&format!("{:>width$}", '*')),
                     }
                     text.push(',');
                     match pair.1 {
                         Some(second) => text.push_str(&format!("{:width$}", second)),
-                        None => text.push_str(&format!("{:width$}", '*')),
+                        None => text.push_str(&format!("{:>width$}", '*')),
                     }
                     text.push(')');
                     text.push_str(&" ".repeat(pad));
@@ -9100,10 +9123,16 @@ pub(crate) fn print_text(
                     .record(primal.involution_of(id).expect("in-range"))
                     .expect("in-range");
                 if name == "print_block" {
-                    // Weyl word (prettyprint::printWeylElt): one-based
+                    // Weyl word (prettyprint::printWeylElt over
+                    // WeylGroup::word's elected expression): one-based
                     // generators comma-separated, `e` for the identity.
-                    let word =
-                        weyl_reduced_word(&block.rf.parent.inner_class, record.weyl_element());
+                    let word = compact_weyl
+                        .as_ref()
+                        .expect("print_block built the transducer group")
+                        .canonical_word(&weyl_reduced_word(
+                            &block.rf.parent.inner_class,
+                            record.weyl_element(),
+                        ));
                     if word.is_empty() {
                         text.push('e');
                     } else {
@@ -14654,13 +14683,17 @@ pub(crate) fn call_with_printed(
             )
             .map_err(|error| structure_diagnostic(error, span))?;
             let (compact, _complex_torus, split) = classification.as_tuple();
-            // The Weyl word of the Cartan involution (Weyl_group().word).
+            // The Weyl word of the Cartan involution (Weyl_group().word —
+            // the ELECTED canonical expression, not an arbitrary reduced
+            // word; see the print_block word column).
             let weyl = WeylElement::from_action(
                 context.inner_class.root_system(),
                 representative.weyl_action(),
             )
             .map_err(|error| structure_diagnostic(error, span))?;
-            let word = weyl_reduced_word(&context.inner_class, &weyl);
+            let word = CompactWeyl::new(context.inner_class.root_system().datum().cartan_matrix())
+                .map_err(|error| structure_diagnostic(error, span))?
+                .canonical_word(&weyl_reduced_word(&context.inner_class, &weyl));
             let word_value = Value::Vector(Vec32(
                 word.iter()
                     .map(|&generator| generator as i32)

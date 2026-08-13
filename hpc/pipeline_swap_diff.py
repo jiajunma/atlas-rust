@@ -241,6 +241,24 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/kl_print"),
     # Batch 4 (block printers): print_block / print_blockd / print_blocku.
     FixturePlan(name="domain/block_print"),
+    # print_block_words: regression pin for the '*' right-alignment and
+    # WeylGroup::word tie-break fixes (2026-08-13). Type ascriptions silent,
+    # each `:=` -> Declaring+Value, each print_* call -> one Output per row.
+    # 23 lines/77 events; alignment pre-analysed against
+    # print_block_words.events.json.
+    FixturePlan(
+        name="domain/print_block_words",
+        runnable_lines=(2, 4, 6, 8, 10, 11, 13, 15, 17, 19, 21, 22, 23),
+        silent_lines=(1, 3, 5, 7, 9, 12, 14, 16, 18, 20),
+    ),
+    # print_block_words_rejected: ascriptions silent, 3 declarations ->
+    # Declaring+Value, 3 erroring calls -> 1 Diagnostic each (6 lines/9
+    # events).
+    FixturePlan(
+        name="domain/print_block_words_rejected",
+        runnable_lines=(2, 4, 6, 7, 8, 9),
+        silent_lines=(1, 3, 5),
+    ),
     # Batch 3 completion: components_rank / strong_components.
     FixturePlan(name="domain/components_rank"),
     # Batch 8 (misc): KGB_Hasse matrix.
