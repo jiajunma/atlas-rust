@@ -113,7 +113,7 @@ pub use involution_table::{
 pub use kgb_graph::{KgbGraph, KgbId, KgbStatus};
 pub use kl_polynomial::KlPol;
 pub use kl_support::RankFlags;
-pub use kl_table::{KlTable, MuPair};
+pub use kl_table::{KlTable, MuPair, SharedKlTable};
 pub use ktype::KType;
 pub use lattice::{pair, Coweight, RationalCoweight, RationalWeight, Weight};
 pub use layout::InnerClassLayout;

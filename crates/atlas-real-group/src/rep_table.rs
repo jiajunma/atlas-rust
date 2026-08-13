@@ -5,6 +5,7 @@
 //! accepted. Reduced keys and their Smith codec remain private; consumers
 //! receive stable block handles and query-relative representatives.
 
+use std::cell::Cell;
 #[cfg(test)]
 use std::collections::VecDeque;
 use std::collections::{HashMap, HashSet};
@@ -276,11 +277,49 @@ impl BlockId {
     }
 }
 
-#[derive(Debug)]
 struct BlockRecord {
     id: BlockId,
     block: Arc<PartialBlock>,
     full: bool,
+    kl_table: Mutex<Option<crate::SharedKlTable>>,
+}
+
+thread_local! {
+    static ACTIVE_KL_CALLBACK: Cell<bool> = const { Cell::new(false) };
+}
+
+struct ActiveKlCallback;
+
+impl ActiveKlCallback {
+    fn enter() -> Result<Self, StructureError> {
+        let already_active = ACTIVE_KL_CALLBACK.with(|active| active.replace(true));
+        if already_active {
+            return Err(StructureError::RepInvariantViolation {
+                invariant: "representation block KL table nested callback",
+            });
+        }
+        Ok(Self)
+    }
+}
+
+impl Drop for ActiveKlCallback {
+    fn drop(&mut self) {
+        ACTIVE_KL_CALLBACK.with(|active| {
+            debug_assert!(active.replace(false));
+        });
+    }
+}
+
+impl std::fmt::Debug for BlockRecord {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("BlockRecord")
+            .field("id", &self.id)
+            .field("block", &self.block)
+            .field("full", &self.full)
+            .field("kl_table", &"<lazy>")
+            .finish()
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -319,6 +358,7 @@ impl State {
             id: BlockId(self.slots.len()),
             block,
             full,
+            kl_table: Mutex::new(None),
         });
         self.slots.push(BlockSlot::Active(Arc::clone(&record)));
         record
@@ -424,6 +464,35 @@ impl LocatedBlock {
     /// The stored representative adapted by [`Self::relative_shift`].
     pub fn adapted_representative(&self) -> &StandardReprMod {
         &self.adapted_representative
+    }
+
+    /// Run `operation` with this record's lazily constructed shared KL table.
+    ///
+    /// The record-local mutex remains locked for the entire callback. Calls
+    /// for the same block are serialized. A KL callback must not invoke
+    /// `with_kl_table` again for any block; same-thread nesting returns a
+    /// stable invariant error before acquiring another record lock.
+    pub fn with_kl_table<R>(
+        &self,
+        operation: impl FnOnce(&mut crate::SharedKlTable) -> Result<R, StructureError>,
+    ) -> Result<R, StructureError> {
+        let _active = ActiveKlCallback::enter()?;
+        let mut cached =
+            self.record
+                .kl_table
+                .lock()
+                .map_err(|_| StructureError::RepInvariantViolation {
+                    invariant: "representation block KL table mutex",
+                })?;
+        if cached.is_none() {
+            *cached = Some(crate::KlTable::from_handle(Arc::clone(&self.record.block))?);
+        }
+        let table = cached
+            .as_mut()
+            .ok_or(StructureError::RepInvariantViolation {
+                invariant: "representation block KL table initialized",
+            })?;
+        operation(table)
     }
 }
 
@@ -948,6 +1017,24 @@ mod tests {
         WeakRealFormId,
     };
 
+    struct ReleaseOnDrop(Option<Sender<()>>);
+
+    impl ReleaseOnDrop {
+        fn release(&mut self) {
+            if let Some(sender) = self.0.take() {
+                sender.send(()).unwrap();
+            }
+        }
+    }
+
+    impl Drop for ReleaseOnDrop {
+        fn drop(&mut self) {
+            if let Some(sender) = self.0.take() {
+                let _ = sender.send(());
+            }
+        }
+    }
+
     fn class_budget(weyl: usize) -> CartanClassificationBudget {
         CartanClassificationBudget::new(
             IntegerLatticeBudget::new(64, 100_000, 100_000, 128),
@@ -1089,6 +1176,19 @@ mod tests {
 
     fn owner(fixture: &ContextFixture) -> RepTableOwner {
         RepTableOwner::new(fixture.table.clone(), fixture.graph.clone()).unwrap()
+    }
+
+    fn fill_marker(kl: &mut crate::SharedKlTable) -> Result<(usize, Vec<bool>), StructureError> {
+        assert!((0..kl.support().size()).all(|y| kl.prim_map(y).is_empty()));
+        kl.fill(0)?;
+        (0..kl.support().size())
+            .find_map(|y| {
+                let map = kl.prim_map(y);
+                (!map.is_empty()).then_some((y, map))
+            })
+            .ok_or(StructureError::RepInvariantViolation {
+                invariant: "filled KL test marker",
+            })
     }
 
     fn projection(lift_entries: &[i64]) -> RealProjection {
@@ -1332,6 +1432,221 @@ mod tests {
         assert_ne!(partial.block_id(), full.block_id());
         assert_eq!(partial.block_id().index(), 0);
         assert_eq!(full.block_id().index(), 1);
+    }
+
+    #[test]
+    fn located_blocks_for_one_record_share_filled_kl_table() {
+        let fixture = a1_fixture();
+        let owner = owner(&fixture);
+        let rc = owner.context();
+        let first = owner.lookup_full_block(&a1_query(&rc, 1)).unwrap();
+        let second = owner.lookup_full_block(&a1_query(&rc, 2)).unwrap();
+        assert_eq!(first.block_id(), second.block_id());
+
+        let (first_address, marker_y, marker_map) = first
+            .with_kl_table(|kl| {
+                let (y, map) = fill_marker(kl)?;
+                Ok((kl as *mut _ as usize, y, map))
+            })
+            .unwrap();
+        let (second_address, second_map) = second
+            .with_kl_table(|kl| Ok((kl as *mut _ as usize, kl.prim_map(marker_y))))
+            .unwrap();
+
+        assert_eq!(first_address, second_address);
+        assert_eq!(second_map, marker_map);
+    }
+
+    #[test]
+    fn concurrent_kl_callbacks_are_serialized_on_one_instance() {
+        let fixture = a1_fixture();
+        let owner = owner(&fixture);
+        let rc = owner.context();
+        let located = owner.lookup_full_block(&a1_query(&rc, 1)).unwrap();
+        let first = located.clone();
+        let second = located;
+        let (first_entered_tx, first_entered_rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel();
+        let (second_attempted_tx, second_attempted_rx) = mpsc::channel();
+        let (second_entered_tx, second_entered_rx) = mpsc::channel();
+
+        let (first_address, second_address) = std::thread::scope(|scope| {
+            let first_worker = scope.spawn(move || {
+                first
+                    .with_kl_table(|kl| {
+                        let (y, map) = fill_marker(kl)?;
+                        first_entered_tx
+                            .send((kl as *mut _ as usize, y, map))
+                            .unwrap();
+                        release_rx
+                            .recv_timeout(Duration::from_secs(5))
+                            .expect("KL callback release timed out");
+                        Ok(kl as *mut _ as usize)
+                    })
+                    .unwrap()
+            });
+            let mut release = ReleaseOnDrop(Some(release_tx));
+            let (entered_address, marker_y, marker_map) = first_entered_rx
+                .recv_timeout(Duration::from_secs(5))
+                .expect("first KL callback did not enter");
+            let second_worker = scope.spawn(move || {
+                second_attempted_tx.send(()).unwrap();
+                second
+                    .with_kl_table(|kl| {
+                        assert_eq!(kl.prim_map(marker_y), marker_map);
+                        second_entered_tx.send(kl as *mut _ as usize).unwrap();
+                        Ok(kl as *mut _ as usize)
+                    })
+                    .unwrap()
+            });
+            second_attempted_rx
+                .recv_timeout(Duration::from_secs(5))
+                .expect("second KL callback was not attempted");
+            assert_eq!(
+                second_entered_rx.recv_timeout(Duration::from_secs(1)),
+                Err(mpsc::RecvTimeoutError::Timeout)
+            );
+            release.release();
+            let entered_second_address = second_entered_rx
+                .recv_timeout(Duration::from_secs(5))
+                .expect("second KL callback did not enter after release");
+            let first_address = first_worker.join().unwrap();
+            assert_eq!(first_address, entered_address);
+            let second_address = second_worker.join().unwrap();
+            assert_eq!(second_address, entered_second_address);
+            (first_address, second_address)
+        });
+
+        assert_eq!(first_address, second_address);
+    }
+
+    #[test]
+    fn promoted_partial_keeps_old_kl_and_full_gets_a_fresh_table() {
+        let fixture = a1_fixture();
+        let owner = owner(&fixture);
+        let rc = owner.context();
+        let partial = owner.lookup(&a1_query(&rc, 0)).unwrap();
+        let partial_address = partial
+            .with_kl_table(|kl| {
+                kl.fill(0)?;
+                Ok(kl as *mut _ as usize)
+            })
+            .unwrap();
+
+        let full = owner.lookup_full_block(&a1_query(&rc, 2)).unwrap();
+        assert_ne!(partial.block_id(), full.block_id());
+        let old_address = partial
+            .with_kl_table(|kl| {
+                assert_eq!(kl.kl_pol(0, 0)?, 1);
+                Ok(kl as *mut _ as usize)
+            })
+            .unwrap();
+        let full_address = full.with_kl_table(|kl| Ok(kl as *mut _ as usize)).unwrap();
+
+        assert_eq!(old_address, partial_address);
+        assert_ne!(old_address, full_address);
+    }
+
+    #[test]
+    fn poisoned_kl_cache_returns_a_stable_error() {
+        let fixture = a1_fixture();
+        let owner = owner(&fixture);
+        let rc = owner.context();
+        let located = owner.lookup_full_block(&a1_query(&rc, 1)).unwrap();
+        let poison = located.clone();
+
+        let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _ = poison.with_kl_table::<()>(|_| panic!("poison KL cache"));
+        }));
+        assert!(panic.is_err());
+        assert!(matches!(
+            located.with_kl_table(|_| Ok(())),
+            Err(StructureError::RepInvariantViolation {
+                invariant: "representation block KL table mutex"
+            })
+        ));
+    }
+
+    #[test]
+    fn nested_kl_callback_on_same_handle_returns_nested_callback_error() {
+        let fixture = a1_fixture();
+        let owner = owner(&fixture);
+        let rc = owner.context();
+        let located = owner.lookup_full_block(&a1_query(&rc, 1)).unwrap();
+        let nested = located.clone();
+        let (result_tx, result_rx) = mpsc::channel();
+
+        std::thread::spawn(move || {
+            let result = located.with_kl_table(|_| nested.with_kl_table(|_| Ok(())));
+            result_tx.send(result).unwrap();
+        });
+
+        assert!(matches!(
+            result_rx.recv_timeout(Duration::from_secs(1)),
+            Ok(Err(StructureError::RepInvariantViolation {
+                invariant: "representation block KL table nested callback"
+            }))
+        ));
+    }
+
+    #[test]
+    fn nested_kl_callback_on_second_record_handle_returns_nested_callback_error() {
+        let fixture = a1_fixture();
+        let owner = owner(&fixture);
+        let rc = owner.context();
+        let first = owner.lookup_full_block(&a1_query(&rc, 1)).unwrap();
+        let second = owner.lookup_full_block(&a1_query(&rc, 2)).unwrap();
+        assert_eq!(first.block_id(), second.block_id());
+        let (result_tx, result_rx) = mpsc::channel();
+
+        std::thread::spawn(move || {
+            let result = first.with_kl_table(|_| second.with_kl_table(|_| Ok(())));
+            result_tx.send(result).unwrap();
+        });
+
+        assert!(matches!(
+            result_rx.recv_timeout(Duration::from_secs(1)),
+            Ok(Err(StructureError::RepInvariantViolation {
+                invariant: "representation block KL table nested callback"
+            }))
+        ));
+    }
+
+    #[test]
+    fn nested_kl_callback_on_different_records_returns_nested_callback_error() {
+        let fixture = a1_fixture();
+        let owner = owner(&fixture);
+        let rc = owner.context();
+        let partial = owner.lookup(&a1_query(&rc, 0)).unwrap();
+        let full = owner.lookup_full_block(&a1_query(&rc, 2)).unwrap();
+        assert_ne!(partial.block_id(), full.block_id());
+        let (result_tx, result_rx) = mpsc::channel();
+
+        std::thread::spawn(move || {
+            let result = partial.with_kl_table(|_| full.with_kl_table(|_| Ok(())));
+            result_tx.send(result).unwrap();
+        });
+
+        assert!(matches!(
+            result_rx.recv_timeout(Duration::from_secs(1)),
+            Ok(Err(StructureError::RepInvariantViolation {
+                invariant: "representation block KL table nested callback"
+            }))
+        ));
+    }
+
+    #[test]
+    fn kl_callback_error_clears_the_reentry_guard() {
+        let fixture = a1_fixture();
+        let owner = owner(&fixture);
+        let rc = owner.context();
+        let located = owner.lookup_full_block(&a1_query(&rc, 1)).unwrap();
+
+        assert_eq!(
+            located.with_kl_table::<()>(|_| Err(StructureError::ArithmeticOverflow)),
+            Err(StructureError::ArithmeticOverflow)
+        );
+        assert_eq!(located.with_kl_table(|_| Ok(7)), Ok(7));
     }
 
     #[test]

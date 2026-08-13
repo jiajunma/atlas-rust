@@ -14,10 +14,12 @@
 //! generic case uses `new_recursion_column`, which distinguishes on `x`
 //! via the "nice and real" and "endgame" cases of recursion.pdf.
 
+use std::sync::Arc;
+
 use crate::block::BlockDescent;
 use crate::kl_polynomial::{KlHashTable, KlPol};
 use crate::kl_support::{KlSupport, RankFlags};
-use crate::{BlockGraph, BlockTopology, StructureError};
+use crate::{BlockGraph, BlockTopology, PartialBlock, StructureError};
 
 pub type BlockElt = usize;
 pub type KlIndex = usize;
@@ -51,6 +53,9 @@ pub struct KlTableHandle<B: BlockTopology> {
 /// existing `KlTable<'_>` annotations continue to mean a table borrowing a
 /// [`BlockGraph`]. The storage itself is generic solely over its handle type.
 pub type KlTable<'a, B = &'a BlockGraph> = KlTableHandle<B>;
+
+/// A KL table that owns a shared partial/common block handle.
+pub type SharedKlTable = KlTableHandle<Arc<PartialBlock>>;
 
 impl<'a> KlTableHandle<&'a BlockGraph> {
     /// `KL_table::KL_table` (kl.cpp:94-104): allocate columns for the
