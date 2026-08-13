@@ -4,9 +4,21 @@
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "rust_status": "unimplemented",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
   "reference_job": "3543697",
   "note": "Rejected companion for P1 signatures: generator/Weyl-word bounds plus Cartan_class, unary polynomial, and polynomial term-shape overload failures.",
-  "oracle_exit_status": 1
+  "oracle_exit_status": 1,
+  "oracle_seconds": 0.054,
+  "oracle_maxrss_kb": 4412,
+  "oracle_maxrss_approximate": false,
+  "oracle_stdout_sha256": "09631d1f75dd2f4d876274d5caf53a5e288131dc8d4b2ddf2d1ae39d32eeb1d0",
+  "oracle_stderr_sha256": "5d3f608f20f4d1eaef892b22b5c2b5d404646f638a0c2478cdc0c9854d4e1905",
+  "reference_report_sha256": "fecae2091df5549d1340b2f19f48a93cfad1277bacfdadecafe8b664a440711b",
+  "differential_job": "3543762",
+  "differential_source_commit": "bcaa99a9c17f94ae4d630309f32e35a525703f5f",
+  "differential_report_sha256": "a13803203431dab2221472fbe50b9aa029ce4f501eb09c28884181374487decc",
+  "rust_seconds": 0.005,
+  "rust_maxrss_kb": 7068,
+  "rust_maxrss_approximate": false
 }

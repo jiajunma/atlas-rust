@@ -4,9 +4,21 @@
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "rust_status": "unimplemented",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
   "reference_job": "3543697",
   "note": "P1 signature reconciliation: left generator/Weyl-word products, Cartan_class(KGBElt), unary KTypePol/ParamPol zero tests, KTypePol term-list addition, and ParamPol tuple/list addition.",
-  "oracle_exit_status": 0
+  "oracle_exit_status": 0,
+  "oracle_seconds": 0.115,
+  "oracle_maxrss_kb": 4308,
+  "oracle_maxrss_approximate": false,
+  "oracle_stdout_sha256": "7f3765a122e28c0ca6d496c29fdc8456b8268148e768577b854c1b043f441ef5",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "reference_report_sha256": "fecae2091df5549d1340b2f19f48a93cfad1277bacfdadecafe8b664a440711b",
+  "differential_job": "3543762",
+  "differential_source_commit": "bcaa99a9c17f94ae4d630309f32e35a525703f5f",
+  "differential_report_sha256": "a13803203431dab2221472fbe50b9aa029ce4f501eb09c28884181374487decc",
+  "rust_seconds": 0.005,
+  "rust_maxrss_kb": 7160,
+  "rust_maxrss_approximate": false
 }

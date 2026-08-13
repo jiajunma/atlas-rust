@@ -2604,3 +2604,13 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   KGB sweep cannot mask the small P1 results. Before submitting, use
   `run_fixture` locally on the two P1 plans to confirm configuration, stdout,
   diagnostics, stderr parsing, and exit status all pass.
+- P1 is now differential-verified by fat-partition job `3543762` at source
+  `bcaa99a9c17f94ae4d630309f32e35a525703f5f`: both accepted and rejected
+  fixtures PASS exact stdout/diagnostics/exit checks, with no FAIL fixture in
+  the 247-plan run.  The overall report remains PARTIAL only for two older
+  declared pending cases.  Oracle/Rust measurements are recorded in the P1
+  reference metas; the Rust pair took 0.005s each at 7160/7068 KiB peak RSS.
+  Operational lesson: adding a fixture and capturing its oracle is not enough;
+  every new differential fixture must also be registered in `FIXTURE_PLANS`,
+  and a full corpus submission must inherit the timeout/partition needs of the
+  heaviest already-registered plan.
