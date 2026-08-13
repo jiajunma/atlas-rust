@@ -83,6 +83,17 @@ crate infrastructure only: it does not yet install a shared `RepTable` block,
 provide a locator/modifier, register `block(Param)`, or establish an HPC
 language-compatibility claim.
 
+The denominator `> 2^rank` alcove-center preprocessing used by ordinary and
+twisted full deformation is now implemented.  The shared real-group helper
+preserves `x` and `lambda_rho`, replaces `gamma`, and rebuilds the standard
+parameter through `RepContext::sr_gamma`; ordinary deformation applies it at
+each final helper input, while the twisted path does not manufacture a flip.
+The threshold explicitly treats rank 63 and above without signed shifting, and
+the rational solver rejects contradictory residual rows.  This closes only
+the shrink preprocessing fixed by `deform_alcove_shrink{,_rejected}`.  It does
+not supply the missing ordinary recursive deformation formula, RepTable memo,
+proper-subsystem modifiers, or timed overload/cancellation semantics.
+
 ### P2 Block W-graph status (2026-08-13)
 
 `W_graph(Block)` and `W_cells(Block)` are implemented and locally match the

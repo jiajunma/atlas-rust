@@ -9,6 +9,7 @@
 use std::collections::{HashSet, VecDeque};
 
 mod adjoint_fiber;
+mod alcove;
 mod block;
 mod block_access;
 mod cartan_class;
@@ -77,6 +78,7 @@ pub use adjoint_fiber::{
     AdjointBasedRootDatum, AdjointCartanFiber, AdjointCoweight, AdjointFiberBudget,
     AdjointFiberElement, AdjointProjection, AmbientCoweight, FiberToAdjoint,
 };
+pub use alcove::{alcove_center, denominator_exceeds_alcove_bound};
 pub use block::{dual_involution, BlockDescent, BlockGraph};
 pub use block_access::BlockTopology;
 pub use cartan_class::{CartanClass, TwistedConjugacyClass, TwistedConjugacyPartition};

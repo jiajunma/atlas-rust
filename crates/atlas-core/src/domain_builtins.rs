@@ -31,14 +31,15 @@ use atlas_real_group::ext_param::{
 };
 use atlas_real_group::CompactWeyl;
 use atlas_real_group::{
-    adapted_basis, adapted_relation_basis, annihilator_modulo as relation_annihilator_modulo,
-    block_deformation_to_height, bourbaki_permutation, bruhat_below, build_presentations,
-    central_fiber, checked_inner_class_letters, classify_involution as domain_classify_involution,
-    dual_cartan_correspondence, dual_inner_class, dual_involution as block_dual_involution,
-    elected_square_root, fiber_rank, filter_relation_units as domain_filter_relation_units,
-    inner_class_with_twisted_involution, integral_block_scope, layout_involution, longest_action,
-    minimal_torus_part, on_basis as lattice_on_basis, pair,
-    quotient_relation_basis as domain_quotient_relation_basis,
+    adapted_basis, adapted_relation_basis, alcove_center as domain_alcove_center,
+    annihilator_modulo as relation_annihilator_modulo, block_deformation_to_height,
+    bourbaki_permutation, bruhat_below, build_presentations, central_fiber,
+    checked_inner_class_letters, classify_involution as domain_classify_involution,
+    denominator_exceeds_alcove_bound, dual_cartan_correspondence, dual_inner_class,
+    dual_involution as block_dual_involution, elected_square_root, fiber_rank,
+    filter_relation_units as domain_filter_relation_units, inner_class_with_twisted_involution,
+    integral_block_scope, layout_involution, longest_action, minimal_torus_part,
+    on_basis as lattice_on_basis, pair, quotient_relation_basis as domain_quotient_relation_basis,
     replace_relation_generators as domain_replace_relation_generators, singular_orbits_at,
     twisted_deformation, twisted_deformation_terms, twisted_kl_column_at_s, twisted_kl_sum,
     AdjointFiberBudget, BasedRootDatum, BlockDescent, BlockGraph, CartanClassification,
@@ -2104,7 +2105,12 @@ fn full_deformation_terms(
     context: &Arc<RealFormContext>,
     span: SourceSpan,
 ) -> Result<Vec<(KType, SplitValue)>, Diagnostic> {
-    let rank = rc.rank();
+    let centered = if denominator_exceeds_alcove_bound(rc.rank(), z.gamma().denominator()) {
+        Some(domain_alcove_center(rc, z).map_err(|error| structure_diagnostic(error, span))?)
+    } else {
+        None
+    };
+    let z = centered.as_ref().unwrap_or(z);
     let mut result: Vec<(KType, SplitValue)> = Vec::new();
     // Scale-0 base (repr.cpp:2257-2266).
     let z0 = rc
@@ -2175,7 +2181,6 @@ fn full_deformation_terms(
             result.push((ktype, SplitValue::new(coef, 0)));
         }
     }
-    let _ = rank;
     Ok(result)
 }
 
@@ -5624,119 +5629,6 @@ fn fpp_w_shifts(
         }
     }
     Ok(result)
-}
-
-/// RatNum-style floor of `<gamma, coroot>`; negative roots round UP
-/// (floor_eval, alcoves.cpp:29-33).
-fn floor_eval_nbr(
-    root_system: &RootSystem,
-    numbering: &RootNumbering,
-    nbr: usize,
-    gamma: &RatVec,
-) -> i64 {
-    let coroot = root_system
-        .coroot(numbering.id(nbr))
-        .expect("every root has a coroot");
-    let dot: i64 = gamma
-        .numerators()
-        .iter()
-        .zip(coroot.as_slice())
-        .map(|(&g, &c)| g * i64::from(c))
-        .sum();
-    let denominator = gamma.denominator() as i64;
-    let floor = dot.div_euclid(denominator);
-    if numbering.is_negative(nbr) && dot.rem_euclid(denominator) == 0 {
-        floor - 1
-    } else {
-        floor
-    }
-}
-
-/// barycentre_eq (alcoves.cpp:244-274): per-wall fractional parts of the
-/// alcove barycentre, equidistributed within each component when weighted
-/// by the coroot-relation labels. Returns (numerator, denominator) pairs
-/// aligned with the ascending wall list.
-fn barycentre_eq(
-    root_system: &RootSystem,
-    numbering: &RootNumbering,
-    walls: &BTreeSet<usize>,
-    integrals: &BTreeSet<usize>,
-) -> Result<Vec<(i64, i64)>, String> {
-    let wall_list: Vec<usize> = walls.iter().copied().collect();
-    let mut result = vec![(0i64, 1i64); wall_list.len()];
-    for comp in root_components(root_system, numbering, walls) {
-        let labels = labels_for_component(root_system, numbering, &comp)?;
-        let off_walls: Vec<usize> = comp
-            .iter()
-            .copied()
-            .filter(|nbr| !integrals.contains(nbr))
-            .collect();
-        let n_off = off_walls.len() as i64;
-        for nbr in off_walls {
-            let label = labels[comp
-                .iter()
-                .position(|&entry| entry == nbr)
-                .expect("component member")];
-            let slot = wall_list
-                .iter()
-                .position(|&entry| entry == nbr)
-                .expect("wall member");
-            result[slot] = (1, n_off * label);
-        }
-    }
-    Ok(result)
-}
-
-/// Solve an overdetermined integer system `A x = b` (m >= n rows, full
-/// column rank) over the rationals; the unique solution or `None`.
-fn solve_rational_system(rows: &[(Vec<i64>, i64)], columns: usize) -> Option<Vec<BigRational>> {
-    let m = rows.len();
-    let mut aug: Vec<Vec<BigRational>> = rows
-        .iter()
-        .map(|(coefficients, rhs)| {
-            coefficients
-                .iter()
-                .map(|&entry| BigRational::from(entry))
-                .chain(std::iter::once(BigRational::from(*rhs)))
-                .collect()
-        })
-        .collect();
-    let mut pivot_rows = Vec::with_capacity(columns);
-    let mut pivot_row = 0;
-    for column in 0..columns {
-        let found = (pivot_row..m).find(|&row| aug[row][column] != 0)?;
-        aug.swap(pivot_row, found);
-        let pivot = aug[pivot_row][column].clone();
-        for entry in &mut aug[pivot_row] {
-            *entry /= &pivot;
-        }
-        for row in 0..m {
-            if row == pivot_row || aug[row][column] == 0 {
-                continue;
-            }
-            let factor = aug[row][column].clone();
-            let (pivot_line, target) = if row < pivot_row {
-                let (head, tail) = aug.split_at_mut(pivot_row);
-                (&tail[0], &mut head[row])
-            } else {
-                let (head, tail) = aug.split_at_mut(row);
-                (&head[pivot_row], &mut tail[0])
-            };
-            for (target_entry, pivot_entry) in target.iter_mut().zip(pivot_line.iter()) {
-                let subtracted = pivot_entry.clone() * &factor;
-                *target_entry -= subtracted;
-            }
-        }
-        pivot_rows.push(pivot_row);
-        pivot_row += 1;
-    }
-    // Read the solution only after all eliminations: later column sweeps
-    // still update earlier pivot rows.
-    let mut solution = vec![BigRational::from(0); columns];
-    for (column, &row) in pivot_rows.iter().enumerate() {
-        solution[column] = aug[row][columns].clone();
-    }
-    Some(solution)
 }
 
 /// The connected components of a Cartan matrix (index sets).
@@ -11704,108 +11596,7 @@ pub(crate) fn call_with_printed(
                 ));
             };
             let rc = rep_context(&parameter.context);
-            let datum = rc.datum();
-            let root_system = rc.root_system();
-            let rank = datum.lattice_rank();
-            let gamma = parameter.repr.gamma();
-            let gamma_ratvec = RatVec::new(gamma.numerator().to_vec(), gamma.denominator() as u64)
-                .ok_or_else(|| runtime(span, "invalid parameter gamma".to_string()))?;
-            let numbering = RootNumbering::new(
-                root_system,
-                parameter.context.parent.root_datum.prefers_coroots(),
-            );
-            let (walls, integrals) = wall_set(root_system, &numbering, &gamma_ratvec);
-            let fracs = barycentre_eq(root_system, &numbering, &walls, &integrals)
-                .map_err(|error| runtime(span, error))?;
-            let mut rows: Vec<(Vec<i64>, i64)> = Vec::new();
-            for (index, &nbr) in walls.iter().enumerate() {
-                let coroot = root_system
-                    .coroot(numbering.id(nbr))
-                    .expect("every root has a coroot");
-                let scale = fracs[index].1;
-                rows.push((
-                    coroot
-                        .as_slice()
-                        .iter()
-                        .map(|&c| i64::from(c) * scale)
-                        .collect(),
-                    fracs[index].0
-                        + floor_eval_nbr(root_system, &numbering, nbr, &gamma_ratvec) * scale,
-                ));
-            }
-            let radical = datum
-                .radical_basis()
-                .map_err(|error| runtime(span, error.to_string()))?;
-            for element in &radical {
-                rows.push((
-                    element
-                        .as_slice()
-                        .iter()
-                        .map(|&c| i64::from(c) * gamma.denominator())
-                        .collect(),
-                    gamma
-                        .numerator()
-                        .iter()
-                        .zip(element.as_slice())
-                        .map(|(&g, &c)| g * i64::from(c))
-                        .sum(),
-                ));
-            }
-            let solution = solve_rational_system(&rows, rank).ok_or_else(|| {
-                runtime(
-                    span,
-                    "alcove center equations have no unique solution".to_string(),
-                )
-            })?;
-            let mut factor = 1i64;
-            for entry in &solution {
-                factor = lcm(
-                    factor,
-                    i64::try_from(entry.denominator_ref())
-                        .map_err(|_| runtime(span, "alcove center denominator overflow"))?,
-                );
-            }
-            let mut numerators = Vec::with_capacity(rank);
-            for entry in &solution {
-                let scaled = entry * BigRational::from(factor);
-                numerators.push(
-                    i64::try_from(scaled.numerator_ref())
-                        .map_err(|_| runtime(span, "alcove center numerator overflow"))?,
-                );
-            }
-            let new_gamma = RationalWeight::new(numerators, factor)
-                .map_err(|error| runtime(span, error.to_string()))?;
-            // Upstream guards the correction against leaving the
-            // -theta-fixed subspace (alcoves.cpp:317-321).
-            let theta = parameter
-                .context
-                .graph
-                .involution_of(parameter.repr.x())
-                .and_then(|id| parameter.context.table.record(id))
-                .map(|record| record.theta())
-                .ok_or_else(|| runtime(span, "alcove center involution lookup failed"))?;
-            let difference = new_gamma
-                .sub(gamma)
-                .map_err(|error| runtime(span, error.to_string()))?;
-            for (row, theta_row) in theta.weight_matrix().iter().enumerate() {
-                let total: i64 = theta_row
-                    .iter()
-                    .zip(difference.numerator())
-                    .map(|(&t, &d)| i64::from(t) * d)
-                    .sum::<i64>()
-                    + difference.numerator()[row];
-                if total != 0 {
-                    return Err(runtime(
-                        span,
-                        "Attempted correction off -theta fixed subspace",
-                    ));
-                }
-            }
-            let lambda_rho = rc
-                .lambda_rho(&parameter.repr)
-                .map_err(|error| structure_diagnostic(error, span))?;
-            let centered = rc
-                .sr_gamma(parameter.repr.x(), &lambda_rho, &new_gamma)
+            let centered = domain_alcove_center(&rc, &parameter.repr)
                 .map_err(|error| structure_diagnostic(error, span))?;
             Ok(Value::Domain(DomainValue::Param(ParamValue {
                 context: Arc::clone(&parameter.context),
@@ -18556,6 +18347,64 @@ mod tests {
             validate(name, std::slice::from_ref(&q), span())
                 .unwrap_or_else(|error| panic!("{name} validates: {error:?}"));
         }
+    }
+
+    #[test]
+    fn a1_alcove_center_shrinks_thirds_to_the_half_center() {
+        // Oracle job 3546215, deform_alcove_shrink.atlas: the center of the
+        // A1 alcove containing nu=[1]/3 is nu=[1]/2, while x/lambda stay put.
+        let sl2r = sl2r_split_form();
+        let p = sl2r_param(&sl2r, 2, &[0], &[1], 3);
+        assert_eq!(
+            call("alcove_center", &[p], span())
+                .expect("alcove_center(p)")
+                .to_string(),
+            "final parameter(x=2,lambda=[1]/1,nu=[1]/2)"
+        );
+    }
+
+    #[test]
+    fn deform_alcove_shrink_matches_the_oracle_fixture() {
+        // Exact value events after the declarations in the verified positive
+        // fixture from oracle job 3546215.
+        let sl2r = sl2r_split_form();
+        let p = sl2r_param(&sl2r, 2, &[0], &[1], 3);
+        assert_eq!(p.to_string(), "final parameter(x=2,lambda=[1]/1,nu=[1]/3)");
+        assert_eq!(
+            call("alcove_center", std::slice::from_ref(&p), span())
+                .expect("alcove_center(p)")
+                .to_string(),
+            "final parameter(x=2,lambda=[1]/1,nu=[1]/2)"
+        );
+        let expected = "\n1* K_type(x=2, lambda=[1]/1) [0]";
+        assert_eq!(
+            call("full_deform", std::slice::from_ref(&p), span())
+                .expect("full_deform(p)")
+                .to_string(),
+            expected
+        );
+        assert_eq!(
+            call("twisted_full_deform", &[p], span())
+                .expect("twisted_full_deform(p)")
+                .to_string(),
+            expected
+        );
+    }
+
+    #[test]
+    fn deform_alcove_shrink_rejected_matches_the_oracle_fixture() {
+        // The shrink preprocessing must remain behind the wrapper's standard
+        // gate; the verified rejected fixture never reaches the center call.
+        let sl2r = sl2r_split_form();
+        let p = sl2r_param(&sl2r, 1, &[-2], &[0], 1);
+        let error = call("twisted_full_deform", &[p], span())
+            .expect_err("non-standard parameter is rejected before deformation");
+        assert_eq!(
+            error.message,
+            "Cannot compute full twisted deformation:\n  \
+             non-standard parameter(x=1,lambda=[-1]/1,nu=[0]/1)\n  \
+             Parameter not standard"
+        );
     }
 
     #[test]

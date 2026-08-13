@@ -26,6 +26,24 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   partial/full promotion, and sequence contracts are still missing.  The next
   integration target remains `rep_table_sequence{,_rejected}`.
 
+## Checkpoint - 2026-08-13g (deformation alcove-center shrink)
+
+- The real-group crate now owns `alcove_center(RepContext, StandardRepr)`.
+  Ordinary full deformation centers every final helper input when its
+  denominator exceeds `2^rank`; twisted deformation replaces the former loud
+  NYI with the same preprocessing and leaves its flip bookkeeping unchanged.
+  The language builtin delegates to this shared implementation.
+- Review found two reusable arithmetic hazards and both are regression-tested:
+  `checked_shl(63)` on `i64` produces `i64::MIN` rather than failing, so ranks
+  63+ bypass the positive-denominator comparison; and a full-column-rank
+  Gauss-Jordan solve must still reject residual `0 ... 0 | nonzero` rows in an
+  overdetermined system.
+- The job-3546215 positive/rejected oracle contracts replay byte-exact locally.
+  A Rust/oracle HPC differential is still required before upgrading their
+  metadata.  This slice is shrink preprocessing only; it does not complete
+  ordinary deformation recursion, proper-subsystem handling, RepTable memo,
+  or timed cancellation.
+
 ## Checkpoint - 2026-08-13e (signature audit + multi-assignment)
 
 - The builtin completion target is now signature-level: 305 upstream

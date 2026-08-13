@@ -32,9 +32,8 @@
 //!   when `bm` is trivial (`bm.simp_int` is then the identity-indexed
 //!   simple list and `bm.simple_pi` the identity permutation); see
 //!   [`singular_orbits_at`].
-//! - The `weyl::alcove_center` shrink (repr.cpp:2556-2557, triggered when
-//!   `gamma.denominator() > 2^rank`) is not ported; [`twisted_deformation`]
-//!   fails loudly with [`StructureError::NotYetImplemented`] instead.
+//! - The `weyl::alcove_center` shrink (repr.cpp:2556-2557) is applied before
+//!   recursive twisted deformation when `gamma.denominator() > 2^rank`.
 //! - `Rep_table` memoisation (`deformation_unit`/`alcove_hash`) is replaced
 //!   by plain recomputation; without a shared pool the memo-hit flip
 //!   adjustment (repr.cpp:2576-2584) is unnecessary, since every result is
@@ -719,11 +718,9 @@ pub fn block_deformation_to_height(
 /// deformation terms, and a proper integral subsystem fails loudly with
 /// [`StructureError::NotYetImplemented`].
 ///
-/// Deviations from upstream, both failing loudly rather than computing:
-/// the `weyl::alcove_center` shrink for `gamma.denominator() > 2^rank`
-/// (repr.cpp:2556-2557) is not ported, and neither are the non-trivial
-/// block modifiers that a reducibility point on a proper integral
-/// subsystem would need.
+/// The non-trivial block modifiers needed at a reducibility point on a
+/// proper integral subsystem remain a deviation from upstream and fail
+/// loudly rather than computing on the wrong block.
 pub fn twisted_deformation(
     ctx: &ExtRepContext,
     z: &StandardRepr,
@@ -732,12 +729,11 @@ pub fn twisted_deformation(
     let rc = ctx.rc();
     debug_assert!(matches!(z.is_final(rc), Ok(true)));
     debug_assert!(rc.is_fixed(z, ctx.delta()));
-    let mut z = z.clone();
-    if z.gamma().denominator() > (1_i64 << rc.rank()) {
-        return Err(StructureError::NotYetImplemented {
-            feature: "alcove-center shrink for twisted deformation",
-        });
-    }
+    let mut z = if crate::denominator_exceeds_alcove_bound(rc.rank(), z.gamma().denominator()) {
+        crate::alcove_center(rc, z)?
+    } else {
+        z.clone()
+    };
 
     let mut rp = rc.reducibility_points(&z)?;
     let mut flip = false; // no flip recorded when shrink wrapping is not done
