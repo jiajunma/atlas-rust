@@ -2659,3 +2659,11 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   assignment cases from already-runnable domain calls and the independently
   NYI timed deformation branch.  Reference capture job `3545163` was submitted
   from `cd1c9c9`; upgrade metadata only after its frozen report is inspected.
+- HPC submission repair: jobs `3543992`, `3543998`, and `3545163` executed no
+  fixtures because `ATLAS_COMMIT` was passed as a seven-character short SHA.
+  Both capture scripts reject that value before installing their fallback
+  report trap, so the jobs fail with exit `2:0` and produce no report or
+  benchmark.  Always set `ATLAS_COMMIT="$(git rev-parse HEAD)"` on the remote
+  checkout and assert its length is 40 before `sbatch`; corrected jobs are
+  `3545169` (Param W-graph differential), `3545170` (root-transform oracle),
+  and `3545171` (hunger oracle).  Never promote metadata from the failed jobs.
