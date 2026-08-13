@@ -856,7 +856,10 @@ impl TypedContext {
     fn show_all_text(&self) -> String {
         let mut text = String::from("Overloaded operators and functions:\n");
         let mut names = Vec::new();
-        for builtin in builtin_registry() {
+        for builtin in builtin_registry()
+            .iter()
+            .filter(|builtin| builtin.overload_visible)
+        {
             if !names.iter().any(|name| name == &builtin.name) {
                 names.push(builtin.name);
             }
@@ -3268,7 +3271,8 @@ fn convert_overload_application(
     resolve_name_first: bool,
 ) -> Result<TypedExpr, Diagnostic> {
     let variants = merged_variants(name, analysis.overloads, analysis.types);
-    if resolve_name_first && variants.is_empty() {
+    let hidden_special = hidden_special_builtin(name);
+    if resolve_name_first && variants.is_empty() && hidden_special.is_none() {
         // Atlas resolves the callee before analysing its arguments.  This is
         // observable for `foo(missing)`: the undefined function wins over an
         // error in an argument that would never be evaluated.
@@ -3289,19 +3293,23 @@ fn convert_overload_application(
         a_priori.push(slot);
     }
     let a_priori_type = Type::tuple(a_priori.clone());
-    let mut chosen = None;
-    for (position, variant) in variants.iter().enumerate() {
-        if variant.arg_type == a_priori_type {
-            chosen = Some(position);
-            break;
-        }
-        if crate::coercions::is_close(&a_priori_type, &variant.arg_type, analysis.types) & 0x1 != 0
-        {
-            chosen = Some(position);
-            break;
-        }
-    }
-    let position = chosen.ok_or_else(|| {
+    // `resolve_overload` first honours an exact ordinary overload, then
+    // recognises the hidden generic row `#`, and only afterwards considers
+    // coercible ordinary overloads (axis.w:2458-2550).
+    let exact = variants
+        .iter()
+        .position(|variant| variant.arg_type == a_priori_type);
+    let use_hidden =
+        exact.is_none() && hidden_special.is_some() && matches!(&a_priori_type, Type::Row(_));
+    let inexact = if exact.is_none() && !use_hidden {
+        variants.iter().position(|variant| {
+            crate::coercions::is_close(&a_priori_type, &variant.arg_type, analysis.types) & 0x1 != 0
+        })
+    } else {
+        None
+    };
+    let position = exact.or(inexact);
+    if position.is_none() && !use_hidden {
         let message = if variants.len() == 1 {
             format!(
                 "found {} while {} was needed.",
@@ -3315,9 +3323,21 @@ fn convert_overload_application(
                 a_priori_type.display(analysis.types),
             )
         };
-        type_error(message, span)
-    })?;
-    let variant = &variants[position];
+        return Err(type_error(message, span));
+    }
+    let hidden_variant;
+    let variant = if use_hidden {
+        let index = hidden_special.expect("hidden special was checked above");
+        let builtin = &builtin_registry()[index];
+        hidden_variant = MergedVariant {
+            arg_type: builtin.arg_type.clone(),
+            result_type: builtin.result.clone(),
+            origin: OverloadOrigin::Builtin(index),
+        };
+        &hidden_variant
+    } else {
+        &variants[position.expect("ordinary overload was found")]
+    };
     let expected: Vec<Type> = if expressions.len() == 1 {
         vec![variant.arg_type.clone()]
     } else {
@@ -3510,6 +3530,7 @@ pub struct Builtin {
     pub arg_type: Type,
     pub result: Type,
     pub hunger: u8,
+    overload_visible: bool,
     implementation: BuiltinImpl,
 }
 
@@ -3568,6 +3589,7 @@ enum ScalarOp {
     NullMatrix,
     UnaryRelation(Relation),
     BinaryRelation(Relation),
+    ListCardinality,
     StringConcat,
 }
 
@@ -3670,6 +3692,24 @@ fn scalar_builtin(
         arg_type,
         result,
         hunger,
+        overload_visible: true,
+        implementation: BuiltinImpl::Scalar(op),
+    }
+}
+
+fn hidden_scalar_builtin(
+    name: &'static str,
+    arg_type: Type,
+    result: Type,
+    hunger: u8,
+    op: ScalarOp,
+) -> Builtin {
+    Builtin {
+        name,
+        arg_type,
+        result,
+        hunger,
+        overload_visible: false,
         implementation: BuiltinImpl::Scalar(op),
     }
 }
@@ -3690,6 +3730,7 @@ fn domain_builtin_with_level(
         arg_type,
         result,
         hunger,
+        overload_visible: true,
         implementation: BuiltinImpl::Domain { name, no_value },
     }
 }
@@ -3715,6 +3756,7 @@ fn domain_printer_builtin(name: &'static str, arg_type: Type) -> Builtin {
         arg_type,
         result: Type::void(),
         hunger: 0,
+        overload_visible: true,
         implementation: BuiltinImpl::DomainPrinter { name },
     }
 }
@@ -3725,6 +3767,7 @@ fn domain_relation_builtin(name: &'static str, arg_type: Type, relation: Relatio
         arg_type,
         result: bool_type(),
         hunger: 0,
+        overload_visible: true,
         implementation: BuiltinImpl::DomainRelation(relation),
     }
 }
@@ -4118,6 +4161,12 @@ fn run_scalar(
                 Value::Boolean(relation_matches(relation, ordering))
             }))
         }
+        ScalarOp::ListCardinality => match expect_unary(arguments) {
+            Value::List(values) => Ok(at_builtin_level(level, || {
+                Value::Integer(BigInt::from(values.len()))
+            })),
+            other => panic!("list cardinality saw {other:?}"),
+        },
         ScalarOp::StringConcat => {
             let (first, second) = expect_pair(arguments);
             match (first, second) {
@@ -4610,6 +4659,16 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 string_type(),
                 1,
                 ScalarOp::StringConcat,
+            ),
+            // Generic row size is a special `#` instance upstream
+            // (axis.w:2542-2550, 8863-8872), rather than an installed
+            // concrete overload.  `[*]` is a registry-local wildcard here.
+            hidden_scalar_builtin(
+                "#",
+                Type::row(Type::Undetermined),
+                int_type(),
+                0,
+                ScalarOp::ListCardinality,
             ),
             // global.w:4478-4493: retain zero-row/zero-column dimensions,
             // narrow and bound both dimensions before the no-value gate.
@@ -5565,7 +5624,13 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             domain_builtin(
                 "W_graph",
                 primitive_type(Prim::Param),
-                Type::tuple(vec![int_type(), Type::row(primitive_type(Prim::Vec))]),
+                Type::tuple(vec![
+                    int_type(),
+                    Type::row(Type::tuple(vec![
+                        Type::row(int_type()),
+                        Type::row(Type::tuple(vec![int_type(), int_type()])),
+                    ])),
+                ]),
                 0,
             ),
             domain_builtin(
@@ -5575,7 +5640,10 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                     int_type(),
                     Type::row(Type::tuple(vec![
                         Type::row(int_type()),
-                        Type::row(primitive_type(Prim::Vec)),
+                        Type::row(Type::tuple(vec![
+                            Type::row(int_type()),
+                            Type::row(Type::tuple(vec![int_type(), int_type()])),
+                        ])),
                     ])),
                 ]),
                 0,
@@ -6565,6 +6633,9 @@ fn overload_variants(name: &str) -> &'static [usize] {
             let mut index: BTreeMap<&'static str, Vec<usize>> = BTreeMap::new();
             let table = TypeTable::new();
             for (position, builtin) in builtin_registry().iter().enumerate() {
+                if !builtin.overload_visible {
+                    continue;
+                }
                 let variants = index.entry(builtin.name).or_default();
                 let mut lower = 0;
                 let mut upper = variants.len();
@@ -6589,6 +6660,12 @@ fn overload_variants(name: &str) -> &'static [usize] {
         .get(name)
         .map(Vec::as_slice)
         .unwrap_or(&[])
+}
+
+fn hidden_special_builtin(name: &str) -> Option<usize> {
+    builtin_registry()
+        .iter()
+        .position(|builtin| builtin.name == name && !builtin.overload_visible)
 }
 
 impl TypedExpr {
@@ -8642,6 +8719,127 @@ mod tests {
         assert!(signatures("W_cells").contains(&(block.clone(), Type::row(cell))));
         assert_eq!(no_value_policy("W_graph", &block), "build");
         assert_eq!(no_value_policy("W_cells", &block), "build");
+    }
+
+    #[test]
+    fn param_graph_signatures_preserve_upstream_nested_types() {
+        let result_type = |name: &str| {
+            builtin_registry()
+                .iter()
+                .find(|builtin| {
+                    builtin.name == name && builtin.arg_type == primitive_type(Prim::Param)
+                })
+                .unwrap_or_else(|| panic!("missing {name}(Param)"))
+                .result
+                .clone()
+        };
+
+        let int = int_type();
+        let edge = Type::tuple(vec![int.clone(), int.clone()]);
+        let vertex = Type::tuple(vec![Type::row(int.clone()), Type::row(edge)]);
+        let graph = Type::tuple(vec![int.clone(), Type::row(vertex.clone())]);
+        let cell = Type::tuple(vec![Type::row(int.clone()), Type::row(vertex)]);
+        let cells = Type::tuple(vec![int, Type::row(cell)]);
+
+        assert_eq!(result_type("W_graph"), graph);
+        assert_eq!(result_type("W_cells"), cells);
+    }
+
+    #[test]
+    fn list_cardinality_is_polymorphic_and_drops_no_value_results() {
+        let signature = builtin_registry()
+            .iter()
+            .find(|builtin| {
+                builtin.name == "#"
+                    && builtin.arg_type == Type::row(Type::Undetermined)
+                    && builtin.result == int_type()
+            })
+            .expect("missing #([*]) -> int");
+        assert_eq!(signature.hunger, 0);
+        assert!(
+            overload_variants("#")
+                .iter()
+                .all(|&index| builtin_registry()[index].arg_type != Type::row(Type::Undetermined)),
+            "the generic row primitive is hidden from the overload table"
+        );
+
+        let mut overloads = OverloadState::default();
+        assert!(
+            !overloads.remove("#", &Type::row(Type::Undetermined)),
+            "the hidden primitive cannot be forgotten"
+        );
+
+        for (source, expected) in [("#[]", 0), ("#[1,2,3]", 3), ("#[\"x\",\"y\"]", 2)] {
+            let (_, value) = convert_and_run(source).expect(source);
+            assert_eq!(value, Value::Integer(expected.into()), "source: {source}");
+        }
+
+        let error = convert_and_run("#[1,true]").expect_err("mixed list stays ill typed");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(
+            error.message,
+            "No common type found between components of list expression: { int, bool }"
+        );
+
+        let source = SourceText::new("#[1,2,3]");
+        let program = parse(&source).expect("list cardinality parses");
+        let table = TypeTable::new();
+        let globals = IdTable::new();
+        let overloads = OverloadState::default();
+        let analysis = Analysis::new(&table, &globals, &overloads);
+        let mut required = Type::Undetermined;
+        let typed = convert_expr(&program.expressions[0], &mut required, &analysis)
+            .expect("list cardinality converts");
+        assert_eq!(
+            typed
+                .evaluate(&mut EvaluationContext::new(), Level::NoValue)
+                .expect("no-value cardinality has no work that can fail"),
+            None
+        );
+
+        let mut context = TypedContext::new();
+        let listing = context
+            .execute(&command("whattype # ?"))
+            .expect("list ordinary # overloads");
+        assert!(matches!(
+            &listing[..],
+            [TypedCommandEvent::ReportLine { text, .. }]
+                if !text.contains("[*]->int")
+        ));
+        let show_all = context
+            .execute(&command("showall"))
+            .expect("show all ordinary overloads");
+        assert!(matches!(
+            &show_all[..],
+            [TypedCommandEvent::ReportLine { text, .. }]
+                if !text.contains("#: ([*]->int)")
+        ));
+        context
+            .execute(&command("set # ([bool] xs) = 99"))
+            .expect("install exact row overload");
+        let events = context
+            .execute(&command("#[true,false]"))
+            .expect("exact user overload preempts generic row cardinality");
+        assert!(matches!(
+            &events[..],
+            [TypedCommandEvent::Value {
+                value: Value::Integer(value),
+                ..
+            }] if value == &BigInt::from(99)
+        ));
+        context
+            .execute(&command("set # (ratvec xs) = 88"))
+            .expect("install coercible ordinary overload");
+        let events = context
+            .execute(&command("#[1,2]"))
+            .expect("generic row primitive preempts coercible ordinary overload");
+        assert!(matches!(
+            &events[..],
+            [TypedCommandEvent::Value {
+                value: Value::Integer(value),
+                ..
+            }] if value == &BigInt::from(2)
+        ));
     }
 
     #[test]

@@ -504,3 +504,17 @@ W_cells and is a 1-2 hour debugging task against upstream matreduc.
   rejection. This is only a narrow polynomial-accumulation repair; it does not
   complete proper-subsystem deformation, high-denominator alcove shrinking,
   recursion, cancellation/deadline support, or `full_deform(Param,int)`.
+
+## Param W-graph type and generic row-size contract (2026-08-13)
+
+- `W_graph(Param)` returns `(int,[([int],[(int,int)])])` and
+  `W_cells(Param)` returns `(int,[([int],[([int],[(int,int)])])])`.
+  Treating the edge lists as `vec` preserves printed values but breaks nested
+  destructuring and overload resolution; reference capture `3543933` pins the
+  exact accepted and rejected static types.
+- Unary `#` on a row is an interpreter special operator in `axis.w`, not one
+  of the 305 `atlas-types.w` `install_function` entries.  Registry audits must
+  therefore include core generic operators as a separate language surface.
+  Its contract is polymorphic `#([T])->int`, hunger 0, including the unstable
+  empty-row type `[*]`; keep its wildcard matching local to unary `#` so that
+  undetermined types do not become generally coercible.

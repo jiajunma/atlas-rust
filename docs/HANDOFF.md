@@ -2646,3 +2646,10 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   the corpus, 0.005s and 7056/6932 KiB peak RSS. Report SHA256
   `0b6346282fdac558b595f2953854a7d33a5f5463503d585b5da764578f576734`.
   This closes only the merge contract, not the remaining deformation engine.
+- Param `W_graph`/`W_cells` static result contracts are pinned by oracle job
+  `3543933`.  The accepted fixture deliberately inspects nested rows with the
+  generic row-cardinality `#`; this exposed that core `axis.w` special
+  operators are outside the 305-entry `install_function` inventory and need a
+  separate compatibility ledger.  The Rust implementation and pipeline plans
+  are locally green; record the swap job and benchmarks here after the clean
+  committed differential completes.

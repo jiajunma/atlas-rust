@@ -499,6 +499,13 @@ FIXTURE_PLANS = (
     # This does not claim recursive/proper-subsystem/timed deformation.
     FixturePlan(name="domain/full_deform_term_merge"),
     FixturePlan(name="domain/full_deform_term_merge_rejected"),
+    # Param W-graph static contract: preserve the nested vertex/edge tuple
+    # types exposed by atlas-types.w:7521-7524.  The accepted case also
+    # exercises the generic row-cardinality `#` primitive used to inspect
+    # those nested lists; capture 3543933 pins both accepted and rejected
+    # type behaviour before the Rust implementation is compared.
+    FixturePlan(name="domain/param_wgraph_types"),
+    FixturePlan(name="domain/param_wgraph_types_rejected"),
     # Strong-real surface: the base contract plus the probes whose slices
     # have landed — the Cartan numbering adapter (a63dc32) covers the four
     # B2/C2 Cartan enumerations and all four rejected diagnostics, and the
