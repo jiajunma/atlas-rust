@@ -2699,3 +2699,10 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   The successful dominance word `[1,2,1]` is palindromic, so retain the direct
   root-first CWEB evidence for forward iteration and seek a non-palindromic
   fixture as a later coverage strengthening, not as an alternate algorithm.
+- Initial implementation differential `3545555` executed no target Rust
+  fixture: the four meta files had been upgraded after reference capture but
+  their event files still said `pending_hpc_reference`, so the harness rejected
+  configuration before spawning Rust. Keep event and meta reference statuses
+  synchronized whenever a capture is promoted; empty Rust output at 0 seconds
+  plus `configuration_valid=false` is configuration evidence, not a semantic
+  mismatch.
