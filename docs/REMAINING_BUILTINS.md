@@ -532,3 +532,20 @@ W_cells and is a 1-2 hour debugging task against upstream matreduc.
   pair `hunger_contract{,_rejected}` pins alias preservation, assignment
   results, evaluation gates, and rank diagnostics.  The other domain entries
   are retained as metadata/algorithm coverage, not mislabeled as type gaps.
+
+## Arbitrary-root parameter transforms (2026-08-13)
+
+- `cross(vec,Param)` and `Cayley(vec,Param)` use the parameter's integral
+  subsystem, not an ambient simple-root shortcut.  The port preserves parent
+  root/reflection words, negative-root normalization, KGB word direction,
+  lambda/gamma/y-bit shifts, undefined Cayley returning the original Param,
+  and the wrapper's no-value skip.
+- `any_Cayley` makes a standard source integrally dominant before validating
+  the supplied root; therefore a nonstandard source plus an invalid vector
+  reports `Cannot make non-standard parameter integrally dominant` first.
+  Oracle jobs `3545170` and `3545520` pin A2 simple/non-simple/negative paths,
+  a successful three-reflection A3 dominance/rebuild, and that diagnostic
+  ordering. The recorded A3 word `[1,2,1]` is palindromic, so exact root-word
+  iteration direction remains justified directly by the root-first overload
+  `SubSystem::permuted_root(rt,w)` (`rootdata.h:320-324`) rather than by that
+  fixture alone; add a non-palindromic oracle case when one is available.

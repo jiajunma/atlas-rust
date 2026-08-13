@@ -2692,3 +2692,10 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   contracts and both hunger-assignment contracts with exact local-oracle
   hashes and realistic 3.7-4.6 MiB RSS. Report SHA256:
   `d5d41520e3be0c947b93c0fcf9a6d6a77a4850b2073d98bcefe93867fe21cfcf`.
+- Arbitrary-root Param transforms are implemented at `cc9e285`. Reference job
+  `3545170` pins the A2 contract; job `3545520` pins successful three-step A3
+  integral dominance and nonstandard-first rejection (report SHA
+  `071d5589faf5f4dccd53a341ec8165de39dbd47f5c30a72ad7e0a7ad0dee6d7c`).
+  The successful dominance word `[1,2,1]` is palindromic, so retain the direct
+  root-first CWEB evidence for forward iteration and seek a non-palindromic
+  fixture as a later coverage strengthening, not as an alternate algorithm.

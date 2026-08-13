@@ -506,6 +506,13 @@ FIXTURE_PLANS = (
     # type behaviour before the Rust implementation is compared.
     FixturePlan(name="domain/param_wgraph_types"),
     FixturePlan(name="domain/param_wgraph_types_rejected"),
+    # Arbitrary integral-root Param transforms.  The A2 pair covers simple,
+    # non-simple and negative roots plus no-value/diagnostic behavior; the A3
+    # pair forces successful integral dominance and its diagnostic priority.
+    FixturePlan(name="domain/param_root_transforms"),
+    FixturePlan(name="domain/param_root_transforms_rejected"),
+    FixturePlan(name="domain/param_root_transforms_dominance"),
+    FixturePlan(name="domain/param_root_transforms_dominance_rejected"),
     # Strong-real surface: the base contract plus the probes whose slices
     # have landed — the Cartan numbering adapter (a63dc32) covers the four
     # B2/C2 Cartan enumerations and all four rejected diagnostics, and the
