@@ -1,0 +1,15 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("A1"),true)
+from_dominant(rd,[1,2])
+from_dominant([1,2],rd)
+ic : InnerClass
+ic := inner_class(rd,[[1]])
+Cartan_info(rd)
+rf : RealForm
+rf := real_form(ic,1)
+KL_block(rf)
+KL_column(rf)
+p : Param
+p := param(KGB(rf,1),[0],[1]/2)
+cross(1,p)
+Cayley(1,p)

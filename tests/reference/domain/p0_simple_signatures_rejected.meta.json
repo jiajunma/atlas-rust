@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/p0_simple_signatures_rejected",
+  "fixture_sha256": "c8c30612720167f572b8a50e4bd353d7c88f330ad093e884df30e6dee48471a8",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "unimplemented",
+  "reference_status": "pending_hpc_reference",
+  "note": "Rejected companions for P0 signature reconciliation: vector rank checks, wrong domain object types, and out-of-range Param simple-root transforms.",
+  "oracle_exit_status": 1
+}

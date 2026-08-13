@@ -23,6 +23,11 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   its void payload constraint and uses the exact `Pattern () does not match
   type ... for variant ...` diagnostic. `atlas-core` has 251/251 passing
   tests; spec and Rust-quality reviews both approved the final diff.
+- **multi-assignment CLOSED**: differential **3543144** @ 147b982 —
+  245 fixtures, runnable status PASS, with only the permanent two-event
+  `container_syntax_errors` EOF/quit exception. Both multi-assignment metas
+  are `verified_hpc`; the fat-node job took 130 seconds and peaked at
+  997100 KiB.
 - HPC reference-capture arguments must be complete repository-relative
   `tests/fixtures/.../*.atlas` paths. Job 3542734 failed on bare names;
   corrected job **3542971** passed. Range bundles advertise `HEAD`; inspect
