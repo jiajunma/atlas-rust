@@ -15,6 +15,8 @@
 //! because the elected `lambda-rho` representative depends on the exact image
 //! basis.
 
+use std::sync::Arc;
+
 use crate::grading::try_capacity;
 use crate::lattice::{checked_add_weights, checked_sub_weights, pair, RationalWeight};
 use crate::real_projection::RealProjection;
@@ -309,43 +311,22 @@ impl PartialEq for StandardRepr {
 /// the cross-action BFS exactly like upstream's `InvolutionTable`
 /// (involutions.cpp:242-243).
 pub struct RepContext<'a> {
-    inner_class: &'a InnerClass,
     table: &'a InvolutionTable,
     graph: &'a KgbGraph,
+    derived: Arc<RepContextDerived>,
+}
+
+/// Root-datum constants shared by temporary representation-context views.
+#[derive(Debug)]
+pub(crate) struct RepContextDerived {
+    pub(crate) inner_class: Arc<InnerClass>,
     two_rho: Weight,
     dual_two_rho: Coweight,
     rho: RationalWeight,
 }
 
-/// Crate-local identity and lifetime witness for context-owned caches.
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct RepContextIdentity<'a> {
-    inner_class: &'a InnerClass,
-    table: &'a InvolutionTable,
-    graph: &'a KgbGraph,
-    real_form: crate::WeakRealFormId,
-}
-
-impl RepContextIdentity<'_> {
-    pub(crate) fn same_owner(&self, other: &RepContextIdentity<'_>) -> bool {
-        std::ptr::eq(self.inner_class, other.inner_class)
-            && std::ptr::eq(self.table, other.table)
-            && std::ptr::eq(self.graph, other.graph)
-            && self.real_form == other.real_form
-    }
-}
-
-impl<'a> RepContext<'a> {
-    /// Bind the context, deriving the datum constants. The gate is the
-    /// same full inner-class equality as the Tits coset's.
-    pub fn new(
-        inner_class: &'a InnerClass,
-        table: &'a InvolutionTable,
-        graph: &'a KgbGraph,
-    ) -> Result<Self, StructureError> {
-        if table.inner_class() != inner_class {
-            return Err(StructureError::DatumMismatch);
-        }
+impl RepContextDerived {
+    fn new(inner_class: Arc<InnerClass>) -> Result<Self, StructureError> {
         let system = inner_class.root_system();
         let lattice_rank = system.lattice_rank();
         let mut two_rho = try_capacity(lattice_rank)?;
@@ -380,27 +361,72 @@ impl<'a> RepContext<'a> {
         )?;
         Ok(Self {
             inner_class,
-            table,
-            graph,
-            two_rho: two_rho.clone(),
+            two_rho,
             dual_two_rho: Coweight::new(dual_two_rho),
             rho,
         })
     }
+}
+
+impl<'a> RepContext<'a> {
+    /// Bind the context, deriving the datum constants. The gate is the
+    /// same full inner-class equality as the Tits coset's.
+    pub fn new(
+        inner_class: &'a InnerClass,
+        table: &'a InvolutionTable,
+        graph: &'a KgbGraph,
+    ) -> Result<Self, StructureError> {
+        if table.inner_class() != inner_class {
+            return Err(StructureError::DatumMismatch);
+        }
+        if !Arc::ptr_eq(table.inner_class_shared(), graph.inner_class_shared()) {
+            return Err(StructureError::DatumMismatch);
+        }
+        let derived = Arc::new(RepContextDerived::new(Arc::clone(
+            table.inner_class_shared(),
+        ))?);
+        Ok(Self::from_derived(table, graph, derived))
+    }
+
+    /// Bind a temporary borrowed view to already-validated substrates and
+    /// their precomputed root-datum constants.
+    pub(crate) fn from_derived(
+        table: &'a InvolutionTable,
+        graph: &'a KgbGraph,
+        derived: Arc<RepContextDerived>,
+    ) -> Self {
+        debug_assert!(Arc::ptr_eq(
+            table.inner_class_shared(),
+            graph.inner_class_shared()
+        ));
+        debug_assert!(Arc::ptr_eq(
+            table.inner_class_shared(),
+            &derived.inner_class
+        ));
+        Self {
+            table,
+            graph,
+            derived,
+        }
+    }
+
+    pub(crate) fn derived(&self) -> &Arc<RepContextDerived> {
+        &self.derived
+    }
 
     /// The lattice rank of the underlying root datum (repr.h:215).
     pub fn rank(&self) -> usize {
-        self.inner_class.datum().lattice_rank()
+        self.inner_class().datum().lattice_rank()
     }
 
     /// The based root datum.
     pub fn datum(&self) -> &crate::BasedRootDatum {
-        self.inner_class.datum()
+        self.inner_class().datum()
     }
 
     /// The enumerated root system.
     pub fn root_system(&self) -> &crate::RootSystem {
-        self.inner_class.root_system()
+        self.inner_class().root_system()
     }
 
     pub fn graph(&self) -> &KgbGraph {
@@ -412,21 +438,12 @@ impl<'a> RepContext<'a> {
     }
 
     pub fn inner_class(&self) -> &InnerClass {
-        self.inner_class
+        self.derived.inner_class.as_ref()
     }
 
     /// The real form this context belongs to (the graph's weak form).
     pub fn real_form(&self) -> crate::WeakRealFormId {
         self.graph.form()
-    }
-
-    pub(crate) fn identity(&self) -> RepContextIdentity<'a> {
-        RepContextIdentity {
-            inner_class: self.inner_class,
-            table: self.table,
-            graph: self.graph,
-            real_form: self.real_form(),
-        }
     }
 
     /// The `(1-theta)X^*` image-basis pair of an involution, read from the
@@ -487,7 +504,7 @@ impl<'a> RepContext<'a> {
 
     /// Half the sum of the positive roots (rootdata.cpp:1260).
     pub fn rho(&self) -> &RationalWeight {
-        &self.rho
+        &self.derived.rho
     }
 
     /// Decompose the transported fields of a printable `UndefKGB`
@@ -501,7 +518,7 @@ impl<'a> RepContext<'a> {
                 .ok_or(StructureError::RepInvariantViolation {
                     invariant: "undefined parameter decomposition",
                 })?;
-        let lambda_rho = lambda.sub(&self.rho)?.integral_coordinates()?;
+        let lambda_rho = lambda.sub(self.rho())?.integral_coordinates()?;
         let lambda_rho = lambda_rho
             .into_iter()
             .map(|coordinate| {
@@ -513,12 +530,12 @@ impl<'a> RepContext<'a> {
 
     /// The sum of the positive roots (rootdata.h:568).
     pub(crate) fn two_rho(&self) -> &Weight {
-        &self.two_rho
+        &self.derived.two_rho
     }
 
     /// The sum of the positive roots in `roots` (rootdata.h:746).
     pub(crate) fn two_rho_of(&self, roots: &[RootId]) -> Result<Weight, StructureError> {
-        let system = self.inner_class.root_system();
+        let system = self.inner_class().root_system();
         let mut sum = vec![0_i32; system.lattice_rank()];
         for &id in roots {
             let root = system.root(id).ok_or(StructureError::IndexOutOfRange {
@@ -538,14 +555,14 @@ impl<'a> RepContext<'a> {
     /// implements as the simple-coroot coordinate sum; rootdata.h:225
     /// documents the pairing form used here).
     pub(crate) fn colevel(&self, alpha: RootId) -> Result<i32, StructureError> {
-        let system = self.inner_class.root_system();
+        let system = self.inner_class().root_system();
         let coroot = system
             .coroot(alpha)
             .ok_or(StructureError::IndexOutOfRange {
                 index: alpha.0,
                 upper_bound: system.roots().len(),
             })?;
-        let pairing = pair(&self.two_rho, coroot)?;
+        let pairing = pair(self.two_rho(), coroot)?;
         if pairing % 2 != 0 {
             return Err(StructureError::RepInvariantViolation {
                 invariant: "coroot level parity",
@@ -728,11 +745,11 @@ impl<'a> RepContext<'a> {
     pub fn inner_twisted(&self, z: &StandardRepr) -> Result<StandardRepr, StructureError> {
         let dominant = z.made_dominant(self)?;
         let delta = self
-            .inner_class
+            .inner_class()
             .distinguished_involution()
             .involution()
             .clone();
-        let simple_twist = self.inner_class.based_involution_twist(delta.clone())?;
+        let simple_twist = self.inner_class().based_involution_twist(delta.clone())?;
         self.twisted(&dominant, &delta, &simple_twist)
     }
 
@@ -740,7 +757,7 @@ impl<'a> RepContext<'a> {
     /// dominant, where `w = (1+theta)*gamma` (an integral weight).
     pub fn height(&self, theta_plus_1_gamma: &Weight) -> Result<u32, StructureError> {
         let dominant = self.make_dominant_weight(theta_plus_1_gamma)?;
-        let pairing = pair(&dominant, &self.dual_two_rho)?;
+        let pairing = pair(&dominant, &self.derived.dual_two_rho)?;
         if pairing < 0 || pairing % 2 != 0 {
             return Err(StructureError::RepInvariantViolation {
                 invariant: "height parity",
@@ -754,8 +771,8 @@ impl<'a> RepContext<'a> {
     /// is exact: `D(w) = sum over positive coroots of max(0, -<w, beta>)`
     /// strictly decreases at every step.
     pub(crate) fn make_dominant_weight(&self, weight: &Weight) -> Result<Weight, StructureError> {
-        let datum = self.inner_class.datum();
-        let system = self.inner_class.root_system();
+        let datum = self.inner_class().datum();
+        let system = self.inner_class().root_system();
         let mut defect = 0_i64;
         for (id, _, coroot) in system.entries() {
             if system
@@ -809,7 +826,7 @@ impl<'a> RepContext<'a> {
             });
         }
         let theta = self.theta_at(x)?;
-        let lambda = self.rho.add(&RationalWeight::from_weight(lambda_rho)?)?;
+        let lambda = self.rho().add(&RationalWeight::from_weight(lambda_rho)?)?;
         let difference = lambda.sub(nu)?;
         let theta_difference = difference.apply_matrix(theta.weight_matrix())?;
         lambda
@@ -827,7 +844,7 @@ impl<'a> RepContext<'a> {
         z.ensure_defined()?;
         let involution = self.involution_of(z.x)?;
         let theta = self.theta_at(z.x)?;
-        let gamma_minus_rho = z.gamma.sub(&self.rho)?;
+        let gamma_minus_rho = z.gamma.sub(self.rho())?;
         let theta_image = gamma_minus_rho.apply_matrix(theta.weight_matrix())?;
         let doubled = gamma_minus_rho.add(&theta_image)?;
         let projection_weight = doubled.integral_coordinates()?;
@@ -855,13 +872,14 @@ impl<'a> RepContext<'a> {
     /// half-integral weight the interpreter prints as `lambda=[..]/d`
     /// (basic_io.cpp print_stdrep/print_K_type).
     pub fn lambda(&self, z: &StandardRepr) -> Result<RationalWeight, StructureError> {
-        self.rho
+        self.rho()
             .add(&RationalWeight::from_weight(&self.lambda_rho(z)?)?)
     }
 
     /// `rho + lambda_rho` of a [`KType`] (basic_io.cpp:158-163).
     pub fn lambda_of_ktype(&self, t: &KType) -> Result<RationalWeight, StructureError> {
-        self.rho.add(&RationalWeight::from_weight(t.lambda_rho())?)
+        self.rho()
+            .add(&RationalWeight::from_weight(t.lambda_rho())?)
     }
 
     /// `Rep_context::nu` (repr.cpp:239-245): `(gamma - theta*gamma)/2`,
@@ -890,7 +908,7 @@ impl<'a> RepContext<'a> {
         let theta_1_lamrho = self.y_lift(involution, &y_bits)?;
         // Non-real positive roots at x (repr.cpp:249 complement).
         let real = self.positive_real_roots_at(x)?;
-        let system = self.inner_class.root_system();
+        let system = self.inner_class().root_system();
         let mut non_real = Vec::new();
         for index in 0..system.roots().len() {
             let id = RootId::from_usize(index);
@@ -1054,7 +1072,7 @@ impl<'a> RepContext<'a> {
     /// pair.
     pub fn orientation_number(&self, z: &StandardRepr) -> Result<u32, StructureError> {
         z.ensure_defined()?;
-        let system = self.inner_class.root_system();
+        let system = self.inner_class().root_system();
         let root_count = system.roots().len();
         let involution = self.involution_of(z.x())?;
         let root_involution = self.root_involution_data(involution)?;
@@ -1068,7 +1086,7 @@ impl<'a> RepContext<'a> {
         let test_wt: Vec<i32> = lifted
             .as_slice()
             .iter()
-            .zip(self.two_rho.as_slice())
+            .zip(self.two_rho().as_slice())
             .zip(two_rho_real.as_slice())
             .map(|((&a, &b), &c)| a + b - c)
             .collect();
@@ -1172,7 +1190,10 @@ impl<'a> RepContext<'a> {
     /// `Rep_context::is_delta_fixed` (repr.h:347-348): `is_fixed` for the
     /// inner class's distinguished involution.
     pub fn is_delta_fixed(&self, z: &StandardRepr) -> bool {
-        self.is_fixed(z, self.inner_class.distinguished_involution().involution())
+        self.is_fixed(
+            z,
+            self.inner_class().distinguished_involution().involution(),
+        )
     }
 
     fn cross_word_reverse(&self, word: &[usize], mut x: KgbId) -> Result<KgbId, StructureError> {
@@ -1640,7 +1661,7 @@ impl<'a> RepContext<'a> {
         theta_p: InvolutionId,
         roots: &[RootId],
     ) -> Result<Weight, StructureError> {
-        let system = self.inner_class.root_system();
+        let system = self.inner_class().root_system();
         let root_involution = self.root_involution_data(theta)?;
         let root_involution_p = self.root_involution_data(theta_p)?;
         let mut sum = vec![0_i32; system.lattice_rank()];
@@ -1696,7 +1717,7 @@ impl<'a> RepContext<'a> {
     /// denominator) pairs sorted ascending.
     pub fn reducibility_points(&self, z: &StandardRepr) -> Result<Vec<(i64, i64)>, StructureError> {
         z.ensure_defined()?;
-        let system = self.inner_class.root_system();
+        let system = self.inner_class().root_system();
         let numer = z.gamma().numerator();
         let d = z.gamma().denominator();
         let lam_rho = self.lambda_rho(z)?;
@@ -1799,7 +1820,7 @@ impl<'a> RepContext<'a> {
     /// Cayley transforms) and recording the resulting final parameters.
     pub fn finals_for(&self, z: &StandardRepr) -> Result<Vec<(StandardRepr, i32)>, StructureError> {
         z.ensure_defined()?;
-        let rd = self.inner_class.datum();
+        let rd = self.inner_class().datum();
         let mut result: Vec<(StandardRepr, i32)> = Vec::new();
         let mut to_do: Vec<(StandardRepr, i32)> = vec![(z.clone(), 1)];
         while let Some((current, mut coef)) = to_do.pop() {
@@ -2107,7 +2128,7 @@ impl<'a> RepContext<'a> {
         z: &StandardRepr,
     ) -> Result<Vec<(StandardRepr, i32)>, StructureError> {
         z.ensure_defined()?;
-        let datum = self.inner_class.datum();
+        let datum = self.inner_class().datum();
         let mut result = Vec::new();
         let mut todo = vec![(z.clone(), 1_i32)];
         while let Some((repr, mut coef)) = todo.pop() {
@@ -2389,7 +2410,11 @@ impl<'a> RepContext<'a> {
         // pairing is nonnegative (K_repr.cpp:543-545).
         let denominator = lambda.denominator();
         let mut sum = 0_i64;
-        for (&entry, &coordinate) in lambda.numerator().iter().zip(self.dual_two_rho.as_slice()) {
+        for (&entry, &coordinate) in lambda
+            .numerator()
+            .iter()
+            .zip(self.derived.dual_two_rho.as_slice())
+        {
             sum = sum
                 .checked_add(
                     entry
@@ -2693,7 +2718,7 @@ impl RepContext<'_> {
             .image(alpha)
             .ok_or(StructureError::IndexOutOfRange {
                 index: alpha.0,
-                upper_bound: self.inner_class.root_system().roots().len(),
+                upper_bound: self.inner_class().root_system().roots().len(),
             })
     }
 
@@ -2701,7 +2726,7 @@ impl RepContext<'_> {
     /// an exact step bound for the greedy dominance loops: it strictly
     /// decreases at every reflection (rootdata.h:638-640).
     pub(crate) fn weight_defect(&self, weight: &Weight) -> Result<i64, StructureError> {
-        let system = self.inner_class.root_system();
+        let system = self.inner_class().root_system();
         let mut defect = 0_i64;
         for (id, _, coroot) in system.entries() {
             if system
@@ -2733,7 +2758,7 @@ impl RepContext<'_> {
                 index: involution.0,
                 upper_bound: self.table.involution_count(),
             })?;
-        let system = self.inner_class.root_system();
+        let system = self.inner_class().root_system();
         let mut roots = Vec::new();
         for id in record
             .twisted_involution()
@@ -2761,8 +2786,8 @@ impl RepContext<'_> {
         x: KgbId,
         alpha: RootId,
     ) -> Result<bool, StructureError> {
-        let system = self.inner_class.root_system();
-        let datum = self.inner_class.datum();
+        let system = self.inner_class().root_system();
+        let datum = self.inner_class().datum();
         let coordinates =
             system
                 .simple_coordinates(alpha)
@@ -2812,7 +2837,7 @@ impl RepContext<'_> {
         weight: &mut Weight,
         offset: i32,
     ) -> Result<(), StructureError> {
-        let datum = self.inner_class.datum();
+        let datum = self.inner_class().datum();
         let pairing = pair(weight, &datum.simple_coroots()[generator])?
             .checked_add(offset)
             .ok_or(StructureError::ArithmeticOverflow)?;
@@ -2847,7 +2872,7 @@ impl RepContext<'_> {
         generator: usize,
         numerator: &mut [i64],
     ) -> Result<(), StructureError> {
-        let datum = self.inner_class.datum();
+        let datum = self.inner_class().datum();
         let coroot = &datum.simple_coroots()[generator];
         if numerator.len() != coroot.rank() {
             return Err(StructureError::RankMismatch {
@@ -2882,7 +2907,7 @@ impl RepContext<'_> {
     /// max(0, -<v, beta^v>)`, an exact step bound for the greedy
     /// dominance loops: it strictly decreases at every reflection.
     pub(crate) fn numerator_defect(&self, numerator: &[i64]) -> Result<i64, StructureError> {
-        let system = self.inner_class.root_system();
+        let system = self.inner_class().root_system();
         let mut defect = 0_i64;
         for (id, _, coroot) in system.entries() {
             if !system
@@ -2917,7 +2942,7 @@ impl RepContext<'_> {
         generator: usize,
         numerator: &[i64],
     ) -> Result<i64, StructureError> {
-        let coroot = &self.inner_class.datum().simple_coroots()[generator];
+        let coroot = &self.inner_class().datum().simple_coroots()[generator];
         let mut pairing = 0_i64;
         for (&entry, &coroot_entry) in numerator.iter().zip(coroot.as_slice()) {
             let product = entry
@@ -2933,7 +2958,7 @@ impl RepContext<'_> {
     /// `Rep_context::singular_simples` (repr.cpp:526-535): the simple
     /// generators with `<gamma, alpha_s^v> == 0`.
     pub(crate) fn singular_simples(&self, z: &StandardRepr) -> Result<Vec<bool>, StructureError> {
-        let datum = self.inner_class.datum();
+        let datum = self.inner_class().datum();
         let mut singulars = try_capacity(datum.semisimple_rank())?;
         for generator in 0..datum.semisimple_rank() {
             singulars
@@ -3019,7 +3044,7 @@ impl RepContext<'_> {
             .twisted_involution()
             .clone();
         let (canonical, word) = self
-            .inner_class
+            .inner_class()
             .canonicalize_with_generators(twisted, singulars)?;
         self.complex_crosses(z, &word)?;
         let landed = self.involution_of(z.x)?;
@@ -3045,7 +3070,7 @@ impl StandardRepr {
     /// dominant on the simply-imaginary coroots.
     pub fn is_standard(&self, rc: &RepContext) -> Result<bool, StructureError> {
         self.ensure_defined()?;
-        let system = rc.inner_class.root_system();
+        let system = rc.inner_class().root_system();
         for alpha in rc.imaginary_simple_roots_at(self.x)? {
             let coroot = system
                 .coroot(alpha)
@@ -3074,7 +3099,7 @@ impl StandardRepr {
     /// every simple coroot.
     pub fn is_dominant(&self, rc: &RepContext) -> Result<bool, StructureError> {
         self.ensure_defined()?;
-        let datum = rc.inner_class.datum();
+        let datum = rc.inner_class().datum();
         for generator in 0..datum.semisimple_rank() {
             if rc.simple_coroot_numerator_pairing(generator, self.gamma.numerator())? < 0 {
                 return Ok(false);
@@ -3088,7 +3113,7 @@ impl StandardRepr {
     /// does (the interpreter's adjective chain calls it in that order).
     pub fn is_nonzero(&self, rc: &RepContext) -> Result<bool, StructureError> {
         self.ensure_defined()?;
-        let system = rc.inner_class.root_system();
+        let system = rc.inner_class().root_system();
         for alpha in rc.imaginary_simple_roots_at(self.x)? {
             let coroot = system
                 .coroot(alpha)
@@ -3121,9 +3146,9 @@ impl StandardRepr {
         let positive_real = rc.positive_real_roots_at(self.x)?;
         let test_weight = checked_add_weights(
             &rc.y_lift(involution, &self.y_bits)?,
-            &checked_sub_weights(&rc.two_rho, &rc.two_rho_of(&positive_real)?)?,
+            &checked_sub_weights(rc.two_rho(), &rc.two_rho_of(&positive_real)?)?,
         )?;
-        let system = rc.inner_class.root_system();
+        let system = rc.inner_class().root_system();
         for alpha in positive_real {
             let coroot = system
                 .coroot(alpha)
@@ -3152,7 +3177,7 @@ impl StandardRepr {
     /// `is_nonzero` check.
     pub fn is_final(&self, rc: &RepContext) -> Result<bool, StructureError> {
         self.ensure_defined()?;
-        let datum = rc.inner_class.datum();
+        let datum = rc.inner_class().datum();
         let involution = rc.involution_of(self.x)?;
         let y_lift = rc.y_lift(involution, &self.y_bits)?;
         for generator in 0..datum.semisimple_rank() {
@@ -3197,7 +3222,7 @@ impl StandardRepr {
     /// by Weyl conjugates), so it is carried unchanged, as upstream does.
     pub fn made_dominant(&self, rc: &RepContext) -> Result<StandardRepr, StructureError> {
         self.ensure_defined()?;
-        let datum = rc.inner_class.datum();
+        let datum = rc.inner_class().datum();
         let mut z = self.clone();
         let mut lr = rc.lambda_rho(&z)?;
         let mut numerator = z.gamma.numerator().to_vec();
@@ -3244,7 +3269,7 @@ impl StandardRepr {
     /// descent case). Returns the readjusted parameter.
     pub fn deform_readjust(&self, rc: &RepContext) -> Result<StandardRepr, StructureError> {
         self.ensure_defined()?;
-        let datum = rc.inner_class.datum();
+        let datum = rc.inner_class().datum();
         let mut z = self.clone();
         let mut lr = rc.lambda_rho(&z)?;
         let mut numer = z.gamma.numerator().to_vec();

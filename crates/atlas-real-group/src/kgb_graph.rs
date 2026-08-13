@@ -16,6 +16,7 @@
 //! by the sorted involutions.
 
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use malachite::{Integer, Rational};
 
@@ -60,6 +61,7 @@ pub enum KgbStatus {
 /// One weak real form's KGB graph.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct KgbGraph {
+    inner_class: Arc<InnerClass>,
     form: WeakRealFormId,
     rank: usize,
     cocharacter: RationalCoweight,
@@ -432,6 +434,7 @@ impl KgbGraph {
         }
 
         Ok(Self {
+            inner_class: Arc::clone(table.inner_class_shared()),
             form,
             rank,
             cocharacter: seed.square_class_cocharacter().clone(),
@@ -531,6 +534,15 @@ impl KgbGraph {
 
     pub fn form(&self) -> WeakRealFormId {
         self.form
+    }
+
+    /// The complete inner-class provenance used to build this graph.
+    pub fn inner_class(&self) -> &InnerClass {
+        self.inner_class.as_ref()
+    }
+
+    pub(crate) fn inner_class_shared(&self) -> &Arc<InnerClass> {
+        &self.inner_class
     }
 
     /// The seed's elected square-class cocharacter — upstream

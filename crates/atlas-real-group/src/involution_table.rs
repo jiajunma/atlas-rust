@@ -14,6 +14,7 @@
 //! ascending [`CartanId`]) with an external-order BFS inside each orbit.
 
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use crate::grading::try_capacity;
 use crate::integer_lattice::{negative_coweight_eigenspace, reduce_basis_mod_two};
@@ -104,7 +105,7 @@ impl InvolutionRecord {
 /// involutions, shared across the real forms of one inner class.
 #[derive(Clone, Debug)]
 pub struct InvolutionTable {
-    inner_class: InnerClass,
+    inner_class: Arc<InnerClass>,
     budget: InvolutionTableBudget,
     twist: Vec<usize>,
     reflections: Vec<WeylElement>,
@@ -168,7 +169,7 @@ impl InvolutionTable {
         }
 
         Ok(Self {
-            inner_class: inner_class.clone(),
+            inner_class: Arc::new(inner_class.clone()),
             budget,
             twist,
             reflections,
@@ -417,6 +418,10 @@ impl InvolutionTable {
     }
 
     pub fn inner_class(&self) -> &InnerClass {
+        self.inner_class.as_ref()
+    }
+
+    pub(crate) fn inner_class_shared(&self) -> &Arc<InnerClass> {
         &self.inner_class
     }
 

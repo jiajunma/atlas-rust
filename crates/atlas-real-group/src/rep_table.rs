@@ -16,15 +16,15 @@ use std::time::Duration;
 
 use crate::matreduc::IntMatrix;
 use crate::real_projection::RealProjection;
-use crate::rep_context::RepContextIdentity;
+use crate::rep_context::RepContextDerived;
 use crate::{
-    bruhat_below, CommonContext, KgbId, PartialBlock, RationalWeight, RepContext, StandardRepr,
-    StandardReprMod, StructureError, Weight,
+    bruhat_below, CommonContext, InvolutionTable, KgbGraph, KgbId, PartialBlock, RationalWeight,
+    RepContext, StandardRepr, StandardReprMod, StructureError, Weight,
 };
 
 /// Identity of the integral root system used to reduce a parameter.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(crate) enum IntegralSystem {
+enum IntegralSystem {
     /// The full root system, without allocating an integral-system table slot.
     Full,
     /// A non-full integral system already interned by its owning table.
@@ -33,14 +33,14 @@ pub(crate) enum IntegralSystem {
 
 /// Hash-stable identity of a reduced parameter.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(crate) struct ReducedParamKey {
-    pub(crate) x: KgbId,
-    pub(crate) integral_system: IntegralSystem,
-    pub(crate) residue: u32,
+struct ReducedParamKey {
+    x: KgbId,
+    integral_system: IntegralSystem,
+    residue: u32,
 }
 
 impl ReducedParamKey {
-    pub(crate) const fn new(x: KgbId, integral_system: IntegralSystem, residue: u32) -> Self {
+    const fn new(x: KgbId, integral_system: IntegralSystem, residue: u32) -> Self {
         Self {
             x,
             integral_system,
@@ -52,7 +52,7 @@ impl ReducedParamKey {
 /// Smith-style codec for integral-coroot evaluations modulo
 /// `(1-theta)X^*`.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct IntegralCodec {
+struct IntegralCodec {
     coroots: IntMatrix,
     diagonal: Vec<i32>,
     input: IntMatrix,
@@ -60,10 +60,7 @@ pub(crate) struct IntegralCodec {
 }
 
 impl IntegralCodec {
-    pub(crate) fn new(
-        projection: &RealProjection,
-        coroots: &IntMatrix,
-    ) -> Result<Self, StructureError> {
+    fn new(projection: &RealProjection, coroots: &IntMatrix) -> Result<Self, StructureError> {
         let ambient_rank = projection.lift_mat.len();
         let image_rank = projection.image_rank();
         if coroots.n_columns() != ambient_rank
@@ -149,10 +146,7 @@ impl IntegralCodec {
         })
     }
 
-    pub(crate) fn internalise(
-        &self,
-        gamma_lambda: &RationalWeight,
-    ) -> Result<Vec<i32>, StructureError> {
+    fn internalise(&self, gamma_lambda: &RationalWeight) -> Result<Vec<i32>, StructureError> {
         if gamma_lambda.rank() != self.coroots.n_columns() {
             return Err(StructureError::RankMismatch {
                 expected: self.coroots.n_columns(),
@@ -191,7 +185,7 @@ impl IntegralCodec {
         Ok(evaluations)
     }
 
-    pub(crate) fn residue(&self, gamma_lambda: &RationalWeight) -> Result<u32, StructureError> {
+    fn residue(&self, gamma_lambda: &RationalWeight) -> Result<u32, StructureError> {
         let evaluations = self.internalise(gamma_lambda)?;
         let mut packed = 0_u32;
         for (index, &modulus) in self.diagonal.iter().enumerate() {
@@ -207,7 +201,7 @@ impl IntegralCodec {
         Ok(packed)
     }
 
-    pub(crate) fn reduced_key(
+    fn reduced_key(
         &self,
         x: KgbId,
         integral_system: IntegralSystem,
@@ -220,10 +214,7 @@ impl IntegralCodec {
         ))
     }
 
-    pub(crate) fn theta_1_preimage(
-        &self,
-        difference: &RationalWeight,
-    ) -> Result<Weight, StructureError> {
+    fn theta_1_preimage(&self, difference: &RationalWeight) -> Result<Weight, StructureError> {
         let evaluations = self.internalise(difference)?;
         let mut coordinates = Vec::new();
         coordinates
@@ -276,11 +267,11 @@ impl IntegralCodec {
 /// already returned [`LocatedBlock`] keeps its `Arc` alive while fresh table
 /// resolution no longer returns the superseded block.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(crate) struct BlockId(usize);
+struct BlockId(usize);
 
 impl BlockId {
     /// The append-only sequence number, primarily useful for diagnostics.
-    pub(crate) const fn index(self) -> usize {
+    const fn index(self) -> usize {
         self.0
     }
 }
@@ -398,7 +389,7 @@ impl State {
 /// `adapted_representative` describe how the representative selected by a
 /// possibly colliding reduced key is related to this query.
 #[derive(Clone, Debug)]
-pub(crate) struct LocatedBlock {
+pub struct LocatedBlock {
     record: Arc<BlockRecord>,
     raw_row: usize,
     relative_shift: RationalWeight,
@@ -406,27 +397,32 @@ pub(crate) struct LocatedBlock {
 }
 
 impl LocatedBlock {
-    pub(crate) fn block_id(&self) -> BlockId {
+    fn block_id(&self) -> BlockId {
         self.record.id
     }
 
-    pub(crate) fn block(&self) -> Arc<PartialBlock> {
+    /// The materialized common block containing the query.
+    pub fn block(&self) -> Arc<PartialBlock> {
         Arc::clone(&self.record.block)
     }
 
-    pub(crate) fn raw_row(&self) -> usize {
+    /// The query's row in the stored block numbering.
+    pub fn raw_row(&self) -> usize {
         self.raw_row
     }
 
-    pub(crate) fn is_full(&self) -> bool {
+    /// Whether this handle refers to a full common block.
+    pub fn is_full(&self) -> bool {
         self.record.full
     }
 
-    pub(crate) fn relative_shift(&self) -> &RationalWeight {
+    /// The central shift from the stored representative to this query.
+    pub fn relative_shift(&self) -> &RationalWeight {
         &self.relative_shift
     }
 
-    pub(crate) fn adapted_representative(&self) -> &StandardReprMod {
+    /// The stored representative adapted by [`Self::relative_shift`].
+    pub fn adapted_representative(&self) -> &StandardReprMod {
         &self.adapted_representative
     }
 }
@@ -502,20 +498,15 @@ impl TestHooks {
 }
 
 #[derive(Debug)]
-pub(crate) struct RepTable<'a> {
-    // The identity owns borrows of all three context substrates. This makes a
-    // table statically unable to outlive them, in addition to runtime
-    // pointer-identity validation on every lookup.
-    identity: RepContextIdentity<'a>,
+struct RepTable {
     state: Mutex<State>,
     #[cfg(test)]
     hooks: TestHooks,
 }
 
-impl<'owner> RepTable<'owner> {
-    pub(crate) fn new(rc: &RepContext<'owner>) -> Self {
+impl RepTable {
+    fn new() -> Self {
         Self {
-            identity: rc.identity(),
             state: Mutex::new(State::default()),
             #[cfg(test)]
             hooks: TestHooks::default(),
@@ -523,13 +514,8 @@ impl<'owner> RepTable<'owner> {
     }
 
     #[cfg(test)]
-    fn with_test_gates(
-        rc: &RepContext<'owner>,
-        partial: Vec<TestGate>,
-        full: Vec<TestGate>,
-    ) -> Self {
+    fn with_test_gates(partial: Vec<TestGate>, full: Vec<TestGate>) -> Self {
         Self {
-            identity: rc.identity(),
             state: Mutex::new(State::default()),
             hooks: TestHooks {
                 partial: Mutex::new(partial.into()),
@@ -539,12 +525,11 @@ impl<'owner> RepTable<'owner> {
     }
 
     /// Resolve or materialize the smallest partial block below `query`.
-    pub(crate) fn lookup(
+    fn lookup(
         &self,
         rc: &RepContext<'_>,
         query: &StandardRepr,
     ) -> Result<LocatedBlock, StructureError> {
-        self.validate_context(rc)?;
         let query = query.normalised(rc)?;
         let seed = StandardReprMod::mod_reduce(rc, &query)?;
         let context = Self::full_integral_context(rc, query.gamma())?;
@@ -573,12 +558,11 @@ impl<'owner> RepTable<'owner> {
     }
 
     /// Resolve or materialize the full common block containing `query`.
-    pub(crate) fn lookup_full_block(
+    fn lookup_full_block(
         &self,
         rc: &RepContext<'_>,
         query: &StandardRepr,
     ) -> Result<LocatedBlock, StructureError> {
-        self.validate_context(rc)?;
         let query = query.made_dominant(rc)?;
         let seed = StandardReprMod::mod_reduce(rc, &query)?;
         let context = Self::full_integral_context(rc, query.gamma())?;
@@ -645,7 +629,7 @@ impl<'owner> RepTable<'owner> {
 
     /// Resolve an active stable ID. Superseded IDs deliberately return
     /// `None`; previously returned `LocatedBlock` handles remain usable.
-    pub(crate) fn block(&self, id: BlockId) -> Result<Option<Arc<PartialBlock>>, StructureError> {
+    fn block(&self, id: BlockId) -> Result<Option<Arc<PartialBlock>>, StructureError> {
         Ok(self
             .lock_state()?
             .active(id)
@@ -658,15 +642,6 @@ impl<'owner> RepTable<'owner> {
             .map_err(|_| StructureError::RepInvariantViolation {
                 invariant: "representation table mutex",
             })
-    }
-
-    fn validate_context(&self, rc: &RepContext<'_>) -> Result<(), StructureError> {
-        if !self.identity.same_owner(&rc.identity()) {
-            return Err(StructureError::RepInvariantViolation {
-                invariant: "representation table context mismatch",
-            });
-        }
-        Ok(())
     }
 
     fn probe(
@@ -812,6 +787,147 @@ impl<'owner> RepTable<'owner> {
     }
 }
 
+/// Owned representation context substrates and their shared block cache.
+///
+/// A fresh [`RepContext`] is borrowed from the owned table and graph for each
+/// operation. Cloning an `Arc<RepTableOwner>` therefore shares the same cache
+/// without making the cache self-referential.
+#[derive(Debug)]
+pub struct RepTableOwner {
+    table: Arc<InvolutionTable>,
+    graph: Arc<KgbGraph>,
+    derived: Arc<RepContextDerived>,
+    blocks: RepTable,
+}
+
+impl RepTableOwner {
+    /// Validate and bind an owned involution table/KGB graph pair.
+    pub fn new(table: InvolutionTable, graph: KgbGraph) -> Result<Self, StructureError> {
+        Self::from_shared(Arc::new(table), Arc::new(graph))
+    }
+
+    /// Validate and bind already-shared involution table/KGB graph substrates.
+    pub fn from_shared(
+        table: Arc<InvolutionTable>,
+        graph: Arc<KgbGraph>,
+    ) -> Result<Self, StructureError> {
+        let rc = RepContext::new(table.inner_class(), table.as_ref(), graph.as_ref())?;
+        Self::validate_substrates(&rc)?;
+        let derived = Arc::clone(rc.derived());
+        Ok(Self {
+            table,
+            graph,
+            derived,
+            blocks: RepTable::new(),
+        })
+    }
+
+    #[cfg(test)]
+    fn with_test_gates(
+        table: InvolutionTable,
+        graph: KgbGraph,
+        partial: Vec<TestGate>,
+        full: Vec<TestGate>,
+    ) -> Result<Self, StructureError> {
+        let table = Arc::new(table);
+        let graph = Arc::new(graph);
+        let rc = RepContext::new(table.inner_class(), table.as_ref(), graph.as_ref())?;
+        Self::validate_substrates(&rc)?;
+        let derived = Arc::clone(rc.derived());
+        Ok(Self {
+            table,
+            graph,
+            derived,
+            blocks: RepTable::with_test_gates(partial, full),
+        })
+    }
+
+    /// Borrow a temporary representation context from this owner.
+    pub fn context(&self) -> RepContext<'_> {
+        RepContext::from_derived(
+            self.table.as_ref(),
+            self.graph.as_ref(),
+            Arc::clone(&self.derived),
+        )
+    }
+
+    /// Resolve or materialize the smallest partial block below `query`.
+    pub fn lookup(&self, query: &StandardRepr) -> Result<LocatedBlock, StructureError> {
+        self.blocks.lookup(&self.context(), query)
+    }
+
+    /// Resolve or materialize the full common block containing `query`.
+    pub fn lookup_full_block(&self, query: &StandardRepr) -> Result<LocatedBlock, StructureError> {
+        self.blocks.lookup_full_block(&self.context(), query)
+    }
+
+    /// Transitional access to the owned involution table.
+    pub fn table(&self) -> &InvolutionTable {
+        self.table.as_ref()
+    }
+
+    /// Transitional access to the owned KGB graph.
+    pub fn graph(&self) -> &KgbGraph {
+        self.graph.as_ref()
+    }
+
+    fn validate_substrates(rc: &RepContext<'_>) -> Result<(), StructureError> {
+        let table = rc.table();
+        let graph = rc.graph();
+        if graph.semisimple_rank() != rc.datum().semisimple_rank()
+            || graph.cocharacter().coordinates().len() != rc.rank()
+            || graph.base_grading().len() != rc.datum().semisimple_rank()
+        {
+            return Err(StructureError::DatumMismatch);
+        }
+        for x in graph.ids() {
+            let involution =
+                graph
+                    .involution_of(x)
+                    .ok_or(StructureError::KgbInvariantViolation {
+                        invariant: "involution bucket",
+                    })?;
+            let record = table
+                .record(involution)
+                .ok_or(StructureError::KgbInvariantViolation {
+                    invariant: "involution bucket",
+                })?;
+            if graph.length(x) != Some(record.involution_length())
+                || graph.cartan_of(x) != table.cartan_of(involution)
+            {
+                return Err(StructureError::KgbInvariantViolation {
+                    invariant: "involution bucket",
+                });
+            }
+            for generator in 0..graph.semisimple_rank() {
+                let compatible = matches!(
+                    (
+                        table.simple_root_kind(involution, generator),
+                        graph.status(x, generator),
+                    ),
+                    (
+                        Some(crate::RootKind::Complex),
+                        Some(crate::KgbStatus::Complex)
+                    ) | (Some(crate::RootKind::Real), Some(crate::KgbStatus::Real))
+                        | (
+                            Some(crate::RootKind::Imaginary),
+                            Some(
+                                crate::KgbStatus::ImaginaryCompact
+                                    | crate::KgbStatus::ImaginaryNoncompact,
+                            ),
+                        )
+                );
+                if !compatible {
+                    return Err(StructureError::KgbInvariantViolation {
+                        invariant: "status classification",
+                    });
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct StateSnapshot {
@@ -937,6 +1053,18 @@ mod tests {
         fixture(datum, involution, 2, 3)
     }
 
+    fn opposite_based_a1_fixture() -> ContextFixture {
+        let datum = BasedRootDatum::from_simple_data(
+            1,
+            vec![vec![2]],
+            vec![Weight::new(vec![-2])],
+            vec![crate::Coweight::new(vec![-1])],
+        )
+        .unwrap();
+        let involution = LatticeInvolution::identity(&datum).unwrap();
+        fixture(datum, involution, 2, 3)
+    }
+
     fn b2_fixture() -> ContextFixture {
         let datum = BasedRootDatum::from_simple_data(
             2,
@@ -957,6 +1085,10 @@ mod tests {
             .unwrap()
             .to_standard(rc, &RationalWeight::new(vec![1], 1).unwrap())
             .unwrap()
+    }
+
+    fn owner(fixture: &ContextFixture) -> RepTableOwner {
+        RepTableOwner::new(fixture.table.clone(), fixture.graph.clone()).unwrap()
     }
 
     fn projection(lift_entries: &[i64]) -> RealProjection {
@@ -1031,6 +1163,110 @@ mod tests {
     }
 
     #[test]
+    fn owner_clones_substrates_and_exposes_a_temporary_context() {
+        let fixture = a1_fixture();
+        let owner = owner(&fixture);
+        let rc = owner.context();
+
+        assert_eq!(owner.table().inner_class(), fixture.table.inner_class());
+        assert_eq!(owner.graph(), &fixture.graph);
+        assert!(std::ptr::eq(rc.table(), owner.table()));
+        assert!(std::ptr::eq(rc.graph(), owner.graph()));
+    }
+
+    #[test]
+    fn owner_can_share_existing_arc_substrates_without_cloning_data() {
+        let fixture = a1_fixture();
+        let table = Arc::new(fixture.table);
+        let graph = Arc::new(fixture.graph);
+        let owner = RepTableOwner::from_shared(Arc::clone(&table), Arc::clone(&graph)).unwrap();
+
+        assert!(std::ptr::eq(owner.table(), table.as_ref()));
+        assert!(std::ptr::eq(owner.graph(), graph.as_ref()));
+        assert_eq!(Arc::strong_count(&table), 2);
+        assert_eq!(Arc::strong_count(&graph), 2);
+    }
+
+    #[test]
+    fn owner_context_reuses_precomputed_derived_constants() {
+        let fixture = a1_fixture();
+        let owner = owner(&fixture);
+        let first = owner.context();
+        let second = owner.context();
+
+        assert!(Arc::ptr_eq(first.derived(), second.derived()));
+        assert!(Arc::ptr_eq(first.derived(), &owner.derived));
+    }
+
+    #[test]
+    fn owner_substrates_and_derived_share_one_inner_class_arc() {
+        let fixture = a1_fixture();
+        let owner = owner(&fixture);
+
+        assert!(Arc::ptr_eq(
+            owner.table.inner_class_shared(),
+            owner.graph.inner_class_shared()
+        ));
+        assert!(Arc::ptr_eq(
+            owner.table.inner_class_shared(),
+            &owner.derived.inner_class
+        ));
+    }
+
+    #[test]
+    fn cloned_kgb_graph_shares_inner_class_provenance() {
+        let fixture = a1_fixture();
+        let clone = fixture.graph.clone();
+
+        assert!(Arc::ptr_eq(
+            fixture.graph.inner_class_shared(),
+            clone.inner_class_shared()
+        ));
+    }
+
+    #[test]
+    fn owner_rejects_an_incompatible_table_and_graph() {
+        let a1 = a1_fixture();
+        let b2 = b2_fixture();
+
+        assert!(matches!(
+            RepTableOwner::new(a1.table, b2.graph),
+            Err(StructureError::DatumMismatch)
+        ));
+    }
+
+    #[test]
+    fn owner_rejects_same_shape_graph_from_a_different_inner_class() {
+        let primal = a1_fixture();
+        let opposite = opposite_based_a1_fixture();
+
+        assert_ne!(primal.table.inner_class(), opposite.table.inner_class());
+        assert_eq!(
+            primal.graph.semisimple_rank(),
+            opposite.graph.semisimple_rank()
+        );
+        assert_eq!(primal.graph.size(), opposite.graph.size());
+        for x in primal.graph.ids() {
+            assert_eq!(primal.graph.cartan_of(x), opposite.graph.cartan_of(x));
+            for generator in 0..primal.graph.semisimple_rank() {
+                assert_eq!(
+                    primal.graph.status(x, generator),
+                    opposite.graph.status(x, generator)
+                );
+            }
+        }
+
+        assert!(matches!(
+            RepContext::new(primal.table.inner_class(), &primal.table, &opposite.graph),
+            Err(StructureError::DatumMismatch)
+        ));
+        assert!(matches!(
+            RepTableOwner::new(primal.table, opposite.graph),
+            Err(StructureError::DatumMismatch)
+        ));
+    }
+
+    #[test]
     fn theta_1_preimage_recovers_an_image_weight() {
         let codec = IntegralCodec::new(&projection(&[2, 3]), &diagonal_matrix(&[1, 1])).unwrap();
         let difference = RationalWeight::new(vec![8, -6], 1).unwrap();
@@ -1078,19 +1314,19 @@ mod tests {
     #[test]
     fn a1_partial_then_full_promotes_raw_row_zero_to_one() {
         let fixture = a1_fixture();
-        let rc = fixture.rc();
+        let owner = owner(&fixture);
+        let rc = owner.context();
         let gamma = RationalWeight::new(vec![1], 1).unwrap();
         let query = StandardReprMod::build(&rc, KgbId(1), &RationalWeight::zero(1).unwrap())
             .unwrap()
             .to_standard(&rc, &gamma)
             .unwrap();
-        let table = RepTable::new(&rc);
 
-        let partial = table.lookup(&rc, &query).unwrap();
+        let partial = owner.lookup(&query).unwrap();
         assert_eq!(partial.raw_row(), 0);
         assert!(!partial.is_full());
 
-        let full = table.lookup_full_block(&rc, &query).unwrap();
+        let full = owner.lookup_full_block(&query).unwrap();
         assert_eq!(full.raw_row(), 1);
         assert!(full.is_full());
         assert_ne!(partial.block_id(), full.block_id());
@@ -1101,14 +1337,14 @@ mod tests {
     #[test]
     fn b2_full_registers_every_row_and_keeps_the_two_top_keys_distinct() {
         let fixture = b2_fixture();
-        let rc = fixture.rc();
+        let owner = owner(&fixture);
+        let rc = owner.context();
         let gamma = RationalWeight::new(vec![2, 2], 1).unwrap();
         let seed = StandardReprMod::build(&rc, KgbId(0), &RationalWeight::zero(2).unwrap())
             .unwrap()
             .to_standard(&rc, &gamma)
             .unwrap();
-        let table = RepTable::new(&rc);
-        let installed = table.lookup_full_block(&rc, &seed).unwrap();
+        let installed = owner.lookup_full_block(&seed).unwrap();
         let block = installed.block();
         let row_keys = RepTable::row_keys(&rc, &block).unwrap();
 
@@ -1126,7 +1362,7 @@ mod tests {
                 .unwrap()
                 .to_standard(&rc, &gamma)
                 .unwrap();
-            let located = table.lookup_full_block(&rc, &query).unwrap();
+            let located = owner.lookup_full_block(&query).unwrap();
             assert_eq!(located.block_id(), installed.block_id(), "row {row}");
             assert_eq!(located.raw_row(), row, "row {row}");
             assert_eq!(
@@ -1174,7 +1410,8 @@ mod tests {
     #[test]
     fn related_modifier_restores_an_integral_orthogonal_query() {
         let fixture = a1_t1_fixture();
-        let rc = fixture.rc();
+        let owner = owner(&fixture);
+        let rc = owner.context();
         let gamma = RationalWeight::new(vec![2, 0], 1).unwrap();
         let stored =
             StandardReprMod::build(&rc, KgbId(1), &RationalWeight::zero(2).unwrap()).unwrap();
@@ -1189,13 +1426,12 @@ mod tests {
             codec.theta_1_preimage(&related.gamma_lambda().sub(stored.gamma_lambda()).unwrap()),
             Ok(Weight::new(vec![0, 0]))
         );
-        let table = RepTable::new(&rc);
-        let installed = table
-            .lookup_full_block(&rc, &stored.to_standard(&rc, &gamma).unwrap())
+        let installed = owner
+            .lookup_full_block(&stored.to_standard(&rc, &gamma).unwrap())
             .unwrap();
 
-        let located = table
-            .lookup_full_block(&rc, &related.to_standard(&rc, &gamma).unwrap())
+        let located = owner
+            .lookup_full_block(&related.to_standard(&rc, &gamma).unwrap())
             .unwrap();
 
         assert_eq!(located.block_id(), installed.block_id());
@@ -1210,7 +1446,8 @@ mod tests {
     #[test]
     fn full_promotion_retires_every_partial_and_clears_all_places() {
         let fixture = a1_fixture();
-        let rc = fixture.rc();
+        let owner = owner(&fixture);
+        let rc = owner.context();
         let gamma = RationalWeight::new(vec![1], 1).unwrap();
         let zero = RationalWeight::zero(1).unwrap();
         let query = |x| {
@@ -1219,32 +1456,29 @@ mod tests {
                 .to_standard(&rc, &gamma)
                 .unwrap()
         };
-        let table = RepTable::new(&rc);
-        let left = table.lookup(&rc, &query(0)).unwrap();
-        let right = table.lookup(&rc, &query(1)).unwrap();
+        let left = owner.lookup(&query(0)).unwrap();
+        let right = owner.lookup(&query(1)).unwrap();
         assert_ne!(left.block_id(), right.block_id());
-        assert_eq!(table.state_counts(), (2, 2, 2));
+        assert_eq!(owner.blocks.state_counts(), (2, 2, 2));
 
-        let full = table.lookup_full_block(&rc, &query(2)).unwrap();
+        let full = owner.lookup_full_block(&query(2)).unwrap();
 
         assert_eq!(full.block_id().index(), 2);
-        assert_eq!(table.state_counts(), (3, 1, 3));
-        assert!(table.block(left.block_id()).unwrap().is_none());
-        assert!(table.block(right.block_id()).unwrap().is_none());
+        assert_eq!(owner.blocks.state_counts(), (3, 1, 3));
+        assert!(owner.blocks.block(left.block_id()).unwrap().is_none());
+        assert!(owner.blocks.block(right.block_id()).unwrap().is_none());
         assert_eq!(left.block().size(), 1, "existing Arc remains valid");
         assert_eq!(right.block().size(), 1, "existing Arc remains valid");
         for x in 0..3 {
-            assert_eq!(
-                table.lookup(&rc, &query(x)).unwrap().block_id(),
-                full.block_id()
-            );
+            assert_eq!(owner.lookup(&query(x)).unwrap().block_id(), full.block_id());
         }
     }
 
     #[test]
     fn unsupported_partial_overlap_is_failure_atomic() {
         let fixture = a1_fixture();
-        let rc = fixture.rc();
+        let owner = owner(&fixture);
+        let rc = owner.context();
         let gamma = RationalWeight::new(vec![1], 1).unwrap();
         let zero = RationalWeight::zero(1).unwrap();
         let query = |x| {
@@ -1253,63 +1487,95 @@ mod tests {
                 .to_standard(&rc, &gamma)
                 .unwrap()
         };
-        let table = RepTable::new(&rc);
-        let first = table.lookup(&rc, &query(0)).unwrap();
-        let before = table.state_counts();
+        let first = owner.lookup(&query(0)).unwrap();
+        let before = owner.blocks.state_counts();
 
         assert!(matches!(
-            table.lookup(&rc, &query(2)),
+            owner.lookup(&query(2)),
             Err(StructureError::NotYetImplemented {
                 feature: "merging overlapping partial representation blocks"
             })
         ));
-        assert_eq!(table.state_counts(), before);
-        assert!(table.block(first.block_id()).unwrap().is_some());
+        assert_eq!(owner.blocks.state_counts(), before);
+        assert!(owner.blocks.block(first.block_id()).unwrap().is_some());
         assert_eq!(
-            table.lookup(&rc, &query(0)).unwrap().block_id(),
+            owner.lookup(&query(0)).unwrap().block_id(),
             first.block_id()
         );
     }
 
     #[test]
-    fn rejects_a_rep_context_other_than_the_bound_owner() {
+    fn owners_keep_representation_blocks_isolated() {
         let first = a1_fixture();
         let second = a1_fixture();
-        let first_rc = first.rc();
-        let second_rc = second.rc();
-        let table = RepTable::new(&first_rc);
+        let first_owner = owner(&first);
+        let second_owner = owner(&second);
+        let first_rc = first_owner.context();
+        let second_rc = second_owner.context();
 
-        assert!(matches!(
-            table.lookup(&second_rc, &a1_query(&second_rc, 0)),
-            Err(StructureError::RepInvariantViolation {
-                invariant: "representation table context mismatch"
-            })
-        ));
-        assert_eq!(table.state_counts(), (0, 0, 0));
+        let first_block = first_owner.lookup(&a1_query(&first_rc, 0)).unwrap();
+        let second_block = second_owner.lookup(&a1_query(&second_rc, 1)).unwrap();
+
+        assert_eq!(first_block.block_id().index(), 0);
+        assert_eq!(second_block.block_id().index(), 0);
+        assert_eq!(first_owner.blocks.state_counts(), (1, 1, 1));
+        assert_eq!(second_owner.blocks.state_counts(), (1, 1, 1));
+    }
+
+    #[test]
+    fn arc_clones_share_one_owner_representation_table() {
+        let fixture = a1_fixture();
+        let owner = Arc::new(owner(&fixture));
+        let first = Arc::clone(&owner);
+        let second = Arc::clone(&owner);
+
+        let ids = std::thread::scope(|scope| {
+            let first_worker = scope.spawn(move || {
+                let rc = first.context();
+                first
+                    .lookup_full_block(&a1_query(&rc, 1))
+                    .unwrap()
+                    .block_id()
+            });
+            let second_worker = scope.spawn(move || {
+                let rc = second.context();
+                second
+                    .lookup_full_block(&a1_query(&rc, 2))
+                    .unwrap()
+                    .block_id()
+            });
+            [first_worker.join().unwrap(), second_worker.join().unwrap()]
+        });
+
+        assert_eq!(ids, [BlockId(0), BlockId(0)]);
+        assert_eq!(owner.blocks.state_counts(), (1, 1, 3));
     }
 
     #[test]
     fn concurrent_full_materialization_commits_one_active_record() {
-        let fixture = Arc::new(a1_fixture());
+        let fixture = a1_fixture();
         let first_gate = TestGate::new();
         let second_gate = TestGate::new();
-        let table = Arc::new(RepTable::with_test_gates(
-            &fixture.rc(),
-            Vec::new(),
-            vec![first_gate.clone(), second_gate.clone()],
-        ));
+        let owner = Arc::new(
+            RepTableOwner::with_test_gates(
+                fixture.table,
+                fixture.graph,
+                Vec::new(),
+                vec![first_gate.clone(), second_gate.clone()],
+            )
+            .unwrap(),
+        );
         let ids = std::thread::scope(|scope| {
             let mut workers = Vec::new();
             for (index, gate) in [first_gate.clone(), second_gate.clone()]
                 .into_iter()
                 .enumerate()
             {
-                let fixture = Arc::clone(&fixture);
-                let table = Arc::clone(&table);
+                let owner = Arc::clone(&owner);
                 workers.push(scope.spawn(move || {
-                    let rc = fixture.rc();
-                    table
-                        .lookup_full_block(&rc, &a1_query(&rc, index + 1))
+                    let rc = owner.context();
+                    owner
+                        .lookup_full_block(&a1_query(&rc, index + 1))
                         .unwrap()
                         .block_id()
                 }));
@@ -1324,106 +1590,112 @@ mod tests {
         });
 
         assert_eq!(ids, vec![BlockId(0), BlockId(0)]);
-        assert_eq!(table.state_counts(), (1, 1, 3));
-        assert!(table.state_is_consistent());
+        assert_eq!(owner.blocks.state_counts(), (1, 1, 3));
+        assert!(owner.blocks.state_is_consistent());
     }
 
     #[test]
     fn full_waiting_to_commit_retires_a_partial_committed_during_materialization() {
-        let fixture = Arc::new(a1_fixture());
+        let fixture = a1_fixture();
         let full_gate = TestGate::new();
-        let table = Arc::new(RepTable::with_test_gates(
-            &fixture.rc(),
-            Vec::new(),
-            vec![full_gate.clone()],
-        ));
+        let owner = Arc::new(
+            RepTableOwner::with_test_gates(
+                fixture.table,
+                fixture.graph,
+                Vec::new(),
+                vec![full_gate.clone()],
+            )
+            .unwrap(),
+        );
         let (partial, full) = std::thread::scope(|scope| {
-            let worker_fixture = Arc::clone(&fixture);
-            let worker_table = Arc::clone(&table);
+            let worker_owner = Arc::clone(&owner);
             let full_worker = scope.spawn(move || {
-                let rc = worker_fixture.rc();
-                worker_table
-                    .lookup_full_block(&rc, &a1_query(&rc, 2))
-                    .unwrap()
+                let rc = worker_owner.context();
+                worker_owner.lookup_full_block(&a1_query(&rc, 2)).unwrap()
             });
             full_gate.wait_until_reached();
 
-            let rc = fixture.rc();
-            let partial = table.lookup(&rc, &a1_query(&rc, 0)).unwrap();
-            assert_eq!(table.state_counts(), (1, 1, 1));
+            let rc = owner.context();
+            let partial = owner.lookup(&a1_query(&rc, 0)).unwrap();
+            assert_eq!(owner.blocks.state_counts(), (1, 1, 1));
             full_gate.release();
             (partial, full_worker.join().unwrap())
         });
 
-        assert_eq!(table.state_counts(), (2, 1, 3));
-        assert_eq!(table.state_snapshot().slots, vec![None, Some(true)]);
-        assert!(table.block(partial.block_id()).unwrap().is_none());
+        assert_eq!(owner.blocks.state_counts(), (2, 1, 3));
+        assert_eq!(owner.blocks.state_snapshot().slots, vec![None, Some(true)]);
+        assert!(owner.blocks.block(partial.block_id()).unwrap().is_none());
         assert_eq!(partial.block().size(), 1, "retired handle remains valid");
         assert!(full.is_full());
-        assert!(table.state_is_consistent());
+        assert!(owner.blocks.state_is_consistent());
     }
 
     #[test]
     fn partial_waiting_to_commit_reuses_a_full_committed_during_materialization() {
-        let fixture = Arc::new(a1_fixture());
+        let fixture = a1_fixture();
         let partial_gate = TestGate::new();
-        let table = Arc::new(RepTable::with_test_gates(
-            &fixture.rc(),
-            vec![partial_gate.clone()],
-            Vec::new(),
-        ));
+        let owner = Arc::new(
+            RepTableOwner::with_test_gates(
+                fixture.table,
+                fixture.graph,
+                vec![partial_gate.clone()],
+                Vec::new(),
+            )
+            .unwrap(),
+        );
         let (full, partial_result) = std::thread::scope(|scope| {
-            let worker_fixture = Arc::clone(&fixture);
-            let worker_table = Arc::clone(&table);
+            let worker_owner = Arc::clone(&owner);
             let partial_worker = scope.spawn(move || {
-                let rc = worker_fixture.rc();
-                worker_table.lookup(&rc, &a1_query(&rc, 2)).unwrap()
+                let rc = worker_owner.context();
+                worker_owner.lookup(&a1_query(&rc, 2)).unwrap()
             });
             partial_gate.wait_until_reached();
 
-            let rc = fixture.rc();
-            let full = table.lookup_full_block(&rc, &a1_query(&rc, 1)).unwrap();
+            let rc = owner.context();
+            let full = owner.lookup_full_block(&a1_query(&rc, 1)).unwrap();
             partial_gate.release();
             (full, partial_worker.join().unwrap())
         });
 
         assert_eq!(partial_result.block_id(), full.block_id());
         assert!(partial_result.is_full());
-        assert_eq!(table.state_counts(), (1, 1, 3));
-        assert!(table.state_is_consistent());
+        assert_eq!(owner.blocks.state_counts(), (1, 1, 3));
+        assert!(owner.blocks.state_is_consistent());
     }
 
     #[test]
     fn concurrent_overlapping_partials_leave_the_first_commit_unchanged() {
-        let fixture = Arc::new(a1_fixture());
+        let fixture = a1_fixture();
         let first_gate = TestGate::new();
         let overlap_gate = TestGate::new();
-        let table = Arc::new(RepTable::with_test_gates(
-            &fixture.rc(),
-            vec![first_gate.clone(), overlap_gate.clone()],
-            Vec::new(),
-        ));
+        let owner = Arc::new(
+            RepTableOwner::with_test_gates(
+                fixture.table,
+                fixture.graph,
+                vec![first_gate.clone(), overlap_gate.clone()],
+                Vec::new(),
+            )
+            .unwrap(),
+        );
 
         let (first, before) = std::thread::scope(|scope| {
-            let first_fixture = Arc::clone(&fixture);
-            let first_table = Arc::clone(&table);
+            let first_owner = Arc::clone(&owner);
             let first_worker = scope.spawn(move || {
-                let rc = first_fixture.rc();
-                first_table.lookup(&rc, &a1_query(&rc, 0))
+                let rc = first_owner.context();
+                first_owner.lookup(&a1_query(&rc, 0))
             });
             first_gate.wait_until_reached();
 
-            let overlap_fixture = Arc::clone(&fixture);
-            let overlap_table = Arc::clone(&table);
+            let overlap_owner = Arc::clone(&owner);
             let overlap_worker = scope.spawn(move || {
-                let rc = overlap_fixture.rc();
-                overlap_table.lookup(&rc, &a1_query(&rc, 2))
+                let rc = overlap_owner.context();
+                overlap_owner.lookup(&a1_query(&rc, 2))
             });
             overlap_gate.wait_until_reached();
 
             first_gate.release();
             let first = first_worker.join().unwrap().unwrap();
-            let before = table.state_snapshot();
+            let before = owner.blocks.state_snapshot();
             overlap_gate.release();
             assert!(matches!(
                 overlap_worker.join().unwrap(),
@@ -1434,8 +1706,8 @@ mod tests {
             (first, before)
         });
 
-        assert_eq!(table.state_snapshot(), before);
-        assert!(table.block(first.block_id()).unwrap().is_some());
-        assert!(table.state_is_consistent());
+        assert_eq!(owner.blocks.state_snapshot(), before);
+        assert!(owner.blocks.block(first.block_id()).unwrap().is_some());
+        assert!(owner.blocks.state_is_consistent());
     }
 }

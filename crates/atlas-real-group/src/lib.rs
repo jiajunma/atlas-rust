@@ -130,6 +130,7 @@ pub use real_form_labels::RealFormLabels;
 pub use real_form_order::ExternalFormOrder;
 pub use real_form_seed::RealFormSeed;
 pub use rep_context::{RepContext, StandardRepr};
+pub use rep_table::{LocatedBlock, RepTableOwner};
 pub use restricted_roots::{RestrictedRoot, RestrictedRootSystem, RestrictedWeight};
 pub use root_datum::BasedRootDatum;
 pub use root_involution::{RootInvolutionData, RootKind};
