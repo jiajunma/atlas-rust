@@ -33,9 +33,18 @@ use crate::{
 pub struct KgbId(pub(crate) usize);
 
 impl KgbId {
+    /// Upstream's `UndefKGB` (`~0u`) in the language-visible 32-bit KGB
+    /// numbering. This is a sentinel, never an index into a [`KgbGraph`].
+    pub const UNDEFINED_INDEX: usize = u32::MAX as usize;
+    pub const UNDEFINED: Self = Self(Self::UNDEFINED_INDEX);
+
     /// The element's position in the graph's sorted numbering.
     pub fn index(&self) -> usize {
         self.0
+    }
+
+    pub fn is_undefined(&self) -> bool {
+        self.0 == Self::UNDEFINED_INDEX
     }
 }
 
@@ -572,7 +581,7 @@ impl KgbGraph {
     }
 
     pub fn status(&self, id: KgbId, generator: usize) -> Option<KgbStatus> {
-        if generator >= self.rank {
+        if id.0 >= self.elements.len() || generator >= self.rank {
             return None;
         }
         self.statuses.get(id.0 * self.rank + generator).copied()
@@ -592,7 +601,7 @@ impl KgbGraph {
     }
 
     pub fn cross(&self, id: KgbId, generator: usize) -> Option<KgbId> {
-        if generator >= self.rank {
+        if id.0 >= self.elements.len() || generator >= self.rank {
             return None;
         }
         self.cross.get(id.0 * self.rank + generator).copied()
@@ -779,6 +788,22 @@ impl KgbGraph {
         delta: &LatticeInvolution,
         twist: &[usize],
     ) -> Result<Option<KgbId>, StructureError> {
+        Ok(self
+            .twisted_with_destination(id, table, delta, twist)?
+            .and_then(|(target, _)| target))
+    }
+
+    /// The same external twist together with the translated involution,
+    /// even when the target KGB element is absent from this real form.
+    /// `None` for the outer option means the translated Weyl involution was
+    /// not present in the shared table; the inner `None` is `UndefKGB`.
+    pub(crate) fn twisted_with_destination(
+        &self,
+        id: KgbId,
+        table: &InvolutionTable,
+        delta: &LatticeInvolution,
+        twist: &[usize],
+    ) -> Result<Option<(Option<KgbId>, InvolutionId)>, StructureError> {
         let element = self
             .elements
             .get(id.0)
@@ -824,7 +849,7 @@ impl KgbGraph {
             }
             let Ok(correction_entry) = Integer::try_from(&coordinates[row_index] - transported)
             else {
-                return Ok(None);
+                return Ok(Some((None, target)));
             };
             let parity =
                 i64::try_from(&correction_entry).map_err(|_| StructureError::ArithmeticOverflow)?;
@@ -836,15 +861,15 @@ impl KgbGraph {
 
         // lookup: the fiber over the renamed involution, raw-bit equality.
         let Some(position) = self.positions.iter().position(|entry| entry.0 == target) else {
-            return Ok(None);
+            return Ok(Some((None, target)));
         };
         for index in self.first_of_tau[position]..self.first_of_tau[position + 1] {
             let candidate = &self.elements[index];
             if candidate.torus_bits() == &bits {
-                return Ok(Some(KgbId(index)));
+                return Ok(Some((Some(KgbId(index)), target)));
             }
         }
-        Ok(None)
+        Ok(Some((None, target)))
     }
 
     fn check_indices(&self, id: KgbId, generator: usize) -> Result<(), StructureError> {
@@ -1302,6 +1327,31 @@ mod tests {
             assert_eq!(twice, KgbId(id));
         }
         assert!(moved, "the outer twist swaps the s1 and s2 fibers");
+    }
+
+    #[test]
+    fn undefined_kgb_id_is_explicit_and_graph_accessors_never_index_it() {
+        assert_eq!(KgbId::UNDEFINED.index(), u32::MAX as usize);
+        assert!(KgbId::UNDEFINED.is_undefined());
+        assert!(!KgbId(0).is_undefined());
+
+        let mut pipeline = pipeline(sl2_datum(), None, 2, 2);
+        pipeline
+            .table
+            .add_cartan(&pipeline.classification, CartanId(0))
+            .unwrap();
+        let graph = build_graph(&mut pipeline, 0);
+        assert_eq!(graph.element(KgbId::UNDEFINED), None);
+        assert_eq!(graph.involution_of(KgbId::UNDEFINED), None);
+        assert_eq!(graph.length(KgbId::UNDEFINED), None);
+        assert_eq!(graph.cartan_of(KgbId::UNDEFINED), None);
+        assert_eq!(graph.status(KgbId::UNDEFINED, 0), None);
+        assert_eq!(graph.cross(KgbId::UNDEFINED, 0), None);
+        assert!(matches!(
+            graph.cayley(KgbId::UNDEFINED, 0),
+            Err(StructureError::IndexOutOfRange { index, .. })
+                if index == KgbId::UNDEFINED.index()
+        ));
     }
 
     #[test]

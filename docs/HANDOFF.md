@@ -2622,3 +2622,17 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   7104/6760 KiB peak RSS.  Do not upgrade these metas beyond `partial_hpc`
   until the shared RepTable/ReducedParam pool restores the accepted overload
   and its candidate-set rejection wording.
+- P3 Param twist implementation is locally complete pending its full HPC
+  differential. Unary and explicit-matrix overloads deliberately follow
+  different upstream paths. The edge case where the target KGB packet is
+  absent is represented as the printable `UndefKGB` sentinel `4294967295`,
+  with graph access guarded and undefined Param print weights transported and
+  cached safely. Reference jobs: signatures `3543702`, nonstandard `3543783`,
+  Param sentinel `3543792`, KGB sentinel `3543798`, and safe sentinel fields
+  `3543906`. A blanket sentinel rejection was disproved: strict equality,
+  `%`, `height(Param)`, and `real_form(Param)` are valid upstream and must stay
+  on storage-only paths.
+- The next bounded repair is `full_deform` outer KTypePol accumulation. Oracle
+  job `3543807` proves that two distinct KTypes with coefficient `1` both
+  survive. Keep the claim narrow: the remaining deformation subsystem and
+  timed overloads still require their architectural ports.

@@ -113,6 +113,9 @@ pub struct StandardRepr {
     y_bits: ModTwoVector,
     gamma: RationalWeight,
     height: u32,
+    /// Only `UndefKGB` twists carry this cache. It keeps printing independent
+    /// of graph indexing while ordinary parameters derive both weights.
+    undefined_print_weights: Option<Box<(RationalWeight, RationalWeight)>>,
 }
 
 impl StandardRepr {
@@ -132,6 +135,26 @@ impl StandardRepr {
 
     pub fn height(&self) -> u32 {
         self.height
+    }
+
+    pub fn is_undefined(&self) -> bool {
+        self.x.is_undefined()
+    }
+
+    pub fn undefined_print_weights(&self) -> Option<(&RationalWeight, &RationalWeight)> {
+        self.undefined_print_weights
+            .as_ref()
+            .map(|weights| (&weights.0, &weights.1))
+    }
+
+    fn ensure_defined(&self) -> Result<(), StructureError> {
+        if self.is_undefined() {
+            Err(StructureError::RepInvariantViolation {
+                invariant: "undefined parameter operation",
+            })
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -297,6 +320,27 @@ impl<'a> RepContext<'a> {
     /// Half the sum of the positive roots (rootdata.cpp:1260).
     pub fn rho(&self) -> &RationalWeight {
         &self.rho
+    }
+
+    /// Decompose the transported fields of a printable `UndefKGB`
+    /// parameter without consulting the KGB graph.
+    pub fn undefined_decomposition(
+        &self,
+        z: &StandardRepr,
+    ) -> Result<(Weight, RationalWeight), StructureError> {
+        let (lambda, _) =
+            z.undefined_print_weights()
+                .ok_or(StructureError::RepInvariantViolation {
+                    invariant: "undefined parameter decomposition",
+                })?;
+        let lambda_rho = lambda.sub(&self.rho)?.integral_coordinates()?;
+        let lambda_rho = lambda_rho
+            .into_iter()
+            .map(|coordinate| {
+                i32::try_from(coordinate).map_err(|_| StructureError::ArithmeticOverflow)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok((Weight::new(lambda_rho), z.gamma().clone()))
     }
 
     /// The sum of the positive roots (rootdata.h:568).
@@ -473,27 +517,39 @@ impl<'a> RepContext<'a> {
 
     /// `Rep_context::twisted` (repr.cpp:1132-1143): apply a compatible
     /// based outer involution to a parameter WITHOUT first making it
-    /// dominant.  The returned `None` is upstream's `UndefKGB`; callers own
-    /// the language-level policy for that sentinel.
+    /// dominant. An absent target is retained as an explicit `UndefKGB`
+    /// parameter with transported print weights; it is never graph-indexed.
     pub fn twisted(
         &self,
         z: &StandardRepr,
         delta: &LatticeInvolution,
         simple_twist: &[usize],
-    ) -> Result<Option<StandardRepr>, StructureError> {
+    ) -> Result<StandardRepr, StructureError> {
+        z.ensure_defined()?;
         let source_involution = self.involution_of(z.x)?;
-        let Some(x) = self.graph.twisted(z.x, self.table, delta, simple_twist)? else {
-            return Ok(None);
-        };
-        let destination_involution = self.involution_of(x)?;
+        let (x, destination_involution) = self
+            .graph
+            .twisted_with_destination(z.x, self.table, delta, simple_twist)?
+            .ok_or(StructureError::RepInvariantViolation {
+                invariant: "twisted destination involution",
+            })?;
         let y_bits = self.y_act(source_involution, destination_involution, &z.y_bits, delta)?;
         let gamma = z.gamma.apply_matrix(delta.weight_matrix())?;
-        Ok(Some(StandardRepr {
-            x,
+        let undefined_print_weights = if x.is_none() {
+            Some(Box::new((
+                self.lambda(z)?.apply_matrix(delta.weight_matrix())?,
+                self.nu(z)?.apply_matrix(delta.weight_matrix())?,
+            )))
+        } else {
+            None
+        };
+        Ok(StandardRepr {
+            x: x.unwrap_or(KgbId::UNDEFINED),
             y_bits,
             gamma,
             height: z.height,
-        }))
+            undefined_print_weights,
+        })
     }
 
     /// `Rep_context::inner_twisted` (repr.cpp:1126-1130): first move the
@@ -501,7 +557,7 @@ impl<'a> RepContext<'a> {
     /// distinguished involution.  This dominance step is intentionally NOT
     /// part of [`Self::twisted`], because Atlas's explicit-matrix overload
     /// operates on the parameter exactly as supplied.
-    pub fn inner_twisted(&self, z: &StandardRepr) -> Result<Option<StandardRepr>, StructureError> {
+    pub fn inner_twisted(&self, z: &StandardRepr) -> Result<StandardRepr, StructureError> {
         let dominant = z.made_dominant(self)?;
         let delta = self
             .inner_class
@@ -600,6 +656,7 @@ impl<'a> RepContext<'a> {
     /// packed torsion part: `((1+theta)(gamma-rho) + y_lift(y))/2`, both
     /// divisions exact.
     pub fn lambda_rho(&self, z: &StandardRepr) -> Result<Weight, StructureError> {
+        z.ensure_defined()?;
         let involution = self.involution_of(z.x)?;
         let theta = self.theta_at(z.x)?;
         let gamma_minus_rho = z.gamma.sub(&self.rho)?;
@@ -828,6 +885,7 @@ impl<'a> RepContext<'a> {
     /// mis-oriented for gamma, plus one per contributing conjugate complex
     /// pair.
     pub fn orientation_number(&self, z: &StandardRepr) -> Result<u32, StructureError> {
+        z.ensure_defined()?;
         let system = self.inner_class.root_system();
         let root_count = system.roots().len();
         let involution = self.involution_of(z.x())?;
@@ -985,6 +1043,7 @@ impl<'a> RepContext<'a> {
     /// `StandardReprMod::mod_reduce` (repr.cpp:52-58): the parameter modulo
     /// `X^*` — the KGB element with its `gamma-lambda` made `real_unique`.
     pub fn mod_reduce(&self, z: &StandardRepr) -> Result<(KgbId, RationalWeight), StructureError> {
+        z.ensure_defined()?;
         let x = z.x();
         let lambda_rho = self.lambda_rho(z)?;
         let mut gam_lam = z
@@ -1013,6 +1072,7 @@ impl<'a> RepContext<'a> {
     /// reducibility fractions of a standard parameter, as (numerator,
     /// denominator) pairs sorted ascending.
     pub fn reducibility_points(&self, z: &StandardRepr) -> Result<Vec<(i64, i64)>, StructureError> {
+        z.ensure_defined()?;
         let system = self.inner_class.root_system();
         let numer = z.gamma().numerator();
         let d = z.gamma().denominator();
@@ -1115,6 +1175,7 @@ impl<'a> RepContext<'a> {
     /// the non-dominant generators (reflections, Cayley and inverse
     /// Cayley transforms) and recording the resulting final parameters.
     pub fn finals_for(&self, z: &StandardRepr) -> Result<Vec<(StandardRepr, i32)>, StructureError> {
+        z.ensure_defined()?;
         let rd = self.inner_class.datum();
         let mut result: Vec<(StandardRepr, i32)> = Vec::new();
         let mut to_do: Vec<(StandardRepr, i32)> = vec![(z.clone(), 1)];
@@ -1299,6 +1360,7 @@ impl<'a> RepContext<'a> {
             y_bits,
             gamma: gamma.clone(),
             height,
+            undefined_print_weights: None,
         })
     }
     /// `Rep_table::deformation_terms` (repr.cpp:1933-2025), simplified for
@@ -1406,6 +1468,7 @@ impl<'a> RepContext<'a> {
     /// `Rep_context::sr_K(const StandardRepr&)` (repr.h:232-233): restrict
     /// a parameter to K, carrying the elected `lambda-rho` and the height.
     pub fn sr_k_of_standard(&self, z: &StandardRepr) -> Result<KType, StructureError> {
+        z.ensure_defined()?;
         Ok(KType::new(z.x, self.lambda_rho(z)?, z.height))
     }
 
@@ -1420,6 +1483,7 @@ impl<'a> RepContext<'a> {
         &self,
         z: &StandardRepr,
     ) -> Result<Vec<(StandardRepr, i32)>, StructureError> {
+        z.ensure_defined()?;
         let datum = self.inner_class.datum();
         let mut result = Vec::new();
         let mut todo = vec![(z.clone(), 1_i32)];
@@ -1558,6 +1622,7 @@ impl<'a> RepContext<'a> {
         numerator: i64,
         denominator: i64,
     ) -> Result<StandardRepr, StructureError> {
+        z.ensure_defined()?;
         let theta = self.theta_at(z.x)?;
         let image = z.gamma.apply_matrix(theta.weight_matrix())?;
         let difference = z.gamma.sub(&image)?; // 2*nu(z)
@@ -1571,6 +1636,7 @@ impl<'a> RepContext<'a> {
             y_bits: z.y_bits.clone(),
             gamma: scaled,
             height: z.height,
+            undefined_print_weights: None,
         })
     }
 
@@ -1894,6 +1960,7 @@ impl<'a> RepContext<'a> {
     /// `Rep_context::theta` (repr.cpp:179-180): the involution of `z`'s
     /// KGB element.
     pub fn theta(&self, z: &StandardRepr) -> Result<LatticeInvolution, StructureError> {
+        z.ensure_defined()?;
         Ok(self.theta_at(z.x)?.clone())
     }
 }
@@ -2354,6 +2421,7 @@ impl StandardRepr {
     /// `Rep_context::is_standard` (repr.cpp:359-375): `gamma` is weakly
     /// dominant on the simply-imaginary coroots.
     pub fn is_standard(&self, rc: &RepContext) -> Result<bool, StructureError> {
+        self.ensure_defined()?;
         let system = rc.inner_class.root_system();
         for alpha in rc.imaginary_simple_roots_at(self.x)? {
             let coroot = system
@@ -2382,6 +2450,7 @@ impl StandardRepr {
     /// `is_dominant_ratweight` rootdata.cpp:1616): `gamma` is dominant on
     /// every simple coroot.
     pub fn is_dominant(&self, rc: &RepContext) -> Result<bool, StructureError> {
+        self.ensure_defined()?;
         let datum = rc.inner_class.datum();
         for generator in 0..datum.semisimple_rank() {
             if rc.simple_coroot_numerator_pairing(generator, self.gamma.numerator())? < 0 {
@@ -2395,6 +2464,7 @@ impl StandardRepr {
     /// simply-imaginary root. Assumes `is_standard`, exactly as upstream
     /// does (the interpreter's adjective chain calls it in that order).
     pub fn is_nonzero(&self, rc: &RepContext) -> Result<bool, StructureError> {
+        self.ensure_defined()?;
         let system = rc.inner_class.root_system();
         for alpha in rc.imaginary_simple_roots_at(self.x)? {
             let coroot = system
@@ -2423,6 +2493,7 @@ impl StandardRepr {
     /// root is both singular on `gamma` and odd on the shifted test
     /// weight `y_lift(y) + 2rho - 2rho_R`.
     pub fn is_semifinal(&self, rc: &RepContext) -> Result<bool, StructureError> {
+        self.ensure_defined()?;
         let involution = rc.involution_of(self.x)?;
         let positive_real = rc.positive_real_roots_at(self.x)?;
         let test_weight = checked_add_weights(
@@ -2457,6 +2528,7 @@ impl StandardRepr {
     /// no singular descent of any kind, then the full simply-imaginary
     /// `is_nonzero` check.
     pub fn is_final(&self, rc: &RepContext) -> Result<bool, StructureError> {
+        self.ensure_defined()?;
         let datum = rc.inner_class.datum();
         let involution = rc.involution_of(self.x)?;
         let y_lift = rc.y_lift(involution, &self.y_bits)?;
@@ -2489,6 +2561,7 @@ impl StandardRepr {
     /// normal form. Upstream's adjective chain calls this only after the
     /// other four predicates pass.
     pub fn is_normal(&self, rc: &RepContext) -> Result<bool, StructureError> {
+        self.ensure_defined()?;
         Ok(self.normalised(rc)? == *self)
     }
 
@@ -2500,6 +2573,7 @@ impl StandardRepr {
     /// invariant under these crosses (the `(1+theta)gamma` weight moves
     /// by Weyl conjugates), so it is carried unchanged, as upstream does.
     pub fn made_dominant(&self, rc: &RepContext) -> Result<StandardRepr, StructureError> {
+        self.ensure_defined()?;
         let datum = rc.inner_class.datum();
         let mut z = self.clone();
         let mut lr = rc.lambda_rho(&z)?;
@@ -2546,6 +2620,7 @@ impl StandardRepr {
     /// `eval == 0` with a descent also reflects (the singular complex
     /// descent case). Returns the readjusted parameter.
     pub fn deform_readjust(&self, rc: &RepContext) -> Result<StandardRepr, StructureError> {
+        self.ensure_defined()?;
         let datum = rc.inner_class.datum();
         let mut z = self.clone();
         let mut lr = rc.lambda_rho(&z)?;
@@ -2583,6 +2658,7 @@ impl StandardRepr {
     /// to the singular-canonical involution, then exhaust singular
     /// complex descents.
     pub fn normalised(&self, rc: &RepContext) -> Result<StandardRepr, StructureError> {
+        self.ensure_defined()?;
         let mut z = self.made_dominant(rc)?;
         let singulars = rc.singular_simples(&z)?;
         rc.to_singular_canonical(&mut z, &singulars)?;
@@ -2599,6 +2675,8 @@ impl StandardRepr {
         rc: &RepContext,
         other: &StandardRepr,
     ) -> Result<bool, StructureError> {
+        self.ensure_defined()?;
+        other.ensure_defined()?;
         let self_cartan = rc
             .graph
             .cartan_of(self.x)
@@ -2989,7 +3067,6 @@ mod tests {
 
         let target = rc
             .twisted(&source, &delta, &twist)
-            .unwrap()
             .expect("a compatible A2 twist stays in the real form");
 
         assert_eq!(target.x(), KgbId(2));
@@ -3031,16 +3108,95 @@ mod tests {
 
         let raw = rc
             .twisted(&source, &delta, &twist)
-            .unwrap()
             .expect("raw distinguished twist stays in the A2 form");
         let inner = rc
             .inner_twisted(&source)
-            .unwrap()
             .expect("inner distinguished twist stays in the A2 form");
 
         assert_eq!(raw.x(), KgbId(2), "explicit twist remains non-dominant");
         assert_eq!(inner.x(), KgbId(0), "unary twist first makes dominant");
         assert!(inner.is_final(&rc).unwrap());
         assert_eq!(inner.height(), source.height());
+    }
+
+    #[test]
+    fn undefined_parameter_twist_preserves_transported_print_weights_safely() {
+        let cartan = vec![vec![2, -1, 0], vec![-1, 2, -1], vec![0, -1, 2]];
+        // Match the language fixture's simply-connected character lattice:
+        // simple roots are Cartan rows and simple coroots are the basis.
+        let datum = BasedRootDatum::from_simple_data(
+            3,
+            cartan.clone(),
+            cartan.into_iter().map(Weight::new).collect(),
+            (0..3)
+                .map(|index| {
+                    let mut coordinates = vec![0; 3];
+                    coordinates[index] = 1;
+                    Coweight::new(coordinates)
+                })
+                .collect(),
+        )
+        .unwrap();
+        let compact = fixture(
+            datum.clone(),
+            LatticeInvolution::identity(&datum).unwrap(),
+            24,
+            1,
+        );
+        let rc = compact.rc();
+        let delta = LatticeInvolution::new(
+            &datum,
+            vec![vec![0, 0, 1], vec![0, 1, 0], vec![1, 0, 0]],
+            vec![vec![0, 0, 1], vec![0, 1, 0], vec![1, 0, 0]],
+        )
+        .unwrap();
+        let twist = compact
+            .inner_class
+            .based_involution_twist(delta.clone())
+            .unwrap();
+        let source = rc
+            .sr(
+                KgbId(0),
+                &Weight::new(vec![0, 0, 0]),
+                &RationalWeight::zero(3).unwrap(),
+            )
+            .unwrap();
+        let expected_lambda = rc
+            .lambda(&source)
+            .unwrap()
+            .apply_matrix(delta.weight_matrix())
+            .unwrap();
+        let expected_nu = rc
+            .nu(&source)
+            .unwrap()
+            .apply_matrix(delta.weight_matrix())
+            .unwrap();
+
+        let target = rc.twisted(&source, &delta, &twist).unwrap();
+        assert_eq!(target.x(), KgbId::UNDEFINED);
+        assert!(target.is_undefined());
+        let (lambda, nu) = target
+            .undefined_print_weights()
+            .expect("undefined twists retain printable weights");
+        assert_eq!(lambda, &expected_lambda);
+        assert_eq!(nu, &expected_nu);
+        assert!(matches!(
+            target.is_standard(&rc),
+            Err(StructureError::RepInvariantViolation {
+                invariant: "undefined parameter operation"
+            })
+        ));
+
+        // `%Param` exposes the stored info character, not `lambda+nu`.
+        // Keep this distinct even when a future undefined source carries
+        // nonzero transported nu.
+        let mut general = target.clone();
+        general.gamma = RationalWeight::new(vec![7, 5, 3], 2).unwrap();
+        general.undefined_print_weights = Some(Box::new((
+            expected_lambda,
+            RationalWeight::new(vec![3, 1, -1], 2).unwrap(),
+        )));
+        let (_, gamma) = rc.undefined_decomposition(&general).unwrap();
+        assert_eq!(gamma, general.gamma);
     }
 }

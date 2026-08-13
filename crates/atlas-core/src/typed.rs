@@ -6182,6 +6182,18 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::Param),
                 3,
             ),
+            domain_builtin_skip(
+                "twist",
+                primitive_type(Prim::Param),
+                primitive_type(Prim::Param),
+                3,
+            ),
+            domain_builtin_validate(
+                "twist",
+                Type::tuple(vec![primitive_type(Prim::Param), primitive_type(Prim::Mat)]),
+                primitive_type(Prim::Param),
+                1,
+            ),
             domain_builtin_validate(
                 "equivalent",
                 pair(primitive_type(Prim::Param)),
@@ -8630,6 +8642,75 @@ mod tests {
         assert!(signatures("W_cells").contains(&(block.clone(), Type::row(cell))));
         assert_eq!(no_value_policy("W_graph", &block), "build");
         assert_eq!(no_value_policy("W_cells", &block), "build");
+    }
+
+    #[test]
+    fn p3_param_twist_signatures_and_no_value_policies_match_upstream() {
+        let param = primitive_type(Prim::Param);
+        let matrix = primitive_type(Prim::Mat);
+        let unary = builtin_registry()
+            .iter()
+            .find(|builtin| builtin.name == "twist" && builtin.arg_type == param)
+            .expect("missing twist(Param)");
+        assert_eq!(unary.result, param);
+        assert_eq!(unary.hunger, 3);
+        assert!(matches!(
+            unary.implementation,
+            BuiltinImpl::Domain {
+                no_value: DomainNoValue::Skip,
+                ..
+            }
+        ));
+
+        let binary_arguments = Type::tuple(vec![param.clone(), matrix]);
+        let binary = builtin_registry()
+            .iter()
+            .find(|builtin| builtin.name == "twist" && builtin.arg_type == binary_arguments)
+            .expect("missing twist(Param,mat)");
+        assert_eq!(binary.result, param);
+        assert_eq!(binary.hunger, 1);
+        assert!(matches!(
+            binary.implementation,
+            BuiltinImpl::Domain {
+                no_value: DomainNoValue::Validate,
+                ..
+            }
+        ));
+
+        let datum = "simply_connected(Lie_type(\"A2\"),true)";
+        let inner = format!("inner_class({datum},[[0,1],[1,0]])");
+        let real = format!("real_form({inner},0)");
+        let parameter = format!("param(KGB({real},1),[0,0],[0,0]/1)");
+
+        let (_, value) = convert_and_run(&format!("begin twist({parameter});7 end"))
+            .expect("discarded unary twist skips its result");
+        assert_eq!(value, Value::Integer(BigInt::from(7)));
+
+        let error = convert_and_run(&format!("begin twist({parameter},[[1]]);7 end"))
+            .expect_err("discarded outer twist still validates the matrix");
+        assert_eq!(
+            error.message,
+            "Involution should be a 2x2 matrix; received a 1x1 matrix"
+        );
+    }
+
+    #[test]
+    fn p3_undefined_twist_values_support_strict_relations() {
+        let datum = "simply_connected(Lie_type(\"A3\"),true)";
+        let identity = "[[1,0,0],[0,1,0],[0,0,1]]";
+        let anti_diagonal = "[[0,0,1],[0,1,0],[1,0,0]]";
+        let inner = format!("inner_class({datum},{identity})");
+        let real = format!("real_form({inner},0)");
+        let element = format!("twist(KGB({real},0),{anti_diagonal})");
+        let (_, equal) = convert_and_run(&format!("{element}={element}"))
+            .expect("undefined KGB relations compare the sentinel structurally");
+        assert_eq!(equal, Value::Boolean(true));
+
+        let parameter = format!("param(KGB({real},0),[0,0,0],[0,0,0]/1)");
+        let undefined = format!("twist({parameter},{anti_diagonal})");
+        let (_, equal) = convert_and_run(&format!("{undefined}={undefined}"))
+            .expect("undefined Param relations compare cached state structurally");
+        assert_eq!(equal, Value::Boolean(true));
     }
 
     #[test]

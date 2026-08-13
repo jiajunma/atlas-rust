@@ -483,6 +483,17 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/param_pol_ops"),
     # Param predicates, dominant/normal transforms, and equivalence.
     FixturePlan(name="domain/param_transforms"),
+    # Param/KGB twist continuation: unary Param twist first makes the source
+    # dominant, explicit-matrix Param twist operates on the source as-is, and
+    # the language-visible UndefKGB sentinel remains printable without ever
+    # becoming a graph index. Reference captures 3543702/3543783/3543792/
+    # 3543798 pin the accepted, rejected, nonstandard, and sentinel paths.
+    FixturePlan(name="domain/p3_param_twist_signatures"),
+    FixturePlan(name="domain/p3_param_twist_signatures_rejected"),
+    FixturePlan(name="domain/p3_param_twist_nonstandard_rejected"),
+    FixturePlan(name="domain/p3_param_twist_undefined"),
+    FixturePlan(name="domain/p3_kgb_twist_undefined"),
+    FixturePlan(name="domain/p3_twist_undefined_fields"),
     # Strong-real surface: the base contract plus the probes whose slices
     # have landed — the Cartan numbering adapter (a63dc32) covers the four
     # B2/C2 Cartan enumerations and all four rejected diagnostics, and the

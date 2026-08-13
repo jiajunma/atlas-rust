@@ -474,3 +474,33 @@ W_cells and is a 1-2 hour debugging task against upstream matreduc.
 - Bulk polynomial term-list addition is a volume-oriented API upstream.  The
   Rust implementation appends expansions, sorts once, and linearly coalesces
   equal terms; do not regress it to repeated linear `Vec::position` merging.
+
+## Parameter twist sentinel contract (2026-08-13)
+
+- The explicit outer twist of an otherwise valid KGB element or parameter can
+  produce upstream `UndefKGB`, whose language-visible number is `~0u`, printed
+  as `4294967295`.  It is a real observable value, not the same outcome as the
+  `Inexistent KGB element` diagnostic.
+- Rust models that value explicitly but never treats it as a `KgbGraph` index.
+  A parameter sentinel also retains the already transported lambda/nu needed
+  for the upstream display.  Ordinary follow-up operations reject the
+  sentinel through stable checked paths rather than indexing or panicking.
+- Unary `twist(Param)` first calls `make_dominant`; `twist(Param,mat)` validates
+  compatibility and twists the parameter exactly as supplied.  Do not merge
+  these paths even when the matrix is the distinguished involution.
+- Oracle jobs `3543783`, `3543792`, `3543798`, and `3543906` pin the
+  nonstandard case, both sentinel constructors, and the safe field-only
+  surface. Strict equality, `%`, `height(Param)`, and `real_form(Param)` remain
+  valid on the sentinel; only operations that need a graph element reject it.
+  The P3 differential must include all six twist fixtures before closure.
+
+## Full-deform outer term merge contract (2026-08-13)
+
+- `full_deform(Param)` accumulates its outer result by KType key. Distinct
+  KTypes with equal Split coefficients must both survive; equal KTypes combine
+  coefficients and zero sums disappear. The previous coefficient-only merge
+  silently discarded valid terms.
+- Reference capture `3543807` pins a minimal A2 two-term result and its rank
+  rejection. This is only a narrow polynomial-accumulation repair; it does not
+  complete proper-subsystem deformation, high-denominator alcove shrinking,
+  recursion, cancellation/deadline support, or `full_deform(Param,int)`.

@@ -561,6 +561,22 @@ impl fmt::Display for DomainValue {
             // adjective chain, a space, then print_stdrep
             // (basic_io.cpp:203-207).
             Self::Param(value) => {
+                if value.repr.is_undefined() {
+                    return match value.repr.undefined_print_weights() {
+                        Some((lambda, nu)) => write!(
+                            formatter,
+                            "final parameter(x={},lambda={},nu={})",
+                            value.repr.x().index(),
+                            rational_weight_display(lambda),
+                            rational_weight_display(nu),
+                        ),
+                        None => write!(
+                            formatter,
+                            "final parameter(x={},lambda=<unavailable>,nu=<unavailable>)",
+                            value.repr.x().index(),
+                        ),
+                    };
+                }
                 let rc = rep_context(&value.context);
                 let adjectives = repr_adjective(&rc, &value.repr);
                 write!(
@@ -6004,6 +6020,9 @@ fn as_kgb_element(
     span: SourceSpan,
 ) -> Result<(&Arc<RealFormContext>, KgbId), Diagnostic> {
     match value {
+        Value::Domain(DomainValue::KgbElement(_, id)) if id.is_undefined() => {
+            Err(runtime(span, "Inexistent KGB element"))
+        }
         Value::Domain(DomainValue::KgbElement(context, id)) => Ok((context, *id)),
         other => Err(type_error(
             span,
@@ -7461,9 +7480,8 @@ fn with_integral_block<T>(
 }
 
 /// Shared tail of both `twist` wrappers: apply the crate twist and rewrap
-/// the target in the same real-form context. `Ok(None)` from the crate is
-/// upstream's `UndefKGB`, surfaced with the established inexistent
-/// wording.
+/// the target in the same real-form context. Upstream's `UndefKGB` remains
+/// language-visible as element number `~0u`; it is never graph-indexed.
 fn twist_element(
     context: &Arc<RealFormContext>,
     id: KgbId,
@@ -7471,15 +7489,39 @@ fn twist_element(
     twist: &[usize],
     span: SourceSpan,
 ) -> Result<Value, Diagnostic> {
+    if id.is_undefined() {
+        return Err(runtime(span, "Inexistent KGB element"));
+    }
     let target = context
         .graph
         .twisted(id, &context.table, delta, twist)
         .map_err(|error| runtime(span, error.to_string()))?
-        .ok_or_else(|| runtime(span, "Inexistent KGB element"))?;
+        .unwrap_or(KgbId::UNDEFINED);
     Ok(Value::Domain(DomainValue::KgbElement(
         Arc::clone(context),
         target,
     )))
+}
+
+/// Rewrap a crate parameter twist in its original real-form owner, preserving
+/// both the owner and an explicit `UndefKGB` representation.
+fn twist_parameter(
+    parameter: &ParamValue,
+    twisted: Result<StandardRepr, StructureError>,
+    span: SourceSpan,
+) -> Result<Value, Diagnostic> {
+    let repr = twisted.map_err(|error| match error {
+        // Rep_context::make_dominant throws this exact prose upstream
+        // (repr.cpp:577); the crate keeps the stable invariant key.
+        StructureError::RepInvariantViolation {
+            invariant: "standard parameter in make_dominant",
+        } => runtime(span, "Non standard parameter in make_dominant"),
+        other => structure_diagnostic(other, span),
+    })?;
+    Ok(Value::Domain(DomainValue::Param(ParamValue {
+        context: Arc::clone(&parameter.context),
+        repr,
+    })))
 }
 
 /// Shared body of the synthetic KGB constructor `KGB_elt(RealForm,mat,
@@ -8422,7 +8464,16 @@ pub(crate) fn validate(
         // even in a value-suppressed context.
         "twist" => {
             arity(name, arguments, 2, span)?;
-            let (context, _) = as_kgb_element(&arguments[0], span)?;
+            let context = match &arguments[0] {
+                Value::Domain(DomainValue::KgbElement(context, _)) => context,
+                Value::Domain(DomainValue::Param(parameter)) => &parameter.context,
+                other => {
+                    return Err(type_error(
+                        span,
+                        format!("twist expects a KGBElt or Param, found {other}"),
+                    ));
+                }
+            };
             compatible_outer_twist(context, &arguments[1], span)?;
         }
         // shift_flip_wrapper runs test_compatible and both gamma-fix
@@ -15963,19 +16014,23 @@ pub(crate) fn call_with_printed(
                 // NOT the input nu.
                 Value::Domain(DomainValue::Param(parameter)) => {
                     let rc = rep_context(&parameter.context);
-                    let lam_rho = rc
-                        .lambda_rho(&parameter.repr)
-                        .map_err(|error| structure_diagnostic(error, span))?;
+                    let (lam_rho, gamma) = if parameter.repr.is_undefined() {
+                        rc.undefined_decomposition(&parameter.repr)
+                            .map_err(|error| structure_diagnostic(error, span))?
+                    } else {
+                        (
+                            rc.lambda_rho(&parameter.repr)
+                                .map_err(|error| structure_diagnostic(error, span))?,
+                            parameter.repr.gamma().clone(),
+                        )
+                    };
                     Ok(Value::Tuple(vec![
                         Value::Domain(DomainValue::KgbElement(
                             Arc::clone(&parameter.context),
                             parameter.repr.x(),
                         )),
                         Value::Vector(Vec32(lam_rho.as_slice().to_vec())),
-                        Value::RatVector(ratvec_from_rational_weight(
-                            parameter.repr.gamma(),
-                            span,
-                        )?),
+                        Value::RatVector(ratvec_from_rational_weight(&gamma, span)?),
                     ]))
                 }
                 other => Err(type_error(
@@ -15984,13 +16039,13 @@ pub(crate) fn call_with_printed(
                 )),
             }
         }
-        // KGB_twist_wrapper (atlas-types.w:4616) twists by the inner
-        // class's distinguished involution; KGB_outer_twist_wrapper
-        // (atlas-types.w:4634) validates the user's involution with
-        // test_compatible first.
+        // The KGB and Param twist families share the name but differ in
+        // parameter normalization: parameter_twist_wrapper first makes its
+        // input dominant through Rep_context::inner_twisted, while the
+        // explicit-matrix parameter overload calls raw twisted. Both outer
+        // wrappers validate the matrix through test_compatible first.
         "twist" => match arguments {
-            [element] => {
-                let (context, id) = as_kgb_element(element, span)?;
+            [Value::Domain(DomainValue::KgbElement(context, id))] => {
                 let delta = context
                     .parent
                     .inner_class
@@ -16002,12 +16057,20 @@ pub(crate) fn call_with_printed(
                     .inner_class
                     .based_involution_twist(delta.clone())
                     .map_err(|error| runtime(span, error.to_string()))?;
-                twist_element(context, id, &delta, &twist, span)
+                twist_element(context, *id, &delta, &twist, span)
             }
-            [element, matrix] => {
-                let (context, id) = as_kgb_element(element, span)?;
+            [Value::Domain(DomainValue::Param(parameter))] => {
+                let rc = rep_context(&parameter.context);
+                twist_parameter(parameter, rc.inner_twisted(&parameter.repr), span)
+            }
+            [Value::Domain(DomainValue::KgbElement(context, id)), matrix] => {
                 let (delta, twist) = compatible_outer_twist(context, matrix, span)?;
-                twist_element(context, id, &delta, &twist, span)
+                twist_element(context, *id, &delta, &twist, span)
+            }
+            [Value::Domain(DomainValue::Param(parameter)), matrix] => {
+                let (delta, twist) = compatible_outer_twist(&parameter.context, matrix, span)?;
+                let rc = rep_context(&parameter.context);
+                twist_parameter(parameter, rc.twisted(&parameter.repr, &delta, &twist), span)
             }
             _ => Err(type_error(
                 span,
@@ -17246,6 +17309,153 @@ mod tests {
             let twisted = call("twist", std::slice::from_ref(&element), span()).expect("twist");
             assert_eq!(twisted, element);
         }
+    }
+
+    #[test]
+    fn p3_param_twist_preserves_owner_and_matches_oracle_values() {
+        let datum = fixture_datum("A2", true);
+        let flip = matrix(2, 2, vec![0, 1, 1, 0]);
+        let inner = call("inner_class", &[datum, flip.clone()], span()).expect("inner class");
+        let real = call("real_form", &[inner, int(0)], span()).expect("real form");
+        let element = call("KGB", &[real, int(1)], span()).expect("KGB element");
+        let parameter = call(
+            "param",
+            &[
+                element,
+                Value::Vector(Vec32(vec![0, 0])),
+                Value::RatVector(RatVec::new(vec![0, 0], 1).expect("ratvec")),
+            ],
+            span(),
+        )
+        .expect("parameter");
+        let Value::Domain(DomainValue::Param(source)) = &parameter else {
+            panic!("param constructor must return a Param")
+        };
+
+        for (arguments, expected) in [
+            (
+                vec![parameter.clone()],
+                "final parameter(x=0,lambda=[0,1]/1,nu=[0,0]/1)",
+            ),
+            (
+                vec![parameter.clone(), flip],
+                "non-dominant parameter(x=2,lambda=[1,1]/1,nu=[0,0]/1)",
+            ),
+            (
+                vec![parameter.clone(), matrix(2, 2, vec![1, 0, 0, 1])],
+                "non-dominant parameter(x=1,lambda=[1,1]/1,nu=[0,0]/1)",
+            ),
+        ] {
+            let twisted = call("twist", &arguments, span()).expect("parameter twist");
+            assert_eq!(twisted.to_string(), expected);
+            let Value::Domain(DomainValue::Param(target)) = twisted else {
+                panic!("twist(Param) must return a Param")
+            };
+            assert!(Arc::ptr_eq(&target.context, &source.context));
+        }
+    }
+
+    #[test]
+    fn p3_param_outer_twist_validation_dispatches_without_regressing_kgb() {
+        let datum = fixture_datum("A2", true);
+        let flip = matrix(2, 2, vec![0, 1, 1, 0]);
+        let inner = call("inner_class", &[datum, flip], span()).expect("inner class");
+        let real = call("real_form", &[inner, int(0)], span()).expect("real form");
+        let element = call("KGB", &[real, int(1)], span()).expect("KGB element");
+        let parameter = call(
+            "param",
+            &[
+                element.clone(),
+                Value::Vector(Vec32(vec![0, 0])),
+                Value::RatVector(RatVec::new(vec![0, 0], 1).expect("ratvec")),
+            ],
+            span(),
+        )
+        .expect("parameter");
+        let invalid = matrix(1, 1, vec![1]);
+
+        for first in [parameter, element] {
+            let error = validate("twist", &[first, invalid.clone()], span())
+                .expect_err("outer twist validates the matrix for both overload families");
+            assert_eq!(
+                error.message,
+                "Involution should be a 2x2 matrix; received a 1x1 matrix"
+            );
+        }
+    }
+
+    #[test]
+    fn p3_unary_param_twist_maps_make_dominant_nonstandard_error_exactly() {
+        let real = sl2r_split_form();
+        let parameter = sl2r_param(&real, 1, &[-2], &[0], 1);
+
+        let error = call("twist", std::slice::from_ref(&parameter), span())
+            .expect_err("inner twist first makes the parameter dominant");
+        assert_eq!(error.message, "Non standard parameter in make_dominant");
+
+        let identity = matrix(1, 1, vec![1]);
+        assert_eq!(
+            call("twist", &[parameter.clone(), identity], span())
+                .expect("the raw outer twist does not run make_dominant"),
+            parameter
+        );
+    }
+
+    #[test]
+    fn p3_undefined_outer_twists_match_oracle_and_reject_follow_up_safely() {
+        let datum = fixture_datum("A3", true);
+        let identity = matrix(3, 3, vec![1, 0, 0, 0, 1, 0, 0, 0, 1]);
+        let anti_diagonal = matrix(3, 3, vec![0, 0, 1, 0, 1, 0, 1, 0, 0]);
+        let inner = call("inner_class", &[datum, identity], span()).expect("inner class");
+        let real = call("real_form", &[inner, int(0)], span()).expect("compact form");
+        let element = call("KGB", &[real.clone(), int(0)], span()).expect("KGB element");
+
+        let undefined_kgb = call("twist", &[element, anti_diagonal.clone()], span())
+            .expect("KGB twist preserves UndefKGB");
+        assert_eq!(undefined_kgb.to_string(), "KGB element #4294967295");
+        let Value::Domain(DomainValue::KgbElement(_, id)) = &undefined_kgb else {
+            panic!("twist(KGBElt,mat) returns KGBElt")
+        };
+        assert!(id.is_undefined());
+        assert_eq!(
+            call("length", std::slice::from_ref(&undefined_kgb), span())
+                .expect_err("undefined KGB follow-up is rejected")
+                .message,
+            "Inexistent KGB element"
+        );
+
+        let parameter = call(
+            "param",
+            &[
+                call("KGB", &[real.clone(), int(0)], span()).expect("KGB element"),
+                Value::Vector(Vec32(vec![0, 0, 0])),
+                Value::RatVector(RatVec::new(vec![0, 0, 0], 1).expect("ratvec")),
+            ],
+            span(),
+        )
+        .expect("parameter");
+        let undefined_param = call("twist", &[parameter, anti_diagonal], span())
+            .expect("Param twist preserves UndefKGB");
+        assert_eq!(
+            undefined_param.to_string(),
+            "final parameter(x=4294967295,lambda=[1,1,1]/1,nu=[0,0,0]/1)"
+        );
+        assert_eq!(
+            call("height", std::slice::from_ref(&undefined_param), span())
+                .expect("height is stored independently of the graph"),
+            int(10)
+        );
+        assert_eq!(
+            call("real_form", std::slice::from_ref(&undefined_param), span())
+                .expect("the owner is stored independently of the graph"),
+            real
+        );
+        assert_eq!(
+            call("%", std::slice::from_ref(&undefined_param), span())
+                .expect("cached fields support parameter decomposition")
+                .to_string(),
+            "(KGB element #4294967295,[ 0, 0, 0 ],[ 1, 1, 1 ]/1)"
+        );
     }
 
     fn sl2r_param(real: &Value, x: i64, lambda: &[i32], nu: &[i64], nu_denominator: u64) -> Value {
