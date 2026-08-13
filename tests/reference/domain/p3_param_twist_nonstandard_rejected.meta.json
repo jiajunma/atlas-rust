@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/p3_param_twist_nonstandard_rejected",
+  "fixture_sha256": "2c75df5c04a8114ebbbd83a5a1908ed4831159576e1b970da35d88b41c7b5703",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "unimplemented",
+  "reference_status": "pending_hpc_reference",
+  "note": "Rejected P3 case pins the exact make_dominant failure for unary twist on a non-standard parameter.",
+  "oracle_exit_status": 1
+}
