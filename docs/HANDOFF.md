@@ -38,9 +38,12 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   63+ bypass the positive-denominator comparison; and a full-column-rank
   Gauss-Jordan solve must still reject residual `0 ... 0 | nonzero` rows in an
   overdetermined system.
-- The job-3546215 positive/rejected oracle contracts replay byte-exact locally.
-  A Rust/oracle HPC differential is still required before upgrading their
-  metadata.  This slice is shrink preprocessing only; it does not complete
+- The job-3546215 positive/rejected oracle contracts are now closed by
+  differential **3546956** at `cfd6643`: both are exact PASS (0.005s each,
+  7144/6976 KiB).  The overall report is PARTIAL only because of the already
+  declared project-wide pending items; runnable status is PASS.  Report SHA256
+  is `6bf959ec7d880204564b862f767a1600ba878af44e3369a39a6376ff23c3972e`.
+  This slice is shrink preprocessing only; it does not complete
   ordinary deformation recursion, proper-subsystem handling, RepTable memo,
   or timed cancellation.
 

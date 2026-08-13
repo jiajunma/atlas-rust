@@ -5,7 +5,7 @@
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "reference_status": "verified_hpc_reference",
-  "rust_status": "partial",
+  "rust_status": "verified_hpc",
   "oracle_exit_status": 0,
   "oracle_seconds": 0.012,
   "oracle_maxrss_kb": 4368,
@@ -13,6 +13,12 @@
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
   "reference_job": "3546215",
   "reference_report_sha256": "623e0650b86d18c795ba5d35b851f75cb681fb071b310cde3102b409759f9c2a",
+  "differential_job": "3546956",
+  "differential_commit": "cfd6643d179817a3b54a63311596af9057e4b9c0",
+  "rust_seconds": 0.005,
+  "rust_maxrss_kb": 7144,
+  "rust_maxrss_approximate": false,
+  "differential_report_sha256": "6bf959ec7d880204564b862f767a1600ba878af44e3369a39a6376ff23c3972e",
   "local_oracle_binary_sha256": "23371d61f97e59a693a0d27b586157c59303cb10dfe3e63769ad1c9253443565",
   "oracle_stdout_sha256": "70614b353da504e09548b01c0749f77b8aba18b518b6f885bfa7498e14050ec9",
   "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -21,5 +27,5 @@
     "sources/gkmod/repr.cpp:2552-2557",
     "sources/structure/alcoves.cpp:277-341"
   ],
-  "note": "HPC oracle contract for the denominator > 2^rank alcove-center shrink. In rank-one A1, p has gamma denominator 3 > 2; the explicit alcove_center observable changes nu from [1]/3 to [1]/2, proving a real shrink before full_deform and twisted_full_deform both return the same one-term KTypePol. Rust currently approximates unary full_deform without this shrink and raises an explicit NYI diagnostic in twisted_full_deform. Differential evidence remains pending."
+  "note": "HPC-verified denominator > 2^rank alcove-center shrink. In rank-one A1, p has gamma denominator 3 > 2; the explicit alcove_center observable changes nu from [1]/3 to [1]/2, proving a real shrink before full_deform and twisted_full_deform both return the same one-term KTypePol. Differential 3546956 verifies the shrink preprocessing; full ordinary deformation recursion remains a separate compatibility gap."
 }
