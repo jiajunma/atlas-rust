@@ -52,6 +52,7 @@ mod real_form_seed;
 mod real_projection;
 pub mod real_weyl;
 mod rep_context;
+mod rep_table;
 mod restricted_roots;
 mod root_datum;
 mod root_involution;

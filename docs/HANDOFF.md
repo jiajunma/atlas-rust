@@ -2729,3 +2729,12 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   `KL_block`, direct `print_block`, and `print_partial_block` do not install.
   Accepted/rejected used 0.015/0.009s and 4508/4360 KiB; report SHA256 is
   `b078c04a0fe0dd854deb7400fa491bd535e8fe1255532b605ba28504cc7d0ec9`.
+- RepTable implementation has started at the lowest reusable boundary:
+  `atlas-real-group/src/rep_table.rs` contains crate-private
+  `IntegralSystem`, `ReducedParamKey`, and an `IntegralCodec` that reuses the
+  existing Smith diagonaliser over the transported real-projection basis.
+  Its tests pin negative Euclidean residues, multi-digit order, deliberate
+  `u32` overflow, divisibility/shape rejection, theta-minus-one preimages,
+  and key hashing.  Do not mistake this for a pool or `block(Param)` support;
+  the next stage is the full `CommonBlock`/`BlockTopology` and all-row
+  registration boundary.

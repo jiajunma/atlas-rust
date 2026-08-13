@@ -42,6 +42,14 @@ Register every representative of a materialized block through `co_reduce`
 (reverse insertion so the smallest row wins); registering only the queried
 seed is still the rejected seed cache in disguise.
 
+The reusable mathematical base of that slice is now present in
+`atlas-real-group::rep_table`: a crate-private `ReducedParamKey` and
+`IntegralCodec` built from the transported `RealProjection::lift_mat`, using
+the existing Smith diagonaliser, exact divisibility checks, Euclidean
+remainders, and upstream-compatible wrapping `u32` mixed-radix packing.  This
+does not yet add the shared pool, locator, full common-block builder, or any
+language registration.
+
 The complete pool belongs to the shared real-form value and needs stable block
 IDs, reduced-key `Place`s, locators/modifiers, and partial/full promotion. Keep
 the mutex structural: reduce/probe under a short lock, materialize block/KL
