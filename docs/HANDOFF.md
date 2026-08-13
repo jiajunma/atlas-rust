@@ -95,6 +95,20 @@ differential over the 8 new fixtures upgrades all metas to verified_hpc.
   wall time and peak RSS recorded. Both metas are now
   `verified_hpc_reference`; the next step is the differential run.
 
+- **print_block_words CLOSED**: differential **3542976** @ 98c080f —
+  runnable status PASS across 243 fixtures; only the permanent two-event
+  `container_syntax_errors` EOF/quit exception remains PARTIAL. Both metas are
+  `verified_hpc`. The fat-node job took 145 seconds and peaked at 957792 KiB.
+- **Next compatibility gap activated**: `set pattern := value` multiple
+  assignment was parser-only and still failed analysis despite assignment
+  being marked supported. Positive/negative fixtures were pinned first;
+  reference capture **3542977** @ 87c98eb passed and matched the local frozen
+  oracle byte-for-byte. Implementation follows axis.w:6956-7500.
+- **Bundle sync lesson**: a range bundle created as
+  `git bundle create <file> <base>..HEAD` advertises the tip as `HEAD`, not
+  necessarily `main`; inspect with `git bundle list-heads` and fetch the
+  advertised ref (`git fetch <bundle> HEAD`) rather than assuming `main`.
+
 
 
 - **print_partial_block CLOSED — the last contract**: differential
@@ -2524,4 +2538,3 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   3515630-35, 3515698-99 verified; E7 kgb_hasse swap 3515688 RUNNING on fat
   (TIMEOUT=3600). New limit: D5 real forms hit the same column-echelon bug
   as E6 involution 187 (see REMAINING_BUILTINS.md).
-

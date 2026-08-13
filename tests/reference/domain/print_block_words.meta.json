@@ -4,9 +4,11 @@
  "oracle": "atlas",
  "stage": "typed-pipeline-swap",
  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
- "rust_status": "pending_hpc_differential",
+ "rust_status": "verified_hpc",
  "reference_status": "verified_hpc_reference",
  "reference_job": "3542971",
+ "differential_job": "3542976",
+ "differential_commit": "98c080f33b2d0c7459de080dbded511221feea2f",
  "note": "print_block/print_blockd regression pin for two latent divergences fixed 2026-08-13: (1) '*' placeholders in cross-actions/Cartan columns are right-aligned like upstream setw (block_io.cpp:197,205) \u2014 Rust fmt defaults chars to left alignment; (2) the Weyl word column now uses the upstream WeylGroup::word tie-break (weyl.cpp:944-958, per-piece unshift election, pieces in increasing order, d_out numbering) via CompactWeyl::canonical_word instead of the greedy minimal left-descent word. B2 (rf 2, compact dual) exercises w0 = '2,1,2,1'; D4 (rf 4, dual 1) gives a 28-element block with varied lengths.",
  "oracle_exit_status": 0
 }
