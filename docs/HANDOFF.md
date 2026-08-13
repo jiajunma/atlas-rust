@@ -2567,3 +2567,22 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   3515630-35, 3515698-99 verified; E7 kgb_hasse swap 3515688 RUNNING on fat
   (TIMEOUT=3600). New limit: D5 real forms hit the same column-echelon bug
   as E6 involution 187 (see REMAINING_BUILTINS.md).
+
+## 2026-08-13 P0/P1 builtin continuation
+
+- P0 oracle capture job `3543149` is pinned in the two
+  `p0_simple_signatures` reference metas.  Mechanical type reconciliation and
+  `(int,Param)` transforms are locally green and Rust-reviewed.  The B2
+  proper-integral probe confirms the transform generator is an
+  `IntegralSubsystem` generator, not an ambient simple-root index.
+- One P0 differential remains intentionally open: `KL_block(p)` installs a
+  full block in upstream's session `Rep_table`, so the following
+  `KL_column(p)` returns raw row 1 instead of a fresh partial-block row 0.
+  A cache keyed only by the exact seed was reviewed and rejected.  Port the
+  `Reduced_param`/locator/shared block-pool semantics described at the top of
+  `docs/REMAINING_BUILTINS.md`.
+- P1 fixture contracts were committed at `b82adfe`; HPC reference capture job
+  `3543697` was submitted for the accepted/rejected pair.  It covers Weyl
+  left `#`, both `##` overloads, `Cartan_class(KGBElt)`, and the missing unary
+  and term-addition KTypePol/ParamPol signatures.  Per standing rule, continue
+  implementation without waiting for that job.

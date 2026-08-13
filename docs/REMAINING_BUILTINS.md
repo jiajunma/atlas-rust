@@ -2,6 +2,30 @@
 
 ## Signature-level reconciliation (2026-08-13)
 
+### P0 status and Rep_table blocker (2026-08-13)
+
+P0 now has the exact `from_dominant`, `Cartan_info`, `KL_block`, and
+`KL_column` types plus the `(int,Param)` `cross`/`Cayley` overloads.  The
+parameter transforms must use `IntegralSubsystem`/`CommonContext`: counting
+integral ambient simple roots is wrong when the integral subsystem has a
+non-simple parent root (the B2 `[3,1]/2` case is the regression anchor).
+`KL_block` validates standardness before its no-value gate; `KL_column`
+validates standardness then finality; `from_dominant` validates only rank in a
+no-value context; `Cartan_info` skips its computation there.
+
+The accepted P0 fixture still differs at exactly one sequence-sensitive
+observation: after `KL_block(p)`, upstream `KL_column(p)` reports raw block row
+`1`, while a fresh Rust partial block reports row `0`.  Do not restore the
+rejected exact-`StandardRepr` seed cache.  Upstream `Rep_table` keys a block
+family by `Reduced_param = (transformed x, integral-system id,
+codec(gamma_lambda) mod Smith diagonal)`, stores a locator/block modifier,
+swallows related partial blocks when a full block is installed, and lets every
+full-block materializer affect later `lookup`.  The fix therefore belongs in a
+shared per-`RealFormContext` block pool with faithful reduced keys and relative
+locators, not in individual builtin callers.  Required sequence fixtures are
+`KL_block -> KL_column`, `print_common_block -> KL_column`, a related parameter
+in the same family, and a changed-gamma/block-modifier case.
+
 The name-level closure below was insufficient: upstream `atlas-types.w`
 registers **305 distinct `(name, argument type, result type)` signatures**
 across 187 names. A fresh comparison against the Rust registry found:

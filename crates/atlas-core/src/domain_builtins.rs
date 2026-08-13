@@ -42,13 +42,13 @@ use atlas_real_group::{
     twisted_deformation, twisted_deformation_terms, twisted_kl_column_at_s, twisted_kl_sum,
     AdjointFiberBudget, BasedRootDatum, BlockDescent, BlockGraph, CartanClassification,
     CartanClassificationBudget, CartanId, CommonContext, Coweight, ExternalFormOrder, GlobalKgb,
-    InnerClass, InnerClassLayout, IntegerLatticeBudget, IntegralBlockScope, InvolutionId,
-    InvolutionTable, InvolutionTableBudget, KType, KgbGraph, KgbId, KgbStatus, KlPol, KlTable,
-    LatticeInvolution, ModTwoVector, PartialBlock, RankFlags, RationalWeight, RealFormPresentation,
-    RealFormSeed, RelationBasis, RelationError, RelationGenerator, RelationMatrix, RepContext,
-    RootId, RootInvolutionData, RootKind, RootSystem, SplitInteger, StandardRepr, StandardReprMod,
-    StrongRealClassification, StructureError, WeakRealFormId, Weight, WeylAction, WeylElement,
-    WeylInterface,
+    InnerClass, InnerClassLayout, IntegerLatticeBudget, IntegralBlockScope, IntegralSubsystem,
+    InvolutionId, InvolutionTable, InvolutionTableBudget, KType, KgbGraph, KgbId, KgbStatus, KlPol,
+    KlTable, LatticeInvolution, ModTwoVector, PartialBlock, RankFlags, RationalWeight,
+    RealFormPresentation, RealFormSeed, RelationBasis, RelationError, RelationGenerator,
+    RelationMatrix, RepContext, RootId, RootInvolutionData, RootKind, RootSystem, SplitInteger,
+    StandardRepr, StandardReprMod, StrongRealClassification, StructureError, WeakRealFormId,
+    Weight, WeylAction, WeylElement, WeylInterface,
 };
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
@@ -2631,6 +2631,71 @@ fn test_final(parameter: &ParamValue, descr: &str, span: SourceSpan) -> Result<(
         span,
         format!("{descr}:\n  {shown}\n  Parameter is {reason}"),
     ))
+}
+
+fn parameter_integrality_rank(
+    parameter: &ParamValue,
+    span: SourceSpan,
+) -> Result<usize, Diagnostic> {
+    let rc = rep_context(&parameter.context);
+    IntegralSubsystem::integral(rc.root_system(), parameter.repr.gamma())
+        .map(|subsystem| subsystem.rank())
+        .map_err(|error| structure_diagnostic(error, span))
+}
+
+fn parameter_generator(
+    parameter: &ParamValue,
+    value: &Value,
+    span: SourceSpan,
+) -> Result<usize, Diagnostic> {
+    let integer = as_integer(value, span)?;
+    let narrowed = i32::try_from(&integer)
+        .map_err(|_| runtime(span, "Integer value to big for conversion"))?;
+    let rank = parameter_integrality_rank(parameter, span)?;
+    if (narrowed as u32) >= rank as u32 {
+        return Err(runtime(
+            span,
+            format!("Illegal simple reflection: {narrowed}, should be <{rank}"),
+        ));
+    }
+    Ok(narrowed as usize)
+}
+
+fn validate_from_dominant(arguments: &[Value], span: SourceSpan) -> Result<(), Diagnostic> {
+    arity("from_dominant", arguments, 2, span)?;
+    let decompose = matches!(&arguments[0], Value::Domain(DomainValue::RootDatum(_)));
+    let vector = if decompose {
+        &arguments[1]
+    } else {
+        &arguments[0]
+    };
+    let size = match vector {
+        Value::Vector(Vec32(entries)) => entries.len(),
+        Value::List(entries) => entries.len(),
+        other => return Err(type_error(span, format!("expected a vec, found {other}"))),
+    };
+    let datum = if decompose {
+        as_root_datum(&arguments[0], span)?
+    } else {
+        as_root_datum(&arguments[1], span)?
+    };
+    let rank = datum.datum.lattice_rank();
+    if size != rank {
+        return Err(runtime(
+            span,
+            if decompose {
+                format!("Rank and weight size mismatch {rank}:{size}")
+            } else {
+                format!("Coweight size and rank mismatch {size}:{rank}")
+            },
+        ));
+    }
+    Ok(())
+}
+
+fn validate_kl_column(parameter: &ParamValue, span: SourceSpan) -> Result<(), Diagnostic> {
+    test_standard(parameter, "Cannot compute Kazhdan-Lusztig column", span)?;
+    test_final(parameter, "Cannot compute Kazhdan-Lusztig column", span)
 }
 
 /// The `(1-delta)*gamma == 0` test of the ext-block wrappers
@@ -8010,6 +8075,23 @@ pub(crate) fn validate(
             let context = as_real_form(&arguments[0], span)?;
             build_kgb_element(context, &arguments[1], &arguments[2], span)?;
         }
+        // KL_block_wrapper calls test_standard before its no-value gate
+        // (atlas-types.w:6868-6872).
+        "KL_block" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(span, "KL_block expects a Param"));
+            };
+            test_standard(parameter, "KL_block requires a standard parameter", span)?;
+        }
+        "KL_column" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(span, "KL_column expects a Param"));
+            };
+            validate_kl_column(parameter, span)?;
+        }
+        "from_dominant" => validate_from_dominant(arguments, span)?,
         // classify_involution_wrapper validates squareness and M^2=I before
         // its no-value gate, but the integer-lattice classification follows
         // it (atlas-types.w:2697-2710).
@@ -8064,6 +8146,10 @@ pub(crate) fn validate(
                 block_element_index(block, &arguments[2], span)?;
             } else {
                 arity(name, arguments, 2, span)?;
+                if let Value::Domain(DomainValue::Param(parameter)) = &arguments[1] {
+                    parameter_generator(parameter, &arguments[0], span)?;
+                    return Ok(());
+                }
                 let generator = as_usize(&arguments[0], span)?;
                 let (context, id) = as_kgb_element(&arguments[1], span)?;
                 check_generator(context, generator, span)?;
@@ -12196,100 +12282,22 @@ pub(crate) fn call_with_printed(
                 // parameter_cross_wrapper (atlas-types.w:3849-3869):
                 // (int, Param -> Param), the simple-reflection cross on the
                 // standard parameter (repr.cpp:891-910).
-                let s = as_usize(&arguments[0], span)?;
                 if let Value::Domain(DomainValue::Param(parameter)) = &arguments[1] {
+                    let s = parameter_generator(parameter, &arguments[0], span)?;
                     let rc = rep_context(&parameter.context);
                     let z = parameter
                         .repr
                         .made_dominant(&rc)
                         .map_err(|e| runtime(span, e.to_string()))?;
-                    let datum = rc.datum();
-                    let gamma = z.gamma();
-                    let denominator = gamma.denominator();
-                    let integrality_rank = (0..datum.semisimple_rank())
-                        .filter(|&t| {
-                            let coroot = &datum.simple_coroots()[t];
-                            let dot = gamma
-                                .numerator()
-                                .iter()
-                                .zip(coroot.as_slice())
-                                .map(|(g, &c)| g * i64::from(c))
-                                .sum::<i64>();
-                            dot.rem_euclid(denominator) == 0
-                        })
-                        .count();
-                    if s >= integrality_rank {
-                        return Err(runtime(
-                            span,
-                            format!(
-                                "Illegal simple reflection: {s}, should be <{integrality_rank}"
-                            ),
-                        ));
-                    }
-                    // pos_neg = the positive real roots of z that go negative
-                    // under the simple reflection s (<root, coroot_s> > 0),
-                    // summed; subtract their sum from gamma_lambda.
-                    let system = RootSystem::enumerate(datum, ROOT_BUDGET)
-                        .map_err(|e| runtime(span, e.to_string()))?;
-                    let coroot_s = datum.simple_coroots()[s].clone();
-                    let pos_real = rc
-                        .positive_real_roots_at(z.x())
-                        .map_err(|e| runtime(span, e.to_string()))?;
-                    let mut pos_neg_sum: Vec<i64> = vec![0; datum.lattice_rank()];
-                    for &root_id in &pos_real {
-                        let Some(root) = system.root(root_id) else {
-                            continue;
-                        };
-                        let pairing =
-                            pair(root, &coroot_s).map_err(|e| runtime(span, e.to_string()))?;
-                        if pairing <= 0 {
-                            continue;
-                        }
-                        for (slot, &coordinate) in pos_neg_sum.iter_mut().zip(root.as_slice()) {
-                            *slot += i64::from(coordinate);
-                        }
-                    }
-                    let pos_neg_weight =
-                        Weight::new(pos_neg_sum.iter().map(|&x| x as i32).collect());
-                    let mut gamma_lambda = rc
-                        .gamma_lambda(z.x(), z.y_bits(), gamma)
-                        .map_err(|e| runtime(span, e.to_string()))?;
-                    gamma_lambda = gamma_lambda
-                        .sub(
-                            &RationalWeight::from_weight(&pos_neg_weight)
-                                .map_err(|e| runtime(span, e.to_string()))?,
-                        )
-                        .map_err(|e| runtime(span, e.to_string()))?;
-                    // Reflect the numerator by the simple root and rebuild.
-                    let reflected = datum
-                        .reflect_weight(
-                            s,
-                            &Weight::new(
-                                gamma_lambda.numerator().iter().map(|&x| x as i32).collect(),
-                            ),
-                        )
-                        .map_err(|e| runtime(span, e.to_string()))?;
-                    let reflected_gl = RationalWeight::from_weight(&reflected)
-                        .map_err(|e| runtime(span, e.to_string()))?;
-                    let gl_plus_rho = reflected_gl
-                        .add(rc.rho())
-                        .map_err(|e| runtime(span, e.to_string()))?;
-                    let lambda_rho_coords = gamma
-                        .sub(&gl_plus_rho)
-                        .map_err(|e| runtime(span, e.to_string()))?
-                        .numerator()
-                        .to_vec();
-                    let new_x = rc
-                        .graph()
-                        .cross(z.x(), s)
-                        .ok_or_else(|| runtime(span, "cross image missing".to_string()))?;
-                    let result = rc
-                        .sr_gamma(
-                            new_x,
-                            &Weight::new(lambda_rho_coords.iter().map(|&x| x as i32).collect()),
-                            gamma,
-                        )
-                        .map_err(|e| runtime(span, e.to_string()))?;
+                    let gamma = z.gamma().clone();
+                    let seed = StandardReprMod::mod_reduce(&rc, &z)
+                        .map_err(|e| structure_diagnostic(e, span))?;
+                    let context = CommonContext::integral(&rc, &gamma)
+                        .map_err(|e| structure_diagnostic(e, span))?;
+                    let result = context
+                        .cross(s, &seed)
+                        .and_then(|srm| srm.to_standard(&rc, &gamma))
+                        .map_err(|e| structure_diagnostic(e, span))?;
                     return Ok(Value::Domain(DomainValue::Param(ParamValue {
                         context: parameter.context.clone(),
                         repr: result,
@@ -12325,254 +12333,47 @@ pub(crate) fn call_with_printed(
                 // (int, Param -> Param), the KL Cayley transform
                 // (repr.cpp:943-1002). A Cayley_error returns the input
                 // parameter unchanged.
-                let s = as_usize(&arguments[0], span)?;
                 if let Value::Domain(DomainValue::Param(parameter)) = &arguments[1] {
+                    let s = parameter_generator(parameter, &arguments[0], span)?;
                     let rc = rep_context(&parameter.context);
                     let z = parameter
                         .repr
                         .made_dominant(&rc)
                         .map_err(|e| runtime(span, e.to_string()))?;
-                    let datum = rc.datum();
-                    let gamma = z.gamma();
-                    let denominator = gamma.denominator();
-                    let integrality_rank = (0..datum.semisimple_rank())
-                        .filter(|&t| {
-                            let coroot = &datum.simple_coroots()[t];
-                            let dot = gamma
-                                .numerator()
-                                .iter()
-                                .zip(coroot.as_slice())
-                                .map(|(g, &c)| g * i64::from(c))
-                                .sum::<i64>();
-                            dot.rem_euclid(denominator) == 0
-                        })
-                        .count();
-                    if s >= integrality_rank {
-                        return Err(runtime(
-                            span,
-                            format!(
-                                "Illegal simple reflection: {s}, should be <{integrality_rank}"
-                            ),
-                        ));
-                    }
-                    let system = RootSystem::enumerate(datum, ROOT_BUDGET)
-                        .map_err(|e| runtime(span, e.to_string()))?;
-                    let coroot_s = datum.simple_coroots()[s].clone();
-                    let parent_root = datum.simple_roots()[s].clone();
-                    let alpha_hat = &datum.simple_coroots()[s];
-                    let pos_real = rc
-                        .positive_real_roots_at(z.x())
-                        .map_err(|e| runtime(span, e.to_string()))?;
-                    let mut pos_neg_sum: Vec<i64> = vec![0; datum.lattice_rank()];
-                    for &root_id in &pos_real {
-                        let Some(root) = system.root(root_id) else {
-                            continue;
-                        };
-                        let pairing =
-                            pair(root, &coroot_s).map_err(|e| runtime(span, e.to_string()))?;
-                        if pairing <= 0 {
-                            continue;
-                        }
-                        for (slot, &coordinate) in pos_neg_sum.iter_mut().zip(root.as_slice()) {
-                            *slot += i64::from(coordinate);
-                        }
-                    }
-                    let pos_neg_weight =
-                        Weight::new(pos_neg_sum.iter().map(|&x| x as i32).collect());
-                    let mut gamma_lambda = rc
-                        .gamma_lambda(z.x(), z.y_bits(), gamma)
-                        .map_err(|e| runtime(span, e.to_string()))?;
-                    gamma_lambda = gamma_lambda
-                        .sub(
-                            &RationalWeight::from_weight(&pos_neg_weight)
-                                .map_err(|e| runtime(span, e.to_string()))?,
-                        )
-                        .map_err(|e| runtime(span, e.to_string()))?;
-                    let real_roots_of = |x: KgbId| -> Result<Vec<RootId>, Diagnostic> {
-                        let involution = rc
-                            .involution_of(x)
-                            .map_err(|e| runtime(span, e.to_string()))?;
-                        let record = rc
-                            .table()
-                            .record(involution)
-                            .ok_or_else(|| runtime(span, "involution record".to_string()))?;
-                        Ok(record
-                            .twisted_involution()
-                            .root_involution()
-                            .roots_of_kind(RootKind::Real)
-                            .collect())
-                    };
-                    let conj_x = rc
-                        .graph()
-                        .cross(z.x(), s)
-                        .ok_or_else(|| runtime(span, "cross image missing".to_string()))?;
-                    let dot = |numerator: &[i64]| -> i64 {
-                        numerator
-                            .iter()
-                            .zip(alpha_hat.as_slice())
-                            .map(|(g, &c)| g * i64::from(c))
-                            .sum()
-                    };
-                    let add_root_sum = |gamma_lambda: &mut RationalWeight,
-                                        root_ids: &[RootId]|
-                     -> Result<(), Diagnostic> {
-                        let mut sum: Vec<i64> = vec![0; datum.lattice_rank()];
-                        for &root_id in root_ids {
-                            let Some(root) = system.root(root_id) else {
-                                continue;
-                            };
-                            for (slot, &coordinate) in sum.iter_mut().zip(root.as_slice()) {
-                                *slot += i64::from(coordinate);
-                            }
-                        }
-                        let summed = RationalWeight::from_weight(&Weight::new(
-                            sum.iter().map(|&x| x as i32).collect(),
-                        ))
-                        .map_err(|e| runtime(span, e.to_string()))?;
-                        *gamma_lambda = gamma_lambda
-                            .add(&summed)
-                            .map_err(|e| runtime(span, e.to_string()))?;
-                        Ok(())
-                    };
-                    let new_x = match rc
-                        .graph()
-                        .status(conj_x, s)
-                        .ok_or_else(|| runtime(span, "descent status".to_string()))?
+                    let gamma = z.gamma().clone();
+                    let seed = StandardReprMod::mod_reduce(&rc, &z)
+                        .map_err(|e| structure_diagnostic(e, span))?;
+                    let context = CommonContext::integral(&rc, &gamma)
+                        .map_err(|e| structure_diagnostic(e, span))?;
+                    let transformed = match context
+                        .status(s, seed.x())
+                        .map_err(|e| structure_diagnostic(e, span))?
+                        .0
                     {
-                        KgbStatus::ImaginaryNoncompact => {
-                            let cayley_first = match rc.graph().cayley(conj_x, s) {
-                                Ok(Some(first)) => first,
-                                _ => {
-                                    return Ok(Value::Domain(DomainValue::Param(ParamValue {
-                                        context: parameter.context.clone(),
-                                        repr: parameter.repr.clone(),
-                                    })));
-                                }
-                            };
-                            let upstairs = rc
-                                .graph()
-                                .cross(cayley_first, s)
-                                .ok_or_else(|| runtime(span, "cross image missing".to_string()))?;
-                            let upstairs_real = real_roots_of(upstairs)?;
-                            let downstairs_real = real_roots_of(z.x())?;
-                            let real_flip: Vec<RootId> = upstairs_real
-                                .iter()
-                                .filter(|id| !downstairs_real.contains(id))
-                                .copied()
-                                .collect();
-                            // pos_neg &= real_flip; gamma_lambda += root_sum.
-                            let filtered: Vec<RootId> = pos_real
-                                .iter()
-                                .filter(|id| real_flip.contains(id))
-                                .copied()
-                                .collect();
-                            add_root_sum(&mut gamma_lambda, &filtered)?;
-                            // Parity correction: half the parent root if the
-                            // raised gamma_lambda fails the parity condition.
-                            let two_rho_up = two_rho(&system, &upstairs_real);
-                            let rho_r_corr = dot(&two_rho_up
-                                .as_slice()
-                                .iter()
-                                .map(|&c| i64::from(c))
-                                .collect::<Vec<_>>())
-                                / 2;
-                            let eval = dot(gamma_lambda.numerator());
-                            if (eval + rho_r_corr).rem_euclid(2) == 0 {
-                                let half_root: Vec<i64> = parent_root
-                                    .as_slice()
-                                    .iter()
-                                    .map(|&c| i64::from(c))
-                                    .collect();
-                                // half-root with denominator 2 (odd entries kept)
-                                let half = RationalWeight::new(
-                                    half_root.iter().map(|&c| c.rem_euclid(2)).collect(),
-                                    2,
-                                )
-                                .map_err(|e| runtime(span, e.to_string()))?;
-                                gamma_lambda = gamma_lambda
-                                    .add(&half)
-                                    .map_err(|e| runtime(span, e.to_string()))?;
-                            }
-                            upstairs
+                        KgbStatus::ImaginaryNoncompact => Some(
+                            context
+                                .up_cayley(s, &seed)
+                                .map_err(|e| structure_diagnostic(e, span))?,
+                        ),
+                        KgbStatus::Real
+                            if context
+                                .is_parity(s, &seed)
+                                .map_err(|e| structure_diagnostic(e, span))? =>
+                        {
+                            Some(
+                                context
+                                    .down_cayley(s, &seed)
+                                    .map_err(|e| structure_diagnostic(e, span))?,
+                            )
                         }
-                        _ => {
-                            // Real (type I) inverse Cayley, with the parity and
-                            // real-parent checks of repr.cpp:980-989.
-                            let real_roots = real_roots_of(z.x())?;
-                            let parent_s_id = RootId::from_usize(s);
-                            if !real_roots.contains(&parent_s_id) {
-                                return Ok(Value::Domain(DomainValue::Param(ParamValue {
-                                    context: parameter.context.clone(),
-                                    repr: parameter.repr.clone(),
-                                })));
-                            }
-                            let eval = dot(gamma_lambda.numerator());
-                            let two_rho_real = two_rho(&system, &real_roots);
-                            let rho_r_corr = dot(&two_rho_real
-                                .as_slice()
-                                .iter()
-                                .map(|&c| i64::from(c))
-                                .collect::<Vec<_>>())
-                                / 2;
-                            if (eval + rho_r_corr).rem_euclid(2) == 0 {
-                                return Ok(Value::Domain(DomainValue::Param(ParamValue {
-                                    context: parameter.context.clone(),
-                                    repr: parameter.repr.clone(),
-                                })));
-                            }
-                            let inverse_first = match rc.graph().inverse_cayley(conj_x, s) {
-                                Ok(Some((first, _))) => first,
-                                _ => {
-                                    return Ok(Value::Domain(DomainValue::Param(ParamValue {
-                                        context: parameter.context.clone(),
-                                        repr: parameter.repr.clone(),
-                                    })));
-                                }
-                            };
-                            let downstairs = rc
-                                .graph()
-                                .cross(inverse_first, s)
-                                .ok_or_else(|| runtime(span, "cross image missing".to_string()))?;
-                            let new_real = real_roots_of(downstairs)?;
-                            let real_flip: Vec<RootId> = new_real
-                                .iter()
-                                .filter(|id| !real_roots.contains(id))
-                                .copied()
-                                .collect();
-                            let filtered: Vec<RootId> = pos_real
-                                .iter()
-                                .filter(|id| real_flip.contains(id))
-                                .copied()
-                                .collect();
-                            add_root_sum(&mut gamma_lambda, &filtered)?;
-                            downstairs
-                        }
+                        _ => None,
                     };
-                    let reflected = datum
-                        .reflect_weight(
-                            s,
-                            &Weight::new(
-                                gamma_lambda.numerator().iter().map(|&x| x as i32).collect(),
-                            ),
-                        )
-                        .map_err(|e| runtime(span, e.to_string()))?;
-                    let reflected_gl = RationalWeight::from_weight(&reflected)
-                        .map_err(|e| runtime(span, e.to_string()))?;
-                    let gl_plus_rho = reflected_gl
-                        .add(rc.rho())
-                        .map_err(|e| runtime(span, e.to_string()))?;
-                    let lambda_rho_coords = gamma
-                        .sub(&gl_plus_rho)
-                        .map_err(|e| runtime(span, e.to_string()))?
-                        .numerator()
-                        .to_vec();
-                    let result = rc
-                        .sr_gamma(
-                            new_x,
-                            &Weight::new(lambda_rho_coords.iter().map(|&x| x as i32).collect()),
-                            gamma,
-                        )
-                        .map_err(|e| runtime(span, e.to_string()))?;
+                    let Some(transformed) = transformed else {
+                        return Ok(Value::Domain(DomainValue::Param(parameter.clone())));
+                    };
+                    let result = transformed
+                        .to_standard(&rc, &gamma)
+                        .map_err(|e| structure_diagnostic(e, span))?;
                     return Ok(Value::Domain(DomainValue::Param(ParamValue {
                         context: parameter.context.clone(),
                         repr: result,
@@ -13077,6 +12878,7 @@ pub(crate) fn call_with_printed(
                     ),
                 ));
             };
+            validate_kl_column(parameter, span)?;
             let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
             let dual_quasisplit = dual_parent.order.quasisplit_external();
             let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
@@ -13096,8 +12898,6 @@ pub(crate) fn call_with_printed(
             let z0 = (0..size)
                 .find(|&z| block.graph.x(z) == Some(parameter.repr.x()))
                 .ok_or_else(|| runtime(span, "parameter not in the common block"))?;
-            // Partial block: the Bruhat-down closure of z0 (repr.cpp:2060-2062
-            // subset.back_up over the Hasse diagram).
             // Partial block: the KL descent closure of z0
             // (Bruhat_generator::block_below, repr.cpp:1476-1510): follow
             // complex and real type-I descents downward.
@@ -13117,9 +12917,6 @@ pub(crate) fn call_with_printed(
                             }
                         }
                         Some(BlockDescent::RealTypeI) => {
-                            // A real type-I descent participates in the
-                            // closure only when it is a parity descent
-                            // (repr.cpp:1498 is_parity).
                             let parity = rc
                                 .is_parity(s, z_x, &lambda_rho, &gamma)
                                 .map_err(|error| structure_diagnostic(error, span))?;
@@ -13144,7 +12941,6 @@ pub(crate) fn call_with_printed(
             for (position, &z) in survivors.iter().enumerate() {
                 loc[z] = position;
             }
-            let start = loc[z0];
             // The KL column: P_{x,z0} over the survivors, skipping zeros.
             let mut column = Vec::new();
             for &z in &survivors {
@@ -13166,7 +12962,6 @@ pub(crate) fn call_with_printed(
                     poly_value,
                 ]));
             }
-            let _ = start;
             Ok(Value::List(column))
         }
         // KL_block (atlas-types.w:6868-6912, repr.cpp:2060-2075): the
@@ -13183,6 +12978,7 @@ pub(crate) fn call_with_printed(
                     ),
                 ));
             };
+            test_standard(parameter, "KL_block requires a standard parameter", span)?;
             let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
             let dual_quasisplit = dual_parent.order.quasisplit_external();
             let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
@@ -15973,19 +15769,8 @@ pub(crate) fn call_with_printed(
             } else {
                 (as_root_datum(&arguments[1], span)?, coords)
             };
+            validate_from_dominant(arguments, span)?;
             let rank = handle.datum.lattice_rank();
-            if coords.len() != rank {
-                // W_decompose_wrapper reports rank:size, W_codecompose_wrapper
-                // size:rank (atlas-types.w:2564-2568, 2583-2587).
-                return Err(runtime(
-                    span,
-                    if decompose {
-                        format!("Rank and weight size mismatch {}:{}", rank, coords.len())
-                    } else {
-                        format!("Coweight size and rank mismatch {}:{}", coords.len(), rank)
-                    },
-                ));
-            }
             let datum = &handle.datum;
             let semisimple = datum.semisimple_rank();
             let mut current = Weight::new(coords);
@@ -17659,6 +17444,20 @@ mod tests {
              non-final parameter(x=3,lambda=[2,2]/1,nu=[0,0]/1)\n  \
              Parameter is not semifinal"
         );
+        for result in [
+            call("KL_column", std::slice::from_ref(&p), span()),
+            validate("KL_column", std::slice::from_ref(&p), span())
+                .map(|()| Value::Tuple(Vec::new())),
+        ] {
+            assert_eq!(
+                result
+                    .expect_err("KL_column requires a final parameter")
+                    .message,
+                "Cannot compute Kazhdan-Lusztig column:\n  \
+                 non-final parameter(x=3,lambda=[2,2]/1,nu=[0,0]/1)\n  \
+                 Parameter is not semifinal"
+            );
+        }
 
         // The factor check precedes test_compatible and is_fixed
         // (rejected line 12), identically on the no-value path.

@@ -74,6 +74,29 @@ impl StandardReprMod {
     pub fn gamma_lambda(&self) -> &RationalWeight {
         &self.gamma_lambda
     }
+
+    /// `Rep_context::sr(const StandardReprMod&, const RatWeight&)`
+    /// (repr.cpp:807-813): restore the full standard parameter at
+    /// infinitesimal character `gamma`.
+    pub fn to_standard(
+        &self,
+        rc: &RepContext<'_>,
+        gamma: &RationalWeight,
+    ) -> Result<StandardRepr, StructureError> {
+        let gamma_lambda_rho = self.gamma_lambda.add(rc.rho())?;
+        let coordinates = gamma.sub(&gamma_lambda_rho)?.integral_coordinates()?;
+        let mut lambda_rho = Vec::new();
+        lambda_rho
+            .try_reserve_exact(coordinates.len())
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: coordinates.len(),
+            })?;
+        for coordinate in coordinates {
+            lambda_rho
+                .push(i32::try_from(coordinate).map_err(|_| StructureError::ArithmeticOverflow)?);
+        }
+        rc.sr_gamma(self.x, &Weight::new(lambda_rho), gamma)
+    }
 }
 
 /// The simple-root data of the upstream `subsystem::SubSystem`
@@ -1279,6 +1302,19 @@ mod tests {
         let seed = StandardReprMod::mod_reduce(rc, &z).unwrap();
         let ctxt = CommonContext::integral(rc, seed.gamma_lambda()).unwrap();
         (seed, ctxt)
+    }
+
+    #[test]
+    fn standard_repr_mod_restores_the_full_parameter() {
+        let fixture = a1_fixture();
+        let rc = fixture.rc();
+        let gamma = rw(&[1], 1);
+        let original = rc
+            .sr_gamma(KgbId(2), &Weight::new(vec![1]), &gamma)
+            .unwrap();
+        let reduced = StandardReprMod::mod_reduce(&rc, &original).unwrap();
+        let restored = reduced.to_standard(&rc, &gamma).unwrap();
+        assert_eq!(restored, original);
     }
 
     fn interval_xs(ctxt: &CommonContext<'_, '_>, seed: &StandardReprMod) -> Vec<usize> {

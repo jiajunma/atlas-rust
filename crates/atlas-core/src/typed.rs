@@ -5194,16 +5194,28 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             // attributes, unary relations, and the product/inverse/
             // generator-product operators. Binary =/!= are domain
             // relations registered in the relation block below.
-            domain_builtin(
+            domain_builtin_validate(
                 "from_dominant",
-                Type::tuple(vec![primitive_type(Prim::RootDatum), Type::row(int_type())]),
-                Type::Tuple(vec![primitive_type(Prim::WeylElt), Type::row(int_type())]),
+                Type::tuple(vec![
+                    primitive_type(Prim::RootDatum),
+                    primitive_type(Prim::Vec),
+                ]),
+                Type::Tuple(vec![
+                    primitive_type(Prim::WeylElt),
+                    primitive_type(Prim::Vec),
+                ]),
                 0,
             ),
-            domain_builtin(
+            domain_builtin_validate(
                 "from_dominant",
-                Type::tuple(vec![Type::row(int_type()), primitive_type(Prim::RootDatum)]),
-                Type::Tuple(vec![Type::row(int_type()), primitive_type(Prim::WeylElt)]),
+                Type::tuple(vec![
+                    primitive_type(Prim::Vec),
+                    primitive_type(Prim::RootDatum),
+                ]),
+                Type::Tuple(vec![
+                    primitive_type(Prim::Vec),
+                    primitive_type(Prim::WeylElt),
+                ]),
                 0,
             ),
             // Weyl orbit / alcove walls surface (atlas-types.w:2271-2281):
@@ -5557,25 +5569,26 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             ),
             // KL_column (atlas-types.w:6882-6905): the KL column of a final
             // standard parameter, over its partial block.
-            domain_builtin(
+            domain_builtin_validate(
                 "KL_column",
                 primitive_type(Prim::Param),
-                Type::tuple(vec![
-                    primitive_type(Prim::Int),
-                    Type::row(Type::tuple(vec![])),
-                ]),
+                Type::row(Type::tuple(vec![
+                    int_type(),
+                    primitive_type(Prim::Param),
+                    primitive_type(Prim::Vec),
+                ])),
                 0,
             ),
             // KL_block (atlas-types.w:6868-6912): the condensed KL matrix
             // over the parameter's common block.
-            domain_builtin_skip(
+            domain_builtin_validate(
                 "KL_block",
                 primitive_type(Prim::Param),
                 Type::tuple(vec![
                     Type::row(primitive_type(Prim::Param)),
+                    primitive_type(Prim::Int),
                     primitive_type(Prim::Mat),
                     Type::row(primitive_type(Prim::Vec)),
-                    primitive_type(Prim::Int),
                 ]),
                 0,
             ),
@@ -5734,12 +5747,12 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             // Cartan_info (atlas-types.w:4102-4160): the classify triple,
             // the Cartan involution's Weyl word, the orbit/fiber sizes, and
             // the three subsystem types.
-            domain_builtin(
+            domain_builtin_skip(
                 "Cartan_info",
                 primitive_type(Prim::CartanClass),
                 Type::tuple(vec![
                     Type::tuple(vec![int_type(), int_type(), int_type()]),
-                    Type::row(int_type()),
+                    primitive_type(Prim::Vec),
                     Type::tuple(vec![int_type(), int_type()]),
                     Type::tuple(vec![
                         primitive_type(Prim::LieType),
@@ -5748,6 +5761,22 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                     ]),
                 ]),
                 0,
+            ),
+            // parameter_cross_wrapper / parameter_Cayley_wrapper
+            // (atlas-types.w:7492-7493): the simple reflection is numbered
+            // in the parameter's integral subsystem. Its range check runs
+            // before the wrappers' no-value gate.
+            domain_builtin_validate(
+                "cross",
+                Type::tuple(vec![int_type(), primitive_type(Prim::Param)]),
+                primitive_type(Prim::Param),
+                2,
+            ),
+            domain_builtin_validate(
+                "Cayley",
+                Type::tuple(vec![int_type(), primitive_type(Prim::Param)]),
+                primitive_type(Prim::Param),
+                2,
             ),
             // basic_involution_wrapper (atlas-types.w:860-880, installed at
             // atlas-types.w:939-940): the permutation size check precedes
@@ -8323,6 +8352,158 @@ mod tests {
     }
 
     #[test]
+    fn p0_simple_domain_signatures_match_the_upstream_install_table() {
+        let signatures = |name: &str| {
+            builtin_registry()
+                .iter()
+                .filter(|builtin| builtin.name == name)
+                .map(|builtin| (builtin.arg_type.clone(), builtin.result.clone()))
+                .collect::<Vec<_>>()
+        };
+
+        let root_datum = primitive_type(Prim::RootDatum);
+        let weyl_elt = primitive_type(Prim::WeylElt);
+        let vector = primitive_type(Prim::Vec);
+        let param = primitive_type(Prim::Param);
+        let from_dominant = signatures("from_dominant");
+        assert!(from_dominant.contains(&(
+            Type::tuple(vec![root_datum.clone(), vector.clone()]),
+            Type::tuple(vec![weyl_elt.clone(), vector.clone()]),
+        )));
+        assert!(from_dominant.contains(&(
+            Type::tuple(vec![vector.clone(), root_datum]),
+            Type::tuple(vec![vector.clone(), weyl_elt]),
+        )));
+
+        assert_eq!(
+            signatures("Cartan_info"),
+            vec![(
+                primitive_type(Prim::CartanClass),
+                Type::tuple(vec![
+                    Type::tuple(vec![int_type(), int_type(), int_type()]),
+                    vector.clone(),
+                    Type::tuple(vec![int_type(), int_type()]),
+                    Type::tuple(vec![
+                        primitive_type(Prim::LieType),
+                        primitive_type(Prim::LieType),
+                        primitive_type(Prim::LieType),
+                    ]),
+                ]),
+            )]
+        );
+        assert_eq!(
+            signatures("KL_block"),
+            vec![(
+                param.clone(),
+                Type::tuple(vec![
+                    Type::row(param.clone()),
+                    int_type(),
+                    primitive_type(Prim::Mat),
+                    Type::row(vector.clone()),
+                ]),
+            )]
+        );
+        assert_eq!(
+            signatures("KL_column"),
+            vec![(
+                param.clone(),
+                Type::row(Type::tuple(vec![int_type(), param.clone(), vector])),
+            )]
+        );
+        for name in ["cross", "Cayley"] {
+            assert!(signatures(name)
+                .contains(&(Type::tuple(vec![int_type(), param.clone()]), param.clone(),)));
+        }
+    }
+
+    #[test]
+    fn p0_simple_domain_signatures_accept_and_reject_oracle_inputs() {
+        let root_datum = "simply_connected(Lie_type(\"A1\"),true)";
+        let inner_class = format!("inner_class({root_datum},[[1]])");
+        let real_form = format!("real_form({inner_class},1)");
+        let param = format!("param(KGB({real_form},1),[0],[1]/2)");
+        let accepted = [
+            format!("from_dominant({root_datum},vec: [3])"),
+            format!("from_dominant(vec: [3],{root_datum})"),
+            format!("Cartan_info(Cartan_class({inner_class},0))"),
+            format!("KL_block({param})"),
+            format!("KL_column({param})"),
+            format!("cross(0,{param})"),
+            format!("Cayley(0,{param})"),
+        ];
+        for source in accepted {
+            convert_and_run(&source)
+                .unwrap_or_else(|error| panic!("{source} should be accepted: {error:?}"));
+        }
+
+        let rejected = [
+            (
+                format!("from_dominant({root_datum},mat: [[1]])"),
+                "Failed to match 'from_dominant' with argument type (RootDatum,mat)",
+            ),
+            (
+                format!("Cartan_info({root_datum})"),
+                "found RootDatum while CartanClass was needed.",
+            ),
+            (
+                format!("KL_block({real_form})"),
+                "found RealForm while Param was needed.",
+            ),
+            (
+                format!("KL_column({real_form})"),
+                "found RealForm while Param was needed.",
+            ),
+            (
+                format!("cross(1,{param})"),
+                "Illegal simple reflection: 1, should be <1",
+            ),
+            (
+                format!("Cayley(1,{param})"),
+                "Illegal simple reflection: 1, should be <1",
+            ),
+            (
+                format!("cross(-1,{param})"),
+                "Illegal simple reflection: -1, should be <1",
+            ),
+            (
+                format!("Cayley(999999999999999999999999,{param})"),
+                "Integer value to big for conversion",
+            ),
+        ];
+        for (source, expected) in rejected {
+            assert_eq!(
+                convert_and_run(&source)
+                    .expect_err("oracle-rejected input")
+                    .message,
+                expected,
+                "source: {source}"
+            );
+        }
+    }
+
+    #[test]
+    fn parameter_cross_uses_the_integral_subsystem_generator() {
+        let root_datum = "simply_connected(Lie_type(\"B2\"),true)";
+        let inner_class = format!("inner_class({root_datum},[[1,0],[0,1]])");
+        let real_form = format!("real_form({inner_class},1)");
+        let parameter = format!("param(KGB({real_form},2),[-1,0],[1,3]/2)");
+
+        let (_, crossed) =
+            convert_and_run(&format!("cross(0,{parameter})")).expect("integral-root cross");
+        assert_eq!(
+            crossed.to_string(),
+            "final parameter(x=3,lambda=[1,1]/1,nu=[3,0]/4)"
+        );
+
+        let (_, cayley) =
+            convert_and_run(&format!("Cayley(0,{parameter})")).expect("integral-root Cayley");
+        assert_eq!(
+            cayley.to_string(),
+            "non-dominant parameter(x=2,lambda=[0,1]/1,nu=[-3,6]/4)"
+        );
+    }
+
+    #[test]
     fn unknown_named_calls_report_name_before_argument_errors() {
         for source in ["foo(1)", "foo(missing)"] {
             let error = convert_and_run(source).expect_err("unknown builtin");
@@ -8455,6 +8636,43 @@ mod tests {
             Control::Runtime(Diagnostic { message, .. })
                 if message == "Illegal real form number: 99"
         ));
+
+        let error = convert_and_run(
+            "begin KL_block(param(KGB(real_form(inner_class(simply_connected(\
+             Lie_type(\"A1\"),true),[[1]]),1),1),[-2],[0]/1));7 end",
+        )
+        .expect_err("KL_block validates standardness before its no-value gate");
+        assert_eq!(
+            error.message,
+            "KL_block requires a standard parameter:\n  \
+             non-standard parameter(x=1,lambda=[-1]/1,nu=[0]/1)\n  \
+             Parameter not standard"
+        );
+
+        let error = convert_and_run(
+            "begin from_dominant(simply_connected(Lie_type(\"A1\"),true),[1,2]);7 end",
+        )
+        .expect_err("from_dominant checks rank before its no-value gate");
+        assert_eq!(error.message, "Rank and weight size mismatch 1:2");
+
+        let error = convert_and_run(
+            "begin KL_column(param(KGB(real_form(inner_class(simply_connected(\
+             Lie_type(\"A1\"),true),[[1]]),1),1),[-2],[0]/1));7 end",
+        )
+        .expect_err("KL_column validates standardness before its no-value gate");
+        assert_eq!(
+            error.message,
+            "Cannot compute Kazhdan-Lusztig column:\n  \
+             non-standard parameter(x=1,lambda=[-1]/1,nu=[0]/1)\n  \
+             Parameter not standard"
+        );
+
+        let (_, value) = convert_and_run(
+            "begin Cartan_info(Cartan_class(inner_class(simply_connected(\
+             Lie_type(\"A1\"),true),[[1]]),0));7 end",
+        )
+        .expect("Cartan_info skips all work at no-value");
+        assert_eq!(value, Value::Integer(BigInt::from(7)));
     }
 
     #[test]
