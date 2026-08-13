@@ -531,6 +531,13 @@ W_cells and is a 1-2 hour debugging task against upstream matreduc.
 
 ## Param W-graph type and generic row-size contract (2026-08-13)
 
+The next deformation boundary is frozen by oracle job `3546215`: rank-one
+gamma denominator 3 crosses the `2^rank` threshold, `alcove_center` visibly
+changes `nu` from `[1]/3` to `[1]/2`, and both full deformation variants
+return the pinned one-term KType polynomial. The accepted/rejected captures
+took 0.012/0.008s and 4368/4288 KiB; report SHA256 is
+`623e0650b86d18c795ba5d35b851f75cb681fb071b310cde3102b409759f9c2a`.
+
 - `W_graph(Param)` returns `(int,[([int],[(int,int)])])` and
   `W_cells(Param)` returns `(int,[([int],[([int],[(int,int)])])])`.
   Treating the edge lists as `vec` preserves printed values but breaks nested

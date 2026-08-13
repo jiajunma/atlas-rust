@@ -2744,3 +2744,9 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   drops the original `Arc<PartialBlock>` and still fills/queries its owned KL
   table, proving the future RepTable record needs no self-reference.  The full
   common-block packet constructor remains the next algorithmic step.
+- Deformation alcove-shrink contracts are HPC-frozen by job `3546215` at
+  `1cda0fe`: A1 denominator 3 makes `alcove_center` change `nu` from 1/3 to
+  1/2 before both full deformation variants, while the rejected fixture pins
+  the standard gate in no-value context. Accepted/rejected used 0.012/0.008s
+  and 4368/4288 KiB; report SHA256 is
+  `623e0650b86d18c795ba5d35b851f75cb681fb071b310cde3102b409759f9c2a`.

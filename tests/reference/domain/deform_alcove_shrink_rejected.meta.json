@@ -4,17 +4,20 @@
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "rust_status": "unverified",
   "oracle_exit_status": 1,
-  "oracle_seconds": 0.007,
-  "oracle_maxrss_kb": 6000,
-  "oracle_maxrss_approximate": true,
+  "oracle_seconds": 0.008,
+  "oracle_maxrss_kb": 4288,
+  "oracle_maxrss_approximate": false,
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3546215",
+  "reference_report_sha256": "623e0650b86d18c795ba5d35b851f75cb681fb071b310cde3102b409759f9c2a",
   "local_oracle_binary_sha256": "23371d61f97e59a693a0d27b586157c59303cb10dfe3e63769ad1c9253443565",
   "oracle_stdout_sha256": "41aa14fe4f15b9e388e1f7180f12863dc4df8f598f7635535d3a17012fc75536",
   "oracle_stderr_sha256": "d89f636a61f021a77cb42d1f215003fe32e63534ec81bec90ee18b22c5c14917",
   "upstream_evidence": [
     "sources/interpreter/atlas-types.w:8229-8240"
   ],
-  "note": "Rejected companion pins the most relevant twisted_full_deform gate: the standard-parameter check runs even when the result is suppressed by begin ...; 0 end, and precedes delta-fix and deformation work. Captured locally from the pinned revision; HPC reference and differential evidence remain pending."
+  "note": "Rejected companion pins the most relevant twisted_full_deform gate: the standard-parameter check runs even when the result is suppressed by begin ...; 0 end, and precedes delta-fix and deformation work. Verified by HPC oracle job 3546215; differential evidence remains pending."
 }
