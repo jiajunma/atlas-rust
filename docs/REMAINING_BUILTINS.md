@@ -26,6 +26,13 @@ locators, not in individual builtin callers.  Required sequence fixtures are
 `KL_block -> KL_column`, `print_common_block -> KL_column`, a related parameter
 in the same family, and a changed-gamma/block-modifier case.
 
+Oracle job `3545765` now freezes the first three sequence classes plus the
+negative install matrix in `rep_table_sequence{,_rejected}`: value-demanded
+`KL_block` and `print_common_block` install, while discarded `KL_block` and
+the direct block printers do not.  The capture took 0.015/0.009s and
+4508/4360 KiB; report SHA256 is
+`b078c04a0fe0dd854deb7400fa491bd535e8fe1255532b605ba28504cc7d0ec9`.
+
 The first faithful implementation slice may support the full-integral,
 identity-locator domain, but it must already use an explicit
 `ReducedParamKey { x, integral_system: Full, residue }`. Compute `residue`

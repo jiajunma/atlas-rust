@@ -5,11 +5,14 @@
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "rust_status": "unimplemented",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
   "oracle_exit_status": 1,
-  "oracle_seconds": 0.008,
-  "oracle_maxrss_kb": 3280,
-  "oracle_maxrss_approximate": true,
+  "oracle_seconds": 0.009,
+  "oracle_maxrss_kb": 4360,
+  "oracle_maxrss_approximate": false,
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3545765",
+  "reference_report_sha256": "b078c04a0fe0dd854deb7400fa491bd535e8fe1255532b605ba28504cc7d0ec9",
   "local_oracle_binary_sha256": "23371d61f97e59a693a0d27b586157c59303cb10dfe3e63769ad1c9253443565",
   "oracle_stdout_sha256": "f05397899548856d9ba93a6d345d0656b6be9bacb457781282bf3135dcbd58bf",
   "oracle_stderr_sha256": "156753fec28dd235d945327143d1c79389f5cb77f2504c7635ea2d4aa833b90a",
@@ -18,5 +21,5 @@
     "sources/interpreter/atlas-types.w:6837-6874",
     "sources/interpreter/atlas-types.w:8390-8400"
   ],
-  "note": "Rejected companion captured exactly with the local pinned oracle; verbatim HPC capture remains pending. It pins standard-parameter checks for KL_block/KL_column both in value and no-value contexts, the common/direct/partial block-printer standard gate, continued batch recovery, and the RealForm-for-Param overload diagnostics."
+  "note": "Rejected companion verified by HPC oracle capture 3545765. It pins standard-parameter checks for KL_block/KL_column both in value and no-value contexts, the common/direct/partial block-printer standard gate, continued batch recovery, and the RealForm-for-Param overload diagnostics."
 }

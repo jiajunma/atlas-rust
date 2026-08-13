@@ -2723,3 +2723,9 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   all four target fixtures PASS exact, and the full corpus has 260 PASS / 3
   declared PARTIAL / 0 FAIL. Rust took 0.005-0.006s at 6940-7252 KiB; report
   SHA256 `f27b6b6ebfada2aeaed23f240bb79aa698f340f8f7b2b9771ecf437ae9cb5d6b`.
+- Shared RepTable sequence contracts are now frozen by oracle job `3545765`
+  at `ce9034b`: standalone `KL_column` row 0; value `KL_block` and
+  `print_common_block` install a full family and expose raw row 1; no-value
+  `KL_block`, direct `print_block`, and `print_partial_block` do not install.
+  Accepted/rejected used 0.015/0.009s and 4508/4360 KiB; report SHA256 is
+  `b078c04a0fe0dd854deb7400fa491bd535e8fe1255532b605ba28504cc7d0ec9`.
