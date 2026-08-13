@@ -1,0 +1,22 @@
+{
+  "fixture": "domain/rep_table_sequence_rejected",
+  "fixture_sha256": "a271e34bc7564b72d066486f567b19db18e5d2347916a5b4ae75bdd76362d87b",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "unimplemented",
+  "reference_status": "pending_hpc_reference",
+  "oracle_exit_status": 1,
+  "oracle_seconds": 0.008,
+  "oracle_maxrss_kb": 3280,
+  "oracle_maxrss_approximate": true,
+  "local_oracle_binary_sha256": "23371d61f97e59a693a0d27b586157c59303cb10dfe3e63769ad1c9253443565",
+  "oracle_stdout_sha256": "f05397899548856d9ba93a6d345d0656b6be9bacb457781282bf3135dcbd58bf",
+  "oracle_stderr_sha256": "156753fec28dd235d945327143d1c79389f5cb77f2504c7635ea2d4aa833b90a",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:6626-6657",
+    "sources/interpreter/atlas-types.w:6837-6874",
+    "sources/interpreter/atlas-types.w:8390-8400"
+  ],
+  "note": "Rejected companion captured exactly with the local pinned oracle; verbatim HPC capture remains pending. It pins standard-parameter checks for KL_block/KL_column both in value and no-value contexts, the common/direct/partial block-printer standard gate, continued batch recovery, and the RealForm-for-Param overload diagnostics."
+}

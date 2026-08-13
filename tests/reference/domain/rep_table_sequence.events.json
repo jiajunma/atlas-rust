@@ -1,0 +1,61 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/rep_table_sequence",
+  "status": "pending_hpc_reference",
+  "events": [
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "[(0,final parameter(x=1,lambda=[1]/1,nu=[0]/1),[ 1 ])]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "[(1,final parameter(x=1,lambda=[1,0]/1,nu=[0,0]/1),[ 1 ])]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "[(0,final parameter(x=1,lambda=[1,0,0]/1,nu=[0,0,0]/1),[ 1 ])]"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Parameter defines element 2 of the following common block,\nas transformed by <>:\n0:  0  [i1]  1   (2,*)  *(x=0,gamma-lambda=[0,0,0,0]/1)  e\n1:  0  [i1]  0   (2,*)  *(x=1,gamma-lambda=[0,0,0,0]/1)  e\n2:  1  [r1]  2   (0,1)   (x=2,gamma-lambda=[0,0,0,0]/1)  1^e\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "[(1,final parameter(x=1,lambda=[4,0,0,0]/1,nu=[0,0,0,0]/1),[ 1 ])]"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Parameter defines element 2 of the following block:\n0:  0  [i1]  1   (2,*)  *(x=0,gamma-lambda=[0,0,0,0,0]/1)  e\n1:  0  [i1]  0   (2,*)  *(x=1,gamma-lambda=[0,0,0,0,0]/1)  e\n2:  1  [r1]  2   (0,1)   (x=2,gamma-lambda=[0,0,0,0,0]/1)  1^e\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "[(0,final parameter(x=1,lambda=[4,0,0,0,0]/1,nu=[0,0,0,0,0]/1),[ 1 ])]"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "0:  0  [i1]  1   (2,*)  *(x=0,gamma-lambda=[0,0,0,0,0,0]/1)  e\n1:  0  [i1]  0   (2,*)  *(x=1,gamma-lambda=[0,0,0,0,0,0]/1)  e\n2:  1  [r1]  2   (0,1)   (x=2,gamma-lambda=[0,0,0,0,0,0]/1)  1^e\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "[(0,final parameter(x=1,lambda=[4,0,0,0,0,0]/1,nu=[0,0,0,0,0,0]/1),[ 1 ])]"
+      }
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("A1"),true)
+ic : InnerClass
+ic := inner_class(rd,[[1]])
+rf : RealForm
+rf := real_form(ic,1)
+n : Param
+n := param(KGB(rf,1),[-2],[0]/1)
+KL_block(n)
+(KL_block(n);0)
+KL_column(n)
+(KL_column(n);0)
+print_common_block(n)
+print_block(n)
+print_partial_block(n)
+KL_block(rf)
+KL_column(rf)
+print_common_block(rf)
