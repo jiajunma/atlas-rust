@@ -1,0 +1,18 @@
+{
+  "fixture": "domain/param_root_transforms_rejected",
+  "fixture_sha256": "47c918e704114bbebf1ae55a6a7da1e5e2c61b321e03641e4539b98a7957fd79",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "unimplemented",
+  "reference_status": "pending_hpc_reference",
+  "oracle_exit_status": 1,
+  "local_oracle_binary_sha256": "23371d61f97e59a693a0d27b586157c59303cb10dfe3e63769ad1c9253443565",
+  "local_oracle_stdout_sha256": "7d18b7f7d8bd90fbec399ca6432b807b025427ea7f8ea3a513f6f72a09fb921d",
+  "local_oracle_stderr_sha256": "40bd4337147aef1dbee9a6375da4badb622c71287aaf468d6427aa4d59adfc3a",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:6474-6518",
+    "sources/interpreter/atlas-types.w:7494-7496"
+  ],
+  "note": "Requested-result rejection contract: a genuine A2 root outside the parameter's integrality subsystem gives 'Not an integral root' for both overloads; a rank-one vector on rank-two A2 gives 'Not a root' for cross and 'Not an integral root' for Cayley. Exact stdout/stderr confirmed with the local Atlas build at pinned revision 4d3e9449; frozen HPC-binary provenance and benchmarks remain pending."
+}

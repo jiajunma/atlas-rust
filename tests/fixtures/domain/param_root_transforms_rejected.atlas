@@ -1,0 +1,14 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("A2"),true)
+ic : InnerClass
+ic := inner_class(rd,[[1,0],[0,1]])
+rf : RealForm
+rf := real_form(ic,1)
+p : Param
+p := param(KGB(rf,5),[0,0],[0,0]/1)
+q : Param
+q := param(KGB(rf,5),[0,0],[1,0]/2)
+cross(root(rd,0),q)
+Cayley(root(rd,0),q)
+cross([2],p)
+Cayley([2],p)
