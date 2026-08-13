@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/full_deform_term_merge",
+  "fixture_sha256": "4422282e5f0fc5385bda6f9760e5bea213635143b2f5adc01b788bbddd844079",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "known_incorrect",
+  "reference_status": "pending_hpc_reference",
+  "note": "full_deform must merge output coefficients by KType key; distinct K-types with equal Split coefficients both survive.",
+  "oracle_exit_status": 0
+}

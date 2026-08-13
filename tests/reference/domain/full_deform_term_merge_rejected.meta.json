@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/full_deform_term_merge_rejected",
+  "fixture_sha256": "f235f14bd26abd84b96837c926119bfb0a7bf35d395f38158d84aab10557d4c8",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "unverified",
+  "reference_status": "pending_hpc_reference",
+  "note": "Rejected companion pins the parameter rank gate without depending on the missing timed full_deform overload.",
+  "oracle_exit_status": 1
+}
