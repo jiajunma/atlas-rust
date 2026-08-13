@@ -626,3 +626,22 @@ took 0.012/0.008s and 4368/4288 KiB; report SHA256 is
   iteration direction remains justified directly by the root-first overload
   `SubSystem::permuted_root(rt,w)` (`rootdata.h:320-324`) rather than by that
   fixture alone; add a non-palindromic oracle case when one is available.
+
+## Timed full-deformation contract (2026-08-13)
+
+- Oracle job `3547426` freezes the missing
+  `full_deform(Param,int)->(void|KTypePol)` overload. A completed computation
+  uses the `.done` union branch; fresh-process deadlines of `0` and `-1`
+  milliseconds use `().timed_out`.
+- The timeout is cooperative and cache-sensitive, not a shell/process timeout.
+  A discarded timed call does not warm the representation-table deformation
+  cache, unary `full_deform` does warm it, and a later zero-millisecond call
+  can therefore complete. Integer narrowing still runs before the no-value
+  early return and diagnoses an oversized timer.
+- The four captures took 0.009--0.014 seconds and 4344--4484 KiB RSS; report
+  SHA256 is
+  `97931b44e402672b0704a1caca595fcb4e5c91582d95325ab3ff82536fb75b04`.
+  They verify the oracle contract only: Rust remains unimplemented until the
+  shared representation/formula cache and cooperative cancellation probe are
+  connected to the recursive deformation engine. Do not wrap the current
+  one-layer approximation in a wall-clock timeout and call it compatible.

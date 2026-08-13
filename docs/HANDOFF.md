@@ -2815,3 +2815,22 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   the standard gate in no-value context. Accepted/rejected used 0.012/0.008s
   and 4368/4288 KiB; report SHA256 is
   `623e0650b86d18c795ba5d35b851f75cb681fb071b310cde3102b409759f9c2a`.
+- Timed ordinary full-deformation oracle contracts are frozen by job
+  `3547426` at `1a3e2e23`. Four separate processes pin the static overload and
+  `.done` union, fresh `0`/`-1` millisecond `.timed_out` branches, and the
+  cache/no-value ordering (discarded calls do not warm; unary calls do;
+  bigint timer narrowing still diagnoses). They used 0.009--0.014 seconds and
+  4344--4484 KiB RSS; report SHA256 is
+  `97931b44e402672b0704a1caca595fcb4e5c91582d95325ab3ff82536fb75b04`.
+  Rust status remains `unimplemented`; implementation must share the real
+  `RepTable` formula cache and use cooperative deadline checks inside recursive
+  deformation. A background worker or a timeout around the current
+  approximation would violate the cache and side-effect contract.
+- Representation-table ownership direction: keep the mutable cache with the
+  exact `InvolutionTable`/`KgbGraph` substrates in an `Arc<RepTableOwner>`.
+  Construct short-lived `RepContext` views from that owner; never self-borrow a
+  `RealFormContext`, use address tokens, or install a global table. Canonical
+  real forms need a per-`InnerClassContext` weak interning table; custom forms
+  always get fresh owners. The KL table itself must ultimately live in each
+  shared block record, otherwise rebuilding `KlTable` in every language caller
+  loses the cache effects observed by timed deformation.
