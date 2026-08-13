@@ -1,0 +1,20 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/timed_full_deform_signatures",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind":"ReportLine","text":"Declaring identifier 'rd': RootDatum\n"},
+    {"kind":"Value","value":{"type":"display","display":"simply connected root datum of Lie type 'A1'"}},
+    {"kind":"ReportLine","text":"Declaring identifier 'ic': InnerClass\n"},
+    {"kind":"Value","value":{"type":"display","display":"Complex reductive group of type A1, with involution defining\ninner class of type 'c', with 2 real forms and 2 dual real forms"}},
+    {"kind":"ReportLine","text":"Declaring identifier 'rf': RealForm\n"},
+    {"kind":"Value","value":{"type":"display","display":"connected split real group with Lie algebra 'sl(2,R)'"}},
+    {"kind":"ReportLine","text":"Declaring identifier 'p': Param\n"},
+    {"kind":"Value","value":{"type":"display","display":"final parameter(x=0,lambda=[2]/1,nu=[0]/1)"}},
+    {"kind":"ReportLine","text":"Type: KTypePol\n"},
+    {"kind":"ReportLine","text":"Type: (void|KTypePol)\n"},
+    {"kind":"Value","value":{"type":"display","display":"\n1* K_type(x=0, lambda=[2]/1) [2].done"}},
+    {"kind":"Diagnostic","category":"type","message":"Failed to match 'full_deform' with argument type (Param,bool)"},
+    {"kind":"Value","value":{"type":"integer","value":2}}
+  ]
+}

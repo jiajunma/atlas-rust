@@ -1,0 +1,14 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("A1"),true)
+ic : InnerClass
+ic := inner_class(rd,[[1]])
+rf : RealForm
+rf := real_form(ic,1)
+p : Param
+p := param(KGB(rf,0),[1],[0]/1)
+while true; full_deform(p,0); dont od
+full_deform(p,0)
+full_deform(p)
+full_deform(p,0)
+while true; full_deform(p,999999999999999999999999999999999999999999999999999); dont od
+1+1

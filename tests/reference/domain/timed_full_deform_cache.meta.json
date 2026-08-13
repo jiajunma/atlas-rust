@@ -1,0 +1,34 @@
+{
+  "fixture": "domain/timed_full_deform_cache.atlas",
+  "fixture_sha256": "231021fc89c14d5fc9017b67bf54e8ab8445ec2f4a504845e7480c527a04f0fe",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_reference",
+  "rust_status": "unimplemented",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:8262-8291",
+    "sources/interpreter/axis.w:1200-1213"
+  ],
+  "local_draft_observation": {
+    "oracle_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+    "oracle_binary_sha256": "23371d61f97e59a693a0d27b586157c59303cb10dfe3e63769ad1c9253443565",
+    "oracle_source_tree_clean": false,
+    "stdout_sha256": "b864931a7a3a623633050bf2a811a6284dc43baf18bfeedc7c92531ea6cdb658",
+    "stderr_sha256": "50ccd2d855b5191b64dce4f9cdaed0131a33c07c3a579206ba2fbb428f7ef1e1",
+    "exit_status": 1,
+    "seconds": 0.009,
+    "maxrss_kb": 6080,
+    "maxrss_approximate": true,
+    "verification": "unverified_local_draft_binary_differs_from_frozen_hpc_pin_and_upstream_tree_is_dirty"
+  },
+  "notes": "The initial one-iteration while evaluates full_deform(p,0) in no-value context and yields []; the next 0 ms value call still times out, proving no cache warming. Unary full_deform then warms the RepTable cache, after which 0 ms returns done. A bigint timer in the same no-value shape still diagnoses before the wrapper's no-value early return.",
+  "hpc_capture": {
+    "fresh_process_required": true,
+    "timeout_seconds": 30,
+    "estimated_seconds": 1,
+    "estimated_memory_mb": 64
+  },
+  "unprobed_boundary": "Do not treat i64 MAX or i64 MIN timer values as a stable contract; capture them separately if needed."
+}
