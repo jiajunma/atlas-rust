@@ -4,6 +4,140 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-13i (PAUSED: shared RepTable callers, release-only blocker)
+
+The user paused the autonomous port and is handing the repository to another
+coding agent.  Do not resume the interrupted `block(Param)` or proper-integral-
+subsystem explorations before repairing and re-running the failed differential
+described below.
+
+### Published state
+
+- `main` is pushed through **`9730864`**.
+- `75bf75b feat: route parameter KL through representation tables` routes
+  `KL_column`, `KL_block`, and `print_common_block` through the per-real-form
+  shared `RepTableOwner`; it also adds `LocatedBlock::prepared_query`, raw-row
+  parameter reconstruction with the relative shift, shared KL fills, the
+  `{zero,one}` condensed polynomial store, rank-zero singleton fallbacks, and
+  the exact materialisation sequence test.
+- `9730864 test: register representation table sequencing` adds
+  `rep_table_sequence{,_rejected}` to `hpc/pipeline_swap_diff.py`.
+- The preceding substrate commits are `108c463` (owning
+  `RepTableOwner`), `ee2a631` (canonical real-form weak memo and shared owner),
+  and `9ecc8d0` (one KL table per stable representation-block record).
+- Source/spec and Rust reviews approved the full-integral identity-locator
+  slice after fixing the `KL_column` raw range (`0..=raw_y`), preserving
+  accumulated `finals_for` branches at compact descents, and making missing
+  block lengths loud invariants.  These approvals predated the release-only
+  failure below.
+- The only local untracked file is the user's
+  `crates/atlas-real-group/examples/fiber_probe.rs`; preserve it.
+
+### HPC job 3547776: FAIL and exact first repair
+
+Job **3547776** was submitted on the clean exact commit
+`973086493d2fdfcaab0495649627ae5a0a07c4d1` (`fat`, 32 GiB,
+`TIMEOUT=1200`).  Source-state verification passed, but the runnable
+differential failed.  The report is:
+
+```text
+/public/home/majj/atlas-rust/results/
+  973086493d2fdfcaab0495649627ae5a0a07c4d1/3547776/
+  pipeline_swap/pipeline_swap_diff_report.json
+```
+
+There is a deterministic release-only RAII bug in
+`crates/atlas-real-group/src/rep_table.rs`, `Drop for ActiveKlCallback`:
+
+```rust
+debug_assert!(active.replace(false));
+```
+
+In a debug local build the expression executes and clears the thread-local
+flag.  In the release HPC build `debug_assert!` removes the entire expression,
+so the first successful KL callback leaves `ACTIVE_KL_CALLBACK=true` forever.
+Every later `with_kl_table` on that worker thread then fails with
+`representation block KL table nested callback`.  This explains why local
+debug replay of `rep_table_sequence.atlas` exits 0 while HPC release reports
+five nested-callback errors, and why the larger `kl_column` fixture reports the
+same error after its first callback.  The smallest repair is to execute the
+state change unconditionally, then debug-assert only its returned value, for
+example:
+
+```rust
+let was_active = active.replace(false);
+debug_assert!(was_active);
+```
+
+Add a **release-relevant sequential callback regression** (two non-nested
+`with_kl_table` calls on the same thread; preferably also two different
+records), rebuild `atlas-cli --release`, replay `rep_table_sequence`, and
+resubmit the differential.  Do not treat the existing debug-only focused tests
+as sufficient evidence.
+
+The same job also confirms the already declared independent gap at
+`tests/fixtures/domain/kl_column.atlas:27`: the A2 parameter uses a proper
+nonempty integral subsystem and now receives the loud diagnostic
+`common block on a proper integral subsystem is not yet implemented`.  The
+new shared path deliberately removed the old classic-full-block approximation;
+do not restore that approximation.  Implement the real proper-subsystem
+RepTable/locator path or mark that fixture line pending until it exists.
+
+### Exact caller contracts already established
+
+- `KL_column` validates standard and final before its no-value gate, uses
+  partial `lookup`, fills through exclusive limit `raw_y + 1`, visits raw rows
+  `0..=raw_y`, and emits `(raw_x, adapted Param, coefficients)` for nonzero
+  polynomials.
+- `KL_block` validates standard before no-value, uses `lookup_full_block`,
+  fills the full shared KL table, retains singular survivors in raw order,
+  condenses with `finals_for`, and exports an identity index matrix with the
+  polynomial pool initially `[[],[1]]`.
+- Both lookup functions prepare the wrapper-owned parameter by reference in
+  upstream C++ (`normalise` for partial, `make_dominant` for full).  Therefore
+  row reconstruction and singular flags must use
+  `LocatedBlock::prepared_query().gamma()`, not the caller's pre-lookup gamma.
+- `print_common_block(Param)` installs/reuses a full shared block;
+  `print_block(Param)`, `print_partial_block`, and no-value `KL_block` do not
+  warm the table.  The frozen sequence is standalone `KL_column` raw row 0,
+  value `KL_block` then raw row 1, no-value `KL_block` then raw row 0,
+  `print_common_block` then raw row 1, and direct printers then raw row 0.
+- Ambient-rank-positive, integral-subsystem-rank-zero inputs retain exact
+  singleton fallbacks.  Proper nonempty integral subsystems remain loud NYI.
+
+### Next work after repairing 3547776
+
+1. Repair `ActiveKlCallback::drop`, add sequential release regression, run
+   bounded fmt/check/clippy/focused tests, then spec + Rust review.
+2. Commit/push the repair, sync a clean exact checkout to HPC, and resubmit the
+   pipeline differential.  Promote `rep_table_sequence` metadata only after
+   its accepted and rejected entries pass with benchmark fields.
+3. Implement the now-unblocked simple signature
+   `block(Param)->([Param],int)`: upstream `common_block_wrapper` validates
+   standardness before no-value, calls `lookup_full_block`, uses the prepared
+   dominant gamma and modifier, filters `block.survives`, and returns the
+   survivor-local start index or `-1`.  The frozen pending event is line 15 of
+   `p2_block_graph_signatures.atlas`; its rejected companion also has one
+   pending overload-diagnostic event in the runner.
+4. Then implement genuine proper integral subsystems (canonical integral
+   system/locator, reduced key, block modifier and row reconstruction) so the
+   A2 `KL_column` case is accepted.  This is a prerequisite for claiming the
+   KL builtins across their full upstream domain.
+5. Timed `full_deform(Param,int)` remains unimplemented.  Its verified oracle
+   contract is in `timed_full_deform_*`; it needs cache-sensitive cooperative
+   cancellation, not a process timeout around the current deformation
+   approximation.
+
+### Distance to the stated goal
+
+The registry was last audited at roughly 299/305 exact upstream signatures,
+but signature count is not completion.  Remaining language incompatibility is
+concentrated in proper integral subsystems/locators, recursive deformation and
+its cache, extended/twisted KL branches, and timed cooperative cancellation.
+Treat the project as having roughly the last 10--20% of engineering effort
+left, but that remainder is the algorithmically hardest part; do not advertise
+full Atlas C++ language compatibility yet.
+
 ## Checkpoint - 2026-08-13f (full common-block constructor foundation)
 
 - `PartialBlock::build_full` now implements rank-zero singleton blocks and the
