@@ -138,6 +138,16 @@ modifies event expectations, and its `PASS` status means only that the oracle
 capture itself is valid; it is not a Rust compatibility claim. Set
 `EXPECTED_ATLAS_BINARY_SHA256` explicitly only when intentionally using a
 separately audited rebuild of the pinned reference revision.
+
+Fixture arguments must be repository-relative paths including the
+`tests/fixtures/` prefix and `.atlas` extension, for example:
+
+```bash
+sbatch hpc/reference_capture.sbatch \
+  tests/fixtures/domain/print_block_words.atlas \
+  tests/fixtures/domain/print_block_words_rejected.atlas
+```
+
 The manifest also compares declared and detected submit-repository commit and
 dirty state; either mismatch makes the capture FAIL. The batch job freezes a
 clean versioned checkout from `git archive <detected-commit>` and labels a

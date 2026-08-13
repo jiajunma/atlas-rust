@@ -5,7 +5,8 @@
  "stage": "typed-pipeline-swap",
  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
  "rust_status": "pending_hpc_differential",
- "reference_status": "pending_hpc_reference",
+ "reference_status": "verified_hpc_reference",
+ "reference_job": "3542971",
  "note": "print_block/print_blockd/print_blocku overload rejections: RealForm fails overload resolution ('Failed to match'), RootDatum and int give 'found <t> while Block was needed.'; session continues after each error.",
  "oracle_exit_status": 1
 }

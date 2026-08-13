@@ -87,8 +87,13 @@ differential over the 8 new fixtures upgrades all metas to verified_hpc.
   the local oracle before submission, plus byte-exact local replay of
   the six pre-existing print_block/cartan fixtures to prove no
   regression from the canonical_word switch.
-- **In flight**: capture 3542734 (print_block_words±); after PASS bump
-  reference_status, then run the differential to close the slice.
+- **Reference capture CLOSED**: the original job 3542734 failed during fixture
+  validation because it was submitted with bare names instead of complete
+  repository-relative `tests/fixtures/.../*.atlas` paths. The corrected job
+  **3542971** @ 7dea126 passed; both stdout/stderr pairs match the checked-in
+  events byte-for-byte (including rejected exit status 1), with per-fixture
+  wall time and peak RSS recorded. Both metas are now
+  `verified_hpc_reference`; the next step is the differential run.
 
 
 
@@ -2519,5 +2524,4 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   3515630-35, 3515698-99 verified; E7 kgb_hasse swap 3515688 RUNNING on fat
   (TIMEOUT=3600). New limit: D5 real forms hit the same column-echelon bug
   as E6 involution 187 (see REMAINING_BUILTINS.md).
-
 
