@@ -1,0 +1,10 @@
+{
+  "fixture": "domain/param_wgraph_types_rejected",
+  "fixture_sha256": "224c4e70f8828aa72c99bc625600d7acfc84cc09b6bc77a466142e1817f29bdf",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "pending",
+  "reference_status": "pending_hpc_reference",
+  "note": "Rejected companion pins the exact inferred Param W_graph/W_cells return types through assignments to deliberately incompatible nested row types. Exact local oracle diagnostics were normalized to their final 'found ... while ... was needed.' lines; provenance and benchmarks await HPC capture."
+}

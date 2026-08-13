@@ -1,0 +1,12 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("A1"),true)
+ic : InnerClass
+ic := inner_class(rd,[[1]])
+rf : RealForm
+rf := real_form(ic,1)
+p : Param
+p := param(KGB(rf,1),[0],[1]/2)
+g_bad : (int,[[int]])
+g_bad := W_graph(p)
+c_bad : (int,[([int],[[int]])])
+c_bad := W_cells(p)

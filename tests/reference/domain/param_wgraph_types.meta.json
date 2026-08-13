@@ -1,0 +1,10 @@
+{
+  "fixture": "domain/param_wgraph_types",
+  "fixture_sha256": "ee7d35ffaa6efc87217a205c4320095dfa38fcf3caa815174ca47825b7e107e4",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "pending",
+  "reference_status": "pending_hpc_reference",
+  "note": "Static Param W-graph contracts: W_graph returns (int,[([int],[(int,int)])]) and W_cells returns (int,[([int],[([int],[(int,int)])])]). The fixture uses explicit identifier types, nested destructuring, indexing, and an edge (target,coefficient) tuple rather than relying only on display output. Exact stdout was confirmed with the local pinned upstream Atlas executable; provenance and benchmarks await HPC capture."
+}
