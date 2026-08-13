@@ -4,7 +4,7 @@
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "rust_status": "implemented_local_unverified_hpc",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
   "reference_job": "3545520",
   "oracle_exit_status": 1,
@@ -19,5 +19,11 @@
     "sources/gkmod/repr.cpp:1025-1083",
     "sources/interpreter/atlas-types.w:6485-6518"
   ],
-  "note": "Pinned diagnostic-order contract: any_Cayley attempts integral dominance before validating the supplied root coordinates, so a non-standard source and wrong-rank vector reports the non-standard dominance diagnostic rather than 'Not an integral root'. Frozen HPC job 3545520 confirms the pinned binary diagnostic and benchmark."
+  "note": "Pinned diagnostic-order contract: any_Cayley attempts integral dominance before validating the supplied root coordinates, so a non-standard source and wrong-rank vector reports the non-standard dominance diagnostic rather than 'Not an integral root'. Reference 3545520 and differential 3545623 confirm the contract.",
+  "differential_job": "3545623",
+  "differential_source_commit": "a61a324acd7319dff1b1a8b43bb0d0e78af915db",
+  "differential_report_sha256": "f27b6b6ebfada2aeaed23f240bb79aa698f340f8f7b2b9771ecf437ae9cb5d6b",
+  "rust_seconds": 0.005,
+  "rust_maxrss_kb": 6940,
+  "rust_maxrss_approximate": false
 }

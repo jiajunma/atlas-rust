@@ -4,7 +4,7 @@
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "rust_status": "unimplemented",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
   "reference_job": "3545170",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
@@ -20,5 +20,11 @@
     "sources/interpreter/atlas-types.w:6474-6518",
     "sources/interpreter/atlas-types.w:7494-7496"
   ],
-  "note": "Requested-result rejection contract: a genuine A2 root outside the parameter's integrality subsystem gives 'Not an integral root' for both overloads; a rank-one vector on rank-two A2 gives 'Not a root' for cross and 'Not an integral root' for Cayley. Frozen HPC reference job 3545170 confirms the pinned binary diagnostics and benchmark."
+  "note": "Requested-result rejection contract: a genuine A2 root outside the parameter's integrality subsystem gives 'Not an integral root' for both overloads; a rank-one vector on rank-two A2 gives 'Not a root' for cross and 'Not an integral root' for Cayley. Frozen HPC reference job 3545170 and differential 3545623 confirm the diagnostics.",
+  "differential_job": "3545623",
+  "differential_source_commit": "a61a324acd7319dff1b1a8b43bb0d0e78af915db",
+  "differential_report_sha256": "f27b6b6ebfada2aeaed23f240bb79aa698f340f8f7b2b9771ecf437ae9cb5d6b",
+  "rust_seconds": 0.006,
+  "rust_maxrss_kb": 7112,
+  "rust_maxrss_approximate": false
 }

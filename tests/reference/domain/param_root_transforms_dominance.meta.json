@@ -4,7 +4,7 @@
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "rust_status": "implemented_local_unverified_hpc",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
   "reference_job": "3545520",
   "oracle_exit_status": 0,
@@ -19,5 +19,11 @@
     "sources/gkmod/repr.cpp:1025-1124",
     "sources/structure/rootdata.h:320-324"
   ],
-  "note": "Pinned A3 successful any_Cayley path. The source parameter is standard but integrally non-dominant; its doubled infinitesimal-character pairings are [8,-4,-4], so upstream make_dominant records the noncommuting subsystem word [1,2,1] before transporting root [-1,1,1]. Frozen HPC job 3545520 confirms the pinned binary output and benchmark."
+  "note": "Pinned A3 successful any_Cayley path. The source parameter is standard but integrally non-dominant; its doubled infinitesimal-character pairings are [8,-4,-4], so upstream make_dominant records the noncommuting subsystem word [1,2,1] before transporting root [-1,1,1]. Reference 3545520 and differential 3545623 confirm the contract.",
+  "differential_job": "3545623",
+  "differential_source_commit": "a61a324acd7319dff1b1a8b43bb0d0e78af915db",
+  "differential_report_sha256": "f27b6b6ebfada2aeaed23f240bb79aa698f340f8f7b2b9771ecf437ae9cb5d6b",
+  "rust_seconds": 0.006,
+  "rust_maxrss_kb": 7252,
+  "rust_maxrss_approximate": false
 }

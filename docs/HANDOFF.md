@@ -2706,3 +2706,7 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   synchronized whenever a capture is promoted; empty Rust output at 0 seconds
   plus `configuration_valid=false` is configuration evidence, not a semantic
   mismatch.
+- Corrected root-transform differential `3545623` at `a61a324` is valid:
+  all four target fixtures PASS exact, and the full corpus has 260 PASS / 3
+  declared PARTIAL / 0 FAIL. Rust took 0.005-0.006s at 6940-7252 KiB; report
+  SHA256 `f27b6b6ebfada2aeaed23f240bb79aa698f340f8f7b2b9771ecf437ae9cb5d6b`.
