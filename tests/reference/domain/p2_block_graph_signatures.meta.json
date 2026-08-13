@@ -5,7 +5,8 @@
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "rust_status": "unimplemented",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
+  "reference_job": "3543699",
   "note": "P2 signatures: block(Param), W_graph(Block), and W_cells(Block), including discarded graph calls that expose the upstream no-value assignment bug only through computation, not an extra value.",
   "oracle_exit_status": 0
 }

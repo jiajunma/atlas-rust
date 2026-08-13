@@ -5,7 +5,8 @@
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "rust_status": "unimplemented",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
+  "reference_job": "3543699",
   "note": "Rejected companion for P2 overload resolution on RealForm arguments.",
   "oracle_exit_status": 1
 }
