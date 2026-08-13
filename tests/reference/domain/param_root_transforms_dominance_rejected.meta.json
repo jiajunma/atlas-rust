@@ -5,14 +5,19 @@
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "rust_status": "implemented_local_unverified_hpc",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
+  "reference_job": "3545520",
   "oracle_exit_status": 1,
   "local_oracle_binary_sha256": "23371d61f97e59a693a0d27b586157c59303cb10dfe3e63769ad1c9253443565",
-  "local_oracle_stdout_sha256": "41aa14fe4f15b9e388e1f7180f12863dc4df8f598f7635535d3a17012fc75536",
-  "local_oracle_stderr_sha256": "fd22e3942bbb46708291121e53171870ceff051ef21aba53e42bbd46de113c53",
+  "oracle_seconds": 0.009,
+  "oracle_maxrss_kb": 4340,
+  "oracle_maxrss_approximate": false,
+  "oracle_stdout_sha256": "41aa14fe4f15b9e388e1f7180f12863dc4df8f598f7635535d3a17012fc75536",
+  "oracle_stderr_sha256": "fd22e3942bbb46708291121e53171870ceff051ef21aba53e42bbd46de113c53",
+  "reference_report_sha256": "071d5589faf5f4dccd53a341ec8165de39dbd47f5c30a72ad7e0a7ad0dee6d7c",
   "upstream_evidence": [
     "sources/gkmod/repr.cpp:1025-1083",
     "sources/interpreter/atlas-types.w:6485-6518"
   ],
-  "note": "Pinned diagnostic-order contract: any_Cayley attempts integral dominance before validating the supplied root coordinates, so a non-standard source and wrong-rank vector reports the non-standard dominance diagnostic rather than 'Not an integral root'. Exact local oracle output is frozen; HPC provenance and benchmarks remain pending."
+  "note": "Pinned diagnostic-order contract: any_Cayley attempts integral dominance before validating the supplied root coordinates, so a non-standard source and wrong-rank vector reports the non-standard dominance diagnostic rather than 'Not an integral root'. Frozen HPC job 3545520 confirms the pinned binary diagnostic and benchmark."
 }
