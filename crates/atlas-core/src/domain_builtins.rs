@@ -12603,6 +12603,30 @@ pub(crate) fn call_with_printed(
                 // (int, Param -> Param), the simple-reflection cross on the
                 // standard parameter (repr.cpp:891-910).
                 if let Value::Domain(DomainValue::Param(parameter)) = &arguments[1] {
+                    if matches!(arguments[0], Value::Vector(_)) {
+                        // root_parameter_cross_wrapper
+                        // (atlas-types.w:6474-6483): unlike the int overload,
+                        // this does not make the parameter dominant first.
+                        let coordinates = as_weight_vec(&arguments[0], span)?;
+                        let rc = rep_context(&parameter.context);
+                        let root = rc
+                            .root_system()
+                            .id_of(&Weight::new(coordinates))
+                            .ok_or_else(|| runtime(span, "Not a root"))?;
+                        if !rc
+                            .is_integral_root(root, parameter.repr.gamma())
+                            .map_err(|error| structure_diagnostic(error, span))?
+                        {
+                            return Err(runtime(span, "Not an integral root"));
+                        }
+                        let result = rc
+                            .cross_root(root, &parameter.repr)
+                            .map_err(|error| structure_diagnostic(error, span))?;
+                        return Ok(Value::Domain(DomainValue::Param(ParamValue {
+                            context: parameter.context.clone(),
+                            repr: result,
+                        })));
+                    }
                     let s = parameter_generator(parameter, &arguments[0], span)?;
                     let rc = rep_context(&parameter.context);
                     let z = parameter
@@ -12654,6 +12678,36 @@ pub(crate) fn call_with_printed(
                 // (repr.cpp:943-1002). A Cayley_error returns the input
                 // parameter unchanged.
                 if let Value::Domain(DomainValue::Param(parameter)) = &arguments[1] {
+                    if matches!(arguments[0], Value::Vector(_)) {
+                        // root_parameter_Cayley_wrapper
+                        // (atlas-types.w:6485-6518): a missing ambient root
+                        // and a nonintegral one deliberately share the same
+                        // diagnostic; an undefined transform returns input.
+                        let coordinates = as_weight_vec(&arguments[0], span)?;
+                        let rc = rep_context(&parameter.context);
+                        let root = Weight::new(coordinates);
+                        let Some(result) = rc.any_cayley_root(&root, &parameter.repr).map_err(
+                            |error| match error {
+                                StructureError::RepInvariantViolation {
+                                    invariant: "integral parameter root",
+                                } => runtime(span, "Not an integral root"),
+                                StructureError::RepInvariantViolation {
+                                    invariant: "standard parameter in integral make_dominant",
+                                } => runtime(
+                                    span,
+                                    "Cannot make non-standard parameter integrally dominant",
+                                ),
+                                other => structure_diagnostic(other, span),
+                            },
+                        )?
+                        else {
+                            return Ok(Value::Domain(DomainValue::Param(parameter.clone())));
+                        };
+                        return Ok(Value::Domain(DomainValue::Param(ParamValue {
+                            context: parameter.context.clone(),
+                            repr: result,
+                        })));
+                    }
                     let s = parameter_generator(parameter, &arguments[0], span)?;
                     let rc = rep_context(&parameter.context);
                     let z = parameter

@@ -3577,6 +3577,8 @@ enum ScalarOp {
     RatDivideInt,
     RatQuotientInt,
     RatModuloInt,
+    VecAdd,
+    VecNegate,
     VecDivideInt,
     RatAdd,
     RatSubtract,
@@ -3947,6 +3949,32 @@ fn run_scalar(
             })),
             other => panic!("rational unfraction saw {other:?}"),
         },
+        ScalarOp::VecAdd => match expect_pair(arguments) {
+            (Value::Vector(left), Value::Vector(right)) => {
+                if left.0.len() != right.0.len() {
+                    return Err(runtime(
+                        format!("Size mismatch {}:{}", left.0.len(), right.0.len()),
+                        span,
+                    ));
+                }
+                Ok(at_builtin_level(level, || {
+                    Value::Vector(Vec32(
+                        left.0
+                            .into_iter()
+                            .zip(right.0)
+                            .map(|(a, b)| a.wrapping_add(b))
+                            .collect(),
+                    ))
+                }))
+            }
+            other => panic!("vector addition saw {other:?}"),
+        },
+        ScalarOp::VecNegate => match expect_unary(arguments) {
+            Value::Vector(vector) => Ok(at_builtin_level(level, || {
+                Value::Vector(Vec32(vector.0.into_iter().map(i32::wrapping_neg).collect()))
+            })),
+            other => panic!("vector negation saw {other:?}"),
+        },
         ScalarOp::VecDivideInt => match expect_pair(arguments) {
             (Value::Vector(vector), Value::Integer(denominator)) => {
                 // Upstream constructs the rational vector inside its
@@ -4264,6 +4292,20 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             scalar_builtin("+", pair(rat_type()), rat_type(), 1, ScalarOp::RatAdd),
             scalar_builtin("-", pair(rat_type()), rat_type(), 1, ScalarOp::RatSubtract),
             scalar_builtin("*", pair(rat_type()), rat_type(), 1, ScalarOp::RatMultiply),
+            scalar_builtin(
+                "+",
+                pair(primitive_type(Prim::Vec)),
+                primitive_type(Prim::Vec),
+                1,
+                ScalarOp::VecAdd,
+            ),
+            scalar_builtin(
+                "-",
+                primitive_type(Prim::Vec),
+                primitive_type(Prim::Vec),
+                3,
+                ScalarOp::VecNegate,
+            ),
             // The language surface exposes these startup overloads even
             // before their domain implementations land.  Keeping them in
             // the registry makes `whattype * ?` and user replacement obey
@@ -5894,6 +5936,22 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             domain_builtin_validate(
                 "Cayley",
                 Type::tuple(vec![int_type(), primitive_type(Prim::Param)]),
+                primitive_type(Prim::Param),
+                2,
+            ),
+            // root_parameter_cross_wrapper/root_parameter_Cayley_wrapper
+            // (atlas-types.w:6474-6518, installed at :7494-7496): arbitrary
+            // ambient-root coordinates. Both wrappers skip every check when
+            // their value is discarded.
+            domain_builtin_skip(
+                "cross",
+                Type::tuple(vec![primitive_type(Prim::Vec), primitive_type(Prim::Param)]),
+                primitive_type(Prim::Param),
+                2,
+            ),
+            domain_builtin_skip(
+                "Cayley",
+                Type::tuple(vec![primitive_type(Prim::Vec), primitive_type(Prim::Param)]),
                 primitive_type(Prim::Param),
                 2,
             ),
@@ -9020,6 +9078,159 @@ mod tests {
             cayley.to_string(),
             "non-dominant parameter(x=2,lambda=[0,1]/1,nu=[-3,6]/4)"
         );
+    }
+
+    #[test]
+    fn arbitrary_root_parameter_transforms_match_the_a2_oracle() {
+        let rd = "simply_connected(Lie_type(\"A2\"),true)";
+        let ic = format!("inner_class({rd},[[1,0],[0,1]])");
+        let rf = format!("real_form({ic},1)");
+        let p = format!("param(KGB({rf},5),[0,0],[0,0]/1)");
+        let cases = [
+            (
+                format!("cross(root({rd},0),{p})"),
+                "non-final parameter(x=3,lambda=[-1,2]/1,nu=[0,0]/1)",
+            ),
+            (format!("Cayley(root({rd},0),{p})={p}"), "true"),
+            (
+                format!("cross(root({rd},0)+root({rd},1),{p})"),
+                "non-final parameter(x=5,lambda=[1,1]/1,nu=[0,0]/1)",
+            ),
+            (
+                format!("Cayley(root({rd},0)+root({rd},1),{p})"),
+                "zero parameter(x=1,lambda=[0,0]/1,nu=[0,0]/1)",
+            ),
+            (
+                format!("cross(-root({rd},0),{p})"),
+                "non-final parameter(x=3,lambda=[-1,2]/1,nu=[0,0]/1)",
+            ),
+            (
+                format!("Cayley(-root({rd},0),{p})"),
+                "non-final parameter(x=5,lambda=[1,1]/1,nu=[0,0]/1)",
+            ),
+        ];
+        for (expression, expected) in cases {
+            let (_, value) = convert_and_run(&expression)
+                .unwrap_or_else(|error| panic!("{expression}: {error:?}"));
+            assert_eq!(value.to_string(), expected, "{expression}");
+        }
+    }
+
+    #[test]
+    fn arbitrary_root_cayley_transports_a_noncommuting_dominance_word() {
+        let rd = "simply_connected(Lie_type(\"A3\"),true)";
+        let ic = format!("inner_class({rd},[[1,0,0],[0,1,0],[0,0,1]])");
+        let rf = format!("real_form({ic},1)");
+        let p = format!("param(KGB({rf},7),[0,0,0],[-2,-2,-2]/1)");
+        let (_, value) = convert_and_run(&format!("Cayley([-1,1,1],{p})"))
+            .expect("A3 Cayley after the noncommuting [1,2,1] dominance word");
+        assert_eq!(
+            value.to_string(),
+            "final parameter(x=1,lambda=[0,2,2]/1,nu=[0,0,0]/1)"
+        );
+    }
+
+    #[test]
+    fn arbitrary_root_parameter_transforms_keep_oracle_diagnostics() {
+        let rd = "simply_connected(Lie_type(\"A2\"),true)";
+        let ic = format!("inner_class({rd},[[1,0],[0,1]])");
+        let rf = format!("real_form({ic},1)");
+        let p = format!("param(KGB({rf},5),[0,0],[0,0]/1)");
+        let q = format!("param(KGB({rf},5),[0,0],[1,0]/2)");
+        for (expression, expected) in [
+            (format!("cross(root({rd},0),{q})"), "Not an integral root"),
+            (format!("Cayley(root({rd},0),{q})"), "Not an integral root"),
+            (format!("cross([2],{p})"), "Not a root"),
+            (format!("Cayley([2],{p})"), "Not an integral root"),
+        ] {
+            let error = convert_and_run(&expression).expect_err("oracle-rejected root transform");
+            assert_eq!(error.message, expected, "{expression}");
+        }
+
+        let a1 = "simply_connected(Lie_type(\"A1\"),true)";
+        let inner = format!("inner_class({a1},[[1]])");
+        let real = format!("real_form({inner},1)");
+        let nonstandard = format!("param(KGB({real},1),[-2],[0]/1)");
+        let error = convert_and_run(&format!("Cayley([2,3],{nonstandard})"))
+            .expect_err("Cayley makes dominant before rejecting its root argument");
+        assert_eq!(
+            error.message,
+            "Cannot make non-standard parameter integrally dominant"
+        );
+    }
+
+    #[test]
+    fn arbitrary_root_parameter_signatures_use_skip_no_value_policy() {
+        let vector_param =
+            Type::tuple(vec![primitive_type(Prim::Vec), primitive_type(Prim::Param)]);
+        for name in ["cross", "Cayley"] {
+            let builtin = builtin_registry()
+                .iter()
+                .find(|builtin| builtin.name == name && builtin.arg_type == vector_param)
+                .unwrap_or_else(|| panic!("missing {name}(vec,Param)"));
+            assert_eq!(builtin.result, primitive_type(Prim::Param));
+            assert!(matches!(
+                builtin.implementation,
+                BuiltinImpl::Domain {
+                    no_value: DomainNoValue::Skip,
+                    ..
+                }
+            ));
+            assert_eq!(builtin.hunger, 2);
+        }
+    }
+
+    #[test]
+    fn arbitrary_root_parameter_transforms_reject_undefined_sources_safely() {
+        let datum = "simply_connected(Lie_type(\"A3\"),true)";
+        let inner = format!("inner_class({datum},[[1,0,0],[0,1,0],[0,0,1]])");
+        let real = format!("real_form({inner},0)");
+        let parameter = format!("param(KGB({real},0),[0,0,0],[0,0,0]/1)");
+        let undefined = format!("twist({parameter},[[0,0,1],[0,1,0],[1,0,0]])");
+        for name in ["cross", "Cayley"] {
+            let error = convert_and_run(&format!("{name}(root({datum},0),{undefined})"))
+                .expect_err("graph-dependent transform rejects UndefKGB");
+            assert!(
+                error.message.contains("undefined parameter operation"),
+                "{name}: {}",
+                error.message
+            );
+        }
+    }
+
+    #[test]
+    fn vector_addition_is_elementwise_and_validates_size_before_no_value() {
+        let (type_, value) = convert_and_run("[1,2]+[3,4]").expect("vec addition");
+        assert_eq!(type_, primitive_type(Prim::Vec));
+        assert_eq!(value, Value::Vector(Vec32(vec![4, 6])));
+
+        let error = convert_and_run("[1]+[2,3]").expect_err("mismatched vectors");
+        assert_eq!(error.message, "Size mismatch 1:2");
+
+        let error = convert_and_run("begin [1]+[2,3];7 end")
+            .expect_err("size is checked before no-value gate");
+        assert_eq!(error.message, "Size mismatch 1:2");
+
+        let (_, value) =
+            convert_and_run("begin [1,2]+[3,4];7 end").expect("discarded matching vectors");
+        assert_eq!(value, Value::Integer(BigInt::from(7)));
+    }
+
+    #[test]
+    fn vector_unary_negation_is_elementwise_and_skips_at_no_value() {
+        let (type_, value) = convert_and_run("-[1,-2]").expect("vec negation");
+        assert_eq!(type_, primitive_type(Prim::Vec));
+        assert_eq!(value, Value::Vector(Vec32(vec![-1, 2])));
+
+        let (_, value) = convert_and_run("begin -[1,-2];7 end").expect("discarded vec negation");
+        assert_eq!(value, Value::Integer(BigInt::from(7)));
+
+        let builtin = builtin_registry()
+            .iter()
+            .find(|builtin| builtin.name == "-" && builtin.arg_type == primitive_type(Prim::Vec))
+            .expect("-(vec) registry entry");
+        assert_eq!(builtin.result, primitive_type(Prim::Vec));
+        assert_eq!(builtin.hunger, 3);
     }
 
     #[test]

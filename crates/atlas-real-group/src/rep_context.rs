@@ -19,9 +19,141 @@ use crate::grading::try_capacity;
 use crate::lattice::{checked_add_weights, checked_sub_weights, pair, RationalWeight};
 use crate::real_projection::RealProjection;
 use crate::{
-    BlockGraph, Coweight, InnerClass, InvolutionId, InvolutionTable, KType, KgbGraph, KgbId,
-    KgbStatus, LatticeInvolution, ModTwoVector, RootId, RootKind, StructureError, Weight,
+    BlockGraph, Coweight, InnerClass, IntegralSubsystem, InvolutionId, InvolutionTable, KType,
+    KgbGraph, KgbId, KgbStatus, LatticeInvolution, ModTwoVector, RootId, RootKind, StructureError,
+    Weight,
 };
+
+fn reflected_root(
+    system: &crate::RootSystem,
+    by: RootId,
+    root: RootId,
+) -> Result<RootId, StructureError> {
+    let alpha = system.root(by).ok_or(StructureError::IndexOutOfRange {
+        index: by.index(),
+        upper_bound: system.roots().len(),
+    })?;
+    let alpha_coroot = system.coroot(by).ok_or(StructureError::IndexOutOfRange {
+        index: by.index(),
+        upper_bound: system.roots().len(),
+    })?;
+    let beta = system.root(root).ok_or(StructureError::IndexOutOfRange {
+        index: root.index(),
+        upper_bound: system.roots().len(),
+    })?;
+    let factor = pair(beta, alpha_coroot)?;
+    let mut coordinates = beta.as_slice().to_vec();
+    for (entry, &coordinate) in coordinates.iter_mut().zip(alpha.as_slice()) {
+        *entry = entry
+            .checked_sub(
+                coordinate
+                    .checked_mul(factor)
+                    .ok_or(StructureError::ArithmeticOverflow)?,
+            )
+            .ok_or(StructureError::ArithmeticOverflow)?;
+    }
+    system
+        .id_of(&Weight::new(coordinates))
+        .ok_or(StructureError::RepInvariantViolation {
+            invariant: "reflected root",
+        })
+}
+
+/// Ambient word which conjugates `root` (required positive) to a simple
+/// root. This is `SubSystem::sub_root[rt].to_simple/simple` for an arbitrary
+/// subsystem root (subsystem.cpp:66-101); the computation itself only uses
+/// the parent datum.
+fn root_to_simple(
+    system: &crate::RootSystem,
+    root: RootId,
+) -> Result<(usize, Vec<usize>), StructureError> {
+    if system.is_positive(root) != Some(true) {
+        return Err(StructureError::RepInvariantViolation {
+            invariant: "positive root to_simple",
+        });
+    }
+    let datum = system.datum();
+    let mut current = system
+        .root(root)
+        .ok_or(StructureError::IndexOutOfRange {
+            index: root.index(),
+            upper_bound: system.roots().len(),
+        })?
+        .clone();
+    let mut descents = Vec::new();
+    let simple = loop {
+        let mut descent = None;
+        for (generator, coroot) in datum.simple_coroots().iter().enumerate() {
+            if pair(&current, coroot)? > 0 {
+                descent = Some(generator);
+                break;
+            }
+        }
+        let generator = descent.ok_or(StructureError::RootSystemInvariantViolation {
+            invariant: "positive root has a simple descent",
+        })?;
+        if current == datum.simple_roots()[generator] {
+            break generator;
+        }
+        descents.push(generator);
+        current = datum.reflect_weight(generator, &current)?;
+    };
+    descents.reverse();
+    Ok((simple, descents))
+}
+
+/// The positive roots made negative by the word, with the same word
+/// convention as `RootSystem::pos_to_neg` (rootdata.cpp:1413-1439).
+fn positive_to_negative(
+    system: &crate::RootSystem,
+    word: &[usize],
+) -> Result<Vec<RootId>, StructureError> {
+    let mut roots = Vec::new();
+    for (id, _, _) in system.entries() {
+        if system.is_positive(id) != Some(true) {
+            continue;
+        }
+        let mut image = id;
+        for &generator in word.iter().rev() {
+            let simple = system.simple_root_ids().get(generator).copied().ok_or(
+                StructureError::IndexOutOfRange {
+                    index: generator,
+                    upper_bound: system.datum().semisimple_rank(),
+                },
+            )?;
+            image = reflected_root(system, simple, image)?;
+        }
+        if system.is_positive(image) == Some(false) {
+            roots.push(id);
+        }
+    }
+    Ok(roots)
+}
+
+fn transport_root_by_dominance_word(
+    system: &crate::RootSystem,
+    mut root: RootId,
+    reflections: &[RootId],
+) -> Result<RootId, StructureError> {
+    // `SubSystem::permuted_root(rt,w)` uses the root-first overload, which
+    // applies the stored word from its first letter to its last
+    // (rootdata.h:320-324).
+    for &reflection in reflections {
+        root = reflected_root(system, reflection, root)?;
+    }
+    Ok(root)
+}
+
+struct CayleyRootPreparation {
+    transformed: RootId,
+    simple: usize,
+    to_simple: Vec<usize>,
+}
+
+struct CayleyImage {
+    x: KgbId,
+    upstairs: InvolutionId,
+}
 
 /// `<coweight, weight>` for an i64 numerator vector (the sign evaluation
 /// of a rational weight's raw numerator, repr.cpp:1224).
@@ -1005,6 +1137,461 @@ impl<'a> RepContext<'a> {
     /// inner class's distinguished involution.
     pub fn is_delta_fixed(&self, z: &StandardRepr) -> bool {
         self.is_fixed(z, self.inner_class.distinguished_involution().involution())
+    }
+
+    fn cross_word_reverse(&self, word: &[usize], mut x: KgbId) -> Result<KgbId, StructureError> {
+        for &generator in word.iter().rev() {
+            x = self.cross_at(x, generator)?;
+        }
+        Ok(x)
+    }
+
+    fn cross_word_forward(&self, word: &[usize], mut x: KgbId) -> Result<KgbId, StructureError> {
+        for &generator in word {
+            x = self.cross_at(x, generator)?;
+        }
+        Ok(x)
+    }
+
+    fn reflect_rational_at_root(
+        &self,
+        root: RootId,
+        value: &RationalWeight,
+    ) -> Result<RationalWeight, StructureError> {
+        let system = self.root_system();
+        let alpha = system.root(root).ok_or(StructureError::IndexOutOfRange {
+            index: root.index(),
+            upper_bound: system.roots().len(),
+        })?;
+        let coroot = system.coroot(root).ok_or(StructureError::IndexOutOfRange {
+            index: root.index(),
+            upper_bound: system.roots().len(),
+        })?;
+        let evaluation = pair_i64(value.numerator(), coroot)?;
+        let mut numerator = value.numerator().to_vec();
+        for (entry, &coordinate) in numerator.iter_mut().zip(alpha.as_slice()) {
+            *entry = entry
+                .checked_sub(
+                    evaluation
+                        .checked_mul(i64::from(coordinate))
+                        .ok_or(StructureError::ArithmeticOverflow)?,
+                )
+                .ok_or(StructureError::ArithmeticOverflow)?;
+        }
+        RationalWeight::new(numerator, value.denominator())
+    }
+
+    fn reflect_weight_at_root(
+        &self,
+        root: RootId,
+        value: &Weight,
+    ) -> Result<Weight, StructureError> {
+        let system = self.root_system();
+        let alpha = system.root(root).ok_or(StructureError::IndexOutOfRange {
+            index: root.index(),
+            upper_bound: system.roots().len(),
+        })?;
+        let coroot = system.coroot(root).ok_or(StructureError::IndexOutOfRange {
+            index: root.index(),
+            upper_bound: system.roots().len(),
+        })?;
+        let evaluation = pair(value, coroot)?;
+        let mut coordinates = value.as_slice().to_vec();
+        for (entry, &coordinate) in coordinates.iter_mut().zip(alpha.as_slice()) {
+            *entry = entry
+                .checked_sub(
+                    coordinate
+                        .checked_mul(evaluation)
+                        .ok_or(StructureError::ArithmeticOverflow)?,
+                )
+                .ok_or(StructureError::ArithmeticOverflow)?;
+        }
+        Ok(Weight::new(coordinates))
+    }
+
+    /// Whether `alpha` belongs to the integral root subsystem of `gamma`.
+    /// This is the `SubSystem::from_parent` membership test specialized to
+    /// an already validated ambient root.
+    pub fn is_integral_root(
+        &self,
+        alpha: RootId,
+        gamma: &RationalWeight,
+    ) -> Result<bool, StructureError> {
+        let coroot = self
+            .root_system()
+            .coroot(alpha)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: alpha.index(),
+                upper_bound: self.root_system().roots().len(),
+            })?;
+        Ok(pair_i64(gamma.numerator(), coroot)? % gamma.denominator() == 0)
+    }
+
+    /// `Rep_context::cross(const Weight&, StandardRepr)`
+    /// (repr.cpp:912-941): cross by an arbitrary integral ambient root,
+    /// without first changing the infinitesimal character to a dominant
+    /// representative.
+    pub fn cross_root(
+        &self,
+        alpha: RootId,
+        z: &StandardRepr,
+    ) -> Result<StandardRepr, StructureError> {
+        z.ensure_defined()?;
+        if !self.is_integral_root(alpha, z.gamma())? {
+            return Err(StructureError::RepInvariantViolation {
+                invariant: "integral parameter root",
+            });
+        }
+        let system = self.root_system();
+        let positive = if system.is_positive(alpha) == Some(true) {
+            alpha
+        } else {
+            let negative = system
+                .root(alpha)
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: alpha.index(),
+                    upper_bound: system.roots().len(),
+                })?
+                .as_slice()
+                .iter()
+                .map(|&entry| {
+                    entry
+                        .checked_neg()
+                        .ok_or(StructureError::ArithmeticOverflow)
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            system
+                .id_of(&Weight::new(negative))
+                .ok_or(StructureError::RepInvariantViolation {
+                    invariant: "opposite root",
+                })?
+        };
+        let (simple, to_simple) = root_to_simple(system, positive)?;
+        let mut reflection = to_simple.iter().rev().copied().collect::<Vec<_>>();
+        reflection.push(simple);
+        reflection.extend(to_simple.iter().copied());
+
+        let real_down = self.positive_real_roots_at(z.x())?;
+        let rho_real_down = RationalWeight::from_weight(&self.two_rho_of(&real_down)?)?.halve()?;
+        let gamma_lambda = self.gamma_lambda(z.x, &z.y_bits, &z.gamma)?;
+        let shifted = gamma_lambda.add(&rho_real_down)?;
+
+        let new_x = self.cross_word_reverse(&reflection, z.x())?;
+        let reflected = self.reflect_rational_at_root(alpha, &shifted)?;
+        let real_up = self.positive_real_roots_at(new_x)?;
+        let rho_real_up = RationalWeight::from_weight(&self.two_rho_of(&real_up)?)?.halve()?;
+        let gamma_lambda_up = reflected.sub(&rho_real_up)?;
+        let lambda_rho = z
+            .gamma()
+            .sub(&gamma_lambda_up.add(self.rho())?)?
+            .integral_coordinates()?
+            .into_iter()
+            .map(|entry| i32::try_from(entry).map_err(|_| StructureError::ArithmeticOverflow))
+            .collect::<Result<Vec<_>, _>>()?;
+        self.sr_gamma(new_x, &Weight::new(lambda_rho), z.gamma())
+    }
+
+    /// The integral-dominance preparation in `Rep_context::any_Cayley`
+    /// (repr.cpp:1025-1065). It returns the equivalent dominant parameter
+    /// and the ambient subsystem reflections comprising the returned word;
+    /// `any_cayley_root` applies that word after the upstream-ordered root
+    /// validation.
+    fn make_integrally_dominant_for_root(
+        &self,
+        mut z: StandardRepr,
+    ) -> Result<(StandardRepr, Vec<RootId>), StructureError> {
+        z.ensure_defined()?;
+        let subsystem = IntegralSubsystem::integral(self.root_system(), z.gamma())?;
+        let mut lambda2 = self.integral_dominance_shift(&z)?;
+        let mut numerator = z.gamma.numerator().to_vec();
+        let mut seen = std::collections::HashSet::new();
+        let mut reflections = Vec::new();
+        loop {
+            if !seen.insert((z.x, numerator.clone())) {
+                return Err(StructureError::RepInvariantViolation {
+                    invariant: "integral dominance termination",
+                });
+            }
+            match self.apply_integral_dominance_step(
+                &subsystem,
+                &mut z,
+                &mut numerator,
+                &mut lambda2,
+            )? {
+                Some(parent) => reflections.push(parent),
+                None => break,
+            }
+        }
+        self.rebuild_after_integral_dominance(&mut z, numerator, lambda2)?;
+        Ok((z, reflections))
+    }
+
+    fn integral_dominance_shift(&self, z: &StandardRepr) -> Result<Weight, StructureError> {
+        let doubled = self
+            .lambda_rho(z)?
+            .as_slice()
+            .iter()
+            .map(|&entry| {
+                entry
+                    .checked_mul(2)
+                    .ok_or(StructureError::ArithmeticOverflow)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let real = self.positive_real_roots_at(z.x())?;
+        checked_sub_weights(
+            &checked_add_weights(&Weight::new(doubled), self.two_rho())?,
+            &self.two_rho_of(&real)?,
+        )
+    }
+
+    fn apply_integral_dominance_step(
+        &self,
+        subsystem: &IntegralSubsystem,
+        z: &mut StandardRepr,
+        numerator: &mut [i64],
+        lambda2: &mut Weight,
+    ) -> Result<Option<RootId>, StructureError> {
+        for s in 0..subsystem.rank() {
+            let parent = subsystem
+                .parent_root(s)
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: s,
+                    upper_bound: subsystem.rank(),
+                })?;
+            let coroot =
+                self.root_system()
+                    .coroot(parent)
+                    .ok_or(StructureError::IndexOutOfRange {
+                        index: parent.index(),
+                        upper_bound: self.root_system().roots().len(),
+                    })?;
+            let evaluation = pair_i64(numerator, coroot)?;
+            if evaluation >= 0 {
+                continue;
+            }
+            self.ensure_dominance_root_is_not_imaginary(z.x, parent)?;
+            self.reflect_dominance_numerator(numerator, parent, evaluation)?;
+            let reflection =
+                subsystem
+                    .reflection_word(s)
+                    .ok_or(StructureError::IndexOutOfRange {
+                        index: s,
+                        upper_bound: subsystem.rank(),
+                    })?;
+            z.x = self.cross_word_reverse(reflection, z.x)?;
+            *lambda2 = self.reflect_weight_at_root(parent, lambda2)?;
+            return Ok(Some(parent));
+        }
+        Ok(None)
+    }
+
+    fn ensure_dominance_root_is_not_imaginary(
+        &self,
+        x: KgbId,
+        parent: RootId,
+    ) -> Result<(), StructureError> {
+        let involution = self.involution_of(x)?;
+        if self.root_involution_data(involution)?.kind(parent) == Some(RootKind::Imaginary) {
+            return Err(StructureError::RepInvariantViolation {
+                invariant: "standard parameter in integral make_dominant",
+            });
+        }
+        Ok(())
+    }
+
+    fn reflect_dominance_numerator(
+        &self,
+        numerator: &mut [i64],
+        parent: RootId,
+        evaluation: i64,
+    ) -> Result<(), StructureError> {
+        let alpha = self
+            .root_system()
+            .root(parent)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: parent.index(),
+                upper_bound: self.root_system().roots().len(),
+            })?;
+        for (entry, &coordinate) in numerator.iter_mut().zip(alpha.as_slice()) {
+            *entry = entry
+                .checked_sub(
+                    evaluation
+                        .checked_mul(i64::from(coordinate))
+                        .ok_or(StructureError::ArithmeticOverflow)?,
+                )
+                .ok_or(StructureError::ArithmeticOverflow)?;
+        }
+        Ok(())
+    }
+
+    fn rebuild_after_integral_dominance(
+        &self,
+        z: &mut StandardRepr,
+        numerator: Vec<i64>,
+        mut lambda2: Weight,
+    ) -> Result<(), StructureError> {
+        let real = self.positive_real_roots_at(z.x)?;
+        lambda2 = checked_sub_weights(&lambda2, self.two_rho())?;
+        lambda2 = checked_add_weights(&lambda2, &self.two_rho_of(&real)?)?;
+        let lambda_rho = lambda2
+            .as_slice()
+            .iter()
+            .map(|&entry| {
+                if entry % 2 != 0 {
+                    Err(StructureError::RepInvariantViolation {
+                        invariant: "integral dominance lambda halving",
+                    })
+                } else {
+                    Ok(entry / 2)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        z.gamma = RationalWeight::new(numerator, z.gamma.denominator())?;
+        z.y_bits = self.y_pack(self.involution_of(z.x)?, &Weight::new(lambda_rho))?;
+        Ok(())
+    }
+
+    /// `Rep_context::any_Cayley(const Weight&, StandardRepr)`
+    /// (repr.cpp:1067-1124). `None` is upstream `Cayley_error`, which the
+    /// language wrapper converts back to the original input parameter.
+    pub fn any_cayley_root(
+        &self,
+        alpha: &Weight,
+        z: &StandardRepr,
+    ) -> Result<Option<StandardRepr>, StructureError> {
+        z.ensure_defined()?;
+        // Upstream deliberately makes the parameter integrally dominant
+        // before it checks whether the supplied coordinates are a root
+        // (repr.cpp:1072-1083). Preserve that ordering for diagnostics.
+        let (dominant, reflections) = self.make_integrally_dominant_for_root(z.clone())?;
+        let root = self.prepare_cayley_root(alpha, z.gamma(), &reflections)?;
+        let Some(image) = self.cayley_image(&dominant, &root)? else {
+            return Ok(None);
+        };
+        self.finish_cayley_image(&dominant, &root, image).map(Some)
+    }
+
+    fn prepare_cayley_root(
+        &self,
+        alpha: &Weight,
+        original_gamma: &RationalWeight,
+        reflections: &[RootId],
+    ) -> Result<CayleyRootPreparation, StructureError> {
+        let system = self.root_system();
+        let alpha = system
+            .id_of(alpha)
+            .ok_or(StructureError::RepInvariantViolation {
+                invariant: "integral parameter root",
+            })?;
+        if !self.is_integral_root(alpha, original_gamma)? {
+            return Err(StructureError::RepInvariantViolation {
+                invariant: "integral parameter root",
+            });
+        }
+        let transformed = transport_root_by_dominance_word(system, alpha, reflections)?;
+        let positive = self.positive_root(transformed)?;
+        let (simple, to_simple) = root_to_simple(system, positive)?;
+        Ok(CayleyRootPreparation {
+            transformed,
+            simple,
+            to_simple,
+        })
+    }
+
+    fn positive_root(&self, root: RootId) -> Result<RootId, StructureError> {
+        let system = self.root_system();
+        if system.is_positive(root) == Some(true) {
+            return Ok(root);
+        }
+        let opposite = system
+            .root(root)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: root.index(),
+                upper_bound: system.roots().len(),
+            })?
+            .as_slice()
+            .iter()
+            .map(|&entry| {
+                entry
+                    .checked_neg()
+                    .ok_or(StructureError::ArithmeticOverflow)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        system
+            .id_of(&Weight::new(opposite))
+            .ok_or(StructureError::RepInvariantViolation {
+                invariant: "opposite root",
+            })
+    }
+
+    fn cayley_image(
+        &self,
+        dominant: &StandardRepr,
+        root: &CayleyRootPreparation,
+    ) -> Result<Option<CayleyImage>, StructureError> {
+        let inv0 = self.involution_of(dominant.x())?;
+        let mut x = self.cross_word_reverse(&root.to_simple, dominant.x())?;
+        let mut ascent = false;
+        match self.kgb_status(x, root.simple)? {
+            KgbStatus::ImaginaryNoncompact => {
+                x = self.graph.cayley(x, root.simple)?.ok_or(
+                    StructureError::RepInvariantViolation {
+                        invariant: "noncompact imaginary Cayley image",
+                    },
+                )?;
+                ascent = true;
+            }
+            KgbStatus::Real => {
+                let lambda_rho = self.lambda_rho(dominant)?;
+                let real = self.positive_real_roots_at(dominant.x())?;
+                let rho2_diff = checked_sub_weights(self.two_rho(), &self.two_rho_of(&real)?)?;
+                let parity = dominant
+                    .gamma()
+                    .sub(&RationalWeight::from_weight(&lambda_rho)?)?
+                    .sub(&RationalWeight::from_weight(&rho2_diff)?.halve()?)?;
+                let coroot = self.root_system().coroot(root.transformed).ok_or(
+                    StructureError::IndexOutOfRange {
+                        index: root.transformed.index(),
+                        upper_bound: self.root_system().roots().len(),
+                    },
+                )?;
+                let pairing = pair_i64(parity.numerator(), coroot)?;
+                if pairing % parity.denominator() == 0 && (pairing / parity.denominator()) % 2 != 0
+                {
+                    x = self
+                        .graph
+                        .inverse_cayley(x, root.simple)?
+                        .ok_or(StructureError::RepInvariantViolation {
+                            invariant: "real inverse Cayley image",
+                        })?
+                        .0;
+                } else {
+                    return Ok(None);
+                }
+            }
+            KgbStatus::Complex | KgbStatus::ImaginaryCompact => return Ok(None),
+        }
+        x = self.cross_word_forward(&root.to_simple, x)?;
+        let upstairs = if ascent { self.involution_of(x)? } else { inv0 };
+        Ok(Some(CayleyImage { x, upstairs }))
+    }
+
+    fn finish_cayley_image(
+        &self,
+        dominant: &StandardRepr,
+        root: &CayleyRootPreparation,
+        image: CayleyImage,
+    ) -> Result<StandardRepr, StructureError> {
+        let upstairs_real = self.root_involution_data(image.upstairs)?;
+        let shifted_roots = positive_to_negative(self.root_system(), &root.to_simple)?
+            .into_iter()
+            .filter(|&root| upstairs_real.kind(root) == Some(RootKind::Real))
+            .collect::<Vec<_>>();
+        let lambda_rho = checked_add_weights(
+            &self.lambda_rho(dominant)?,
+            &self.two_rho_of(&shifted_roots)?,
+        )?;
+        self.sr_gamma(image.x, &lambda_rho, dominant.gamma())
     }
 
     /// `Rep_context::to_simple_shift` (repr.cpp:2776-2781): keep the roots
@@ -2829,6 +3416,18 @@ mod tests {
         let datum = a2_datum();
         let involution = LatticeInvolution::identity(&datum).unwrap();
         fixture(datum, involution, 8, 6)
+    }
+
+    #[test]
+    fn positive_to_negative_reads_the_word_left_to_right() {
+        let a2 = a2_fixture();
+        let rc = a2.rc();
+        let roots = positive_to_negative(rc.root_system(), &[0, 1]).unwrap();
+        let coordinates = roots
+            .iter()
+            .map(|&root| rc.root_system().root(root).unwrap().as_slice().to_vec())
+            .collect::<Vec<_>>();
+        assert_eq!(coordinates, vec![vec![-1, 2], vec![1, 1]]);
     }
 
     /// The KGB element whose Cartan involution is the given matrix.

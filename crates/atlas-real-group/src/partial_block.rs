@@ -220,6 +220,13 @@ impl IntegralSubsystem {
         self.parent_root.get(s).copied()
     }
 
+    /// The ambient palindromic word for reflection in subsystem simple `s`
+    /// (subsystem.h `reflection`). Kept crate-private because this is
+    /// transport data for representation algorithms, not a language value.
+    pub(crate) fn reflection_word(&self, s: usize) -> Option<&[usize]> {
+        self.reflection.get(s).map(Vec::as_slice)
+    }
+
     fn checked(&self, s: usize) -> Result<(), StructureError> {
         if s >= self.rank() {
             return Err(StructureError::IndexOutOfRange {
@@ -1494,5 +1501,23 @@ mod tests {
         assert_eq!(sub.rank(), 1);
         let root = sub.parent_root(0).unwrap();
         assert_eq!(system.root(root).unwrap().as_slice(), &[0, 2]);
+    }
+
+    #[test]
+    fn integral_subsystem_exposes_exact_parent_words_to_rep_context() {
+        let b2 = b2_fixture();
+        let rc = b2.rc();
+        let system = rc.root_system();
+        let sub = IntegralSubsystem::integral(system, &rw(&[3, 1], 2)).unwrap();
+        assert_eq!(sub.rank(), 1);
+        let parent = sub.parent_root(0).unwrap();
+        assert_eq!(system.root(parent).unwrap().as_slice(), &[0, 2]);
+        let reflection = sub.reflection_word(0).unwrap();
+        assert_eq!(reflection.len() % 2, 1);
+        assert_eq!(
+            reflection.iter().rev().copied().collect::<Vec<_>>(),
+            reflection
+        );
+        assert!(sub.reflection_word(1).is_none());
     }
 }
