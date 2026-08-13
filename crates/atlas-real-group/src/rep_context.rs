@@ -317,6 +317,24 @@ pub struct RepContext<'a> {
     rho: RationalWeight,
 }
 
+/// Crate-local identity and lifetime witness for context-owned caches.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct RepContextIdentity<'a> {
+    inner_class: &'a InnerClass,
+    table: &'a InvolutionTable,
+    graph: &'a KgbGraph,
+    real_form: crate::WeakRealFormId,
+}
+
+impl RepContextIdentity<'_> {
+    pub(crate) fn same_owner(&self, other: &RepContextIdentity<'_>) -> bool {
+        std::ptr::eq(self.inner_class, other.inner_class)
+            && std::ptr::eq(self.table, other.table)
+            && std::ptr::eq(self.graph, other.graph)
+            && self.real_form == other.real_form
+    }
+}
+
 impl<'a> RepContext<'a> {
     /// Bind the context, deriving the datum constants. The gate is the
     /// same full inner-class equality as the Tits coset's.
@@ -402,6 +420,15 @@ impl<'a> RepContext<'a> {
         self.graph.form()
     }
 
+    pub(crate) fn identity(&self) -> RepContextIdentity<'a> {
+        RepContextIdentity {
+            inner_class: self.inner_class,
+            table: self.table,
+            graph: self.graph,
+            real_form: self.real_form(),
+        }
+    }
+
     /// The `(1-theta)X^*` image-basis pair of an involution, read from the
     /// table record that transported it along the generation path.
     fn projection(&self, involution: InvolutionId) -> Result<&RealProjection, StructureError> {
@@ -413,6 +440,15 @@ impl<'a> RepContext<'a> {
                 upper_bound: self.table.involution_count(),
             })?
             .projection())
+    }
+
+    /// The transported `(1-theta)X^*` basis at a KGB element.
+    ///
+    /// This is kept crate-private for the reduced-parameter codec: callers
+    /// outside the real-group implementation must not depend on the chosen
+    /// Smith-coordinate basis.
+    pub(crate) fn projection_at(&self, x: KgbId) -> Result<&RealProjection, StructureError> {
+        self.projection(self.involution_of(x)?)
     }
 
     pub fn involution_of(&self, x: KgbId) -> Result<InvolutionId, StructureError> {

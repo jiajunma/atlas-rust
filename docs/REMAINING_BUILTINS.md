@@ -71,6 +71,18 @@ recursion, so malformed topology returns a structural error instead of
 panicking.  This is infrastructure only; it does not materialize or cache a
 full common block yet.
 
+The crate-private shared-table kernel is now implemented for the same
+full-integral, identity-locator domain.  `RepTable` is lifetime-bound to the
+three owners borrowed by its `RepContext`; it stores append-only block IDs,
+superseded tombstones, all-row reduced places, partial/full records, and
+relative shifts.  Materialisation runs outside the structural mutex and
+commit re-probes atomically.  Fresh partial lookup returns the exact seed row,
+whereas later reduced-key hits use reverse registration's smallest row;
+promotion retires all overlapping partial records with one place-table pass.
+Deterministic tests cover full/partial commit races and failure-atomic overlap
+rejection.  Partial-partial merging remains a loud NYI, and the kernel is not
+yet owned by `RealFormContext` or consumed by language builtins.
+
 The first full common-block constructor is now present behind the language
 boundary as `PartialBlock::build_full`.  Its verified implementation domain is
 rank zero and the full-integral, identity-locator subsystem.  It ports the

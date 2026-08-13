@@ -47,6 +47,28 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   ordinary deformation recursion, proper-subsystem handling, RepTable memo,
   or timed cancellation.
 
+## Checkpoint - 2026-08-13h (shared RepTable kernel)
+
+- The real-group crate now has a crate-private, full-integral identity-locator
+  `RepTable<'a>` kernel.  It is lifetime-bound to its `RepContext` owners and
+  validates them by reference identity on every lookup; it cannot be reused
+  across real forms or outlive the borrowed graph/table/inner class.
+- Storage uses stable append-only block IDs, superseded tombstones, all-row
+  reduced-key places, `Arc<PartialBlock>` records, and relative shifts.
+  Partial/full materialisation happens outside the mutex; commit re-probes and
+  either reuses a concurrent winner or updates state atomically.  Full
+  promotion bulk-retires every overlapping partial and clears their places in
+  one pass.
+- Important row rule: a fresh partial lookup returns its exact seed row;
+  reverse registration's smallest colliding row applies only to later key
+  hits.  Also, pinned B2 rows 10/11 are not a collision: transported Smith
+  residues are 0 and 2.  Both facts are fixed by tests.
+- Nineteen focused tests cover A1 row 0→1 promotion, all B2 rows, relative
+  shifts, stable IDs, no dangling places, context rejection, and deterministic
+  full/partial/partial commit races.  Partial-partial merging is still a loud,
+  failure-atomic NYI.  Next: make `RealFormContext` own the table, then route
+  KL_column, KL_block, and print_common_block to close `rep_table_sequence`.
+
 ## Checkpoint - 2026-08-13e (signature audit + multi-assignment)
 
 - The builtin completion target is now signature-level: 305 upstream

@@ -1,8 +1,26 @@
-//! Mathematical key/codec primitives shared by representation tables.
+//! Shared partial/full common-block storage for one real form.
+//!
+//! This is the first, deliberately narrow `Rep_table` slice from upstream
+//! `gkmod/repr.cpp`: only the full-integral system in identity attitude is
+//! accepted. Reduced keys and their Smith codec remain private; consumers
+//! receive stable block handles and query-relative representatives.
+
+#[cfg(test)]
+use std::collections::VecDeque;
+use std::collections::{HashMap, HashSet};
+#[cfg(test)]
+use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::{Arc, Mutex, MutexGuard};
+#[cfg(test)]
+use std::time::Duration;
 
 use crate::matreduc::IntMatrix;
 use crate::real_projection::RealProjection;
-use crate::{KgbId, RationalWeight, StructureError, Weight};
+use crate::rep_context::RepContextIdentity;
+use crate::{
+    bruhat_below, CommonContext, KgbId, PartialBlock, RationalWeight, RepContext, StandardRepr,
+    StandardReprMod, StructureError, Weight,
+};
 
 /// Identity of the integral root system used to reduce a parameter.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -252,11 +270,694 @@ impl IntegralCodec {
     }
 }
 
+/// Stable identity of a materialized common block.
+///
+/// IDs are append-only. Promotion leaves the old ID as a tombstone, so an
+/// already returned [`LocatedBlock`] keeps its `Arc` alive while fresh table
+/// resolution no longer returns the superseded block.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub(crate) struct BlockId(usize);
+
+impl BlockId {
+    /// The append-only sequence number, primarily useful for diagnostics.
+    pub(crate) const fn index(self) -> usize {
+        self.0
+    }
+}
+
+#[derive(Debug)]
+struct BlockRecord {
+    id: BlockId,
+    block: Arc<PartialBlock>,
+    full: bool,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct Place {
+    block: BlockId,
+    row: usize,
+}
+
+#[derive(Debug)]
+enum BlockSlot {
+    Active(Arc<BlockRecord>),
+    Superseded,
+}
+
+#[derive(Debug, Default)]
+struct State {
+    slots: Vec<BlockSlot>,
+    places: HashMap<ReducedParamKey, Place>,
+}
+
+impl State {
+    fn active(&self, id: BlockId) -> Option<Arc<BlockRecord>> {
+        match self.slots.get(id.0) {
+            Some(BlockSlot::Active(record)) => Some(Arc::clone(record)),
+            Some(BlockSlot::Superseded) | None => None,
+        }
+    }
+
+    fn active_place(&self, key: &ReducedParamKey) -> Option<(Arc<BlockRecord>, usize)> {
+        let place = *self.places.get(key)?;
+        Some((self.active(place.block)?, place.row))
+    }
+
+    fn insert_record(&mut self, block: Arc<PartialBlock>, full: bool) -> Arc<BlockRecord> {
+        let record = Arc::new(BlockRecord {
+            id: BlockId(self.slots.len()),
+            block,
+            full,
+        });
+        self.slots.push(BlockSlot::Active(Arc::clone(&record)));
+        record
+    }
+
+    /// Remove every reverse entry for superseded blocks, not merely the keys
+    /// which happened to collide with their replacement.
+    fn retire_all(&mut self, ids: &HashSet<BlockId>) {
+        for &id in ids {
+            if let Some(slot) = self.slots.get_mut(id.0) {
+                *slot = BlockSlot::Superseded;
+            }
+        }
+        self.places.retain(|_, place| !ids.contains(&place.block));
+    }
+
+    fn reverse_register(&mut self, record: &BlockRecord, row_keys: &[(ReducedParamKey, usize)]) {
+        for &(key, row) in row_keys.iter().rev() {
+            self.places.insert(
+                key,
+                Place {
+                    block: record.id,
+                    row,
+                },
+            );
+        }
+    }
+
+    fn commit_partial(
+        &mut self,
+        block: Arc<PartialBlock>,
+        key: ReducedParamKey,
+        exact_seed_row: usize,
+        row_keys: &[(ReducedParamKey, usize)],
+    ) -> Result<(Arc<BlockRecord>, usize), StructureError> {
+        if let Some(existing) = self.active_place(&key) {
+            return Ok(existing);
+        }
+        if !row_keys
+            .iter()
+            .any(|&(candidate, row)| candidate == key && row == exact_seed_row)
+        {
+            return Err(StructureError::RepInvariantViolation {
+                invariant: "partial representation block exact seed row",
+            });
+        }
+
+        let overlaps: HashSet<BlockId> = row_keys
+            .iter()
+            .filter_map(|(candidate, _)| self.places.get(candidate))
+            .filter_map(|place| self.active(place.block).map(|_| place.block))
+            .collect();
+        if !overlaps.is_empty() {
+            return Err(StructureError::NotYetImplemented {
+                feature: "merging overlapping partial representation blocks",
+            });
+        }
+
+        let record = self.insert_record(block, false);
+        self.reverse_register(&record, row_keys);
+        Ok((record, exact_seed_row))
+    }
+}
+
+/// One query located in a shared partial or full common block.
+///
+/// `raw_row` is the stored block's numbering. `relative_shift` and
+/// `adapted_representative` describe how the representative selected by a
+/// possibly colliding reduced key is related to this query.
+#[derive(Clone, Debug)]
+pub(crate) struct LocatedBlock {
+    record: Arc<BlockRecord>,
+    raw_row: usize,
+    relative_shift: RationalWeight,
+    adapted_representative: StandardReprMod,
+}
+
+impl LocatedBlock {
+    pub(crate) fn block_id(&self) -> BlockId {
+        self.record.id
+    }
+
+    pub(crate) fn block(&self) -> Arc<PartialBlock> {
+        Arc::clone(&self.record.block)
+    }
+
+    pub(crate) fn raw_row(&self) -> usize {
+        self.raw_row
+    }
+
+    pub(crate) fn is_full(&self) -> bool {
+        self.record.full
+    }
+
+    pub(crate) fn relative_shift(&self) -> &RationalWeight {
+        &self.relative_shift
+    }
+
+    pub(crate) fn adapted_representative(&self) -> &StandardReprMod {
+        &self.adapted_representative
+    }
+}
+
+/// Shared representation-block kernel for one [`RepContext`].
+///
+/// The mutex protects only structural probe/commit operations. Bruhat
+/// generation and full block materialization happen without holding it; the
+/// commit path re-probes to collapse concurrent duplicate work.
+#[cfg(test)]
+#[derive(Clone, Debug)]
+struct TestGate {
+    reached_tx: Sender<()>,
+    reached_rx: Arc<Mutex<Receiver<()>>>,
+    release_tx: Sender<()>,
+    release_rx: Arc<Mutex<Receiver<()>>>,
+}
+
+#[cfg(test)]
+impl TestGate {
+    fn new() -> Self {
+        let (reached_tx, reached_rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel();
+        Self {
+            reached_tx,
+            reached_rx: Arc::new(Mutex::new(reached_rx)),
+            release_tx,
+            release_rx: Arc::new(Mutex::new(release_rx)),
+        }
+    }
+
+    fn pause(self) {
+        self.reached_tx.send(()).unwrap();
+        self.release_rx
+            .lock()
+            .unwrap()
+            .recv_timeout(Duration::from_secs(5))
+            .expect("test gate release timed out");
+    }
+
+    fn wait_until_reached(&self) {
+        self.reached_rx
+            .lock()
+            .unwrap()
+            .recv_timeout(Duration::from_secs(5))
+            .expect("worker did not reach test gate");
+    }
+
+    fn release(&self) {
+        self.release_tx.send(()).unwrap();
+    }
+}
+
+#[cfg(test)]
+#[derive(Debug, Default)]
+struct TestHooks {
+    partial: Mutex<VecDeque<TestGate>>,
+    full: Mutex<VecDeque<TestGate>>,
+}
+
+#[cfg(test)]
+impl TestHooks {
+    fn pause_before_commit(&self, full: bool) {
+        let gate = if full {
+            self.full.lock().unwrap().pop_front()
+        } else {
+            self.partial.lock().unwrap().pop_front()
+        };
+        if let Some(gate) = gate {
+            gate.pause();
+        }
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct RepTable<'a> {
+    // The identity owns borrows of all three context substrates. This makes a
+    // table statically unable to outlive them, in addition to runtime
+    // pointer-identity validation on every lookup.
+    identity: RepContextIdentity<'a>,
+    state: Mutex<State>,
+    #[cfg(test)]
+    hooks: TestHooks,
+}
+
+impl<'owner> RepTable<'owner> {
+    pub(crate) fn new(rc: &RepContext<'owner>) -> Self {
+        Self {
+            identity: rc.identity(),
+            state: Mutex::new(State::default()),
+            #[cfg(test)]
+            hooks: TestHooks::default(),
+        }
+    }
+
+    #[cfg(test)]
+    fn with_test_gates(
+        rc: &RepContext<'owner>,
+        partial: Vec<TestGate>,
+        full: Vec<TestGate>,
+    ) -> Self {
+        Self {
+            identity: rc.identity(),
+            state: Mutex::new(State::default()),
+            hooks: TestHooks {
+                partial: Mutex::new(partial.into()),
+                full: Mutex::new(full.into()),
+            },
+        }
+    }
+
+    /// Resolve or materialize the smallest partial block below `query`.
+    pub(crate) fn lookup(
+        &self,
+        rc: &RepContext<'_>,
+        query: &StandardRepr,
+    ) -> Result<LocatedBlock, StructureError> {
+        self.validate_context(rc)?;
+        let query = query.normalised(rc)?;
+        let seed = StandardReprMod::mod_reduce(rc, &query)?;
+        let context = Self::full_integral_context(rc, query.gamma())?;
+        let key = Self::full_integral_key(rc, &seed)?;
+        if let Some((record, row)) = self.probe(&key)? {
+            return Self::located(rc, record, row, &seed);
+        }
+
+        let interval = bruhat_below(&context, &seed)?;
+        let block = PartialBlock::build(&context, &interval)?;
+        let exact_seed_row = block
+            .lookup(&seed)
+            .ok_or(StructureError::RepInvariantViolation {
+                invariant: "partial representation block seed row",
+            })?;
+        let block = Arc::new(block);
+        let row_keys = Self::row_keys(rc, &block)?;
+        #[cfg(test)]
+        self.hooks.pause_before_commit(false);
+
+        let (record, row) = {
+            let mut state = self.lock_state()?;
+            state.commit_partial(block, key, exact_seed_row, &row_keys)?
+        };
+        Self::located(rc, record, row, &seed)
+    }
+
+    /// Resolve or materialize the full common block containing `query`.
+    pub(crate) fn lookup_full_block(
+        &self,
+        rc: &RepContext<'_>,
+        query: &StandardRepr,
+    ) -> Result<LocatedBlock, StructureError> {
+        self.validate_context(rc)?;
+        let query = query.made_dominant(rc)?;
+        let seed = StandardReprMod::mod_reduce(rc, &query)?;
+        let context = Self::full_integral_context(rc, query.gamma())?;
+        let key = Self::full_integral_key(rc, &seed)?;
+        if let Some((record, row)) = self.probe(&key)? {
+            if record.full {
+                return Self::located(rc, record, row, &seed);
+            }
+        }
+
+        let (block, exact_seed_row) = PartialBlock::build_full(&context, &seed)?;
+        let block = Arc::new(block);
+        let row_keys = Self::row_keys(rc, &block)?;
+        if !row_keys
+            .iter()
+            .any(|&(candidate, row)| candidate == key && row == exact_seed_row)
+        {
+            return Err(StructureError::RepInvariantViolation {
+                invariant: "full representation block exact seed row",
+            });
+        }
+        #[cfg(test)]
+        self.hooks.pause_before_commit(true);
+
+        let (record, row) = {
+            let mut state = self.lock_state()?;
+            if let Some((record, row)) = state.active_place(&key) {
+                if record.full {
+                    drop(state);
+                    return Self::located(rc, record, row, &seed);
+                }
+            }
+
+            let mut partials = HashSet::new();
+            for (candidate, _) in &row_keys {
+                let Some(place) = state.places.get(candidate).copied() else {
+                    continue;
+                };
+                let Some(existing) = state.active(place.block) else {
+                    continue;
+                };
+                if existing.full {
+                    return Err(StructureError::RepInvariantViolation {
+                        invariant: "overlapping active full representation blocks",
+                    });
+                }
+                partials.insert(existing.id);
+            }
+            state.retire_all(&partials);
+
+            let record = state.insert_record(block, true);
+            state.reverse_register(&record, &row_keys);
+            let row = state
+                .places
+                .get(&key)
+                .ok_or(StructureError::RepInvariantViolation {
+                    invariant: "full representation block seed registered",
+                })?
+                .row;
+            (record, row)
+        };
+        Self::located(rc, record, row, &seed)
+    }
+
+    /// Resolve an active stable ID. Superseded IDs deliberately return
+    /// `None`; previously returned `LocatedBlock` handles remain usable.
+    pub(crate) fn block(&self, id: BlockId) -> Result<Option<Arc<PartialBlock>>, StructureError> {
+        Ok(self
+            .lock_state()?
+            .active(id)
+            .map(|record| Arc::clone(&record.block)))
+    }
+
+    fn lock_state(&self) -> Result<MutexGuard<'_, State>, StructureError> {
+        self.state
+            .lock()
+            .map_err(|_| StructureError::RepInvariantViolation {
+                invariant: "representation table mutex",
+            })
+    }
+
+    fn validate_context(&self, rc: &RepContext<'_>) -> Result<(), StructureError> {
+        if !self.identity.same_owner(&rc.identity()) {
+            return Err(StructureError::RepInvariantViolation {
+                invariant: "representation table context mismatch",
+            });
+        }
+        Ok(())
+    }
+
+    fn probe(
+        &self,
+        key: &ReducedParamKey,
+    ) -> Result<Option<(Arc<BlockRecord>, usize)>, StructureError> {
+        Ok(self.lock_state()?.active_place(key))
+    }
+
+    fn full_integral_context<'r, 'context>(
+        rc: &'r RepContext<'context>,
+        gamma: &RationalWeight,
+    ) -> Result<CommonContext<'r, 'context>, StructureError> {
+        let context = CommonContext::integral(rc, gamma)?;
+        let ambient = rc.root_system().simple_root_ids();
+        let identity = context.rank() == ambient.len()
+            && ambient
+                .iter()
+                .enumerate()
+                .all(|(generator, &root)| context.subsystem().parent_root(generator) == Some(root));
+        if !identity {
+            return Err(StructureError::NotYetImplemented {
+                feature: "representation table for a non-full integral subsystem",
+            });
+        }
+        Ok(context)
+    }
+
+    fn full_integral_codec(rc: &RepContext<'_>, x: KgbId) -> Result<IntegralCodec, StructureError> {
+        let simple_coroots = rc.datum().simple_coroots();
+        let mut coroots = IntMatrix::new(simple_coroots.len(), rc.rank());
+        for (row, coroot) in simple_coroots.iter().enumerate() {
+            for (column, &entry) in coroot.as_slice().iter().enumerate() {
+                coroots.set(row, column, entry);
+            }
+        }
+        IntegralCodec::new(rc.projection_at(x)?, &coroots)
+    }
+
+    fn full_integral_key(
+        rc: &RepContext<'_>,
+        srm: &StandardReprMod,
+    ) -> Result<ReducedParamKey, StructureError> {
+        Self::full_integral_codec(rc, srm.x())?.reduced_key(
+            srm.x(),
+            IntegralSystem::Full,
+            srm.gamma_lambda(),
+        )
+    }
+
+    fn row_keys(
+        rc: &RepContext<'_>,
+        block: &PartialBlock,
+    ) -> Result<Vec<(ReducedParamKey, usize)>, StructureError> {
+        let mut keys = Vec::new();
+        keys.try_reserve_exact(block.size())
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: block.size(),
+            })?;
+        for row in 0..block.size() {
+            let representative =
+                block
+                    .element(row)
+                    .ok_or(StructureError::RepInvariantViolation {
+                        invariant: "representation block row representative",
+                    })?;
+            keys.push((Self::full_integral_key(rc, representative)?, row));
+        }
+        Ok(keys)
+    }
+
+    fn located(
+        rc: &RepContext<'_>,
+        record: Arc<BlockRecord>,
+        row: usize,
+        query: &StandardReprMod,
+    ) -> Result<LocatedBlock, StructureError> {
+        let stored = record
+            .block
+            .element(row)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: row,
+                upper_bound: record.block.size(),
+            })?;
+        if stored.x() != query.x() {
+            return Err(StructureError::RepInvariantViolation {
+                invariant: "reduced parameter preserves KGB element",
+            });
+        }
+        let difference = query.gamma_lambda().sub(stored.gamma_lambda())?;
+        let image = Self::full_integral_codec(rc, query.x())?.theta_1_preimage(&difference)?;
+        let relative_shift = difference.sub(&RationalWeight::from_weight(&image)?)?;
+        let shifted = stored.gamma_lambda().add(&relative_shift)?;
+        let adapted_representative = StandardReprMod::build(rc, stored.x(), &shifted)?;
+        if adapted_representative != *query {
+            return Err(StructureError::RepInvariantViolation {
+                invariant: "relative shift restores reduced query",
+            });
+        }
+        Ok(LocatedBlock {
+            record,
+            raw_row: row,
+            relative_shift,
+            adapted_representative,
+        })
+    }
+
+    #[cfg(test)]
+    fn state_counts(&self) -> (usize, usize, usize) {
+        let state = self.state.lock().unwrap();
+        let active = state
+            .slots
+            .iter()
+            .filter(|slot| matches!(slot, BlockSlot::Active(_)))
+            .count();
+        (state.slots.len(), active, state.places.len())
+    }
+
+    #[cfg(test)]
+    fn state_snapshot(&self) -> StateSnapshot {
+        let state = self.state.lock().unwrap();
+        StateSnapshot {
+            slots: state
+                .slots
+                .iter()
+                .map(|slot| match slot {
+                    BlockSlot::Active(record) => Some(record.full),
+                    BlockSlot::Superseded => None,
+                })
+                .collect(),
+            places: state.places.clone(),
+        }
+    }
+
+    #[cfg(test)]
+    fn state_is_consistent(&self) -> bool {
+        let state = self.state.lock().unwrap();
+        state.places.values().all(|place| {
+            state
+                .active(place.block)
+                .is_some_and(|record| place.row < record.block.size())
+        })
+    }
+}
+
+#[cfg(test)]
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct StateSnapshot {
+    slots: Vec<Option<bool>>,
+    places: HashMap<ReducedParamKey, Place>,
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::{HashMap, HashSet};
+    use std::sync::Arc;
 
     use super::*;
+    use crate::{
+        AdjointFiberBudget, BasedRootDatum, CartanClassification, CartanClassificationBudget,
+        CartanId, InnerClass, IntegerLatticeBudget, InvolutionTable, InvolutionTableBudget,
+        KgbGraph, LatticeInvolution, RealFormSeed, StandardReprMod, StrongRealClassification,
+        WeakRealFormId,
+    };
+
+    fn class_budget(weyl: usize) -> CartanClassificationBudget {
+        CartanClassificationBudget::new(
+            IntegerLatticeBudget::new(64, 100_000, 100_000, 128),
+            AdjointFiberBudget::new(
+                IntegerLatticeBudget::new(64, 100_000, 100_000, 128),
+                50_000,
+                100_000,
+            ),
+            weyl,
+            64,
+            64,
+        )
+    }
+
+    fn graph_with_size(
+        inner_class: &InnerClass,
+        classification: &CartanClassification,
+        strong: &StrongRealClassification,
+        table: &mut InvolutionTable,
+        size: usize,
+    ) -> KgbGraph {
+        for form in 0..classification.weak_real_form_count() {
+            if strong.kgb_size(WeakRealFormId(form)) != Some(size) {
+                continue;
+            }
+            table.add_cartan(classification, CartanId(0)).unwrap();
+            let seed = RealFormSeed::build(
+                inner_class,
+                classification,
+                strong,
+                table,
+                WeakRealFormId(form),
+                &IntegerLatticeBudget::new(64, 100_000, 100_000, 128),
+                4_096,
+            )
+            .unwrap();
+            return KgbGraph::build(inner_class, classification, strong, table, &seed).unwrap();
+        }
+        panic!("no real form with KGB size {size}");
+    }
+
+    struct ContextFixture {
+        inner_class: InnerClass,
+        table: InvolutionTable,
+        graph: KgbGraph,
+    }
+
+    impl ContextFixture {
+        fn rc(&self) -> crate::RepContext<'_> {
+            crate::RepContext::new(&self.inner_class, &self.table, &self.graph).unwrap()
+        }
+    }
+
+    fn fixture(
+        datum: BasedRootDatum,
+        involution: LatticeInvolution,
+        weyl: usize,
+        kgb_size: usize,
+    ) -> ContextFixture {
+        let inner_class = InnerClass::new(datum, involution, weyl).unwrap();
+        let classification =
+            CartanClassification::build(&inner_class, &class_budget(weyl)).unwrap();
+        let strong = StrongRealClassification::build(&classification, 4_096).unwrap();
+        let mut table = InvolutionTable::new(
+            &inner_class,
+            InvolutionTableBudget::new(64, IntegerLatticeBudget::new(64, 100_000, 100_000, 128)),
+        )
+        .unwrap();
+        let graph = graph_with_size(&inner_class, &classification, &strong, &mut table, kgb_size);
+        ContextFixture {
+            inner_class,
+            table,
+            graph,
+        }
+    }
+
+    fn a1_fixture() -> ContextFixture {
+        let datum = BasedRootDatum::from_simple_data(
+            1,
+            vec![vec![2]],
+            vec![Weight::new(vec![2])],
+            vec![crate::Coweight::new(vec![1])],
+        )
+        .unwrap();
+        let involution = LatticeInvolution::identity(&datum).unwrap();
+        fixture(datum, involution, 2, 3)
+    }
+
+    fn a1_t1_fixture() -> ContextFixture {
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2]],
+            vec![Weight::new(vec![2, 0])],
+            vec![crate::Coweight::new(vec![1, 0])],
+        )
+        .unwrap();
+        let involution = LatticeInvolution::new(
+            &datum,
+            vec![vec![1, 0], vec![0, -1]],
+            vec![vec![1, 0], vec![0, -1]],
+        )
+        .unwrap();
+        fixture(datum, involution, 2, 3)
+    }
+
+    fn b2_fixture() -> ContextFixture {
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2, -2], vec![-1, 2]],
+            vec![Weight::new(vec![2, -2]), Weight::new(vec![-1, 2])],
+            vec![
+                crate::Coweight::new(vec![1, 0]),
+                crate::Coweight::new(vec![0, 1]),
+            ],
+        )
+        .unwrap();
+        let involution = LatticeInvolution::identity(&datum).unwrap();
+        fixture(datum, involution, 8, 11)
+    }
+
+    fn a1_query(rc: &RepContext<'_>, x: usize) -> StandardRepr {
+        StandardReprMod::build(rc, KgbId(x), &RationalWeight::zero(1).unwrap())
+            .unwrap()
+            .to_standard(rc, &RationalWeight::new(vec![1], 1).unwrap())
+            .unwrap()
+    }
 
     fn projection(lift_entries: &[i64]) -> RealProjection {
         let rank = lift_entries.len();
@@ -372,5 +1073,369 @@ mod tests {
             codec.reduced_key(KgbId(3), IntegralSystem::Full, &gamma_lambda),
             Ok(ReducedParamKey::new(KgbId(3), IntegralSystem::Full, 1))
         );
+    }
+
+    #[test]
+    fn a1_partial_then_full_promotes_raw_row_zero_to_one() {
+        let fixture = a1_fixture();
+        let rc = fixture.rc();
+        let gamma = RationalWeight::new(vec![1], 1).unwrap();
+        let query = StandardReprMod::build(&rc, KgbId(1), &RationalWeight::zero(1).unwrap())
+            .unwrap()
+            .to_standard(&rc, &gamma)
+            .unwrap();
+        let table = RepTable::new(&rc);
+
+        let partial = table.lookup(&rc, &query).unwrap();
+        assert_eq!(partial.raw_row(), 0);
+        assert!(!partial.is_full());
+
+        let full = table.lookup_full_block(&rc, &query).unwrap();
+        assert_eq!(full.raw_row(), 1);
+        assert!(full.is_full());
+        assert_ne!(partial.block_id(), full.block_id());
+        assert_eq!(partial.block_id().index(), 0);
+        assert_eq!(full.block_id().index(), 1);
+    }
+
+    #[test]
+    fn b2_full_registers_every_row_and_keeps_the_two_top_keys_distinct() {
+        let fixture = b2_fixture();
+        let rc = fixture.rc();
+        let gamma = RationalWeight::new(vec![2, 2], 1).unwrap();
+        let seed = StandardReprMod::build(&rc, KgbId(0), &RationalWeight::zero(2).unwrap())
+            .unwrap()
+            .to_standard(&rc, &gamma)
+            .unwrap();
+        let table = RepTable::new(&rc);
+        let installed = table.lookup_full_block(&rc, &seed).unwrap();
+        let block = installed.block();
+        let row_keys = RepTable::row_keys(&rc, &block).unwrap();
+
+        assert_eq!(block.size(), 12);
+        // The two x=10 rows look like a tempting collision, but the pinned
+        // transported projection is diag(2,2), hence Smith diagonal [2,2]:
+        // gamma-lambda [0,0] and [1,0] have residues 0 and 2. Preserve this
+        // evidence so a future pool does not silently merge distinct keys.
+        assert_eq!(row_keys[10].0.residue, 0);
+        assert_eq!(row_keys[11].0.residue, 2);
+        assert_ne!(row_keys[10].0, row_keys[11].0);
+        for row in 0..block.size() {
+            let query = block
+                .element(row)
+                .unwrap()
+                .to_standard(&rc, &gamma)
+                .unwrap();
+            let located = table.lookup_full_block(&rc, &query).unwrap();
+            assert_eq!(located.block_id(), installed.block_id(), "row {row}");
+            assert_eq!(located.raw_row(), row, "row {row}");
+            assert_eq!(
+                located.adapted_representative(),
+                block.element(row).unwrap(),
+                "related query row {row}"
+            );
+        }
+    }
+
+    #[test]
+    fn b2_reverse_registration_uses_the_smallest_row_for_a_duplicate_key() {
+        let fixture = b2_fixture();
+        let rc = fixture.rc();
+        let gamma = RationalWeight::new(vec![2, 2], 1).unwrap();
+        let seed = StandardReprMod::build(&rc, KgbId(0), &RationalWeight::zero(2).unwrap())
+            .unwrap()
+            .to_standard(&rc, &gamma)
+            .unwrap();
+        let context = RepTable::full_integral_context(&rc, &gamma).unwrap();
+        let seed = StandardReprMod::mod_reduce(&rc, &seed).unwrap();
+        let (block, _) = PartialBlock::build_full(&context, &seed).unwrap();
+        let block = Arc::new(block);
+        let duplicate = RepTable::full_integral_key(&rc, block.element(10).unwrap()).unwrap();
+        let mut state = State::default();
+
+        let (_, fresh_row) = state
+            .commit_partial(
+                Arc::clone(&block),
+                duplicate,
+                11,
+                &[(duplicate, 10), (duplicate, 11)],
+            )
+            .unwrap();
+
+        assert_eq!(fresh_row, 11, "fresh materialization returns exact seed");
+        assert_eq!(state.places[&duplicate].row, 10);
+
+        let (_, existing_row) = state
+            .commit_partial(block, duplicate, 11, &[(duplicate, 10), (duplicate, 11)])
+            .unwrap();
+        assert_eq!(existing_row, 10, "later probes use the reverse place");
+    }
+
+    #[test]
+    fn related_modifier_restores_an_integral_orthogonal_query() {
+        let fixture = a1_t1_fixture();
+        let rc = fixture.rc();
+        let gamma = RationalWeight::new(vec![2, 0], 1).unwrap();
+        let stored =
+            StandardReprMod::build(&rc, KgbId(1), &RationalWeight::zero(2).unwrap()).unwrap();
+        let related =
+            StandardReprMod::build(&rc, KgbId(1), &RationalWeight::new(vec![0, 1], 1).unwrap())
+                .unwrap();
+        let stored_key = RepTable::full_integral_key(&rc, &stored).unwrap();
+        let related_key = RepTable::full_integral_key(&rc, &related).unwrap();
+        assert_eq!(stored_key, related_key, "central difference is invisible");
+        let codec = RepTable::full_integral_codec(&rc, stored.x()).unwrap();
+        assert_eq!(
+            codec.theta_1_preimage(&related.gamma_lambda().sub(stored.gamma_lambda()).unwrap()),
+            Ok(Weight::new(vec![0, 0]))
+        );
+        let table = RepTable::new(&rc);
+        let installed = table
+            .lookup_full_block(&rc, &stored.to_standard(&rc, &gamma).unwrap())
+            .unwrap();
+
+        let located = table
+            .lookup_full_block(&rc, &related.to_standard(&rc, &gamma).unwrap())
+            .unwrap();
+
+        assert_eq!(located.block_id(), installed.block_id());
+        assert_eq!(located.raw_row(), 1);
+        assert_eq!(located.adapted_representative(), &related);
+        assert_eq!(
+            located.relative_shift(),
+            &RationalWeight::new(vec![0, 1], 1).unwrap()
+        );
+    }
+
+    #[test]
+    fn full_promotion_retires_every_partial_and_clears_all_places() {
+        let fixture = a1_fixture();
+        let rc = fixture.rc();
+        let gamma = RationalWeight::new(vec![1], 1).unwrap();
+        let zero = RationalWeight::zero(1).unwrap();
+        let query = |x| {
+            StandardReprMod::build(&rc, KgbId(x), &zero)
+                .unwrap()
+                .to_standard(&rc, &gamma)
+                .unwrap()
+        };
+        let table = RepTable::new(&rc);
+        let left = table.lookup(&rc, &query(0)).unwrap();
+        let right = table.lookup(&rc, &query(1)).unwrap();
+        assert_ne!(left.block_id(), right.block_id());
+        assert_eq!(table.state_counts(), (2, 2, 2));
+
+        let full = table.lookup_full_block(&rc, &query(2)).unwrap();
+
+        assert_eq!(full.block_id().index(), 2);
+        assert_eq!(table.state_counts(), (3, 1, 3));
+        assert!(table.block(left.block_id()).unwrap().is_none());
+        assert!(table.block(right.block_id()).unwrap().is_none());
+        assert_eq!(left.block().size(), 1, "existing Arc remains valid");
+        assert_eq!(right.block().size(), 1, "existing Arc remains valid");
+        for x in 0..3 {
+            assert_eq!(
+                table.lookup(&rc, &query(x)).unwrap().block_id(),
+                full.block_id()
+            );
+        }
+    }
+
+    #[test]
+    fn unsupported_partial_overlap_is_failure_atomic() {
+        let fixture = a1_fixture();
+        let rc = fixture.rc();
+        let gamma = RationalWeight::new(vec![1], 1).unwrap();
+        let zero = RationalWeight::zero(1).unwrap();
+        let query = |x| {
+            StandardReprMod::build(&rc, KgbId(x), &zero)
+                .unwrap()
+                .to_standard(&rc, &gamma)
+                .unwrap()
+        };
+        let table = RepTable::new(&rc);
+        let first = table.lookup(&rc, &query(0)).unwrap();
+        let before = table.state_counts();
+
+        assert!(matches!(
+            table.lookup(&rc, &query(2)),
+            Err(StructureError::NotYetImplemented {
+                feature: "merging overlapping partial representation blocks"
+            })
+        ));
+        assert_eq!(table.state_counts(), before);
+        assert!(table.block(first.block_id()).unwrap().is_some());
+        assert_eq!(
+            table.lookup(&rc, &query(0)).unwrap().block_id(),
+            first.block_id()
+        );
+    }
+
+    #[test]
+    fn rejects_a_rep_context_other_than_the_bound_owner() {
+        let first = a1_fixture();
+        let second = a1_fixture();
+        let first_rc = first.rc();
+        let second_rc = second.rc();
+        let table = RepTable::new(&first_rc);
+
+        assert!(matches!(
+            table.lookup(&second_rc, &a1_query(&second_rc, 0)),
+            Err(StructureError::RepInvariantViolation {
+                invariant: "representation table context mismatch"
+            })
+        ));
+        assert_eq!(table.state_counts(), (0, 0, 0));
+    }
+
+    #[test]
+    fn concurrent_full_materialization_commits_one_active_record() {
+        let fixture = Arc::new(a1_fixture());
+        let first_gate = TestGate::new();
+        let second_gate = TestGate::new();
+        let table = Arc::new(RepTable::with_test_gates(
+            &fixture.rc(),
+            Vec::new(),
+            vec![first_gate.clone(), second_gate.clone()],
+        ));
+        let ids = std::thread::scope(|scope| {
+            let mut workers = Vec::new();
+            for (index, gate) in [first_gate.clone(), second_gate.clone()]
+                .into_iter()
+                .enumerate()
+            {
+                let fixture = Arc::clone(&fixture);
+                let table = Arc::clone(&table);
+                workers.push(scope.spawn(move || {
+                    let rc = fixture.rc();
+                    table
+                        .lookup_full_block(&rc, &a1_query(&rc, index + 1))
+                        .unwrap()
+                        .block_id()
+                }));
+                gate.wait_until_reached();
+            }
+            first_gate.release();
+            second_gate.release();
+            workers
+                .into_iter()
+                .map(|worker| worker.join().unwrap())
+                .collect::<Vec<_>>()
+        });
+
+        assert_eq!(ids, vec![BlockId(0), BlockId(0)]);
+        assert_eq!(table.state_counts(), (1, 1, 3));
+        assert!(table.state_is_consistent());
+    }
+
+    #[test]
+    fn full_waiting_to_commit_retires_a_partial_committed_during_materialization() {
+        let fixture = Arc::new(a1_fixture());
+        let full_gate = TestGate::new();
+        let table = Arc::new(RepTable::with_test_gates(
+            &fixture.rc(),
+            Vec::new(),
+            vec![full_gate.clone()],
+        ));
+        let (partial, full) = std::thread::scope(|scope| {
+            let worker_fixture = Arc::clone(&fixture);
+            let worker_table = Arc::clone(&table);
+            let full_worker = scope.spawn(move || {
+                let rc = worker_fixture.rc();
+                worker_table
+                    .lookup_full_block(&rc, &a1_query(&rc, 2))
+                    .unwrap()
+            });
+            full_gate.wait_until_reached();
+
+            let rc = fixture.rc();
+            let partial = table.lookup(&rc, &a1_query(&rc, 0)).unwrap();
+            assert_eq!(table.state_counts(), (1, 1, 1));
+            full_gate.release();
+            (partial, full_worker.join().unwrap())
+        });
+
+        assert_eq!(table.state_counts(), (2, 1, 3));
+        assert_eq!(table.state_snapshot().slots, vec![None, Some(true)]);
+        assert!(table.block(partial.block_id()).unwrap().is_none());
+        assert_eq!(partial.block().size(), 1, "retired handle remains valid");
+        assert!(full.is_full());
+        assert!(table.state_is_consistent());
+    }
+
+    #[test]
+    fn partial_waiting_to_commit_reuses_a_full_committed_during_materialization() {
+        let fixture = Arc::new(a1_fixture());
+        let partial_gate = TestGate::new();
+        let table = Arc::new(RepTable::with_test_gates(
+            &fixture.rc(),
+            vec![partial_gate.clone()],
+            Vec::new(),
+        ));
+        let (full, partial_result) = std::thread::scope(|scope| {
+            let worker_fixture = Arc::clone(&fixture);
+            let worker_table = Arc::clone(&table);
+            let partial_worker = scope.spawn(move || {
+                let rc = worker_fixture.rc();
+                worker_table.lookup(&rc, &a1_query(&rc, 2)).unwrap()
+            });
+            partial_gate.wait_until_reached();
+
+            let rc = fixture.rc();
+            let full = table.lookup_full_block(&rc, &a1_query(&rc, 1)).unwrap();
+            partial_gate.release();
+            (full, partial_worker.join().unwrap())
+        });
+
+        assert_eq!(partial_result.block_id(), full.block_id());
+        assert!(partial_result.is_full());
+        assert_eq!(table.state_counts(), (1, 1, 3));
+        assert!(table.state_is_consistent());
+    }
+
+    #[test]
+    fn concurrent_overlapping_partials_leave_the_first_commit_unchanged() {
+        let fixture = Arc::new(a1_fixture());
+        let first_gate = TestGate::new();
+        let overlap_gate = TestGate::new();
+        let table = Arc::new(RepTable::with_test_gates(
+            &fixture.rc(),
+            vec![first_gate.clone(), overlap_gate.clone()],
+            Vec::new(),
+        ));
+
+        let (first, before) = std::thread::scope(|scope| {
+            let first_fixture = Arc::clone(&fixture);
+            let first_table = Arc::clone(&table);
+            let first_worker = scope.spawn(move || {
+                let rc = first_fixture.rc();
+                first_table.lookup(&rc, &a1_query(&rc, 0))
+            });
+            first_gate.wait_until_reached();
+
+            let overlap_fixture = Arc::clone(&fixture);
+            let overlap_table = Arc::clone(&table);
+            let overlap_worker = scope.spawn(move || {
+                let rc = overlap_fixture.rc();
+                overlap_table.lookup(&rc, &a1_query(&rc, 2))
+            });
+            overlap_gate.wait_until_reached();
+
+            first_gate.release();
+            let first = first_worker.join().unwrap().unwrap();
+            let before = table.state_snapshot();
+            overlap_gate.release();
+            assert!(matches!(
+                overlap_worker.join().unwrap(),
+                Err(StructureError::NotYetImplemented {
+                    feature: "merging overlapping partial representation blocks"
+                })
+            ));
+            (first, before)
+        });
+
+        assert_eq!(table.state_snapshot(), before);
+        assert!(table.block(first.block_id()).unwrap().is_some());
+        assert!(table.state_is_consistent());
     }
 }
