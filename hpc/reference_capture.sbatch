@@ -14,15 +14,17 @@
 #SBATCH --output=atlas-reference-capture-%j.out
 
 source /etc/profile >/dev/null 2>&1 || true
-if ! module purge >/dev/null 2>&1; then
-  echo "failed to purge inherited compiler modules" >&2
+# Batch jobs can inherit a conflicting compiler module, and Lmod has returned
+# failure here even when an equivalent interactive `module load` succeeds.
+# Bind the site installation used by misc/gcc/12.1 directly so an ignored
+# module conflict can never select the node's GCC 8 libstdc++.
+gcc_root="${ATLAS_GCC_ROOT:-/public/software/gcc/gcc-12.1}"
+gcc_bin="$gcc_root/bin/gcc"
+if [[ ! -x "$gcc_bin" ]]; then
+  echo "required GCC executable is absent or not executable: $gcc_bin" >&2
   exit 2
 fi
-if ! module load misc/gcc/12.1 >/dev/null 2>&1; then
-  echo "failed to load required compiler module misc/gcc/12.1" >&2
-  exit 2
-fi
-gcc_lib="$(dirname "$(gcc -print-file-name=libstdc++.so.6)")"
+gcc_lib="$(dirname "$($gcc_bin -print-file-name=libstdc++.so.6)")"
 if ! strings "$gcc_lib/libstdc++.so.6" | grep -q '^GLIBCXX_3\.4\.29$'; then
   echo "required GLIBCXX_3.4.29 is absent from $gcc_lib/libstdc++.so.6" >&2
   exit 2

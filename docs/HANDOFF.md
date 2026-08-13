@@ -2681,7 +2681,9 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   loader failure even on `cu007`.  The operational root cause is inherited
   compiler-module state combined with `module load misc/gcc/12.1 || true`:
   a module conflict was silently ignored and the script selected the system
-  GCC 8 `libstdc++`.  `reference_capture.sbatch` now purges inherited modules,
-  requires GCC 12.1 to load, and verifies `GLIBCXX_3.4.29` before running any
-  oracle.  Capture report PASS alone remains insufficient; inspect each raw
-  oracle exit and stderr.
+  GCC 8 `libstdc++`.  A first repair that purged and reloaded the module still
+  failed inside batch job `3545207` despite an equivalent diagnostic job
+  loading it successfully. `reference_capture.sbatch` therefore binds the
+  site GCC 12.1 installation directly (overridable with `ATLAS_GCC_ROOT`) and
+  verifies `GLIBCXX_3.4.29` before running any oracle. Capture report PASS
+  alone remains insufficient; inspect each raw oracle exit and stderr.
