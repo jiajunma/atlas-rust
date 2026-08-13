@@ -518,3 +518,17 @@ W_cells and is a 1-2 hour debugging task against upstream matreduc.
   Its contract is polymorphic `#([T])->int`, hunger 0, including the unstable
   empty-row type `[*]`; keep its wildcard matching local to unary `#` so that
   undetermined types do not become generally coercible.
+
+## Builtin hunger contract (2026-08-13)
+
+- The fourth `install_function` argument called `hunger` is not a coercion or
+  overload-selection mask.  `axis.w` uses it when a simple assignment feeds
+  the destination value back into a builtin: it controls pilfer/in-place reuse
+  and, for hunger 1, right-to-left argument evaluation.  Signature inventories
+  must compare hunger separately from `(name,args,result)` compatibility.
+- A hunger mismatch is directly observable only when the builtin result can be
+  assigned back to the consumed destination type.  The current actionable
+  cases are `LieType*LieType`, `WeylElt*vec`, and `vec*WeylElt`; the fixture
+  pair `hunger_contract{,_rejected}` pins alias preservation, assignment
+  results, evaluation gates, and rank diagnostics.  The other domain entries
+  are retained as metadata/algorithm coverage, not mislabeled as type gaps.

@@ -2653,3 +2653,9 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   separate compatibility ledger.  The Rust implementation and pipeline plans
   are locally green; record the swap job and benchmarks here after the clean
   committed differential completes.
+- Hunger audit correction: the `install_function` hunger integer is an
+  assignment pilfer/evaluation-order hint (`axis.w:1968-1984,7165-7235`), not
+  a coercion mask.  Oracle fixtures now separate the three same-type
+  assignment cases from already-runnable domain calls and the independently
+  NYI timed deformation branch.  Reference capture job `3545163` was submitted
+  from `cd1c9c9`; upgrade metadata only after its frozen report is inspected.
