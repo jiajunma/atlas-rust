@@ -1,12 +1,14 @@
 {
-  "fixture": "domain/block_ktype_extras",
-  "fixture_sha256": "47ca21fd5debbcc6d1824f629c21de6bba83aee5c155a2c8ba4a8e488c9c5de2",
-  "rust_status": "pending_hpc_differential",
-  "reference_status": "verified_hpc_reference",
-  "note": "index(Block,KGBElt,KGBElt->int) on the A2 SU(2,1)xcompact block (element (x0,y3) indexes to 0) and to_canonical_fiber(KType) sharing the dominant/normal arm. Coverage-gap closure for two live arms that had no dedicated fixture.",
-  "oracle": "atlas",
-  "oracle_exit_status": 0,
-  "stage": "typed-pipeline-swap",
-  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "reference_job": "3542485"
+ "fixture": "domain/block_ktype_extras",
+ "fixture_sha256": "47ca21fd5debbcc6d1824f629c21de6bba83aee5c155a2c8ba4a8e488c9c5de2",
+ "rust_status": "verified_hpc",
+ "reference_status": "verified_hpc_reference",
+ "note": "index(Block,KGBElt,KGBElt->int) on the A2 SU(2,1)xcompact block (element (x0,y3) indexes to 0) and to_canonical_fiber(KType) sharing the dominant/normal arm. Coverage-gap closure for two live arms that had no dedicated fixture.",
+ "oracle": "atlas",
+ "oracle_exit_status": 0,
+ "stage": "typed-pipeline-swap",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "reference_job": "3542485",
+ "differential_job": "3542511",
+ "differential_commit": "56ae86c96ed75c236b04329a584d391805e6c9c0"
 }

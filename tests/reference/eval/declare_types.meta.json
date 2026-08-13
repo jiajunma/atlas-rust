@@ -1,12 +1,14 @@
 {
-  "fixture": "eval/declare_types",
-  "fixture_sha256": "392b51126485b5123fae8c97c207ea7d8488a3917d68e8d487feb35c64a0e16f",
-  "rust_status": "pending_hpc_differential",
-  "reference_status": "verified_hpc_reference",
-  "note": "Full type grammar in identifier ascriptions (parser.y:162 IDENT ':' type): tuple, row, function, void, wild-row, union, and nested function types. Regression pin for the parser gap where Command only accepted a primitive_type token.",
-  "oracle": "atlas",
-  "oracle_exit_status": 0,
-  "stage": "typed-pipeline-swap",
-  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "reference_job": "3542497"
+ "fixture": "eval/declare_types",
+ "fixture_sha256": "392b51126485b5123fae8c97c207ea7d8488a3917d68e8d487feb35c64a0e16f",
+ "rust_status": "verified_hpc",
+ "reference_status": "verified_hpc_reference",
+ "note": "Full type grammar in identifier ascriptions (parser.y:162 IDENT ':' type): tuple, row, function, void, wild-row, union, and nested function types. Regression pin for the parser gap where Command only accepted a primitive_type token.",
+ "oracle": "atlas",
+ "oracle_exit_status": 0,
+ "stage": "typed-pipeline-swap",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "reference_job": "3542497",
+ "differential_job": "3542511",
+ "differential_commit": "56ae86c96ed75c236b04329a584d391805e6c9c0"
 }

@@ -59,6 +59,37 @@ already correct.
 **In flight**: capture 3542509 (dual_kl_raw±); after it passes, one
 differential over the 8 new fixtures upgrades all metas to verified_hpc.
 
+## Checkpoint - 2026-08-13d (sweep closed: print_block fixes + 3542511 all green)
+
+- **Differential 3542511 @ 56ae86c: 240 PASS, 0 FAIL**
+  (container_syntax_errors PARTIAL is the permanent known item). All 10
+  new fixture metas upgraded to verified_hpc with
+  differential_job=3542511, differential_commit=56ae86c(full sha):
+  eval/declare_types(±), domain/derived_info(±),
+  domain/integrality_points(±), domain/block_ktype_extras(±),
+  domain/dual_kl_raw(±).
+- **print_block sweep found two more latent divergences, fixed in
+  `7dea126`**:
+  1. `*` placeholders in the cross-action/Cartan columns were formatted
+     `{:width$}` — Rust left-aligns chars by default, upstream setw
+     right-aligns (block_io.cpp:197,205). Now `{:>width$}` in the
+     print_block/print_blockd arms. Visible once column width > 1
+     (e.g. `( *, *)` in D4 blocks).
+  2. The Weyl word column used the greedy minimal left-descent word;
+     upstream prints `WeylGroup::word` (weyl.cpp:944-958): per-piece
+     unshift election, pieces appended in increasing order, d_out
+     numbering. New `CompactWeyl::canonical_word` (weyl_transducer.rs,
+     re-exported from atlas-real-group) reproduces it; wired into both
+     the print_block arms and the Cartan_info fiber-word arm. B2
+     (rf 2 x compact dual) pins w0 as `2,1,2,1` where greedy gives
+     `1,2,1,2`; D4 (rf 4 x dual 1) pins a 28-element block.
+  Fixtures domain/print_block_words(±); both arms byte-verified against
+  the local oracle before submission, plus byte-exact local replay of
+  the six pre-existing print_block/cartan fixtures to prove no
+  regression from the canonical_word switch.
+- **In flight**: capture 3542734 (print_block_words±); after PASS bump
+  reference_status, then run the differential to close the slice.
+
 
 
 - **print_partial_block CLOSED — the last contract**: differential
