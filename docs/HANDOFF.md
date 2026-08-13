@@ -2614,3 +2614,11 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   every new differential fixture must also be registered in `FIXTURE_PLANS`,
   and a full corpus submission must inherit the timeout/partition needs of the
   heaviest already-registered plan.
+- P2 Block `W_graph`/`W_cells` is HPC-verified as an exact runnable subset by
+  job `3543773` at source `9874ff6f6c6be99f792c2722396bff1f8c229404`:
+  accepted and rejected plans both have all six runnable checks PASS, no
+  fixture FAIL exists in the 249-plan report, and each plan carries one
+  explicit `block(Param)`-dependent pending event.  Rust took 0.005s at
+  7104/6760 KiB peak RSS.  Do not upgrade these metas beyond `partial_hpc`
+  until the shared RepTable/ReducedParam pool restores the accepted overload
+  and its candidate-set rejection wording.
