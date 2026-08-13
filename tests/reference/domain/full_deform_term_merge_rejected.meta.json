@@ -5,7 +5,14 @@
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "rust_status": "unverified",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
+  "reference_job": "3543807",
   "note": "Rejected companion pins the parameter rank gate without depending on the missing timed full_deform overload.",
-  "oracle_exit_status": 1
+  "oracle_exit_status": 1,
+  "oracle_seconds": 0.034,
+  "oracle_maxrss_kb": 4192,
+  "oracle_maxrss_approximate": false,
+  "oracle_stdout_sha256": "01e30b2558a4019cecac2ec8d266903b96893dcd75a437a14035160fb881851d",
+  "oracle_stderr_sha256": "88fa168edea694f91d1adc22df6af53adee9e2a1276efe67c49f1f5cbf6eef26",
+  "reference_report_sha256": "d1bf1f78059ac54b45b75c333b7a666599d7a05405c59d54456c2102e45292c2"
 }
