@@ -5,6 +5,14 @@
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "rust_status": "pending",
-  "reference_status": "pending_hpc_reference",
-  "note": "Static Param W-graph contracts: W_graph returns (int,[([int],[(int,int)])]) and W_cells returns (int,[([int],[([int],[(int,int)])])]). The fixture uses explicit identifier types, nested destructuring, indexing, and an edge (target,coefficient) tuple rather than relying only on display output. Exact stdout was confirmed with the local pinned upstream Atlas executable; provenance and benchmarks await HPC capture."
+  "reference_status": "verified_hpc_reference",
+  "reference_job": "3543933",
+  "note": "Static Param W-graph contracts: W_graph returns (int,[([int],[(int,int)])]) and W_cells returns (int,[([int],[([int],[(int,int)])])]). The fixture uses explicit identifier types, nested destructuring, indexing, and an edge (target,coefficient) tuple rather than relying only on display output.",
+  "oracle_exit_status": 0,
+  "oracle_seconds": 0.048,
+  "oracle_maxrss_kb": 4420,
+  "oracle_maxrss_approximate": false,
+  "oracle_stdout_sha256": "442bd97da58b7d87eec7fe623e31c0e5de207b00f80cc7e9d1dd08f7fbd47ffc",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "reference_report_sha256": "1751ae86e97bb21d51c31db2f7a914b7bdb88f2a6cf9521971e773631a12c24d"
 }
