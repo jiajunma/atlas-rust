@@ -5,7 +5,14 @@
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "rust_status": "unimplemented",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
+  "reference_job": "3543783",
   "note": "Rejected P3 case pins the exact make_dominant failure for unary twist on a non-standard parameter.",
-  "oracle_exit_status": 1
+  "oracle_exit_status": 1,
+  "oracle_seconds": 0.015,
+  "oracle_maxrss_kb": 4328,
+  "oracle_maxrss_approximate": false,
+  "oracle_stdout_sha256": "41aa14fe4f15b9e388e1f7180f12863dc4df8f598f7635535d3a17012fc75536",
+  "oracle_stderr_sha256": "d78549db3dfb736b2856f97a02ac533fd947e0ea7ba91a39d0a4af6c09f8a773",
+  "reference_report_sha256": "81238f21313e2630dfc7671d90be41a33a7907c3e3ed7fe6edd3cccba602463e"
 }
