@@ -4,6 +4,30 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-13e (signature audit + multi-assignment)
+
+- The builtin completion target is now signature-level: 305 upstream
+  `install_function` registrations, 277 exact Rust matches, 28 exact
+  missing/mismatched signatures. The remaining work is classified in
+  `REMAINING_BUILTINS.md`; clear the 23 simple signatures first.
+- `set pattern := value` was a parser-only compatibility hole. Fixtures
+  `eval/multi_assignment(±)` were captured by HPC job **3542977** and match
+  the local frozen oracle byte-for-byte. The implementation distinguishes
+  omitted tuple slots from explicit `()`, threads mixed local/global targets
+  in child-before-whole postorder, evaluates the RHS once, commits only after
+  success, returns the whole RHS, refines target types, and preserves exact
+  Atlas diagnostics.
+- Two review-found regressions were repaired before submission: RHS analysis
+  may re-specialise a destination, and upstream deliberately ignores a later
+  incompatible refine rather than panicking; case-discrimination `()` keeps
+  its void payload constraint and uses the exact `Pattern () does not match
+  type ... for variant ...` diagnostic. `atlas-core` has 251/251 passing
+  tests; spec and Rust-quality reviews both approved the final diff.
+- HPC reference-capture arguments must be complete repository-relative
+  `tests/fixtures/.../*.atlas` paths. Job 3542734 failed on bare names;
+  corrected job **3542971** passed. Range bundles advertise `HEAD`; inspect
+  `git bundle list-heads` instead of assuming a `main` ref.
+
 ## Checkpoint - 2026-08-13c (post-closure coverage sweep: 4 latent bugs found and fixed)
 
 The 233/233 verified matrix was NOT the end: a sweep of live arms with

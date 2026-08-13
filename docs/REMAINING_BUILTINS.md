@@ -1,5 +1,34 @@
 # Remaining builtin coverage (post-language-gate)
 
+## Signature-level reconciliation (2026-08-13)
+
+The name-level closure below was insufficient: upstream `atlas-types.w`
+registers **305 distinct `(name, argument type, result type)` signatures**
+across 187 names. A fresh comparison against the Rust registry found:
+
+- 277 exact signature matches;
+- 28 exact missing/mismatched signatures (23 missing argument signatures,
+  5 result-type mismatches);
+- 23 signatures grouped into 16 small wrapper/registration tasks;
+- 12 registered signatures with an explicit reachable unsupported branch;
+- 6 signatures whose completion depends on larger deformation/common-block
+  algorithms.
+
+The simple queue is, in order: `from_dominant` (two vec overloads),
+`Cartan_info` result type, `KL_block` result order, `KL_column` row result,
+`cross`/`Cayley` on a simple-root index and `Param`, Weyl `#`/`##`,
+`Cartan_class(KGBElt)`, unary/list polynomial operations for KTypePol and
+ParamPol, `block(Param)`, Block `W_graph`/`W_cells`, and Param `twist`
+overloads. Larger work includes arbitrary-root Param transforms,
+proper-integral common blocks, non-integral W-graphs/ext-KL, alcove shrinking,
+and timed deformation/cancellation semantics.
+
+There is no KL-file or GNU-readline builtin in these 305 interpreter
+registrations. `filekl` is a stand-alone/interface concern; readline is CLI
+infrastructure (the separate `global.w` helper `readline_completions` is not
+part of `atlas-types.w`). Completion claims must therefore use the 305
+signature ledger, not unique builtin-name counts.
+
 ## Batch status (2026-08-12 late — full reconciliation)
 
 Reconciliation vs upstream atlas-types.w (187 unique install_function

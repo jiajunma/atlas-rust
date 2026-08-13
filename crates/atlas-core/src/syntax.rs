@@ -202,7 +202,7 @@ pub enum Expr {
 
 /// A `set pattern := value` multi-assignment (parser.y:264): the pattern
 /// targets existing variables, unlike a let binding which introduces new
-/// ones. Analysis rejects it until the multi-assignment slice lands.
+/// ones.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MultiAssignmentExpr {
     pub pattern: Pattern,
@@ -269,12 +269,16 @@ pub struct ForLoop {
 }
 
 /// A binding pattern (parser.y:708-749): `x`, const `!x`, tuple
-/// destructuring with empty (discard) slots, the `()` throw-away, and a
+/// destructuring with omitted slots, the `()` empty tuple, and a
 /// destructuring that also names the whole value (`(a, b): t`).
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Pattern {
-    /// An empty position: `()` or an empty pat_list slot; binds nothing.
+    /// An anonymous typed parameter (`type .`); binds nothing. Unlike an
+    /// omitted tuple slot, it is not a component of a tuple pattern.
     Discard { span: SourceSpan },
+    /// An empty `pat_list` slot, as in `(a, , c)`. It consumes one tuple
+    /// component without constraining its type or binding a name.
+    Omitted { span: SourceSpan },
     /// `x` or const `!x`.
     Name {
         name: String,
@@ -294,7 +298,10 @@ pub enum Pattern {
 impl Pattern {
     pub fn span(&self) -> SourceSpan {
         match self {
-            Self::Discard { span } | Self::Name { span, .. } | Self::Tuple { span, .. } => *span,
+            Self::Discard { span }
+            | Self::Omitted { span }
+            | Self::Name { span, .. }
+            | Self::Tuple { span, .. } => *span,
         }
     }
 }
@@ -1671,9 +1678,12 @@ fn const_pattern_name(bang: SourceSpan, name: SpannedValue<String>) -> Pattern {
     }
 }
 
-/// The `()` throw-away pattern.
-fn pattern_discard(open: SourceSpan, close: SourceSpan) -> Pattern {
-    Pattern::Discard {
+/// The `()` empty-tuple pattern. This is structurally different from an
+/// omitted `pat_list` slot: it requires a void component.
+fn pattern_empty_tuple(open: SourceSpan, close: SourceSpan) -> Pattern {
+    Pattern::Tuple {
+        elements: Vec::new(),
+        whole: None,
         span: join_span(open, close),
     }
 }
@@ -1724,9 +1734,9 @@ fn pattern_tuple(
     }
 }
 
-/// The slots of a `pat_list`: an empty slot is a discard. Gap spans borrow
-/// the nearest comma (the first one for leading slots); discard spans never
-/// surface in diagnostics since a discard binds nothing.
+/// The slots of a `pat_list`: an empty slot is omitted. Gap spans borrow the
+/// nearest comma (the first one for leading slots); omitted spans never
+/// surface in diagnostics since an omitted slot binds nothing.
 fn pattern_slots(
     first: Option<Pattern>,
     comma: SourceSpan,
@@ -1734,11 +1744,11 @@ fn pattern_slots(
     rest: Vec<Option<Pattern>>,
 ) -> Vec<Pattern> {
     let mut slots = Vec::with_capacity(rest.len() + 2);
-    slots.push(first.unwrap_or(Pattern::Discard { span: comma }));
-    slots.push(second.unwrap_or(Pattern::Discard { span: comma }));
+    slots.push(first.unwrap_or(Pattern::Omitted { span: comma }));
+    slots.push(second.unwrap_or(Pattern::Omitted { span: comma }));
     slots.extend(
         rest.into_iter()
-            .map(|slot| slot.unwrap_or(Pattern::Discard { span: comma })),
+            .map(|slot| slot.unwrap_or(Pattern::Omitted { span: comma })),
     );
     slots
 }
@@ -2449,7 +2459,7 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
                     let pattern = branch
                         .pattern
                         .as_ref()
-                        .map(compact_pattern)
+                        .map(compact_case_pattern)
                         .unwrap_or_default();
                     format!("{tag}{pattern}: {}", compact_expression(&branch.body))
                 })
@@ -2556,9 +2566,10 @@ fn compact_parameter(parameter: &LambdaParam) -> String {
     }
 }
 
-fn compact_pattern(pattern: &Pattern) -> String {
+pub(crate) fn compact_pattern(pattern: &Pattern) -> String {
     match pattern {
-        Pattern::Discard { .. } => "()".to_string(),
+        Pattern::Discard { .. } => "_".to_string(),
+        Pattern::Omitted { .. } => String::new(),
         Pattern::Name { name, constant, .. } => {
             if *constant {
                 format!("!{name}")
@@ -2575,10 +2586,22 @@ fn compact_pattern(pattern: &Pattern) -> String {
                 .collect::<Vec<_>>()
                 .join(",");
             match whole {
-                Some(whole) => format!("({elements}): {}", compact_pattern(whole)),
+                Some(whole) => format!("({elements}):{}", compact_pattern(whole)),
                 None => format!("({elements})"),
             }
         }
+    }
+}
+
+fn compact_case_pattern(pattern: &Pattern) -> String {
+    let rendered = compact_pattern(pattern);
+    // In discrimination syntax an empty payload pattern prints as the
+    // upstream throw-away marker, even though the same structural pattern is
+    // rendered `()` in a multi-assignment diagnostic.
+    if rendered == "()" {
+        "_".to_string()
+    } else {
+        rendered
     }
 }
 
@@ -2590,6 +2613,7 @@ mod tests {
     fn pattern_shape(pattern: &Pattern) -> String {
         match pattern {
             Pattern::Discard { .. } => "_".to_string(),
+            Pattern::Omitted { .. } => String::new(),
             Pattern::Name { name, constant, .. } => {
                 if *constant {
                     format!("!{name}")
@@ -2804,7 +2828,14 @@ mod tests {
                         let pattern = branch
                             .pattern
                             .as_ref()
-                            .map(pattern_shape)
+                            .map(|pattern| {
+                                let shape = pattern_shape(pattern);
+                                if shape == "()" {
+                                    "_".to_string()
+                                } else {
+                                    shape
+                                }
+                            })
                             .unwrap_or_default();
                         format!("{tag}{pattern}:{}", expression_shape(&branch.body))
                     })
@@ -3233,15 +3264,29 @@ mod tests {
         // An empty slot discards, `()` throws away, `(p)` groups.
         assert_eq!(
             expression_shape(&parse_one("let (a, , c) = (1, 2, 3) in a")),
-            "let((a,_,c)=tuple(1,2,3),a)"
+            "let((a,,c)=tuple(1,2,3),a)"
         );
         assert_eq!(
             expression_shape(&parse_one("let () = 1 in 2")),
-            "let(_=1,2)"
+            "let(()=1,2)"
         );
         assert_eq!(
             expression_shape(&parse_one("let ((a)) = 1 in a")),
             "let(a=1,a)"
+        );
+    }
+
+    #[test]
+    fn multi_assignment_patterns_distinguish_omitted_slots_and_empty_tuples() {
+        assert_eq!(
+            expression_shape(&parse_one("set (a, , ()) := (1, 2, ())")),
+            "multiassign((a,,()),tuple(1,2,tuple()))"
+        );
+        // Parentheses around a single name collapse, so both spellings use
+        // the ordinary single-assignment semantic path during analysis.
+        assert_eq!(
+            expression_shape(&parse_one("set (x) := 1")),
+            "multiassign(x,1)"
         );
     }
 

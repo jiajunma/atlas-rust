@@ -74,6 +74,11 @@ FIXTURE_PLANS = (
     # B3c parameter patterns: tuple destructuring, discard, and const patterns.
     FixturePlan(name="eval/patterns_b3c"),
     FixturePlan(name="eval/patterns_b3c_rejected"),
+    # Atlas 0.9.1 multiple assignment: recursive tuple destinations, omitted
+    # slots, whole-value targets, mixed global/local writes, and exact target
+    # analysis diagnostics (parser.y:264; axis.w:6956-7500).
+    FixturePlan(name="eval/multi_assignment"),
+    FixturePlan(name="eval/multi_assignment_rejected"),
     # B3d selectors: unit selector and operator selectors.
     FixturePlan(name="eval/selectors_b3d"),
     FixturePlan(name="eval/selectors_b3d_rejected"),

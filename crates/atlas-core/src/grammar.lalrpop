@@ -13,7 +13,7 @@ use super::{
     call_suffix, postfix, prefix_operator_call, slice_suffix, start_binary_formula, start_prefix_formula,
     subscription_suffix, type_group, type_function, type_primitive, type_row, type_union_append,
     type_union_start, type_variant, type_wild_row, unary, finish_conditional, if_tail,
-    anonymous_parameter, const_pattern_name, finish_pattern, pattern_binding, pattern_discard,
+    anonymous_parameter, const_pattern_name, finish_pattern, pattern_binding, pattern_empty_tuple,
     pattern_name, pattern_slots, pattern_tuple, tuple_parameter, whattype_command, while_expression,
     BinaryOp, CaseBranch, Command, Expr, LambdaParam, LetBinding, ParsedFor, ParsedIf,
     ParsedLet, ParserToken, PatternTail, PostfixSuffix, Prim, Program, SlotTail, SpannedValue,
@@ -135,7 +135,7 @@ LambdaParam: LambdaParam = {
 };
 
 // Binding patterns (parser.y:708-749): named, const `!x`, tuple
-// destructuring with discard slots, the `()` throw-away, and the
+// destructuring with omitted slots, the `()` empty tuple, and the
 // `(p, …): t` / `: !t` whole-value naming forms, which attach only to a
 // comma-separated list. A single pattern in parentheses is grouping and
 // collapses. Deferring the `)`/`,` decision into PatternTail keeps the
@@ -143,7 +143,7 @@ LambdaParam: LambdaParam = {
 Pattern: Pattern = {
     <name:"identifier"> => pattern_name(name),
     <bang:"!"> <name:"identifier"> => const_pattern_name(bang, name),
-    <open:"("> <close:")"> => pattern_discard(open, close),
+    <open:"("> <close:")"> => pattern_empty_tuple(open, close),
     <open:"("> <first:Pattern> <tail:PatternTail> => finish_pattern(open, first, tail),
     <open:"("> <comma:","> <second:PatternOpt> <rest:("," <PatternOpt>)*>
         <close:")"> <whole:WholeName?> => {
@@ -536,12 +536,12 @@ CaseBranch: CaseBranch = {
 };
 
 // Upstream closed_pattern (parser.y:717-720): a parenthesised pattern
-// (single patterns collapse), a tuple slot list, or the `()` throw-away.
+// (single patterns collapse), a tuple slot list, or the `()` empty tuple.
 // Unlike a let-binding pattern it takes no `: name` whole-value tail — the
 // branch `:` would be ambiguous with it — so the tail rules are mirrored
 // here minus WholeName.
 CasePattern: Pattern = {
-    <open:"("> <close:")"> => pattern_discard(open, close),
+    <open:"("> <close:")"> => pattern_empty_tuple(open, close),
     <open:"("> <first:Pattern> <tail:CasePatternTail> => finish_pattern(open, first, tail),
     <open:"("> <comma:","> <second:PatternOpt> <rest:("," <PatternOpt>)*>
         <close:")"> => {

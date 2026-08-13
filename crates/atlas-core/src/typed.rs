@@ -19,7 +19,8 @@ use crate::domain_builtins;
 use crate::frames::{EvaluationContext, GlobalCell};
 use crate::linear_values::{Matrix, RatVec, Vec32};
 use crate::syntax::{
-    compact_expression, Command, Expr, ForLoop, LambdaParam, LetBinding, Pattern, TypeSpec,
+    compact_expression, compact_pattern, Command, Expr, ForLoop, LambdaParam, LetBinding,
+    MultiAssignmentExpr, Pattern, TypeSpec,
 };
 use crate::types::{Prim, Type, TypeBinding, TypeNumber, TypeTable};
 use crate::value::{Closure, SlotShape, Value};
@@ -46,6 +47,28 @@ pub enum Control {
 pub enum Level {
     NoValue,
     SingleValue,
+}
+
+/// One resolved destination in a `set pattern := value` expression. Globals
+/// capture their cell at analysis time; locals retain lexical coordinates,
+/// exactly like the two ordinary assignment nodes.
+#[derive(Clone, Debug, PartialEq)]
+pub enum MultiAssignmentDestination {
+    Global(GlobalCell),
+    Local { depth: usize, offset: usize },
+}
+
+/// Runtime traversal plan for a multiple assignment. It deliberately keeps
+/// the whole-value destination separate so evaluation can visit children
+/// left-to-right and the whole destination last (axis.w `thread_assign`).
+#[derive(Clone, Debug, PartialEq)]
+pub enum MultiAssignmentPlan {
+    Omitted,
+    Destination(MultiAssignmentDestination),
+    Tuple {
+        elements: Vec<MultiAssignmentPlan>,
+        whole: Option<Box<MultiAssignmentPlan>>,
+    },
 }
 
 /// A typed executable expression.
@@ -81,6 +104,12 @@ pub enum TypedExpr {
     LocalAssignment {
         depth: usize,
         offset: usize,
+        value: Box<TypedExpr>,
+    },
+    /// Evaluate `value` completely, then distribute it through `plan` in
+    /// post-order. The expression yields that same right-hand-side value.
+    MultiAssignment {
+        plan: MultiAssignmentPlan,
         value: Box<TypedExpr>,
     },
     Subscription {
@@ -1000,7 +1029,7 @@ impl TypedContext {
         {
             let analysis = Analysis::new(&self.types, &self.globals, &self.overloads);
             for binding in bindings {
-                let mut found = Type::Undetermined;
+                let mut found = pattern_type(&binding.pattern);
                 let typed = convert_expr(&binding.initializer, &mut found, &analysis)?;
                 let leaves = bind_pattern_leaves(&binding.pattern, &found, &self.types)?;
                 pending.push(Pending {
@@ -1663,87 +1692,33 @@ pub fn convert_expr(
             )
         }
         Expr::MultiAssignment(assignment) => {
-            // parser.y:264 accepts `set pattern := value`; the evaluation
-            // slice has not landed yet, so analysis rejects it explicitly
-            // rather than silently mis-binding.
-            Err(Diagnostic::new(
-                ErrorKind::Type,
-                "multi-assignment 'set <pattern> := <value>' is not yet implemented",
-                Some(assignment.span),
-            ))
+            // Parenthesised single names collapse in the parser. Upstream
+            // recognises their exact kind and sends them through ordinary
+            // assignment, including its diagnostics and type refinement.
+            if let Pattern::Name {
+                name,
+                name_span,
+                constant: false,
+                ..
+            } = &assignment.pattern
+            {
+                return convert_simple_assignment(
+                    name,
+                    *name_span,
+                    &assignment.value,
+                    assignment.span,
+                    required,
+                    analysis,
+                );
+            }
+            convert_multi_assignment(expression, assignment, required, analysis)
         }
         Expr::Assignment {
             name,
             target_span,
             value,
             span,
-        } => {
-            if let Some((target, depth, offset)) = analysis.locals.get(name) {
-                // A const `!x` binding rejects assignment during analysis,
-                // before anything evaluates (upstream `is_constant`).
-                if analysis.constant_locals.contains(name.as_str()) {
-                    return Err(Diagnostic::new(
-                        ErrorKind::Name,
-                        format!(
-                            "Name '{name}' is constant in assignment {name}:={}",
-                            compact_expression(value)
-                        ),
-                        Some(*target_span),
-                    ));
-                }
-                let mut required_value = target.borrow().clone();
-                let converted = convert_expr(value, &mut required_value, analysis)?;
-                *target.borrow_mut() = required_value.clone();
-                return conform_types(
-                    &required_value,
-                    required,
-                    TypedExpr::LocalAssignment {
-                        depth: *depth,
-                        offset: *offset,
-                        value: Box::new(converted),
-                    },
-                    *span,
-                    analysis,
-                );
-            }
-            let Some((target, cell)) = analysis.globals.lookup(name) else {
-                // Upstream `report_undefined` (axis.w:7090-7097) appends the
-                // printed assignment node after the `in assignment` marker.
-                return Err(Diagnostic::new(
-                    ErrorKind::Name,
-                    format!(
-                        "Undefined identifier '{name}' in assignment {name}:={}",
-                        compact_expression(value)
-                    ),
-                    Some(*target_span),
-                ));
-            };
-            // A const global (`set !x = …`) rejects assignment during
-            // analysis, exactly like a const local does.
-            if analysis.globals.is_const(name) {
-                return Err(Diagnostic::new(
-                    ErrorKind::Name,
-                    format!(
-                        "Name '{name}' is constant in assignment {name}:={}",
-                        compact_expression(value)
-                    ),
-                    Some(*target_span),
-                ));
-            }
-            let mut required_value = target.borrow().clone();
-            let converted = convert_expr(value, &mut required_value, analysis)?;
-            *target.borrow_mut() = required_value.clone();
-            conform_types(
-                &required_value,
-                required,
-                TypedExpr::GlobalAssignment {
-                    cell: cell.clone(),
-                    value: Box::new(converted),
-                },
-                *span,
-                analysis,
-            )
-        }
+        } => convert_simple_assignment(name, *target_span, value, *span, required, analysis),
         Expr::Subscription {
             array,
             index,
@@ -1854,7 +1829,7 @@ pub fn convert_expr(
             for bindings in binding_groups {
                 let mut pending = Vec::with_capacity(bindings.len());
                 for binding in bindings {
-                    let mut binding_type = Type::Undetermined;
+                    let mut binding_type = pattern_type(&binding.pattern);
                     let converted = convert_expr(
                         &binding.initializer,
                         &mut binding_type,
@@ -1868,8 +1843,8 @@ pub fn convert_expr(
                             loop_depth: analysis.loop_depth,
                         },
                     )?;
-                    // The initializer converts freely; the pattern then
-                    // claims the resulting type (upstream `bind_pattern`).
+                    // The pattern supplies the RHS context first. Omitted
+                    // slots stay open, while an explicit `()` is void.
                     let leaves =
                         bind_pattern_leaves(&binding.pattern, &binding_type, analysis.types)?;
                     pending.push((pattern_slot_shape(&binding.pattern), leaves, converted));
@@ -2374,6 +2349,23 @@ pub fn convert_expr(
                 let payload = variants[index].clone();
                 let (shape, leaves) = match &branch.pattern {
                     Some(pattern) => {
+                        // Upstream validates a discrimination pattern's
+                        // structure against the selected variant before
+                        // creating its binding layer. This has dedicated
+                        // wording rather than `bind_pattern`'s generic type
+                        // mismatch diagnostic (axis.w:5229-5235).
+                        let mut required_pattern = pattern_type(pattern);
+                        if !required_pattern.specialise(&payload, analysis.types) {
+                            return Err(type_error(
+                                format!(
+                                    "Pattern {} does not match type {} for variant {}",
+                                    compact_pattern(pattern),
+                                    payload.display(analysis.types),
+                                    tag.value
+                                ),
+                                pattern.span(),
+                            ));
+                        }
                         let leaves = bind_pattern_leaves(pattern, &payload, analysis.types)?;
                         (pattern_slot_shape(pattern), leaves)
                     }
@@ -2652,6 +2644,302 @@ pub fn convert_expr(
     }
 }
 
+/// Convert the ordinary one-name assignment path. `set x := value` and
+/// `set (x) := value` deliberately share this with bare `x := value`.
+fn convert_simple_assignment(
+    name: &str,
+    target_span: SourceSpan,
+    value: &Expr,
+    span: SourceSpan,
+    required: &mut Type,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, Diagnostic> {
+    if let Some((target, depth, offset)) = analysis.locals.get(name) {
+        if analysis.constant_locals.contains(name) {
+            return Err(Diagnostic::new(
+                ErrorKind::Name,
+                format!(
+                    "Name '{name}' is constant in assignment {name}:={}",
+                    compact_expression(value)
+                ),
+                Some(target_span),
+            ));
+        }
+        let mut required_value = target.borrow().clone();
+        let converted = convert_expr(value, &mut required_value, analysis)?;
+        *target.borrow_mut() = required_value.clone();
+        return conform_types(
+            &required_value,
+            required,
+            TypedExpr::LocalAssignment {
+                depth: *depth,
+                offset: *offset,
+                value: Box::new(converted),
+            },
+            span,
+            analysis,
+        );
+    }
+    let Some((target, cell)) = analysis.globals.lookup(name) else {
+        return Err(Diagnostic::new(
+            ErrorKind::Name,
+            format!(
+                "Undefined identifier '{name}' in assignment {name}:={}",
+                compact_expression(value)
+            ),
+            Some(target_span),
+        ));
+    };
+    if analysis.globals.is_const(name) {
+        return Err(Diagnostic::new(
+            ErrorKind::Name,
+            format!(
+                "Name '{name}' is constant in assignment {name}:={}",
+                compact_expression(value)
+            ),
+            Some(target_span),
+        ));
+    }
+    let mut required_value = target.borrow().clone();
+    let converted = convert_expr(value, &mut required_value, analysis)?;
+    *target.borrow_mut() = required_value.clone();
+    conform_types(
+        &required_value,
+        required,
+        TypedExpr::GlobalAssignment {
+            cell: cell.clone(),
+            value: Box::new(converted),
+        },
+        span,
+        analysis,
+    )
+}
+
+#[derive(Clone)]
+struct MultiAssignmentRefinement {
+    target_type: TypeCell,
+    path: Vec<usize>,
+}
+
+struct MultiAssignmentThreader<'a> {
+    assignment: &'a Expr,
+    span: SourceSpan,
+    analysis: &'a Analysis<'a>,
+    names: BTreeSet<String>,
+    refinements: Vec<MultiAssignmentRefinement>,
+}
+
+impl<'a> MultiAssignmentThreader<'a> {
+    fn new(assignment: &'a Expr, span: SourceSpan, analysis: &'a Analysis<'a>) -> Self {
+        Self {
+            assignment,
+            span,
+            analysis,
+            names: BTreeSet::new(),
+            refinements: Vec::new(),
+        }
+    }
+
+    /// Analyse one pattern node in post-order. `type_` is the corresponding
+    /// mutable component of the RHS type under construction; `path` records
+    /// how to find that component again after RHS conversion specialises it.
+    fn thread(
+        &mut self,
+        pattern: &Pattern,
+        type_: &mut Type,
+        path: &mut Vec<usize>,
+    ) -> Result<MultiAssignmentPlan, Diagnostic> {
+        // In the upstream bit-packed pattern a const-qualified whole name is
+        // a flag on the tuple node itself, so it is rejected before visiting
+        // any children. Preserve that precedence despite our split AST.
+        let forbidden_constant = match pattern {
+            Pattern::Name {
+                name,
+                constant: true,
+                ..
+            } => Some(name),
+            Pattern::Tuple {
+                whole: Some(whole), ..
+            } => match whole.as_ref() {
+                Pattern::Name {
+                    name,
+                    constant: true,
+                    ..
+                } => Some(name),
+                _ => None,
+            },
+            _ => None,
+        };
+        if let Some(name) = forbidden_constant {
+            return Err(type_error(
+                format!("Cannot constant-qualify '!' identifier '{name}' in multi-assignment"),
+                self.span,
+            ));
+        }
+
+        match pattern {
+            Pattern::Discard { .. } | Pattern::Omitted { .. } => Ok(MultiAssignmentPlan::Omitted),
+            Pattern::Name { name, .. } => self.thread_name(name, type_, path),
+            Pattern::Tuple {
+                elements, whole, ..
+            } => {
+                let tuple_pattern = Type::Tuple(vec![Type::Undetermined; elements.len()]);
+                let compatible = type_.specialise(&tuple_pattern, self.analysis.types);
+                assert!(
+                    compatible,
+                    "a fresh multi-assignment tuple slot is compatible"
+                );
+                let element_plans = {
+                    let Type::Tuple(components) = type_ else {
+                        unreachable!("specialising a tuple pattern produces a tuple")
+                    };
+                    let mut plans = Vec::with_capacity(elements.len());
+                    for (index, (element, component)) in elements.iter().zip(components).enumerate()
+                    {
+                        path.push(index);
+                        plans.push(self.thread(element, component, path)?);
+                        path.pop();
+                    }
+                    plans
+                };
+                // The whole-value name is intentionally threaded after all
+                // children. Its known type therefore checks the tuple shape
+                // already established by those children.
+                let whole_plan = whole
+                    .as_deref()
+                    .map(|whole| self.thread(whole, type_, path).map(Box::new))
+                    .transpose()?;
+                Ok(MultiAssignmentPlan::Tuple {
+                    elements: element_plans,
+                    whole: whole_plan,
+                })
+            }
+        }
+    }
+
+    fn thread_name(
+        &mut self,
+        name: &str,
+        type_: &mut Type,
+        path: &[usize],
+    ) -> Result<MultiAssignmentPlan, Diagnostic> {
+        if !self.names.insert(name.to_owned()) {
+            return Err(type_error(
+                format!("Multiple assignments to same identifier '{name}' in multi-assignment"),
+                self.span,
+            ));
+        }
+
+        let (target_type, type_cell, destination, is_const) =
+            if let Some((target, depth, offset)) = self.analysis.locals.get(name) {
+                (
+                    target.borrow().clone(),
+                    target.clone(),
+                    MultiAssignmentDestination::Local {
+                        depth: *depth,
+                        offset: *offset,
+                    },
+                    self.analysis.constant_locals.contains(name),
+                )
+            } else if let Some((target, cell)) = self.analysis.globals.lookup(name) {
+                (
+                    target.borrow().clone(),
+                    target.clone(),
+                    MultiAssignmentDestination::Global(cell.clone()),
+                    self.analysis.globals.is_const(name),
+                )
+            } else {
+                return Err(Diagnostic::new(
+                    ErrorKind::Name,
+                    format!(
+                        "Undefined identifier '{name}' in multiple assignment {}",
+                        compact_expression(self.assignment)
+                    ),
+                    Some(self.span),
+                ));
+            };
+
+        if is_const {
+            return Err(Diagnostic::new(
+                ErrorKind::Name,
+                format!(
+                    "Name '{name}' is constant in multiple assignment {}",
+                    compact_expression(self.assignment)
+                ),
+                Some(self.span),
+            ));
+        }
+        if !type_.specialise(&target_type, self.analysis.types) {
+            return Err(type_error(
+                format!(
+                    "Incompatible type for '{name}' in multi-assignment: type {} does no match pattern {}",
+                    target_type.display(self.analysis.types),
+                    type_.display(self.analysis.types)
+                ),
+                self.span,
+            ));
+        }
+        self.refinements.push(MultiAssignmentRefinement {
+            target_type: type_cell,
+            path: path.to_vec(),
+        });
+        Ok(MultiAssignmentPlan::Destination(destination))
+    }
+}
+
+fn multi_assignment_component(type_: &Type, path: &[usize], types: &TypeTable) -> Type {
+    let mut current = type_;
+    for &index in path {
+        while let Type::Tabled(number) = current {
+            current = types.expansion(*number);
+        }
+        let Type::Tuple(components) = current else {
+            unreachable!("multi-assignment type path only traverses tuple components")
+        };
+        current = &components[index];
+    }
+    current.clone()
+}
+
+fn convert_multi_assignment(
+    expression: &Expr,
+    assignment: &MultiAssignmentExpr,
+    required: &mut Type,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, Diagnostic> {
+    let mut rhs_type = Type::Undetermined;
+    let mut threader = MultiAssignmentThreader::new(expression, assignment.span, analysis);
+    let plan = threader.thread(&assignment.pattern, &mut rhs_type, &mut Vec::new())?;
+    let converted = convert_expr(&assignment.value, &mut rhs_type, analysis)?;
+
+    // RHS conversion can fill holes left by omitted slots or polymorphic
+    // targets. Only after that conversion succeeds do target TypeCells learn
+    // their refined types.
+    for refinement in threader.refinements {
+        let component = multi_assignment_component(&rhs_type, &refinement.path, analysis.types);
+        // The RHS can itself assign to the same target and specialise its
+        // live TypeCell incompatibly before this refinement runs. Upstream
+        // `threader::refine` deliberately ignores `specialise`'s result, so
+        // retain the RHS side effect's type instead of treating that legal
+        // source program as an internal invariant violation.
+        let _ = refinement
+            .target_type
+            .borrow_mut()
+            .specialise(&component, analysis.types);
+    }
+
+    conform_types(
+        &rhs_type,
+        required,
+        TypedExpr::MultiAssignment {
+            plan,
+            value: Box::new(converted),
+        },
+        assignment.span,
+        analysis,
+    )
+}
+
 /// Convert a non-recursive function literal (axis.w:3093-3115): bind the
 /// parameters as a new local layer, then convert the body against the
 /// required pattern's result hole so a context type reaches the body (and
@@ -2662,7 +2950,7 @@ pub fn convert_expr(
 /// pattern takes the first slot, then elements left-to-right.
 fn pattern_slot_shape(pattern: &Pattern) -> SlotShape {
     match pattern {
-        Pattern::Discard { .. } => SlotShape::Discard,
+        Pattern::Discard { .. } | Pattern::Omitted { .. } => SlotShape::Discard,
         Pattern::Name { .. } => SlotShape::Leaf,
         Pattern::Tuple {
             elements, whole, ..
@@ -2677,7 +2965,9 @@ fn pattern_slot_shape(pattern: &Pattern) -> SlotShape {
 /// rendered in mismatch messages (`(*,*)` for a 2-tuple pattern).
 fn pattern_type(pattern: &Pattern) -> Type {
     match pattern {
-        Pattern::Discard { .. } | Pattern::Name { .. } => Type::Undetermined,
+        Pattern::Discard { .. } | Pattern::Omitted { .. } | Pattern::Name { .. } => {
+            Type::Undetermined
+        }
         Pattern::Tuple { elements, .. } => Type::tuple(elements.iter().map(pattern_type).collect()),
     }
 }
@@ -2695,7 +2985,7 @@ fn bind_pattern_leaves(
     types: &TypeTable,
 ) -> Result<Vec<PatternLeaf>, Diagnostic> {
     match pattern {
-        Pattern::Discard { .. } => Ok(Vec::new()),
+        Pattern::Discard { .. } | Pattern::Omitted { .. } => Ok(Vec::new()),
         Pattern::Name {
             name,
             name_span,
@@ -6242,6 +6532,14 @@ impl TypedExpr {
                 );
                 Ok(at_level(level, || value.clone()))
             }
+            Self::MultiAssignment { plan, value } => {
+                // No destination is touched until the complete RHS has been
+                // evaluated successfully. Distribution itself cannot fail
+                // after the static shape check.
+                let value = force(value, context)?;
+                execute_multi_assignment(plan, &value, context);
+                Ok(at_level(level, || value.clone()))
+            }
             Self::Subscription {
                 array,
                 index,
@@ -6694,6 +6992,44 @@ fn distribute(value: Value, shape: &SlotShape, slots: &mut Vec<Rc<Value>>) {
             );
             for (value, element) in values.into_iter().zip(elements) {
                 distribute(value, element, slots);
+            }
+        }
+    }
+}
+
+/// Send RHS components to resolved destinations in the exact post-order used
+/// by upstream: tuple children left-to-right, then the optional whole target.
+fn execute_multi_assignment(
+    plan: &MultiAssignmentPlan,
+    value: &Value,
+    context: &EvaluationContext,
+) {
+    match plan {
+        MultiAssignmentPlan::Omitted => {}
+        MultiAssignmentPlan::Destination(MultiAssignmentDestination::Global(cell)) => {
+            *cell.borrow_mut() = Some(Rc::new(value.clone()));
+        }
+        MultiAssignmentPlan::Destination(MultiAssignmentDestination::Local { depth, offset }) => {
+            let updated = context.set_local(*depth, *offset, Rc::new(value.clone()));
+            assert!(
+                updated,
+                "analysis emitted an invalid local multi-assignment address"
+            );
+        }
+        MultiAssignmentPlan::Tuple { elements, whole } => {
+            let Value::Tuple(values) = value else {
+                panic!("analysis let a non-tuple value reach a tuple multi-assignment: {value}")
+            };
+            assert_eq!(
+                values.len(),
+                elements.len(),
+                "analysis let a tuple arity mismatch reach multi-assignment"
+            );
+            for (element, value) in elements.iter().zip(values) {
+                execute_multi_assignment(element, value, context);
+            }
+            if let Some(whole) = whole {
+                execute_multi_assignment(whole, value, context);
             }
         }
     }
@@ -7250,6 +7586,23 @@ mod tests {
     }
 
     #[test]
+    fn case_empty_tuple_pattern_rejects_a_nonvoid_union_payload() {
+        let mut context = TypedContext::new();
+        context
+            .execute(&command("set_type [ U = (int i | string s) ]"))
+            .expect("union type definition");
+
+        let error = context
+            .execute(&command("case i(3) | i(()): 1 | s: 0 esac"))
+            .expect_err("an empty tuple pattern requires a void payload");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(
+            error.message,
+            "Pattern () does not match type int for variant i"
+        );
+    }
+
+    #[test]
     fn globals_read_through_captured_cells_and_report_unset() {
         let mut globals = IdTable::new();
         globals.define(
@@ -7312,6 +7665,253 @@ mod tests {
         convert_and_run_with("row := [1,2]", &globals).expect("specialising assignment");
         let (type_cell, _) = globals.lookup("row").expect("row remains bound");
         assert_eq!(*type_cell.borrow(), Type::row(Type::Primitive(Prim::Int)));
+    }
+
+    #[test]
+    fn multi_assignment_updates_mixed_destinations_in_postorder_and_returns_rhs() {
+        let global_a = crate::frames::global_with(Rc::new(Value::Integer(0.into())));
+        let global_pair = crate::frames::global_with(Rc::new(Value::Tuple(vec![
+            Value::Integer(0.into()),
+            Value::Integer(0.into()),
+        ])));
+        let mut globals = IdTable::new();
+        globals.define("a", Type::Primitive(Prim::Int), global_a.clone());
+        globals.define(
+            "pair",
+            Type::Tuple(vec![Type::Primitive(Prim::Int), Type::Primitive(Prim::Int)]),
+            global_pair.clone(),
+        );
+
+        let (type_, value) =
+            convert_and_run_with("let b = 0 in set (a, b):pair := (20, 22)", &globals)
+                .expect("mixed global/local multiple assignment");
+        assert_eq!(
+            type_,
+            Type::Tuple(vec![Type::Primitive(Prim::Int), Type::Primitive(Prim::Int),])
+        );
+        assert_eq!(
+            value,
+            Value::Tuple(vec![Value::Integer(20.into()), Value::Integer(22.into())])
+        );
+        assert_eq!(
+            global_a.borrow().as_deref(),
+            Some(&Value::Integer(20.into()))
+        );
+        assert_eq!(global_pair.borrow().as_deref(), Some(&value));
+    }
+
+    #[test]
+    fn multi_assignment_omitted_slots_consume_values_without_constraining_them() {
+        let left = crate::frames::global_with(Rc::new(Value::Integer(0.into())));
+        let right = crate::frames::global_with(Rc::new(Value::Integer(0.into())));
+        let mut globals = IdTable::new();
+        globals.define("left", Type::Primitive(Prim::Int), left.clone());
+        globals.define("right", Type::Primitive(Prim::Int), right.clone());
+
+        let (type_, value) =
+            convert_and_run_with("set (left, , right) := (1, \"ignored\", 3)", &globals)
+                .expect("omitted slot accepts any component type");
+        assert_eq!(
+            type_,
+            Type::Tuple(vec![
+                Type::Primitive(Prim::Int),
+                Type::Primitive(Prim::String),
+                Type::Primitive(Prim::Int),
+            ])
+        );
+        assert_eq!(
+            value,
+            Value::Tuple(vec![
+                Value::Integer(1.into()),
+                Value::String("ignored".into()),
+                Value::Integer(3.into()),
+            ])
+        );
+        assert_eq!(left.borrow().as_deref(), Some(&Value::Integer(1.into())));
+        assert_eq!(right.borrow().as_deref(), Some(&Value::Integer(3.into())));
+    }
+
+    #[test]
+    fn explicit_empty_tuple_in_multi_assignment_voids_its_rhs_component() {
+        let x = crate::frames::global_with(Rc::new(Value::Integer(0.into())));
+        let mut globals = IdTable::new();
+        globals.define("x", Type::Primitive(Prim::Int), x);
+
+        let (type_, value) = convert_and_run_with("set (x, ()) := (1, 2)", &globals)
+            .expect("void coercion satisfies the explicit empty tuple");
+        assert_eq!(
+            type_,
+            Type::Tuple(vec![Type::Primitive(Prim::Int), Type::void()])
+        );
+        assert_eq!(
+            value,
+            Value::Tuple(vec![Value::Integer(1.into()), Value::Tuple(Vec::new())])
+        );
+    }
+
+    #[test]
+    fn grouped_multi_assignment_name_uses_simple_assignment_diagnostics() {
+        let error = convert_and_run("set (missing) := 2").expect_err("undefined target");
+        assert_eq!(error.kind, ErrorKind::Name);
+        assert_eq!(
+            error.message,
+            "Undefined identifier 'missing' in assignment missing:=2"
+        );
+    }
+
+    #[test]
+    fn multi_assignment_evaluates_rhs_once_and_commits_only_after_success() {
+        let counter = crate::frames::global_with(Rc::new(Value::Integer(0.into())));
+        let x = crate::frames::global_with(Rc::new(Value::Integer(10.into())));
+        let y = crate::frames::global_with(Rc::new(Value::Integer(20.into())));
+        let mut globals = IdTable::new();
+        globals.define("counter", Type::Primitive(Prim::Int), counter.clone());
+        globals.define("x", Type::Primitive(Prim::Int), x.clone());
+        globals.define("y", Type::Primitive(Prim::Int), y.clone());
+
+        let (_, value) =
+            convert_and_run_with("set (x, y) := (counter := counter + 1, counter)", &globals)
+                .expect("successful RHS runs once before distribution");
+        assert_eq!(
+            value,
+            Value::Tuple(vec![Value::Integer(1.into()), Value::Integer(1.into())])
+        );
+        assert_eq!(counter.borrow().as_deref(), Some(&Value::Integer(1.into())));
+        assert_eq!(x.borrow().as_deref(), Some(&Value::Integer(1.into())));
+        assert_eq!(y.borrow().as_deref(), Some(&Value::Integer(1.into())));
+
+        let error = convert_and_run_with("set (x, y) := (7, die)", &globals)
+            .expect_err("failing RHS commits no destinations");
+        assert_eq!(error.kind, ErrorKind::Runtime);
+        assert_eq!(error.message, "I die");
+        assert_eq!(x.borrow().as_deref(), Some(&Value::Integer(1.into())));
+        assert_eq!(y.borrow().as_deref(), Some(&Value::Integer(1.into())));
+    }
+
+    #[test]
+    fn multi_assignment_writes_whole_destination_after_children() {
+        let aliased = crate::frames::global_with(Rc::new(Value::Integer(0.into())));
+        let mut globals = IdTable::new();
+        globals.define("child", Type::Primitive(Prim::Int), aliased.clone());
+        globals.define(
+            "whole",
+            Type::Tuple(vec![Type::Primitive(Prim::Int), Type::Primitive(Prim::Int)]),
+            aliased.clone(),
+        );
+
+        convert_and_run_with("set (child, ):whole := (1, 2)", &globals)
+            .expect("aliased destinations are legal under distinct names");
+        assert_eq!(
+            aliased.borrow().as_deref(),
+            Some(&Value::Tuple(vec![
+                Value::Integer(1.into()),
+                Value::Integer(2.into()),
+            ]))
+        );
+    }
+
+    #[test]
+    fn multi_assignment_refines_polymorphic_target_types_after_rhs_conversion() {
+        let row = crate::frames::unset_global();
+        let mut globals = IdTable::new();
+        globals.define("row", Type::row(Type::Undetermined), row);
+
+        convert_and_run_with("set (row, ) := ([1, 2], \"free\")", &globals)
+            .expect("RHS fills both target and omitted component holes");
+        let (row_type, _) = globals.lookup("row").expect("target remains defined");
+        assert_eq!(*row_type.borrow(), Type::row(Type::Primitive(Prim::Int)));
+    }
+
+    #[test]
+    fn multi_assignment_refinement_ignores_rhs_side_effect_type_conflicts() {
+        let row = crate::frames::global_with(Rc::new(Value::List(Vec::new())));
+        let mut globals = IdTable::new();
+        globals.define("row", Type::row(Type::Undetermined), row.clone());
+
+        let (type_, value) =
+            convert_and_run_with("set (row,) := ((row := [1]; [\"x\"]),0)", &globals)
+                .expect("upstream refine ignores a failed post-RHS specialisation");
+        assert_eq!(
+            type_,
+            Type::Tuple(vec![
+                Type::row(Type::Primitive(Prim::String)),
+                Type::Primitive(Prim::Int),
+            ])
+        );
+        assert_eq!(
+            value,
+            Value::Tuple(vec![
+                Value::List(vec![Value::String("x".into())]),
+                Value::Integer(0.into()),
+            ])
+        );
+        let (row_type, _) = globals.lookup("row").expect("row remains defined");
+        assert_eq!(*row_type.borrow(), Type::row(Type::Primitive(Prim::Int)));
+        assert_eq!(
+            row.borrow().as_deref(),
+            Some(&Value::List(vec![Value::String("x".into())]))
+        );
+    }
+
+    #[test]
+    fn multi_assignment_reports_exact_target_analysis_errors() {
+        let x = crate::frames::global_with(Rc::new(Value::Integer(0.into())));
+        let constant = crate::frames::global_with(Rc::new(Value::Integer(0.into())));
+        let pair = crate::frames::global_with(Rc::new(Value::Tuple(vec![
+            Value::Integer(0.into()),
+            Value::Integer(0.into()),
+        ])));
+        let scalar = crate::frames::global_with(Rc::new(Value::String("old".into())));
+        let mut globals = IdTable::new();
+        globals.define("x", Type::Primitive(Prim::Int), x);
+        globals.define("constant", Type::Primitive(Prim::Int), constant);
+        globals.mark_const("constant");
+        globals.define(
+            "pair",
+            Type::Tuple(vec![Type::Primitive(Prim::Int), Type::Primitive(Prim::Int)]),
+            pair,
+        );
+        globals.define("scalar", Type::Primitive(Prim::String), scalar);
+
+        for (source, kind, message) in [
+            (
+                "set (!x, ) := (1, 2)",
+                ErrorKind::Type,
+                "Cannot constant-qualify '!' identifier 'x' in multi-assignment",
+            ),
+            (
+                "set (missing, ):!x := (1, 2)",
+                ErrorKind::Type,
+                "Cannot constant-qualify '!' identifier 'x' in multi-assignment",
+            ),
+            (
+                "set (x, x) := (1, 2)",
+                ErrorKind::Type,
+                "Multiple assignments to same identifier 'x' in multi-assignment",
+            ),
+            (
+                "set (x, missing) := (1, 2)",
+                ErrorKind::Name,
+                "Undefined identifier 'missing' in multiple assignment set (x,missing):=(1,2)",
+            ),
+            (
+                "set (x, constant) := (1, 2)",
+                ErrorKind::Name,
+                "Name 'constant' is constant in multiple assignment set (x,constant):=(1,2)",
+            ),
+            (
+                "set (x, ):scalar := (1, 2)",
+                ErrorKind::Type,
+                "Incompatible type for 'scalar' in multi-assignment: type string does no match pattern (int,*)",
+            ),
+        ] {
+            let error = convert_and_run_with(source, &globals).expect_err(source);
+            assert_eq!(error.kind, kind, "source: {source}");
+            assert_eq!(error.message, message, "source: {source}");
+            let span = error.span.expect("multi-assignment errors carry the whole span");
+            assert_eq!(span.byte_start, 0, "source: {source}");
+            assert_eq!(span.byte_end, source.len(), "source: {source}");
+        }
     }
 
     #[test]
