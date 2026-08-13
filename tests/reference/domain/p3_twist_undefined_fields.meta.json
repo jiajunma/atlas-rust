@@ -5,7 +5,14 @@
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "rust_status": "known_incorrect",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
+  "reference_job": "3543906",
   "note": "UndefKGB strict equality and field-only wrappers remain valid; only graph-indexing follow-up operations may reject the sentinel.",
-  "oracle_exit_status": 0
+  "oracle_exit_status": 0,
+  "oracle_seconds": 0.041,
+  "oracle_maxrss_kb": 4220,
+  "oracle_maxrss_approximate": false,
+  "oracle_stdout_sha256": "2da0b159f7bd6daa40703054f9040189b72eb4acc7268ac6c656f38866add391",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "reference_report_sha256": "036410359c60ceac074c3409cd9c73f9ecfc64387d94231a3e588a7275a21473"
 }
