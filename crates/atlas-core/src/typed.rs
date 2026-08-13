@@ -5373,11 +5373,29 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::WeylElt),
                 3,
             ),
-            domain_builtin(
+            domain_builtin_validate(
                 "#",
                 Type::tuple(vec![primitive_type(Prim::WeylElt), int_type()]),
                 primitive_type(Prim::WeylElt),
                 1,
+            ),
+            domain_builtin_validate(
+                "#",
+                Type::tuple(vec![int_type(), primitive_type(Prim::WeylElt)]),
+                primitive_type(Prim::WeylElt),
+                2,
+            ),
+            domain_builtin_validate(
+                "##",
+                Type::tuple(vec![primitive_type(Prim::WeylElt), Type::row(int_type())]),
+                primitive_type(Prim::WeylElt),
+                1,
+            ),
+            domain_builtin_validate(
+                "##",
+                Type::tuple(vec![Type::row(int_type()), primitive_type(Prim::WeylElt)]),
+                primitive_type(Prim::WeylElt),
+                2,
             ),
             // CartanClass surface (atlas-types.w:4347-4363): the two
             // constructors, counts, most-split, involution, the (dual)
@@ -5393,6 +5411,12 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             domain_builtin_validate(
                 "Cartan_class",
                 Type::tuple(vec![primitive_type(Prim::RealForm), int_type()]),
+                primitive_type(Prim::CartanClass),
+                0,
+            ),
+            domain_builtin_skip(
+                "Cartan_class",
+                primitive_type(Prim::KgbElt),
                 primitive_type(Prim::CartanClass),
                 0,
             ),
@@ -6153,12 +6177,26 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::RealForm),
                 0,
             ),
+            domain_builtin_skip("=", primitive_type(Prim::KTypePol), bool_type(), 0),
+            domain_builtin_skip("!=", primitive_type(Prim::KTypePol), bool_type(), 0),
             domain_builtin("#", primitive_type(Prim::KTypePol), int_type(), 0),
             domain_builtin_validate(
                 "+",
                 Type::tuple(vec![
                     primitive_type(Prim::KTypePol),
                     primitive_type(Prim::KType),
+                ]),
+                primitive_type(Prim::KTypePol),
+                1,
+            ),
+            domain_builtin_skip(
+                "+",
+                Type::tuple(vec![
+                    primitive_type(Prim::KTypePol),
+                    Type::row(Type::tuple(vec![
+                        primitive_type(Prim::Split),
+                        primitive_type(Prim::KType),
+                    ])),
                 ]),
                 primitive_type(Prim::KTypePol),
                 1,
@@ -6331,12 +6369,38 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::RealForm),
                 0,
             ),
+            domain_builtin_skip("=", primitive_type(Prim::ParamPol), bool_type(), 0),
+            domain_builtin_skip("!=", primitive_type(Prim::ParamPol), bool_type(), 0),
             domain_builtin("#", primitive_type(Prim::ParamPol), int_type(), 0),
             domain_builtin_validate(
                 "+",
                 Type::tuple(vec![
                     primitive_type(Prim::ParamPol),
                     primitive_type(Prim::Param),
+                ]),
+                primitive_type(Prim::ParamPol),
+                1,
+            ),
+            domain_builtin_validate(
+                "+",
+                Type::tuple(vec![
+                    primitive_type(Prim::ParamPol),
+                    Type::tuple(vec![
+                        primitive_type(Prim::Split),
+                        primitive_type(Prim::Param),
+                    ]),
+                ]),
+                primitive_type(Prim::ParamPol),
+                1,
+            ),
+            domain_builtin_skip(
+                "+",
+                Type::tuple(vec![
+                    primitive_type(Prim::ParamPol),
+                    Type::row(Type::tuple(vec![
+                        primitive_type(Prim::Split),
+                        primitive_type(Prim::Param),
+                    ])),
                 ]),
                 primitive_type(Prim::ParamPol),
                 1,
@@ -8417,6 +8481,87 @@ mod tests {
     }
 
     #[test]
+    fn p1_simple_domain_signatures_match_the_upstream_install_table() {
+        let signatures = |name: &str| {
+            builtin_registry()
+                .iter()
+                .filter(|builtin| builtin.name == name)
+                .map(|builtin| (builtin.arg_type.clone(), builtin.result.clone()))
+                .collect::<Vec<_>>()
+        };
+
+        let int = int_type();
+        let weyl = primitive_type(Prim::WeylElt);
+        let ktype = primitive_type(Prim::KType);
+        let ktype_pol = primitive_type(Prim::KTypePol);
+        let param = primitive_type(Prim::Param);
+        let param_pol = primitive_type(Prim::ParamPol);
+        let split = primitive_type(Prim::Split);
+        let no_value_policy = |name: &str, arguments: &Type| {
+            let builtin = builtin_registry()
+                .iter()
+                .find(|builtin| builtin.name == name && &builtin.arg_type == arguments)
+                .unwrap_or_else(|| panic!("missing {name}({arguments:?})"));
+            match builtin.implementation {
+                BuiltinImpl::Domain {
+                    no_value: DomainNoValue::Skip,
+                    ..
+                } => "skip",
+                BuiltinImpl::Domain {
+                    no_value: DomainNoValue::Validate,
+                    ..
+                } => "validate",
+                BuiltinImpl::Domain {
+                    no_value: DomainNoValue::BuildAndDrop,
+                    ..
+                } => "build",
+                _ => "other",
+            }
+        };
+
+        let left_generator = Type::tuple(vec![int.clone(), weyl.clone()]);
+        assert!(signatures("#").contains(&(left_generator.clone(), weyl.clone())));
+        assert_eq!(no_value_policy("#", &left_generator), "validate");
+        let right_generator = Type::tuple(vec![weyl.clone(), int.clone()]);
+        assert_eq!(no_value_policy("#", &right_generator), "validate");
+        for arguments in [
+            Type::tuple(vec![weyl.clone(), Type::row(int.clone())]),
+            Type::tuple(vec![Type::row(int), weyl.clone()]),
+        ] {
+            assert!(signatures("##").contains(&(arguments.clone(), weyl.clone())));
+            assert_eq!(no_value_policy("##", &arguments), "validate");
+        }
+        let kgb = primitive_type(Prim::KgbElt);
+        assert!(
+            signatures("Cartan_class").contains(&(kgb.clone(), primitive_type(Prim::CartanClass),))
+        );
+        assert_eq!(no_value_policy("Cartan_class", &kgb), "skip");
+
+        for pol in [ktype_pol.clone(), param_pol.clone()] {
+            for name in ["=", "!="] {
+                assert!(signatures(name).contains(&(pol.clone(), bool_type())));
+                assert_eq!(no_value_policy(name, &pol), "skip");
+            }
+        }
+        let ktype_term_list = Type::tuple(vec![
+            ktype_pol,
+            Type::row(Type::tuple(vec![split.clone(), ktype])),
+        ]);
+        assert!(
+            signatures("+").contains(&(ktype_term_list.clone(), primitive_type(Prim::KTypePol),))
+        );
+        assert_eq!(no_value_policy("+", &ktype_term_list), "skip");
+        for (terms, policy) in [
+            (Type::tuple(vec![split.clone(), param.clone()]), "validate"),
+            (Type::row(Type::tuple(vec![split, param])), "skip"),
+        ] {
+            let arguments = Type::tuple(vec![param_pol.clone(), terms]);
+            assert!(signatures("+").contains(&(arguments.clone(), param_pol.clone(),)));
+            assert_eq!(no_value_policy("+", &arguments), policy);
+        }
+    }
+
+    #[test]
     fn p0_simple_domain_signatures_accept_and_reject_oracle_inputs() {
         let root_datum = "simply_connected(Lie_type(\"A1\"),true)";
         let inner_class = format!("inner_class({root_datum},[[1]])");
@@ -8535,6 +8680,13 @@ mod tests {
                 ]),
                 Type::tuple(vec![
                     primitive_type(Prim::KTypePol),
+                    Type::row(Type::tuple(vec![
+                        primitive_type(Prim::Split),
+                        primitive_type(Prim::KType),
+                    ])),
+                ]),
+                Type::tuple(vec![
+                    primitive_type(Prim::KTypePol),
                     primitive_type(Prim::KTypePol),
                 ]),
                 Type::tuple(vec![
@@ -8550,6 +8702,20 @@ mod tests {
                 ]),
                 Type::tuple(vec![
                     primitive_type(Prim::ParamPol),
+                    Type::tuple(vec![
+                        primitive_type(Prim::Split),
+                        primitive_type(Prim::Param),
+                    ]),
+                ]),
+                Type::tuple(vec![
+                    primitive_type(Prim::ParamPol),
+                    Type::row(Type::tuple(vec![
+                        primitive_type(Prim::Split),
+                        primitive_type(Prim::Param),
+                    ])),
+                ]),
+                Type::tuple(vec![
+                    primitive_type(Prim::ParamPol),
                     primitive_type(Prim::ParamPol),
                 ]),
             ]
@@ -8558,7 +8724,7 @@ mod tests {
             plus.iter()
                 .map(|&index| builtin_registry()[index].hunger)
                 .collect::<Vec<_>>(),
-            vec![1, 1, 1, 1, 1, 1, 1, 1, 1]
+            vec![1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         );
     }
 

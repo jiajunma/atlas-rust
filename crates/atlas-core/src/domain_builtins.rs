@@ -18,6 +18,7 @@ use std::collections::BTreeSet;
 use std::fmt;
 use std::fmt::Write as _;
 use std::num::{NonZeroI32, NonZeroU64};
+use std::sync::atomic::{AtomicU64, Ordering as AtomicOrdering};
 use std::sync::Arc;
 
 use malachite::{Integer as BigInt, Rational as BigRational};
@@ -175,9 +176,22 @@ pub struct RealFormContext {
     parent: Arc<InnerClassContext>,
     external: usize,
     internal: WeakRealFormId,
+    owner: RealFormOwner,
     table: InvolutionTable,
     graph: KgbGraph,
 }
+
+/// The identity of upstream's owning `shared_real_form` handle. Default
+/// real forms are memoized by mathematical form, while every genuinely
+/// custom seed owns a fresh handle even when its structure equals another
+/// custom seed.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum RealFormOwner {
+    Canonical,
+    Custom(u64),
+}
+
+static NEXT_CUSTOM_REAL_FORM_OWNER: AtomicU64 = AtomicU64::new(1);
 
 /// A Block value: the owning real form and dual real form contexts with
 /// the fibred-product graph (upstream `Block_value`,
@@ -414,6 +428,20 @@ fn same_real_form(left: &RealFormContext, right: &RealFormContext) -> bool {
         && left.internal == right.internal
         && left.graph.cocharacter() == right.graph.cocharacter()
         && left.graph.seed_element().torus_bits() == right.graph.seed_element().torus_bits()
+}
+
+/// Pointer-owner equality used by wrappers that compare their
+/// `shared_real_form` fields directly. Canonical forms model upstream's
+/// memoized values; custom constructions compare only through their unique
+/// owner token, which clones preserve through the surrounding `Arc`.
+fn same_real_form_owner(left: &RealFormContext, right: &RealFormContext) -> bool {
+    match (left.owner, right.owner) {
+        (RealFormOwner::Canonical, RealFormOwner::Canonical) => {
+            left.parent.inner_class == right.parent.inner_class && left.internal == right.internal
+        }
+        (RealFormOwner::Custom(left), RealFormOwner::Custom(right)) => left == right,
+        _ => false,
+    }
 }
 
 impl fmt::Display for DomainValue {
@@ -1886,6 +1914,7 @@ fn build_real_form(
         parent: Arc::clone(parent),
         external,
         internal,
+        owner: RealFormOwner::Canonical,
         table,
         graph,
     }))
@@ -1932,6 +1961,9 @@ fn build_custom_real_form(
         parent: Arc::clone(parent),
         external: plan.external,
         internal: plan.internal,
+        owner: RealFormOwner::Custom(
+            NEXT_CUSTOM_REAL_FORM_OWNER.fetch_add(1, AtomicOrdering::Relaxed),
+        ),
         table,
         graph,
     }))
@@ -5938,10 +5970,26 @@ fn structure_diagnostic(error: StructureError, span: SourceSpan) -> Diagnostic {
     runtime(span, error.to_string())
 }
 
-/// The owning-form identity check shared by the equivalence and polynomial
-/// wrappers (atlas-types.w:5323-5331, 5668-5676, 7786-7803): the mismatch
-/// diagnostic precedes the wrapper's no-value gate.
-fn require_same_form(
+/// The owning-form identity check used by polynomial wrappers
+/// (atlas-types.w:5668-5676, 7786-7803): the mismatch diagnostic precedes
+/// the wrapper's no-value gate.
+fn require_same_form_owner(
+    left: &RealFormContext,
+    right: &RealFormContext,
+    message: &str,
+    span: SourceSpan,
+) -> Result<(), Diagnostic> {
+    if same_real_form_owner(left, right) {
+        Ok(())
+    } else {
+        Err(runtime(span, message))
+    }
+}
+
+/// Structural real-form compatibility used by KType/Param equivalence
+/// (atlas-types.w:5323-5331, 6340-6347). Unlike polynomial term ownership,
+/// independently constructed custom forms with the same value are compatible.
+fn require_same_form_value(
     left: &RealFormContext,
     right: &RealFormContext,
     message: &str,
@@ -6055,6 +6103,32 @@ fn sort_parampol_terms(terms: &mut [(SplitValue, StandardRepr)]) {
                     .unwrap_or(std::cmp::Ordering::Equal)
             })
     });
+}
+
+/// Merge adjacent equal terms after the caller has sorted by the polynomial's
+/// canonical term order. This is the bulk counterpart of `merge_pol_term`:
+/// list-valued addition stays O(n log n) instead of repeatedly scanning a
+/// growing vector.
+fn coalesce_sorted_terms<T: PartialEq>(terms: Vec<(SplitValue, T)>) -> Vec<(SplitValue, T)> {
+    let mut merged: Vec<(SplitValue, T)> = Vec::with_capacity(terms.len());
+    for (coefficient, term) in terms {
+        if coefficient.is_zero() {
+            continue;
+        }
+        if let Some((previous_coefficient, previous_term)) = merged.last_mut() {
+            if *previous_term == term {
+                let updated = previous_coefficient.add(coefficient);
+                if updated.is_zero() {
+                    merged.pop();
+                } else {
+                    *previous_coefficient = updated;
+                }
+                continue;
+            }
+        }
+        merged.push((coefficient, term));
+    }
+    merged
 }
 
 /// Keep the KTypePol terms whose height is at most `bound`; a negative
@@ -7995,16 +8069,40 @@ fn check_weyl_word(
         if integer < 0 {
             return Err(runtime(span, "Negative integer where unsigned is required"));
         }
-        let generator = usize::try_from(&integer).unwrap_or(usize::MAX);
-        if generator >= semisimple_rank {
+        let generator = u64::try_from(&integer)
+            .map_err(|_| runtime(span, "Integer value to big for conversion"))?;
+        if generator >= semisimple_rank as u64 {
             return Err(runtime(
                 span,
                 format!("Illegal Weyl word entry {integer} (should be <{semisimple_rank})"),
             ));
         }
-        word.push(generator);
+        word.push(generator as usize);
     }
     Ok(word)
+}
+
+/// `int_value::int_val` followed by `check_Weyl_gen`
+/// (atlas-types.w:2447-2476): narrowing to the upstream machine `int`
+/// precedes the signed range check.
+fn check_weyl_generator(
+    generator: &BigInt,
+    semisimple_rank: usize,
+    span: SourceSpan,
+) -> Result<usize, Diagnostic> {
+    let generator = i32::try_from(generator)
+        .map_err(|_| runtime(span, "Integer value to big for conversion"))?;
+    usize::try_from(generator)
+        .ok()
+        .filter(|&index| index < semisimple_rank)
+        .ok_or_else(|| {
+            runtime(
+                span,
+                format!(
+                    "Generator {generator} out of range for Weyl group (should be <{semisimple_rank})"
+                ),
+            )
+        })
 }
 
 fn check_generator(
@@ -8279,6 +8377,29 @@ pub(crate) fn validate(
                 }
             }
         }
+        // check_Weyl_gen/check_Weyl_word precede the no-value gates of the
+        // four generator/word multiplication wrappers.
+        "#" => {
+            arity(name, arguments, 2, span)?;
+            let (element, generator) = match arguments {
+                [Value::Domain(DomainValue::WeylElement(element)), Value::Integer(generator)]
+                | [Value::Integer(generator), Value::Domain(DomainValue::WeylElement(element))] => {
+                    (element, generator)
+                }
+                _ => return Err(type_error(span, "expected WeylElt and int")),
+            };
+            let rank = element.context.handle.datum.semisimple_rank();
+            check_weyl_generator(generator, rank, span)?;
+        }
+        "##" => {
+            arity(name, arguments, 2, span)?;
+            let (element, word) = match arguments {
+                [Value::Domain(DomainValue::WeylElement(element)), word]
+                | [word, Value::Domain(DomainValue::WeylElement(element))] => (element, word),
+                _ => return Err(type_error(span, "expected WeylElt and [int]")),
+            };
+            check_weyl_word(word, element.context.handle.datum.semisimple_rank(), span)?;
+        }
         // Both Cartan_class wrappers bounds-check before their no_value gate
         // (atlas-types.w:4025-4033, 4046-4056).
         "Cartan_class" => {
@@ -8406,7 +8527,7 @@ pub(crate) fn validate(
                     Value::Domain(DomainValue::KType(left)),
                     Value::Domain(DomainValue::KType(right)),
                 ) => {
-                    require_same_form(
+                    require_same_form_value(
                         &left.context,
                         &right.context,
                         "Real form mismatch when testing equivalence",
@@ -8417,7 +8538,7 @@ pub(crate) fn validate(
                     Value::Domain(DomainValue::Param(left)),
                     Value::Domain(DomainValue::Param(right)),
                 ) => {
-                    require_same_form(
+                    require_same_form_value(
                         &left.context,
                         &right.context,
                         "Real form mismatch when testing equivalence",
@@ -8483,7 +8604,7 @@ pub(crate) fn validate(
         "+" | "-" => match arguments {
             [Value::Domain(DomainValue::KTypePol(accumulator)), Value::Domain(DomainValue::KType(ktype))] =>
             {
-                require_same_form(
+                require_same_form_owner(
                     &accumulator.rf,
                     &ktype.context,
                     if name == "+" {
@@ -8496,7 +8617,7 @@ pub(crate) fn validate(
             }
             [Value::Domain(DomainValue::KTypePol(accumulator)), Value::Domain(DomainValue::KTypePol(other))] =>
             {
-                require_same_form(
+                require_same_form_owner(
                     &accumulator.rf,
                     &other.rf,
                     if name == "+" {
@@ -8519,7 +8640,7 @@ pub(crate) fn validate(
                 let Value::Domain(DomainValue::KType(ktype)) = &term[1] else {
                     unreachable!()
                 };
-                require_same_form(
+                require_same_form_owner(
                     &accumulator.rf,
                     &ktype.context,
                     "Real form mismatch when adding a term to a K_type",
@@ -8528,7 +8649,7 @@ pub(crate) fn validate(
             }
             [Value::Domain(DomainValue::ParamPol(accumulator)), Value::Domain(DomainValue::Param(parameter))] =>
             {
-                require_same_form(
+                require_same_form_owner(
                     &accumulator.rf,
                     &parameter.context,
                     if name == "+" {
@@ -8541,7 +8662,7 @@ pub(crate) fn validate(
             }
             [Value::Domain(DomainValue::ParamPol(accumulator)), Value::Domain(DomainValue::ParamPol(other))] =>
             {
-                require_same_form(
+                require_same_form_owner(
                     &accumulator.rf,
                     &other.rf,
                     if name == "+" {
@@ -8549,6 +8670,25 @@ pub(crate) fn validate(
                     } else {
                         "Real form mismatch when subtracting two modules"
                     },
+                    span,
+                )?;
+            }
+            [Value::Domain(DomainValue::ParamPol(accumulator)), Value::Tuple(term)]
+                if matches!(
+                    term.as_slice(),
+                    [
+                        Value::Domain(DomainValue::Split(_)),
+                        Value::Domain(DomainValue::Param(_))
+                    ]
+                ) =>
+            {
+                let Value::Domain(DomainValue::Param(parameter)) = &term[1] else {
+                    unreachable!()
+                };
+                require_same_form_owner(
+                    &accumulator.rf,
+                    &parameter.context,
+                    "Real form mismatch when adding a term to a module",
                     span,
                 )?;
             }
@@ -11782,6 +11922,13 @@ pub(crate) fn call_with_printed(
         // overload translates its per-form index through the form's Cartan
         // set into the inner-class numbering (`Cartan_set().n_th(i)`).
         "Cartan_class" => {
+            if let [Value::Domain(DomainValue::KgbElement(form, id))] = arguments {
+                let cartan = form
+                    .graph
+                    .cartan_of(*id)
+                    .ok_or_else(|| runtime(span, "Inexistent KGB element"))?;
+                return Ok(cartan_class_value(&form.parent, cartan));
+            }
             arity(name, arguments, 2, span)?;
             let index = as_integer(&arguments[1], span)?;
             match &arguments[0] {
@@ -14936,7 +15083,7 @@ pub(crate) fn call_with_printed(
                     Value::Domain(DomainValue::KType(left)),
                     Value::Domain(DomainValue::KType(right)),
                 ) => {
-                    require_same_form(
+                    require_same_form_value(
                         &left.context,
                         &right.context,
                         "Real form mismatch when testing equivalence",
@@ -14953,7 +15100,7 @@ pub(crate) fn call_with_printed(
                     Value::Domain(DomainValue::Param(left)),
                     Value::Domain(DomainValue::Param(right)),
                 ) => {
-                    require_same_form(
+                    require_same_form_value(
                         &left.context,
                         &right.context,
                         "Real form mismatch when testing equivalence",
@@ -16005,10 +16152,12 @@ pub(crate) fn call_with_printed(
             let test = match &arguments[0] {
                 Value::Domain(DomainValue::WeylElement(value)) => value.element.is_identity(),
                 Value::Domain(DomainValue::Split(value)) => value.is_zero(),
+                Value::Domain(DomainValue::KTypePol(value)) => value.terms.is_empty(),
+                Value::Domain(DomainValue::ParamPol(value)) => value.terms.is_empty(),
                 other => {
                     return Err(type_error(
                         span,
-                        format!("expected a WeylElt, found {other}"),
+                        format!("expected a WeylElt, Split, KTypePol, or ParamPol, found {other}"),
                     ))
                 }
             };
@@ -16024,7 +16173,7 @@ pub(crate) fn call_with_printed(
             // form mismatch check precedes the no-value gate.
             [Value::Domain(DomainValue::KTypePol(accumulator)), Value::Domain(DomainValue::KType(ktype))] =>
             {
-                require_same_form(
+                require_same_form_owner(
                     &accumulator.rf,
                     &ktype.context,
                     "Real form mismatch when adding a KType to a KTypePol",
@@ -16046,7 +16195,7 @@ pub(crate) fn call_with_printed(
             // two polynomials term by term.
             [Value::Domain(DomainValue::KTypePol(accumulator)), Value::Domain(DomainValue::KTypePol(addend))] =>
             {
-                require_same_form(
+                require_same_form_owner(
                     &accumulator.rf,
                     &addend.rf,
                     "Real form mismatch when adding two K_types",
@@ -16079,7 +16228,7 @@ pub(crate) fn call_with_printed(
                 let Value::Domain(DomainValue::KType(ktype)) = &term[1] else {
                     unreachable!()
                 };
-                require_same_form(
+                require_same_form_owner(
                     &accumulator.rf,
                     &ktype.context,
                     "Real form mismatch when adding a term to a K_type",
@@ -16097,11 +16246,42 @@ pub(crate) fn call_with_printed(
                     terms,
                 })))
             }
+            // add_K_type_termlist_wrapper (atlas-types.w:5741-5775):
+            // expand every K-type through finals_for in source-list order.
+            [Value::Domain(DomainValue::KTypePol(accumulator)), Value::List(term_list)] => {
+                let rc = rep_context(&accumulator.rf);
+                let mut terms = accumulator.terms.clone();
+                for term in term_list {
+                    let Value::Tuple(term) = term else {
+                        return Err(type_error(span, "expected a (Split,KType) term"));
+                    };
+                    let [Value::Domain(DomainValue::Split(coefficient)), Value::Domain(DomainValue::KType(ktype))] =
+                        term.as_slice()
+                    else {
+                        return Err(type_error(span, "expected a (Split,KType) term"));
+                    };
+                    require_same_form_owner(
+                        &accumulator.rf,
+                        &ktype.context,
+                        "Real form mismatch when adding terms to a K_type",
+                        span,
+                    )?;
+                    for (final_coefficient, final_term) in finals_of_final(ktype, &rc, span)? {
+                        terms.push((final_coefficient.mul(*coefficient), final_term));
+                    }
+                }
+                sort_ktypepol_terms(&mut terms);
+                let terms = coalesce_sorted_terms(terms);
+                Ok(Value::Domain(DomainValue::KTypePol(KTypePolValue {
+                    rf: Arc::clone(&accumulator.rf),
+                    terms,
+                })))
+            }
             // add_module_wrapper (atlas-types.w:7786-7795): expand the
             // final parameter and add it (expand_final).
             [Value::Domain(DomainValue::ParamPol(accumulator)), Value::Domain(DomainValue::Param(parameter))] =>
             {
-                require_same_form(
+                require_same_form_owner(
                     &accumulator.rf,
                     &parameter.context,
                     "Real form mismatch when adding a Param to a ParamPol",
@@ -16122,7 +16302,7 @@ pub(crate) fn call_with_printed(
             // add_virtual_modules_wrapper (atlas-types.w:7866-7877).
             [Value::Domain(DomainValue::ParamPol(accumulator)), Value::Domain(DomainValue::ParamPol(addend))] =>
             {
-                require_same_form(
+                require_same_form_owner(
                     &accumulator.rf,
                     &addend.rf,
                     "Real form mismatch when adding two modules",
@@ -16133,6 +16313,70 @@ pub(crate) fn call_with_printed(
                     merge_pol_term(&mut terms, *coefficient, term.clone());
                 }
                 sort_parampol_terms(&mut terms);
+                Ok(Value::Domain(DomainValue::ParamPol(ParamPolValue {
+                    rf: Arc::clone(&accumulator.rf),
+                    terms,
+                })))
+            }
+            // add_module_term_wrapper / add_module_termlist_wrapper
+            // (atlas-types.w:7818-7862): expand parameters to final terms
+            // and scale them by the supplied Split coefficient.
+            [Value::Domain(DomainValue::ParamPol(accumulator)), Value::Tuple(term)]
+                if matches!(
+                    term.as_slice(),
+                    [
+                        Value::Domain(DomainValue::Split(_)),
+                        Value::Domain(DomainValue::Param(_))
+                    ]
+                ) =>
+            {
+                let Value::Domain(DomainValue::Split(coefficient)) = &term[0] else {
+                    unreachable!()
+                };
+                let Value::Domain(DomainValue::Param(parameter)) = &term[1] else {
+                    unreachable!()
+                };
+                require_same_form_owner(
+                    &accumulator.rf,
+                    &parameter.context,
+                    "Real form mismatch when adding a term to a module",
+                    span,
+                )?;
+                let rc = rep_context(&accumulator.rf);
+                let mut terms = accumulator.terms.clone();
+                for (final_coefficient, final_term) in expand_final(parameter, &rc, span)? {
+                    merge_pol_term(&mut terms, final_coefficient.mul(*coefficient), final_term);
+                }
+                sort_parampol_terms(&mut terms);
+                Ok(Value::Domain(DomainValue::ParamPol(ParamPolValue {
+                    rf: Arc::clone(&accumulator.rf),
+                    terms,
+                })))
+            }
+            [Value::Domain(DomainValue::ParamPol(accumulator)), Value::List(term_list)] => {
+                let rc = rep_context(&accumulator.rf);
+                let mut terms = accumulator.terms.clone();
+                for term in term_list {
+                    let Value::Tuple(term) = term else {
+                        return Err(type_error(span, "expected a (Split,Param) term"));
+                    };
+                    let [Value::Domain(DomainValue::Split(coefficient)), Value::Domain(DomainValue::Param(parameter))] =
+                        term.as_slice()
+                    else {
+                        return Err(type_error(span, "expected a (Split,Param) term"));
+                    };
+                    require_same_form_owner(
+                        &accumulator.rf,
+                        &parameter.context,
+                        "Real form mismatch when adding terms to a module",
+                        span,
+                    )?;
+                    for (final_coefficient, final_term) in expand_final(parameter, &rc, span)? {
+                        terms.push((final_coefficient.mul(*coefficient), final_term));
+                    }
+                }
+                sort_parampol_terms(&mut terms);
+                let terms = coalesce_sorted_terms(terms);
                 Ok(Value::Domain(DomainValue::ParamPol(ParamPolValue {
                     rf: Arc::clone(&accumulator.rf),
                     terms,
@@ -16157,7 +16401,7 @@ pub(crate) fn call_with_printed(
             // final terms with negated coefficients.
             [Value::Domain(DomainValue::KTypePol(accumulator)), Value::Domain(DomainValue::KType(ktype))] =>
             {
-                require_same_form(
+                require_same_form_owner(
                     &accumulator.rf,
                     &ktype.context,
                     "Real form mismatch when subtracting a KType from a KTypePol",
@@ -16178,7 +16422,7 @@ pub(crate) fn call_with_printed(
             // subtract_K_type_pols_wrapper (atlas-types.w:5794-5805).
             [Value::Domain(DomainValue::KTypePol(accumulator)), Value::Domain(DomainValue::KTypePol(subtrahend))] =>
             {
-                require_same_form(
+                require_same_form_owner(
                     &accumulator.rf,
                     &subtrahend.rf,
                     "Real form mismatch when subtracting two K_types",
@@ -16197,7 +16441,7 @@ pub(crate) fn call_with_printed(
             // subtract_module_wrapper (atlas-types.w:7798-7807).
             [Value::Domain(DomainValue::ParamPol(accumulator)), Value::Domain(DomainValue::Param(parameter))] =>
             {
-                require_same_form(
+                require_same_form_owner(
                     &accumulator.rf,
                     &parameter.context,
                     "Real form mismatch when subtracting a Param from a ParamPol",
@@ -16218,7 +16462,7 @@ pub(crate) fn call_with_printed(
             // subtract_virtual_modules_wrapper (atlas-types.w:7880-7891).
             [Value::Domain(DomainValue::ParamPol(accumulator)), Value::Domain(DomainValue::ParamPol(subtrahend))] =>
             {
-                require_same_form(
+                require_same_form_owner(
                     &accumulator.rf,
                     &subtrahend.rf,
                     "Real form mismatch when subtracting two modules",
@@ -16393,27 +16637,26 @@ pub(crate) fn call_with_printed(
                 Some(span),
             )),
         },
-        // W_elt_gen_prod_wrapper (atlas-types.w:2456-2465): right
-        // multiplication by one simple generator; check_Weyl_gen echoes
-        // the signed index on rejection (atlas-types.w:2447-2454).
+        // W_elt_gen_prod_wrapper / W_gen_elt_prod_wrapper
+        // (atlas-types.w:2456-2476): multiplication by one simple
+        // generator on either side; check_Weyl_gen echoes the signed index.
         // size_of_block_wrapper (atlas-types.w:4820-4824): the block size.
         "#" => match arguments {
             [Value::Domain(DomainValue::WeylElement(value)), Value::Integer(generator)] => {
                 let rank = value.context.handle.datum.semisimple_rank();
-                // check_Weyl_gen rejects negative (wrapping cast) and
-                // over-rank indices alike, echoing the signed value.
-                let converted = usize::try_from(generator).ok();
-                let Some(generator) = converted.filter(|&generator| generator < rank) else {
-                    return Err(runtime(
-                        span,
-                        format!(
-                            "Generator {generator} out of range for Weyl group (should be <{rank})"
-                        ),
-                    ));
-                };
+                let generator = check_weyl_generator(generator, rank, span)?;
                 let (product, _) = value
                     .element
                     .right_multiply_simple(&value.context.system, generator)
+                    .map_err(|error| runtime(span, error.to_string()))?;
+                weyl_elt_value(Arc::clone(&value.context), product, span)
+            }
+            [Value::Integer(generator), Value::Domain(DomainValue::WeylElement(value))] => {
+                let rank = value.context.handle.datum.semisimple_rank();
+                let generator_index = check_weyl_generator(generator, rank, span)?;
+                let (product, _) = value
+                    .element
+                    .left_multiply_simple(&value.context.system, generator_index)
                     .map_err(|error| runtime(span, error.to_string()))?;
                 weyl_elt_value(Arc::clone(&value.context), product, span)
             }
@@ -16428,6 +16671,41 @@ pub(crate) fn call_with_printed(
             }
             [Value::Domain(DomainValue::ParamPol(pol))] => {
                 Ok(Value::Integer(BigInt::from(pol.terms.len())))
+            }
+            _ => Err(Diagnostic::new(
+                ErrorKind::Name,
+                format!("undefined function `{name}`"),
+                Some(span),
+            )),
+        },
+        // W_elt_word_prod_wrapper / W_word_elt_prod_wrapper
+        // (atlas-types.w:2478-2499). A WeylWord denotes
+        // s[word[0]]...s[word[n-1]], hence left multiplication applies its
+        // letters in reverse while right multiplication applies forwards.
+        "##" => match arguments {
+            [Value::Domain(DomainValue::WeylElement(value)), word] => {
+                let rank = value.context.handle.datum.semisimple_rank();
+                let word = check_weyl_word(word, rank, span)?;
+                let mut product = value.element.clone();
+                for generator in word {
+                    product = product
+                        .right_multiply_simple(&value.context.system, generator)
+                        .map_err(|error| runtime(span, error.to_string()))?
+                        .0;
+                }
+                weyl_elt_value(Arc::clone(&value.context), product, span)
+            }
+            [word, Value::Domain(DomainValue::WeylElement(value))] => {
+                let rank = value.context.handle.datum.semisimple_rank();
+                let word = check_weyl_word(word, rank, span)?;
+                let mut product = value.element.clone();
+                for generator in word.into_iter().rev() {
+                    product = product
+                        .left_multiply_simple(&value.context.system, generator)
+                        .map_err(|error| runtime(span, error.to_string()))?
+                        .0;
+                }
+                weyl_elt_value(Arc::clone(&value.context), product, span)
             }
             _ => Err(Diagnostic::new(
                 ErrorKind::Name,
@@ -18267,6 +18545,359 @@ mod tests {
         let a2 = call("W_elt", &[fixture_datum("A2", true), row(&[0, 1])], span()).expect("W_elt");
         let error = call("*", &[w, a2], span()).expect_err("mismatched data");
         assert_eq!(error.message, "Weyl group mismatch");
+    }
+
+    #[test]
+    fn p1_weyl_products_match_both_upstream_operand_orders() {
+        let a2 = fixture_datum("A2", true);
+        let w = call("W_elt", &[a2, row(&[0])], span()).expect("W_elt");
+
+        for (arguments, expected) in [
+            (vec![int(1), w.clone()], "[1,0]"),
+            (vec![w.clone(), row(&[1])], "[0,1]"),
+            (vec![row(&[1]), w.clone()], "[1,0]"),
+            (vec![w.clone(), row(&[0, 1])], "[1]"),
+            (vec![row(&[0, 1]), w.clone()], "[0,1,0]"),
+            (vec![w.clone(), row(&[1, 0])], "[0,1,0]"),
+            (vec![row(&[1, 0]), w.clone()], "[1]"),
+        ] {
+            let operator = if arguments
+                .iter()
+                .any(|value| matches!(value, Value::List(_)))
+            {
+                "##"
+            } else {
+                "#"
+            };
+            let product = call(operator, &arguments, span()).expect("Weyl product");
+            assert_eq!(
+                call("word", &[product], span())
+                    .expect("canonical word")
+                    .to_string(),
+                expected,
+            );
+        }
+
+        let error = call("##", &[w.clone(), row(&[0, 2])], span())
+            .expect_err("right word entry past the rank");
+        assert_eq!(error.message, "Illegal Weyl word entry 2 (should be <2)");
+        let error = call("##", &[row(&[2]), w], span()).expect_err("left word entry past the rank");
+        assert_eq!(error.message, "Illegal Weyl word entry 2 (should be <2)");
+
+        let w = call("W_elt", &[fixture_datum("A2", true), row(&[0])], span()).expect("W_elt");
+        for arguments in [vec![int(2), w.clone()], vec![int(-1), w.clone()]] {
+            let error = call("#", &arguments, span()).expect_err("invalid left generator");
+            assert_eq!(
+                error.message,
+                format!(
+                    "Generator {} out of range for Weyl group (should be <2)",
+                    arguments[0]
+                )
+            );
+            let validation = validate("#", &arguments, span())
+                .expect_err("no-value validates the left generator");
+            assert_eq!(validation.message, error.message);
+        }
+        let invalid_word = [w, row(&[2])];
+        let error = validate("##", &invalid_word, span())
+            .expect_err("no-value validates every Weyl-word entry");
+        assert_eq!(error.message, "Illegal Weyl word entry 2 (should be <2)");
+
+        let huge = Value::Integer(
+            "999999999999999999999999"
+                .parse::<BigInt>()
+                .expect("huge integer"),
+        );
+        for arguments in [
+            vec![huge.clone(), invalid_word[0].clone()],
+            vec![invalid_word[0].clone(), huge.clone()],
+        ] {
+            let error = call("#", &arguments, span()).expect_err("generator must narrow to int");
+            assert_eq!(error.message, "Integer value to big for conversion");
+            let validation = validate("#", &arguments, span())
+                .expect_err("no-value performs the same int narrowing");
+            assert_eq!(validation.message, error.message);
+        }
+        let huge_word = Value::List(vec![huge]);
+        let error = call("##", &[invalid_word[0].clone(), huge_word.clone()], span())
+            .expect_err("word entries must narrow to unsigned long");
+        assert_eq!(error.message, "Integer value to big for conversion");
+        let validation = validate("##", &[invalid_word[0].clone(), huge_word], span())
+            .expect_err("no-value performs the same unsigned-long narrowing");
+        assert_eq!(validation.message, error.message);
+
+        // bigint.cpp:142-146 accepts exactly signed 32-bit values. Positive
+        // 2^31 needs a second sign digit and therefore does not wrap.
+        for text in ["2147483648", "4294967295", "4294967296", "-2147483649"] {
+            let boundary = Value::Integer(text.parse::<BigInt>().expect("integer boundary"));
+            for arguments in [
+                vec![boundary.clone(), invalid_word[0].clone()],
+                vec![invalid_word[0].clone(), boundary.clone()],
+            ] {
+                let error = call("#", &arguments, span()).expect_err("outside signed int range");
+                assert_eq!(error.message, "Integer value to big for conversion");
+                assert_eq!(
+                    validate("#", &arguments, span())
+                        .expect_err("no-value performs signed int narrowing")
+                        .message,
+                    error.message,
+                );
+            }
+        }
+        let minimum = Value::Integer("-2147483648".parse::<BigInt>().expect("minimum signed int"));
+        let error = call("#", &[minimum, invalid_word[0].clone()], span())
+            .expect_err("minimum signed int is a range error, not conversion overflow");
+        assert_eq!(
+            error.message,
+            "Generator -2147483648 out of range for Weyl group (should be <2)"
+        );
+    }
+
+    #[test]
+    fn p1_polynomial_terms_use_the_upstream_real_form_owner_identity() {
+        let datum = fixture_datum("A1", true);
+        let identity = matrix(1, 1, vec![1]);
+        let inner = call("inner_class", &[datum, identity.clone()], span()).expect("inner class");
+        let custom = || {
+            call(
+                "real_form",
+                &[
+                    inner.clone(),
+                    identity.clone(),
+                    Value::RatVector(RatVec::new(vec![3], 2).expect("ratvec")),
+                ],
+                span(),
+            )
+            .expect("custom real form")
+        };
+        let left = custom();
+        let right = custom();
+        assert_eq!(left, right, "real-form value equality remains structural");
+
+        // Equivalence wrappers compare the RealReductiveGroup value rather
+        // than its shared owner (atlas-types.w:5326, 6341). Both the ordinary
+        // call and its no-value validation must therefore accept these forms.
+        let make_ktype = |rf: Value| {
+            call(
+                "K_type",
+                &[
+                    call("KGB", &[rf, int(0)], span()).expect("KGB element"),
+                    Value::Vector(Vec32(vec![0])),
+                ],
+                span(),
+            )
+            .expect("K-type")
+        };
+        let equivalent_ktypes = [make_ktype(left.clone()), make_ktype(right.clone())];
+        validate("equivalent", &equivalent_ktypes, span())
+            .expect("no-value KType equivalence is structural");
+        assert_eq!(
+            call("equivalent", &equivalent_ktypes, span()).expect("KType equivalence"),
+            Value::Boolean(true),
+        );
+
+        let make_param = |rf: Value| {
+            call(
+                "param",
+                &[
+                    call("KGB", &[rf, int(0)], span()).expect("KGB element"),
+                    Value::Vector(Vec32(vec![0])),
+                    Value::RatVector(RatVec::new(vec![0], 1).expect("ratvec")),
+                ],
+                span(),
+            )
+            .expect("parameter")
+        };
+        let equivalent_params = [make_param(left.clone()), make_param(right.clone())];
+        validate("equivalent", &equivalent_params, span())
+            .expect("no-value Param equivalence is structural");
+        assert_eq!(
+            call("equivalent", &equivalent_params, span()).expect("Param equivalence"),
+            Value::Boolean(true),
+        );
+
+        let zero_param =
+            call("null_module", std::slice::from_ref(&left), span()).expect("zero ParamPol");
+        let parameter = call(
+            "param",
+            &[
+                call("KGB", &[right.clone(), int(0)], span()).expect("KGB element"),
+                Value::Vector(Vec32(vec![0])),
+                Value::RatVector(RatVec::new(vec![0], 1).expect("ratvec")),
+            ],
+            span(),
+        )
+        .expect("parameter");
+        let coefficient = Value::Domain(DomainValue::Split(SplitValue::new(1, 0)));
+        let tuple_arguments = [
+            zero_param.clone(),
+            Value::Tuple(vec![coefficient.clone(), parameter.clone()]),
+        ];
+        for error in [
+            validate("+", &tuple_arguments, span()).expect_err("tuple no-value checks owner"),
+            call("+", &tuple_arguments, span()).expect_err("tuple checks owner"),
+        ] {
+            assert_eq!(
+                error.message,
+                "Real form mismatch when adding a term to a module"
+            );
+        }
+        let error = call(
+            "+",
+            &[
+                zero_param,
+                Value::List(vec![Value::Tuple(vec![coefficient.clone(), parameter])]),
+            ],
+            span(),
+        )
+        .expect_err("list checks each owner after the no-value gate");
+        assert_eq!(
+            error.message,
+            "Real form mismatch when adding terms to a module"
+        );
+
+        let zero_ktype =
+            call("null_K_module", std::slice::from_ref(&left), span()).expect("zero KTypePol");
+        let ktype = call(
+            "K_type",
+            &[
+                call("KGB", &[right, int(0)], span()).expect("KGB element"),
+                Value::Vector(Vec32(vec![0])),
+            ],
+            span(),
+        )
+        .expect("K-type");
+        let error = call(
+            "+",
+            &[
+                zero_ktype,
+                Value::List(vec![Value::Tuple(vec![coefficient, ktype])]),
+            ],
+            span(),
+        )
+        .expect_err("KType list checks custom owner identity");
+        assert_eq!(
+            error.message,
+            "Real form mismatch when adding terms to a K_type"
+        );
+
+        // Default forms are upstream-memoized even though Rust rebuilds their
+        // immutable graph contexts, so independent canonical construction
+        // shares the logical owner.
+        let canonical_left = call("real_form", &[inner.clone(), int(0)], span()).expect("form");
+        let canonical_right = call("real_form", &[inner, int(0)], span()).expect("form");
+        let zero = call("null_module", std::slice::from_ref(&canonical_left), span())
+            .expect("zero module");
+        let canonical_param = call(
+            "param",
+            &[
+                call("KGB", &[canonical_right, int(0)], span()).expect("KGB element"),
+                Value::Vector(Vec32(vec![0])),
+                Value::RatVector(RatVec::new(vec![0], 1).expect("ratvec")),
+            ],
+            span(),
+        )
+        .expect("parameter");
+        call(
+            "+",
+            &[
+                zero,
+                Value::Tuple(vec![
+                    Value::Domain(DomainValue::Split(SplitValue::new(1, 0))),
+                    canonical_param,
+                ]),
+            ],
+            span(),
+        )
+        .expect("canonical forms share their logical owner");
+    }
+
+    #[test]
+    fn p1_kgb_cartan_and_polynomial_unary_and_term_list_operations_match_oracle() {
+        let a2 = fixture_datum("A2", true);
+        let identity = matrix(2, 2, vec![1, 0, 0, 1]);
+        let inner = call("inner_class", &[a2, identity], span()).expect("inner class");
+        let form = call("real_form", &[inner, int(1)], span()).expect("real form");
+        let x = call("KGB", &[form.clone(), int(4)], span()).expect("KGB element");
+        assert_eq!(
+            call("Cartan_class", std::slice::from_ref(&x), span())
+                .expect("KGB Cartan class")
+                .to_string(),
+            "Cartan class #1, occurring for 1 real form and for 1 dual real form",
+        );
+
+        let ktype = call("K_type", &[x, Value::Vector(Vec32(vec![1, 0]))], span()).expect("K-type");
+        let zero_k =
+            call("null_K_module", std::slice::from_ref(&form), span()).expect("zero K module");
+        assert_eq!(
+            call("=", std::slice::from_ref(&zero_k), span()),
+            Ok(Value::Boolean(true))
+        );
+        assert_eq!(
+            call("!=", std::slice::from_ref(&zero_k), span()),
+            Ok(Value::Boolean(false))
+        );
+        let k_terms = Value::List(vec![
+            Value::Tuple(vec![
+                Value::Domain(DomainValue::Split(SplitValue::new(1, 0))),
+                ktype.clone(),
+            ]),
+            Value::Tuple(vec![
+                Value::Domain(DomainValue::Split(SplitValue::new(2, 0))),
+                ktype,
+            ]),
+        ]);
+        let k_pol = call("+", &[zero_k, k_terms], span()).expect("KType term list");
+        assert_eq!(
+            call("=", std::slice::from_ref(&k_pol), span()),
+            Ok(Value::Boolean(false))
+        );
+        assert_eq!(call("!=", &[k_pol], span()), Ok(Value::Boolean(true)));
+
+        let p_x = call("KGB", &[form.clone(), int(5)], span()).expect("KGB element");
+        let parameter = call(
+            "param",
+            &[
+                p_x,
+                Value::Vector(Vec32(vec![0, 0])),
+                Value::RatVector(RatVec::new(vec![0, 0], 1).expect("ratvec")),
+            ],
+            span(),
+        )
+        .expect("parameter");
+        let zero_p = call("null_module", &[form], span()).expect("zero module");
+        assert_eq!(
+            call("=", std::slice::from_ref(&zero_p), span()),
+            Ok(Value::Boolean(true))
+        );
+        assert_eq!(
+            call("!=", std::slice::from_ref(&zero_p), span()),
+            Ok(Value::Boolean(false))
+        );
+        let coefficient = Value::Domain(DomainValue::Split(SplitValue::new(1, 0)));
+        let singleton = call(
+            "+",
+            &[
+                zero_p.clone(),
+                Value::Tuple(vec![coefficient.clone(), parameter.clone()]),
+            ],
+            span(),
+        )
+        .expect("Param tuple term");
+        assert!(matches!(singleton, Value::Domain(DomainValue::ParamPol(_))));
+        let list = Value::List(vec![
+            Value::Tuple(vec![coefficient, parameter.clone()]),
+            Value::Tuple(vec![
+                Value::Domain(DomainValue::Split(SplitValue::new(2, 0))),
+                parameter,
+            ]),
+        ]);
+        let p_pol = call("+", &[zero_p, list], span()).expect("Param term list");
+        assert_eq!(
+            call("=", std::slice::from_ref(&p_pol), span()),
+            Ok(Value::Boolean(false))
+        );
+        assert_eq!(call("!=", &[p_pol], span()), Ok(Value::Boolean(true)));
     }
 
     fn compact_a2_inner_class() -> Value {

@@ -2586,3 +2586,12 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   left `#`, both `##` overloads, `Cartan_class(KGBElt)`, and the missing unary
   and term-addition KTypePol/ParamPol signatures.  Per standing rule, continue
   implementation without waiting for that job.
+- P1 repair rule: polynomial terms use real-form owner identity, not structural
+  equality. Canonical/default constructions share a logical owner; repeated
+  genuinely custom constructions remain distinct even when they print and
+  compare structurally equal. KType/Param `equivalent`, however, uses that
+  structural equality. `Arc::ptr_eq` is not a substitute until canonical
+  real-form values are actually interned. Signed generator conversion is exact
+  `i32`; oracle probes reject positive `2147483648` as too large rather than
+  wrapping it. Term-list addition must retain the sort-once/linear-coalesce
+  path because upstream exposes this overload for large lists.

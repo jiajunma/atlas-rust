@@ -414,3 +414,22 @@ unavailable (KGB_Hasse still works — it does not build a Rep_context).
 The failure is in the column-echelon port (or its divisor semantics),
 not in the KL machinery. Fixing it unlocks E6 KL_sum_at_s / deform /
 W_cells and is a 1-2 hour debugging task against upstream matreduc.
+
+## Polynomial term owner identity and integer conversion (2026-08-13)
+
+- The upstream KTypePol/ParamPol term wrappers compare the owning real-form
+  `shared_ptr`, not structural real-form equality.  Rust therefore keeps
+  canonical/default real forms in one logical owner class, while every
+  genuinely custom real-form construction receives a distinct owner token.
+  In contrast, `equivalent(KType,KType)` and `equivalent(Param,Param)` compare
+  structural real-form values and must accept identical custom constructions.
+  Keep this distinction when moving ownership into the future session
+  `Rep_table`; `Arc::ptr_eq` alone is also wrong because Rust currently
+  rebuilds canonical real-form values.
+- `big_int::int_val()` accepts exactly the signed 32-bit range.  Oracle probes
+  confirm that positive `2147483648` reports `Integer value to big for
+  conversion`; it does not wrap to `-2147483648`.  Preserve the checked `i32`
+  conversion for Weyl generator builtins and their no-value validation paths.
+- Bulk polynomial term-list addition is a volume-oriented API upstream.  The
+  Rust implementation appends expansions, sorts once, and linearly coalesces
+  equal terms; do not regress it to repeated linear `Vec::position` merging.
