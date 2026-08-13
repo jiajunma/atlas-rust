@@ -432,6 +432,7 @@ impl State {
 pub struct LocatedBlock {
     record: Arc<BlockRecord>,
     raw_row: usize,
+    prepared_query: StandardRepr,
     relative_shift: RationalWeight,
     adapted_representative: StandardReprMod,
 }
@@ -449,6 +450,15 @@ impl LocatedBlock {
     /// The query's row in the stored block numbering.
     pub fn raw_row(&self) -> usize {
         self.raw_row
+    }
+
+    /// The query after the lookup operation's required preparation.
+    ///
+    /// Partial lookup stores the normalised query; full lookup stores the
+    /// dominant query. This is the exact parameter from which the reduced key
+    /// and block-relative representative were computed.
+    pub fn prepared_query(&self) -> &StandardRepr {
+        &self.prepared_query
     }
 
     /// Whether this handle refers to a full common block.
@@ -604,7 +614,7 @@ impl RepTable {
         let context = Self::full_integral_context(rc, query.gamma())?;
         let key = Self::full_integral_key(rc, &seed)?;
         if let Some((record, row)) = self.probe(&key)? {
-            return Self::located(rc, record, row, &seed);
+            return Self::located(rc, record, row, &seed, query);
         }
 
         let interval = bruhat_below(&context, &seed)?;
@@ -623,7 +633,7 @@ impl RepTable {
             let mut state = self.lock_state()?;
             state.commit_partial(block, key, exact_seed_row, &row_keys)?
         };
-        Self::located(rc, record, row, &seed)
+        Self::located(rc, record, row, &seed, query)
     }
 
     /// Resolve or materialize the full common block containing `query`.
@@ -638,7 +648,7 @@ impl RepTable {
         let key = Self::full_integral_key(rc, &seed)?;
         if let Some((record, row)) = self.probe(&key)? {
             if record.full {
-                return Self::located(rc, record, row, &seed);
+                return Self::located(rc, record, row, &seed, query);
             }
         }
 
@@ -661,7 +671,7 @@ impl RepTable {
             if let Some((record, row)) = state.active_place(&key) {
                 if record.full {
                     drop(state);
-                    return Self::located(rc, record, row, &seed);
+                    return Self::located(rc, record, row, &seed, query);
                 }
             }
 
@@ -693,7 +703,7 @@ impl RepTable {
                 .row;
             (record, row)
         };
-        Self::located(rc, record, row, &seed)
+        Self::located(rc, record, row, &seed, query)
     }
 
     /// Resolve an active stable ID. Superseded IDs deliberately return
@@ -787,6 +797,7 @@ impl RepTable {
         record: Arc<BlockRecord>,
         row: usize,
         query: &StandardReprMod,
+        prepared_query: StandardRepr,
     ) -> Result<LocatedBlock, StructureError> {
         let stored = record
             .block
@@ -813,6 +824,7 @@ impl RepTable {
         Ok(LocatedBlock {
             record,
             raw_row: row,
+            prepared_query,
             relative_shift,
             adapted_representative,
         })
@@ -1432,6 +1444,40 @@ mod tests {
         assert_ne!(partial.block_id(), full.block_id());
         assert_eq!(partial.block_id().index(), 0);
         assert_eq!(full.block_id().index(), 1);
+    }
+
+    #[test]
+    fn lookup_exposes_the_normalised_prepared_query() {
+        let fixture = a1_fixture();
+        let owner = owner(&fixture);
+        let rc = owner.context();
+        let query = StandardReprMod::build(&rc, KgbId(2), &RationalWeight::zero(1).unwrap())
+            .unwrap()
+            .to_standard(&rc, &RationalWeight::new(vec![-1], 1).unwrap())
+            .unwrap();
+        let expected = query.normalised(&rc).unwrap();
+        assert_ne!(query, expected, "fixture must exercise preparation");
+
+        let located = owner.lookup(&query).unwrap();
+
+        assert_eq!(located.prepared_query(), &expected);
+    }
+
+    #[test]
+    fn lookup_full_block_exposes_the_dominant_prepared_query() {
+        let fixture = a1_fixture();
+        let owner = owner(&fixture);
+        let rc = owner.context();
+        let query = StandardReprMod::build(&rc, KgbId(2), &RationalWeight::zero(1).unwrap())
+            .unwrap()
+            .to_standard(&rc, &RationalWeight::new(vec![-1], 1).unwrap())
+            .unwrap();
+        let expected = query.made_dominant(&rc).unwrap();
+        assert_ne!(query, expected, "fixture must exercise preparation");
+
+        let located = owner.lookup_full_block(&query).unwrap();
+
+        assert_eq!(located.prepared_query(), &expected);
     }
 
     #[test]

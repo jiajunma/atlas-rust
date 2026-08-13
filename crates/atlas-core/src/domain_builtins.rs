@@ -41,15 +41,16 @@ use atlas_real_group::{
     on_basis as lattice_on_basis, pair, quotient_relation_basis as domain_quotient_relation_basis,
     replace_relation_generators as domain_replace_relation_generators, singular_orbits_at,
     twisted_deformation, twisted_deformation_terms, twisted_kl_column_at_s, twisted_kl_sum,
-    AdjointFiberBudget, BasedRootDatum, BlockDescent, BlockGraph, CartanClassification,
-    CartanClassificationBudget, CartanId, CommonContext, Coweight, ExternalFormOrder, GlobalKgb,
-    InnerClass, InnerClassLayout, IntegerLatticeBudget, IntegralBlockScope, IntegralSubsystem,
-    InvolutionId, InvolutionTable, InvolutionTableBudget, KType, KgbGraph, KgbId, KgbStatus, KlPol,
-    KlTable, LatticeInvolution, ModTwoVector, PartialBlock, RankFlags, RationalWeight,
-    RealFormPresentation, RealFormSeed, RelationBasis, RelationError, RelationGenerator,
-    RelationMatrix, RepContext, RepTableOwner, RootId, RootInvolutionData, RootKind, RootSystem,
-    SplitInteger, StandardRepr, StandardReprMod, StrongRealClassification, StructureError,
-    WeakRealFormId, Weight, WeylAction, WeylElement, WeylInterface,
+    AdjointFiberBudget, BasedRootDatum, BlockDescent, BlockGraph, BlockTopology,
+    CartanClassification, CartanClassificationBudget, CartanId, CommonContext, Coweight,
+    ExternalFormOrder, GlobalKgb, InnerClass, InnerClassLayout, IntegerLatticeBudget,
+    IntegralBlockScope, IntegralSubsystem, InvolutionId, InvolutionTable, InvolutionTableBudget,
+    KType, KgbGraph, KgbId, KgbStatus, KlPol, KlTable, LatticeInvolution, LocatedBlock,
+    ModTwoVector, PartialBlock, RankFlags, RationalWeight, RealFormPresentation, RealFormSeed,
+    RelationBasis, RelationError, RelationGenerator, RelationMatrix, RepContext, RepTableOwner,
+    RootId, RootInvolutionData, RootKind, RootSystem, SplitInteger, StandardRepr, StandardReprMod,
+    StrongRealClassification, StructureError, WeakRealFormId, Weight, WeylAction, WeylElement,
+    WeylInterface,
 };
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
@@ -2590,8 +2591,8 @@ fn print_klpol(polynomial: &KlPol) -> String {
 }
 
 /// `kl_tab.KL_pol(x, y)` resolved through the hash pool.
-fn kl_pol_at(
-    kl_table: &KlTable,
+fn kl_pol_at<B: BlockTopology>(
+    kl_table: &KlTable<'_, B>,
     x: usize,
     y: usize,
     span: SourceSpan,
@@ -2604,6 +2605,97 @@ fn kl_pol_at(
         .get(index)
         .cloned()
         .ok_or_else(|| runtime(span, "internal KL pool miss"))
+}
+
+/// Restore one stored representation-block row at the querying parameter's
+/// infinitesimal character.  A cache hit can carry a central shift relative
+/// to the representative that originally materialized the block, so using
+/// the stored `gamma_lambda` directly is observably wrong.
+fn located_row_parameter(
+    context: &Arc<RealFormContext>,
+    located: &LocatedBlock,
+    row: usize,
+) -> Result<StandardRepr, StructureError> {
+    let rc = rep_context(context);
+    let block = located.block();
+    let stored = block.element(row).ok_or(StructureError::IndexOutOfRange {
+        index: row,
+        upper_bound: block.size(),
+    })?;
+    let shifted = stored.gamma_lambda().add(located.relative_shift())?;
+    StandardReprMod::build(&rc, stored.x(), &shifted)?
+        .to_standard(&rc, located.prepared_query().gamma())
+}
+
+/// `Block_base::finals_for` over the representation table's common-block
+/// topology.  This is kept separate from the classic `BlockGraph` adapter so
+/// the first caller-routing slice does not perturb the still-independent
+/// block builtins.
+fn partial_block_finals_for(
+    block: &PartialBlock,
+    z: usize,
+    singular: u32,
+) -> Result<Vec<usize>, StructureError> {
+    let mut result = Vec::new();
+    let mut z = z;
+    loop {
+        let mut descended = false;
+        for s in 0..block.rank() {
+            if singular & (1 << s) == 0 {
+                continue;
+            }
+            match block.descent(z, s) {
+                // `finals_for` may have accumulated the first branch of an
+                // earlier real type-I descent before the second branch
+                // reaches a compact imaginary wall; only that branch
+                // vanishes (blocks.cpp:169-201).
+                Some(BlockDescent::ImaginaryCompact) => return Ok(result),
+                Some(BlockDescent::ComplexDescent) => {
+                    z = block
+                        .cross(s, z)
+                        .ok_or(StructureError::RepInvariantViolation {
+                            invariant: "finals complex cross",
+                        })?;
+                    descended = true;
+                    break;
+                }
+                Some(BlockDescent::RealTypeII) => {
+                    z = block.cayley(s, z).and_then(|pair| pair.0).ok_or(
+                        StructureError::RepInvariantViolation {
+                            invariant: "finals inverse Cayley",
+                        },
+                    )?;
+                    descended = true;
+                    break;
+                }
+                Some(BlockDescent::RealTypeI) => {
+                    let pair = block
+                        .cayley(s, z)
+                        .ok_or(StructureError::RepInvariantViolation {
+                            invariant: "finals inverse Cayley pair",
+                        })?;
+                    match pair {
+                        (Some(z0), Some(z1)) => {
+                            result.extend(partial_block_finals_for(block, z0, singular)?);
+                            z = z1;
+                            descended = true;
+                            break;
+                        }
+                        (Some(z0), None) => {
+                            result.extend(partial_block_finals_for(block, z0, singular)?);
+                            return Ok(result);
+                        }
+                        (None, _) => return Ok(result),
+                    }
+                }
+                _ => {}
+            }
+        }
+        if !descended {
+            result.push(z);
+            return Ok(result);
+        }
+    }
 }
 
 /// `Block_base::finals_for` (blocks.cpp:169-201): the survivors reached by
@@ -2943,6 +3035,10 @@ fn validate_from_dominant(arguments: &[Value], span: SourceSpan) -> Result<(), D
 fn validate_kl_column(parameter: &ParamValue, span: SourceSpan) -> Result<(), Diagnostic> {
     test_standard(parameter, "Cannot compute Kazhdan-Lusztig column", span)?;
     test_final(parameter, "Cannot compute Kazhdan-Lusztig column", span)
+}
+
+fn kl_column_candidate_rows(raw_y: usize) -> std::ops::RangeInclusive<usize> {
+    0..=raw_y
 }
 
 /// The `(1-delta)*gamma == 0` test of the ext-block wrappers
@@ -9044,6 +9140,61 @@ fn common_block_rows(
     Ok((rows, init))
 }
 
+/// Render rows from a block installed in the real form's representation
+/// table.  Unlike [`common_block_rows`], this path deliberately participates
+/// in the shared lookup sequence used by `KL_column` and `KL_block`.
+fn located_common_block_rows(
+    context: &Arc<RealFormContext>,
+    located: &LocatedBlock,
+    span: SourceSpan,
+) -> Result<Vec<CommonBlockRow>, Diagnostic> {
+    let block = located.block();
+    let rc = rep_context(context);
+    let common = CommonContext::integral(&rc, located.adapted_representative().gamma_lambda())
+        .map_err(|error| structure_diagnostic(error, span))?;
+    let singular = common
+        .singular_flags(located.prepared_query().gamma())
+        .map_err(|error| structure_diagnostic(error, span))?;
+    let mut rows = Vec::with_capacity(block.size());
+    for z in 0..block.size() {
+        let mut descents = Vec::with_capacity(block.rank());
+        let mut crosses = Vec::with_capacity(block.rank());
+        let mut cayleys = Vec::with_capacity(block.rank());
+        for s in 0..block.rank() {
+            descents.push(
+                block
+                    .descent(z, s)
+                    .ok_or_else(|| runtime(span, "common block descent out of range"))?,
+            );
+            crosses.push(block.as_ref().cross(s, z));
+            cayleys.push(
+                block
+                    .as_ref()
+                    .cayley(s, z)
+                    .ok_or_else(|| runtime(span, "common block Cayley link out of range"))?,
+            );
+        }
+        let stored = block
+            .element(z)
+            .ok_or_else(|| runtime(span, "common block element out of range"))?;
+        rows.push(CommonBlockRow {
+            x: stored.x(),
+            length: block
+                .length(z)
+                .ok_or_else(|| runtime(span, "common block length out of range"))?,
+            descents,
+            crosses,
+            cayleys,
+            gamma_lambda: stored
+                .gamma_lambda()
+                .add(located.relative_shift())
+                .map_err(|error| structure_diagnostic(error, span))?,
+            survives: block.survives(z, &singular),
+        });
+    }
+    Ok(rows)
+}
+
 /// The seed-to-rows path of the partial-block printers
 /// (atlas-types.w:6700-6735): `StandardReprMod::mod_reduce` of `seed_repr`
 /// (repr.cpp:52-58), the `common_context` on its gamma_lambda
@@ -9572,7 +9723,29 @@ pub(crate) fn print_text(
                 .repr
                 .made_dominant(&rc)
                 .map_err(|error| structure_diagnostic(error, span))?;
-            let (rows, init) = common_block_rows(&parameter.context, &dominant, span)?;
+            match integral_block_scope(&rc, dominant.gamma())
+                .map_err(|error| structure_diagnostic(error, span))?
+            {
+                IntegralBlockScope::Singleton => {
+                    let (rows, init) = common_block_rows(&parameter.context, &dominant, span)?;
+                    let mut text = format!(
+                        "Parameter defines element {init} of the following common block,\nas transformed by <>:\n"
+                    );
+                    text.push_str(&render_common_block(&parameter.context, &rows));
+                    return Ok(text);
+                }
+                IntegralBlockScope::ProperSubsystem => {
+                    return Err(proper_subsystem_diagnostic(span));
+                }
+                IntegralBlockScope::Full => {}
+            }
+            let located = parameter
+                .context
+                .rep
+                .lookup_full_block(&dominant)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let rows = located_common_block_rows(&parameter.context, &located, span)?;
+            let init = located.raw_row();
             let mut text = format!(
                 "Parameter defines element {init} of the following common block,\nas transformed by <>:\n"
             );
@@ -13233,90 +13406,70 @@ pub(crate) fn call_with_printed(
                 ));
             };
             validate_kl_column(parameter, span)?;
-            let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
-            let dual_quasisplit = dual_parent.order.quasisplit_external();
-            let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
-            let block = build_block(&parameter.context, &dual_rf, span)?;
-            let mut kl_table =
-                KlTable::new(&block.graph).map_err(|error| structure_diagnostic(error, span))?;
-            kl_table
-                .fill(0)
-                .map_err(|error| structure_diagnostic(error, span))?;
-            let size = block.graph.size();
-            let datum = parameter.context.parent.root_datum.datum.clone();
             let rc = rep_context(&parameter.context);
-            let lambda_rho = rc
-                .lambda_rho(&parameter.repr)
+            let normalised = parameter
+                .repr
+                .normalised(&rc)
                 .map_err(|error| structure_diagnostic(error, span))?;
-            let gamma = parameter.repr.gamma().clone();
-            let z0 = (0..size)
-                .find(|&z| block.graph.x(z) == Some(parameter.repr.x()))
-                .ok_or_else(|| runtime(span, "parameter not in the common block"))?;
-            // Partial block: the KL descent closure of z0
-            // (Bruhat_generator::block_below, repr.cpp:1476-1510): follow
-            // complex and real type-I descents downward.
-            let mut subset: Vec<bool> = vec![false; size];
-            let mut stack = vec![z0];
-            subset[z0] = true;
-            while let Some(z) = stack.pop() {
-                let z_x = block.graph.x(z).expect("in-range");
-                for s in 0..datum.semisimple_rank() {
-                    match block.graph.descent_value(z, s) {
-                        Some(BlockDescent::ComplexDescent) => {
-                            if let Some(target) = block.graph.cross(z, s) {
-                                if !subset[target] {
-                                    subset[target] = true;
-                                    stack.push(target);
-                                }
-                            }
+            match integral_block_scope(&rc, normalised.gamma())
+                .map_err(|error| structure_diagnostic(error, span))?
+            {
+                IntegralBlockScope::Singleton => {
+                    return Ok(Value::List(vec![Value::Tuple(vec![
+                        Value::Integer(BigInt::from(0)),
+                        Value::Domain(DomainValue::Param(ParamValue {
+                            context: parameter.context.clone(),
+                            repr: normalised,
+                        })),
+                        Value::Vector(Vec32(vec![1])),
+                    ])]));
+                }
+                IntegralBlockScope::ProperSubsystem => {
+                    return Err(proper_subsystem_diagnostic(span));
+                }
+                IntegralBlockScope::Full => {}
+            }
+            let located = parameter
+                .context
+                .rep
+                .lookup(&normalised)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let raw_y = located.raw_row();
+            let entries = located
+                .with_kl_table(|kl_table| {
+                    kl_table.fill(raw_y + 1)?;
+                    let mut entries = Vec::new();
+                    for raw_x in kl_column_candidate_rows(raw_y) {
+                        let index = kl_table.kl_pol(raw_x, raw_y)?;
+                        let polynomial = kl_table.pool().get(index).cloned().ok_or(
+                            StructureError::RepInvariantViolation {
+                                invariant: "representation KL polynomial pool index",
+                            },
+                        )?;
+                        if polynomial.is_zero() {
+                            continue;
                         }
-                        Some(BlockDescent::RealTypeI) => {
-                            let parity = rc
-                                .is_parity(s, z_x, &lambda_rho, &gamma)
-                                .map_err(|error| structure_diagnostic(error, span))?;
-                            if !parity {
-                                continue;
-                            }
-                            if let Some(pair) = block.graph.inverse_cayley(z, s) {
-                                for target in [pair.0, pair.1].into_iter().flatten() {
-                                    if !subset[target] {
-                                        subset[target] = true;
-                                        stack.push(target);
-                                    }
-                                }
-                            }
-                        }
-                        _ => {}
+                        let repr = located_row_parameter(&parameter.context, &located, raw_x)?;
+                        entries.push((raw_x, repr, polynomial.as_slice().to_vec()));
                     }
-                }
-            }
-            let mut loc = vec![usize::MAX; size];
-            let survivors: Vec<usize> = (0..size).filter(|&z| subset[z]).collect();
-            for (position, &z) in survivors.iter().enumerate() {
-                loc[z] = position;
-            }
-            // The KL column: P_{x,z0} over the survivors, skipping zeros.
-            let mut column = Vec::new();
-            for &z in &survivors {
-                let polynomial = kl_pol_at(&kl_table, z, z0, span)?;
-                if polynomial.is_zero() {
-                    continue;
-                }
-                let sr = rc
-                    .sr_gamma(block.graph.x(z).expect("in-range"), &lambda_rho, &gamma)
-                    .map_err(|error| structure_diagnostic(error, span))?;
-                let param_value = DomainValue::Param(ParamValue {
-                    context: parameter.context.clone(),
-                    repr: sr,
-                });
-                let poly_value = Value::Vector(Vec32(polynomial.as_slice().to_vec()));
-                column.push(Value::Tuple(vec![
-                    Value::Integer(BigInt::from(loc[z])),
-                    Value::Domain(param_value),
-                    poly_value,
-                ]));
-            }
-            Ok(Value::List(column))
+                    Ok(entries)
+                })
+                .map_err(|error| structure_diagnostic(error, span))?;
+            Ok(Value::List(
+                entries
+                    .into_iter()
+                    .map(|(raw_x, repr, coefficients)| {
+                        Value::Tuple(vec![
+                            Value::Integer(BigInt::from(raw_x)),
+                            Value::Domain(DomainValue::Param(ParamValue {
+                                context: parameter.context.clone(),
+                                repr,
+                            })),
+                            Value::Vector(Vec32(coefficients)),
+                        ])
+                    })
+                    .collect(),
+            ))
         }
         // KL_block (atlas-types.w:6868-6912, repr.cpp:2060-2075): the
         // condensed KL matrix over the parameter's common-block
@@ -13333,126 +13486,128 @@ pub(crate) fn call_with_printed(
                 ));
             };
             test_standard(parameter, "KL_block requires a standard parameter", span)?;
-            let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
-            let dual_quasisplit = dual_parent.order.quasisplit_external();
-            let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
-            let block = build_block(&parameter.context, &dual_rf, span)?;
-            let mut kl_table =
-                KlTable::new(&block.graph).map_err(|error| structure_diagnostic(error, span))?;
-            kl_table
-                .fill(0)
-                .map_err(|error| structure_diagnostic(error, span))?;
-            let size = block.graph.size();
-            let datum = parameter.context.parent.root_datum.datum.clone();
             let rc = rep_context(&parameter.context);
-            let lambda_rho = rc
-                .lambda_rho(&parameter.repr)
+            let dominant = parameter
+                .repr
+                .made_dominant(&rc)
                 .map_err(|error| structure_diagnostic(error, span))?;
-            let gamma = parameter.repr.gamma().clone();
-            let z0 = (0..size)
-                .find(|&z| block.graph.x(z) == Some(parameter.repr.x()))
-                .ok_or_else(|| runtime(span, "parameter not in the common block"))?;
-            // The common block: the srm's reflection closure matched by
-            // gamma-lambda mod the cocharacter lattice.
-            let members = common_block_members(&block, z0, &rc, &lambda_rho, &gamma, span)?;
-            // Singular coroots: <gamma, alpha_s^vee> non-integral.
-            let mut singular = 0_u32;
-            for s in 0..datum.semisimple_rank() {
-                let coroot = &datum.simple_coroots()[s];
-                let numerator = gamma.numerator();
-                let _denominator = gamma.denominator();
-                let mut total: i64 = 0;
-                for (index, &coordinate) in coroot.as_slice().iter().enumerate() {
-                    if coordinate == 0 {
-                        continue;
-                    }
-                    let entry = numerator
-                        .get(index)
-                        .ok_or_else(|| runtime(span, "rational weight rank"))?;
-                    total += i64::from(coordinate) * *entry;
+            match integral_block_scope(&rc, dominant.gamma())
+                .map_err(|error| structure_diagnostic(error, span))?
+            {
+                IntegralBlockScope::Singleton => {
+                    return Ok(Value::Tuple(vec![
+                        Value::List(vec![Value::Domain(DomainValue::Param(ParamValue {
+                            context: parameter.context.clone(),
+                            repr: dominant,
+                        }))]),
+                        Value::Integer(BigInt::from(0)),
+                        matrix_value(&[vec![1]], span)?,
+                        Value::List(vec![
+                            Value::Vector(Vec32(Vec::new())),
+                            Value::Vector(Vec32(vec![1])),
+                        ]),
+                    ]));
                 }
-                if total == 0 {
-                    singular |= 1 << s;
+                IntegralBlockScope::ProperSubsystem => {
+                    return Err(proper_subsystem_diagnostic(span));
                 }
+                IntegralBlockScope::Full => {}
             }
-            // Survivors of the common block (loc[z] = survivors.size()).
-            let mut loc = vec![usize::MAX; size];
-            let mut survivors: Vec<usize> = Vec::new();
-            for z in 0..size {
-                if !members[z] {
-                    continue;
-                }
-                let mut survives = true;
-                for s in 0..datum.semisimple_rank() {
-                    if singular & (1 << s) != 0
-                        && block
-                            .graph
-                            .descent_value(z, s)
-                            .is_some_and(|d| d.is_descent())
-                    {
-                        survives = false;
-                        break;
-                    }
-                }
-                if survives {
-                    loc[z] = survivors.len();
-                    survivors.push(z);
-                }
-            }
-            let n = survivors.len();
-            // Condense the KL polynomials into M (atlas-types.w:6922-6948).
-            let mut matrix: Vec<Vec<KlPol>> = vec![vec![KlPol::zero(); n]; n];
-            for x in members
+            let located = parameter
+                .context
+                .rep
+                .lookup_full_block(&dominant)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let raw_start = located.raw_row();
+            let block = located.block();
+            let common =
+                CommonContext::integral(&rc, located.adapted_representative().gamma_lambda())
+                    .map_err(|error| structure_diagnostic(error, span))?;
+            let singular_flags = common
+                .singular_flags(located.prepared_query().gamma())
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let singular = singular_flags
                 .iter()
                 .enumerate()
-                .filter_map(|(index, &m)| m.then_some(index))
-            {
-                for f in block_finals_for(&block, x, singular, &kl_table, span)? {
-                    let i = loc[f];
-                    if i == usize::MAX {
-                        continue;
-                    }
-                    let sign_even = block.graph.length(x).is_some_and(|lx| {
-                        (lx as i64 - block.graph.length(f).unwrap_or(0) as i64).rem_euclid(2) == 0
-                    });
-                    for (j, &y) in survivors.iter().enumerate() {
-                        let polynomial = kl_pol_at(&kl_table, x, y, span)?;
-                        if polynomial.is_zero() {
-                            continue;
-                        }
-                        if sign_even {
-                            matrix[i][j] = matrix[i][j].add(&polynomial);
-                        } else {
-                            matrix[i][j] = matrix[i][j].sub(&polynomial);
-                        }
-                    }
-                }
+                .fold(0_u32, |bits, (s, &flag)| bits | (u32::from(flag) << s));
+            let survivors: Vec<usize> = (0..block.size())
+                .filter(|&raw| block.survives(raw, &singular_flags))
+                .collect();
+            let mut loc = vec![usize::MAX; block.size()];
+            for (position, &raw) in survivors.iter().enumerate() {
+                loc[raw] = position;
             }
-            // Distinct polynomials: the oracle's store starts at zero.
-            let mut polys: Vec<KlPol> = vec![KlPol::zero()];
+            let n = survivors.len();
+            let matrix = located
+                .with_kl_table(|kl_table| {
+                    kl_table.fill(0)?;
+                    let mut matrix = vec![vec![KlPol::zero(); n]; n];
+                    for raw_x in 0..block.size() {
+                        for final_raw in partial_block_finals_for(&block, raw_x, singular)? {
+                            let i = loc[final_raw];
+                            if i == usize::MAX {
+                                continue;
+                            }
+                            let raw_length = block.length(raw_x).ok_or(
+                                StructureError::RepInvariantViolation {
+                                    invariant: "common block KL source length",
+                                },
+                            )?;
+                            let final_length = block.length(final_raw).ok_or(
+                                StructureError::RepInvariantViolation {
+                                    invariant: "common block KL final length",
+                                },
+                            )?;
+                            let sign_even =
+                                (raw_length as i64 - final_length as i64).rem_euclid(2) == 0;
+                            for (j, &raw_y) in survivors.iter().enumerate() {
+                                if raw_y < raw_x || i >= j {
+                                    continue;
+                                }
+                                let index = kl_table.kl_pol(raw_x, raw_y)?;
+                                let polynomial = kl_table.pool().get(index).ok_or(
+                                    StructureError::RepInvariantViolation {
+                                        invariant: "representation KL polynomial pool index",
+                                    },
+                                )?;
+                                matrix[i][j] = if sign_even {
+                                    matrix[i][j].add(polynomial)
+                                } else {
+                                    matrix[i][j].sub(polynomial)
+                                };
+                            }
+                        }
+                    }
+                    Ok(matrix)
+                })
+                .map_err(|error| structure_diagnostic(error, span))?;
+            // Upstream's condensed store reserves zero and one before any
+            // strict-upper entry is interned; the matrix starts as identity.
+            let mut polys: Vec<KlPol> = vec![KlPol::zero(), KlPol::monomial(0)];
             let mut index_of: std::collections::HashMap<Vec<i32>, usize> =
                 std::collections::HashMap::new();
             index_of.insert(Vec::new(), 0);
+            index_of.insert(vec![1], 1);
             let mut index_matrix = vec![vec![0_usize; n]; n];
-            for row in 0..n {
-                for column in 0..n {
+            for (row, values) in index_matrix.iter_mut().enumerate() {
+                values[row] = 1;
+                for column in row + 1..n {
                     let coefficients = matrix[row][column].as_slice().to_vec();
                     let index = *index_of.entry(coefficients.clone()).or_insert_with(|| {
                         polys.push(matrix[row][column].clone());
                         polys.len() - 1
                     });
-                    index_matrix[row][column] = index;
+                    values[column] = index;
                 }
             }
             // Parameters of the survivors.
             let mut params = Vec::new();
-            for &z in &survivors {
-                let sr = rc
-                    .sr_gamma(block.graph.x(z).expect("in-range"), &lambda_rho, &gamma)
+            for &raw in &survivors {
+                let repr = located_row_parameter(&parameter.context, &located, raw)
                     .map_err(|error| structure_diagnostic(error, span))?;
                 params.push(Value::Domain(DomainValue::Param(ParamValue {
                     context: parameter.context.clone(),
-                    repr: sr,
+                    repr,
                 })));
             }
             let rows: Vec<Vec<i32>> = index_matrix
@@ -13466,10 +13621,10 @@ pub(crate) fn call_with_printed(
                     .map(|pol| Value::Vector(Vec32(pol.as_slice().to_vec())))
                     .collect(),
             );
-            let start_value = Value::Integer(BigInt::from(if loc[z0] == usize::MAX {
+            let start_value = Value::Integer(BigInt::from(if loc[raw_start] == usize::MAX {
                 -1
             } else {
-                loc[z0] as i64
+                loc[raw_start] as i64
             }));
             Ok(Value::Tuple(vec![
                 Value::List(params),
@@ -17597,6 +17752,73 @@ mod tests {
             span(),
         )
         .expect("param")
+    }
+
+    fn kl_column_single_raw_row(parameter: &Value) -> i64 {
+        let Value::List(entries) =
+            call("KL_column", std::slice::from_ref(parameter), span()).expect("KL column")
+        else {
+            panic!("KL_column must return a list")
+        };
+        let [Value::Tuple(entry)] = entries.as_slice() else {
+            panic!("A1 fixture must have one nonzero KL entry")
+        };
+        let [Value::Integer(raw_row), _, _] = entry.as_slice() else {
+            panic!("KL column entry must be (raw row, Param, polynomial)")
+        };
+        i64::try_from(raw_row).expect("A1 raw row fits i64")
+    }
+
+    #[test]
+    fn representation_table_callers_share_only_lookup_materializations() {
+        let make_parameter = || {
+            let real = sl2r_split_form();
+            sl2r_param(&real, 1, &[0], &[1], 2)
+        };
+
+        let standalone = make_parameter();
+        assert_eq!(kl_column_single_raw_row(&standalone), 0);
+
+        let after_kl_block = make_parameter();
+        call("KL_block", std::slice::from_ref(&after_kl_block), span()).expect("full KL block");
+        assert_eq!(kl_column_single_raw_row(&after_kl_block), 1);
+
+        let after_no_value_kl_block = make_parameter();
+        validate(
+            "KL_block",
+            std::slice::from_ref(&after_no_value_kl_block),
+            span(),
+        )
+        .expect("no-value KL block validates without materializing");
+        assert_eq!(kl_column_single_raw_row(&after_no_value_kl_block), 0);
+
+        let after_common_print = make_parameter();
+        print_text(
+            "print_common_block",
+            std::slice::from_ref(&after_common_print),
+            span(),
+        )
+        .expect("common block print");
+        assert_eq!(kl_column_single_raw_row(&after_common_print), 1);
+
+        for direct_printer in ["print_block", "print_partial_block"] {
+            let parameter = make_parameter();
+            print_text(direct_printer, std::slice::from_ref(&parameter), span())
+                .expect("direct block print");
+            assert_eq!(
+                kl_column_single_raw_row(&parameter),
+                0,
+                "{direct_printer} must not install a representation block"
+            );
+        }
+    }
+
+    #[test]
+    fn kl_column_candidate_rows_stop_at_the_query_row() {
+        assert_eq!(
+            kl_column_candidate_rows(3).collect::<Vec<_>>(),
+            vec![0, 1, 2, 3]
+        );
     }
 
     // The strings below are the verified HPC oracle output of
