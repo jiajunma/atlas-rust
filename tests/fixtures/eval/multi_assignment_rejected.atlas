@@ -1,0 +1,15 @@
+a : int
+b : int
+pair : (int,int)
+whole : int
+a:=0
+b:=0
+pair:=(0,0)
+whole:=0
+set (a,missing):=(1,2)
+let !k=0 in set (a,k):=(1,2)
+set (a,a):=(1,2)
+set (a,!b):=(1,2)
+set (a,b):whole:=(1,2)
+set (a,b):=(1,"x")
+(a,b,pair,whole)

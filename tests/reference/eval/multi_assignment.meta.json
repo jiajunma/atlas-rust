@@ -1,0 +1,11 @@
+{
+  "fixture": "eval/multi_assignment",
+  "fixture_sha256": "e0935811e9d7e72a8b05899b78dc1b3292346d14b54f465744557d1cc580e046",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "unimplemented",
+  "reference_status": "pending_hpc_reference",
+  "note": "set pattern := value multiple assignment: global, nested tuple, discard, whole-value target, and mixed global/local destinations; parser.y:264 and axis.w:6956-7500.",
+  "oracle_exit_status": 0
+}

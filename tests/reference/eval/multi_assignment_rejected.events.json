@@ -1,0 +1,22 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "eval/multi_assignment_rejected",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind":"ReportLine","text":"Declaring identifier 'a': int\n"},
+    {"kind":"ReportLine","text":"Declaring identifier 'b': int\n"},
+    {"kind":"ReportLine","text":"Declaring identifier 'pair': (int,int)\n"},
+    {"kind":"ReportLine","text":"Declaring identifier 'whole': int\n"},
+    {"kind":"Value","value":{"type":"integer","value":0}},
+    {"kind":"Value","value":{"type":"integer","value":0}},
+    {"kind":"Value","value":{"type":"tuple","display":"(0,0)"}},
+    {"kind":"Value","value":{"type":"integer","value":0}},
+    {"kind":"Diagnostic","category":"name","message":"Undefined identifier 'missing' in multiple assignment set (a,missing):=(1,2)"},
+    {"kind":"Diagnostic","category":"name","message":"Name 'k' is constant in multiple assignment set (a,k):=(1,2)"},
+    {"kind":"Diagnostic","category":"type","message":"Multiple assignments to same identifier 'a' in multi-assignment"},
+    {"kind":"Diagnostic","category":"type","message":"Cannot constant-qualify '!' identifier 'b' in multi-assignment"},
+    {"kind":"Diagnostic","category":"type","message":"Incompatible type for 'whole' in multi-assignment: type int does no match pattern (int,int)"},
+    {"kind":"Diagnostic","category":"type","message":"found string while int was needed."},
+    {"kind":"Value","value":{"type":"tuple","display":"(0,0,(0,0),0)"}}
+  ]
+}

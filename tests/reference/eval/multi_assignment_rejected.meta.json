@@ -1,0 +1,11 @@
+{
+  "fixture": "eval/multi_assignment_rejected",
+  "fixture_sha256": "0d2ee6f29e9fe36f53609da000d8f67d45f83b3cea0cec81e89b9c792f85d136",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "unimplemented",
+  "reference_status": "pending_hpc_reference",
+  "note": "set pattern := value rejection coverage: undefined and constant destinations, repeated identifiers, forbidden ! qualifier, incompatible whole-value target, and RHS type mismatch.",
+  "oracle_exit_status": 1
+}

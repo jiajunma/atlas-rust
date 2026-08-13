@@ -1,0 +1,25 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "eval/multi_assignment",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind":"ReportLine","text":"Declaring identifier 'a': int\n"},
+    {"kind":"ReportLine","text":"Declaring identifier 'b': int\n"},
+    {"kind":"ReportLine","text":"Declaring identifier 'c': int\n"},
+    {"kind":"ReportLine","text":"Declaring identifier 'pair': (int,int)\n"},
+    {"kind":"Value","value":{"type":"integer","value":0}},
+    {"kind":"Value","value":{"type":"integer","value":0}},
+    {"kind":"Value","value":{"type":"integer","value":0}},
+    {"kind":"Value","value":{"type":"tuple","display":"(0,0)"}},
+    {"kind":"Value","value":{"type":"tuple","display":"(1,2)"}},
+    {"kind":"Value","value":{"type":"tuple","display":"(1,2)"}},
+    {"kind":"Value","value":{"type":"tuple","display":"(3,(4,5))"}},
+    {"kind":"Value","value":{"type":"tuple","display":"(3,4,5)"}},
+    {"kind":"Value","value":{"type":"tuple","display":"(6,7,8)"}},
+    {"kind":"Value","value":{"type":"tuple","display":"(6,4,8)"}},
+    {"kind":"Value","value":{"type":"tuple","display":"(9,10)"}},
+    {"kind":"Value","value":{"type":"tuple","display":"(9,10,(9,10))"}},
+    {"kind":"Value","value":{"type":"tuple","display":"(11,12)"}},
+    {"kind":"Value","value":{"type":"tuple","display":"(11,10,8,(9,10))"}}
+  ]
+}
