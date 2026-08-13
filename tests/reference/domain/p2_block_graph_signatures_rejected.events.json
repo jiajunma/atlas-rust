@@ -1,0 +1,16 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/p2_block_graph_signatures_rejected",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind":"ReportLine","text":"Declaring identifier 'rd': RootDatum\n"},
+    {"kind":"Value","value":{"type":"display","display":"simply connected root datum of Lie type 'A1'"}},
+    {"kind":"ReportLine","text":"Declaring identifier 'ic': InnerClass\n"},
+    {"kind":"Value","value":{"type":"display","display":"Complex reductive group of type A1, with involution defining\ninner class of type 'c', with 2 real forms and 2 dual real forms"}},
+    {"kind":"ReportLine","text":"Declaring identifier 'rf': RealForm\n"},
+    {"kind":"Value","value":{"type":"display","display":"connected split real group with Lie algebra 'sl(2,R)'"}},
+    {"kind":"Diagnostic","category":"type","message":"Failed to match 'block' with argument type RealForm"},
+    {"kind":"Diagnostic","category":"type","message":"Failed to match 'W_graph' with argument type RealForm"},
+    {"kind":"Diagnostic","category":"type","message":"Failed to match 'W_cells' with argument type RealForm"}
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/p2_block_graph_signatures_rejected",
+  "fixture_sha256": "0f09e96e30403f692c1751a6a7f01db92dd6c36384ff89081ee64c866c0de32d",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "unimplemented",
+  "reference_status": "pending_hpc_reference",
+  "note": "Rejected companion for P2 overload resolution on RealForm arguments.",
+  "oracle_exit_status": 1
+}

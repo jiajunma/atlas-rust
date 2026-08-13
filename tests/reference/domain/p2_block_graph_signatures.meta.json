@@ -1,0 +1,11 @@
+{
+  "fixture": "domain/p2_block_graph_signatures",
+  "fixture_sha256": "5f444cb82ea2c8c2234a58ae72d85e3d307dd0c6a78e9aeb016fd0d3c0874d20",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "rust_status": "unimplemented",
+  "reference_status": "pending_hpc_reference",
+  "note": "P2 signatures: block(Param), W_graph(Block), and W_cells(Block), including discarded graph calls that expose the upstream no-value assignment bug only through computation, not an extra value.",
+  "oracle_exit_status": 0
+}
