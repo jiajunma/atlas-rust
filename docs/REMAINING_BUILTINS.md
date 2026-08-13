@@ -532,6 +532,15 @@ W_cells and is a 1-2 hour debugging task against upstream matreduc.
   pair `hunger_contract{,_rejected}` pins alias preservation, assignment
   results, evaluation gates, and rank diagnostics.  The other domain entries
   are retained as metadata/algorithm coverage, not mislabeled as type gaps.
+- The three observable cases are now implemented with the upstream
+  simple-assignment rewrite: hunger 1 evaluates the non-pilfered right operand
+  first, hunger 2 remains left-to-right, local and global destinations are
+  moved out of their slots, aliases retain copy-on-write values, and a failed
+  builtin leaves the destination uninitialized.  Oracle capture `3545219`
+  pins the accepted/rejected runtime and assignment contracts.  The five
+  runnable fixtures are registered for the next swap differential; the timed
+  `twisted_full_deform(Param,int)` probe remains excluded because that builtin
+  is still NYI.
 
 ## Arbitrary-root parameter transforms (2026-08-13)
 

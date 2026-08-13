@@ -8573,6 +8573,21 @@ pub(crate) fn validate(
             };
             check_weyl_word(word, element.context.handle.datum.semisimple_rank(), span)?;
         }
+        // compose_Lie_types_wrapper and both Weyl (co)weight actions run
+        // their rank/size checks before their no-value gates.
+        "*" => match arguments {
+            [Value::Domain(DomainValue::LieType(left)), Value::Domain(DomainValue::LieType(right))] =>
+            {
+                validate_combined_rank(left, right, span)?;
+            }
+            [Value::Domain(DomainValue::WeylElement(weyl)), Value::Vector(vector)] => {
+                validate_weight_rank(weyl, vector, span)?;
+            }
+            [Value::Vector(vector), Value::Domain(DomainValue::WeylElement(weyl))] => {
+                validate_coweight_rank(vector, weyl, span)?;
+            }
+            _ => return Err(type_error(span, "expected hungry * operands")),
+        },
         // Both Cartan_class wrappers bounds-check before their no_value gate
         // (atlas-types.w:4025-4033, 4046-4056).
         "Cartan_class" => {
@@ -10495,6 +10510,108 @@ fn print_blockstabilizer(
 /// Dispatch one named application. Unknown names are Name errors.
 pub(crate) fn call(name: &str, arguments: &[Value], span: SourceSpan) -> Result<Value, Diagnostic> {
     call_with_printed(name, arguments, span, &mut Vec::new())
+}
+
+/// Owned evaluator dispatch. The three same-result-type hunger products
+/// consume their pilfered operand directly; every other domain call keeps the
+/// ordinary borrowed adapter path.
+pub(crate) fn call_owned_with_printed(
+    name: &str,
+    arguments: Vec<Value>,
+    span: SourceSpan,
+    printed: &mut Vec<String>,
+) -> Result<Value, Diagnostic> {
+    if name == "*"
+        && matches!(
+            arguments.as_slice(),
+            [
+                Value::Domain(DomainValue::LieType(_)),
+                Value::Domain(DomainValue::LieType(_))
+            ] | [Value::Domain(DomainValue::WeylElement(_)), Value::Vector(_)]
+                | [Value::Vector(_), Value::Domain(DomainValue::WeylElement(_))]
+        )
+    {
+        return hungry_product_owned(arguments, span);
+    }
+    call_with_printed(name, &arguments, span, printed)
+}
+
+fn hungry_product_owned(mut arguments: Vec<Value>, span: SourceSpan) -> Result<Value, Diagnostic> {
+    let right = arguments
+        .pop()
+        .expect("owned hungry product has two operands");
+    let left = arguments
+        .pop()
+        .expect("owned hungry product has two operands");
+    debug_assert!(arguments.is_empty());
+    match (left, right) {
+        (
+            Value::Domain(DomainValue::LieType(mut left)),
+            Value::Domain(DomainValue::LieType(right)),
+        ) => {
+            validate_combined_rank(&left, &right, span)?;
+            left.factors.extend(right.factors);
+            Ok(Value::Domain(DomainValue::LieType(left)))
+        }
+        (Value::Domain(DomainValue::WeylElement(weyl)), Value::Vector(mut vector)) => {
+            validate_weight_rank(&weyl, &vector, span)?;
+            word_act_weight(&weyl.context.handle.datum, &weyl.word, &mut vector.0);
+            Ok(Value::Vector(vector))
+        }
+        (Value::Vector(mut vector), Value::Domain(DomainValue::WeylElement(weyl))) => {
+            validate_coweight_rank(&vector, &weyl, span)?;
+            for &generator in &weyl.word {
+                simple_coreflect(&weyl.context.handle.datum, generator, &mut vector.0);
+            }
+            Ok(Value::Vector(vector))
+        }
+        _ => unreachable!("owned hunger dispatcher checks operand types"),
+    }
+}
+
+fn validate_combined_rank(
+    left: &LieTypeValue,
+    right: &LieTypeValue,
+    span: SourceSpan,
+) -> Result<(), Diagnostic> {
+    let combined_rank = left.total_rank().saturating_add(right.total_rank());
+    if combined_rank > RANK_MAX {
+        return Err(runtime(
+            span,
+            format!("Combined rank {combined_rank} exceeds implementation limit {RANK_MAX}"),
+        ));
+    }
+    Ok(())
+}
+
+fn validate_weight_rank(
+    weyl: &WeylEltValue,
+    vector: &Vec32,
+    span: SourceSpan,
+) -> Result<(), Diagnostic> {
+    let rank = weyl.context.handle.datum.lattice_rank();
+    if vector.0.len() != rank {
+        return Err(runtime(
+            span,
+            format!("Rank and weight size mismatch {rank}:{}", vector.0.len()),
+        ));
+    }
+    Ok(())
+}
+
+fn validate_coweight_rank(
+    vector: &Vec32,
+    weyl: &WeylEltValue,
+    span: SourceSpan,
+) -> Result<(), Diagnostic> {
+    let rank = weyl.context.handle.datum.lattice_rank();
+    if vector.0.len() != rank {
+        return Err(runtime(
+            span,
+            format!("Coweight size and rank mismatch {}:{rank}", vector.0.len()),
+        ));
+    }
+    Ok(())
 }
 
 /// `call` with a side channel for mid-evaluation stdout writes; only
@@ -16733,6 +16850,15 @@ pub(crate) fn call_with_printed(
         // split_times_wrapper (atlas-types.w:5102-5107): the dual product
         // (e1e2+f1f2, e1f2+f1e2).
         "*" => match arguments {
+            [Value::Domain(DomainValue::LieType(left)), Value::Domain(DomainValue::LieType(right))] =>
+            {
+                validate_combined_rank(left, right, span)?;
+                let mut factors = left.factors.clone();
+                factors.extend(right.factors.iter().copied());
+                Ok(Value::Domain(DomainValue::LieType(LieTypeValue {
+                    factors,
+                })))
+            }
             [Value::Domain(DomainValue::WeylElement(left)), Value::Domain(DomainValue::WeylElement(right))] =>
             {
                 if left.context.handle != right.context.handle {
@@ -16743,6 +16869,20 @@ pub(crate) fn call_with_printed(
                     .multiply(&left.context.system, &right.element)
                     .map_err(|error| runtime(span, error.to_string()))?;
                 weyl_elt_value(Arc::clone(&left.context), product, span)
+            }
+            [Value::Domain(DomainValue::WeylElement(weyl)), Value::Vector(vector)] => {
+                validate_weight_rank(weyl, vector, span)?;
+                let mut acted = vector.0.clone();
+                word_act_weight(&weyl.context.handle.datum, &weyl.word, &mut acted);
+                Ok(Value::Vector(Vec32(acted)))
+            }
+            [Value::Vector(vector), Value::Domain(DomainValue::WeylElement(weyl))] => {
+                validate_coweight_rank(vector, weyl, span)?;
+                let mut acted = vector.0.clone();
+                for &generator in &weyl.word {
+                    simple_coreflect(&weyl.context.handle.datum, generator, &mut acted);
+                }
+                Ok(Value::Vector(Vec32(acted)))
             }
             [Value::Domain(DomainValue::Split(left)), Value::Domain(DomainValue::Split(right))] => {
                 Ok(Value::Domain(DomainValue::Split(left.mul(*right))))
@@ -17001,6 +17141,79 @@ mod tests {
             SourcePosition { line: 1, column: 1 },
             SourcePosition { line: 1, column: 1 },
         )
+    }
+
+    #[test]
+    fn hungry_products_match_the_oracle_values_and_diagnostics() {
+        let left = call("Lie_type", &[Value::String("A1".into())], span()).unwrap();
+        let right = call("Lie_type", &[Value::String("B2".into())], span()).unwrap();
+        assert_eq!(
+            call("*", &[left, right], span()).unwrap().to_string(),
+            "Lie type 'A1.B2'"
+        );
+        let too_large_left = call("Lie_type", &[Value::String("A16".into())], span()).unwrap();
+        let too_large_right = call("Lie_type", &[Value::String("B17".into())], span()).unwrap();
+        assert_eq!(
+            call(
+                "*",
+                &[too_large_left.clone(), too_large_right.clone()],
+                span()
+            )
+            .unwrap_err()
+            .message,
+            "Combined rank 33 exceeds implementation limit 32"
+        );
+        assert_eq!(
+            validate("*", &[too_large_left, too_large_right], span())
+                .unwrap_err()
+                .message,
+            "Combined rank 33 exceeds implementation limit 32"
+        );
+
+        let datum = call(
+            "simply_connected",
+            &[
+                call("Lie_type", &[Value::String("A2".into())], span()).unwrap(),
+                Value::Boolean(true),
+            ],
+            span(),
+        )
+        .unwrap();
+        let weyl = call(
+            "W_elt",
+            &[datum, Value::List(vec![Value::Integer(BigInt::from(0))])],
+            span(),
+        )
+        .unwrap();
+        let vector = Value::Vector(Vec32(vec![1, 2]));
+        assert_eq!(
+            call("*", &[weyl.clone(), vector.clone()], span())
+                .unwrap()
+                .to_string(),
+            "[ -1,  3 ]"
+        );
+        assert_eq!(
+            call(
+                "*",
+                &[Value::Vector(Vec32(vec![-1, 3])), weyl.clone()],
+                span()
+            )
+            .unwrap()
+            .to_string(),
+            "[ 4, 3 ]"
+        );
+        assert_eq!(
+            call("*", &[weyl.clone(), Value::Vector(Vec32(vec![1]))], span())
+                .unwrap_err()
+                .message,
+            "Rank and weight size mismatch 2:1"
+        );
+        assert_eq!(
+            call("*", &[Value::Vector(Vec32(vec![1])), weyl], span())
+                .unwrap_err()
+                .message,
+            "Coweight size and rank mismatch 1:2"
+        );
     }
 
     #[test]

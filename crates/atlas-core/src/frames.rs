@@ -26,7 +26,7 @@ pub type SharedValue = Rc<Value>;
 /// One layer of bindings; closures may share tails of the chain.
 pub struct Frame {
     next: Option<Rc<Frame>>,
-    slots: RefCell<Vec<SharedValue>>,
+    slots: RefCell<Vec<Option<SharedValue>>>,
 }
 
 /// The evaluation context: the current head of the frame chain. Empty
@@ -80,7 +80,7 @@ impl EvaluationContext {
         let saved = self.current.take();
         self.current = Some(Rc::new(Frame {
             next: saved.clone(),
-            slots: RefCell::new(slots),
+            slots: RefCell::new(slots.into_iter().map(Some).collect()),
         }));
         let result = body(self);
         self.current = saved;
@@ -114,7 +114,16 @@ impl EvaluationContext {
     pub fn local(&self, depth: usize, offset: usize) -> Option<SharedValue> {
         let frame = self.frame_at(depth)?;
         let slots = frame.slots.borrow();
-        slots.get(offset).cloned()
+        slots.get(offset).and_then(Clone::clone)
+    }
+
+    /// Move the local at `(depth, offset)` out of its slot, leaving that
+    /// variable uninitialized until a later assignment. This is the safe
+    /// Rust counterpart of upstream's pilfering local identifier.
+    pub fn take_local(&self, depth: usize, offset: usize) -> Option<SharedValue> {
+        let frame = self.frame_at(depth)?;
+        let mut slots = frame.slots.borrow_mut();
+        slots.get_mut(offset)?.take()
     }
 
     /// Write the local at `(depth, offset)`; call only after the value has
@@ -126,7 +135,7 @@ impl EvaluationContext {
         let mut slots = frame.slots.borrow_mut();
         match slots.get_mut(offset) {
             Some(slot) => {
-                *slot = value;
+                *slot = Some(value);
                 true
             }
             None => false,
@@ -211,5 +220,19 @@ mod tests {
         assert_eq!(cell.borrow().clone(), Some(shared(4)));
         *cell.borrow_mut() = Some(shared(5));
         assert_eq!(cell.borrow().clone(), Some(shared(5)));
+    }
+
+    #[test]
+    fn taking_a_local_leaves_the_slot_uninitialized() {
+        let mut context = EvaluationContext::new();
+        context.with_frame(vec![shared(7)], |context| {
+            assert_eq!(context.take_local(0, 0), Some(shared(7)));
+            assert_eq!(context.local(0, 0), None);
+            assert_eq!(context.take_local(0, 0), None);
+            assert_eq!(context.take_local(1, 0), None);
+            assert_eq!(context.take_local(0, 1), None);
+            assert!(context.set_local(0, 0, shared(9)));
+            assert_eq!(context.local(0, 0), Some(shared(9)));
+        });
     }
 }

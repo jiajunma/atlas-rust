@@ -1,7 +1,7 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "domain/hunger_contract_domain",
-  "status": "pending_hpc_reference",
+  "status": "verified_hpc_reference",
   "events": [
     {"kind":"ReportLine","text":"Declaring identifier 'rd': RootDatum\n"},
     {"kind":"Value","value":{"type":"display","display":"simply connected root datum of Lie type 'A1'"}},

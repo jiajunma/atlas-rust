@@ -2692,6 +2692,16 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   contracts and both hunger-assignment contracts with exact local-oracle
   hashes and realistic 3.7-4.6 MiB RSS. Report SHA256:
   `d5d41520e3be0c947b93c0fcf9a6d6a77a4850b2073d98bcefe93867fe21cfcf`.
+- Hunger execution is now implemented for the three observable same-result
+  products.  The evaluator rewrites only a top-level builtin RHS of a simple
+  assignment when the hungry operand is the exact destination binding.  It
+  pilfers local/global slots, preserves hunger 1 right-to-left versus hunger 2
+  left-to-right evaluation, leaves the destination unset after failure, and
+  keeps aliases copy-on-write.  The five runnable hunger fixtures have
+  `verified_hpc_reference` events and are registered in the swap runner;
+  `hunger_contract_timed_nyi` deliberately remains outside it until timed
+  deformation exists.  Run the smallest fat differential after committing
+  this slice and record its report/benchmarks here.
 - Arbitrary-root Param transforms are implemented at `cc9e285`. Reference job
   `3545170` pins the A2 contract; job `3545520` pins successful three-step A3
   integral dominance and nonstandard-first rejection (report SHA

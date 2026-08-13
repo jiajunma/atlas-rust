@@ -151,6 +151,16 @@ pub enum TypedExpr {
         arguments: Vec<TypedExpr>,
         span: SourceSpan,
     },
+    /// A top-level builtin RHS of a simple assignment whose hungry operand
+    /// is exactly that assignment's destination. Evaluation moves the value
+    /// out of the destination immediately before that operand is supplied.
+    HungryBuiltinCall {
+        builtin: usize,
+        arguments: Vec<TypedExpr>,
+        pilfer: PilferDestination,
+        pilfer_index: usize,
+        span: SourceSpan,
+    },
     /// A function literal; evaluation captures the current frame chain
     /// into a closure value (upstream `lambda_expression`).
     Closure {
@@ -261,6 +271,21 @@ pub enum TypedExpr {
         count: Box<TypedExpr>,
         bound: Option<Box<TypedExpr>>,
         body: Box<TypedExpr>,
+        span: SourceSpan,
+    },
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum PilferDestination {
+    Global {
+        name: String,
+        cell: GlobalCell,
+        span: SourceSpan,
+    },
+    Local {
+        name: String,
+        depth: usize,
+        offset: usize,
         span: SourceSpan,
     },
 }
@@ -511,6 +536,9 @@ fn compact_typed_expression(expression: &TypedExpr) -> String {
         TypedExpr::Denotation(value) => value.to_string(),
         TypedExpr::GlobalIdent { name, .. } | TypedExpr::LocalIdent { name, .. } => name.clone(),
         TypedExpr::BuiltinCall {
+            builtin, arguments, ..
+        }
+        | TypedExpr::HungryBuiltinCall {
             builtin, arguments, ..
         } => {
             let name = builtin_registry()[*builtin].name;
@@ -2671,6 +2699,7 @@ fn convert_simple_assignment(
         let mut required_value = target.borrow().clone();
         let converted = convert_expr(value, &mut required_value, analysis)?;
         *target.borrow_mut() = required_value.clone();
+        let converted = prepare_hungry_assignment(converted, name, Some((*depth, *offset)), None);
         return conform_types(
             &required_value,
             required,
@@ -2706,6 +2735,7 @@ fn convert_simple_assignment(
     let mut required_value = target.borrow().clone();
     let converted = convert_expr(value, &mut required_value, analysis)?;
     *target.borrow_mut() = required_value.clone();
+    let converted = prepare_hungry_assignment(converted, name, None, Some(cell));
     conform_types(
         &required_value,
         required,
@@ -2716,6 +2746,78 @@ fn convert_simple_assignment(
         span,
         analysis,
     )
+}
+
+/// Rebuild exactly the simple-assignment cases selected by upstream's
+/// builtin hunger optimisation (axis.w:7165-7301). A nested call, a user
+/// overload, a non-identifier operand, or an identifier other than the
+/// destination is returned unchanged.
+fn prepare_hungry_assignment(
+    converted: TypedExpr,
+    destination_name: &str,
+    local: Option<(usize, usize)>,
+    global: Option<&GlobalCell>,
+) -> TypedExpr {
+    let TypedExpr::BuiltinCall {
+        builtin,
+        arguments,
+        span,
+    } = converted
+    else {
+        return converted;
+    };
+    let hunger = builtin_registry()[builtin].hunger;
+    let pilfer_index = match (hunger, arguments.len()) {
+        (3, 1) => 0,
+        (1, 2) => 0,
+        (2, 2) => 1,
+        _ => {
+            return TypedExpr::BuiltinCall {
+                builtin,
+                arguments,
+                span,
+            };
+        }
+    };
+    let pilfer = match &arguments[pilfer_index] {
+        TypedExpr::LocalIdent {
+            name,
+            depth,
+            offset,
+            span,
+        } if name == destination_name && local == Some((*depth, *offset)) => {
+            PilferDestination::Local {
+                name: name.clone(),
+                depth: *depth,
+                offset: *offset,
+                span: *span,
+            }
+        }
+        TypedExpr::GlobalIdent { name, cell, span }
+            if name == destination_name
+                && global.is_some_and(|destination| Rc::ptr_eq(destination, cell)) =>
+        {
+            PilferDestination::Global {
+                name: name.clone(),
+                cell: cell.clone(),
+                span: *span,
+            }
+        }
+        _ => {
+            return TypedExpr::BuiltinCall {
+                builtin,
+                arguments,
+                span,
+            };
+        }
+    };
+    TypedExpr::HungryBuiltinCall {
+        builtin,
+        arguments,
+        pilfer,
+        pilfer_index,
+        span,
+    }
 }
 
 #[derive(Clone)]
@@ -3627,9 +3729,14 @@ impl Builtin {
                         DomainNoValue::BuildAndDrop => {}
                     }
                 }
-                domain_builtins::call_with_printed(name, &arguments, span, context.printed_buffer())
-                    .map(|value| at_builtin_level(level, || value))
-                    .map_err(Control::Runtime)
+                domain_builtins::call_owned_with_printed(
+                    name,
+                    arguments,
+                    span,
+                    context.printed_buffer(),
+                )
+                .map(|value| at_builtin_level(level, || value))
+                .map_err(Control::Runtime)
             }
             BuiltinImpl::DomainPrinter { name } => {
                 let text = domain_builtins::print_text(name, &arguments, span)
@@ -4366,11 +4473,11 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::RatVec),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin_validate(
                 "*",
                 pair(primitive_type(Prim::LieType)),
                 primitive_type(Prim::LieType),
-                0,
+                1,
             ),
             domain_builtin(
                 "*",
@@ -4378,23 +4485,23 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::WeylElt),
                 1,
             ),
-            domain_builtin_skip(
+            domain_builtin_validate(
                 "*",
                 Type::tuple(vec![
                     primitive_type(Prim::WeylElt),
                     primitive_type(Prim::Vec),
                 ]),
                 primitive_type(Prim::Vec),
-                0,
+                2,
             ),
-            domain_builtin_skip(
+            domain_builtin_validate(
                 "*",
                 Type::tuple(vec![
                     primitive_type(Prim::Vec),
                     primitive_type(Prim::WeylElt),
                 ]),
                 primitive_type(Prim::Vec),
-                0,
+                1,
             ),
             // split_times_wrapper (atlas-types.w:5102-5107, hunger 2) is
             // implemented; it keeps this position in the `*` listing.
@@ -6894,6 +7001,44 @@ impl TypedExpr {
                 }
                 builtin_registry()[*builtin].run(values, *span, level, context)
             }
+            Self::HungryBuiltinCall {
+                builtin,
+                arguments,
+                pilfer,
+                pilfer_index,
+                span,
+            } => {
+                let hunger = builtin_registry()[*builtin].hunger;
+                let order: &[usize] = match hunger {
+                    1 => &[1, 0],
+                    2 => &[0, 1],
+                    3 => &[0],
+                    _ => unreachable!("only a hungry builtin call is rebuilt for pilfering"),
+                };
+                let mut values = vec![None; arguments.len()];
+                for &index in order {
+                    let value = if index == *pilfer_index {
+                        take_pilfered(pilfer, context)?
+                    } else {
+                        force(&arguments[index], context)?
+                    };
+                    values[index] = Some(value);
+                }
+                let mut values = values
+                    .into_iter()
+                    .map(|value| value.expect("hunger order covers every builtin operand"))
+                    .collect::<Vec<_>>();
+                if values.len() == 1
+                    && matches!(builtin_registry()[*builtin].arg_type, Type::Tuple(_))
+                    && matches!(values.first(), Some(Value::Tuple(_)))
+                {
+                    let Value::Tuple(components) = values.pop().expect("one tuple argument") else {
+                        unreachable!("tuple shape checked above")
+                    };
+                    values = components;
+                }
+                builtin_registry()[*builtin].run(values, *span, level, context)
+            }
             Self::Closure {
                 parameters,
                 shapes,
@@ -7171,6 +7316,29 @@ fn force(expression: &TypedExpr, context: &mut EvaluationContext) -> Result<Valu
     expression
         .evaluate(context, Level::SingleValue)
         .map(|value| value.expect("single-value evaluation yields a value"))
+}
+
+fn take_pilfered(
+    destination: &PilferDestination,
+    context: &EvaluationContext,
+) -> Result<Value, Control> {
+    let (name, value, span) = match destination {
+        PilferDestination::Global { name, cell, span } => (name, cell.borrow_mut().take(), *span),
+        PilferDestination::Local {
+            name,
+            depth,
+            offset,
+            span,
+        } => (name, context.take_local(*depth, *offset), *span),
+    };
+    value
+        .map(|value| Rc::try_unwrap(value).unwrap_or_else(|shared| shared.as_ref().clone()))
+        .ok_or_else(|| {
+            runtime(
+                format!("Taking value of uninitialized variable '{name}'"),
+                span,
+            )
+        })
 }
 
 /// Apply a closure value to one argument value (upstream `apply`,
@@ -7932,6 +8100,112 @@ mod tests {
         convert_and_run_with("row := [1,2]", &globals).expect("specialising assignment");
         let (type_cell, _) = globals.lookup("row").expect("row remains bound");
         assert_eq!(*type_cell.borrow(), Type::row(Type::Primitive(Prim::Int)));
+    }
+
+    #[test]
+    fn simple_assignment_pilfers_only_the_matching_hungry_builtin_operand() {
+        let mut context = TypedContext::new();
+        let mut displays = Vec::new();
+        for source in [
+            "lt : LieType",
+            "lt := Lie_type(\"A1\")",
+            "lt_alias : LieType",
+            "lt_alias := lt",
+            "lt := lt*(begin lt:=Lie_type(\"B2\");Lie_type(\"C2\") end)",
+            "lt",
+            "lt_alias",
+            "let local_lt=Lie_type(\"G2\") then local_alias=local_lt in begin local_lt:=local_lt*Lie_type(\"A1\");(local_lt,local_alias) end",
+        ] {
+            for event in context.execute(&command(source)).unwrap_or_else(|error| {
+                panic!("{source}: {error:?}")
+            }) {
+                if let TypedCommandEvent::Value { value, .. } = event {
+                    displays.push(value.to_string());
+                }
+            }
+        }
+        assert_eq!(
+            displays,
+            [
+                "Lie type 'A1'",
+                "Lie type 'A1'",
+                "Lie type 'B2.C2'",
+                "Lie type 'B2.C2'",
+                "Lie type 'A1'",
+                "(Lie type 'G2.A1',Lie type 'G2')",
+            ]
+        );
+    }
+
+    #[test]
+    fn hunger_two_keeps_left_to_right_order_and_aliases_are_copy_on_write() {
+        let mut context = TypedContext::new();
+        let mut displays = Vec::new();
+        for source in [
+            "rd : RootDatum",
+            "rd := simply_connected(Lie_type(\"A2\"),true)",
+            "w : WeylElt",
+            "w := W_elt(rd,[0])",
+            "v : vec",
+            "v := [1,2]",
+            "v := (begin v:=[2,3];w end)*v",
+            "v_alias : vec",
+            "v_alias := v",
+            "v := w*v",
+            "v_alias",
+        ] {
+            for event in context
+                .execute(&command(source))
+                .unwrap_or_else(|error| panic!("{source}: {error:?}"))
+            {
+                if let TypedCommandEvent::Value { value, .. } = event {
+                    displays.push(value.to_string());
+                }
+            }
+        }
+        assert_eq!(
+            displays,
+            [
+                "simply connected root datum of Lie type 'A2'",
+                "<0>",
+                "[ 1, 2 ]",
+                "[ -2,  5 ]",
+                "[ -2,  5 ]",
+                "[ 2, 3 ]",
+                "[ -2,  5 ]",
+            ]
+        );
+    }
+
+    #[test]
+    fn failed_hungry_assignment_leaves_destination_uninitialized() {
+        let mut context = TypedContext::new();
+        for source in [
+            "rd : RootDatum",
+            "rd := simply_connected(Lie_type(\"A2\"),true)",
+            "w : WeylElt",
+            "w := W_elt(rd,[0])",
+            "bad : vec",
+            "bad := [1]",
+        ] {
+            context
+                .execute(&command(source))
+                .unwrap_or_else(|error| panic!("{source}: {error:?}"));
+        }
+        assert_eq!(
+            context
+                .execute(&command("bad := w*bad"))
+                .expect_err("rank mismatch")
+                .message,
+            "Rank and weight size mismatch 2:1"
+        );
+        assert_eq!(
+            context
+                .execute(&command("bad"))
+                .expect_err("destination was pilfered")
+                .message,
+            "Taking value of uninitialized variable 'bad'"
+        );
     }
 
     #[test]
@@ -9258,6 +9532,7 @@ mod tests {
                 int_pair(),
                 Type::tuple(vec![rat_type(), int_type()]),
                 pair(rat_type()),
+                pair(primitive_type(Prim::Vec)),
                 pair(primitive_type(Prim::Split)),
                 Type::tuple(vec![
                     primitive_type(Prim::KTypePol),
@@ -9309,7 +9584,7 @@ mod tests {
             plus.iter()
                 .map(|&index| builtin_registry()[index].hunger)
                 .collect::<Vec<_>>(),
-            vec![1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            vec![1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         );
     }
 

@@ -1,7 +1,7 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "domain/hunger_assignment_semantics",
-  "status": "pending_hpc_reference",
+  "status": "verified_hpc_reference",
   "events": [
     {"kind":"ReportLine","text":"Declaring identifier 'lt': LieType\n"},
     {"kind":"Value","value":{"type":"display","display":"Lie type 'A1'"}},

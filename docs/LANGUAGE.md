@@ -67,9 +67,12 @@ twisted_family/block_deform (`3542417`), print_partial_block
 (`3542430`), and dual_block (`3542449`).
 As of 2026-08-13, the historical fixture corpus is broadly verified, but this
 does not close the upstream builtin registry. The current mechanical audit
-finds 299/305 exact `(name,args,result)` registrations, 12 hunger/coercion-mask
-differences, 12 registered signatures with reachable explicit NYI paths, plus
-silent approximations in the deformation/block family. Therefore the domain
+finds 303/305 exact `(name,args,result)` registrations after the Param W-graph
+and arbitrary-root transform slices.  The two missing signatures are
+`block(Param)` and timed `full_deform(Param,int)`.  The three observably
+same-result hunger contracts are implemented; 12 registered signatures still
+have reachable explicit NYI paths, plus silent approximations in the
+deformation/block family. Therefore the domain
 surface remains partial even where existing contracts pass. Readline completion (TTY-only) and
 KL binary file formats (no Atlas-language builtin touches them; filekl.w
 serves stand-alone utilities only) remain deferred outside the
