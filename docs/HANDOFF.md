@@ -2687,3 +2687,8 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   site GCC 12.1 installation directly (overridable with `ATLAS_GCC_ROOT`) and
   verifies `GLIBCXX_3.4.29` before running any oracle. Capture report PASS
   alone remains insufficient; inspect each raw oracle exit and stderr.
+- Direct GCC-runtime binding fixed the capture environment. Job `3545219` on
+  `35b783b46384edc9d453a13df299bc026ce28a9c` validly captured all four hunger
+  contracts and both hunger-assignment contracts with exact local-oracle
+  hashes and realistic 3.7-4.6 MiB RSS. Report SHA256:
+  `d5d41520e3be0c947b93c0fcf9a6d6a77a4850b2073d98bcefe93867fe21cfcf`.

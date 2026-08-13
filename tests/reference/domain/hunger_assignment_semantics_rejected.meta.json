@@ -5,9 +5,14 @@
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "rust_status": "unimplemented",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
+  "reference_job": "3545219",
   "note": "A failed hunger-2 or hunger-1 Weyl/vector call occurs after pilfering the global destination, so a following read reports the exact uninitialized-variable diagnostic. The final discarded-context expressions pin that both Weyl weight and coweight rank/size validation run before the no-value gate.",
   "oracle_exit_status": 1,
-  "local_oracle_stdout_sha256": "9511b58fd14f5ed36241b323066911cf1531f5a19bb4b1d6938ee96aec36fa65",
-  "local_oracle_stderr_sha256": "b5d69d96434e8ba2a146c2d18896fc797fdd798dd5d7085be3145e63736baf02"
+  "oracle_seconds": 0.009,
+  "oracle_maxrss_kb": 3928,
+  "oracle_maxrss_approximate": false,
+  "oracle_stdout_sha256": "9511b58fd14f5ed36241b323066911cf1531f5a19bb4b1d6938ee96aec36fa65",
+  "oracle_stderr_sha256": "b5d69d96434e8ba2a146c2d18896fc797fdd798dd5d7085be3145e63736baf02",
+  "reference_report_sha256": "d5d41520e3be0c947b93c0fcf9a6d6a77a4850b2073d98bcefe93867fe21cfcf"
 }

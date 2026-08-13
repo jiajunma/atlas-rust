@@ -5,9 +5,14 @@
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "rust_status": "unimplemented",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
+  "reference_job": "3545219",
   "note": "The twelfth audited hunger mismatch is the timed twisted_full_deform overload. It is isolated because Rust deliberately raises an NYI diagnostic for the timer/cancellation branch; the pinned oracle returns the done union variant on this bounded A1 input.",
   "oracle_exit_status": 0,
-  "local_oracle_stdout_sha256": "e3556fe32b149e95234378cbfc5079ddeaa72aaba7da636db3aae44850173b32",
-  "local_oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  "oracle_seconds": 0.008,
+  "oracle_maxrss_kb": 4292,
+  "oracle_maxrss_approximate": false,
+  "oracle_stdout_sha256": "e3556fe32b149e95234378cbfc5079ddeaa72aaba7da636db3aae44850173b32",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "reference_report_sha256": "d5d41520e3be0c947b93c0fcf9a6d6a77a4850b2073d98bcefe93867fe21cfcf"
 }

@@ -5,9 +5,14 @@
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "rust_status": "unimplemented",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
+  "reference_job": "3545219",
   "note": "Weyl weight/coweight actions validate vector rank before the no-value gate. The same diagnostics therefore occur in both value and discarded contexts.",
   "oracle_exit_status": 1,
-  "local_oracle_stdout_sha256": "2993f1ed9fbe892a502f33a0d06d662eea6bfdda4050cca2acc8fc13d4e8e696",
-  "local_oracle_stderr_sha256": "47f5965e549552f72a3a01f4e9a17ead52348e5101ef0511b5df79a3e4d2866a"
+  "oracle_seconds": 0.01,
+  "oracle_maxrss_kb": 3900,
+  "oracle_maxrss_approximate": false,
+  "oracle_stdout_sha256": "2993f1ed9fbe892a502f33a0d06d662eea6bfdda4050cca2acc8fc13d4e8e696",
+  "oracle_stderr_sha256": "47f5965e549552f72a3a01f4e9a17ead52348e5101ef0511b5df79a3e4d2866a",
+  "reference_report_sha256": "d5d41520e3be0c947b93c0fcf9a6d6a77a4850b2073d98bcefe93867fe21cfcf"
 }

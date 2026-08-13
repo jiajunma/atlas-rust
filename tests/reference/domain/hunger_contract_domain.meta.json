@@ -5,9 +5,14 @@
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "rust_status": "pending",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
+  "reference_job": "3545219",
   "note": "Safe A1 value contracts for eight domain signatures whose Rust hunger metadata differs. Their result types differ from the marked Param operand, so upstream's simple-assignment pilfer optimisation is unreachable and the hunger value has no language-visible effect.",
   "oracle_exit_status": 0,
-  "local_oracle_stdout_sha256": "bfebd5a71c88e4f69d9047224fbbeaf14f39989a0e478cbe1f7898cdb15f2241",
-  "local_oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  "oracle_seconds": 0.009,
+  "oracle_maxrss_kb": 4572,
+  "oracle_maxrss_approximate": false,
+  "oracle_stdout_sha256": "bfebd5a71c88e4f69d9047224fbbeaf14f39989a0e478cbe1f7898cdb15f2241",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "reference_report_sha256": "d5d41520e3be0c947b93c0fcf9a6d6a77a4850b2073d98bcefe93867fe21cfcf"
 }

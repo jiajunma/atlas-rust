@@ -5,9 +5,14 @@
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "rust_status": "unimplemented",
-  "reference_status": "pending_hpc_reference",
+  "reference_status": "verified_hpc_reference",
+  "reference_job": "3545219",
   "note": "Observable value, alias-preservation, and no-value contracts for the three audited hunger mismatches whose result can be assigned back to the hungry operand type. Hunger is an in-place/pilfer optimisation hint, not an overload or coercion mask. Rust registers all three signatures but their runtime arms are currently absent.",
   "oracle_exit_status": 0,
-  "local_oracle_stdout_sha256": "299d79e29dc0a3390317bfccaf4db70d917b29d30a6ab4935a5257b5ec0e0e2a",
-  "local_oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  "oracle_seconds": 0.01,
+  "oracle_maxrss_kb": 3780,
+  "oracle_maxrss_approximate": false,
+  "oracle_stdout_sha256": "299d79e29dc0a3390317bfccaf4db70d917b29d30a6ab4935a5257b5ec0e0e2a",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "reference_report_sha256": "d5d41520e3be0c947b93c0fcf9a6d6a77a4850b2073d98bcefe93867fe21cfcf"
 }
