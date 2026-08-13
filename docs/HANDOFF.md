@@ -2595,3 +2595,12 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   `i32`; oracle probes reject positive `2147483648` as too large rather than
   wrapping it. Term-list addition must retain the sort-once/linear-coalesce
   path because upstream exposes this overload for large lists.
+- P1 differential repair: job `3543756` ran 245 registered plans and reported
+  243 PASS, one known PARTIAL, and one unrelated FAIL: the heavy `kgb_hasse`
+  plan hit the default 30-second per-fixture timeout. The new P1 fixtures were
+  not in `FIXTURE_PLANS`, so that job provided no P1 evidence despite their
+  verified reference files. They are now explicitly registered; a resubmission
+  must use a generous `TIMEOUT` (at least 120 seconds) so the existing E6/E7
+  KGB sweep cannot mask the small P1 results. Before submitting, use
+  `run_fixture` locally on the two P1 plans to confirm configuration, stdout,
+  diagnostics, stderr parsing, and exit status all pass.

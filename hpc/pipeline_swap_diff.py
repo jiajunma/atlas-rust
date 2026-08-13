@@ -79,6 +79,11 @@ FIXTURE_PLANS = (
     # analysis diagnostics (parser.y:264; axis.w:6956-7500).
     FixturePlan(name="eval/multi_assignment"),
     FixturePlan(name="eval/multi_assignment_rejected"),
+    # P1 builtin reconciliation: Weyl left/right products, Cartan class from
+    # KGB, and unary/list KTypePol/ParamPol operations. The reference events
+    # were frozen by HPC oracle capture 3543697 before the Rust port.
+    FixturePlan(name="domain/p1_simple_signatures"),
+    FixturePlan(name="domain/p1_simple_signatures_rejected"),
     # B3d selectors: unit selector and operator selectors.
     FixturePlan(name="eval/selectors_b3d"),
     FixturePlan(name="eval/selectors_b3d_rejected"),
