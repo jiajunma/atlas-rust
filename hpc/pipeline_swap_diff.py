@@ -494,6 +494,11 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/p3_param_twist_undefined"),
     FixturePlan(name="domain/p3_kgb_twist_undefined"),
     FixturePlan(name="domain/p3_twist_undefined_fields"),
+    # Narrow full_deform accumulation repair: distinct KTypes with equal
+    # Split coefficients remain distinct; equal KTypes combine and zero out.
+    # This does not claim recursive/proper-subsystem/timed deformation.
+    FixturePlan(name="domain/full_deform_term_merge"),
+    FixturePlan(name="domain/full_deform_term_merge_rejected"),
     # Strong-real surface: the base contract plus the probes whose slices
     # have landed — the Cartan numbering adapter (a63dc32) covers the four
     # B2/C2 Cartan enumerations and all four rejected diagnostics, and the
