@@ -1,0 +1,21 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/hunger_assignment_semantics_rejected",
+  "status": "pending_hpc_reference",
+  "events": [
+    {"kind":"ReportLine","text":"Declaring identifier 'rd': RootDatum\n"},
+    {"kind":"Value","value":{"type":"display","display":"simply connected root datum of Lie type 'A2'"}},
+    {"kind":"ReportLine","text":"Declaring identifier 'w': WeylElt\n"},
+    {"kind":"Value","value":{"type":"display","display":"<0>"}},
+    {"kind":"ReportLine","text":"Declaring identifier 'bad_right': vec\n"},
+    {"kind":"Value","value":{"type":"display","display":"[ 1 ]"}},
+    {"kind":"Diagnostic","category":"runtime","message":"Rank and weight size mismatch 2:1"},
+    {"kind":"Diagnostic","category":"runtime","message":"Taking value of uninitialized variable 'bad_right'"},
+    {"kind":"ReportLine","text":"Declaring identifier 'bad_left': vec\n"},
+    {"kind":"Value","value":{"type":"display","display":"[ 1 ]"}},
+    {"kind":"Diagnostic","category":"runtime","message":"Coweight size and rank mismatch 1:2"},
+    {"kind":"Diagnostic","category":"runtime","message":"Taking value of uninitialized variable 'bad_left'"},
+    {"kind":"Diagnostic","category":"runtime","message":"Rank and weight size mismatch 2:1"},
+    {"kind":"Diagnostic","category":"runtime","message":"Coweight size and rank mismatch 1:2"}
+  ]
+}

@@ -1,0 +1,19 @@
+lt : LieType
+lt := Lie_type("A1")
+lt_alias : LieType
+lt_alias := lt
+lt := lt*(begin lt:=Lie_type("B2");Lie_type("C2") end)
+lt
+lt_alias
+let local_lt=Lie_type("G2") then local_alias=local_lt in begin local_lt:=local_lt*Lie_type("A1");(local_lt,local_alias) end
+rd : RootDatum
+rd := simply_connected(Lie_type("A2"),true)
+w : WeylElt
+w := W_elt(rd,[0])
+v : vec
+v := [1,2]
+v := (begin v:=[2,3];w end)*v
+v_alias : vec
+v_alias := v
+v := w*v
+v_alias
