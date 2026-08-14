@@ -9532,6 +9532,25 @@ pub(crate) fn print_text(
             if name == "print_block" {
                 if let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] {
                     test_standard(parameter, "Cannot generate block", span)?;
+                    let rc = rep_context(&parameter.context);
+                    if matches!(
+                        integral_block_scope(&rc, parameter.repr.gamma())
+                            .map_err(|error| structure_diagnostic(error, span))?,
+                        IntegralBlockScope::ProperSubsystem
+                    ) {
+                        let located = parameter
+                            .context
+                            .rep
+                            .lookup_full_block(&parameter.repr)
+                            .map_err(|error| structure_diagnostic(error, span))?;
+                        let rows = located_common_block_rows(&parameter.context, &located, span)?;
+                        let mut text = format!(
+                            "Parameter defines element {} of the following block:\n",
+                            located.raw_row()
+                        );
+                        text.push_str(&render_common_block(&parameter.context, &rows));
+                        return Ok(text);
+                    }
                     let (rows, init) =
                         common_block_rows(&parameter.context, &parameter.repr, span)?;
                     let mut text =
