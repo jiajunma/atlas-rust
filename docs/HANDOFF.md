@@ -4,7 +4,37 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
-## Checkpoint - 2026-08-13i (PAUSED: shared RepTable callers, release-only blocker)
+## Checkpoint - 2026-08-14a (rep_table release bug repaired; prim_KL/print_block sweep fixes)
+
+- **`ActiveKlCallback::drop` repaired (`fcc7026`)**: the flag clear lived
+  inside `debug_assert!` and vanished in release builds, leaving
+  `ACTIVE_KL_CALLBACK=true` forever (root cause of the 3547776 nested-
+  callback failures). The `replace(false)` now executes unconditionally;
+  only the returned value is debug-asserted. Two regression tests added;
+  the sequential-enter test is only meaningful under `--release`
+  (`cargo test -p atlas-real-group --lib --release active_kl_callback`).
+- **Coverage sweep found print_prim_KL divergences, fixed (`c7d09ee`)**:
+  (1) primitive x indices emitted in descending prim_back_up walk order;
+  upstream collects into a BitMap iterated ascending (kl.cpp:163-172,
+  kl_io.cpp:117) — now reversed; (2) the P_{y,y} trailer missed the
+  setw(width+tab) pad (kl_io.cpp:138-139). Invisible on the small
+  kl_print blocks; surfaced on D4 (rf 4 x dual 1, 28-element block).
+  print_KL_basis/print_KL_list/print_W_graph/print_W_cells re-probed
+  byte-identical on the same block. Fixture domain/prim_kl_order(±).
+- **print_block fixes (`7dea126`)** from the earlier sweep turn: `*`
+  right-alignment (block_io.cpp:197,205) and the WeylGroup::word
+  tie-break via `CompactWeyl::canonical_word` (weyl.cpp:944-958).
+  Fixture domain/print_block_words(±).
+- **HPC ledger**: captures 3549616 (print_block_words±, PASS) and
+  3549730 (prim_kl_order±, PASS); references bumped to
+  verified_hpc_reference (`84be139`, `5cb14f8`). Differential **3549756
+  @ 5cb14f8 in flight** — resubmission of 3547776 with the rep_table
+  repair plus the four new fixtures. On PASS: bump the four metas to
+  verified_hpc with differential_job=3549756.
+- Note: `crates/atlas-real-group/examples/fiber_probe.rs` is the user's
+  file; preserve it.
+
+## Checkpoint - 2026-08-13i (PAUSED: shared RepTable callers, release-only blocker — REPAIRED 2026-08-14a)
 
 The user paused the autonomous port and is handing the repository to another
 coding agent.  Do not resume the interrupted `block(Param)` or proper-integral-
