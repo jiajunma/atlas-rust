@@ -8485,8 +8485,17 @@ pub(crate) fn validate(
             }
         }
         // Fokko_block_wrapper's is_dual gate precedes its no_value check
-        // (atlas-types.w:4790-4794).
+        // (atlas-types.w:4790-4794). The Param overload
+        // (common_block_wrapper, atlas-types.w:6748-6752) gates
+        // test_standard before its no_value check.
         "block" => {
+            if arguments.len() == 1 {
+                let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                    return Err(type_error(span, "expected a Param"));
+                };
+                test_standard(parameter, "Cannot generate block", span)?;
+                return Ok(());
+            }
             arity(name, arguments, 2, span)?;
             let rf = as_real_form(&arguments[0], span)?;
             let df = as_real_form(&arguments[1], span)?;
@@ -12147,8 +12156,71 @@ pub(crate) fn call_with_printed(
             )))
         }
         // Fokko_block_wrapper (atlas-types.w:4786-4796): the is_dual gate,
-        // then the fibred product of the two forms' KGB sets.
+        // then the fibred product of the two forms' KGB sets. The Param
+        // overload (common_block_wrapper, atlas-types.w:6748-6780,
+        // repr.cpp:1773-1794 lookup_full_block) returns the survivor
+        // parameters of the parameter's common block plus the start index
+        // (or -1 when the original parameter is not final).
         "block" => {
+            if arguments.len() == 1 {
+                let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                    return Err(type_error(span, "expected a Param"));
+                };
+                test_standard(parameter, "Cannot generate block", span)?;
+                let rc = rep_context(&parameter.context);
+                let dominant = parameter
+                    .repr
+                    .made_dominant(&rc)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                match integral_block_scope(&rc, dominant.gamma())
+                    .map_err(|error| structure_diagnostic(error, span))?
+                {
+                    IntegralBlockScope::Singleton => {
+                        return Ok(Value::Tuple(vec![
+                            Value::List(vec![Value::Domain(DomainValue::Param(ParamValue {
+                                context: parameter.context.clone(),
+                                repr: dominant,
+                            }))]),
+                            Value::Integer(BigInt::from(0)),
+                        ]));
+                    }
+                    IntegralBlockScope::ProperSubsystem => {
+                        return Err(proper_subsystem_diagnostic(span));
+                    }
+                    IntegralBlockScope::Full => {}
+                }
+                let located = parameter
+                    .context
+                    .rep
+                    .lookup_full_block(&dominant)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                let block = located.block();
+                let common =
+                    CommonContext::integral(&rc, located.adapted_representative().gamma_lambda())
+                        .map_err(|error| structure_diagnostic(error, span))?;
+                let singular_flags = common
+                    .singular_flags(located.prepared_query().gamma())
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                let mut params: Vec<Value> = Vec::new();
+                let mut start_pos: i64 = -1;
+                for z in 0..block.size() {
+                    if block.survives(z, &singular_flags) {
+                        if z == located.raw_row() {
+                            start_pos = params.len() as i64;
+                        }
+                        let repr = located_row_parameter(&parameter.context, &located, z)
+                            .map_err(|error| structure_diagnostic(error, span))?;
+                        params.push(Value::Domain(DomainValue::Param(ParamValue {
+                            context: parameter.context.clone(),
+                            repr,
+                        })));
+                    }
+                }
+                return Ok(Value::Tuple(vec![
+                    Value::List(params),
+                    Value::Integer(BigInt::from(start_pos)),
+                ]));
+            }
             arity(name, arguments, 2, span)?;
             let rf = as_real_form(&arguments[0], span)?;
             let df = as_real_form(&arguments[1], span)?;

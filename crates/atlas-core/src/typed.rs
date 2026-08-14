@@ -6204,6 +6204,16 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::Block),
                 0,
             ),
+            // block(Param) (common_block_wrapper, atlas-types.w:6748-6780,
+            // installed :7510): the parameter's common block as survivor
+            // parameters plus the start index. test_standard gates before
+            // the no-value check, so validate.
+            domain_builtin_validate(
+                "block",
+                primitive_type(Prim::Param),
+                Type::tuple(vec![Type::row(primitive_type(Prim::Param)), int_type()]),
+                0,
+            ),
             domain_builtin_skip(
                 "%",
                 primitive_type(Prim::Block),
@@ -9051,6 +9061,11 @@ mod tests {
         assert!(signatures("W_cells").contains(&(block.clone(), Type::row(cell))));
         assert_eq!(no_value_policy("W_graph", &block), "build");
         assert_eq!(no_value_policy("W_cells", &block), "build");
+
+        let param = primitive_type(Prim::Param);
+        let block_params = Type::tuple(vec![Type::row(param.clone()), int_type()]);
+        assert!(signatures("block").contains(&(param.clone(), block_params)));
+        assert_eq!(no_value_policy("block", &param), "validate");
     }
 
     #[test]
@@ -9265,6 +9280,24 @@ mod tests {
                 .expect("discarded Block graph call still completes");
             assert_eq!(value, Value::Integer(BigInt::from(expected)));
         }
+    }
+
+    #[test]
+    fn p2_block_param_returns_survivors_and_start_index() {
+        let datum = "simply_connected(Lie_type(\"A1\"),true)";
+        let inner = format!("inner_class({datum},[[1]])");
+        let real = format!("real_form({inner},1)");
+        let parameter = format!("param(KGB({real},1),[0],[1]/2)");
+        let (_, value) = convert_and_run(&format!("block({parameter})"))
+            .expect("full-integral Param block should evaluate");
+        assert_eq!(
+            value.to_string(),
+            "([final parameter(x=0,lambda=[1]/1,nu=[0]/1),final parameter(x=1,lambda=[1]/1,nu=[0]/1),final parameter(x=2,lambda=[1]/1,nu=[1]/1)],1)"
+        );
+
+        let (_, value) = convert_and_run(&format!("begin block({parameter});7 end"))
+            .expect("discarded Param block should still validate and continue");
+        assert_eq!(value, Value::Integer(BigInt::from(7)));
     }
 
     #[test]
