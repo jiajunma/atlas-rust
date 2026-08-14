@@ -26,6 +26,9 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   builds its evaluation matrix from the subsystem parent coroots.  B2
   `[3,1]/2`, whose rank-one simple is a non-simple ambient root, is the test
   anchor.  Existing full lookup still rejects every non-`Full` system loudly.
+- **Structural preflight submitted**: job **3550626 @ f5f33fc** was submitted
+  on the fat partition after an exact detached-tree check; collect its report
+  with the next HPC batch rather than blocking this loop.
 - **Next**: port upstream `InnerClass::int_item(gamma, locator)` semantics:
   canonicalize Weyl-conjugate integral systems, retain `w`, ordered simply
   integral roots and `simple_pi`, then store that locator/subsystem metadata on
