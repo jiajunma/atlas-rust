@@ -23,6 +23,12 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   a clean source snapshot.  `domain/kl_column` now passes exact stdout,
   diagnostics, and exit status for its proper-system event; the run remains
   `PARTIAL` only for the two unrelated declared pending features.
+- `print_block(Param)` now uses the shared `RepTable` full-block rows for a
+  proper integral subsystem, while preserving the existing full-system path.
+  New B2 `[3,1]/2` fixture `domain/print_common_block_proper` matches the
+  pinned oracle byte-for-byte; differential **3551242 @ 62e32d3** passed it
+  with Rust 0.006s / 7300 KiB.  Proper extended/twisted block consumers still
+  need the same subsystem-aware treatment.
 
 ## Checkpoint - 2026-08-14c (block(Param) submitted; proper-system key foundation)
 

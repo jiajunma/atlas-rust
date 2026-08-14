@@ -4,7 +4,7 @@
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_status": "verified_hpc_reference",
-  "rust_status": "locally_verified",
+  "rust_status": "verified_hpc",
   "oracle_exit_status": 0,
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
@@ -16,5 +16,11 @@
   "oracle_seconds": 0.013,
   "oracle_maxrss_kb": 4360,
   "oracle_maxrss_approximate": false,
+  "differential_job": "3551242",
+  "differential_commit": "62e32d34e10ea5a3326a0a2f39f9c002b372ec31",
+  "differential_report_sha256": "22175e7f78e288035bf941207820b2408d220cf162733ed4026fe4fc87683616",
+  "rust_seconds": 0.006,
+  "rust_maxrss_kb": 7300,
+  "rust_maxrss_approximate": false,
   "note": "B2 proper-integral rank-one common block for print_block(Param) and print_common_block(Param); both render the same three stored rows and seed index 1."
 }
