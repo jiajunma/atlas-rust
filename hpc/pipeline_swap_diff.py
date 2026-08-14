@@ -332,6 +332,12 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/kl_block"),
     # Batch 7: full_deform.
     FixturePlan(name="domain/full_deform"),
+    # Timed full_deform overload: cooperative deadline, cache-sensitive
+    # zero/negative timers, no-value validation, and exact union injectors.
+    FixturePlan(name="domain/timed_full_deform_signatures"),
+    FixturePlan(name="domain/timed_full_deform_cache"),
+    FixturePlan(name="domain/timed_full_deform_timeout_zero"),
+    FixturePlan(name="domain/timed_full_deform_timeout_negative"),
     # Batch 6: partial_KL_block (first extended-block surface).
     FixturePlan(name="domain/partial_kl_block"),
     # Batch 5: KL_column (partial block), including the A2 proper-integral

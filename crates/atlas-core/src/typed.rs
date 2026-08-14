@@ -5890,6 +5890,12 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::KTypePol),
                 0,
             ),
+            domain_builtin_validate(
+                "full_deform",
+                Type::tuple(vec![primitive_type(Prim::Param), int_type()]),
+                Type::Union(vec![Type::void(), primitive_type(Prim::KTypePol)]),
+                0,
+            ),
             // partial_KL_block (atlas-types.w:6998-7051): the condensed KL
             // matrix over a parameter's partial-block survivors.
             domain_builtin(
@@ -9240,6 +9246,27 @@ mod tests {
     }
 
     #[test]
+    fn timed_full_deform_signature_and_no_value_policy_match_upstream() {
+        let arguments = Type::tuple(vec![primitive_type(Prim::Param), int_type()]);
+        let builtin = builtin_registry()
+            .iter()
+            .find(|builtin| builtin.name == "full_deform" && builtin.arg_type == arguments)
+            .expect("missing full_deform(Param,int)");
+        assert_eq!(
+            builtin.result,
+            Type::Union(vec![Type::void(), primitive_type(Prim::KTypePol)])
+        );
+        assert_eq!(builtin.hunger, 0);
+        assert!(matches!(
+            builtin.implementation,
+            BuiltinImpl::Domain {
+                no_value: DomainNoValue::Validate,
+                ..
+            }
+        ));
+    }
+
+    #[test]
     fn p3_undefined_twist_values_support_strict_relations() {
         let datum = "simply_connected(Lie_type(\"A3\"),true)";
         let identity = "[[1,0,0],[0,1,0],[0,0,1]]";
@@ -10485,6 +10512,7 @@ mod tests {
                 "for i in [1, 2, 3] do if i = 2 then break fi; i * 10 od",
                 "[10]",
             ),
+            ("while true; 1 + 1; dont od", "[]"),
         ] {
             let (_, value) = convert_and_run(source)
                 .unwrap_or_else(|error| panic!("{source} should convert and run: {error:?}"));

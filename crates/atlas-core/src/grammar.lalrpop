@@ -14,7 +14,8 @@ use super::{
     subscription_suffix, type_group, type_function, type_primitive, type_row, type_union_append,
     type_union_start, type_variant, type_wild_row, unary, finish_conditional, if_tail,
     anonymous_parameter, const_pattern_name, finish_pattern, pattern_binding, pattern_empty_tuple,
-    pattern_name, pattern_slots, pattern_tuple, tuple_parameter, whattype_command, while_expression,
+    pattern_name, pattern_slots, pattern_tuple, prepend_while_effect, tuple_parameter,
+    whattype_command, while_expression,
     BinaryOp, CaseBranch, Command, Expr, LambdaParam, LetBinding, ParsedFor, ParsedIf,
     ParsedLet, ParserToken, PatternTail, PostfixSuffix, Prim, Program, SlotTail, SpannedValue,
     TypeExpr, TypeField, TypeSpec, TypeVariantSlot, UnaryOp, Pattern, TypeDefinition,
@@ -562,12 +563,13 @@ CasePatternTail: PatternTail = {
     },
 };
 
-// The while condition is a `tertiary` upstream (parser.y:442); a bare `do`
-// is the constant-true condition (parser.y:443). The `;`-sequenced
-// do_expr conditions (parser.y:441) are deferred until a fixture needs them.
+// Atlas's do_expr (parser.y:438-443) permits effect-only expressions before
+// the guard. Each prefix is evaluated at no-value level; `dont` supplies the
+// false guard, while bare `do` supplies true.
 WhileTail: (Option<Expr>, Expr, SourceSpan) = {
-    <condition:AssignmentExpr> ";" <dont:"dont"> <od:"od"> => (
-        Some(condition),
+    <effect:AssignmentExpr> ";" <tail:WhileTail> => prepend_while_effect(effect, tail),
+    <dont:"dont"> <od:"od"> => (
+        Some(Expr::Boolean { value: false, span: dont }),
         Expr::Dont { span: dont },
         od,
     ),

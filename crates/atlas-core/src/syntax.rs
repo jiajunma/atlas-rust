@@ -1483,6 +1483,18 @@ fn while_expression(while_span: SourceSpan, tail: (Option<Expr>, Expr, SourceSpa
     }
 }
 
+fn prepend_while_effect(
+    effect: Expr,
+    tail: (Option<Expr>, Expr, SourceSpan),
+) -> (Option<Expr>, Expr, SourceSpan) {
+    let (condition, body, od) = tail;
+    let condition = condition.unwrap_or_else(|| Expr::Boolean {
+        value: true,
+        span: effect.span(),
+    });
+    (Some(sequence(effect, condition)), body, od)
+}
+
 fn for_expression(for_span: SourceSpan, parsed: ParsedFor) -> Expr {
     Expr::For(Box::new(ForLoop {
         pattern: parsed.pattern,

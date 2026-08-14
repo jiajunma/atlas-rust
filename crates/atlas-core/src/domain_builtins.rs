@@ -14,11 +14,12 @@
 //! `atlas-real-group`.
 
 use std::cmp::Ordering;
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use std::fmt;
 use std::fmt::Write as _;
 use std::num::{NonZeroI32, NonZeroU64};
 use std::sync::{Arc, Mutex, Weak};
+use std::time::{Duration, Instant};
 
 use malachite::{Integer as BigInt, Rational as BigRational};
 
@@ -207,6 +208,18 @@ pub struct InnerClassContext {
 }
 
 /// One real form's frozen pipeline: seed, completed table, and KGB graph.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+struct FullDeformKey {
+    x: KgbId,
+    y_bits: ModTwoVector,
+    gamma: RationalWeight,
+}
+
+#[derive(Debug, Default)]
+struct FullDeformCache {
+    values: HashMap<FullDeformKey, Vec<(SplitValue, KType)>>,
+}
+
 #[derive(Debug)]
 pub struct RealFormContext {
     parent: Arc<InnerClassContext>,
@@ -215,6 +228,7 @@ pub struct RealFormContext {
     table: Arc<InvolutionTable>,
     graph: Arc<KgbGraph>,
     rep: Arc<RepTableOwner>,
+    full_deform_cache: Mutex<FullDeformCache>,
 }
 
 /// A Block value: the owning real form and dual real form contexts with
@@ -1976,6 +1990,7 @@ fn build_real_form(
         table,
         graph,
         rep,
+        full_deform_cache: Mutex::new(FullDeformCache::default()),
     });
 
     #[cfg(test)]
@@ -2056,6 +2071,7 @@ fn build_custom_real_form(
         table,
         graph,
         rep,
+        full_deform_cache: Mutex::new(FullDeformCache::default()),
     }))
 }
 
@@ -2167,6 +2183,45 @@ fn merge_ktype_term(terms: &mut Vec<(SplitValue, KType)>, ktype: KType, split: S
     merge_pol_term(terms, split, ktype);
 }
 
+fn full_deform_key(repr: &StandardRepr) -> FullDeformKey {
+    FullDeformKey {
+        x: repr.x(),
+        y_bits: repr.y_bits().clone(),
+        gamma: repr.gamma().clone(),
+    }
+}
+
+fn deadline_expired(deadline: Option<Instant>) -> bool {
+    deadline.is_some_and(|deadline| Instant::now() >= deadline)
+}
+
+fn cached_full_deform(
+    context: &RealFormContext,
+    key: &FullDeformKey,
+    span: SourceSpan,
+) -> Result<Option<Vec<(SplitValue, KType)>>, Diagnostic> {
+    context
+        .full_deform_cache
+        .lock()
+        .map_err(|_| runtime(span, "full deformation cache poisoned"))
+        .map(|cache| cache.values.get(key).cloned())
+}
+
+fn store_full_deform(
+    context: &RealFormContext,
+    key: FullDeformKey,
+    terms: Vec<(SplitValue, KType)>,
+    span: SourceSpan,
+) -> Result<(), Diagnostic> {
+    context
+        .full_deform_cache
+        .lock()
+        .map_err(|_| runtime(span, "full deformation cache poisoned"))?
+        .values
+        .insert(key, terms);
+    Ok(())
+}
+
 /// The full deformation of one final standard parameter (repr.cpp:
 /// 2251-2290): the finals of the scale-0 parameter contribute their
 /// K-types, then each reducibility point's scaled parameter is deformed
@@ -2177,12 +2232,19 @@ fn full_deformation_terms(
     z: &StandardRepr,
     context: &Arc<RealFormContext>,
     span: SourceSpan,
-) -> Result<Vec<(KType, SplitValue)>, Diagnostic> {
+    deadline: Option<Instant>,
+) -> Result<Option<Vec<(KType, SplitValue)>>, Diagnostic> {
+    if deadline_expired(deadline) {
+        return Ok(None);
+    }
     let centered = if denominator_exceeds_alcove_bound(rc.rank(), z.gamma().denominator()) {
         Some(domain_alcove_center(rc, z).map_err(|error| structure_diagnostic(error, span))?)
     } else {
         None
     };
+    if deadline_expired(deadline) {
+        return Ok(None);
+    }
     let z = centered.as_ref().unwrap_or(z);
     let mut result: Vec<(KType, SplitValue)> = Vec::new();
     // Scale-0 base (repr.cpp:2257-2266).
@@ -2192,34 +2254,58 @@ fn full_deformation_terms(
     let base = rc
         .finals_for(&z0)
         .map_err(|error| structure_diagnostic(error, span))?;
+    if deadline_expired(deadline) {
+        return Ok(None);
+    }
     for (final_sr, coef) in &base {
+        if deadline_expired(deadline) {
+            return Ok(None);
+        }
         let lambda_rho = rc
             .lambda_rho(final_sr)
             .map_err(|error| structure_diagnostic(error, span))?;
         let ktype = KType::sr_k(rc, final_sr.x(), &lambda_rho)
             .map_err(|error| structure_diagnostic(error, span))?;
         result.push((ktype, SplitValue::new(*coef, 0)));
+        if deadline_expired(deadline) {
+            return Ok(None);
+        }
     }
     // Reducibility-point recursion (repr.cpp:2268-2289).
     let rp = rc
         .reducibility_points(z)
         .map_err(|error| structure_diagnostic(error, span))?;
+    if deadline_expired(deadline) {
+        return Ok(None);
+    }
     for &(num, den) in rp.iter().rev() {
+        if deadline_expired(deadline) {
+            return Ok(None);
+        }
         let zi = rc
             .scale(z, num, den)
             .map_err(|error| structure_diagnostic(error, span))?;
         let zi = zi
             .deform_readjust(rc)
             .map_err(|error| structure_diagnostic(error, span))?;
+        if deadline_expired(deadline) {
+            return Ok(None);
+        }
         let dual_parent = build_dual_inner_class(&context.parent, span)?;
         let dual_quasisplit = dual_parent.order.quasisplit_external();
         let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
         let block = build_block(context, &dual_rf, span)?;
+        if deadline_expired(deadline) {
+            return Ok(None);
+        }
         let mut kl_table =
             KlTable::new(&block.graph).map_err(|error| structure_diagnostic(error, span))?;
         kl_table
             .fill(0)
             .map_err(|error| structure_diagnostic(error, span))?;
+        if deadline_expired(deadline) {
+            return Ok(None);
+        }
         let y = (0..block.graph.size())
             .find(|&y| block.graph.x(y) == Some(zi.x()))
             .ok_or_else(|| runtime(span, "deformation parameter not in the block"))?;
@@ -2229,7 +2315,13 @@ fn full_deformation_terms(
         let terms = rc
             .deformation_terms(&block.graph, y, zi.gamma(), &lambda_rho, &kl_table)
             .map_err(|error| structure_diagnostic(error, span))?;
+        if deadline_expired(deadline) {
+            return Ok(None);
+        }
         for (term, coef) in terms {
+            if deadline_expired(deadline) {
+                return Ok(None);
+            }
             let term_rp = rc
                 .reducibility_points(&term)
                 .map_err(|error| structure_diagnostic(error, span))?;
@@ -2252,9 +2344,52 @@ fn full_deformation_terms(
             let ktype = KType::sr_k(rc, scaled.x(), &scaled_lambda)
                 .map_err(|error| structure_diagnostic(error, span))?;
             result.push((ktype, SplitValue::new(coef, 0)));
+            if deadline_expired(deadline) {
+                return Ok(None);
+            }
         }
     }
-    Ok(result)
+    if deadline_expired(deadline) {
+        return Ok(None);
+    }
+    Ok(Some(result))
+}
+
+fn compute_full_deform(
+    parameter: &ParamValue,
+    span: SourceSpan,
+    deadline: Option<Instant>,
+) -> Result<Option<Vec<(SplitValue, KType)>>, Diagnostic> {
+    let rc = rep_context(&parameter.context);
+    let finals = rc
+        .finals_for(&parameter.repr)
+        .map_err(|error| structure_diagnostic(error, span))?;
+    if deadline_expired(deadline) {
+        return Ok(None);
+    }
+    let mut terms: Vec<(SplitValue, KType)> = Vec::new();
+    for (final_sr, coef) in &finals {
+        if deadline_expired(deadline) {
+            return Ok(None);
+        }
+        let Some(deformed) =
+            full_deformation_terms(&rc, final_sr, &parameter.context, span, deadline)?
+        else {
+            return Ok(None);
+        };
+        for (ktype, split) in deformed {
+            let scaled_split = SplitValue::new(split.e() * *coef, split.f() * *coef);
+            merge_ktype_term(&mut terms, ktype, scaled_split);
+            if deadline_expired(deadline) {
+                return Ok(None);
+            }
+        }
+    }
+    sort_ktypepol_terms(&mut terms);
+    if deadline_expired(deadline) {
+        return Ok(None);
+    }
+    Ok(Some(terms))
 }
 
 /// The transpose of a row-major matrix.
@@ -8590,6 +8725,22 @@ pub(crate) fn validate(
             };
             twisted_deform_gates(parameter, span)?;
         }
+        "full_deform" => {
+            if arguments.len() != 2 {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "full_deform expects 2 argument(s), found {}",
+                        arguments.len()
+                    ),
+                ));
+            }
+            let Value::Domain(DomainValue::Param(_parameter)) = &arguments[0] else {
+                return Err(type_error(span, "expected a Param"));
+            };
+            let _ = i32::try_from(&as_integer(&arguments[1], span)?)
+                .map_err(|_| runtime(span, "Integer value to big for conversion"))?;
+        }
         "twisted_full_deform" => {
             let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
                 return Err(type_error(span, "expected a Param"));
@@ -14012,7 +14163,15 @@ pub(crate) fn call_with_printed(
         // finals of its scale-0 parameter, plus the deformation terms of
         // each reducibility point, merged into a K-type polynomial.
         "full_deform" => {
-            arity(name, arguments, 1, span)?;
+            if arguments.is_empty() || arguments.len() > 2 {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "{name} has no matching overload for {} argument(s)",
+                        arguments.len()
+                    ),
+                ));
+            }
             let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
                 return Err(type_error(
                     span,
@@ -14022,23 +14181,65 @@ pub(crate) fn call_with_printed(
                     ),
                 ));
             };
-            let rc = rep_context(&parameter.context);
-            let finals = rc
-                .finals_for(&parameter.repr)
-                .map_err(|error| structure_diagnostic(error, span))?;
-            let mut terms: Vec<(SplitValue, KType)> = Vec::new();
-            for (final_sr, coef) in &finals {
-                let deformed = full_deformation_terms(&rc, final_sr, &parameter.context, span)?;
-                for (ktype, split) in deformed {
-                    let scaled_split = SplitValue::new(split.e() * *coef, split.f() * *coef);
-                    merge_ktype_term(&mut terms, ktype, scaled_split);
-                }
+            let key = full_deform_key(&parameter.repr);
+            let cached = cached_full_deform(&parameter.context, &key, span)?;
+            let make_polynomial = |terms: Vec<(SplitValue, KType)>| {
+                Value::Domain(DomainValue::KTypePol(KTypePolValue {
+                    rf: Arc::clone(&parameter.context),
+                    terms,
+                }))
+            };
+
+            if arguments.len() == 1 {
+                let terms = match cached {
+                    Some(terms) => terms,
+                    None => {
+                        let terms = compute_full_deform(parameter, span, None)?
+                            .expect("an unbounded deformation cannot time out");
+                        store_full_deform(&parameter.context, key, terms.clone(), span)?;
+                        terms
+                    }
+                };
+                return Ok(make_polynomial(terms));
             }
-            sort_ktypepol_terms(&mut terms);
-            Ok(Value::Domain(DomainValue::KTypePol(KTypePolValue {
-                rf: Arc::clone(&parameter.context),
-                terms,
-            })))
+
+            let timer = i32::try_from(&as_integer(&arguments[1], span)?)
+                .map_err(|_| runtime(span, "Integer value to big for conversion"))?;
+            if let Some(terms) = cached {
+                return Ok(Value::Union {
+                    tag: 1,
+                    injector_name: "done".into(),
+                    value: Box::new(make_polynomial(terms)),
+                });
+            }
+            if timer <= 0 {
+                return Ok(Value::Union {
+                    tag: 0,
+                    injector_name: "timed_out".into(),
+                    value: Box::new(Value::Tuple(Vec::new())),
+                });
+            }
+            let deadline = Instant::now().checked_add(Duration::from_millis(timer as u64));
+            let Some(terms) = compute_full_deform(parameter, span, deadline)? else {
+                return Ok(Value::Union {
+                    tag: 0,
+                    injector_name: "timed_out".into(),
+                    value: Box::new(Value::Tuple(Vec::new())),
+                });
+            };
+            if deadline_expired(deadline) {
+                return Ok(Value::Union {
+                    tag: 0,
+                    injector_name: "timed_out".into(),
+                    value: Box::new(Value::Tuple(Vec::new())),
+                });
+            }
+            store_full_deform(&parameter.context, key, terms.clone(), span)?;
+            Ok(Value::Union {
+                tag: 1,
+                injector_name: "done".into(),
+                value: Box::new(make_polynomial(terms)),
+            })
         }
         // partial_KL_block (atlas-types.w:6998-7051, repr.cpp:2060-2075):
         // the condensed KL matrix over the parameter's partial block
@@ -18767,6 +18968,55 @@ mod tests {
                 .expect("twisted_full_deform(p)")
                 .to_string(),
             expected
+        );
+    }
+
+    #[test]
+    fn timed_full_deform_uses_the_real_result_cache() {
+        let sl2r = sl2r_split_form();
+        let p = sl2r_param(&sl2r, 0, &[1], &[0], 1);
+        let zero = int(0);
+
+        validate("full_deform", &[p.clone(), zero.clone()], span())
+            .expect("discarded timed call validates");
+        let too_large = Value::Integer(BigInt::from(i64::from(i32::MAX) + 1));
+        let error = validate("full_deform", &[p.clone(), too_large], span())
+            .expect_err("timer uses upstream signed-int narrowing");
+        assert_eq!(error.message, "Integer value to big for conversion");
+        assert_eq!(
+            call("full_deform", &[p.clone(), zero.clone()], span())
+                .expect("uncached zero-millisecond call")
+                .to_string(),
+            "().timed_out"
+        );
+        assert_eq!(
+            call("full_deform", &[p.clone(), int(-1)], span())
+                .expect("negative timer")
+                .to_string(),
+            "().timed_out"
+        );
+
+        let expected = "\n1* K_type(x=0, lambda=[2]/1) [2]";
+        assert_eq!(
+            call("full_deform", std::slice::from_ref(&p), span())
+                .expect("unary full deformation")
+                .to_string(),
+            expected
+        );
+        assert_eq!(
+            call("full_deform", &[p, zero], span())
+                .expect("cached zero-millisecond call")
+                .to_string(),
+            format!("{expected}.done")
+        );
+
+        let fresh = sl2r_split_form();
+        let fresh_p = sl2r_param(&fresh, 0, &[1], &[0], 1);
+        assert_eq!(
+            call("full_deform", &[fresh_p, int(1_000)], span())
+                .expect("positive timer")
+                .to_string(),
+            format!("{expected}.done")
         );
     }
 
