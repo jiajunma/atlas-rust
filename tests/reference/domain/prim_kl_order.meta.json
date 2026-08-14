@@ -5,7 +5,8 @@
  "stage": "typed-pipeline-swap",
  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
  "rust_status": "pending_hpc_differential",
- "reference_status": "pending_hpc_reference",
+ "reference_status": "verified_hpc_reference",
  "note": "print_prim_KL regression pin for two latent divergences fixed 2026-08-13: (1) primitive x indices were emitted in prim_back_up walk order (descending); upstream KL_table::primitives collects into a BitMap iterated ascending (kl.cpp:163-172, kl_io.cpp:117); (2) the P_{y,y} trailer line missed the setw(width+tab) pad (kl_io.cpp:138-139). D4 (rf 4 x dual 1, 28-element block) exercises multi-entry rows, zero polynomials (x=5 for y=18), and q^2 terms.",
- "oracle_exit_status": 0
+ "oracle_exit_status": 0,
+ "reference_job": "3549730"
 }
