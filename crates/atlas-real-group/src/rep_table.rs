@@ -305,7 +305,12 @@ impl ActiveKlCallback {
 impl Drop for ActiveKlCallback {
     fn drop(&mut self) {
         ACTIVE_KL_CALLBACK.with(|active| {
-            debug_assert!(active.replace(false));
+            // The flag clear must execute in release builds too: inside
+            // debug_assert! the whole `replace` is compiled out and the
+            // thread-local stays true, failing every later with_kl_table
+            // with "nested callback" (HPC differential 3547776).
+            let was_active = active.replace(false);
+            debug_assert!(was_active);
         });
     }
 }
@@ -1045,6 +1050,33 @@ mod tests {
                 let _ = sender.send(());
             }
         }
+    }
+
+    #[test]
+    fn active_kl_callback_flag_clears_for_sequential_calls() {
+        // Release-only regression (HPC differential 3547776): when the flag
+        // clear lived inside `debug_assert!`, release builds compiled it out
+        // and every second with_kl_table on the same thread failed with
+        // "representation block KL table nested callback". In a debug build
+        // this test passed either way, so it must also be run under
+        // `--release` to be meaningful.
+        for _ in 0..2 {
+            let guard = ActiveKlCallback::enter().expect("sequential enter must succeed");
+            drop(guard);
+        }
+        assert!(!ACTIVE_KL_CALLBACK.with(|active| active.get()));
+    }
+
+    #[test]
+    fn active_kl_callback_still_rejects_nesting() {
+        let guard = ActiveKlCallback::enter().expect("first enter must succeed");
+        let nested = ActiveKlCallback::enter();
+        assert!(matches!(
+            nested,
+            Err(StructureError::RepInvariantViolation { .. })
+        ));
+        drop(guard);
+        assert!(ActiveKlCallback::enter().is_ok());
     }
 
     fn class_budget(weyl: usize) -> CartanClassificationBudget {
