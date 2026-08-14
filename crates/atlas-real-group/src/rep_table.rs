@@ -656,10 +656,10 @@ impl RepTable {
     ) -> Result<LocatedBlock, StructureError> {
         let query = query.normalised(rc)?;
         let seed = StandardReprMod::mod_reduce(rc, &query)?;
-        let context = self.full_integral_context(rc, query.gamma())?;
-        let key = Self::full_integral_key(rc, &seed)?;
+        let (context, integral_system) = self.integral_context(rc, query.gamma())?;
+        let key = Self::integral_key(rc, &seed, context.subsystem(), integral_system)?;
         if let Some((record, row)) = self.probe(&key)? {
-            return Self::located(rc, record, row, &seed, query);
+            return Self::located(rc, record, row, &seed, query, context.subsystem());
         }
 
         let interval = bruhat_below(&context, &seed)?;
@@ -670,7 +670,7 @@ impl RepTable {
                 invariant: "partial representation block seed row",
             })?;
         let block = Arc::new(block);
-        let row_keys = Self::row_keys(rc, &block)?;
+        let row_keys = Self::row_keys_for(rc, &block, context.subsystem(), integral_system)?;
         #[cfg(test)]
         self.hooks.pause_before_commit(false);
 
@@ -678,7 +678,7 @@ impl RepTable {
             let mut state = self.lock_state()?;
             state.commit_partial(block, key, exact_seed_row, &row_keys)?
         };
-        Self::located(rc, record, row, &seed, query)
+        Self::located(rc, record, row, &seed, query, context.subsystem())
     }
 
     /// Resolve or materialize the full common block containing `query`.
@@ -689,17 +689,17 @@ impl RepTable {
     ) -> Result<LocatedBlock, StructureError> {
         let query = query.made_dominant(rc)?;
         let seed = StandardReprMod::mod_reduce(rc, &query)?;
-        let context = self.full_integral_context(rc, query.gamma())?;
-        let key = Self::full_integral_key(rc, &seed)?;
+        let (context, integral_system) = self.integral_context(rc, query.gamma())?;
+        let key = Self::integral_key(rc, &seed, context.subsystem(), integral_system)?;
         if let Some((record, row)) = self.probe(&key)? {
             if record.full {
-                return Self::located(rc, record, row, &seed, query);
+                return Self::located(rc, record, row, &seed, query, context.subsystem());
             }
         }
 
         let (block, exact_seed_row) = PartialBlock::build_full(&context, &seed)?;
         let block = Arc::new(block);
-        let row_keys = Self::row_keys(rc, &block)?;
+        let row_keys = Self::row_keys_for(rc, &block, context.subsystem(), integral_system)?;
         if !row_keys
             .iter()
             .any(|&(candidate, row)| candidate == key && row == exact_seed_row)
@@ -716,7 +716,7 @@ impl RepTable {
             if let Some((record, row)) = state.active_place(&key) {
                 if record.full {
                     drop(state);
-                    return Self::located(rc, record, row, &seed, query);
+                    return Self::located(rc, record, row, &seed, query, context.subsystem());
                 }
             }
 
@@ -748,7 +748,7 @@ impl RepTable {
                 .row;
             (record, row)
         };
-        Self::located(rc, record, row, &seed, query)
+        Self::located(rc, record, row, &seed, query, context.subsystem())
     }
 
     /// Resolve an active stable ID. Superseded IDs deliberately return
@@ -775,22 +775,19 @@ impl RepTable {
         Ok(self.lock_state()?.active_place(key))
     }
 
-    fn full_integral_context<'r, 'context>(
+    fn integral_context<'r, 'context>(
         &self,
         rc: &'r RepContext<'context>,
         gamma: &RationalWeight,
-    ) -> Result<CommonContext<'r, 'context>, StructureError> {
+    ) -> Result<(CommonContext<'r, 'context>, IntegralSystem), StructureError> {
         if let Some(context) = CommonContext::full_if_integral(rc, gamma)? {
-            return Ok(context);
+            return Ok((context, IntegralSystem::Full));
         }
         let context = CommonContext::integral(rc, gamma)?;
         let integral_system = self
             .lock_state()?
             .integral_system(rc.root_system(), context.subsystem())?;
-        debug_assert_ne!(integral_system, IntegralSystem::Full);
-        Err(StructureError::NotYetImplemented {
-            feature: "representation table for a non-full integral subsystem",
-        })
+        Ok((context, integral_system))
     }
 
     fn integral_codec(
@@ -829,20 +826,40 @@ impl RepTable {
         IntegralCodec::new(rc.projection_at(x)?, &coroots)
     }
 
+    fn integral_key(
+        rc: &RepContext<'_>,
+        srm: &StandardReprMod,
+        subsystem: &IntegralSubsystem,
+        integral_system: IntegralSystem,
+    ) -> Result<ReducedParamKey, StructureError> {
+        Self::integral_codec(rc, srm.x(), subsystem)?.reduced_key(
+            srm.x(),
+            integral_system,
+            srm.gamma_lambda(),
+        )
+    }
+
     fn full_integral_key(
         rc: &RepContext<'_>,
         srm: &StandardReprMod,
     ) -> Result<ReducedParamKey, StructureError> {
-        Self::full_integral_codec(rc, srm.x())?.reduced_key(
-            srm.x(),
-            IntegralSystem::Full,
-            srm.gamma_lambda(),
-        )
+        let subsystem = IntegralSubsystem::full(rc.root_system())?;
+        Self::integral_key(rc, srm, &subsystem, IntegralSystem::Full)
     }
 
     fn row_keys(
         rc: &RepContext<'_>,
         block: &PartialBlock,
+    ) -> Result<Vec<(ReducedParamKey, usize)>, StructureError> {
+        let subsystem = IntegralSubsystem::full(rc.root_system())?;
+        Self::row_keys_for(rc, block, &subsystem, IntegralSystem::Full)
+    }
+
+    fn row_keys_for(
+        rc: &RepContext<'_>,
+        block: &PartialBlock,
+        subsystem: &IntegralSubsystem,
+        integral_system: IntegralSystem,
     ) -> Result<Vec<(ReducedParamKey, usize)>, StructureError> {
         let mut keys = Vec::new();
         keys.try_reserve_exact(block.size())
@@ -856,7 +873,10 @@ impl RepTable {
                     .ok_or(StructureError::RepInvariantViolation {
                         invariant: "representation block row representative",
                     })?;
-            keys.push((Self::full_integral_key(rc, representative)?, row));
+            keys.push((
+                Self::integral_key(rc, representative, subsystem, integral_system)?,
+                row,
+            ));
         }
         Ok(keys)
     }
@@ -867,6 +887,7 @@ impl RepTable {
         row: usize,
         query: &StandardReprMod,
         prepared_query: StandardRepr,
+        subsystem: &IntegralSubsystem,
     ) -> Result<LocatedBlock, StructureError> {
         let stored = record
             .block
@@ -881,7 +902,8 @@ impl RepTable {
             });
         }
         let difference = query.gamma_lambda().sub(stored.gamma_lambda())?;
-        let image = Self::full_integral_codec(rc, query.x())?.theta_1_preimage(&difference)?;
+        let image =
+            Self::integral_codec(rc, query.x(), subsystem)?.theta_1_preimage(&difference)?;
         let relative_shift = difference.sub(&RationalWeight::from_weight(&image)?)?;
         let shifted = stored.gamma_lambda().add(&relative_shift)?;
         let adapted_representative = StandardReprMod::build(rc, stored.x(), &shifted)?;
@@ -1560,6 +1582,22 @@ mod tests {
                 expected_coroot.as_slice()[column]
             );
         }
+    }
+
+    #[test]
+    fn proper_integral_full_lookup_materializes_the_subsystem_block() {
+        let fixture = b2_fixture();
+        let owner = owner(&fixture);
+        let rc = owner.context();
+        let gamma = RationalWeight::new(vec![3, 1], 2).unwrap();
+        let seed = StandardReprMod::build(&rc, KgbId(5), &gamma).unwrap();
+        let query = seed.to_standard(&rc, &gamma).unwrap();
+
+        let located = owner.lookup_full_block(&query).unwrap();
+
+        assert_eq!(located.block().size(), 3);
+        assert_eq!(located.raw_row(), 1);
+        assert_eq!(located.adapted_representative(), &seed);
     }
 
     #[test]

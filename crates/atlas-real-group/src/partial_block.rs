@@ -959,12 +959,15 @@ fn full_block_initial_real_orbit(
     ctxt: &CommonContext<'_, '_>,
     top: StandardReprMod,
 ) -> Result<Vec<StandardReprMod>, StructureError> {
-    let rc = ctxt.rep_context();
-    let real_reflections = rc
-        .real_simple_roots_at(top.x())?
-        .into_iter()
-        .map(|root| crate::root_reflection::reflection_word(rc, root))
-        .collect::<Result<Vec<_>, _>>()?;
+    // `CommonContext::cross` already transports each subsystem generator's
+    // parent reflection word.  Using ambient root-reflection words here
+    // would feed ambient generator indices back into a proper subsystem.
+    let real_generators = (0..ctxt.rank())
+        .filter(|&generator| {
+            ctxt.status(generator, top.x())
+                .is_ok_and(|(status, _)| status == KgbStatus::Real)
+        })
+        .collect::<Vec<_>>();
     let top_x = top.x();
     let mut orbit_queue = VecDeque::from([top]);
     let mut top_row = Vec::new();
@@ -980,11 +983,8 @@ fn full_block_initial_real_orbit(
             }
             Err(position) => top_row.insert(position, value.clone()),
         }
-        for word in &real_reflections {
-            let mut reflected = value.clone();
-            for &generator in word {
-                reflected = ctxt.cross(generator, &reflected)?;
-            }
+        for &generator in &real_generators {
+            let reflected = ctxt.cross(generator, &value)?;
             if reflected.x() != top_x {
                 return Err(StructureError::RepInvariantViolation {
                     invariant: "real reflection preserves top x",
@@ -1309,11 +1309,9 @@ impl<'c, 'r, 'a> FullBlockBuilder<'c, 'r, 'a> {
 impl PartialBlock {
     /// The full common-block constructor (`blocks.cpp:733-1081`).
     ///
-    /// The empty integral subsystem is a singleton.  The first supported
-    /// nontrivial domain is the identity full-integral subsystem: its rank is
-    /// the ambient semisimple rank and its parent roots are the ambient simple
-    /// roots in generator order.  A proper nonempty subsystem is rejected
-    /// explicitly until its parent/subsystem word conversion is ported.
+    /// The empty integral subsystem is a singleton.  Subsystem generators are
+    /// transported through `CommonContext`, so the same packet construction
+    /// handles both ambient-full and proper integral systems.
     pub fn build_full(
         ctxt: &CommonContext<'_, '_>,
         seed: &StandardReprMod,
@@ -1321,19 +1319,6 @@ impl PartialBlock {
         if ctxt.rank() == 0 {
             let block = Self::build(ctxt, std::slice::from_ref(seed))?;
             return Ok((block, 0));
-        }
-
-        let rc = ctxt.rep_context();
-        let ambient_simples = rc.root_system().simple_root_ids();
-        let identity_full_subsystem = ctxt.rank() == ambient_simples.len()
-            && ambient_simples
-                .iter()
-                .enumerate()
-                .all(|(s, &root)| ctxt.subsystem().parent_root(s) == Some(root));
-        if !identity_full_subsystem {
-            return Err(StructureError::NotYetImplemented {
-                feature: "full common block for a proper nonempty integral subsystem",
-            });
         }
 
         let top = full_block_top_ascent(ctxt, seed)?;
@@ -2085,19 +2070,28 @@ mod tests {
     }
 
     #[test]
-    fn full_common_block_rejects_a_proper_nonempty_integral_subsystem() {
+    fn full_common_block_supports_proper_nonempty_integral_subsystem() {
         let b2 = b2_fixture();
         let rc = b2.rc();
         let seed = StandardReprMod::build(&rc, KgbId(5), &rw(&[3, 1], 2)).unwrap();
         let ctxt = CommonContext::integral(&rc, seed.gamma_lambda()).unwrap();
         assert_eq!(ctxt.rank(), 1);
 
-        assert!(matches!(
-            PartialBlock::build_full(&ctxt, &seed),
-            Err(StructureError::NotYetImplemented {
-                feature: "full common block for a proper nonempty integral subsystem"
-            })
-        ));
+        let (block, init) = PartialBlock::build_full(&ctxt, &seed).unwrap();
+        assert_eq!(init, 1);
+        assert_eq!(block.size(), 3);
+        assert_eq!(
+            (0..block.size())
+                .map(|z| block.x(z).unwrap().index())
+                .collect::<Vec<_>>(),
+            vec![4, 5, 10]
+        );
+        assert_eq!(
+            (0..block.size())
+                .map(|z| block.length(z).unwrap())
+                .collect::<Vec<_>>(),
+            vec![0, 0, 1]
+        );
     }
 
     /// A1 q3 of the reference: `param(KGB(rf,2),[1],[0]/1)` — the 3-row

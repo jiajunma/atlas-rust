@@ -333,21 +333,9 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/full_deform"),
     # Batch 6: partial_KL_block (first extended-block surface).
     FixturePlan(name="domain/partial_kl_block"),
-    # Batch 5: KL_column (partial block). The A2 call on line 27 requires a
-    # genuine proper-integral-subsystem RepTable; keep its loud NYI explicit.
-    FixturePlan(
-        name="domain/kl_column",
-        runnable_lines=tuple(range(1, 27)) + tuple(range(28, 165)),
-        runnable_events=tuple(range(26)) + tuple(range(27, 164)),
-        pending=(
-            PendingCase(
-                feature="KL_column proper integral subsystem",
-                source_line=27,
-                reference_event=26,
-                reason="proper-subsystem RepTable lookup is not yet implemented",
-            ),
-        ),
-    ),
+    # Batch 5: KL_column (partial block), including the A2 proper-integral
+    # subsystem case now handled by the subsystem-aware RepTable path.
+    FixturePlan(name="domain/kl_column"),
     # Shared Rep_table sequencing: only value-demanded full materializers
     # install the family; no-value calls and direct printers do not warm it.
     FixturePlan(name="domain/rep_table_sequence"),

@@ -4,6 +4,22 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-14d (proper integral common blocks activated)
+
+- `PartialBlock::build_full` now drives its initial real-root orbit through
+  subsystem generators and `CommonContext::cross`; the B2 `[3,1]/2` anchor
+  materializes the expected rank-one, three-row block instead of feeding an
+  ambient generator index into a rank-one subsystem.
+- `RepTable` keys, row registration, and relative reconstruction now carry the
+  interned integral-system identity and build their Smith codec from the
+  subsystem parent coroots.  The A2 proper-system `KL_column` event on source
+  line 27 locally matches frozen oracle event 26 exactly and is runnable in
+  the differential plan.
+- This closes the exact embedded/identity-attitude case only.  Upstream
+  `int_item(gamma, locator)` canonicalization across Weyl-conjugate systems,
+  `w`, `simple_pi`, and nontrivial block modifiers still need to be stored on
+  block records before the full proper-system domain can be claimed.
+
 ## Checkpoint - 2026-08-14c (block(Param) submitted; proper-system key foundation)
 
 - **`block(Param)` landed as `6c4b6ff`**: the exact

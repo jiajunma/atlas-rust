@@ -9747,10 +9747,7 @@ pub(crate) fn print_text(
                     text.push_str(&render_common_block(&parameter.context, &rows));
                     return Ok(text);
                 }
-                IntegralBlockScope::ProperSubsystem => {
-                    return Err(proper_subsystem_diagnostic(span));
-                }
-                IntegralBlockScope::Full => {}
+                IntegralBlockScope::ProperSubsystem | IntegralBlockScope::Full => {}
             }
             let located = parameter
                 .context
@@ -12184,10 +12181,7 @@ pub(crate) fn call_with_printed(
                             Value::Integer(BigInt::from(0)),
                         ]));
                     }
-                    IntegralBlockScope::ProperSubsystem => {
-                        return Err(proper_subsystem_diagnostic(span));
-                    }
-                    IntegralBlockScope::Full => {}
+                    IntegralBlockScope::ProperSubsystem | IntegralBlockScope::Full => {}
                 }
                 let located = parameter
                     .context
@@ -13502,10 +13496,7 @@ pub(crate) fn call_with_printed(
                         Value::Vector(Vec32(vec![1])),
                     ])]));
                 }
-                IntegralBlockScope::ProperSubsystem => {
-                    return Err(proper_subsystem_diagnostic(span));
-                }
-                IntegralBlockScope::Full => {}
+                IntegralBlockScope::ProperSubsystem | IntegralBlockScope::Full => {}
             }
             let located = parameter
                 .context
@@ -13586,10 +13577,7 @@ pub(crate) fn call_with_printed(
                         ]),
                     ]));
                 }
-                IntegralBlockScope::ProperSubsystem => {
-                    return Err(proper_subsystem_diagnostic(span));
-                }
-                IntegralBlockScope::Full => {}
+                IntegralBlockScope::ProperSubsystem | IntegralBlockScope::Full => {}
             }
             let located = parameter
                 .context
