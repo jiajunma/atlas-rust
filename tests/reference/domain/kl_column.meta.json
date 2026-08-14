@@ -16,7 +16,14 @@
   "reference_job": "3516121",
   "source_archive_sha256": "fe16043cfdb45e0066d0bdcdb4c737ba9fc588d4310b70261ecd47df9fc3e5ce",
   "capture_artifacts_sha256": "822651b338d692cd8a5bc1baa7f64b7a27cd085a8b9cddd602367bdc17db3d52",
-  "differential_job": "3516408",
+  "differential_job": "3550974",
+  "differential_commit": "8d03ba956b24235bc1cc0c800ee1a67ce5093a38",
   "oracle_seconds": 0.04,
-  "oracle_maxrss_kb": 6700
+  "oracle_maxrss_kb": 6700,
+  "oracle_maxrss_approximate": false,
+  "rust_seconds": 64.0,
+  "rust_maxrss_kb": 48736,
+  "rust_maxrss_approximate": false,
+  "differential_report_sha256": "f51c205194e776427718db0f5b7f68cdbe2f93fec957742e384676c30079f501",
+  "source_snapshot_sha256": "28948b903d1b17ec26b99102dd8bf0641398f9dec5bc6f2eade355a143b0789c"
 }
