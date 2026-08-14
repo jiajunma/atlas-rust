@@ -14,7 +14,7 @@
 //! `atlas-real-group`.
 
 use std::cmp::Ordering;
-use std::collections::{BTreeSet, HashSet};
+use std::collections::BTreeSet;
 use std::fmt;
 use std::fmt::Write as _;
 use std::num::{NonZeroI32, NonZeroU64};
@@ -215,10 +215,6 @@ pub struct RealFormContext {
     table: Arc<InvolutionTable>,
     graph: Arc<KgbGraph>,
     rep: Arc<RepTableOwner>,
-    /// Parameters whose ordinary full deformation has completed.  The
-    /// timed overload observes this cache before deciding whether a zero
-    /// deadline can return the completed union branch.
-    full_deform_cache: Mutex<HashSet<String>>,
 }
 
 /// A Block value: the owning real form and dual real form contexts with
@@ -1980,7 +1976,6 @@ fn build_real_form(
         table,
         graph,
         rep,
-        full_deform_cache: Mutex::new(HashSet::new()),
     });
 
     #[cfg(test)]
@@ -2061,7 +2056,6 @@ fn build_custom_real_form(
         table,
         graph,
         rep,
-        full_deform_cache: Mutex::new(HashSet::new()),
     }))
 }
 
@@ -2261,30 +2255,6 @@ fn full_deformation_terms(
         }
     }
     Ok(result)
-}
-
-fn full_deform_cache_key(parameter: &ParamValue) -> String {
-    format!("{:?}", parameter.repr)
-}
-
-fn full_deform_value(parameter: &ParamValue, span: SourceSpan) -> Result<Value, Diagnostic> {
-    let rc = rep_context(&parameter.context);
-    let finals = rc
-        .finals_for(&parameter.repr)
-        .map_err(|error| structure_diagnostic(error, span))?;
-    let mut terms: Vec<(SplitValue, KType)> = Vec::new();
-    for (final_sr, coef) in &finals {
-        let deformed = full_deformation_terms(&rc, final_sr, &parameter.context, span)?;
-        for (ktype, split) in deformed {
-            let scaled_split = SplitValue::new(split.e() * *coef, split.f() * *coef);
-            merge_ktype_term(&mut terms, ktype, scaled_split);
-        }
-    }
-    sort_ktypepol_terms(&mut terms);
-    Ok(Value::Domain(DomainValue::KTypePol(KTypePolValue {
-        rf: Arc::clone(&parameter.context),
-        terms,
-    })))
 }
 
 /// The transpose of a row-major matrix.
@@ -8580,17 +8550,6 @@ pub(crate) fn validate(
             };
             shift_flip_gates(parameter, &arguments[1], &arguments[2], span)?;
         }
-        // Timed full_deform validates the parameter and narrows the timer
-        // before its no-value gate; validation must not warm the cache.
-        "full_deform" => {
-            arity(name, arguments, 2, span)?;
-            if !matches!(&arguments[0], Value::Domain(DomainValue::Param(_))) {
-                return Err(type_error(span, "expected a Param"));
-            }
-            let timer = as_integer(&arguments[1], span)?;
-            i32::try_from(&timer)
-                .map_err(|_| runtime(span, "Integer value to big for conversion"))?;
-        }
         // The ext_finalise wrappers run every precondition before their
         // no_value gates (atlas-types.w:8449-8537), so validation runs the
         // same gates and drops the result.
@@ -14046,9 +14005,7 @@ pub(crate) fn call_with_printed(
         // finals of its scale-0 parameter, plus the deformation terms of
         // each reducibility point, merged into a K-type polynomial.
         "full_deform" => {
-            if arguments.is_empty() {
-                return Err(type_error(span, "full_deform expects a Param"));
-            }
+            arity(name, arguments, 1, span)?;
             let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
                 return Err(type_error(
                     span,
@@ -14058,55 +14015,23 @@ pub(crate) fn call_with_printed(
                     ),
                 ));
             };
-            match arguments.len() {
-                1 => {
-                    let value = full_deform_value(parameter, span)?;
-                    if let Value::Domain(DomainValue::KTypePol(_)) = &value {
-                        parameter
-                            .context
-                            .full_deform_cache
-                            .lock()
-                            .map_err(|_| runtime(span, "full deformation cache is poisoned"))?
-                            .insert(full_deform_cache_key(parameter));
-                    }
-                    Ok(value)
+            let rc = rep_context(&parameter.context);
+            let finals = rc
+                .finals_for(&parameter.repr)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let mut terms: Vec<(SplitValue, KType)> = Vec::new();
+            for (final_sr, coef) in &finals {
+                let deformed = full_deformation_terms(&rc, final_sr, &parameter.context, span)?;
+                for (ktype, split) in deformed {
+                    let scaled_split = SplitValue::new(split.e() * *coef, split.f() * *coef);
+                    merge_ktype_term(&mut terms, ktype, scaled_split);
                 }
-                2 => {
-                    let timer_value = as_integer(&arguments[1], span)?;
-                    let timer = i32::try_from(&timer_value)
-                        .map_err(|_| runtime(span, "Integer value to big for conversion"))?;
-                    let key = full_deform_cache_key(parameter);
-                    let warmed = parameter
-                        .context
-                        .full_deform_cache
-                        .lock()
-                        .map_err(|_| runtime(span, "full deformation cache is poisoned"))?
-                        .contains(&key);
-                    if timer <= 0 && !warmed {
-                        return Ok(Value::Union {
-                            tag: 0,
-                            injector_name: "timed_out".to_string(),
-                            value: Box::new(Value::Tuple(Vec::new())),
-                        });
-                    }
-                    let value = full_deform_value(parameter, span)?;
-                    parameter
-                        .context
-                        .full_deform_cache
-                        .lock()
-                        .map_err(|_| runtime(span, "full deformation cache is poisoned"))?
-                        .insert(key);
-                    Ok(Value::Union {
-                        tag: 1,
-                        injector_name: "done".to_string(),
-                        value: Box::new(value),
-                    })
-                }
-                count => Err(type_error(
-                    span,
-                    format!("{name} expects 1 or 2 argument(s), found {count}"),
-                )),
             }
+            sort_ktypepol_terms(&mut terms);
+            Ok(Value::Domain(DomainValue::KTypePol(KTypePolValue {
+                rf: Arc::clone(&parameter.context),
+                terms,
+            })))
         }
         // partial_KL_block (atlas-types.w:6998-7051, repr.cpp:2060-2075):
         // the condensed KL matrix over the parameter's partial block
