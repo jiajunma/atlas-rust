@@ -656,6 +656,11 @@ FIXTURE_PLANS = (
         ),
         silent_lines=(1, 3, 5, 7, 10, 13, 16, 19, 20, 22, 24, 26, 29),
     ),
+    FixturePlan(
+        name="domain/print_common_block_proper",
+        runnable_lines=(2, 4, 6, 8, 9, 10),
+        silent_lines=(1, 3, 5, 7),
+    ),
     # shift_flip (wrapper gates + shifted_default_extension/is_default;
     # accepted cases all return false — ~1300 oracle probes found no true
     # case). Line alignment pre-analysed 2026-08-12 against

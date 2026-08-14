@@ -1,0 +1,20 @@
+{
+  "fixture": "domain/print_common_block_proper",
+  "fixture_sha256": "2fb032c8de7f3def9863e6eb1d9094d49466b214d769fdda43477996ebe13931",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "rust_status": "locally_verified",
+  "oracle_exit_status": 0,
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3551236",
+  "reference_report_sha256": "414d948f8658dedcca25f4be7f09adfbec56319402a364e4abcc79e9a3746e78",
+  "source_snapshot_sha256": "cae2d88992d2a253cbf033b2823f02ef020d87b5ff8405123a3072b1b709f512",
+  "oracle_stdout_sha256": "53df2a3ab11cf1f16574b4dd8123a68a9ab2a107e61bd0b0419eb3962c81a9b6",
+  "oracle_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "oracle_seconds": 0.013,
+  "oracle_maxrss_kb": 4360,
+  "oracle_maxrss_approximate": false,
+  "note": "B2 proper-integral rank-one common block for print_block(Param) and print_common_block(Param); both render the same three stored rows and seed index 1."
+}

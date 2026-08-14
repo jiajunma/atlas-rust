@@ -1,7 +1,7 @@
 {
   "schema": "atlas-eval-events-v0",
   "fixture": "domain/print_common_block_proper",
-  "status": "local_oracle_probe",
+  "status": "verified_hpc_reference",
   "events": [
     {"kind":"ReportLine","text":"Declaring identifier 'rb': RootDatum\n"},
     {"kind":"Value","value":{"type":"display","display":"simply connected root datum of Lie type 'B2'"}},
