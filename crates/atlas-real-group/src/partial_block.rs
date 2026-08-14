@@ -962,12 +962,13 @@ fn full_block_initial_real_orbit(
     // `CommonContext::cross` already transports each subsystem generator's
     // parent reflection word.  Using ambient root-reflection words here
     // would feed ambient generator indices back into a proper subsystem.
-    let real_generators = (0..ctxt.rank())
-        .filter(|&generator| {
-            ctxt.status(generator, top.x())
-                .is_ok_and(|(status, _)| status == KgbStatus::Real)
-        })
-        .collect::<Vec<_>>();
+    let mut real_generators = Vec::new();
+    for generator in 0..ctxt.rank() {
+        let (status, _) = ctxt.status(generator, top.x())?;
+        if status == KgbStatus::Real {
+            real_generators.push(generator);
+        }
+    }
     let top_x = top.x();
     let mut orbit_queue = VecDeque::from([top]);
     let mut top_row = Vec::new();
