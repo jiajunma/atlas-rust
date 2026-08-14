@@ -17,6 +17,7 @@ sys.path.insert(0, str(HPC_DIR))
 from pipeline_swap_diff import (  # noqa: E402
     FIXTURE_PLANS,
     FixturePlan,
+    PendingCase,
     PINNED_ATLAS_REVISION,
     PENDING_OVERLOADS,
     expected_cli_observation,
@@ -73,6 +74,37 @@ class PipelineSwapDiffTest(unittest.TestCase):
             with self.subTest(plan=plan.name):
                 _, _, errors = validate_plan(plan, fixture, events)
                 self.assertEqual(errors, [])
+
+    def test_kl_column_marks_only_proper_integral_subsystem_case_pending(self) -> None:
+        plan = next(plan for plan in FIXTURE_PLANS if plan.name == "domain/kl_column")
+        fixture = (
+            REPOSITORY / "tests/fixtures/domain/kl_column.atlas"
+        ).read_text(encoding="utf-8")
+        events = json.loads(
+            (
+                REPOSITORY / "tests/reference/domain/kl_column.events.json"
+            ).read_text(encoding="utf-8")
+        )["events"]
+
+        self.assertEqual(
+            plan.pending,
+            (
+                PendingCase(
+                    feature="KL_column proper integral subsystem",
+                    source_line=27,
+                    reference_event=26,
+                    reason="proper-subsystem RepTable lookup is not yet implemented",
+                ),
+            ),
+        )
+        self.assertEqual(
+            plan.runnable_lines, tuple(range(1, 27)) + tuple(range(28, 165))
+        )
+        self.assertEqual(plan.runnable_events, tuple(range(26)) + tuple(range(27, 164)))
+        runnable_lines, runnable_events, errors = validate_plan(plan, fixture, events)
+        self.assertNotIn(27, runnable_lines)
+        self.assertNotIn(26, runnable_events)
+        self.assertEqual(errors, [])
 
     def test_selected_fixture_source_retains_declared_order(self) -> None:
         self.assertEqual(
