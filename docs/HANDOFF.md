@@ -19,6 +19,10 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   `int_item(gamma, locator)` canonicalization across Weyl-conjugate systems,
   `w`, `simple_pi`, and nontrivial block modifiers still need to be stored on
   block records before the full proper-system domain can be claimed.
+- Differential **3550974 @ 8d03ba9** verified the selected typed pipeline with
+  a clean source snapshot.  `domain/kl_column` now passes exact stdout,
+  diagnostics, and exit status for its proper-system event; the run remains
+  `PARTIAL` only for the two unrelated declared pending features.
 
 ## Checkpoint - 2026-08-14c (block(Param) submitted; proper-system key foundation)
 
