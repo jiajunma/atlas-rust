@@ -4,6 +4,84 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-14b (handoff: differential 3549756 analyzed; block(Param) half-done in tree)
+
+**Repository state**: pushed through **`80e3eb4`** (includes
+`fix: mark proper-subsystem KL case pending`, landed by a concurrent
+agent during this session). Uncommitted in the working tree: the
+half-done **block(Param)->([Param],int)** slice (see below) — it
+compiles (`cargo check -p atlas-core` clean) but is otherwise
+UNVERIFIED. `crates/atlas-real-group/examples/fiber_probe.rs` is the
+user's file; preserve it.
+
+**Differential 3549756 @ 5cb14f8**: 270 PASS / 3 PARTIAL / 1 FAIL.
+
+- rep_table_sequence(±) PASS — the `ActiveKlCallback::drop` release
+  repair (`fcc7026`) is confirmed on the release build; the
+  nested-callback failure mode of 3547776 is gone.
+- print_block_words(±) and prim_kl_order(±) PASS; all four metas now
+  verified_hpc (print_block_words± via differential 3542976 by the
+  concurrent agent; prim_kl_order± via 3549756).
+- p2_block_graph_signatures(±) PARTIAL is BY DESIGN (pending
+  block(Param) events) — cleared by finishing the in-tree slice below.
+- container_syntax_errors PARTIAL is the permanent known item.
+- kl_column FAIL is EXPLAINED, not a regression: the job ran at
+  5cb14f8, whose pipeline_swap_diff.py lacked the kl_column line-27
+  PendingCase (added later in `80e3eb4`). The runnable input therefore
+  still contained `KL_column(q)` on the proper integral subsystem and
+  hit the loud NYI. Re-running the differential at >= 80e3eb4 should
+  clear it; no code change needed.
+
+**Half-done slice: block(Param)->([Param],int)** (common_block_wrapper,
+atlas-types.w:6748-6780, installed :7510). Already edited, compiles:
+
+1. `crates/atlas-core/src/typed.rs` (~line 6212): second
+   `domain_builtin_validate("block", Param -> ([Param],int), 0)`
+   registration next to the (RealForm,RealForm) one.
+2. `crates/atlas-core/src/domain_builtins.rs` validate arm "block"
+   (~line 8489): arity-1 Param shape gates
+   `test_standard(parameter, "Cannot generate block")` (upstream gates
+   before the no_value check).
+3. Same file, eval arm "block" (~line 12160): arity-1 Param path —
+   test_standard, made_dominant, integral_block_scope (Singleton ->
+   `([dominant], 0)`; ProperSubsystem -> `proper_subsystem_diagnostic`;
+   Full -> `lookup_full_block`), then survivors via
+   `CommonContext::integral` + `singular_flags(prepared_query().gamma())`
+   + `block.survives`, params rebuilt with `located_row_parameter`,
+   start_pos = survivor position of `located.raw_row()` else -1.
+   Mirrors the KL_block arm (~line 13550) which is the verified pattern.
+
+Remaining steps for this slice:
+
+1. Local dual-arm probe: run the p2_block_graph_signatures fixture
+   against the local oracle
+   (`{ cat <fixture>; echo quit; } | (cd ~/mycodes/atlasofliegroups/atlas-scripts && ../atlas)`)
+   and diff against ./target/debug/atlas-cli; event 14 (line 15
+   `block(p)`) must match byte-exact.
+2. Remove the two PendingCases (accepted line 15/event 14; rejected
+   line 7/event 6) in hpc/pipeline_swap_diff.py, make every event
+   runnable, then `python3 -m unittest hpc.test_pipeline_swap_diff` and
+   a full local replay of both p2 fixtures through
+   `expected_cli_observation` (stdout + diagnostics + exit status).
+3. Gates: `cargo test -p atlas-core --lib`,
+   `cargo clippy -p atlas-core --lib --tests --no-deps -- -D warnings`,
+   `cargo fmt --all -- --check`.
+4. Commit, push, bundle-sync to HPC (bundle base = HPC's current
+   checkout), submit the differential
+   (`ATLAS_COMMIT=<full sha> ATLAS_DIRTY_TREE=false sbatch
+   --partition=fat --time=01:00:00 --mem=32G --export=ALL,TIMEOUT=3600
+   hpc/pipeline_swap_diff.sbatch`). That same run also clears the
+   stale-plan kl_column FAIL. On PASS, update the p2 fixture plans and
+   record the job in HANDOFF.
+
+**Then** (from checkpoint 2026-08-13i, still open): the real proper
+integral subsystem RepTable/locator path (un-pends kl_column line 27),
+and timed `full_deform(Param,int)`.
+
+**Process note**: TWO agents worked this repo concurrently this
+session; before editing, always `git log --oneline -3` and re-check
+`git status` — file contents and HPC checkouts may have moved.
+
 ## Checkpoint - 2026-08-14a (rep_table release bug repaired; prim_KL/print_block sweep fixes)
 
 - **`ActiveKlCallback::drop` repaired (`fcc7026`)**: the flag clear lived
