@@ -5890,6 +5890,15 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::KTypePol),
                 0,
             ),
+            // Timed full_deform (atlas-types.w:8293-8330): the cooperative
+            // deadline overload returns either the completed polynomial or
+            // the empty timed_out union value.
+            domain_builtin_validate(
+                "full_deform",
+                Type::tuple(vec![primitive_type(Prim::Param), int_type()]),
+                Type::Union(vec![Type::void(), primitive_type(Prim::KTypePol)]),
+                0,
+            ),
             // partial_KL_block (atlas-types.w:6998-7051): the condensed KL
             // matrix over a parameter's partial-block survivors.
             domain_builtin(
