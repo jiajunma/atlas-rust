@@ -5967,6 +5967,10 @@ fn kl_primitives(kl_table: &KlTable, y: usize) -> Vec<usize> {
     while support.prim_back_up(&mut x, &desc_y) {
         result.push(x);
     }
+    // prim_back_up walks downward, but upstream KL_table::primitives
+    // collects into a BitMap whose iteration is ascending (kl.cpp:163-172,
+    // consumed by kl_io::printPrimitiveKL kl_io.cpp:117). Reverse to match.
+    result.reverse();
     result
 }
 
@@ -10026,7 +10030,9 @@ pub(crate) fn print_text(
                     }
                     count += 1; // P_{y,y}
                     if !first {
-                        text.push_str(&format!("{:width$}", ""));
+                        // upstream pads setw(width+tab) before the P_{y,y}
+                        // line (kl_io.cpp:138-139)
+                        text.push_str(&format!("{:pad$}", "", pad = width + tab));
                     }
                     text.push_str(&format!("{y:width$}: 1\n\n"));
                 }

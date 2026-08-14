@@ -1,0 +1,11 @@
+{
+ "fixture": "domain/prim_kl_order_rejected",
+ "fixture_sha256": "87b94bcdf17c4f0909d02218c4378ee663503c4a9da2be07119b3ed63f461b10",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "rust_status": "pending_hpc_differential",
+ "reference_status": "pending_hpc_reference",
+ "note": "print_prim_KL overload rejections: RootDatum and string both fail analysis with 'found <t> while Block was needed.'; session continues after each error.",
+ "oracle_exit_status": 1
+}

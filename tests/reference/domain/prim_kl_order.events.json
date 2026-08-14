@@ -1,0 +1,466 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "domain/prim_kl_order",
+ "status": "pending_hpc_reference",
+ "events": [
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'rc': RootDatum\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "simply connected root datum of Lie type 'D4'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'ic': InnerClass\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "Complex reductive group of type D4, with involution defining\ninner class of type 'c', with 5 real forms and 5 dual real forms"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'rfc': RealForm\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "connected split real group with Lie algebra 'so(4,4)'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'dfc': RealForm\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "disconnected real group with Lie algebra 'so(6,2)'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'blk': Block\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "Block of 28 elements"
+   }
+  },
+  {
+   "kind": "Output",
+   "text": "Non-zero Kazhdan-Lusztig-Vogan polynomials for primitive pairs:\n"
+  },
+  {
+   "kind": "Output",
+   "text": "\n"
+  },
+  {
+   "kind": "Output",
+   "text": " 0:  0: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "\n"
+  },
+  {
+   "kind": "Output",
+   "text": " 1:  1: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "\n"
+  },
+  {
+   "kind": "Output",
+   "text": " 2:  2: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "\n"
+  },
+  {
+   "kind": "Output",
+   "text": " 3:  3: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "\n"
+  },
+  {
+   "kind": "Output",
+   "text": " 4:  4: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "\n"
+  },
+  {
+   "kind": "Output",
+   "text": " 5:  3: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "     4: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "     5: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "\n"
+  },
+  {
+   "kind": "Output",
+   "text": " 6:  2: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "     6: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "\n"
+  },
+  {
+   "kind": "Output",
+   "text": " 7:  2: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "     7: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "\n"
+  },
+  {
+   "kind": "Output",
+   "text": " 8:  8: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "\n"
+  },
+  {
+   "kind": "Output",
+   "text": " 9:  9: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "\n"
+  },
+  {
+   "kind": "Output",
+   "text": "10: 10: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "\n"
+  },
+  {
+   "kind": "Output",
+   "text": "11:  8: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "     9: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "    11: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "\n"
+  },
+  {
+   "kind": "Output",
+   "text": "12:  8: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "     9: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "    12: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "\n"
+  },
+  {
+   "kind": "Output",
+   "text": "13: 13: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "\n"
+  },
+  {
+   "kind": "Output",
+   "text": "14: 14: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "\n"
+  },
+  {
+   "kind": "Output",
+   "text": "15: 13: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "    14: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "    15: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "\n"
+  },
+  {
+   "kind": "Output",
+   "text": "16: 13: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "    14: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "    16: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "\n"
+  },
+  {
+   "kind": "Output",
+   "text": "17:  8: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "     9: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "    17: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "\n"
+  },
+  {
+   "kind": "Output",
+   "text": "18:  3: q\n"
+  },
+  {
+   "kind": "Output",
+   "text": "     4: 0\n"
+  },
+  {
+   "kind": "Output",
+   "text": "     5: 0\n"
+  },
+  {
+   "kind": "Output",
+   "text": "    10: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "    18: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "\n"
+  },
+  {
+   "kind": "Output",
+   "text": "19:  3: 0\n"
+  },
+  {
+   "kind": "Output",
+   "text": "     4: q\n"
+  },
+  {
+   "kind": "Output",
+   "text": "     5: 0\n"
+  },
+  {
+   "kind": "Output",
+   "text": "    10: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "    19: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "\n"
+  },
+  {
+   "kind": "Output",
+   "text": "20: 20: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "\n"
+  },
+  {
+   "kind": "Output",
+   "text": "21: 21: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "\n"
+  },
+  {
+   "kind": "Output",
+   "text": "22: 13: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "    14: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "    22: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "\n"
+  },
+  {
+   "kind": "Output",
+   "text": "23:  3: q\n"
+  },
+  {
+   "kind": "Output",
+   "text": "     4: q\n"
+  },
+  {
+   "kind": "Output",
+   "text": "     5: q\n"
+  },
+  {
+   "kind": "Output",
+   "text": "    23: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "\n"
+  },
+  {
+   "kind": "Output",
+   "text": "24: 20: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "    21: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "    22: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "    24: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "\n"
+  },
+  {
+   "kind": "Output",
+   "text": "25: 10: q\n"
+  },
+  {
+   "kind": "Output",
+   "text": "    22: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "    23: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "    25: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "\n"
+  },
+  {
+   "kind": "Output",
+   "text": "26:  8: 0\n"
+  },
+  {
+   "kind": "Output",
+   "text": "     9: 0\n"
+  },
+  {
+   "kind": "Output",
+   "text": "    13: q\n"
+  },
+  {
+   "kind": "Output",
+   "text": "    14: q\n"
+  },
+  {
+   "kind": "Output",
+   "text": "    20: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "    21: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "    26: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "\n"
+  },
+  {
+   "kind": "Output",
+   "text": "27:  2: q^2\n"
+  },
+  {
+   "kind": "Output",
+   "text": "    23: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "    27: 1\n"
+  },
+  {
+   "kind": "Output",
+   "text": "\n"
+  },
+  {
+   "kind": "Output",
+   "text": "69 Bruhat-comparable primitive pairs, of which 6 have null polynomial,\n"
+  },
+  {
+   "kind": "Output",
+   "text": " and 15 incomparable primitive pairs\n"
+  }
+ ]
+}

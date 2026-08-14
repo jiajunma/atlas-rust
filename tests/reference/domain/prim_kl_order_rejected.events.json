@@ -1,0 +1,28 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "domain/prim_kl_order_rejected",
+ "status": "pending_hpc_reference",
+ "events": [
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'ra': RootDatum\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "simply connected root datum of Lie type 'A1'"
+   }
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "found RootDatum while Block was needed."
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "found string while Block was needed."
+  }
+ ]
+}

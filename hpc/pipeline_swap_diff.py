@@ -300,6 +300,23 @@ FIXTURE_PLANS = (
         runnable_lines=(2, 4, 6, 7, 8, 9),
         silent_lines=(1, 3, 5),
     ),
+    # prim_kl_order: regression pin for the prim_KL ascending-order and
+    # P_{y,y} pad fixes (2026-08-13). Ascriptions silent, `:=` ->
+    # Declaring+Value, print_prim_KL -> one Output per line (11
+    # lines/111 events).
+    FixturePlan(
+        name="domain/prim_kl_order",
+        runnable_lines=(2, 4, 6, 8, 10, 11),
+        silent_lines=(1, 3, 5, 7, 9),
+    ),
+    # prim_kl_order_rejected: ascription silent, 1 declaration ->
+    # Declaring+Value, 2 erroring calls -> 1 Diagnostic each (3 lines/4
+    # events).
+    FixturePlan(
+        name="domain/prim_kl_order_rejected",
+        runnable_lines=(2, 3, 4),
+        silent_lines=(1,),
+    ),
     # Batch 3 completion: components_rank / strong_components.
     FixturePlan(name="domain/components_rank"),
     # Batch 8 (misc): KGB_Hasse matrix.

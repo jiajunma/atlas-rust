@@ -1,0 +1,11 @@
+rc : RootDatum
+rc := simply_connected(Lie_type("D4"),true)
+ic : InnerClass
+ic := inner_class(rc,[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
+rfc : RealForm
+rfc := real_form(ic,4)
+dfc : RealForm
+dfc := dual_real_form(ic,1)
+blk : Block
+blk := block(rfc,dfc)
+print_prim_KL(blk)

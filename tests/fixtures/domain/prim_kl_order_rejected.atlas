@@ -1,0 +1,4 @@
+ra : RootDatum
+ra := simply_connected(Lie_type("A1"),true)
+print_prim_KL(ra)
+print_prim_KL("x")
