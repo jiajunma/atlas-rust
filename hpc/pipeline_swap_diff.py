@@ -86,7 +86,8 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/p1_simple_signatures_rejected"),
     # P2 Block W-graph overloads captured by HPC oracle 3543699.  The
     # full-integral A1 `block(Param)` path now uses the shared RepTable lookup;
-    # proper-integral-subsystem cases remain explicitly pending in KL_column.
+    # the proper-integral KL_column case is covered by the shared subsystem
+    # lookup as well.
     FixturePlan(
         name="domain/p2_block_graph_signatures",
         runnable_lines=(2, 4, 6, 8, 10, 11, 12, 14, 15, 16, 17),
