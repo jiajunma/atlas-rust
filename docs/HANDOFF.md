@@ -4,6 +4,36 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-14c (block(Param) submitted; proper-system key foundation)
+
+- **`block(Param)` landed as `6c4b6ff`**: the exact
+  `Param -> ([Param],int)` registry signature, standardness-before-no-value
+  validation, shared full-block lookup, singular-survivor filtering, shifted
+  row reconstruction, and survivor-local start index are active.  Both P2
+  fixtures PASS the local structured pipeline; local Atlas/Rust stdout and
+  stderr are byte-identical for the accepted fixture.  Differential **3550585
+  @ 6c4b6ff passed** (runnable PASS, 3 declared pending overall); P2 accepted
+  and rejected took 0.005s and 7300/6804 KiB respectively.
+- **The stale runner failure is cleared**: differential **3550540 @ 80e3eb4**
+  completed with runnable status PASS.  `kl_column` is now PARTIAL by design at
+  its one proper-subsystem event instead of failing the suite; the shared
+  `rep_table_sequence(+-)` fixtures remain PASS.
+- **Proper integral-system foundation is locally complete but does not yet
+  change language behavior**: `RepTable::State` interns an exact embedded
+  subsystem by its ordered parent-simple `RootId` list, reusing a stable
+  `IntegralSystem::Interned` ID, while the identity ambient system remains
+  `Full`.  `IntegralCodec` construction now accepts an `IntegralSubsystem` and
+  builds its evaluation matrix from the subsystem parent coroots.  B2
+  `[3,1]/2`, whose rank-one simple is a non-simple ambient root, is the test
+  anchor.  Existing full lookup still rejects every non-`Full` system loudly.
+- **Next**: port upstream `InnerClass::int_item(gamma, locator)` semantics:
+  canonicalize Weyl-conjugate integral systems, retain `w`, ordered simply
+  integral roots and `simple_pi`, then store that locator/subsystem metadata on
+  each block record.  Only after `co_reduce`, relative modifier/shift, and row
+  reconstruction use that metadata should the A2 `KL_column` pending event be
+  enabled.  Exact embedding interning alone is not an observable-compatibility
+  claim and must not be mistaken for the final locator.
+
 ## Checkpoint - 2026-08-14b (handoff: differential 3549756 analyzed; block(Param) half-done in tree)
 
 **Repository state**: pushed through **`80e3eb4`** (includes

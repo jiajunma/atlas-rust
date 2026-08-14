@@ -19,8 +19,9 @@ use crate::matreduc::IntMatrix;
 use crate::real_projection::RealProjection;
 use crate::rep_context::RepContextDerived;
 use crate::{
-    bruhat_below, CommonContext, InvolutionTable, KgbGraph, KgbId, PartialBlock, RationalWeight,
-    RepContext, StandardRepr, StandardReprMod, StructureError, Weight,
+    bruhat_below, CommonContext, IntegralSubsystem, InvolutionTable, KgbGraph, KgbId, PartialBlock,
+    RationalWeight, RepContext, RootId, RootSystem, StandardRepr, StandardReprMod, StructureError,
+    Weight,
 };
 
 /// Identity of the integral root system used to reduce a parameter.
@@ -343,9 +344,48 @@ enum BlockSlot {
 struct State {
     slots: Vec<BlockSlot>,
     places: HashMap<ReducedParamKey, Place>,
+    integral_systems: Vec<Vec<RootId>>,
+    integral_system_ids: HashMap<Vec<RootId>, u32>,
 }
 
 impl State {
+    fn integral_system(
+        &mut self,
+        roots: &RootSystem,
+        subsystem: &IntegralSubsystem,
+    ) -> Result<IntegralSystem, StructureError> {
+        let ambient = roots.simple_root_ids();
+        if subsystem.rank() == ambient.len()
+            && ambient
+                .iter()
+                .enumerate()
+                .all(|(generator, &root)| subsystem.parent_root(generator) == Some(root))
+        {
+            return Ok(IntegralSystem::Full);
+        }
+        let embedded: Vec<RootId> = (0..subsystem.rank())
+            .map(|generator| {
+                subsystem
+                    .parent_root(generator)
+                    .ok_or(StructureError::RepInvariantViolation {
+                        invariant: "integral subsystem parent root",
+                    })
+            })
+            .collect::<Result<_, _>>()?;
+        if let Some(&id) = self.integral_system_ids.get(&embedded) {
+            return Ok(IntegralSystem::Interned(id));
+        }
+
+        let id = u32::try_from(self.integral_systems.len())
+            .map_err(|_| StructureError::ArithmeticOverflow)?;
+        self.integral_systems
+            .try_reserve_exact(1)
+            .map_err(|_| StructureError::AllocationFailed { requested: 1 })?;
+        self.integral_systems.push(embedded.clone());
+        self.integral_system_ids.insert(embedded, id);
+        Ok(IntegralSystem::Interned(id))
+    }
+
     fn active(&self, id: BlockId) -> Option<Arc<BlockRecord>> {
         match self.slots.get(id.0) {
             Some(BlockSlot::Active(record)) => Some(Arc::clone(record)),
@@ -616,7 +656,7 @@ impl RepTable {
     ) -> Result<LocatedBlock, StructureError> {
         let query = query.normalised(rc)?;
         let seed = StandardReprMod::mod_reduce(rc, &query)?;
-        let context = Self::full_integral_context(rc, query.gamma())?;
+        let context = self.full_integral_context(rc, query.gamma())?;
         let key = Self::full_integral_key(rc, &seed)?;
         if let Some((record, row)) = self.probe(&key)? {
             return Self::located(rc, record, row, &seed, query);
@@ -649,7 +689,7 @@ impl RepTable {
     ) -> Result<LocatedBlock, StructureError> {
         let query = query.made_dominant(rc)?;
         let seed = StandardReprMod::mod_reduce(rc, &query)?;
-        let context = Self::full_integral_context(rc, query.gamma())?;
+        let context = self.full_integral_context(rc, query.gamma())?;
         let key = Self::full_integral_key(rc, &seed)?;
         if let Some((record, row)) = self.probe(&key)? {
             if record.full {
@@ -736,22 +776,46 @@ impl RepTable {
     }
 
     fn full_integral_context<'r, 'context>(
+        &self,
         rc: &'r RepContext<'context>,
         gamma: &RationalWeight,
     ) -> Result<CommonContext<'r, 'context>, StructureError> {
-        let context = CommonContext::integral(rc, gamma)?;
-        let ambient = rc.root_system().simple_root_ids();
-        let identity = context.rank() == ambient.len()
-            && ambient
-                .iter()
-                .enumerate()
-                .all(|(generator, &root)| context.subsystem().parent_root(generator) == Some(root));
-        if !identity {
-            return Err(StructureError::NotYetImplemented {
-                feature: "representation table for a non-full integral subsystem",
-            });
+        if let Some(context) = CommonContext::full_if_integral(rc, gamma)? {
+            return Ok(context);
         }
-        Ok(context)
+        let context = CommonContext::integral(rc, gamma)?;
+        let integral_system = self
+            .lock_state()?
+            .integral_system(rc.root_system(), context.subsystem())?;
+        debug_assert_ne!(integral_system, IntegralSystem::Full);
+        Err(StructureError::NotYetImplemented {
+            feature: "representation table for a non-full integral subsystem",
+        })
+    }
+
+    fn integral_codec(
+        rc: &RepContext<'_>,
+        x: KgbId,
+        subsystem: &IntegralSubsystem,
+    ) -> Result<IntegralCodec, StructureError> {
+        let mut coroots = IntMatrix::new(subsystem.rank(), rc.rank());
+        for row in 0..subsystem.rank() {
+            let root = subsystem
+                .parent_root(row)
+                .ok_or(StructureError::RepInvariantViolation {
+                    invariant: "integral subsystem codec parent root",
+                })?;
+            let coroot =
+                rc.root_system()
+                    .coroot(root)
+                    .ok_or(StructureError::RepInvariantViolation {
+                        invariant: "integral subsystem codec coroot",
+                    })?;
+            for (column, &entry) in coroot.as_slice().iter().enumerate() {
+                coroots.set(row, column, entry);
+            }
+        }
+        IntegralCodec::new(rc.projection_at(x)?, &coroots)
     }
 
     fn full_integral_codec(rc: &RepContext<'_>, x: KgbId) -> Result<IntegralCodec, StructureError> {
@@ -1456,6 +1520,49 @@ mod tests {
     }
 
     #[test]
+    fn proper_integral_systems_are_interned_by_embedded_simple_roots() {
+        let fixture = b2_fixture();
+        let rc = fixture.rc();
+        let subsystem = IntegralSubsystem::integral(
+            rc.root_system(),
+            &RationalWeight::new(vec![3, 1], 2).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(subsystem.rank(), 1);
+
+        let mut state = State::default();
+        let first = state.integral_system(rc.root_system(), &subsystem).unwrap();
+        let repeated = state.integral_system(rc.root_system(), &subsystem).unwrap();
+
+        assert_eq!(first, IntegralSystem::Interned(0));
+        assert_eq!(repeated, first);
+        assert_eq!(state.integral_systems.len(), 1);
+    }
+
+    #[test]
+    fn proper_integral_codec_uses_the_subsystem_coroots() {
+        let fixture = b2_fixture();
+        let rc = fixture.rc();
+        let subsystem = IntegralSubsystem::integral(
+            rc.root_system(),
+            &RationalWeight::new(vec![3, 1], 2).unwrap(),
+        )
+        .unwrap();
+        let root = subsystem.parent_root(0).unwrap();
+        let expected_coroot = rc.root_system().coroot(root).unwrap();
+
+        let codec = RepTable::integral_codec(&rc, KgbId(5), &subsystem).unwrap();
+
+        assert_eq!(codec.coroots.n_rows(), 1);
+        for column in 0..rc.rank() {
+            assert_eq!(
+                codec.coroots.get(0, column),
+                expected_coroot.as_slice()[column]
+            );
+        }
+    }
+
+    #[test]
     fn a1_partial_then_full_promotes_raw_row_zero_to_one() {
         let fixture = a1_fixture();
         let owner = owner(&fixture);
@@ -1775,7 +1882,7 @@ mod tests {
             .unwrap()
             .to_standard(&rc, &gamma)
             .unwrap();
-        let context = RepTable::full_integral_context(&rc, &gamma).unwrap();
+        let context = CommonContext::integral(&rc, &gamma).unwrap();
         let seed = StandardReprMod::mod_reduce(&rc, &seed).unwrap();
         let (block, _) = PartialBlock::build_full(&context, &seed).unwrap();
         let block = Arc::new(block);

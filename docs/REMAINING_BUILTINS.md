@@ -42,6 +42,15 @@ Register every representative of a materialized block through `co_reduce`
 (reverse insertion so the smallest row wins); registering only the queried
 seed is still the rejected seed cache in disguise.
 
+The next proper-system substrate is now present: the table interns an exact
+embedded integral subsystem by its ordered parent-simple root IDs, and the
+codec can use those roots' actual parent coroots (including B2 `[3,1]/2`, whose
+rank-one generator is not ambient-simple). This is deliberately weaker than
+upstream `int_item(gamma, locator)`: Weyl-conjugate systems are not yet
+canonicalized together, and no `w`, `simple_pi`, block modifier, or relative
+shift is stored. Therefore the proper-subsystem language event remains pending
+and full lookup still rejects `IntegralSystem::Interned`.
+
 The reusable mathematical base of that slice is now present in
 `atlas-real-group::rep_table`: a crate-private `ReducedParamKey` and
 `IntegralCodec` built from the transported `RealProjection::lift_mat`, using

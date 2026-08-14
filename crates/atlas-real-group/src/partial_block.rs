@@ -125,6 +125,15 @@ pub struct IntegralSubsystem {
 }
 
 impl IntegralSubsystem {
+    /// The ambient root system viewed as its own integral subsystem.
+    ///
+    /// This avoids scanning every positive root for the common full-integral
+    /// case while preserving the same generator order and transport words as
+    /// [`Self::integral`] at an everywhere-integral weight.
+    pub(crate) fn full(system: &RootSystem) -> Result<Self, StructureError> {
+        Self::from_simple_roots(system, system.simple_root_ids())
+    }
+
     /// `SubSystem::integral` (subsystem.cpp:97-110) via
     /// `integrality_simples` (rootdata.cpp:1494-1500): the subsystem whose
     /// simple roots are the simple basis of the positive roots whose
@@ -429,6 +438,28 @@ pub struct CommonContext<'r, 'a> {
 }
 
 impl<'r, 'a> CommonContext<'r, 'a> {
+    pub(crate) fn full_if_integral(
+        rc: &'r RepContext<'a>,
+        gamma: &RationalWeight,
+    ) -> Result<Option<Self>, StructureError> {
+        let denominator = gamma.denominator();
+        let full = rc
+            .datum()
+            .simple_coroots()
+            .iter()
+            .try_fold(true, |full, coroot| {
+                Ok(full && pairing_numerator(gamma, coroot)? % denominator == 0)
+            })?;
+        if full {
+            Ok(Some(Self {
+                rc,
+                sub: IntegralSubsystem::full(rc.root_system())?,
+            }))
+        } else {
+            Ok(None)
+        }
+    }
+
     /// The gamma-based constructor (repr.cpp:2666-2670). The
     /// `print_partial_block` wrapper passes the seed srm's `gamma_lambda`
     /// (atlas-types.w:6705); any weight differing from the infinitesimal
@@ -2226,6 +2257,19 @@ mod tests {
         assert_eq!(sub.rank(), 1);
         let root = sub.parent_root(0).unwrap();
         assert_eq!(system.root(root).unwrap().as_slice(), &[0, 2]);
+    }
+
+    #[test]
+    fn full_integral_subsystem_uses_ambient_simple_generator_order() {
+        let b2 = b2_fixture();
+        let rc = b2.rc();
+        let system = rc.root_system();
+        let subsystem = IntegralSubsystem::full(system).unwrap();
+
+        assert_eq!(subsystem.rank(), system.simple_root_ids().len());
+        for (generator, &root) in system.simple_root_ids().iter().enumerate() {
+            assert_eq!(subsystem.parent_root(generator), Some(root));
+        }
     }
 
     #[test]

@@ -4,7 +4,7 @@
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "rust_status": "partial_hpc",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
   "reference_job": "3543699",
   "note": "Rejected companion for P2 overload resolution on RealForm arguments.",
@@ -15,11 +15,10 @@
   "oracle_stdout_sha256": "3b458c909c8d1f47b11d2c01e0185ad6d7f4040aa2d9ac07146560526da4973a",
   "oracle_stderr_sha256": "916e876b7a8f1ebd143fb3feda026130fc1dc6e4b56c8ac3b168cd24e235c3ec",
   "reference_report_sha256": "74872b8b2992b20b6237f166884f9d7486b3a572c615e58faa88243683b3fc79",
-  "differential_job": "3543773",
-  "differential_source_commit": "9874ff6f6c6be99f792c2722396bff1f8c229404",
-  "differential_report_sha256": "75cc877c6aaff77e58e948474b9f7021bb6c20a7fcbcb35affc4d1f1473ab826",
+  "differential_job": "3550585",
+  "differential_source_commit": "6c4b6ffe3f1f58f36db6198d4a0aa4a63fda172c",
+  "differential_report_sha256": "a7b84dcb7a3dc574e475c3407134c9b5eaa6fb94666aa47d72bf1f7217570820",
   "rust_seconds": 0.005,
-  "rust_maxrss_kb": 6760,
-  "rust_maxrss_approximate": false,
-  "pending_feature": "block(Param) overload-set rejection wording"
+  "rust_maxrss_kb": 6804,
+  "rust_maxrss_approximate": false
 }
