@@ -51,6 +51,12 @@ event. This remains deliberately weaker than upstream
 `int_item(gamma, locator)`: Weyl-conjugate systems are not yet canonicalized
 together, and no `w`, `simple_pi`, or nontrivial block modifier is stored.
 
+The proper-system print surface is now covered too: `print_block(Param)` and
+`print_common_block(Param)` render an embedded B2 rank-one block and are
+differential-verified by `domain/print_common_block_proper` (HPC 3551242).
+Extended and twisted consumers still need subsystem-aware extended-block
+generator metadata.
+
 The reusable mathematical base of that slice is now present in
 `atlas-real-group::rep_table`: a crate-private `ReducedParamKey` and
 `IntegralCodec` built from the transported `RealProjection::lift_mat`, using
