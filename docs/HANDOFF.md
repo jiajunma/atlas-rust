@@ -290,10 +290,10 @@ RepTable/locator path or mark that fixture line pending until it exists.
    system/locator, reduced key, block modifier and row reconstruction) so the
    A2 `KL_column` case is accepted.  This is a prerequisite for claiming the
    KL builtins across their full upstream domain.
-5. Timed `full_deform(Param,int)` remains unimplemented.  Its verified oracle
-   contract is in `timed_full_deform_*`; it needs cache-sensitive cooperative
-   cancellation, not a process timeout around the current deformation
-   approximation.
+5. Timed `full_deform(Param,int)` is implemented and differential-verified by
+   HPC `3551338`: exact signature/rejection, `0`/`-1` timeout, completed-result
+   cache warming, no-value validation, and cooperative deadline checks all
+   match the frozen `timed_full_deform_*` contracts.
 
 ### Distance to the stated goal
 
@@ -3123,10 +3123,14 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   bigint timer narrowing still diagnoses). They used 0.009--0.014 seconds and
   4344--4484 KiB RSS; report SHA256 is
   `97931b44e402672b0704a1caca595fcb4e5c91582d95325ab3ff82536fb75b04`.
-  Rust status remains `unimplemented`; implementation must share the real
-  `RepTable` formula cache and use cooperative deadline checks inside recursive
-  deformation. A background worker or a timeout around the current
-  approximation would violate the cache and side-effect contract.
+  Rust commit `3b42183` uses a typed per-real-form completed-result cache and
+  cooperative deadline checks inside ordinary deformation. Differential job
+  `3551338` matches all four fixtures exactly (0.008s, 6972--7104 KiB); report
+  SHA256 is
+  `d59adb977b717ab1f43559f877ee8f64896d8b64a7e887da86b99341afaa31d0`.
+  The lower-level RepTable still does not retain partial formula progress from
+  a timed-out computation; that boundary is not exercised by the frozen
+  fixtures and remains a compatibility/performance follow-up.
 - Representation-table ownership direction: keep the mutable cache with the
   exact `InvolutionTable`/`KgbGraph` substrates in an `Arc<RepTableOwner>`.
   Construct short-lived `RepContext` views from that owner; never self-borrow a

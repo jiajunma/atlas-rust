@@ -749,13 +749,14 @@ FIXTURE_PLANS = (
         silent_lines=(1, 3, 5, 7, 11, 15, 17, 19, 21, 25),
     ),
     # Builtin hunger contracts (axis.w:7165-7301): the three same-result
-    # products, validation before no_value, and simple-assignment pilfering.
-    # The timed twisted_full_deform NYI probe remains deliberately excluded.
+    # products, validation before no_value, simple-assignment pilfering, and
+    # the timed twisted_full_deform positive-deadline overload.
     FixturePlan(name="domain/hunger_contract"),
     FixturePlan(name="domain/hunger_contract_rejected"),
     FixturePlan(name="domain/hunger_contract_domain"),
     FixturePlan(name="domain/hunger_assignment_semantics"),
     FixturePlan(name="domain/hunger_assignment_semantics_rejected"),
+    FixturePlan(name="domain/hunger_contract_timed_nyi"),
     # Early scalar-era fixtures: verified verbatim locally and included so
     # the HPC differential upgrades their reference metadata.
     # declare_types(±): full type grammar in identifier ascriptions

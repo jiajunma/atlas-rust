@@ -649,14 +649,17 @@ took 0.012/0.008s and 4368/4288 KiB; report SHA256 is
   uses the `.done` union branch; fresh-process deadlines of `0` and `-1`
   milliseconds use `().timed_out`.
 - The timeout is cooperative and cache-sensitive, not a shell/process timeout.
-  A discarded timed call does not warm the representation-table deformation
+  A discarded timed call does not warm the completed-result deformation
   cache, unary `full_deform` does warm it, and a later zero-millisecond call
   can therefore complete. Integer narrowing still runs before the no-value
   early return and diagnoses an oversized timer.
 - The four captures took 0.009--0.014 seconds and 4344--4484 KiB RSS; report
   SHA256 is
   `97931b44e402672b0704a1caca595fcb4e5c91582d95325ab3ff82536fb75b04`.
-  They verify the oracle contract only: Rust remains unimplemented until the
-  shared representation/formula cache and cooperative cancellation probe are
-  connected to the recursive deformation engine. Do not wrap the current
-  one-layer approximation in a wall-clock timeout and call it compatible.
+  Rust commit `3b42183` implements the overload with a typed per-real-form
+  completed-result cache and cooperative checks in the recursive ordinary
+  deformation loops. Differential job `3551338` matches all four fixtures
+  exactly (0.008s, 6972--7104 KiB); report SHA256 is
+  `d59adb977b717ab1f43559f877ee8f64896d8b64a7e887da86b99341afaa31d0`.
+  Partial formula progress is not retained after timeout and remains an
+  unprobed compatibility/performance boundary.

@@ -4,7 +4,7 @@
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_status": "verified_hpc_reference",
-  "rust_status": "unimplemented",
+  "rust_status": "verified_hpc_differential",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
@@ -31,7 +31,13 @@
     "maxrss_approximate": true,
     "verification": "unverified_local_draft_binary_differs_from_frozen_hpc_pin_and_upstream_tree_is_dirty"
   },
-  "notes": "HPC job 3547426 verifies the fresh-process 0 ms timeout. It must never share an oracle process with a warming unary full_deform call, because RepTable deformation caching changes the result. Rust remains unimplemented.",
+  "notes": "HPC reference job 3547426 verifies the fresh-process 0 ms timeout. It must never share an oracle process with a warming unary full_deform call, because deformation caching changes the result. Rust matches exactly in differential job 3551338.",
+  "differential_job": "3551338",
+  "differential_commit": "3b421836c5740a47a66c2ff72a7aafcc065b873b",
+  "differential_report_sha256": "d59adb977b717ab1f43559f877ee8f64896d8b64a7e887da86b99341afaa31d0",
+  "rust_seconds": 0.008,
+  "rust_maxrss_kb": 6972,
+  "rust_maxrss_approximate": false,
   "hpc_capture": {
     "fresh_process_required": true,
     "timeout_seconds": 30,
