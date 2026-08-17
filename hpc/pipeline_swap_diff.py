@@ -757,6 +757,10 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/hunger_assignment_semantics"),
     FixturePlan(name="domain/hunger_assignment_semantics_rejected"),
     FixturePlan(name="domain/hunger_contract_timed_nyi"),
+    # Timed twisted_full_deform: isolated completed-result cache and
+    # cooperative cancellation contract, including bigint narrowing.
+    FixturePlan(name="domain/timed_twisted_full_deform_cache"),
+    FixturePlan(name="domain/timed_twisted_full_deform_validation_order_rejected"),
     # Early scalar-era fixtures: verified verbatim locally and included so
     # the HPC differential upgrades their reference metadata.
     # declare_types(±): full type grammar in identifier ascriptions

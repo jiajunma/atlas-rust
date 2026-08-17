@@ -41,8 +41,8 @@ use atlas_real_group::{
     integral_block_scope, layout_involution, longest_action, minimal_torus_part,
     on_basis as lattice_on_basis, pair, quotient_relation_basis as domain_quotient_relation_basis,
     replace_relation_generators as domain_replace_relation_generators, singular_orbits_at,
-    twisted_deformation, twisted_deformation_terms, twisted_kl_column_at_s, twisted_kl_sum,
-    AdjointFiberBudget, BasedRootDatum, BlockDescent, BlockGraph, BlockTopology,
+    twisted_deformation_terms, twisted_deformation_with_cancel, twisted_kl_column_at_s,
+    twisted_kl_sum, AdjointFiberBudget, BasedRootDatum, BlockDescent, BlockGraph, BlockTopology,
     CartanClassification, CartanClassificationBudget, CartanId, CommonContext, Coweight,
     ExternalFormOrder, GlobalKgb, InnerClass, InnerClassLayout, IntegerLatticeBudget,
     IntegralBlockScope, IntegralSubsystem, InvolutionId, InvolutionTable, InvolutionTableBudget,
@@ -216,7 +216,7 @@ struct FullDeformKey {
 }
 
 #[derive(Debug, Default)]
-struct FullDeformCache {
+struct DeformationCache {
     values: HashMap<FullDeformKey, Vec<(SplitValue, KType)>>,
 }
 
@@ -228,7 +228,8 @@ pub struct RealFormContext {
     table: Arc<InvolutionTable>,
     graph: Arc<KgbGraph>,
     rep: Arc<RepTableOwner>,
-    full_deform_cache: Mutex<FullDeformCache>,
+    full_deform_cache: Mutex<DeformationCache>,
+    twisted_full_deform_cache: Mutex<DeformationCache>,
 }
 
 /// A Block value: the owning real form and dual real form contexts with
@@ -1990,7 +1991,8 @@ fn build_real_form(
         table,
         graph,
         rep,
-        full_deform_cache: Mutex::new(FullDeformCache::default()),
+        full_deform_cache: Mutex::new(DeformationCache::default()),
+        twisted_full_deform_cache: Mutex::new(DeformationCache::default()),
     });
 
     #[cfg(test)]
@@ -2071,7 +2073,8 @@ fn build_custom_real_form(
         table,
         graph,
         rep,
-        full_deform_cache: Mutex::new(FullDeformCache::default()),
+        full_deform_cache: Mutex::new(DeformationCache::default()),
+        twisted_full_deform_cache: Mutex::new(DeformationCache::default()),
     }))
 }
 
@@ -2195,28 +2198,26 @@ fn deadline_expired(deadline: Option<Instant>) -> bool {
     deadline.is_some_and(|deadline| Instant::now() >= deadline)
 }
 
-fn cached_full_deform(
-    context: &RealFormContext,
+fn cached_deformation(
+    cache: &Mutex<DeformationCache>,
     key: &FullDeformKey,
     span: SourceSpan,
 ) -> Result<Option<Vec<(SplitValue, KType)>>, Diagnostic> {
-    context
-        .full_deform_cache
+    cache
         .lock()
-        .map_err(|_| runtime(span, "full deformation cache poisoned"))
+        .map_err(|_| runtime(span, "deformation cache poisoned"))
         .map(|cache| cache.values.get(key).cloned())
 }
 
-fn store_full_deform(
-    context: &RealFormContext,
+fn store_deformation(
+    cache: &Mutex<DeformationCache>,
     key: FullDeformKey,
     terms: Vec<(SplitValue, KType)>,
     span: SourceSpan,
 ) -> Result<(), Diagnostic> {
-    context
-        .full_deform_cache
+    cache
         .lock()
-        .map_err(|_| runtime(span, "full deformation cache poisoned"))?
+        .map_err(|_| runtime(span, "deformation cache poisoned"))?
         .values
         .insert(key, terms);
     Ok(())
@@ -2387,6 +2388,60 @@ fn compute_full_deform(
     }
     sort_ktypepol_terms(&mut terms);
     if deadline_expired(deadline) {
+        return Ok(None);
+    }
+    Ok(Some(terms))
+}
+
+fn compute_twisted_full_deform(
+    parameter: &ParamValue,
+    span: SourceSpan,
+    deadline: Option<Instant>,
+) -> Result<Option<Vec<(SplitValue, KType)>>, Diagnostic> {
+    if deadline_expired(deadline) {
+        return Ok(None);
+    }
+    let rc = rep_context(&parameter.context);
+    let (delta, twist) = distinguished_twist(parameter, span)?;
+    let context = ExtRepContext::new(&rc, delta.clone())
+        .map_err(|error| structure_diagnostic(error, span))?;
+    let finals = extended_finalise(&context, &parameter.repr)
+        .map_err(|error| structure_diagnostic(error, span))?;
+    if deadline_expired(deadline) {
+        return Ok(None);
+    }
+
+    let real_form = &parameter.context;
+    let mut lookup =
+        |zi: &StandardRepr| twisted_reducibility_lookup(real_form, &rc, &delta, &twist, zi);
+    let mut cancelled = || deadline_expired(deadline);
+    let mut terms: Vec<(SplitValue, KType)> = Vec::new();
+    for (final_sr, finalise_flip) in &finals {
+        if cancelled() {
+            return Ok(None);
+        }
+        let Some((deformed, flip)) =
+            twisted_deformation_with_cancel(&context, final_sr, &mut lookup, &mut cancelled)
+                .map_err(|error| structure_diagnostic(error, span))?
+        else {
+            return Ok(None);
+        };
+        let coefficient = if flip != *finalise_flip {
+            SplitValue::new(0, 1)
+        } else {
+            SplitValue::new(1, 0)
+        };
+        for (ktype, split) in deformed {
+            let split: (i32, i32) = split.into();
+            let scaled = SplitValue::new(split.0, split.1).mul(coefficient);
+            merge_pol_term(&mut terms, scaled, ktype);
+            if cancelled() {
+                return Ok(None);
+            }
+        }
+    }
+    sort_ktypepol_terms(&mut terms);
+    if cancelled() {
         return Ok(None);
     }
     Ok(Some(terms))
@@ -8742,18 +8797,23 @@ pub(crate) fn validate(
                 .map_err(|_| runtime(span, "Integer value to big for conversion"))?;
         }
         "twisted_full_deform" => {
+            if arguments.is_empty() || arguments.len() > 2 {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "twisted_full_deform expects 1 or 2 argument(s), found {}",
+                        arguments.len()
+                    ),
+                ));
+            }
             let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
                 return Err(type_error(span, "expected a Param"));
             };
-            match arguments.len() {
-                1 | 2 => twisted_full_deform_gates(parameter, span)?,
-                count => {
-                    return Err(type_error(
-                        span,
-                        format!("twisted_full_deform expects 1 or 2 argument(s), found {count}"),
-                    ));
-                }
+            if arguments.len() == 2 {
+                let _ = i32::try_from(&as_integer(&arguments[1], span)?)
+                    .map_err(|_| runtime(span, "Integer value to big for conversion"))?;
             }
+            twisted_full_deform_gates(parameter, span)?;
         }
         "twisted_KL_sum_at_s" => {
             let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
@@ -14182,7 +14242,7 @@ pub(crate) fn call_with_printed(
                 ));
             };
             let key = full_deform_key(&parameter.repr);
-            let cached = cached_full_deform(&parameter.context, &key, span)?;
+            let cached = cached_deformation(&parameter.context.full_deform_cache, &key, span)?;
             let make_polynomial = |terms: Vec<(SplitValue, KType)>| {
                 Value::Domain(DomainValue::KTypePol(KTypePolValue {
                     rf: Arc::clone(&parameter.context),
@@ -14196,7 +14256,12 @@ pub(crate) fn call_with_printed(
                     None => {
                         let terms = compute_full_deform(parameter, span, None)?
                             .expect("an unbounded deformation cannot time out");
-                        store_full_deform(&parameter.context, key, terms.clone(), span)?;
+                        store_deformation(
+                            &parameter.context.full_deform_cache,
+                            key,
+                            terms.clone(),
+                            span,
+                        )?;
                         terms
                     }
                 };
@@ -14234,7 +14299,12 @@ pub(crate) fn call_with_printed(
                     value: Box::new(Value::Tuple(Vec::new())),
                 });
             }
-            store_full_deform(&parameter.context, key, terms.clone(), span)?;
+            store_deformation(
+                &parameter.context.full_deform_cache,
+                key,
+                terms.clone(),
+                span,
+            )?;
             Ok(Value::Union {
                 tag: 1,
                 injector_name: "done".into(),
@@ -16263,10 +16333,18 @@ pub(crate) fn call_with_printed(
         // `Rep_table::twisted_deformation` (repr.cpp:2552-2653) of each
         // final, added with Split(0,1) when the finalise and deformation
         // flips differ and Split(1,0) when they agree
-        // (atlas-types.w:8245-8246). The timed second overload
-        // ("(Param,int->|KTypePol)") is registered for overload
-        // resolution only; its timer semantics are not ported.
+        // (atlas-types.w:8245-8246). The timed second overload uses the
+        // same completed-result cache and cooperative recursion probe.
         "twisted_full_deform" => {
+            if arguments.is_empty() || arguments.len() > 2 {
+                return Err(type_error(
+                    span,
+                    format!(
+                        "{name} has no matching overload for {} argument(s)",
+                        arguments.len()
+                    ),
+                ));
+            }
             let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
                 return Err(type_error(
                     span,
@@ -16276,42 +16354,84 @@ pub(crate) fn call_with_printed(
                     ),
                 ));
             };
-            if arguments.len() != 1 {
-                return Err(runtime(
-                    span,
-                    "timed twisted_full_deform is not yet implemented",
-                ));
-            }
+            let timer = if arguments.len() == 2 {
+                Some(
+                    i32::try_from(&as_integer(&arguments[1], span)?)
+                        .map_err(|_| runtime(span, "Integer value to big for conversion"))?,
+                )
+            } else {
+                None
+            };
             twisted_full_deform_gates(parameter, span)?;
-            let rc = rep_context(&parameter.context);
-            let (delta, twist) = distinguished_twist(parameter, span)?;
-            let context = ExtRepContext::new(&rc, delta.clone())
-                .map_err(|error| structure_diagnostic(error, span))?;
-            let finals = extended_finalise(&context, &parameter.repr)
-                .map_err(|error| structure_diagnostic(error, span))?;
-            let real_form = &parameter.context;
-            let mut lookup =
-                |zi: &StandardRepr| twisted_reducibility_lookup(real_form, &rc, &delta, &twist, zi);
-            let mut terms: Vec<(SplitValue, KType)> = Vec::new();
-            for (final_sr, finalise_flip) in &finals {
-                let (deformed, flip) = twisted_deformation(&context, final_sr, &mut lookup)
-                    .map_err(|error| structure_diagnostic(error, span))?;
-                let coefficient = if flip != *finalise_flip {
-                    SplitValue::new(0, 1)
-                } else {
-                    SplitValue::new(1, 0)
+            let key = full_deform_key(&parameter.repr);
+            let cached =
+                cached_deformation(&parameter.context.twisted_full_deform_cache, &key, span)?;
+            let make_polynomial = |terms| {
+                Value::Domain(DomainValue::KTypePol(KTypePolValue {
+                    rf: Arc::clone(&parameter.context),
+                    terms,
+                }))
+            };
+
+            if timer.is_none() {
+                let terms = match cached {
+                    Some(terms) => terms,
+                    None => {
+                        let terms = compute_twisted_full_deform(parameter, span, None)?
+                            .expect("an unbounded twisted deformation cannot time out");
+                        store_deformation(
+                            &parameter.context.twisted_full_deform_cache,
+                            key,
+                            terms.clone(),
+                            span,
+                        )?;
+                        terms
+                    }
                 };
-                for (ktype, split) in deformed {
-                    let split: (i32, i32) = split.into();
-                    let scaled = SplitValue::new(split.0, split.1).mul(coefficient);
-                    merge_pol_term(&mut terms, scaled, ktype);
-                }
+                return Ok(make_polynomial(terms));
             }
-            sort_ktypepol_terms(&mut terms);
-            Ok(Value::Domain(DomainValue::KTypePol(KTypePolValue {
-                rf: Arc::clone(&parameter.context),
-                terms,
-            })))
+
+            if let Some(terms) = cached {
+                return Ok(Value::Union {
+                    tag: 1,
+                    injector_name: "done".into(),
+                    value: Box::new(make_polynomial(terms)),
+                });
+            }
+            let timer = timer.expect("the unary case returned above");
+            if timer <= 0 {
+                return Ok(Value::Union {
+                    tag: 0,
+                    injector_name: "timed_out".into(),
+                    value: Box::new(Value::Tuple(Vec::new())),
+                });
+            }
+            let deadline = Instant::now().checked_add(Duration::from_millis(timer as u64));
+            let Some(terms) = compute_twisted_full_deform(parameter, span, deadline)? else {
+                return Ok(Value::Union {
+                    tag: 0,
+                    injector_name: "timed_out".into(),
+                    value: Box::new(Value::Tuple(Vec::new())),
+                });
+            };
+            if deadline_expired(deadline) {
+                return Ok(Value::Union {
+                    tag: 0,
+                    injector_name: "timed_out".into(),
+                    value: Box::new(Value::Tuple(Vec::new())),
+                });
+            }
+            store_deformation(
+                &parameter.context.twisted_full_deform_cache,
+                key,
+                terms.clone(),
+                span,
+            )?;
+            Ok(Value::Union {
+                tag: 1,
+                injector_name: "done".into(),
+                value: Box::new(make_polynomial(terms)),
+            })
         }
         // block_deform_wrapper (atlas-types.w:8178-8204): deform the
         // terms of p's block found in the accumulator, to the given
@@ -19017,6 +19137,48 @@ mod tests {
                 .expect("positive timer")
                 .to_string(),
             format!("{expected}.done")
+        );
+    }
+
+    #[test]
+    fn timed_twisted_full_deform_uses_the_real_result_cache() {
+        let sl2r = sl2r_split_form();
+        let p = sl2r_param(&sl2r, 0, &[1], &[0], 1);
+        let zero = int(0);
+
+        validate("twisted_full_deform", &[p.clone(), zero.clone()], span())
+            .expect("discarded timed twisted call validates");
+        assert_eq!(
+            call("twisted_full_deform", &[p.clone(), zero.clone()], span(),)
+                .expect("uncached zero-millisecond twisted call")
+                .to_string(),
+            "().timed_out"
+        );
+        let too_large = Value::Integer(BigInt::from(i64::from(i32::MAX) + 1));
+        let error = validate("twisted_full_deform", &[p.clone(), too_large], span())
+            .expect_err("twisted timer uses upstream signed-int narrowing");
+        assert_eq!(error.message, "Integer value to big for conversion");
+
+        let expected = "\n1* K_type(x=0, lambda=[2]/1) [2]";
+        assert_eq!(
+            call("twisted_full_deform", std::slice::from_ref(&p), span())
+                .expect("unary twisted full deformation")
+                .to_string(),
+            expected
+        );
+        assert_eq!(
+            call("twisted_full_deform", &[p, zero], span())
+                .expect("cached zero-millisecond twisted call")
+                .to_string(),
+            format!("{expected}.done")
+        );
+
+        let p2 = sl2r_param(&sl2r, 2, &[0], &[1], 2);
+        assert_eq!(
+            call("twisted_full_deform", &[p2, int(-1)], span())
+                .expect("negative twisted timer")
+                .to_string(),
+            "().timed_out"
         );
     }
 

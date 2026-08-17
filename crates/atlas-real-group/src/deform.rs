@@ -726,6 +726,25 @@ pub fn twisted_deformation(
     z: &StandardRepr,
     lookup: &mut dyn FnMut(&StandardRepr) -> Result<(BlockGraph, ExtBlock, usize), StructureError>,
 ) -> Result<(Vec<(KType, SplitInteger)>, bool), StructureError> {
+    let mut never_cancel = || false;
+    match twisted_deformation_with_cancel(ctx, z, lookup, &mut never_cancel)? {
+        Some(result) => Ok(result),
+        None => unreachable!("the non-cancellable twisted deformation cannot be cancelled"),
+    }
+}
+
+/// Cancellable form of [`twisted_deformation`]. The probe is checked between
+/// each recursive or block-level operation; cancellation returns `Ok(None)`
+/// without publishing a partial polynomial.
+pub fn twisted_deformation_with_cancel(
+    ctx: &ExtRepContext,
+    z: &StandardRepr,
+    lookup: &mut dyn FnMut(&StandardRepr) -> Result<(BlockGraph, ExtBlock, usize), StructureError>,
+    cancelled: &mut dyn FnMut() -> bool,
+) -> Result<Option<(Vec<(KType, SplitInteger)>, bool)>, StructureError> {
+    if cancelled() {
+        return Ok(None);
+    }
     let rc = ctx.rc();
     debug_assert!(matches!(z.is_final(rc), Ok(true)));
     debug_assert!(rc.is_fixed(z, ctx.delta()));
@@ -734,8 +753,14 @@ pub fn twisted_deformation(
     } else {
         z.clone()
     };
+    if cancelled() {
+        return Ok(None);
+    }
 
     let mut rp = rc.reducibility_points(&z)?;
+    if cancelled() {
+        return Ok(None);
+    }
     let mut flip = false; // no flip recorded when shrink wrapping is not done
     if let Some(&back) = rp.last() {
         if !rat_eq(back, (1, 1)) {
@@ -749,17 +774,29 @@ pub fn twisted_deformation(
             debug_assert!(rp.last().is_some_and(|&last| rat_eq(last, (1, 1))));
         }
     }
+    if cancelled() {
+        return Ok(None);
+    }
 
     // Initialise to the restriction of z expanded to finals
     // (repr.cpp:2589-2595).
     let mut result: Vec<(KType, SplitInteger)> = Vec::new();
     for (ktype, coefficient) in extended_restrict_to_k(ctx, &z)? {
         add_ktype_term(&mut result, ktype, SplitInteger::from(coefficient));
+        if cancelled() {
+            return Ok(None);
+        }
     }
 
     // The deformation terms at all reducibility points (repr.cpp:2597-2647).
     for i in (0..rp.len()).rev() {
+        if cancelled() {
+            return Ok(None);
+        }
         let (zi, flip_p) = scaled_extended_finalise(ctx, &z, rp[i].0, rp[i].1)?;
+        if cancelled() {
+            return Ok(None);
+        }
         match integral_block_scope(rc, zi.gamma())? {
             IntegralBlockScope::Singleton => {
                 // The rank-0 integral block is the length-0 singleton; its
@@ -772,6 +809,9 @@ pub fn twisted_deformation(
             }
             IntegralBlockScope::Full => {
                 let (block, eblock, index) = lookup(&zi)?;
+                if cancelled() {
+                    return Ok(None);
+                }
                 let singular_orbits = singular_orbits_at(rc, &eblock, zi.gamma())?;
                 let lambda_rho = rc.lambda_rho(&zi)?;
                 let terms = twisted_deformation_terms(
@@ -783,8 +823,15 @@ pub fn twisted_deformation(
                     zi.gamma(),
                     &lambda_rho,
                 )?;
+                if cancelled() {
+                    return Ok(None);
+                }
                 for (term, coefficient) in terms {
-                    let (def, flip_def) = twisted_deformation(ctx, &term, &mut *lookup)?;
+                    let Some((def, flip_def)) =
+                        twisted_deformation_with_cancel(ctx, &term, &mut *lookup, &mut *cancelled)?
+                    else {
+                        return Ok(None);
+                    };
                     // $(\mp c, \pm c)$ by the combined flip parity
                     // (repr.cpp:2641-2645).
                     let coef = if flip_p != flip_def {
@@ -793,11 +840,17 @@ pub fn twisted_deformation(
                         SplitInteger::new(coefficient, coefficient.wrapping_neg())
                     };
                     add_ktype_multiple(&mut result, &def, coef);
+                    if cancelled() {
+                        return Ok(None);
+                    }
                 }
             }
         }
     }
-    Ok((result, flip))
+    if cancelled() {
+        return Ok(None);
+    }
+    Ok(Some((result, flip)))
 }
 
 /// Rational equality for the `(numerator, denominator)` pairs of
@@ -1296,6 +1349,28 @@ mod tests {
         let expected = KType::sr_k(&rc, KgbId(0), &weight(&[1])).unwrap();
         assert_eq!(expected.height(), 2); // the oracle's [2]
         assert_eq!(terms, vec![(expected, SplitInteger::new(1, 0))]);
+    }
+
+    #[test]
+    fn cancellable_twisted_deformation_drops_partial_work() {
+        let fixture = a1_fixture();
+        let rc = fixture.rc();
+        let q = param(&rc, 0, &[1], &[0], 1);
+        let ctx =
+            ExtRepContext::new(&rc, LatticeInvolution::identity(rc.datum()).unwrap()).unwrap();
+        let mut probes = 0;
+        let mut cancel_after_entry = || {
+            probes += 1;
+            probes > 1
+        };
+        let result = twisted_deformation_with_cancel(
+            &ctx,
+            &q,
+            &mut identity_lookup,
+            &mut cancel_after_entry,
+        )
+        .expect("cancellation is not a structural error");
+        assert_eq!(result, None);
     }
 
     #[test]

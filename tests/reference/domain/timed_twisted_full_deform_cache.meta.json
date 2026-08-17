@@ -1,0 +1,25 @@
+{
+  "fixture": "domain/timed_twisted_full_deform_cache.atlas",
+  "fixture_sha256": "1d307ea36d48682a5a9ecf56f6450aa405cd1858c46e3d3aacc85ee1d3d1584d",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "rust_status": "pending_hpc_differential",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3554983",
+  "reference_commit": "fb3d794967e392782dffa77fb99dab73938560d5",
+  "reference_report_sha256": "cb0df6d48d7ae1f1a694fff0543d5b83b19685e4843d3317dfc9651ef1d608b7",
+  "oracle_exit_status": 1,
+  "oracle_seconds": 0.104,
+  "oracle_maxrss_kb": 4516,
+  "oracle_maxrss_approximate": false,
+  "notes": "Pinned reference captures the timed twisted_full_deform cache contract: a fresh zero-ms call times out, unary computation returns KTypePol and warms only the twisted cache, a cached zero-ms call returns done, a distinct parameter still times out for a negative timer, and bigint timer narrowing diagnoses before evaluation continues to 1+1.",
+  "hpc_capture": {
+    "fresh_process_required": true,
+    "timeout_seconds": 30,
+    "estimated_seconds": 1,
+    "estimated_memory_mb": 64
+  }
+}

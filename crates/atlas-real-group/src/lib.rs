@@ -87,8 +87,8 @@ pub use cartan_fiber::{CartanFiber, CartanFiberElement};
 pub use cayley_cross::CayleyCrossDecomposition;
 pub use deform::{
     block_deformation_to_height, integral_block_scope, singular_orbits_at, twisted_deformation,
-    twisted_deformation_terms, twisted_kl_column_at_s, twisted_kl_sum, IntegralBlockScope,
-    SplitInteger,
+    twisted_deformation_terms, twisted_deformation_with_cancel, twisted_kl_column_at_s,
+    twisted_kl_sum, IntegralBlockScope, SplitInteger,
 };
 pub use dual::{
     dual_cartan_correspondence, dual_datum, dual_inner_class, dual_real_form_count, longest_action,
