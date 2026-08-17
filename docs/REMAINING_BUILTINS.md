@@ -68,6 +68,14 @@ status PASS with two declared pending fixtures, and this fixture took 0.009s /
 Nonidentity `simple_pi` transport and canonical locator attitude remain
 unimplemented, so this is not a claim for every Weyl-conjugate proper system.
 
+The same identity-attitude scope now covers `block_Hasse(Param)`. Its Hasse
+recursion is shared by classic and partial block topologies, and the B2 proper
+fixture returns the oracle's three stored parameters and rank-one incidence
+matrix exactly. Differential `3565080 @
+659646a1290d7a842766c2f5984cc6636211eab0` passed all runnable observations in
+284 fixtures; this fixture took 0.006s / 7256 KiB exact peak RSS. Report SHA256
+is `a128613557474a2d1f88fe415c62a6a826c64da4fff17370c65be3fc4eaabd4d`.
+
 The reusable mathematical base of that slice is now present in
 `atlas-real-group::rep_table`: a crate-private `ReducedParamKey` and
 `IntegralCodec` built from the transported `RealProjection::lift_mat`, using

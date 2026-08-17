@@ -4,6 +4,19 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-17c (proper-integral Param block Hasse verified)
+
+- `block_Hasse(Param)` now consumes the shared `RepTable` full common block,
+  reconstructs every stored row through its relative locator shift, and runs
+  the Bruhat Hasse recursion over `PartialBlock` through `BlockTopology`.
+- Differential **3565080 @ 659646a1290d7a842766c2f5984cc6636211eab0**
+  has runnable status PASS across 284 fixtures, with only the two declared
+  parser-harness pending cases. The B2 proper-integral fixture took 0.006s /
+  7256 KiB exact peak RSS; report SHA256
+  `a128613557474a2d1f88fe415c62a6a826c64da4fff17370c65be3fc4eaabd4d`.
+- The verified scope remains identity generator attitude. Nonidentity locator
+  canonicalization and `simple_pi` transport still fail loudly.
+
 ## Checkpoint - 2026-08-17b (proper-integral Param W-graphs verified)
 
 - `W_graph(Param)` and `W_cells(Param)` now use the subsystem-aware shared
