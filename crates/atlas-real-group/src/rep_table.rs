@@ -282,7 +282,15 @@ struct BlockRecord {
     id: BlockId,
     block: Arc<PartialBlock>,
     full: bool,
+    generator_attitude: GeneratorAttitude,
     kl_table: Mutex<Option<crate::SharedKlTable>>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum GeneratorAttitude {
+    /// The stored generator order is the exact embedded subsystem order of
+    /// every reduced key registered for this record.
+    Identity,
 }
 
 thread_local! {
@@ -323,6 +331,7 @@ impl std::fmt::Debug for BlockRecord {
             .field("id", &self.id)
             .field("block", &self.block)
             .field("full", &self.full)
+            .field("generator_attitude", &self.generator_attitude)
             .field("kl_table", &"<lazy>")
             .finish()
     }
@@ -403,6 +412,12 @@ impl State {
             id: BlockId(self.slots.len()),
             block,
             full,
+            // The current table interns exact embedded root lists and never
+            // merges Weyl-conjugate integral systems. Consequently the
+            // upstream block modifier's simple_pi is identity for every
+            // record constructed here. A future canonicalizing locator must
+            // add a non-identity variant instead of reusing this value.
+            generator_attitude: GeneratorAttitude::Identity,
             kl_table: Mutex::new(None),
         });
         self.slots.push(BlockSlot::Active(Arc::clone(&record)));
@@ -509,6 +524,12 @@ impl LocatedBlock {
     /// Whether this handle refers to a full common block.
     pub fn is_full(&self) -> bool {
         self.record.full
+    }
+
+    /// Whether common-block generator numbers are already in the query's
+    /// integral-subsystem order (upstream's identity `bm.simple_pi`).
+    pub fn has_identity_generator_attitude(&self) -> bool {
+        self.record.generator_attitude == GeneratorAttitude::Identity
     }
 
     /// The central shift from the stored representative to this query.

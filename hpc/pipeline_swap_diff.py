@@ -314,6 +314,7 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/block_hasse"),
     # Batch 5 (W-graph): W_graph/W_cells over a parameter.
     FixturePlan(name="domain/w_graph_param"),
+    FixturePlan(name="domain/w_graph_param_proper"),
     # Batch 5 (KL access): raw_KL.
     FixturePlan(name="domain/raw_kl"),
     # Batch 5 (KL access): KL_sum_at_s.

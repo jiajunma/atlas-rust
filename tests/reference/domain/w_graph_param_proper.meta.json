@@ -1,0 +1,25 @@
+{
+  "fixture": "domain/w_graph_param_proper.atlas",
+  "fixture_sha256": "3c2c3a4873cd1e32212bcdc9b06dad506b94e9a4126f4defd0f335612f43e422",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "rust_status": "pending_hpc_differential",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3564256",
+  "reference_commit": "7bf04df88a07912961e480056ee4d2d06327d2dc",
+  "reference_report_sha256": "f3bdd097d5b5e1a13ed76240fd18bbf669607fc1a0ea8b1fd674033d9030c3a8",
+  "oracle_exit_status": 0,
+  "oracle_seconds": 0.011,
+  "oracle_maxrss_kb": 4428,
+  "oracle_maxrss_approximate": false,
+  "notes": "B2 proper-integral rank-one W_graph(Param) and W_cells(Param), with start row 1, three common-block vertices, subsystem descent generator 0, and symmetric mu edges.",
+  "hpc_capture": {
+    "fresh_process_required": true,
+    "timeout_seconds": 30,
+    "estimated_seconds": 1,
+    "estimated_memory_mb": 64
+  }
+}

@@ -5770,7 +5770,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             ),
             // W_graph / W_cells (atlas-types.w:7494-7496): the W-graph and
             // its cell decomposition of a standard parameter's block.
-            domain_builtin(
+            domain_builtin_validate(
                 "W_graph",
                 primitive_type(Prim::Param),
                 Type::tuple(vec![
@@ -5782,7 +5782,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 ]),
                 0,
             ),
-            domain_builtin(
+            domain_builtin_validate(
                 "W_cells",
                 primitive_type(Prim::Param),
                 Type::tuple(vec![
@@ -9074,15 +9074,13 @@ mod tests {
 
     #[test]
     fn param_graph_signatures_preserve_upstream_nested_types() {
-        let result_type = |name: &str| {
+        let builtin = |name: &str| {
             builtin_registry()
                 .iter()
                 .find(|builtin| {
                     builtin.name == name && builtin.arg_type == primitive_type(Prim::Param)
                 })
                 .unwrap_or_else(|| panic!("missing {name}(Param)"))
-                .result
-                .clone()
         };
 
         let int = int_type();
@@ -9092,8 +9090,17 @@ mod tests {
         let cell = Type::tuple(vec![Type::row(int.clone()), Type::row(vertex)]);
         let cells = Type::tuple(vec![int, Type::row(cell)]);
 
-        assert_eq!(result_type("W_graph"), graph);
-        assert_eq!(result_type("W_cells"), cells);
+        assert_eq!(builtin("W_graph").result, graph);
+        assert_eq!(builtin("W_cells").result, cells);
+        for name in ["W_graph", "W_cells"] {
+            assert!(matches!(
+                builtin(name).implementation,
+                BuiltinImpl::Domain {
+                    no_value: DomainNoValue::Validate,
+                    ..
+                }
+            ));
+        }
     }
 
     #[test]

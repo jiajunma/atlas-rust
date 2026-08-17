@@ -3050,63 +3050,6 @@ fn common_block_members(
     Ok(closed)
 }
 
-/// Rep_context::is_parity (repr.cpp:247-270) generalised from a simple
-/// real generator to an arbitrary positive root `beta` that is real at
-/// `x`: the same `(1+theta)lambda_rho + 2 rho_nonreal` sum paired with
-/// the coroot of `beta` instead of the simple coroot.
-fn root_parity(
-    rc: &RepContext,
-    beta: RootId,
-    x: KgbId,
-    lambda_rho: &Weight,
-    gamma: &RationalWeight,
-    span: SourceSpan,
-) -> Result<bool, Diagnostic> {
-    let involution = rc
-        .involution_of(x)
-        .map_err(|error| structure_diagnostic(error, span))?;
-    let y_bits = rc
-        .y_pack(involution, lambda_rho)
-        .map_err(|error| structure_diagnostic(error, span))?;
-    let theta_1_lamrho = rc
-        .y_lift(involution, &y_bits)
-        .map_err(|error| structure_diagnostic(error, span))?;
-    // Non-real positive roots at x (repr.cpp:249 complement).
-    let real = rc
-        .positive_real_roots_at(x)
-        .map_err(|error| structure_diagnostic(error, span))?;
-    let system = rc.inner_class().root_system();
-    let non_real: Vec<RootId> = (0..system.roots().len())
-        .map(RootId::from_usize)
-        .filter(|&id| system.is_positive(id) == Some(true) && !real.contains(&id))
-        .collect();
-    let two_rho_non_real = two_rho(system, &non_real);
-    let coroot = system
-        .coroot(beta)
-        .ok_or_else(|| runtime(span, "missing coroot"))?;
-    let eval: i64 = theta_1_lamrho
-        .as_slice()
-        .iter()
-        .zip(two_rho_non_real.as_slice())
-        .map(|(&left, &right)| i64::from(left) + i64::from(right))
-        .zip(coroot.as_slice())
-        .map(|(entry, &c)| entry * i64::from(c))
-        .sum();
-    let parity_at_0 = eval % 4 != 0;
-    // eval2 = <gamma, beta^vee>; integral because beta is real and lies
-    // in the integral subsystem of gamma.
-    let numerator = gamma.numerator();
-    let denominator = gamma.denominator();
-    let eval2_numerator: i64 = coroot
-        .as_slice()
-        .iter()
-        .enumerate()
-        .map(|(index, &c)| i64::from(c) * numerator.get(index).copied().unwrap_or(0))
-        .sum();
-    let eval2 = eval2_numerator / denominator;
-    Ok(parity_at_0 == (eval2 % 2 == 0))
-}
-
 /// `test_standard` (atlas-types.w:6605-6611): reject a non-standard
 /// parameter with the oracle's two-line diagnostic; `descr` is
 /// "Cannot generate block" or "Cannot generate extended block".
@@ -8816,6 +8759,12 @@ pub(crate) fn validate(
             }
             twisted_full_deform_gates(parameter, span)?;
         }
+        "W_graph" | "W_cells" => {
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(span, "expected a Param"));
+            };
+            test_standard(parameter, "Cannot generate block", span)?;
+        }
         "twisted_KL_sum_at_s" => {
             let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
                 return Err(type_error(span, "expected a Param"));
@@ -14517,126 +14466,51 @@ pub(crate) fn call_with_printed(
                     ),
                 ));
             };
-            let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
-            let dual_quasisplit = dual_parent.order.quasisplit_external();
-            let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
-            let block = build_block(&parameter.context, &dual_rf, span)?;
-            let mut kl_table =
-                KlTable::new(&block.graph).map_err(|error| structure_diagnostic(error, span))?;
-            kl_table
-                .fill(0)
+            test_standard(parameter, "Cannot generate block", span)?;
+            // param_W_graph/param_W_cells (atlas-types.w:7143-7205) consume
+            // the full common block returned by Rep_table::lookup_full_block.
+            // Its PartialBlock topology is already expressed in integral-
+            // subsystem generator numbering, including imaginary grading.
+            let located = parameter
+                .context
+                .rep
+                .lookup_full_block(&parameter.repr)
                 .map_err(|error| structure_diagnostic(error, span))?;
-            let size = block.graph.size();
-            let z0 = (0..size)
-                .find(|&z| block.graph.x(z) == Some(parameter.repr.x()))
-                .ok_or_else(|| runtime(span, "parameter not in the common block"))?;
-            let rc = rep_context(&parameter.context);
-            let lambda_rho = rc
-                .lambda_rho(&parameter.repr)
-                .map_err(|error| structure_diagnostic(error, span))?;
-            let gamma = parameter.repr.gamma().clone();
-            let datum = &parameter.context.parent.root_datum.datum;
-            // param_W_graph/param_W_cells (atlas-types.w:7143-7205) build
-            // on lookup_full_block: the parameter's own common block,
-            // generated on the integral subsystem of gamma
-            // (repr.cpp:1773-1794, blocks.cpp:733-1081). An integral
-            // gamma gives the whole (form, dual quasisplit) block;
-            // otherwise the block is the gamma-matched reflection closure
-            // (common_block_members, the KL_block approach) with descent
-            // sets taken on the integral subsystem's generators.
-            let rank = block.graph.rank();
-            let order: Vec<usize>;
-            let descent_sets: Vec<BTreeSet<usize>>;
-            if gamma_is_integral(datum, &gamma) {
-                order = (0..size).collect();
-                descent_sets = (0..size)
-                    .map(|z| {
-                        let desc = kl_table.support().descent_set(z);
-                        (0..rank)
-                            .filter(|&generator| desc.is_set(generator))
-                            .collect()
-                    })
-                    .collect();
-            } else {
-                let members = common_block_members(&block, z0, &rc, &lambda_rho, &gamma, span)?;
-                order = (0..size).filter(|&z| members[z]).collect();
-                let gamma_ratvec = ratvec_from_rational_weight(&gamma, span)?;
-                let subsystem = integrality_simples_roots(
-                    &parameter.context.parent.root_datum,
-                    &gamma_ratvec,
+            if !located.has_identity_generator_attitude() {
+                return Err(runtime(
                     span,
-                )?;
-                let system = rc.inner_class().root_system();
-                let mut restricted = Vec::with_capacity(order.len());
-                for &z in &order {
-                    let x = block.graph.x(z).expect("in-range");
-                    let involution_id = parameter
-                        .context
-                        .graph
-                        .involution_of(x)
-                        .ok_or_else(|| runtime(span, "Inexistent KGB element"))?;
-                    let record = rc
-                        .table()
-                        .record(involution_id)
-                        .ok_or_else(|| runtime(span, "Inexistent involution"))?;
-                    let root_involution = record.twisted_involution().root_involution();
-                    let mut descents = BTreeSet::new();
-                    for (generator, &beta) in subsystem.iter().enumerate() {
-                        let descent = match root_involution.kind(beta) {
-                            // A complex subsystem root descends when its
-                            // image is negative; a real one when the
-                            // parity condition holds at gamma.
-                            Some(RootKind::Complex) => {
-                                let image = root_involution
-                                    .image(beta)
-                                    .ok_or_else(|| runtime(span, "missing root image"))?;
-                                system.is_positive(image) == Some(false)
-                            }
-                            Some(RootKind::Real) => {
-                                root_parity(&rc, beta, x, &lambda_rho, &gamma, span)?
-                            }
-                            // Imaginary subsystem roots split into compact
-                            // (descent) and noncompact (ascent); that
-                            // grading slice is not yet ported.
-                            Some(RootKind::Imaginary) => {
-                                return Err(runtime(
-                                    span,
-                                    "W-graph on a non-integral parameter with an imaginary \
-                                     integral root is not yet supported",
-                                ));
-                            }
-                            None => return Err(runtime(span, "missing root kind")),
-                        };
-                        if descent {
-                            descents.insert(generator);
+                    "W-graph on a non-identity integral-subsystem attitude is not yet supported",
+                ));
+            }
+            let start = located.raw_row();
+            let block = located.block();
+            let vertex_count = block.size();
+            let (descent_sets, edges) = located
+                .with_kl_table(|kl_table| {
+                    kl_table.fill(0)?;
+                    let descent_sets: Vec<BTreeSet<usize>> = (0..vertex_count)
+                        .map(|z| {
+                            let descents = kl_table.support().descent_set(z);
+                            (0..block.rank())
+                                .filter(|&generator| descents.is_set(generator))
+                                .collect::<BTreeSet<_>>()
+                        })
+                        .collect();
+                    // kl::wGraph (kl.cpp:1042-1058): every mu pair adds an
+                    // edge in both directions in common-block numbering.
+                    let mut edges: Vec<Vec<(usize, i32)>> = vec![Vec::new(); vertex_count];
+                    for y in 0..vertex_count {
+                        for pair in kl_table.mu_column(y) {
+                            edges[y].push((pair.x, pair.coef));
+                            edges[pair.x].push((y, pair.coef));
                         }
                     }
-                    restricted.push(descents);
-                }
-                descent_sets = restricted;
-            }
-            let start = order.iter().position(|&z| z == z0).expect("z0 is a member");
-            // kl::wGraph (kl.cpp:1042-1058): every mu pair contributes an
-            // edge in both directions, restricted to the block members and
-            // renumbered to their ascending order.
-            let member_set: BTreeSet<usize> = order.iter().copied().collect();
-            let mut relno = vec![usize::MAX; size];
-            for (position, &z) in order.iter().enumerate() {
-                relno[z] = position;
-            }
-            let vertex_count = order.len();
-            let mut edges: Vec<Vec<(usize, i32)>> = vec![Vec::new(); vertex_count];
-            for (position, &y) in order.iter().enumerate() {
-                for pair in kl_table.mu_column(y) {
-                    if member_set.contains(&pair.x) {
-                        edges[position].push((relno[pair.x], pair.coef));
-                        edges[relno[pair.x]].push((position, pair.coef));
+                    for targets in &mut edges {
+                        targets.sort_unstable();
                     }
-                }
-            }
-            for edges_z in edges.iter_mut() {
-                edges_z.sort_unstable();
-            }
+                    Ok((descent_sets, edges))
+                })
+                .map_err(|error| structure_diagnostic(error, span))?;
             let vertex = |element: usize, targets: &[(usize, i32)]| -> Value {
                 let descents = Value::List(
                     descent_sets[element]
@@ -18166,6 +18040,45 @@ mod tests {
             panic!("KL column entry must be (raw row, Param, polynomial)")
         };
         i64::try_from(raw_row).expect("A1 raw row fits i64")
+    }
+
+    #[test]
+    fn proper_integral_parameter_w_graph_uses_the_subsystem_topology() {
+        let datum = fixture_datum("B2", true);
+        let inner = call(
+            "inner_class",
+            &[datum, matrix(2, 2, vec![1, 0, 0, 1])],
+            span(),
+        )
+        .expect("B2 inner class");
+        let real = call("real_form", &[inner, int(2)], span()).expect("split B2 form");
+        let parameter = sl2r_param(&real, 5, &[1, 1], &[1, 0], 2);
+
+        assert_eq!(
+            call("W_graph", std::slice::from_ref(&parameter), span())
+                .expect("proper W graph")
+                .to_string(),
+            "(1,[([],[(2,1)]),([],[(2,1)]),([0],[(0,1),(1,1)])])"
+        );
+        assert_eq!(
+            call("W_cells", std::slice::from_ref(&parameter), span())
+                .expect("proper W cells")
+                .to_string(),
+            "(1,[([0],[([],[])]),([1],[([],[])]),([2],[([0],[])])])"
+        );
+
+        let sl2r = sl2r_split_form();
+        let nonstandard = sl2r_param(&sl2r, 1, &[-2], &[0], 1);
+        for name in ["W_graph", "W_cells"] {
+            let error = validate(name, std::slice::from_ref(&nonstandard), span())
+                .expect_err("discarded parameter W graph checks standardness");
+            assert_eq!(
+                error.message,
+                "Cannot generate block:\n  \
+                 non-standard parameter(x=1,lambda=[-1]/1,nu=[0]/1)\n  \
+                 Parameter not standard"
+            );
+        }
     }
 
     #[test]
