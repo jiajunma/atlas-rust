@@ -1,0 +1,25 @@
+{
+  "fixture": "domain/timed_twisted_full_deform_validation_order_rejected.atlas",
+  "fixture_sha256": "af815165604c5e5e5eff0a671a3e93e2e498898bf25a26b54ec34ec80bf6cafd",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "rust_status": "pending_hpc_differential",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3564221",
+  "reference_commit": "706459296238b9da6c8fd81668c7ab47527620f9",
+  "reference_report_sha256": "42199462fd9876fdd42d23873766f8274a40537cb0b8b93b1a502102c33c124f",
+  "oracle_exit_status": 1,
+  "oracle_seconds": 0.013,
+  "oracle_maxrss_kb": 4344,
+  "oracle_maxrss_approximate": false,
+  "notes": "Pinned reference proves that the timed overload narrows its integer timer before checking whether the Param is standard: a non-standard parameter paired with an oversized timer reports the narrowing diagnostic, then the enclosing loop continues to 1+1.",
+  "hpc_capture": {
+    "fresh_process_required": true,
+    "timeout_seconds": 30,
+    "estimated_seconds": 1,
+    "estimated_memory_mb": 64
+  }
+}
