@@ -2396,17 +2396,18 @@ fn compute_full_deform(
 fn compute_twisted_full_deform(
     parameter: &ParamValue,
     span: SourceSpan,
-    deadline: Option<Instant>,
+    timer_ms: Option<i32>,
 ) -> Result<Option<Vec<(SplitValue, KType)>>, Diagnostic> {
-    if deadline_expired(deadline) {
-        return Ok(None);
-    }
     let rc = rep_context(&parameter.context);
     let (delta, twist) = distinguished_twist(parameter, span)?;
     let context = ExtRepContext::new(&rc, delta.clone())
         .map_err(|error| structure_diagnostic(error, span))?;
     let finals = extended_finalise(&context, &parameter.repr)
         .map_err(|error| structure_diagnostic(error, span))?;
+    // Atlas starts the timed computation after extended_finalise (axis.w:
+    // 8303-8308), so setup cost is outside the cooperative deadline.
+    let deadline =
+        timer_ms.and_then(|timer| Instant::now().checked_add(Duration::from_millis(timer as u64)));
     if deadline_expired(deadline) {
         return Ok(None);
     }
@@ -16406,21 +16407,13 @@ pub(crate) fn call_with_printed(
                     value: Box::new(Value::Tuple(Vec::new())),
                 });
             }
-            let deadline = Instant::now().checked_add(Duration::from_millis(timer as u64));
-            let Some(terms) = compute_twisted_full_deform(parameter, span, deadline)? else {
+            let Some(terms) = compute_twisted_full_deform(parameter, span, Some(timer))? else {
                 return Ok(Value::Union {
                     tag: 0,
                     injector_name: "timed_out".into(),
                     value: Box::new(Value::Tuple(Vec::new())),
                 });
             };
-            if deadline_expired(deadline) {
-                return Ok(Value::Union {
-                    tag: 0,
-                    injector_name: "timed_out".into(),
-                    value: Box::new(Value::Tuple(Vec::new())),
-                });
-            }
             store_deformation(
                 &parameter.context.twisted_full_deform_cache,
                 key,

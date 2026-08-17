@@ -6618,12 +6618,10 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::KTypePol),
                 1,
             ),
-            // The timed variant (installed as a second
-            // "twisted_full_deform" overload, atlas-types.w:8585-8586,
-            // "(Param,int->|KTypePol)"): only the overload's PRESENCE is
-            // fixture-observable (twisted_family_rejected's multi-variant
-            // "Failed to match" wording); the timed computation itself is
-            // not ported and the dispatch arm fails loudly.
+            // The timed variant is installed as a second
+            // "twisted_full_deform" overload (atlas-types.w:8585-8586,
+            // "(Param,int->|KTypePol)"). Its timer and union semantics are
+            // implemented by the domain evaluator after typed dispatch.
             domain_builtin_validate(
                 "twisted_full_deform",
                 Type::tuple(vec![primitive_type(Prim::Param), int_type()]),

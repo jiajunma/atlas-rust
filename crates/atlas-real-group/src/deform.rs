@@ -797,7 +797,11 @@ pub fn twisted_deformation_with_cancel(
         if cancelled() {
             return Ok(None);
         }
-        match integral_block_scope(rc, zi.gamma())? {
+        let scope = integral_block_scope(rc, zi.gamma())?;
+        if cancelled() {
+            return Ok(None);
+        }
+        match scope {
             IntegralBlockScope::Singleton => {
                 // The rank-0 integral block is the length-0 singleton; its
                 // deformation terms are empty (repr.cpp:2435-2436).
