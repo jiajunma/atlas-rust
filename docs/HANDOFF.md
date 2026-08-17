@@ -4,6 +4,21 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-17b (proper-integral Param W-graphs verified)
+
+- `W_graph(Param)` and `W_cells(Param)` now use the subsystem-aware shared
+  `RepTable` full block and KL table. The B2 `[3,1]/2` proper-integral anchor
+  returns the oracle's three-row rank-one graph, start row, subsystem descent
+  set, symmetric mu edges, and cell decomposition exactly.
+- Differential **3564991 @ 3adbd42b89dbea029ed4fb0e9c53f47b3e46173e**
+  has runnable status PASS across 283 fixtures, with only the two declared
+  pending fixtures. The proper W-graph fixture took 0.009s / 7376 KiB exact
+  peak RSS; report SHA256
+  `1cdb3d5924a1cf76b6166d0b632eced4570ba112fd751af95a4c7babec786c8d`.
+- This closes only the current identity generator attitude. Upstream locator
+  canonicalization and nonidentity `simple_pi` transport are still absent, so
+  the full Weyl-conjugate proper-integral domain is not yet claimed.
+
 ## Checkpoint - 2026-08-17 (timed twisted deformation verified)
 
 - `twisted_full_deform(Param,int)->(void|KTypePol)` is implemented with a
@@ -20,8 +35,9 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   all pass exact. Rust took 0.006-0.007s and 7080-7276 KiB; report SHA256
   `1c24fcb33dc4d60755d0b1e0434fa5390e687b44d6731efa18e14029927ed107`.
 - Proper nonempty integral subsystems in recursive twisted deformation remain
-  a loud NYI. The next implemented slice routes Param W-graphs through the
-  subsystem-aware RepTable; its full differential is tracked separately.
+  a loud NYI. Param W-graphs now route through the subsystem-aware RepTable and
+  are verified separately in differential 3564991 for identity generator
+  attitude.
 
 ## Checkpoint - 2026-08-14d (proper integral common blocks activated)
 

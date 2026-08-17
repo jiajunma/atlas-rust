@@ -57,6 +57,17 @@ differential-verified by `domain/print_common_block_proper` (HPC 3551242).
 Extended and twisted consumers still need subsystem-aware extended-block
 generator metadata.
 
+The proper-system Param W-graph surface is now covered for identity generator
+attitude: `W_graph(Param)` and `W_cells(Param)` consume the shared
+`RepTable`/`PartialBlock` KL topology, including imaginary compact/noncompact
+grading. The B2 `[3,1]/2` fixture is byte-exact in differential `3564991 @
+3adbd42b89dbea029ed4fb0e9c53f47b3e46173e`; the 283-fixture run has runnable
+status PASS with two declared pending fixtures, and this fixture took 0.009s /
+7376 KiB exact peak RSS. Report SHA256 is
+`1cdb3d5924a1cf76b6166d0b632eced4570ba112fd751af95a4c7babec786c8d`.
+Nonidentity `simple_pi` transport and canonical locator attitude remain
+unimplemented, so this is not a claim for every Weyl-conjugate proper system.
+
 The reusable mathematical base of that slice is now present in
 `atlas-real-group::rep_table`: a crate-private `ReducedParamKey` and
 `IntegralCodec` built from the transported `RealProjection::lift_mat`, using
@@ -226,14 +237,12 @@ RootSystem min_roots_for/min_coroots_for + bourbaki_permutation
 (`57049ca`), global_KGB + print_X layout (`64048ac`),
 BlockDescent::dual + BlockGraph::dual (`1e7fcc4`).
 
-New known gap (slice B, agent-43): W_graph/W_cells on a parameter with
-non-integral gamma now builds the common block on the gamma-integral
-root system (lookup_full_block semantics), but imaginary
-compact/noncompact grading for that case is NOT ported — the arm
-raises a loud "not yet supported" error instead of silently producing
-wrong values. No current fixture covers non-integral gamma with
-imaginary roots in the integral system; add coverage when the grading
-port lands.
+The former imaginary-grading gap for Param `W_graph`/`W_cells` is closed in the
+identity generator attitude: the subsystem-aware `PartialBlock` supplies the
+compact/noncompact grading and `domain/w_graph_param_proper` covers it in HPC
+differential 3564991. The remaining boundary is nonidentity `simple_pi`
+transport and locator canonicalization, which must land before claiming the
+full Weyl-conjugate proper-integral domain.
 
 Slice E recon (agent-45, /tmp/slice_e_brief.md) revised the
 ext_param+star estimate upward: the whole ext_param layer including
