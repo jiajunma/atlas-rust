@@ -1,0 +1,1 @@
+let rd=simply_connected(Lie_type("B2.T1"),true) then ic=inner_class(rd,[[1,0,0],[0,1,0],[0,0,1]]) then rf=real_form(ic,2) then p=param(KGB(rf,5),[1,1,0],[1,0,0]/2) then q=param(KGB(rf,5),[1,1,1],[1,0,0]/2) then full=block_Hasse(p) in partial_block(q)

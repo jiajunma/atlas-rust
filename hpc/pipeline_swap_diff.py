@@ -330,6 +330,9 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/default_extended"),
     # Batch 6: partial_block.
     FixturePlan(name="domain/partial_block"),
+    FixturePlan(name="domain/partial_block_param_proper"),
+    FixturePlan(name="domain/partial_block_param_proper_shift"),
+    FixturePlan(name="domain/partial_block_param_proper_rejected"),
     # Batch 7: KL_block.
     FixturePlan(name="domain/kl_block"),
     # Batch 7: full_deform.
