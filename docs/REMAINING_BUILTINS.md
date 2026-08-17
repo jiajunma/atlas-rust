@@ -622,8 +622,11 @@ took 0.012/0.008s and 4368/4288 KiB; report SHA256 is
   runnable fixtures pass exact in fat differential `3545729` at `196dd7c`
   (0.004-0.006s, 5920-7316 KiB; report SHA256
   `b0285ed87cf6898c245edbc1ea476d21b90468277c86c10e53f25a7f6b634bda`).
-  The timed `twisted_full_deform(Param,int)` probe remains excluded because
-  that builtin is still NYI.
+  The timed `twisted_full_deform(Param,int)` probe is now implemented and
+  included. Differential `3564233 @ 8851395` passes the positive, cache,
+  timeout, and validation-order contracts exactly (0.006-0.007s,
+  7080-7276 KiB; report SHA256
+  `1c24fcb33dc4d60755d0b1e0434fa5390e687b44d6731efa18e14029927ed107`).
 
 ## Arbitrary-root parameter transforms (2026-08-13)
 

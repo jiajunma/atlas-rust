@@ -4,6 +4,25 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-17 (timed twisted deformation verified)
+
+- `twisted_full_deform(Param,int)->(void|KTypePol)` is implemented with a
+  per-real-form completed-result cache separate from ordinary deformation,
+  cooperative cancellation through recursive twisted deformation, and no
+  publication of partial results.
+- Upstream validation/timer order is preserved: timer narrowing precedes the
+  standard-parameter gate, while `extended_finalise` setup precedes the timer
+  start. Zero/negative fresh timers return `timed_out`; cached results return
+  `done` even for a zero timer.
+- Reference captures are jobs `3554983` and `3564221`. Differential **3564233
+  @ 8851395** has runnable status PASS across 282 fixtures; the positive hunger
+  contract, cache/timeout contract, and mixed-invalid validation-order fixture
+  all pass exact. Rust took 0.006-0.007s and 7080-7276 KiB; report SHA256
+  `1c24fcb33dc4d60755d0b1e0434fa5390e687b44d6731efa18e14029927ed107`.
+- Proper nonempty integral subsystems in recursive twisted deformation remain
+  a loud NYI. The next implemented slice routes Param W-graphs through the
+  subsystem-aware RepTable; its full differential is tracked separately.
+
 ## Checkpoint - 2026-08-14d (proper integral common blocks activated)
 
 - `PartialBlock::build_full` now drives its initial real-root orbit through
