@@ -530,51 +530,7 @@ impl BlockGraph {
     /// series the predecessors are exactly the inverse Cayley transforms of
     /// the type-II real descents.
     pub fn bruhat_hasse(&self) -> Vec<Vec<usize>> {
-        let size = self.size();
-        let rank = self.rank();
-        let mut hasse: Vec<Vec<usize>> = Vec::with_capacity(size);
-        for z in 0..size {
-            let mut covered: std::collections::BTreeSet<usize> = std::collections::BTreeSet::new();
-            let strict_good = (0..rank).find(|&s| {
-                matches!(
-                    self.descent_value(z, s),
-                    Some(BlockDescent::ComplexDescent | BlockDescent::RealTypeI)
-                )
-            });
-            match strict_good {
-                Some(s) => match self.descent_value(z, s) {
-                    Some(BlockDescent::ComplexDescent) => {
-                        let sz = self.cross(z, s).expect("complex descent cross");
-                        covered.insert(sz);
-                        insert_ascents(self, &hasse[sz], s, &mut covered);
-                    }
-                    Some(BlockDescent::RealTypeI) => {
-                        let (first, second) =
-                            self.inverse_cayley(z, s).expect("type I inverse Cayley");
-                        let first = first.expect("type I first image");
-                        covered.insert(first);
-                        if let Some(second) = second {
-                            covered.insert(second);
-                        }
-                        insert_ascents(self, &hasse[first], s, &mut covered);
-                    }
-                    _ => unreachable!("strict good descent match"),
-                },
-                None => {
-                    for s in 0..rank {
-                        if self.descent_value(z, s) == Some(BlockDescent::RealTypeII) {
-                            if let Some(first) =
-                                self.inverse_cayley(z, s).expect("type II inverse Cayley").0
-                            {
-                                covered.insert(first);
-                            }
-                        }
-                    }
-                }
-            }
-            hasse.push(covered.into_iter().collect());
-        }
-        hasse
+        crate::block_access::bruhat_hasse(self)
     }
 
     /// The number of Bruhat-comparable pairs of the block poset, including
@@ -592,42 +548,6 @@ impl BlockGraph {
             closure.push(cl);
         }
         count
-    }
-}
-
-/// The `insert_ascents` helper of `complete_Hasse_diagram`
-/// (blocks.cpp:1576-1599): lift the already-computed covered set of the
-/// recursion target through the strict ascents at generator `s`.
-fn insert_ascents(
-    block: &BlockGraph,
-    hr: &[usize],
-    s: usize,
-    hs: &mut std::collections::BTreeSet<usize>,
-) {
-    for &z in hr {
-        match block.descent_value(z, s) {
-            Some(BlockDescent::ComplexAscent) => {
-                if let Some(c) = block.cross(z, s) {
-                    hs.insert(c);
-                }
-            }
-            Some(BlockDescent::ImaginaryTypeI) => {
-                if let Some(c) = block.cayley(z, s).expect("type I Cayley").0 {
-                    hs.insert(c);
-                }
-            }
-            Some(BlockDescent::ImaginaryTypeII) => {
-                if let Some((a, b)) = block.cayley(z, s) {
-                    if let Some(a) = a {
-                        hs.insert(a);
-                    }
-                    if let Some(b) = b {
-                        hs.insert(b);
-                    }
-                }
-            }
-            _ => {}
-        }
     }
 }
 
@@ -1029,6 +949,16 @@ mod tests {
         )
         .unwrap();
         (block, dual_block)
+    }
+
+    #[test]
+    fn a1_bruhat_hasse_uses_the_shared_topology_algorithm() {
+        let (block, _) = a1_blocks();
+        assert_eq!(block.bruhat_hasse(), vec![vec![], vec![], vec![0, 1]]);
+        assert_eq!(
+            crate::block_access::bruhat_hasse(&block),
+            block.bruhat_hasse()
+        );
     }
 
     #[test]

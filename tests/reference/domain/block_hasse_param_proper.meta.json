@@ -1,0 +1,26 @@
+{
+  "fixture": "domain/block_hasse_param_proper.atlas",
+  "fixture_sha256": "12a7472135498855b2f49d8bfce17784bcacdb8746f1489d37a22de87c337e0d",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "rust_status": "pending_hpc_differential",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3565017",
+  "reference_commit": "45de97f9b6a7d27d7fb5c874ebba5761d6fd0003",
+  "reference_report_sha256": "5eee33265a9e9b41aab48d2f5c76c72a529fcf8bca7d8bb459703bd6a762473d",
+  "source_archive_sha256": "4b72572ee427d50de8fe3673185c638e134791c4be549620e73e9ef8be1a20fe",
+  "oracle_exit_status": 0,
+  "oracle_seconds": 0.1,
+  "oracle_maxrss_kb": 4356,
+  "oracle_maxrss_approximate": false,
+  "notes": "B2 proper-integral rank-one block_Hasse(Param): three PartialBlock rows in stored order and the subsystem Bruhat Hasse matrix. The reference capture is authoritative; Rust differential verification is pending. The implemented scope is the identity generator attitude.",
+  "hpc_capture": {
+    "fresh_process_required": true,
+    "timeout_seconds": 30,
+    "estimated_seconds": 1,
+    "estimated_memory_mb": 64
+  }
+}

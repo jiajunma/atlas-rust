@@ -5826,7 +5826,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             ),
             // block_Hasse (atlas-types.w:7514): the full block of a
             // standard parameter and its Bruhat Hasse matrix.
-            domain_builtin(
+            domain_builtin_validate(
                 "block_Hasse",
                 primitive_type(Prim::Param),
                 Type::tuple(vec![
@@ -9070,6 +9070,7 @@ mod tests {
         let block_params = Type::tuple(vec![Type::row(param.clone()), int_type()]);
         assert!(signatures("block").contains(&(param.clone(), block_params)));
         assert_eq!(no_value_policy("block", &param), "validate");
+        assert_eq!(no_value_policy("block_Hasse", &param), "validate");
     }
 
     #[test]

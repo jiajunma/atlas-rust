@@ -6,6 +6,7 @@
 //! for an invalid element/generator, while an undefined Cayley link is
 //! represented by the inner `None` values of the returned pair.
 
+use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use crate::{BlockDescent, BlockGraph, PartialBlock};
@@ -36,6 +37,93 @@ pub trait BlockTopology: sealed::Sealed {
         element: usize,
         generator: usize,
     ) -> Option<(Option<usize>, Option<usize>)>;
+}
+
+/// The Bruhat Hasse diagram of a block topology (blocks.cpp:1576-1656).
+/// Each row lists the immediate down-neighbours of the corresponding block
+/// element. Elements must be in nondecreasing length order, as required by
+/// [`BlockTopology`].
+pub fn bruhat_hasse<B: BlockTopology + ?Sized>(block: &B) -> Vec<Vec<usize>> {
+    let size = block.size();
+    let rank = block.rank();
+    let mut hasse: Vec<Vec<usize>> = Vec::with_capacity(size);
+    for z in 0..size {
+        let mut covered = BTreeSet::new();
+        let strict_good = (0..rank).find(|&s| {
+            matches!(
+                block.descent(z, s),
+                Some(BlockDescent::ComplexDescent | BlockDescent::RealTypeI)
+            )
+        });
+        match strict_good {
+            Some(s) => match block.descent(z, s) {
+                Some(BlockDescent::ComplexDescent) => {
+                    let sz = block.cross(z, s).expect("complex descent cross");
+                    covered.insert(sz);
+                    insert_ascents(block, &hasse[sz], s, &mut covered);
+                }
+                Some(BlockDescent::RealTypeI) => {
+                    let (first, second) =
+                        block.inverse_cayley(z, s).expect("type I inverse Cayley");
+                    let first = first.expect("type I first image");
+                    covered.insert(first);
+                    if let Some(second) = second {
+                        covered.insert(second);
+                    }
+                    insert_ascents(block, &hasse[first], s, &mut covered);
+                }
+                _ => unreachable!("strict good descent match"),
+            },
+            None => {
+                for s in 0..rank {
+                    if block.descent(z, s) == Some(BlockDescent::RealTypeII) {
+                        if let Some(first) = block
+                            .inverse_cayley(z, s)
+                            .expect("type II inverse Cayley")
+                            .0
+                        {
+                            covered.insert(first);
+                        }
+                    }
+                }
+            }
+        }
+        hasse.push(covered.into_iter().collect());
+    }
+    hasse
+}
+
+fn insert_ascents<B: BlockTopology + ?Sized>(
+    block: &B,
+    hr: &[usize],
+    s: usize,
+    hs: &mut BTreeSet<usize>,
+) {
+    for &z in hr {
+        match block.descent(z, s) {
+            Some(BlockDescent::ComplexAscent) => {
+                if let Some(c) = block.cross(z, s) {
+                    hs.insert(c);
+                }
+            }
+            Some(BlockDescent::ImaginaryTypeI) => {
+                if let Some(c) = block.cayley(z, s).expect("type I Cayley").0 {
+                    hs.insert(c);
+                }
+            }
+            Some(BlockDescent::ImaginaryTypeII) => {
+                if let Some((a, b)) = block.cayley(z, s) {
+                    if let Some(a) = a {
+                        hs.insert(a);
+                    }
+                    if let Some(b) = b {
+                        hs.insert(b);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
 }
 
 impl sealed::Sealed for BlockGraph {}

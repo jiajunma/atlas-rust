@@ -33,8 +33,8 @@ use atlas_real_group::CompactWeyl;
 use atlas_real_group::{
     adapted_basis, adapted_relation_basis, alcove_center as domain_alcove_center,
     annihilator_modulo as relation_annihilator_modulo, block_deformation_to_height,
-    bourbaki_permutation, bruhat_below, build_presentations, central_fiber,
-    checked_inner_class_letters, classify_involution as domain_classify_involution,
+    bourbaki_permutation, bruhat_below, bruhat_hasse as block_bruhat_hasse, build_presentations,
+    central_fiber, checked_inner_class_letters, classify_involution as domain_classify_involution,
     denominator_exceeds_alcove_bound, dual_cartan_correspondence, dual_inner_class,
     dual_involution as block_dual_involution, elected_square_root, fiber_rank,
     filter_relation_units as domain_filter_relation_units, inner_class_with_twisted_involution,
@@ -8765,6 +8765,13 @@ pub(crate) fn validate(
             };
             test_standard(parameter, "Cannot generate block", span)?;
         }
+        "block_Hasse" => {
+            arity(name, arguments, 1, span)?;
+            let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
+                return Err(type_error(span, "expected a Param"));
+            };
+            test_standard(parameter, "Cannot generate block", span)?;
+        }
         "twisted_KL_sum_at_s" => {
             let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
                 return Err(type_error(span, "expected a Param"));
@@ -14610,44 +14617,34 @@ pub(crate) fn call_with_printed(
                     ),
                 ));
             };
-            let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
-            let dual_quasisplit = dual_parent.order.quasisplit_external();
-            let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
-            let block = build_block(&parameter.context, &dual_rf, span)?;
-            let rc = rep_context(&parameter.context);
-            let lambda_rho = rc
-                .lambda_rho(&parameter.repr)
+            test_standard(parameter, "Cannot generate block", span)?;
+            let located = parameter
+                .context
+                .rep
+                .lookup_full_block(&parameter.repr)
                 .map_err(|error| structure_diagnostic(error, span))?;
-            let gamma = parameter.repr.gamma().clone();
-            // The parameter's common block (lookup_full_block): the srm's
-            // reflection closure matched by gamma-lambda mod the
-            // cocharacter lattice.
-            let z0 = (0..block.graph.size())
-                .find(|&z| block.graph.x(z) == Some(parameter.repr.x()))
-                .ok_or_else(|| runtime(span, "parameter not in the common block"))?;
-            let members = common_block_members(&block, z0, &rc, &lambda_rho, &gamma, span)?;
-            let order: Vec<usize> = (0..block.graph.size()).filter(|&z| members[z]).collect();
-            let n = order.len();
+            if !located.has_identity_generator_attitude() {
+                return Err(runtime(
+                    span,
+                    "block Hasse diagram on a non-identity integral-subsystem attitude is not yet supported",
+                ));
+            }
+            let block = located.block();
+            let n = block.size();
             let mut param_list = Vec::with_capacity(n);
-            for &z in &order {
-                let x = block.graph.x(z).expect("in-range");
-                let repr = rc
-                    .sr_gamma(x, &lambda_rho, &gamma)
+            for z in 0..n {
+                let repr = located_row_parameter(&parameter.context, &located, z)
                     .map_err(|error| structure_diagnostic(error, span))?;
                 param_list.push(Value::Domain(DomainValue::Param(ParamValue {
                     context: Arc::clone(&parameter.context),
                     repr,
                 })));
             }
-            let hasse = block.graph.bruhat_hasse();
+            let hasse = block_bruhat_hasse(block.as_ref());
             let mut columns = vec![vec![0_i32; n]; n];
-            for (position, &z) in order.iter().enumerate() {
-                for &down in &hasse[z] {
-                    if let Some(down_position) =
-                        order.iter().position(|&candidate| candidate == down)
-                    {
-                        columns[position][down_position] = 1;
-                    }
+            for (position, downs) in hasse.iter().enumerate() {
+                for &down in downs {
+                    columns[position][down] = 1;
                 }
             }
             Ok(Value::Tuple(vec![
@@ -18079,6 +18076,42 @@ mod tests {
                  Parameter not standard"
             );
         }
+    }
+
+    #[test]
+    fn proper_integral_parameter_block_hasse_uses_the_subsystem_topology() {
+        let datum = fixture_datum("B2", true);
+        let inner = call(
+            "inner_class",
+            &[datum, matrix(2, 2, vec![1, 0, 0, 1])],
+            span(),
+        )
+        .expect("B2 inner class");
+        let real = call("real_form", &[inner, int(2)], span()).expect("split B2 form");
+        let parameter = sl2r_param(&real, 5, &[1, 1], &[1, 0], 2);
+
+        assert_eq!(
+            call("block_Hasse", std::slice::from_ref(&parameter), span())
+                .expect("proper block Hasse")
+                .to_string(),
+            "([final parameter(x=4,lambda=[2,2]/1,nu=[1,-1]/2),\
+             final parameter(x=5,lambda=[2,2]/1,nu=[1,-1]/2),\
+             final parameter(x=10,lambda=[1,2]/1,nu=[1,7]/2)],\n\
+             | 0, 0, 1 |\n\
+             | 0, 0, 1 |\n\
+             | 0, 0, 0 |\n)"
+        );
+
+        let sl2r = sl2r_split_form();
+        let nonstandard = sl2r_param(&sl2r, 1, &[-2], &[0], 1);
+        let error = validate("block_Hasse", &[nonstandard], span())
+            .expect_err("discarded block_Hasse checks standardness");
+        assert_eq!(
+            error.message,
+            "Cannot generate block:\n  \
+             non-standard parameter(x=1,lambda=[-1]/1,nu=[0]/1)\n  \
+             Parameter not standard"
+        );
     }
 
     #[test]

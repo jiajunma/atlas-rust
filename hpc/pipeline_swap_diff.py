@@ -312,6 +312,7 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/orientation_nr"),
     # Batch 8 (misc): block_Hasse.
     FixturePlan(name="domain/block_hasse"),
+    FixturePlan(name="domain/block_hasse_param_proper"),
     # Batch 5 (W-graph): W_graph/W_cells over a parameter.
     FixturePlan(name="domain/w_graph_param"),
     FixturePlan(name="domain/w_graph_param_proper"),

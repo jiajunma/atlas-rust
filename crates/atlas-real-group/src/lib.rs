@@ -80,7 +80,7 @@ pub use adjoint_fiber::{
 };
 pub use alcove::{alcove_center, denominator_exceeds_alcove_bound};
 pub use block::{dual_involution, BlockDescent, BlockGraph};
-pub use block_access::BlockTopology;
+pub use block_access::{bruhat_hasse, BlockTopology};
 pub use cartan_class::{CartanClass, TwistedConjugacyClass, TwistedConjugacyPartition};
 pub use cartan_classification::{CartanClassification, CartanClassificationBudget, CartanId};
 pub use cartan_fiber::{CartanFiber, CartanFiberElement};
