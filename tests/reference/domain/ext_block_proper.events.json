@@ -1,0 +1,160 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "domain/ext_block_proper",
+ "status": "verified_hpc_reference",
+ "events": [
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'rb': RootDatum\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "simply connected root datum of Lie type 'B2'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'ib': InnerClass\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "Complex reductive group of type B2, with involution defining\ninner class of type 'c', with 3 real forms and 3 dual real forms"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'rfb': RealForm\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "connected split real group with Lie algebra 'so(3,2)'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'pb': Param\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "final parameter(x=5,lambda=[2,2]/1,nu=[1,-1]/2)"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "([final parameter(x=4,lambda=[2,2]/1,nu=[1,-1]/2),final parameter(x=5,lambda=[2,2]/1,nu=[1,-1]/2),final parameter(x=10,lambda=[1,2]/1,nu=[1,7]/2)],\n| 2 |\n| 2 |\n| 3 |\n,\n| 2 |\n| 2 |\n| 0 |\n,\n| 1 |\n| 0 |\n| 1 |\n)"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'ra': RootDatum\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "simply connected root datum of Lie type 'A2'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'ia': InnerClass\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "Complex reductive group of type A2, with involution defining\ninner class of type 'c', with 2 real forms and 1 dual real form"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'rfa': RealForm\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "connected quasisplit real group with Lie algebra 'su(2,1)'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'pa': Param\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "final parameter(x=0,lambda=[1,1]/1,nu=[0,0]/1)"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "([final parameter(x=0,lambda=[1,1]/1,nu=[0,0]/1),final parameter(x=1,lambda=[1,1]/1,nu=[0,0]/1),final parameter(x=2,lambda=[1,1]/1,nu=[0,0]/1),final parameter(x=3,lambda=[1,1]/1,nu=[-1,2]/2),final parameter(x=4,lambda=[1,1]/1,nu=[2,-1]/2),final parameter(x=5,lambda=[1,1]/1,nu=[1,1]/1)],\n| 2, 2 |\n| 2, 9 |\n| 9, 2 |\n| 0, 3 |\n| 3, 0 |\n| 1, 1 |\n,\n| 4, 3 |\n| 4, 6 |\n| 6, 3 |\n| 5, 0 |\n| 0, 5 |\n| 3, 4 |\n,\n| 1, 2 |\n| 0, 6 |\n| 6, 0 |\n| 6, 2 |\n| 1, 6 |\n| 6, 6 |\n)"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'rc': RootDatum\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "simply connected root datum of Lie type 'C2'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'ic': InnerClass\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "Complex reductive group of type C2, with involution defining\ninner class of type 'c', with 3 real forms and 3 dual real forms"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'fs': RealForm\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "connected split real group with Lie algebra 'sp(4,R)'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'ps': Param\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "final parameter(x=0,lambda=[1,1]/1,nu=[0,0]/1)"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "([final parameter(x=0,lambda=[1,1]/1,nu=[0,0]/1),final parameter(x=1,lambda=[1,1]/1,nu=[0,0]/1),final parameter(x=2,lambda=[1,1]/1,nu=[0,0]/1),final parameter(x=3,lambda=[1,1]/1,nu=[0,0]/1),final parameter(x=4,lambda=[1,1]/1,nu=[2,-1]/2),final parameter(x=5,lambda=[1,1]/1,nu=[-1,1]/1),final parameter(x=6,lambda=[1,1]/1,nu=[-1,1]/1),final parameter(x=7,lambda=[1,1]/1,nu=[2,0]/1),final parameter(x=8,lambda=[1,1]/1,nu=[2,0]/1),final parameter(x=9,lambda=[1,1]/1,nu=[0,3]/2),final parameter(x=10,lambda=[1,1]/1,nu=[1,1]/1),final parameter(x=10,lambda=[1,2]/1,nu=[1,1]/1)],\n| 2, 2 |\n| 2, 2 |\n| 9, 2 |\n| 9, 2 |\n| 3, 0 |\n| 0, 3 |\n| 0, 3 |\n| 1, 2 |\n| 1, 2 |\n| 4, 1 |\n| 5, 3 |\n| 5, 8 |\n,\n|  4,  5 |\n|  4,  6 |\n| 12,  5 |\n| 12,  6 |\n|  0,  9 |\n|  7,  0 |\n|  8,  1 |\n|  5, 10 |\n|  6, 10 |\n| 10,  4 |\n|  9,  7 |\n|  9, 12 |\n,\n|  1,  2 |\n|  0,  3 |\n| 12,  0 |\n| 12,  1 |\n|  1, 12 |\n| 12,  2 |\n| 12,  3 |\n| 12,  8 |\n| 12,  7 |\n| 11, 12 |\n| 11,  8 |\n| 10, 12 |\n)"
+   }
+  }
+ ]
+}

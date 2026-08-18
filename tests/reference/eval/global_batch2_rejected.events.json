@@ -1,0 +1,122 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "eval/global_batch2_rejected",
+ "status": "verified_hpc_reference",
+ "events": [
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Negative entry in conversion to bitset"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Integer value to big for conversion"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Size mismatch 2:3"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Vector division by 0"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Vector modulo 0"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Integer value to big for conversion"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Size mismatch 2:3"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Rational vector division by 0"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Rational vector modulo 0"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Rational vector division by 0"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Integer value to big for conversion"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Integer value to big for conversion"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Size mismatch 2:3"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Size mismatch 2:3"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Size mismatch 3:2"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Size mismatch 2:3"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Negative integer where unsigned is required"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Negative integer where unsigned is required"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Negative integer where unsigned is required"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Negative integer where unsigned is required"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Column 0 size 3 does not match specified size 2"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Row 0 size 3 does not match specified size 2"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Column 0 size 2 does not match specified size 0"
+  }
+ ]
+}

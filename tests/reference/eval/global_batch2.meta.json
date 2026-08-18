@@ -1,0 +1,26 @@
+{
+ "fixture": "eval/global_batch2.atlas",
+ "fixture_sha256": "4114b026229c4b8be57d461ddb0b215a9afb98481930026847dcc7bd2c2fefc4",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "3574906",
+ "reference_commit": "c5afd9c4322774e5d9175e9b727589391a2407ea",
+ "reference_report_sha256": "ae865fbab38e051e6100e7dce34624f15826c06917d25f791f60cfd74bee21ec",
+ "source_archive_sha256": "263cf46db3c94910839ab5dfeab9b91dfa76cba843353bf62ea4b7ac0d2fc8ab",
+ "oracle_exit_status": 0,
+ "oracle_seconds": 0.043,
+ "oracle_maxrss_kb": 3568,
+ "oracle_maxrss_approximate": false,
+ "notes": "global.w batch 2: int bit utilities succ/pred, call-syntax AND/OR/XOR/AND_NOT, bitwise_subset, nth_set_bit, bit_length, to_bitset (global.w:2859-2994); container relations/arithmetic on vec/ratvec/mat (4405-4451); selectors/joins ##/# (4396-4399); matrix constructors null/^/id_mat/diagonal/stack_rows/combine (5183-5194); gcd(vec) (5200); elapsed_ms (5245). Rust implementation landed in commit c5afd9c (ScalarOp variants in crates/atlas-core/src/typed.rs); accepted fixture byte-identical against the local oracle. HPC differential pending. See docs/REMAINING_BUILTINS.md global.w batch-2 entry.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
+}

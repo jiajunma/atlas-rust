@@ -1,0 +1,26 @@
+{
+ "fixture": "domain/print_partial_common_block_seq.atlas",
+ "fixture_sha256": "de3a1268eb909f62a88c3a1e9473e6e704c1635e1a8709d07ed88c820da795b4",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "not_implemented",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "3574902",
+ "reference_commit": "e4efd14ceb5d781c6d3005f2f0b63714760f8cf7",
+ "reference_report_sha256": "1c42f46f0957004fb338e569682204433b86e7b9b70fda164183d1abc28daaeb",
+ "source_archive_sha256": "341a6ca22f55d4a2a51cd7e6c743b507be3efe4e1e579decacee631f79b1c94d",
+ "oracle_exit_status": 0,
+ "oracle_seconds": 0.044,
+ "oracle_maxrss_kb": 4360,
+ "oracle_maxrss_approximate": false,
+ "notes": "Sequence-divergence anchor (slice C of docs/slices/nonintegral_common_block_workorder.md): after print_common_block(pb) installs the full block, the oracle's print_partial_common_block(pb) hits the Rep_table cache and prints 'Subset {1} in the following common block:' + all 3 rows; current Rust builds a fresh singleton with no header. Do NOT register before the slice lands.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
+}

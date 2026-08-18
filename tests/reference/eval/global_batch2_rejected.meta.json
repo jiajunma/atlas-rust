@@ -1,0 +1,26 @@
+{
+ "fixture": "eval/global_batch2_rejected.atlas",
+ "fixture_sha256": "0eac36ac06fd1ee71c521547355706d4dfd773e4544f0cb4f3a8dccd7d235830",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "3574906",
+ "reference_commit": "c5afd9c4322774e5d9175e9b727589391a2407ea",
+ "reference_report_sha256": "ae865fbab38e051e6100e7dce34624f15826c06917d25f791f60cfd74bee21ec",
+ "source_archive_sha256": "263cf46db3c94910839ab5dfeab9b91dfa76cba843353bf62ea4b7ac0d2fc8ab",
+ "oracle_exit_status": 1,
+ "oracle_seconds": 0.049,
+ "oracle_maxrss_kb": 3736,
+ "oracle_maxrss_approximate": false,
+ "notes": "Rejected companions of eval/global_batch2: negative bitset entry, int narrowing typo text 'Integer value to big for conversion', size mismatches, vector/rational-vector division and modulo by zero, matrix dimension and narrowing errors, negative sizes, and combine/join arity errors. 23 error payloads match the oracle verbatim; the outer report wrapper divergence (atlas-cli vs interactive oracle) is pre-existing. HPC differential pending.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
+}

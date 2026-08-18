@@ -1,0 +1,26 @@
+{
+ "fixture": "domain/length_dual_proper_a2.atlas",
+ "fixture_sha256": "9c5db56f78278ec754031867687d5e070468bbabcf4b9ff6dc5b09168b04010d",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "not_implemented",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "3574902",
+ "reference_commit": "e4efd14ceb5d781c6d3005f2f0b63714760f8cf7",
+ "reference_report_sha256": "1c42f46f0957004fb338e569682204433b86e7b9b70fda164183d1abc28daaeb",
+ "source_archive_sha256": "341a6ca22f55d4a2a51cd7e6c743b507be3efe4e1e579decacee631f79b1c94d",
+ "oracle_exit_status": 0,
+ "oracle_seconds": 0.032,
+ "oracle_maxrss_kb": 4412,
+ "oracle_maxrss_approximate": false,
+ "notes": "A2 split (SL(3,R)) non-integral anchor (slice B of docs/slices/nonintegral_common_block_workorder.md): p3=param(KGB(rs,3),[0,0],[1,1]/2), rank-1 subsystem on the highest root (conjugated parent words). Oracle: 3-row single-generator common block with type-2 codes, length(p3)=1, 2-row partial block with undefined cross, dual_KL_block survivors x=0,3,3. May stay gated on the known SL(3,R) identity-shift locator defect (gamma-lambda off by [0,1] on rows 0/2); do NOT register before both slices land.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
+}

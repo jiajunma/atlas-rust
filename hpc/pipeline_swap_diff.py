@@ -242,6 +242,12 @@ FIXTURE_PLANS = (
     # (global.w:3249-3251, 4387-4404); reference frozen by capture 3574819.
     FixturePlan(name="eval/global_batch1"),
     FixturePlan(name="eval/global_batch1_rejected"),
+    # global.w batch 2: int bit utilities, container relations/arithmetic,
+    # selectors/joins, matrix constructors, gcd(vec), elapsed_ms
+    # (global.w:2859-2994, 3953-4451, 5183-5245); reference frozen by
+    # capture 3574906.
+    FixturePlan(name="eval/global_batch2"),
+    FixturePlan(name="eval/global_batch2_rejected"),
     FixturePlan(name="eval/slices"),
     FixturePlan(name="eval/subscriptions"),
     FixturePlan(name="eval/context"),
