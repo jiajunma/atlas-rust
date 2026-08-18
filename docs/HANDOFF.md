@@ -14,10 +14,14 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 - global.w batch 1 landed (commit `15a3292`): rat `floor`/`ceil`/`frac`,
   string `##`/`ascii` x2, `#` on string/vec/ratvec/mat (mat = column count),
   matrix `shape`/`row`/`column`/`rows`/`columns` (`rows`/`columns` return
-  `[vec]`, not `int`). Reference frozen by capture **3574819**; fixtures
-  `eval/global_batch1{,_rejected}` registered in the swap runner with
-  `rust_status=pending_hpc_differential`. Upgrade both metas to
-  `verified_hpc` once the differential passes.
+  `[vec]`, not `int`). Reference frozen by capture **3574819**; VERIFIED by
+  fat differential **3574838** @ `447fe44` — 289 PASS + 1 declared PARTIAL
+  (container_syntax_errors) across 290 fixtures, both `global_batch1`
+  fixtures exact; report SHA256
+  `3006c3a8dcbd6339075274ca997c08410424e6cd6a698ee6de9125e584fcc58e`.
+  Both metas are `verified_hpc`. (The first cpu-partition run 3574831 failed
+  only `domain/kgb_hasse` on an environmental timeout — heavy full-suite
+  differentials belong on `fat`, per the standing HPC note.)
 - Locator slice anchors frozen (both intentionally UNREGISTERED from
   FixturePlan until the locator lands — current identity-attitude code
   diverges silently): `domain/common_block_locator` (A2 SL(3,R),
