@@ -1,5 +1,35 @@
 # Remaining builtin coverage (post-language-gate)
 
+## Registry reconciliation 2026-08-18 (supersedes the 2026-08-13 counts)
+
+All 305 upstream `atlas-types.w` signatures now have exact Rust counterparts
+(zero missing, zero result-type mismatches). The only registry-level gap is
+`global.w`: 89 signatures (int/bitset utilities, rat `floor`/`ceil`/`frac`,
+string `ascii`/`##`/`#`, cardinality and shape/row/column accessors, container
+relations and arithmetic, matrix constructors, `gcd`/`echelon`/`Smith`/
+`kernel`/`invert` linear algebra, `elapsed_ms`). These block source-level
+`basic.at` library compatibility. Reachable loud NYIs that remain: the
+generator-attitude gates (`partial_block`/`W_graph`/`W_cells`/`block_Hasse` on
+Param), proper-subsystem twisted/ext recursion, non-integral common blocks,
+and cross-block partial merge (rep_table.rs).
+
+## Locator canonicalization probe (2026-08-18)
+
+`tests/fixtures/domain/common_block_locator.atlas` pins the first observable
+nonidentity block modifier: A2 split (`inner_class(rd,[[0,1],[1,0]])`, form 0,
+SL(3,R)), `p = param(KGB(rf,3),[0,0],[2,1]/2)` installs a rank-one common
+block, then `q = param(KGB(rf,0),[0,0],[-2,-1]/2)` collides with it under a
+Weyl-conjugate integral subsystem and the oracle prints
+`as transformed by <1>` plus transported rows for
+`print_common_block`/`partial_block`/`block_Hasse`/`W_graph`/`KL_sum_at_s`.
+Current Rust silently diverges here: it builds a fresh block per query AND its
+`print_common_block(p)` rows already differ from the oracle for this A2
+configuration (gamma-lambda shifted by [0,1] on rows 0 and 2) even at
+"identity" attitude — the identity-attitude assumption is not shift-correct
+for this family. Reference capture: job 3574723. Implementation follows the
+locator design (upstream `InnerClass::int_item` innerclass.cpp:1116-1182,
+`block_modifier` repr.h:493-499, `make_relative_to` repr.cpp:338-350).
+
 ## Signature-level reconciliation (2026-08-13)
 
 ### P0 status and Rep_table blocker (2026-08-13)
