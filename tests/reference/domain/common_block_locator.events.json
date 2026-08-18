@@ -1,0 +1,63 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/common_block_locator",
+  "status": "verified_hpc_reference",
+  "events": [
+    {
+      "kind": "ReportLine",
+      "text": "Variable rd: RootDatum\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Variable ic: InnerClass\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Variable rf: RealForm\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Variable p: Param\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Variable q: Param\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Parameter defines element 1 of the following common block,\nas transformed by <>:\n0:  0  [i2]  0   (1,2)  *(x=1,gamma-lambda=  [0,-1]/2)  2xe\n1:  1  [r2]  2   (0,*)  *(x=3,gamma-lambda=   [0,3]/2)  1^2xe\n2:  1  [r2]  1   (0,*)  *(x=3,gamma-lambda=   [0,1]/2)  1^2xe\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Parameter defines element 0 of the following common block,\nas transformed by <1>:\n0:  0  [i2]  0   (1,2)  *(x=1,gamma-lambda=  [0,-1]/4)  2xe\n1:  1  [r2]  2   (0,*)  *(x=3,gamma-lambda=   [0,3]/4)  1^2xe\n2:  1  [r2]  1   (0,*)  *(x=3,gamma-lambda=   [0,7]/4)  1^2xe\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "[final parameter(x=0,lambda=[1,1]/1,nu=[-1,1]/4)]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "([final parameter(x=0,lambda=[1,1]/1,nu=[-1,1]/4),final parameter(x=3,lambda=[1,2]/1,nu=[3,5]/4),final parameter(x=3,lambda=[2,1]/1,nu=[3,5]/4)],\n| 0, 1, 1 |\n| 0, 0, 0 |\n| 0, 0, 0 |\n)"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "(0,[([],[(1,1),(2,1)]),([0],[(0,1)]),([0],[(0,1)])])"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "\n1*parameter(x=0,lambda=[1,1]/1,nu=[-1,1]/4) [4]"
+      }
+    }
+  ]
+}

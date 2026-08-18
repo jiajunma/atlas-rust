@@ -1,0 +1,26 @@
+{
+  "fixture": "domain/common_block_locator.atlas",
+  "fixture_sha256": "487a00c1818529ba48437691333ba88eef2334fffbcd6de8771fc3ce7f17cb6c",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "rust_status": "not_implemented",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3574723",
+  "reference_commit": "c184d2d5022b6c6824a26b8ca7ec9dcff1e81c9d",
+  "reference_report_sha256": "0123de4eb00aaea88bb302257485d27030c309633c1f402776605ebae0b1b377",
+  "source_archive_sha256": "182e6aa81d356cf44719f594a56643db310473f037b02ca440ce5e3d0e8c45ba",
+  "oracle_exit_status": 0,
+  "oracle_seconds": 0.121,
+  "oracle_maxrss_kb": 4416,
+  "oracle_maxrss_approximate": false,
+  "notes": "A2 split (SL(3,R)) locator canonicalization anchor: param(KGB(rf,3),[0,0],[2,1]/2) installs a rank-one common block; param(KGB(rf,0),[0,0],[-2,-1]/2) collides under a Weyl-conjugate integral subsystem, so print_common_block/partial_block/block_Hasse/W_graph/KL_sum_at_s on the second parameter must transport through the stored block with modifier w=<1> ('as transformed by <1>'). Do NOT register the FixturePlan before the locator slice lands — the current identity-attitude implementation builds a fresh block and diverges silently. Nonidentity locator canonicalization is the active slice; see docs/REMAINING_BUILTINS.md 2026-08-18 entry.",
+  "hpc_capture": {
+    "fresh_process_required": true,
+    "timeout_seconds": 30,
+    "estimated_seconds": 1,
+    "estimated_memory_mb": 64
+  }
+}
