@@ -1,0 +1,7 @@
+set rd = simply_connected(Lie_type("A3"),true)
+set ic = inner_class(rd,[[0,0,1],[0,1,0],[1,0,0]])
+set rf = real_form(ic,1)
+set p = param(KGB(rf,0),[0,0,0],[0,1,1]/2)
+set q = param(KGB(rf,0),[0,0,0],[1,1,0]/2)
+print_common_block(p)
+print_common_block(q)
