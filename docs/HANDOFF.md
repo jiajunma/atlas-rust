@@ -4,7 +4,7 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
-## Checkpoint - 2026-08-17d (proper-integral partial block + KL sums, differential in flight)
+## Checkpoint - 2026-08-17d (proper-integral partial block + KL sums verified)
 
 - `partial_block(Param)` now walks the shared `RepTable` lookup: it rejects
   nonidentity generator attitudes loudly, takes the Bruhat downset of the
@@ -22,17 +22,17 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   (299), clippy `-D warnings`, and fmt are clean. Commits `d388002`
   (HPC reference for 3 partial_block fixtures, capture job 3565274) and
   `1cedff5` (implementation), pushed to `codex/continue-atlas-port` and
-  `main`; HPC checkout at `1cedff5f`.
-- IN FLIGHT: differential **3573983** (fat partition, commit 1cedff5f) covers
-  the 3 verified partial_block fixtures; capture **3573984** freezes
-  `domain/kl_sum_at_s_param_proper` (B2 split x=5 `[1,1]`/`[1,0]/2`, covering
-  `KL_sum_at_s` + both `to_height` bounds). After capture lands: upgrade its
-  meta to verified_hpc_reference, register
-  `FixturePlan(name="domain/kl_sum_at_s_param_proper")` in
-  hpc/pipeline_swap_diff.py (the plan line was intentionally held back —
-  registering before the events file exists breaks
-  `python3 -m unittest hpc.test_pipeline_swap_diff`), then run the
-  differential again.
+  `main`.
+- VERIFIED: differential **3573983** @ `1cedff5f` passed all runnable
+  observations in 287 fixtures (286 PASS + the declared
+  container_syntax_errors PARTIAL; report SHA256
+  `564f53f9b80fdefde541420347dc3d1fcefe43d71485d4956e3442da17446e73`).
+  Capture **3573984** froze `domain/kl_sum_at_s_param_proper` (B2 split x=5
+  `[1,1]`/`[1,0]/2`, covering `KL_sum_at_s` + both `to_height` bounds);
+  differential **3574581** @ `650fbccf` passed it (0.008s / 7312 KiB exact
+  peak RSS) with 287 PASS + 1 declared PARTIAL across 288 fixtures (report
+  SHA256 `e62b34a82ed59eb97541f30dfe92a86cbba65921a9770dda9a2387c95a2cad19`).
+  All four metas are `verified_hpc` with their differential jobs recorded.
 - Scope is still identity generator attitude; nonidentity locator
   canonicalization and `simple_pi` transport remain loud NYI.
 
