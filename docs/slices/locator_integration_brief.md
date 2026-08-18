@@ -62,12 +62,25 @@ Rationale: without the gates, canonicalization lands silently wrong results.
 ## Step 4 — transported consumers + headers + gate release
 
 - `singular_flags(bm)` and `located_row_parameter` go through `sr(srm,bm,·)`.
-- `print_common_block` prints `as transformed by <w>` and, when nontrivial,
-  `simple reflections permuted (i->j,...)` (upstream print format in
-  repr.cpp `common_block` printing).
+- `print_common_block` header + transport, EXACT upstream wrapper
+  (`print_c_block_wrapper`, atlas-types.w:6668-6692):
+  - gate `test_standard(*p,"Cannot generate block")` first;
+  - `lookup_full_block(p->val, init_index, bm)` fills the block_modifier;
+  - header: `Parameter defines element <init_index> of the following common
+    block,\nas transformed by <` + dot-separated Weyl word of `bm.w` + `>`;
+    if `bm.simple_pi` is not identity, append `, simple reflections permuted
+    (` + comma-separated `i->pi[i]` + `)`; then `:` + newline;
+  - `block.shift(bm.shift)` BEFORE printing and `block.shift(-bm.shift)`
+    AFTER — the shift temporarily mutates the stored block during printing;
+  - rows print via `block.print_to(out, block.singular(bm, p->val.gamma()))`
+    — singular flags take the modifier;
+  - `wrap_tuple<0>()` at single_value; no_value needs no special care.
+- Contrast: `print_block` (`print_param_block_wrapper`,
+  atlas-types.w:6652-6666) constructs a FRESH `common_block` directly (no
+  RepTable, no modifier) — it must NOT install or transport.
 - Release the step-3 gates consumer by consumer as each is transported.
-- Register both locator fixtures in `FIXTURE_PLANS`, run the differential,
-  upgrade both metas to `verified_hpc`.
+- Register all three locator fixtures in `FIXTURE_PLANS`, run the
+  differential, upgrade the three metas to `verified_hpc`.
 
 ## Step 5 (later, not this slice)
 
