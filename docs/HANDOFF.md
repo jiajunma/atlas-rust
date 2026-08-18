@@ -4,6 +4,44 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-19 (locator anchors frozen; global.w batches in flight)
+
+- Signature reconciliation (docs/REMAINING_BUILTINS.md 2026-08-18 entry,
+  commit `387c3c4`): all 305 `atlas-types.w` signatures are registered in
+  Rust; the only registry gap is `global.w` (89 signatures), plus the hard
+  math gaps (generator-attitude gates, twisted/ext proper recursion,
+  non-integral common blocks, cross-block partial merge).
+- global.w batch 1 landed (commit `15a3292`): rat `floor`/`ceil`/`frac`,
+  string `##`/`ascii` x2, `#` on string/vec/ratvec/mat (mat = column count),
+  matrix `shape`/`row`/`column`/`rows`/`columns` (`rows`/`columns` return
+  `[vec]`, not `int`). Reference frozen by capture **3574819**; fixtures
+  `eval/global_batch1{,_rejected}` registered in the swap runner with
+  `rust_status=pending_hpc_differential`. Upgrade both metas to
+  `verified_hpc` once the differential passes.
+- Locator slice anchors frozen (both intentionally UNREGISTERED from
+  FixturePlan until the locator lands — current identity-attitude code
+  diverges silently): `domain/common_block_locator` (A2 SL(3,R),
+  `as transformed by <1>`, capture 3574723, commit `d93929a`) and
+  `domain/common_block_simple_pi` (A3 SL(4,R) rank-two,
+  `as transformed by <0.2>, simple reflections permuted (0->1,1->0)`,
+  capture 3574819, fixture commit `a732a27`).
+- Locator implementation route (do not reopen): step 1 pure
+  `InnerClass::int_item` canonicalization + `BlockLocator` interning in
+  atlas-real-group (upstream innerclass.cpp:1116-1182, repr.h:484-491);
+  step 2 `RepContext::transform` + `shift` + `make_relative_to`
+  (repr.cpp:338-350) + `sr(srm,bm,gamma)` (repr.cpp:815-823); step 3
+  canonical keys into RepTable::lookup/lookup_full_block with attitude gates
+  on KL_column/KL_block/print_block(s)/kl_sum_at_s_terms FIRST (otherwise
+  canonicalization lands silently wrong); step 4 transported consumers
+  (`singular_flags(bm)`, `located_row_parameter` via `sr(bm)`), the
+  `as transformed by`/`simple reflections permuted` headers, then gate
+  release and both locator fixture differentials.
+- Known defect pinned by the probe: current Rust `print_common_block` on the
+  A2 SL(3,R) family already differs from the oracle at identity attitude
+  (gamma-lambda shifted by [0,1] on rows 0/2) — the identity-attitude shift
+  handling itself is wrong for that family, not just the missing
+  canonicalization.
+
 ## Checkpoint - 2026-08-17d (proper-integral partial block + KL sums verified)
 
 - `partial_block(Param)` now walks the shared `RepTable` lookup: it rejects
