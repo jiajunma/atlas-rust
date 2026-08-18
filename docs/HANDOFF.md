@@ -51,6 +51,20 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   (`singular_flags(bm)`, `located_row_parameter` via `sr(bm)`), the
   `as transformed by`/`simple reflections permuted` headers, then gate
   release and all three locator fixture differentials.
+- Non-integral common-block recon COMPLETE (agent-69); slice plan frozen at
+  `docs/slices/nonintegral_common_block_workorder.md`. Headlines: upstream
+  always builds the block of the integral subsystem directly (smaller
+  blocks, subsystem-rank columns); THREE live defects at identity attitude —
+  `length(Param)` silently wrong on proper/rank-0 (full-block scan at
+  domain_builtins.rs:13436-13457 vs upstream make_dominant+lookup),
+  `dual_KL_block(Param)` silently wrong for non-integral gamma (needs a
+  combinatorial `PartialBlock::dual`, blocks.cpp:474-507), and
+  `print_partial_common_block` sequence-diverges (fresh block per call vs
+  shared `rt().lookup` + `Subset {…}` header). Four oracle-verified fixtures
+  added: `domain/length_dual_proper`, `domain/length_dual_proper_a2`,
+  `domain/print_partial_common_block_seq`, `domain/print_partial_block_proper`
+  (all intentionally UNREGISTERED until fixed; the A2 one may stay gated on
+  the known SL(3,R) identity-shift locator defect).
 - Twisted/ext proper-subsystem recursion recon COMPLETE (agent-68); full
   slice plan frozen at `docs/slices/twisted_ext_proper_workorder.md`.
   Headlines: the single shared prerequisite is an `ExtBlock` constructor
