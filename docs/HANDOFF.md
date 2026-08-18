@@ -94,7 +94,13 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 - Six new anchors frozen (events+meta, `b9843aa`; ALL UNREGISTERED except
   the two batch-2 eval plans): domain/ext_block_proper (capture 3574900),
   domain/length_dual_proper{,_a2}, domain/print_partial_common_block_seq,
-  domain/print_partial_block_proper (capture 3574902).
+  domain/print_partial_block_proper (capture 3574902). UPDATE: regression
+  differential **3574928** @ `665f2f5` passed 291 PASS + 1 declared PARTIAL
+  with step-2 + non-integral slices 1-2 in; the two byte-identical anchors
+  (print_partial_common_block_seq, print_partial_block_proper) were then
+  REGISTERED (`852c0f6`) with differential 3574934 in flight. Still
+  unregistered: ext_block_proper (slice 1), length_dual_proper{,_a2}
+  (dual_KL_block slice 3 + A2 locator shift defect).
 - Twisted/ext slice order per the work order: (1) extended_block proper,
   (2) raw_ext_KL+partial_extended_KL_block proper, (3) twisted_KL_sum_at_s
   proper, (4) twisted_deform proper, (5) twisted_full_deform recursion at
