@@ -51,6 +51,17 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   (`singular_flags(bm)`, `located_row_parameter` via `sr(bm)`), the
   `as transformed by`/`simple reflections permuted` headers, then gate
   release and all three locator fixture differentials.
+- Twisted/ext proper-subsystem recursion recon COMPLETE (agent-68); full
+  slice plan frozen at `docs/slices/twisted_ext_proper_workorder.md`.
+  Headlines: the single shared prerequisite is an `ExtBlock` constructor
+  over `PartialBlock` (identity-attitude `transformed_twisted` +
+  subsystem-Cartan `fold_orbits` + partial `StarOracle`); slices in order:
+  (1) `extended_block` proper, (2) `raw_ext_KL`+`partial_extended_KL_block`
+  proper, (3) `twisted_KL_sum_at_s` proper, (4) `twisted_deform` proper,
+  (5) `twisted_full_deform` recursion at proper reducibility points
+  (deepest; may force the cross-block partial-merge NYI early). Neighbor
+  silent deviation flagged: ordinary `full_deform`'s reducibility recursion
+  has NO scope check at all (domain_builtins.rs:2282-2321).
 - Known defect pinned by the probe: current Rust `print_common_block` on the
   A2 SL(3,R) family already differs from the oracle at identity attitude
   (gamma-lambda shifted by [0,1] on rows 0/2) — the identity-attitude shift
