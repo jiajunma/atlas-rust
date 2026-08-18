@@ -1,0 +1,201 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "eval/global_batch1",
+  "status": "verified_hpc_reference",
+  "events": [
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 3
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": -4
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 4
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": -3
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "rational",
+        "numerator": "1",
+        "denominator": "2"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "rational",
+        "numerator": "1",
+        "denominator": "2"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "rational",
+        "numerator": "0",
+        "denominator": "1"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "string",
+        "value": "abcd"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "string",
+        "value": "abcd"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 65
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": -1
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "string",
+        "value": "A"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "string",
+        "value": "\n"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 5
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 0
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 3
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 2
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 3
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "tuple",
+        "values": [
+          {
+            "type": "integer",
+            "value": 2
+          },
+          {
+            "type": "integer",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "vec",
+        "display": "[ 1, 3 ]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "vec",
+        "display": "[ 2, 4 ]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "vec",
+        "display": "[ 1, 2 ]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "vec",
+        "display": "[ 3, 4 ]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "list",
+        "display": "[[ 1, 3 ],[ 2, 4 ]]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "list",
+        "display": "[[ 1, 2 ],[ 3, 4 ]]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 2
+      }
+    }
+  ]
+}

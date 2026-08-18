@@ -1,0 +1,35 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/common_block_simple_pi",
+  "status": "verified_hpc_reference",
+  "events": [
+    {
+      "kind": "ReportLine",
+      "text": "Variable rd: RootDatum\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Variable ic: InnerClass\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Variable rf: RealForm\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Variable p: Param\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Variable q: Param\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Parameter defines element 0 of the following common block,\nas transformed by <>:\n0:  0  [i1,i1]  1  1   (2,*)  (3,*)  *(x= 0,gamma-lambda=   [-1,0,1]/4)  e\n1:  0  [i1,i1]  0  0   (2,*)  (3,*)  *(x= 1,gamma-lambda=   [-1,0,1]/4)  e\n2:  1  [r1,i2]  2  2   (0,1)  (4,5)  *(x= 2,gamma-lambda=  [-5,8,-3]/4)  2^e\n3:  1  [i2,r1]  3  3   (4,5)  (0,1)  *(x=10,gamma-lambda=    [7,0,1]/4)  1x3x2^e\n4:  2  [r2,r2]  5  5   (3,*)  (2,*)  *(x=12,gamma-lambda=    [3,0,5]/4)  1^2x3x2^e\n5:  2  [r2,r2]  4  4   (3,*)  (2,*)  *(x=12,gamma-lambda=    [7,0,1]/4)  1^2x3x2^e\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Parameter defines element 0 of the following common block,\nas transformed by <0.2>, simple reflections permuted (0->1,1->0):\n0:  0  [i1,i1]  1  1   (2,*)  (3,*)  *(x= 0,gamma-lambda=   [-1,0,1]/4)  e\n1:  0  [i1,i1]  0  0   (2,*)  (3,*)  *(x= 1,gamma-lambda=   [-1,0,1]/4)  e\n2:  1  [r1,i2]  2  2   (0,1)  (4,5)  *(x= 2,gamma-lambda=  [-5,8,-3]/4)  2^e\n3:  1  [i2,r1]  3  3   (4,5)  (0,1)  *(x=10,gamma-lambda=    [7,0,1]/4)  1x3x2^e\n4:  2  [r2,r2]  5  5   (3,*)  (2,*)  *(x=12,gamma-lambda=    [3,0,5]/4)  1^2x3x2^e\n5:  2  [r2,r2]  4  4   (3,*)  (2,*)  *(x=12,gamma-lambda=    [7,0,1]/4)  1^2x3x2^e\n"
+    }
+  ]
+}

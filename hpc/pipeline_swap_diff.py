@@ -237,6 +237,11 @@ FIXTURE_PLANS = (
     FixturePlan(name="commands/subscription_context"),
     FixturePlan(name="commands/subscription_order"),
     FixturePlan(name="eval/containers"),
+    # global.w batch 1: rat floor/ceil/frac, string ##/ascii, cardinality #
+    # on string/vec/ratvec/mat, matrix shape/row/column/rows/columns
+    # (global.w:3249-3251, 4387-4404); reference frozen by capture 3574819.
+    FixturePlan(name="eval/global_batch1"),
+    FixturePlan(name="eval/global_batch1_rejected"),
     FixturePlan(name="eval/slices"),
     FixturePlan(name="eval/subscriptions"),
     FixturePlan(name="eval/context"),

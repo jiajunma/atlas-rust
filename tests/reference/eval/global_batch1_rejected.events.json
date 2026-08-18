@@ -1,0 +1,42 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "eval/global_batch1_rejected",
+  "status": "verified_hpc_reference",
+  "events": [
+    {
+      "kind": "Diagnostic",
+      "category": "type",
+      "message": "Failed to match '##' with argument type [*]"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "row index 2 out of range (0<= . <2)"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "column index 3 out of range (0<= . <3)"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Negative integer where unsigned is required"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Value 31 out of printable ASCII range"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Value 127 out of printable ASCII range"
+    },
+    {
+      "kind": "Diagnostic",
+      "category": "runtime",
+      "message": "Integer value to big for conversion"
+    }
+  ]
+}

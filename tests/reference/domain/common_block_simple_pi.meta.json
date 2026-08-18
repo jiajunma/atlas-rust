@@ -1,0 +1,26 @@
+{
+  "fixture": "domain/common_block_simple_pi.atlas",
+  "fixture_sha256": "66aa84451e2f8c6afb76e351d35214ef73eb021db301b403df03e0008a293d48",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "rust_status": "not_implemented",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3574819",
+  "reference_commit": "a732a274c4f8414d58b2a277f09fa056d105ed76",
+  "reference_report_sha256": "bac241a788c0bbcbed6f824f4cf563942cc788ce7dd8af326cb4526bb3690972",
+  "source_archive_sha256": "55a7469915e0a9b3c67da8b425c751586a2081490f9df18c6225dab3a51810e9",
+  "oracle_exit_status": 0,
+  "oracle_seconds": 0.03,
+  "oracle_maxrss_kb": 4368,
+  "oracle_maxrss_approximate": false,
+  "notes": "A3 split (SL(4,R), inner_class(rd,[[0,0,1],[0,1,0],[1,0,0]]), form 1) locator probe: param(KGB(rf,0),[0,0,0],[0,1,1]/2) installs the rank-two integral block, then param(KGB(rf,0),[0,0,0],[1,1,0]/2) collides with it under a permuted integral subsystem, so the oracle prints 'as transformed by <0.2>, simple reflections permuted (0->1,1->0)'. Do NOT register the FixturePlan before the locator slice lands \u2014 the current identity-attitude implementation builds a fresh block and diverges silently. Second anchor after domain/common_block_locator; see docs/REMAINING_BUILTINS.md 2026-08-18 locator entry.",
+  "hpc_capture": {
+    "fresh_process_required": true,
+    "timeout_seconds": 30,
+    "estimated_seconds": 1,
+    "estimated_memory_mb": 64
+  }
+}
