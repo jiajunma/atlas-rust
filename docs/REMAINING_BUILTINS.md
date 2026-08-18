@@ -1,5 +1,24 @@
 # Remaining builtin coverage (post-language-gate)
 
+## global.w batch 1 landed locally (2026-08-18, HPC capture pending)
+
+Rat decomposers `floor`/`ceil`/`frac` (global.w:3249-3251), string
+`##([string])`/`ascii` x2 (4387-4389), cardinality `#` on string/vec/ratvec/mat
+(4392-4395, mat = column count), and matrix `shape`/`row`/`column`/`rows`/
+`columns` (4400-4404; `rows`/`columns` return `[vec]`, not `int`) are
+implemented as `ScalarOp`s in `crates/atlas-core/src/typed.rs`, with
+`Matrix::row`/`column` accessors in `linear_values.rs`. Fixtures
+`tests/fixtures/eval/global_batch1.atlas` and `..._rejected.atlas` diff
+byte-identical against the local oracle for accepted input (stdout and exit
+codes; rejected fixtures share the pre-existing atlas-cli vs oracle error-report
+wrapper divergence, message payloads match). HPC reference capture is NOT yet
+run — do not claim differential-verified status until that lands. Notes for the
+next batch: upstream `matrix_column_wrapper` truncates the u64 index to
+`unsigned int` before the bounds check (indices >= 2^32 wrap; unreachable for
+constructible matrices — Rust compares the full u64); `ascii` on a string is
+byte-based (empty -> -1); the `[*]` empty row cannot resolve `##([string])`
+upstream either.
+
 ## Registry reconciliation 2026-08-18 (supersedes the 2026-08-13 counts)
 
 All 305 upstream `atlas-types.w` signatures now have exact Rust counterparts

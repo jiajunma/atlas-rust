@@ -10,7 +10,7 @@
 //! evaluate the registered conversion functions; integer narrowing uses
 //! the EXACT upstream error text (typo included, bigint.cpp:142-162).
 
-use malachite::base::num::arithmetic::traits::{Floor, Mod, Pow};
+use malachite::base::num::arithmetic::traits::{Ceiling, Floor, Mod, Pow};
 use malachite::{Integer as BigInt, Rational as BigRational};
 
 use crate::coercions::{coercion_between, row_coercion};
@@ -3691,6 +3691,18 @@ enum ScalarOp {
     RatInverse,
     RatPower,
     NullMatrix,
+    RatFloor,
+    RatCeil,
+    RatFrac,
+    StringListConcat,
+    StringToAscii,
+    AsciiChar,
+    SizeOf,
+    MatrixShape,
+    MatrixRow,
+    MatrixColumn,
+    MatrixRows,
+    MatrixColumns,
     UnaryRelation(Relation),
     BinaryRelation(Relation),
     ListCardinality,
@@ -4313,6 +4325,141 @@ fn run_scalar(
                 other => panic!("string concatenation saw {other:?}"),
             }
         }
+        // rat_floor/ceil/frac (global.w:3153-3167): floor division rounding,
+        // the fractional part lying in [0,1).
+        ScalarOp::RatFloor | ScalarOp::RatCeil | ScalarOp::RatFrac => {
+            match expect_unary(arguments) {
+                Value::Rational(value) => Ok(at_builtin_level(level, || match operation {
+                    ScalarOp::RatFloor => Value::Integer(value.floor()),
+                    ScalarOp::RatCeil => Value::Integer(value.ceiling()),
+                    ScalarOp::RatFrac => {
+                        let floor = (&value).floor();
+                        Value::Rational(value - BigRational::from(floor))
+                    }
+                    _ => unreachable!(),
+                })),
+                other => panic!("rational decomposer saw {other:?}"),
+            }
+        }
+        // concatenate_strings (global.w:3492-3508): fold a row of strings.
+        ScalarOp::StringListConcat => match expect_unary(arguments) {
+            Value::List(values) => Ok(at_builtin_level(level, || {
+                let mut joined = String::new();
+                for value in values {
+                    match value {
+                        Value::String(text) => joined.push_str(&text),
+                        other => panic!("string list concatenation saw {other:?}"),
+                    }
+                }
+                Value::String(joined)
+            })),
+            other => panic!("string list concatenation saw {other:?}"),
+        },
+        // string_to_ascii (global.w:3516-3521): first byte unsigned, -1 when
+        // the string is empty.
+        ScalarOp::StringToAscii => match expect_unary(arguments) {
+            Value::String(value) => Ok(at_builtin_level(level, || {
+                Value::Integer(match value.as_bytes().first() {
+                    None => BigInt::from(-1),
+                    Some(&byte) => BigInt::from(byte),
+                })
+            })),
+            other => panic!("string to ascii saw {other:?}"),
+        },
+        // ascii_char (global.w:3523-3532): int_val narrowing, then the
+        // printable-or-newline gate, both before the no-value gate.
+        ScalarOp::AsciiChar => match expect_unary(arguments) {
+            Value::Integer(value) => {
+                let code = i32::try_from(&value)
+                    .map_err(|_| runtime("Integer value to big for conversion", span))?;
+                if (code < i32::from(b' ') && code != i32::from(b'\n')) || code > i32::from(b'~') {
+                    return Err(runtime(
+                        format!("Value {code} out of printable ASCII range"),
+                        span,
+                    ));
+                }
+                Ok(at_builtin_level(level, || {
+                    Value::String(String::from(char::from(
+                        u8::try_from(code).expect("printable ASCII fits u8"),
+                    )))
+                }))
+            }
+            other => panic!("ascii char saw {other:?}"),
+        },
+        // sizeof_string/vector/ratvec and matrix_ncols (global.w:3578-3601):
+        // byte count, lengths, and the column count respectively.
+        ScalarOp::SizeOf => {
+            let size = match expect_unary(arguments) {
+                Value::String(value) => value.len(),
+                Value::Vector(vector) => vector.0.len(),
+                Value::RatVector(ratvec) => ratvec.numerators().len(),
+                Value::Matrix(matrix) => matrix.cols(),
+                other => panic!("size-of saw {other:?}"),
+            };
+            Ok(at_builtin_level(level, || {
+                Value::Integer(BigInt::from(size))
+            }))
+        }
+        // matrix_shape (global.w:3610-3618): both bounds as an (int,int).
+        ScalarOp::MatrixShape => match expect_unary(arguments) {
+            Value::Matrix(matrix) => Ok(at_builtin_level(level, || {
+                Value::Tuple(vec![
+                    Value::Integer(BigInt::from(matrix.rows())),
+                    Value::Integer(BigInt::from(matrix.cols())),
+                ])
+            })),
+            other => panic!("matrix shape saw {other:?}"),
+        },
+        // matrix_row/column (global.w:3626-3648): the index narrows through
+        // ulong_val and bounds-checks before the no-value gate.
+        ScalarOp::MatrixRow | ScalarOp::MatrixColumn => {
+            let (matrix, index) = match expect_pair(arguments) {
+                (Value::Matrix(matrix), Value::Integer(index)) => (matrix, index),
+                other => panic!("matrix row/column saw {other:?}"),
+            };
+            let index = unsigned_long(&index, span)?;
+            let (limit, what) = match operation {
+                ScalarOp::MatrixRow => (matrix.rows(), "row"),
+                ScalarOp::MatrixColumn => (matrix.cols(), "column"),
+                _ => unreachable!(),
+            };
+            if index >= limit as u64 {
+                return Err(runtime(
+                    format!("{what} index {index} out of range (0<= . <{limit})"),
+                    span,
+                ));
+            }
+            let index = usize::try_from(index).expect("bounded by the matrix dimension");
+            Ok(at_builtin_level(level, || {
+                Value::Vector(match operation {
+                    ScalarOp::MatrixRow => matrix.row(index),
+                    ScalarOp::MatrixColumn => matrix.column(index),
+                    _ => unreachable!(),
+                })
+            }))
+        }
+        // rows/columns (global.w:2432-2449): externalise to a row of vecs.
+        ScalarOp::MatrixRows | ScalarOp::MatrixColumns => match expect_unary(arguments) {
+            Value::Matrix(matrix) => Ok(at_builtin_level(level, || {
+                let count = match operation {
+                    ScalarOp::MatrixRows => matrix.rows(),
+                    ScalarOp::MatrixColumns => matrix.cols(),
+                    _ => unreachable!(),
+                };
+                Value::List(
+                    (0..count)
+                        .map(|index| {
+                            Value::Vector(match operation {
+                                ScalarOp::MatrixRows => matrix.row(index),
+                                ScalarOp::MatrixColumns => matrix.column(index),
+                                _ => unreachable!(),
+                            })
+                        })
+                        .collect(),
+                )
+            })),
+            other => panic!("matrix rows/columns saw {other:?}"),
+        },
     }
 }
 
@@ -4557,6 +4704,10 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             scalar_builtin("%", pair(rat_type()), rat_type(), 1, ScalarOp::RatModulo),
             scalar_builtin("-", rat_type(), rat_type(), 3, ScalarOp::RatNegate),
             scalar_builtin("/", rat_type(), rat_type(), 3, ScalarOp::RatInverse),
+            // rat decomposers (global.w:3249-3251): floor/ceil/frac.
+            scalar_builtin("floor", rat_type(), int_type(), 0, ScalarOp::RatFloor),
+            scalar_builtin("ceil", rat_type(), int_type(), 0, ScalarOp::RatCeil),
+            scalar_builtin("frac", rat_type(), rat_type(), 3, ScalarOp::RatFrac),
             scalar_builtin(
                 "^",
                 Type::tuple(vec![rat_type(), int_type()]),
@@ -4808,6 +4959,85 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 string_type(),
                 1,
                 ScalarOp::StringConcat,
+            ),
+            // concatenate_strings (global.w:4387): fold a row of strings.
+            scalar_builtin(
+                "##",
+                Type::row(string_type()),
+                string_type(),
+                0,
+                ScalarOp::StringListConcat,
+            ),
+            // ascii (global.w:4388-4389): first byte, and its inverse for
+            // printable ASCII (plus newline).
+            scalar_builtin(
+                "ascii",
+                string_type(),
+                int_type(),
+                0,
+                ScalarOp::StringToAscii,
+            ),
+            scalar_builtin("ascii", int_type(), string_type(), 0, ScalarOp::AsciiChar),
+            // sizeof instances (global.w:4392-4395): string byte count, vec
+            // and ratvec lengths, and the matrix column count.
+            scalar_builtin("#", string_type(), int_type(), 0, ScalarOp::SizeOf),
+            scalar_builtin(
+                "#",
+                primitive_type(Prim::Vec),
+                int_type(),
+                0,
+                ScalarOp::SizeOf,
+            ),
+            scalar_builtin(
+                "#",
+                primitive_type(Prim::RatVec),
+                int_type(),
+                0,
+                ScalarOp::SizeOf,
+            ),
+            scalar_builtin(
+                "#",
+                primitive_type(Prim::Mat),
+                int_type(),
+                0,
+                ScalarOp::SizeOf,
+            ),
+            // matrix shape and accessors (global.w:4400-4404): shape gives
+            // both bounds; rows/columns externalise to a row of vecs.
+            scalar_builtin(
+                "shape",
+                primitive_type(Prim::Mat),
+                int_pair(),
+                0,
+                ScalarOp::MatrixShape,
+            ),
+            scalar_builtin(
+                "row",
+                Type::tuple(vec![primitive_type(Prim::Mat), int_type()]),
+                primitive_type(Prim::Vec),
+                0,
+                ScalarOp::MatrixRow,
+            ),
+            scalar_builtin(
+                "column",
+                Type::tuple(vec![primitive_type(Prim::Mat), int_type()]),
+                primitive_type(Prim::Vec),
+                0,
+                ScalarOp::MatrixColumn,
+            ),
+            scalar_builtin(
+                "rows",
+                primitive_type(Prim::Mat),
+                Type::row(primitive_type(Prim::Vec)),
+                0,
+                ScalarOp::MatrixRows,
+            ),
+            scalar_builtin(
+                "columns",
+                primitive_type(Prim::Mat),
+                Type::row(primitive_type(Prim::Vec)),
+                0,
+                ScalarOp::MatrixColumns,
             ),
             // Generic row size is a special `#` instance upstream
             // (axis.w:2542-2550, 8863-8872), rather than an installed
@@ -8792,6 +9022,66 @@ mod tests {
                 .message,
             "Failed to match '&' with argument type (int,int)"
         );
+    }
+
+    #[test]
+    fn global_batch1_builtins_match_the_upstream_scalar_surface() {
+        let cases = [
+            // rat decomposers (global.w:3249-3251).
+            ("floor(7/2)", "3"),
+            ("floor(-7/2)", "-4"),
+            ("ceil(7/2)", "4"),
+            ("ceil(-7/2)", "-3"),
+            ("frac(7/2)", "1/2"),
+            ("frac(-7/2)", "1/2"),
+            ("frac(4/2)", "0/1"),
+            // string concatenation of a row (global.w:4387).
+            ("##([\"ab\",\"\",\"cd\"])", "\"abcd\""),
+            // ascii both ways (global.w:4388-4389).
+            ("ascii(\"A\")", "65"),
+            ("ascii(\"\")", "-1"),
+            ("ascii(65)", "\"A\""),
+            ("ascii(10)", "\"\n\""),
+            // size-of instances (global.w:4392-4395).
+            ("#\"hello\"", "5"),
+            ("#\"\"", "0"),
+            ("#(vec: [1,2,3])", "3"),
+            ("#(ratvec: [1,2])", "2"),
+            ("# null(2,3)", "3"),
+            // matrix shape and accessors (global.w:4400-4404).
+            ("shape(null(2,3))", "(2,3)"),
+            ("row(mat: [[1,2],[3,4]], 0)", "[ 1, 3 ]"),
+            ("column(mat: [[1,2],[3,4]], 1)", "[ 3, 4 ]"),
+            ("rows(mat: [[1,2],[3,4]])", "[[ 1, 3 ],[ 2, 4 ]]"),
+            ("columns(mat: [[1,2],[3,4]])", "[[ 1, 2 ],[ 3, 4 ]]"),
+        ];
+        for (source, expected) in cases {
+            let (_, value) = convert_and_run(source)
+                .unwrap_or_else(|error| panic!("{source} should convert and run: {error:?}"));
+            assert_eq!(value.to_string(), expected, "source: {source}");
+        }
+
+        for (source, expected) in [
+            // The empty row cannot resolve to [string] upstream either.
+            ("##([])", "Failed to match '##' with argument type [*]"),
+            ("row(null(2,3), 2)", "row index 2 out of range (0<= . <2)"),
+            (
+                "column(null(2,3), 3)",
+                "column index 3 out of range (0<= . <3)",
+            ),
+            (
+                "row(null(2,3), -1)",
+                "Negative integer where unsigned is required",
+            ),
+            ("ascii(31)", "Value 31 out of printable ASCII range"),
+            ("ascii(127)", "Value 127 out of printable ASCII range"),
+            ("ascii(2147483648)", "Integer value to big for conversion"),
+        ] {
+            match convert_and_run(source) {
+                Err(error) => assert_eq!(error.message, expected, "source: {source}"),
+                Ok(value) => panic!("{source} unexpectedly succeeded with {value:?}"),
+            }
+        }
     }
 
     #[test]

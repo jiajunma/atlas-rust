@@ -48,6 +48,22 @@ impl Matrix {
     pub fn entry(&self, row: usize, col: usize) -> Option<i32> {
         (row < self.rows && col < self.cols).then(|| self.data[col * self.rows + row])
     }
+
+    /// Extract row `row` as a `vec` (upstream `Matrix::row`, global.w:3638).
+    pub fn row(&self, row: usize) -> Vec32 {
+        assert!(row < self.rows, "matrix row index in range");
+        Vec32(
+            (0..self.cols)
+                .map(|col| self.data[col * self.rows + row])
+                .collect(),
+        )
+    }
+
+    /// Extract column `col` as a `vec` (upstream `Matrix::column`, global.w:3647).
+    pub fn column(&self, col: usize) -> Vec32 {
+        assert!(col < self.cols, "matrix column index in range");
+        Vec32(self.data[col * self.rows..(col + 1) * self.rows].to_vec())
+    }
 }
 
 impl RatVec {
