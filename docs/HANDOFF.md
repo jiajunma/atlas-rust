@@ -22,24 +22,35 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   Both metas are `verified_hpc`. (The first cpu-partition run 3574831 failed
   only `domain/kgb_hasse` on an environmental timeout — heavy full-suite
   differentials belong on `fat`, per the standing HPC note.)
-- Locator slice anchors frozen (both intentionally UNREGISTERED from
+- Locator slice anchors frozen (all intentionally UNREGISTERED from
   FixturePlan until the locator lands — current identity-attitude code
   diverges silently): `domain/common_block_locator` (A2 SL(3,R),
-  `as transformed by <1>`, capture 3574723, commit `d93929a`) and
+  `as transformed by <1>`, capture 3574723, commit `d93929a`),
   `domain/common_block_simple_pi` (A3 SL(4,R) rank-two,
   `as transformed by <0.2>, simple reflections permuted (0->1,1->0)`,
-  capture 3574819, fixture commit `a732a27`).
-- Locator implementation route (do not reopen): step 1 pure
-  `InnerClass::int_item` canonicalization + `BlockLocator` interning in
-  atlas-real-group (upstream innerclass.cpp:1116-1182, repr.h:484-491);
-  step 2 `RepContext::transform` + `shift` + `make_relative_to`
-  (repr.cpp:338-350) + `sr(srm,bm,gamma)` (repr.cpp:815-823); step 3
-  canonical keys into RepTable::lookup/lookup_full_block with attitude gates
-  on KL_column/KL_block/print_block(s)/kl_sum_at_s_terms FIRST (otherwise
+  capture 3574819, fixture commit `a732a27`), and
+  `domain/common_block_rank0_locator` (A2 rank-zero, `<0.1.0>`, capture
+  3574845, commit `3dd4b73`).
+- Locator step 1 landed (commit `79b6b9d`): `BlockLocator`,
+  `IntegralDatumTable`, and `int_item` (innerclass.cpp:1116-1182) as pure
+  unwired functions in `atlas-real-group/src/locator.rs`, with
+  `root_vertex_of_alcove` in alcove.rs. Key subtlety (step-1 report):
+  `int_item` keys on the on-wall closure of the DOMINANT ALCOVED
+  representative, so it is alcove-dependent — Weyl-conjugate gammas share
+  the item, same-integral-system gammas on different alcove walls do NOT.
+  461 lib tests pass, clippy/fmt clean (dev+release).
+- Locator implementation route (do not reopen; full brief at
+  docs/slices/locator_integration_brief.md): step 1 pure
+  `InnerClass::int_item` canonicalization + `BlockLocator` interning
+  (DONE, `79b6b9d`); step 2 `RepContext::transform` + `shift` +
+  `make_relative_to` (repr.cpp:338-350) + `sr(srm,bm,gamma)`
+  (repr.cpp:815-823) (IN FLIGHT, agent-66); step 3 canonical keys into
+  RepTable::lookup/lookup_full_block with attitude gates on
+  KL_column/KL_block/print_block(s)/kl_sum_at_s_terms FIRST (otherwise
   canonicalization lands silently wrong); step 4 transported consumers
   (`singular_flags(bm)`, `located_row_parameter` via `sr(bm)`), the
   `as transformed by`/`simple reflections permuted` headers, then gate
-  release and both locator fixture differentials.
+  release and all three locator fixture differentials.
 - Known defect pinned by the probe: current Rust `print_common_block` on the
   A2 SL(3,R) family already differs from the oracle at identity attitude
   (gamma-lambda shifted by [0,1] on rows 0/2) — the identity-attitude shift
