@@ -12,6 +12,7 @@ mod adjoint_fiber;
 mod alcove;
 mod block;
 mod block_access;
+mod block_modifier;
 mod cartan_class;
 mod cartan_classification;
 mod cartan_fiber;
@@ -82,6 +83,7 @@ pub use adjoint_fiber::{
 pub use alcove::{alcove_center, denominator_exceeds_alcove_bound};
 pub use block::{dual_involution, BlockDescent, BlockGraph};
 pub use block_access::{bruhat_hasse, BlockTopology};
+pub use block_modifier::BlockModifier;
 pub use cartan_class::{CartanClass, TwistedConjugacyClass, TwistedConjugacyPartition};
 pub use cartan_classification::{CartanClassification, CartanClassificationBudget, CartanId};
 pub use cartan_fiber::{CartanFiber, CartanFiberElement};

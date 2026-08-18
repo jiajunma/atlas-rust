@@ -75,6 +75,19 @@ impl StandardReprMod {
         &self.gamma_lambda
     }
 
+    /// In-place replacement of the KGB element, as upstream's
+    /// `Rep_context::transform` mutates `srm.x_part` (repr.cpp:717).
+    /// Crate-private: used by the block-modifier Weyl transport only.
+    pub(crate) fn set_x(&mut self, x: KgbId) {
+        self.x = x;
+    }
+
+    /// In-place replacement of `gamlam` (repr.cpp:718,354,819).
+    /// Crate-private: used by the block-modifier shift/transform only.
+    pub(crate) fn set_gamma_lambda(&mut self, gamma_lambda: RationalWeight) {
+        self.gamma_lambda = gamma_lambda;
+    }
+
     /// `Rep_context::sr(const StandardReprMod&, const RatWeight&)`
     /// (repr.cpp:807-813): restore the full standard parameter at
     /// infinitesimal character `gamma`.

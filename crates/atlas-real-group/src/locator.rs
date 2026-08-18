@@ -74,6 +74,86 @@ impl BlockLocator {
     pub fn simple_pi(&self) -> &[usize] {
         &self.simple_pi
     }
+
+    /// Aggregate constructor, mirroring how upstream's `locator` struct is
+    /// filled field-by-field by `block_modifier` construction
+    /// (repr.cpp:1403-1419) and by `Reduced_param::reduce` writing through
+    /// the `locator&` base subobject (repr.cpp:110-125).  Crate-private:
+    /// outside the slice, locators come from [`IntegralDatumTable::int_item`].
+    pub(crate) fn from_parts(
+        int_sys: u32,
+        w: WeylElement,
+        simp_int: Vec<RootId>,
+        simple_pi: Vec<usize>,
+    ) -> Self {
+        Self {
+            int_sys,
+            w,
+            simp_int,
+            simple_pi,
+        }
+    }
+
+    /// The locator part of `Rep_context::make_relative_to`
+    /// (repr.cpp:343-345): post-multiply the attitude by the inverse of the
+    /// base locator's attitude and right-compose `simple_pi` with the
+    /// INVERSE of the base's (`Permutation(loc.simple_pi,-1)`):
+    /// `simple_pi[j] = old_simple_pi[inv[j]]` with `inv` the inverse
+    /// permutation (permutations.cpp:56-63's `compose(a,b): a[j] =
+    /// a_old[b[j]]`).
+    ///
+    /// Both locators must reference the same canonical integral datum; the
+    /// reduced-parameter key match upstream guarantees this (the key carries
+    /// `int_sys_nr`, repr.cpp:119-124).
+    pub(crate) fn make_relative_to(
+        &mut self,
+        system: &RootSystem,
+        base: &BlockLocator,
+    ) -> Result<(), StructureError> {
+        if self.int_sys != base.int_sys {
+            return Err(StructureError::RepInvariantViolation {
+                invariant: "block modifier attitude shares the canonical integral datum",
+            });
+        }
+        self.w = self.w.multiply(system, &base.w.inverse())?;
+        let inverse = inverse_permutation(base.simple_pi())?;
+        if inverse.len() != self.simple_pi.len() {
+            return Err(StructureError::RepInvariantViolation {
+                invariant: "block modifier simple_pi rank",
+            });
+        }
+        let old = std::mem::take(&mut self.simple_pi);
+        for &preimage in &inverse {
+            self.simple_pi.push(old[preimage]);
+        }
+        Ok(())
+    }
+}
+
+/// `Permutation(pi, -1)` (permutations.cpp:35-38): the inverse permutation,
+/// `result[pi[i]] = i`.
+fn inverse_permutation(pi: &[usize]) -> Result<Vec<usize>, StructureError> {
+    let mut inverse = Vec::new();
+    inverse
+        .try_reserve_exact(pi.len())
+        .map_err(|_| StructureError::AllocationFailed {
+            requested: pi.len(),
+        })?;
+    inverse.resize(pi.len(), usize::MAX);
+    for (index, &image) in pi.iter().enumerate() {
+        let slot = inverse
+            .get_mut(image)
+            .ok_or(StructureError::RepInvariantViolation {
+                invariant: "simple_pi is a permutation",
+            })?;
+        if *slot != usize::MAX {
+            return Err(StructureError::RepInvariantViolation {
+                invariant: "simple_pi is a permutation",
+            });
+        }
+        *slot = index;
+    }
+    Ok(inverse)
 }
 
 /// One interned canonical integral datum (`subsystem::integral_datum_item`,
@@ -840,6 +920,55 @@ mod tests {
             crate::alcove::root_vertex_of_alcove(&system, &gamma(&[0, 0], 1)).unwrap(),
             Weight::new(vec![0, 0])
         );
+    }
+
+    #[test]
+    fn make_relative_to_composes_simple_pi_with_the_inverse_permutation() {
+        let system = a2();
+        let identity = WeylElement::identity(&system).unwrap();
+
+        // Upstream repr.cpp:345: compose(bm.simple_pi, Permutation(
+        // loc.simple_pi,-1)) with compose(a,b): a[j] = a_old[b[j]]
+        // (permutations.cpp:56-63), i.e. the composed permutation is
+        // bm.pi o loc.pi^{-1} when permutations are read as maps
+        // i -> pi[i].
+        //
+        // Rank-3 hand check: bm.pi = [2,1,0], loc.pi = [1,2,0].
+        // loc.pi as a map sends 0->1, 1->2, 2->0, so its inverse is
+        // inv = [2,0,1] (inv[1]=0, inv[2]=1, inv[0]=2).  Then
+        // composed[j] = bm.pi[inv[j]] = [bm.pi[2], bm.pi[0], bm.pi[1]]
+        // = [0,2,1].  Cross-check as a composite map:
+        // (bm o loc^{-1})(0) = bm(2) = 0, (1) = bm(0) = 2,
+        // (2) = bm(1) = 1.
+        let mut bm = BlockLocator::from_parts(7, identity.clone(), vec![], vec![2, 1, 0]);
+        let loc = BlockLocator::from_parts(7, identity.clone(), vec![], vec![1, 2, 0]);
+        bm.make_relative_to(&system, &loc).unwrap();
+        assert_eq!(bm.simple_pi(), &[0, 2, 1]);
+
+        // An identity base permutation leaves bm's permutation unchanged.
+        let mut bm = BlockLocator::from_parts(7, identity.clone(), vec![], vec![2, 1, 0]);
+        let loc = BlockLocator::from_parts(7, identity.clone(), vec![], vec![0, 1, 2]);
+        bm.make_relative_to(&system, &loc).unwrap();
+        assert_eq!(bm.simple_pi(), &[2, 1, 0]);
+
+        // The w part is right-multiplication by the inverse attitude
+        // (repr.cpp:343: W.mult(bm.w, W.inverse(loc.w))): s0 * s1^{-1} =
+        // s0*s1, whose canonical lowest-left-descent word is [0,1].
+        let s0 = WeylElement::simple_reflection(&system, 0).unwrap();
+        let s1 = WeylElement::simple_reflection(&system, 1).unwrap();
+        let mut bm = BlockLocator::from_parts(7, s0, vec![], vec![0]);
+        let loc = BlockLocator::from_parts(7, s1, vec![], vec![0]);
+        bm.make_relative_to(&system, &loc).unwrap();
+        assert_eq!(bm.w().reduced_word(&system).unwrap(), vec![0, 1]);
+
+        // Different canonical data are rejected: the reduced-parameter
+        // key match upstream guarantees equality (repr.cpp:119-124).
+        let mut bm = BlockLocator::from_parts(0, identity.clone(), vec![], vec![0]);
+        let loc = BlockLocator::from_parts(1, identity, vec![], vec![0]);
+        assert!(matches!(
+            bm.make_relative_to(&system, &loc),
+            Err(StructureError::RepInvariantViolation { .. })
+        ));
     }
 
     #[test]

@@ -53,8 +53,12 @@ impl ReducedParamKey {
 
 /// Smith-style codec for integral-coroot evaluations modulo
 /// `(1-theta)X^*`.
+///
+/// Crate-public so the block-modifier arithmetic can reuse it for
+/// `Rep_context::make_diff_integral_orthogonal` (repr.cpp:317-329); the
+/// crate's codec constructor is upstream `codec::codec` (repr.cpp:73-95).
 #[derive(Clone, Debug, Eq, PartialEq)]
-struct IntegralCodec {
+pub(crate) struct IntegralCodec {
     coroots: IntMatrix,
     diagonal: Vec<i32>,
     input: IntMatrix,
@@ -62,7 +66,10 @@ struct IntegralCodec {
 }
 
 impl IntegralCodec {
-    fn new(projection: &RealProjection, coroots: &IntMatrix) -> Result<Self, StructureError> {
+    pub(crate) fn new(
+        projection: &RealProjection,
+        coroots: &IntMatrix,
+    ) -> Result<Self, StructureError> {
         let ambient_rank = projection.lift_mat.len();
         let image_rank = projection.image_rank();
         if coroots.n_columns() != ambient_rank
@@ -148,7 +155,10 @@ impl IntegralCodec {
         })
     }
 
-    fn internalise(&self, gamma_lambda: &RationalWeight) -> Result<Vec<i32>, StructureError> {
+    pub(crate) fn internalise(
+        &self,
+        gamma_lambda: &RationalWeight,
+    ) -> Result<Vec<i32>, StructureError> {
         if gamma_lambda.rank() != self.coroots.n_columns() {
             return Err(StructureError::RankMismatch {
                 expected: self.coroots.n_columns(),
@@ -216,7 +226,13 @@ impl IntegralCodec {
         ))
     }
 
-    fn theta_1_preimage(&self, difference: &RationalWeight) -> Result<Weight, StructureError> {
+    /// `Rep_context::theta_1_preimage` (repr.cpp:297-313): the fixed
+    /// preimage in `(1-theta)X^*` with the same integral-coroot evaluations
+    /// as `difference`.
+    pub(crate) fn theta_1_preimage(
+        &self,
+        difference: &RationalWeight,
+    ) -> Result<Weight, StructureError> {
         let evaluations = self.internalise(difference)?;
         let mut coordinates = Vec::new();
         coordinates
@@ -643,7 +659,7 @@ impl TestHooks {
 }
 
 #[derive(Debug)]
-struct RepTable {
+pub(crate) struct RepTable {
     state: Mutex<State>,
     #[cfg(test)]
     hooks: TestHooks,
@@ -811,7 +827,11 @@ impl RepTable {
         Ok((context, integral_system))
     }
 
-    fn integral_codec(
+    /// `InnerClass::integrality_codec` (innerclass.cpp:1184-1194) with the
+    /// subsystem supplied instead of recomputed from a weight: the coroot
+    /// matrix of the subsystem simples paired with the real projection at
+    /// `x`.
+    pub(crate) fn integral_codec(
         rc: &RepContext<'_>,
         x: KgbId,
         subsystem: &IntegralSubsystem,
