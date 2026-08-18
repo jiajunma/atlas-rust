@@ -1,15 +1,18 @@
-//! Alcove geometry used by deformation preprocessing.
+//! Alcove geometry used by deformation preprocessing and integral-datum
+//! canonicalization.
 //!
 //! This module owns the domain-level form of `weyl::alcove_center`
 //! (`alcoves.cpp:277-341`).  It keeps a standard parameter's KGB and
 //! lambda-rho data and replaces only its infinitesimal character.
+//! [`root_vertex_of_alcove`] (`alcoves.cpp:414-428`) serves the
+//! fundamental-alcove reduction of the locator slice (`locator.rs`).
 
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 
 use malachite::Rational;
 
-use crate::{RationalWeight, RepContext, RootId, RootSystem, StandardRepr, StructureError};
+use crate::{RationalWeight, RepContext, RootId, RootSystem, StandardRepr, StructureError, Weight};
 
 /// Return the barycentre of the alcove containing `z.gamma()`.
 ///
@@ -133,13 +136,13 @@ pub fn denominator_exceeds_alcove_bound(rank: usize, denominator: i64) -> bool {
 }
 
 #[derive(Debug)]
-struct RootNumbering {
+pub(crate) struct RootNumbering {
     npos: usize,
     by_nbr: Vec<RootId>,
 }
 
 impl RootNumbering {
-    fn new(root_system: &RootSystem) -> Self {
+    pub(crate) fn new(root_system: &RootSystem) -> Self {
         let total = root_system.roots().len();
         let mut positives: Vec<RootId> = (0..total)
             .map(RootId::from_usize)
@@ -187,7 +190,7 @@ impl RootNumbering {
         Self { npos, by_nbr }
     }
 
-    fn id(&self, nbr: usize) -> RootId {
+    pub(crate) fn id(&self, nbr: usize) -> RootId {
         self.by_nbr[nbr]
     }
 
@@ -196,7 +199,7 @@ impl RootNumbering {
     }
 }
 
-fn wall_set(
+pub(crate) fn wall_set(
     root_system: &RootSystem,
     numbering: &RootNumbering,
     gamma: &RationalWeight,
@@ -306,7 +309,7 @@ fn floor_eval_nbr(
     }
 }
 
-fn checked_dot(left: &[i64], right: &[i32]) -> Result<i64, StructureError> {
+pub(crate) fn checked_dot(left: &[i64], right: &[i32]) -> Result<i64, StructureError> {
     if left.len() != right.len() {
         return Err(StructureError::RankMismatch {
             expected: left.len(),
@@ -322,7 +325,7 @@ fn checked_dot(left: &[i64], right: &[i32]) -> Result<i64, StructureError> {
         })
 }
 
-fn root_components(
+pub(crate) fn root_components(
     root_system: &RootSystem,
     numbering: &RootNumbering,
     walls: &BTreeSet<usize>,
@@ -584,6 +587,279 @@ fn checked_lcm(left: i64, right: i64) -> Result<i64, StructureError> {
     left.checked_div(gcd(left, right))
         .and_then(|reduced| reduced.checked_mul(right))
         .ok_or(StructureError::ArithmeticOverflow)
+}
+
+/// The root-lattice vertex of the alcove containing `gamma`
+/// (`weyl::root_vertex_of_alcove`, alcoves.cpp:414-428): summed over the
+/// wall components, so that `gamma - vertex` lies in the Weyl orbit of the
+/// fundamental alcove. This is step (a) of upstream's `InnerClass::int_item`
+/// (innerclass.cpp:1123).
+pub(crate) fn root_vertex_of_alcove(
+    root_system: &RootSystem,
+    gamma: &RationalWeight,
+) -> Result<Weight, StructureError> {
+    let numbering = RootNumbering::new(root_system);
+    let (walls, _integrals) = wall_set(root_system, &numbering, gamma)?;
+    let mut result = vec![0_i64; root_system.lattice_rank()];
+    for component in root_components(root_system, &numbering, &walls) {
+        let mut ev_floors = Vec::new();
+        ev_floors.try_reserve_exact(component.len()).map_err(|_| {
+            StructureError::AllocationFailed {
+                requested: component.len(),
+            }
+        })?;
+        for &nbr in &component {
+            // alcoves.cpp:422-425: the plain rational floor, NOT the
+            // negative-root adjusted `floor_eval` (alcoves.cpp:29-32).
+            let coroot = root_system.coroot(numbering.id(nbr)).ok_or(
+                StructureError::RootSystemInvariantViolation {
+                    invariant: "alcove wall has no coroot",
+                },
+            )?;
+            let dot = checked_dot(gamma.numerator(), coroot.as_slice())?;
+            ev_floors.push(dot.div_euclid(gamma.denominator()));
+        }
+        let vertex = root_vertex_simple(root_system, &numbering, &component, &ev_floors)?;
+        for (entry, &coordinate) in result.iter_mut().zip(vertex.as_slice()) {
+            *entry = entry
+                .checked_add(i64::from(coordinate))
+                .ok_or(StructureError::ArithmeticOverflow)?;
+        }
+    }
+    let mut coordinates = Vec::new();
+    coordinates
+        .try_reserve_exact(result.len())
+        .map_err(|_| StructureError::AllocationFailed {
+            requested: result.len(),
+        })?;
+    for entry in result {
+        coordinates.push(i32::try_from(entry).map_err(|_| StructureError::ArithmeticOverflow)?);
+    }
+    Ok(Weight::new(coordinates))
+}
+
+/// `weyl::root_vertex_simple` (alcoves.cpp:347-412): the unique vertex of
+/// the simplex for one wall component (the projection of the alcove onto
+/// the span of its coroots) that is an integer combination of the roots.
+///
+/// The coroot relation of the component (its primitive kernel vector) has
+/// all-positive coefficients; the first wall with coefficient 1 is dropped
+/// and the remaining walls pin the vertex via the transposed sub-Cartan
+/// inverse. When the unshifted solution is not integral, upstream retries
+/// with each further coefficient-1 wall's evaluation bumped by one — the
+/// `labels_1` loop of alcoves.cpp:395-408.
+fn root_vertex_simple(
+    root_system: &RootSystem,
+    numbering: &RootNumbering,
+    component: &[usize],
+    ev_floors: &[i64],
+) -> Result<Weight, StructureError> {
+    let labels = labels_for_component(root_system, numbering, component)?;
+    let Some(chosen) = labels.iter().position(|&label| label == 1) else {
+        return Err(StructureError::RootSystemInvariantViolation {
+            invariant: "alcove component has no coefficient-1 wall",
+        });
+    };
+    let mut generators = Vec::new();
+    let mut floors = Vec::new();
+    generators
+        .try_reserve_exact(component.len() - 1)
+        .map_err(|_| StructureError::AllocationFailed {
+            requested: component.len() - 1,
+        })?;
+    floors.try_reserve_exact(component.len() - 1).map_err(|_| {
+        StructureError::AllocationFailed {
+            requested: component.len() - 1,
+        }
+    })?;
+    let mut labels_1 = Vec::new();
+    for (index, &nbr) in component.iter().enumerate() {
+        if index == chosen {
+            continue;
+        }
+        if index > chosen && labels[index] == 1 {
+            // `labels_1.push_back(i-1)`: the generator index of this wall.
+            labels_1.push(generators.len());
+        }
+        generators.push(nbr);
+        floors.push(ev_floors[index]);
+    }
+
+    // Upstream inverts `rd.Cartan_matrix(generators).transposed()` with a
+    // denominator (matrix.cpp:471-503 `matrix::inverse`).
+    let size = generators.len();
+    let mut transposed = vec![vec![0_i64; size]; size];
+    for (row, &row_nbr) in generators.iter().enumerate() {
+        for (column, &column_nbr) in generators.iter().enumerate() {
+            transposed[row][column] =
+                i64::from(root_system.bracket(numbering.id(column_nbr), numbering.id(row_nbr))?);
+        }
+    }
+    let (inverse_numerator, denominator) =
+        rational_inverse(&transposed)?.ok_or(StructureError::RootSystemInvariantViolation {
+            invariant: "alcove generator Cartan matrix is singular",
+        })?;
+
+    let base = matrix_vector_product(&inverse_numerator, &floors)?;
+    let mut attempts = Vec::new();
+    attempts
+        .try_reserve_exact(labels_1.len() + 1)
+        .map_err(|_| StructureError::AllocationFailed {
+            requested: labels_1.len() + 1,
+        })?;
+    attempts.push(base.clone());
+    for &column in &labels_1 {
+        let mut shifted = Vec::new();
+        shifted
+            .try_reserve_exact(size)
+            .map_err(|_| StructureError::AllocationFailed { requested: size })?;
+        for (row, &entry) in base.iter().enumerate() {
+            shifted.push(
+                entry
+                    .checked_add(inverse_numerator[row][column])
+                    .ok_or(StructureError::ArithmeticOverflow)?,
+            );
+        }
+        attempts.push(shifted);
+    }
+    for numerator in attempts {
+        // `vertex_adjoint.normalize().denominator()==1`: the normalized
+        // denominator is `d/gcd(numerators, d)`, so integrality is exactly
+        // divisibility of every numerator entry by `d`.
+        if numerator.iter().all(|&entry| entry % denominator == 0) {
+            let mut result = vec![0_i64; root_system.lattice_rank()];
+            for (index, &entry) in numerator.iter().enumerate() {
+                let coefficient = entry / denominator;
+                let root = root_system.root(numbering.id(generators[index])).ok_or(
+                    StructureError::RootSystemInvariantViolation {
+                        invariant: "alcove generator has no root",
+                    },
+                )?;
+                for (target, &coordinate) in result.iter_mut().zip(root.as_slice()) {
+                    let term = coefficient
+                        .checked_mul(i64::from(coordinate))
+                        .ok_or(StructureError::ArithmeticOverflow)?;
+                    *target = target
+                        .checked_add(term)
+                        .ok_or(StructureError::ArithmeticOverflow)?;
+                }
+            }
+            let mut coordinates = Vec::new();
+            coordinates.try_reserve_exact(result.len()).map_err(|_| {
+                StructureError::AllocationFailed {
+                    requested: result.len(),
+                }
+            })?;
+            for entry in result {
+                coordinates
+                    .push(i32::try_from(entry).map_err(|_| StructureError::ArithmeticOverflow)?);
+            }
+            return Ok(Weight::new(coordinates));
+        }
+    }
+    Err(StructureError::RootSystemInvariantViolation {
+        invariant: "alcove vertex lies outside the root lattice",
+    })
+}
+
+/// `inverse_numerator * vector` with checked arithmetic.
+fn matrix_vector_product(matrix: &[Vec<i64>], vector: &[i64]) -> Result<Vec<i64>, StructureError> {
+    let mut result = Vec::new();
+    result
+        .try_reserve_exact(matrix.len())
+        .map_err(|_| StructureError::AllocationFailed {
+            requested: matrix.len(),
+        })?;
+    for row in matrix {
+        let mut entry = 0_i64;
+        for (&coefficient, &coordinate) in row.iter().zip(vector) {
+            let term = coefficient
+                .checked_mul(coordinate)
+                .ok_or(StructureError::ArithmeticOverflow)?;
+            entry = entry
+                .checked_add(term)
+                .ok_or(StructureError::ArithmeticOverflow)?;
+        }
+        result.push(entry);
+    }
+    Ok(result)
+}
+
+/// Exact rational inverse of a small integer matrix as `(numerator, d)`
+/// with `inverse = numerator / d` and `d > 0` — the
+/// `matrix::inverse(A, d)` contract (utilities/matrix.cpp:471-503).
+/// `Ok(None)` reports a singular matrix.
+fn rational_inverse(matrix: &[Vec<i64>]) -> Result<Option<(Vec<Vec<i64>>, i64)>, StructureError> {
+    let n = matrix.len();
+    if matrix.iter().any(|row| row.len() != n) {
+        return Ok(None);
+    }
+    let mut left: Vec<Vec<Rational>> = matrix
+        .iter()
+        .map(|row| row.iter().map(|&entry| Rational::from(entry)).collect())
+        .collect();
+    let mut right: Vec<Vec<Rational>> = (0..n)
+        .map(|row| {
+            (0..n)
+                .map(|column| Rational::from(if row == column { 1 } else { 0 }))
+                .collect()
+        })
+        .collect();
+    for column in 0..n {
+        let Some(found) = (column..n).find(|&row| left[row][column] != 0) else {
+            return Ok(None);
+        };
+        left.swap(column, found);
+        right.swap(column, found);
+        let pivot = left[column][column].clone();
+        for entry in &mut left[column] {
+            *entry /= &pivot;
+        }
+        for entry in &mut right[column] {
+            *entry /= &pivot;
+        }
+        for row in 0..n {
+            if row == column || left[row][column] == 0 {
+                continue;
+            }
+            let factor = left[row][column].clone();
+            for target in column..n {
+                let correction = left[column][target].clone() * &factor;
+                left[row][target] -= correction;
+            }
+            for target in 0..n {
+                let correction = right[column][target].clone() * &factor;
+                right[row][target] -= correction;
+            }
+        }
+    }
+    let mut denominator = 1_i64;
+    for row in &right {
+        for entry in row {
+            let entry_denominator = i64::try_from(entry.denominator_ref())
+                .map_err(|_| StructureError::ArithmeticOverflow)?;
+            denominator = checked_lcm(denominator, entry_denominator)?;
+        }
+    }
+    let mut numerator = Vec::new();
+    numerator
+        .try_reserve_exact(n)
+        .map_err(|_| StructureError::AllocationFailed { requested: n })?;
+    for row in &right {
+        let mut numerator_row = Vec::new();
+        numerator_row
+            .try_reserve_exact(n)
+            .map_err(|_| StructureError::AllocationFailed { requested: n })?;
+        for entry in row {
+            let scaled = entry * Rational::from(denominator);
+            numerator_row.push(
+                i64::try_from(scaled.numerator_ref())
+                    .map_err(|_| StructureError::ArithmeticOverflow)?,
+            );
+        }
+        numerator.push(numerator_row);
+    }
+    Ok(Some((numerator, denominator)))
 }
 
 #[cfg(test)]

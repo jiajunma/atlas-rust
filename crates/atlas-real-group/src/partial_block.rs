@@ -294,7 +294,11 @@ fn pair_weight(weight: &Weight, coroot: &Coweight) -> Result<i64, StructureError
 /// height, ties broken by reverse lexicographic comparison of the simple
 /// coordinates (`root_compare`, rootdata.cpp:119-129). Simple roots come
 /// first in generator order.
-fn upstream_positive_root_order(system: &RootSystem, a: RootId, b: RootId) -> std::cmp::Ordering {
+pub(crate) fn upstream_positive_root_order(
+    system: &RootSystem,
+    a: RootId,
+    b: RootId,
+) -> std::cmp::Ordering {
     let coordinates_a = system.simple_coordinates(a).unwrap_or(&[]);
     let coordinates_b = system.simple_coordinates(b).unwrap_or(&[]);
     let height_a: i32 = coordinates_a.iter().sum();

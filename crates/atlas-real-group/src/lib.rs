@@ -42,6 +42,7 @@ mod kl_table;
 mod ktype;
 mod lattice;
 mod layout;
+mod locator;
 mod matreduc;
 mod minimal_torus;
 mod mod_two;
@@ -117,6 +118,7 @@ pub use kl_table::{KlTable, MuPair, SharedKlTable};
 pub use ktype::KType;
 pub use lattice::{pair, Coweight, RationalCoweight, RationalWeight, Weight};
 pub use layout::InnerClassLayout;
+pub use locator::{BlockLocator, IntegralDatumItem, IntegralDatumTable};
 pub use minimal_torus::{elected_square_root, minimal_torus_part};
 pub use mod_two::{ModTwoSubspace, ModTwoVector};
 pub use partial_block::{
