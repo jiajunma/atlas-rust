@@ -10180,10 +10180,9 @@ pub(crate) fn print_text(
         // the singular flags use the parameter's own gamma. The seed is the
         // top element of its interval, so below(init_index) is full with
         // init_index == size-1 and NO header prints: the "Elements <= ..."
-        // header (atlas-types.w:6721-6722) needs init_index+1 < size, and
-        // the "Subset ..." branch needs a non-full below-set, which only a
-        // cross-call block cache hit can produce — the fresh-build-per-call
-        // design has no such cache.
+        // header (atlas-types.w:6721-6722) needs init_index+1 < size; the
+        // "Subset ..." branch fires on a cross-call block cache hit with a
+        // non-full below-set.
         "print_partial_common_block" => {
             arity(name, arguments, 1, span)?;
             let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
@@ -10196,23 +10195,48 @@ pub(crate) fn print_text(
                 ));
             };
             test_standard(parameter, "Cannot generate block", span)?;
-            let normalised = {
-                let rc = rep_context(&parameter.context);
-                parameter
-                    .repr
-                    .normalised(&rc)
-                    .map_err(|error| structure_diagnostic(error, span))?
-            };
-            let (rows, init) = partial_block_rows(
-                &parameter.context,
-                &normalised,
-                parameter.repr.gamma(),
-                span,
-            )?;
-            let mut text = String::new();
-            if init + 1 < rows.len() {
-                text.push_str(&format!("Elements <= {init} of following block\n"));
+            let located = parameter
+                .context
+                .rep
+                .lookup(&parameter.repr)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            if !located.has_identity_generator_attitude() {
+                return Err(runtime(
+                    span,
+                    "partial common block on a non-identity integral-subsystem attitude is not yet supported",
+                ));
             }
+            let block = located.block();
+            let init = located.raw_row();
+            let hasse = block_bruhat_hasse(block.as_ref());
+            // Strict Bruhat downset of the start element: every row reachable
+            // from `init` through the Hasse diagram (hasse edges only go
+            // downward, so `init` itself is never reached).
+            let mut below = vec![false; block.size()];
+            let mut stack = vec![init];
+            while let Some(z) = stack.pop() {
+                for &down in &hasse[z] {
+                    if !below[down] {
+                        below[down] = true;
+                        stack.push(down);
+                    }
+                }
+            }
+            let mut text = String::new();
+            if (0..init).all(|z| below[z]) {
+                if init + 1 < block.size() {
+                    text.push_str(&format!("Elements <= {init} of following block\n"));
+                }
+            } else {
+                text.push_str("Subset {");
+                for (z, &is_below) in below.iter().enumerate() {
+                    if is_below {
+                        text.push_str(&format!("{z},"));
+                    }
+                }
+                text.push_str(&format!("{init}}} in the following common block:\n"));
+            }
+            let rows = located_common_block_rows(&parameter.context, &located, span)?;
             text.push_str(&render_common_block(&parameter.context, &rows));
             Ok(text)
         }
@@ -13435,24 +13459,32 @@ pub(crate) fn call_with_printed(
             }
             if let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] {
                 // param_length_wrapper (atlas-types.w:6368-6373):
-                // Rep_table::length — the height of the parameter's
-                // representative inside its partial block (repr.cpp:1435).
+                // Rep_table::length (repr.cpp:1435-1442) — make_dominant,
+                // then the shared partial-block lookup on the integral
+                // subsystem; the length is the representative's height
+                // inside that located block (never the full-rank block).
                 let rc = rep_context(&parameter.context);
                 let z = parameter
                     .repr
                     .made_dominant(&rc)
                     .map_err(|e| runtime(span, e.to_string()))?;
-                let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
-                let dual_quasisplit = dual_parent.order.quasisplit_external();
-                let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
-                let block = build_block(&parameter.context, &dual_rf, span)?;
-                let size = block.graph.size();
-                let z0 = (0..size)
-                    .find(|&candidate| block.graph.x(candidate) == Some(z.x()))
-                    .ok_or_else(|| runtime(span, "parameter not in the common block"))?;
-                let length = block
-                    .graph
-                    .length(z0)
+                let located = match parameter.context.rep.lookup(&z) {
+                    Ok(located) => located,
+                    // The shared table cannot yet merge overlapping partial
+                    // blocks (RepTable::commit_partial NYI); fall back to the
+                    // full block, whose per-row length is the same Bruhat
+                    // height — the element's whole downset is present in
+                    // both blocks.
+                    Err(StructureError::NotYetImplemented { .. }) => parameter
+                        .context
+                        .rep
+                        .lookup_full_block(&z)
+                        .map_err(|error| structure_diagnostic(error, span))?,
+                    Err(error) => return Err(structure_diagnostic(error, span)),
+                };
+                let length = located
+                    .block()
+                    .length(located.raw_row())
                     .ok_or_else(|| runtime(span, "block length unavailable"))?;
                 return Ok(Value::Integer(length.into()));
             }
