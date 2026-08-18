@@ -4,6 +4,38 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-17d (proper-integral partial block + KL sums, differential in flight)
+
+- `partial_block(Param)` now walks the shared `RepTable` lookup: it rejects
+  nonidentity generator attitudes loudly, takes the Bruhat downset of the
+  start row through `block_bruhat_hasse`, and rebuilds rows with
+  `located_row_parameter`. Both `KL_sum_at_s` and `KL_sum_at_s_to_height`
+  share `kl_sum_at_s_terms` (domain_builtins.rs): upstream `contributions`
+  expansion (repr.cpp:1861-1898) over the singular subsystem, Horner
+  evaluation at q=s, parity sign, and the to-height filter on reconstructed
+  final terms. The old dual-block approximation arm for
+  `KL_sum_at_s_to_height` is deleted; both wrappers now run upstream's
+  standard/final gates at no-value level (`domain_builtin_validate`).
+- All 7 local dual-arm probes (`partial_block*`, `kl_sum_at_s*`,
+  `print_partial_block`) are byte-identical with the pinned oracle, including
+  the rejected standardness diagnostics. `cargo test -p atlas-core --lib`
+  (299), clippy `-D warnings`, and fmt are clean. Commits `d388002`
+  (HPC reference for 3 partial_block fixtures, capture job 3565274) and
+  `1cedff5` (implementation), pushed to `codex/continue-atlas-port` and
+  `main`; HPC checkout at `1cedff5f`.
+- IN FLIGHT: differential **3573983** (fat partition, commit 1cedff5f) covers
+  the 3 verified partial_block fixtures; capture **3573984** freezes
+  `domain/kl_sum_at_s_param_proper` (B2 split x=5 `[1,1]`/`[1,0]/2`, covering
+  `KL_sum_at_s` + both `to_height` bounds). After capture lands: upgrade its
+  meta to verified_hpc_reference, register
+  `FixturePlan(name="domain/kl_sum_at_s_param_proper")` in
+  hpc/pipeline_swap_diff.py (the plan line was intentionally held back —
+  registering before the events file exists breaks
+  `python3 -m unittest hpc.test_pipeline_swap_diff`), then run the
+  differential again.
+- Scope is still identity generator attitude; nonidentity locator
+  canonicalization and `simple_pi` transport remain loud NYI.
+
 ## Checkpoint - 2026-08-17c (proper-integral Param block Hasse verified)
 
 - `block_Hasse(Param)` now consumes the shared `RepTable` full common block,
