@@ -1,5 +1,83 @@
 # Remaining builtin coverage (post-language-gate)
 
+## global.w batch 3 landed locally (2026-08-19, HPC capture pending)
+
+The linear algebra builtins (work order `docs/slices/global_batch3_workorder.md`)
+are implemented in the new module `crates/atlas-core/src/matreduc.rs` — an
+operation-for-operation port of upstream `utilities/matreduc.h`
+(`gcd`+recorder, `column_echelon`, `echelon_solve`),
+`utilities/matreduc.cpp` (`diagonalise`, `adapted_basis`, `Smith_basis`),
+`utilities/matrix.cpp:471-498` (`inverse`), and
+`structure/lattice.cpp:133-160` (`kernel`, `eigen_lattice`, `row_saturate`)
+over a column-major wrapping-i32 `PidMatrix` — plus ten `ScalarOp`s in
+`crates/atlas-core/src/typed.rs`:
+
+- `Bezout` (vec->int,mat) (5201): gcd with unimodular recorder,
+  `v*C == [d,0,...]`; `det(C)` may be -1; `Bezout([])` is a TYPE error
+  upstream (`[*]` does not coerce to vec) — use `null(0)`.
+- `echelon` (mat->mat,mat,[int],int) (5202): E has zero columns REMOVED
+  (rank columns), kernel columns rotated right in C, pivots ascending,
+  flip = sign det(C).
+- `linear_solve` (mat,vec->|vec,int,mat) (5203): the FIRST union-returning
+  builtin — representable after all: `Type::union_of([void,(vec,int,mat)])`
+  plus `Value::Union{tag,injector_name}` with hardcoded injector names
+  `empty_set`/`affine_subspace` (upstream `match_literal`, global.w:4910/4921).
+  `echelon_solve` failure is CAUGHT into `().empty_set`, never thrown.
+- `diagonalize` (mat->vec,mat,mat) (5204): (diagonal, row, column) —
+  diagonal FIRST; only its first entry may be negative; det(row)=det(col)=1.
+- `adapted_basis` (mat->mat,vec) (5205): diagonal NOT divisibility-ordered.
+- `kernel` (mat->mat) (5206): basis order is oracle-defined (echelon
+  recorder rotation), pinned by fixture.
+- `eigen_lattice` (mat,int->mat) (5207): NO square check; diagonal touch up
+  to min(rows,cols); the `int_val()` narrowing fires BEFORE the no-value
+  gate (upstream pops the int first).
+- `row_saturate` (mat->mat) (5208): keeps upstream's operator hunger 3.
+- `Smith` (mat->mat,vec) (5209): factors positive, divisibility-ordered by
+  the correction loop (matreduc.cpp:369-381); zero matrix -> (id, []).
+- `invert` (mat->mat,int) (5210): (N,d), N/d = M^-1, d = bigint lcm > 0;
+  a SINGULAR square matrix returns the zero matrix with d=0 and NO error;
+  the non-square diagnostic `Cannot invert a RxC matrix` fires BEFORE the
+  no-value gate.
+
+Fixtures `tests/fixtures/eval/global_batch3.atlas` (64 lines) and
+`..._rejected.atlas` (8 rejections) verify against the local oracle:
+accepted diff is byte-identical; rejected payloads are verbatim-identical
+(the atlas-cli vs oracle error-report wrapper divergence is pre-existing).
+HPC reference capture NOT yet run — do not claim differential-verified
+status until that lands.
+
+Semantic surprises found while oracle-checking (pinned in unit tests
+`global_batch3_builtins_match_the_upstream_linear_algebra_surface` and
+`matreduc::tests`):
+
+- Top-level `{ stmt; stmt }` blocks evaluate NOTHING in the oracle (even
+  `{ 1\0; 7 }` is silent) — so they cannot exercise the no-value gate; use
+  `for i:2 do X od` bodies instead (validation-before-gate pinned that way
+  in the rejected fixture and the unit test).
+- `linear_solve` on a rank-deficient or zero-column system returns the
+  solution vector at FULL width m (recorder pivot block applied to the
+  rank-length initial solution); `linear_solve(null(0,3), null(0))` gives
+  `([ 0, 0, 0 ],1,id_3).affine_subspace`.
+- `diagonalise`'s sign bookkeeping folds the final gcd flip into
+  `row_minus` AGAIN after the loop (matreduc.cpp:201): on the
+  `d == old_d` exit that is the ROW gcd flip (also already folded into
+  `col_minus`); on the `d >= old_d` exit it re-folds the column gcd flip,
+  cancelling matreduc.cpp:193. Ported verbatim.
+- `Smith`'s correction loop computes `1 - pa/d` in UNSIGNED Denom_t
+  (wrapping) before truncating to machine int; positive-entry inputs never
+  show it, but the port reproduces the regime.
+- Machine-int wrapping is observable in Bezout recorders:
+  `Bezout([2147483647,-2])` has bottom-right entry -2147483647.
+
+Skipped / deferred:
+
+- `mod2_section` (5211) and `subspace_normal` (5212): GF(2), deferred to
+  batch 4 by the work order.
+- `swiss_matrix_knife` + hidden `"matrix slicer"` (5195-5198): the batch-3
+  work order does NOT list them (batch 2's gap note had guessed batch 3);
+  still unclaimed — decide a home batch for them.
+- `gcd` was already landed in batch 2 (per the work order's claim note).
+
 ## global.w batch 2 verified_hpc (2026-08-19, differential 3574922)
 
 Capture 3574906 froze the reference; the fat full-suite differential

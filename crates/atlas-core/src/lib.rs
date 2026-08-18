@@ -10,6 +10,7 @@ pub mod formula;
 pub mod frames;
 pub mod lex;
 pub mod linear_values;
+pub(crate) mod matreduc;
 pub mod session;
 pub mod session_frame;
 pub mod source;

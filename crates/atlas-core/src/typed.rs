@@ -19,6 +19,7 @@ use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
 use crate::domain_builtins;
 use crate::frames::{EvaluationContext, GlobalCell};
 use crate::linear_values::{Matrix, RatVec, Vec32};
+use crate::matreduc;
 use crate::syntax::{
     compact_expression, compact_pattern, Command, Expr, ForLoop, LambdaParam, LetBinding,
     MultiAssignmentExpr, Pattern, TypeSpec,
@@ -3760,6 +3761,16 @@ enum ScalarOp {
     CombineColumns,
     CombineRows,
     VectorGcd,
+    MatEchelon,
+    MatKernel,
+    MatEigenLattice,
+    MatRowSaturate,
+    MatSmith,
+    MatAdaptedBasis,
+    MatDiagonalize,
+    MatInvert,
+    VecBezout,
+    LinearSolve,
     ElapsedMs,
 }
 
@@ -5460,6 +5471,188 @@ fn run_scalar(
             })),
             other => panic!("vector gcd saw {other:?}"),
         },
+        // Bezout(vec->int,mat) (global.w:4830-4841): the gcd plus the
+        // unimodular recorder with `v*C == [d,0,...]`; `det(C)` may be -1
+        // (the flip is computed upstream but not reported).
+        ScalarOp::VecBezout => match expect_unary(arguments) {
+            Value::Vector(vector) => Ok(at_builtin_level(level, || {
+                let mut flip = false;
+                let (d, recorder) = matreduc::gcd_recorder(vector.0, &mut flip, 0);
+                Value::Tuple(vec![
+                    Value::Integer(BigInt::from(d)),
+                    Value::Matrix(recorder.to_matrix()),
+                ])
+            })),
+            other => panic!("Bezout saw {other:?}"),
+        },
+        // echelon(mat->mat,mat,[int],int) (global.w:4848-4865): E has its
+        // zero columns REMOVED, the kernel columns are rotated right in C,
+        // pivots are ascending, flip = sign det(C).
+        ScalarOp::MatEchelon => match expect_unary(arguments) {
+            Value::Matrix(matrix) => Ok(at_builtin_level(level, || {
+                let mut reduced = matreduc::PidMatrix::from_matrix(&matrix);
+                let (recorder, pivots, flip) = matreduc::column_echelon(&mut reduced);
+                Value::Tuple(vec![
+                    Value::Matrix(reduced.to_matrix()),
+                    Value::Matrix(recorder.to_matrix()),
+                    Value::List(
+                        pivots
+                            .into_iter()
+                            .map(|pivot| Value::Integer(BigInt::from(pivot)))
+                            .collect(),
+                    ),
+                    Value::Integer(BigInt::from(if flip { -1 } else { 1 })),
+                ])
+            })),
+            other => panic!("echelon saw {other:?}"),
+        },
+        // kernel(mat->mat) (global.w:4975-4979, lattice.cpp:133-140): the
+        // m×(m−rank) recorder block spanning ker(M) over the integers.
+        ScalarOp::MatKernel => match expect_unary(arguments) {
+            Value::Matrix(matrix) => Ok(at_builtin_level(level, || {
+                Value::Matrix(
+                    matreduc::kernel(&matreduc::PidMatrix::from_matrix(&matrix)).to_matrix(),
+                )
+            })),
+            other => panic!("kernel saw {other:?}"),
+        },
+        // eigen_lattice(mat,int->mat) (global.w:4981-4987,
+        // lattice.cpp:142-145): kernel(M−λI); NO square check, the diagonal
+        // touch runs up to min(rows,cols); the int narrowing fires BEFORE
+        // the no-value gate (upstream pops int_val() first).
+        ScalarOp::MatEigenLattice => match expect_pair(arguments) {
+            (Value::Matrix(matrix), Value::Integer(lambda)) => {
+                let lambda = plain_int(&lambda, span)?;
+                Ok(at_builtin_level(level, || {
+                    Value::Matrix(
+                        matreduc::eigen_lattice(&matreduc::PidMatrix::from_matrix(&matrix), lambda)
+                            .to_matrix(),
+                    )
+                }))
+            }
+            other => panic!("eigen_lattice saw {other:?}"),
+        },
+        // row_saturate(mat->mat) (global.w:4989-4993, lattice.cpp:147-160,
+        // installed with hunger 3): adapted_basis of the transpose, rows.
+        ScalarOp::MatRowSaturate => match expect_unary(arguments) {
+            Value::Matrix(matrix) => Ok(at_builtin_level(level, || {
+                Value::Matrix(
+                    matreduc::row_saturate(&matreduc::PidMatrix::from_matrix(&matrix)).to_matrix(),
+                )
+            })),
+            other => panic!("row_saturate saw {other:?}"),
+        },
+        // Smith(mat->mat,vec) (global.w:5000-5010, matreduc.cpp:359-385):
+        // (B, inv_factors) with positive divisibility-ordered factors.
+        ScalarOp::MatSmith => match expect_unary(arguments) {
+            Value::Matrix(matrix) => Ok(at_builtin_level(level, || {
+                let (basis, factors) =
+                    matreduc::smith_basis(&matreduc::PidMatrix::from_matrix(&matrix));
+                Value::Tuple(vec![
+                    Value::Matrix(basis.to_matrix()),
+                    Value::Vector(Vec32(factors)),
+                ])
+            })),
+            other => panic!("Smith saw {other:?}"),
+        },
+        // adapted_basis(mat->mat,vec) (global.w:4949-4959,
+        // matreduc.cpp:261-336): image(M) = span{d_i·B.col(i)}; the
+        // diagonal is NOT divisibility-ordered.
+        ScalarOp::MatAdaptedBasis => match expect_unary(arguments) {
+            Value::Matrix(matrix) => Ok(at_builtin_level(level, || {
+                let (basis, diagonal) =
+                    matreduc::adapted_basis(&matreduc::PidMatrix::from_matrix(&matrix));
+                Value::Tuple(vec![
+                    Value::Matrix(basis.to_matrix()),
+                    Value::Vector(Vec32(diagonal)),
+                ])
+            })),
+            other => panic!("adapted_basis saw {other:?}"),
+        },
+        // diagonalize(mat->vec,mat,mat) (global.w:4934-4947,
+        // matreduc.cpp:145-226): (diagonal, row, column) — diagonal FIRST,
+        // entries positive except possibly the first, det(row)=det(col)=1.
+        ScalarOp::MatDiagonalize => match expect_unary(arguments) {
+            Value::Matrix(matrix) => Ok(at_builtin_level(level, || {
+                let (row, column, diagonal) =
+                    matreduc::diagonalise(&matreduc::PidMatrix::from_matrix(&matrix));
+                Value::Tuple(vec![
+                    Value::Vector(Vec32(diagonal)),
+                    Value::Matrix(row.to_matrix()),
+                    Value::Matrix(column.to_matrix()),
+                ])
+            })),
+            other => panic!("diagonalize saw {other:?}"),
+        },
+        // invert(mat->mat,int) (global.w:5017-5032, matrix.cpp:471-498):
+        // (N, d) with N/d = M⁻¹. The non-square diagnostic fires BEFORE the
+        // no-value gate; a singular square matrix returns the zero matrix
+        // with d=0 and NO error.
+        ScalarOp::MatInvert => match expect_unary(arguments) {
+            Value::Matrix(matrix) => {
+                if matrix.rows() != matrix.cols() {
+                    return Err(runtime(
+                        format!("Cannot invert a {}x{} matrix", matrix.rows(), matrix.cols()),
+                        span,
+                    ));
+                }
+                if level == Level::NoValue {
+                    return Ok(None);
+                }
+                let (numerator, denominator) =
+                    matreduc::inverse(&matreduc::PidMatrix::from_matrix(&matrix))
+                        .map_err(|message| runtime(message, span))?;
+                Ok(Some(Value::Tuple(vec![
+                    Value::Matrix(numerator.to_matrix()),
+                    Value::Integer(denominator),
+                ])))
+            }
+            other => panic!("invert saw {other:?}"),
+        },
+        // linear_solve(mat,vec->|vec,int,mat) (global.w:4891-4923): the
+        // first union-returning builtin; the size-mismatch diagnostic fires
+        // BEFORE the no-value gate, and `echelon_solve` failure is caught
+        // into the `empty_set` variant rather than thrown.
+        ScalarOp::LinearSolve => match expect_pair(arguments) {
+            (Value::Matrix(matrix), Value::Vector(rhs)) => {
+                if matrix.rows() != rhs.0.len() {
+                    return Err(runtime(
+                        format!(
+                            "Linear system size mismatch {}:{}",
+                            matrix.rows(),
+                            rhs.0.len()
+                        ),
+                        span,
+                    ));
+                }
+                if level == Level::NoValue {
+                    return Ok(None);
+                }
+                let solution =
+                    matreduc::linear_solve(&matreduc::PidMatrix::from_matrix(&matrix), rhs.0);
+                Ok(Some(match solution {
+                    matreduc::LinearSolution::Empty => Value::Union {
+                        tag: 0,
+                        injector_name: "empty_set".into(),
+                        value: Box::new(Value::Tuple(Vec::new())),
+                    },
+                    matreduc::LinearSolution::Affine {
+                        solution,
+                        factor,
+                        kernel,
+                    } => Value::Union {
+                        tag: 1,
+                        injector_name: "affine_subspace".into(),
+                        value: Box::new(Value::Tuple(vec![
+                            Value::Vector(Vec32(solution)),
+                            Value::Integer(factor),
+                            Value::Matrix(kernel.to_matrix()),
+                        ])),
+                    },
+                }))
+            }
+            other => panic!("linear_solve saw {other:?}"),
+        },
         // elapsed_ms (global.w:5231-5245): a static stopwatch, started on
         // first call (upstream primes it at startup with no_value).
         ScalarOp::ElapsedMs => {
@@ -6472,6 +6665,96 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 int_type(),
                 0,
                 ScalarOp::VectorGcd,
+            ),
+            // global.w batch 3 (installs at global.w:5201-5210): the
+            // matreduc/lattice linear algebra builtins. All but
+            // `linear_solve` return plain tuples; `row_saturate` keeps its
+            // upstream operator hunger 3.
+            scalar_builtin(
+                "Bezout",
+                primitive_type(Prim::Vec),
+                Type::tuple(vec![int_type(), primitive_type(Prim::Mat)]),
+                0,
+                ScalarOp::VecBezout,
+            ),
+            scalar_builtin(
+                "echelon",
+                primitive_type(Prim::Mat),
+                Type::tuple(vec![
+                    primitive_type(Prim::Mat),
+                    primitive_type(Prim::Mat),
+                    Type::row(int_type()),
+                    int_type(),
+                ]),
+                0,
+                ScalarOp::MatEchelon,
+            ),
+            scalar_builtin(
+                "linear_solve",
+                Type::tuple(vec![primitive_type(Prim::Mat), primitive_type(Prim::Vec)]),
+                Type::union_of(vec![
+                    Type::void(),
+                    Type::tuple(vec![
+                        primitive_type(Prim::Vec),
+                        int_type(),
+                        primitive_type(Prim::Mat),
+                    ]),
+                ]),
+                0,
+                ScalarOp::LinearSolve,
+            ),
+            scalar_builtin(
+                "diagonalize",
+                primitive_type(Prim::Mat),
+                Type::tuple(vec![
+                    primitive_type(Prim::Vec),
+                    primitive_type(Prim::Mat),
+                    primitive_type(Prim::Mat),
+                ]),
+                0,
+                ScalarOp::MatDiagonalize,
+            ),
+            scalar_builtin(
+                "adapted_basis",
+                primitive_type(Prim::Mat),
+                Type::tuple(vec![primitive_type(Prim::Mat), primitive_type(Prim::Vec)]),
+                0,
+                ScalarOp::MatAdaptedBasis,
+            ),
+            scalar_builtin(
+                "kernel",
+                primitive_type(Prim::Mat),
+                primitive_type(Prim::Mat),
+                0,
+                ScalarOp::MatKernel,
+            ),
+            scalar_builtin(
+                "eigen_lattice",
+                Type::tuple(vec![primitive_type(Prim::Mat), int_type()]),
+                primitive_type(Prim::Mat),
+                0,
+                ScalarOp::MatEigenLattice,
+            ),
+            scalar_builtin(
+                "row_saturate",
+                primitive_type(Prim::Mat),
+                primitive_type(Prim::Mat),
+                3,
+                ScalarOp::MatRowSaturate,
+            ),
+            scalar_builtin(
+                "Smith",
+                primitive_type(Prim::Mat),
+                Type::tuple(vec![primitive_type(Prim::Mat), primitive_type(Prim::Vec)]),
+                0,
+                ScalarOp::MatSmith,
+            ),
+            scalar_builtin(
+                "invert",
+                primitive_type(Prim::Mat),
+                Type::tuple(vec![primitive_type(Prim::Mat), int_type()]),
+                0,
+                ScalarOp::MatInvert,
             ),
             // elapsed_ms (global.w:5245): milliseconds on the program
             // stopwatch.
@@ -10747,6 +11030,183 @@ mod tests {
             (
                 "0 # [vec: [1,2]]",
                 "Column 0 size 2 does not match specified size 0",
+            ),
+        ] {
+            match convert_and_run(source) {
+                Err(error) => assert_eq!(error.message, expected, "source: {source}"),
+                Ok(value) => panic!("{source} unexpectedly succeeded with {value:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn global_batch3_builtins_match_the_upstream_linear_algebra_surface() {
+        let cases = [
+            // echelon (global.w:5202, matreduc.h:128-161): zero columns are
+            // REMOVED from E, the kernel columns rotate right in C, pivots
+            // ascend, flip = sign det(C).
+            (
+                "echelon(mat: [[1,2],[3,4]])",
+                "(\n| 1, 1 |\n| 0, 2 |\n,\n| -2, 1 |\n|  1, 0 |\n,[0,1],-1)",
+            ),
+            // Rank-deficient: E keeps only the rank column.
+            (
+                "echelon(mat: [[2,4],[4,8]])",
+                "(\n| 2 |\n| 4 |\n,\n| 1, -2 |\n| 0,  1 |\n,[1],1)",
+            ),
+            ("echelon(null(0,0))", "(The 0x0 matrix,The 0x0 matrix,[],1)"),
+            (
+                "echelon(null(2,3))",
+                "(The 2x0 matrix,\n| 1, 0, 0 |\n| 0, 1, 0 |\n| 0, 0, 1 |\n,[],1)",
+            ),
+            // kernel (global.w:5206, lattice.cpp:133-140): the basis order
+            // is oracle-defined by the echelon recorder rotation.
+            ("kernel(mat: [[1,2],[2,4]])", "\n| -2 |\n|  1 |\n"),
+            ("kernel(mat: [[1,0],[0,1]])", "The 2x0 matrix"),
+            (
+                "kernel(null(0,3))",
+                "\n| 1, 0, 0 |\n| 0, 1, 0 |\n| 0, 0, 1 |\n",
+            ),
+            // eigen_lattice (global.w:5207): NO square check; the diagonal
+            // touch runs up to min(rows,cols).
+            ("eigen_lattice(mat: [[2,1],[1,2]], 1)", "\n| -1 |\n|  1 |\n"),
+            (
+                "eigen_lattice(mat: [[1,2],[3,4],[5,6]], 1)",
+                "\n|  -3 |\n| -10 |\n|   6 |\n",
+            ),
+            ("eigen_lattice(null(2,3), 5)", "\n| 0 |\n| 0 |\n| 1 |\n"),
+            // invert (global.w:5210, matrix.cpp:471-498): (N,d) with
+            // N/d = M^-1, d the positive lcm of denominators; a SINGULAR
+            // square matrix returns the zero matrix with d=0, no error.
+            (
+                "invert(mat: [[1,2],[3,4]])",
+                "(\n| -4,  3 |\n|  2, -1 |\n,2)",
+            ),
+            ("invert(mat: [[2,0],[0,3]])", "(\n| 3, 0 |\n| 0, 2 |\n,6)"),
+            ("invert(mat: [[1,2],[2,4]])", "(\n| 0, 0 |\n| 0, 0 |\n,0)"),
+            ("invert(null(0,0))", "(The 0x0 matrix,1)"),
+            // Smith (global.w:5209, matreduc.cpp:359-385): factors positive,
+            // divisibility-ordered by the correction loop; a zero matrix
+            // gives (identity, []).
+            (
+                "Smith(mat: [[2,0],[0,3]])",
+                "(\n|  4, -1 |\n| -3,  1 |\n,[ 1, 6 ])",
+            ),
+            ("Smith(mat: [[0]])", "(\n| 1 |\n,[ ])"),
+            ("Smith(null(2,3))", "(\n| 1, 0 |\n| 0, 1 |\n,[ ])"),
+            // adapted_basis (global.w:5205): the diagonal is NOT
+            // divisibility-ordered.
+            (
+                "adapted_basis(mat: [[2,4],[4,8]])",
+                "(\n| 1, 0 |\n| 2, 1 |\n,[ 2 ])",
+            ),
+            ("adapted_basis(null(0,0))", "(The 0x0 matrix,[ ])"),
+            // diagonalize (global.w:5204): (diagonal, row, column) — the
+            // diagonal comes FIRST; only its first entry may be negative.
+            (
+                "diagonalize(mat: [[2,0],[0,3]])",
+                "([ 2, 3 ],\n| 1, 0 |\n| 0, 1 |\n,\n| 1, 0 |\n| 0, 1 |\n)",
+            ),
+            ("diagonalize(mat: [[0-2]])", "([ -2 ],\n| 1 |\n,\n| 1 |\n)"),
+            (
+                "diagonalize(mat: [[0,2],[2,0]])",
+                "([ 2, 2 ],\n| 0, 1 |\n| 1, 0 |\n,\n| 1, 0 |\n| 0, 1 |\n)",
+            ),
+            (
+                "diagonalize(null(0,0))",
+                "([ ],The 0x0 matrix,The 0x0 matrix)",
+            ),
+            // Bezout (global.w:5201): v*C == [d,0,...]; det(C) may be -1.
+            (
+                "Bezout([6,10,15])",
+                "(1,\n|  1,  5, -5 |\n|  1,  0, -3 |\n| -1, -2,  4 |\n)",
+            ),
+            ("Bezout(null(0))", "(0,The 0x0 matrix)"),
+            ("Bezout([0-6,9])", "(3,\n| 1, -3 |\n| 1, -2 |\n)"),
+            // Machine-int wrapping is observable in the recorder:
+            // 2147483647*1 - (-2)*1073741823 wraps to -2147483647... the
+            // recorder's bottom-right entry is the wrapped -2^31+1.
+            (
+                "Bezout([2147483647,0-2])",
+                "(1,\n|          1,          -2 |\n| 1073741823, -2147483647 |\n)",
+            ),
+            // linear_solve (global.w:5203): the first union-returning
+            // builtin. Non-exact division scales the solution by `factor`;
+            // inconsistency is CAUGHT into the empty_set variant.
+            (
+                "linear_solve(mat: [[2,0],[0,4]], vec: [6,4])",
+                "([ 3, 1 ],1,The 2x0 matrix).affine_subspace",
+            ),
+            (
+                "linear_solve(mat: [[2,0],[0,4]], vec: [6,3])",
+                "([ 12,  3 ],4,The 2x0 matrix).affine_subspace",
+            ),
+            (
+                "linear_solve(mat: [[1,2],[2,4]], vec: [3,5])",
+                "().empty_set",
+            ),
+            (
+                "linear_solve(mat: [[1,2],[2,4]], vec: [3,6])",
+                "([ 3, 0 ],1,\n| -2 |\n|  1 |\n).affine_subspace",
+            ),
+            (
+                "linear_solve(null(0,3), null(0))",
+                "([ 0, 0, 0 ],1,\n| 1, 0, 0 |\n| 0, 1, 0 |\n| 0, 0, 1 |\n).affine_subspace",
+            ),
+            // row_saturate (global.w:5208, hunger 3): adapted_basis of the
+            // transpose, as rows.
+            ("row_saturate(mat: [[2,4],[4,8]])", "\n| 1, 2 |\n"),
+            ("row_saturate(null(2,3))", "The 0x3 matrix"),
+        ];
+        for (source, expected) in cases {
+            let (_, value) = convert_and_run(source)
+                .unwrap_or_else(|error| panic!("{source} should convert and run: {error:?}"));
+            assert_eq!(value.to_string(), expected, "source: {source}");
+        }
+
+        // The result type of linear_solve is the two-variant union
+        // (global.w:5203): `|vec,int,mat`.
+        let (found, _) = convert_and_run("linear_solve(null(0,0), null(0) )").expect("union type");
+        assert_eq!(
+            found,
+            Type::union_of(vec![
+                Type::void(),
+                Type::tuple(vec![
+                    Type::Primitive(Prim::Vec),
+                    Type::Primitive(Prim::Int),
+                    Type::Primitive(Prim::Mat),
+                ]),
+            ])
+        );
+
+        // Rejections: only invert (non-square), linear_solve (size
+        // mismatch) and eigen_lattice (int narrowing) diagnose, all BEFORE
+        // the no-value gate (a for-loop body runs at no-value).
+        for (source, expected) in [
+            ("invert(null(2,3))", "Cannot invert a 2x3 matrix"),
+            (
+                "invert(mat: [[1,2,3],[4,5,6]])",
+                "Cannot invert a 3x2 matrix",
+            ),
+            (
+                "for i:2 do invert(null(2,3)) od",
+                "Cannot invert a 2x3 matrix",
+            ),
+            (
+                "linear_solve(null(2,3), vec: [1,2,3])",
+                "Linear system size mismatch 2:3",
+            ),
+            (
+                "for i:2 do linear_solve(null(2,3), vec: [1,2,3]) od",
+                "Linear system size mismatch 2:3",
+            ),
+            (
+                "eigen_lattice(mat: [[1]], 2147483648)",
+                "Integer value to big for conversion",
+            ),
+            (
+                "for i:2 do eigen_lattice(mat: [[1]], 2147483648) od",
+                "Integer value to big for conversion",
             ),
         ] {
             match convert_and_run(source) {
