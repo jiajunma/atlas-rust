@@ -44,7 +44,7 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   `InnerClass::int_item` canonicalization + `BlockLocator` interning
   (DONE, `79b6b9d`); step 2 `RepContext::transform` + `shift` +
   `make_relative_to` (repr.cpp:338-350) + `sr(srm,bm,gamma)`
-  (repr.cpp:815-823) (IN FLIGHT, agent-66); step 3 canonical keys into
+  (repr.cpp:815-823) (DONE, `740f4d8`); step 3 canonical keys into
   RepTable::lookup/lookup_full_block with attitude gates on
   KL_column/KL_block/print_block(s)/kl_sum_at_s_terms FIRST (otherwise
   canonicalization lands silently wrong); step 4 transported consumers
@@ -54,28 +54,54 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 - Non-integral common-block recon COMPLETE (agent-69); slice plan frozen at
   `docs/slices/nonintegral_common_block_workorder.md`. Headlines: upstream
   always builds the block of the integral subsystem directly (smaller
-  blocks, subsystem-rank columns); THREE live defects at identity attitude —
-  `length(Param)` silently wrong on proper/rank-0 (full-block scan at
-  domain_builtins.rs:13436-13457 vs upstream make_dominant+lookup),
-  `dual_KL_block(Param)` silently wrong for non-integral gamma (needs a
-  combinatorial `PartialBlock::dual`, blocks.cpp:474-507), and
-  `print_partial_common_block` sequence-diverges (fresh block per call vs
-  shared `rt().lookup` + `Subset {…}` header). Four oracle-verified fixtures
+  blocks, subsystem-rank columns); three identity-attitude defects found —
+  `length(Param)`, `dual_KL_block(Param)`, `print_partial_common_block`
+  (first and third FIXED in `31064b1`; dual_KL_block still open). Four oracle-verified fixtures
   added: `domain/length_dual_proper`, `domain/length_dual_proper_a2`,
   `domain/print_partial_common_block_seq`, `domain/print_partial_block_proper`
   (all intentionally UNREGISTERED until fixed; the A2 one may stay gated on
   the known SL(3,R) identity-shift locator defect).
 - Twisted/ext proper-subsystem recursion recon COMPLETE (agent-68); full
   slice plan frozen at `docs/slices/twisted_ext_proper_workorder.md`.
-  Headlines: the single shared prerequisite is an `ExtBlock` constructor
-  over `PartialBlock` (identity-attitude `transformed_twisted` +
-  subsystem-Cartan `fold_orbits` + partial `StarOracle`); slices in order:
-  (1) `extended_block` proper, (2) `raw_ext_KL`+`partial_extended_KL_block`
-  proper, (3) `twisted_KL_sum_at_s` proper, (4) `twisted_deform` proper,
-  (5) `twisted_full_deform` recursion at proper reducibility points
-  (deepest; may force the cross-block partial-merge NYI early). Neighbor
-  silent deviation flagged: ordinary `full_deform`'s reducibility recursion
-  has NO scope check at all (domain_builtins.rs:2282-2321).
+  IN FLIGHT: slice-1A (ExtBlock constructor over PartialBlock, pure
+  atlas-real-group, agent-73); wiring phase waits for locator step-3.
+- global.w batch 2 LANDED (commit `c5afd9c`, agent-65): int bit utilities
+  (succ/pred, AND/OR/XOR/AND_NOT, bitwise_subset, nth_set_bit, bit_length,
+  to_bitset), container relations/arithmetic, selectors/joins, matrix
+  constructors, gcd(vec), elapsed_ms. Reference frozen by capture
+  **3574906**; events/meta committed (`b9843aa`, plans registered); fat
+  differential **3574922** in flight. Batch-3 linear algebra IN FLIGHT
+  (agent-71, work order docs/slices/global_batch3_workorder.md).
+- Locator step 2 LANDED (commit `740f4d8`, agent-66):
+  `crates/atlas-real-group/src/block_modifier.rs` — BlockModifier +
+  RepContext transform/shift/make_diff_integral_orthogonal/
+  make_relative_to/sr_with_modifier, pure and unwired; A2 SL(3,R) anchor
+  round-trip exact. Step-3 IN FLIGHT (agent-72: attitude gates FIRST on
+  KL_column/KL_block/print_block(s)/kl_sum_at_s_terms, then canonical-key
+  wiring of RepTable::lookup/lookup_full_block). NOTE: step-2 report flags
+  that Reduced_param::reduce writes the QUERY's locator into bm; stored
+  blocks stay in the generating query's attitude.
+- Non-integral common-block slices 1-2 LANDED (commit `31064b1`,
+  agent-70): `length(Param)` via make_dominant + shared lookup (with a
+  value-exact lookup_full_block fallback around the commit_partial NYI),
+  `print_partial_common_block` via shared Rep_table lookup + Subset/Elements
+  headers. Byte-identical on print_partial_common_block_seq and
+  print_partial_block_proper; length lines of length_dual_proper{,_a2}
+  match. OPEN: slice 3 dual_KL_block(Param) (needs PartialBlock::dual);
+  the A2 SL(3,R) gamma-lambda shift defect on rows 0/2 in the located
+  full-block print path (oracle [-1,1]/2 vs Rust [-3,3]/2 — richer than
+  the earlier [0,1] note) belongs to the locator slice.
+- Six new anchors frozen (events+meta, `b9843aa`; ALL UNREGISTERED except
+  the two batch-2 eval plans): domain/ext_block_proper (capture 3574900),
+  domain/length_dual_proper{,_a2}, domain/print_partial_common_block_seq,
+  domain/print_partial_block_proper (capture 3574902).
+- Twisted/ext slice order per the work order: (1) extended_block proper,
+  (2) raw_ext_KL+partial_extended_KL_block proper, (3) twisted_KL_sum_at_s
+  proper, (4) twisted_deform proper, (5) twisted_full_deform recursion at
+  proper reducibility points (deepest; may force the cross-block
+  partial-merge NYI early). Neighbor silent deviation flagged: ordinary
+  full_deform's reducibility recursion has NO scope check at all
+  (domain_builtins.rs:2282-2321).
 - Known defect pinned by the probe: current Rust `print_common_block` on the
   A2 SL(3,R) family already differs from the oracle at identity attitude
   (gamma-lambda shifted by [0,1] on rows 0/2) — the identity-attitude shift
