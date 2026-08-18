@@ -4,7 +4,7 @@
  "oracle": "atlas",
  "stage": "typed-pipeline-swap",
  "reference_status": "verified_hpc_reference",
- "rust_status": "pending_hpc_differential",
+ "rust_status": "verified_hpc",
  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
@@ -16,11 +16,12 @@
  "oracle_seconds": 0.044,
  "oracle_maxrss_kb": 4304,
  "oracle_maxrss_approximate": false,
- "notes": "Proper-subsystem partial-print pin (slice D of docs/slices/nonintegral_common_block_workorder.md): print_partial_block(pb) is the singleton row, print_partial_block(Cayley(0,pb)) is the full 3-row block. Path believed correct today; pinned to close the coverage hole. Registered after slices 1-2 landed (commit 31064b1); differential pending.",
+ "notes": "Proper-subsystem partial-print pin (slice D of docs/slices/nonintegral_common_block_workorder.md): print_partial_block(pb) is the singleton row, print_partial_block(Cayley(0,pb)) is the full 3-row block. Path believed correct today; pinned to close the coverage hole. Registered after slices 1-2 landed (commit 31064b1); VERIFIED by fat differential 3574934 (293 PASS + 1 declared PARTIAL across 294 fixtures).",
  "hpc_capture": {
   "fresh_process_required": true,
   "timeout_seconds": 30,
   "estimated_seconds": 5,
   "estimated_memory_mb": 128
- }
+ },
+ "differential_job": "3574934"
 }
