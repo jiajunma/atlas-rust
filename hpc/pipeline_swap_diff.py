@@ -320,6 +320,7 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/raw_kl"),
     # Batch 5 (KL access): KL_sum_at_s.
     FixturePlan(name="domain/kl_sum_at_s"),
+    FixturePlan(name="domain/kl_sum_at_s_param_proper"),
     # Batch 1: dual_datum.
     FixturePlan(name="domain/dual_datum"),
     # Batch 1: is_Cartan_matrix.

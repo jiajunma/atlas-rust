@@ -1,0 +1,26 @@
+{
+  "fixture": "domain/kl_sum_at_s_param_proper.atlas",
+  "fixture_sha256": "946d78fa1767d61d1e1e89de69f0f3e02fd757957c4bbbf0fba8d40f77f08503",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "rust_status": "pending_hpc_differential",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3573984",
+  "reference_commit": "1cedff5f526702214fe49960899b2e7326b46c73",
+  "reference_report_sha256": "45a427cad9344d75f3f4b6bc98f1dc6f54a9468a488d3da492791af54f4f83f9",
+  "source_archive_sha256": "6da9cd362ad826102299327d5ad88c815d67a767a615e5c09f1c6cb000ca8632",
+  "oracle_exit_status": 0,
+  "oracle_seconds": 0.013,
+  "oracle_maxrss_kb": 4432,
+  "oracle_maxrss_approximate": false,
+  "notes": "B2 split proper-integral KL sums: KL_sum_at_s(x=5,[1,1],[1,0]/2) plus both KL_sum_at_s_to_height bounds (0 filters to the empty sum, -1 reproduces the full column). Rust differential verification is pending; nonidentity generator attitude remains unsupported.",
+  "hpc_capture": {
+    "fresh_process_required": true,
+    "timeout_seconds": 30,
+    "estimated_seconds": 1,
+    "estimated_memory_mb": 64
+  }
+}

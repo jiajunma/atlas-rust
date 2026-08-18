@@ -1,0 +1,18 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/kl_sum_at_s_param_proper",
+  "status": "verified_hpc_reference",
+  "events": [
+    {"kind":"ReportLine","text":"Declaring identifier 'rb': RootDatum\n"},
+    {"kind":"Value","value":{"type":"display","display":"simply connected root datum of Lie type 'B2'"}},
+    {"kind":"ReportLine","text":"Declaring identifier 'ib': InnerClass\n"},
+    {"kind":"Value","value":{"type":"display","display":"Complex reductive group of type B2, with involution defining\ninner class of type 'c', with 3 real forms and 3 dual real forms"}},
+    {"kind":"ReportLine","text":"Declaring identifier 'rfb': RealForm\n"},
+    {"kind":"Value","value":{"type":"display","display":"connected split real group with Lie algebra 'so(3,2)'"}},
+    {"kind":"ReportLine","text":"Declaring identifier 'pb': Param\n"},
+    {"kind":"Value","value":{"type":"display","display":"final parameter(x=5,lambda=[2,2]/1,nu=[1,-1]/2)"}},
+    {"kind":"Value","value":{"type":"display","display":"\n1*parameter(x=5,lambda=[2,2]/1,nu=[1,-1]/2) [12]"}},
+    {"kind":"Value","value":{"type":"display","display":"Empty sum of standard modules"}},
+    {"kind":"Value","value":{"type":"display","display":"\n1*parameter(x=5,lambda=[2,2]/1,nu=[1,-1]/2) [12]"}}
+  ]
+}
