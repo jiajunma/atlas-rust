@@ -37,6 +37,7 @@ use crate::ext_block::{fold_orbits, DescValue, ExtGen, ExtGenKind, StarOracle};
 use crate::lattice::{checked_sub_weights, RationalWeight};
 use crate::matreduc::{find_solution, has_solution, in_left_image, in_right_image, IntMatrix};
 use crate::root_reflection::reflection_word;
+#[cfg(debug_assertions)]
 use crate::twisted_involution::compose_matrices;
 use crate::{
     BlockGraph, Coweight, InvolutionId, InvolutionTable, KType, KgbId, LatticeInvolution,
