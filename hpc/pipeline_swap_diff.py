@@ -684,6 +684,18 @@ FIXTURE_PLANS = (
         runnable_lines=(2, 4, 6, 8, 9, 10),
         silent_lines=(1, 3, 5, 7),
     ),
+    # Non-integral common-block slices 1-2 (commit 31064b1): the shared
+    # Rep_table lookup makes the Subset-header cache-hit sequence exact.
+    FixturePlan(
+        name="domain/print_partial_common_block_seq",
+        runnable_lines=(2, 4, 6, 8, 9, 10),
+        silent_lines=(1, 3, 5, 7),
+    ),
+    FixturePlan(
+        name="domain/print_partial_block_proper",
+        runnable_lines=(2, 4, 6, 8, 10, 11, 12),
+        silent_lines=(1, 3, 5, 7, 9),
+    ),
     # shift_flip (wrapper gates + shifted_default_extension/is_default;
     # accepted cases all return false — ~1300 oracle probes found no true
     # case). Line alignment pre-analysed 2026-08-12 against
