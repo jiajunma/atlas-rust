@@ -1,5 +1,101 @@
 # Remaining builtin coverage (post-language-gate)
 
+## global.w batch 2 landed locally (2026-08-19, HPC capture pending)
+
+All remaining mechanical global.w signatures are now `ScalarOp`s in
+`crates/atlas-core/src/typed.rs`, with matrix constructors/arithmetic helpers
+(`identity`/`diagonal`/`transposed`/`negated`/`added_diagonal`/`added`/
+`subtracted`/`multiplied`/`multiplied_vec`/`left_multiplied_vec`/
+`multiplied_ratvec`/`left_multiplied_ratvec`/`is_zero`) added to
+`crates/atlas-core/src/linear_values.rs`:
+
+- int utilities (global.w:2966-2994): `succ`/`pred`, call-syntax bitwise
+  `AND`/`OR`/`XOR`/`AND_NOT` (two's-complement bit strings; NOT infix
+  operators upstream — `6 AND 3` is a syntax error), `bitwise_subset`,
+  `nth_set_bit`, `bit_length`, `to_bitset(vec->int)`.
+- container relations (4405-4420): `=`/`!=` on vec/ratvec/mat (unary zero
+  tests and binary), dominance `>=`/`>` on vec/ratvec.
+- container arithmetic (4421-4451): vec `+`/`-`/unary `-`/`*int`/`\int`/
+  `%int`, ratvec `%`(unfraction)/`+`/`-`/unary `-`/`*int`/`/int`/`%int`/
+  `*rat`/`/rat`, mat `±int`/`int±mat`/`±mat`, vec dot `*`, `flex_add`/
+  `flex_sub`/`convolve`, and all five matrix/vector products. The nine `*`
+  overloads that were `domain_builtin_skip` placeholders are now real
+  scalars (same registry slots, upstream hunger levels).
+- selectors/joins (4396-4399): `#` vec suffix (hunger 1) and prefix
+  (hunger 2), `##` on (vec,vec) and [vec].
+- constructors (5183-5194): `null(int->vec)`, `^`(vec->mat one-row),
+  `^`(mat->mat) transpose, `id_mat`, `diagonal`, `stack_rows` (ragged,
+  zero-padded), `#`(int,[vec]->mat) combine_columns, `^`(int,[vec]->mat)
+  combine_rows.
+- `gcd(vec->int)` (5200): checked upstream — it is the plain non-negative
+  integer gcd of the entries (matreduc machinery is only the
+  implementation), so it landed here rather than in batch 3. Empty vec -> 0.
+  The fold runs in machine-int width: `gcd(vec: [-2147483648])` prints
+  `-2147483648` upstream and here.
+- `elapsed_ms(->int)` (5245): static stopwatch primed on first call.
+
+Fixtures `tests/fixtures/eval/global_batch2.atlas` / `..._rejected.atlas`
+diff byte-identical against the local oracle for accepted input; rejected
+fixtures exit 1 on both with verbatim payloads (the atlas-cli vs oracle
+report wrapper divergence is pre-existing). HPC reference capture NOT yet
+run — do not claim differential-verified status until that lands.
+
+Semantic surprises found while oracles-checking (all pinned in the unit
+test `global_batch2_builtins_match_the_upstream_scalar_surface`):
+
+- vec `\`/`%` take a NON-NEGATIVE remainder (`[7]%(-3)=[1]`,
+  `[7]\(-3)=[-2]`), unlike int `\`/`%` which floor (`7%(-3)=-2`). Ratvec
+  `%int` follows the vec convention per entry (numerator mod d*|m|).
+- `mat±int` adds the scalar to the main diagonal up to min(rows,cols);
+  non-square matrices are accepted upstream.
+- `mat:` literals list COLUMNS (batch-1 knowledge), so all products are
+  standard row-times-column once that is accounted for.
+- `bit_length` of a negative is `-(significant_bits(~n)+1)`;
+  `nth_set_bit` with a negative index counts CLEARED bits; a missing
+  n-th set bit of a non-negative value yields -1.
+- ratvec `*rat`/`/rat` narrowing ("Integer value to big for conversion")
+  fires INSIDE the no-value gate upstream (the computation is gated);
+  everywhere else narrowing/zero-divisor diagnostics fire before it.
+- upstream parse-time rewriting turns `x+1`/`x-1` into `succ`/`pred`
+  calls and folds `-literal`; these rewrites are not ported (observable
+  behavior is identical).
+
+Skipped / not ported:
+
+- No BitSet value type exists upstream OR in Rust (bitwise ops live on
+  int), so "bitset utilities" were the int ops above — nothing to skip.
+- `swiss_matrix_knife`/`"matrix slicer"` (int,mat,int,int,int,int->mat)
+  (5195-5198): flag-bitfield slicer, deferred to batch 3.
+- `"transpose "` (mat->mat) (5188): upstream registers it with a trailing
+  space precisely so users cannot name it; not registered here (same for
+  `"matrix slicer"`).
+- `readline_completions` (4390): interactive REPL aid, no batch
+  semantics.
+
+Pre-existing divergence surfaced by this batch (not global.w's): generic
+axis.w row operators `##`/`#` (suffix/prefix on ([*],*)/(*,[*])) are
+unimplemented, so bare `[1,2]##[3,4]`/`[1,2]#3` coerce to the vec
+overloads and print spaced, where the oracle resolves the row overloads
+and prints compact. Fixtures use explicit `vec:` casts to avoid this.
+
+Remaining global.w gap after batch 2 (batch-3 work order):
+
+- `swiss_matrix_knife` + hidden `"matrix slicer"` (int,mat,int,int,int,int->mat)
+- `Bezout` (vec->int,mat)
+- `echelon` (mat->mat,mat,[int],int)
+- `linear_solve` (mat,vec->|vec,int,mat) — union result, first of its kind
+- `diagonalize` (mat->vec,mat,mat)
+- `adapted_basis` (mat->mat,vec)
+- `kernel` (mat->mat)
+- `eigen_lattice` (mat,int->mat)
+- `row_saturate` (mat->mat)
+- `Smith` (mat->mat,vec)
+- `invert` (mat->mat,int)
+- `mod2_section` (mat->mat)
+- `subspace_normal` (mat->mat,mat,mat,[int])
+- hidden `"transpose "` (mat->mat) and `readline_completions` — decide
+  whether these are ever worth registering.
+
 ## global.w batch 1 landed locally (2026-08-18, HPC capture pending)
 
 Rat decomposers `floor`/`ceil`/`frac` (global.w:3249-3251), string

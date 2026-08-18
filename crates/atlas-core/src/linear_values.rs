@@ -64,6 +64,184 @@ impl Matrix {
         assert!(col < self.cols, "matrix column index in range");
         Vec32(self.data[col * self.rows..(col + 1) * self.rows].to_vec())
     }
+
+    /// `id_mat(n)` (global.w:5190): the `size`×`size` identity matrix.
+    pub fn identity(size: usize) -> Self {
+        Self::diagonal(&Vec32(vec![1; size]))
+    }
+
+    /// Whether every entry is zero (upstream `Matrix_base::is_zero`).
+    pub fn is_zero(&self) -> bool {
+        self.data.iter().all(|&entry| entry == 0)
+    }
+
+    /// `diagonal(v)` (global.w:5191): the square matrix with `entries` on the
+    /// diagonal and zeros elsewhere.
+    pub fn diagonal(entries: &Vec32) -> Self {
+        let size = entries.0.len();
+        let data = (0..size)
+            .flat_map(|col| (0..size).map(move |row| if row == col { entries.0[col] } else { 0 }))
+            .collect();
+        Self::from_columns(size, size, data).expect("diagonal data matches size squared")
+    }
+
+    /// `^M` (global.w:5186): the transposed matrix.
+    pub fn transposed(&self) -> Self {
+        let data = (0..self.rows).flat_map(|row| self.row(row).0).collect();
+        Self::from_columns(self.cols, self.rows, data)
+            .expect("transposed data matches swapped dimensions")
+    }
+
+    /// Entry-wise negation; entries wrap like upstream machine `int`.
+    pub fn negated(&self) -> Self {
+        let data = self
+            .data
+            .iter()
+            .map(|&entry| entry.wrapping_neg())
+            .collect();
+        Self::from_columns(self.rows, self.cols, data).expect("negation preserves dimensions")
+    }
+
+    /// `M += i` (global.w:4235-4248): add `value` to the main diagonal, up to
+    /// the smaller dimension (upstream does not require a square matrix).
+    pub fn added_diagonal(&self, value: i32) -> Self {
+        let mut data = self.data.clone();
+        for index in 0..self.rows.min(self.cols) {
+            data[index * self.rows + index] = data[index * self.rows + index].wrapping_add(value);
+        }
+        Self::from_columns(self.rows, self.cols, data).expect("diagonal add preserves dimensions")
+    }
+
+    /// `A+B` entry-wise (global.w:4253); the caller checks the shapes match.
+    pub fn added(&self, other: &Matrix) -> Self {
+        assert_eq!(
+            (self.rows, self.cols),
+            (other.rows, other.cols),
+            "matrix addition sees equal shapes"
+        );
+        let data = self
+            .data
+            .iter()
+            .zip(&other.data)
+            .map(|(&left, &right)| left.wrapping_add(right))
+            .collect();
+        Self::from_columns(self.rows, self.cols, data).expect("addition preserves dimensions")
+    }
+
+    /// `A-B` entry-wise (global.w:4264); the caller checks the shapes match.
+    pub fn subtracted(&self, other: &Matrix) -> Self {
+        self.added(&other.negated())
+    }
+
+    /// `A*B` (global.w:4287); the caller checks `self.cols == other.rows`.
+    /// Entries accumulate with machine-`int` wrapping, as upstream.
+    pub fn multiplied(&self, other: &Matrix) -> Self {
+        assert_eq!(
+            self.cols, other.rows,
+            "matrix product sees matching inner dimension"
+        );
+        let data = (0..other.cols)
+            .flat_map(|col| {
+                (0..self.rows).map(move |row| {
+                    let mut sum = 0i32;
+                    for inner in 0..self.cols {
+                        sum = sum.wrapping_add(
+                            self.data[inner * self.rows + row]
+                                .wrapping_mul(other.data[col * other.rows + inner]),
+                        );
+                    }
+                    sum
+                })
+            })
+            .collect();
+        Self::from_columns(self.rows, other.cols, data)
+            .expect("product data matches result dimensions")
+    }
+
+    /// `M*v` (global.w:4297); the caller checks `self.cols == vector.len()`.
+    pub fn multiplied_vec(&self, vector: &Vec32) -> Vec32 {
+        assert_eq!(
+            self.cols,
+            vector.0.len(),
+            "matrix-vector product sees matching dimension"
+        );
+        Vec32(
+            (0..self.rows)
+                .map(|row| {
+                    let mut sum = 0i32;
+                    for (inner, &entry) in vector.0.iter().enumerate() {
+                        sum = sum
+                            .wrapping_add(self.data[inner * self.rows + row].wrapping_mul(entry));
+                    }
+                    sum
+                })
+                .collect(),
+        )
+    }
+
+    /// `v*M` (global.w:4322); the caller checks `vector.len() == self.rows`.
+    pub fn left_multiplied_vec(&self, vector: &Vec32) -> Vec32 {
+        assert_eq!(
+            self.rows,
+            vector.0.len(),
+            "vector-matrix product sees matching dimension"
+        );
+        Vec32(
+            (0..self.cols)
+                .map(|col| {
+                    let mut sum = 0i32;
+                    for (row, &entry) in vector.0.iter().enumerate() {
+                        sum =
+                            sum.wrapping_add(entry.wrapping_mul(self.data[col * self.rows + row]));
+                    }
+                    sum
+                })
+                .collect(),
+        )
+    }
+
+    /// `M*rv` (global.w:4308); the caller checks `self.cols == vector` size.
+    /// Numerators accumulate in machine `long` (i64), as upstream.
+    pub fn multiplied_ratvec(&self, vector: &RatVec) -> RatVec {
+        assert_eq!(
+            self.cols,
+            vector.numerators().len(),
+            "matrix-ratvec product sees matching dimension"
+        );
+        let numerators = (0..self.rows)
+            .map(|row| {
+                let mut sum = 0i64;
+                for (inner, &numerator) in vector.numerators().iter().enumerate() {
+                    sum = sum.wrapping_add(
+                        i64::from(self.data[inner * self.rows + row]).wrapping_mul(numerator),
+                    );
+                }
+                sum
+            })
+            .collect();
+        RatVec::new(numerators, vector.denominator()).expect("ratvec denominator stays nonzero")
+    }
+
+    /// `rv*M` (global.w:4335); the caller checks `vector` size == self.rows.
+    pub fn left_multiplied_ratvec(&self, vector: &RatVec) -> RatVec {
+        assert_eq!(
+            self.rows,
+            vector.numerators().len(),
+            "ratvec-matrix product sees matching dimension"
+        );
+        let numerators = (0..self.cols)
+            .map(|col| {
+                let mut sum = 0i64;
+                for (row, &numerator) in vector.numerators().iter().enumerate() {
+                    sum = sum.wrapping_add(
+                        numerator.wrapping_mul(i64::from(self.data[col * self.rows + row])),
+                    );
+                }
+                sum
+            })
+            .collect();
+        RatVec::new(numerators, vector.denominator()).expect("ratvec denominator stays nonzero")
+    }
 }
 
 impl RatVec {

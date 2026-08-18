@@ -11,6 +11,7 @@
 //! the EXACT upstream error text (typo included, bigint.cpp:142-162).
 
 use malachite::base::num::arithmetic::traits::{Ceiling, Floor, Mod, Pow};
+use malachite::base::num::logic::traits::SignificantBits;
 use malachite::{Integer as BigInt, Rational as BigRational};
 
 use crate::coercions::{coercion_between, row_coercion};
@@ -29,6 +30,7 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 use std::sync::OnceLock;
+use std::time::Instant;
 
 /// Why evaluation stopped early. Loops consume `Break(0)` and rethrow
 /// decremented; closure application consumes `Return`; runtime errors
@@ -3659,7 +3661,7 @@ enum DomainNoValue {
     BuildAndDrop,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum ScalarOp {
     IntNegate,
     IntAdd,
@@ -3707,9 +3709,61 @@ enum ScalarOp {
     BinaryRelation(Relation),
     ListCardinality,
     StringConcat,
+    IntSuccessor,
+    IntPredecessor,
+    IntAnd,
+    IntOr,
+    IntXor,
+    IntAndNot,
+    IntBitwiseSubset,
+    IntNthSetBit,
+    IntBitLength,
+    VecToBitset,
+    VecJoin,
+    VecRowJoin,
+    VecSuffix,
+    VecPrefix,
+    VecSubtract,
+    VecMultiplyInt,
+    VecQuotientInt,
+    VecModuloInt,
+    RatvecUnfraction,
+    RatvecAdd,
+    RatvecSubtract,
+    RatvecNegate,
+    RatvecMultiplyInt,
+    RatvecDivideInt,
+    RatvecModuloInt,
+    RatvecMultiplyRat,
+    RatvecDivideRat,
+    MatAddInt,
+    MatSubtractInt,
+    IntAddMat,
+    IntSubtractMat,
+    VecDot,
+    FlexAdd,
+    FlexSub,
+    VecConvolve,
+    MatAdd,
+    MatSubtract,
+    MatMulRatVec,
+    MatMulVec,
+    MatMulMat,
+    VecMulMat,
+    RatVecMulMat,
+    NullVector,
+    VecTranspose,
+    MatTranspose,
+    IdMat,
+    Diagonal,
+    StackRows,
+    CombineColumns,
+    CombineRows,
+    VectorGcd,
+    ElapsedMs,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum Relation {
     Equal,
     NotEqual,
@@ -3957,6 +4011,165 @@ fn euclidean_divmod(left: &BigInt, right: &BigInt) -> (BigInt, BigInt) {
         remainder += right;
     }
     (quotient, remainder)
+}
+
+/// `int_val()` narrowing (bigint.cpp:142-162): the machine-`int` payload or
+/// the exact upstream diagnostic (typo included).
+fn plain_int(value: &BigInt, span: SourceSpan) -> Result<i32, Control> {
+    i32::try_from(value).map_err(|_| runtime("Integer value to big for conversion", span))
+}
+
+/// `long_val()` narrowing (bigint.cpp:142-162): the machine-`long` payload.
+fn long_int(value: &BigInt, span: SourceSpan) -> Result<i64, Control> {
+    i64::try_from(value).map_err(|_| runtime("Integer value to big for conversion", span))
+}
+
+/// The shared `check_size` diagnostic (global.w:3874-3880).
+fn size_mismatch(left: usize, right: usize, span: SourceSpan) -> Control {
+    runtime(format!("Size mismatch {left}:{right}"), span)
+}
+
+fn gcd_u64(mut left: u64, mut right: u64) -> u64 {
+    while right != 0 {
+        (left, right) = (right, left % right);
+    }
+    left
+}
+
+/// Vector `\`/`%` entry arithmetic (global.w:3917-3937): unlike the int
+/// operators, the remainder is always taken in `[0,|m|)` and the quotient
+/// follows exactly (oracle: `[7] % -3 == [1]`, `[7] \ -3 == [-2]`).
+fn vec_divmod_entry(entry: i32, divisor: i32) -> (i32, i32) {
+    let entry = i64::from(entry);
+    let divisor = i64::from(divisor);
+    let remainder = entry.rem_euclid(divisor.abs());
+    let quotient = ((entry - remainder) / divisor) as i32;
+    (quotient, remainder as i32)
+}
+
+/// The `n`th set bit (0-based) of the two's-complement bit string of `value`
+/// (bigint.cpp `index_of_set_bit`), or -1 when a non-negative `value` has
+/// fewer than `n+1` set bits. Negative values have infinitely many set bits,
+/// so their `n`th set bit always exists; it is found by walking the finitely
+/// many set-bit positions of the complement (the cleared positions).
+fn index_of_set_bit(value: &BigInt, mut n: u64) -> BigInt {
+    if *value >= 0 {
+        for (limb_index, &limb) in value.unsigned_abs_ref().to_limbs_asc().iter().enumerate() {
+            let count = u64::from(limb.count_ones());
+            if n >= count {
+                n -= count;
+                continue;
+            }
+            let mut rest = limb;
+            loop {
+                let position = u64::from(rest.trailing_zeros());
+                if n == 0 {
+                    return BigInt::from(limb_index as u64 * 64 + position);
+                }
+                rest &= rest - 1;
+                n -= 1;
+            }
+        }
+        return BigInt::from(-1);
+    }
+    let mut next = 0u64; // next candidate position, all below it resolved
+    for (limb_index, &limb) in (!value)
+        .unsigned_abs_ref()
+        .to_limbs_asc()
+        .iter()
+        .enumerate()
+    {
+        let mut rest = limb;
+        while rest != 0 {
+            let cleared = limb_index as u64 * 64 + u64::from(rest.trailing_zeros());
+            rest &= rest - 1;
+            let gap = cleared - next; // set-bit positions of `value` in [next, cleared)
+            if n < gap {
+                return BigInt::from(next + n);
+            }
+            n -= gap;
+            next = cleared + 1;
+        }
+    }
+    BigInt::from(next + n)
+}
+
+/// `flex_add`/`flex_sub` (global.w:3953-4048): size-adaptive polynomial
+/// arithmetic; trailing zeros are trimmed from both arguments, and from the
+/// result only in the equal-trimmed-size case.
+fn flex_add_sub(left: &[i32], right: &[i32], subtract: bool) -> Vec<i32> {
+    let trimmed = |vector: &[i32]| {
+        vector
+            .iter()
+            .rposition(|&entry| entry != 0)
+            .map_or(0, |p| p + 1)
+    };
+    let (left_size, right_size) = (trimmed(left), trimmed(right));
+    let size = left_size.max(right_size);
+    let mut result = vec![0i32; size];
+    for (index, &entry) in left[..left_size].iter().enumerate() {
+        result[index] = result[index].wrapping_add(entry);
+    }
+    for (index, &entry) in right[..right_size].iter().enumerate() {
+        result[index] = if subtract {
+            result[index].wrapping_sub(entry)
+        } else {
+            result[index].wrapping_add(entry)
+        };
+    }
+    if left_size == right_size {
+        result.truncate(trimmed(&result));
+    }
+    result
+}
+
+/// `convolve` (global.w:4056-4085): polynomial multiplication of the
+/// zero-trimmed arguments; empty when either trimmed argument is empty.
+fn convolve(left: &[i32], right: &[i32]) -> Vec<i32> {
+    let trimmed = |vector: &[i32]| {
+        vector
+            .iter()
+            .rposition(|&entry| entry != 0)
+            .map_or(0, |p| p + 1)
+    };
+    let (left, right) = (&left[..trimmed(left)], &right[..trimmed(right)]);
+    if left.is_empty() || right.is_empty() {
+        return Vec::new();
+    }
+    let mut result = vec![0i32; left.len() + right.len() - 1];
+    for (index, &entry) in left.iter().enumerate() {
+        result[index] = entry.wrapping_mul(right[0]);
+    }
+    for (shift, &entry) in right.iter().enumerate().skip(1) {
+        result[left.len() - 1 + shift] = left[left.len() - 1].wrapping_mul(entry);
+        for (index, &base) in left[..left.len() - 1].iter().enumerate() {
+            result[index + shift] = result[index + shift].wrapping_add(base.wrapping_mul(entry));
+        }
+    }
+    result
+}
+
+/// `ratvec + ratvec`/`ratvec - ratvec` (global.w:4127-4139): cross-multiply
+/// over the least common denominator; `RatVec::new` normalises the sum.
+fn ratvec_add_sub(left: &RatVec, right: &RatVec, subtract: bool) -> RatVec {
+    let (left_den, right_den) = (left.denominator(), right.denominator());
+    let divisor = gcd_u64(left_den, right_den);
+    let (left_scale, right_scale) = (right_den / divisor, left_den / divisor);
+    let numerators = left
+        .numerators()
+        .iter()
+        .zip(right.numerators())
+        .map(|(&a, &b)| {
+            let b = if subtract {
+                -i128::from(b)
+            } else {
+                i128::from(b)
+            };
+            (i128::from(a) * i128::from(left_scale) + b * i128::from(right_scale)) as i64
+        })
+        .collect();
+    let denominator = (u128::from(left_den) * u128::from(left_scale)) as u64;
+    RatVec::new(numerators, denominator).expect("ratvec sum keeps a nonzero denominator")
 }
 
 fn run_scalar(
@@ -4286,26 +4499,72 @@ fn run_scalar(
         ScalarOp::UnaryRelation(relation) => {
             let value = expect_unary(arguments);
             Ok(at_builtin_level(level, || {
-                let ordering = match value {
-                    Value::Integer(value) => value.cmp(&BigInt::from(0)),
-                    Value::Rational(value) => value.cmp(&BigRational::from(0)),
-                    Value::String(value) => value.as_str().cmp(""),
+                // Containers compare against an implicit zero of the same
+                // kind: only =/!=/>=/> are registered for vec and ratvec,
+                // only =/!= for mat (global.w:4405-4420).
+                let result = match &value {
+                    Value::Integer(value) => {
+                        relation_matches(relation, value.cmp(&BigInt::from(0)))
+                    }
+                    Value::Rational(value) => {
+                        relation_matches(relation, value.cmp(&BigRational::from(0)))
+                    }
+                    Value::String(value) => relation_matches(relation, value.as_str().cmp("")),
+                    Value::Vector(vector) => match relation {
+                        Relation::Equal => vector.0.iter().all(|&entry| entry == 0),
+                        Relation::NotEqual => vector.0.iter().any(|&entry| entry != 0),
+                        Relation::GreaterEqual => vector.0.iter().all(|&entry| entry >= 0),
+                        Relation::Greater => vector.0.iter().all(|&entry| entry > 0),
+                        _ => panic!("ordered vector relation is not registered"),
+                    },
+                    Value::RatVector(ratvec) => match relation {
+                        Relation::Equal => ratvec.numerators().iter().all(|&entry| entry == 0),
+                        Relation::NotEqual => ratvec.numerators().iter().any(|&entry| entry != 0),
+                        Relation::GreaterEqual => {
+                            ratvec.numerators().iter().all(|&entry| entry >= 0)
+                        }
+                        Relation::Greater => ratvec.numerators().iter().all(|&entry| entry > 0),
+                        _ => panic!("ordered ratvec relation is not registered"),
+                    },
+                    Value::Matrix(matrix) => match relation {
+                        Relation::Equal => matrix.is_zero(),
+                        Relation::NotEqual => !matrix.is_zero(),
+                        _ => panic!("ordered matrix relation is not registered"),
+                    },
                     other => panic!("unary relation saw {other:?}"),
                 };
-                Value::Boolean(relation_matches(relation, ordering))
+                Value::Boolean(result)
             }))
         }
         ScalarOp::BinaryRelation(relation) => {
             let (first, second) = expect_pair(arguments);
             Ok(at_builtin_level(level, || {
-                let ordering = match (first, second) {
-                    (Value::Integer(first), Value::Integer(second)) => first.cmp(&second),
-                    (Value::Rational(first), Value::Rational(second)) => first.cmp(&second),
-                    (Value::Boolean(first), Value::Boolean(second)) => first.cmp(&second),
-                    (Value::String(first), Value::String(second)) => first.cmp(&second),
+                let result = match (first, second) {
+                    (Value::Integer(first), Value::Integer(second)) => {
+                        relation_matches(relation, first.cmp(&second))
+                    }
+                    (Value::Rational(first), Value::Rational(second)) => {
+                        relation_matches(relation, first.cmp(&second))
+                    }
+                    (Value::Boolean(first), Value::Boolean(second)) => {
+                        relation_matches(relation, first.cmp(&second))
+                    }
+                    (Value::String(first), Value::String(second)) => {
+                        relation_matches(relation, first.cmp(&second))
+                    }
+                    // Only =/!= are registered for containers.
+                    (Value::Vector(first), Value::Vector(second)) => {
+                        container_equality(relation, first == second)
+                    }
+                    (Value::RatVector(first), Value::RatVector(second)) => {
+                        container_equality(relation, first == second)
+                    }
+                    (Value::Matrix(first), Value::Matrix(second)) => {
+                        container_equality(relation, first == second)
+                    }
                     other => panic!("binary relation saw {other:?}"),
                 };
-                Value::Boolean(relation_matches(relation, ordering))
+                Value::Boolean(result)
             }))
         }
         ScalarOp::ListCardinality => match expect_unary(arguments) {
@@ -4460,6 +4719,765 @@ fn run_scalar(
             })),
             other => panic!("matrix rows/columns saw {other:?}"),
         },
+        // succ/pred (global.w:2761-2773): upstream's parse-time rewrite
+        // turns x+1/x-1 into these; as builtins they are plain increments.
+        ScalarOp::IntSuccessor | ScalarOp::IntPredecessor => match expect_unary(arguments) {
+            Value::Integer(value) => Ok(at_builtin_level(level, || {
+                Value::Integer(match operation {
+                    ScalarOp::IntSuccessor => value + BigInt::from(1),
+                    ScalarOp::IntPredecessor => value - BigInt::from(1),
+                    _ => unreachable!(),
+                })
+            })),
+            other => panic!("integer successor/predecessor saw {other:?}"),
+        },
+        // AND/OR/XOR/AND_NOT (global.w:2817-2849): two's-complement bit
+        // strings; call syntax only (AND(6,3)), they are not operators.
+        ScalarOp::IntAnd | ScalarOp::IntOr | ScalarOp::IntXor | ScalarOp::IntAndNot => {
+            let (first, second) = expect_ints(arguments);
+            Ok(at_builtin_level(level, || {
+                Value::Integer(match operation {
+                    ScalarOp::IntAnd => first & second,
+                    ScalarOp::IntOr => first | second,
+                    ScalarOp::IntXor => first ^ second,
+                    ScalarOp::IntAndNot => first & !second,
+                    _ => unreachable!(),
+                })
+            }))
+        }
+        // bitwise_subset (global.w:2852-2857): the set bits of the left
+        // operand all occur in the right operand.
+        ScalarOp::IntBitwiseSubset => {
+            let (first, second) = expect_ints(arguments);
+            Ok(at_builtin_level(level, || {
+                Value::Boolean(&first & &second == first)
+            }))
+        }
+        // nth_set_bit (global.w:2859-2870): the index narrows through
+        // long_val before the no-value gate; a negative index counts cleared
+        // bits of the operand instead.
+        ScalarOp::IntNthSetBit => {
+            let (value, index) = expect_ints(arguments);
+            let index = long_int(&index, span)?;
+            Ok(at_builtin_level(level, || {
+                Value::Integer(if index >= 0 {
+                    index_of_set_bit(&value, index as u64)
+                } else {
+                    index_of_set_bit(&!&value, index.wrapping_neg().wrapping_sub(1) as u64)
+                })
+            }))
+        }
+        // bit_length (global.w:2872-2877): significant bits for n>=0; for
+        // n<0 the negated two's-complement size, -(bits(~n)+1).
+        ScalarOp::IntBitLength => match expect_unary(arguments) {
+            Value::Integer(value) => Ok(at_builtin_level(level, || {
+                Value::Integer(if value >= 0 {
+                    BigInt::from((&value).significant_bits())
+                } else {
+                    -BigInt::from((&!&value).significant_bits() + 1)
+                })
+            })),
+            other => panic!("bit_length saw {other:?}"),
+        },
+        // to_bitset (global.w:2887-2899): the negative-entry scan runs
+        // before the no-value gate.
+        ScalarOp::VecToBitset => match expect_unary(arguments) {
+            Value::Vector(vector) => {
+                for &entry in &vector.0 {
+                    if entry < 0 {
+                        return Err(runtime("Negative entry in conversion to bitset", span));
+                    }
+                }
+                Ok(at_builtin_level(level, || {
+                    let mut bits = BigInt::from(0);
+                    for &entry in &vector.0 {
+                        bits += BigInt::from(1) << (entry as u64);
+                    }
+                    Value::Integer(bits)
+                }))
+            }
+            other => panic!("to_bitset saw {other:?}"),
+        },
+        // join_vectors / join_vector_row (global.w:3675-3706): plain
+        // concatenation, pairwise or of a row of vecs.
+        ScalarOp::VecJoin => match expect_pair(arguments) {
+            (Value::Vector(left), Value::Vector(right)) => Ok(at_builtin_level(level, || {
+                let mut joined = left.0;
+                joined.extend(right.0);
+                Value::Vector(Vec32(joined))
+            })),
+            other => panic!("vector join saw {other:?}"),
+        },
+        ScalarOp::VecRowJoin => match expect_unary(arguments) {
+            Value::List(parts) => Ok(at_builtin_level(level, || {
+                let mut joined = Vec::new();
+                for part in parts {
+                    match part {
+                        Value::Vector(vector) => joined.extend(vector.0),
+                        other => panic!("vector row join saw {other:?}"),
+                    }
+                }
+                Value::Vector(Vec32(joined))
+            })),
+            other => panic!("vector row join saw {other:?}"),
+        },
+        // vector suffix/prefix (global.w:3657-3673): the element narrows
+        // through int_val before the gate.
+        ScalarOp::VecSuffix | ScalarOp::VecPrefix => {
+            let (first, second) = expect_pair(arguments);
+            let (vector, element) = match operation {
+                ScalarOp::VecSuffix => match (first, second) {
+                    (Value::Vector(vector), Value::Integer(element)) => (vector, element),
+                    (first, second) => {
+                        panic!("vector suffix saw {first:?} and {second:?}")
+                    }
+                },
+                ScalarOp::VecPrefix => match (first, second) {
+                    (Value::Integer(element), Value::Vector(vector)) => (vector, element),
+                    (first, second) => {
+                        panic!("vector prefix saw {first:?} and {second:?}")
+                    }
+                },
+                _ => unreachable!(),
+            };
+            let element = plain_int(&element, span)?;
+            Ok(at_builtin_level(level, || {
+                let mut entries = vector.0;
+                match operation {
+                    ScalarOp::VecSuffix => entries.push(element),
+                    ScalarOp::VecPrefix => entries.insert(0, element),
+                    _ => unreachable!(),
+                }
+                Value::Vector(Vec32(entries))
+            }))
+        }
+        // vec-vec subtraction (global.w:3891-3899); the check_size
+        // diagnostic names left:right sizes and fires before the gate.
+        ScalarOp::VecSubtract => match expect_pair(arguments) {
+            (Value::Vector(left), Value::Vector(right)) => {
+                if left.0.len() != right.0.len() {
+                    return Err(size_mismatch(left.0.len(), right.0.len(), span));
+                }
+                Ok(at_builtin_level(level, || {
+                    Value::Vector(Vec32(
+                        left.0
+                            .into_iter()
+                            .zip(right.0)
+                            .map(|(a, b)| a.wrapping_sub(b))
+                            .collect(),
+                    ))
+                }))
+            }
+            other => panic!("vector subtraction saw {other:?}"),
+        },
+        // vec*int (global.w:3909-3915): int_val narrowing before the gate.
+        ScalarOp::VecMultiplyInt => match expect_pair(arguments) {
+            (Value::Vector(vector), Value::Integer(factor)) => {
+                let factor = plain_int(&factor, span)?;
+                Ok(at_builtin_level(level, || {
+                    Value::Vector(Vec32(
+                        vector
+                            .0
+                            .into_iter()
+                            .map(|entry| entry.wrapping_mul(factor))
+                            .collect(),
+                    ))
+                }))
+            }
+            other => panic!("vector scaling saw {other:?}"),
+        },
+        // vec\int and vec%int (global.w:3917-3937): narrowing and the zero
+        // divisor diagnostic fire before the gate; the remainder is always
+        // non-negative (see vec_divmod_entry).
+        ScalarOp::VecQuotientInt | ScalarOp::VecModuloInt => match expect_pair(arguments) {
+            (Value::Vector(vector), Value::Integer(divisor)) => {
+                let divisor = plain_int(&divisor, span)?;
+                if divisor == 0 {
+                    let message = match operation {
+                        ScalarOp::VecQuotientInt => "Vector division by 0",
+                        ScalarOp::VecModuloInt => "Vector modulo 0",
+                        _ => unreachable!(),
+                    };
+                    return Err(runtime(message, span));
+                }
+                Ok(at_builtin_level(level, || {
+                    Value::Vector(Vec32(
+                        vector
+                            .0
+                            .into_iter()
+                            .map(|entry| {
+                                let (quotient, remainder) = vec_divmod_entry(entry, divisor);
+                                match operation {
+                                    ScalarOp::VecQuotientInt => quotient,
+                                    ScalarOp::VecModuloInt => remainder,
+                                    _ => unreachable!(),
+                                }
+                            })
+                            .collect(),
+                    ))
+                }))
+            }
+            other => panic!("vector division/modulo saw {other:?}"),
+        },
+        // ratvec unfraction (global.w:4119-4125): numerators narrow from
+        // machine long to int, wrapping as upstream's iterator copy does.
+        ScalarOp::RatvecUnfraction => match expect_unary(arguments) {
+            Value::RatVector(ratvec) => Ok(at_builtin_level(level, || {
+                Value::Tuple(vec![
+                    Value::Vector(Vec32(
+                        ratvec.numerators().iter().map(|&n| n as i32).collect(),
+                    )),
+                    Value::Integer(BigInt::from(ratvec.denominator())),
+                ])
+            })),
+            other => panic!("ratvec unfraction saw {other:?}"),
+        },
+        // ratvec+ratvec/ratvec-ratvec (global.w:4127-4139): check_size
+        // fires before the gate.
+        ScalarOp::RatvecAdd | ScalarOp::RatvecSubtract => match expect_pair(arguments) {
+            (Value::RatVector(left), Value::RatVector(right)) => {
+                if left.numerators().len() != right.numerators().len() {
+                    return Err(size_mismatch(
+                        left.numerators().len(),
+                        right.numerators().len(),
+                        span,
+                    ));
+                }
+                Ok(at_builtin_level(level, || {
+                    Value::RatVector(ratvec_add_sub(
+                        &left,
+                        &right,
+                        operation == ScalarOp::RatvecSubtract,
+                    ))
+                }))
+            }
+            other => panic!("ratvec addition/subtraction saw {other:?}"),
+        },
+        ScalarOp::RatvecNegate => match expect_unary(arguments) {
+            Value::RatVector(ratvec) => Ok(at_builtin_level(level, || {
+                Value::RatVector(
+                    RatVec::new(
+                        ratvec
+                            .numerators()
+                            .iter()
+                            .map(|&n| n.wrapping_neg())
+                            .collect(),
+                        ratvec.denominator(),
+                    )
+                    .expect("negation keeps a nonzero denominator"),
+                )
+            })),
+            other => panic!("ratvec negation saw {other:?}"),
+        },
+        // ratvec *int, /int, %int (global.w:4154-4180): long_val narrowing
+        // and the zero-divisor diagnostics fire before the gate; every
+        // operation re-normalises the result.
+        ScalarOp::RatvecMultiplyInt | ScalarOp::RatvecDivideInt | ScalarOp::RatvecModuloInt => {
+            match expect_pair(arguments) {
+                (Value::RatVector(ratvec), Value::Integer(factor)) => {
+                    let factor = long_int(&factor, span)?;
+                    if factor == 0 {
+                        match operation {
+                            ScalarOp::RatvecDivideInt => {
+                                return Err(runtime("Rational vector division by 0", span));
+                            }
+                            ScalarOp::RatvecModuloInt => {
+                                return Err(runtime("Rational vector modulo 0", span));
+                            }
+                            _ => {}
+                        }
+                    }
+                    Ok(at_builtin_level(level, || {
+                        Value::RatVector(match operation {
+                            ScalarOp::RatvecMultiplyInt => RatVec::new(
+                                ratvec
+                                    .numerators()
+                                    .iter()
+                                    .map(|&n| n.wrapping_mul(factor))
+                                    .collect(),
+                                ratvec.denominator(),
+                            )
+                            .expect("scaling keeps a nonzero denominator"),
+                            ScalarOp::RatvecDivideInt => {
+                                let negative = factor < 0;
+                                RatVec::new(
+                                    ratvec
+                                        .numerators()
+                                        .iter()
+                                        .map(|&n| if negative { n.wrapping_neg() } else { n })
+                                        .collect(),
+                                    ratvec.denominator().wrapping_mul(factor.unsigned_abs()),
+                                )
+                                .expect("division keeps a nonzero denominator")
+                            }
+                            ScalarOp::RatvecModuloInt => {
+                                let modulus = i128::from(ratvec.denominator())
+                                    * i128::from(factor.unsigned_abs());
+                                RatVec::new(
+                                    ratvec
+                                        .numerators()
+                                        .iter()
+                                        .map(|&n| (i128::from(n).rem_euclid(modulus)) as i64)
+                                        .collect(),
+                                    ratvec.denominator(),
+                                )
+                                .expect("modulo keeps a nonzero denominator")
+                            }
+                            _ => unreachable!(),
+                        })
+                    }))
+                }
+                other => panic!("ratvec int arithmetic saw {other:?}"),
+            }
+        }
+        // ratvec *rat and /rat (global.w:4183-4197): the zero-divisor
+        // diagnostic fires before the gate, but the computation (including
+        // its narrowing) happens inside it, as upstream does.
+        ScalarOp::RatvecMultiplyRat | ScalarOp::RatvecDivideRat => match expect_pair(arguments) {
+            (Value::RatVector(ratvec), Value::Rational(factor)) => {
+                if operation == ScalarOp::RatvecDivideRat && factor == 0 {
+                    return Err(runtime("Rational vector division by 0", span));
+                }
+                if level == Level::NoValue {
+                    return Ok(None);
+                }
+                // Malachite splits off the sign; the magnitude narrows
+                // through machine long, as upstream's ratvec arithmetic.
+                let negative = factor < 0;
+                let (magnitude, denominator) = factor.into_numerator_and_denominator();
+                let magnitude = i64::try_from(&BigInt::from(magnitude))
+                    .map_err(|_| runtime("Integer value to big for conversion", span))?;
+                let denominator = u64::try_from(&BigInt::from(denominator))
+                    .map_err(|_| runtime("Integer value to big for conversion", span))?;
+                // Dividing by p/q multiplies by q/p.
+                let (scale_num, scale_den) = match operation {
+                    ScalarOp::RatvecMultiplyRat => (magnitude, denominator),
+                    ScalarOp::RatvecDivideRat => (
+                        i64::try_from(denominator)
+                            .map_err(|_| runtime("Integer value to big for conversion", span))?,
+                        magnitude as u64,
+                    ),
+                    _ => unreachable!(),
+                };
+                Ok(Some(Value::RatVector(
+                    RatVec::new(
+                        ratvec
+                            .numerators()
+                            .iter()
+                            .map(|&n| {
+                                let n = if negative { n.wrapping_neg() } else { n };
+                                n.wrapping_mul(scale_num)
+                            })
+                            .collect(),
+                        ratvec.denominator().wrapping_mul(scale_den),
+                    )
+                    .expect("rational scaling keeps a nonzero denominator"),
+                )))
+            }
+            other => panic!("ratvec rational scaling saw {other:?}"),
+        },
+        // mat±int and int±mat (global.w:4235-4248): int_val narrowing
+        // before the gate; the integer is added to the main diagonal, and
+        // upstream does not require a square matrix.
+        ScalarOp::MatAddInt
+        | ScalarOp::MatSubtractInt
+        | ScalarOp::IntAddMat
+        | ScalarOp::IntSubtractMat => {
+            let (first, second) = expect_pair(arguments);
+            let (matrix, value) = match (first, second) {
+                (Value::Matrix(matrix), Value::Integer(value))
+                    if matches!(operation, ScalarOp::MatAddInt | ScalarOp::MatSubtractInt) =>
+                {
+                    (matrix, value)
+                }
+                (Value::Integer(value), Value::Matrix(matrix))
+                    if matches!(operation, ScalarOp::IntAddMat | ScalarOp::IntSubtractMat) =>
+                {
+                    (matrix, value)
+                }
+                (first, second) => {
+                    panic!("matrix-int addition saw {first:?} and {second:?}")
+                }
+            };
+            let value = plain_int(&value, span)?;
+            Ok(at_builtin_level(level, || {
+                Value::Matrix(match operation {
+                    ScalarOp::MatAddInt | ScalarOp::IntAddMat => matrix.added_diagonal(value),
+                    ScalarOp::MatSubtractInt => matrix.added_diagonal(value.wrapping_neg()),
+                    ScalarOp::IntSubtractMat => matrix.negated().added_diagonal(value),
+                    _ => unreachable!(),
+                })
+            }))
+        }
+        // vec*vec dot product (global.w:3938-3943): check_size first, then
+        // machine-int wrapping accumulation.
+        ScalarOp::VecDot => match expect_pair(arguments) {
+            (Value::Vector(left), Value::Vector(right)) => {
+                if left.0.len() != right.0.len() {
+                    return Err(size_mismatch(left.0.len(), right.0.len(), span));
+                }
+                Ok(at_builtin_level(level, || {
+                    let mut sum = 0i32;
+                    for (&a, &b) in left.0.iter().zip(&right.0) {
+                        sum = sum.wrapping_add(a.wrapping_mul(b));
+                    }
+                    Value::Integer(BigInt::from(sum))
+                }))
+            }
+            other => panic!("vector dot product saw {other:?}"),
+        },
+        ScalarOp::FlexAdd | ScalarOp::FlexSub => match expect_pair(arguments) {
+            (Value::Vector(left), Value::Vector(right)) => Ok(at_builtin_level(level, || {
+                Value::Vector(Vec32(flex_add_sub(
+                    &left.0,
+                    &right.0,
+                    operation == ScalarOp::FlexSub,
+                )))
+            })),
+            other => panic!("flex add/sub saw {other:?}"),
+        },
+        ScalarOp::VecConvolve => match expect_pair(arguments) {
+            (Value::Vector(left), Value::Vector(right)) => Ok(at_builtin_level(level, || {
+                Value::Vector(Vec32(convolve(&left.0, &right.0)))
+            })),
+            other => panic!("convolve saw {other:?}"),
+        },
+        // mat±mat (global.w:4253-4275): the row check fires before the
+        // column check, both before the gate.
+        ScalarOp::MatAdd | ScalarOp::MatSubtract => match expect_pair(arguments) {
+            (Value::Matrix(left), Value::Matrix(right)) => {
+                if left.rows() != right.rows() {
+                    return Err(size_mismatch(left.rows(), right.rows(), span));
+                }
+                if left.cols() != right.cols() {
+                    return Err(size_mismatch(left.cols(), right.cols(), span));
+                }
+                Ok(at_builtin_level(level, || {
+                    Value::Matrix(match operation {
+                        ScalarOp::MatAdd => left.added(&right),
+                        ScalarOp::MatSubtract => left.subtracted(&right),
+                        _ => unreachable!(),
+                    })
+                }))
+            }
+            other => panic!("matrix addition/subtraction saw {other:?}"),
+        },
+        // The matrix/vector products (global.w:4284-4342): each dimension
+        // diagnostic fires before the gate, with the product's own wording
+        // ("Size mismatch <inner left>:<inner right>").
+        ScalarOp::MatMulVec => match expect_pair(arguments) {
+            (Value::Matrix(matrix), Value::Vector(vector)) => {
+                if matrix.cols() != vector.0.len() {
+                    return Err(size_mismatch(matrix.cols(), vector.0.len(), span));
+                }
+                Ok(at_builtin_level(level, || {
+                    Value::Vector(matrix.multiplied_vec(&vector))
+                }))
+            }
+            other => panic!("matrix-vector product saw {other:?}"),
+        },
+        ScalarOp::MatMulRatVec => match expect_pair(arguments) {
+            (Value::Matrix(matrix), Value::RatVector(vector)) => {
+                if matrix.cols() != vector.numerators().len() {
+                    return Err(size_mismatch(
+                        matrix.cols(),
+                        vector.numerators().len(),
+                        span,
+                    ));
+                }
+                Ok(at_builtin_level(level, || {
+                    Value::RatVector(matrix.multiplied_ratvec(&vector))
+                }))
+            }
+            other => panic!("matrix-ratvec product saw {other:?}"),
+        },
+        ScalarOp::MatMulMat => match expect_pair(arguments) {
+            (Value::Matrix(left), Value::Matrix(right)) => {
+                if left.cols() != right.rows() {
+                    return Err(size_mismatch(left.cols(), right.rows(), span));
+                }
+                Ok(at_builtin_level(level, || {
+                    Value::Matrix(left.multiplied(&right))
+                }))
+            }
+            other => panic!("matrix product saw {other:?}"),
+        },
+        ScalarOp::VecMulMat => match expect_pair(arguments) {
+            (Value::Vector(vector), Value::Matrix(matrix)) => {
+                if vector.0.len() != matrix.rows() {
+                    return Err(size_mismatch(vector.0.len(), matrix.rows(), span));
+                }
+                Ok(at_builtin_level(level, || {
+                    Value::Vector(matrix.left_multiplied_vec(&vector))
+                }))
+            }
+            other => panic!("vector-matrix product saw {other:?}"),
+        },
+        ScalarOp::RatVecMulMat => match expect_pair(arguments) {
+            (Value::RatVector(vector), Value::Matrix(matrix)) => {
+                if vector.numerators().len() != matrix.rows() {
+                    return Err(size_mismatch(
+                        vector.numerators().len(),
+                        matrix.rows(),
+                        span,
+                    ));
+                }
+                Ok(at_builtin_level(level, || {
+                    Value::RatVector(matrix.left_multiplied_ratvec(&vector))
+                }))
+            }
+            other => panic!("ratvec-matrix product saw {other:?}"),
+        },
+        // null(int->vec) (global.w:4471-4475): ulong_val narrowing, then
+        // the gate; the allocation guard mirrors NullMatrix.
+        ScalarOp::NullVector => match expect_unary(arguments) {
+            Value::Integer(value) => {
+                let size = unsigned_long(&value, span)?;
+                if level == Level::NoValue {
+                    return Ok(None);
+                }
+                let size = usize::try_from(size).expect("u64 vector size fits usize");
+                let mut data = Vec::new();
+                data.try_reserve_exact(size)
+                    .map_err(|_| runtime("Vector size exceeds available memory", span))?;
+                data.resize(size, 0);
+                Ok(Some(Value::Vector(Vec32(data))))
+            }
+            other => panic!("null vector saw {other:?}"),
+        },
+        // ^(vec->mat) (global.w:4492-4506): a one-row matrix; the size
+        // limit check fires before the gate.
+        ScalarOp::VecTranspose => match expect_unary(arguments) {
+            Value::Vector(vector) => {
+                if vector.0.len() as u64 > u64::from(u32::MAX) {
+                    return Err(runtime(
+                        format!(
+                            "Vector size {} exceeds matrix implementation limit",
+                            vector.0.len()
+                        ),
+                        span,
+                    ));
+                }
+                Ok(at_builtin_level(level, || {
+                    let size = vector.0.len();
+                    Value::Matrix(
+                        Matrix::from_columns(1, size, vector.0)
+                            .expect("one-row transpose data matches"),
+                    )
+                }))
+            }
+            other => panic!("vector transpose saw {other:?}"),
+        },
+        ScalarOp::MatTranspose => match expect_unary(arguments) {
+            Value::Matrix(matrix) => Ok(at_builtin_level(level, || {
+                Value::Matrix(matrix.transposed())
+            })),
+            other => panic!("matrix transpose saw {other:?}"),
+        },
+        // id_mat (global.w:4518-4528): ulong_val narrowing and the size
+        // limit fire before the gate.
+        ScalarOp::IdMat => match expect_unary(arguments) {
+            Value::Integer(value) => {
+                let size = unsigned_long(&value, span)?;
+                if size > u64::from(u32::MAX) {
+                    return Err(runtime(
+                        format!("Size {size} of identity matrix exceeds implementation limit"),
+                        span,
+                    ));
+                }
+                if level == Level::NoValue {
+                    return Ok(None);
+                }
+                let size = usize::try_from(size).expect("u32 identity size fits usize");
+                let cells = size
+                    .checked_mul(size)
+                    .ok_or_else(|| runtime("Matrix dimensions exceed available memory", span))?;
+                let mut data = Vec::new();
+                data.try_reserve_exact(cells)
+                    .map_err(|_| runtime("Matrix dimensions exceed available memory", span))?;
+                data.resize(cells, 0);
+                for index in 0..size {
+                    data[index * size + index] = 1;
+                }
+                Ok(Some(Value::Matrix(
+                    Matrix::from_columns(size, size, data).expect("identity data matches"),
+                )))
+            }
+            other => panic!("identity matrix saw {other:?}"),
+        },
+        // diagonal (global.w:4535-4548): the size limit fires before the
+        // gate.
+        ScalarOp::Diagonal => match expect_unary(arguments) {
+            Value::Vector(vector) => {
+                if vector.0.len() as u64 > u64::from(u32::MAX) {
+                    return Err(runtime(
+                        format!(
+                            "Size {} of diagonal matrix exceeds implementation limit",
+                            vector.0.len()
+                        ),
+                        span,
+                    ));
+                }
+                Ok(at_builtin_level(level, || {
+                    Value::Matrix(Matrix::diagonal(&vector))
+                }))
+            }
+            other => panic!("diagonal matrix saw {other:?}"),
+        },
+        // stack_rows (global.w:4557-4584): a ragged row of vecs becomes a
+        // zero-padded matrix; both limit checks fire before the gate.
+        ScalarOp::StackRows => match expect_unary(arguments) {
+            Value::List(rows) => {
+                if rows.len() as u64 > u64::from(u32::MAX) {
+                    return Err(runtime(
+                        format!(
+                            "Height {} of stacked matrix exceeds implementation limit",
+                            rows.len()
+                        ),
+                        span,
+                    ));
+                }
+                let mut vectors = Vec::with_capacity(rows.len());
+                let mut width = 0usize;
+                for row in rows {
+                    match row {
+                        Value::Vector(vector) => {
+                            width = width.max(vector.0.len());
+                            vectors.push(vector);
+                        }
+                        other => panic!("stack_rows saw non-vector {other:?}"),
+                    }
+                }
+                if width as u64 > u64::from(u32::MAX) {
+                    return Err(runtime(
+                        format!("Width {width} of stacked matrix exceeds implementation limit"),
+                        span,
+                    ));
+                }
+                Ok(at_builtin_level(level, || {
+                    let mut data = vec![0i32; vectors.len() * width];
+                    for (row, vector) in vectors.iter().enumerate() {
+                        for (col, &entry) in vector.0.iter().enumerate() {
+                            data[col * vectors.len() + row] = entry;
+                        }
+                    }
+                    Value::Matrix(
+                        Matrix::from_columns(vectors.len(), width, data)
+                            .expect("stacked data matches dimensions"),
+                    )
+                }))
+            }
+            other => panic!("stack_rows saw {other:?}"),
+        },
+        // combine_columns `#` and combine_rows `^` (global.w:4591-4638):
+        // narrowing and all size diagnostics fire before the gate.
+        ScalarOp::CombineColumns | ScalarOp::CombineRows => match expect_pair(arguments) {
+            (Value::Integer(size), Value::List(parts)) => {
+                let size = unsigned_long(&size, span)?;
+                let (requested, supplied) = match operation {
+                    ScalarOp::CombineColumns => ("rows", "columns"),
+                    ScalarOp::CombineRows => ("columns", "rows"),
+                    _ => unreachable!(),
+                };
+                if size > u64::from(u32::MAX) {
+                    return Err(runtime(
+                        format!(
+                            "Number {size} of {requested} requested exceeds implementation limit"
+                        ),
+                        span,
+                    ));
+                }
+                if parts.len() as u64 > u64::from(u32::MAX) {
+                    return Err(runtime(
+                        format!(
+                            "Number {} of {supplied} exceeds implementation limit",
+                            parts.len()
+                        ),
+                        span,
+                    ));
+                }
+                let mut vectors = Vec::with_capacity(parts.len());
+                for (index, part) in parts.into_iter().enumerate() {
+                    match part {
+                        Value::Vector(vector) => {
+                            if vector.0.len() as u64 != size {
+                                let kind = match operation {
+                                    ScalarOp::CombineColumns => "Column",
+                                    ScalarOp::CombineRows => "Row",
+                                    _ => unreachable!(),
+                                };
+                                return Err(runtime(
+                                    format!(
+                                        "{kind} {index} size {} does not match specified size {size}",
+                                        vector.0.len()
+                                    ),
+                                    span,
+                                ));
+                            }
+                            vectors.push(vector);
+                        }
+                        other => panic!("matrix combiner saw non-vector {other:?}"),
+                    }
+                }
+                let size = usize::try_from(size).expect("u32 dimension fits usize");
+                Ok(at_builtin_level(level, || {
+                    Value::Matrix(match operation {
+                        // combine_columns: each vec is a column, so the
+                        // column-major data is just the concatenation.
+                        ScalarOp::CombineColumns => Matrix::from_columns(
+                            size,
+                            vectors.len(),
+                            vectors.into_iter().flat_map(|vector| vector.0).collect(),
+                        )
+                        .expect("column data matches dimensions"),
+                        ScalarOp::CombineRows => {
+                            let count = vectors.len();
+                            let mut data = vec![0i32; count * size];
+                            for (row, vector) in vectors.iter().enumerate() {
+                                for (col, &entry) in vector.0.iter().enumerate() {
+                                    data[col * count + row] = entry;
+                                }
+                            }
+                            Matrix::from_columns(count, size, data)
+                                .expect("row data matches dimensions")
+                        }
+                        _ => unreachable!(),
+                    })
+                }))
+            }
+            other => panic!("matrix combiner saw {other:?}"),
+        },
+        // gcd(vec->int) (global.w:4820-4828): the non-negative gcd of the
+        // entries, computed in machine int arithmetic — gcd([-2^31]) prints
+        // -2147483648 upstream, so the fold runs in u32 and wraps back.
+        ScalarOp::VectorGcd => match expect_unary(arguments) {
+            Value::Vector(vector) => Ok(at_builtin_level(level, || {
+                let mut divisor = 0u64;
+                for &entry in &vector.0 {
+                    divisor = gcd_u64(divisor, u64::from(entry.unsigned_abs()));
+                }
+                Value::Integer(BigInt::from(divisor as u32 as i32))
+            })),
+            other => panic!("vector gcd saw {other:?}"),
+        },
+        // elapsed_ms (global.w:5231-5245): a static stopwatch, started on
+        // first call (upstream primes it at startup with no_value).
+        ScalarOp::ElapsedMs => {
+            static STOPWATCH: OnceLock<Instant> = OnceLock::new();
+            assert!(arguments.is_empty(), "elapsed_ms takes no arguments");
+            let stopwatch = STOPWATCH.get_or_init(Instant::now);
+            Ok(at_builtin_level(level, || {
+                Value::Integer(BigInt::from(stopwatch.elapsed().as_millis() as u64))
+            }))
+        }
+    }
+}
+
+fn container_equality(relation: Relation, equal: bool) -> bool {
+    match relation {
+        Relation::Equal => equal,
+        Relation::NotEqual => !equal,
+        _ => panic!("ordered container relation is not registered"),
     }
 }
 
@@ -4490,6 +5508,43 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             scalar_builtin("^", int_pair(), int_type(), 0, ScalarOp::IntPower),
             scalar_builtin("/", int_type(), rat_type(), 0, ScalarOp::IntInverse),
             scalar_builtin("/", int_pair(), rat_type(), 0, ScalarOp::IntFraction),
+            // Integer bit utilities (global.w:2966-2994): succ/pred are the
+            // rewrite targets of x+1/x-1; AND/OR/XOR/AND_NOT are
+            // call-syntax bitwise ops on two's-complement bit strings.
+            scalar_builtin("succ", int_type(), int_type(), 3, ScalarOp::IntSuccessor),
+            scalar_builtin("pred", int_type(), int_type(), 3, ScalarOp::IntPredecessor),
+            scalar_builtin("AND", int_pair(), int_type(), 1, ScalarOp::IntAnd),
+            scalar_builtin("OR", int_pair(), int_type(), 1, ScalarOp::IntOr),
+            scalar_builtin("XOR", int_pair(), int_type(), 1, ScalarOp::IntXor),
+            scalar_builtin("AND_NOT", int_pair(), int_type(), 1, ScalarOp::IntAndNot),
+            scalar_builtin(
+                "bitwise_subset",
+                int_pair(),
+                bool_type(),
+                0,
+                ScalarOp::IntBitwiseSubset,
+            ),
+            scalar_builtin(
+                "nth_set_bit",
+                int_pair(),
+                int_type(),
+                0,
+                ScalarOp::IntNthSetBit,
+            ),
+            scalar_builtin(
+                "bit_length",
+                int_type(),
+                int_type(),
+                0,
+                ScalarOp::IntBitLength,
+            ),
+            scalar_builtin(
+                "to_bitset",
+                primitive_type(Prim::Vec),
+                int_type(),
+                0,
+                ScalarOp::VecToBitset,
+            ),
             // vector_div_wrapper (global.w:4108): vec/int is the ratvec
             // literal surface (`[0]/1`); the zero-denominator diagnostic
             // fires only when the value is produced, as upstream gates it.
@@ -4553,6 +5608,14 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 1,
                 ScalarOp::VecAdd,
             ),
+            // Container arithmetic (global.w:4421-4451), in upstream order.
+            scalar_builtin(
+                "-",
+                pair(primitive_type(Prim::Vec)),
+                primitive_type(Prim::Vec),
+                1,
+                ScalarOp::VecSubtract,
+            ),
             scalar_builtin(
                 "-",
                 primitive_type(Prim::Vec),
@@ -4560,65 +5623,200 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 3,
                 ScalarOp::VecNegate,
             ),
-            // The language surface exposes these startup overloads even
-            // before their domain implementations land.  Keeping them in
-            // the registry makes `whattype * ?` and user replacement obey
-            // the reference overload table; calls still fail through the
-            // domain bridge until the owning math slice is implemented.
-            domain_builtin_skip(
+            scalar_builtin(
                 "*",
                 Type::tuple(vec![primitive_type(Prim::Vec), int_type()]),
                 primitive_type(Prim::Vec),
-                0,
+                1,
+                ScalarOp::VecMultiplyInt,
             ),
-            domain_builtin_skip(
+            scalar_builtin(
+                "\\",
+                Type::tuple(vec![primitive_type(Prim::Vec), int_type()]),
+                primitive_type(Prim::Vec),
+                1,
+                ScalarOp::VecQuotientInt,
+            ),
+            scalar_builtin(
+                "%",
+                Type::tuple(vec![primitive_type(Prim::Vec), int_type()]),
+                primitive_type(Prim::Vec),
+                1,
+                ScalarOp::VecModuloInt,
+            ),
+            scalar_builtin(
+                "%",
+                primitive_type(Prim::RatVec),
+                Type::tuple(vec![primitive_type(Prim::Vec), int_type()]),
+                0,
+                ScalarOp::RatvecUnfraction,
+            ),
+            scalar_builtin(
+                "+",
+                pair(primitive_type(Prim::RatVec)),
+                primitive_type(Prim::RatVec),
+                1,
+                ScalarOp::RatvecAdd,
+            ),
+            scalar_builtin(
+                "-",
+                pair(primitive_type(Prim::RatVec)),
+                primitive_type(Prim::RatVec),
+                1,
+                ScalarOp::RatvecSubtract,
+            ),
+            scalar_builtin(
+                "-",
+                primitive_type(Prim::RatVec),
+                primitive_type(Prim::RatVec),
+                3,
+                ScalarOp::RatvecNegate,
+            ),
+            scalar_builtin(
                 "*",
                 Type::tuple(vec![primitive_type(Prim::RatVec), int_type()]),
                 primitive_type(Prim::RatVec),
-                0,
+                1,
+                ScalarOp::RatvecMultiplyInt,
             ),
-            domain_builtin_skip(
+            scalar_builtin(
+                "/",
+                Type::tuple(vec![primitive_type(Prim::RatVec), int_type()]),
+                primitive_type(Prim::RatVec),
+                1,
+                ScalarOp::RatvecDivideInt,
+            ),
+            scalar_builtin(
+                "%",
+                Type::tuple(vec![primitive_type(Prim::RatVec), int_type()]),
+                primitive_type(Prim::RatVec),
+                1,
+                ScalarOp::RatvecModuloInt,
+            ),
+            scalar_builtin(
                 "*",
                 Type::tuple(vec![primitive_type(Prim::RatVec), rat_type()]),
                 primitive_type(Prim::RatVec),
-                0,
+                1,
+                ScalarOp::RatvecMultiplyRat,
             ),
-            domain_builtin_skip("*", pair(primitive_type(Prim::Vec)), int_type(), 0),
-            domain_builtin_skip(
+            scalar_builtin(
+                "/",
+                Type::tuple(vec![primitive_type(Prim::RatVec), rat_type()]),
+                primitive_type(Prim::RatVec),
+                1,
+                ScalarOp::RatvecDivideRat,
+            ),
+            scalar_builtin(
+                "+",
+                Type::tuple(vec![primitive_type(Prim::Mat), int_type()]),
+                primitive_type(Prim::Mat),
+                1,
+                ScalarOp::MatAddInt,
+            ),
+            scalar_builtin(
+                "-",
+                Type::tuple(vec![primitive_type(Prim::Mat), int_type()]),
+                primitive_type(Prim::Mat),
+                1,
+                ScalarOp::MatSubtractInt,
+            ),
+            scalar_builtin(
+                "+",
+                Type::tuple(vec![int_type(), primitive_type(Prim::Mat)]),
+                primitive_type(Prim::Mat),
+                2,
+                ScalarOp::IntAddMat,
+            ),
+            scalar_builtin(
+                "-",
+                Type::tuple(vec![int_type(), primitive_type(Prim::Mat)]),
+                primitive_type(Prim::Mat),
+                2,
+                ScalarOp::IntSubtractMat,
+            ),
+            scalar_builtin(
+                "*",
+                pair(primitive_type(Prim::Vec)),
+                int_type(),
+                0,
+                ScalarOp::VecDot,
+            ),
+            scalar_builtin(
+                "flex_add",
+                pair(primitive_type(Prim::Vec)),
+                primitive_type(Prim::Vec),
+                1,
+                ScalarOp::FlexAdd,
+            ),
+            scalar_builtin(
+                "flex_sub",
+                pair(primitive_type(Prim::Vec)),
+                primitive_type(Prim::Vec),
+                1,
+                ScalarOp::FlexSub,
+            ),
+            scalar_builtin(
+                "convolve",
+                pair(primitive_type(Prim::Vec)),
+                primitive_type(Prim::Vec),
+                1,
+                ScalarOp::VecConvolve,
+            ),
+            scalar_builtin(
+                "+",
+                pair(primitive_type(Prim::Mat)),
+                primitive_type(Prim::Mat),
+                1,
+                ScalarOp::MatAdd,
+            ),
+            scalar_builtin(
+                "-",
+                pair(primitive_type(Prim::Mat)),
+                primitive_type(Prim::Mat),
+                1,
+                ScalarOp::MatSubtract,
+            ),
+            scalar_builtin(
+                "*",
+                Type::tuple(vec![
+                    primitive_type(Prim::Mat),
+                    primitive_type(Prim::RatVec),
+                ]),
+                primitive_type(Prim::RatVec),
+                2,
+                ScalarOp::MatMulRatVec,
+            ),
+            scalar_builtin(
                 "*",
                 Type::tuple(vec![primitive_type(Prim::Mat), primitive_type(Prim::Vec)]),
                 primitive_type(Prim::Vec),
-                0,
+                2,
+                ScalarOp::MatMulVec,
             ),
-            domain_builtin_skip(
-                "*",
-                Type::tuple(vec![
-                    primitive_type(Prim::Mat),
-                    primitive_type(Prim::RatVec),
-                ]),
-                primitive_type(Prim::RatVec),
-                0,
-            ),
-            domain_builtin_skip(
+            scalar_builtin(
                 "*",
                 pair(primitive_type(Prim::Mat)),
                 primitive_type(Prim::Mat),
-                0,
+                1,
+                ScalarOp::MatMulMat,
             ),
-            domain_builtin_skip(
+            scalar_builtin(
                 "*",
                 Type::tuple(vec![primitive_type(Prim::Vec), primitive_type(Prim::Mat)]),
                 primitive_type(Prim::Vec),
-                0,
+                1,
+                ScalarOp::VecMulMat,
             ),
-            domain_builtin_skip(
+            scalar_builtin(
                 "*",
                 Type::tuple(vec![
                     primitive_type(Prim::RatVec),
                     primitive_type(Prim::Mat),
                 ]),
                 primitive_type(Prim::RatVec),
-                0,
+                1,
+                ScalarOp::RatVecMulMat,
             ),
             domain_builtin_validate(
                 "*",
@@ -4715,6 +5913,31 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 1,
                 ScalarOp::RatPower,
             ),
+            // transposes and combine_rows (global.w:5185-5194): ^vec is a
+            // one-row matrix, ^mat the transpose, n^[rows] stacks rows.
+            // Upstream's space-suffixed "transpose " copy stays hidden
+            // there and is not registered here.
+            scalar_builtin(
+                "^",
+                primitive_type(Prim::Vec),
+                primitive_type(Prim::Mat),
+                0,
+                ScalarOp::VecTranspose,
+            ),
+            scalar_builtin(
+                "^",
+                primitive_type(Prim::Mat),
+                primitive_type(Prim::Mat),
+                3,
+                ScalarOp::MatTranspose,
+            ),
+            scalar_builtin(
+                "^",
+                Type::tuple(vec![int_type(), Type::row(primitive_type(Prim::Vec))]),
+                primitive_type(Prim::Mat),
+                0,
+                ScalarOp::CombineRows,
+            ),
             scalar_builtin(
                 "=",
                 int_type(),
@@ -4952,6 +6175,120 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 bool_type(),
                 0,
                 ScalarOp::BinaryRelation(Relation::GreaterEqual),
+            ),
+            // Container relations (global.w:4405-4420): =/!= everywhere,
+            // plus the dominance tests >=/> on vec and ratvec.
+            scalar_builtin(
+                "=",
+                primitive_type(Prim::Vec),
+                bool_type(),
+                0,
+                ScalarOp::UnaryRelation(Relation::Equal),
+            ),
+            scalar_builtin(
+                "!=",
+                primitive_type(Prim::Vec),
+                bool_type(),
+                0,
+                ScalarOp::UnaryRelation(Relation::NotEqual),
+            ),
+            scalar_builtin(
+                "=",
+                pair(primitive_type(Prim::Vec)),
+                bool_type(),
+                0,
+                ScalarOp::BinaryRelation(Relation::Equal),
+            ),
+            scalar_builtin(
+                "!=",
+                pair(primitive_type(Prim::Vec)),
+                bool_type(),
+                0,
+                ScalarOp::BinaryRelation(Relation::NotEqual),
+            ),
+            scalar_builtin(
+                ">=",
+                primitive_type(Prim::Vec),
+                bool_type(),
+                0,
+                ScalarOp::UnaryRelation(Relation::GreaterEqual),
+            ),
+            scalar_builtin(
+                ">",
+                primitive_type(Prim::Vec),
+                bool_type(),
+                0,
+                ScalarOp::UnaryRelation(Relation::Greater),
+            ),
+            scalar_builtin(
+                "=",
+                primitive_type(Prim::RatVec),
+                bool_type(),
+                0,
+                ScalarOp::UnaryRelation(Relation::Equal),
+            ),
+            scalar_builtin(
+                "!=",
+                primitive_type(Prim::RatVec),
+                bool_type(),
+                0,
+                ScalarOp::UnaryRelation(Relation::NotEqual),
+            ),
+            scalar_builtin(
+                ">=",
+                primitive_type(Prim::RatVec),
+                bool_type(),
+                0,
+                ScalarOp::UnaryRelation(Relation::GreaterEqual),
+            ),
+            scalar_builtin(
+                ">",
+                primitive_type(Prim::RatVec),
+                bool_type(),
+                0,
+                ScalarOp::UnaryRelation(Relation::Greater),
+            ),
+            scalar_builtin(
+                "=",
+                pair(primitive_type(Prim::RatVec)),
+                bool_type(),
+                0,
+                ScalarOp::BinaryRelation(Relation::Equal),
+            ),
+            scalar_builtin(
+                "!=",
+                pair(primitive_type(Prim::RatVec)),
+                bool_type(),
+                0,
+                ScalarOp::BinaryRelation(Relation::NotEqual),
+            ),
+            scalar_builtin(
+                "=",
+                primitive_type(Prim::Mat),
+                bool_type(),
+                0,
+                ScalarOp::UnaryRelation(Relation::Equal),
+            ),
+            scalar_builtin(
+                "!=",
+                primitive_type(Prim::Mat),
+                bool_type(),
+                0,
+                ScalarOp::UnaryRelation(Relation::NotEqual),
+            ),
+            scalar_builtin(
+                "=",
+                pair(primitive_type(Prim::Mat)),
+                bool_type(),
+                0,
+                ScalarOp::BinaryRelation(Relation::Equal),
+            ),
+            scalar_builtin(
+                "!=",
+                pair(primitive_type(Prim::Mat)),
+                bool_type(),
+                0,
+                ScalarOp::BinaryRelation(Relation::NotEqual),
             ),
             scalar_builtin(
                 "##",
@@ -4967,6 +6304,22 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 string_type(),
                 0,
                 ScalarOp::StringListConcat,
+            ),
+            // join_vectors / join_vector_row (global.w:4398-4399): vec
+            // concatenation, pairwise and for a row of vecs.
+            scalar_builtin(
+                "##",
+                pair(primitive_type(Prim::Vec)),
+                primitive_type(Prim::Vec),
+                1,
+                ScalarOp::VecJoin,
+            ),
+            scalar_builtin(
+                "##",
+                Type::row(primitive_type(Prim::Vec)),
+                primitive_type(Prim::Vec),
+                0,
+                ScalarOp::VecRowJoin,
             ),
             // ascii (global.w:4388-4389): first byte, and its inverse for
             // printable ASCII (plus newline).
@@ -5001,6 +6354,21 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 int_type(),
                 0,
                 ScalarOp::SizeOf,
+            ),
+            // vector suffix/prefix (global.w:4396-4397).
+            scalar_builtin(
+                "#",
+                Type::tuple(vec![primitive_type(Prim::Vec), int_type()]),
+                primitive_type(Prim::Vec),
+                1,
+                ScalarOp::VecSuffix,
+            ),
+            scalar_builtin(
+                "#",
+                Type::tuple(vec![int_type(), primitive_type(Prim::Vec)]),
+                primitive_type(Prim::Vec),
+                2,
+                ScalarOp::VecPrefix,
             ),
             // matrix shape and accessors (global.w:4400-4404): shape gives
             // both bounds; rows/columns externalise to a row of vecs.
@@ -5053,10 +6421,66 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             // narrow and bound both dimensions before the no-value gate.
             scalar_builtin(
                 "null",
+                int_type(),
+                primitive_type(Prim::Vec),
+                0,
+                ScalarOp::NullVector,
+            ),
+            scalar_builtin(
+                "null",
                 int_pair(),
                 primitive_type(Prim::Mat),
                 0,
                 ScalarOp::NullMatrix,
+            ),
+            // Matrix constructors (global.w:5190-5193) and the
+            // column-combining `#` instance (global.w:5193).
+            scalar_builtin(
+                "id_mat",
+                int_type(),
+                primitive_type(Prim::Mat),
+                0,
+                ScalarOp::IdMat,
+            ),
+            scalar_builtin(
+                "diagonal",
+                primitive_type(Prim::Vec),
+                primitive_type(Prim::Mat),
+                0,
+                ScalarOp::Diagonal,
+            ),
+            scalar_builtin(
+                "stack_rows",
+                Type::row(primitive_type(Prim::Vec)),
+                primitive_type(Prim::Mat),
+                0,
+                ScalarOp::StackRows,
+            ),
+            scalar_builtin(
+                "#",
+                Type::tuple(vec![int_type(), Type::row(primitive_type(Prim::Vec))]),
+                primitive_type(Prim::Mat),
+                0,
+                ScalarOp::CombineColumns,
+            ),
+            // gcd(vec->int) (global.w:5200): the plain non-negative integer
+            // gcd of the entries (0 for the empty vec); the Bezout/echelon
+            // machinery upstream shares stays out of this port.
+            scalar_builtin(
+                "gcd",
+                primitive_type(Prim::Vec),
+                int_type(),
+                0,
+                ScalarOp::VectorGcd,
+            ),
+            // elapsed_ms (global.w:5245): milliseconds on the program
+            // stopwatch.
+            scalar_builtin(
+                "elapsed_ms",
+                Type::void(),
+                int_type(),
+                0,
+                ScalarOp::ElapsedMs,
             ),
             domain_builtin("Lie_type", string_type(), primitive_type(Prim::LieType), 0),
             domain_builtin(
@@ -9085,6 +10509,254 @@ mod tests {
     }
 
     #[test]
+    fn global_batch2_builtins_match_the_upstream_scalar_surface() {
+        let cases = [
+            // succ/pred and the call-syntax bitwise int ops
+            // (global.w:2966-2994).
+            ("succ(5)", "6"),
+            ("pred(5)", "4"),
+            ("AND(6,3)", "2"),
+            ("OR(6,3)", "7"),
+            ("XOR(6,3)", "5"),
+            ("AND_NOT(6,3)", "4"),
+            ("AND(6,-1)", "6"),
+            ("XOR(5,-1)", "-6"),
+            ("bitwise_subset(2,6)", "true"),
+            ("bitwise_subset(1,6)", "false"),
+            ("bitwise_subset(-1,0)", "false"),
+            ("bitwise_subset(0,-1)", "true"),
+            ("bitwise_subset(-2,-3)", "false"),
+            ("nth_set_bit(13,0)", "0"),
+            ("nth_set_bit(13,1)", "2"),
+            ("nth_set_bit(13,2)", "3"),
+            ("nth_set_bit(0,0)", "-1"),
+            ("nth_set_bit(-1,0)", "0"),
+            ("nth_set_bit(-1,5)", "5"),
+            ("nth_set_bit(-2,0)", "1"),
+            ("nth_set_bit(5,-1)", "1"),
+            ("nth_set_bit(-2,-1)", "0"),
+            ("nth_set_bit(-2,-2)", "-1"),
+            ("nth_set_bit(1,2147483648)", "-1"),
+            ("bit_length(0)", "0"),
+            ("bit_length(1)", "1"),
+            ("bit_length(255)", "8"),
+            ("bit_length(-1)", "-1"),
+            ("bit_length(-8)", "-4"),
+            ("bit_length(-9)", "-5"),
+            ("bit_length(-256)", "-9"),
+            ("to_bitset(vec: [0,2,5])", "37"),
+            ("to_bitset(null(0))", "0"),
+            ("to_bitset(vec: [0,63])", "9223372036854775809"),
+            ("to_bitset(vec: [64])", "18446744073709551616"),
+            // gcd(vec->int) (global.w:5200): plain non-negative gcd, with
+            // the machine-int wrap on -2^31.
+            ("gcd(vec: [12,18])", "6"),
+            ("gcd(vec: [0-6,9])", "3"),
+            ("gcd(vec: [0,0])", "0"),
+            ("gcd(null(0))", "0"),
+            ("gcd(vec: [7])", "7"),
+            ("gcd(vec: [0-2147483648])", "-2147483648"),
+            // Container relations (global.w:4405-4420).
+            ("=(vec: [0,0])", "true"),
+            ("!=(vec: [1,0,0])", "true"),
+            ("(>=(vec: [0,1,2]))", "true"),
+            ("(>=(vec: [0,-1,2]))", "false"),
+            ("(>(vec: [1,2]))", "true"),
+            ("(>(vec: [0,1]))", "false"),
+            ("(vec: [1,2]) = (vec: [1,2])", "true"),
+            ("(vec: [1,2]) = (vec: [1,2,0])", "false"),
+            ("(vec: [1]) != (vec: [2])", "true"),
+            ("=([0,0]/1)", "true"),
+            ("!=([1,2]/3)", "true"),
+            ("(>=([0,1]/2))", "true"),
+            ("(>=([0,-1]/2))", "false"),
+            ("(>([1,2]/3))", "true"),
+            ("[1,2]/2 = [2,4]/4", "true"),
+            ("[1,2]/2 = [1,1]/2", "false"),
+            ("[1,2]/2 != [1,1]/2", "true"),
+            ("=null(2,3)", "true"),
+            ("!=null(2,3)", "false"),
+            ("(mat: [[1]]) = (mat: [[1]])", "true"),
+            ("null(2,2) = null(2,3)", "false"),
+            ("null(2,2) != null(2,3)", "true"),
+            // Vector arithmetic (global.w:4421-4428); \ and % take a
+            // non-negative remainder even for negative divisors.
+            ("(vec: [1,2,3]) + (vec: [4,5,6])", "[ 5, 7, 9 ]"),
+            ("(vec: [1,2,3]) - (vec: [4,5,6])", "[ -3, -3, -3 ]"),
+            ("-(vec: [1,2,3])", "[ -1, -2, -3 ]"),
+            ("(vec: [1,2,3]) * 2", "[ 2, 4, 6 ]"),
+            ("(vec: [7,-7]) \\ 2", "[  3, -4 ]"),
+            ("(vec: [7,-7]) % 2", "[ 1, 1 ]"),
+            ("(vec: [7]) % (0-3)", "[ 1 ]"),
+            ("(vec: [7]) \\ (0-3)", "[ -2 ]"),
+            ("(vec: [0-7]) % (0-3)", "[ 2 ]"),
+            ("(vec: [0-7]) \\ (0-3)", "[ 3 ]"),
+            // Rational vector arithmetic (global.w:4428-4436).
+            ("([1,2]/3) + ([1,2]/3)", "[ 2, 4 ]/3"),
+            ("([1,2]/3) - ([1,2]/3)", "[ 0, 0 ]/1"),
+            ("-([1,2]/3)", "[ -1, -2 ]/3"),
+            ("([1,2]/3) * 2", "[ 2, 4 ]/3"),
+            ("([1,2]/3) / 2", "[ 1, 2 ]/6"),
+            ("([1,2]/3) / (0-2)", "[ -1, -2 ]/6"),
+            ("([1,2]/3) * (0-2)", "[ -2, -4 ]/3"),
+            ("([1,2]/3) % (0-2)", "[ 1, 2 ]/3"),
+            ("([1,2]/2) * 2", "[ 1, 2 ]/1"),
+            ("([1,2]/2) * (2/3)", "[ 1, 2 ]/3"),
+            ("([1,2]/2) / (2/3)", "[ 3, 6 ]/4"),
+            ("([1,2]/4) + ([1,0]/4)", "[ 1, 1 ]/2"),
+            ("([2]/2) % 2", "[ 1 ]/1"),
+            ("([0-7]/2) % 2", "[ 1 ]/2"),
+            ("([7]/2) % 2", "[ 3 ]/2"),
+            ("%([1,2]/3)", "([ 1, 2 ],3)"),
+            (
+                "%([2147483647,0]/1 + [1,0]/1)",
+                "([ -2147483648,           0 ],1)",
+            ),
+            // Matrix-integer and matrix-matrix arithmetic
+            // (global.w:4437-4446): the integer lands on the main
+            // diagonal; square shape is not required.
+            ("(mat: [[1,2],[3,4]]) + 1", "\n| 2, 3 |\n| 2, 5 |\n"),
+            ("(mat: [[1,2],[3,4]]) - 1", "\n| 0, 3 |\n| 2, 3 |\n"),
+            ("1 + (mat: [[1,2],[3,4]])", "\n| 2, 3 |\n| 2, 5 |\n"),
+            ("1 - (mat: [[1,2],[3,4]])", "\n|  0, -3 |\n| -2, -3 |\n"),
+            ("null(2,3) + 1", "\n| 1, 0, 0 |\n| 0, 1, 0 |\n"),
+            (
+                "(mat: [[1,2],[3,4]]) + (mat: [[1,2],[3,4]])",
+                "\n| 2, 6 |\n| 4, 8 |\n",
+            ),
+            (
+                "(mat: [[1,2],[3,4]]) - (mat: [[1,2],[3,4]])",
+                "\n| 0, 0 |\n| 0, 0 |\n",
+            ),
+            // Products (global.w:4441, 4447-4451); the mat literal lists
+            // columns, so its rows are (1,3) and (2,4).
+            ("(vec: [1,2]) * (vec: [3,4])", "11"),
+            ("(vec: [50000,50000]) * (vec: [50000,50000])", "705032704"),
+            ("(mat: [[1,2],[3,4]]) * (vec: [1,1])", "[ 4, 6 ]"),
+            ("(vec: [1,1]) * (mat: [[1,2],[3,4]])", "[ 3, 7 ]"),
+            (
+                "(mat: [[1,2],[3,4]]) * (mat: [[1,2],[3,4]])",
+                "\n|  7, 15 |\n| 10, 22 |\n",
+            ),
+            ("(mat: [[1,2],[3,4]]) * ([1,1]/2)", "[ 2, 3 ]/1"),
+            ("([1,1]/2) * (mat: [[1,2],[3,4]])", "[ 3, 7 ]/2"),
+            ("null(2,3) * null(3,2)", "\n| 0, 0 |\n| 0, 0 |\n"),
+            ("null(0,0) * null(0,0)", "The 0x0 matrix"),
+            ("null(2,3) * (vec: [1,2,3])", "[ 0, 0 ]"),
+            ("(vec: [1,2]) * null(2,3)", "[ 0, 0, 0 ]"),
+            // flex_add/flex_sub/convolve (global.w:4442-4444).
+            ("flex_add(vec: [1,2,0], vec: [1,0,3,0,0])", "[ 2, 2, 3 ]"),
+            ("flex_sub(vec: [1,2], vec: [1,2,3])", "[  0,  0, -3 ]"),
+            ("flex_sub(vec: [1,2,3], vec: [1,2])", "[ 0, 0, 3 ]"),
+            ("flex_add(vec: [1,2], vec: [3,4])", "[ 4, 6 ]"),
+            ("convolve(vec: [1,2], vec: [3,4])", "[  3, 10,  8 ]"),
+            ("convolve(vec: [1,2,0], vec: [3,4])", "[  3, 10,  8 ]"),
+            ("convolve(null(0), vec: [1,2])", "[ ]"),
+            ("convolve(vec: [0,0], vec: [1])", "[ ]"),
+            // Joins and suffix/prefix (global.w:4396-4399).
+            ("(vec: [1,2]) ## (vec: [3,4])", "[ 1, 2, 3, 4 ]"),
+            ("##([vec: [1,2], vec: [3], vec: []])", "[ 1, 2, 3 ]"),
+            ("(vec: [1,2]) # 3", "[ 1, 2, 3 ]"),
+            ("3 # (vec: [1,2])", "[ 3, 1, 2 ]"),
+            ("1 # null(0)", "[ 1 ]"),
+            // Constructors (global.w:5183-5194).
+            ("null(3)", "[ 0, 0, 0 ]"),
+            ("null(0)", "[ ]"),
+            ("^(vec: [1,2,3])", "\n| 1, 2, 3 |\n"),
+            ("^(vec: [])", "The 1x0 matrix"),
+            ("^(mat: [[1,2],[3,4]])", "\n| 1, 2 |\n| 3, 4 |\n"),
+            ("id_mat(3)", "\n| 1, 0, 0 |\n| 0, 1, 0 |\n| 0, 0, 1 |\n"),
+            ("id_mat(0)", "The 0x0 matrix"),
+            (
+                "diagonal(vec: [1,2,3])",
+                "\n| 1, 0, 0 |\n| 0, 2, 0 |\n| 0, 0, 3 |\n",
+            ),
+            ("diagonal(null(0))", "The 0x0 matrix"),
+            (
+                "stack_rows([vec: [1,2], vec: [3]])",
+                "\n| 1, 2 |\n| 3, 0 |\n",
+            ),
+            ("stack_rows([null(0)])", "The 1x0 matrix"),
+            (
+                "3 # [vec: [1,2,3], vec: [4,5,6]]",
+                "\n| 1, 4 |\n| 2, 5 |\n| 3, 6 |\n",
+            ),
+            ("0 # [null(0)]", "The 0x1 matrix"),
+            ("2 ^ [vec: [1,2], vec: [3,4]]", "\n| 1, 2 |\n| 3, 4 |\n"),
+            // elapsed_ms (global.w:5245): the reading itself is
+            // nondeterministic, so only its sign is pinned.
+            ("elapsed_ms() >= 0", "true"),
+        ];
+        for (source, expected) in cases {
+            let (_, value) = convert_and_run(source)
+                .unwrap_or_else(|error| panic!("{source} should convert and run: {error:?}"));
+            assert_eq!(value.to_string(), expected, "source: {source}");
+        }
+
+        for (source, expected) in [
+            (
+                "to_bitset(vec: [0-1])",
+                "Negative entry in conversion to bitset",
+            ),
+            (
+                "nth_set_bit(1,9223372036854775808)",
+                "Integer value to big for conversion",
+            ),
+            ("(vec: [1,2]) + (vec: [1,2,3])", "Size mismatch 2:3"),
+            ("(vec: [1]) \\ 0", "Vector division by 0"),
+            ("(vec: [1]) % 0", "Vector modulo 0"),
+            (
+                "(vec: [1]) * 2147483648",
+                "Integer value to big for conversion",
+            ),
+            ("([1,2]/3) + ([1,2,3]/3)", "Size mismatch 2:3"),
+            ("([1,2]/3) / 0", "Rational vector division by 0"),
+            ("([1,2]/3) % 0", "Rational vector modulo 0"),
+            ("([1,2]/3) / (0/1)", "Rational vector division by 0"),
+            (
+                "([1,2]/3) * 9223372036854775808",
+                "Integer value to big for conversion",
+            ),
+            (
+                "(mat: [[1]]) + 2147483648",
+                "Integer value to big for conversion",
+            ),
+            ("(mat: [[1,2],[3,4]]) + null(2,3)", "Size mismatch 2:3"),
+            ("(mat: [[1,2],[3,4]]) - null(3,2)", "Size mismatch 2:3"),
+            ("(mat: [[1,2],[3,4]]) * (vec: [1,2,3])", "Size mismatch 2:3"),
+            ("null(2,3) * null(2,2)", "Size mismatch 3:2"),
+            ("(vec: [1,2]) * null(3,2)", "Size mismatch 2:3"),
+            ("null(-1)", "Negative integer where unsigned is required"),
+            ("id_mat(-1)", "Negative integer where unsigned is required"),
+            (
+                "(0-1) # [vec: [1]]",
+                "Negative integer where unsigned is required",
+            ),
+            (
+                "(0-1) ^ [vec: [1]]",
+                "Negative integer where unsigned is required",
+            ),
+            (
+                "2 # [vec: [1,2,3]]",
+                "Column 0 size 3 does not match specified size 2",
+            ),
+            (
+                "2 ^ [vec: [1,2,3]]",
+                "Row 0 size 3 does not match specified size 2",
+            ),
+            (
+                "0 # [vec: [1,2]]",
+                "Column 0 size 2 does not match specified size 0",
+            ),
+        ] {
+            match convert_and_run(source) {
+                Err(error) => assert_eq!(error.message, expected, "source: {source}"),
+                Ok(value) => panic!("{source} unexpectedly succeeded with {value:?}"),
+            }
+        }
+    }
+
+    #[test]
     fn named_domain_calls_resolve_through_typed_registry() {
         let (type_, value) =
             convert_and_run("prefers_coroots(simply_connected(Lie_type(\"A1\"), true))")
@@ -9896,6 +11568,10 @@ mod tests {
                 Type::tuple(vec![rat_type(), int_type()]),
                 pair(rat_type()),
                 pair(primitive_type(Prim::Vec)),
+                pair(primitive_type(Prim::RatVec)),
+                Type::tuple(vec![primitive_type(Prim::Mat), int_type()]),
+                Type::tuple(vec![int_type(), primitive_type(Prim::Mat)]),
+                pair(primitive_type(Prim::Mat)),
                 pair(primitive_type(Prim::Split)),
                 Type::tuple(vec![
                     primitive_type(Prim::KTypePol),
@@ -9947,7 +11623,7 @@ mod tests {
             plus.iter()
                 .map(|&index| builtin_registry()[index].hunger)
                 .collect::<Vec<_>>(),
-            vec![1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            vec![1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         );
     }
 
