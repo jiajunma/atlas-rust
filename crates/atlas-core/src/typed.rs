@@ -5654,13 +5654,13 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             ),
             // KL_sum_at_s / KL_sum_at_s_to_height (atlas-types.w:8583-8588):
             // the KL column of a final parameter evaluated at q = s.
-            domain_builtin(
+            domain_builtin_validate(
                 "KL_sum_at_s",
                 primitive_type(Prim::Param),
                 primitive_type(Prim::ParamPol),
                 0,
             ),
-            domain_builtin_skip(
+            domain_builtin_validate(
                 "KL_sum_at_s_to_height",
                 Type::tuple(vec![primitive_type(Prim::Param), int_type()]),
                 primitive_type(Prim::ParamPol),
@@ -5876,7 +5876,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             ),
             // partial_block (atlas-types.w:6786-6820): the partial-block
             // parameters of a final standard parameter.
-            domain_builtin(
+            domain_builtin_validate(
                 "partial_block",
                 primitive_type(Prim::Param),
                 Type::row(primitive_type(Prim::Param)),
@@ -9071,6 +9071,13 @@ mod tests {
         assert!(signatures("block").contains(&(param.clone(), block_params)));
         assert_eq!(no_value_policy("block", &param), "validate");
         assert_eq!(no_value_policy("block_Hasse", &param), "validate");
+        assert_eq!(no_value_policy("partial_block", &param), "validate");
+        assert_eq!(no_value_policy("KL_sum_at_s", &param), "validate");
+        let param_int = Type::tuple(vec![param.clone(), int_type()]);
+        assert_eq!(
+            no_value_policy("KL_sum_at_s_to_height", &param_int),
+            "validate"
+        );
     }
 
     #[test]
