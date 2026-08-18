@@ -1,0 +1,8 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/partial_block_param_proper_shift",
+  "status": "verified_hpc_reference",
+  "events": [
+    {"kind":"Value","value":{"type":"display","display":"[final parameter(x=5,lambda=[2,2,1]/1,nu=[1,-1,0]/2)]"}}
+  ]
+}

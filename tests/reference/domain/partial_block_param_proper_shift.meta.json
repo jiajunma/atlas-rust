@@ -1,0 +1,21 @@
+{
+  "fixture": "domain/partial_block_param_proper_shift.atlas",
+  "fixture_sha256": "666321cc34d26b5eb0bcf4739e742aa281fdea91347a565bd298ccd6a67cd28b",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "rust_status": "pending_hpc_differential",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3565274",
+  "reference_commit": "6dc8ffeb960fcb603ad571964e0216125baf0397",
+  "reference_report_sha256": "f3875ecf482fee29378547a1ce0c5ac1c624857c0a97b31a8526b36667970979",
+  "source_archive_sha256": "f327e0e188dd978c0bec0634c0b76beb3a0e05ad8d3d440f485e24f58571e29f",
+  "oracle_exit_status": 0,
+  "oracle_seconds": 0.05,
+  "oracle_maxrss_kb": 4376,
+  "oracle_maxrss_approximate": false,
+  "notes": "B2.T1 proper-integral cache-relative shift: block_Hasse(p) installs the full block, then partial_block(q) reconstructs q with a nonzero central shift in lambda.",
+  "hpc_capture": {"fresh_process_required": true, "timeout_seconds": 30, "estimated_seconds": 1, "estimated_memory_mb": 64}
+}
