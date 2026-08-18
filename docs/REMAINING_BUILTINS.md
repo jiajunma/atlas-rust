@@ -1,6 +1,12 @@
 # Remaining builtin coverage (post-language-gate)
 
-## global.w batch 2 landed locally (2026-08-19, HPC capture pending)
+## global.w batch 2 verified_hpc (2026-08-19, differential 3574922)
+
+Capture 3574906 froze the reference; the fat full-suite differential
+**3574922** @ `b9843aa` returned 291 PASS + 1 declared PARTIAL
+(container_syntax_errors) across 292 fixtures, with both
+`eval/global_batch2` fixtures exact on stdout/diagnostics/exit status;
+both metas are `verified_hpc`.
 
 All remaining mechanical global.w signatures are now `ScalarOp`s in
 `crates/atlas-core/src/typed.rs`, with matrix constructors/arithmetic helpers

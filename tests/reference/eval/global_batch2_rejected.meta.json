@@ -4,7 +4,7 @@
  "oracle": "atlas",
  "stage": "typed-pipeline-swap",
  "reference_status": "verified_hpc_reference",
- "rust_status": "pending_hpc_differential",
+ "rust_status": "verified_hpc",
  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
@@ -16,11 +16,12 @@
  "oracle_seconds": 0.049,
  "oracle_maxrss_kb": 3736,
  "oracle_maxrss_approximate": false,
- "notes": "Rejected companions of eval/global_batch2: negative bitset entry, int narrowing typo text 'Integer value to big for conversion', size mismatches, vector/rational-vector division and modulo by zero, matrix dimension and narrowing errors, negative sizes, and combine/join arity errors. 23 error payloads match the oracle verbatim; the outer report wrapper divergence (atlas-cli vs interactive oracle) is pre-existing. HPC differential pending.",
+ "notes": "Rejected companions of eval/global_batch2: negative bitset entry, int narrowing typo text 'Integer value to big for conversion', size mismatches, vector/rational-vector division and modulo by zero, matrix dimension and narrowing errors, negative sizes, and combine/join arity errors. 23 error payloads match the oracle verbatim; the outer report wrapper divergence (atlas-cli vs interactive oracle) is pre-existing. Rust differential VERIFIED by fat job 3574922 (23 payloads exact on diagnostics/exit status).",
  "hpc_capture": {
   "fresh_process_required": true,
   "timeout_seconds": 30,
   "estimated_seconds": 5,
   "estimated_memory_mb": 128
- }
+ },
+ "differential_job": "3574922"
 }
