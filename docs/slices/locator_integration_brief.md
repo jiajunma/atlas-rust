@@ -82,3 +82,22 @@ from the oracle at IDENTITY attitude (gamma-lambda shifted by [0,1] on rows
 `bm.shift` field of `block_modifier`, i.e. exactly step 2's
 `make_diff_integral_orthogonal`. No separate fix; verify the defect closes
 when step 4 transports `print_common_block`.
+
+## Current-Rust divergence map on the extended simple_pi anchor (2026-08-19)
+
+Against the extended `common_block_simple_pi` fixture (capture 3574854),
+current Rust at identity attitude:
+
+- `print_common_block(q)`: wrong header (`<>` instead of
+  `<0.2>, simple reflections permuted (0->1,1->0)`); gamma-lambda rows
+  shifted (e.g. row 0 `[-3,0,3]/4` vs oracle `[-1,0,1]/4`).
+- `partial_block(q)`: same parameter SET, wrong row ORDER (x=10/x=2 rows
+  swapped at positions 2-3; the two x=12 rows swapped).
+- `W_graph(q)`: same cell decomposition, wrong cell LISTING order
+  (`[1]`/`[0]` cells swapped at positions 2-3).
+- `block_Hasse(q)` matrix and `KL_sum_at_s(q)` value already match at
+  identity attitude (order-insensitive outputs).
+
+Implication for step 4: transported consumers must reproduce the CANONICAL
+row ordering of the stored block, not a freshly built block's ordering —
+the row order itself is oracle-visible.
