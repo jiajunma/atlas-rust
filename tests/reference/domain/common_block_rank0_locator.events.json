@@ -1,0 +1,35 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/common_block_rank0_locator",
+  "status": "verified_hpc_reference",
+  "events": [
+    {
+      "kind": "ReportLine",
+      "text": "Variable rd: RootDatum\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Variable ic: InnerClass\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Variable rf: RealForm\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Variable p0: Param\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Variable q0: Param\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Parameter defines element 0 of the following common block,\nas transformed by <>:\n0:  0  []   *(x=3,gamma-lambda=   [7,7]/4)  1^2xe\n"
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Parameter defines element 0 of the following common block,\nas transformed by <0.1.0>:\n0:  0  []   *(x=3,gamma-lambda=   [2,3]/4)  1^2xe\n"
+    }
+  ]
+}
