@@ -47,8 +47,31 @@ upstream (`Permutation(loc.simple_pi,-1)` = inverse convention).
 
 ## Step 3 — canonical keys + attitude gates FIRST
 
-Wire canonical `ReducedParamKey`s into `RepTable::lookup` /
-`lookup_full_block` (co_reduce-row registration as already documented).
+Upstream anchors for the key computation (repr.cpp):
+
+- `Reduced_param::reduce(rc, srm, gamma, loc)` (repr.cpp:110-125): `int_item`
+  sets `loc`; `transform<true>(loc.w, srm)`; codec =
+  `integral.data(kgb().inv_nr(srm.x()))`; `codec.internalise(gamma_lambda)`;
+  mixed-radix packing `reduction = d*reduction + arithmetic::remainder(ev,d)`
+  (Euclidean remainder, wrapping u32).
+- `Reduced_param::co_reduce(rc, srm, loc)` (repr.cpp:127-142): identical but
+  with an EXISTING locator — this is the per-row registration path.
+- `lookup_full_block` (repr.cpp:1773-1794): `make_dominant` → `mod_reduce` →
+  `reduce`; probe `reduced_hash`; if missing OR the stored block is not full,
+  `add_block(srm, bm)` (which may swallow older partials — step 5); then
+  `make_relative_to(block_loc.second /*stored locator*/, stored_srm, bm,
+  srm)` re-bases the returned modifier.
+- `common_context` has TWO constructors (repr.h:653-654): `(rc, gamma)` for
+  the fresh-block path and `(rc, bm)` for the transported path
+  (`add_block_below`, repr.cpp:1586+, builds its generation context from the
+  modifier). The Rust `CommonContext` needs the same pair.
+- `add_block`/`add_block_below`/`swallow_blocks_and_append`
+  (repr.cpp:1648/1586/1697) are the cross-block merge machinery — step 5,
+  not this slice; for step 3 keep the current no-swallow behavior.
+
+Wire canonical `ReducedParamKey { x, int_sys_nr, residue }`s (replacing the
+current embedded-list `IntegralSystem` interning with the canonical
+`int_item` datum id) into `RepTable::lookup` / `lookup_full_block`.
 BEFORE any consumer may observe a stored block, add loud attitude gates
 (reject nonidentity `block_modifier`) to every consumer that currently
 assumes identity attitude:
