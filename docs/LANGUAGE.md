@@ -66,14 +66,19 @@ shift_flip (`3541896`), ext_finalise (`3542388`), and
 twisted_family/block_deform (`3542417`), print_partial_block
 (`3542430`), and dual_block (`3542449`).
 As of 2026-08-13, the historical fixture corpus is broadly verified, but this
-does not close the upstream builtin registry. The current mechanical audit
-finds 303/305 exact `(name,args,result)` registrations after the Param W-graph
-and arbitrary-root transform slices.  The two missing signatures are
-`block(Param)` and timed `full_deform(Param,int)`.  The three observably
-same-result hunger contracts are implemented; 12 registered signatures still
-have reachable explicit NYI paths, plus silent approximations in the
-deformation/block family. Therefore the domain
-surface remains partial even where existing contracts pass. Readline completion (TTY-only) and
+does not close the upstream builtin registry.  As of 2026-08-18
+(docs/REMAINING_BUILTINS.md registry reconciliation), all 305
+`atlas-types.w` `(name,args,result)` signatures have exact Rust
+registrations, including `block(Param)` and timed `full_deform(Param,int)`.
+What remains: (a) the `global.w` general-purpose builtins (89 signatures:
+int/bitset utilities, rat decomposers, string/ascii, cardinality and matrix
+accessors, container relations and arithmetic, matrix constructors, and the
+`gcd`/`echelon`/`Smith`/`kernel`/`invert` linear algebra — landing in
+verified batches), and (b) reachable loud NYIs in the representation-theory
+core: generator-attitude gates (`partial_block`/`W_graph`/`W_cells`/
+`block_Hasse` on Param — the locator slice is in flight),
+proper-subsystem twisted/ext recursion, non-integral common blocks, and
+cross-block partial merge (rep_table.rs). Readline completion (TTY-only) and
 KL binary file formats (no Atlas-language builtin touches them; filekl.w
 serves stand-alone utilities only) remain deferred outside the
 language-only gate pending a user decision.
