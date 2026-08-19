@@ -439,6 +439,55 @@ impl State {
         }
     }
 
+    /// `Rep_table::append_block_containing` (repr.cpp:1671-1693): the
+    /// distinct active records hit by `keys`, in first-hit order.  Callers
+    /// fix the key list before materialization (upstream's `place_limit`,
+    /// fixed at entry to `add_block_below`), so blocks committed meanwhile
+    /// are only seen on the next probe.
+    fn overlap_records(&self, keys: &[ReducedParamKey]) -> Vec<Arc<BlockRecord>> {
+        let mut seen = HashSet::new();
+        let mut records = Vec::new();
+        for key in keys {
+            let Some(place) = self.places.get(key) else {
+                continue;
+            };
+            let Some(record) = self.active(place.block) else {
+                continue;
+            };
+            if seen.insert(record.id) {
+                records.push(record);
+            }
+        }
+        records
+    }
+
+    /// The identity half of [`Self::overlap_records`], used to re-verify a
+    /// probed overlap set at commit time.
+    fn overlap_ids(&self, keys: &[ReducedParamKey]) -> HashSet<BlockId> {
+        self.overlap_records(keys)
+            .into_iter()
+            .map(|record| record.id)
+            .collect()
+    }
+
+    /// Commit a freshly materialized partial block, swallowing the
+    /// pre-verified overlap set.
+    ///
+    /// Upstream this is the tail of `add_block_below`
+    /// (repr.cpp:1585-1645) plus `swallow_blocks_and_append`
+    /// (repr.cpp:1695-1740): the overlapping records are retired (upstream
+    /// `block_erase`, repr.cpp:1743-1770), the merged block is spliced in,
+    /// and every row's reduced key is re-registered least-row-wins.  The
+    /// Hasse/KL data movement of `common_block::swallow`
+    /// (blocks.cpp:1416-1470) has no counterpart: `block_access`
+    /// recomputes Hasse on demand and retired KL caches are rebuilt lazily.
+    ///
+    /// Concurrency: upstream is single-threaded; here the block is built
+    /// outside the lock and the overlap set is re-verified against
+    /// `probe_keys` inside it.  `Ok(None)` means the set changed while
+    /// materializing — the caller discards the block and rebuilds from a
+    /// fresh probe (the union is monotone, so this terminates).
+    #[allow(clippy::too_many_arguments)]
     fn commit_partial(
         &mut self,
         block: Arc<PartialBlock>,
@@ -446,9 +495,11 @@ impl State {
         exact_seed_row: usize,
         row_keys: &[(ReducedParamKey, usize)],
         locator: BlockLocator,
-    ) -> Result<(Arc<BlockRecord>, usize), StructureError> {
+        probe_keys: &[ReducedParamKey],
+        expected_overlap: &HashSet<BlockId>,
+    ) -> Result<Option<(Arc<BlockRecord>, usize)>, StructureError> {
         if let Some(existing) = self.active_place(&key) {
-            return Ok(existing);
+            return Ok(Some(existing));
         }
         if !row_keys
             .iter()
@@ -459,20 +510,15 @@ impl State {
             });
         }
 
-        let overlaps: HashSet<BlockId> = row_keys
-            .iter()
-            .filter_map(|(candidate, _)| self.places.get(candidate))
-            .filter_map(|place| self.active(place.block).map(|_| place.block))
-            .collect();
-        if !overlaps.is_empty() {
-            return Err(StructureError::NotYetImplemented {
-                feature: "merging overlapping partial representation blocks",
-            });
+        let overlaps = self.overlap_ids(probe_keys);
+        if overlaps != *expected_overlap {
+            return Ok(None);
         }
+        self.retire_all(&overlaps);
 
         let record = self.insert_record(block, false, locator);
         self.reverse_register(&record, row_keys);
-        Ok((record, exact_seed_row))
+        Ok(Some((record, exact_seed_row)))
     }
 }
 
@@ -689,8 +735,16 @@ impl RepTable {
     ///
     /// Upstream `Rep_table::lookup` (repr.cpp:1796-1824): normalise,
     /// `mod_reduce`, `Reduced_param::reduce` for the canonical key and the
-    /// query locator, probe, and on a miss build the Bruhat interval below
-    /// the seed in the query's own attitude.
+    /// query locator, probe, and on a miss `add_block_below`
+    /// (repr.cpp:1585-1645): build the Bruhat interval below the seed in the
+    /// query's own attitude, swallow every cached block the interval
+    /// overlaps (`append_block_containing` + `swallow_blocks_and_append`,
+    /// repr.cpp:1671-1693, 1695-1740) by rebuilding the block on the union
+    /// of the element lists, and retire the swallowed records.  The merge
+    /// stays inside the identity relative attitude: overlapping records at a
+    /// different locator attitude would need the `block_modifier` row
+    /// transport (shift + `transform<false>`) of repr.cpp:1601-1607, which
+    /// is not yet wired.
     fn lookup(
         &self,
         rc: &RepContext<'_>,
@@ -705,28 +759,90 @@ impl RepTable {
 
         let context = Self::query_context(rc, query.gamma())?;
         let interval = bruhat_below(&context, &seed)?;
-        let block = PartialBlock::build(&context, &interval)?;
-        let exact_seed_row = block
-            .lookup(&seed)
-            .ok_or(StructureError::RepInvariantViolation {
-                invariant: "partial representation block seed row",
-            })?;
-        let block = Arc::new(block);
-        let row_keys = Self::row_keys_for(rc, &block, &reduced.locator, &reduced.coroots)?;
-        #[cfg(test)]
-        self.hooks.pause_before_commit(false);
+        // The `co_reduce` scan of `append_block_containing`
+        // (repr.cpp:1676-1692): every interval element's key under the
+        // query's own locator.  The seed is the top of its interval, so its
+        // key is always among them.
+        let interval_keys = interval
+            .iter()
+            .map(|element| Self::canonical_key(rc, element, &reduced.locator, &reduced.coroots))
+            .collect::<Result<Vec<_>, _>>()?;
 
-        let (record, row) = {
-            let mut state = self.lock_state()?;
-            state.commit_partial(
-                block,
-                reduced.key,
-                exact_seed_row,
-                &row_keys,
-                reduced.locator.clone(),
-            )?
-        };
-        Self::located(rc, record, row, &seed, query, reduced.locator)
+        loop {
+            let overlap = {
+                let state = self.lock_state()?;
+                if let Some((record, row)) = state.active_place(&reduced.key) {
+                    drop(state);
+                    return Self::located(rc, record, row, &seed, query, reduced.locator);
+                }
+                state.overlap_records(&interval_keys)
+            };
+            if overlap
+                .iter()
+                .any(|record| record.locator != reduced.locator)
+            {
+                return Err(StructureError::NotYetImplemented {
+                    feature: "merging partial representation blocks at a relative attitude",
+                });
+            }
+
+            // Pool extension (repr.cpp:1601-1607): append every row of every
+            // overlapping block, keyed-deduped against the pool.  Identity
+            // relative attitude means shift 0 and `w` the identity, so the
+            // stored srms are inserted as-is; a stored row whose key already
+            // occurs in the pool is the same param class (upstream's
+            // shift-transported row `hash.match`-es the pooled interval
+            // element), so it is skipped rather than duplicated.
+            let mut pool = interval.clone();
+            let mut pool_keys = interval_keys.clone();
+            for record in &overlap {
+                for row in 0..record.block.size() {
+                    let element =
+                        record
+                            .block
+                            .element(row)
+                            .ok_or(StructureError::RepInvariantViolation {
+                                invariant: "representation block row representative",
+                            })?;
+                    let key = Self::canonical_key(rc, element, &reduced.locator, &reduced.coroots)?;
+                    if !pool_keys.contains(&key) {
+                        pool_keys.push(key);
+                        pool.push(element.clone());
+                    }
+                }
+            }
+            // Union rebuild (repr.cpp:1610-1618): a fresh block on the whole
+            // pool; the constructor re-derives the canonical
+            // `(length, x, y)` row order and the links on the union set.
+            let block = Arc::new(PartialBlock::build(&context, &pool)?);
+            let exact_seed_row =
+                block
+                    .lookup(&seed)
+                    .ok_or(StructureError::RepInvariantViolation {
+                        invariant: "partial representation block seed row",
+                    })?;
+            let row_keys = Self::row_keys_for(rc, &block, &reduced.locator, &reduced.coroots)?;
+            #[cfg(test)]
+            self.hooks.pause_before_commit(false);
+
+            let expected_overlap = overlap.iter().map(|record| record.id).collect();
+            let committed = {
+                let mut state = self.lock_state()?;
+                state.commit_partial(
+                    block,
+                    reduced.key,
+                    exact_seed_row,
+                    &row_keys,
+                    reduced.locator.clone(),
+                    &interval_keys,
+                    &expected_overlap,
+                )?
+            };
+            let Some((record, row)) = committed else {
+                continue;
+            };
+            return Self::located(rc, record, row, &seed, query, reduced.locator);
+        }
     }
 
     /// Resolve or materialize the full common block containing `query`.
@@ -1463,6 +1579,66 @@ mod tests {
         (srm, sr)
     }
 
+    /// `param(KGB(rf,x), lambda_rho, nu)`.
+    fn param_query(
+        rc: &RepContext<'_>,
+        x: usize,
+        lambda_rho: &Weight,
+        nu: &RationalWeight,
+    ) -> StandardRepr {
+        let gamma = rc.gamma(KgbId(x), lambda_rho, nu).unwrap();
+        rc.sr_gamma(KgbId(x), lambda_rho, &gamma).unwrap()
+    }
+
+    /// The A2 su(2,1) anchor of `tests/fixtures/domain/partial_merge_a2.atlas`:
+    /// the compact inner class (`inner_class(ra,[[1,0],[0,1]])`), whose
+    /// KGB-size-6 weak real form is the quasisplit su(2,1) (the oracle's
+    /// `real_form(ia,1)`; the CLI maps the oracle's form numbering through
+    /// the FormNumberMap adapter permutation).
+    fn a2_compact_fixture() -> ContextFixture {
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2, -1], vec![-1, 2]],
+            vec![Weight::new(vec![2, -1]), Weight::new(vec![-1, 2])],
+            vec![
+                crate::Coweight::new(vec![1, 0]),
+                crate::Coweight::new(vec![0, 1]),
+            ],
+        )
+        .unwrap();
+        let involution = LatticeInvolution::identity(&datum).unwrap();
+        fixture(datum, involution, 6, 6)
+    }
+
+    /// The CLI's `(int, Param)` Cayley path (`parameter_Cayley_wrapper`,
+    /// atlas-types.w:6445-6466): make dominant, mod-reduce, and ascend
+    /// through generator `s` of the integral context.
+    fn cayley_param(rc: &RepContext<'_>, s: usize, query: &StandardRepr) -> StandardRepr {
+        let z = query.made_dominant(rc).unwrap();
+        let gamma = z.gamma().clone();
+        let seed = StandardReprMod::mod_reduce(rc, &z).unwrap();
+        let context = CommonContext::integral(rc, &gamma).unwrap();
+        match context.status(s, seed.x()).unwrap().0 {
+            crate::KgbStatus::ImaginaryNoncompact => context
+                .up_cayley(s, &seed)
+                .and_then(|srm| srm.to_standard(rc, &gamma))
+                .unwrap(),
+            other => panic!("expected noncompact imaginary Cayley ascent, got {other:?}"),
+        }
+    }
+
+    fn block_xs(block: &PartialBlock) -> Vec<KgbId> {
+        (0..block.size())
+            .map(|row| block.element(row).unwrap().x())
+            .collect()
+    }
+
+    fn block_lengths(block: &PartialBlock) -> Vec<usize> {
+        (0..block.size())
+            .map(|row| block.length(row).unwrap())
+            .collect()
+    }
+
     fn fill_marker(kl: &mut crate::SharedKlTable) -> Result<(usize, Vec<bool>), StructureError> {
         assert!((0..kl.support().size()).all(|y| kl.prim_map(y).is_empty()));
         kl.fill(0)?;
@@ -2080,16 +2256,21 @@ mod tests {
         let (locator, _) = full_system_keying(&rc);
         let duplicate = full_system_key(&rc, block.element(10).unwrap());
         let mut state = State::default();
+        let row_keys = [(duplicate, 10), (duplicate, 11)];
+        let probe_keys = [duplicate];
 
         let (_, fresh_row) = state
             .commit_partial(
                 Arc::clone(&block),
                 duplicate,
                 11,
-                &[(duplicate, 10), (duplicate, 11)],
+                &row_keys,
                 locator.clone(),
+                &probe_keys,
+                &HashSet::new(),
             )
-            .unwrap();
+            .unwrap()
+            .expect("fresh state commits");
 
         assert_eq!(fresh_row, 11, "fresh materialization returns exact seed");
         assert_eq!(state.places[&duplicate].row, 10);
@@ -2099,10 +2280,13 @@ mod tests {
                 block,
                 duplicate,
                 11,
-                &[(duplicate, 10), (duplicate, 11)],
+                &row_keys,
                 locator,
+                &probe_keys,
+                &HashSet::new(),
             )
-            .unwrap();
+            .unwrap()
+            .expect("seed-key hit resolves without committing");
         assert_eq!(existing_row, 10, "later probes use the reverse place");
     }
 
@@ -2284,7 +2468,7 @@ mod tests {
     }
 
     #[test]
-    fn unsupported_partial_overlap_is_failure_atomic() {
+    fn partial_overlap_merges_and_retires_the_first_block() {
         let fixture = a1_fixture();
         let owner = owner(&fixture);
         let rc = owner.context();
@@ -2297,19 +2481,31 @@ mod tests {
                 .unwrap()
         };
         let first = owner.lookup(&query(0)).unwrap();
-        let before = owner.blocks.state_counts();
+        assert_eq!(first.block().size(), 1);
 
-        assert!(matches!(
-            owner.lookup(&query(2)),
-            Err(StructureError::NotYetImplemented {
-                feature: "merging overlapping partial representation blocks"
-            })
-        ));
-        assert_eq!(owner.blocks.state_counts(), before);
-        assert!(owner.blocks.block(first.block_id()).unwrap().is_some());
+        // The interval below query(2) contains query(0)'s class, so the
+        // second lookup swallows the singleton into the union block.
+        let merged = owner.lookup(&query(2)).unwrap();
+
+        assert_ne!(merged.block_id(), first.block_id());
+        assert_eq!(merged.block().size(), 3);
+        assert_eq!(merged.raw_row(), 2);
         assert_eq!(
-            owner.lookup(&query(0)).unwrap().block_id(),
-            first.block_id()
+            block_xs(&merged.block()),
+            vec![KgbId(0), KgbId(1), KgbId(2)]
+        );
+        // The overlapping singleton is retired; its handle stays usable.
+        assert!(owner.blocks.block(first.block_id()).unwrap().is_none());
+        assert_eq!(first.block().size(), 1, "existing Arc remains valid");
+        assert_eq!(owner.blocks.state_counts(), (2, 1, 3));
+        assert!(owner.blocks.state_is_consistent());
+        // Both seeds now resolve to the merged block.
+        let again = owner.lookup(&query(0)).unwrap();
+        assert_eq!(again.block_id(), merged.block_id());
+        assert_eq!(again.raw_row(), 0);
+        assert_eq!(
+            owner.lookup(&query(2)).unwrap().block_id(),
+            merged.block_id()
         );
     }
 
@@ -2473,7 +2669,7 @@ mod tests {
     }
 
     #[test]
-    fn concurrent_overlapping_partials_leave_the_first_commit_unchanged() {
+    fn concurrent_overlapping_partials_merge_and_retire_the_first_commit() {
         let fixture = a1_fixture();
         let first_gate = TestGate::new();
         let overlap_gate = TestGate::new();
@@ -2487,7 +2683,7 @@ mod tests {
             .unwrap(),
         );
 
-        let (first, before) = std::thread::scope(|scope| {
+        let (first, overlap) = std::thread::scope(|scope| {
             let first_owner = Arc::clone(&owner);
             let first_worker = scope.spawn(move || {
                 let rc = first_owner.context();
@@ -2504,19 +2700,231 @@ mod tests {
 
             first_gate.release();
             let first = first_worker.join().unwrap().unwrap();
-            let before = owner.blocks.state_snapshot();
             overlap_gate.release();
-            assert!(matches!(
-                overlap_worker.join().unwrap(),
-                Err(StructureError::NotYetImplemented {
-                    feature: "merging overlapping partial representation blocks"
-                })
-            ));
-            (first, before)
+            let overlap = overlap_worker.join().unwrap().unwrap();
+            (first, overlap)
         });
 
-        assert_eq!(owner.blocks.state_snapshot(), before);
-        assert!(owner.blocks.block(first.block_id()).unwrap().is_some());
+        // The overlap worker probed an empty overlap set and built the bare
+        // interval before the first commit landed; at commit time the
+        // re-verification saw the singleton appear, so the worker discarded
+        // its block and rebuilt on the union (the gate queue is empty by
+        // then, so the rebuild runs straight through).
+        assert_ne!(overlap.block_id(), first.block_id());
+        assert_eq!(overlap.block().size(), 3);
+        assert_eq!(overlap.raw_row(), 2);
+        assert!(owner.blocks.block(first.block_id()).unwrap().is_none());
+        assert_eq!(first.block().size(), 1, "retired handle remains valid");
+        assert_eq!(owner.blocks.state_counts(), (2, 1, 3));
+        assert_eq!(owner.blocks.state_snapshot().slots, vec![None, Some(false)]);
+        assert!(owner.blocks.state_is_consistent());
+        let rc = owner.context();
+        assert_eq!(
+            owner.lookup(&a1_query(&rc, 0)).unwrap().block_id(),
+            overlap.block_id()
+        );
+    }
+
+    /// RepTable-level anchor for
+    /// `tests/fixtures/domain/partial_merge_containment.atlas` (B2 split
+    /// form 2): `pb = param(KGB(rfb,5),[1,1],[1,0]/2)` caches a singleton
+    /// interval; `pd = Cayley(0,pb)` has the 3-element interval
+    /// `{x=4, x=5, x=10}` containing pb's class, so the second lookup
+    /// swallows the singleton and re-querying pb lands on row 1 of the
+    /// merged block (the oracle's `Subset {1}` header).
+    #[test]
+    fn partial_merge_containment_absorbs_the_singleton_block() {
+        let fixture = b2_fixture();
+        let owner = owner(&fixture);
+        let rc = owner.context();
+        let pb = param_query(
+            &rc,
+            5,
+            &Weight::new(vec![1, 1]),
+            &RationalWeight::new(vec![1, 0], 2).unwrap(),
+        );
+
+        let singleton = owner.lookup(&pb).unwrap();
+        assert_eq!(singleton.block().size(), 1);
+        assert_eq!(singleton.raw_row(), 0);
+
+        let pd = cayley_param(&rc, 0, &pb);
+        let merged = owner.lookup(&pd).unwrap();
+        assert_eq!(
+            merged.adapted_representative().x(),
+            KgbId(10),
+            "oracle x=10"
+        );
+
+        let block = merged.block();
+        assert_eq!(block.size(), 3);
+        assert_eq!(merged.raw_row(), 2, "the seed is the top of its interval");
+        assert_eq!(block_xs(&block), vec![KgbId(4), KgbId(5), KgbId(10)]);
+        assert_eq!(block_lengths(&block), vec![0, 0, 1]);
+        assert_eq!(
+            block.gamma_lambda(0),
+            Some(&RationalWeight::new(vec![1, -1], 2).unwrap())
+        );
+        assert_eq!(
+            block.gamma_lambda(2),
+            Some(&RationalWeight::new(vec![3, 3], 2).unwrap())
+        );
+
+        assert!(owner.blocks.block(singleton.block_id()).unwrap().is_none());
+        assert_eq!(singleton.block().size(), 1, "existing Arc remains valid");
+        assert_eq!(owner.blocks.state_counts(), (2, 1, 3));
+
+        let again = owner.lookup(&pb).unwrap();
+        assert_eq!(again.block_id(), merged.block_id());
+        assert_eq!(again.raw_row(), 1, "oracle: Subset {{1}}");
+        assert_eq!(owner.blocks.state_counts(), (2, 1, 3));
+        assert!(owner.blocks.state_is_consistent());
+    }
+
+    /// RepTable-level anchor for
+    /// `tests/fixtures/domain/partial_merge_union.atlas` (B2 at gamma=rho):
+    /// the intervals below p4 (`{x=0,1,4}`) and p6 (`{x=0,2,6}`) overlap at
+    /// x=0 only; the merged block has 5 rows in the canonical
+    /// `(length, x, y)` order, with links recomputed on the union (row 0's
+    /// generator-1 cross becomes defined).
+    #[test]
+    fn partial_merge_union_rebuilds_on_the_element_union() {
+        let fixture = b2_fixture();
+        let owner = owner(&fixture);
+        let rc = owner.context();
+        let lambda_rho = Weight::new(vec![0, 0]);
+        let nu = RationalWeight::new(vec![1, 1], 1).unwrap();
+        let p4 = param_query(&rc, 4, &lambda_rho, &nu);
+        let p6 = param_query(&rc, 6, &lambda_rho, &nu);
+
+        let first = owner.lookup(&p4).unwrap();
+        assert_eq!(first.block().size(), 3);
+        assert_eq!(first.raw_row(), 2);
+        assert_eq!(block_xs(&first.block()), vec![KgbId(0), KgbId(1), KgbId(4)]);
+        assert_eq!(
+            first.block().cross(1, 0),
+            None,
+            "cross target x=2 is outside the interval"
+        );
+
+        let merged = owner.lookup(&p6).unwrap();
+        let block = merged.block();
+        assert_eq!(block.size(), 5);
+        assert_eq!(merged.raw_row(), 4, "seed x=6 is the last row");
+        assert_eq!(
+            block_xs(&block),
+            vec![KgbId(0), KgbId(1), KgbId(2), KgbId(4), KgbId(6)]
+        );
+        assert_eq!(block_lengths(&block), vec![0, 0, 0, 1, 1]);
+        assert_eq!(
+            block.cross(1, 0),
+            Some(2),
+            "links are recomputed on the union"
+        );
+
+        assert!(owner.blocks.block(first.block_id()).unwrap().is_none());
+        assert_eq!(owner.blocks.state_counts(), (2, 1, 5));
+
+        let again = owner.lookup(&p4).unwrap();
+        assert_eq!(again.block_id(), merged.block_id());
+        assert_eq!(again.raw_row(), 3);
+        assert_eq!(owner.blocks.state_counts(), (2, 1, 5));
+        assert!(owner.blocks.state_is_consistent());
+    }
+
+    /// RepTable-level anchor for
+    /// `tests/fixtures/domain/partial_merge_chain.atlas`: a second-order
+    /// merge (11-row union block) on top of the union fixture, with lengths
+    /// unchanged by merge history, partial-only Cayley links, and a final
+    /// `print_common_block`-style promotion to the 12-row full block.
+    #[test]
+    fn partial_merge_chain_merges_second_order_then_promotes_to_full() {
+        let fixture = b2_fixture();
+        let owner = owner(&fixture);
+        let rc = owner.context();
+        let lambda_rho = Weight::new(vec![0, 0]);
+        let nu = RationalWeight::new(vec![1, 1], 1).unwrap();
+        let p4 = param_query(&rc, 4, &lambda_rho, &nu);
+        let p6 = param_query(&rc, 6, &lambda_rho, &nu);
+        let p10 = param_query(&rc, 10, &lambda_rho, &nu);
+
+        let first = owner.lookup(&p4).unwrap();
+        assert_eq!(first.block().size(), 3);
+        let merged5 = owner.lookup(&p6).unwrap();
+        assert_eq!(merged5.block().size(), 5);
+        let merged11 = owner.lookup(&p10).unwrap();
+
+        let block = merged11.block();
+        assert_eq!(block.size(), 11);
+        assert_eq!(merged11.raw_row(), 10);
+        assert_eq!(block_xs(&block), (0..=10).map(KgbId).collect::<Vec<_>>());
+        assert_eq!(block_lengths(&block), vec![0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 3]);
+        // Lengths are a pure function of the element: oracle `length(p4)`,
+        // `length(p6)`, `length(p10)` print 1, 1, 3 regardless of the merge.
+        assert_eq!(block.length(4), Some(1), "p4's row");
+        assert_eq!(block.length(6), Some(1), "p6's row");
+        assert_eq!(block.length(10), Some(3), "p10's row");
+        // Partial links differ from the full block: row 7's generator-1
+        // Cayley is `(10,*)` because row 11 is absent from the partial.
+        assert_eq!(block.cayley(1, 7), Some((Some(10), None)));
+
+        assert!(owner.blocks.block(merged5.block_id()).unwrap().is_none());
+        assert_eq!(owner.blocks.state_counts(), (3, 1, 11));
+
+        // Final full promotion retires the merged partial identically.
+        let full = owner.lookup_full_block(&p6).unwrap();
+        assert!(full.is_full());
+        assert_eq!(full.block().size(), 12);
+        assert_eq!(full.raw_row(), 6, "oracle: element 6");
+        assert!(owner.blocks.block(merged11.block_id()).unwrap().is_none());
+        assert_eq!(owner.blocks.state_counts(), (4, 1, 12));
+        assert!(owner.blocks.state_is_consistent());
+    }
+
+    /// RepTable-level anchor for
+    /// `tests/fixtures/domain/partial_merge_a2.atlas` (A2 su(2,1)): the
+    /// symmetric two-generator overlap on a second root datum, where the
+    /// shared element x=0 is reached through generator 1 alone (the B2
+    /// union fixture reaches it through both).
+    #[test]
+    fn partial_merge_a2_symmetric_two_generator_overlap() {
+        let fixture = a2_compact_fixture();
+        let owner = owner(&fixture);
+        let rc = owner.context();
+        let lambda_rho = Weight::new(vec![0, 0]);
+        let nu = RationalWeight::new(vec![1, 1], 1).unwrap();
+        let q3 = param_query(&rc, 3, &lambda_rho, &nu);
+        let q4 = param_query(&rc, 4, &lambda_rho, &nu);
+
+        let first = owner.lookup(&q3).unwrap();
+        assert_eq!(first.block().size(), 3);
+        assert_eq!(first.raw_row(), 2);
+        assert_eq!(block_xs(&first.block()), vec![KgbId(0), KgbId(2), KgbId(3)]);
+        assert_eq!(
+            first.block().cross(0, 0),
+            None,
+            "cross target x=1 is outside the interval"
+        );
+
+        let merged = owner.lookup(&q4).unwrap();
+        let block = merged.block();
+        assert_eq!(block.size(), 5);
+        assert_eq!(merged.raw_row(), 4, "seed x=4 is the last row");
+        assert_eq!(
+            block_xs(&block),
+            vec![KgbId(0), KgbId(1), KgbId(2), KgbId(3), KgbId(4)]
+        );
+        assert_eq!(block_lengths(&block), vec![0, 0, 0, 1, 1]);
+        assert_eq!(block.cross(0, 0), Some(1), "links recomputed on the union");
+
+        assert!(owner.blocks.block(first.block_id()).unwrap().is_none());
+        assert_eq!(owner.blocks.state_counts(), (2, 1, 5));
+
+        let again = owner.lookup(&q3).unwrap();
+        assert_eq!(again.block_id(), merged.block_id());
+        assert_eq!(again.raw_row(), 3);
+        assert_eq!(block.length(3), Some(1), "oracle: length(q3) = 1");
+        assert_eq!(block.length(4), Some(1), "oracle: length(q4) = 1");
         assert!(owner.blocks.state_is_consistent());
     }
 }
