@@ -4,7 +4,7 @@
  "oracle": "atlas",
  "stage": "typed-pipeline-swap",
  "reference_status": "verified_hpc_reference",
- "rust_status": "not_implemented",
+ "rust_status": "pending_hpc_differential",
  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
@@ -16,7 +16,7 @@
  "oracle_seconds": 0.037,
  "oracle_maxrss_kb": 4476,
  "oracle_maxrss_approximate": false,
- "notes": "extended_block on proper integral subsystems anchor (slice 1 of docs/slices/twisted_ext_proper_workorder.md): B2 split form 2 param(KGB(rfb,5),[1,1],[1,0]/2), A2 su(2,1) param(KGB(rfa,0),[0,0],[1,0]/2), C2 split param(KGB(fs,0),[0,0],[1,0]/2), each under the distinguished delta. Oracle-verified locally 2026-08-18; current Rust hits the loud NYI gate at domain_builtins.rs:14829. Do NOT register the FixturePlan before the slice lands.",
+ "notes": "extended_block on proper integral subsystems anchor (slice 1 of docs/slices/twisted_ext_proper_workorder.md): B2 split form 2 param(KGB(rfb,5),[1,1],[1,0]/2), A2 su(2,1) param(KGB(rfa,0),[0,0],[1,0]/2), C2 split param(KGB(fs,0),[0,0],[1,0]/2), each under the distinguished delta. Oracle-verified locally 2026-08-18. Slice-1B landed 2026-08-19: the extended_block arm routes non-integral gamma through mod_reduce -> CommonContext::integral -> PartialBlock::build_full -> ExtBlock::build_partial (trivial BlockModifier, distinguished delta) + PartialBlockOracle tune_signs; rank-0 subsystems fall out of the same path (oracle: size-1 block, 1x0 matrices). raw_ext_KL/partial_extended_KL_block keep the gate until slice 2. events.json is pre-verified; pending HPC differential run.",
  "hpc_capture": {
   "fresh_process_required": true,
   "timeout_seconds": 30,

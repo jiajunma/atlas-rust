@@ -27,7 +27,7 @@ use atlas_real_group::ext_block::ExtBlock;
 use atlas_real_group::ext_kl::ExtKlTable;
 use atlas_real_group::ext_param::{
     extended_finalise, extended_restrict_to_k, is_default, scaled_extended_finalise,
-    shifted_default_extension, ExtRepContext,
+    shifted_default_extension, ExtRepContext, PartialBlockOracle,
 };
 use atlas_real_group::CompactWeyl;
 use atlas_real_group::{
@@ -42,9 +42,9 @@ use atlas_real_group::{
     on_basis as lattice_on_basis, pair, quotient_relation_basis as domain_quotient_relation_basis,
     replace_relation_generators as domain_replace_relation_generators, singular_orbits_at,
     twisted_deformation_terms, twisted_deformation_with_cancel, twisted_kl_column_at_s,
-    twisted_kl_sum, AdjointFiberBudget, BasedRootDatum, BlockDescent, BlockGraph, BlockTopology,
-    CartanClassification, CartanClassificationBudget, CartanId, CommonContext, Coweight,
-    ExternalFormOrder, GlobalKgb, InnerClass, InnerClassLayout, IntegerLatticeBudget,
+    twisted_kl_sum, AdjointFiberBudget, BasedRootDatum, BlockDescent, BlockGraph, BlockModifier,
+    BlockTopology, CartanClassification, CartanClassificationBudget, CartanId, CommonContext,
+    Coweight, ExternalFormOrder, GlobalKgb, InnerClass, InnerClassLayout, IntegerLatticeBudget,
     IntegralBlockScope, IntegralSubsystem, InvolutionId, InvolutionTable, InvolutionTableBudget,
     KType, KgbGraph, KgbId, KgbStatus, KlPol, KlTable, LatticeInvolution, LocatedBlock,
     ModTwoVector, PartialBlock, RankFlags, RationalWeight, RealFormPresentation, RealFormSeed,
@@ -2913,8 +2913,8 @@ fn kl_sum_at_s_terms(
         .map_err(|error| structure_diagnostic(error, span))?;
     let block = located.block();
     let z = located.raw_row();
-    let singular_flags =
-        located_singular_flags(&parameter.context, &located).map_err(|error| structure_diagnostic(error, span))?;
+    let singular_flags = located_singular_flags(&parameter.context, &located)
+        .map_err(|error| structure_diagnostic(error, span))?;
     // contributions (repr.cpp:1861-1898): expand rows 0..=z into final
     // rows for the singular system, following the first singular descent.
     let mut contrib: Vec<Vec<(usize, i32)>> = vec![Vec::new(); z + 1];
@@ -3879,6 +3879,125 @@ fn build_ext_block(
         cartan,
     )
     .map_err(|e| structure_diagnostic(e, span))
+}
+
+/// `extended_block` at a non-integral infinitesimal character
+/// (atlas-types.w:7376-7431; slice 1 of
+/// docs/slices/twisted_ext_proper_workorder.md). Upstream has no integral
+/// special case: the parameter's common block is built directly on
+/// gamma's integral subsystem (`StandardReprMod::mod_reduce` →
+/// `common_context` → the full `common_block` ctor, blocks.cpp:733-1081),
+/// and the extended block is built over that partial parent with the
+/// distinguished involution (ext_block.cpp:618-668 via
+/// [`ExtBlock::build_partial`]). A rank-0 subsystem falls out as the
+/// singleton block with empty generator tables. Only the identity
+/// generator attitude is supported; `build_partial` keeps the loud NYI
+/// for non-identity `simple_pi`.
+fn extended_block_partial(
+    parameter: &ParamValue,
+    gamma: &RationalWeight,
+    span: SourceSpan,
+) -> Result<Value, Diagnostic> {
+    let rc = rep_context(&parameter.context);
+    let seed = StandardReprMod::mod_reduce(&rc, &parameter.repr)
+        .map_err(|error| structure_diagnostic(error, span))?;
+    let ctxt = CommonContext::integral(&rc, seed.gamma_lambda())
+        .map_err(|error| structure_diagnostic(error, span))?;
+    let (block, _) = PartialBlock::build_full(&ctxt, &seed)
+        .map_err(|error| structure_diagnostic(error, span))?;
+    // The distinguished involution (atlas-types.w:7392), not the user's
+    // delta.
+    let (delta, twist) = distinguished_twist(parameter, span)?;
+    let simp_int: Vec<RootId> = (0..ctxt.subsystem().rank())
+        .map(|s| {
+            ctxt.subsystem()
+                .parent_root(s)
+                .expect("subsystem generator in range")
+        })
+        .collect();
+    let bm = BlockModifier::trivial(rc.root_system(), simp_int.clone())
+        .map_err(|error| structure_diagnostic(error, span))?;
+    let mut eb = ExtBlock::build_partial(&block, &ctxt, &bm, &delta, &twist)
+        .map_err(|error| structure_diagnostic(error, span))?;
+    // The constructor leaves the sign flips cleared; tune them with the
+    // partial-parent star oracle (ext_block.cpp:1707-1876 via
+    // ext_block.cpp:2283-2310). `fold_orbits` orbit indices are subsystem
+    // generator numbers, so `tune_signs` needs the parent root numbers.
+    let context =
+        ExtRepContext::new(&rc, delta).map_err(|error| structure_diagnostic(error, span))?;
+    let simply_ints: Vec<usize> = simp_int.iter().map(|id| id.index()).collect();
+    let mut oracle = PartialBlockOracle::new(&context, &block);
+    if !eb.tune_signs(&mut oracle, &simply_ints) {
+        return Err(runtime(span, "extended block sign tuning failed"));
+    }
+
+    // The return value components (atlas-types.w:7395-7430). `z(n)` maps
+    // extended element `n` to its parent block row, whose (x,
+    // gamma_lambda) reconstructs the printed parameter.
+    let gamma_rho = gamma
+        .sub(rc.rho())
+        .map_err(|error| structure_diagnostic(error, span))?;
+    let size = eb.size();
+    let signed = |eb: &ExtBlock, s: usize, n: usize, link: Option<usize>| -> i32 {
+        match link {
+            None => size as i32,
+            Some(m) => {
+                if eb.epsilon(s, n, m) < 0 {
+                    -1 - m as i32
+                } else {
+                    m as i32
+                }
+            }
+        }
+    };
+    let mut params = Vec::with_capacity(size);
+    let mut types = vec![vec![0_i32; eb.rank()]; size];
+    let mut links0 = vec![vec![0_i32; eb.rank()]; size];
+    let mut links1 = vec![vec![0_i32; eb.rank()]; size];
+    for n in 0..size {
+        let z = eb.z(n);
+        let gl = block.gamma_lambda(z).expect("in-range parent row");
+        let lambda_rho = integer_diff_weight(&gamma_rho, gl, span)?;
+        let repr = rc
+            .sr_gamma(block.x(z).expect("in-range parent row"), &lambda_rho, gamma)
+            .map_err(|error| structure_diagnostic(error, span))?;
+        params.push(Value::Domain(DomainValue::Param(ParamValue {
+            context: Arc::clone(&parameter.context),
+            repr,
+        })));
+        for s in 0..eb.rank() {
+            let kind = eb.descent_type(s, n);
+            types[n][s] = kind as usize as i32;
+            // The wrapper encoding (atlas-types.w:7405-7424).
+            if kind.is_like_compact() || kind.is_like_nonparity() {
+                links0[n][s] = size as i32;
+                links1[n][s] = size as i32;
+            } else {
+                let first = if kind.is_complex() {
+                    eb.cross(s, n)
+                } else {
+                    eb.cayley(s, n)
+                };
+                links0[n][s] = signed(&eb, s, n, first);
+                if kind.link_count() == 1 {
+                    links1[n][s] = size as i32;
+                } else {
+                    let second = if kind.has_double_image() {
+                        eb.cayleys(s, n).1
+                    } else {
+                        eb.cross(s, n)
+                    };
+                    links1[n][s] = signed(&eb, s, n, second);
+                }
+            }
+        }
+    }
+    Ok(Value::Tuple(vec![
+        Value::List(params),
+        matrix_value(&types, span)?,
+        matrix_value(&links0, span)?,
+        matrix_value(&links1, span)?,
+    ]))
 }
 
 /// Integral solution of A x = b (matreduc::find_solution, matreduc.cpp:
@@ -9573,8 +9692,8 @@ fn located_common_block_rows(
 ) -> Result<Vec<CommonBlockRow>, Diagnostic> {
     let block = located.block();
     let rc = rep_context(context);
-    let singular =
-        located_singular_flags(context, located).map_err(|error| structure_diagnostic(error, span))?;
+    let singular = located_singular_flags(context, located)
+        .map_err(|error| structure_diagnostic(error, span))?;
     let mut rows = Vec::with_capacity(block.size());
     for z in 0..block.size() {
         let mut descents = Vec::with_capacity(block.rank());
@@ -9721,8 +9840,8 @@ fn fresh_common_block_rows(
         .map_err(|error| structure_diagnostic(error, span))?;
     let ctxt = CommonContext::integral(&rc, seed.gamma_lambda())
         .map_err(|error| structure_diagnostic(error, span))?;
-    let (block, init) =
-        PartialBlock::build_full(&ctxt, &seed).map_err(|error| structure_diagnostic(error, span))?;
+    let (block, init) = PartialBlock::build_full(&ctxt, &seed)
+        .map_err(|error| structure_diagnostic(error, span))?;
     let singular = ctxt
         .singular_flags(seed_repr.gamma())
         .map_err(|error| structure_diagnostic(error, span))?;
@@ -14965,6 +15084,13 @@ pub(crate) fn call_with_printed(
             }
             let datum = parameter.context.parent.root_datum.datum.clone();
             if !gamma_is_integral(&datum, &gamma) {
+                // Slice 1 (docs/slices/twisted_ext_proper_workorder.md):
+                // only `extended_block` gets the proper-subsystem path
+                // (which also covers rank-0 subsystems); the KLV wrappers
+                // keep the gate until slice 2.
+                if name == "extended_block" {
+                    return extended_block_partial(parameter, &gamma, span);
+                }
                 return Err(runtime(
                     span,
                     format!(
@@ -18473,6 +18599,105 @@ mod tests {
                 "{direct_printer} must not install a representation block"
             );
         }
+    }
+
+    // The strings below are the verified oracle outputs (local oracle run
+    // 2026-08-19, upstream rev 4d3e9449) for the slice-1B anchors of
+    // docs/slices/twisted_ext_proper_workorder.md:
+    // tests/fixtures/domain/ext_block_proper.atlas plus rank-0 probes.
+    #[test]
+    fn extended_block_partial_b2_proper_subsystem_matches_oracle() {
+        // pb := param(KGB(rfb,5),[1,1],[1,0]/2) over split so(3,2):
+        // gamma = [5,3]/2 has the rank-1 integral subsystem generated by
+        // the long root, so the common block is the 3-element proper
+        // subsystem block (x = 4, 5, 10) and the extended block is the
+        // A1-shaped fiber the oracle prints.
+        let datum = fixture_datum("B2", true);
+        let inner = call(
+            "inner_class",
+            &[datum, matrix(2, 2, vec![1, 0, 0, 1])],
+            span(),
+        )
+        .expect("B2 inner class");
+        let real = call("real_form", &[inner, int(2)], span()).expect("split B2 form");
+        let parameter = sl2r_param(&real, 5, &[1, 1], &[1, 0], 2);
+        let identity = matrix(2, 2, vec![1, 0, 0, 1]);
+
+        assert_eq!(
+            call(
+                "extended_block",
+                &[parameter.clone(), identity.clone()],
+                span()
+            )
+            .expect("proper-subsystem extended block")
+            .to_string(),
+            "([final parameter(x=4,lambda=[2,2]/1,nu=[1,-1]/2),\
+             final parameter(x=5,lambda=[2,2]/1,nu=[1,-1]/2),\
+             final parameter(x=10,lambda=[1,2]/1,nu=[1,7]/2)],\n\
+             | 2 |\n\
+             | 2 |\n\
+             | 3 |\n\
+             ,\n\
+             | 2 |\n\
+             | 2 |\n\
+             | 0 |\n\
+             ,\n\
+             | 1 |\n\
+             | 0 |\n\
+             | 1 |\n)"
+        );
+
+        // The KLV wrappers keep their non-integral gate until slice 2.
+        for klv in ["raw_ext_KL", "partial_extended_KL_block"] {
+            let error = call(klv, &[parameter.clone(), identity.clone()], span())
+                .expect_err("KLV wrapper still gated");
+            assert_eq!(
+                error.message,
+                format!("{klv} at a non-integral infinitesimal character is not yet implemented")
+            );
+        }
+    }
+
+    #[test]
+    fn extended_block_partial_rank_zero_subsystem_is_the_singleton() {
+        // Open question (a) of the work order: upstream handles a rank-0
+        // integral subsystem uniformly through common_context, returning
+        // the size-1 block with empty (1x0) generator tables. The partial
+        // path reproduces that for free.
+        let sl2r = sl2r_split_form();
+        // param(KGB(rf,2),[1],[1]/2): gamma = [3]/2, pairing with the
+        // coroot is 3/2, so the integral subsystem is empty.
+        let p = sl2r_param(&sl2r, 2, &[1], &[1], 2);
+        assert_eq!(
+            call("extended_block", &[p, matrix(1, 1, vec![1])], span())
+                .expect("rank-0 extended block")
+                .to_string(),
+            "([final parameter(x=2,lambda=[2]/1,nu=[1]/2)],\
+             The 1x0 matrix,The 1x0 matrix,The 1x0 matrix)"
+        );
+
+        // B2 split form 2, param(KGB(rfb,10),[1,1],[1,1]/4): gamma =
+        // [1,1]/4, every positive coroot pairing non-integral.
+        let datum = fixture_datum("B2", true);
+        let inner = call(
+            "inner_class",
+            &[datum, matrix(2, 2, vec![1, 0, 0, 1])],
+            span(),
+        )
+        .expect("B2 inner class");
+        let real = call("real_form", &[inner, int(2)], span()).expect("split B2 form");
+        let p0 = sl2r_param(&real, 10, &[1, 1], &[1, 1], 4);
+        assert_eq!(
+            call(
+                "extended_block",
+                &[p0, matrix(2, 2, vec![1, 0, 0, 1])],
+                span()
+            )
+            .expect("rank-0 extended block")
+            .to_string(),
+            "([final parameter(x=10,lambda=[2,2]/1,nu=[1,1]/4)],\
+             The 1x0 matrix,The 1x0 matrix,The 1x0 matrix)"
+        );
     }
 
     #[test]

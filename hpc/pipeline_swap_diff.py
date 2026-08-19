@@ -389,6 +389,11 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/common_block_locator"),
     FixturePlan(name="domain/common_block_simple_pi"),
     FixturePlan(name="domain/common_block_rank0_locator"),
+    # Slice 1B (twisted_ext_proper_workorder.md): extended_block on a
+    # proper integral subsystem — B2 split form 2 pb (rank-1 subsystem,
+    # 3-element ext block) with A2/C2 integral controls. Reference frozen
+    # by capture 3574900; events.json pre-verified.
+    FixturePlan(name="domain/ext_block_proper"),
     # Batch 3 (root data): two_rho / two_rho_check.
     FixturePlan(name="domain/two_rho"),
     FixturePlan(name="domain/cofolded"),
