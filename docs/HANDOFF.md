@@ -3419,3 +3419,40 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   Concurrency rule: domain_builtins.rs items never run concurrently.
   Rank-0 non-integral ext builtins uniformly return a size-1 block upstream
   (plan §G) — verify at slice-1A review, else dispatch a small follow-up.
+
+## 2026-08-19 evening: global.w closed, step-3 + slice-1A + partial merge landed
+
+- global.w batch 4 (final global.w slice) is differential-verified:
+  `swiss_matrix_knife`/`mod2_section`/`subspace_normal` at `68082cf`,
+  capture 3576078, fat differential 3577111 (299 PASS + 1 declared
+  PARTIAL, 0 FAIL; report SHA256
+  `1a5ec2eba9ab4b555c9f32d202ef491bb24f2ab9bf61b8fbdc601ebb98d8ae64`).
+  global.w is now fully dispositioned: 160+4 signatures ported or
+  recorded as exclusions (parser-layer 2-D slice + commabarlist,
+  readline_completions).
+- Locator step-3 landed at `38a81f8`: canonical Reduced_param keying
+  (`{x, int_sys, residue}` + IntegralDatumTable), lookup/lookup_full_block
+  return LocatedBlock with the query-to-stored BlockModifier, six loud
+  non-identity-attitude gates in domain_builtins.
+- Slice-1A (ExtBlock over PartialBlock) landed at `1e36a3c`: ParentBlock
+  trait, subsystem_cartan/subsystem_twist/transformed_twisted,
+  build_partial, PartialBlockOracle; oracle-pinned B2/A2/C2 tests.
+- A2 identity-attitude gamma-lambda defect FIXED at `c43e33c` (root cause
+  by recon agent-78: located_common_block_rows applied bm.shift as a bare
+  add; upstream re-normalises per element via Rep_context::shift /
+  real_unique, repr.cpp:352-356). NOT a keying or rho-shift bug.
+- Cross-block partial merge landed at `584717a` (agent-80): commit_partial
+  merges overlapping partials (probe/build-outside-lock/re-verify/commit,
+  retire = block_erase); attitude-mismatch merge stays loudly NYI; the
+  length(Param) full-block fallback arm deleted at `6a0d867`. All four
+  partial_merge_* anchors byte-match locally and are registered
+  (`f291d59`); fat differential 3581761 in flight for promotion +
+  regression of the whole corpus.
+- In flight: agent-79 = locator step-4 (transported consumers, headers
+  `as transformed by <...>`, singleton arms must route through the pool,
+  gate release, registration of the three common_block_* anchors).
+  After step-4: slice-1B (extended_block gate replacement + rank-0
+  non-integral放行 + ext_block_proper registration), then dual_KL_block
+  slice, then twisted slices 2-5 (slice 5 now unblocked by the merge).
+  Next-wave plan beyond that: docs/slices/next_wave_production_plan.md
+  (non-integral common block is the big one).
