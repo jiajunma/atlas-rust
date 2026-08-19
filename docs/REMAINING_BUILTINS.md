@@ -282,10 +282,21 @@ out-of-range TRANSFORM diagnostic prints the converted call upstream
 syntax-error `expecting` list after a non-assignable target says `'='`
 where bison says `'\n'`; two-index `M[i,j] := v` needs the (missing)
 two-index subscription read path first; vec/mat component assignment is
-upstream-legal but shares the unimplemented vec/mat subscription gap;
-`set_type` ALIAS names do not resolve in declarations (`p: Pair` —
-pre-existing, oracle accepts). Fixtures `combined_assignment{,_rejected}`
-cover the rest.
+upstream-legal but shares the unimplemented vec/mat subscription gap.
+Fixtures `combined_assignment{,_rejected}` cover the rest.
+
+`set_type` alias declaration gap — FIXED (2026-08-19, post-63e8118):
+`p: Pair` after `set_type Pair = (int x, int y)` now declares, by
+re-routing a bare-identifier `Command::Define` right side that resolves
+via `TypeTable::resolve_name` to the declaration path (typed.rs
+`Command::Define`). This mirrors parser.y, where a defined type name
+lexes as TYPE_ID and the command parses as a declaration. Known residual
+divergence (not fixtured): upstream then rejects `set Pair = 5` with
+"syntax error, unexpected TYPE_ID"; we still treat the alias name as an
+ordinary identifier in expression positions. `let p: Pair = …` is a
+syntax error upstream too (no type ascription in let bindings), so no
+gap there. Fixtures still spell the structural type (`q: (int,int)`);
+recapturing them with the alias form is optional churn.
 
 Remaining global.w gap after batch 2 (batch-3 work order):
 

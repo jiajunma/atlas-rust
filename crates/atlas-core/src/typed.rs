@@ -852,6 +852,30 @@ impl TypedContext {
             Command::Define {
                 name, value, span, ..
             } => {
+                // parser.y disambiguates `id : id` lexically: a defined type
+                // name lexes as TYPE_ID, making the command a declaration.
+                // Our lexer has no type-table token, so a bare-identifier
+                // right side naming a known type (alias or tabled) is
+                // re-routed to the declaration path here.
+                if let Expr::Identifier {
+                    name: type_name, ..
+                } = value
+                {
+                    if let Some(type_) = self.types.resolve_name(type_name) {
+                        self.globals.define(
+                            name.clone(),
+                            type_.clone(),
+                            crate::frames::unset_global(),
+                        );
+                        return Ok(vec![TypedCommandEvent::ReportLine {
+                            text: format!(
+                                "Declaring identifier '{name}': {}\n",
+                                type_.display(&self.types)
+                            ),
+                            span: *span,
+                        }]);
+                    }
+                }
                 let mut type_ = Type::Undetermined;
                 let typed = convert_expr(
                     value,
@@ -11280,6 +11304,40 @@ mod tests {
             error.message,
             "Name 'a' is constant in component assignment a[0]:=1"
         );
+    }
+
+    #[test]
+    fn alias_name_declares_a_variable() {
+        // parser.y lexes a defined type name as TYPE_ID, making `p: Pair`
+        // a declaration; with no type-table token the bare-identifier right
+        // side naming a known type is re-routed to declaration instead.
+        let mut context = TypedContext::new();
+        let mut reports = Vec::new();
+        let mut values = Vec::new();
+        for source in [
+            "set_type Pair = (int x, int y)",
+            "p: Pair",
+            "p := (3,4)",
+            "p.x",
+            "p.y +:= 10",
+            "p",
+        ] {
+            let events = context.execute(&command(source)).expect(source);
+            for event in events {
+                match event {
+                    TypedCommandEvent::Value { value, .. } => values.push(value.to_string()),
+                    TypedCommandEvent::ReportLine { text, .. } => reports.push(text),
+                    _ => {}
+                }
+            }
+        }
+        assert!(
+            reports
+                .iter()
+                .any(|text| text == "Declaring identifier 'p': (int,int)\n"),
+            "declaration report missing: {reports:?}"
+        );
+        assert_eq!(values, ["(3,4)", "3", "14", "(3,14)"]);
     }
 
     #[test]
