@@ -3400,3 +3400,13 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   survive. HPC full-corpus differentials must use the fat partition
   (`--partition=fat --time=01:00:00 --mem=32G --export=ALL,TIMEOUT=3600`);
   heavy fixtures OOM/timeout on cpu.
+- All ten remaining anchors were pre-verified on 2026-08-19 by rebuilding
+  expected stdout via `hpc.pipeline_swap_diff.expected_cli_observation` and
+  diffing against the local Rust CLI: prefixes match exactly and every first
+  divergence lands on its documented boundary (locator: A2 gamma-lambda
+  defect + missing `as transformed by <...>` header; ext_block_proper: the
+  `extended_block` NYI gate; length_dual_proper: `dual_KL_block` NYI;
+  length_dual_proper_a2: the A2 defect; partial_merge_*: merge NYI — Rust
+  prints unmerged partial rows where the oracle prints the merged
+  `Subset {...} in the following common block`). Registration can proceed
+  as each slice lands without regenerating events.
