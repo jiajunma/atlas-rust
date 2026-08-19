@@ -2799,9 +2799,12 @@ fn kl_pol_at<B: BlockTopology>(
 }
 
 /// Restore one stored representation-block row at the querying parameter's
-/// infinitesimal character.  A cache hit can carry a central shift relative
-/// to the representative that originally materialized the block, so using
-/// the stored `gamma_lambda` directly is observably wrong.
+/// infinitesimal character — `Rep_context::sr(srm, bm, gamma)`
+/// (repr.cpp:815-823), the per-row read of every transported consumer: the
+/// modifier's central shift first, then `transform<false>` by its Weyl
+/// word, then the plain `sr` at the query's gamma.  At the identity
+/// attitude this reduces to shift + `real_unique` + `sr`, the previous
+/// identity-only behaviour.
 fn located_row_parameter(
     context: &Arc<RealFormContext>,
     located: &LocatedBlock,
@@ -2813,9 +2816,51 @@ fn located_row_parameter(
         index: row,
         upper_bound: block.size(),
     })?;
-    let shifted = stored.gamma_lambda().add(located.relative_shift())?;
-    StandardReprMod::build(&rc, stored.x(), &shifted)?
-        .to_standard(&rc, located.prepared_query().gamma())
+    rc.sr_with_modifier(
+        stored,
+        located.block_modifier(),
+        located.prepared_query().gamma(),
+    )
+}
+
+/// `common_block::singular(bm, gamma)` (blocks.cpp:711-721): block
+/// generator `s` is singular at the query's gamma when the coroot of its
+/// simply-integral parent root, transported to the query attitude,
+/// vanishes on `gamma`.  Upstream transports as
+/// `permuted_root(word(bm.w), simply_integrals[s])`; with
+/// `bm.w = query_w * stored_w^{-1}` (`make_relative_to`, repr.cpp:343-345,
+/// which leaves `simp_int` unchanged) and both locators' sorted `simp_int`
+/// the images of the same canonical simples, the transported root of
+/// generator `s` is exactly `simp_int[simple_pi[s]]` of the modifier —
+/// upstream's `#else` branch `simple_pi.pull_back(simp_int)`, equal to the
+/// active `#if 1` computation.  At the identity attitude this is the plain
+/// `common_block::singular(gamma)` (blocks.cpp:701-708).
+fn located_singular_flags(
+    context: &Arc<RealFormContext>,
+    located: &LocatedBlock,
+) -> Result<Vec<bool>, StructureError> {
+    let rc = rep_context(context);
+    let system = rc.root_system();
+    let gamma = located.prepared_query().gamma();
+    let modifier = located.block_modifier();
+    let simp_int = modifier.simp_int();
+    let simple_pi = modifier.simple_pi();
+    let mut flags = Vec::with_capacity(simp_int.len());
+    for &generator_image in simple_pi {
+        let root = simp_int[generator_image];
+        let coroot = system.coroot(root).ok_or(StructureError::IndexOutOfRange {
+            index: root.index(),
+            upper_bound: system.roots().len(),
+        })?;
+        let pairing: i64 = coroot
+            .as_slice()
+            .iter()
+            .zip(gamma.numerator().iter())
+            .map(|(&c, &g)| i64::from(c) * g)
+            .sum();
+        flags.push(pairing == 0);
+    }
+    Ok(flags)
 }
 
 /// Merge two ascending-by-row contribution lists, summing the
@@ -2866,21 +2911,10 @@ fn kl_sum_at_s_terms(
         .rep
         .lookup(&normalised)
         .map_err(|error| structure_diagnostic(error, span))?;
-    if !located.has_identity_generator_attitude() {
-        return Err(structure_diagnostic(
-            StructureError::NotYetImplemented {
-                feature: "KL_sum_at_s on a non-identity integral-subsystem attitude",
-            },
-            span,
-        ));
-    }
     let block = located.block();
     let z = located.raw_row();
-    let common = CommonContext::integral(&rc, located.adapted_representative().gamma_lambda())
-        .map_err(|error| structure_diagnostic(error, span))?;
-    let singular_flags = common
-        .singular_flags(located.prepared_query().gamma())
-        .map_err(|error| structure_diagnostic(error, span))?;
+    let singular_flags =
+        located_singular_flags(&parameter.context, &located).map_err(|error| structure_diagnostic(error, span))?;
     // contributions (repr.cpp:1861-1898): expand rows 0..=z into final
     // rows for the singular system, following the first singular descent.
     let mut contrib: Vec<Vec<(usize, i32)>> = vec![Vec::new(); z + 1];
@@ -9539,11 +9573,8 @@ fn located_common_block_rows(
 ) -> Result<Vec<CommonBlockRow>, Diagnostic> {
     let block = located.block();
     let rc = rep_context(context);
-    let common = CommonContext::integral(&rc, located.adapted_representative().gamma_lambda())
-        .map_err(|error| structure_diagnostic(error, span))?;
-    let singular = common
-        .singular_flags(located.prepared_query().gamma())
-        .map_err(|error| structure_diagnostic(error, span))?;
+    let singular =
+        located_singular_flags(context, located).map_err(|error| structure_diagnostic(error, span))?;
     let mut rows = Vec::with_capacity(block.size());
     for z in 0..block.size() {
         let mut descents = Vec::with_capacity(block.rank());
@@ -9669,6 +9700,69 @@ fn partial_block_rows(
     let init = block
         .lookup(&seed)
         .ok_or_else(|| runtime(span, "seed missing from its Bruhat interval"))?;
+    Ok((rows, init))
+}
+
+/// The fresh full common block of `print_param_block_wrapper`
+/// (atlas-types.w:6653-6666): `StandardReprMod::mod_reduce` of the
+/// parameter's own srm (no make_dominant, no Rep_table pool, no block
+/// modifier), the `common_context` on its `gamma_lambda`
+/// (repr.cpp:2666-2670), and the full `common_block` constructor
+/// (blocks.cpp:733-1081).  Singular flags are `block.singular(gamma)` of
+/// the CALLER's gamma (blocks.cpp:701-708).  Returns the rows in block
+/// order and the seed's row number (upstream's `init_index`).
+fn fresh_common_block_rows(
+    context: &Arc<RealFormContext>,
+    seed_repr: &StandardRepr,
+    span: SourceSpan,
+) -> Result<(Vec<CommonBlockRow>, usize), Diagnostic> {
+    let rc = rep_context(context);
+    let seed = StandardReprMod::mod_reduce(&rc, seed_repr)
+        .map_err(|error| structure_diagnostic(error, span))?;
+    let ctxt = CommonContext::integral(&rc, seed.gamma_lambda())
+        .map_err(|error| structure_diagnostic(error, span))?;
+    let (block, init) =
+        PartialBlock::build_full(&ctxt, &seed).map_err(|error| structure_diagnostic(error, span))?;
+    let singular = ctxt
+        .singular_flags(seed_repr.gamma())
+        .map_err(|error| structure_diagnostic(error, span))?;
+    let rank = block.rank();
+    let mut rows = Vec::with_capacity(block.size());
+    for z in 0..block.size() {
+        let mut descents = Vec::with_capacity(rank);
+        let mut crosses = Vec::with_capacity(rank);
+        let mut cayleys = Vec::with_capacity(rank);
+        for s in 0..rank {
+            descents.push(
+                block
+                    .descent(z, s)
+                    .ok_or_else(|| runtime(span, "common block descent out of range"))?,
+            );
+            crosses.push(block.cross(s, z));
+            // do_print (block_io.cpp:96-102): the stored pair prints.
+            cayleys.push(
+                block
+                    .cayley(s, z)
+                    .ok_or_else(|| runtime(span, "common block Cayley link out of range"))?,
+            );
+        }
+        rows.push(CommonBlockRow {
+            x: block
+                .x(z)
+                .ok_or_else(|| runtime(span, "common block element out of range"))?,
+            length: block
+                .length(z)
+                .ok_or_else(|| runtime(span, "common block element out of range"))?,
+            descents,
+            crosses,
+            cayleys,
+            gamma_lambda: block
+                .gamma_lambda(z)
+                .cloned()
+                .ok_or_else(|| runtime(span, "common block element out of range"))?,
+            survives: block.survives(z, &singular),
+        });
+    }
     Ok((rows, init))
 }
 
@@ -9925,25 +10019,19 @@ pub(crate) fn print_text(
                             .map_err(|error| structure_diagnostic(error, span))?,
                         IntegralBlockScope::ProperSubsystem
                     ) {
-                        let located = parameter
-                            .context
-                            .rep
-                            .lookup_full_block(&parameter.repr)
-                            .map_err(|error| structure_diagnostic(error, span))?;
-                        if !located.has_identity_generator_attitude() {
-                            return Err(structure_diagnostic(
-                                StructureError::NotYetImplemented {
-                                    feature:
-                                        "print_block on a non-identity integral-subsystem attitude",
-                                },
-                                span,
-                            ));
-                        }
-                        let rows = located_common_block_rows(&parameter.context, &located, span)?;
-                        let mut text = format!(
-                            "Parameter defines element {} of the following block:\n",
-                            located.raw_row()
-                        );
+                        // print_param_block_wrapper builds a FRESH
+                        // common_block on the integral subsystem of the
+                        // parameter's own gamma_lambda (no Rep_table pool,
+                        // no block modifier), so any generator attitude
+                        // prints: the subsystem of gamma_lambda differs
+                        // from the locator attitude subsystem in general
+                        // (e.g. [0,3]/2 has integral simple theta where the
+                        // locator carries alpha1), and the fresh
+                        // constructor's row order is oracle-visible.
+                        let (rows, init) =
+                            fresh_common_block_rows(&parameter.context, &parameter.repr, span)?;
+                        let mut text =
+                            format!("Parameter defines element {init} of the following block:\n");
                         text.push_str(&render_common_block(&parameter.context, &rows));
                         return Ok(text);
                     }
@@ -10128,12 +10216,17 @@ pub(crate) fn print_text(
             }
             Ok(text)
         }
-        // print_c_block_wrapper (atlas-types.w:6668-6695): test_standard,
+        // print_c_block_wrapper (atlas-types.w:6668-6692): test_standard,
         // then lookup_full_block (repr.cpp:1773-1794) makes the parameter
-        // dominant in place — the block and the singular flags both use
-        // that dominant gamma. The header's transform word is always empty
-        // here: the block modifier is trivial for a dominant gamma and the
-        // Rep_table pool is memoization only (fresh-build-per-call).
+        // dominant in place and fills the block modifier; the header prints
+        // the modifier's Weyl word and simple-reflection permutation; the
+        // stored block is printed shifted by bm.shift (upstream mutates the
+        // stored block with block.shift(±bm.shift) around the print; here
+        // located_common_block_rows applies the same per-element
+        // Rep_context::shift without mutating) with singular flags
+        // block.singular(bm, gamma).  Every scope — including singleton
+        // rank-0 blocks — goes through the pool: the stored block's
+        // canonical row ordering is oracle-visible.
         "print_common_block" => {
             arity(name, arguments, 1, span)?;
             let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
@@ -10151,37 +10244,40 @@ pub(crate) fn print_text(
                 .repr
                 .made_dominant(&rc)
                 .map_err(|error| structure_diagnostic(error, span))?;
-            match integral_block_scope(&rc, dominant.gamma())
-                .map_err(|error| structure_diagnostic(error, span))?
-            {
-                IntegralBlockScope::Singleton => {
-                    let (rows, init) = common_block_rows(&parameter.context, &dominant, span)?;
-                    let mut text = format!(
-                        "Parameter defines element {init} of the following common block,\nas transformed by <>:\n"
-                    );
-                    text.push_str(&render_common_block(&parameter.context, &rows));
-                    return Ok(text);
-                }
-                IntegralBlockScope::ProperSubsystem | IntegralBlockScope::Full => {}
-            }
             let located = parameter
                 .context
                 .rep
                 .lookup_full_block(&dominant)
                 .map_err(|error| structure_diagnostic(error, span))?;
-            if !located.has_identity_generator_attitude() {
-                return Err(structure_diagnostic(
-                    StructureError::NotYetImplemented {
-                        feature: "print_common_block on a non-identity integral-subsystem attitude",
-                    },
-                    span,
-                ));
-            }
-            let rows = located_common_block_rows(&parameter.context, &located, span)?;
-            let init = located.raw_row();
+            let modifier = located.block_modifier();
+            let word = modifier
+                .w()
+                .reduced_word(rc.root_system())
+                .map_err(|error| structure_diagnostic(error, span))?;
             let mut text = format!(
-                "Parameter defines element {init} of the following common block,\nas transformed by <>:\n"
+                "Parameter defines element {} of the following common block,\nas transformed by <",
+                located.raw_row()
             );
+            for (i, generator) in word.iter().enumerate() {
+                if i > 0 {
+                    text.push('.');
+                }
+                text.push_str(&generator.to_string());
+            }
+            text.push('>');
+            let simple_pi = modifier.simple_pi();
+            if !simple_pi.iter().enumerate().all(|(i, &image)| i == image) {
+                text.push_str(", simple reflections permuted (");
+                for (i, &image) in simple_pi.iter().enumerate() {
+                    if i > 0 {
+                        text.push(',');
+                    }
+                    text.push_str(&format!("{i}->{image}"));
+                }
+                text.push(')');
+            }
+            text.push_str(":\n");
+            let rows = located_common_block_rows(&parameter.context, &located, span)?;
             text.push_str(&render_common_block(&parameter.context, &rows));
             Ok(text)
         }
@@ -12635,20 +12731,8 @@ pub(crate) fn call_with_printed(
                     .rep
                     .lookup_full_block(&dominant)
                     .map_err(|error| structure_diagnostic(error, span))?;
-                if !located.has_identity_generator_attitude() {
-                    return Err(structure_diagnostic(
-                        StructureError::NotYetImplemented {
-                            feature: "block on a non-identity integral-subsystem attitude",
-                        },
-                        span,
-                    ));
-                }
                 let block = located.block();
-                let common =
-                    CommonContext::integral(&rc, located.adapted_representative().gamma_lambda())
-                        .map_err(|error| structure_diagnostic(error, span))?;
-                let singular_flags = common
-                    .singular_flags(located.prepared_query().gamma())
+                let singular_flags = located_singular_flags(&parameter.context, &located)
                     .map_err(|error| structure_diagnostic(error, span))?;
                 let mut params: Vec<Value> = Vec::new();
                 let mut start_pos: i64 = -1;
@@ -13899,14 +13983,6 @@ pub(crate) fn call_with_printed(
                 .rep
                 .lookup(&normalised)
                 .map_err(|error| structure_diagnostic(error, span))?;
-            if !located.has_identity_generator_attitude() {
-                return Err(structure_diagnostic(
-                    StructureError::NotYetImplemented {
-                        feature: "KL_column on a non-identity integral-subsystem attitude",
-                    },
-                    span,
-                ));
-            }
             let raw_y = located.raw_row();
             let entries = located
                 .with_kl_table(|kl_table| {
@@ -13988,21 +14064,9 @@ pub(crate) fn call_with_printed(
                 .rep
                 .lookup_full_block(&dominant)
                 .map_err(|error| structure_diagnostic(error, span))?;
-            if !located.has_identity_generator_attitude() {
-                return Err(structure_diagnostic(
-                    StructureError::NotYetImplemented {
-                        feature: "KL_block on a non-identity integral-subsystem attitude",
-                    },
-                    span,
-                ));
-            }
             let raw_start = located.raw_row();
             let block = located.block();
-            let common =
-                CommonContext::integral(&rc, located.adapted_representative().gamma_lambda())
-                    .map_err(|error| structure_diagnostic(error, span))?;
-            let singular_flags = common
-                .singular_flags(located.prepared_query().gamma())
+            let singular_flags = located_singular_flags(&parameter.context, &located)
                 .map_err(|error| structure_diagnostic(error, span))?;
             let singular = singular_flags
                 .iter()
@@ -14298,18 +14362,11 @@ pub(crate) fn call_with_printed(
                 ));
             };
             test_standard(parameter, "Cannot generate block", span)?;
-            let rc = rep_context(&parameter.context);
             let located = parameter
                 .context
                 .rep
                 .lookup(&parameter.repr)
                 .map_err(|error| structure_diagnostic(error, span))?;
-            if !located.has_identity_generator_attitude() {
-                return Err(runtime(
-                    span,
-                    "partial block on a non-identity integral-subsystem attitude is not yet supported",
-                ));
-            }
             let block = located.block();
             let hasse = block_bruhat_hasse(block.as_ref());
             let mut subset = vec![false; block.size()];
@@ -14323,11 +14380,7 @@ pub(crate) fn call_with_printed(
                     }
                 }
             }
-            let common =
-                CommonContext::integral(&rc, located.adapted_representative().gamma_lambda())
-                    .map_err(|error| structure_diagnostic(error, span))?;
-            let singular_flags = common
-                .singular_flags(located.prepared_query().gamma())
+            let singular_flags = located_singular_flags(&parameter.context, &located)
                 .map_err(|error| structure_diagnostic(error, span))?;
             let mut params = Vec::new();
             for (z, &in_downset) in subset.iter().enumerate() {
@@ -14650,13 +14703,13 @@ pub(crate) fn call_with_printed(
                 .rep
                 .lookup_full_block(&parameter.repr)
                 .map_err(|error| structure_diagnostic(error, span))?;
-            if !located.has_identity_generator_attitude() {
-                return Err(runtime(
-                    span,
-                    "W-graph on a non-identity integral-subsystem attitude is not yet supported",
-                ));
-            }
             let start = located.raw_row();
+            // The displayed descent sets are transformed by the modifier's
+            // simple-reflection permutation (atlas-types.w:7213-7218:
+            // `ds.set(bm.simple_pi[b], wg.descent_set(i)[b])`); the cell
+            // decomposition itself is computed on the raw block-generator
+            // descent sets, as upstream's DecomposedWGraph does.
+            let simple_pi = located.block_modifier().simple_pi().to_vec();
             let block = located.block();
             let vertex_count = block.size();
             let (descent_sets, edges) = located
@@ -14686,10 +14739,18 @@ pub(crate) fn call_with_printed(
                 })
                 .map_err(|error| structure_diagnostic(error, span))?;
             let vertex = |element: usize, targets: &[(usize, i32)]| -> Value {
+                let permuted: Vec<usize> = descent_sets[element]
+                    .iter()
+                    .map(|&generator| simple_pi[generator])
+                    .collect();
+                // RankFlags iteration is ascending, so the permuted set is
+                // re-sorted before listing.
                 let descents = Value::List(
-                    descent_sets[element]
-                        .iter()
-                        .map(|&generator| Value::Integer(BigInt::from(generator)))
+                    permuted
+                        .into_iter()
+                        .collect::<BTreeSet<_>>()
+                        .into_iter()
+                        .map(|generator| Value::Integer(BigInt::from(generator)))
                         .collect(),
                 );
                 let out_edges = Value::List(
@@ -14790,12 +14851,6 @@ pub(crate) fn call_with_printed(
                 .rep
                 .lookup_full_block(&parameter.repr)
                 .map_err(|error| structure_diagnostic(error, span))?;
-            if !located.has_identity_generator_attitude() {
-                return Err(runtime(
-                    span,
-                    "block Hasse diagram on a non-identity integral-subsystem attitude is not yet supported",
-                ));
-            }
             let block = located.block();
             let n = block.size();
             let mut param_list = Vec::with_capacity(n);
@@ -18523,6 +18578,93 @@ mod tests {
             // Dropping the star is the only difference between the tables.
             assert_eq!(right.replacen(" (x=", "*(x=", 1), *left, "row {z}");
         }
+    }
+
+    /// The A2 split (SL(3,R)) real form of the locator fixtures
+    /// (`simply_connected(Lie_type("A2"),true)`, inner class
+    /// `[[0,1],[1,0]]`, `real_form(ic,0)`).
+    fn sl3r_split_form() -> Value {
+        let lie_type = call("Lie_type", &[Value::String("A2".into())], span()).expect("Lie type");
+        let datum = call(
+            "simply_connected",
+            &[lie_type, Value::Boolean(true)],
+            span(),
+        )
+        .expect("root datum");
+        let matrix =
+            Value::Matrix(Matrix::from_columns(2, 2, vec![0, 1, 1, 0]).expect("swap involution"));
+        let inner = call("inner_class", &[datum, matrix], span()).expect("inner class");
+        call(
+            "real_form",
+            &[inner, Value::Integer(BigInt::from(0))],
+            span(),
+        )
+        .expect("SL(3,R) real form")
+    }
+
+    fn sl3r_param(real: &Value, x: i64, nu: &[i64], nu_denominator: u64) -> Value {
+        let element = call(
+            "KGB",
+            &[real.clone(), Value::Integer(BigInt::from(x))],
+            span(),
+        )
+        .expect("KGB element");
+        call(
+            "param",
+            &[
+                element,
+                Value::Vector(Vec32(vec![0, 0])),
+                Value::RatVector(RatVec::new(nu.to_vec(), nu_denominator).expect("ratvec")),
+            ],
+            span(),
+        )
+        .expect("param")
+    }
+
+    // The strings below are the verified HPC oracle output of
+    // tests/fixtures/domain/common_block_locator.atlas (capture 3574723):
+    // q collides with p's installed block under a Weyl-conjugate integral
+    // subsystem, so its print transports through the stored block with the
+    // block modifier w=<1>.
+    #[test]
+    fn print_common_block_transports_through_the_locator_modifier() {
+        let real = sl3r_split_form();
+        let p = sl3r_param(&real, 3, &[2, 1], 2);
+        let q = sl3r_param(&real, 0, &[-2, -1], 2);
+        assert_eq!(
+            print_text("print_common_block", std::slice::from_ref(&p), span()).expect("print"),
+            "Parameter defines element 1 of the following common block,\nas transformed by <>:\n0:  0  [i2]  0   (1,2)  *(x=1,gamma-lambda=  [0,-1]/2)  2xe\n1:  1  [r2]  2   (0,*)  *(x=3,gamma-lambda=   [0,3]/2)  1^2xe\n2:  1  [r2]  1   (0,*)  *(x=3,gamma-lambda=   [0,1]/2)  1^2xe\n"
+        );
+        assert_eq!(
+            print_text("print_common_block", std::slice::from_ref(&q), span()).expect("print"),
+            "Parameter defines element 0 of the following common block,\nas transformed by <1>:\n0:  0  [i2]  0   (1,2)  *(x=1,gamma-lambda=  [0,-1]/4)  2xe\n1:  1  [r2]  2   (0,*)  *(x=3,gamma-lambda=   [0,3]/4)  1^2xe\n2:  1  [r2]  1   (0,*)  *(x=3,gamma-lambda=   [0,7]/4)  1^2xe\n"
+        );
+    }
+
+    // print_param_block_wrapper (atlas-types.w:6653-6666) builds a FRESH
+    // common block on the integral subsystem of the parameter's own
+    // gamma_lambda — no pool, no modifier — so its row order (and init
+    // index) differs from the pooled print_common_block of the same
+    // parameter, and a nonidentity locator attitude prints at the query's
+    // own attitude.  Oracle strings probed against atlas revision
+    // 4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9.
+    #[test]
+    fn print_block_builds_a_fresh_block_at_the_query_attitude() {
+        let real = sl3r_split_form();
+        let p = sl3r_param(&real, 3, &[2, 1], 2);
+        let q = sl3r_param(&real, 0, &[-2, -1], 2);
+        // Install the pool block first: print_block must not consult it.
+        print_text("print_common_block", std::slice::from_ref(&p), span()).expect("print");
+        assert_eq!(
+            print_text("print_block", std::slice::from_ref(&p), span()).expect("print"),
+            "Parameter defines element 2 of the following block:\n0:  0  [i2]  0   (1,2)  *(x=1,gamma-lambda=  [0,-1]/2)  2xe\n1:  1  [r2]  2   (0,*)  *(x=3,gamma-lambda=   [0,1]/2)  1^2xe\n2:  1  [r2]  1   (0,*)  *(x=3,gamma-lambda=   [0,3]/2)  1^2xe\n"
+        );
+        // q's locator attitude is nonidentity relative to the stored block
+        // (w=<1>); the fresh print is at q's own attitude.
+        assert_eq!(
+            print_text("print_block", std::slice::from_ref(&q), span()).expect("print"),
+            "Parameter defines element 0 of the following block:\n0:  0  [i2]  0   (1,2)  *(x=0,gamma-lambda=  [-1,1]/4)  e\n1:  1  [r2]  2   (0,*)  *(x=3,gamma-lambda=   [3,1]/4)  1^2xe\n2:  1  [r2]  1   (0,*)  *(x=3,gamma-lambda=   [7,5]/4)  1^2xe\n"
+        );
     }
 
     // The strings below are the verified HPC oracle output of

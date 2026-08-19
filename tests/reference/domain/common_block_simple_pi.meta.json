@@ -4,7 +4,7 @@
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_status": "verified_hpc_reference",
-  "rust_status": "not_implemented",
+  "rust_status": "pending_hpc_differential",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
   "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
   "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
@@ -16,7 +16,7 @@
   "oracle_seconds": 0.027,
   "oracle_maxrss_kb": 4440,
   "oracle_maxrss_approximate": false,
-  "notes": "A3 split (SL(4,R), inner_class(rd,[[0,0,1],[0,1,0],[1,0,0]]), form 1) locator probe: param(KGB(rf,0),[0,0,0],[0,1,1]/2) installs the rank-two integral block, then param(KGB(rf,0),[0,0,0],[1,1,0]/2) collides with it under a permuted integral subsystem, so the oracle prints 'as transformed by <0.2>, simple reflections permuted (0->1,1->0)'; the fixture also pins the transported partial_block/block_Hasse/W_graph/KL_sum_at_s values on the permuted attitude. Do NOT register the FixturePlan before the locator slice lands \u2014 the current identity-attitude implementation builds a fresh block and diverges silently. Second anchor after domain/common_block_locator; see docs/REMAINING_BUILTINS.md 2026-08-18 locator entry.",
+  "notes": "A3 split (SL(4,R), inner_class(rd,[[0,0,1],[0,1,0],[1,0,0]]), form 1) locator probe: param(KGB(rf,0),[0,0,0],[0,1,1]/2) installs the rank-two integral block, then param(KGB(rf,0),[0,0,0],[1,1,0]/2) collides with it under a permuted integral subsystem, so the oracle prints 'as transformed by <0.2>, simple reflections permuted (0->1,1->0)'; the fixture also pins the transported partial_block/block_Hasse/W_graph/KL_sum_at_s values on the permuted attitude (W-graph descent sets are displayed through simple_pi). Locator step 4 landed the transported consumers; local run_fixture self-check PASSes. Registered in FIXTURE_PLANS at the step-4 commit; upgrade to verified_hpc after the fat differential.",
   "hpc_capture": {
     "fresh_process_required": true,
     "timeout_seconds": 30,

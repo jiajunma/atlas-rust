@@ -381,6 +381,14 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/partial_merge_union"),
     FixturePlan(name="domain/partial_merge_chain"),
     FixturePlan(name="domain/partial_merge_a2"),
+    # Locator step 4: consumers transported through the RepTable pool's
+    # block modifier — print_c_block_wrapper header/shift, modifier-aware
+    # singular flags, and sr(srm,bm,gamma) row reconstruction. References
+    # frozen by captures 3574723 (w=<1>), 3574854 (<0.2> permuted), and
+    # 3574845 (rank-0, <0.1.0>).
+    FixturePlan(name="domain/common_block_locator"),
+    FixturePlan(name="domain/common_block_simple_pi"),
+    FixturePlan(name="domain/common_block_rank0_locator"),
     # Batch 3 (root data): two_rho / two_rho_check.
     FixturePlan(name="domain/two_rho"),
     FixturePlan(name="domain/cofolded"),
