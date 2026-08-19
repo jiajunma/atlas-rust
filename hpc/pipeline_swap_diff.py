@@ -375,6 +375,12 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/rep_table_sequence_rejected"),
     FixturePlan(name="domain/p0_simple_signatures"),
     FixturePlan(name="domain/p0_simple_signatures_rejected"),
+    # Cross-block partial merge (RepTable::commit_partial merge port);
+    # reference frozen by capture 3575819.
+    FixturePlan(name="domain/partial_merge_containment"),
+    FixturePlan(name="domain/partial_merge_union"),
+    FixturePlan(name="domain/partial_merge_chain"),
+    FixturePlan(name="domain/partial_merge_a2"),
     # Batch 3 (root data): two_rho / two_rho_check.
     FixturePlan(name="domain/two_rho"),
     FixturePlan(name="domain/cofolded"),
