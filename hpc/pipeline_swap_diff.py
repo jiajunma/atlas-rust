@@ -369,6 +369,8 @@ FIXTURE_PLANS = (
     # install the family; no-value calls and direct printers do not warm it.
     FixturePlan(name="domain/rep_table_sequence"),
     FixturePlan(name="domain/rep_table_sequence_rejected"),
+    FixturePlan(name="domain/p0_simple_signatures"),
+    FixturePlan(name="domain/p0_simple_signatures_rejected"),
     # Batch 3 (root data): two_rho / two_rho_check.
     FixturePlan(name="domain/two_rho"),
     FixturePlan(name="domain/cofolded"),
