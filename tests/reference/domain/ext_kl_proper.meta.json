@@ -4,7 +4,7 @@
  "oracle": "atlas",
  "stage": "typed-pipeline-swap",
  "reference_status": "verified_hpc_reference",
- "rust_status": "pending_hpc_differential",
+ "rust_status": "verified_hpc",
  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
@@ -16,11 +16,12 @@
  "oracle_seconds": 0.122,
  "oracle_maxrss_kb": 4584,
  "oracle_maxrss_approximate": false,
- "notes": "raw_ext_KL + partial_extended_KL_block on proper integral subsystems anchor (slice 2 of docs/slices/twisted_ext_proper_workorder.md): B2 split form 2 param(KGB(rfb,5),[1,1],[1,0]/2), A2 su(2,1) param(KGB(rfa,0),[0,0],[1,0]/2), C2 split param(KGB(fs,0),[0,0],[1,0]/2), plus rank-0 B2 param(KGB(rfb,10),[1,1],[1,1]/4) and A1 param(KGB(f1,2),[1],[1]/2); each with extended_block (slice-1 control), raw_ext_KL, partial_extended_KL_block. Slice-2 landed 2026-08-19 (d382014): ExtKlTable::fill_columns + ext_kl_matrix/condense over the partial-parent ext block; CommonContext::singular_flags replaces the hand-rolled coroot loop. pending HPC differential run.",
+ "notes": "raw_ext_KL + partial_extended_KL_block on proper integral subsystems anchor (slice 2 of docs/slices/twisted_ext_proper_workorder.md): B2 split form 2 param(KGB(rfb,5),[1,1],[1,0]/2), A2 su(2,1) param(KGB(rfa,0),[0,0],[1,0]/2), C2 split param(KGB(fs,0),[0,0],[1,0]/2), plus rank-0 B2 param(KGB(rfb,10),[1,1],[1,1]/4) and A1 param(KGB(f1,2),[1],[1]/2); each with extended_block (slice-1 control), raw_ext_KL, partial_extended_KL_block. Slice-2 landed 2026-08-19 (d382014): ExtKlTable::fill_columns + ext_kl_matrix/condense over the partial-parent ext block; CommonContext::singular_flags replaces the hand-rolled coroot loop. Rust differential VERIFIED by fat job 3585343 at 89fe5a7 (317 PASS + 1 declared PARTIAL container_syntax_errors, 0 FAIL; report SHA256 95b7eb23265d8c8924529169b7a10402ab4ab6bc0c741e93f322661539414edf). Rust: 1.0s, 8372 KiB peak RSS, exit 0.",
  "hpc_capture": {
   "fresh_process_required": true,
   "timeout_seconds": 30,
   "estimated_seconds": 5,
   "estimated_memory_mb": 128
- }
+ },
+ "differential_job": "3585343"
 }
