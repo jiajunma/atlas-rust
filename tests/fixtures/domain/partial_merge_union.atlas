@@ -1,0 +1,13 @@
+rb : RootDatum
+rb := simply_connected(Lie_type("B2"),true)
+ib : InnerClass
+ib := inner_class(rb,[[1,0],[0,1]])
+rfb : RealForm
+rfb := real_form(ib,2)
+p4 : Param
+p4 := param(KGB(rfb,4),[0,0],[1,1]/1)
+print_partial_common_block(p4)
+p6 : Param
+p6 := param(KGB(rfb,6),[0,0],[1,1]/1)
+print_partial_common_block(p6)
+print_partial_common_block(p4)
