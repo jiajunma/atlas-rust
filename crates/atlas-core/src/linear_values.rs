@@ -65,6 +65,20 @@ impl Matrix {
         Vec32(self.data[col * self.rows..(col + 1) * self.rows].to_vec())
     }
 
+    /// Replace column `col`; the caller checks the size first (the upstream
+    /// "Cannot replace column of size R by one of size S" diagnostic).
+    pub fn set_column(&mut self, col: usize, column: Vec32) {
+        assert!(col < self.cols, "matrix column index in range");
+        assert_eq!(column.0.len(), self.rows, "replacement column size matches");
+        self.data[col * self.rows..(col + 1) * self.rows].copy_from_slice(&column.0);
+    }
+
+    /// Set the entry at (`row`, `col`) (upstream matrix entry assignment).
+    pub fn set_entry(&mut self, row: usize, col: usize, value: i32) {
+        assert!(row < self.rows && col < self.cols, "matrix entry in range");
+        self.data[col * self.rows + row] = value;
+    }
+
     /// `id_mat(n)` (global.w:5190): the `size`×`size` identity matrix.
     pub fn identity(size: usize) -> Self {
         Self::diagonal(&Vec32(vec![1; size]))

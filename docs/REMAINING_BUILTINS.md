@@ -280,8 +280,9 @@ rhs, index, range check) with the `range_mess` wording
 out-of-range TRANSFORM diagnostic prints the converted call upstream
 (`a[5] succ@int:= ()` via the `x+1→succ(x)` optimisation); the
 syntax-error `expecting` list after a non-assignable target says `'='`
-where bison says `'\n'`; vec/mat component assignment is
-upstream-legal but shares the unimplemented vec/mat subscription gap.
+where bison says `'\n'`; vec/mat/ratvec subscription reads and vec/mat component assignment and
+transforms are implemented locally (HPC differential capture still pending
+for this slice).
 Fixtures `combined_assignment{,_rejected}` cover the rest.
 
 Two-index subscription gap — FIXED (2026-08-19): `M[i,j]` / `M~[i,j]`

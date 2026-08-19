@@ -157,6 +157,11 @@ pub enum TypedExpr {
         rhs: Box<TypedExpr>,
         /// Result coercion of the operator call, applied before write-back.
         conversion: Option<&'static str>,
+        /// Compact of the synthetic read `a[i]` (pair indices without the
+        /// tuple parentheses, `M[5,0]`): the vec/mat transform range check
+        /// fires on this READ, so the oracle quotes the selection
+        /// ("in subscription v[5]", "in matrix column selection M[5]").
+        selection: String,
         source: String,
         span: SourceSpan,
     },
@@ -1886,23 +1891,26 @@ pub fn convert_expr(
             let converted_index = convert_expr(index, &mut index_type, analysis)?;
             // Upstream `subscr_base::index_kind` (axis.w:3941-3973): a row
             // subscripts to its component type, a string to a one-character
-            // string; anything unsubscriptable is the analysis-time `not_so`
-            // error (axis.w:4101-4105).
+            // string, a vec/ratvec to its entry, a mat to its column; a
+            // two-int tuple subscripts a mat to the entry (parser.y:585-598,
+            // axis.w matrix subscription). Anything else is the
+            // analysis-time `not_so` error (axis.w:4101-4105).
             let int_index = matches!(index_type, Type::Primitive(Prim::Int));
+            let pair_index = matches!(
+                &index_type,
+                Type::Tuple(parts)
+                    if parts.len() == 2
+                        && parts
+                            .iter()
+                            .all(|part| matches!(part, Type::Primitive(Prim::Int)))
+            );
             let found = match &array_type {
                 Type::Row(component) if int_index => (**component).clone(),
                 Type::Primitive(Prim::String) if int_index => Type::Primitive(Prim::String),
-                Type::Primitive(Prim::Vec | Prim::RatVec | Prim::Mat) => {
-                    // vec/ratvec/mat subscription is upstream-legal but not
-                    // yet implemented; keep the not-a-row diagnostic there.
-                    return Err(type_error(
-                        format!(
-                            "subscription requires a row, found {}",
-                            array_type.display(analysis.types)
-                        ),
-                        *span,
-                    ));
-                }
+                Type::Primitive(Prim::Vec) if int_index => Type::Primitive(Prim::Int),
+                Type::Primitive(Prim::RatVec) if int_index => Type::Primitive(Prim::Rat),
+                Type::Primitive(Prim::Mat) if int_index => Type::Primitive(Prim::Vec),
+                Type::Primitive(Prim::Mat) if pair_index => Type::Primitive(Prim::Int),
                 _ => {
                     return Err(type_error(
                         format!(
@@ -1914,6 +1922,19 @@ pub fn convert_expr(
                     ));
                 }
             };
+            // The pair-index subscription prints without the tuple
+            // parentheses in the range diagnostic (`M[5,0]`, while the
+            // assignment compact keeps them: `M[(5,0)]:=1`).
+            let source = match &**index {
+                Expr::Tuple { elements, .. } if elements.len() == 2 => format!(
+                    "{}{}[{},{}]",
+                    compact_expression(array),
+                    if *reversed { "~" } else { "" },
+                    compact_expression(&elements[0]),
+                    compact_expression(&elements[1])
+                ),
+                _ => compact_expression(expression),
+            };
             conform_types(
                 &found,
                 required,
@@ -1921,7 +1942,7 @@ pub fn convert_expr(
                     array: Box::new(converted_array),
                     index: Box::new(converted_index),
                     reversed: *reversed,
-                    source: compact_expression(expression),
+                    source,
                     span: *span,
                 },
                 *span,
@@ -3025,10 +3046,23 @@ fn component_type_for_assignment(
     analysis: &Analysis<'_>,
 ) -> Result<Type, Diagnostic> {
     let int_index = matches!(index_type, Type::Primitive(Prim::Int));
-    if let Type::Row(component) = aggregate_type {
-        if int_index {
-            return Ok((**component).clone());
-        }
+    let pair_index = matches!(
+        index_type,
+        Type::Tuple(parts)
+            if parts.len() == 2
+                && parts
+                    .iter()
+                    .all(|part| matches!(part, Type::Primitive(Prim::Int)))
+    );
+    // axis.w:8163-8172 (`comp_ass_stat::assignability`): rows, vec, and mat
+    // (column or two-index entry) admit component assignment; ratvec is
+    // read-only upstream and falls to the generic diagnostic.
+    match aggregate_type {
+        Type::Row(component) if int_index => return Ok((**component).clone()),
+        Type::Primitive(Prim::Vec) if int_index => return Ok(Type::Primitive(Prim::Int)),
+        Type::Primitive(Prim::Mat) if int_index => return Ok(Type::Primitive(Prim::Vec)),
+        Type::Primitive(Prim::Mat) if pair_index => return Ok(Type::Primitive(Prim::Int)),
+        _ => {}
     }
     let message = if transform {
         format!(
@@ -3184,6 +3218,19 @@ fn convert_component_assignment(
     )?;
     let mut required_value = component_type;
     let converted_value = convert_expr(&assignment.value, &mut required_value, analysis)?;
+    // The oracle's range_mess prints the CONVERTED assignment node, so a
+    // coerced right side shows its conversion tag: `r[5]:=QI:1`,
+    // `M[5]:=V[I]:[1,2]` (parsetree.w:2989-3020 with the conversion print).
+    let compact = match &converted_value {
+        TypedExpr::Conversion { tag, .. } => format!(
+            "{}{}[{}]:={tag}:{}",
+            assignment.name,
+            if assignment.reversed { "~" } else { "" },
+            compact_expression(&assignment.index),
+            compact_expression(&assignment.value)
+        ),
+        _ => compact,
+    };
     conform_types(
         &required_value,
         required,
@@ -3246,6 +3293,24 @@ fn convert_component_transform(
     let mut call_required = component_type.clone();
     let converted_call = convert_expr(&call, &mut call_required, analysis)?;
     let (operation, rhs, conversion) = factor_transform_call(converted_call);
+    // The vec/mat transform range check fires on the component READ, whose
+    // diagnostic quotes the selection (`M[5]`, pair index without the tuple
+    // parentheses `M[5,0]`) — not the whole transform compact.
+    let selection = match &transform.index {
+        Expr::Tuple { elements, .. } if elements.len() == 2 => format!(
+            "{}{}[{},{}]",
+            transform.name,
+            if transform.reversed { "~" } else { "" },
+            compact_expression(&elements[0]),
+            compact_expression(&elements[1])
+        ),
+        index => format!(
+            "{}{}[{}]",
+            transform.name,
+            if transform.reversed { "~" } else { "" },
+            compact_expression(index)
+        ),
+    };
     conform_types(
         &component_type,
         required,
@@ -3257,6 +3322,7 @@ fn convert_component_transform(
             operation,
             rhs,
             conversion,
+            selection,
             source: compact,
             span: transform.span,
         },
@@ -9791,20 +9857,104 @@ impl TypedExpr {
             } => {
                 // axis.w:7940-7957: the value evaluates before the index,
                 // and the range check comes last.
-                let mut values = read_aggregate(target, name, context, *span, "Assigning to")?;
+                let aggregate =
+                    read_assign_target(target, name, context, *span, "Assigning to", "component")?;
                 let value = force(value, context)?;
-                let index = expect_integer(force(index, context)?, *span, "assignment index")?;
-                let position = checked_index_in(
-                    &index,
-                    values.len(),
-                    *reversed,
-                    "component assignment",
-                    source,
-                    *span,
-                )?;
-                values[position] = value.clone();
-                write_aggregate(target, Value::List(values), context);
-                Ok(at_level(level, || value.clone()))
+                let index = force(index, context)?;
+                match aggregate {
+                    Value::List(mut values) => {
+                        let index = expect_integer(index, *span, "assignment index")?;
+                        let position = checked_index_in(
+                            &index,
+                            values.len(),
+                            *reversed,
+                            "component assignment",
+                            source,
+                            *span,
+                        )?;
+                        values[position] = value.clone();
+                        write_aggregate(target, Value::List(values), context);
+                        Ok(at_level(level, || value.clone()))
+                    }
+                    Value::Vector(Vec32(mut entries)) => {
+                        let index = expect_integer(index, *span, "assignment index")?;
+                        let position = checked_index_in(
+                            &index,
+                            entries.len(),
+                            *reversed,
+                            "component assignment",
+                            source,
+                            *span,
+                        )?;
+                        let Value::Integer(component) = &value else {
+                            panic!("analysis let a non-integer vec component through: {value}")
+                        };
+                        entries[position] = narrow_i32(component, *span)?;
+                        write_aggregate(target, Value::Vector(Vec32(entries)), context);
+                        Ok(at_level(level, || value.clone()))
+                    }
+                    Value::Matrix(mut matrix) => match index {
+                        Value::Tuple(pair) if pair.len() == 2 => {
+                            let column =
+                                expect_integer(pair[0].clone(), *span, "assignment index")?;
+                            let row = expect_integer(pair[1].clone(), *span, "assignment index")?;
+                            let column = checked_index_word(
+                                "initial index",
+                                &column,
+                                matrix.cols(),
+                                *reversed,
+                                "matrix entry assignment",
+                                source,
+                                *span,
+                            )?;
+                            let row = checked_index_word(
+                                "final index",
+                                &row,
+                                matrix.rows(),
+                                *reversed,
+                                "matrix entry assignment",
+                                source,
+                                *span,
+                            )?;
+                            let Value::Integer(component) = &value else {
+                                panic!("analysis let a non-integer mat entry through: {value}")
+                            };
+                            matrix.set_entry(row, column, narrow_i32(component, *span)?);
+                            write_aggregate(target, Value::Matrix(matrix), context);
+                            Ok(at_level(level, || value.clone()))
+                        }
+                        index => {
+                            let index = expect_integer(index, *span, "assignment index")?;
+                            let position = checked_index_in(
+                                &index,
+                                matrix.cols(),
+                                *reversed,
+                                "matrix column assignment",
+                                source,
+                                *span,
+                            )?;
+                            let Value::Vector(column) = &value else {
+                                panic!("analysis let a non-vec mat column through: {value}")
+                            };
+                            if column.0.len() != matrix.rows() {
+                                return Err(runtime(
+                                    format!(
+                                        "Cannot replace column of size {} by one of size {}",
+                                        matrix.rows(),
+                                        column.0.len()
+                                    ),
+                                    *span,
+                                ));
+                            }
+                            matrix.set_column(position, column.clone());
+                            write_aggregate(target, Value::Matrix(matrix), context);
+                            Ok(at_level(level, || value.clone()))
+                        }
+                    },
+                    other => {
+                        panic!("analysis let a non-aggregate component assignment through: {other}")
+                    }
+                }
             }
             Self::ComponentTransform {
                 target,
@@ -9814,27 +9964,133 @@ impl TypedExpr {
                 operation,
                 rhs,
                 conversion,
+                selection,
                 source,
                 span,
             } => {
                 // axis.w:7989-8035: the right operand evaluates before the
                 // index so the aggregate stays intact during its evaluation.
-                let mut values = read_aggregate(target, name, context, *span, "Transforming")?;
+                let aggregate =
+                    read_assign_target(target, name, context, *span, "Transforming", "component")?;
                 let operand = force(rhs, context)?;
-                let index = expect_integer(force(index, context)?, *span, "transform index")?;
-                let position = checked_index_in(
-                    &index,
-                    values.len(),
-                    *reversed,
-                    "component assignment",
-                    source,
-                    *span,
-                )?;
-                let old = values[position].clone();
-                let result = apply_transform(operation, old, operand, *conversion, *span, context)?;
-                values[position] = result.clone();
-                write_aggregate(target, Value::List(values), context);
-                Ok(at_level(level, || result.clone()))
+                let index = force(index, context)?;
+                match aggregate {
+                    Value::List(mut values) => {
+                        let index = expect_integer(index, *span, "transform index")?;
+                        let position = checked_index_in(
+                            &index,
+                            values.len(),
+                            *reversed,
+                            "component assignment",
+                            source,
+                            *span,
+                        )?;
+                        let old = values[position].clone();
+                        let result =
+                            apply_transform(operation, old, operand, *conversion, *span, context)?;
+                        values[position] = result.clone();
+                        write_aggregate(target, Value::List(values), context);
+                        Ok(at_level(level, || result.clone()))
+                    }
+                    Value::Vector(Vec32(mut entries)) => {
+                        // The vec range check fires on the synthetic READ, so
+                        // the oracle quotes the selection ("in subscription").
+                        let index = expect_integer(index, *span, "transform index")?;
+                        let position =
+                            checked_index(&index, entries.len(), *reversed, selection, *span)?;
+                        let old = Value::Integer(BigInt::from(entries[position]));
+                        let result =
+                            apply_transform(operation, old, operand, *conversion, *span, context)?;
+                        let Value::Integer(component) = &result else {
+                            panic!("analysis let a non-integer vec component through: {result}")
+                        };
+                        entries[position] = narrow_i32(component, *span)?;
+                        write_aggregate(target, Value::Vector(Vec32(entries)), context);
+                        Ok(at_level(level, || result.clone()))
+                    }
+                    Value::Matrix(mut matrix) => match index {
+                        Value::Tuple(pair) if pair.len() == 2 => {
+                            let column = expect_integer(pair[0].clone(), *span, "transform index")?;
+                            let row = expect_integer(pair[1].clone(), *span, "transform index")?;
+                            let column = checked_index_word(
+                                "initial index",
+                                &column,
+                                matrix.cols(),
+                                *reversed,
+                                "matrix subscription",
+                                selection,
+                                *span,
+                            )?;
+                            let row = checked_index_word(
+                                "final index",
+                                &row,
+                                matrix.rows(),
+                                *reversed,
+                                "matrix subscription",
+                                selection,
+                                *span,
+                            )?;
+                            let old = Value::Integer(BigInt::from(
+                                matrix
+                                    .entry(row, column)
+                                    .expect("range-checked matrix entry is in bounds"),
+                            ));
+                            let result = apply_transform(
+                                operation,
+                                old,
+                                operand,
+                                *conversion,
+                                *span,
+                                context,
+                            )?;
+                            let Value::Integer(component) = &result else {
+                                panic!("analysis let a non-integer mat entry through: {result}")
+                            };
+                            matrix.set_entry(row, column, narrow_i32(component, *span)?);
+                            write_aggregate(target, Value::Matrix(matrix), context);
+                            Ok(at_level(level, || result.clone()))
+                        }
+                        index => {
+                            let index = expect_integer(index, *span, "transform index")?;
+                            let position = checked_index_in(
+                                &index,
+                                matrix.cols(),
+                                *reversed,
+                                "matrix column selection",
+                                selection,
+                                *span,
+                            )?;
+                            let old = Value::Vector(matrix.column(position));
+                            let result = apply_transform(
+                                operation,
+                                old,
+                                operand,
+                                *conversion,
+                                *span,
+                                context,
+                            )?;
+                            let Value::Vector(column) = &result else {
+                                panic!("analysis let a non-vec mat column through: {result}")
+                            };
+                            if column.0.len() != matrix.rows() {
+                                return Err(runtime(
+                                    format!(
+                                        "Cannot replace column of size {} by one of size {}",
+                                        matrix.rows(),
+                                        column.0.len()
+                                    ),
+                                    *span,
+                                ));
+                            }
+                            matrix.set_column(position, column.clone());
+                            write_aggregate(target, Value::Matrix(matrix), context);
+                            Ok(at_level(level, || result.clone()))
+                        }
+                    },
+                    other => {
+                        panic!("analysis let a non-aggregate component transform through: {other}")
+                    }
+                }
             }
             Self::FieldAssignment {
                 target,
@@ -9873,9 +10129,10 @@ impl TypedExpr {
                 source,
                 span,
             } => {
-                let index = expect_integer(force(index, context)?, *span, "subscription index")?;
+                let index = force(index, context)?;
                 match force(array, context)? {
                     Value::List(values) => {
+                        let index = expect_integer(index, *span, "subscription index")?;
                         let position =
                             checked_index(&index, values.len(), *reversed, source, *span)?;
                         Ok(at_level(level, || values[position].clone()))
@@ -9883,6 +10140,7 @@ impl TypedExpr {
                     // Upstream `string_subscription` (axis.w:4229-4239): the
                     // result is the one-character string at the position.
                     Value::String(text) => {
+                        let index = expect_integer(index, *span, "subscription index")?;
                         let bytes = text.as_bytes();
                         let position =
                             checked_index(&index, bytes.len(), *reversed, source, *span)?;
@@ -9893,6 +10151,71 @@ impl TypedExpr {
                             )
                         }))
                     }
+                    Value::Vector(Vec32(entries)) => {
+                        let index = expect_integer(index, *span, "subscription index")?;
+                        let position =
+                            checked_index(&index, entries.len(), *reversed, source, *span)?;
+                        Ok(at_level(level, || {
+                            Value::Integer(BigInt::from(entries[position]))
+                        }))
+                    }
+                    Value::RatVector(ratvec) => {
+                        let index = expect_integer(index, *span, "subscription index")?;
+                        let position = checked_index(
+                            &index,
+                            ratvec.numerators().len(),
+                            *reversed,
+                            source,
+                            *span,
+                        )?;
+                        Ok(at_level(level, || {
+                            Value::Rational(BigRational::from_integers(
+                                BigInt::from(ratvec.numerators()[position]),
+                                BigInt::from(ratvec.denominator()),
+                            ))
+                        }))
+                    }
+                    Value::Matrix(matrix) => match index {
+                        // Two-index entry selection (parser.y:585-598): the
+                        // reversed form counts BOTH indices from the end.
+                        Value::Tuple(pair) if pair.len() == 2 => {
+                            let column =
+                                expect_integer(pair[0].clone(), *span, "subscription index")?;
+                            let row = expect_integer(pair[1].clone(), *span, "subscription index")?;
+                            let column = checked_index_word(
+                                "initial index",
+                                &column,
+                                matrix.cols(),
+                                *reversed,
+                                "matrix subscription",
+                                source,
+                                *span,
+                            )?;
+                            let row = checked_index_word(
+                                "final index",
+                                &row,
+                                matrix.rows(),
+                                *reversed,
+                                "matrix subscription",
+                                source,
+                                *span,
+                            )?;
+                            let entry = matrix.entry(row, column).expect("checked indices");
+                            Ok(at_level(level, || Value::Integer(BigInt::from(entry))))
+                        }
+                        index => {
+                            let index = expect_integer(index, *span, "subscription index")?;
+                            let position = checked_index_in(
+                                &index,
+                                matrix.cols(),
+                                *reversed,
+                                "matrix column selection",
+                                source,
+                                *span,
+                            )?;
+                            Ok(at_level(level, || Value::Vector(matrix.column(position))))
+                        }
+                    },
                     other => panic!("analysis let a non-subscriptable value through: {other}"),
                 }
             }
@@ -10565,10 +10888,27 @@ fn checked_index_in(
     source: &str,
     span: SourceSpan,
 ) -> Result<usize, Control> {
+    checked_index_word("index", index, length, reversed, context_name, source, span)
+}
+
+/// `checked_index_in` with a qualified index word: matrix entry operations
+/// report "initial index …" / "final index …" (axis.w matrix subscription
+/// and entry assignment range messages).
+fn checked_index_word(
+    index_word: &str,
+    index: &BigInt,
+    length: usize,
+    reversed: bool,
+    context_name: &str,
+    source: &str,
+    span: SourceSpan,
+) -> Result<usize, Control> {
     let original = index.clone();
     let out_of_range = || {
         runtime(
-            format!("index {original} out of range (0<= . <{length}) in {context_name} {source}"),
+            format!(
+                "{index_word} {original} out of range (0<= . <{length}) in {context_name} {source}"
+            ),
             span,
         )
     };
@@ -10599,20 +10939,6 @@ fn read_assign_target(
             format!("{verb} {noun} of uninitialized variable {name}"),
             span,
         )),
-    }
-}
-
-/// The row components of a component-assignment target.
-fn read_aggregate(
-    target: &AssignTarget,
-    name: &str,
-    context: &EvaluationContext,
-    span: SourceSpan,
-    verb: &str,
-) -> Result<Vec<Value>, Control> {
-    match read_assign_target(target, name, context, span, verb, "component")? {
-        Value::List(values) => Ok(values),
-        other => panic!("analysis let a non-row component assignment through: {other}"),
     }
 }
 
@@ -11303,6 +11629,82 @@ mod tests {
         assert_eq!(
             error.message,
             "Name 'a' is constant in component assignment a[0]:=1"
+        );
+    }
+
+    #[test]
+    fn vector_and_matrix_subscriptions_read_and_write_components() {
+        let vector_cell = crate::frames::global_with(Rc::new(Value::Vector(Vec32(vec![1, 2, 3]))));
+        let ratvec_cell = crate::frames::global_with(Rc::new(Value::RatVector(
+            RatVec::new(vec![1, 2], 2).expect("valid ratvec"),
+        )));
+        let matrix_cell = crate::frames::global_with(Rc::new(Value::Matrix(
+            Matrix::from_columns(2, 2, vec![1, 3, 2, 4]).expect("valid matrix"),
+        )));
+        let mut globals = IdTable::new();
+        globals.define("v", primitive_type(Prim::Vec), vector_cell.clone());
+        globals.define("rv", primitive_type(Prim::RatVec), ratvec_cell);
+        globals.define("M", primitive_type(Prim::Mat), matrix_cell.clone());
+
+        for (source, expected) in [
+            ("v[0]", "1"),
+            ("v~[0]", "3"),
+            ("rv[0]", "1/2"),
+            ("rv~[1]", "1/2"),
+            ("M[0]", "[ 1, 3 ]"),
+            ("M[0,1]", "3"),
+            ("M[1,0]", "2"),
+            ("M~[1,0]", "3"),
+        ] {
+            let (_, value) = convert_and_run_with(source, &globals).expect(source);
+            assert_eq!(value.to_string(), expected, "source: {source}");
+        }
+
+        convert_and_run_with("v[0] := 7", &globals).expect("vec write");
+        convert_and_run_with("v[0] +:= 2", &globals).expect("vec transform");
+        convert_and_run_with("M[1] := [9,9]", &globals).expect("matrix column write");
+        convert_and_run_with("M[0,1] := 9", &globals).expect("matrix entry write");
+        convert_and_run_with("M[1,1] +:= 10", &globals).expect("matrix entry transform");
+
+        assert_eq!(
+            vector_cell.borrow().as_ref().unwrap().to_string(),
+            "[ 9, 2, 3 ]"
+        );
+        let matrix_binding = matrix_cell.borrow();
+        let matrix = match matrix_binding.as_ref().unwrap().as_ref() {
+            Value::Matrix(matrix) => matrix,
+            other => panic!("expected matrix, got {other:?}"),
+        };
+        assert_eq!(matrix.entry(0, 0), Some(1));
+        assert_eq!(matrix.entry(1, 0), Some(9));
+        assert_eq!(matrix.entry(0, 1), Some(9));
+        assert_eq!(matrix.entry(1, 1), Some(19));
+
+        let error = convert_and_run_with("v[5]", &globals).expect_err("vec range");
+        assert_eq!(
+            error.message,
+            "index 5 out of range (0<= . <3) in subscription v[5]"
+        );
+        let error = convert_and_run_with("M[5]", &globals).expect_err("matrix column range");
+        assert_eq!(
+            error.message,
+            "index 5 out of range (0<= . <2) in matrix column selection M[5]"
+        );
+        let error = convert_and_run_with("M[0,5]", &globals).expect_err("matrix entry range");
+        assert_eq!(
+            error.message,
+            "final index 5 out of range (0<= . <2) in matrix subscription M[0,5]"
+        );
+        let error = convert_and_run_with("rv[0] := 1", &globals).expect_err("ratvec read only");
+        assert_eq!(
+            error.message,
+            "Cannot subscript value of type ratvec with index of type int in assignment"
+        );
+        let error =
+            convert_and_run_with("M[0,\"x\"] := 1", &globals).expect_err("matrix entry type");
+        assert_eq!(
+            error.message,
+            "Cannot subscript value of type mat with index of type (int,string) in assignment"
         );
     }
 
