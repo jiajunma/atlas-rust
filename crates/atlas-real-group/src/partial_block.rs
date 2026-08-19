@@ -1699,6 +1699,191 @@ impl PartialBlock {
                     .is_some_and(|descent| !descent.is_descent())
             })
     }
+
+    /// Upstream `Bare_block::dual` (gkmod/blocks.cpp:474-507), the
+    /// common-block analogue of [`BlockGraph::dual`]: a pure data transform
+    /// swapping the primal and dual roles of every row. Element order
+    /// reverses (`z' = size-1-z`), the `x`/`y` coordinates swap, lengths
+    /// reflect as `max_len - length(z)` with `max_len = length(size-1)`,
+    /// each descent status maps by [`BlockDescent::dual`], and every
+    /// cross/Cayley link `c` maps to `size-1-c` (a Cayley second image is
+    /// mapped only when the first is defined). Upstream dualizes only full
+    /// blocks, where cross links are always defined; a partial block may
+    /// have links leaving the interval (`UndefBlock`), and those stay
+    /// undefined here. Note the KL recursion is only valid on the dual of a
+    /// link-closed source (a full block): an outgoing complex ascent of a
+    /// partial interval dualizes to a complex descent with an undefined
+    /// cross, which [`crate::KlTable`] rejects. The result is a
+    /// [`BareBlock`]: the dual block's rows are not standard-rep parameters
+    /// of this block's context, so the parameter pool and lookup table have
+    /// no counterpart.
+    pub fn dual(&self) -> BareBlock {
+        let rank = self.rank;
+        let size = self.size();
+        let max_len = self.lengths.last().copied().unwrap_or(0);
+
+        let mut xs: Vec<usize> = Vec::with_capacity(size);
+        let mut ys: Vec<usize> = Vec::with_capacity(size);
+        let mut lengths: Vec<usize> = Vec::with_capacity(size);
+        let mut descents: Vec<BlockDescent> = Vec::with_capacity(size * rank);
+        for z in (0..size).rev() {
+            xs.push(self.ys[z]);
+            ys.push(self.xs[z].index());
+            lengths.push(max_len - self.lengths[z]);
+            for generator in 0..rank {
+                descents.push(self.descents[z * rank + generator].dual());
+            }
+        }
+
+        let mut fields = vec![Vec::with_capacity(size); rank];
+        for generator in 0..rank {
+            for z in (0..size).rev() {
+                let source = self.fields[generator][z];
+                let mut entry = BlockFields {
+                    cross_image: source.cross_image.map(|c| size - 1 - c),
+                    cayley_image: (None, None),
+                };
+                if let Some(first) = source.cayley_image.0 {
+                    entry.cayley_image.0 = Some(size - 1 - first);
+                    if let Some(second) = source.cayley_image.1 {
+                        entry.cayley_image.1 = Some(size - 1 - second);
+                    }
+                }
+                fields[generator].push(entry);
+            }
+        }
+
+        BareBlock {
+            rank,
+            xs,
+            ys,
+            lengths,
+            descents,
+            fields,
+            highest_x: self.highest_y,
+            highest_y: self.highest_x,
+        }
+    }
+}
+
+/// The combinatorial dual of a block: upstream `blocks::Bare_block`
+/// (blocks.h), the block with primal and dual real forms interchanged.
+///
+/// Produced by [`PartialBlock::dual`] (and constructible only there); it
+/// carries no per-element parameters, only the block combinatorics the KL
+/// recursion consumes through [`crate::BlockTopology`].
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BareBlock {
+    rank: usize,
+    /// Dual-side `x` coordinate of each row (the source block's `y` value).
+    xs: Vec<usize>,
+    /// Dual-side `y` coordinate of each row (the source block's `x` index).
+    ys: Vec<usize>,
+    lengths: Vec<usize>,
+    /// `descent[z * rank + s]`.
+    descents: Vec<BlockDescent>,
+    /// `data[s][z]`, generator-major as upstream.
+    fields: Vec<Vec<BlockFields>>,
+    highest_x: usize,
+    highest_y: usize,
+}
+
+impl BareBlock {
+    pub fn size(&self) -> usize {
+        self.xs.len()
+    }
+
+    /// The block rank (the number of generator columns).
+    pub fn rank(&self) -> usize {
+        self.rank
+    }
+
+    /// The dual-side `x` coordinate of `z` (upstream `Block_base::x`).
+    pub fn x(&self, z: usize) -> Option<usize> {
+        self.xs.get(z).copied()
+    }
+
+    /// The dual-side `y` coordinate of `z` (upstream `Block_base::y`).
+    pub fn y(&self, z: usize) -> Option<usize> {
+        self.ys.get(z).copied()
+    }
+
+    pub fn length(&self, z: usize) -> Option<usize> {
+        self.lengths.get(z).copied()
+    }
+
+    /// The per-generator descent status of element `z`.
+    pub fn descent(&self, z: usize, generator: usize) -> Option<BlockDescent> {
+        if generator >= self.rank {
+            return None;
+        }
+        self.descents.get(z * self.rank + generator).copied()
+    }
+
+    /// `cross(s, z)` — `None` is upstream `UndefBlock`.
+    pub fn cross(&self, generator: usize, z: usize) -> Option<usize> {
+        self.fields.get(generator)?.get(z)?.cross_image
+    }
+
+    /// The raw Cayley image pair (upstream `block_fields::Cayley_image`):
+    /// forward Cayley targets on ascent cells, inverse Cayley descents on
+    /// descent cells.
+    pub fn cayley(&self, generator: usize, z: usize) -> Option<(Option<usize>, Option<usize>)> {
+        Some(self.fields.get(generator)?.get(z)?.cayley_image)
+    }
+
+    /// `max_x` of the dual block: the source block's `max_y`
+    /// (blocks.cpp:479).
+    pub fn highest_x(&self) -> usize {
+        self.highest_x
+    }
+
+    /// `max_y` of the dual block: the source block's `max_x`.
+    pub fn highest_y(&self) -> usize {
+        self.highest_y
+    }
+}
+
+impl crate::block_access::sealed::Sealed for BareBlock {}
+
+impl crate::BlockTopology for BareBlock {
+    fn size(&self) -> usize {
+        BareBlock::size(self)
+    }
+
+    fn rank(&self) -> usize {
+        BareBlock::rank(self)
+    }
+
+    fn length(&self, element: usize) -> Option<usize> {
+        BareBlock::length(self, element)
+    }
+
+    fn descent(&self, element: usize, generator: usize) -> Option<BlockDescent> {
+        BareBlock::descent(self, element, generator)
+    }
+
+    fn cross(&self, element: usize, generator: usize) -> Option<usize> {
+        BareBlock::cross(self, generator, element)
+    }
+
+    fn cayley(&self, element: usize, generator: usize) -> Option<(Option<usize>, Option<usize>)> {
+        if BareBlock::descent(self, element, generator)?.is_descent() {
+            return Some((None, None));
+        }
+        BareBlock::cayley(self, generator, element)
+    }
+
+    fn inverse_cayley(
+        &self,
+        element: usize,
+        generator: usize,
+    ) -> Option<(Option<usize>, Option<usize>)> {
+        if !BareBlock::descent(self, element, generator)?.is_descent() {
+            return Some((None, None));
+        }
+        BareBlock::cayley(self, generator, element)
+    }
 }
 
 #[cfg(test)]
@@ -2300,5 +2485,291 @@ mod tests {
             reflection
         );
         assert!(sub.reflection_word(1).is_none());
+    }
+
+    /// `simply_connected(Lie_type("A2"),true)` with the quasi-split inner
+    /// class `[[0,1],[1,0]]`; the split form sl(3,R) has KGB size 4.
+    fn a2_quasisplit_fixture() -> ContextFixture {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let involution = LatticeInvolution::new(
+            &datum,
+            vec![vec![0, 1], vec![1, 0]],
+            vec![vec![0, 1], vec![1, 0]],
+        )
+        .unwrap();
+        fixture(datum, involution, 6, 4)
+    }
+
+    /// Assert the KL pool indices of `dual` match an oracle
+    /// `dual_KL_block` matrix: `expected[i][j]` (lower unitriangular,
+    /// `j <= i`) is the pool index of `P_{last-i, last-j}`, with the pool
+    /// seeded `{0: zero, 1: one}` (atlas-types.w:7113-7133).
+    fn assert_dual_kl_matrix(dual: &BareBlock, expected: &[&[usize]]) {
+        let mut kl = crate::KlTable::from_handle(dual.clone()).unwrap();
+        kl.fill(0).unwrap();
+        let last = dual.size() - 1;
+        for (i, row) in expected.iter().enumerate() {
+            for (j, &want) in row.iter().enumerate() {
+                assert_eq!(kl.kl_pol(last - i, last - j).unwrap(), want, "M[{i}][{j}]");
+            }
+        }
+    }
+
+    /// Oracle (local capture, rev 4d3e9449): the B2 proper rank-1 fixture of
+    /// `length_dual_proper.atlas` — `param(KGB(rfb,5),[1,1],[1,0]/2)` with
+    /// `rfb = real_form(inner_class(rb,[[1,0],[0,1]]),2)`:
+    /// ```text
+    /// Parameter defines element 1 of the following common block,
+    /// 0:  0  [i1]  1   (2,*)  *(x= 4,gamma-lambda=  [1,-1]/2)  1^e
+    /// 1:  0  [i1]  0   (2,*)  *(x= 5,gamma-lambda=  [1,-1]/2)  1^e
+    /// 2:  1  [r1]  2   (0,1)  *(x=10,gamma-lambda=   [3,3]/2)  1^2x1^e
+    /// dual_KL_block: survivors x=4,5,10; start 1; polys [[],[1]]; matrix
+    /// |1 0 0;0 1 0;1 1 1| (every survivor pair is the constant polynomial).
+    /// ```
+    #[test]
+    fn b2_proper_full_block_dual_matches_the_oracle() {
+        let b2 = b2_fixture();
+        let rc = b2.rc();
+        let gamma = rw(&[3, 1], 2);
+        // param lambda [1,1] minus rho [1,1].
+        let (seed, ctxt) = seed_and_context(&rc, 5, &[0, 0], &gamma);
+        assert_eq!(ctxt.rank(), 1, "rank-1 subsystem on coroot [1,1]");
+
+        let (block, init) = PartialBlock::build_full(&ctxt, &seed).unwrap();
+        assert_eq!(init, 1);
+        assert_eq!(block.size(), 3);
+        assert_eq!(
+            (0..3)
+                .map(|z| block.x(z).unwrap().index())
+                .collect::<Vec<_>>(),
+            vec![4, 5, 10]
+        );
+        assert_eq!(
+            (0..3)
+                .map(|z| block.gamma_lambda(z).unwrap().clone())
+                .collect::<Vec<_>>(),
+            vec![rw(&[1, -1], 2), rw(&[1, -1], 2), rw(&[3, 3], 2)]
+        );
+        assert_eq!(
+            (0..3).map(|z| block.length(z).unwrap()).collect::<Vec<_>>(),
+            vec![0, 0, 1]
+        );
+        assert_eq!(
+            (0..3)
+                .map(|z| block.descent(z, 0).unwrap())
+                .collect::<Vec<_>>(),
+            vec![
+                BlockDescent::ImaginaryTypeI,
+                BlockDescent::ImaginaryTypeI,
+                BlockDescent::RealTypeI,
+            ]
+        );
+        assert_eq!(
+            (0..3).map(|z| block.cross(0, z)).collect::<Vec<_>>(),
+            vec![Some(1), Some(0), Some(2)]
+        );
+        assert_eq!(
+            (0..3).map(|z| block.cayley(0, z)).collect::<Vec<_>>(),
+            vec![
+                Some((Some(2), None)),
+                Some((Some(2), None)),
+                Some((Some(0), Some(1))),
+            ]
+        );
+
+        let dual = block.dual();
+        assert_eq!(dual.size(), 3);
+        assert_eq!(dual.rank(), 1);
+        // Reversed rows: lengths reflect about max_len = 1, descents dualize
+        // (r1->i2, i1->r2), links complement as size-1-c.
+        assert_eq!(
+            (0..3).map(|z| dual.length(z).unwrap()).collect::<Vec<_>>(),
+            vec![0, 1, 1]
+        );
+        assert_eq!(
+            (0..3)
+                .map(|z| dual.descent(z, 0).unwrap())
+                .collect::<Vec<_>>(),
+            vec![
+                BlockDescent::ImaginaryTypeII,
+                BlockDescent::RealTypeII,
+                BlockDescent::RealTypeII,
+            ]
+        );
+        assert_eq!(
+            (0..3).map(|z| dual.cross(0, z)).collect::<Vec<_>>(),
+            vec![Some(0), Some(2), Some(1)]
+        );
+        assert_eq!(
+            (0..3).map(|z| dual.cayley(0, z)).collect::<Vec<_>>(),
+            vec![
+                Some((Some(2), Some(1))),
+                Some((Some(0), None)),
+                Some((Some(0), None)),
+            ]
+        );
+        // The x/y coordinates swap per row.
+        for z in 0..3 {
+            assert_eq!(dual.x(2 - z), block.y(z));
+            assert_eq!(dual.y(2 - z), Some(block.x(z).unwrap().index()));
+        }
+        assert_eq!(dual.highest_x(), block.highest_y());
+        assert_eq!(dual.highest_y(), block.highest_x());
+
+        // No singular generator (gamma pairs to 2 with coroot [1,1]), so
+        // every row survives. M[1][0] = P_{1,2} = 0: dual rows 1 and 2
+        // share length 1.
+        let singular = ctxt.singular_flags(&gamma).unwrap();
+        assert_eq!(singular, vec![false]);
+        assert!((0..3).all(|z| block.survives(z, &singular)));
+        assert_dual_kl_matrix(&dual, &[&[1], &[0, 1], &[1, 1, 1]]);
+    }
+
+    /// Oracle (local capture, rev 4d3e9449): the A2 split fixture of
+    /// `length_dual_proper_a2.atlas` — `param(KGB(rs,3),[0,0],[1,1]/2)` with
+    /// `rs = real_form(inner_class(ra,[[0,1],[1,0]]),0)`:
+    /// ```text
+    /// Parameter defines element 1 of the following common block,
+    /// 0:  0  [i2]  0   (1,2)  *(x=0,gamma-lambda=  [-1,1]/2)  e
+    /// 1:  1  [r2]  2   (0,*)  *(x=3,gamma-lambda=   [3,3]/2)  1^2xe
+    /// 2:  1  [r2]  1   (0,*)  *(x=3,gamma-lambda=   [1,1]/2)  1^2xe
+    /// dual_KL_block: survivors x=0,3,3; start 1; polys [[],[1]]; matrix
+    /// |1 0 0;1 1 0;1 0 1|.
+    /// ```
+    /// The gamma-lambda representatives are NOT pinned: the identity-attitude
+    /// shift for this SL(3,R) family is the locator slice's known issue
+    /// (nonintegral_common_block_workorder.md, cross-cutting caveat).
+    #[test]
+    fn a2_split_full_block_dual_matches_the_oracle() {
+        let a2 = a2_quasisplit_fixture();
+        let rc = a2.rc();
+        let gamma = rw(&[1, 1], 2);
+        // param lambda [0,0] minus rho [1,1].
+        let (seed, ctxt) = seed_and_context(&rc, 3, &[-1, -1], &gamma);
+        assert_eq!(ctxt.rank(), 1, "rank-1 subsystem on the highest root");
+
+        let (block, init) = PartialBlock::build_full(&ctxt, &seed).unwrap();
+        assert_eq!(init, 1);
+        assert_eq!(block.size(), 3);
+        assert_eq!(
+            (0..3)
+                .map(|z| block.x(z).unwrap().index())
+                .collect::<Vec<_>>(),
+            vec![0, 3, 3]
+        );
+        assert_eq!(
+            (0..3).map(|z| block.length(z).unwrap()).collect::<Vec<_>>(),
+            vec![0, 1, 1]
+        );
+        assert_eq!(
+            (0..3)
+                .map(|z| block.descent(z, 0).unwrap())
+                .collect::<Vec<_>>(),
+            vec![
+                BlockDescent::ImaginaryTypeII,
+                BlockDescent::RealTypeII,
+                BlockDescent::RealTypeII,
+            ]
+        );
+        assert_eq!(
+            (0..3).map(|z| block.cross(0, z)).collect::<Vec<_>>(),
+            vec![Some(0), Some(2), Some(1)]
+        );
+        assert_eq!(
+            (0..3).map(|z| block.cayley(0, z)).collect::<Vec<_>>(),
+            vec![
+                Some((Some(1), Some(2))),
+                Some((Some(0), None)),
+                Some((Some(0), None)),
+            ]
+        );
+
+        let dual = block.dual();
+        assert_eq!(dual.size(), 3);
+        assert_eq!(dual.rank(), 1);
+        assert_eq!(
+            (0..3).map(|z| dual.length(z).unwrap()).collect::<Vec<_>>(),
+            vec![0, 0, 1]
+        );
+        assert_eq!(
+            (0..3)
+                .map(|z| dual.descent(z, 0).unwrap())
+                .collect::<Vec<_>>(),
+            vec![
+                BlockDescent::ImaginaryTypeI,
+                BlockDescent::ImaginaryTypeI,
+                BlockDescent::RealTypeI,
+            ]
+        );
+        assert_eq!(
+            (0..3).map(|z| dual.cross(0, z)).collect::<Vec<_>>(),
+            vec![Some(1), Some(0), Some(2)]
+        );
+        assert_eq!(
+            (0..3).map(|z| dual.cayley(0, z)).collect::<Vec<_>>(),
+            vec![
+                Some((Some(2), None)),
+                Some((Some(2), None)),
+                Some((Some(1), Some(0))),
+            ]
+        );
+        for z in 0..3 {
+            assert_eq!(dual.x(2 - z), block.y(z));
+            assert_eq!(dual.y(2 - z), Some(block.x(z).unwrap().index()));
+        }
+
+        let singular = ctxt.singular_flags(&gamma).unwrap();
+        assert_eq!(singular, vec![false]);
+        assert!((0..3).all(|z| block.survives(z, &singular)));
+        // M[2][1] = P_{0,1} = 0: dual rows 0 and 1 share length 0.
+        assert_dual_kl_matrix(&dual, &[&[1], &[1, 1], &[1, 0, 1]]);
+    }
+
+    /// The dual transform on the rank-2 three-row interval of
+    /// `b2_split_seed_gives_three_row_interval`: every dual row is the exact
+    /// reversal of the primal row, per-generator, including undefined links
+    /// (a partial block's links may leave the interval, unlike the full
+    /// blocks upstream dualizes).
+    #[test]
+    fn dual_of_partial_interval_reverses_every_generator_column() {
+        let b2 = b2_fixture();
+        let rc = b2.rc();
+        let gamma = rw(&[2, 2], 1);
+        let (seed, ctxt) = seed_and_context(&rc, 5, &[1, 1], &gamma);
+        let interval = bruhat_below(&ctxt, &seed).unwrap();
+        let block = PartialBlock::build(&ctxt, &interval).unwrap();
+        let size = block.size();
+        let rank = block.rank();
+        assert_eq!((size, rank), (3, 2));
+        let max_len = block.length(size - 1).unwrap();
+
+        let dual = block.dual();
+        assert_eq!(dual.size(), size);
+        assert_eq!(dual.rank(), rank);
+        for z in 0..size {
+            let zd = size - 1 - z;
+            assert_eq!(dual.length(zd), Some(max_len - block.length(z).unwrap()));
+            assert_eq!(dual.x(zd), block.y(z));
+            assert_eq!(dual.y(zd), Some(block.x(z).unwrap().index()));
+            for s in 0..rank {
+                assert_eq!(
+                    dual.descent(zd, s),
+                    block.descent(z, s).map(BlockDescent::dual)
+                );
+                assert_eq!(dual.cross(s, zd), block.cross(s, z).map(|c| size - 1 - c));
+                let expected = match block.cayley(s, z).unwrap() {
+                    (Some(first), second) => (Some(size - 1 - first), second.map(|c| size - 1 - c)),
+                    (None, _) => (None, None),
+                };
+                assert_eq!(dual.cayley(s, zd), Some(expected));
+            }
+        }
+        // The interval's undefined links (cross(1,0), cross(1,2)) stay
+        // undefined in the dual. The dual of a NON-closed interval is not a
+        // valid KL input (its primal complex ascents leaving the interval
+        // become complex descents with an undefined cross), so no KL table
+        // is filled here; the full-block tests above exercise that path.
+        assert_eq!(dual.cross(1, size - 1), None);
+        assert_eq!(dual.cross(1, 0), None);
     }
 }
