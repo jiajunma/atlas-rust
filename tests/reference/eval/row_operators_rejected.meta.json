@@ -4,7 +4,7 @@
  "oracle": "atlas",
  "stage": "typed-pipeline-swap",
  "reference_status": "verified_hpc_reference",
- "rust_status": "pending_hpc_differential",
+ "rust_status": "verified_hpc",
  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
@@ -16,11 +16,12 @@
  "oracle_seconds": 0.109,
  "oracle_maxrss_kb": 3536,
  "oracle_maxrss_approximate": false,
- "notes": "Rejected half of the generic row-operator surface: 11 typing failures, payloads verbatim-identical to the oracle (Failed to match '##'/'#' with argument type ...). Error wrapper format divergence (atlas-cli 'Type error at file:line:' vs oracle 'Error in expression ...' block) is the pre-existing documented CLI wrapper difference handled by the harness.",
+ "notes": "Rejected half of the generic row-operator surface: 11 typing failures, payloads verbatim-identical to the oracle (Failed to match '##'/'#' with argument type ...). Error wrapper format divergence (atlas-cli 'Type error at file:line:' vs oracle 'Error in expression ...' block) is the pre-existing documented CLI wrapper difference handled by the harness. Rust differential VERIFIED by fat job 3582163 at 5215c42 (308 PASS + 1 declared PARTIAL container_syntax_errors, 0 FAIL; report SHA256 1f978760f92c847db4de5c513e1c4c67399b157ebb907166ca4e2a52620b5919). Rust: 0.006s, 5324 KiB peak RSS, exit 1.",
  "hpc_capture": {
   "fresh_process_required": true,
   "timeout_seconds": 30,
   "estimated_seconds": 5,
   "estimated_memory_mb": 128
- }
+ },
+ "differential_job": "3582163"
 }
