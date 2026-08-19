@@ -62,22 +62,48 @@ Still to do for this slice, in order:
    the twisted_deform_proper* fixtures — those are agent-91's. NEVER commit
    `crates/atlas-real-group/examples/fiber_probe.rs` (user file).
 
-### B. agent-91 twisted slice 4 (twisted_deform) — its WIP, harvest pending
+### B. agent-91 twisted slice 4 (twisted_deform) — COMPLETE, pending commit + HPC
 
-Uncommitted: `crates/atlas-core/src/domain_builtins.rs` (+117/-…),
-`crates/atlas-real-group/src/deform.rs`, and untracked
-`tests/fixtures/domain/twisted_deform_proper{,_rejected,_terms}.atlas`.
-Its known-red test is expected at this stage. When its completion notice
-arrives (or its files are confirmed final): run the full gates (atlas-core
-lib tests incl. the new subscription test, atlas-real-group tests,
-clippy/fmt); if green commit ITS files separately, push, HPC sync
-(`rsync -az --delete .git/ ikkemhpc:/public/home/majj/atlas-rust/.git/ &&
-git archive HEAD | ssh ikkemhpc 'cd /public/home/majj/atlas-rust && tar
--xf -'`), capture the twisted_deform_proper pair via reference_capture
-(oracle binary sha256 66f5d7d4…65c9, dirty=false), register, local
-run_fixture, then fat differential
-`sbatch --partition=fat --time=01:00:00 --mem=32G --export=ALL,TIMEOUT=3600
-hpc/pipeline_swap_diff.sbatch`, then bump verified_hpc + HANDOFF.
+agent-91 finished; its uncommitted files are final:
+`crates/atlas-core/src/domain_builtins.rs` (twisted_deform dispatch
+~16647 drops the Full-or-NYI guard, passes `&parent` through to the
+slice-3 `ProperSubsystem` arm of `with_integral_block`; dead
+`proper_subsystem_diagnostic` removed), `crates/atlas-real-group/src/
+deform.rs` (`twisted_deformation_terms` now takes `parent: &KlSumParent`;
+per-row lambda_rho via `KlSumParent::sr` on Partial parents), and
+untracked fixtures `tests/fixtures/domain/twisted_deform_proper.atlas`,
+`_terms.atlas` (q2 = `param(KGB(rfb,10),[0,0],[1,1]/2)`, non-empty terms),
+`_rejected.atlas`. Reported gates: 328+477 tests pass, clippy -D warnings
+clean; spot-check confirmed
+`twisted_deform_proper_subsystems_match_oracle` ok. All three fixtures
+verified IDENTICAL to the local oracle (rejected differs only in location
+wrappers).
+
+ Harvest commands: full gates (`cargo test -p atlas-core --lib`,
+`cargo test -p atlas-real-group --lib`, `cargo clippy --workspace
+--all-targets -- -D warnings`, `cargo fmt --check`) → commit ONLY its
+files → push → HPC sync (`rsync -az --delete .git/
+ikkemhpc:/public/home/majj/atlas-rust/.git/ && git archive HEAD | ssh
+ikkemhpc 'cd /public/home/majj/atlas-rust && tar -xf -'`) →
+reference_capture the trio (oracle sha256 66f5d7d4…65c9, dirty=false) →
+register → local run_fixture → fat differential (`sbatch --partition=fat
+--time=01:00:00 --mem=32G --export=ALL,TIMEOUT=3600
+hpc/pipeline_swap_diff.sbatch`) → verified_hpc + HANDOFF.
+
+Record in REMAINING_BUILTINS.md (from agent-91's report):
+1. **"alcove-wall closure overshoot → NDEBUG truncation" divergence**:
+   gamma=[1,0]/2 on the top alcove wall in non-simply-laced data —
+   `int_item`'s additive_closure overshoots to the full B2 datum
+   (rootdata.cpp:685-707 does the same); upstream's `codec::internalise`
+   assert (repr.cpp:104) is compiled out under the oracle's -DNDEBUG
+   build and silently truncates 3/2→1, while the Rust IntegralCodec
+   honestly rejects. Affects slice-3 paths identically; pre-existing, not
+   a slice-4 gap.
+2. q2 cannot share a fixture session with pb: same block record interned
+   under different locators trips the locator gate
+   `has_identity_generator_attitude` on the second lookup (oracle handles
+   it via non-trivial `block_modifier`); hence the separate `_terms`
+   fixture.
 
 ### Queued after that
 
