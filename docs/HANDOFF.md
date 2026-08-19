@@ -3513,3 +3513,41 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
 - Next after agent-85 frees domain_builtins.rs: dual_KL_block wiring
   (agent-82 instructions), then twisted slices 2-5, then next-wave A
   (non-integral common block, the largest remaining item).
+
+## 2026-08-19 night: frozen corpus fully verified — 305/305 verified_hpc
+
+- agent-85 slice-1B landed (`423445a`): extended_block on proper integral
+  subsystems via extended_block_partial (slice-1A call pattern,
+  distinguished delta atlas-types.w:7392); rank-0 non-integral falls out
+  free (oracle: size-1 block, 1x0 matrices). raw_ext_KL /
+  partial_extended_KL_block keep gates until slice 2.
+- agent-84 parser pair landed (`3aaecc7`): 2-D slice M[r,c]
+  (parser.y:658-705, SliceFlags column bits, swiss_matrix_knife caller)
+  + commabarlist [a,b | c,d] (parser.y:370-410 via dedicated
+  Expr::BarList — oracle probing showed the hidden "transpose " is
+  overload-immune, so NOT the desugar). Known divergence recorded:
+  `[ | 3]` expecting-token wording. Captures 3583469-72; registered
+  `68a570f`.
+- agent-86 dual_KL_block rewired (`f5e8aec`): lookup_full_block +
+  KlTable<BareBlock> off PartialBlock::dual + located_singular_flags +
+  located_row_parameter; the old uniform-lambda_rho non-integral
+  divergence is gone. test_standard gate added (atlas-types.w:7055).
+- Fat differential **3583557 @ 68a570f: 315 PASS + 1 declared PARTIAL
+  (container_syntax_errors), 0 FAIL**; report SHA256
+  `82d5d1d47ea5ce772e5080fdb4a4f6983e5f283f6e77d78dfad1cd927b9f07d1`.
+  Seven anchors bumped verified_hpc (`45acc32`). **The frozen reference
+  corpus is fully closed: 305 metas verified_hpc, 0 pending, 0
+  not_implemented.**
+- In flight: agent-87 twisted slice 2 (raw_ext_KL +
+  partial_extended_KL_block on proper subsystems, ExtKlTable/condense over
+  the partial-parent ext block + subsystem singular_flags; NEW fixtures
+  ext_kl_proper{,_rejected} — oracle probing first, no events/meta/
+  registration until HPC capture).
+- Remaining queue (all need NEW fixtures + captures): twisted slices 3-5
+  (twisted_KL_sum_at_s, twisted_deform, twisted_full_deform recursion —
+  slice 5 may force the KL_table::swallow/partial-merge machinery);
+  next-wave A non-integral common block (domain_builtins.rs:9431 gate,
+  largest remaining item); B full_deform silent full-block approximation;
+  C KL_sum_at_s per-element lambda-rho; E Weyl_orbit oversize semantics;
+  F integrality_points display; locator step 5 (print_partial_common_block
+  attitude + ext-block simple_pi induced); `#:=` parser gap.
