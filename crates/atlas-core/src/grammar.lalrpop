@@ -10,12 +10,12 @@ use super::{
     unit_selector, next_sequence, case_select_expression, counted_for_expression,
     tuple_expression, function_binding,
     prepend_let_group,
-    call_suffix, postfix, prefix_operator_call, slice_suffix, start_binary_formula, start_prefix_formula,
+    call_suffix, postfix, prefix_operator_call, slice_suffix, matrix_slice_suffix, start_binary_formula, start_prefix_formula,
     subscription_suffix, type_group, type_function, type_primitive, type_row, type_union_append,
     type_union_start, type_variant, type_wild_row, unary, finish_conditional, if_tail,
     anonymous_parameter, const_pattern_name, finish_pattern, pattern_binding, pattern_empty_tuple,
     pattern_name, pattern_slots, pattern_tuple, prepend_while_effect, tuple_parameter,
-    whattype_command, while_expression,
+    whattype_command, while_expression, bar_list_expression,
     BinaryOp, CaseBranch, Command, Expr, LambdaParam, LetBinding, ParsedFor, ParsedIf,
     ParsedLet, ParserToken, PatternTail, PostfixSuffix, Prim, Program, SlotTail, SpannedValue,
     TypeExpr, TypeField, TypeSpec, TypeVariantSlot, UnaryOp, Pattern, TypeDefinition,
@@ -377,6 +377,26 @@ PostfixSuffix: PostfixSuffix = {
             close,
         )
     },
+    // Two-dimensional slice `M[rlo:rhi, clo:chi]` (parser.y:660-705).
+    // Upstream has no `~[` form here, so the open bracket is literal.
+    <_open:"["> <row_lower:Expr?> <row_lower_reversed:TildeOpt>
+        <colon:":"> <row_upper:Expr?> <row_upper_reversed:TildeOpt>
+        <_comma:","> <column_lower:Expr?> <column_lower_reversed:TildeOpt>
+        <_column_colon:":"> <column_upper:Expr?> <column_upper_reversed:TildeOpt>
+        <close:"]"> => {
+        matrix_slice_suffix(
+            row_lower,
+            row_upper,
+            row_lower_reversed,
+            row_upper_reversed,
+            column_lower,
+            column_upper,
+            column_lower_reversed,
+            column_upper_reversed,
+            colon,
+            close,
+        )
+    },
     <_open:"("> <arguments:CallArguments> <close:")"> => call_suffix(arguments, close),
     // `receiver.name` lowers to `name(receiver)`; unit and operator
     // selectors (parser.y:312,321) apply the literal or the operator's
@@ -426,6 +446,10 @@ Atom: Expr = {
     <string:"string"> => Expr::String { value: string.value, span: string.span },
     <identifier:"identifier"> => Expr::Identifier { name: identifier.value, span: identifier.span },
     <open:"["> <elements:ListElements> <close:"]"> => list_expression(open, elements, close),
+    // commabarlist (parser.y:370-376, :402-410): `[a,b | c,d]` builds the
+    // matrix whose ROWS are the comma-separated segments (upstream:
+    // `transpose (mat: [[a,b],[c,d]])` via the hidden `"transpose "`).
+    <open:"["> <rows:CommaBarList> <close:"]"> => bar_list_expression(open, rows, close),
     <open:"("> <close:")"> => tuple_expression(open, Vec::new(), close),
     <open:"("> <first:Expr> <rest:TupleTail> <close:")"> => {
         tuple_expression(open, expression_list(first, rest), close)
@@ -636,6 +660,21 @@ TupleTail: Vec<Expr> = {
 ListElements: Vec<Expr> = {
     => Vec::new(),
     <first:Expr> <rest:("," <Expr>)*> => expression_list(first, rest),
+};
+
+// commalist (parser.y:398-400): one or more comma-separated expressions.
+CommaList: Vec<Expr> = {
+    <first:Expr> <rest:("," <Expr>)*> => expression_list(first, rest),
+};
+
+// commabarlist (parser.y:402-410): two or more comma-lists separated by
+// `|`; each segment is a non-empty row of the resulting matrix display.
+CommaBarList: Vec<Vec<Expr>> = {
+    <first:CommaList> <_bar:"|"> <second:CommaList> <rest:("|" <CommaList>)*> => {
+        let mut rows = vec![first, second];
+        rows.extend(rest);
+        rows
+    },
 };
 
 extern {

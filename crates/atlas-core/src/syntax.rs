@@ -50,6 +50,16 @@ pub enum Expr {
         elements: Vec<Expr>,
         span: SourceSpan,
     },
+    /// `[a,b | c,d]` (parser.y:370-376, commabarlist :402-410): rows of
+    /// comma-separated entries separated by `|`. Upstream desugars this to
+    /// `transpose (mat: [[a,b],[c,d]])` through the hidden `"transpose "`
+    /// builtin; here it is its own node so the conversion keeps the oracle's
+    /// exact diagnostics and stays immune to user `^`/`mat` overloads. Each
+    /// segment must be non-empty and statically a row of `int`.
+    BarList {
+        rows: Vec<Vec<Expr>>,
+        span: SourceSpan,
+    },
     Subscription {
         array: Box<Expr>,
         index: Box<Expr>,
@@ -60,6 +70,12 @@ pub enum Expr {
         array: Box<Expr>,
         lower: Box<Expr>,
         upper: Box<Expr>,
+        /// Column bounds of the two-dimensional form `M[rlo:rhi, clo:chi]`
+        /// (parser.y:660-705); both `None` for the one-dimensional slice.
+        /// Omitted bounds are already zero-filled by the parser, exactly
+        /// like `lower`/`upper`.
+        column_lower: Option<Box<Expr>>,
+        column_upper: Option<Box<Expr>>,
         flags: SliceFlags,
         span: SourceSpan,
     },
@@ -500,6 +516,7 @@ impl Expr {
             | Self::String { span, .. }
             | Self::Tuple { span, .. }
             | Self::List { span, .. }
+            | Self::BarList { span, .. }
             | Self::Subscription { span, .. }
             | Self::Slice { span, .. }
             | Self::Identifier { span, .. }
@@ -533,9 +550,16 @@ impl Expr {
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct SliceFlags {
+    /// `M~[lo:hi]` output reversal (parser.y:639-657); one-dimensional
+    /// only — the two-dimensional grammar has no `~[` production.
     pub reverse_output: bool,
     pub lower_from_end: bool,
     pub upper_from_end: bool,
+    /// From-end bits of the column bounds in the two-dimensional form
+    /// (parser.y:660-705 flag bits 0x10/0x20); always `false` for a
+    /// one-dimensional slice.
+    pub column_lower_from_end: bool,
+    pub column_upper_from_end: bool,
 }
 
 #[derive(Debug)]
@@ -546,8 +570,14 @@ enum PostfixSuffix {
         close: SourceSpan,
     },
     Slice {
-        lower: Expr,
-        upper: Expr,
+        // Bounds are boxed: four inline `Expr`s would dwarf the other
+        // suffix forms (clippy's large_enum_variant threshold).
+        lower: Box<Expr>,
+        upper: Box<Expr>,
+        /// Column bounds of `M[rlo:rhi, clo:chi]`; both `None` for the
+        /// one-dimensional slice.
+        column_lower: Option<Box<Expr>>,
+        column_upper: Option<Box<Expr>>,
         flags: SliceFlags,
         close: SourceSpan,
     },
@@ -1243,6 +1273,10 @@ fn bison_expecting(token: &ParserToken, expected: &[String]) -> Option<&'static 
         // `(1]`: inside a parenthesized expression bison expects `','`
         // (tuple continuation); `[1,]` and `(1,]` report a bare `']'`.
         ParserToken::RBracket(_) if has(",") => Some("','"),
+        // `M~[0:1, 0:1]` / `M[0:1, 0:1, 0:1]`: the slice expects its
+        // closing bracket; at command level (`1,2`) the newline.
+        ParserToken::Comma(_) if has("]") => Some("']'"),
+        ParserToken::Comma(_) => Some("'\\n'"),
         _ => None,
     }
 }
@@ -1293,6 +1327,10 @@ fn bison_token_name(token: &ParserToken) -> Option<&'static str> {
         ParserToken::Colon(_) => Some("':'"),
         ParserToken::Equals(_) => Some("'='"),
         ParserToken::RBracket(_) => Some("']'"),
+        // `M~[0:1, 0:1]` / `M[0:1, 0:1, 0:1]`: the two-dimensional slice has
+        // no `~[` form and no third axis upstream, so the offending token
+        // is the comma (parser.y:660-705).
+        ParserToken::Comma(_) => Some("','"),
         ParserToken::VoidType(_) => Some("VOID"),
         _ => None,
     }
@@ -1546,13 +1584,17 @@ fn postfix(array: Expr, suffix: PostfixSuffix) -> Expr {
         PostfixSuffix::Slice {
             lower,
             upper,
+            column_lower,
+            column_upper,
             flags,
             close,
         } => Expr::Slice {
             span: join_span(array.span(), close),
             array: Box::new(array),
-            lower: Box::new(lower),
-            upper: Box::new(upper),
+            lower,
+            upper,
+            column_lower,
+            column_upper,
             flags,
         },
         PostfixSuffix::Call { arguments, close } => Expr::Call {
@@ -1852,14 +1894,68 @@ fn slice_suffix(
     let lower_from_end = lower.is_some() && lower_from_end;
     let upper_from_end = upper.is_none() || upper_from_end;
     PostfixSuffix::Slice {
-        lower: lower.unwrap_or_else(|| zero_expression(colon)),
-        upper: upper.unwrap_or_else(|| zero_expression(close)),
+        lower: Box::new(lower.unwrap_or_else(|| zero_expression(colon))),
+        upper: Box::new(upper.unwrap_or_else(|| zero_expression(close))),
+        column_lower: None,
+        column_upper: None,
         flags: SliceFlags {
             reverse_output,
             lower_from_end,
             upper_from_end,
+            column_lower_from_end: false,
+            column_upper_from_end: false,
         },
         close,
+    }
+}
+
+/// Two-dimensional slice `M[rlo:rhi, clo:chi]` (parser.y:660-705): upstream
+/// desugars to a hidden `"matrix slicer"` call whose flag int packs the four
+/// from-end bits (0x2/0x4 rows, 0x10/0x20 columns; an absent upper bound
+/// sets its bit, so the zero-filled bound reads as `upb=dim`). There is no
+/// `~[` two-dimensional production upstream, so `reverse_output` stays
+/// `false` here.
+#[allow(clippy::too_many_arguments)]
+fn matrix_slice_suffix(
+    row_lower: Option<Expr>,
+    row_upper: Option<Expr>,
+    row_lower_from_end: bool,
+    row_upper_from_end: bool,
+    column_lower: Option<Expr>,
+    column_upper: Option<Expr>,
+    column_lower_from_end: bool,
+    column_upper_from_end: bool,
+    colon: SourceSpan,
+    close: SourceSpan,
+) -> PostfixSuffix {
+    let flags = SliceFlags {
+        reverse_output: false,
+        lower_from_end: row_lower.is_some() && row_lower_from_end,
+        upper_from_end: row_upper.is_none() || row_upper_from_end,
+        column_lower_from_end: column_lower.is_some() && column_lower_from_end,
+        column_upper_from_end: column_upper.is_none() || column_upper_from_end,
+    };
+    PostfixSuffix::Slice {
+        lower: Box::new(row_lower.unwrap_or_else(|| zero_expression(colon))),
+        upper: Box::new(row_upper.unwrap_or_else(|| zero_expression(close))),
+        column_lower: Some(Box::new(
+            column_lower.unwrap_or_else(|| zero_expression(colon)),
+        )),
+        column_upper: Some(Box::new(
+            column_upper.unwrap_or_else(|| zero_expression(close)),
+        )),
+        flags,
+        close,
+    }
+}
+
+/// `[a,b | c,d]` (parser.y:370-376): the row segments become the rows of a
+/// matrix. The bars are row separators only inside the brackets — `;` in a
+/// segment remains statement sequencing (parser.y:243).
+fn bar_list_expression(open: SourceSpan, rows: Vec<Vec<Expr>>, close: SourceSpan) -> Expr {
+    Expr::BarList {
+        rows,
+        span: join_span(open, close),
     }
 }
 
@@ -2288,6 +2384,13 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
         Expr::String { value, .. } => format!("\"{value}\""),
         Expr::Tuple { elements, .. } => format!("({})", compact_expressions(elements)),
         Expr::List { elements, .. } => format!("[{}]", compact_expressions(elements)),
+        Expr::BarList { rows, .. } => format!(
+            "[{}]",
+            rows.iter()
+                .map(|row| compact_expressions(row))
+                .collect::<Vec<_>>()
+                .join("|")
+        ),
         Expr::Subscription {
             array,
             index,
@@ -2303,13 +2406,25 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
             array,
             lower,
             upper,
+            column_lower,
+            column_upper,
             ..
-        } => format!(
-            "{}[{}:{}]",
-            compact_expression(array),
-            compact_expression(lower),
-            compact_expression(upper)
-        ),
+        } => match (column_lower, column_upper) {
+            (Some(column_lower), Some(column_upper)) => format!(
+                "{}[{}:{},{}:{}]",
+                compact_expression(array),
+                compact_expression(lower),
+                compact_expression(upper),
+                compact_expression(column_lower),
+                compact_expression(column_upper)
+            ),
+            _ => format!(
+                "{}[{}:{}]",
+                compact_expression(array),
+                compact_expression(lower),
+                compact_expression(upper)
+            ),
+        },
         Expr::Identifier { name, .. } => name.clone(),
         Expr::Assignment { name, value, .. } => {
             format!("{name}:={}", compact_expression(value))
@@ -2670,6 +2785,18 @@ mod tests {
                     .collect::<Vec<_>>()
                     .join(",")
             ),
+            Expr::BarList { rows, .. } => format!(
+                "barlist({})",
+                rows.iter()
+                    .map(|row| {
+                        row.iter()
+                            .map(expression_shape)
+                            .collect::<Vec<_>>()
+                            .join(",")
+                    })
+                    .collect::<Vec<_>>()
+                    .join("|")
+            ),
             Expr::Subscription {
                 array,
                 index,
@@ -2685,17 +2812,33 @@ mod tests {
                 array,
                 lower,
                 upper,
+                column_lower,
+                column_upper,
                 flags,
                 ..
-            } => format!(
-                "slice({},{},{},{}{}{})",
-                expression_shape(array),
-                expression_shape(lower),
-                expression_shape(upper),
-                u8::from(flags.reverse_output),
-                u8::from(flags.lower_from_end),
-                u8::from(flags.upper_from_end)
-            ),
+            } => match (column_lower, column_upper) {
+                (Some(column_lower), Some(column_upper)) => format!(
+                    "slice2({},{},{},{},{},{}{}{}{})",
+                    expression_shape(array),
+                    expression_shape(lower),
+                    expression_shape(upper),
+                    expression_shape(column_lower),
+                    expression_shape(column_upper),
+                    u8::from(flags.lower_from_end),
+                    u8::from(flags.upper_from_end),
+                    u8::from(flags.column_lower_from_end),
+                    u8::from(flags.column_upper_from_end)
+                ),
+                _ => format!(
+                    "slice({},{},{},{}{}{})",
+                    expression_shape(array),
+                    expression_shape(lower),
+                    expression_shape(upper),
+                    u8::from(flags.reverse_output),
+                    u8::from(flags.lower_from_end),
+                    u8::from(flags.upper_from_end)
+                ),
+            },
             Expr::Identifier { name, .. } => name.clone(),
             Expr::Assignment { name, value, .. } => {
                 format!("assign({name},{})", expression_shape(value))
@@ -3026,6 +3169,70 @@ mod tests {
             expression_shape(&parse_one("rows[:]")),
             "slice(rows,0,0,001)"
         );
+    }
+
+    #[test]
+    fn parses_two_dimensional_slice_bounds() {
+        // parser.y:660-705: `M[rlo:rhi, clo:chi]`; the trailing four digits
+        // are the from-end bits (row lower/upper, then column lower/upper),
+        // packed upstream as 0x2/0x4/0x10/0x20.
+        assert_eq!(
+            expression_shape(&parse_one("M[1:3, 0:2]")),
+            "slice2(M,1,3,0,2,0000)"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("M[1:, 0:2]")),
+            "slice2(M,1,0,0,2,0100)"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("M[:, :]")),
+            "slice2(M,0,0,0,0,0101)"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("M[1~:3, 0:2~]")),
+            "slice2(M,1,3,0,2,1001)"
+        );
+        // A tilde without its bound does not set the from-end bit.
+        assert_eq!(
+            expression_shape(&parse_one("M[~:2, 0:2]")),
+            "slice2(M,0,2,0,2,0000)"
+        );
+        // Chained onto an arbitrary comprim, like upstream's second form.
+        assert_eq!(
+            expression_shape(&parse_one("M[0:2, 0:2][0:1, 0:1]")),
+            "slice2(slice2(M,0,2,0,2,0000),0,1,0,1,0000)"
+        );
+        // No `~[` two-dimensional form and no third axis upstream: the
+        // offending token is the comma (oracle: "unexpected ',', expecting
+        // ']'").
+        for source in ["M~[0:1, 0:1]", "M[0:1, 0:1, 0:1]"] {
+            let error = parse(&SourceText::new(source)).expect_err("invalid two-dimensional slice");
+            assert_eq!(error.kind, ErrorKind::Syntax);
+            assert_eq!(error.message, "syntax error, unexpected ',', expecting ']'");
+        }
+    }
+
+    #[test]
+    fn parses_commabarlist_rows() {
+        // parser.y:370-376 + :402-410: `[a,b | c,d]` rows; `;` inside a
+        // segment stays statement sequencing, not a row separator.
+        assert_eq!(
+            expression_shape(&parse_one("[1,2 | 3,4]")),
+            "barlist(1,2|3,4)"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("[1 | 2 | 3]")),
+            "barlist(1|2|3)"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("[1,2|3,4; 5]")),
+            "barlist(1,2|3,seq(4;5))"
+        );
+        // Empty segments are not commalists (oracle: `[1,2 | ]` reports a
+        // bare "unexpected ']'").
+        let error = parse(&SourceText::new("[1,2 | ]")).expect_err("empty segment");
+        assert_eq!(error.kind, ErrorKind::Syntax);
+        assert_eq!(error.message, "syntax error, unexpected ']'");
     }
 
     #[test]

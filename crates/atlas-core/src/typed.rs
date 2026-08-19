@@ -129,11 +129,23 @@ pub enum TypedExpr {
         array: Box<TypedExpr>,
         lower: Box<TypedExpr>,
         upper: Box<TypedExpr>,
+        /// Column bounds of the two-dimensional form `M[rlo:rhi, clo:chi]`;
+        /// both `None` for the one-dimensional row slice.
+        column_lower: Option<Box<TypedExpr>>,
+        column_upper: Option<Box<TypedExpr>>,
         flags: crate::syntax::SliceFlags,
         /// Compact rendering of the source expression, quoted by the
         /// out-of-range diagnostic exactly like the oracle's
         /// `slice_range_error` prints the slice node (axis.w:4299).
         source: String,
+        span: SourceSpan,
+    },
+    /// `[a,b | c,d]` after conversion: every entry converted against `int`,
+    /// the matrix built at evaluation (parser.y:370-376 desugars to the
+    /// hidden `"transpose "` applied to a `mat` cast; here the construction
+    /// is direct so user `^`/`mat` overloads cannot intercept it).
+    BarList {
+        rows: Vec<Vec<TypedExpr>>,
         span: SourceSpan,
     },
     LetGroup {
@@ -1815,9 +1827,80 @@ pub fn convert_expr(
             array,
             lower,
             upper,
+            column_lower,
+            column_upper,
             flags,
             span,
         } => {
+            if let (Some(column_lower), Some(column_upper)) = (column_lower, column_upper) {
+                // Two-dimensional slice (parser.y:660-705): upstream wraps
+                // the base in an explicit `mat` cast, so a non-matrix base
+                // fails with the coercion error ("found [int] while mat was
+                // needed.") and a row DISPLAY in mat position coerces via
+                // the row coercion ([[int]] -> mat, columns-first).
+                let mut array_type = Type::Primitive(Prim::Mat);
+                let converted_array = convert_expr(array, &mut array_type, analysis)?;
+                // The desugared "matrix slicer" call converts the bounds
+                // with UNDETERMINED a-priori types and rejects the whole
+                // argument tuple when one is not int (probed oracle wording:
+                // "found (int,mat,int,string,int,int) while
+                // (int,mat,int,int,int,int) was needed.").
+                let bounds = [lower, upper, column_lower, column_upper];
+                let mut bound_types = Vec::with_capacity(4);
+                let mut converted_bounds = Vec::with_capacity(4);
+                for bound in bounds {
+                    let mut bound_type = Type::Undetermined;
+                    converted_bounds.push(convert_expr(bound, &mut bound_type, analysis)?);
+                    bound_types.push(bound_type);
+                }
+                if bound_types
+                    .iter()
+                    .any(|bound_type| *bound_type != Type::Primitive(Prim::Int))
+                {
+                    let mut tuple_components =
+                        vec![Type::Primitive(Prim::Int), Type::Primitive(Prim::Mat)];
+                    tuple_components.extend(bound_types);
+                    let found = Type::tuple(tuple_components);
+                    let needed = Type::tuple(vec![
+                        Type::Primitive(Prim::Int),
+                        Type::Primitive(Prim::Mat),
+                        Type::Primitive(Prim::Int),
+                        Type::Primitive(Prim::Int),
+                        Type::Primitive(Prim::Int),
+                        Type::Primitive(Prim::Int),
+                    ]);
+                    return Err(type_error(
+                        format!(
+                            "found {} while {} was needed.",
+                            found.display(analysis.types),
+                            needed.display(analysis.types)
+                        ),
+                        *span,
+                    ));
+                }
+                let mut converted_bounds = converted_bounds.into_iter();
+                let found = Type::Primitive(Prim::Mat);
+                return conform_types(
+                    &found,
+                    required,
+                    TypedExpr::Slice {
+                        array: Box::new(converted_array),
+                        lower: Box::new(converted_bounds.next().expect("row lower bound")),
+                        upper: Box::new(converted_bounds.next().expect("row upper bound")),
+                        column_lower: Some(Box::new(
+                            converted_bounds.next().expect("column lower bound"),
+                        )),
+                        column_upper: Some(Box::new(
+                            converted_bounds.next().expect("column upper bound"),
+                        )),
+                        flags: *flags,
+                        source: compact_expression(expression),
+                        span: *span,
+                    },
+                    *span,
+                    analysis,
+                );
+            }
             let mut array_type = Type::Undetermined;
             let converted_array = convert_expr(array, &mut array_type, analysis)?;
             // Only row slicing is implemented; anything else is the
@@ -1844,8 +1927,37 @@ pub fn convert_expr(
                     array: Box::new(converted_array),
                     lower: Box::new(converted_lower),
                     upper: Box::new(converted_upper),
+                    column_lower: None,
+                    column_upper: None,
                     flags: *flags,
                     source: compact_expression(expression),
+                    span: *span,
+                },
+                *span,
+                analysis,
+            )
+        }
+        Expr::BarList { rows, span } => {
+            // Each segment is a comma-list of `int` entries (upstream routes
+            // the row-of-rows through a `mat` cast, which balances every
+            // entry against int: "found string while int was needed.").
+            let converted_rows = rows
+                .iter()
+                .map(|row| {
+                    row.iter()
+                        .map(|entry| {
+                            let mut entry_type = Type::Primitive(Prim::Int);
+                            convert_expr(entry, &mut entry_type, analysis)
+                        })
+                        .collect::<Result<Vec<_>, _>>()
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            let found = Type::Primitive(Prim::Mat);
+            conform_types(
+                &found,
+                required,
+                TypedExpr::BarList {
+                    rows: converted_rows,
                     span: *span,
                 },
                 *span,
@@ -9210,15 +9322,95 @@ impl TypedExpr {
                 array,
                 lower,
                 upper,
+                column_lower,
+                column_upper,
                 flags,
                 source,
                 span,
             } => {
+                if let (Some(column_lower), Some(column_upper)) = (column_lower, column_upper) {
+                    // Two-dimensional slice: all bounds evaluate before any
+                    // narrowing, which then runs in the upstream pop order
+                    // l, j, k, i (global.w:4719-4723); the range check fires
+                    // at every level (only the push is gated upstream).
+                    let matrix = match force(array, context)? {
+                        Value::Matrix(matrix) => matrix,
+                        other => panic!("analysis let a non-matrix slice base through: {other}"),
+                    };
+                    let row_lower =
+                        expect_integer(force(lower, context)?, *span, "slice lower bound")?;
+                    let row_upper =
+                        expect_integer(force(upper, context)?, *span, "slice upper bound")?;
+                    let column_lower = expect_integer(
+                        force(column_lower, context)?,
+                        *span,
+                        "slice column lower bound",
+                    )?;
+                    let column_upper = expect_integer(
+                        force(column_upper, context)?,
+                        *span,
+                        "slice column upper bound",
+                    )?;
+                    let l = unsigned_long(&column_upper, *span)?;
+                    let j = unsigned_long(&column_lower, *span)?;
+                    let k = unsigned_long(&row_upper, *span)?;
+                    let i = unsigned_long(&row_lower, *span)?;
+                    let packed = (u8::from(flags.lower_from_end) * 0x02)
+                        | (u8::from(flags.upper_from_end) * 0x04)
+                        | (u8::from(flags.column_lower_from_end) * 0x10)
+                        | (u8::from(flags.column_upper_from_end) * 0x20);
+                    let sliced = matreduc::swiss_matrix_knife(
+                        packed,
+                        &matreduc::PidMatrix::from_matrix(&matrix),
+                        i,
+                        k,
+                        j,
+                        l,
+                    )
+                    .map_err(|message| runtime(message, *span))?;
+                    return Ok(at_level(level, || Value::Matrix(sliced.to_matrix())));
+                }
                 let upper = expect_integer(force(upper, context)?, *span, "slice upper bound")?;
                 let lower = expect_integer(force(lower, context)?, *span, "slice lower bound")?;
                 let values = expect_typed_list(force(array, context)?, *span, "slice")?;
                 let sliced = evaluate_slice(values, lower, upper, *flags, source, *span)?;
                 Ok(at_level(level, || Value::List(sliced.clone())))
+            }
+            Self::BarList { rows, span } => {
+                // Evaluate every entry first, then narrow row by row (the
+                // per-row [int]->vec coercion precedes the rectangularity
+                // check upstream), then stack the segments as matrix ROWS
+                // (upstream: they are the columns of the `mat` cast, which
+                // the hidden transpose then flips). Both diagnostics fire at
+                // every level; only the push is gated.
+                let mut evaluated = Vec::with_capacity(rows.len());
+                for row in rows {
+                    let values = row
+                        .iter()
+                        .map(|entry| force(entry, context))
+                        .collect::<Result<Vec<_>, _>>()?;
+                    evaluated.push(list_to_vec32(values, *span)?);
+                }
+                let width = evaluated.first().map_or(0, |row| row.0.len());
+                if evaluated.iter().any(|row| row.0.len() != width) {
+                    return Err(runtime(
+                        "Vector sizes differ in conversion to matrix",
+                        *span,
+                    ));
+                }
+                let height = evaluated.len();
+                let mut data = Vec::with_capacity(width * height);
+                for column in 0..width {
+                    for row in &evaluated {
+                        data.push(row.0[column]);
+                    }
+                }
+                Ok(at_level(level, || {
+                    Value::Matrix(
+                        crate::linear_values::Matrix::from_columns(height, width, data.clone())
+                            .expect("commabarlist rows are rectangular"),
+                    )
+                }))
             }
             Self::LetGroup { initializers, body } => {
                 let mut slots = Vec::new();
@@ -11729,6 +11921,120 @@ mod tests {
             (
                 "for i:2 do subspace_normal(null(65,1)) od",
                 "Dimension too large: 65>64",
+            ),
+        ] {
+            match convert_and_run(source) {
+                Err(error) => assert_eq!(error.message, expected, "source: {source}"),
+                Ok(value) => panic!("{source} unexpectedly succeeded with {value:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn two_dimensional_slice_and_commabarlist_match_the_oracle() {
+        // Two-dimensional slice `M[rlo:rhi, clo:chi]` (parser.y:660-705):
+        // the parser packs the four from-end bits (rows 0x2/0x4, columns
+        // 0x10/0x20; an absent upper bound sets its bit so the zero-filled
+        // bound reads as upb=dim) and the evaluator drives the
+        // matreduc::swiss_matrix_knife engine directly — the hidden
+        // "matrix slicer" name is never registered. M below is
+        // mat: [[1,2,3],[4,5,6]] — the 3x2 matrix | 1, 4 | / | 2, 5 | /
+        // | 3, 6 | (mat literals are COLUMNS).
+        for (source, expected) in [
+            (
+                "(mat: [[1,2,3],[4,5,6]])[0:3, 0:2]",
+                "\n| 1, 4 |\n| 2, 5 |\n| 3, 6 |\n",
+            ),
+            (
+                "(mat: [[1,2,3],[4,5,6]])[1:, 0:2]",
+                "\n| 2, 5 |\n| 3, 6 |\n",
+            ),
+            ("(mat: [[1,2,3],[4,5,6]])[:, 1:]", "\n| 4 |\n| 5 |\n| 6 |\n"),
+            // from-end bounds: `1~` lowers to rows-1, `1~`/`2~` uppers.
+            ("(mat: [[1,2,3],[4,5,6]])[1~:3, 0:2]", "\n| 3, 6 |\n"),
+            (
+                "(mat: [[1,2,3],[4,5,6]])[0:1~, 0:2]",
+                "\n| 1, 4 |\n| 2, 5 |\n",
+            ),
+            ("(mat: [[1,2,3],[4,5,6]])[0:2~, 1~:2~]", "The 1x0 matrix"),
+            // inverted ranges clamp to empty, keeping the shape.
+            ("(mat: [[1,2,3],[4,5,6]])[2:1, 0:2]", "The 0x2 matrix"),
+            ("(mat: [[1,2,3],[4,5,6]])[0:2, 1:1]", "The 2x0 matrix"),
+            ("(mat: [[1,2,3],[4,5,6]])[2:0, 1:1]", "The 0x0 matrix"),
+            // The base converts against `mat`: a row-of-rows DISPLAY
+            // coerces (columns-first), so this is the first column of
+            // [[1,3],[2,4]].
+            ("[[1,2],[3,4]][0:2, 0:1]", "\n| 1 |\n| 2 |\n"),
+        ] {
+            let (found, value) = convert_and_run(source)
+                .unwrap_or_else(|error| panic!("{source} should convert and run: {error:?}"));
+            assert_eq!(found, Type::Primitive(Prim::Mat), "source: {source}");
+            assert_eq!(value.to_string(), expected, "source: {source}");
+        }
+
+        // commabarlist `[a,b | c,d]` (parser.y:370-376, :402-410): segments
+        // become the ROWS of the result (upstream: `transpose (mat: …)` via
+        // the hidden "transpose "; here the matrix is built directly, so a
+        // user `^`(mat) overload cannot intercept it — pinned by fixture
+        // eval/commabarlist.atlas).
+        for (source, expected) in [
+            ("[1,2 | 3,4]", "\n| 1, 2 |\n| 3, 4 |\n"),
+            ("[1,2,3 | 4,5,6]", "\n| 1, 2, 3 |\n| 4, 5, 6 |\n"),
+            ("[1 | 2 | 3]", "\n| 1 |\n| 2 |\n| 3 |\n"),
+            // `;` inside a segment stays statement sequencing.
+            ("[1,2|3,4; 5]", "\n| 1, 2 |\n| 3, 5 |\n"),
+            ("[0-1, 2 | 3, 0-4]", "\n| -1,  2 |\n|  3, -4 |\n"),
+            // a commabarlist is a mat, so it slices as one.
+            ("[1,2 | 3,4][0:1, 0:2]", "\n| 1, 2 |\n"),
+        ] {
+            let (found, value) = convert_and_run(source)
+                .unwrap_or_else(|error| panic!("{source} should convert and run: {error:?}"));
+            assert_eq!(found, Type::Primitive(Prim::Mat), "source: {source}");
+            assert_eq!(value.to_string(), expected, "source: {source}");
+        }
+
+        // Rejections: the slicer's RAW-bounds diagnostic and the ulong
+        // narrowings fire before the no-value gate (a for-loop body runs at
+        // no-value); a non-mat base is the explicit-cast coercion error; a
+        // mistyped bound rejects the whole desugared argument tuple
+        // upstream, wording replicated here. Commabarlist entries convert
+        // against int; the rectangularity check is a runtime error.
+        for (source, expected) in [
+            (
+                "(mat: [[1,2,3],[4,5,6]])[0:9, 0:2]",
+                "Range exceeds bounds: upper row bound 9 out of range, actual limits are3, 2",
+            ),
+            (
+                "(mat: [[1,2,3],[4,5,6]])[0:9, 1:8]",
+                "Range exceeds bounds: upper row bound 9 and upper column bound 8 out of range, actual limits are3, 2",
+            ),
+            (
+                "(mat: [[1,2,3],[4,5,6]])[0-1:1, 0:1]",
+                "Negative integer where unsigned is required",
+            ),
+            (
+                "for i:2 do (mat: [[1,2,3],[4,5,6]])[0:9, 0:2] od",
+                "Range exceeds bounds: upper row bound 9 out of range, actual limits are3, 2",
+            ),
+            // A row display in base position coerces componentwise to vec:
+            // its int entries fail there, not against mat.
+            ("[1,2,3][0:1, 0:1]", "found int while vec was needed."),
+            (
+                "(mat: [[1,2,3],[4,5,6]])[0:\"a\", 0:1]",
+                "found (int,mat,int,string,int,int) while (int,mat,int,int,int,int) was needed.",
+            ),
+            ("\"a\"[0:1, 0:1]", "found string while mat was needed."),
+            ("[1,2 | 3]", "Vector sizes differ in conversion to matrix"),
+            ("[1, \"a\" | 3, 4]", "found string while int was needed."),
+            ("[1,2 | 3/4, 5]", "found rat while int was needed."),
+            ("[1,2 | vec: [3,4]]", "found vec while int was needed."),
+            (
+                "[99999999999999999999999 | 3]",
+                "Integer value to big for conversion",
+            ),
+            (
+                "for i:2 do [1,2 | 3] od",
+                "Vector sizes differ in conversion to matrix",
             ),
         ] {
             match convert_and_run(source) {

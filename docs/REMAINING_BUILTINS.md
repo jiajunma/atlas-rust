@@ -53,17 +53,44 @@ an HPC capture of the wrapping regime.
 Skipped / documented exclusions (the remaining 3 of the 6 unported global.w
 signatures from the batch-4 sweep; global.w is now FULLY dispositioned):
 
-- hidden `"matrix slicer"` (global.w:5197-5198): only reachable via the
-  two-dimensional slice syntax `M[i:k, j:l]` (parser.y:660-705), which the
-  Rust parser does not have — a PARSER-level gap, not a registry one. If
-  ever ported, call the same `matreduc::swiss_matrix_knife` engine; do not
-  register the hidden name.
-- hidden `"transpose "` (global.w:5188): only reachable via the commabarlist
-  row-display syntax `[a,b | c,d]` (separator `|`, parser.y:370-410);
-  `[1,2|3,4]` is a parse error in Rust today — likewise a parser-level gap.
-  If ever ported, build the transposed matrix directly in the parser/typer;
-  do not register the hidden name. (`[1,2; 3,4]` SEQUENCES upstream ->
-  `[1,3,4]`.)
+- hidden `"matrix slicer"` (global.w:5197-5198): LANDED locally 2026-08-19
+  (HPC capture pending) as the two-dimensional slice syntax `M[i:k, j:l]`
+  (parser.y:660-705). The LALRPOP grammar gained the second slice
+  production (literal `[` only — there is no `~[` 2-D form upstream, and no
+  third axis), `Expr::Slice`/`SliceFlags` carry the column bounds and their
+  from-end bits (0x10/0x20), and the typed/eval arm drives the same
+  `matreduc::swiss_matrix_knife` engine; the hidden name is NOT registered.
+  Oracle probes pinned: absent bounds zero-fill with the from-end bit set
+  (`M[:, :]` == identity); inverted ranges clamp to empty keeping the shape
+  (`M[2:1, 0:2]` -> "The 0x2 matrix"); the bounds diagnostic uses RAW bounds
+  ("Range exceeds bounds: upper row bound 9 and upper column bound 8 out of
+  range, actual limits are3, 2" — no space after "are"); negative bounds hit
+  `ulong_val` narrowing ("Negative integer where unsigned is required"); the
+  base converts against `mat` (a row-of-rows display coerces; `v[0:1, 0:1]`
+  with `v : [int]` fails "found [int] while mat was needed."); a mistyped
+  bound rejects the whole desugared argument tuple ("found
+  (int,mat,int,string,int,int) while (int,mat,int,int,int,int) was
+  needed."). Fixtures `tests/fixtures/eval/matrix_2d_slice.atlas` /
+  `..._rejected.atlas` diff byte-identical / payload-identical against the
+  local oracle.
+- hidden `"transpose "` (global.w:5188): LANDED locally 2026-08-19 (HPC
+  capture pending) as the commabarlist row-display `[a,b | c,d]`
+  (parser.y:370-376, commabarlist :402-410), via a dedicated
+  `Expr::BarList`/`TypedExpr::BarList` node that builds the matrix directly
+  — segments become the ROWS of the result. The direct construction keeps
+  the oracle's exact diagnostics and is immune to user `^`(mat) overloads
+  (probed: after `set ^(mat N) = null(1,1)`, `[7,8 | 9,10]` still
+  transposes). Entries convert against `int` ("found rat/string/vec while
+  int was needed."); ragged rows are a RUNTIME error "Vector sizes differ
+  in conversion to matrix" (the per-row [int]->vec narrowing precedes the
+  size check); both diagnostics fire in no-value contexts. `;` inside a
+  segment SEQUENCES upstream (`[1,2|3,4; 5]` -> rows (1,2),(3,5)), and an
+  empty segment is a syntax error (`[1,2 | ]` -> bare "unexpected ']'").
+  Fixtures `tests/fixtures/eval/commabarlist.atlas` / `..._rejected.atlas`
+  diff byte-identical / payload-identical against the local oracle. Known
+  divergence NOT covered by the fixtures: `[ | 3]` enters the union-TYPE
+  grammar upstream ("unexpected INT, expecting '|'") while the Rust parser
+  reports "expecting ']'" for the same offending INT token.
 - `readline_completions` (string->[string]) (global.w:4390-4391): callable
   and observable in batch mode, but its output enumerates `main_hash_table`
   in INSERTION order — session- and hash-order-dependent (`#readline_completions("")`
