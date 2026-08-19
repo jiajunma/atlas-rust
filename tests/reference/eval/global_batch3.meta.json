@@ -1,0 +1,26 @@
+{
+ "fixture": "eval/global_batch3.atlas",
+ "fixture_sha256": "47c1a2c25bc613330aaebef08d3ec76c68c9bb061db836134a0d84efc908361d",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "cap3574944",
+ "reference_commit": "703a98256dd4361c528f61d6abdbd9946aaa806b",
+ "reference_report_sha256": "8d8e7d03e69477f37873b3f990a2616a21d54ab60ce226d2b2af8c5cd8768118",
+ "source_archive_sha256": "3aa5ba76857c0de97b4d1de887b29ff634f5f541d7ea5fd1d12c3e8d865619c6",
+ "oracle_exit_status": 0,
+ "oracle_seconds": 0.152,
+ "oracle_maxrss_kb": 3712,
+ "oracle_maxrss_approximate": false,
+ "notes": "global.w batch 3: exact linear algebra (op-for-op matreduc port) \u2014 Bezout, echelon, linear_solve (union empty_set|affine_subspace), diagonalize, adapted_basis, kernel, eigen_lattice, row_saturate, Smith, invert (global.w:5201-5210; matreduc.h:69-203, matreduc.cpp:145-385, matrix.cpp:471-498, lattice.cpp:133-160). Rust implementation landed in commit 703a982 (crates/atlas-core/src/matreduc.rs + ScalarOp arms in typed.rs); accepted fixture byte-identical against the local oracle. HPC differential pending. See docs/REMAINING_BUILTINS.md batch-3 entry.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
+}

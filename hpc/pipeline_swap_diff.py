@@ -248,6 +248,11 @@ FIXTURE_PLANS = (
     # capture 3574906.
     FixturePlan(name="eval/global_batch2"),
     FixturePlan(name="eval/global_batch2_rejected"),
+    # global.w batch 3: exact linear algebra (Bezout, echelon,
+    # linear_solve, diagonalize, adapted_basis, kernel, eigen_lattice,
+    # row_saturate, Smith, invert); reference frozen by capture 3574944.
+    FixturePlan(name="eval/global_batch3"),
+    FixturePlan(name="eval/global_batch3_rejected"),
     FixturePlan(name="eval/slices"),
     FixturePlan(name="eval/subscriptions"),
     FixturePlan(name="eval/context"),

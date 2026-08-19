@@ -1,0 +1,47 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "eval/global_batch3_rejected",
+ "status": "verified_hpc_reference",
+ "events": [
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Cannot invert a 2x3 matrix"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Cannot invert a 2x3 matrix"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Cannot invert a 3x2 matrix"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Linear system size mismatch 2:3"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Linear system size mismatch 2:3"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Integer value to big for conversion"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Integer value to big for conversion"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Integer value to big for conversion"
+  }
+ ]
+}
