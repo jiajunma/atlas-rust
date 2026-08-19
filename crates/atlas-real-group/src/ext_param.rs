@@ -41,8 +41,8 @@ use crate::root_reflection::reflection_word;
 use crate::twisted_involution::compose_matrices;
 use crate::{
     BlockGraph, Coweight, InvolutionId, InvolutionTable, KType, KgbId, LatticeInvolution,
-    ModTwoVector, RepContext, RootId, RootKind, RootSystem, StandardRepr, StructureError, Weight,
-    WeylElement,
+    ModTwoVector, PartialBlock, RepContext, RootId, RootKind, RootSystem, StandardRepr,
+    StructureError, Weight, WeylElement,
 };
 
 // ---------------------------------------------------------------------------
@@ -2302,6 +2302,59 @@ impl StarOracle for ExtParamOracle<'_> {
     fn def_ext(&mut self, z: usize) -> ExtParam {
         let x = self.parent.x(z).expect("in-range parent block element");
         default_extend_srm(self.ctx, x, self.gamma_lambdas[z].clone())
+            .expect("default extension of a fixed block element")
+    }
+
+    fn star(
+        &mut self,
+        e: &ExtParam,
+        orbit_length: usize,
+        n_alpha: usize,
+    ) -> (DescValue, Vec<ExtParam>) {
+        star(self.ctx, e, orbit_length, n_alpha).expect("star on a tuned block element")
+    }
+
+    fn same_standard_reps(&self, a: &ExtParam, b: &ExtParam) -> bool {
+        same_standard_reps(self.ctx, a, b).expect("same-context comparison")
+    }
+
+    fn same_sign(&self, a: &ExtParam, b: &ExtParam) -> bool {
+        same_sign(self.ctx, a, b)
+    }
+}
+
+/// A [`StarOracle`] backed by a [`PartialBlock`] parent (a common block on
+/// a proper integral subsystem, blocks.cpp:733-1081), for
+/// [`crate::ext_block::ExtBlock::tune_signs`] after
+/// [`crate::ext_block::ExtBlock::build_partial`]. Unlike
+/// [`ExtParamOracle`], no separate `gamma_lambdas` table is needed:
+/// `def_ext` reads each element's stored `real_unique`-normalised
+/// `gamma_lambda` (upstream `ext_param::def_ext(ctxt, bm,
+/// block.representative(z))` with the trivial modifier,
+/// ext_block.cpp:2283-2310). `star` takes the PARENT datum's root number of
+/// the orbit's first member — the caller passes
+/// `IntegralSubsystem::parent_root(s)` values as `tune_signs`'
+/// `simply_ints`.
+pub struct PartialBlockOracle<'a> {
+    ctx: &'a ExtRepContext<'a>,
+    parent: &'a PartialBlock,
+}
+
+impl<'a> PartialBlockOracle<'a> {
+    pub fn new(ctx: &'a ExtRepContext<'a>, parent: &'a PartialBlock) -> Self {
+        Self { ctx, parent }
+    }
+}
+
+impl StarOracle for PartialBlockOracle<'_> {
+    type Param = ExtParam;
+
+    fn def_ext(&mut self, z: usize) -> ExtParam {
+        let element = self
+            .parent
+            .element(z)
+            .expect("in-range parent block element");
+        default_extend_srm(self.ctx, element.x(), element.gamma_lambda().clone())
             .expect("default extension of a fixed block element")
     }
 

@@ -13,6 +13,15 @@
 //!   so `transformed_twisted` :597-616 reduces to `kgb.twisted` on both KGB
 //!   coordinates, `complete_construction` :696-856, and the induced
 //!   permutation [`induced`] :670-693).
+//! - [`ExtBlock::build_partial`], the same constructor over a
+//!   [`PartialBlock`] parent (a common block on a proper integral
+//!   subsystem, blocks.cpp:733-1081). The fixed-point test is the
+//!   `x` + `gamma_lambda` form of [`transformed_twisted`] (ext_block.cpp:
+//!   597-616) — a partial block's `y` is a synthetic subsystem count, not a
+//!   dual-KGB element — and [`fold_orbits`] runs on the SUBSYSTEM Cartan
+//!   matrix (common_block::fold_orbits, blocks.cpp:1288-1292 via
+//!   rootdata.cpp:1553-1577). Only the identity generator attitude is
+//!   ported: a non-identity `bm.simple_pi` fails loudly.
 //! - [`ExtBlock::tune_signs`] (ext_block.cpp:1707-1876), ported generically
 //!   over the [`StarOracle`] trait: the per-generator `star` computation and
 //!   the `ext_param` values it compares belong to the later `ext_param`/`star`
@@ -25,9 +34,14 @@
 //! (here `None`) follow `block.rs`, which itself mirrors `blocks::Block_base`.
 
 use crate::block::{BlockDescent, BlockGraph};
+use crate::block_modifier::BlockModifier;
 use crate::dynkin::folded_cartan;
 use crate::kl_support::RankFlags;
-use crate::{InvolutionTable, KgbGraph, LatticeInvolution, StructureError};
+use crate::partial_block::{CommonContext, PartialBlock, StandardReprMod};
+use crate::{
+    IntegralSubsystem, InvolutionTable, KgbGraph, LatticeInvolution, RationalWeight, RepContext,
+    RootSystem, StructureError,
+};
 
 /// The extended descent status of one orbit generator at one block element
 /// (upstream `ext_block::DescValue`, ext_block.h:38-74). The discriminants
@@ -398,14 +412,100 @@ pub fn fold_orbits(cartan: &[Vec<i32>], twist: &[usize]) -> Result<Vec<ExtGen>, 
     Ok(result)
 }
 
+/// The parent-block surface that [`extended_type`] and
+/// [`ExtBlock::complete_construction`] read (upstream `blocks::common_block`
+/// as used by the `ext_block` constructor, ext_block.cpp:618-668): both a
+/// full [`BlockGraph`] and a [`PartialBlock`] over an integral subsystem
+/// qualify. Accessors are `(z, generator)` ordered like [`BlockGraph`]; the
+/// Cayley pairs follow upstream `Block_base::cayley`/`inverseCayley`
+/// (blocks.h:143-155): the shared slot is exposed only in its own direction
+/// (`cayley` at non-descents, `inverse_cayley` at weak descents), masked to
+/// `(None, None)` otherwise.
+pub trait ParentBlock {
+    /// Upstream `Block_base::size`.
+    fn size(&self) -> usize;
+    /// Upstream `Block_base::length`.
+    fn length(&self, z: usize) -> Option<usize>;
+    /// Upstream `Block_base::descentValue`.
+    fn descent_value(&self, z: usize, generator: usize) -> Option<BlockDescent>;
+    /// Upstream `Block_base::cross`; `None` is `UndefBlock`.
+    fn cross(&self, z: usize, generator: usize) -> Option<usize>;
+    /// Upstream `Block_base::cayley` (blocks.h:143-148): the direct Cayley
+    /// pair, masked to `(None, None)` at weak descents.
+    fn cayley(&self, z: usize, generator: usize) -> Option<(Option<usize>, Option<usize>)>;
+    /// Upstream `Block_base::inverseCayley` (blocks.h:150-155): the inverse
+    /// Cayley pair, masked to `(None, None)` at non-descents.
+    fn inverse_cayley(&self, z: usize, generator: usize) -> Option<(Option<usize>, Option<usize>)>;
+}
+
+impl ParentBlock for BlockGraph {
+    fn size(&self) -> usize {
+        self.size()
+    }
+
+    fn length(&self, z: usize) -> Option<usize> {
+        self.length(z)
+    }
+
+    fn descent_value(&self, z: usize, generator: usize) -> Option<BlockDescent> {
+        self.descent_value(z, generator)
+    }
+
+    fn cross(&self, z: usize, generator: usize) -> Option<usize> {
+        self.cross(z, generator)
+    }
+
+    fn cayley(&self, z: usize, generator: usize) -> Option<(Option<usize>, Option<usize>)> {
+        self.cayley(z, generator)
+    }
+
+    fn inverse_cayley(&self, z: usize, generator: usize) -> Option<(Option<usize>, Option<usize>)> {
+        self.inverse_cayley(z, generator)
+    }
+}
+
+impl ParentBlock for PartialBlock {
+    fn size(&self) -> usize {
+        self.size()
+    }
+
+    fn length(&self, z: usize) -> Option<usize> {
+        self.length(z)
+    }
+
+    fn descent_value(&self, z: usize, generator: usize) -> Option<BlockDescent> {
+        self.descent(z, generator)
+    }
+
+    fn cross(&self, z: usize, generator: usize) -> Option<usize> {
+        self.cross(generator, z)
+    }
+
+    fn cayley(&self, z: usize, generator: usize) -> Option<(Option<usize>, Option<usize>)> {
+        // The partial block stores both directions in the one
+        // `Cayley_image` slot, as upstream does; mask like Block_base.
+        if self.descent(z, generator)?.is_descent() {
+            return Some((None, None));
+        }
+        self.cayley(generator, z)
+    }
+
+    fn inverse_cayley(&self, z: usize, generator: usize) -> Option<(Option<usize>, Option<usize>)> {
+        if !self.descent(z, generator)?.is_descent() {
+            return Some((None, None));
+        }
+        self.cayley(generator, z)
+    }
+}
+
 /// The local extended type of the `delta`-fixed parent element `z` for the
 /// orbit `p`, together with its parent-block link (upstream
 /// `extended_type`, ext_block.cpp:343-503). `None` links are upstream's
 /// `UndefBlock`; they arise only at the edge of a partial parent block (the
 /// "uncertain" cases) since a full `BlockGraph` has total cross/Cayley
 /// tables. No linear algebra is used.
-pub fn extended_type(
-    parent: &BlockGraph,
+pub fn extended_type<P: ParentBlock>(
+    parent: &P,
     z: usize,
     p: ExtGen,
     fixed_points: &[bool],
@@ -626,6 +726,110 @@ pub fn extended_type(
     }
 }
 
+/// The subsystem Cartan matrix of an [`IntegralSubsystem`] (upstream
+/// `RootSystem::Cartan_matrix(rb)`, rootdata.cpp:523-537, entered into
+/// `SubSystem` at subsystem.cpp:31): `result[s][t] = <alpha_s, alpha_t^v>`
+/// on the subsystem simple roots, in the crate's Cartan convention.
+fn subsystem_cartan(
+    system: &RootSystem,
+    sub: &IntegralSubsystem,
+) -> Result<Vec<Vec<i32>>, StructureError> {
+    let rank = sub.rank();
+    let mut cartan = vec![vec![0i32; rank]; rank];
+    for s in 0..rank {
+        let root = sub.parent_root(s).and_then(|id| system.root(id)).ok_or(
+            StructureError::IndexOutOfRange {
+                index: s,
+                upper_bound: rank,
+            },
+        )?;
+        for t in 0..rank {
+            let coroot = sub.parent_root(t).and_then(|id| system.coroot(id)).ok_or(
+                StructureError::IndexOutOfRange {
+                    index: t,
+                    upper_bound: rank,
+                },
+            )?;
+            cartan[s][t] = crate::pair(root, coroot)?;
+        }
+    }
+    Ok(cartan)
+}
+
+/// The twist of the subsystem simple generators induced by `delta`
+/// (upstream `rootdata::fold_orbits(rd, roots, delta)`, rootdata.cpp:
+/// 1553-1577): `result[s]` is the subsystem generator whose parent root is
+/// `delta * parent_root(s)`. A `delta` that does not preserve the integral
+/// system is upstream's "Not a distinguished involution".
+fn subsystem_twist(
+    system: &RootSystem,
+    sub: &IntegralSubsystem,
+    delta: &LatticeInvolution,
+) -> Result<Vec<usize>, StructureError> {
+    let rank = sub.rank();
+    let mut roots = Vec::with_capacity(rank);
+    for s in 0..rank {
+        let root = sub.parent_root(s).and_then(|id| system.root(id)).ok_or(
+            StructureError::IndexOutOfRange {
+                index: s,
+                upper_bound: rank,
+            },
+        )?;
+        roots.push(root.clone());
+    }
+    let mut twist = Vec::with_capacity(rank);
+    for root in &roots {
+        let image = delta.act_on_weight(root)?;
+        let position = roots
+            .iter()
+            .position(|candidate| *candidate == image)
+            .ok_or(StructureError::InvalidRootDatumAutomorphism)?;
+        twist.push(position);
+    }
+    Ok(twist)
+}
+
+/// Upstream `transformed_twisted` (ext_block.cpp:597-616): the block
+/// element that, after `bm`-transforming the block, corresponds to element
+/// `z` twisted by `delta`. `Ok(None)` is upstream's `UndefBlock` lookup
+/// miss (the twisted representative lies outside the block); an
+/// upstream-`UndefKGB` twist target also lands here, since no stored
+/// element matches it.
+///
+/// `block.context()` upstream is the plain `Rep_context`
+/// (blocks.h:380), so the shift/transform steps are the ambient
+/// [`RepContext::shift_srm`]/[`RepContext::transform_srm`]; with the
+/// trivial modifier they renormalize to the identity.
+pub fn transformed_twisted(
+    parent: &PartialBlock,
+    rc: &RepContext,
+    bm: &BlockModifier,
+    delta: &LatticeInvolution,
+    twist: &[usize],
+    z: usize,
+) -> Result<Option<usize>, StructureError> {
+    let mut rep = parent
+        .element(z)
+        .cloned()
+        .ok_or(StructureError::IndexOutOfRange {
+            index: z,
+            upper_bound: parent.size(),
+        })?;
+    rc.shift_srm(bm.shift(), &mut rep)?;
+    rc.transform_srm::<false>(bm.w(), &mut rep)?;
+
+    let Some(x1) = rc.graph().twisted(rep.x(), rc.table(), delta, twist)? else {
+        return Ok(None);
+    };
+    let new_gl = rep.gamma_lambda().apply_matrix(delta.weight_matrix())?;
+    let mut rep = StandardReprMod::build(rc, x1, &new_gl)?;
+
+    rc.transform_srm::<true>(bm.w(), &mut rep)?;
+    let unshift = RationalWeight::zero(bm.shift().numerator().len())?.sub(bm.shift())?;
+    rc.shift_srm(&unshift, &mut rep)?;
+    Ok(parent.lookup(&rep))
+}
+
 /// The per-element, per-generator data of the extended block (upstream
 /// `ext_block::block_fields`, ext_block.h:121-127).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -637,9 +841,11 @@ pub struct BlockFields {
     pub second: Option<usize>,
 }
 
-/// The extended block of a `delta`-stable full parent block (upstream
+/// The extended block of a `delta`-stable parent block (upstream
 /// `ext_block::ext_block(common_block, bm, delta, pol_hash)` with the
-/// trivial block modifier, ext_block.cpp:618-668). The sign flips start
+/// trivial block modifier, ext_block.cpp:618-668). The parent is a full
+/// [`BlockGraph`] for [`ExtBlock::build`] or a [`PartialBlock`] on an
+/// integral subsystem for [`ExtBlock::build_partial`]. The sign flips start
 /// cleared and are set by [`ExtBlock::tune_signs`].
 #[derive(Clone, Debug)]
 pub struct ExtBlock {
@@ -709,10 +915,82 @@ impl ExtBlock {
         ))
     }
 
+    /// The same constructor over a [`PartialBlock`] parent: upstream
+    /// `ext_block::ext_block(common_block, bm, delta, pol_hash)`
+    /// (ext_block.cpp:618-668) with the block built on gamma's integral
+    /// subsystem (blocks.cpp:733-1081). `pol_hash` is the crate's separate
+    /// `ext_kl` concern and is not threaded through here.
+    ///
+    /// Differences from [`Self::build`], all forced by the partial parent:
+    ///
+    /// - The fixed-point test is [`transformed_twisted`] verbatim: the
+    ///   `x` + `gamma_lambda` representative of each element is twisted and
+    ///   looked up with [`PartialBlock::lookup`] (a partial block's `y` is a
+    ///   synthetic subsystem y-count, NOT a dual-KGB element, so the dual
+    ///   `kgb.twisted` test of the full-block path does not apply).
+    /// - [`fold_orbits`] runs on the SUBSYSTEM Cartan matrix and the
+    ///   subsystem generator twist (common_block::fold_orbits,
+    ///   blocks.cpp:1288-1292, via rootdata.cpp:1553-1577), so orbit member
+    ///   indices are subsystem generator numbers. `tune_signs` must
+    ///   translate them back to parent root numbers through
+    ///   [`IntegralSubsystem::parent_root`] (the `simply_ints` argument).
+    /// - Only the identity generator attitude is ported: upstream permutes
+    ///   the folded generators by `induced(bm.simple_pi)`
+    ///   (ext_block.cpp:638-663), which is a no-op for identity
+    ///   `simple_pi`; anything else fails loudly (the locator slice owns
+    ///   the non-identity attitude). The `bm.shift`/`bm.w` transport inside
+    ///   [`transformed_twisted`] IS ported.
+    ///
+    /// Like [`Self::build`], the sign flips start cleared; callers run
+    /// [`Self::tune_signs`] with a `PartialBlock`-backed
+    /// [`StarOracle`](crate::ext_param::PartialBlockOracle).
+    pub fn build_partial(
+        parent: &PartialBlock,
+        ctxt: &CommonContext<'_, '_>,
+        bm: &BlockModifier,
+        delta: &LatticeInvolution,
+        twist: &[usize],
+    ) -> Result<Self, StructureError> {
+        let rc = ctxt.rep_context();
+        let sub = ctxt.subsystem();
+        let block_rank = sub.rank();
+        let identity_attitude = bm.simple_pi().len() == block_rank
+            && bm
+                .simple_pi()
+                .iter()
+                .enumerate()
+                .all(|(s, &image)| image == s);
+        if !identity_attitude {
+            return Err(StructureError::NotYetImplemented {
+                feature: "extended block with non-identity generator attitude",
+            });
+        }
+
+        let system = rc.root_system();
+        let cartan = subsystem_cartan(system, sub)?;
+        let sub_twist = subsystem_twist(system, sub, delta)?;
+        let orbits = fold_orbits(&cartan, &sub_twist)?;
+
+        // The delta-fixed points of the block (ext_block.cpp:630-635).
+        let mut fixed_points = vec![false; parent.size()];
+        for z in 0..parent.size() {
+            fixed_points[z] = transformed_twisted(parent, rc, bm, delta, twist, z)?
+                .is_some_and(|image| image == z);
+        }
+
+        let folded = folded_cartan(&cartan, &orbits)?;
+        Ok(Self::complete_construction(
+            parent,
+            orbits,
+            &fixed_points,
+            folded,
+        ))
+    }
+
     /// Upstream `complete_construction` (ext_block.cpp:696-856): build the
     /// per-element tables from the fixed-point bitmap.
-    fn complete_construction(
-        parent: &BlockGraph,
+    fn complete_construction<P: ParentBlock>(
+        parent: &P,
         orbits: Vec<ExtGen>,
         fixed_points: &[bool],
         folded: Vec<Vec<i32>>,
@@ -1182,11 +1460,13 @@ impl ExtBlock {
 
     /// Upstream `ext_block::tune_signs` (ext_block.cpp:1707-1876), for the
     /// trivial block modifier (so `bm.simple_pi` is the identity and
-    /// `simply_ints` are the parent datum's simple-root numbers in
-    /// increasing order). The `star` computation and the `ext_param` values
-    /// are injected through `oracle`; see [`StarOracle`]. Returns `false`
-    /// where upstream returns `false` or throws (a type mismatch, or a
-    /// quadratic/braid relation failure under `debug_assertions`).
+    /// `simply_ints[p.s0]` is the parent datum's root number of the orbit's
+    /// first member: the simple-root numbers in increasing order for a full
+    /// parent, [`IntegralSubsystem::parent_root`] values for a
+    /// [`PartialBlock`] parent). The `star` computation and the `ext_param`
+    /// values are injected through `oracle`; see [`StarOracle`]. Returns
+    /// `false` where upstream returns `false` or throws (a type mismatch,
+    /// or a quadratic/braid relation failure under `debug_assertions`).
     pub fn tune_signs<O: StarOracle>(&mut self, oracle: &mut O, simply_ints: &[usize]) -> bool {
         for n in 0..self.size() {
             let z = self.z(n); // element number in the parent block
@@ -1651,9 +1931,10 @@ impl std::ops::Mul for SPol {
 mod tests {
     use super::*;
     use crate::{
-        AdjointFiberBudget, BasedRootDatum, CartanClassification, CartanClassificationBudget,
-        CartanId, Coweight, InnerClass, IntegerLatticeBudget, InvolutionTableBudget, RealFormSeed,
-        RepContext, StrongRealClassification, WeakRealFormId, Weight,
+        AdjointFiberBudget, BasedRootDatum, BlockLocator, CartanClassification,
+        CartanClassificationBudget, CartanId, Coweight, InnerClass, IntegerLatticeBudget,
+        InvolutionTableBudget, KgbId, RealFormSeed, RepContext, RootId, StrongRealClassification,
+        WeakRealFormId, Weight, WeylElement,
     };
 
     fn class_budget(weyl: usize) -> CartanClassificationBudget {
@@ -2378,5 +2659,382 @@ mod tests {
         )
         .unwrap();
         tune_with_real_oracle(&fixture, &delta, &mut eb);
+    }
+
+    // -------------------------------------------------------------------
+    // Partial-parent (integral subsystem) anchors: the frozen fixture
+    // tests/fixtures/domain/ext_block_proper.atlas, verified against the
+    // local oracle on 2026-08-18 (distinguished = identity involution for
+    // these identity inner classes, so `extended_block(p, id)` builds over
+    // delta = identity).
+    // -------------------------------------------------------------------
+
+    /// Owns the values a `RepContext` borrows, for the partial-parent
+    /// fixtures (same shape as partial_block.rs's ContextFixture).
+    struct PartialFixture {
+        inner_class: InnerClass,
+        table: InvolutionTable,
+        graph: KgbGraph,
+    }
+
+    impl PartialFixture {
+        fn rc(&self) -> RepContext<'_> {
+            RepContext::new(&self.inner_class, &self.table, &self.graph).unwrap()
+        }
+    }
+
+    /// The identity inner class of `datum`, with the KGB graph of its real
+    /// form whose KGB size is `kgb_size`.
+    fn partial_fixture(datum: BasedRootDatum, weyl: usize, kgb_size: usize) -> PartialFixture {
+        let involution = LatticeInvolution::identity(&datum).unwrap();
+        let inner_class = InnerClass::new(datum, involution, weyl).unwrap();
+        let classification =
+            CartanClassification::build(&inner_class, &class_budget(weyl)).unwrap();
+        let strong = StrongRealClassification::build(&classification, 4_096).unwrap();
+        let mut table = InvolutionTable::new(
+            &inner_class,
+            InvolutionTableBudget::new(64, IntegerLatticeBudget::new(64, 100_000, 100_000, 128)),
+        )
+        .unwrap();
+        let (graph, table) =
+            graph_with_size(&inner_class, &classification, &strong, &mut table, kgb_size);
+        PartialFixture {
+            inner_class,
+            table,
+            graph,
+        }
+    }
+
+    /// `simply_connected(Lie_type("B2"),true)` (as in partial_block.rs);
+    /// the split form so(3,2) has KGB size 11.
+    fn b2_datum() -> BasedRootDatum {
+        BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2, -2], vec![-1, 2]],
+            vec![Weight::new(vec![2, -2]), Weight::new(vec![-1, 2])],
+            vec![Coweight::new(vec![1, 0]), Coweight::new(vec![0, 1])],
+        )
+        .unwrap()
+    }
+
+    /// `simply_connected(Lie_type("C2"),true)`; the split form sp(4,R) has
+    /// KGB size 11.
+    fn c2_datum() -> BasedRootDatum {
+        BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2, -1], vec![-2, 2]],
+            vec![Weight::new(vec![2, -1]), Weight::new(vec![-2, 2])],
+            vec![Coweight::new(vec![1, 0]), Coweight::new(vec![0, 1])],
+        )
+        .unwrap()
+    }
+
+    /// The wrapper's seed path plus the partial-parent construction:
+    /// mod-reduce the parameter, build the full common block on its
+    /// integral subsystem, then [`ExtBlock::build_partial`] with the
+    /// identity involution and the trivial block modifier. Returns the
+    /// parent block, the extended block, and the `simply_ints` (parent
+    /// root numbers of the subsystem simple roots) that `tune_signs`
+    /// needs.
+    fn partial_ext_block(
+        fixture: &PartialFixture,
+        x: usize,
+        lambda_rho: &[i32],
+        gamma: &RationalWeight,
+    ) -> (PartialBlock, ExtBlock, Vec<usize>) {
+        let rc = fixture.rc();
+        let z = rc
+            .sr_gamma(KgbId(x), &Weight::new(lambda_rho.to_vec()), gamma)
+            .unwrap();
+        let seed = StandardReprMod::mod_reduce(&rc, &z).unwrap();
+        let ctxt = CommonContext::integral(&rc, seed.gamma_lambda()).unwrap();
+        let (block, _) = PartialBlock::build_full(&ctxt, &seed).unwrap();
+        let delta = LatticeInvolution::identity(rc.datum()).unwrap();
+        let twist = fixture
+            .inner_class
+            .based_involution_twist(delta.clone())
+            .unwrap();
+        let simp_int: Vec<RootId> = (0..ctxt.subsystem().rank())
+            .map(|s| ctxt.subsystem().parent_root(s).unwrap())
+            .collect();
+        let bm = BlockModifier::trivial(rc.root_system(), simp_int.clone()).unwrap();
+        let eb = ExtBlock::build_partial(&block, &ctxt, &bm, &delta, &twist).unwrap();
+        let simply_ints = simp_int.iter().map(|id| id.index()).collect();
+        (block, eb, simply_ints)
+    }
+
+    /// Run `tune_signs` with the `PartialBlock`-backed ext_param/star
+    /// oracle and assert success (which already includes the per-`(n, s)`
+    /// type comparison and the debug quadratic/braid gates).
+    fn tune_partial(
+        fixture: &PartialFixture,
+        block: &PartialBlock,
+        simply_ints: &[usize],
+        eb: &mut ExtBlock,
+    ) {
+        let rc = fixture.rc();
+        let delta = LatticeInvolution::identity(rc.datum()).unwrap();
+        let ctx = crate::ext_param::ExtRepContext::new(&rc, delta).unwrap();
+        let mut oracle = crate::ext_param::PartialBlockOracle::new(&ctx, block);
+        assert!(eb.tune_signs(&mut oracle, simply_ints));
+    }
+
+    /// Assert that no edge carries a sign flip (the oracle prints no
+    /// negative link entries for these anchors).
+    fn assert_no_flips(eb: &ExtBlock) {
+        let (_, links0, links1) = wrapper_tables(eb);
+        for row in links0.iter().chain(&links1) {
+            assert!(row.iter().all(|&link| link >= 0));
+        }
+    }
+
+    #[test]
+    fn b2_partial_ext_block_proper_subsystem_matches_oracle() {
+        // Oracle anchor: pb := param(KGB(rfb,5),[1,1],[1,0]/2) over split
+        // so(3,2); gamma(pb) = [5,3]/2 has a rank-1 integral subsystem
+        // (generated by the long root [0,2] with coroot [1,1]). The parent
+        // common block is the 3-element print_block(pb) with x = 4, 5, 10,
+        // and the extended block is the A1-shaped fiber the oracle prints:
+        // types [2,2,3], first links [2,2,0], second links [1,0,1].
+        let fixture = partial_fixture(b2_datum(), 8, 11);
+        let gamma = RationalWeight::new(vec![5, 3], 2).unwrap();
+        let (block, mut eb, simply_ints) = partial_ext_block(&fixture, 5, &[1, 1], &gamma);
+
+        assert_eq!(block.rank(), 1);
+        assert_eq!(block.size(), 3);
+        assert_eq!(
+            (0..3)
+                .map(|z| block.x(z).unwrap().index())
+                .collect::<Vec<_>>(),
+            vec![4, 5, 10]
+        );
+
+        // The subsystem Cartan matrix is [[2]]; the identity delta fixes
+        // its single generator, so the one orbit is a singleton.
+        assert_eq!(eb.rank(), 1);
+        assert_eq!(eb.orbit(0).kind, ExtGenKind::One);
+        assert_eq!(eb.orbit(0).s0, 0);
+        assert_eq!(eb.folded_cartan(), &[vec![2]]);
+
+        // All three elements are delta-fixed, in parent order.
+        assert_eq!(eb.size(), 3);
+        assert_eq!((0..3).map(|n| eb.z(n)).collect::<Vec<_>>(), vec![0, 1, 2]);
+        assert_eq!(
+            (0..3)
+                .map(|n| block.x(eb.z(n)).unwrap().index())
+                .collect::<Vec<_>>(),
+            vec![4, 5, 10]
+        );
+        assert_eq!(eb.length(0), 0);
+        assert_eq!(eb.length(1), 0);
+        assert_eq!(eb.length(2), 1);
+
+        let (types, links0, links1) = wrapper_tables(&eb);
+        assert_eq!(
+            types,
+            vec![
+                vec![DescValue::OneImaginarySingle as usize],
+                vec![DescValue::OneImaginarySingle as usize],
+                vec![DescValue::OneRealPairFixed as usize],
+            ]
+        );
+        assert_eq!(links0, vec![vec![2], vec![2], vec![0]]);
+        assert_eq!(links1, vec![vec![1], vec![0], vec![1]]);
+
+        tune_partial(&fixture, &block, &simply_ints, &mut eb);
+        assert_no_flips(&eb);
+    }
+
+    #[test]
+    fn a2_partial_ext_block_full_subsystem_matches_oracle() {
+        // Oracle anchor: pa := param(KGB(rfa,0),[0,0],[1,0]/2) over
+        // su(2,1); gamma(pa) = rho is integral, so the integral subsystem
+        // is the full A2 system and the partial parent is the 6-element
+        // full common block. The tables equal those of
+        // a2_trivial_delta_matches_oracle (same oracle output).
+        let fixture = partial_fixture(a2_datum(), 8, 6);
+        let gamma = RationalWeight::new(vec![1, 1], 1).unwrap();
+        let (block, mut eb, simply_ints) = partial_ext_block(&fixture, 0, &[0, 0], &gamma);
+
+        assert_eq!(block.rank(), 2);
+        assert_eq!(block.size(), 6);
+        assert_eq!(eb.size(), 6);
+        assert_eq!(eb.rank(), 2);
+        assert_eq!(eb.folded_cartan(), &[vec![2, -1], vec![-1, 2]]);
+
+        let (types, links0, links1) = wrapper_tables(&eb);
+        let u = 6_isize; // UndefBlock in the wrapper output
+        assert_eq!(
+            types,
+            vec![
+                vec![2, 2], // OneImaginarySingle, OneImaginarySingle
+                vec![2, 9], // OneImaginarySingle, OneImaginaryCompact
+                vec![9, 2],
+                vec![0, 3], // OneComplexAscent, OneRealPairFixed
+                vec![3, 0],
+                vec![1, 1], // OneComplexDescent, OneComplexDescent
+            ]
+        );
+        assert_eq!(
+            links0,
+            vec![
+                vec![4, 3],
+                vec![4, u],
+                vec![u, 3],
+                vec![5, 0],
+                vec![0, 5],
+                vec![3, 4],
+            ]
+        );
+        assert_eq!(
+            links1,
+            vec![
+                vec![1, 2],
+                vec![0, u],
+                vec![u, 0],
+                vec![u, 2],
+                vec![1, u],
+                vec![u, u],
+            ]
+        );
+
+        // The full-path constructor over the equal-rank block agrees
+        // element-for-element with the partial-parent construction.
+        let full = a2_equal_rank_block();
+        let (delta, twist, dual_delta, dual_twist) = identity_twists(&full);
+        let cartan = vec![vec![2, -1], vec![-1, 2]];
+        let full_eb = ExtBlock::build(
+            &full.block,
+            &full.graph,
+            &full.table,
+            &full.dual_graph,
+            &full.dual_table,
+            &delta,
+            &twist,
+            &dual_delta,
+            &dual_twist,
+            &cartan,
+        )
+        .unwrap();
+        assert_eq!(wrapper_tables(&eb), wrapper_tables(&full_eb));
+
+        tune_partial(&fixture, &block, &simply_ints, &mut eb);
+        assert_no_flips(&eb);
+    }
+
+    #[test]
+    fn c2_partial_ext_block_full_subsystem_matches_oracle() {
+        // Oracle anchor: ps := param(KGB(fs,0),[0,0],[1,0]/2) over split
+        // sp(4,R); gamma(ps) = rho is integral (full subsystem). The
+        // extended block has 12 elements over the 12-element common block
+        // (two elements share x = 10), with the tables below.
+        let fixture = partial_fixture(c2_datum(), 8, 11);
+        let gamma = RationalWeight::new(vec![1, 1], 1).unwrap();
+        let (block, mut eb, simply_ints) = partial_ext_block(&fixture, 0, &[0, 0], &gamma);
+
+        assert_eq!(block.size(), 12);
+        assert_eq!(eb.size(), 12);
+        assert_eq!(eb.rank(), 2);
+        // folded_cartan stores the transposed (upstream DynkinDiagram)
+        // convention: folded[i][j] = <folded root j, folded coroot i>.
+        assert_eq!(eb.folded_cartan(), &[vec![2, -2], vec![-1, 2]]);
+        assert_eq!(
+            (0..12)
+                .map(|n| block.x(eb.z(n)).unwrap().index())
+                .collect::<Vec<_>>(),
+            vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10]
+        );
+
+        let (types, links0, links1) = wrapper_tables(&eb);
+        let u = 12_isize; // UndefBlock in the wrapper output
+        assert_eq!(
+            types,
+            vec![
+                vec![2, 2], // 1i1, 1i1
+                vec![2, 2],
+                vec![9, 2], // 1ic, 1i1
+                vec![9, 2],
+                vec![3, 0], // 1r1fixed, 1C+
+                vec![0, 3],
+                vec![0, 3],
+                vec![1, 2], // 1C-, 1i1
+                vec![1, 2],
+                vec![4, 1], // 1i2fixed, 1C-
+                vec![5, 3], // 1r2single, 1r1fixed
+                vec![5, 8], // 1r2single, 1rn
+            ]
+        );
+        assert_eq!(
+            links0,
+            vec![
+                vec![4, 5],
+                vec![4, 6],
+                vec![u, 5],
+                vec![u, 6],
+                vec![0, 9],
+                vec![7, 0],
+                vec![8, 1],
+                vec![5, 10],
+                vec![6, 10],
+                vec![10, 4],
+                vec![9, 7],
+                vec![9, u],
+            ]
+        );
+        assert_eq!(
+            links1,
+            vec![
+                vec![1, 2],
+                vec![0, 3],
+                vec![u, 0],
+                vec![u, 1],
+                vec![1, u],
+                vec![u, 2],
+                vec![u, 3],
+                vec![u, 8],
+                vec![u, 7],
+                vec![11, u],
+                vec![11, 8],
+                vec![10, u],
+            ]
+        );
+
+        tune_partial(&fixture, &block, &simply_ints, &mut eb);
+        assert_no_flips(&eb);
+    }
+
+    #[test]
+    fn partial_ext_block_rejects_non_identity_attitude() {
+        // A non-identity simple_pi is the locator slice's domain; the
+        // constructor must fail loudly rather than skip the generator
+        // permutation of ext_block.cpp:638-663.
+        let fixture = partial_fixture(a2_datum(), 8, 6);
+        let rc = fixture.rc();
+        let gamma = RationalWeight::new(vec![1, 1], 1).unwrap();
+        let z = rc
+            .sr_gamma(KgbId(0), &Weight::new(vec![0, 0]), &gamma)
+            .unwrap();
+        let seed = StandardReprMod::mod_reduce(&rc, &z).unwrap();
+        let ctxt = CommonContext::integral(&rc, seed.gamma_lambda()).unwrap();
+        let (block, _) = PartialBlock::build_full(&ctxt, &seed).unwrap();
+        let delta = LatticeInvolution::identity(rc.datum()).unwrap();
+        let twist = fixture
+            .inner_class
+            .based_involution_twist(delta.clone())
+            .unwrap();
+        let simp_int: Vec<RootId> = (0..ctxt.subsystem().rank())
+            .map(|s| ctxt.subsystem().parent_root(s).unwrap())
+            .collect();
+        let locator = BlockLocator::from_parts(
+            u32::MAX,
+            WeylElement::identity(rc.root_system()).unwrap(),
+            simp_int,
+            vec![1, 0], // the generator swap: not the identity
+        );
+        let bm = BlockModifier::from_locator(locator, RationalWeight::zero(2).unwrap());
+        assert!(matches!(
+            ExtBlock::build_partial(&block, &ctxt, &bm, &delta, &twist),
+            Err(StructureError::NotYetImplemented { .. })
+        ));
     }
 }
