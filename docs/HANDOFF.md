@@ -4,6 +4,99 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-19 late night (handoff mid-slice; UNCOMMITTED work in tree)
+
+Branch `codex/continue-atlas-port` (push to main too). Pushed HEAD =
+`c17b874`. The working tree carries TWO lines of uncommitted work —
+do NOT mix them in one commit.
+
+### A. vec/ratvec/mat subscription read/write (typed.rs + linear_values.rs) — MINE, nearly done
+
+State: implementation COMPLETE and compiling (`cargo check`/`cargo build -p
+atlas-cli` clean); the oracle comparison battery ran and **every message text
+matches verbatim** — the only diff lines are the known diagnostic-frame
+formatting divergence (Rust prints `Type error at <stdin>:L:C:` + underline,
+the differential harness normalizes this). Battery script:
+`/tmp/vecmat_battery.atlas` (rewrite from the git notes if /tmp was cleaned),
+oracle output `/tmp/vecmat_oracle.txt`, rust `/tmp/vecmat_rust.txt`.
+
+Still to do for this slice, in order:
+
+1. Add the unit test after `typed.rs:11625` (helpers `convert_and_run_with`,
+   `crate::frames::global_with`; values `Value::Vector(Vec32(vec![..]))`,
+   `Value::RatVector(RatVec::new(vec![1,2],2).unwrap())`,
+   `Value::Matrix(Matrix::from_columns(2,2,vec![1,3,2,4]).unwrap())` —
+   column-major, so M=[[1,2],[3,4]] is data [1,3,2,4]). Matrix Display is a
+   padded grid — assert via `matrix.entry(r,c)`, not to_string. Cover:
+   reads `v[0]/v~[0]/rv[0]/rv~[1]/M[0]/M[0,1]=3/M[1,0]=2/M~[1,0]=3`;
+   writes `v[0]:=7`, `v[0]+:=2`, `M[1]:=[9,9]`, `M[0,1]:=9`, `M[1,1]+:=10`;
+   and these oracle-verified messages:
+   - `index 5 out of range (0<= . <3) in subscription v[5]` (also rv; mat
+     read column: `… in matrix column selection M[5]`; mat pair read:
+     `initial/final index … in matrix subscription M[0,5]` — pair NO parens)
+   - assignment: `in component assignment v[5]:=1`,
+     `in matrix column assignment M[5]:=V[I]:[1,2]` (conversion tag prefix;
+     `M[5]:=v` keeps plain `v`),
+     `initial index 5 out of range (0<= . <2) in matrix entry assignment M[(5,0)]:=1` (pair WITH parens)
+   - transform range checks fire on the synthetic READ: vec `in
+     subscription v[5]`, mat column `in matrix column selection M[5]`, mat
+     pair `in matrix subscription M[5,0]`
+   - type errors: `Cannot subscript value of type ratvec with index of type
+     int in assignment` (ratvec is READ-ONLY), `… mat … (int,string) in
+     assignment`, `… mat … (string,int)`, `… vec … (int,int)`
+   - `Cannot replace column of size 2 by one of size 1`;
+     `M[0] +:= [1]` fails earlier with `Size mismatch 2:1` (existing, do
+     not rewrite); `M[1] *:= [2,3]` → `found int while vec was needed.`
+2. `cargo test -p atlas-core --lib` — NOTE: agent-91's WIP test
+   `twisted_deform_proper_subsystems_match_oracle` FAILS in the tree; that
+   is its normal intermediate state, do not "fix" it, only check your own
+   tests. Then clippy `-D warnings` + fmt.
+3. Update the `docs/REMAINING_BUILTINS.md` entry (~line 284) "vec/mat
+   component assignment… shares the unimplemented vec/mat subscription gap"
+   to FIXED.
+4. Optional fixture pair (e.g. `tests/fixtures/eval/vec_mat_subscription{,_rejected}.atlas`)
+   needs HPC capture; event-generator template `/tmp/gen_combined_twisted_events.py`.
+5. Commit ONLY `crates/atlas-core/src/typed.rs
+   crates/atlas-core/src/linear_values.rs docs/REMAINING_BUILTINS.md`
+   (+ fixtures if made). NEVER `git add` domain_builtins.rs / deform.rs /
+   the twisted_deform_proper* fixtures — those are agent-91's. NEVER commit
+   `crates/atlas-real-group/examples/fiber_probe.rs` (user file).
+
+### B. agent-91 twisted slice 4 (twisted_deform) — its WIP, harvest pending
+
+Uncommitted: `crates/atlas-core/src/domain_builtins.rs` (+117/-…),
+`crates/atlas-real-group/src/deform.rs`, and untracked
+`tests/fixtures/domain/twisted_deform_proper{,_rejected,_terms}.atlas`.
+Its known-red test is expected at this stage. When its completion notice
+arrives (or its files are confirmed final): run the full gates (atlas-core
+lib tests incl. the new subscription test, atlas-real-group tests,
+clippy/fmt); if green commit ITS files separately, push, HPC sync
+(`rsync -az --delete .git/ ikkemhpc:/public/home/majj/atlas-rust/.git/ &&
+git archive HEAD | ssh ikkemhpc 'cd /public/home/majj/atlas-rust && tar
+-xf -'`), capture the twisted_deform_proper pair via reference_capture
+(oracle binary sha256 66f5d7d4…65c9, dirty=false), register, local
+run_fixture, then fat differential
+`sbatch --partition=fat --time=01:00:00 --mem=32G --export=ALL,TIMEOUT=3600
+hpc/pipeline_swap_diff.sbatch`, then bump verified_hpc + HANDOFF.
+
+### Queued after that
+
+- compatible_outer_twist coroot wording: `domain_builtins.rs:7763-7777`
+  `based_involution_twist` mapping leaks
+  `StructureError::SimpleCorootImageMismatch` into `other.to_string()`;
+  mirror `twisted_involution_diagnostic` (:7691) via
+  `atlas_root_number(handle,&image_root,span)` → "Matrix does not map
+  simple coroot N to coroot M". Touch only when domain_builtins.rs is free.
+- Twisted slice 5 (twisted_full_deform proper-subsystem recursion): recon
+  landed at `docs/slices/twisted_full_deform_slice5_recon.md` (c17b874).
+  Key trap: no swallow port needed; DeformParent enum + closure-side
+  singular orbits; the anchor `param(KGB(rfb,5),[1,1],[1,0]/1)` currently
+  does NOT hit the NYI and silently mis-computes four terms with `s` where
+  the oracle yields two without.
+- Remaining queue as listed in the previous checkpoint (next-wave A
+  non-integral common block = largest item; B full_deform; C/E/F; locator
+  step 5; `#:=` parser gap).
+
 ## Checkpoint - 2026-08-19 night (op:= + twisted slice 3 verified; alias declaration fixed)
 
 - Frozen corpus now **311/311 verified_hpc** (was 307/307): the four new
