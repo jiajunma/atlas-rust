@@ -116,6 +116,12 @@ FIXTURE_PLANS = (
     # B7 misc commands: forget, die, and coercion after overload removal.
     FixturePlan(name="eval/commands_b7"),
     FixturePlan(name="eval/commands_b7_rejected"),
+    # Combined assignment family (80518bd): component/field assignment and
+    # op:= transforms on globals, row locals, let bindings, and set_type
+    # projectors. Reference frozen by capture 3585649; events.json
+    # pre-verified (oracle and CLI diagnostics cross-checked equal).
+    FixturePlan(name="eval/combined_assignment"),
+    FixturePlan(name="eval/combined_assignment_rejected"),
     # B8 user overloads: definition accumulation, redefinition, listing, and
     # wrong-arity rejection.
     FixturePlan(name="eval/overloads_b8"),
@@ -399,6 +405,13 @@ FIXTURE_PLANS = (
     # capture 3585276; events.json pre-verified.
     FixturePlan(name="domain/ext_kl_proper"),
     FixturePlan(name="domain/ext_kl_proper_rejected"),
+    # Slice 3 (63e8118): twisted_KL_sum_at_s proper-subsystem overloads —
+    # B2 split form 2 and A2 su(2,1) anchors, bare and explicit-twist mat
+    # forms, with semifinal/distinguished runtime rejections and
+    # argument-shape type errors. Reference frozen by capture 3585649;
+    # events.json pre-verified.
+    FixturePlan(name="domain/twisted_kl_proper"),
+    FixturePlan(name="domain/twisted_kl_proper_rejected"),
     # dual_KL_block rewired onto the located-block machinery
     # (PartialBlock::dual via lookup_full_block); B2 proper-subsystem and
     # A2 split anchors, events.json pre-verified by capture 3574902.

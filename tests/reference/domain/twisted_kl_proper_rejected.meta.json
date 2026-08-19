@@ -1,0 +1,26 @@
+{
+ "fixture": "domain/twisted_kl_proper_rejected.atlas",
+ "fixture_sha256": "179c7feb0f5a2d0236949b2ca4599f38bb967a4a571d27ee86430bfcb20d06a0",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "3585649",
+ "reference_commit": "63e81185586ec8c7d1bbeb19f9bc2f22999ebe05",
+ "reference_report_sha256": "dc8644b8ec3cc53ec452eb37d41b3ef60af46bab8a34b102ad6a0b7e6787d78d",
+ "source_archive_sha256": "0a280878f4c206021916086f36aace4a4dc0a5f575b24edf56a9c9930e5b15ad",
+ "oracle_exit_status": 1,
+ "oracle_seconds": 0.039,
+ "oracle_maxrss_kb": 4400,
+ "oracle_maxrss_approximate": false,
+ "notes": "Rejected coverage for the twisted_KL_sum_at_s overloads: runtime 'Cannot compute Kazhdan-Lusztig sum: non-final parameter(...) / Parameter is not semifinal', 'Root datum involution is not distinguished', and argument-shape type errors ((Param,RealForm) and bare int). Reference frozen by capture 3585649. pending HPC differential run.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
+}

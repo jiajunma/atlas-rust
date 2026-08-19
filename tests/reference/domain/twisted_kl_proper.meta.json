@@ -1,0 +1,26 @@
+{
+ "fixture": "domain/twisted_kl_proper.atlas",
+ "fixture_sha256": "2c0073797d86d951af612d469a5fcbcc6b16137b90d93d20f69b6ed3cb912adc",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "3585649",
+ "reference_commit": "63e81185586ec8c7d1bbeb19f9bc2f22999ebe05",
+ "reference_report_sha256": "dc8644b8ec3cc53ec452eb37d41b3ef60af46bab8a34b102ad6a0b7e6787d78d",
+ "source_archive_sha256": "0a280878f4c206021916086f36aace4a4dc0a5f575b24edf56a9c9930e5b15ad",
+ "oracle_exit_status": 0,
+ "oracle_seconds": 0.046,
+ "oracle_maxrss_kb": 4532,
+ "oracle_maxrss_approximate": false,
+ "notes": "twisted_KL_sum_at_s proper-subsystem overloads (63e8118, slice 3 of docs/slices/twisted_ext_proper_workorder.md): B2 split form 2 param(KGB(rfb,5),[1,1],[1,0]/2) and the non-cospherical x=4 anchor, A2 su(2,1) param(KGB(rfa,3),[0,0],[1,0]/2) and lambda=[1,0] partner; each evaluated bare and with the explicit identity-twist mat overload. Reference frozen by capture 3585649. pending HPC differential run.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
+}

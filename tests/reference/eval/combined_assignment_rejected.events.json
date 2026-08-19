@@ -1,0 +1,120 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "eval/combined_assignment_rejected",
+ "status": "verified_hpc_reference",
+ "events": [
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'a': [int]\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[1,2,3]"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 's': string\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "\"abc\""
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'u': [int]\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Type name 'Pair' defined as (int,int)\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "  with projectors: x, y.\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'q': (int,int)\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "(1,2)"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Constant c: (int,int)\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'r': (int,int)\n"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "index 5 out of range (0<= . <3) in component assignment a[5]:=1"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "Cannot subscript value of type string with index of type int in assignment"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "Failed to match '+' with argument type (string,string)"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "found rat while int was needed."
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "name",
+   "message": "Undefined identifier 'zz' in component assignment zz[0]:=1"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "name",
+   "message": "Undefined identifier 'zz' in component transform zz[0] +:= 1"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Assigning to component of uninitialized variable u"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "Improper selection in field assignment"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "Failed to match '+' with argument type (int,string)"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "name",
+   "message": "Name 'c' is constant in field assignment c.x:=9"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "name",
+   "message": "Name 'c' is constant in field transform c.x +:= 1"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Assigning to field of uninitialized variable r"
+  }
+ ]
+}
