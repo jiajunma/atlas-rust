@@ -4,9 +4,10 @@
  "oracle": "atlas",
  "stage": "typed-pipeline-swap",
  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
- "rust_status": "pending_hpc_differential",
+ "rust_status": "verified_hpc",
  "reference_status": "verified_hpc_reference",
  "reference_job": "3543149",
- "note": "Rejected companions for P0 signature reconciliation: vector rank checks, wrong domain object types, and out-of-range Param simple-root transforms. rust_status was a stale placeholder; registered in FIXTURE_PLANS 2026-08-19 after local differential simulation passed (stdout/diagnostics/exit exact); HPC differential pending.",
- "oracle_exit_status": 1
+ "note": "Rejected companions for P0 signature reconciliation: vector rank checks, wrong domain object types, and out-of-range Param simple-root transforms. rust_status was a stale placeholder; registered in FIXTURE_PLANS 2026-08-19 after local differential simulation passed (stdout/diagnostics/exit exact); VERIFIED by fat differential 3575825 (297 PASS + 1 declared PARTIAL across 298 fixtures).",
+ "oracle_exit_status": 1,
+ "differential_job": "3575825"
 }
