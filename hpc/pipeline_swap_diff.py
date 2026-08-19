@@ -253,6 +253,10 @@ FIXTURE_PLANS = (
     # row_saturate, Smith, invert); reference frozen by capture 3574944.
     FixturePlan(name="eval/global_batch3"),
     FixturePlan(name="eval/global_batch3_rejected"),
+    # global.w batch 4 (final global.w slice): swiss_matrix_knife slicer,
+    # mod2_section, subspace_normal; reference frozen by capture 3576078.
+    FixturePlan(name="eval/global_batch4"),
+    FixturePlan(name="eval/global_batch4_rejected"),
     FixturePlan(name="eval/slices"),
     FixturePlan(name="eval/subscriptions"),
     FixturePlan(name="eval/context"),

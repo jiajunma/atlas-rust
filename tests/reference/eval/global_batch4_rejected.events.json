@@ -1,0 +1,77 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "eval/global_batch4_rejected",
+ "status": "verified_hpc_reference",
+ "events": [
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Range exceeds bounds: upper row bound 3 out of range, actual limits are2, 2"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Range exceeds bounds: lower row bound 5 out of range, actual limits are2, 2"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Range exceeds bounds: upper column bound 5 out of range, actual limits are2, 2"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Range exceeds bounds: lower column bound 5 out of range, actual limits are2, 2"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Range exceeds bounds: both row bounds 5,9 and both column bounds 3,7 out of range, actual limits are2, 2"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Range exceeds bounds: both row bounds 5,9 and upper column bound 7 out of range, actual limits are2, 2"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Range exceeds bounds: upper row bound 9 and upper column bound 8 out of range, actual limits are2, 2"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Negative integer where unsigned is required"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Integer value to big for conversion"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Range exceeds bounds: upper row bound 5 out of range, actual limits are2, 2"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Dimension too large: 65>64"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Too many generators: 65>64"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Dimension too large: 65>64"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Dimension too large: 65>64"
+  }
+ ]
+}

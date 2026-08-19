@@ -1,0 +1,26 @@
+{
+ "fixture": "eval/global_batch4.atlas",
+ "fixture_sha256": "7ae5ec881ab05413c8c21b68cb74946d094c5c57933c3e29e8e8554948470a31",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "cap3576078",
+ "reference_commit": "68082cf0486fdd9b0a6328dfa577a82145677b61",
+ "reference_report_sha256": "646c0fb50e834300fd42abc4f06271fc4249f8bf329588d65fa9686faafd3fd5",
+ "source_archive_sha256": "6b1d02e4ed6666db7197cf0afe06a39910374ac822717aa006ee0da432f51a12",
+ "oracle_exit_status": 0,
+ "oracle_seconds": 0.146,
+ "oracle_maxrss_kb": 3536,
+ "oracle_maxrss_approximate": false,
+ "notes": "global.w batch 4 (final global.w slice): swiss_matrix_knife flag-bitfield matrix slicer (global.w:4675-4809), mod2_section (BitMatrix<64>::section, bitvector.cpp:346-405), subspace_normal with permutations::standardization pivot ordering (permutations.cpp:257-282). Rust implementation in commit 68082cf (crates/atlas-core/src/matreduc.rs + ScalarOp arms in typed.rs). Accepted fixture byte-identical against the local oracle and the HPC capture stdout. Hidden 'matrix slicer'/'transpose ' signatures are parser-layer gaps recorded in REMAINING_BUILTINS.md; readline_completions is a documented exclusion (session/hash-order dependent output).",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
+}
