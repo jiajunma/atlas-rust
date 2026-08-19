@@ -1,0 +1,315 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "domain/ext_kl_proper",
+ "status": "verified_hpc_reference",
+ "events": [
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'rb': RootDatum\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "simply connected root datum of Lie type 'B2'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'ib': InnerClass\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "Complex reductive group of type B2, with involution defining"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "inner class of type 'c', with 3 real forms and 3 dual real forms\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'rfb': RealForm\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "connected split real group with Lie algebra 'so(3,2)'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'pb': Param\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "final parameter(x=5,lambda=[2,2]/1,nu=[1,-1]/2)"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "([final parameter(x=4,lambda=[2,2]/1,nu=[1,-1]/2),final parameter(x=5,lambda=[2,2]/1,nu=[1,-1]/2),final parameter(x=10,lambda=[1,2]/1,nu=[1,7]/2)],\n| 2 |\n| 2 |\n| 3 |\n,\n| 2 |\n| 2 |\n| 0 |\n,\n| 1 |\n| 0 |\n| 1 |\n)"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "(\n| 1, 0, 1 |\n| 0, 1, 1 |\n| 0, 0, 1 |\n,[[ ],[ 1 ]],[ 0, 2, 3 ])"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "([final parameter(x=4,lambda=[2,2]/1,nu=[1,-1]/2),final parameter(x=5,lambda=[2,2]/1,nu=[1,-1]/2)],\n| 1, 0 |\n| 0, 1 |\n,[[ ],[ 1 ]])"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'ra': RootDatum\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "simply connected root datum of Lie type 'A2'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'ia': InnerClass\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "Complex reductive group of type A2, with involution defining"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "inner class of type 'c', with 2 real forms and 1 dual real form\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'rfa': RealForm\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "connected quasisplit real group with Lie algebra 'su(2,1)'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'pa': Param\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "final parameter(x=0,lambda=[1,1]/1,nu=[0,0]/1)"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "([final parameter(x=0,lambda=[1,1]/1,nu=[0,0]/1),final parameter(x=1,lambda=[1,1]/1,nu=[0,0]/1),final parameter(x=2,lambda=[1,1]/1,nu=[0,0]/1),final parameter(x=3,lambda=[1,1]/1,nu=[-1,2]/2),final parameter(x=4,lambda=[1,1]/1,nu=[2,-1]/2),final parameter(x=5,lambda=[1,1]/1,nu=[1,1]/1)],\n| 2, 2 |\n| 2, 9 |\n| 9, 2 |\n| 0, 3 |\n| 3, 0 |\n| 1, 1 |\n,\n| 4, 3 |\n| 4, 6 |\n| 6, 3 |\n| 5, 0 |\n| 0, 5 |\n| 3, 4 |\n,\n| 1, 2 |\n| 0, 6 |\n| 6, 0 |\n| 6, 2 |\n| 1, 6 |\n| 6, 6 |\n)"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "(\n| 1, 0, 0, 1, 1, 1 |\n| 0, 1, 0, 0, 1, 1 |\n| 0, 0, 1, 1, 0, 1 |\n| 0, 0, 0, 1, 0, 1 |\n| 0, 0, 0, 0, 1, 1 |\n| 0, 0, 0, 0, 0, 1 |\n,[[ ],[ 1 ]],[ 0, 3, 5, 6 ])"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "([final parameter(x=0,lambda=[1,1]/1,nu=[0,0]/1)],\n| 1 |\n,[[ ],[ 1 ]])"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'rc': RootDatum\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "simply connected root datum of Lie type 'C2'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'ic': InnerClass\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "Complex reductive group of type C2, with involution defining"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "inner class of type 'c', with 3 real forms and 3 dual real forms\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'fs': RealForm\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "connected split real group with Lie algebra 'sp(4,R)'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'ps': Param\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "final parameter(x=0,lambda=[1,1]/1,nu=[0,0]/1)"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "([final parameter(x=0,lambda=[1,1]/1,nu=[0,0]/1),final parameter(x=1,lambda=[1,1]/1,nu=[0,0]/1),final parameter(x=2,lambda=[1,1]/1,nu=[0,0]/1),final parameter(x=3,lambda=[1,1]/1,nu=[0,0]/1),final parameter(x=4,lambda=[1,1]/1,nu=[2,-1]/2),final parameter(x=5,lambda=[1,1]/1,nu=[-1,1]/1),final parameter(x=6,lambda=[1,1]/1,nu=[-1,1]/1),final parameter(x=7,lambda=[1,1]/1,nu=[2,0]/1),final parameter(x=8,lambda=[1,1]/1,nu=[2,0]/1),final parameter(x=9,lambda=[1,1]/1,nu=[0,3]/2),final parameter(x=10,lambda=[1,1]/1,nu=[1,1]/1),final parameter(x=10,lambda=[1,2]/1,nu=[1,1]/1)],\n| 2, 2 |\n| 2, 2 |\n| 9, 2 |\n| 9, 2 |\n| 3, 0 |\n| 0, 3 |\n| 0, 3 |\n| 1, 2 |\n| 1, 2 |\n| 4, 1 |\n| 5, 3 |\n| 5, 8 |\n,\n|  4,  5 |\n|  4,  6 |\n| 12,  5 |\n| 12,  6 |\n|  0,  9 |\n|  7,  0 |\n|  8,  1 |\n|  5, 10 |\n|  6, 10 |\n| 10,  4 |\n|  9,  7 |\n|  9, 12 |\n,\n|  1,  2 |\n|  0,  3 |\n| 12,  0 |\n| 12,  1 |\n|  1, 12 |\n| 12,  2 |\n| 12,  3 |\n| 12,  8 |\n| 12,  7 |\n| 11, 12 |\n| 11,  8 |\n| 10, 12 |\n)"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "(\n| 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0 |\n| 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0 |\n| 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 2 |\n| 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1, 2 |\n| 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0 |\n| 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 1, 0 |\n| 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0 |\n| 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0 |\n| 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0 |\n| 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1 |\n| 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0 |\n| 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 |\n,[[ ],[ 1 ],[ 0, 1 ]],[  0,  4,  7, 10, 12 ])"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "([final parameter(x=0,lambda=[1,1]/1,nu=[0,0]/1)],\n| 1 |\n,[[ ],[ 1 ]])"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'p0': Param\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "final parameter(x=10,lambda=[2,2]/1,nu=[1,1]/4)"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "([final parameter(x=10,lambda=[2,2]/1,nu=[1,1]/4)],The 1x0 matrix,The 1x0 matrix,The 1x0 matrix)"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "(\n| 1 |\n,[[ ],[ 1 ]],[ 0, 1 ])"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "([final parameter(x=10,lambda=[2,2]/1,nu=[1,1]/4)],\n| 1 |\n,[[ ],[ 1 ]])"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'r1': RootDatum\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "simply connected root datum of Lie type 'A1'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'i1': InnerClass\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "Complex reductive group of type A1, with involution defining"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "inner class of type 'c', with 2 real forms and 2 dual real forms\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'f1': RealForm\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "connected split real group with Lie algebra 'sl(2,R)'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'q0': Param\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "final parameter(x=2,lambda=[2]/1,nu=[1]/2)"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "([final parameter(x=2,lambda=[2]/1,nu=[1]/2)],The 1x0 matrix,The 1x0 matrix,The 1x0 matrix)"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "(\n| 1 |\n,[[ ],[ 1 ]],[ 0, 1 ])"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "([final parameter(x=2,lambda=[2]/1,nu=[1]/2)],\n| 1 |\n,[[ ],[ 1 ]])"
+   }
+  }
+ ]
+}

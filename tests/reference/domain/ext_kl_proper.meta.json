@@ -1,0 +1,26 @@
+{
+ "fixture": "domain/ext_kl_proper.atlas",
+ "fixture_sha256": "1bd949370416fcd71374a8330b9dd77f69dd5523b72b57ce7dfc93f6ca6f4829",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "3585276",
+ "reference_commit": "d382014828897eb6cf55d135c9e091e61f1bc17c",
+ "reference_report_sha256": "c0a38fce20ffcedd647c34daf112d054d62a7d6129648646caf27653901b6434",
+ "source_archive_sha256": "d5b159746c46940da6c816e4babd156feda43fd040b153a534743d2f02785ed2",
+ "oracle_exit_status": 0,
+ "oracle_seconds": 0.122,
+ "oracle_maxrss_kb": 4584,
+ "oracle_maxrss_approximate": false,
+ "notes": "raw_ext_KL + partial_extended_KL_block on proper integral subsystems anchor (slice 2 of docs/slices/twisted_ext_proper_workorder.md): B2 split form 2 param(KGB(rfb,5),[1,1],[1,0]/2), A2 su(2,1) param(KGB(rfa,0),[0,0],[1,0]/2), C2 split param(KGB(fs,0),[0,0],[1,0]/2), plus rank-0 B2 param(KGB(rfb,10),[1,1],[1,1]/4) and A1 param(KGB(f1,2),[1],[1]/2); each with extended_block (slice-1 control), raw_ext_KL, partial_extended_KL_block. Slice-2 landed 2026-08-19 (d382014): ExtKlTable::fill_columns + ext_kl_matrix/condense over the partial-parent ext block; CommonContext::singular_flags replaces the hand-rolled coroot loop. pending HPC differential run.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
+}

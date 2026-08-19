@@ -1,0 +1,85 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "domain/ext_kl_proper_rejected",
+ "status": "verified_hpc_reference",
+ "events": [
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'rb': RootDatum\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "simply connected root datum of Lie type 'B2'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'ib': InnerClass\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "Complex reductive group of type B2, with involution defining"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "inner class of type 'c', with 3 real forms and 3 dual real forms\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'rfb': RealForm\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "connected split real group with Lie algebra 'so(3,2)'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'pb': Param\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "final parameter(x=5,lambda=[2,2]/1,nu=[1,-1]/2)"
+   }
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "found (Param,[int]) while (Param,mat) was needed."
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "found Param while (Param,mat) was needed."
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "found (int,[[int]]) while (Param,mat) was needed."
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Given transformation is not an involution"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Matrix maps simple root 0 to non-root"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Root datum involution is not distinguished"
+  }
+ ]
+}
