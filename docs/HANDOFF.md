@@ -3462,13 +3462,16 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
 - partial_merge_{containment,union,chain,a2} promoted to verified_hpc by
   fat differential 3581761 (303 PASS + 1 declared PARTIAL, 0 FAIL;
   report SHA256 `b67e84026d63b8d2367d466418e03c4fbe2d167f2f5d5368c4d6b8194c35401a`).
-- In flight (disjoint file scopes): agent-79 locator step-4
+- In flight (disjoint file scopes): agent-83 locator step-4
   (domain_builtins.rs: transported consumers, headers, singleton arms
   must route through the pool, gate release, register the three
-  common_block_* anchors); agent-81 axis.w row operators ##/#
-  (typed.rs only, new eval/row_operators fixtures); agent-82
-  PartialBlock::dual (partial_block.rs only, blocks.cpp:474-507, plus
-  wiring instructions for the dual_KL_block domain slice).
+  common_block_* anchors) — RE-DISPATCH of agent-79, which hung at the
+  transport level (46 min, zero output bytes, zero edits; killed and
+  replaced with a fresh instance on the same brief); agent-81 axis.w
+  row operators ##/# (typed.rs only, new eval/row_operators fixtures);
+  agent-82 PartialBlock::dual (partial_block.rs only,
+  blocks.cpp:474-507, plus wiring instructions for the dual_KL_block
+  domain slice).
 - Serial rule remains: domain_builtins.rs is single-owner. After step-4
   lands, dispatch order is slice-1B (extended_block gate + rank-0
   non-integral放行), then dual_KL_block wiring, then twisted slices 2-5.
