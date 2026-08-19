@@ -1,0 +1,204 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "eval/row_operators",
+ "status": "verified_hpc_reference",
+ "events": [
+  {
+   "kind": "Value",
+   "value": {
+    "type": "list",
+    "display": "[1,2,3,4]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "list",
+    "display": "[\"a\",\"b\",\"c\"]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "list",
+    "display": "[[1],[2],[3]]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "list",
+    "display": "[]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "list",
+    "display": "[1,2,3,4]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "list",
+    "display": "[]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "list",
+    "display": "[1,2,3]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "list",
+    "display": "[3,1,2]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "list",
+    "display": "[[1]]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "list",
+    "display": "[3]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "list",
+    "display": "[3]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "list",
+    "display": "[[]]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "list",
+    "display": "[[2],[]]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "list",
+    "display": "[[[2]]]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "list",
+    "display": "[1,2,3,4]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "integer",
+    "value": 2
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "integer",
+    "value": 0
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "integer",
+    "value": 2
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Variable x: [int]\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "list",
+    "display": "[1,2,3]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "integer",
+    "value": 2
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "list",
+    "display": "[1,2,3]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "list",
+    "display": "[0,1,2]"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Variable r: [*]\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "list",
+    "display": "[]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "list",
+    "display": "[ 1, 2, 3 ]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "list",
+    "display": "[ 1, 2 ]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "list",
+    "display": "[ 1, 2, 3, 4 ]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "list",
+    "display": "[-1,-2]"
+   }
+  }
+ ]
+}

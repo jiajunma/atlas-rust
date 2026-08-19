@@ -1,0 +1,26 @@
+{
+ "fixture": "eval/row_operators_rejected.atlas",
+ "fixture_sha256": "41e5eb55001a4282e7b314b393a3c859b3087b1b5177f9253f71fa4dc96e1bde",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "cap3582026",
+ "reference_commit": "a2c2737474d91bb0676383578cacf89fee787673",
+ "reference_report_sha256": "71f6b0b54cd23dc68f3a4fee664ec3ee4c34d378ddd9594d25dfb6b0145350a0",
+ "source_archive_sha256": "a09ddef0c7cb4bdfe2a3c32d513baaf74bc3c5c705e3cad3e18c2d4181b69e4c",
+ "oracle_exit_status": 1,
+ "oracle_seconds": 0.109,
+ "oracle_maxrss_kb": 3536,
+ "oracle_maxrss_approximate": false,
+ "notes": "Rejected half of the generic row-operator surface: 11 typing failures, payloads verbatim-identical to the oracle (Failed to match '##'/'#' with argument type ...). Error wrapper format divergence (atlas-cli 'Type error at file:line:' vs oracle 'Error in expression ...' block) is the pre-existing documented CLI wrapper difference handled by the harness.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
+}

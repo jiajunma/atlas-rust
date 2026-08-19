@@ -1,0 +1,62 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "eval/row_operators_rejected",
+ "status": "verified_hpc_reference",
+ "events": [
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "Failed to match '##' with argument type ([int],string)"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "Failed to match '##' with argument type ([string],string)"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "Failed to match '##' with argument type (string,[string])"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "Failed to match '##' with argument type ([int],[*])"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "Failed to match '##' with argument type ([*],[int])"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "Failed to match '#' with argument type ([int],[string])"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "Failed to match '#' with argument type (int,int)"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "Failed to match '#' with argument type (int,int)"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "Failed to match '#' with argument type ([int],(int,int))"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "Failed to match '##' with argument type ([int],(int,int))"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "Failed to match '##' with argument type ((string,string),[int])"
+  }
+ ]
+}

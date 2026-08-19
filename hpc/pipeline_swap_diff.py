@@ -827,6 +827,10 @@ FIXTURE_PLANS = (
     # `%` destructure, plus the missing-division rejection.
     FixturePlan(name="eval/split_basic"),
     FixturePlan(name="eval/split_basic_rejected"),
+    # Generic axis.w row operators ##/# (suffix/prefix/join/fold) — special
+    # generic operator between exact and coercible overloads.
+    FixturePlan(name="eval/row_operators"),
+    FixturePlan(name="eval/row_operators_rejected"),
 )
 
 

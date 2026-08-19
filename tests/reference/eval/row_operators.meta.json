@@ -1,0 +1,26 @@
+{
+ "fixture": "eval/row_operators.atlas",
+ "fixture_sha256": "c6ec37121ecd51e0f2f50ec33a2f566324065a984b4963de85454fbcc77bba35",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "cap3582025",
+ "reference_commit": "a2c2737474d91bb0676383578cacf89fee787673",
+ "reference_report_sha256": "89760f8ec390d7b92efe1dee26f054a4265b4d5dd2d8e889f06617fdbaa3c040",
+ "source_archive_sha256": "a09ddef0c7cb4bdfe2a3c32d513baaf74bc3c5c705e3cad3e18c2d4181b69e4c",
+ "oracle_exit_status": 0,
+ "oracle_seconds": 0.123,
+ "oracle_maxrss_kb": 3488,
+ "oracle_maxrss_approximate": false,
+ "notes": "Generic axis.w row operators ##/# (suffix/prefix element extension, row join, row-of-rows fold): special generic operator recognised from the a-priori type between exact and coercible overloads (axis.w:1549-1579, 2544-2595). Rust implementation in commit a2c2737 (typed.rs hidden_special_variant + ScalarOp Row* arms). Accepted fixture byte-identical against the HPC capture stdout (29 events/29 lines; events self-check via expected_cli_observation passes).",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
+}
