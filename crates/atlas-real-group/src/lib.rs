@@ -124,7 +124,7 @@ pub use locator::{BlockLocator, IntegralDatumItem, IntegralDatumTable};
 pub use minimal_torus::{elected_square_root, minimal_torus_part};
 pub use mod_two::{ModTwoSubspace, ModTwoVector};
 pub use partial_block::{
-    bruhat_below, CommonContext, IntegralSubsystem, PartialBlock, StandardReprMod,
+    bruhat_below, BareBlock, CommonContext, IntegralSubsystem, PartialBlock, StandardReprMod,
 };
 pub use presentation::{build_presentations, RealFormPresentation};
 pub use primitive_involution::{

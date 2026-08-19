@@ -42,16 +42,16 @@ use atlas_real_group::{
     on_basis as lattice_on_basis, pair, quotient_relation_basis as domain_quotient_relation_basis,
     replace_relation_generators as domain_replace_relation_generators, singular_orbits_at,
     twisted_deformation_terms, twisted_deformation_with_cancel, twisted_kl_column_at_s,
-    twisted_kl_sum, AdjointFiberBudget, BasedRootDatum, BlockDescent, BlockGraph, BlockModifier,
-    BlockTopology, CartanClassification, CartanClassificationBudget, CartanId, CommonContext,
-    Coweight, ExternalFormOrder, GlobalKgb, InnerClass, InnerClassLayout, IntegerLatticeBudget,
-    IntegralBlockScope, IntegralSubsystem, InvolutionId, InvolutionTable, InvolutionTableBudget,
-    KType, KgbGraph, KgbId, KgbStatus, KlPol, KlTable, LatticeInvolution, LocatedBlock,
-    ModTwoVector, PartialBlock, RankFlags, RationalWeight, RealFormPresentation, RealFormSeed,
-    RelationBasis, RelationError, RelationGenerator, RelationMatrix, RepContext, RepTableOwner,
-    RootId, RootInvolutionData, RootKind, RootSystem, SplitInteger, StandardRepr, StandardReprMod,
-    StrongRealClassification, StructureError, WeakRealFormId, Weight, WeylAction, WeylElement,
-    WeylInterface,
+    twisted_kl_sum, AdjointFiberBudget, BareBlock, BasedRootDatum, BlockDescent, BlockGraph,
+    BlockModifier, BlockTopology, CartanClassification, CartanClassificationBudget, CartanId,
+    CommonContext, Coweight, ExternalFormOrder, GlobalKgb, InnerClass, InnerClassLayout,
+    IntegerLatticeBudget, IntegralBlockScope, IntegralSubsystem, InvolutionId, InvolutionTable,
+    InvolutionTableBudget, KType, KgbGraph, KgbId, KgbStatus, KlPol, KlTable, LatticeInvolution,
+    LocatedBlock, ModTwoVector, PartialBlock, RankFlags, RationalWeight, RealFormPresentation,
+    RealFormSeed, RelationBasis, RelationError, RelationGenerator, RelationMatrix, RepContext,
+    RepTableOwner, RootId, RootInvolutionData, RootKind, RootSystem, SplitInteger, StandardRepr,
+    StandardReprMod, StrongRealClassification, StructureError, WeakRealFormId, Weight, WeylAction,
+    WeylElement, WeylInterface,
 };
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
@@ -14311,89 +14311,40 @@ pub(crate) fn call_with_printed(
                     ),
                 ));
             };
-            let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
-            let dual_quasisplit = dual_parent.order.quasisplit_external();
-            let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
-            let block = build_block(&parameter.context, &dual_rf, span)?;
-            let dual_graph = block.graph.dual();
-            let mut dual_kl =
-                KlTable::new(&dual_graph).map_err(|error| structure_diagnostic(error, span))?;
+            test_standard(parameter, "Cannot generate block", span)?;
+            // The common block on the parameter's integral subsystem
+            // (atlas-types.w:7076-7091): the locator resolves it as the
+            // full block over the full/proper/rank-0 uniform subsystem,
+            // transporting the query onto the stored block's attitude.
+            let located = parameter
+                .context
+                .rep
+                .lookup_full_block(&parameter.repr)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let block = located.block();
+            let raw_start = located.raw_row();
+            let size = block.size();
+            // blocks.cpp:474-509 `Bare_block::dual`: the combinatorial
+            // dual of the common block, consumed through BlockTopology;
+            // no per-element parameters are needed on the dual side.
+            let mut dual_kl = KlTable::<'_, BareBlock>::from_handle(block.dual())
+                .map_err(|error| structure_diagnostic(error, span))?;
             dual_kl
                 .fill(0)
                 .map_err(|error| structure_diagnostic(error, span))?;
-            let size = block.graph.size();
-            let datum = parameter.context.parent.root_datum.datum.clone();
-            let rc = rep_context(&parameter.context);
-            let lambda_rho = rc
-                .lambda_rho(&parameter.repr)
+            // Singular block generators at the query's gamma
+            // (`common_block::singular`, blocks.cpp:701-721), the same
+            // transport the KL_block arm uses.
+            let singular_flags = located_singular_flags(&parameter.context, &located)
                 .map_err(|error| structure_diagnostic(error, span))?;
-            let gamma = parameter.repr.gamma().clone();
-            let z0 = (0..size)
-                .find(|&z| block.graph.x(z) == Some(parameter.repr.x()))
-                .ok_or_else(|| runtime(span, "parameter not in the common block"))?;
-            // The common block: for integral gamma it is the full block
-            // (upstream then considers every element for survival,
-            // atlas-types.w:7093-7107) and per-element gamma_lambda values
-            // come from the z_pool propagation. For non-integral gamma
-            // upstream builds the block on the proper integral subsystem;
-            // that slice is deferred, so the parity-gated closure with the
-            // uniform seed lambda_rho is kept there (the rank-0 integral
-            // systems exercised so far make both coincide).
-            let integral_gamma = gamma_is_integral(&datum, &gamma);
-            let srms = if integral_gamma {
-                common_block_srms(&block, z0, &rc, &lambda_rho, &gamma, span)?
-            } else {
-                Vec::new()
-            };
-            let members = if integral_gamma {
-                vec![true; size]
-            } else {
-                common_block_members(&block, z0, &rc, &lambda_rho, &gamma, span)?
-            };
-            // Singular coroots: <gamma, alpha_s^vee> vanishes.
-            let mut singular = 0_u32;
-            for s in 0..datum.semisimple_rank() {
-                let coroot = &datum.simple_coroots()[s];
-                let numerator = gamma.numerator();
-                let _denominator = gamma.denominator();
-                let mut total: i64 = 0;
-                for (index, &coordinate) in coroot.as_slice().iter().enumerate() {
-                    if coordinate == 0 {
-                        continue;
-                    }
-                    let entry = numerator
-                        .get(index)
-                        .ok_or_else(|| runtime(span, "rational weight rank"))?;
-                    total += i64::from(coordinate) * *entry;
-                }
-                if total == 0 {
-                    singular |= 1 << s;
-                }
-            }
-            // Survivors of the common block (loc[z] = survivors.size()),
-            // computed on the original block.
+            // Survivors of the common block (atlas-types.w:7097-7106):
+            // loc[z] = survivors.size() for surviving z.
+            let survivors: Vec<usize> = (0..size)
+                .filter(|&z| block.survives(z, &singular_flags))
+                .collect();
             let mut loc = vec![usize::MAX; size];
-            let mut survivors: Vec<usize> = Vec::new();
-            for z in 0..size {
-                if !members[z] {
-                    continue;
-                }
-                let mut survives = true;
-                for s in 0..datum.semisimple_rank() {
-                    if singular & (1 << s) != 0
-                        && block
-                            .graph
-                            .descent_value(z, s)
-                            .is_some_and(|d| d.is_descent())
-                    {
-                        survives = false;
-                        break;
-                    }
-                }
-                if survives {
-                    loc[z] = survivors.len();
-                    survivors.push(z);
-                }
+            for (position, &raw) in survivors.iter().enumerate() {
+                loc[raw] = position;
             }
             let n = survivors.len();
             let last = size - 1;
@@ -14418,28 +14369,16 @@ pub(crate) fn call_with_printed(
                     index_matrix[i][j] = index;
                 }
             }
-            // Parameters of the survivors, in original-block order:
-            // rc.sr(z_pool[z], bm, gamma) with trivial bm (atlas-types.w
-            // shared chunk at :6951-6962).
-            let gamma_rho = gamma
-                .sub(rc.rho())
-                .map_err(|error| structure_diagnostic(error, span))?;
+            // Parameters of the survivors, in block order:
+            // rc.sr(z_pool[z], bm, gamma) (atlas-types.w shared chunk at
+            // :6951-6962), the per-row read through the locator attitude.
             let mut params = Vec::new();
-            for &z in &survivors {
-                let lambda_rho_z = if integral_gamma {
-                    let gl = srms[z]
-                        .as_ref()
-                        .ok_or_else(|| runtime(span, "survivor outside the common block"))?;
-                    integer_diff_weight(&gamma_rho, gl, span)?
-                } else {
-                    lambda_rho.clone()
-                };
-                let sr = rc
-                    .sr_gamma(block.graph.x(z).expect("in-range"), &lambda_rho_z, &gamma)
+            for &raw in &survivors {
+                let repr = located_row_parameter(&parameter.context, &located, raw)
                     .map_err(|error| structure_diagnostic(error, span))?;
                 params.push(Value::Domain(DomainValue::Param(ParamValue {
                     context: parameter.context.clone(),
-                    repr: sr,
+                    repr,
                 })));
             }
             let rows: Vec<Vec<i32>> = index_matrix
@@ -14453,10 +14392,10 @@ pub(crate) fn call_with_printed(
                     .map(|pol| Value::Vector(Vec32(pol.as_slice().to_vec())))
                     .collect(),
             );
-            let start_value = Value::Integer(BigInt::from(if loc[z0] == usize::MAX {
+            let start_value = Value::Integer(BigInt::from(if loc[raw_start] == usize::MAX {
                 -1
             } else {
-                loc[z0] as i64
+                loc[raw_start] as i64
             }));
             Ok(Value::Tuple(vec![
                 Value::List(params),

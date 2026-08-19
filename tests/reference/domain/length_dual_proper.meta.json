@@ -4,7 +4,7 @@
  "oracle": "atlas",
  "stage": "typed-pipeline-swap",
  "reference_status": "verified_hpc_reference",
- "rust_status": "not_implemented",
+ "rust_status": "pending_hpc_differential",
  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
@@ -16,7 +16,7 @@
  "oracle_seconds": 0.067,
  "oracle_maxrss_kb": 4444,
  "oracle_maxrss_approximate": false,
- "notes": "Non-integral common-block anchors (slice A of docs/slices/nonintegral_common_block_workorder.md): B2 split form 2 pb=param(KGB(rfb,5),[1,1],[1,0]/2) (rank-1 subsystem on the non-simple coroot [1,1]); oracle length(pb)=0, length(Cayley(0,pb))=1, dual_KL_block survivors x=4,5,10 start 1. Current Rust is silently wrong on all three lines. Do NOT register before the slice lands.",
+ "notes": "Non-integral common-block anchors (slice A of docs/slices/nonintegral_common_block_workorder.md): B2 split form 2 pb=param(KGB(rfb,5),[1,1],[1,0]/2) (rank-1 subsystem on the non-simple coroot [1,1]); oracle length(pb)=0, length(Cayley(0,pb))=1, dual_KL_block survivors x=4,5,10 start 1. dual_KL_block rewired onto the located-block machinery (lookup_full_block over Arc<PartialBlock> + PartialBlock::dual KlTableHandle<BareBlock>, located_singular_flags/located_row_parameter), replacing the full-rank BlockGraph + uniform lambda_rho reconstruction. Awaiting HPC differential.",
  "hpc_capture": {
   "fresh_process_required": true,
   "timeout_seconds": 30,

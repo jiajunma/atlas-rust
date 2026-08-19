@@ -4,7 +4,7 @@
  "oracle": "atlas",
  "stage": "typed-pipeline-swap",
  "reference_status": "verified_hpc_reference",
- "rust_status": "not_implemented",
+ "rust_status": "pending_hpc_differential",
  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
@@ -16,7 +16,7 @@
  "oracle_seconds": 0.032,
  "oracle_maxrss_kb": 4412,
  "oracle_maxrss_approximate": false,
- "notes": "A2 split (SL(3,R)) non-integral anchor (slice B of docs/slices/nonintegral_common_block_workorder.md): p3=param(KGB(rs,3),[0,0],[1,1]/2), rank-1 subsystem on the highest root (conjugated parent words). Oracle: 3-row single-generator common block with type-2 codes, length(p3)=1, 2-row partial block with undefined cross, dual_KL_block survivors x=0,3,3. May stay gated on the known SL(3,R) identity-shift locator defect (gamma-lambda off by [0,1] on rows 0/2); do NOT register before both slices land.",
+ "notes": "A2 split (SL(3,R)) non-integral anchor (slice B of docs/slices/nonintegral_common_block_workorder.md): p3=param(KGB(rs,3),[0,0],[1,1]/2), rank-1 subsystem on the highest root (conjugated parent words). Oracle: 3-row single-generator common block with type-2 codes, length(p3)=1, 2-row partial block with undefined cross, dual_KL_block survivors x=0,3,3. dual_KL_block rewired onto the located-block machinery (lookup_full_block over Arc<PartialBlock> + PartialBlock::dual KlTableHandle<BareBlock>, located_singular_flags/located_row_parameter), replacing the full-rank BlockGraph + uniform lambda_rho reconstruction. Awaiting HPC differential.",
  "hpc_capture": {
   "fresh_process_required": true,
   "timeout_seconds": 30,

@@ -394,6 +394,11 @@ FIXTURE_PLANS = (
     # 3-element ext block) with A2/C2 integral controls. Reference frozen
     # by capture 3574900; events.json pre-verified.
     FixturePlan(name="domain/ext_block_proper"),
+    # dual_KL_block rewired onto the located-block machinery
+    # (PartialBlock::dual via lookup_full_block); B2 proper-subsystem and
+    # A2 split anchors, events.json pre-verified by capture 3574902.
+    FixturePlan(name="domain/length_dual_proper"),
+    FixturePlan(name="domain/length_dual_proper_a2"),
     # Batch 3 (root data): two_rho / two_rho_check.
     FixturePlan(name="domain/two_rho"),
     FixturePlan(name="domain/cofolded"),
