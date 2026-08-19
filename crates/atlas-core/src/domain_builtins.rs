@@ -9566,6 +9566,20 @@ fn located_common_block_rows(
         let stored = block
             .element(z)
             .ok_or_else(|| runtime(span, "common block element out of range"))?;
+        // Upstream applies the locator shift through `common_block::shift`
+        // (blocks.cpp:1328-1341), which calls `Rep_context::shift`
+        // (repr.cpp:352-356): the shifted gamma_lambda is re-normalised
+        // with `real_unique` per element. A bare add leaves an
+        // im(1-theta_x) residue that the oracle never prints (A2 SL(3,R)
+        // anchor defect).
+        let shifted = stored
+            .gamma_lambda()
+            .add(located.relative_shift())
+            .map_err(|error| structure_diagnostic(error, span))?;
+        let gamma_lambda = StandardReprMod::build(&rc, stored.x(), &shifted)
+            .map_err(|error| structure_diagnostic(error, span))?
+            .gamma_lambda()
+            .clone();
         rows.push(CommonBlockRow {
             x: stored.x(),
             length: block
@@ -9574,10 +9588,7 @@ fn located_common_block_rows(
             descents,
             crosses,
             cayleys,
-            gamma_lambda: stored
-                .gamma_lambda()
-                .add(located.relative_shift())
-                .map_err(|error| structure_diagnostic(error, span))?,
+            gamma_lambda,
             survives: block.survives(z, &singular),
         });
     }
