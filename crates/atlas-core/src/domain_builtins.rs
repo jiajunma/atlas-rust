@@ -2866,6 +2866,14 @@ fn kl_sum_at_s_terms(
         .rep
         .lookup(&normalised)
         .map_err(|error| structure_diagnostic(error, span))?;
+    if !located.has_identity_generator_attitude() {
+        return Err(structure_diagnostic(
+            StructureError::NotYetImplemented {
+                feature: "KL_sum_at_s on a non-identity integral-subsystem attitude",
+            },
+            span,
+        ));
+    }
     let block = located.block();
     let z = located.raw_row();
     let common = CommonContext::integral(&rc, located.adapted_representative().gamma_lambda())
@@ -9911,6 +9919,15 @@ pub(crate) fn print_text(
                             .rep
                             .lookup_full_block(&parameter.repr)
                             .map_err(|error| structure_diagnostic(error, span))?;
+                        if !located.has_identity_generator_attitude() {
+                            return Err(structure_diagnostic(
+                                StructureError::NotYetImplemented {
+                                    feature:
+                                        "print_block on a non-identity integral-subsystem attitude",
+                                },
+                                span,
+                            ));
+                        }
                         let rows = located_common_block_rows(&parameter.context, &located, span)?;
                         let mut text = format!(
                             "Parameter defines element {} of the following block:\n",
@@ -10141,6 +10158,14 @@ pub(crate) fn print_text(
                 .rep
                 .lookup_full_block(&dominant)
                 .map_err(|error| structure_diagnostic(error, span))?;
+            if !located.has_identity_generator_attitude() {
+                return Err(structure_diagnostic(
+                    StructureError::NotYetImplemented {
+                        feature: "print_common_block on a non-identity integral-subsystem attitude",
+                    },
+                    span,
+                ));
+            }
             let rows = located_common_block_rows(&parameter.context, &located, span)?;
             let init = located.raw_row();
             let mut text = format!(
@@ -12599,6 +12624,14 @@ pub(crate) fn call_with_printed(
                     .rep
                     .lookup_full_block(&dominant)
                     .map_err(|error| structure_diagnostic(error, span))?;
+                if !located.has_identity_generator_attitude() {
+                    return Err(structure_diagnostic(
+                        StructureError::NotYetImplemented {
+                            feature: "block on a non-identity integral-subsystem attitude",
+                        },
+                        span,
+                    ));
+                }
                 let block = located.block();
                 let common =
                     CommonContext::integral(&rc, located.adapted_representative().gamma_lambda())
@@ -13864,6 +13897,14 @@ pub(crate) fn call_with_printed(
                 .rep
                 .lookup(&normalised)
                 .map_err(|error| structure_diagnostic(error, span))?;
+            if !located.has_identity_generator_attitude() {
+                return Err(structure_diagnostic(
+                    StructureError::NotYetImplemented {
+                        feature: "KL_column on a non-identity integral-subsystem attitude",
+                    },
+                    span,
+                ));
+            }
             let raw_y = located.raw_row();
             let entries = located
                 .with_kl_table(|kl_table| {
@@ -13945,6 +13986,14 @@ pub(crate) fn call_with_printed(
                 .rep
                 .lookup_full_block(&dominant)
                 .map_err(|error| structure_diagnostic(error, span))?;
+            if !located.has_identity_generator_attitude() {
+                return Err(structure_diagnostic(
+                    StructureError::NotYetImplemented {
+                        feature: "KL_block on a non-identity integral-subsystem attitude",
+                    },
+                    span,
+                ));
+            }
             let raw_start = located.raw_row();
             let block = located.block();
             let common =

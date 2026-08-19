@@ -1,9 +1,18 @@
 //! Shared partial/full common-block storage for one real form.
 //!
-//! This is the first, deliberately narrow `Rep_table` slice from upstream
-//! `gkmod/repr.cpp`: only the full-integral system in identity attitude is
-//! accepted. Reduced keys and their Smith codec remain private; consumers
-//! receive stable block handles and query-relative representatives.
+//! This is the `Rep_table` slice from upstream `gkmod/repr.cpp` with the
+//! canonical keying of the locator slice wired in (step 3): reduced keys are
+//! upstream `Reduced_param` values `(x, int_sys_nr, residue)` computed by
+//! `Reduced_param::reduce` (repr.cpp:110-125) — `InnerClass::int_item`
+//! canonicalizes the integral datum across the Weyl group, the srm is
+//! transported by the locator attitude, and the residue comes from the
+//! canonical datum's Smith codec.  A query whose integral subsystem matches
+//! a stored block under a Weyl attitude therefore reuses the stored block;
+//! the query-to-stored `block_modifier` (repr.cpp:338-350
+//! `make_relative_to`) records the attitude difference, and consumers that
+//! still assume the identity attitude are gated loudly on it.  Reduced keys
+//! and their Smith codec remain private; consumers receive stable block
+//! handles and query-relative representatives.
 
 use std::cell::Cell;
 #[cfg(test)]
@@ -19,36 +28,41 @@ use crate::matreduc::IntMatrix;
 use crate::real_projection::RealProjection;
 use crate::rep_context::RepContextDerived;
 use crate::{
-    bruhat_below, CommonContext, IntegralSubsystem, InvolutionTable, KgbGraph, KgbId, PartialBlock,
-    RationalWeight, RepContext, RootId, RootSystem, StandardRepr, StandardReprMod, StructureError,
-    Weight,
+    bruhat_below, BlockLocator, BlockModifier, CommonContext, IntegralDatumItem,
+    IntegralDatumTable, IntegralSubsystem, InvolutionTable, KgbGraph, KgbId, PartialBlock,
+    RationalWeight, RepContext, StandardRepr, StandardReprMod, StructureError, Weight,
 };
 
-/// Identity of the integral root system used to reduce a parameter.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-enum IntegralSystem {
-    /// The full root system, without allocating an integral-system table slot.
-    Full,
-    /// A non-full integral system already interned by its owning table.
-    Interned(u32),
-}
-
-/// Hash-stable identity of a reduced parameter.
+/// Hash-stable identity of a reduced parameter: upstream `Reduced_param`
+/// (repr.h:476-482).  `x` is the KGB element AFTER transport by the
+/// locator attitude (`transform<true>(loc.w, srm)`), `int_sys` the
+/// canonical integral datum id (`locator::int_sys_nr`), and `residue` the
+/// mixed-radix packing of the canonical codec's evaluations.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 struct ReducedParamKey {
     x: KgbId,
-    integral_system: IntegralSystem,
+    int_sys: u32,
     residue: u32,
 }
 
 impl ReducedParamKey {
-    const fn new(x: KgbId, integral_system: IntegralSystem, residue: u32) -> Self {
+    const fn new(x: KgbId, int_sys: u32, residue: u32) -> Self {
         Self {
             x,
-            integral_system,
+            int_sys,
             residue,
         }
     }
+}
+
+/// The output of [`RepTable::reduce`]: the canonical key, the query's
+/// locator (`Reduced_param::reduce` writes it through the `locator&` base
+/// subobject of the `block_modifier`, repr.cpp:110-125), and the interned
+/// canonical datum's simple-coroot matrix reused for row registration.
+struct ReducedQuery {
+    key: ReducedParamKey,
+    locator: BlockLocator,
+    coroots: IntMatrix,
 }
 
 /// Smith-style codec for integral-coroot evaluations modulo
@@ -216,12 +230,12 @@ impl IntegralCodec {
     fn reduced_key(
         &self,
         x: KgbId,
-        integral_system: IntegralSystem,
+        int_sys: u32,
         gamma_lambda: &RationalWeight,
     ) -> Result<ReducedParamKey, StructureError> {
         Ok(ReducedParamKey::new(
             x,
-            integral_system,
+            int_sys,
             self.residue(gamma_lambda)?,
         ))
     }
@@ -298,15 +312,12 @@ struct BlockRecord {
     id: BlockId,
     block: Arc<PartialBlock>,
     full: bool,
-    generator_attitude: GeneratorAttitude,
+    /// The generating query's locator (upstream `located_block::second`, the
+    /// `pair<common_block, locator>`): the attitude at which the block's
+    /// rows are stored and under which its row keys are registered
+    /// (`Reduced_param::co_reduce`, repr.cpp:127-142).
+    locator: BlockLocator,
     kl_table: Mutex<Option<crate::SharedKlTable>>,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum GeneratorAttitude {
-    /// The stored generator order is the exact embedded subsystem order of
-    /// every reduced key registered for this record.
-    Identity,
 }
 
 thread_local! {
@@ -347,7 +358,7 @@ impl std::fmt::Debug for BlockRecord {
             .field("id", &self.id)
             .field("block", &self.block)
             .field("full", &self.full)
-            .field("generator_attitude", &self.generator_attitude)
+            .field("locator", &self.locator)
             .field("kl_table", &"<lazy>")
             .finish()
     }
@@ -369,48 +380,13 @@ enum BlockSlot {
 struct State {
     slots: Vec<BlockSlot>,
     places: HashMap<ReducedParamKey, Place>,
-    integral_systems: Vec<Vec<RootId>>,
-    integral_system_ids: HashMap<Vec<RootId>, u32>,
+    /// The canonical integral-datum interner: upstream's per-inner-class
+    /// `int_hash`/`int_table` pair (innerclass.h:238), kept per table; ids
+    /// are table-local and never cross tables.
+    integral_data: IntegralDatumTable,
 }
 
 impl State {
-    fn integral_system(
-        &mut self,
-        roots: &RootSystem,
-        subsystem: &IntegralSubsystem,
-    ) -> Result<IntegralSystem, StructureError> {
-        let ambient = roots.simple_root_ids();
-        if subsystem.rank() == ambient.len()
-            && ambient
-                .iter()
-                .enumerate()
-                .all(|(generator, &root)| subsystem.parent_root(generator) == Some(root))
-        {
-            return Ok(IntegralSystem::Full);
-        }
-        let embedded: Vec<RootId> = (0..subsystem.rank())
-            .map(|generator| {
-                subsystem
-                    .parent_root(generator)
-                    .ok_or(StructureError::RepInvariantViolation {
-                        invariant: "integral subsystem parent root",
-                    })
-            })
-            .collect::<Result<_, _>>()?;
-        if let Some(&id) = self.integral_system_ids.get(&embedded) {
-            return Ok(IntegralSystem::Interned(id));
-        }
-
-        let id = u32::try_from(self.integral_systems.len())
-            .map_err(|_| StructureError::ArithmeticOverflow)?;
-        self.integral_systems
-            .try_reserve_exact(1)
-            .map_err(|_| StructureError::AllocationFailed { requested: 1 })?;
-        self.integral_systems.push(embedded.clone());
-        self.integral_system_ids.insert(embedded, id);
-        Ok(IntegralSystem::Interned(id))
-    }
-
     fn active(&self, id: BlockId) -> Option<Arc<BlockRecord>> {
         match self.slots.get(id.0) {
             Some(BlockSlot::Active(record)) => Some(Arc::clone(record)),
@@ -423,17 +399,17 @@ impl State {
         Some((self.active(place.block)?, place.row))
     }
 
-    fn insert_record(&mut self, block: Arc<PartialBlock>, full: bool) -> Arc<BlockRecord> {
+    fn insert_record(
+        &mut self,
+        block: Arc<PartialBlock>,
+        full: bool,
+        locator: BlockLocator,
+    ) -> Arc<BlockRecord> {
         let record = Arc::new(BlockRecord {
             id: BlockId(self.slots.len()),
             block,
             full,
-            // The current table interns exact embedded root lists and never
-            // merges Weyl-conjugate integral systems. Consequently the
-            // upstream block modifier's simple_pi is identity for every
-            // record constructed here. A future canonicalizing locator must
-            // add a non-identity variant instead of reusing this value.
-            generator_attitude: GeneratorAttitude::Identity,
+            locator,
             kl_table: Mutex::new(None),
         });
         self.slots.push(BlockSlot::Active(Arc::clone(&record)));
@@ -469,6 +445,7 @@ impl State {
         key: ReducedParamKey,
         exact_seed_row: usize,
         row_keys: &[(ReducedParamKey, usize)],
+        locator: BlockLocator,
     ) -> Result<(Arc<BlockRecord>, usize), StructureError> {
         if let Some(existing) = self.active_place(&key) {
             return Ok(existing);
@@ -493,7 +470,7 @@ impl State {
             });
         }
 
-        let record = self.insert_record(block, false);
+        let record = self.insert_record(block, false, locator);
         self.reverse_register(&record, row_keys);
         Ok((record, exact_seed_row))
     }
@@ -501,15 +478,20 @@ impl State {
 
 /// One query located in a shared partial or full common block.
 ///
-/// `raw_row` is the stored block's numbering. `relative_shift` and
-/// `adapted_representative` describe how the representative selected by a
-/// possibly colliding reduced key is related to this query.
+/// `raw_row` is the stored block's numbering. `modifier` is the
+/// query-to-stored `block_modifier` of upstream `Rep_table::lookup`
+/// (repr.cpp:338-350 `make_relative_to`): its `shift` transports the stored
+/// representative to the query, and its locator part (`w`, `simple_pi`)
+/// records the attitude difference.  `adapted_representative` is the stored
+/// representative read back through the modifier (shift, then
+/// `transform<false>`), which the lookup invariant guarantees equals the
+/// query's own srm.
 #[derive(Clone, Debug)]
 pub struct LocatedBlock {
     record: Arc<BlockRecord>,
     raw_row: usize,
     prepared_query: StandardRepr,
-    relative_shift: RationalWeight,
+    modifier: BlockModifier,
     adapted_representative: StandardReprMod,
 }
 
@@ -543,14 +525,32 @@ impl LocatedBlock {
     }
 
     /// Whether common-block generator numbers are already in the query's
-    /// integral-subsystem order (upstream's identity `bm.simple_pi`).
+    /// integral-subsystem order: the query-to-stored block modifier has
+    /// identity `w` and identity `simple_pi` (upstream's `bm` after
+    /// `make_relative_to`).  Only then may a consumer read stored rows with
+    /// a plain central shift; a nontrivial modifier requires the Weyl
+    /// transport of `Rep_context::sr(srm, bm, gamma)` (repr.cpp:815-823).
     pub fn has_identity_generator_attitude(&self) -> bool {
-        self.record.generator_attitude == GeneratorAttitude::Identity
+        self.modifier.w().is_identity()
+            && self
+                .modifier
+                .simple_pi()
+                .iter()
+                .enumerate()
+                .all(|(index, &image)| index == image)
     }
 
-    /// The central shift from the stored representative to this query.
+    /// The query-to-stored `block_modifier` (repr.h:493-499) filled by the
+    /// lookup: the query's locator made relative to the stored block's
+    /// generating locator, plus the integral-orthogonal shift.
+    pub fn block_modifier(&self) -> &BlockModifier {
+        &self.modifier
+    }
+
+    /// The central shift from the stored representative to this query (the
+    /// `block_modifier::shift` field, repr.h:494).
     pub fn relative_shift(&self) -> &RationalWeight {
-        &self.relative_shift
+        self.modifier.shift()
     }
 
     /// The stored representative adapted by [`Self::relative_shift`].
@@ -686,6 +686,11 @@ impl RepTable {
     }
 
     /// Resolve or materialize the smallest partial block below `query`.
+    ///
+    /// Upstream `Rep_table::lookup` (repr.cpp:1796-1824): normalise,
+    /// `mod_reduce`, `Reduced_param::reduce` for the canonical key and the
+    /// query locator, probe, and on a miss build the Bruhat interval below
+    /// the seed in the query's own attitude.
     fn lookup(
         &self,
         rc: &RepContext<'_>,
@@ -693,12 +698,12 @@ impl RepTable {
     ) -> Result<LocatedBlock, StructureError> {
         let query = query.normalised(rc)?;
         let seed = StandardReprMod::mod_reduce(rc, &query)?;
-        let (context, integral_system) = self.integral_context(rc, query.gamma())?;
-        let key = Self::integral_key(rc, &seed, context.subsystem(), integral_system)?;
-        if let Some((record, row)) = self.probe(&key)? {
-            return Self::located(rc, record, row, &seed, query, context.subsystem());
+        let reduced = self.reduce(rc, &seed, query.gamma())?;
+        if let Some((record, row)) = self.probe(&reduced.key)? {
+            return Self::located(rc, record, row, &seed, query, reduced.locator);
         }
 
+        let context = Self::query_context(rc, query.gamma())?;
         let interval = bruhat_below(&context, &seed)?;
         let block = PartialBlock::build(&context, &interval)?;
         let exact_seed_row = block
@@ -707,18 +712,28 @@ impl RepTable {
                 invariant: "partial representation block seed row",
             })?;
         let block = Arc::new(block);
-        let row_keys = Self::row_keys_for(rc, &block, context.subsystem(), integral_system)?;
+        let row_keys = Self::row_keys_for(rc, &block, &reduced.locator, &reduced.coroots)?;
         #[cfg(test)]
         self.hooks.pause_before_commit(false);
 
         let (record, row) = {
             let mut state = self.lock_state()?;
-            state.commit_partial(block, key, exact_seed_row, &row_keys)?
+            state.commit_partial(
+                block,
+                reduced.key,
+                exact_seed_row,
+                &row_keys,
+                reduced.locator.clone(),
+            )?
         };
-        Self::located(rc, record, row, &seed, query, context.subsystem())
+        Self::located(rc, record, row, &seed, query, reduced.locator)
     }
 
     /// Resolve or materialize the full common block containing `query`.
+    ///
+    /// Upstream `Rep_table::lookup_full_block` (repr.cpp:1773-1794):
+    /// `make_dominant`, `mod_reduce`, `reduce`, and on a miss (or a
+    /// partial-only hit) `add_block`, which may retire older partials.
     fn lookup_full_block(
         &self,
         rc: &RepContext<'_>,
@@ -726,20 +741,20 @@ impl RepTable {
     ) -> Result<LocatedBlock, StructureError> {
         let query = query.made_dominant(rc)?;
         let seed = StandardReprMod::mod_reduce(rc, &query)?;
-        let (context, integral_system) = self.integral_context(rc, query.gamma())?;
-        let key = Self::integral_key(rc, &seed, context.subsystem(), integral_system)?;
-        if let Some((record, row)) = self.probe(&key)? {
+        let reduced = self.reduce(rc, &seed, query.gamma())?;
+        if let Some((record, row)) = self.probe(&reduced.key)? {
             if record.full {
-                return Self::located(rc, record, row, &seed, query, context.subsystem());
+                return Self::located(rc, record, row, &seed, query, reduced.locator);
             }
         }
 
+        let context = Self::query_context(rc, query.gamma())?;
         let (block, exact_seed_row) = PartialBlock::build_full(&context, &seed)?;
         let block = Arc::new(block);
-        let row_keys = Self::row_keys_for(rc, &block, context.subsystem(), integral_system)?;
+        let row_keys = Self::row_keys_for(rc, &block, &reduced.locator, &reduced.coroots)?;
         if !row_keys
             .iter()
-            .any(|&(candidate, row)| candidate == key && row == exact_seed_row)
+            .any(|&(candidate, row)| candidate == reduced.key && row == exact_seed_row)
         {
             return Err(StructureError::RepInvariantViolation {
                 invariant: "full representation block exact seed row",
@@ -750,10 +765,10 @@ impl RepTable {
 
         let (record, row) = {
             let mut state = self.lock_state()?;
-            if let Some((record, row)) = state.active_place(&key) {
+            if let Some((record, row)) = state.active_place(&reduced.key) {
                 if record.full {
                     drop(state);
-                    return Self::located(rc, record, row, &seed, query, context.subsystem());
+                    return Self::located(rc, record, row, &seed, query, reduced.locator);
                 }
             }
 
@@ -774,18 +789,18 @@ impl RepTable {
             }
             state.retire_all(&partials);
 
-            let record = state.insert_record(block, true);
+            let record = state.insert_record(block, true, reduced.locator.clone());
             state.reverse_register(&record, &row_keys);
             let row = state
                 .places
-                .get(&key)
+                .get(&reduced.key)
                 .ok_or(StructureError::RepInvariantViolation {
                     invariant: "full representation block seed registered",
                 })?
                 .row;
             (record, row)
         };
-        Self::located(rc, record, row, &seed, query, context.subsystem())
+        Self::located(rc, record, row, &seed, query, reduced.locator)
     }
 
     /// Resolve an active stable ID. Superseded IDs deliberately return
@@ -812,19 +827,83 @@ impl RepTable {
         Ok(self.lock_state()?.active_place(key))
     }
 
-    fn integral_context<'r, 'context>(
-        &self,
+    /// The query-attitude generation context of upstream
+    /// `common_context(rc, gamma)` (repr.cpp:2666-2670), used when a fresh
+    /// block is built.  `common_context(rc, bm)` (repr.cpp:2672-2677) builds
+    /// the same subsystem: `bm.simp_int` is `image_simples(bm.w)`, the
+    /// images of the canonical datum's simples, which are exactly the simple
+    /// basis of gamma's integral roots in upstream positive-root order.
+    fn query_context<'r, 'context>(
         rc: &'r RepContext<'context>,
         gamma: &RationalWeight,
-    ) -> Result<(CommonContext<'r, 'context>, IntegralSystem), StructureError> {
+    ) -> Result<CommonContext<'r, 'context>, StructureError> {
         if let Some(context) = CommonContext::full_if_integral(rc, gamma)? {
-            return Ok((context, IntegralSystem::Full));
+            return Ok(context);
         }
-        let context = CommonContext::integral(rc, gamma)?;
-        let integral_system = self
-            .lock_state()?
-            .integral_system(rc.root_system(), context.subsystem())?;
-        Ok((context, integral_system))
+        CommonContext::integral(rc, gamma)
+    }
+
+    /// `Reduced_param::reduce` (repr.cpp:110-125): the canonical reduced key
+    /// of a query, plus the query locator that `int_item` fills
+    /// (innerclass.cpp:1116-1182).  The interned canonical datum's simple
+    /// coroots are returned alongside; row registration (`co_reduce`) uses
+    /// the same matrix.
+    fn reduce(
+        &self,
+        rc: &RepContext<'_>,
+        srm: &StandardReprMod,
+        gamma: &RationalWeight,
+    ) -> Result<ReducedQuery, StructureError> {
+        let (locator, coroots) = {
+            let mut state = self.lock_state()?;
+            let (int_sys, locator) = state.integral_data.int_item(rc.root_system(), gamma)?;
+            let coroots = Self::canonical_coroots(rc, state.integral_data.item(int_sys)?)?;
+            (locator, coroots)
+        };
+        let key = Self::canonical_key(rc, srm, &locator, &coroots)?;
+        Ok(ReducedQuery {
+            key,
+            locator,
+            coroots,
+        })
+    }
+
+    /// The coroot matrix of the interned canonical datum's simple roots
+    /// (`integral_datum_item::simple_coroots`, subsystem.cpp:182-188), one
+    /// row per canonical simple root.
+    fn canonical_coroots(
+        rc: &RepContext<'_>,
+        item: &IntegralDatumItem,
+    ) -> Result<IntMatrix, StructureError> {
+        let simple_coroots = item.simple_coroots();
+        let mut coroots = IntMatrix::new(simple_coroots.len(), rc.rank());
+        for (row, coroot) in simple_coroots.iter().enumerate() {
+            for (column, &entry) in coroot.iter().enumerate() {
+                coroots.set(row, column, entry);
+            }
+        }
+        Ok(coroots)
+    }
+
+    /// `Reduced_param::co_reduce` (repr.cpp:127-142), which is also the key
+    /// half of `reduce`: transport the srm by the locator attitude
+    /// (`transform<true>(loc.w, srm)`), then pack the canonical datum
+    /// codec's residue of the transported `gamma_lambda`
+    /// (`integral_datum_item::data(inv_nr)`, subsystem.cpp:220-221).
+    fn canonical_key(
+        rc: &RepContext<'_>,
+        srm: &StandardReprMod,
+        locator: &BlockLocator,
+        coroots: &IntMatrix,
+    ) -> Result<ReducedParamKey, StructureError> {
+        let mut transported = srm.clone();
+        rc.transform_srm::<true>(locator.w(), &mut transported)?;
+        let codec = IntegralCodec::new(rc.projection_at(transported.x())?, coroots)?;
+        codec.reduced_key(
+            transported.x(),
+            locator.int_sys(),
+            transported.gamma_lambda(),
+        )
     }
 
     /// `InnerClass::integrality_codec` (innerclass.cpp:1184-1194) with the
@@ -856,6 +935,7 @@ impl RepTable {
         IntegralCodec::new(rc.projection_at(x)?, &coroots)
     }
 
+    #[cfg(test)]
     fn full_integral_codec(rc: &RepContext<'_>, x: KgbId) -> Result<IntegralCodec, StructureError> {
         let simple_coroots = rc.datum().simple_coroots();
         let mut coroots = IntMatrix::new(simple_coroots.len(), rc.rank());
@@ -867,40 +947,14 @@ impl RepTable {
         IntegralCodec::new(rc.projection_at(x)?, &coroots)
     }
 
-    fn integral_key(
-        rc: &RepContext<'_>,
-        srm: &StandardReprMod,
-        subsystem: &IntegralSubsystem,
-        integral_system: IntegralSystem,
-    ) -> Result<ReducedParamKey, StructureError> {
-        Self::integral_codec(rc, srm.x(), subsystem)?.reduced_key(
-            srm.x(),
-            integral_system,
-            srm.gamma_lambda(),
-        )
-    }
-
-    fn full_integral_key(
-        rc: &RepContext<'_>,
-        srm: &StandardReprMod,
-    ) -> Result<ReducedParamKey, StructureError> {
-        let subsystem = IntegralSubsystem::full(rc.root_system())?;
-        Self::integral_key(rc, srm, &subsystem, IntegralSystem::Full)
-    }
-
-    fn row_keys(
-        rc: &RepContext<'_>,
-        block: &PartialBlock,
-    ) -> Result<Vec<(ReducedParamKey, usize)>, StructureError> {
-        let subsystem = IntegralSubsystem::full(rc.root_system())?;
-        Self::row_keys_for(rc, block, &subsystem, IntegralSystem::Full)
-    }
-
+    /// Per-row registration keys of a fresh block: `co_reduce` of every row
+    /// under the block's own (generating) locator, as
+    /// `swallow_blocks_and_append` registers them (repr.cpp:1725-1740).
     fn row_keys_for(
         rc: &RepContext<'_>,
         block: &PartialBlock,
-        subsystem: &IntegralSubsystem,
-        integral_system: IntegralSystem,
+        locator: &BlockLocator,
+        coroots: &IntMatrix,
     ) -> Result<Vec<(ReducedParamKey, usize)>, StructureError> {
         let mut keys = Vec::new();
         keys.try_reserve_exact(block.size())
@@ -915,20 +969,29 @@ impl RepTable {
                         invariant: "representation block row representative",
                     })?;
             keys.push((
-                Self::integral_key(rc, representative, subsystem, integral_system)?,
+                Self::canonical_key(rc, representative, locator, coroots)?,
                 row,
             ));
         }
         Ok(keys)
     }
 
+    /// The `make_relative_to` step of both lookups (repr.cpp:1789-1792,
+    /// 1810-1814): adapt the query's locator to the stored block's
+    /// generating locator, then verify the modifier round-trip — shift the
+    /// stored row by `bm.shift` and transport by `transform<false>(bm.w)`
+    /// (the srm-level half of `sr(srm, bm, gamma)`, repr.cpp:815-823) —
+    /// restores the query exactly.  On the fresh-build path the record's
+    /// locator IS the query's, so the modifier comes out trivial, matching
+    /// upstream's `bm.clear(block.rank(), root_datum().rank())`
+    /// (repr.cpp:1821).
     fn located(
         rc: &RepContext<'_>,
         record: Arc<BlockRecord>,
         row: usize,
         query: &StandardReprMod,
         prepared_query: StandardRepr,
-        subsystem: &IntegralSubsystem,
+        query_locator: BlockLocator,
     ) -> Result<LocatedBlock, StructureError> {
         let stored = record
             .block
@@ -937,27 +1000,25 @@ impl RepTable {
                 index: row,
                 upper_bound: record.block.size(),
             })?;
-        if stored.x() != query.x() {
-            return Err(StructureError::RepInvariantViolation {
-                invariant: "reduced parameter preserves KGB element",
-            });
-        }
-        let difference = query.gamma_lambda().sub(stored.gamma_lambda())?;
-        let image =
-            Self::integral_codec(rc, query.x(), subsystem)?.theta_1_preimage(&difference)?;
-        let relative_shift = difference.sub(&RationalWeight::from_weight(&image)?)?;
-        let shifted = stored.gamma_lambda().add(&relative_shift)?;
-        let adapted_representative = StandardReprMod::build(rc, stored.x(), &shifted)?;
+        let mut modifier =
+            BlockModifier::from_locator(query_locator, RationalWeight::zero(rc.rank())?);
+        rc.make_relative_to(&record.locator, stored, &mut modifier, query.clone())?;
+        let mut adapted_representative = stored.clone();
+        let shifted = adapted_representative
+            .gamma_lambda()
+            .add(modifier.shift())?;
+        adapted_representative.set_gamma_lambda(shifted);
+        rc.transform_srm::<false>(modifier.w(), &mut adapted_representative)?;
         if adapted_representative != *query {
             return Err(StructureError::RepInvariantViolation {
-                invariant: "relative shift restores reduced query",
+                invariant: "block modifier restores reduced query",
             });
         }
         Ok(LocatedBlock {
             record,
             raw_row: row,
             prepared_query,
-            relative_shift,
+            modifier,
             adapted_representative,
         })
     }
@@ -1349,6 +1410,59 @@ mod tests {
         RepTableOwner::new(fixture.table.clone(), fixture.graph.clone()).unwrap()
     }
 
+    /// Keying of the full integral system: interning gamma=0 yields the
+    /// full datum at identity attitude (locator.rs `int_item` tests), so
+    /// this reproduces the retired `full_integral_*` helpers.
+    fn full_system_keying(rc: &RepContext<'_>) -> (BlockLocator, IntMatrix) {
+        let mut table = IntegralDatumTable::new();
+        let zero = RationalWeight::zero(rc.rank()).unwrap();
+        let (int_sys, locator) = table.int_item(rc.root_system(), &zero).unwrap();
+        assert_eq!(int_sys, 0);
+        let coroots = RepTable::canonical_coroots(rc, table.item(int_sys).unwrap()).unwrap();
+        (locator, coroots)
+    }
+
+    fn full_system_key(rc: &RepContext<'_>, srm: &StandardReprMod) -> ReducedParamKey {
+        let (locator, coroots) = full_system_keying(rc);
+        RepTable::canonical_key(rc, srm, &locator, &coroots).unwrap()
+    }
+
+    /// The SL(3,R) anchor inner class of
+    /// `tests/fixtures/domain/common_block_locator.atlas`, documented in
+    /// block_modifier.rs `sl3r_fixture`.
+    fn sl3r_fixture() -> ContextFixture {
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2, -1], vec![-1, 2]],
+            vec![Weight::new(vec![2, -1]), Weight::new(vec![-1, 2])],
+            vec![
+                crate::Coweight::new(vec![1, 0]),
+                crate::Coweight::new(vec![0, 1]),
+            ],
+        )
+        .unwrap();
+        let involution = LatticeInvolution::new(
+            &datum,
+            vec![vec![0, 1], vec![1, 0]],
+            vec![vec![0, 1], vec![1, 0]],
+        )
+        .unwrap();
+        fixture(datum, involution, 6, 4)
+    }
+
+    /// `param(KGB(rf,x), [0,0], nu)`, as block_modifier.rs `param_srm`.
+    fn sl3r_param(
+        rc: &RepContext<'_>,
+        x: usize,
+        nu: &RationalWeight,
+    ) -> (StandardReprMod, StandardRepr) {
+        let lambda_rho = Weight::new(vec![0, 0]);
+        let gamma = rc.gamma(KgbId(x), &lambda_rho, nu).unwrap();
+        let sr = rc.sr_gamma(KgbId(x), &lambda_rho, &gamma).unwrap();
+        let srm = StandardReprMod::mod_reduce(rc, &sr).unwrap();
+        (srm, sr)
+    }
+
     fn fill_marker(kl: &mut crate::SharedKlTable) -> Result<(usize, Vec<bool>), StructureError> {
         assert!((0..kl.support().size()).all(|y| kl.prim_map(y).is_empty()));
         kl.fill(0)?;
@@ -1550,19 +1664,19 @@ mod tests {
 
     #[test]
     fn reduced_keys_have_stable_equality_and_hash_identity() {
-        let full = ReducedParamKey::new(KgbId(7), IntegralSystem::Full, 11);
-        let same = ReducedParamKey::new(KgbId(7), IntegralSystem::Full, 11);
-        let interned = ReducedParamKey::new(KgbId(7), IntegralSystem::Interned(0), 11);
-        let other_residue = ReducedParamKey::new(KgbId(7), IntegralSystem::Full, 12);
+        let full = ReducedParamKey::new(KgbId(7), 0, 11);
+        let same = ReducedParamKey::new(KgbId(7), 0, 11);
+        let other_datum = ReducedParamKey::new(KgbId(7), 1, 11);
+        let other_residue = ReducedParamKey::new(KgbId(7), 0, 12);
 
         assert_eq!(full, same);
-        assert_ne!(full, interned);
+        assert_ne!(full, other_datum);
         assert_ne!(full, other_residue);
 
         let mut set = HashSet::new();
         assert!(set.insert(full));
         assert!(!set.insert(same));
-        assert!(set.insert(interned));
+        assert!(set.insert(other_datum));
 
         let mut map = HashMap::new();
         map.insert(full, "full");
@@ -1572,34 +1686,31 @@ mod tests {
     }
 
     #[test]
-    fn reduced_key_combines_codec_residue_with_identity_domain() {
+    fn reduced_key_combines_codec_residue_with_canonical_datum() {
         let codec = IntegralCodec::new(&projection(&[2]), &diagonal_matrix(&[1])).unwrap();
         let gamma_lambda = RationalWeight::new(vec![-1], 1).unwrap();
 
         assert_eq!(
-            codec.reduced_key(KgbId(3), IntegralSystem::Full, &gamma_lambda),
-            Ok(ReducedParamKey::new(KgbId(3), IntegralSystem::Full, 1))
+            codec.reduced_key(KgbId(3), 0, &gamma_lambda),
+            Ok(ReducedParamKey::new(KgbId(3), 0, 1))
         );
     }
 
     #[test]
-    fn proper_integral_systems_are_interned_by_embedded_simple_roots() {
+    fn canonical_keying_interns_the_canonical_datum_once() {
         let fixture = b2_fixture();
         let rc = fixture.rc();
-        let subsystem = IntegralSubsystem::integral(
-            rc.root_system(),
-            &RationalWeight::new(vec![3, 1], 2).unwrap(),
-        )
-        .unwrap();
-        assert_eq!(subsystem.rank(), 1);
+        let gamma = RationalWeight::new(vec![3, 1], 2).unwrap();
+        let seed = StandardReprMod::build(&rc, KgbId(5), &gamma).unwrap();
+        let table = RepTable::new();
 
-        let mut state = State::default();
-        let first = state.integral_system(rc.root_system(), &subsystem).unwrap();
-        let repeated = state.integral_system(rc.root_system(), &subsystem).unwrap();
+        let first = table.reduce(&rc, &seed, &gamma).unwrap();
+        let repeated = table.reduce(&rc, &seed, &gamma).unwrap();
 
-        assert_eq!(first, IntegralSystem::Interned(0));
-        assert_eq!(repeated, first);
-        assert_eq!(state.integral_systems.len(), 1);
+        assert_eq!(first.key, repeated.key);
+        assert_eq!(first.locator, repeated.locator);
+        assert_eq!(first.key.int_sys, 0);
+        assert_eq!(table.state.lock().unwrap().integral_data.len(), 1);
     }
 
     #[test]
@@ -1925,7 +2036,8 @@ mod tests {
             .unwrap();
         let installed = owner.lookup_full_block(&seed).unwrap();
         let block = installed.block();
-        let row_keys = RepTable::row_keys(&rc, &block).unwrap();
+        let (locator, coroots) = full_system_keying(&rc);
+        let row_keys = RepTable::row_keys_for(&rc, &block, &locator, &coroots).unwrap();
 
         assert_eq!(block.size(), 12);
         // The two x=10 rows look like a tempting collision, but the pinned
@@ -1965,7 +2077,8 @@ mod tests {
         let seed = StandardReprMod::mod_reduce(&rc, &seed).unwrap();
         let (block, _) = PartialBlock::build_full(&context, &seed).unwrap();
         let block = Arc::new(block);
-        let duplicate = RepTable::full_integral_key(&rc, block.element(10).unwrap()).unwrap();
+        let (locator, _) = full_system_keying(&rc);
+        let duplicate = full_system_key(&rc, block.element(10).unwrap());
         let mut state = State::default();
 
         let (_, fresh_row) = state
@@ -1974,6 +2087,7 @@ mod tests {
                 duplicate,
                 11,
                 &[(duplicate, 10), (duplicate, 11)],
+                locator.clone(),
             )
             .unwrap();
 
@@ -1981,7 +2095,13 @@ mod tests {
         assert_eq!(state.places[&duplicate].row, 10);
 
         let (_, existing_row) = state
-            .commit_partial(block, duplicate, 11, &[(duplicate, 10), (duplicate, 11)])
+            .commit_partial(
+                block,
+                duplicate,
+                11,
+                &[(duplicate, 10), (duplicate, 11)],
+                locator,
+            )
             .unwrap();
         assert_eq!(existing_row, 10, "later probes use the reverse place");
     }
@@ -1997,8 +2117,8 @@ mod tests {
         let related =
             StandardReprMod::build(&rc, KgbId(1), &RationalWeight::new(vec![0, 1], 1).unwrap())
                 .unwrap();
-        let stored_key = RepTable::full_integral_key(&rc, &stored).unwrap();
-        let related_key = RepTable::full_integral_key(&rc, &related).unwrap();
+        let stored_key = full_system_key(&rc, &stored);
+        let related_key = full_system_key(&rc, &related);
         assert_eq!(stored_key, related_key, "central difference is invisible");
         let codec = RepTable::full_integral_codec(&rc, stored.x()).unwrap();
         assert_eq!(
@@ -2020,6 +2140,116 @@ mod tests {
             located.relative_shift(),
             &RationalWeight::new(vec![0, 1], 1).unwrap()
         );
+    }
+
+    /// The anchor pair of `tests/fixtures/domain/common_block_locator.atlas`:
+    /// p = `param(KGB(rf,3),[0,0],[2,1]/2)` installs the rank-one common
+    /// block at its own (non-canonical) attitude; q =
+    /// `param(KGB(rf,0),[0,0],[-2,-1]/2)` has a Weyl-conjugate integral
+    /// system interning the SAME canonical datum, so its key collides with
+    /// the stored block and the lookup must come back with the relative
+    /// modifier the oracle prints as `<1>`.  The locator attitudes are
+    /// hand-derived in block_modifier.rs `a2_sl3r_make_relative_to_round_trip`.
+    #[test]
+    fn weyl_conjugate_query_reuses_the_stored_block_at_nonidentity_attitude() {
+        let fixture = sl3r_fixture();
+        let owner = owner(&fixture);
+        let rc = owner.context();
+        let system = rc.root_system().clone();
+
+        let (srm_p, p) = sl3r_param(&rc, 3, &RationalWeight::new(vec![2, 1], 2).unwrap());
+        let (srm_q, q) = sl3r_param(&rc, 0, &RationalWeight::new(vec![-2, -1], 2).unwrap());
+
+        let installed = owner.lookup_full_block(&p).unwrap();
+        assert_eq!(installed.block().size(), 3);
+        assert_eq!(installed.raw_row(), 1, "oracle: element 1");
+        assert!(installed.has_identity_generator_attitude());
+        // The fresh block normalizes the seed row representative to
+        // (x=3, [0,1]/2), so the identity-attitude modifier carries the
+        // compensating shift [0,1] (the pre-locator code computed the same
+        // shift; upstream's zero shift relies on add_block keeping z
+        // verbatim as the seed row).
+        assert_eq!(
+            installed.relative_shift(),
+            &RationalWeight::new(vec![0, 1], 1).unwrap()
+        );
+        assert_eq!(installed.adapted_representative(), &srm_p);
+
+        let located = owner.lookup_full_block(&q).unwrap();
+        assert_eq!(located.block_id(), installed.block_id());
+        assert_eq!(located.raw_row(), 0, "oracle: element 0");
+        assert!(!located.has_identity_generator_attitude());
+        let modifier = located.block_modifier();
+        assert_eq!(
+            modifier.w().reduced_word(&system).unwrap(),
+            vec![1],
+            "oracle: as transformed by <1>"
+        );
+        assert_eq!(modifier.simple_pi(), &[0]);
+        assert_eq!(
+            located.relative_shift(),
+            &RationalWeight::new(vec![0, 1], 4).unwrap()
+        );
+        assert_eq!(
+            located.adapted_representative(),
+            &srm_q,
+            "round trip restores the query srm"
+        );
+
+        // Re-querying p keeps the stored block's identity attitude.
+        let again = owner.lookup_full_block(&p).unwrap();
+        assert_eq!(again.block_id(), installed.block_id());
+        assert_eq!(again.raw_row(), 1);
+        assert!(again.has_identity_generator_attitude());
+        assert_eq!(again.relative_shift(), installed.relative_shift());
+
+        // A partial lookup of q resolves to the same full block, still at
+        // the relative attitude.
+        let partial = owner.lookup(&q).unwrap();
+        assert_eq!(partial.block_id(), installed.block_id());
+        assert!(!partial.has_identity_generator_attitude());
+    }
+
+    /// The rank-zero anchor of
+    /// `tests/fixtures/domain/common_block_rank0_locator.atlas`: p0 =
+    /// `param(KGB(rf,3),[0,0],[-3,-3]/4)` installs a singleton block; q0 =
+    /// `param(KGB(rf,3),[0,0],[-3,1]/4)` has no integral roots either, so
+    /// both intern the empty canonical datum and collide, with the
+    /// attitude difference the oracle prints as `<0.1.0>`.
+    #[test]
+    fn rank_zero_query_reuses_the_singleton_block_at_nonidentity_attitude() {
+        let fixture = sl3r_fixture();
+        let owner = owner(&fixture);
+        let rc = owner.context();
+        let system = rc.root_system().clone();
+
+        let p0 = sl3r_param(&rc, 3, &RationalWeight::new(vec![-3, -3], 4).unwrap()).1;
+        let q0 = sl3r_param(&rc, 3, &RationalWeight::new(vec![-3, 1], 4).unwrap()).1;
+
+        let installed = owner.lookup_full_block(&p0).unwrap();
+        assert_eq!(installed.block().size(), 1);
+        assert_eq!(installed.raw_row(), 0);
+        assert!(installed.has_identity_generator_attitude());
+
+        let located = owner.lookup_full_block(&q0).unwrap();
+        assert_eq!(located.block_id(), installed.block_id());
+        assert_eq!(located.raw_row(), 0);
+        assert!(!located.has_identity_generator_attitude());
+        let modifier = located.block_modifier();
+        assert_eq!(
+            modifier.w().reduced_word(&system).unwrap(),
+            vec![0, 1, 0],
+            "oracle: as transformed by <0.1.0>"
+        );
+        assert_eq!(modifier.simple_pi(), &[] as &[usize]);
+        // Stored row [7,7]/4 shifted by [-5,-4]/4 reads back as the
+        // oracle's printed [2,3]/4 before the closing transform.
+        assert_eq!(
+            located.relative_shift(),
+            &RationalWeight::new(vec![-5, -4], 4).unwrap()
+        );
+        let expected = StandardReprMod::mod_reduce(&rc, &q0.made_dominant(&rc).unwrap()).unwrap();
+        assert_eq!(located.adapted_representative(), &expected);
     }
 
     #[test]
