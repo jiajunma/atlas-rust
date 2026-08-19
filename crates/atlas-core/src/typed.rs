@@ -11706,6 +11706,49 @@ mod tests {
             error.message,
             "Cannot subscript value of type mat with index of type (int,string) in assignment"
         );
+        // Transform range checks fire on the synthetic READ, so the oracle
+        // quotes the selection with subscription wording.
+        let error = convert_and_run_with("v[5] +:= 1", &globals).expect_err("vec transform range");
+        assert_eq!(
+            error.message,
+            "index 5 out of range (0<= . <3) in subscription v[5]"
+        );
+        let error =
+            convert_and_run_with("M[5] +:= v", &globals).expect_err("column transform range");
+        assert_eq!(
+            error.message,
+            "index 5 out of range (0<= . <2) in matrix column selection M[5]"
+        );
+        let error =
+            convert_and_run_with("M[5,0] +:= 1", &globals).expect_err("entry transform range");
+        assert_eq!(
+            error.message,
+            "initial index 5 out of range (0<= . <2) in matrix subscription M[5,0]"
+        );
+        // Assignment range messages quote the assignment node, including the
+        // conversion tag of a converted right side (range_mess, axis.w:7953).
+        let error = convert_and_run_with("M[5] := [1,2]", &globals).expect_err("column range");
+        assert_eq!(
+            error.message,
+            "index 5 out of range (0<= . <2) in matrix column assignment M[5]:=V[I]:[1,2]"
+        );
+        let error = convert_and_run_with("M[5,0] := 1", &globals).expect_err("entry range");
+        assert_eq!(
+            error.message,
+            "initial index 5 out of range (0<= . <2) in matrix entry assignment M[(5,0)]:=1"
+        );
+        // A replacement column must match the matrix height.
+        let error = convert_and_run_with("M[0] := [9]", &globals).expect_err("column size");
+        assert_eq!(
+            error.message,
+            "Cannot replace column of size 2 by one of size 1"
+        );
+        // A pair index only subscriptions a matrix.
+        let error = convert_and_run_with("v[0,1]", &globals).expect_err("vec pair index");
+        assert_eq!(
+            error.message,
+            "Cannot subscript value of type vec with index of type (int,int)"
+        );
     }
 
     #[test]
