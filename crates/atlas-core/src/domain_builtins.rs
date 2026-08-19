@@ -13512,20 +13512,11 @@ pub(crate) fn call_with_printed(
                     .repr
                     .made_dominant(&rc)
                     .map_err(|e| runtime(span, e.to_string()))?;
-                let located = match parameter.context.rep.lookup(&z) {
-                    Ok(located) => located,
-                    // The shared table cannot yet merge overlapping partial
-                    // blocks (RepTable::commit_partial NYI); fall back to the
-                    // full block, whose per-row length is the same Bruhat
-                    // height — the element's whole downset is present in
-                    // both blocks.
-                    Err(StructureError::NotYetImplemented { .. }) => parameter
-                        .context
-                        .rep
-                        .lookup_full_block(&z)
-                        .map_err(|error| structure_diagnostic(error, span))?,
-                    Err(error) => return Err(structure_diagnostic(error, span)),
-                };
+                let located = parameter
+                    .context
+                    .rep
+                    .lookup(&z)
+                    .map_err(|error| structure_diagnostic(error, span))?;
                 let length = located
                     .block()
                     .length(located.raw_row())
