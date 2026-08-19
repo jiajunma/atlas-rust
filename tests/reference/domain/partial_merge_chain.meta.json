@@ -1,0 +1,26 @@
+{
+ "fixture": "domain/partial_merge_chain.atlas",
+ "fixture_sha256": "44eeb592d3cbd290549042372528ae8095a5596a872bb3d4caea5ceee6cb07bb",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "not_implemented",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "cap3575819",
+ "reference_commit": "0f9b65eec5c1375d1bf82860022011388421da80",
+ "reference_report_sha256": "1974de9542da70b35fbe3fe99a0f2447b8f24c1ab58218aefa331e27f1a5aa1a",
+ "source_archive_sha256": "4a900f673b8b12822a5e84986e10bf436741fe59fd5f1f13a2218514499d636a",
+ "oracle_exit_status": 0,
+ "oracle_seconds": 0.012,
+ "oracle_maxrss_kb": 4408,
+ "oracle_maxrss_approximate": false,
+ "notes": "F2 plus a second-order merge (11-row union block below p10, partial links differ from the full block at row 7), lengths unchanged by merge history, and final print_common_block promotion through the merged cache to the 12-row full block. Slice F3 of docs/slices/partial_merge_workorder.md. Current Rust: loud NYI. Do NOT register before the merge port lands.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
+}

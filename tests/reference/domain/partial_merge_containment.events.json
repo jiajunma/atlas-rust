@@ -1,0 +1,74 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "domain/partial_merge_containment",
+ "status": "verified_hpc_reference",
+ "events": [
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'rb': RootDatum\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "simply connected root datum of Lie type 'B2'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'ib': InnerClass\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "Complex reductive group of type B2, with involution defining\ninner class of type 'c', with 3 real forms and 3 dual real forms"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'rfb': RealForm\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "connected split real group with Lie algebra 'so(3,2)'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'pb': Param\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "final parameter(x=5,lambda=[2,2]/1,nu=[1,-1]/2)"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "0:  0  [i1]  *   (*,*)  *(x=5,gamma-lambda=  [1,-1]/2)  1^e\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'pd': Param\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "final parameter(x=10,lambda=[1,2]/1,nu=[1,7]/2)"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "0:  0  [i1]  1   (2,*)  *(x= 4,gamma-lambda=  [1,-1]/2)  1^e\n1:  0  [i1]  0   (2,*)  *(x= 5,gamma-lambda=  [1,-1]/2)  1^e\n2:  1  [r1]  2   (0,1)  *(x=10,gamma-lambda=   [3,3]/2)  1^2x1^e\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Subset {1} in the following common block:\n0:  0  [i1]  1   (2,*)  *(x= 4,gamma-lambda=  [1,-1]/2)  1^e\n1:  0  [i1]  0   (2,*)  *(x= 5,gamma-lambda=  [1,-1]/2)  1^e\n2:  1  [r1]  2   (0,1)  *(x=10,gamma-lambda=   [3,3]/2)  1^2x1^e\n"
+  }
+ ]
+}

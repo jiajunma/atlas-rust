@@ -1,0 +1,88 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "domain/partial_merge_a2",
+ "status": "verified_hpc_reference",
+ "events": [
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'ra': RootDatum\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "simply connected root datum of Lie type 'A2'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'ia': InnerClass\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "Complex reductive group of type A2, with involution defining\ninner class of type 'c', with 2 real forms and 1 dual real form"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'rfa': RealForm\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "connected quasisplit real group with Lie algebra 'su(2,1)'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'q3': Param\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "final parameter(x=3,lambda=[1,1]/1,nu=[-1,2]/2)"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "0:  0  [i1,i1]  *  1   (*,*)  (2,*)  *(x=0,gamma-lambda=   [0,0]/1)  e\n1:  0  [ic,i1]  1  0   (*,*)  (2,*)  *(x=2,gamma-lambda=   [0,0]/1)  e\n2:  1  [C+,r1]  *  2   (*,*)  (0,1)  *(x=3,gamma-lambda=   [0,0]/1)  2^e\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'q4': Param\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "final parameter(x=4,lambda=[1,1]/1,nu=[2,-1]/2)"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Subset {0,1,4} in the following common block:\n0:  0  [i1,i1]  1  2   (4,*)  (3,*)  *(x=0,gamma-lambda=   [0,0]/1)  e\n1:  0  [i1,ic]  0  1   (4,*)  (*,*)  *(x=1,gamma-lambda=   [0,0]/1)  e\n2:  0  [ic,i1]  2  0   (*,*)  (3,*)  *(x=2,gamma-lambda=   [0,0]/1)  e\n3:  1  [C+,r1]  *  3   (*,*)  (0,2)  *(x=3,gamma-lambda=   [0,0]/1)  2^e\n4:  1  [r1,C+]  4  *   (0,1)  (*,*)  *(x=4,gamma-lambda=   [0,0]/1)  1^e\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Subset {0,2,3} in the following common block:\n0:  0  [i1,i1]  1  2   (4,*)  (3,*)  *(x=0,gamma-lambda=   [0,0]/1)  e\n1:  0  [i1,ic]  0  1   (4,*)  (*,*)  *(x=1,gamma-lambda=   [0,0]/1)  e\n2:  0  [ic,i1]  2  0   (*,*)  (3,*)  *(x=2,gamma-lambda=   [0,0]/1)  e\n3:  1  [C+,r1]  *  3   (*,*)  (0,2)  *(x=3,gamma-lambda=   [0,0]/1)  2^e\n4:  1  [r1,C+]  4  *   (0,1)  (*,*)  *(x=4,gamma-lambda=   [0,0]/1)  1^e\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "1"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "1"
+   }
+  }
+ ]
+}
