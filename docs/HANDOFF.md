@@ -3410,3 +3410,12 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   prints unmerged partial rows where the oracle prints the merged
   `Subset {...} in the following common block`). Registration can proceed
   as each slice lands without regenerating events.
+- Next-wave plan (beyond the current queue) is frozen at
+  `docs/slices/next_wave_production_plan.md` (recon agent-77): every live
+  NYI gate maps to the in-flight queue; the big remaining item is the
+  non-integral common-block Param surface (`common_block_rows` gate,
+  domain_builtins.rs:9431), then the parser pair (2-D slice, commabarlist),
+  then KL_sum_at_s lambda-rho / full_deform scope, then small surface fixes.
+  Concurrency rule: domain_builtins.rs items never run concurrently.
+  Rank-0 non-integral ext builtins uniformly return a size-1 block upstream
+  (plan §G) — verify at slice-1A review, else dispatch a small follow-up.
