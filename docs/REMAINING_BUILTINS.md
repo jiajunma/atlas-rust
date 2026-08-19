@@ -296,9 +296,26 @@ rhs, index, range check) with the `range_mess` wording
 out-of-range TRANSFORM diagnostic prints the converted call upstream
 (`a[5] succ@int:= ()` via the `x+1→succ(x)` optimisation); the
 syntax-error `expecting` list after a non-assignable target says `'='`
-where bison says `'\n'`; vec/mat/ratvec subscription reads and vec/mat component assignment and
-transforms are implemented locally (HPC differential capture still pending
-for this slice).
+where bison says `'\n'`.
+~~vec/mat/ratvec subscription reads and vec/mat component assignment and
+transforms~~ LANDED 2026-08-19/20 (`0b7e84d` + `6a64816`, local gates
+green — 329 atlas-core lib tests; HPC fixture capture optional, the
+behavior is rejection/wording-heavy and unit+battery verified):
+`v[i]`/`rv[i]` → int/rat, `M[i]` → vec column, `M[i,j]` → int entry
+(column-major storage, parser.y:585-598), `~[` counts from the end (BOTH
+indices for the pair form). Writes: vec element, matrix column
+(`M[i] := v`, size mismatch "Cannot replace column of size R by one of
+size S"), matrix entry (`M[i,j] := v`), and all `op:=` transform forms.
+ratvec is READ-ONLY ("Cannot subscript value of type ratvec with index
+of type int in assignment"). Transform range checks fire on the synthetic
+READ (selection wording: "in subscription v[5]" / "in matrix column
+selection M[5]" / "in matrix subscription M[5,0]"); assignment checks
+quote the assignment node incl. conversion tags ("in matrix column
+assignment M[5]:=V[I]:[1,2]", pair WITH parens for entry assignment,
+without for subscription). Unit test
+`vector_and_matrix_subscriptions_read_and_write_components` + full oracle
+battery diffed clean (message texts verbatim; only the diagnostic frame
+formatting differs, which the harness normalizes).
 Fixtures `combined_assignment{,_rejected}` cover the rest.
 
 Two-index subscription gap — FIXED (2026-08-19): `M[i,j]` / `M~[i,j]`
