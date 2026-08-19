@@ -1,0 +1,26 @@
+{
+ "fixture": "eval/matrix_2d_slice.atlas",
+ "fixture_sha256": "926a321797ee72a9d9e2e686a408184536f3427a18c19ed7cc0634a76952697f",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "cap3583469",
+ "reference_commit": "3aaecc7e8c15e14914d022eb3852e6c9de077179",
+ "reference_report_sha256": "1b6097a56c7e7e3b4dcb0d37b1fff592c71edc836fc81068a63fb095ff26033a",
+ "source_archive_sha256": "84f57955fce48cf9c621af245d0226ffcffc6b5e154aed145947f65213abf2a8",
+ "oracle_exit_status": 0,
+ "oracle_seconds": 0.102,
+ "oracle_maxrss_kb": 3504,
+ "oracle_maxrss_approximate": false,
+ "notes": "2-D matrix slice M[rlo:rhi, clo:chi] (parser.y:658-705): SliceFlags column from-end bits, eval packs flags into matreduc::swiss_matrix_knife. Landed in commit 3aaecc7; accepted fixture byte-identical against this capture (28 events, expected_cli_observation self-check passes).",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
+}

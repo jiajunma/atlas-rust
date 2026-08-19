@@ -1,0 +1,26 @@
+{
+ "fixture": "eval/commabarlist.atlas",
+ "fixture_sha256": "ec63461eca7b95dd1cc0380129a96758e944a17e463539cfe84019d47427cada",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "cap3583471",
+ "reference_commit": "3aaecc7e8c15e14914d022eb3852e6c9de077179",
+ "reference_report_sha256": "15a60740139105f1dd5613235ba1d946fa100af69cea0d1fb1edf06a9b3be945",
+ "source_archive_sha256": "84f57955fce48cf9c621af245d0226ffcffc6b5e154aed145947f65213abf2a8",
+ "oracle_exit_status": 0,
+ "oracle_seconds": 0.133,
+ "oracle_maxrss_kb": 3552,
+ "oracle_maxrss_approximate": false,
+ "notes": "commabarlist [a,b | c,d] (parser.y:370-410): dedicated Expr::BarList AST node reproducing the hidden \"transpose \" overload-immunity (oracle-probed: set ^(mat N) does NOT change commabarlist); column-major build, per-row narrowing before rectangularity. Landed in commit 3aaecc7; byte-identical (29 events).",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
+}

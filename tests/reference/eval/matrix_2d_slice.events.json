@@ -1,0 +1,164 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "eval/matrix_2d_slice",
+ "status": "verified_hpc_reference",
+ "events": [
+  {
+   "kind": "ReportLine",
+   "text": "Variable M: mat\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "\n| 1, 4 |\n| 2, 5 |"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "\n| 2, 5 |\n| 3, 6 |"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "\n| 1, 4 |\n| 2, 5 |\n| 3, 6 |"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "\n| 4 |\n| 5 |"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "\n| 3, 6 |"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "\n| 1, 4 |\n| 2, 5 |"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "list",
+    "display": "The 1x0 matrix"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "list",
+    "display": "The 0x2 matrix"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "list",
+    "display": "The 0x2 matrix"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "list",
+    "display": "The 2x0 matrix"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "\n| 2, 5 |"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "\n| 1 |\n| 2 |"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "list",
+    "display": "The 0x0 matrix"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "\n| 1, 2 |"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "list",
+    "display": "[\n| 1, 4 |"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": ",\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "| 1, 4 |\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "]\n"
+  }
+ ]
+}

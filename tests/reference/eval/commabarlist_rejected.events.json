@@ -1,0 +1,42 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "eval/commabarlist_rejected",
+ "status": "verified_hpc_reference",
+ "events": [
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Vector sizes differ in conversion to matrix"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "found string while int was needed."
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "found rat while int was needed."
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "found vec while int was needed."
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Integer value to big for conversion"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Vector sizes differ in conversion to matrix"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "syntax",
+   "message": "syntax error, unexpected ']'"
+  }
+ ]
+}

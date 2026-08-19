@@ -849,6 +849,12 @@ FIXTURE_PLANS = (
     # generic operator between exact and coercible overloads.
     FixturePlan(name="eval/row_operators"),
     FixturePlan(name="eval/row_operators_rejected"),
+    # Parser pair: 2-D matrix slice M[r,c] (parser.y:658-705) and
+    # commabarlist [a,b | c,d] (parser.y:370-410, overload-immune).
+    FixturePlan(name="eval/matrix_2d_slice"),
+    FixturePlan(name="eval/matrix_2d_slice_rejected"),
+    FixturePlan(name="eval/commabarlist"),
+    FixturePlan(name="eval/commabarlist_rejected"),
 )
 
 

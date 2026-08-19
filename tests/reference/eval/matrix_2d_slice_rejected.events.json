@@ -1,0 +1,85 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "eval/matrix_2d_slice_rejected",
+ "status": "verified_hpc_reference",
+ "events": [
+  {
+   "kind": "ReportLine",
+   "text": "Variable M: mat\n"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Range exceeds bounds: upper row bound 9 out of range, actual limits are3, 2"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Range exceeds bounds: both row bounds 5,6 out of range, actual limits are3, 2"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Range exceeds bounds: lower row bound 9 out of range, actual limits are3, 2"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Range exceeds bounds: upper column bound 5 out of range, actual limits are3, 2"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Range exceeds bounds: upper row bound 9 and upper column bound 8 out of range, actual limits are3, 2"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Range exceeds bounds: lower row bound 4 out of range, actual limits are3, 2"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Negative integer where unsigned is required"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Negative integer where unsigned is required"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Range exceeds bounds: upper row bound 9 out of range, actual limits are3, 2"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Variable v: [int]\n"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "found [int] while mat was needed."
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "found (int,mat,int,string,int,int) while (int,mat,int,int,int,int) was needed."
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "found string while mat was needed."
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "syntax",
+   "message": "syntax error, unexpected ',', expecting ']'"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "syntax",
+   "message": "syntax error, unexpected ',', expecting ']'"
+  }
+ ]
+}

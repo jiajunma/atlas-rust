@@ -1,0 +1,26 @@
+{
+ "fixture": "eval/commabarlist_rejected.atlas",
+ "fixture_sha256": "e9bed6af227d0600d0b3c98c374b07cb06e1601196b22bed3df14d11e04cf96d",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "cap3583472",
+ "reference_commit": "3aaecc7e8c15e14914d022eb3852e6c9de077179",
+ "reference_report_sha256": "f66989da982137f0840a0f95620a35d1fe268aec51be380f1e7becc235bc66db",
+ "source_archive_sha256": "84f57955fce48cf9c621af245d0226ffcffc6b5e154aed145947f65213abf2a8",
+ "oracle_exit_status": 1,
+ "oracle_seconds": 0.131,
+ "oracle_maxrss_kb": 3700,
+ "oracle_maxrss_approximate": false,
+ "notes": "Rejected half of commabarlist: ragged rows (runtime Vector sizes differ), non-int entries (type found string/rat/vec while int was needed.), oversized literal, no-value for-loop body, and the empty-row syntax error. 7 events.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
+}

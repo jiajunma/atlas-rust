@@ -1,0 +1,26 @@
+{
+ "fixture": "eval/matrix_2d_slice_rejected.atlas",
+ "fixture_sha256": "b17e33c9d2352b8fbdeafa6b050e606bcd9ea1cb26da944e12f8b55a54f0355c",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "cap3583470",
+ "reference_commit": "3aaecc7e8c15e14914d022eb3852e6c9de077179",
+ "reference_report_sha256": "3e93cf6931cc7e206818eb9fb266c007ddec8858d7807551c2aaad024ca0288d",
+ "source_archive_sha256": "84f57955fce48cf9c621af245d0226ffcffc6b5e154aed145947f65213abf2a8",
+ "oracle_exit_status": 1,
+ "oracle_seconds": 0.104,
+ "oracle_maxrss_kb": 3724,
+ "oracle_maxrss_approximate": false,
+ "notes": "Rejected half of the 2-D slice surface: 9 runtime range/unsigned errors (incl. combined upper-row+upper-column wording and 'actual limits are3, 2' no-space clamp), 3 type errors (base must be mat; whole-tuple wording (int,mat,int,string,int,int)), 2 syntax errors (M~[...] and 3-axis forms reject at the comma). 16 events incl. 2 ReportLines for the set lines.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
+}
