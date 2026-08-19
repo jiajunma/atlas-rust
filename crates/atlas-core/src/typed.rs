@@ -11837,6 +11837,49 @@ mod tests {
     }
 
     #[test]
+    fn two_index_subscription_parses_then_fails_typing_like_the_oracle() {
+        // parser.y:585-598,606-613: `M[i,j]` (and `M~[i,j]`) parses as a
+        // subscription whose index is a two-element tuple display; typing
+        // always rejects the tuple index (axis.w:4101-4105). Three indices
+        // stay a syntax error upstream ("unexpected ',', expecting ']'").
+        let error = convert_and_run("[[1,2],[3,4]][0,1]").expect_err("tuple index");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(
+            error.message,
+            "Cannot subscript value of type [[int]] with index of type (int,int)"
+        );
+
+        let error = convert_and_run("[[1,2],[3,4]]~[0,1]").expect_err("reversed tuple index");
+        assert_eq!(
+            error.message,
+            "Cannot subscript value of type [[int]] with index of type (int,int)"
+        );
+
+        let cell = crate::frames::global_with(Rc::new(Value::List(vec![
+            Value::Integer(1.into()),
+            Value::Integer(2.into()),
+            Value::Integer(3.into()),
+        ])));
+        let mut globals = IdTable::new();
+        globals.define("a", Type::row(Type::Primitive(Prim::Int)), cell);
+        let error =
+            convert_and_run_with("a[0,1] := 5", &globals).expect_err("tuple component assignment");
+        assert_eq!(
+            error.message,
+            "Cannot subscript value of type [int] with index of type (int,int) in assignment"
+        );
+        let error =
+            convert_and_run_with("a[0,1] +:= 5", &globals).expect_err("tuple component transform");
+        assert_eq!(
+            error.message,
+            "Cannot assign to component of value of type [int] selected by index of type (int,int) in transforming assignment"
+        );
+
+        let error = parse(&SourceText::new("[[1,2],[3,4]][0,1,2]")).expect_err("three indices");
+        assert_eq!(error.kind, ErrorKind::Syntax);
+    }
+
+    #[test]
     fn string_subscription_yields_one_character_strings() {
         // Upstream `string_subscription` (axis.w:4229-4239), including the
         // reversed form.

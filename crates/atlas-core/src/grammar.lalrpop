@@ -12,7 +12,7 @@ use super::{
     tuple_expression, function_binding,
     prepend_let_group,
     call_suffix, postfix, prefix_operator_call, slice_suffix, matrix_slice_suffix, start_binary_formula, start_prefix_formula,
-    subscription_suffix, type_group, type_function, type_primitive, type_row, type_union_append,
+    subscription_suffix, pair_index, type_group, type_function, type_primitive, type_row, type_union_append,
     type_union_start, type_variant, type_wild_row, unary, finish_conditional, if_tail,
     anonymous_parameter, const_pattern_name, finish_pattern, pattern_binding, pattern_empty_tuple,
     pattern_name, pattern_slots, pattern_tuple, prepend_while_effect, tuple_parameter,
@@ -315,6 +315,14 @@ AssignmentExpr: Expr = {
     <name:"identifier"> "~[" <index:Expr> "]" ":=" <value:AssignmentExpr> => {
         component_assignment(name, index, true, value)
     },
+    // Two-index forms (parser.y:585-598): the tuple index is rejected by
+    // typing with the "in assignment" wording.
+    <name:"identifier"> "[" <first:Expr> "," <second:Expr> "]" ":=" <value:AssignmentExpr> => {
+        component_assignment(name, pair_index(first, second), false, value)
+    },
+    <name:"identifier"> "~[" <first:Expr> "," <second:Expr> "]" ":=" <value:AssignmentExpr> => {
+        component_assignment(name, pair_index(first, second), true, value)
+    },
     // `name.field := value` (parser.y:266).
     <name:"identifier"> "." <field:"identifier"> ":=" <value:AssignmentExpr> => {
         field_assignment(name, field, value)
@@ -325,6 +333,12 @@ AssignmentExpr: Expr = {
     },
     <name:"identifier"> "~[" <index:Expr> "]" <operator:"operator_becomes"> <value:AssignmentExpr> => {
         component_transform(name, index, true, operator, value)
+    },
+    <name:"identifier"> "[" <first:Expr> "," <second:Expr> "]" <operator:"operator_becomes"> <value:AssignmentExpr> => {
+        component_transform(name, pair_index(first, second), false, operator, value)
+    },
+    <name:"identifier"> "~[" <first:Expr> "," <second:Expr> "]" <operator:"operator_becomes"> <value:AssignmentExpr> => {
+        component_transform(name, pair_index(first, second), true, operator, value)
     },
     <name:"identifier"> "." <field:"identifier"> <operator:"operator_becomes"> <value:AssignmentExpr> => {
         field_transform(name, field, operator, value)
@@ -398,6 +412,13 @@ Postfix: Expr = {
 PostfixSuffix: PostfixSuffix = {
     <_open:"["> <index:Expr> <close:"]"> => subscription_suffix(index, false, close),
     <_open:"~["> <index:Expr> <close:"]"> => subscription_suffix(index, true, close),
+    // Two-index subscription `M[i,j]` / `M~[i,j]` (parser.y:585-598,
+    // 606-613): exactly two indices forming a tuple display; typing then
+    // rejects the tuple index with the "Cannot subscript …" diagnostic.
+    <_open:"["> <first:Expr> <_comma:","> <second:Expr> <close:"]"> =>
+        subscription_suffix(pair_index(first, second), false, close),
+    <_open:"~["> <first:Expr> <_comma:","> <second:Expr> <close:"]"> =>
+        subscription_suffix(pair_index(first, second), true, close),
     <subject_reversed:SliceOpen> <lower:Expr?> <lower_reversed:TildeOpt>
         <colon:":"> <upper:Expr?> <upper_reversed:TildeOpt> <close:"]"> => {
         slice_suffix(

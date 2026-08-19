@@ -280,10 +280,20 @@ rhs, index, range check) with the `range_mess` wording
 out-of-range TRANSFORM diagnostic prints the converted call upstream
 (`a[5] succ@int:= ()` via the `x+1→succ(x)` optimisation); the
 syntax-error `expecting` list after a non-assignable target says `'='`
-where bison says `'\n'`; two-index `M[i,j] := v` needs the (missing)
-two-index subscription read path first; vec/mat component assignment is
+where bison says `'\n'`; vec/mat component assignment is
 upstream-legal but shares the unimplemented vec/mat subscription gap.
 Fixtures `combined_assignment{,_rejected}` cover the rest.
+
+Two-index subscription gap — FIXED (2026-08-19): `M[i,j]` / `M~[i,j]`
+(and the assignment/transform forms `a[i,j] := v`, `a[i,j] op:= v`) now
+parse with a two-element tuple-display index (parser.y:585-598,606-613
+`expr ',' expr` productions; new `PostfixSuffix` arms + `pair_index` in
+grammar.lalrpop/syntax.rs), then fail typing exactly like the oracle:
+"Cannot subscript value of type [[int]] with index of type (int,int)",
+the "in assignment" / "in transforming assignment" variants, and
+`M[0,1,2]` stays the syntax error "unexpected ',', expecting ']'".
+Unit test `two_index_subscription_parses_then_fails_typing_like_the_oracle`;
+CLI probed byte-equal against the local oracle on the rejected battery.
 
 `set_type` alias declaration gap — FIXED (2026-08-19, post-63e8118):
 `p: Pair` after `set_type Pair = (int x, int y)` now declares, by

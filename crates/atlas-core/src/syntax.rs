@@ -2043,6 +2043,17 @@ fn subscription_suffix(index: Expr, reversed: bool, close: SourceSpan) -> Postfi
     }
 }
 
+/// Two-index subscription `M[i,j]` (parser.y:585-598,606-613): the index is
+/// a two-element tuple display. Typing always rejects it ("Cannot subscript
+/// … with index of type (int,int)"), but the parse must succeed to reach
+/// that diagnostic — upstream has the dedicated `expr ',' expr` production.
+pub fn pair_index(first: Expr, second: Expr) -> Expr {
+    Expr::Tuple {
+        span: join_span(first.span(), second.span()),
+        elements: vec![first, second],
+    }
+}
+
 fn slice_suffix(
     lower: Option<Expr>,
     upper: Option<Expr>,
