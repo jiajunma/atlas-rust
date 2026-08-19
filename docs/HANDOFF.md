@@ -3475,3 +3475,41 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
 - Serial rule remains: domain_builtins.rs is single-owner. After step-4
   lands, dispatch order is slice-1B (extended_block gate + rank-0
   non-integral放行), then dual_KL_block wiring, then twisted slices 2-5.
+
+## 2026-08-19 evening: step-4 landed, row ops + dual landed, next wave dispatched
+
+- agent-82 `PartialBlock::dual` landed (`d5419c3`): BareBlock + sealed
+  BlockTopology, blocks.cpp:474-507 verbatim semantics, oracle-pinned B2
+  proper/A2 split dual tests incl. dual KL matrices. dual_KL_block(Param)
+  wiring instructions in the agent-82 report (10-step reroute through
+  lookup_full_block + located params + singular_flags; needs lib.rs
+  BareBlock export).
+- agent-81 generic row operators landed (`a2c2737`): axis.w:1549-1579
+  exact→generic→coercible order, hidden_special_variant shape matcher
+  (2544-2595), four Row* ScalarOps. Fixtures row_operators{,_rejected}
+  byte/payload-identical to oracle; captures 3582025/3582026; registered
+  pending_hpc_differential (`f696a05`). `#:=` combined assignment recorded
+  as a pre-existing parser gap.
+- agent-83 locator step-4 landed (`5215c42`) — RE-DISPATCH of agent-79
+  (hung 46 min, zero output; killed). print_common_block fully transported
+  (print_c_block_wrapper headers `<w>` + `simple reflections permuted`,
+  modifier-aware singular flags blocks.cpp:711-721, sr_with_modifier
+  repr.cpp:815-823); ALL scopes route through lookup_full_block (canonical
+  stored row order is oracle-visible); print_block proper arm now builds a
+  FRESH block (closed a proven pre-existing init-index divergence). Nine
+  attitude gates released (KL_column/KL_block/block/print_block/
+  print_common_block/kl_sum_at_s/partial_block/W_graph+W_cells/
+  block_Hasse); print_partial_common_block gate stays (step 5). Three
+  locator anchors registered pending_hpc_differential; local run_fixture
+  PASS ×3; 314 atlas-core tests.
+- Fat differential **3582163 @ 5215c42 in flight** (locator 3 + row
+  operators 2 + full-corpus regression). On 0 FAIL: bump the five metas
+  to verified_hpc with differential_job=3582163.
+- In flight: agent-84 parser pair 2-D slice + commabarlist (syntax.rs +
+  typed.rs slice arm; swiss_matrix_knife engine already landed);
+  agent-85 slice-1B extended_block on proper subsystems + rank-0
+  non-integral (domain_builtins.rs, wiring per agent-73 notes + twisted
+  workorder slice 1; registers ext_block_proper).
+- Next after agent-85 frees domain_builtins.rs: dual_KL_block wiring
+  (agent-82 instructions), then twisted slices 2-5, then next-wave A
+  (non-integral common block, the largest remaining item).
