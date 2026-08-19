@@ -3348,3 +3348,53 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   always get fresh owners. The KL table itself must ultimately live in each
   shared block record, otherwise rebuilding `KlTable` in every language caller
   loses the cache effects observed by timed deformation.
+
+## 2026-08-19 global.w sweep + locator/twisted-ext/partial-merge stage
+
+- Reference ledger: 285+ fixtures `verified_hpc`. Remaining frozen anchors:
+  3 locator + `ext_block_proper` + 2 `length_dual` + 4 `partial_merge`
+  (all `not_implemented`, captured but unregistered).
+- global.w ported in four batches. Batch 1 `15a3292` (differential 3574838),
+  batch 2 `c5afd9c` (capture 3574906, differential 3574922: 291 PASS + 1
+  declared PARTIAL), batch 3 `703a982` (matreduc.rs linear algebra, capture
+  3574944, differential 3575810: 295 PASS). Batch 4 in flight (agent-76):
+  `swiss_matrix_knife`, `mod2_section`, `subspace_normal` per
+  `docs/slices/global_batch4_workorder.md`; the hidden "matrix slicer" /
+  "transpose " signatures are parser-layer gaps (2-D slice syntax, commabarlist
+  row display), recorded in REMAINING, deliberately not ported.
+- Non-integral common-block slices 1-2 verified at `31064b1`:
+  `length(Param)` via shared lookup, `print_partial_common_block` heads.
+  Slice 3 remaining: `dual_KL_block(Param)` needs `PartialBlock::dual`
+  (blocks.cpp:474-507, pure combinatorial reversal); see
+  `docs/slices/nonintegral_common_block_workorder.md`.
+- RepTable locator landed in steps: step-1 `79b6b9d` (BlockLocator/int_item),
+  step-2 `740f4d8` (block_modifier arithmetic, 464 tests green). Step-3 in
+  flight (agent-72): attitude gates on KL_column/KL_block/print_block(s)/
+  kl_sum_at_s_terms + canonical keys into RepTable::lookup/lookup_full_block;
+  brief at `docs/slices/locator_integration_brief.md`. Known defect pinned
+  there: A2 SL(3,R) family identity-attitude shift is wrong (gamma-lambda rows
+  0/2: oracle [-1,1]/2 vs Rust [-3,3]/2). Step-4 next: transport consumers,
+  header, un-gate, register the three locator fixtures (their events.json use
+  the stale `Variable x: T` ReportLine convention — regenerate with
+  `Declaring identifier 'x': T` before registering).
+- Twisted/ext proper: workorder `docs/slices/twisted_ext_proper_workorder.md`.
+  Slice order: 1 extended_block (1A constructor over PartialBlock in flight,
+  agent-73; 1B wiring replaces the gate at domain_builtins.rs:14829),
+  2 raw_ext_KL + partial_extended_KL_block, 3 twisted_KL_sum_at_s,
+  4 twisted_deform, 5 twisted_full_deform recursion (hard-blocked on
+  partial-merge NYI).
+- Cross-block partial merge: workorder `docs/slices/partial_merge_workorder.md`
+  (recon agent-75). `RepTable::commit_partial` merge minimal port: append /
+  pool-extend / union-rebuild / retire; no Hasse move, block_access recomputed
+  on demand. Two existing tests pin NYI behaviour
+  (rep_table.rs:2057 `unsupported_partial_overlap_is_failure_atomic`,
+  rep_table.rs:2246 concurrent overlap) and must be rewritten to pin merge
+  results; the `length()` fallback arm (domain_builtins.rs:13478-13482) is
+  deleted at merge time. Anchors F1-F4 frozen (capture 3575819, unregistered).
+- Operational notes: subagents share the working tree; dispatch with strict
+  file scopes, no subagent commits, `cargo fmt -p <crate>` scoping, and retry
+  transient mid-edit compile errors after 60s. Quota 403s kill subagents —
+  recover in place with `Agent(resume="agent-NN")`; context and tree edits
+  survive. HPC full-corpus differentials must use the fat partition
+  (`--partition=fat --time=01:00:00 --mem=32G --export=ALL,TIMEOUT=3600`);
+  heavy fixtures OOM/timeout on cpu.
