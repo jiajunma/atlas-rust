@@ -70,15 +70,19 @@ does not close the upstream builtin registry.  As of 2026-08-18
 (docs/REMAINING_BUILTINS.md registry reconciliation), all 305
 `atlas-types.w` `(name,args,result)` signatures have exact Rust
 registrations, including `block(Param)` and timed `full_deform(Param,int)`.
-What remains: (a) the `global.w` general-purpose builtins (89 signatures:
-int/bitset utilities, rat decomposers, string/ascii, cardinality and matrix
-accessors, container relations and arithmetic, matrix constructors, and the
-`gcd`/`echelon`/`Smith`/`kernel`/`invert` linear algebra — landing in
-verified batches), and (b) reachable loud NYIs in the representation-theory
-core: generator-attitude gates (`partial_block`/`W_graph`/`W_cells`/
-`block_Hasse` on Param — the locator slice is in flight),
-proper-subsystem twisted/ext recursion, non-integral common blocks, and
-cross-block partial merge (rep_table.rs). Readline completion (TTY-only) and
+What remains: (a) the `global.w` general-purpose builtins are now FULLY
+dispositioned (all four batches verified_hpc; final batch 4 —
+`swiss_matrix_knife`, `mod2_section`, `subspace_normal` — by fat
+differential 3577111 at `ae6723b`; the only leftovers are two
+parser-layer gaps, 2-D slice syntax `M[i:k,j:l]` and the commabarlist
+row display `[a,b | c,d]`, recorded in `REMAINING_BUILTINS.md`, plus the
+documented `readline_completions` exclusion), and (b) reachable loud
+NYIs in the representation-theory core: generator-attitude transport
+(the locator slice: canonical Reduced_param keying landed at `38a81f8`,
+consumer transport in flight), proper-subsystem twisted/ext recursion
+(slice-1A ExtBlock-over-PartialBlock landed at `1e36a3c`), non-integral
+common blocks, and the cross-block partial merge (landed at `584717a`,
+verified by fat differential 3581761). Readline completion (TTY-only) and
 KL binary file formats (no Atlas-language builtin touches them; filekl.w
 serves stand-alone utilities only) remain deferred outside the
 language-only gate pending a user decision.
