@@ -1,5 +1,76 @@
 # Remaining builtin coverage (post-language-gate)
 
+## global.w batch 4 landed locally (2026-08-19, HPC capture pending)
+
+The LAST global.w slice (work order `docs/slices/global_batch4_workorder.md`):
+the flag-bitfield matrix slicer and the two GF(2) builtins, implemented in
+`crates/atlas-core/src/matreduc.rs` (`swiss_matrix_knife`, `mod2_section`,
+`subspace_normal`, plus a 10-line port of `permutations::standardization`,
+permutations.cpp:257-282) and three `ScalarOp`s in
+`crates/atlas-core/src/typed.rs`:
+
+- `swiss_matrix_knife` (int,mat,int,int,int,int->mat) (global.w:4675-4809,
+  install :5195-5196): rows `i:k`, columns `j:l`, half-open, 0-based. Flag
+  bits: 0/3 reverse output rows/columns; 1/2 and 4/5 read the row/column
+  bounds FROM THE END (`lwb = dim - bound`); 6 transposes (dims swapped
+  BEFORE the copy); 7 negates (WRAPPING i32 — `mat: [[-2147483648]]`
+  survives). `flags` truncates to its low 8 bits (BitSet<8>: `-1` sets all
+  bits, `256 == 0`, never throws); the four bounds narrow via `ulong_val()`
+  in upstream pop order `l, j, k, i` ("Negative integer where unsigned is
+  required" / "Integer value to big for conversion", typo verbatim). The
+  bounds diagnostic fires AFTER all six arguments evaluate and BEFORE the
+  no-value gate, uses the RAW bounds (from-end bits do not relax it), and
+  reads "Range exceeds bounds: ... out of range, actual limits are2, 2" —
+  NO space after "are", space after the comma; inverted ranges clamp to
+  empty keeping the (swapped) shape.
+- `mod2_section` (mat->mat) (global.w:5043-5053, bitvector.cpp:346-405):
+  GF(2) section `ABA=A`, `BAB=B`, TRANSPOSE-shaped (n_cols x n_rows) output,
+  entries `(x&1)!=0` (negative odd -> 1). NO validation and NO no-value gate
+  before the compute (only the push is gated). >64 rows/columns are guarded
+  upstream by `assert`s only — compiled out under NDEBUG, i.e. UB: the
+  pinned oracle silently drops the out-of-range bits (probed:
+  `mod2_section(null(65,1))` -> 1x65 zero, `null(1,65)` -> 65x1 zero,
+  `null(70,70)` -> 70x70 zero, no error). Rust MASKS row bits >= 64 on input
+  (and basis bits >= 64 for >64 columns), reproducing that observed
+  silent-drop; keep >64 inputs out of fixtures.
+- `subspace_normal` (mat->mat,mat,mat,[int]) (global.w:5062-5174): GF(2)
+  reduced column-echelon for possibly dependent generators, tracking
+  combinations and relations. Output columns are PIVOT-ASCENDING via
+  `standardization` (NOT loop order); relation columns follow generator
+  order minus pivoters (`d = j - l`). Validation BEFORE the no-value gate,
+  dim first: "Dimension too large: 65>64" / "Too many generators: 65>64"
+  (NO spaces around ">").
+
+Fixtures `tests/fixtures/eval/global_batch4.atlas` (35 lines) and
+`..._rejected.atlas` (14 rejections) verify against the local oracle:
+accepted diff is byte-identical; rejected payloads are verbatim-identical
+and exit codes match (the atlas-cli vs oracle error-report wrapper
+divergence is pre-existing). HPC reference capture NOT yet run — do not
+claim differential-verified status until that lands. The `i32::MIN`-negation
+slicer corner is unit-test pinned only; the work order defers its fixture to
+an HPC capture of the wrapping regime.
+
+Skipped / documented exclusions (the remaining 3 of the 6 unported global.w
+signatures from the batch-4 sweep; global.w is now FULLY dispositioned):
+
+- hidden `"matrix slicer"` (global.w:5197-5198): only reachable via the
+  two-dimensional slice syntax `M[i:k, j:l]` (parser.y:660-705), which the
+  Rust parser does not have — a PARSER-level gap, not a registry one. If
+  ever ported, call the same `matreduc::swiss_matrix_knife` engine; do not
+  register the hidden name.
+- hidden `"transpose "` (global.w:5188): only reachable via the commabarlist
+  row-display syntax `[a,b | c,d]` (separator `|`, parser.y:370-410);
+  `[1,2|3,4]` is a parse error in Rust today — likewise a parser-level gap.
+  If ever ported, build the transposed matrix directly in the parser/typer;
+  do not register the hidden name. (`[1,2; 3,4]` SEQUENCES upstream ->
+  `[1,3,4]`.)
+- `readline_completions` (string->[string]) (global.w:4390-4391): callable
+  and observable in batch mode, but its output enumerates `main_hash_table`
+  in INSERTION order — session- and hash-order-dependent (`#readline_completions("")`
+  is 297 at startup upstream). A stable differential target would require
+  replicating upstream's identifier insertion sequence byte-for-byte; its
+  purpose is readline completion for front-ends. Documented exclusion.
+
 ## global.w batch 3 landed locally (2026-08-19, HPC capture pending)
 
 The linear algebra builtins (work order `docs/slices/global_batch3_workorder.md`)
@@ -72,10 +143,11 @@ Semantic surprises found while oracle-checking (pinned in unit tests
 Skipped / deferred:
 
 - `mod2_section` (5211) and `subspace_normal` (5212): GF(2), deferred to
-  batch 4 by the work order.
+  batch 4 by the work order — LANDED in batch 4 (see above).
 - `swiss_matrix_knife` + hidden `"matrix slicer"` (5195-5198): the batch-3
-  work order does NOT list them (batch 2's gap note had guessed batch 3);
-  still unclaimed — decide a home batch for them.
+  work order does NOT list them (batch 2's gap note had guessed batch 3) —
+  `swiss_matrix_knife` LANDED in batch 4; the hidden copy is a documented
+  parser-gap exclusion (see above).
 - `gcd` was already landed in batch 2 (per the work order's claim note).
 
 ## global.w batch 2 verified_hpc (2026-08-19, differential 3574922)

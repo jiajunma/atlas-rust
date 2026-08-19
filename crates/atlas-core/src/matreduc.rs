@@ -865,6 +865,303 @@ pub(crate) fn row_saturate(m: &PidMatrix) -> PidMatrix {
     result
 }
 
+/// `swiss_matrix_knife` (global.w:4675-4809): the flag-bitfield slicer.
+/// `flags` is already reduced to its low 8 bits by the caller (upstream
+/// `BitSet<8>` from `int_val()`, no range or negativity check): bit 0/3
+/// reverse the output row/column order, bits 1/2 and 4/5 read the row and
+/// column bounds FROM THE END (`lwb = dim - bound`), bit 6 transposes the
+/// result (dimensions swapped before the copy), bit 7 negates every entry
+/// (wrapping i32, as C++ `int` arithmetic). The bounds diagnostic uses the
+/// RAW bounds — the from-end bits do not relax the check — and keeps the
+/// verbatim upstream texts, including the "to big"-style absence of a space
+/// after "are". The caller has already narrowed the four bounds via
+/// `ulong_val()` (upstream pop order `l, j, k, i`).
+pub(crate) fn swiss_matrix_knife(
+    flags: u8,
+    m: &PidMatrix,
+    i: u64,
+    k: u64,
+    j: u64,
+    l: u64,
+) -> Result<PidMatrix, String> {
+    let (rows, columns) = (m.rows as u64, m.columns as u64);
+    // global.w:4747-4771: report exactly which raw bounds are out of range.
+    let r = rows < i.max(k);
+    let c = columns < j.max(l);
+    if r || c {
+        let mut message = String::from("Range exceeds bounds: ");
+        if r {
+            if rows < k {
+                if rows < i {
+                    message.push_str(&format!("both row bounds {i},{k}"));
+                } else {
+                    message.push_str(&format!("upper row bound {k}"));
+                }
+            } else {
+                message.push_str(&format!("lower row bound {i}"));
+            }
+        }
+        if r && c {
+            message.push_str(" and ");
+        }
+        if c {
+            if columns < l {
+                if columns < j {
+                    message.push_str(&format!("both column bounds {j},{l}"));
+                } else {
+                    message.push_str(&format!("upper column bound {l}"));
+                }
+            } else {
+                message.push_str(&format!("lower column bound {j}"));
+            }
+        }
+        // No space after "are", a space after the comma (global.w:4770).
+        message.push_str(&format!(
+            " out of range, actual limits are{rows}, {columns}"
+        ));
+        return Err(message);
+    }
+    // The check passed, so every bound fits the matrix dimensions.
+    let (i, k, j, l) = (i as usize, k as usize, j as usize, l as usize);
+    let (m_rows, n_columns) = (m.rows, m.columns);
+    let lwb_r = if flags & 0x02 != 0 { m_rows - i } else { i };
+    let mut upb_r = if flags & 0x04 != 0 { m_rows - k } else { k };
+    let lwb_c = if flags & 0x10 != 0 { n_columns - j } else { j };
+    let mut upb_c = if flags & 0x20 != 0 { n_columns - l } else { l };
+    // global.w:4778-4781: inverted ranges clamp to empty, keeping the shape.
+    if lwb_r > upb_r {
+        upb_r = lwb_r;
+    }
+    if lwb_c > upb_c {
+        upb_c = lwb_c;
+    }
+    let rows_out = upb_r - lwb_r;
+    let columns_out = upb_c - lwb_c;
+    let transpose = flags & 0x40 != 0;
+    let negate = flags & 0x80 != 0;
+    let (r_size, c_size) = if transpose {
+        (columns_out, rows_out)
+    } else {
+        (rows_out, columns_out)
+    };
+    // transform_copy<transpose,negate> (global.w:4675-4702): the reversal
+    // tests stay outside the loops, exactly as upstream's `rev_flags`.
+    let mut result = PidMatrix::new(r_size, c_size);
+    for out_i in 0..rows_out {
+        let source_row = if flags & 0x01 != 0 {
+            upb_r - 1 - out_i
+        } else {
+            lwb_r + out_i
+        };
+        for out_j in 0..columns_out {
+            let source_column = if flags & 0x08 != 0 {
+                upb_c - 1 - out_j
+            } else {
+                lwb_c + out_j
+            };
+            let value = m.get(source_row, source_column);
+            let value = if negate { value.wrapping_neg() } else { value };
+            if transpose {
+                result.set(out_j, out_i, value);
+            } else {
+                result.set(out_i, out_j, value);
+            }
+        }
+    }
+    Ok(result)
+}
+
+/// `permutations::standardization` (permutations.cpp:257-282): `pi[l]` is
+/// the number of values `< a[l]` plus the number of EARLIER values equal to
+/// `a[l]` — the stable-sort destination permutation of `a`.
+fn standardization(a: &[usize], bound: usize) -> Vec<usize> {
+    let mut count = vec![0usize; bound];
+    for &value in a {
+        debug_assert!(value < bound);
+        count[value] += 1;
+    }
+    let mut sum = 0usize;
+    for cell in count.iter_mut() {
+        let ci = *cell;
+        *cell = sum;
+        sum += ci;
+    }
+    // now `count[v]` holds the number of values less than `v` in `a`
+    let mut result = vec![0usize; a.len()];
+    for (index, &value) in a.iter().enumerate() {
+        result[index] = count[value];
+        count[value] += 1;
+    }
+    result
+}
+
+/// `BitMatrix<64>::section` (bitvector.cpp:346-405), behind `mod2_section`
+/// (global.w:5043-5053): a GF(2) matrix `B` of TRANSPOSE shape
+/// (n_columns x n_rows) with `ABA == A` and `BAB == B`. Entry conversion is
+/// `(x & 1) != 0` (negative odd entries are 1; bitvector.cpp:145-154).
+/// Upstream bounds-guards rows/columns by `assert`s only, compiled out
+/// under NDEBUG: row bits >= 64 are MASKED on input here, reproducing the
+/// silent drop observed on the pinned oracle build; basis bits >= 64
+/// (columns beyond 64) are masked likewise. Both regimes are UB upstream —
+/// keep >64 inputs out of fixtures.
+pub(crate) fn mod2_section(m: &PidMatrix) -> PidMatrix {
+    let (d_rows, d_columns) = (m.rows, m.columns);
+    let mut column = vec![0u64; d_columns]; // copy of our matrix's columns
+    for (j, slot) in column.iter_mut().enumerate() {
+        let mut bits = 0u64;
+        for i in 0..d_rows.min(64) {
+            if m.get(i, j) & 1 != 0 {
+                bits |= 1u64 << i;
+            }
+        }
+        *slot = bits;
+    }
+    // square matrix, initialised to the `d_columns` identity (bits >= 64
+    // masked, see the caveat above)
+    let mut basis = vec![0u64; d_columns];
+    for (i, slot) in basis.iter_mut().enumerate().take(64.min(d_columns)) {
+        *slot = 1u64 << i;
+    }
+    let mut pivots = 0u64; // row r is set if some column has its pivot there
+    let mut pivot_col = [0usize; 64]; // column number having pivot in row r
+    for k in 0..d_columns {
+        let col_k = column[k];
+        if col_k == 0 {
+            continue; // `k` is never stored in `pivot_col`; `basis[k]` stays
+        }
+        let cur_pivot = col_k.trailing_zeros() as usize; // row of the pivot
+        pivots |= 1u64 << cur_pivot;
+        pivot_col[cur_pivot] = k;
+        let b_k = basis[k]; // basis vector to be added to some others
+                            // clear `cur_pivot` out of existing pivot columns above ours
+        let mut above = pivots & ((1u64 << cur_pivot) - 1);
+        while above != 0 {
+            let r = above.trailing_zeros() as usize;
+            above &= above - 1;
+            let j = pivot_col[r]; // column where that row has its pivot
+            if column[j] >> cur_pivot & 1 == 1 {
+                column[j] ^= col_k;
+                basis[j] ^= b_k;
+            }
+        }
+        // also clear row `cur_pivot` in the (yet) non-pivot columns beyond k
+        for j in (k + 1)..d_columns {
+            if column[j] >> cur_pivot & 1 == 1 {
+                column[j] ^= col_k;
+                basis[j] ^= b_k;
+            }
+        }
+    }
+    // transpose-shaped result: column r of B is the preimage of e_r
+    let mut result = PidMatrix::new(d_columns, d_rows);
+    let mut rest = pivots;
+    while rest != 0 {
+        let r = rest.trailing_zeros() as usize;
+        rest &= rest - 1;
+        let preimage = basis[pivot_col[r]];
+        for i in 0..d_columns.min(64) {
+            if preimage >> i & 1 == 1 {
+                result.set(i, r, 1);
+            }
+        }
+    }
+    result
+}
+
+/// `subspace_normal` (global.w:5062-5174): the GF(2) reduced column-echelon
+/// normal form of a possibly dependent generator set, with combination and
+/// relation tracking. The caller has already validated `dim <= 64` and
+/// `n_gens <= 64` (those diagnostics fire BEFORE the no-value gate).
+/// Returns `(basis_m, combin_m, relations_m, pivots)`: the dim x rank basis
+/// with columns in ASCENDING pivot order (via `standardization`, NOT the
+/// loop order), the n_gens x rank expressions of the basis vectors in the
+/// original generators, the n_gens x (n_gens - rank) relations for the
+/// excluded generators (column order = generator order minus pivoters,
+/// `d = j - l`), and the ascending pivot rows.
+pub(crate) fn subspace_normal(
+    generators: &PidMatrix,
+) -> (PidMatrix, PidMatrix, PidMatrix, Vec<usize>) {
+    let dim = generators.rows;
+    let n_gens = generators.columns;
+    debug_assert!(dim <= 64 && n_gens <= 64);
+    // `basis[l]` has pivot row `pivot[l]` and came from generator
+    // `pivoter[l]`; `combination[j]` expresses the (virtual) basis element
+    // from generator j in the original generators (initBasis: identity).
+    let mut basis: Vec<u64> = Vec::new();
+    let mut combination: Vec<u64> = (0..n_gens).map(|j| 1u64 << j).collect();
+    let mut pivot: Vec<usize> = Vec::new();
+    let mut pivoter: Vec<usize> = Vec::new();
+    // the generators reduced modulo 2 (negative odd entries are 1)
+    let generator_bits: Vec<u64> = (0..n_gens)
+        .map(|j| {
+            let mut bits = 0u64;
+            for i in 0..dim {
+                if generators.get(i, j) & 1 != 0 {
+                    bits |= 1u64 << i;
+                }
+            }
+            bits
+        })
+        .collect();
+    for (j, &bits) in generator_bits.iter().enumerate() {
+        let mut v = bits;
+        for (l, &piv) in pivot.iter().enumerate() {
+            if v >> piv & 1 == 1 {
+                v ^= basis[l];
+                combination[j] ^= combination[pivoter[l]];
+            }
+        }
+        if v != 0 {
+            let piv = v.trailing_zeros() as usize; // new pivot
+            for l in 0..basis.len() {
+                if basis[l] >> piv & 1 == 1 {
+                    basis[l] ^= v;
+                    combination[pivoter[l]] ^= combination[j];
+                }
+            }
+            basis.push(v);
+            pivoter.push(j);
+            pivot.push(piv);
+        }
+    }
+    let pi = standardization(&pivot, dim); // relative positions of pivots
+    let rank = basis.len();
+    let mut basis_m = PidMatrix::new(dim, rank);
+    let mut combin_m = PidMatrix::new(n_gens, rank);
+    let mut relations_m = PidMatrix::new(n_gens, n_gens - rank);
+    let mut pivot_r = vec![0usize; rank];
+    let mut l = 0usize; // basis vectors copied so far, current index
+    for (j, &comb_j) in combination.iter().enumerate() {
+        if l < rank && j == pivoter[l] {
+            let d = pi[l]; // destination position
+            let mut bits = basis[l];
+            while bits != 0 {
+                let i = bits.trailing_zeros() as usize;
+                bits &= bits - 1;
+                basis_m.set(i, d, 1);
+            }
+            let mut bits = comb_j;
+            while bits != 0 {
+                let i = bits.trailing_zeros() as usize;
+                bits &= bits - 1;
+                combin_m.set(i, d, 1);
+            }
+            pivot_r[d] = pivot[l];
+            l += 1;
+        } else {
+            let d = j - l;
+            let mut bits = comb_j;
+            while bits != 0 {
+                let i = bits.trailing_zeros() as usize;
+                bits &= bits - 1;
+                relations_m.set(i, d, 1);
+            }
+        }
+    }
+    debug_assert_eq!(l, rank);
+    (basis_m, combin_m, relations_m, pivot_r)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1005,6 +1302,258 @@ mod tests {
         assert_eq!(
             echelon_solve(&m, &pivots, vec![3, 5]),
             Err("Inconsistent linear system")
+        );
+    }
+
+    /// Oracle-pinned cases from `tests/fixtures/eval/global_batch4.atlas`
+    /// (the byte-identical fixture diff against the C++ oracle is the
+    /// authoritative check). Matrices below are row-major literals, so the
+    /// fixture's `mat: [[1,2],[3,4],[5,6]]` (COLUMN literals) appears here
+    /// as the 2x3 matrix `[1,3,5 ; 2,4,6]`.
+    #[test]
+    fn swiss_matrix_knife_oracle_cases() {
+        let m = matrix(2, 3, &[1, 3, 5, 2, 4, 6]);
+        let slice =
+            |flags, i, k, j, l| swiss_matrix_knife(flags, &m, i, k, j, l).expect("in-range slice");
+        assert_eq!(slice(0, 0, 2, 0, 3), m); // identity
+                                             // bit 6 transposes (dimensions swapped BEFORE the copy).
+        assert_eq!(slice(64, 0, 2, 0, 3), matrix(3, 2, &[1, 2, 3, 4, 5, 6]));
+        // bit 7 negates; combined with bit 0 the row reversal comes first.
+        assert_eq!(
+            slice(128, 0, 2, 0, 3),
+            matrix(2, 3, &[-1, -3, -5, -2, -4, -6])
+        );
+        assert_eq!(
+            slice(129, 0, 2, 0, 3),
+            matrix(2, 3, &[-2, -4, -6, -1, -3, -5])
+        );
+        assert_eq!(slice(1, 0, 2, 0, 3), matrix(2, 3, &[2, 4, 6, 1, 3, 5]));
+        assert_eq!(slice(8, 0, 2, 0, 3), matrix(2, 3, &[5, 3, 1, 6, 4, 2]));
+        // from-end bound bits: lwb_r = m - i, upb_r = m - k, and columns.
+        assert_eq!(slice(2, 1, 2, 0, 3), matrix(1, 3, &[2, 4, 6]));
+        assert_eq!(slice(4, 0, 1, 0, 3), matrix(1, 3, &[1, 3, 5]));
+        assert_eq!(slice(16, 0, 2, 1, 3), matrix(2, 1, &[5, 6]));
+        assert_eq!(slice(32, 0, 2, 0, 1), matrix(2, 2, &[1, 3, 2, 4]));
+        assert_eq!(slice(192, 0, 2, 1, 3), matrix(2, 2, &[-3, -4, -5, -6]));
+        // inverted ranges clamp to empty, keeping the (swapped) shape.
+        assert_eq!(slice(0, 2, 0, 0, 1), PidMatrix::new(0, 1));
+        assert_eq!(slice(64, 2, 0, 0, 1), PidMatrix::new(1, 0));
+        // all-bits flags on in-range zero bounds: from-end bits send both
+        // row bounds to m and the clamp fires.
+        assert_eq!(
+            swiss_matrix_knife(255, &PidMatrix::new(2, 3), 0, 0, 0, 0).expect("clamped"),
+            PidMatrix::new(0, 0)
+        );
+        // bit 7 negate wraps i32 (C++ int arithmetic): -(i32::MIN) is itself.
+        assert_eq!(
+            swiss_matrix_knife(128, &matrix(1, 1, &[i32::MIN]), 0, 1, 0, 1).expect("wrap"),
+            matrix(1, 1, &[i32::MIN])
+        );
+    }
+
+    #[test]
+    fn swiss_matrix_knife_bounds_diagnostics() {
+        let m = matrix(2, 2, &[1, 3, 2, 4]); // the fixture's mat: [[1,2],[3,4]]
+        let message = |i, k, j, l| swiss_matrix_knife(0, &m, i, k, j, l).expect_err("out of range");
+        // Verbatim upstream texts: NO space after "are", a space after ",".
+        assert_eq!(
+            message(0, 3, 0, 2),
+            "Range exceeds bounds: upper row bound 3 out of range, actual limits are2, 2"
+        );
+        assert_eq!(
+            message(5, 1, 0, 1),
+            "Range exceeds bounds: lower row bound 5 out of range, actual limits are2, 2"
+        );
+        assert_eq!(
+            message(0, 1, 0, 5),
+            "Range exceeds bounds: upper column bound 5 out of range, actual limits are2, 2"
+        );
+        assert_eq!(
+            message(0, 1, 5, 1),
+            "Range exceeds bounds: lower column bound 5 out of range, actual limits are2, 2"
+        );
+        assert_eq!(
+            message(5, 9, 3, 7),
+            "Range exceeds bounds: both row bounds 5,9 and both column bounds 3,7 out of range, actual limits are2, 2"
+        );
+        assert_eq!(
+            message(5, 9, 0, 7),
+            "Range exceeds bounds: both row bounds 5,9 and upper column bound 7 out of range, actual limits are2, 2"
+        );
+        assert_eq!(
+            message(0, 9, 1, 8),
+            "Range exceeds bounds: upper row bound 9 and upper column bound 8 out of range, actual limits are2, 2"
+        );
+        // The from-end bits do NOT relax the raw-bound check: flags 2 makes
+        // lwb_r = m - 5 underflow conceptually, but the check fires first.
+        assert_eq!(
+            swiss_matrix_knife(2, &m, 5, 1, 0, 1).expect_err("raw bounds"),
+            "Range exceeds bounds: lower row bound 5 out of range, actual limits are2, 2"
+        );
+    }
+
+    /// `mod2_section` (bitvector.cpp:346-405): GF(2) section with
+    /// transpose-shaped output; fixtures pin these against the oracle.
+    #[test]
+    fn mod2_section_oracle_cases() {
+        // Identity section.
+        assert_eq!(
+            mod2_section(&matrix(2, 2, &[1, 0, 0, 1])),
+            PidMatrix::identity(2)
+        );
+        // mat: [[1,1],[0,1],[1,0]] (2x3, full row rank) -> a right inverse.
+        assert_eq!(
+            mod2_section(&matrix(2, 3, &[1, 0, 1, 1, 1, 0])),
+            matrix(3, 2, &[1, 0, 1, 1, 0, 0])
+        );
+        // All-even entries reduce to zero mod 2.
+        assert_eq!(
+            mod2_section(&matrix(2, 2, &[2, 6, 4, 8])),
+            PidMatrix::new(2, 2)
+        );
+        // Negative odd entries are 1 mod 2.
+        assert_eq!(mod2_section(&matrix(1, 1, &[-1])), PidMatrix::identity(1));
+        // mat: [[1,0,1],[0,1,1]] (3 rows, 2 columns): transpose-shaped 2x3.
+        assert_eq!(
+            mod2_section(&matrix(3, 2, &[1, 0, 0, 1, 1, 1])),
+            matrix(2, 3, &[1, 0, 0, 0, 1, 0])
+        );
+        assert_eq!(mod2_section(&PidMatrix::new(0, 0)), PidMatrix::new(0, 0));
+        assert_eq!(mod2_section(&PidMatrix::new(2, 3)), PidMatrix::new(3, 2));
+        // Row bits >= 64 are masked on input (upstream NDEBUG UB regime):
+        // null(65,1) silently drops row 64's (zero) bits -> zero 1x65.
+        assert_eq!(mod2_section(&PidMatrix::new(65, 1)), PidMatrix::new(1, 65));
+        // ABA == A and BAB == B over GF(2) on a rank-deficient matrix.
+        let a = matrix(3, 3, &[1, 1, 0, 0, 1, 1, 1, 0, 1]);
+        let b = mod2_section(&a);
+        let gf2 = |m: &PidMatrix| {
+            let mut r = m.clone();
+            for entry in &mut r.data {
+                *entry &= 1;
+            }
+            r
+        };
+        assert_eq!(gf2(&mat_mul(&mat_mul(&a, &b), &a)), gf2(&a));
+        assert_eq!(gf2(&mat_mul(&mat_mul(&b, &a), &b)), b);
+    }
+
+    /// `subspace_normal` (global.w:5062-5174): reduced column-echelon over
+    /// GF(2) with combination/relation tracking and PIVOT-ASCENDING output.
+    #[test]
+    fn subspace_normal_oracle_cases() {
+        let run = |m: &PidMatrix| {
+            let (b, c, r, p) = subspace_normal(m);
+            (b, c, r, p)
+        };
+        // Independent generators: basis and combination are the identity.
+        assert_eq!(
+            run(&matrix(2, 2, &[1, 0, 0, 1])),
+            (
+                PidMatrix::identity(2),
+                PidMatrix::identity(2),
+                PidMatrix::new(2, 0),
+                vec![0, 1]
+            )
+        );
+        // mat: [[1,1],[1,0],[0,1]] (dim 2, 3 generators, third dependent).
+        assert_eq!(
+            run(&matrix(2, 3, &[1, 1, 0, 1, 0, 1])),
+            (
+                PidMatrix::identity(2),
+                matrix(3, 2, &[0, 1, 1, 1, 0, 0]),
+                matrix(3, 1, &[1, 1, 1]),
+                vec![0, 1]
+            )
+        );
+        // mat: [[1,1,2],[2,0,2]] (dim 3, 2 gens, second == 0 mod 2).
+        assert_eq!(
+            run(&matrix(3, 2, &[1, 2, 1, 0, 2, 2])),
+            (
+                matrix(3, 1, &[1, 1, 0]),
+                matrix(2, 1, &[1, 0]),
+                matrix(2, 1, &[0, 1]),
+                vec![0]
+            )
+        );
+        // mat: [[1,0],[1,0],[0,0]] (duplicate + zero column).
+        assert_eq!(
+            run(&matrix(2, 3, &[1, 1, 0, 0, 0, 0])),
+            (
+                matrix(2, 1, &[1, 0]),
+                matrix(3, 1, &[1, 0, 0]),
+                matrix(3, 2, &[1, 0, 1, 0, 0, 1]),
+                vec![0]
+            )
+        );
+        // mat: [[0,1],[0,1]]: the sole pivot is row 1.
+        assert_eq!(
+            run(&matrix(2, 2, &[0, 0, 1, 1])),
+            (
+                matrix(2, 1, &[0, 1]),
+                matrix(2, 1, &[1, 0]),
+                matrix(2, 1, &[1, 1]),
+                vec![1]
+            )
+        );
+        // Negative odd entries count as 1; even negative entries as 0.
+        assert_eq!(
+            run(&matrix(2, 2, &[-1, 0, 0, -3])),
+            (
+                PidMatrix::identity(2),
+                PidMatrix::identity(2),
+                PidMatrix::new(2, 0),
+                vec![0, 1]
+            )
+        );
+        // All-odd rank-1 generator set.
+        assert_eq!(
+            run(&matrix(2, 2, &[3, 5, 7, 9])),
+            (
+                matrix(2, 1, &[1, 1]),
+                matrix(2, 1, &[1, 0]),
+                matrix(2, 1, &[1, 1]),
+                vec![0]
+            )
+        );
+        // Degenerate shapes.
+        assert_eq!(
+            run(&PidMatrix::new(0, 0)),
+            (
+                PidMatrix::new(0, 0),
+                PidMatrix::new(0, 0),
+                PidMatrix::new(0, 0),
+                vec![]
+            )
+        );
+        assert_eq!(
+            run(&PidMatrix::new(3, 0)),
+            (
+                PidMatrix::new(3, 0),
+                PidMatrix::new(0, 0),
+                PidMatrix::new(0, 0),
+                vec![]
+            )
+        );
+        // No generators are retained: relations are the identity.
+        assert_eq!(
+            run(&PidMatrix::new(0, 2)),
+            (
+                PidMatrix::new(0, 0),
+                PidMatrix::new(2, 0),
+                PidMatrix::identity(2),
+                vec![]
+            )
+        );
+        // standardization reorders basis columns by ASCENDING pivot, not by
+        // loop order: generators [[0,1],[1,0]] pivot at rows 1 then 0.
+        assert_eq!(
+            run(&matrix(2, 2, &[0, 1, 1, 0])),
+            (
+                PidMatrix::identity(2),
+                matrix(2, 2, &[0, 1, 1, 0]),
+                PidMatrix::new(2, 0),
+                vec![0, 1]
+            )
         );
     }
 }

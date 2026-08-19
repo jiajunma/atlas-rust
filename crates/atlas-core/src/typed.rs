@@ -3771,6 +3771,9 @@ enum ScalarOp {
     MatInvert,
     VecBezout,
     LinearSolve,
+    SwissMatrixKnife,
+    Mod2Section,
+    SubspaceNormal,
     ElapsedMs,
 }
 
@@ -5653,6 +5656,108 @@ fn run_scalar(
             }
             other => panic!("linear_solve saw {other:?}"),
         },
+        // swiss_matrix_knife(int,mat,int,int,int,int->mat)
+        // (global.w:4675-4809): the flag-bitfield slicer. Upstream pops
+        // l, j, k, i as ulong_val() (in THAT order), then M, then flags via
+        // int_val() truncated to the low 8 bits (BitSet<8>: NO range or
+        // negativity check — -1 sets all bits, 256 == 0). The bounds
+        // diagnostic fires AFTER all six arguments were evaluated but BEFORE
+        // the no-value gate, using the RAW bounds (the from-end bits do not
+        // relax the check). Negation (bit 7) is wrapping i32, as C++ int.
+        ScalarOp::SwissMatrixKnife => {
+            let mut arguments = arguments;
+            let (Some(l), Some(j), Some(k), Some(i), Some(src), Some(flags)) = (
+                arguments.pop(),
+                arguments.pop(),
+                arguments.pop(),
+                arguments.pop(),
+                arguments.pop(),
+                arguments.pop(),
+            ) else {
+                panic!("swiss_matrix_knife saw wrong arity")
+            };
+            let (
+                Value::Integer(l),
+                Value::Integer(j),
+                Value::Integer(k),
+                Value::Integer(i),
+                Value::Matrix(src),
+                Value::Integer(flags),
+            ) = (l, j, k, i, src, flags)
+            else {
+                panic!("swiss_matrix_knife saw ill-typed arguments")
+            };
+            // Narrow in the upstream pop order: l, j, k, i, then flags.
+            let l = unsigned_long(&l, span)?;
+            let j = unsigned_long(&j, span)?;
+            let k = unsigned_long(&k, span)?;
+            let i = unsigned_long(&i, span)?;
+            let flags = (plain_int(&flags, span)? & 0xFF) as u8;
+            let sliced = matreduc::swiss_matrix_knife(
+                flags,
+                &matreduc::PidMatrix::from_matrix(&src),
+                i,
+                k,
+                j,
+                l,
+            )
+            .map_err(|message| runtime(message, span))?;
+            Ok(at_builtin_level(level, || {
+                Value::Matrix(sliced.to_matrix())
+            }))
+        }
+        // mod2_section(mat->mat) (global.w:5043-5053, bitvector.cpp:346-405):
+        // the GF(2) section (ABA=A, BAB=B) with TRANSPOSE-shaped output. NO
+        // validation and NO no-value gate before the compute (upstream gates
+        // only the push); row bits >= 64 are masked on input, reproducing
+        // the pinned NDEBUG oracle's silent drop (upstream UB regime).
+        ScalarOp::Mod2Section => match expect_unary(arguments) {
+            Value::Matrix(matrix) => {
+                let section = matreduc::mod2_section(&matreduc::PidMatrix::from_matrix(&matrix));
+                Ok(at_builtin_level(level, || {
+                    Value::Matrix(section.to_matrix())
+                }))
+            }
+            other => panic!("mod2_section saw {other:?}"),
+        },
+        // subspace_normal(mat->mat,mat,mat,[int]) (global.w:5062-5174): the
+        // GF(2) reduced column-echelon normal form with combination and
+        // relation tracking; output columns are PIVOT-ASCENDING via
+        // permutations::standardization, NOT loop order. The two size
+        // diagnostics fire BEFORE the no-value gate, dim first.
+        ScalarOp::SubspaceNormal => match expect_unary(arguments) {
+            Value::Matrix(matrix) => {
+                if matrix.rows() > 64 {
+                    return Err(runtime(
+                        format!("Dimension too large: {}>64", matrix.rows()),
+                        span,
+                    ));
+                }
+                if matrix.cols() > 64 {
+                    return Err(runtime(
+                        format!("Too many generators: {}>64", matrix.cols()),
+                        span,
+                    ));
+                }
+                if level == Level::NoValue {
+                    return Ok(None);
+                }
+                let (basis, combination, relations, pivots) =
+                    matreduc::subspace_normal(&matreduc::PidMatrix::from_matrix(&matrix));
+                Ok(Some(Value::Tuple(vec![
+                    Value::Matrix(basis.to_matrix()),
+                    Value::Matrix(combination.to_matrix()),
+                    Value::Matrix(relations.to_matrix()),
+                    Value::List(
+                        pivots
+                            .into_iter()
+                            .map(|pivot| Value::Integer(BigInt::from(pivot)))
+                            .collect(),
+                    ),
+                ])))
+            }
+            other => panic!("subspace_normal saw {other:?}"),
+        },
         // elapsed_ms (global.w:5231-5245): a static stopwatch, started on
         // first call (upstream primes it at startup with no_value).
         ScalarOp::ElapsedMs => {
@@ -6755,6 +6860,45 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 Type::tuple(vec![primitive_type(Prim::Mat), int_type()]),
                 0,
                 ScalarOp::MatInvert,
+            ),
+            // global.w batch 4: the flag-bitfield matrix slicer
+            // (global.w:5195-5196) and the GF(2) builtins (:5211-5213).
+            // The hidden "matrix slicer" (:5197-5198) and "transpose "
+            // (:5188) copies are deliberately NOT registered: the 2-D slice
+            // and commabarlist row-display syntaxes that would call them are
+            // parser-level gaps (docs/REMAINING_BUILTINS.md, batch-4 note).
+            scalar_builtin(
+                "swiss_matrix_knife",
+                Type::tuple(vec![
+                    int_type(),
+                    primitive_type(Prim::Mat),
+                    int_type(),
+                    int_type(),
+                    int_type(),
+                    int_type(),
+                ]),
+                primitive_type(Prim::Mat),
+                0,
+                ScalarOp::SwissMatrixKnife,
+            ),
+            scalar_builtin(
+                "mod2_section",
+                primitive_type(Prim::Mat),
+                primitive_type(Prim::Mat),
+                0,
+                ScalarOp::Mod2Section,
+            ),
+            scalar_builtin(
+                "subspace_normal",
+                primitive_type(Prim::Mat),
+                Type::tuple(vec![
+                    primitive_type(Prim::Mat),
+                    primitive_type(Prim::Mat),
+                    primitive_type(Prim::Mat),
+                    Type::row(int_type()),
+                ]),
+                0,
+                ScalarOp::SubspaceNormal,
             ),
             // elapsed_ms (global.w:5245): milliseconds on the program
             // stopwatch.
@@ -11207,6 +11351,217 @@ mod tests {
             (
                 "for i:2 do eigen_lattice(mat: [[1]], 2147483648) od",
                 "Integer value to big for conversion",
+            ),
+        ] {
+            match convert_and_run(source) {
+                Err(error) => assert_eq!(error.message, expected, "source: {source}"),
+                Ok(value) => panic!("{source} unexpectedly succeeded with {value:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn global_batch4_builtins_match_the_upstream_slicer_and_gf2_surface() {
+        // swiss_matrix_knife (global.w:4675-4809, install :5195-5196): the
+        // flag-bitfield slicer. M below is mat: [[1,2],[3,4],[5,6]] — the
+        // 2x3 matrix | 1, 3, 5 | / | 2, 4, 6 | (mat literals are COLUMNS).
+        for (source, expected) in [
+            (
+                "swiss_matrix_knife(0, mat: [[1,2],[3,4],[5,6]], 0, 2, 0, 3)",
+                "\n| 1, 3, 5 |\n| 2, 4, 6 |\n",
+            ),
+            // bit 6 transposes (dimensions swapped BEFORE the copy).
+            (
+                "swiss_matrix_knife(64, mat: [[1,2],[3,4],[5,6]], 0, 2, 0, 3)",
+                "\n| 1, 2 |\n| 3, 4 |\n| 5, 6 |\n",
+            ),
+            // bit 7 negates; bit 0 reverses output rows; bit 3 columns.
+            (
+                "swiss_matrix_knife(128, mat: [[1,2],[3,4],[5,6]], 0, 2, 0, 3)",
+                "\n| -1, -3, -5 |\n| -2, -4, -6 |\n",
+            ),
+            (
+                "swiss_matrix_knife(129, mat: [[1,2],[3,4],[5,6]], 0, 2, 0, 3)",
+                "\n| -2, -4, -6 |\n| -1, -3, -5 |\n",
+            ),
+            (
+                "swiss_matrix_knife(8, mat: [[1,2],[3,4],[5,6]], 0, 2, 0, 3)",
+                "\n| 5, 3, 1 |\n| 6, 4, 2 |\n",
+            ),
+            // from-end bound bits 1/2/4/5.
+            (
+                "swiss_matrix_knife(2, mat: [[1,2],[3,4],[5,6]], 1, 2, 0, 3)",
+                "\n| 2, 4, 6 |\n",
+            ),
+            (
+                "swiss_matrix_knife(32, mat: [[1,2],[3,4],[5,6]], 0, 2, 0, 1)",
+                "\n| 1, 3 |\n| 2, 4 |\n",
+            ),
+            // inverted ranges clamp to empty, keeping the (swapped) shape.
+            (
+                "swiss_matrix_knife(0, mat: [[1,2],[3,4],[5,6]], 2, 0, 0, 1)",
+                "The 0x1 matrix",
+            ),
+            (
+                "swiss_matrix_knife(64, mat: [[1,2],[3,4],[5,6]], 2, 0, 0, 1)",
+                "The 1x0 matrix",
+            ),
+            // flags truncate mod 256 (BitSet<8>, no range/negativity check):
+            // 256 == 0 (identity), -1 sets all bits (from-end bits send the
+            // row bounds to m, m-2 and the clamp fires).
+            (
+                "swiss_matrix_knife(256, mat: [[1,2],[3,4],[5,6]], 0, 2, 0, 3)",
+                "\n| 1, 3, 5 |\n| 2, 4, 6 |\n",
+            ),
+            (
+                "swiss_matrix_knife(0-1, mat: [[1,2],[3,4],[5,6]], 0, 2, 0, 3)",
+                "The 0x0 matrix",
+            ),
+            ("swiss_matrix_knife(0, null(0,0), 0, 0, 0, 0)", "The 0x0 matrix"),
+            ("swiss_matrix_knife(255, null(2,3), 0, 0, 0, 0)", "The 0x0 matrix"),
+            // bit 7 negate wraps i32: -(i32::MIN) is itself.
+            (
+                "swiss_matrix_knife(128, mat: [[0-2147483648]], 0, 1, 0, 1)",
+                "\n| -2147483648 |\n",
+            ),
+            // mod2_section (global.w:5043-5053, bitvector.cpp:346-405): the
+            // GF(2) section, TRANSPOSE-shaped output.
+            (
+                "mod2_section(mat: [[1,0],[0,1]])",
+                "\n| 1, 0 |\n| 0, 1 |\n",
+            ),
+            (
+                "mod2_section(mat: [[1,1],[0,1],[1,0]])",
+                "\n| 1, 0 |\n| 1, 1 |\n| 0, 0 |\n",
+            ),
+            // all-even entries reduce to zero mod 2; negative odd are 1.
+            (
+                "mod2_section(mat: [[2,4],[6,8]])",
+                "\n| 0, 0 |\n| 0, 0 |\n",
+            ),
+            ("mod2_section(mat: [[0-1]])", "\n| 1 |\n"),
+            (
+                "mod2_section(mat: [[1,0,1],[0,1,1]])",
+                "\n| 1, 0, 0 |\n| 0, 1, 0 |\n",
+            ),
+            ("mod2_section(null(0,0))", "The 0x0 matrix"),
+            (
+                "mod2_section(null(2,3))",
+                "\n| 0, 0 |\n| 0, 0 |\n| 0, 0 |\n",
+            ),
+            // subspace_normal (global.w:5062-5174): (basis, combinations,
+            // relations, [pivots]) with PIVOT-ASCENDING output order.
+            (
+                "subspace_normal(mat: [[1,0],[0,1]])",
+                "(\n| 1, 0 |\n| 0, 1 |\n,\n| 1, 0 |\n| 0, 1 |\n,The 2x0 matrix,[0,1])",
+            ),
+            (
+                "subspace_normal(mat: [[1,1],[1,0],[0,1]])",
+                "(\n| 1, 0 |\n| 0, 1 |\n,\n| 0, 1 |\n| 1, 1 |\n| 0, 0 |\n,\n| 1 |\n| 1 |\n| 1 |\n,[0,1])",
+            ),
+            (
+                "subspace_normal(mat: [[1,1,2],[2,0,2]])",
+                "(\n| 1 |\n| 1 |\n| 0 |\n,\n| 1 |\n| 0 |\n,\n| 0 |\n| 1 |\n,[0])",
+            ),
+            (
+                "subspace_normal(mat: [[1,0],[1,0],[0,0]])",
+                "(\n| 1 |\n| 0 |\n,\n| 1 |\n| 0 |\n| 0 |\n,\n| 1, 0 |\n| 1, 0 |\n| 0, 1 |\n,[0])",
+            ),
+            (
+                "subspace_normal(mat: [[0,1],[0,1]])",
+                "(\n| 0 |\n| 1 |\n,\n| 1 |\n| 0 |\n,\n| 1 |\n| 1 |\n,[1])",
+            ),
+            (
+                "subspace_normal(mat: [[0-1, 0],[0, 0-3]])",
+                "(\n| 1, 0 |\n| 0, 1 |\n,\n| 1, 0 |\n| 0, 1 |\n,The 2x0 matrix,[0,1])",
+            ),
+            (
+                "subspace_normal(mat: [[3,5],[7,9]])",
+                "(\n| 1 |\n| 1 |\n,\n| 1 |\n| 0 |\n,\n| 1 |\n| 1 |\n,[0])",
+            ),
+            (
+                "subspace_normal(null(0,0))",
+                "(The 0x0 matrix,The 0x0 matrix,The 0x0 matrix,[])",
+            ),
+            (
+                "subspace_normal(null(3,0))",
+                "(The 3x0 matrix,The 0x0 matrix,The 0x0 matrix,[])",
+            ),
+            (
+                "subspace_normal(null(0,2))",
+                "(The 0x0 matrix,The 2x0 matrix,\n| 1, 0 |\n| 0, 1 |\n,[])",
+            ),
+        ] {
+            let (_, value) = convert_and_run(source)
+                .unwrap_or_else(|error| panic!("{source} should convert and run: {error:?}"));
+            assert_eq!(value.to_string(), expected, "source: {source}");
+        }
+
+        // The result type of subspace_normal is (mat,mat,mat,[int])
+        // (global.w:5212-5213).
+        let (found, _) = convert_and_run("subspace_normal(null(0,0))").expect("tuple type");
+        assert_eq!(
+            found,
+            Type::tuple(vec![
+                Type::Primitive(Prim::Mat),
+                Type::Primitive(Prim::Mat),
+                Type::Primitive(Prim::Mat),
+                Type::row(Type::Primitive(Prim::Int)),
+            ])
+        );
+
+        // Rejections: the slicer's bounds diagnostic (RAW bounds, verbatim
+        // texts — NO space after "are") and the ulong_val narrowings fire
+        // BEFORE the no-value gate, as do subspace_normal's size checks
+        // (dim first; no spaces around ">"). mod2_section has NO rejected
+        // cases upstream. A for-loop body runs at no-value.
+        for (source, expected) in [
+            (
+                "swiss_matrix_knife(0, mat: [[1,2],[3,4]], 0, 3, 0, 2)",
+                "Range exceeds bounds: upper row bound 3 out of range, actual limits are2, 2",
+            ),
+            (
+                "swiss_matrix_knife(0, mat: [[1,2],[3,4]], 5, 1, 0, 1)",
+                "Range exceeds bounds: lower row bound 5 out of range, actual limits are2, 2",
+            ),
+            (
+                "swiss_matrix_knife(0, mat: [[1,2],[3,4]], 0, 1, 0, 5)",
+                "Range exceeds bounds: upper column bound 5 out of range, actual limits are2, 2",
+            ),
+            (
+                "swiss_matrix_knife(0, mat: [[1,2],[3,4]], 0, 1, 5, 1)",
+                "Range exceeds bounds: lower column bound 5 out of range, actual limits are2, 2",
+            ),
+            (
+                "swiss_matrix_knife(0, mat: [[1,2],[3,4]], 5, 9, 3, 7)",
+                "Range exceeds bounds: both row bounds 5,9 and both column bounds 3,7 out of range, actual limits are2, 2",
+            ),
+            (
+                "swiss_matrix_knife(0, mat: [[1,2],[3,4]], 5, 9, 0, 7)",
+                "Range exceeds bounds: both row bounds 5,9 and upper column bound 7 out of range, actual limits are2, 2",
+            ),
+            (
+                "swiss_matrix_knife(0, mat: [[1,2],[3,4]], 0, 9, 1, 8)",
+                "Range exceeds bounds: upper row bound 9 and upper column bound 8 out of range, actual limits are2, 2",
+            ),
+            (
+                "swiss_matrix_knife(0, mat: [[1,2],[3,4]], 0-1, 2, 0, 2)",
+                "Negative integer where unsigned is required",
+            ),
+            (
+                "swiss_matrix_knife(0, mat: [[1]], 0, 99999999999999999999999, 0, 1)",
+                "Integer value to big for conversion",
+            ),
+            (
+                "for i:2 do swiss_matrix_knife(0, mat: [[1,2],[3,4]], 0, 5, 0, 2) od",
+                "Range exceeds bounds: upper row bound 5 out of range, actual limits are2, 2",
+            ),
+            ("subspace_normal(null(65,1))", "Dimension too large: 65>64"),
+            ("subspace_normal(null(1,65))", "Too many generators: 65>64"),
+            ("subspace_normal(null(65,65))", "Dimension too large: 65>64"),
+            (
+                "for i:2 do subspace_normal(null(65,1)) od",
+                "Dimension too large: 65>64",
             ),
         ] {
             match convert_and_run(source) {

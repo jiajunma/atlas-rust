@@ -1,0 +1,14 @@
+swiss_matrix_knife(0, mat: [[1,2],[3,4]], 0, 3, 0, 2)
+swiss_matrix_knife(0, mat: [[1,2],[3,4]], 5, 1, 0, 1)
+swiss_matrix_knife(0, mat: [[1,2],[3,4]], 0, 1, 0, 5)
+swiss_matrix_knife(0, mat: [[1,2],[3,4]], 0, 1, 5, 1)
+swiss_matrix_knife(0, mat: [[1,2],[3,4]], 5, 9, 3, 7)
+swiss_matrix_knife(0, mat: [[1,2],[3,4]], 5, 9, 0, 7)
+swiss_matrix_knife(0, mat: [[1,2],[3,4]], 0, 9, 1, 8)
+swiss_matrix_knife(0, mat: [[1,2],[3,4]], 0-1, 2, 0, 2)
+swiss_matrix_knife(0, mat: [[1]], 0, 99999999999999999999999, 0, 1)
+for i:2 do swiss_matrix_knife(0, mat: [[1,2],[3,4]], 0, 5, 0, 2) od
+subspace_normal(null(65,1))
+subspace_normal(null(1,65))
+subspace_normal(null(65,65))
+for i:2 do subspace_normal(null(65,1)) od
