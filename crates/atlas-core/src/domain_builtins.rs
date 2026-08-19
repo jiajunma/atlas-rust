@@ -7772,6 +7772,20 @@ fn compatible_outer_twist(
                     StructureError::SimpleRootImageNotRoot { simple_root } => {
                         format!("Matrix maps simple root {simple_root} to non-root")
                     }
+                    StructureError::SimpleCorootImageMismatch {
+                        simple_root,
+                        image_root,
+                    } => {
+                        twisted_involution_diagnostic(
+                            &context.parent.root_datum,
+                            StructureError::SimpleCorootImageMismatch {
+                                simple_root,
+                                image_root,
+                            },
+                            span,
+                        )
+                        .message
+                    }
                     other => other.to_string(),
                 },
             )
