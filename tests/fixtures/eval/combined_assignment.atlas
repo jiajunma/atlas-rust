@@ -1,0 +1,30 @@
+set x = 6
+x +:= 3
+x *:= 2
+set v = [1,2]
+v #:= 3
+v ##:= [4,5]
+a: [int]
+a := [1,2,3]
+a[0] := 5
+a
+a~[0] := 9
+a
+b: [int]
+b := [1,2,3]
+b[1] *:= 10
+b
+b[2] +:= 1
+b
+set_type Pair = (int x, int y)
+q: (int,int)
+q := (1,2)
+q.x := 7
+q
+q.y +:= 10
+q
+let r = [1,2,3] in (r[0] := 9; r)
+let i = 1 in let w = [1,2] in (w[i] *:= 7; w)
+set (!h, k) = ([1], [2])
+k[0] := 6
+k

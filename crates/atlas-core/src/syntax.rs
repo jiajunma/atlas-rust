@@ -92,6 +92,20 @@ pub enum Expr {
     /// `set pattern := value` (parser.y:264): assignment through a pattern
     /// to existing variables. Boxed to keep `Expr` small, like `For`.
     MultiAssignment(Box<MultiAssignmentExpr>),
+    /// `a[i] := c` (parser.y:265, `make_comp_ass`): assignment to one
+    /// component of a subscriptable variable. The grammar restricts the
+    /// target to a plain identifier; a two-index `M[i,j]` source parses
+    /// with a tuple index and is rejected by type analysis, like upstream.
+    ComponentAssignment(Box<ComponentAssignmentExpr>),
+    /// `a[i] op:= e` (parser.y:272-273, `make_comp_upd_ass`): transform one
+    /// component by an operator, yielding the new component value.
+    ComponentTransform(Box<ComponentTransformExpr>),
+    /// `p.f := e` (parser.y:266-267, `make_field_ass`): assignment to a
+    /// named field of a tuple-typed variable.
+    FieldAssignment(Box<FieldAssignmentExpr>),
+    /// `p.f op:= e` (parser.y:274-276, `make_field_upd_ass`): transform one
+    /// named field by an operator, yielding the new field value.
+    FieldTransform(Box<FieldTransformExpr>),
     Let {
         binding_groups: Vec<Vec<LetBinding>>,
         body: Box<Expr>,
@@ -222,6 +236,56 @@ pub enum Expr {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MultiAssignmentExpr {
     pub pattern: Pattern,
+    pub value: Expr,
+    pub span: SourceSpan,
+}
+
+/// An `a[i] := c` component assignment (parser.y:265). `index` is the raw
+/// subscript expression; `reversed` marks the `a~[i]` form (parser.y:582).
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ComponentAssignmentExpr {
+    pub name: String,
+    pub name_span: SourceSpan,
+    pub index: Expr,
+    pub reversed: bool,
+    pub value: Expr,
+    pub span: SourceSpan,
+}
+
+/// An `a[i] op:= e` component transform (parser.y:272-273). `operator` is
+/// the bare operator symbol (the `:=` suffix is stripped by the lexer).
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ComponentTransformExpr {
+    pub name: String,
+    pub name_span: SourceSpan,
+    pub index: Expr,
+    pub reversed: bool,
+    pub operator: String,
+    pub operator_span: SourceSpan,
+    pub value: Expr,
+    pub span: SourceSpan,
+}
+
+/// A `p.f := e` field assignment (parser.y:266-267).
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FieldAssignmentExpr {
+    pub name: String,
+    pub name_span: SourceSpan,
+    pub field: String,
+    pub field_span: SourceSpan,
+    pub value: Expr,
+    pub span: SourceSpan,
+}
+
+/// A `p.f op:= e` field transform (parser.y:274-276).
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FieldTransformExpr {
+    pub name: String,
+    pub name_span: SourceSpan,
+    pub field: String,
+    pub field_span: SourceSpan,
+    pub operator: String,
+    pub operator_span: SourceSpan,
     pub value: Expr,
     pub span: SourceSpan,
 }
@@ -538,6 +602,10 @@ impl Expr {
             | Self::Break { span }
             | Self::Dont { span }
             | Self::Die { span } => *span,
+            Self::ComponentAssignment(assignment) => assignment.span,
+            Self::ComponentTransform(transform) => transform.span,
+            Self::FieldAssignment(assignment) => assignment.span,
+            Self::FieldTransform(transform) => transform.span,
             Self::For(loop_) => loop_.span,
             Self::MultiAssignment(assignment) => assignment.span,
             Self::Case(case) => case.span,
@@ -734,6 +802,9 @@ pub enum ParserToken {
     String(SpannedValue<String>),
     Identifier(SpannedValue<String>),
     Operator(SpannedValue<FormulaOperator>),
+    /// An operator immediately followed by `:=` (lexer.w:507-516), e.g.
+    /// `+:=`; the payload is the bare operator symbol.
+    OperatorBecomes(SpannedValue<String>),
     PrimitiveType(SpannedValue<Prim>),
     Becomes(SourceSpan),
     Equals(SourceSpan),
@@ -798,6 +869,7 @@ impl ParserToken {
             Self::String(value) => value.span,
             Self::Identifier(value) => value.span,
             Self::Operator(value) => value.span,
+            Self::OperatorBecomes(value) => value.span,
             Self::PrimitiveType(value) => value.span,
             Self::Unsupported(value) => value.span,
             Self::Becomes(span)
@@ -863,6 +935,9 @@ impl fmt::Display for ParserToken {
             Self::String(_) => "string",
             Self::Identifier(_) => "identifier",
             Self::Operator(operator) => operator.value.symbol.as_str(),
+            Self::OperatorBecomes(operator) => {
+                return write!(formatter, "{}:=", operator.value);
+            }
             Self::PrimitiveType(_) => "primitive type",
             Self::Becomes(_) => ":=",
             Self::Equals(_) => "=",
@@ -1109,11 +1184,12 @@ fn parser_tokens_from_tokens(
                     }),
                     span,
                 ))),
-                // Operate-assign enters the grammar with the assignment
-                // family (phase B stage B4); a syntax error until then.
-                TokenKind::OperatorBecomes(_) => Some(Ok((
-                    ParserToken::Unsupported(SpannedValue {
-                        value: token.lexeme,
+                // Operate-assign (lexer.w:507-516) enters the grammar with
+                // the assignment family (parser.y:263-278); the token
+                // carries the bare operator symbol.
+                TokenKind::OperatorBecomes(operator) => Some(Ok((
+                    ParserToken::OperatorBecomes(SpannedValue {
+                        value: operator,
                         span,
                     }),
                     span,
@@ -1381,6 +1457,91 @@ fn multi_assignment(set_span: SourceSpan, pattern: Pattern, value: Expr) -> Expr
         pattern,
         value,
     }))
+}
+
+/// `name[index] := value` (parser.y:265); `reversed` marks the `name~[index]`
+/// spelling (parser.y:582 `assignable_subsn`).
+fn component_assignment(
+    name: SpannedValue<String>,
+    index: Expr,
+    reversed: bool,
+    value: Expr,
+) -> Expr {
+    Expr::ComponentAssignment(Box::new(ComponentAssignmentExpr {
+        span: join_span(name.span, value.span()),
+        name: name.value,
+        name_span: name.span,
+        index,
+        reversed,
+        value,
+    }))
+}
+
+/// `name[index] op:= value` (parser.y:272).
+fn component_transform(
+    name: SpannedValue<String>,
+    index: Expr,
+    reversed: bool,
+    operator: SpannedValue<String>,
+    value: Expr,
+) -> Expr {
+    Expr::ComponentTransform(Box::new(ComponentTransformExpr {
+        span: join_span(name.span, value.span()),
+        name: name.value,
+        name_span: name.span,
+        index,
+        reversed,
+        operator: operator.value,
+        operator_span: operator.span,
+        value,
+    }))
+}
+
+/// `name.field := value` (parser.y:266).
+fn field_assignment(name: SpannedValue<String>, field: SpannedValue<String>, value: Expr) -> Expr {
+    Expr::FieldAssignment(Box::new(FieldAssignmentExpr {
+        span: join_span(name.span, value.span()),
+        name: name.value,
+        name_span: name.span,
+        field: field.value,
+        field_span: field.span,
+        value,
+    }))
+}
+
+/// `name.field op:= value` (parser.y:274).
+fn field_transform(
+    name: SpannedValue<String>,
+    field: SpannedValue<String>,
+    operator: SpannedValue<String>,
+    value: Expr,
+) -> Expr {
+    Expr::FieldTransform(Box::new(FieldTransformExpr {
+        span: join_span(name.span, value.span()),
+        name: name.value,
+        name_span: name.span,
+        field: field.value,
+        field_span: field.span,
+        operator: operator.value,
+        operator_span: operator.span,
+        value,
+    }))
+}
+
+/// `name op:= value` desugars in the parser to `name := op(name, value)`
+/// (parser.y:267-268 via parsetree.w:2899-2960 `make_assignment` of a
+/// `make_binary_call`); the priority is irrelevant once the call is built.
+fn operate_assignment(
+    name: SpannedValue<String>,
+    operator: SpannedValue<String>,
+    value: Expr,
+) -> Expr {
+    let operand = Expr::Identifier {
+        name: name.value.clone(),
+        span: name.span,
+    };
+    let operator = FormulaOperator::new(operator.value, 0).with_span(operator.span);
+    assignment(name, operator_call(operator, vec![operand, value]))
 }
 
 fn sequence(first: Expr, rest: Expr) -> Expr {
@@ -2434,6 +2595,36 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
             compact_pattern(&assignment.pattern),
             compact_expression(&assignment.value)
         ),
+        // The assignment family prints as the oracle's parsetree.w:2989-3020:
+        // plain assignments without spaces, transforms with spaces.
+        Expr::ComponentAssignment(assignment) => format!(
+            "{}{}{}]:={}",
+            assignment.name,
+            if assignment.reversed { "~[" } else { "[" },
+            compact_expression(&assignment.index),
+            compact_expression(&assignment.value)
+        ),
+        Expr::ComponentTransform(transform) => format!(
+            "{}{}{}] {}:= {}",
+            transform.name,
+            if transform.reversed { "~[" } else { "[" },
+            compact_expression(&transform.index),
+            transform.operator,
+            compact_expression(&transform.value)
+        ),
+        Expr::FieldAssignment(assignment) => format!(
+            "{}.{}:={}",
+            assignment.name,
+            assignment.field,
+            compact_expression(&assignment.value)
+        ),
+        Expr::FieldTransform(transform) => format!(
+            "{}.{} {}:= {}",
+            transform.name,
+            transform.field,
+            transform.operator,
+            compact_expression(&transform.value)
+        ),
         Expr::Let {
             binding_groups,
             body,
@@ -2848,6 +3039,34 @@ mod tests {
                 pattern_shape(&assignment.pattern),
                 expression_shape(&assignment.value)
             ),
+            Expr::ComponentAssignment(assignment) => format!(
+                "compassign({},{},{},{})",
+                assignment.name,
+                u8::from(assignment.reversed),
+                expression_shape(&assignment.index),
+                expression_shape(&assignment.value)
+            ),
+            Expr::ComponentTransform(transform) => format!(
+                "comptransform({},{},{},{},{})",
+                transform.name,
+                u8::from(transform.reversed),
+                expression_shape(&transform.index),
+                transform.operator,
+                expression_shape(&transform.value)
+            ),
+            Expr::FieldAssignment(assignment) => format!(
+                "fieldassign({},{},{})",
+                assignment.name,
+                assignment.field,
+                expression_shape(&assignment.value)
+            ),
+            Expr::FieldTransform(transform) => format!(
+                "fieldtransform({},{},{},{})",
+                transform.name,
+                transform.field,
+                transform.operator,
+                expression_shape(&transform.value)
+            ),
             Expr::Let {
                 binding_groups,
                 body,
@@ -3068,6 +3287,65 @@ mod tests {
     fn parses_assignment_as_a_right_associative_expression() {
         let expression = parse_one("x := y := 1");
         assert_eq!(expression_shape(&expression), "assign(x,assign(y,1))");
+    }
+
+    #[test]
+    fn parses_the_component_and_field_assignment_family() {
+        // parser.y:263-276: component and field assignments, and the
+        // `op:=` transforms; bare `x op:= e` desugars to `x := op(x, e)`.
+        assert_eq!(
+            expression_shape(&parse_one("a[i] := 0")),
+            "compassign(a,0,i,0)"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("a~[i] := 0")),
+            "compassign(a,1,i,0)"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("a[i] +:= 1")),
+            "comptransform(a,0,i,+,1)"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("a~[i] #:= 1")),
+            "comptransform(a,1,i,#,1)"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("p.x := 7")),
+            "fieldassign(p,x,7)"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("p.y +:= 10")),
+            "fieldtransform(p,y,+,10)"
+        );
+        assert_eq!(
+            expression_shape(&parse_one("x +:= 3")),
+            "assign(x,+@0(x,3))"
+        );
+        // The compact rendering matches the oracle's diagnostics
+        // (parsetree.w:2989-3020): assignments without spaces, transforms
+        // with spaces.
+        assert_eq!(compact_expression(&parse_one("a[i] := 0")), "a[i]:=0");
+        assert_eq!(compact_expression(&parse_one("a~[i] := 0")), "a~[i]:=0");
+        assert_eq!(compact_expression(&parse_one("a[i] +:= 1")), "a[i] +:= 1");
+        assert_eq!(compact_expression(&parse_one("p.x := 7")), "p.x:=7");
+        assert_eq!(compact_expression(&parse_one("p.y +:= 10")), "p.y +:= 10");
+        // Right associativity of the whole family.
+        assert_eq!(
+            expression_shape(&parse_one("a[i] := b[j] := 0")),
+            "compassign(a,0,i,compassign(b,0,j,0))"
+        );
+    }
+
+    #[test]
+    fn rejects_non_assignable_targets() {
+        // Only `name[...]`/`name.field` shapes are assignable upstream; a
+        // parenthesised or called base is a plain expression, so `:=` after
+        // it is a syntax error (parser.y:578-586 `assignable_subsn`).
+        for source in ["(a)[0] := 1", "f(x)[0] := 1", "a[0].x := 1", "r.1 := 9"] {
+            let error =
+                parse(&SourceText::new(source)).expect_err("non-assignable target must not parse");
+            assert_eq!(error.kind, ErrorKind::Syntax, "source: {source}");
+        }
     }
 
     #[test]

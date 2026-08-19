@@ -17,11 +17,13 @@ use malachite::{Integer as BigInt, Rational as BigRational};
 use crate::coercions::{coercion_between, row_coercion};
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
 use crate::domain_builtins;
+use crate::formula::FormulaOperator;
 use crate::frames::{EvaluationContext, GlobalCell};
 use crate::linear_values::{Matrix, RatVec, Vec32};
 use crate::matreduc;
 use crate::syntax::{
-    compact_expression, compact_pattern, Command, Expr, ForLoop, LambdaParam, LetBinding,
+    compact_expression, compact_pattern, Command, ComponentAssignmentExpr, ComponentTransformExpr,
+    Expr, FieldAssignmentExpr, FieldTransformExpr, ForLoop, LambdaParam, LetBinding,
     MultiAssignmentExpr, Pattern, TypeSpec,
 };
 use crate::types::{Prim, Type, TypeBinding, TypeNumber, TypeTable};
@@ -74,6 +76,25 @@ pub enum MultiAssignmentPlan {
     },
 }
 
+/// The resolved destination of a component or field assignment (the whole
+/// assignment family shares the layer lookup of axis.w:6863+): locals by
+/// lexical coordinates, globals by the cell captured at analysis time.
+#[derive(Clone, Debug, PartialEq)]
+pub enum AssignTarget {
+    Local { depth: usize, offset: usize },
+    Global(GlobalCell),
+}
+
+/// The resolved operation of a transform assignment `a[i] op:= v` /
+/// `p.f op:= v` (axis.w:8268+): the builtin the overload resolution found,
+/// or a user overload's closure (upstream reassembles an ordinary call for
+/// user operations, which is observably the desugared application).
+#[derive(Clone, Debug, PartialEq)]
+pub enum TransformOperation {
+    Builtin(usize),
+    Closure(Rc<Closure>),
+}
+
 /// A typed executable expression.
 #[derive(Clone, Debug, PartialEq)]
 pub enum TypedExpr {
@@ -108,6 +129,54 @@ pub enum TypedExpr {
         depth: usize,
         offset: usize,
         value: Box<TypedExpr>,
+    },
+    /// `a[i] := v` (axis.w:8131-8192 `comp_ass_stat`): evaluates the value,
+    /// then the index, then replaces the component and yields the value.
+    ComponentAssignment {
+        target: AssignTarget,
+        /// The variable name, quoted by the uninitialized diagnostic.
+        name: String,
+        index: Box<TypedExpr>,
+        reversed: bool,
+        value: Box<TypedExpr>,
+        /// Compact rendering of the source expression, quoted by the
+        /// out-of-range diagnostic exactly like the oracle's `range_mess`
+        /// prints the assignment node (axis.w:7953).
+        source: String,
+        span: SourceSpan,
+    },
+    /// `a[i] op:= v` (axis.w:8495+ `comp_trans_stat`): evaluates the right
+    /// operand, then the index, then applies the resolved operation to the
+    /// old component and writes the result back, yielding that result.
+    ComponentTransform {
+        target: AssignTarget,
+        name: String,
+        index: Box<TypedExpr>,
+        reversed: bool,
+        operation: TransformOperation,
+        rhs: Box<TypedExpr>,
+        /// Result coercion of the operator call, applied before write-back.
+        conversion: Option<&'static str>,
+        source: String,
+        span: SourceSpan,
+    },
+    /// `p.f := v` (axis.w:8194-8239 `field_ass_stat`).
+    FieldAssignment {
+        target: AssignTarget,
+        name: String,
+        position: usize,
+        value: Box<TypedExpr>,
+        span: SourceSpan,
+    },
+    /// `p.f op:= v` (axis.w:8286+ `field_trans_stat`).
+    FieldTransform {
+        target: AssignTarget,
+        name: String,
+        position: usize,
+        operation: TransformOperation,
+        rhs: Box<TypedExpr>,
+        conversion: Option<&'static str>,
+        span: SourceSpan,
     },
     /// Evaluate `value` completely, then distribute it through `plan` in
     /// post-order. The expression yields that same right-hand-side value.
@@ -1765,6 +1834,18 @@ pub fn convert_expr(
             value,
             span,
         } => convert_simple_assignment(name, *target_span, value, *span, required, analysis),
+        Expr::ComponentAssignment(assignment) => {
+            convert_component_assignment(expression, assignment, required, analysis)
+        }
+        Expr::ComponentTransform(transform) => {
+            convert_component_transform(expression, transform, required, analysis)
+        }
+        Expr::FieldAssignment(assignment) => {
+            convert_field_assignment(expression, assignment, required, analysis)
+        }
+        Expr::FieldTransform(transform) => {
+            convert_field_transform(expression, transform, required, analysis)
+        }
         Expr::Subscription {
             array,
             index,
@@ -2859,6 +2940,393 @@ fn convert_simple_assignment(
             value: Box::new(converted),
         },
         span,
+        analysis,
+    )
+}
+
+/// The variable lookup shared by the component/field assignment family
+/// (axis.w:8148-8160, 8216-8228): locals shadow globals, and both report
+/// the assignment-specific undefined/constant diagnostics quoting the
+/// compact rendering of the whole expression.
+fn lookup_assignable(
+    name: &str,
+    span: SourceSpan,
+    context: &str,
+    compact: &str,
+    analysis: &Analysis<'_>,
+) -> Result<(AssignTarget, Type), Diagnostic> {
+    if let Some((target, depth, offset)) = analysis.locals.get(name) {
+        if analysis.constant_locals.contains(name) {
+            return Err(Diagnostic::new(
+                ErrorKind::Name,
+                format!("Name '{name}' is constant in {context} {compact}"),
+                Some(span),
+            ));
+        }
+        return Ok((
+            AssignTarget::Local {
+                depth: *depth,
+                offset: *offset,
+            },
+            target.borrow().clone(),
+        ));
+    }
+    let Some((target, cell)) = analysis.globals.lookup(name) else {
+        return Err(Diagnostic::new(
+            ErrorKind::Name,
+            format!("Undefined identifier '{name}' in {context} {compact}"),
+            Some(span),
+        ));
+    };
+    if analysis.globals.is_const(name) {
+        return Err(Diagnostic::new(
+            ErrorKind::Name,
+            format!("Name '{name}' is constant in {context} {compact}"),
+            Some(span),
+        ));
+    }
+    Ok((AssignTarget::Global(cell.clone()), target.borrow().clone()))
+}
+
+/// The subscriptability check of a component assignment or transform
+/// (axis.w:8163-8172, 8531-8546: `subscr_base::index_kind` gated on
+/// `assignable`): only a row with an integer index is assignable here;
+/// vec/mat component assignment is upstream-legal but not yet implemented,
+/// matching the subscription read path.
+fn component_type_for_assignment(
+    aggregate_type: &Type,
+    index_type: &Type,
+    transform: bool,
+    span: SourceSpan,
+    analysis: &Analysis<'_>,
+) -> Result<Type, Diagnostic> {
+    let int_index = matches!(index_type, Type::Primitive(Prim::Int));
+    if let Type::Row(component) = aggregate_type {
+        if int_index {
+            return Ok((**component).clone());
+        }
+    }
+    let message = if transform {
+        format!(
+            "Cannot assign to component of value of type {} selected by index of type {} in transforming assignment",
+            aggregate_type.display(analysis.types),
+            index_type.display(analysis.types)
+        )
+    } else {
+        format!(
+            "Cannot subscript value of type {} with index of type {} in assignment",
+            aggregate_type.display(analysis.types),
+            index_type.display(analysis.types)
+        )
+    };
+    Err(type_error(message, span))
+}
+
+/// The projector lookup of a field assignment or transform
+/// (axis.w:8240-8266): the selector must resolve against the EXACT tuple
+/// type (a tabled type compares by its expansion), and the bound value must
+/// be a `set_type`-installed projector closure.
+fn resolve_projector(
+    field: &str,
+    tuple_type: &Type,
+    span: SourceSpan,
+    analysis: &Analysis<'_>,
+) -> Result<(usize, Type), Diagnostic> {
+    let expanded = match tuple_type {
+        Type::Tabled(number) => analysis.types.expansion(*number).clone(),
+        other => other.clone(),
+    };
+    let improper = || type_error("Improper selection in field assignment".to_string(), span);
+    let not_projector = || {
+        type_error(
+            "Selector in field assignment is not a projector function".to_string(),
+            span,
+        )
+    };
+    let matches = |argument: &Type| argument == tuple_type || argument == &expanded;
+    // A user (`set`) overload with the exact argument type shadows the plain
+    // global the `set_type` definition installed.
+    let value = analysis
+        .overloads
+        .user_variants(field)
+        .iter()
+        .find(|variant| match &variant.function_type {
+            Type::Function(parts) => matches(&parts.0),
+            _ => false,
+        })
+        .map(|variant| variant.value.clone())
+        .or_else(|| {
+            let (target, cell) = analysis.globals.lookup(field)?;
+            let Type::Function(parts) = &*target.borrow() else {
+                return None;
+            };
+            matches(&parts.0)
+                .then(|| cell.borrow().as_ref().map(|value| value.as_ref().clone()))
+                .flatten()
+        });
+    let Some(value) = value else {
+        return Err(improper());
+    };
+    let Value::Closure(closure) = &value else {
+        return Err(not_projector());
+    };
+    let TypedExpr::TupleProject { index, .. } = closure.body.as_ref() else {
+        return Err(not_projector());
+    };
+    let position = *index;
+    let Type::Tuple(components) = &expanded else {
+        return Err(improper());
+    };
+    let Some(component) = components.get(position) else {
+        return Err(improper());
+    };
+    Ok((position, component.clone()))
+}
+
+/// Factor the converted desugared operator call of a transform assignment
+/// into the operation to apply, its converted right operand, and the result
+/// coercion (if the call needed one). The Rust converter never applies the
+/// upstream `x+1` → `succ(x)` argument-dropping optimisation, so a binary
+/// call always keeps both operands.
+fn factor_transform_call(
+    call: TypedExpr,
+) -> (TransformOperation, Box<TypedExpr>, Option<&'static str>) {
+    let (call, conversion) = match call {
+        TypedExpr::Conversion { tag, inner, .. } => (*inner, Some(tag)),
+        other => (other, None),
+    };
+    match call {
+        TypedExpr::BuiltinCall {
+            builtin,
+            mut arguments,
+            ..
+        } => {
+            let rhs = arguments
+                .pop()
+                .expect("a binary operator call holds its right operand");
+            (
+                TransformOperation::Builtin(builtin),
+                Box::new(rhs),
+                conversion,
+            )
+        }
+        TypedExpr::FunctionCall {
+            function, argument, ..
+        } => {
+            let TypedExpr::Denotation(value) = *function else {
+                unreachable!("a user overload applies its denotation")
+            };
+            let Value::Closure(closure) = value else {
+                unreachable!("user overloads always hold closures")
+            };
+            let rhs = match *argument {
+                TypedExpr::TupleDisplay(mut arguments) => Box::new(
+                    arguments
+                        .pop()
+                        .expect("a binary operator call holds its right operand"),
+                ),
+                single => Box::new(single),
+            };
+            (TransformOperation::Closure(closure), rhs, conversion)
+        }
+        other => unreachable!("transform conversion yields a call, found {other:?}"),
+    }
+}
+
+/// `a[i] := v` (parser.y:265, axis.w:8131-8192 `comp_ass_stat`).
+fn convert_component_assignment(
+    expression: &Expr,
+    assignment: &ComponentAssignmentExpr,
+    required: &mut Type,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, Diagnostic> {
+    let compact = compact_expression(expression);
+    let (target, aggregate_type) = lookup_assignable(
+        &assignment.name,
+        assignment.span,
+        "component assignment",
+        &compact,
+        analysis,
+    )?;
+    // The index converts with an undetermined a-priori type, like upstream.
+    let mut index_type = Type::Undetermined;
+    let converted_index = convert_expr(&assignment.index, &mut index_type, analysis)?;
+    let component_type = component_type_for_assignment(
+        &aggregate_type,
+        &index_type,
+        false,
+        assignment.span,
+        analysis,
+    )?;
+    let mut required_value = component_type;
+    let converted_value = convert_expr(&assignment.value, &mut required_value, analysis)?;
+    conform_types(
+        &required_value,
+        required,
+        TypedExpr::ComponentAssignment {
+            target,
+            name: assignment.name.clone(),
+            index: Box::new(converted_index),
+            reversed: assignment.reversed,
+            value: Box::new(converted_value),
+            source: compact,
+            span: assignment.span,
+        },
+        assignment.span,
+        analysis,
+    )
+}
+
+/// `a[i] op:= v` (parser.y:272, axis.w:8495+ `comp_trans_stat`): after the
+/// assignability checks the desugared call `op(a[i], v)` converts against
+/// the component type, which resolves the operation and produces exactly
+/// the upstream diagnostics (`Failed to match …`, `found … while …`).
+fn convert_component_transform(
+    expression: &Expr,
+    transform: &ComponentTransformExpr,
+    required: &mut Type,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, Diagnostic> {
+    let compact = compact_expression(expression);
+    let (target, aggregate_type) = lookup_assignable(
+        &transform.name,
+        transform.span,
+        "component transform",
+        &compact,
+        analysis,
+    )?;
+    let mut index_type = Type::Undetermined;
+    let converted_index = convert_expr(&transform.index, &mut index_type, analysis)?;
+    let component_type = component_type_for_assignment(
+        &aggregate_type,
+        &index_type,
+        true,
+        transform.span,
+        analysis,
+    )?;
+    let subscription = Expr::Subscription {
+        array: Box::new(Expr::Identifier {
+            name: transform.name.clone(),
+            span: transform.name_span,
+        }),
+        index: Box::new(transform.index.clone()),
+        reversed: transform.reversed,
+        span: transform.span,
+    };
+    let call = Expr::OperatorCall {
+        operator: FormulaOperator::new(transform.operator.clone(), 0)
+            .with_span(transform.operator_span),
+        arguments: vec![subscription, transform.value.clone()],
+        span: transform.span,
+    };
+    let mut call_required = component_type.clone();
+    let converted_call = convert_expr(&call, &mut call_required, analysis)?;
+    let (operation, rhs, conversion) = factor_transform_call(converted_call);
+    conform_types(
+        &component_type,
+        required,
+        TypedExpr::ComponentTransform {
+            target,
+            name: transform.name.clone(),
+            index: Box::new(converted_index),
+            reversed: transform.reversed,
+            operation,
+            rhs,
+            conversion,
+            source: compact,
+            span: transform.span,
+        },
+        transform.span,
+        analysis,
+    )
+}
+
+/// `p.f := v` (parser.y:266, axis.w:8194-8239 `field_ass_stat`).
+fn convert_field_assignment(
+    expression: &Expr,
+    assignment: &FieldAssignmentExpr,
+    required: &mut Type,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, Diagnostic> {
+    let compact = compact_expression(expression);
+    let (target, tuple_type) = lookup_assignable(
+        &assignment.name,
+        assignment.span,
+        "field assignment",
+        &compact,
+        analysis,
+    )?;
+    let (position, component_type) =
+        resolve_projector(&assignment.field, &tuple_type, assignment.span, analysis)?;
+    let mut required_value = component_type;
+    let converted_value = convert_expr(&assignment.value, &mut required_value, analysis)?;
+    conform_types(
+        &required_value,
+        required,
+        TypedExpr::FieldAssignment {
+            target,
+            name: assignment.name.clone(),
+            position,
+            value: Box::new(converted_value),
+            span: assignment.span,
+        },
+        assignment.span,
+        analysis,
+    )
+}
+
+/// `p.f op:= v` (parser.y:274, axis.w:8286+ `field_trans_stat`): like the
+/// component transform, the desugared call `op(f(p), v)` converts against
+/// the component type.
+fn convert_field_transform(
+    expression: &Expr,
+    transform: &FieldTransformExpr,
+    required: &mut Type,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, Diagnostic> {
+    let compact = compact_expression(expression);
+    let (target, tuple_type) = lookup_assignable(
+        &transform.name,
+        transform.span,
+        "field transform",
+        &compact,
+        analysis,
+    )?;
+    let (position, component_type) =
+        resolve_projector(&transform.field, &tuple_type, transform.span, analysis)?;
+    let selection = Expr::Call {
+        callee: Box::new(Expr::Identifier {
+            name: transform.field.clone(),
+            span: transform.field_span,
+        }),
+        arguments: vec![Expr::Identifier {
+            name: transform.name.clone(),
+            span: transform.name_span,
+        }],
+        span: transform.span,
+    };
+    let call = Expr::OperatorCall {
+        operator: FormulaOperator::new(transform.operator.clone(), 0)
+            .with_span(transform.operator_span),
+        arguments: vec![selection, transform.value.clone()],
+        span: transform.span,
+    };
+    let mut call_required = component_type.clone();
+    let converted_call = convert_expr(&call, &mut call_required, analysis)?;
+    let (operation, rhs, conversion) = factor_transform_call(converted_call);
+    conform_types(
+        &component_type,
+        required,
+        TypedExpr::FieldTransform {
+            target,
+            name: transform.name.clone(),
+            position,
+            operation,
+            rhs,
+            conversion,
+            span: transform.span,
+        },
+        transform.span,
         analysis,
     )
 }
@@ -9288,6 +9756,92 @@ impl TypedExpr {
                 execute_multi_assignment(plan, &value, context);
                 Ok(at_level(level, || value.clone()))
             }
+            Self::ComponentAssignment {
+                target,
+                name,
+                index,
+                reversed,
+                value,
+                source,
+                span,
+            } => {
+                // axis.w:7940-7957: the value evaluates before the index,
+                // and the range check comes last.
+                let mut values = read_aggregate(target, name, context, *span, "Assigning to")?;
+                let value = force(value, context)?;
+                let index = expect_integer(force(index, context)?, *span, "assignment index")?;
+                let position = checked_index_in(
+                    &index,
+                    values.len(),
+                    *reversed,
+                    "component assignment",
+                    source,
+                    *span,
+                )?;
+                values[position] = value.clone();
+                write_aggregate(target, Value::List(values), context);
+                Ok(at_level(level, || value.clone()))
+            }
+            Self::ComponentTransform {
+                target,
+                name,
+                index,
+                reversed,
+                operation,
+                rhs,
+                conversion,
+                source,
+                span,
+            } => {
+                // axis.w:7989-8035: the right operand evaluates before the
+                // index so the aggregate stays intact during its evaluation.
+                let mut values = read_aggregate(target, name, context, *span, "Transforming")?;
+                let operand = force(rhs, context)?;
+                let index = expect_integer(force(index, context)?, *span, "transform index")?;
+                let position = checked_index_in(
+                    &index,
+                    values.len(),
+                    *reversed,
+                    "component assignment",
+                    source,
+                    *span,
+                )?;
+                let old = values[position].clone();
+                let result = apply_transform(operation, old, operand, *conversion, *span, context)?;
+                values[position] = result.clone();
+                write_aggregate(target, Value::List(values), context);
+                Ok(at_level(level, || result.clone()))
+            }
+            Self::FieldAssignment {
+                target,
+                name,
+                position,
+                value,
+                span,
+            } => {
+                let mut components = read_tuple(target, name, context, *span, "Assigning to")?;
+                let value = force(value, context)?;
+                components[*position] = value.clone();
+                write_aggregate(target, Value::Tuple(components), context);
+                Ok(at_level(level, || value.clone()))
+            }
+            Self::FieldTransform {
+                target,
+                name,
+                position,
+                operation,
+                rhs,
+                conversion,
+                span,
+            } => {
+                let mut components = read_tuple(target, name, context, *span, "Transforming")?;
+                let operand = force(rhs, context)?;
+                let old = components[*position].clone();
+                let result = apply_transform(operation, old, operand, *conversion, *span, context)?;
+                components[*position] = result.clone();
+                write_aggregate(target, Value::Tuple(components), context);
+                Ok(at_level(level, || result.clone()))
+            }
             Self::Subscription {
                 array,
                 index,
@@ -9973,10 +10527,24 @@ fn checked_index(
     source: &str,
     span: SourceSpan,
 ) -> Result<usize, Control> {
+    checked_index_in(index, length, reversed, "subscription", source, span)
+}
+
+/// The shared range check of subscription and component assignment
+/// (`range_mess`, axis.w:4188-4194): the context word distinguishes the
+/// read (`subscription`) from the write (`component assignment`).
+fn checked_index_in(
+    index: &BigInt,
+    length: usize,
+    reversed: bool,
+    context_name: &str,
+    source: &str,
+    span: SourceSpan,
+) -> Result<usize, Control> {
     let original = index.clone();
     let out_of_range = || {
         runtime(
-            format!("index {original} out of range (0<= . <{length}) in subscription {source}"),
+            format!("index {original} out of range (0<= . <{length}) in {context_name} {source}"),
             span,
         )
     };
@@ -9985,6 +10553,102 @@ fn checked_index(
         return Err(out_of_range());
     }
     Ok(if reversed { length - 1 - index } else { index })
+}
+
+/// The current value of a component/field assignment target, or the
+/// uninitialized diagnostic of the assignment family (axis.w:7746-7785).
+fn read_assign_target(
+    target: &AssignTarget,
+    name: &str,
+    context: &EvaluationContext,
+    span: SourceSpan,
+    verb: &str,
+    noun: &str,
+) -> Result<Value, Control> {
+    let value = match target {
+        AssignTarget::Local { depth, offset } => context.local(*depth, *offset),
+        AssignTarget::Global(cell) => cell.borrow().clone(),
+    };
+    match value {
+        Some(value) => Ok(value.as_ref().clone()),
+        None => Err(runtime(
+            format!("{verb} {noun} of uninitialized variable {name}"),
+            span,
+        )),
+    }
+}
+
+/// The row components of a component-assignment target.
+fn read_aggregate(
+    target: &AssignTarget,
+    name: &str,
+    context: &EvaluationContext,
+    span: SourceSpan,
+    verb: &str,
+) -> Result<Vec<Value>, Control> {
+    match read_assign_target(target, name, context, span, verb, "component")? {
+        Value::List(values) => Ok(values),
+        other => panic!("analysis let a non-row component assignment through: {other}"),
+    }
+}
+
+/// The tuple components of a field-assignment target.
+fn read_tuple(
+    target: &AssignTarget,
+    name: &str,
+    context: &EvaluationContext,
+    span: SourceSpan,
+    verb: &str,
+) -> Result<Vec<Value>, Control> {
+    match read_assign_target(target, name, context, span, verb, "field")? {
+        Value::Tuple(components) => Ok(components),
+        other => panic!("analysis let a non-tuple field assignment through: {other}"),
+    }
+}
+
+/// Write the modified aggregate back to the assignment target.
+fn write_aggregate(target: &AssignTarget, value: Value, context: &mut EvaluationContext) {
+    match target {
+        AssignTarget::Local { depth, offset } => {
+            let updated = context.set_local(*depth, *offset, Rc::new(value));
+            assert!(
+                updated,
+                "analysis emitted an invalid local assignment address"
+            );
+        }
+        AssignTarget::Global(cell) => {
+            *cell.borrow_mut() = Some(Rc::new(value));
+        }
+    }
+}
+
+/// Apply the resolved operation of a transform assignment to the old
+/// component value and the evaluated right operand (axis.w:8014-8035),
+/// then apply the result coercion the call conversion recorded.
+fn apply_transform(
+    operation: &TransformOperation,
+    old: Value,
+    operand: Value,
+    conversion: Option<&'static str>,
+    span: SourceSpan,
+    context: &mut EvaluationContext,
+) -> Result<Value, Control> {
+    let result = match operation {
+        TransformOperation::Builtin(builtin) => builtin_registry()[*builtin]
+            .run(vec![old, operand], span, Level::SingleValue, context)?
+            .expect("a transform builtin call yields a single value"),
+        TransformOperation::Closure(closure) => apply_closure(
+            closure,
+            Value::Tuple(vec![old, operand]),
+            context,
+            Level::SingleValue,
+        )?
+        .expect("a transform closure call yields a single value"),
+    };
+    match conversion {
+        Some(tag) => apply_conversion(tag, result, span),
+        None => Ok(result),
+    }
 }
 
 fn evaluate_slice(
@@ -10531,6 +11195,141 @@ mod tests {
         assert!(error
             .message
             .contains("Undefined identifier 'missing' in assignment"));
+    }
+
+    #[test]
+    fn component_assignment_updates_row_components() {
+        let cell = crate::frames::global_with(Rc::new(Value::List(vec![
+            Value::Integer(1.into()),
+            Value::Integer(2.into()),
+            Value::Integer(3.into()),
+        ])));
+        let mut globals = IdTable::new();
+        globals.define("a", Type::row(Type::Primitive(Prim::Int)), cell.clone());
+
+        // Plain, reversed, and transform forms (axis.w:7940-8035).
+        let (type_, value) =
+            convert_and_run_with("a[0] := 9", &globals).expect("component assignment");
+        assert_eq!(type_, Type::Primitive(Prim::Int));
+        assert_eq!(value, Value::Integer(9.into()));
+        assert_eq!(
+            cell.borrow().as_ref().map(|value| value.to_string()),
+            Some("[9,2,3]".into())
+        );
+        let (_, value) = convert_and_run_with("a~[0] := 7", &globals).expect("reversed form");
+        assert_eq!(value, Value::Integer(7.into()));
+        let (_, value) = convert_and_run_with("a[1] *:= 10", &globals).expect("transform");
+        assert_eq!(value, Value::Integer(20.into()));
+        assert_eq!(
+            cell.borrow().as_ref().map(|value| value.to_string()),
+            Some("[9,20,7]".into())
+        );
+
+        // The out-of-range diagnostic quotes the compact source node
+        // (range_mess, axis.w:7953).
+        let error = convert_and_run_with("a[5] := 1", &globals).expect_err("out of range");
+        assert_eq!(
+            error.message,
+            "index 5 out of range (0<= . <3) in component assignment a[5]:=1"
+        );
+        // A string aggregates no assignable components (axis.w:8163-8172).
+        let string_cell = crate::frames::global_with(Rc::new(Value::String("abc".into())));
+        globals.define("s", Type::Primitive(Prim::String), string_cell);
+        let error = convert_and_run_with("s[0] := \"x\"", &globals).expect_err("string target");
+        assert_eq!(
+            error.message,
+            "Cannot subscript value of type string with index of type int in assignment"
+        );
+        // The transform checks assignability before resolving the operator.
+        let error = convert_and_run_with("s[0] +:= \"x\"", &globals).expect_err("string transform");
+        assert_eq!(
+            error.message,
+            "Cannot assign to component of value of type string selected by index of type int in transforming assignment"
+        );
+        // The operator result must match the component type (the desugared
+        // call converts against it, axis.w:8516-8519).
+        let error = convert_and_run_with("a[1] /:= 2", &globals).expect_err("rat result");
+        assert_eq!(error.message, "found rat while int was needed.");
+        // Uninitialized, undefined, and constant diagnostics.
+        let unset = crate::frames::unset_global();
+        globals.define("u", Type::row(Type::Primitive(Prim::Int)), unset);
+        let error = convert_and_run_with("u[0] := 5", &globals).expect_err("uninitialized");
+        assert_eq!(
+            error.message,
+            "Assigning to component of uninitialized variable u"
+        );
+        let error =
+            convert_and_run_with("u[0] +:= 5", &globals).expect_err("uninitialized transform");
+        assert_eq!(
+            error.message,
+            "Transforming component of uninitialized variable u"
+        );
+        let error = convert_and_run("zz[0] := 1").expect_err("undefined");
+        assert_eq!(
+            error.message,
+            "Undefined identifier 'zz' in component assignment zz[0]:=1"
+        );
+        let error = convert_and_run("zz[0] +:= 1").expect_err("undefined transform");
+        assert_eq!(
+            error.message,
+            "Undefined identifier 'zz' in component transform zz[0] +:= 1"
+        );
+        globals.mark_const("a");
+        let error = convert_and_run_with("a[0] := 1", &globals).expect_err("constant");
+        assert_eq!(
+            error.message,
+            "Name 'a' is constant in component assignment a[0]:=1"
+        );
+    }
+
+    #[test]
+    fn field_assignment_updates_tuple_components() {
+        let mut context = TypedContext::new();
+        let mut values = Vec::new();
+        let mut errors = Vec::new();
+        for source in [
+            "set_type Pair = (int x, int y)",
+            "q: (int,int)",
+            "q := (1,2)",
+            "q.x := 7",
+            "q",
+            "q.y +:= 10",
+            "q",
+            "q.z := 7",
+            "q.x /:= 2",
+            "q.x +:= \"s\"",
+            "set !c = (3,4)",
+            "c.x := 9",
+            "c.x +:= 1",
+            "r: (int,int)",
+            "r.x := 5",
+        ] {
+            match context.execute(&command(source)) {
+                Ok(events) => {
+                    for event in events {
+                        if let TypedCommandEvent::Value { value, .. } = event {
+                            values.push(value.to_string());
+                        }
+                    }
+                }
+                Err(error) => errors.push(error.message),
+            }
+        }
+        assert_eq!(values, ["(1,2)", "7", "(7,2)", "12", "(7,12)"]);
+        assert_eq!(
+            errors,
+            [
+                // No `z` projector exists for (int,int) (axis.w:8252).
+                "Improper selection in field assignment",
+                // The operator result must match the component type.
+                "found rat while int was needed.",
+                // The desugared call converts the operator first.
+                "Failed to match '+' with argument type (int,string)",
+                "Name 'c' is constant in field assignment c.x:=9",
+                "Name 'c' is constant in field transform c.x +:= 1",
+                "Assigning to field of uninitialized variable r",
+            ]
+        );
     }
 
     #[test]

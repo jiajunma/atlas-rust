@@ -1,6 +1,7 @@
 use super::{
     anonymous_field, assignment, binary, case_branch, case_expression, cast_expression, declaration,
     definition, elif_tail, else_branch, extend_operator_formula, forget_command, multi_assignment,
+    component_assignment, component_transform, field_assignment, field_transform, operate_assignment,
     finish_let, expression_list, finish_operator_formula, for_expression, join_span, lambda,
     lambda_parameter, lambda_parameters, let_bindings, forget_overload_command,
     let_expression, list_expression, named_field, rec_function_binding, rec_lambda, return_expression,
@@ -301,10 +302,33 @@ LetBinding: LetBinding = {
 
 AssignmentExpr: Expr = {
     <name:"identifier"> <_becomes:":="> <value:AssignmentExpr> => assignment(name, value),
-    // `set pattern := value` (parser.y:264 tertiary): assignment through a
-    // pattern to existing variables. Parsing it keeps `set` legal in
-    // expression position — a redirect body parses as `expr` upstream, so
-    // `set x = …` there is an error at the `=`, not at the `set`.
+    // `name op:= value` desugars in the parser to `name := op(name, value)`
+    // (parser.y:267-268).
+    <name:"identifier"> <operator:"operator_becomes"> <value:AssignmentExpr> => {
+        operate_assignment(name, operator, value)
+    },
+    // `name[index] := value` and its reversed `~[` spelling (parser.y:265,
+    // 578-586 `assignable_subsn`).
+    <name:"identifier"> "[" <index:Expr> "]" ":=" <value:AssignmentExpr> => {
+        component_assignment(name, index, false, value)
+    },
+    <name:"identifier"> "~[" <index:Expr> "]" ":=" <value:AssignmentExpr> => {
+        component_assignment(name, index, true, value)
+    },
+    // `name.field := value` (parser.y:266).
+    <name:"identifier"> "." <field:"identifier"> ":=" <value:AssignmentExpr> => {
+        field_assignment(name, field, value)
+    },
+    // `name[index] op:= value` and `name.field op:= value` (parser.y:272-276).
+    <name:"identifier"> "[" <index:Expr> "]" <operator:"operator_becomes"> <value:AssignmentExpr> => {
+        component_transform(name, index, false, operator, value)
+    },
+    <name:"identifier"> "~[" <index:Expr> "]" <operator:"operator_becomes"> <value:AssignmentExpr> => {
+        component_transform(name, index, true, operator, value)
+    },
+    <name:"identifier"> "." <field:"identifier"> <operator:"operator_becomes"> <value:AssignmentExpr> => {
+        field_transform(name, field, operator, value)
+    },
     <set:"set"> <pattern:Pattern> <_becomes:":="> <value:AssignmentExpr> => {
         multi_assignment(set, pattern, value)
     },
@@ -359,6 +383,15 @@ Operator: FormulaOperator = {
 };
 
 Postfix: Expr = {
+    // A bare identifier anchors its own suffix chain (rather than reducing
+    // through `Atom`) so the assignment productions (parser.y:263-276) can
+    // share the `IDENT` prefix without a shift/reduce conflict — the same
+    // reason upstream routes `IDENT '[' expr ']'` through `assignable_subsn`
+    // (parser.y:578-586,601).
+    <name:"identifier"> <suffixes:PostfixSuffix*> => suffixes.into_iter().fold(
+        Expr::Identifier { name: name.value, span: name.span },
+        postfix,
+    ),
     <base:Atom> <suffixes:PostfixSuffix*> => suffixes.into_iter().fold(base, postfix),
 };
 
@@ -444,7 +477,6 @@ Atom: Expr = {
     <integer:"integer"> => Expr::Integer { value: integer.value, span: integer.span },
     <boolean:"boolean"> => Expr::Boolean { value: boolean.value, span: boolean.span },
     <string:"string"> => Expr::String { value: string.value, span: string.span },
-    <identifier:"identifier"> => Expr::Identifier { name: identifier.value, span: identifier.span },
     <open:"["> <elements:ListElements> <close:"]"> => list_expression(open, elements, close),
     // commabarlist (parser.y:370-376, :402-410): `[a,b | c,d]` builds the
     // matrix whose ROWS are the comma-separated segments (upstream:
@@ -687,6 +719,7 @@ extern {
         "string" => ParserToken::String(<SpannedValue<String>>),
         "identifier" => ParserToken::Identifier(<SpannedValue<String>>),
         "operator" => ParserToken::Operator(<SpannedValue<FormulaOperator>>),
+        "operator_becomes" => ParserToken::OperatorBecomes(<SpannedValue<String>>),
         "primitive_type" => ParserToken::PrimitiveType(<SpannedValue<Prim>>),
         ":=" => ParserToken::Becomes(<SourceSpan>),
         "=" => ParserToken::Equals(<SourceSpan>),

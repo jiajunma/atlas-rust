@@ -1,0 +1,22 @@
+a: [int]
+a := [1,2,3]
+a[5] := 1
+s: string
+s := "abc"
+s[0] := "x"
+s +:= "cd"
+a[1] /:= 2
+zz[0] := 1
+zz[0] +:= 1
+u: [int]
+u[0] := 5
+set_type Pair = (int x, int y)
+q: (int,int)
+q := (1,2)
+q.z := 7
+q.x +:= "s"
+set !c = (3,4)
+c.x := 9
+c.x +:= 1
+r: (int,int)
+r.x := 5

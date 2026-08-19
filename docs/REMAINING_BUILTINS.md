@@ -265,9 +265,27 @@ type between the exact and coercible ordinary overloads. Bare
 `tests/fixtures/eval/row_operators.atlas` / `..._rejected.atlas` diff
 byte-identical / payload-identical against the local oracle. Suffix beats
 prefix when both apply; `*` row components adopt the element type; unequal
-row pairs (`[]##[1,2]`) fail with "Failed to match". The `#:=` combined
-assignment remains a pre-existing parser gap here (the oracle accepts it;
-the Rust lexer rejects it) and is not covered by these fixtures.
+row pairs (`[]##[1,2]`) fail with "Failed to match".
+
+~~The `#:=` combined assignment remains a pre-existing parser gap~~ LANDED
+2026-08-19 (local gates green, HPC capture pending): the whole assignment
+family of parser.y:263-278 — component `a[i] := v` / `a~[i] := v`, field
+`p.f := v`, and the `op:=` transforms (component, field, and bare
+`x op:= e`, which desugars in the parser to `x := op(x,e)`). The grammar
+routes assignment targets through identifier-anchored `Postfix`
+productions (upstream's `assignable_subsn` prefix sharing,
+parser.y:578-586); evaluation follows upstream order (uninitialised check,
+rhs, index, range check) with the `range_mess` wording
+"in component assignment". Known divergences, none fixtured: the
+out-of-range TRANSFORM diagnostic prints the converted call upstream
+(`a[5] succ@int:= ()` via the `x+1→succ(x)` optimisation); the
+syntax-error `expecting` list after a non-assignable target says `'='`
+where bison says `'\n'`; two-index `M[i,j] := v` needs the (missing)
+two-index subscription read path first; vec/mat component assignment is
+upstream-legal but shares the unimplemented vec/mat subscription gap;
+`set_type` ALIAS names do not resolve in declarations (`p: Pair` —
+pre-existing, oracle accepts). Fixtures `combined_assignment{,_rejected}`
+cover the rest.
 
 Remaining global.w gap after batch 2 (batch-3 work order):
 
