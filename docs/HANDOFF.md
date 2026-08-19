@@ -3374,9 +3374,11 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   brief at `docs/slices/locator_integration_brief.md`. Known defect pinned
   there: A2 SL(3,R) family identity-attitude shift is wrong (gamma-lambda rows
   0/2: oracle [-1,1]/2 vs Rust [-3,3]/2). Step-4 next: transport consumers,
-  header, un-gate, register the three locator fixtures (their events.json use
-  the stale `Variable x: T` ReportLine convention — regenerate with
-  `Declaring identifier 'x': T` before registering).
+  header, un-gate, register the three locator fixtures. Verified 2026-08-19:
+  their events.json `Variable x: T` lines are CORRECT — both the oracle and
+  the Rust CLI print `Variable rd: RootDatum` for `set x = ...`; the
+  `Declaring identifier 'x': T` wording belongs only to the `x : T` / `x :=`
+  declaration form (e.g. p0_simple_signatures). Do not regenerate them.
 - Twisted/ext proper: workorder `docs/slices/twisted_ext_proper_workorder.md`.
   Slice order: 1 extended_block (1A constructor over PartialBlock in flight,
   agent-73; 1B wiring replaces the gate at domain_builtins.rs:14829),
