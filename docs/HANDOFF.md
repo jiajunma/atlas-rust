@@ -98,9 +98,28 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   differential **3574928** @ `665f2f5` passed 291 PASS + 1 declared PARTIAL
   with step-2 + non-integral slices 1-2 in; the two byte-identical anchors
   (print_partial_common_block_seq, print_partial_block_proper) were then
-  REGISTERED (`852c0f6`) with differential 3574934 in flight. Still
+  REGISTERED (`852c0f6`) and VERIFIED by differential **3574934** (293 PASS
+  + 1 declared PARTIAL; metas verified_hpc `7bdb30a`). Still
   unregistered: ext_block_proper (slice 1), length_dual_proper{,_a2}
   (dual_KL_block slice 3 + A2 locator shift defect).
+- global.w batch 3 verified_hpc (commit `703a982`, agent-71): matreduc.rs
+  op-for-op port — Bezout, echelon, linear_solve (union
+  empty_set|affine_subspace), diagonalize, adapted_basis, kernel,
+  eigen_lattice, row_saturate, Smith, invert. Capture 3574944, fat
+  differential **3575810**: 295 PASS + 1 declared PARTIAL; metas
+  verified_hpc (`e238dee`). Batch-4 GF(2) recon IN FLIGHT (agent-74).
+- Cross-block partial merge recon COMPLETE (agent-75); work order +
+  minimal port sketch at `docs/slices/partial_merge_workorder.md`
+  (append_block_containing / pool-extension / union rebuild / retire —
+  Hasse import NOT needed, block_access recomputes; KL swallow perf-only).
+  Four oracle-verified anchors frozen (capture 3575819, `16339ba`,
+  UNREGISTERED): partial_merge_{containment,union,chain,a2}. Implementation
+  waits for locator step-3 (rep_table.rs collision).
+- 2026-08-19 quota incident: agents 72/73/74 were killed by a provider
+  403 (billing-cycle limit) mid-flight and RESUMED in place after the
+  refresh; agent-73's partial ext_block.rs edits survived in the tree
+  (compiles, uncommitted). If a subagent dies with 403, resume it — its
+  context and tree edits persist.
 - Twisted/ext slice order per the work order: (1) extended_block proper,
   (2) raw_ext_KL+partial_extended_KL_block proper, (3) twisted_KL_sum_at_s
   proper, (4) twisted_deform proper, (5) twisted_full_deform recursion at
