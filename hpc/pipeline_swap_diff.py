@@ -84,6 +84,10 @@ FIXTURE_PLANS = (
     # were frozen by HPC oracle capture 3543697 before the Rust port.
     FixturePlan(name="domain/p1_simple_signatures"),
     FixturePlan(name="domain/p1_simple_signatures_rejected"),
+    # Twisted full deformation recursion over interval-below common blocks;
+    # local oracle capture 2026-08-20 is byte-identical for integral,
+    # half-integral, and non-final B2 parameters.
+    FixturePlan(name="domain/twisted_full_deform_proper"),
     # P2 Block W-graph overloads captured by HPC oracle 3543699.  The
     # full-integral A1 `block(Param)` path now uses the shared RepTable lookup;
     # the proper-integral KL_column case is covered by the shared subsystem
