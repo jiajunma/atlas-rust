@@ -51,7 +51,10 @@ use crate::kl_table::KlTable;
 use crate::matreduc::{exp_i, inverse_upper_triangular, IntMatrix};
 use crate::partial_block::PartialBlock;
 use crate::rep_context::{RepContext, StandardRepr};
-use crate::{BlockGraph, KType, RankFlags, RationalWeight, StructureError, Weight};
+use crate::{
+    BlockDescent, BlockGraph, BlockModifier, BlockTopology, CommonContext, KType, RankFlags,
+    RationalWeight, StructureError, Weight,
+};
 
 // ---------------------------------------------------------------------------
 // Split coefficients.
@@ -335,6 +338,177 @@ fn block_length(block: &BlockGraph, z: usize) -> Result<usize, StructureError> {
         .ok_or(StructureError::BlockInvariantViolation {
             invariant: "block element length",
         })
+}
+
+/// Common-block deformation terms for a partial block returned by
+/// `RepTable::lookup` (repr.cpp:1933-2025).  Unlike the historical
+/// `RepContext::deformation_terms` helper, this follows the upstream
+/// `contributions(block, block.singular(bm,gamma), y)` path and reconstructs
+/// every output row through its stored `StandardReprMod` and lookup modifier.
+pub fn common_deformation_terms(
+    rc: &RepContext,
+    block: &PartialBlock,
+    modifier: &BlockModifier,
+    y: usize,
+    gamma: &RationalWeight,
+) -> Result<Vec<(StandardRepr, i32)>, StructureError> {
+    let y_len = block
+        .length(y)
+        .ok_or(StructureError::BlockInvariantViolation {
+            invariant: "common deformation y length",
+        })?;
+    if y_len == 0 {
+        return Ok(Vec::new());
+    }
+
+    let seed = block
+        .element(y)
+        .ok_or(StructureError::BlockInvariantViolation {
+            invariant: "common deformation y representative",
+        })?;
+    let ctxt = CommonContext::integral(rc, seed.gamma_lambda())?;
+    let singular = ctxt.singular_flags(gamma)?;
+
+    // `repr::contributions` expands each row to the final rows surviving the
+    // singular system.  The first singular descent determines the branch.
+    let mut contribution = vec![Vec::<(usize, i32)>::new(); y + 1];
+    for z in 0..=y {
+        let descent = (0..block.rank()).find_map(|s| {
+            singular
+                .get(s)
+                .copied()
+                .filter(|flag| *flag)
+                .and_then(|_| block.descent(z, s).map(|d| (s, d)))
+                .filter(|(_, d)| d.is_descent())
+        });
+        match descent {
+            None => contribution[z].push((z, 1)),
+            Some((s, BlockDescent::ComplexDescent)) => {
+                let target = block
+                    .cross(z, s)
+                    .ok_or(StructureError::BlockInvariantViolation {
+                        invariant: "common deformation complex cross",
+                    })?;
+                contribution[z] = contribution[target].clone();
+            }
+            Some((s, BlockDescent::RealTypeII)) => {
+                let target = block.inverse_cayley(z, s).and_then(|pair| pair.0).ok_or(
+                    StructureError::BlockInvariantViolation {
+                        invariant: "common deformation type-II Cayley",
+                    },
+                )?;
+                contribution[z] = contribution[target].clone();
+            }
+            Some((s, BlockDescent::RealTypeI)) => {
+                let (first, second) =
+                    block
+                        .inverse_cayley(z, s)
+                        .ok_or(StructureError::BlockInvariantViolation {
+                            invariant: "common deformation type-I Cayley",
+                        })?;
+                let first = first.ok_or(StructureError::BlockInvariantViolation {
+                    invariant: "common deformation type-I first Cayley",
+                })?;
+                let second = second.ok_or(StructureError::BlockInvariantViolation {
+                    invariant: "common deformation type-I second Cayley",
+                })?;
+                let mut combined = contribution[first].clone();
+                for (element, coefficient) in &contribution[second] {
+                    if let Some((_, existing)) = combined.iter_mut().find(|(e, _)| e == element) {
+                        *existing = existing.wrapping_add(*coefficient);
+                    } else {
+                        combined.push((*element, *coefficient));
+                    }
+                }
+                contribution[z] = combined;
+            }
+            Some((_s, BlockDescent::ImaginaryCompact)) => {}
+            Some((_s, _)) => {}
+        }
+    }
+
+    let mut finals: Vec<usize> = contribution
+        .iter()
+        .enumerate()
+        .filter_map(|(z, values)| {
+            values
+                .first()
+                .is_some_and(|(first, _)| *first == z)
+                .then_some(z)
+        })
+        .collect();
+    finals.reverse();
+    if finals.is_empty() || finals[0] != y {
+        return Err(StructureError::RepInvariantViolation {
+            invariant: "common deformation finals",
+        });
+    }
+
+    let mut kl = crate::KlTable::from_handle(block)?;
+    kl.fill(y + 1)?;
+    let mut index = vec![usize::MAX; y + 1];
+    for (position, &z) in finals.iter().enumerate() {
+        index[z] = position;
+    }
+    let mut acc = vec![0_i32; finals.len()];
+    let mut remainder = vec![0_i32; finals.len()];
+    remainder[0] = 1;
+    let y_parity = y_len % 2;
+    for (position, &z) in finals.iter().enumerate() {
+        let current = remainder[position];
+        if current == 0 {
+            continue;
+        }
+        let contribute = block.length(z).unwrap_or(0) % 2 != y_parity;
+        for x in (0..=z).rev() {
+            let pol = kl
+                .pool()
+                .get(kl.kl_pol(x, z)?)
+                .cloned()
+                .unwrap_or_else(KlPol::zero);
+            let mut value = pol.evaluate_at_minus_one();
+            if value == 0 {
+                continue;
+            }
+            if !(block.length(z).unwrap_or(0) - block.length(x).unwrap_or(0)).is_multiple_of(2) {
+                value = value.wrapping_neg();
+            }
+            for &(element, coefficient) in &contribution[x] {
+                let target = index[element];
+                if target == usize::MAX {
+                    return Err(StructureError::RepInvariantViolation {
+                        invariant: "common deformation contribution target",
+                    });
+                }
+                let c = current.wrapping_mul(value).wrapping_mul(coefficient);
+                remainder[target] = remainder[target].wrapping_sub(c);
+                if contribute {
+                    acc[target] = acc[target].wrapping_add(c);
+                }
+            }
+        }
+    }
+
+    let sr_y = rc.sr_with_modifier(seed, modifier, gamma)?;
+    let orientation_y = rc.orientation_number(&sr_y)? as i32;
+    let mut result = Vec::new();
+    for (position, &z) in finals.iter().enumerate() {
+        if acc[position] == 0 {
+            continue;
+        }
+        let srm = block
+            .element(z)
+            .ok_or(StructureError::BlockInvariantViolation {
+                invariant: "common deformation result representative",
+            })?;
+        let sr = rc.sr_with_modifier(srm, modifier, gamma)?;
+        let orientation = rc.orientation_number(&sr)? as i32;
+        result.push((
+            sr,
+            acc[position].wrapping_mul(exp_i(orientation_y - orientation)),
+        ));
+    }
+    Ok(result)
 }
 
 // ---------------------------------------------------------------------------

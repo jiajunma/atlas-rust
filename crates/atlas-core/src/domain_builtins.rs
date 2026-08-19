@@ -35,8 +35,8 @@ use atlas_real_group::{
     annihilator_modulo as relation_annihilator_modulo, block_deformation_to_height,
     bourbaki_permutation, bruhat_below, bruhat_hasse as block_bruhat_hasse, build_presentations,
     central_fiber, checked_inner_class_letters, classify_involution as domain_classify_involution,
-    denominator_exceeds_alcove_bound, dual_cartan_correspondence, dual_inner_class,
-    dual_involution as block_dual_involution, elected_square_root, fiber_rank,
+    common_deformation_terms, denominator_exceeds_alcove_bound, dual_cartan_correspondence,
+    dual_inner_class, dual_involution as block_dual_involution, elected_square_root, fiber_rank,
     filter_relation_units as domain_filter_relation_units, inner_class_with_twisted_involution,
     integral_block_scope, layout_involution, longest_action, minimal_torus_part,
     on_basis as lattice_on_basis, pair, quotient_relation_basis as domain_quotient_relation_basis,
@@ -2292,30 +2292,19 @@ fn full_deformation_terms(
         if deadline_expired(deadline) {
             return Ok(None);
         }
-        let dual_parent = build_dual_inner_class(&context.parent, span)?;
-        let dual_quasisplit = dual_parent.order.quasisplit_external();
-        let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
-        let block = build_block(context, &dual_rf, span)?;
-        if deadline_expired(deadline) {
-            return Ok(None);
-        }
-        let mut kl_table =
-            KlTable::new(&block.graph).map_err(|error| structure_diagnostic(error, span))?;
-        kl_table
-            .fill(0)
+        let located = context
+            .rep
+            .lookup(&zi)
             .map_err(|error| structure_diagnostic(error, span))?;
-        if deadline_expired(deadline) {
-            return Ok(None);
-        }
-        let y = (0..block.graph.size())
-            .find(|&y| block.graph.x(y) == Some(zi.x()))
-            .ok_or_else(|| runtime(span, "deformation parameter not in the block"))?;
-        let lambda_rho = rc
-            .lambda_rho(&zi)
-            .map_err(|error| structure_diagnostic(error, span))?;
-        let terms = rc
-            .deformation_terms(&block.graph, y, zi.gamma(), &lambda_rho, &kl_table)
-            .map_err(|error| structure_diagnostic(error, span))?;
+        let block = located.block();
+        let terms = common_deformation_terms(
+            rc,
+            &block,
+            located.block_modifier(),
+            located.raw_row(),
+            zi.gamma(),
+        )
+        .map_err(|error| structure_diagnostic(error, span))?;
         if deadline_expired(deadline) {
             return Ok(None);
         }
