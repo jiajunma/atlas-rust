@@ -4,7 +4,7 @@
  "oracle": "atlas",
  "stage": "typed-pipeline-swap",
  "reference_status": "verified_hpc_reference",
- "rust_status": "pending_hpc_differential",
+ "rust_status": "verified_hpc",
  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
@@ -16,11 +16,12 @@
  "oracle_seconds": 0.097,
  "oracle_maxrss_kb": 3548,
  "oracle_maxrss_approximate": false,
- "notes": "Combined assignment family (80518bd): plain global transforms (x +:= 3, x *:= 2), row concat transforms (v #:= 3, v ##:= [4,5]), component assignment a[0]:=5 and stacked-index a~[0]:=9 on row locals, component transforms b[1] *:= 10 / b[2] +:= 1, field assignment q.x:=7 and field transform q.y +:= 10 through set_type projectors (anonymous tuple binding q:(int,int); the Pair alias itself is not yet usable in declarations, see docs/REMAINING_BUILTINS.md), let-bound component assignment, and pattern-bound (!h,k) global component write. Reference frozen by capture 3585649. pending HPC differential run.",
+ "notes": "Combined assignment family (80518bd): plain global transforms (x +:= 3, x *:= 2), row concat transforms (v #:= 3, v ##:= [4,5]), component assignment a[0]:=5 and stacked-index a~[0]:=9 on row locals, component transforms b[1] *:= 10 / b[2] +:= 1, field assignment q.x:=7 and field transform q.y +:= 10 through set_type projectors (anonymous tuple binding q:(int,int); the Pair alias itself is not yet usable in declarations, see docs/REMAINING_BUILTINS.md), let-bound component assignment, and pattern-bound (!h,k) global component write. Reference frozen by capture 3585649. Rust differential VERIFIED by fat job 3585678 at ef395f3 (321 PASS + 1 declared PARTIAL container_syntax_errors, 0 FAIL; report SHA256 019e223c99f5293c6defdc65f7f4b5434aa72253b4f82231d90c545b82947b15). Rust: 0.004s, 5868 KiB peak RSS, exit 0.",
  "hpc_capture": {
   "fresh_process_required": true,
   "timeout_seconds": 30,
   "estimated_seconds": 5,
   "estimated_memory_mb": 128
- }
+ },
+ "differential_job": "3585678"
 }

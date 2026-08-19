@@ -4,6 +4,45 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-19 night (op:= + twisted slice 3 verified; alias declaration fixed)
+
+- Frozen corpus now **311/311 verified_hpc** (was 307/307): the four new
+  fixtures below all VERIFIED by fat differential **3585678** @ `ef395f3` —
+  321 PASS + 1 declared PARTIAL (container_syntax_errors), 0 FAIL; report
+  SHA256 `019e223c99f5293c6defdc65f7f4b5434aa72253b4f82231d90c545b82947b15`.
+- op:= assignment family landed (`80518bd`): component/field assignment
+  `a[i]:=v` (incl. `~[`) and `p.f:=v`, component/field transforms
+  `a[i] op:= v` / `p.f op:= v`, and bare `x op:= e` desugared in the parser
+  to `x := op(x,e)` (parser.y:263-278; axis.w:7736-8546 evaluation order).
+  Grammar routes targets through identifier-anchored `Postfix` productions
+  (upstream `assignable_subsn` prefix sharing). Fixtures
+  `eval/combined_assignment{,_rejected}` (capture **3585649**), both metas
+  `verified_hpc`. Known divergences documented in
+  docs/REMAINING_BUILTINS.md (converted-call wording on out-of-range
+  transforms, bison `expecting` list, two-index subscription, vec/mat
+  component writes).
+- Twisted slice 3 landed (`63e8118`): `twisted_KL_sum_at_s` both overloads
+  on proper-subsystem gamma — `with_integral_block` gains the
+  `ProperSubsystem` arm via `RepTable::lookup_full_block` + partial
+  `ExtBlock`; `twisted_kl_sum`/`twisted_kl_column_at_s` generalised
+  (atlas-types.w:8370-8382/8420-8431 → repr.cpp:2371-2423/2304-2350).
+  Fixtures `domain/twisted_kl_proper{,_rejected}` (capture **3585649**),
+  both metas `verified_hpc`.
+- `set_type` alias declaration gap FIXED (`ff5c518`): `p: Pair` now
+  declares — a bare-identifier `Command::Define` right side naming a known
+  type is re-routed to the declaration path (mirrors parser.y TYPE_ID
+  lexing). Residual divergence (`set Pair = 5` accepted, upstream says
+  "unexpected TYPE_ID") recorded in docs/REMAINING_BUILTINS.md.
+- In flight: agent-91 — twisted slice 4 (`twisted_deform` on
+  proper-subsystem gamma; `twisted_deformation_terms` + partial-aware
+  `singular_orbits_at`; workorder lines 127-129).
+- Queue after slice 4: slice 5 (twisted_full_deform recursion, may force
+  KL_table::swallow/partial merge) → next-wave A (non-integral common
+  block, domain_builtins.rs:9431 gate) → C (KL_sum_at_s lambda-rho) → B
+  (full_deform scope check) → E/F (Weyl_orbit size, integrality_points
+  display) → locator step-5 (print_partial_common_block attitude +
+  ext-block simple_pi).
+
 ## Checkpoint - 2026-08-19 late (twisted slice 2 verified; op:= + slice 3 in flight)
 
 - Frozen corpus now **307/307 verified_hpc** (was 305/305 at `45acc32`).
