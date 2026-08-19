@@ -21,9 +21,9 @@
 //!   is a [`PartialBlock`] (the `common_block` of `common_context`,
 //!   repr.cpp:2666-2670) and each row's reconstruction uses its own stored
 //!   `gamma_lambda` exactly as upstream's `common_block::sr` does; see
-//!   [`KlSumParent`]. The `twisted_KL_sum_at_s` drivers accept both parent
-//!   kinds; [`twisted_deformation_terms`] remains full-block-only (slice 4
-//!   of docs/slices/twisted_ext_proper_workorder.md).
+//!   [`KlSumParent`]. The `twisted_KL_sum_at_s` drivers and
+//!   [`twisted_deformation_terms`] accept both parent kinds (slices 3-4 of
+//!   docs/slices/twisted_ext_proper_workorder.md).
 //! - The rank-0 integral subsystem is detected by [`IntegralBlockScope`]:
 //!   the common block is the singleton `{p}` of length 0, and the language
 //!   layer takes that fast path.
@@ -350,17 +350,19 @@ fn block_length(block: &BlockGraph, z: usize) -> Result<usize, StructureError> {
 /// to `Split(c, -c)` and sorts into `SR_poly` order).
 ///
 /// `singular_orbits` flags the singular generators in EXTENDED-block
-/// numbering (see [`singular_orbits_at`]); `gamma` is the common
-/// infinitesimal character and `lambda_rho` the caller-supplied constant
-/// `lambda-rho` used to reconstruct parameters (module-level caveat).
+/// numbering (folded by the caller from the parent's own singular set; see
+/// [`singular_orbits_at`] and [`KlSumParent`]); `gamma` is the common
+/// infinitesimal character. Parent lengths and the `parent.sr`
+/// reconstruction (repr.cpp:2504-2510, blocks.cpp:1260-1264) go through
+/// [`KlSumParent`], so a proper-subsystem parent uses each row's own
+/// `lambda_rho`.
 pub fn twisted_deformation_terms(
     rc: &RepContext,
-    parent: &BlockGraph,
+    parent: &KlSumParent,
     eblock: &ExtBlock,
     y: usize,
     singular_orbits: &RankFlags,
     gamma: &RationalWeight,
-    lambda_rho: &Weight,
 ) -> Result<Vec<(StandardRepr, i32)>, StructureError> {
     if !eblock.is_present(y) {
         return Err(StructureError::RepInvariantViolation {
@@ -369,7 +371,7 @@ pub fn twisted_deformation_terms(
     }
     let y_index = eblock.element(y);
     let mut result = Vec::new();
-    if block_length(parent, y)? == 0 {
+    if parent.length(y)? == 0 {
         return Ok(result); // easy case, null result (repr.cpp:2435-2436)
     }
 
@@ -405,14 +407,14 @@ pub fn twisted_deformation_terms(
     let mut acc = vec![0_i32; finals.len()];
     let mut remainder = vec![0_i32; finals.len()];
     remainder[0] = 1; // we initialised remainder = 1*sr_y
-    let y_parity = block_length(parent, y)? % 2;
+    let y_parity = parent.length(y)? % 2;
 
     for (position, &z) in finals.iter().enumerate() {
         let c_cur = remainder[position];
         if c_cur == 0 {
             continue;
         }
-        let contribute = block_length(parent, eblock.z(z))? % 2 != y_parity;
+        let contribute = parent.length(eblock.z(z))? % 2 != y_parity;
         for x in kl_tab.nonzero_column(z) {
             let (pool_index, negate_p) = kl_tab.kl_pol_index(x, z);
             let pooled = pool_at_minus_1[pool_index];
@@ -421,8 +423,9 @@ pub fn twisted_deformation_terms(
             }
             // XOR the stored sign with the PARENT length-difference parity
             // (repr.cpp:2486-2488).
-            let length_difference_odd = !block_length(parent, eblock.z(x))?
-                .wrapping_sub(block_length(parent, eblock.z(z))?)
+            let length_difference_odd = !parent
+                .length(eblock.z(x))?
+                .wrapping_sub(parent.length(eblock.z(z))?)
                 .is_multiple_of(2);
             let val_xz = if negate_p != length_difference_odd {
                 pooled.wrapping_neg()
@@ -443,14 +446,14 @@ pub fn twisted_deformation_terms(
     }
 
     // The orientation pass (repr.cpp:2501-2517).
-    let sr_y = rc.sr_gamma(block_x(parent, y)?, lambda_rho, gamma)?;
+    let sr_y = parent.sr(rc, y, gamma)?;
     let orient_y = rc.orientation_number(&sr_y)?;
     for (position, &f) in finals.iter().enumerate() {
         let c = acc[position];
         if c == 0 {
             continue;
         }
-        let sr_z = rc.sr_gamma(block_x(parent, eblock.z(f))?, lambda_rho, gamma)?;
+        let sr_z = parent.sr(rc, eblock.z(f), gamma)?;
         let diff = orient_y as i32 - rc.orientation_number(&sr_z)? as i32;
         result.push((sr_z, c.wrapping_mul(exp_i(diff))));
     }
@@ -461,12 +464,13 @@ pub fn twisted_deformation_terms(
 // Twisted KL sums at s.
 // ---------------------------------------------------------------------------
 
-/// The parent common block a twisted KL sum reads (`parent` of
-/// repr.cpp:2304-2350, `block` of repr.cpp:2371-2423): either the full
-/// block of the real form with the caller-supplied constant `lambda_rho`
-/// (the module-level caveat), or a proper-subsystem [`PartialBlock`],
-/// whose per-row `gamma_lambda` reconstructs each term's own `lambda_rho`
-/// exactly as `common_block::sr` does (blocks.cpp:1260-1264: `lambda_rho =
+/// The parent common block a twisted KL sum or twisted deformation reads
+/// (`parent` of repr.cpp:2304-2350, `block` of repr.cpp:2371-2423 and
+/// 2426-2520): either the full block of the real form with the
+/// caller-supplied constant `lambda_rho` (the module-level caveat), or a
+/// proper-subsystem [`PartialBlock`], whose per-row `gamma_lambda`
+/// reconstructs each term's own `lambda_rho` exactly as `common_block::sr`
+/// does (blocks.cpp:1260-1264: `lambda_rho =
 /// gamma.integer_diff(context().gamma_lambda_rho(z))`).
 pub enum KlSumParent<'a> {
     /// The full block (`lookup_full_block`) plus the shared `lambda_rho`.
@@ -896,14 +900,17 @@ pub fn twisted_deformation_with_cancel(
                 }
                 let singular_orbits = singular_orbits_at(rc, &eblock, zi.gamma())?;
                 let lambda_rho = rc.lambda_rho(&zi)?;
+                let parent = KlSumParent::Full {
+                    block: &block,
+                    lambda_rho: &lambda_rho,
+                };
                 let terms = twisted_deformation_terms(
                     rc,
-                    &block,
+                    &parent,
                     &eblock,
                     index,
                     &singular_orbits,
                     zi.gamma(),
-                    &lambda_rho,
                 )?;
                 if cancelled() {
                     return Ok(None);
@@ -1316,16 +1323,13 @@ mod tests {
         let y0 = block_element_of(&rc, &ctx, &eblock, &q, &lambda_rho);
         assert_eq!(ctx.block.length(y0), Some(0));
         let singular_orbits = singular_orbits_at(&rc, &eblock, q.gamma()).unwrap();
-        let terms = twisted_deformation_terms(
-            &rc,
-            &ctx.block,
-            &eblock,
-            y0,
-            &singular_orbits,
-            q.gamma(),
-            &lambda_rho,
-        )
-        .unwrap();
+        let parent = KlSumParent::Full {
+            block: &ctx.block,
+            lambda_rho: &lambda_rho,
+        };
+        let terms =
+            twisted_deformation_terms(&rc, &parent, &eblock, y0, &singular_orbits, q.gamma())
+                .unwrap();
         assert!(terms.is_empty());
     }
 
@@ -1369,16 +1373,13 @@ mod tests {
         let y0 = block_element_of(&rc, &ctx, &eblock, &q2, &lambda_rho);
         assert_eq!(ctx.block.length(y0), Some(0));
         let singular_orbits = singular_orbits_at(&rc, &eblock, q2.gamma()).unwrap();
-        let terms = twisted_deformation_terms(
-            &rc,
-            &ctx.block,
-            &eblock,
-            y0,
-            &singular_orbits,
-            q2.gamma(),
-            &lambda_rho,
-        )
-        .unwrap();
+        let parent = KlSumParent::Full {
+            block: &ctx.block,
+            lambda_rho: &lambda_rho,
+        };
+        let terms =
+            twisted_deformation_terms(&rc, &parent, &eblock, y0, &singular_orbits, q2.gamma())
+                .unwrap();
         assert!(terms.is_empty());
     }
 
@@ -1503,16 +1504,12 @@ mod tests {
             .expect("some delta-fixed block element");
         assert!(ctx.block.length(y0).unwrap() > 0);
         let singular_orbits = singular_orbits_at(&rc, &eblock, &gamma).unwrap();
-        let terms = twisted_deformation_terms(
-            &rc,
-            &ctx.block,
-            &eblock,
-            y0,
-            &singular_orbits,
-            &gamma,
-            &lambda_rho,
-        )
-        .unwrap();
+        let parent = KlSumParent::Full {
+            block: &ctx.block,
+            lambda_rho: &lambda_rho,
+        };
+        let terms =
+            twisted_deformation_terms(&rc, &parent, &eblock, y0, &singular_orbits, &gamma).unwrap();
         for (sr, _) in &terms {
             assert_eq!(sr.gamma(), &gamma);
         }
@@ -1520,10 +1517,6 @@ mod tests {
         let sr_y = rc
             .sr_gamma(ctx.block.x(y0).unwrap(), &lambda_rho, &gamma)
             .unwrap();
-        let parent = KlSumParent::Full {
-            block: &ctx.block,
-            lambda_rho: &lambda_rho,
-        };
         let sum =
             twisted_kl_column_at_s(&rc, &eblock, &parent, y0, &gamma, &singular_orbits).unwrap();
         assert!(sum.contains(&(sr_y.clone(), SplitInteger::new(1, 0))));

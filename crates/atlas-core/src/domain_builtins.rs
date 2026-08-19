@@ -8068,18 +8068,6 @@ fn full_block_of(parameter: &ParamValue, span: SourceSpan) -> Result<BlockValue,
     build_block(&parameter.context, &dual_rf, span)
 }
 
-/// The loud rejection of a proper-integral-subsystem common block (no
-/// `SubSystem`/`simp_int` port exists; the crate's
-/// [`IntegralBlockScope::ProperSubsystem`] case).
-fn proper_subsystem_diagnostic(span: SourceSpan) -> Diagnostic {
-    structure_diagnostic(
-        StructureError::NotYetImplemented {
-            feature: "common block on a proper integral subsystem",
-        },
-        span,
-    )
-}
-
 /// Locate `sr` in its full block, as `Rep_table::lookup` reports it: an
 /// x-coordinate match that is present in the extended block and whose
 /// reconstruction at `sr`'s own data equals `sr` (the `block_element_of`
@@ -16642,8 +16630,8 @@ pub(crate) fn call_with_printed(
         // wrapper maps each to `Split_integer(c, -c)` = c(1-s)
         // (atlas-types.w:8146-8147). The rank-0 integral subsystem (the
         // A1 nu=[1]/2 case) is the singleton block, whose terms are
-        // empty (repr.cpp:2435-2436); a proper subsystem is slice 4 of the
-        // work order and still fails loudly.
+        // empty (repr.cpp:2435-2436); a proper subsystem runs the same
+        // recursion over the partial parent (`with_integral_block`).
         "twisted_deform" => {
             arity(name, arguments, 1, span)?;
             let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
@@ -16666,21 +16654,9 @@ pub(crate) fn call_with_printed(
                 span,
                 Vec::new,
                 |parent, eblock, y0, gamma, singular_orbits| {
-                    let KlSumParent::Full { block, lambda_rho } = parent else {
-                        // twisted_deformation_terms on a partial parent is
-                        // not yet ported (work order slice 4).
-                        return Err(proper_subsystem_diagnostic(span));
-                    };
-                    let raw = twisted_deformation_terms(
-                        &rc,
-                        block,
-                        eblock,
-                        y0,
-                        singular_orbits,
-                        gamma,
-                        lambda_rho,
-                    )
-                    .map_err(|error| structure_diagnostic(error, span))?;
+                    let raw =
+                        twisted_deformation_terms(&rc, &parent, eblock, y0, singular_orbits, gamma)
+                            .map_err(|error| structure_diagnostic(error, span))?;
                     let mut terms = Vec::new();
                     for (term_sr, coefficient) in raw {
                         merge_pol_term(
@@ -19167,14 +19143,87 @@ mod tests {
         )
         .expect_err("a non-distinguished involution is rejected");
         assert_eq!(error.message, "Root datum involution is not distinguished");
+    }
 
-        // twisted_deform on the partial parent stays slice 4: still the
-        // loud NYI.
-        let error = call("twisted_deform", std::slice::from_ref(&pb), span())
-            .expect_err("twisted_deform on a proper subsystem is not yet implemented");
+    // The strings below are the verified oracle outputs (local oracle run
+    // 2026-08-19, upstream rev 4d3e9449) for slice 4 of
+    // docs/slices/twisted_ext_proper_workorder.md:
+    // tests/fixtures/domain/twisted_deform_proper.atlas,
+    // tests/fixtures/domain/twisted_deform_proper_terms.atlas, and
+    // tests/fixtures/domain/twisted_deform_proper_rejected.atlas.
+    #[test]
+    fn twisted_deform_proper_subsystems_match_oracle() {
+        let identity = matrix(2, 2, vec![1, 0, 0, 1]);
+        let datum = fixture_datum("B2", true);
+        let inner =
+            call("inner_class", &[datum, identity.clone()], span()).expect("B2 inner class");
+        let real = call("real_form", &[inner, int(2)], span()).expect("split B2 form");
+
+        // pb (x=5) and pb4 (x=4) at gamma = [5,3]/2: rows 1 and 0 of the
+        // 3-element partial parent, both of length 0 — empty terms
+        // (repr.cpp:2435-2436).
+        let pb = sl2r_param(&real, 5, &[1, 1], &[1, 0], 2);
+        let pb4 = sl2r_param(&real, 4, &[1, 1], &[1, 0], 2);
+        for parameter in [&pb, &pb4] {
+            assert_eq!(
+                call("twisted_deform", std::slice::from_ref(parameter), span())
+                    .expect("proper-subsystem twisted_deform")
+                    .to_string(),
+                "Empty sum of standard modules"
+            );
+        }
+
+        // q2 (x=10, nu=[1,1]/2) is the top row of pb's own 3-element
+        // partial parent (lookup_full_block makes it dominant onto pb's
+        // gamma first), so the deformation recursion runs over the
+        // partial parent and reconstructs each term's own lambda_rho.
+        // Its locator differs from pb's, so it must look up COLD: sharing
+        // pb's pool would produce a non-identity query-to-stored attitude
+        // (the locator slice's loud gate). Hence the fresh real form,
+        // matching tests/fixtures/domain/twisted_deform_proper_terms.atlas,
+        // which is a separate fixture for the same reason.
+        let datum = fixture_datum("B2", true);
+        let inner =
+            call("inner_class", &[datum, identity.clone()], span()).expect("B2 inner class");
+        let real = call("real_form", &[inner, int(2)], span()).expect("split B2 form");
+        let q2 = sl2r_param(&real, 10, &[0, 0], &[1, 1], 2);
+        assert_eq!(
+            call("twisted_deform", std::slice::from_ref(&q2), span())
+                .expect("proper-subsystem twisted_deform with terms")
+                .to_string(),
+            "\n(-1+1s)*parameter(x=5,lambda=[2,-1]/1,nu=[1,-1]/2) [3]\n\
+             (-1+1s)*parameter(x=4,lambda=[2,-1]/1,nu=[1,-1]/2) [3]"
+        );
+
+        // A2 quasisplit form 1, nu=[1,0]/2 on x=3 (lambda variants [0,0]
+        // and [1,0]): one-element [rn] partial blocks, length 0.
+        let datum = fixture_datum("A2", true);
+        let inner =
+            call("inner_class", &[datum, identity.clone()], span()).expect("A2 inner class");
+        let real = call("real_form", &[inner, int(1)], span()).expect("A2 form 1");
+        let pa = sl2r_param(&real, 3, &[0, 0], &[1, 0], 2);
+        let pa1 = sl2r_param(&real, 3, &[1, 0], &[1, 0], 2);
+        for parameter in [&pa, &pa1] {
+            assert_eq!(
+                call("twisted_deform", std::slice::from_ref(parameter), span())
+                    .expect("proper-subsystem twisted_deform")
+                    .to_string(),
+                "Empty sum of standard modules"
+            );
+        }
+
+        // The rejected fixture's gate failure on proper-subsystem input.
+        let datum = fixture_datum("B2", true);
+        let inner = call("inner_class", &[datum, identity], span()).expect("B2 inner class");
+        let real = call("real_form", &[inner, int(2)], span()).expect("split B2 form");
+        let c10 = sl2r_param(&real, 10, &[1, 1], &[1, 0], 2);
+        let error = call("twisted_deform", std::slice::from_ref(&c10), span())
+            .expect_err("non-final proper parameter is rejected");
         assert_eq!(
             error.message,
-            "common block on a proper integral subsystem is not yet implemented"
+            "Twisted deformation requires final parameter:\n  \
+             non-final parameter(x=10,lambda=[2,2]/1,nu=[1,0]/2)\n  \
+             Parameter is not semifinal"
         );
     }
 
