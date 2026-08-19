@@ -4,7 +4,7 @@
  "oracle": "atlas",
  "stage": "typed-pipeline-swap",
  "reference_status": "verified_hpc_reference",
- "rust_status": "pending_hpc_differential",
+ "rust_status": "verified_hpc",
  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
@@ -16,11 +16,12 @@
  "oracle_seconds": 0.102,
  "oracle_maxrss_kb": 3504,
  "oracle_maxrss_approximate": false,
- "notes": "2-D matrix slice M[rlo:rhi, clo:chi] (parser.y:658-705): SliceFlags column from-end bits, eval packs flags into matreduc::swiss_matrix_knife. Landed in commit 3aaecc7; accepted fixture byte-identical against this capture (28 events, expected_cli_observation self-check passes).",
+ "notes": "2-D matrix slice M[rlo:rhi, clo:chi] (parser.y:658-705): SliceFlags column from-end bits, eval packs flags into matreduc::swiss_matrix_knife. Landed in commit 3aaecc7; accepted fixture byte-identical against this capture (28 events, expected_cli_observation self-check passes). Rust differential VERIFIED by fat job 3583557 at 68a570f (315 PASS + 1 declared PARTIAL container_syntax_errors, 0 FAIL; report SHA256 82d5d1d47ea5ce772e5080fdb4a4f6983e5f283f6e77d78dfad1cd927b9f07d1). Rust: 0.005s, 5832 KiB peak RSS, exit 0.",
  "hpc_capture": {
   "fresh_process_required": true,
   "timeout_seconds": 30,
   "estimated_seconds": 5,
   "estimated_memory_mb": 128
- }
+ },
+ "differential_job": "3583557"
 }
