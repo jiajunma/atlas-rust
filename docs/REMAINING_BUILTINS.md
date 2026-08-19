@@ -1,5 +1,34 @@
 # Remaining builtin coverage (post-language-gate)
 
+## twisted_deform proper subsystems landed (2026-08-19/20, capture 3591165 in flight)
+
+`twisted_deform` dispatch drops the Full-or-NYI guard and passes the parent
+through to the slice-3 `ProperSubsystem` arm of `with_integral_block`
+(`24fab16`); `twisted_deformation_terms` takes `parent: &KlSumParent` with
+per-row lambda_rho via `KlSumParent::sr` on Partial parents. Fixtures
+`twisted_deform_proper{,_terms,_rejected}` are local-oracle IDENTICAL;
+HPC capture 3591165 submitted (registration + fat differential pending).
+
+Two findings recorded from that slice (agent-91):
+
+- **Alcove-wall closure overshoot → NDEBUG truncation** (pre-existing
+  divergence, NOT a slice-4 gap): for gamma on the top alcove wall in
+  non-simply-laced data (anchor: B2 `param(KGB(rfb,10),[0,0],[1,0]/2)`),
+  `int_item`'s alcove-wall closure (`additive_closure` of
+  {α2, -(α1+α2)}) overshoots to the full B2 datum — rootdata.cpp:685-707
+  does the same upstream — and upstream's `codec::internalise` assert
+  (repr.cpp:104) is compiled out under the oracle's `-DNDEBUG` build,
+  silently truncating 3/2→1. The Rust port's honest `IntegralCodec`
+  invariant rejects instead. Affects the slice-3 paths identically
+  (`twisted_KL_sum_at_s` fails the same way on that anchor). Any fixture
+  with gamma on the top alcove wall of a non-simply-laced datum hits this.
+- **q2/pb locator collision**: `param(KGB(rfb,10),…)` and the pb anchor
+  intern the same block record under different locators; the second lookup
+  gets a non-identity query-to-stored attitude and trips the locator gate
+  `has_identity_generator_attitude` (upstream handles both via a
+  non-trivial `block_modifier`). Hence the separate
+  `twisted_deform_proper_terms` fixture on a cold pool.
+
 ## twisted_full_deform partial lookup landed locally (2026-08-20, HPC pending)
 
 Recursive `twisted_full_deform` now uses `RepTable::lookup` at every
