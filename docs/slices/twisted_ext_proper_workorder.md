@@ -132,7 +132,13 @@ partial `StarOracle` for `tune_signs`). Every slice needs it.
    (7734-7816) becomes RepTable-backed returning a partial common block +
    row. Fixture: B2 form 2 `param(KGB(rfb,5),[1,1],[1,0]/1)` under
    `twisted_full_deform` (its 1/2-scaled reducibility point is exactly `pb`'s
-   gamma); verify acceptance against the oracle first.
+   gamma). Oracle probe 2026-08-19 (local atlas, rev 4d3e9449): ACCEPTED,
+   output is exactly two plain terms
+   `1* K_type(x=2, lambda=[0,4]/1) [12]` and `1* K_type(x=3, ...) [12]`;
+   current Rust (b758b2c) does NOT hit the loud NYI here but silently
+   diverges — four terms with `(1+0s)`/`(1-1s)` coefficients including
+   `[13]`-block rows (computed on the full block without proper-subsystem
+   scoping). So the slice-5 fixture FAILS today on content, not on a gate.
 
 Dependency graph: 1 → 2, 1 → 3 → 4 → 5. All slices stay inside identity
 generator attitude; non-identity `simple_pi`/`w` remains the locator slice's
