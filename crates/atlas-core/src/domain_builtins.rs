@@ -24,7 +24,7 @@ use std::time::{Duration, Instant};
 use malachite::{Integer as BigInt, Rational as BigRational};
 
 use atlas_real_group::ext_block::ExtBlock;
-use atlas_real_group::ext_kl::ExtKlTable;
+use atlas_real_group::ext_kl::{ext_kl_matrix, ExtKlTable};
 use atlas_real_group::ext_param::{
     extended_finalise, extended_restrict_to_k, is_default, scaled_extended_finalise,
     shifted_default_extension, ExtRepContext, PartialBlockOracle,
@@ -3881,18 +3881,79 @@ fn build_ext_block(
     .map_err(|e| structure_diagnostic(e, span))
 }
 
-/// `extended_block` at a non-integral infinitesimal character
-/// (atlas-types.w:7376-7431; slice 1 of
-/// docs/slices/twisted_ext_proper_workorder.md). Upstream has no integral
-/// special case: the parameter's common block is built directly on
-/// gamma's integral subsystem (`StandardReprMod::mod_reduce` →
-/// `common_context` → the full `common_block` ctor, blocks.cpp:733-1081),
-/// and the extended block is built over that partial parent with the
-/// distinguished involution (ext_block.cpp:618-668 via
+/// The proper-subsystem construction shared by the slice-1/2 wrappers
+/// (docs/slices/twisted_ext_proper_workorder.md): the parameter's common
+/// block built directly on gamma's integral subsystem
+/// (`StandardReprMod::mod_reduce` → `common_context` → the full
+/// `common_block` ctor, blocks.cpp:733-1081), and the extended block over
+/// that partial parent (ext_block.cpp:618-668 via
 /// [`ExtBlock::build_partial`]). A rank-0 subsystem falls out as the
 /// singleton block with empty generator tables. Only the identity
 /// generator attitude is supported; `build_partial` keeps the loud NYI
-/// for non-identity `simple_pi`.
+/// for non-identity `simple_pi`. Returns the block, the seed's entry
+/// element, and the sign-tuned extended block.
+fn build_partial_ext_block(
+    ctxt: &CommonContext<'_, '_>,
+    seed: &StandardReprMod,
+    delta: &LatticeInvolution,
+    twist: &[usize],
+    span: SourceSpan,
+) -> Result<(PartialBlock, usize, ExtBlock), Diagnostic> {
+    let rc = ctxt.rep_context();
+    let (block, entry) =
+        PartialBlock::build_full(ctxt, seed).map_err(|error| structure_diagnostic(error, span))?;
+    let simp_int: Vec<RootId> = (0..ctxt.subsystem().rank())
+        .map(|s| {
+            ctxt.subsystem()
+                .parent_root(s)
+                .expect("subsystem generator in range")
+        })
+        .collect();
+    let bm = BlockModifier::trivial(rc.root_system(), simp_int.clone())
+        .map_err(|error| structure_diagnostic(error, span))?;
+    let mut eb = ExtBlock::build_partial(&block, ctxt, &bm, delta, twist)
+        .map_err(|error| structure_diagnostic(error, span))?;
+    // The constructor leaves the sign flips cleared; tune them with the
+    // partial-parent star oracle (ext_block.cpp:1707-1876 via
+    // ext_block.cpp:2283-2310). `fold_orbits` orbit indices are subsystem
+    // generator numbers, so `tune_signs` needs the parent root numbers.
+    let context =
+        ExtRepContext::new(rc, delta.clone()).map_err(|error| structure_diagnostic(error, span))?;
+    let simply_ints: Vec<usize> = simp_int.iter().map(|id| id.index()).collect();
+    let mut oracle = PartialBlockOracle::new(&context, &block);
+    if !eb.tune_signs(&mut oracle, &simply_ints) {
+        return Err(runtime(span, "extended block sign tuning failed"));
+    }
+    Ok((block, entry, eb))
+}
+
+/// The partial-parent counterpart of `fiber_param` (atlas-types.w:7398-7404,
+/// ext_kl.cpp:1005-1007): the parameter of partial-block row `z`, whose
+/// (x, gamma_lambda) reconstructs the printed representation.
+fn partial_block_param(
+    parameter: &ParamValue,
+    block: &PartialBlock,
+    gamma_rho: &RationalWeight,
+    gamma: &RationalWeight,
+    z: usize,
+    span: SourceSpan,
+) -> Result<Value, Diagnostic> {
+    let rc = rep_context(&parameter.context);
+    let gl = block.gamma_lambda(z).expect("in-range parent row");
+    let lambda_rho = integer_diff_weight(gamma_rho, gl, span)?;
+    let repr = rc
+        .sr_gamma(block.x(z).expect("in-range parent row"), &lambda_rho, gamma)
+        .map_err(|error| structure_diagnostic(error, span))?;
+    Ok(Value::Domain(DomainValue::Param(ParamValue {
+        context: Arc::clone(&parameter.context),
+        repr,
+    })))
+}
+
+/// `extended_block` at a non-integral infinitesimal character
+/// (atlas-types.w:7376-7431; slice 1 of the work order). Upstream has no
+/// integral special case; the extended block is built over the partial
+/// parent with the distinguished involution.
 fn extended_block_partial(
     parameter: &ParamValue,
     gamma: &RationalWeight,
@@ -3903,33 +3964,10 @@ fn extended_block_partial(
         .map_err(|error| structure_diagnostic(error, span))?;
     let ctxt = CommonContext::integral(&rc, seed.gamma_lambda())
         .map_err(|error| structure_diagnostic(error, span))?;
-    let (block, _) = PartialBlock::build_full(&ctxt, &seed)
-        .map_err(|error| structure_diagnostic(error, span))?;
     // The distinguished involution (atlas-types.w:7392), not the user's
     // delta.
     let (delta, twist) = distinguished_twist(parameter, span)?;
-    let simp_int: Vec<RootId> = (0..ctxt.subsystem().rank())
-        .map(|s| {
-            ctxt.subsystem()
-                .parent_root(s)
-                .expect("subsystem generator in range")
-        })
-        .collect();
-    let bm = BlockModifier::trivial(rc.root_system(), simp_int.clone())
-        .map_err(|error| structure_diagnostic(error, span))?;
-    let mut eb = ExtBlock::build_partial(&block, &ctxt, &bm, &delta, &twist)
-        .map_err(|error| structure_diagnostic(error, span))?;
-    // The constructor leaves the sign flips cleared; tune them with the
-    // partial-parent star oracle (ext_block.cpp:1707-1876 via
-    // ext_block.cpp:2283-2310). `fold_orbits` orbit indices are subsystem
-    // generator numbers, so `tune_signs` needs the parent root numbers.
-    let context =
-        ExtRepContext::new(&rc, delta).map_err(|error| structure_diagnostic(error, span))?;
-    let simply_ints: Vec<usize> = simp_int.iter().map(|id| id.index()).collect();
-    let mut oracle = PartialBlockOracle::new(&context, &block);
-    if !eb.tune_signs(&mut oracle, &simply_ints) {
-        return Err(runtime(span, "extended block sign tuning failed"));
-    }
+    let (block, _, eb) = build_partial_ext_block(&ctxt, &seed, &delta, &twist, span)?;
 
     // The return value components (atlas-types.w:7395-7430). `z(n)` maps
     // extended element `n` to its parent block row, whose (x,
@@ -3956,15 +3994,9 @@ fn extended_block_partial(
     let mut links1 = vec![vec![0_i32; eb.rank()]; size];
     for n in 0..size {
         let z = eb.z(n);
-        let gl = block.gamma_lambda(z).expect("in-range parent row");
-        let lambda_rho = integer_diff_weight(&gamma_rho, gl, span)?;
-        let repr = rc
-            .sr_gamma(block.x(z).expect("in-range parent row"), &lambda_rho, gamma)
-            .map_err(|error| structure_diagnostic(error, span))?;
-        params.push(Value::Domain(DomainValue::Param(ParamValue {
-            context: Arc::clone(&parameter.context),
-            repr,
-        })));
+        params.push(partial_block_param(
+            parameter, &block, &gamma_rho, gamma, z, span,
+        )?);
         for s in 0..eb.rank() {
             let kind = eb.descent_type(s, n);
             types[n][s] = kind as usize as i32;
@@ -3997,6 +4029,176 @@ fn extended_block_partial(
         matrix_value(&types, span)?,
         matrix_value(&links0, span)?,
         matrix_value(&links1, span)?,
+    ]))
+}
+
+/// `raw_ext_KL` at a non-integral infinitesimal character
+/// (atlas-types.w:8703-8723; slice 2 of the work order). Upstream builds
+/// the extended block over the proper-subsystem common block with the
+/// USER's delta (`block.extended_block(delta)`), fills the whole twisted
+/// KLV table, and returns the pool-index matrix, the pool, and the length
+/// stops `eb.length_first(i)` for `i <= block.length(last)+1`.
+fn raw_ext_kl_partial(
+    parameter: &ParamValue,
+    delta: &LatticeInvolution,
+    twist: &[usize],
+    span: SourceSpan,
+) -> Result<Value, Diagnostic> {
+    let rc = rep_context(&parameter.context);
+    let seed = StandardReprMod::mod_reduce(&rc, &parameter.repr)
+        .map_err(|error| structure_diagnostic(error, span))?;
+    let ctxt = CommonContext::integral(&rc, seed.gamma_lambda())
+        .map_err(|error| structure_diagnostic(error, span))?;
+    let (block, _, eb) = build_partial_ext_block(&ctxt, &seed, delta, twist, span)?;
+    let size = eb.size();
+    let mut table = ExtKlTable::new(&eb).map_err(|e| structure_diagnostic(e, span))?;
+    table
+        .fill_columns(0)
+        .map_err(|e| structure_diagnostic(e, span))?;
+    // Rebuild the printed pool in insertion order (columns ascending, each
+    // from the back), like the integral path: the crate's pool may order
+    // recursion intermediates differently. Entries 0 and 1 are the primed
+    // zero and one polynomials.
+    let mut polys: Vec<KlPol> = vec![KlPol::zero(), KlPol::monomial(0)];
+    let mut index_of: std::collections::HashMap<Vec<i32>, usize> = std::collections::HashMap::new();
+    index_of.insert(Vec::new(), 0);
+    index_of.insert(vec![1], 1);
+    // int_Matrix(klt.size()) is the identity (matrix.h:287); only x<y
+    // entries are overwritten (atlas-types.w:8710-8714). Column-major
+    // writes, so collect them before mutating the row-major matrix.
+    let mut matrix = vec![vec![0_i32; size]; size];
+    for (y, row) in matrix.iter_mut().enumerate() {
+        row[y] = 1;
+    }
+    let mut off_diagonal: Vec<(usize, usize, i32)> = Vec::new();
+    for y in 0..size {
+        for x in table.nonzero_column(y) {
+            if x == y {
+                continue;
+            }
+            let (pool_index, flip) = table.kl_pol_index(x, y);
+            let pol = table
+                .polys()
+                .get(pool_index)
+                .expect("in-range pool index")
+                .clone();
+            let key = pol.as_slice().to_vec();
+            let new_index = *index_of.entry(key).or_insert_with(|| {
+                polys.push(pol);
+                polys.len() - 1
+            });
+            let value = if flip {
+                -(new_index as i32)
+            } else {
+                new_index as i32
+            };
+            off_diagonal.push((x, y, value));
+        }
+    }
+    for (x, y, value) in off_diagonal {
+        matrix[x][y] = value;
+    }
+    // Length stops (atlas-types.w:8715-8719): the partial block's own
+    // lengths are the fresh lengths upstream assigns below the entry
+    // element (blocks.cpp:976-990).
+    let max_length = block
+        .length(block.size() - 1)
+        .expect("nonempty partial block");
+    let mut stops = vec![0_i32; max_length + 2];
+    for (i, stop) in stops.iter_mut().enumerate().skip(1) {
+        *stop = eb.length_first(i) as i32;
+    }
+    Ok(Value::Tuple(vec![
+        matrix_value(&matrix, span)?,
+        Value::List(
+            polys
+                .iter()
+                .map(|pol| Value::Vector(Vec32(pol.as_slice().to_vec())))
+                .collect(),
+        ),
+        Value::Vector(Vec32(stops)),
+    ]))
+}
+
+/// `partial_extended_KL_block` at a non-integral infinitesimal character
+/// (atlas-types.w:7452-7466 → ext_kl.cpp:939-1018; slice 2 of the work
+/// order): the condensed partial KLV matrix over the proper-subsystem
+/// extended block. `B.singular(gamma)` runs over the subsystem generators
+/// (`CommonContext::singular_flags`); [`ext_kl_matrix`] is the verbatim
+/// port of the rest (fill up to the entry element, condense the singular
+/// descents, compress, parity flips, pool encoding).
+fn partial_extended_kl_block_partial(
+    parameter: &ParamValue,
+    gamma: &RationalWeight,
+    delta: &LatticeInvolution,
+    twist: &[usize],
+    span: SourceSpan,
+) -> Result<Value, Diagnostic> {
+    let rc = rep_context(&parameter.context);
+    let seed = StandardReprMod::mod_reduce(&rc, &parameter.repr)
+        .map_err(|error| structure_diagnostic(error, span))?;
+    let ctxt = CommonContext::integral(&rc, seed.gamma_lambda())
+        .map_err(|error| structure_diagnostic(error, span))?;
+    // B.singular(gamma) (blocks.cpp:701-708): per subsystem generator.
+    let singular = ctxt
+        .singular_flags(gamma)
+        .map_err(|error| structure_diagnostic(error, span))?;
+    let (block, entry, eb) = build_partial_ext_block(&ctxt, &seed, delta, twist, span)?;
+    let mut singular_flags = RankFlags::empty();
+    for (s, &flag) in singular.iter().enumerate() {
+        if flag {
+            singular_flags.set(s);
+        }
+    }
+    let singular_orbits = eb.singular_orbits(&singular_flags);
+    // ext_kl.cpp:962-963: only extended elements at or below the entry
+    // participate.
+    let size_big = eb.element(entry + 1);
+    let result = ext_kl_matrix(&eb, size_big, &singular_orbits)
+        .map_err(|e| structure_diagnostic(e, span))?;
+    let n = result.survivors.len();
+    // `P_index_mat = int_Matrix(size)` starts as the identity
+    // (matrix.h:287); only the i<j entries are pool matches
+    // (ext_kl.cpp:1009-1016). The crate's `ext_kl_matrix` leaves the
+    // diagonal at the zero-polynomial index, so set it here.
+    let mut index_matrix = vec![vec![0_i32; n]; n];
+    for (j, row) in index_matrix.iter_mut().enumerate() {
+        row[j] = 1;
+        for (i, entry) in row.iter_mut().enumerate().take(j) {
+            *entry = result.index_matrix[i][j] as i32;
+        }
+    }
+    let gamma_rho = gamma
+        .sub(rc.rho())
+        .map_err(|error| structure_diagnostic(error, span))?;
+    let mut params = Vec::with_capacity(n);
+    for &survivor in &result.survivors {
+        params.push(partial_block_param(
+            parameter,
+            &block,
+            &gamma_rho,
+            gamma,
+            eb.z(survivor),
+            span,
+        )?);
+    }
+    Ok(Value::Tuple(vec![
+        Value::List(params),
+        matrix_value(&index_matrix, span)?,
+        Value::List(
+            (0..result.pool.len())
+                .map(|index| {
+                    Value::Vector(Vec32(
+                        result
+                            .pool
+                            .get(index)
+                            .expect("in-range pool index")
+                            .as_slice()
+                            .to_vec(),
+                    ))
+                })
+                .collect(),
+        ),
     ]))
 }
 
@@ -15023,19 +15225,16 @@ pub(crate) fn call_with_printed(
             }
             let datum = parameter.context.parent.root_datum.datum.clone();
             if !gamma_is_integral(&datum, &gamma) {
-                // Slice 1 (docs/slices/twisted_ext_proper_workorder.md):
-                // only `extended_block` gets the proper-subsystem path
-                // (which also covers rank-0 subsystems); the KLV wrappers
-                // keep the gate until slice 2.
-                if name == "extended_block" {
-                    return extended_block_partial(parameter, &gamma, span);
-                }
-                return Err(runtime(
-                    span,
-                    format!(
-                        "{name} at a non-integral infinitesimal character is not yet implemented"
-                    ),
-                ));
+                // Slices 1-2 (docs/slices/twisted_ext_proper_workorder.md):
+                // all three wrappers go through the proper-subsystem
+                // construction (which also covers rank-0 subsystems);
+                // `extended_block` uses the distinguished involution, the
+                // KLV wrappers the user's delta.
+                return match name {
+                    "extended_block" => extended_block_partial(parameter, &gamma, span),
+                    "raw_ext_KL" => raw_ext_kl_partial(parameter, &delta, &twist, span),
+                    _ => partial_extended_kl_block_partial(parameter, &gamma, &delta, &twist, span),
+                };
             }
             let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
             let dual_quasisplit = dual_parent.order.quasisplit_external();
@@ -18541,9 +18740,10 @@ mod tests {
     }
 
     // The strings below are the verified oracle outputs (local oracle run
-    // 2026-08-19, upstream rev 4d3e9449) for the slice-1B anchors of
+    // 2026-08-19, upstream rev 4d3e9449) for the slice-1/2 anchors of
     // docs/slices/twisted_ext_proper_workorder.md:
-    // tests/fixtures/domain/ext_block_proper.atlas plus rank-0 probes.
+    // tests/fixtures/domain/ext_block_proper.atlas and
+    // tests/fixtures/domain/ext_kl_proper.atlas plus rank-0 probes.
     #[test]
     fn extended_block_partial_b2_proper_subsystem_matches_oracle() {
         // pb := param(KGB(rfb,5),[1,1],[1,0]/2) over split so(3,2):
@@ -18586,15 +18786,121 @@ mod tests {
              | 1 |\n)"
         );
 
-        // The KLV wrappers keep their non-integral gate until slice 2.
-        for klv in ["raw_ext_KL", "partial_extended_KL_block"] {
-            let error = call(klv, &[parameter.clone(), identity.clone()], span())
-                .expect_err("KLV wrapper still gated");
-            assert_eq!(
-                error.message,
-                format!("{klv} at a non-integral infinitesimal character is not yet implemented")
-            );
-        }
+        // Slice 2: the KLV wrappers over the same partial parent.
+        assert_eq!(
+            call("raw_ext_KL", &[parameter.clone(), identity.clone()], span())
+                .expect("proper-subsystem raw ext KLV")
+                .to_string(),
+            "(\n\
+             | 1, 0, 1 |\n\
+             | 0, 1, 1 |\n\
+             | 0, 0, 1 |\n\
+             ,[[ ],[ 1 ]],[ 0, 2, 3 ])"
+        );
+        // The long simple coroot is singular for gamma = [5,3]/2, so
+        // condense pushes the type-3 element's row down, leaving the two
+        // survivors x = 4, 5 with a zero off-diagonal entry.
+        assert_eq!(
+            call(
+                "partial_extended_KL_block",
+                &[parameter.clone(), identity.clone()],
+                span()
+            )
+            .expect("proper-subsystem condensed KLV")
+            .to_string(),
+            "([final parameter(x=4,lambda=[2,2]/1,nu=[1,-1]/2),\
+             final parameter(x=5,lambda=[2,2]/1,nu=[1,-1]/2)],\n\
+             | 1, 0 |\n\
+             | 0, 1 |\n\
+             ,[[ ],[ 1 ]])"
+        );
+    }
+
+    #[test]
+    fn ext_kl_partial_a2_and_c2_proper_subsystems_match_oracle() {
+        // pa := param(KGB(rfa,0),[0,0],[1,0]/2) over quasisplit su(2,1):
+        // gamma = [1,1]/1 pairs integrally only with the alpha0+alpha1
+        // coroot... the oracle's 6-element extended block, its raw KLV
+        // table, and the condensation to the entry parameter alone.
+        let datum = fixture_datum("A2", true);
+        let inner = call(
+            "inner_class",
+            &[datum, matrix(2, 2, vec![1, 0, 0, 1])],
+            span(),
+        )
+        .expect("A2 inner class");
+        let real = call("real_form", &[inner, int(1)], span()).expect("A2 form 1");
+        let parameter = sl2r_param(&real, 0, &[0, 0], &[1, 0], 2);
+        let identity = matrix(2, 2, vec![1, 0, 0, 1]);
+        assert_eq!(
+            call("raw_ext_KL", &[parameter.clone(), identity.clone()], span())
+                .expect("A2 proper-subsystem raw ext KLV")
+                .to_string(),
+            "(\n\
+             | 1, 0, 0, 1, 1, 1 |\n\
+             | 0, 1, 0, 0, 1, 1 |\n\
+             | 0, 0, 1, 1, 0, 1 |\n\
+             | 0, 0, 0, 1, 0, 1 |\n\
+             | 0, 0, 0, 0, 1, 1 |\n\
+             | 0, 0, 0, 0, 0, 1 |\n\
+             ,[[ ],[ 1 ]],[ 0, 3, 5, 6 ])"
+        );
+        assert_eq!(
+            call(
+                "partial_extended_KL_block",
+                &[parameter.clone(), identity.clone()],
+                span()
+            )
+            .expect("A2 proper-subsystem condensed KLV")
+            .to_string(),
+            "([final parameter(x=0,lambda=[1,1]/1,nu=[0,0]/1)],\n\
+             | 1 |\n\
+             ,[[ ],[ 1 ]])"
+        );
+
+        // ps := param(KGB(fs,0),[0,0],[1,0]/2) over split sp(4,R): the
+        // 12-element extended block, a pool containing q, and length stops
+        // [ 0, 4, 7, 10, 12 ]; the condensation again leaves the entry.
+        let datum = fixture_datum("C2", true);
+        let inner = call(
+            "inner_class",
+            &[datum, matrix(2, 2, vec![1, 0, 0, 1])],
+            span(),
+        )
+        .expect("C2 inner class");
+        let real = call("real_form", &[inner, int(2)], span()).expect("split C2 form");
+        let parameter = sl2r_param(&real, 0, &[0, 0], &[1, 0], 2);
+        assert_eq!(
+            call("raw_ext_KL", &[parameter.clone(), identity.clone()], span())
+                .expect("C2 proper-subsystem raw ext KLV")
+                .to_string(),
+            "(\n\
+             | 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0 |\n\
+             | 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0 |\n\
+             | 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 2 |\n\
+             | 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1, 2 |\n\
+             | 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0 |\n\
+             | 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 1, 0 |\n\
+             | 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0 |\n\
+             | 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0 |\n\
+             | 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0 |\n\
+             | 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1 |\n\
+             | 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0 |\n\
+             | 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 |\n\
+             ,[[ ],[ 1 ],[ 0, 1 ]],[  0,  4,  7, 10, 12 ])"
+        );
+        assert_eq!(
+            call(
+                "partial_extended_KL_block",
+                &[parameter.clone(), identity.clone()],
+                span()
+            )
+            .expect("C2 proper-subsystem condensed KLV")
+            .to_string(),
+            "([final parameter(x=0,lambda=[1,1]/1,nu=[0,0]/1)],\n\
+             | 1 |\n\
+             ,[[ ],[ 1 ]])"
+        );
     }
 
     #[test]
@@ -18608,11 +18914,33 @@ mod tests {
         // coroot is 3/2, so the integral subsystem is empty.
         let p = sl2r_param(&sl2r, 2, &[1], &[1], 2);
         assert_eq!(
-            call("extended_block", &[p, matrix(1, 1, vec![1])], span())
-                .expect("rank-0 extended block")
-                .to_string(),
+            call(
+                "extended_block",
+                &[p.clone(), matrix(1, 1, vec![1])],
+                span()
+            )
+            .expect("rank-0 extended block")
+            .to_string(),
             "([final parameter(x=2,lambda=[2]/1,nu=[1]/2)],\
              The 1x0 matrix,The 1x0 matrix,The 1x0 matrix)"
+        );
+        // Slice 2: the rank-0 KLV tables are the 1x1 identity over the
+        // primed pool, with stops [ 0, 1 ] and the seed as sole survivor.
+        assert_eq!(
+            call("raw_ext_KL", &[p.clone(), matrix(1, 1, vec![1])], span())
+                .expect("rank-0 raw ext KLV")
+                .to_string(),
+            "(\n| 1 |\n,[[ ],[ 1 ]],[ 0, 1 ])"
+        );
+        assert_eq!(
+            call(
+                "partial_extended_KL_block",
+                &[p, matrix(1, 1, vec![1])],
+                span()
+            )
+            .expect("rank-0 condensed KLV")
+            .to_string(),
+            "([final parameter(x=2,lambda=[2]/1,nu=[1]/2)],\n| 1 |\n,[[ ],[ 1 ]])"
         );
 
         // B2 split form 2, param(KGB(rfb,10),[1,1],[1,1]/4): gamma =
@@ -18626,16 +18954,25 @@ mod tests {
         .expect("B2 inner class");
         let real = call("real_form", &[inner, int(2)], span()).expect("split B2 form");
         let p0 = sl2r_param(&real, 10, &[1, 1], &[1, 1], 4);
+        let identity = matrix(2, 2, vec![1, 0, 0, 1]);
         assert_eq!(
-            call(
-                "extended_block",
-                &[p0, matrix(2, 2, vec![1, 0, 0, 1])],
-                span()
-            )
-            .expect("rank-0 extended block")
-            .to_string(),
+            call("extended_block", &[p0.clone(), identity.clone()], span())
+                .expect("rank-0 extended block")
+                .to_string(),
             "([final parameter(x=10,lambda=[2,2]/1,nu=[1,1]/4)],\
              The 1x0 matrix,The 1x0 matrix,The 1x0 matrix)"
+        );
+        assert_eq!(
+            call("raw_ext_KL", &[p0.clone(), identity.clone()], span())
+                .expect("rank-0 raw ext KLV")
+                .to_string(),
+            "(\n| 1 |\n,[[ ],[ 1 ]],[ 0, 1 ])"
+        );
+        assert_eq!(
+            call("partial_extended_KL_block", &[p0, identity], span())
+                .expect("rank-0 condensed KLV")
+                .to_string(),
+            "([final parameter(x=10,lambda=[2,2]/1,nu=[1,1]/4)],\n| 1 |\n,[[ ],[ 1 ]])"
         );
     }
 
