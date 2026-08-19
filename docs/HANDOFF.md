@@ -4,6 +4,38 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-19 late (twisted slice 2 verified; op:= + slice 3 in flight)
+
+- Frozen corpus now **307/307 verified_hpc** (was 305/305 at `45acc32`).
+- Twisted slice 2 landed and verified: `raw_ext_KL` +
+  `partial_extended_KL_block` on proper integral subsystems
+  (`ExtKlTable::fill_columns` + `ext_kl_matrix`/`condense` over the
+  partial-parent ext block; `CommonContext::singular_flags` replaces the
+  hand-rolled coroot loop). Implementation `d382014`; fixtures
+  `domain/ext_kl_proper{,_rejected}` registered `89fe5a7` (capture
+  **3585276**); VERIFIED by fat differential **3585343** @ `89fe5a7` —
+  317 PASS + 1 declared PARTIAL (container_syntax_errors), 0 FAIL; report
+  SHA256 `95b7eb23265d8c8924529169b7a10402ab4ab6bc0c741e93f322661539414edf`.
+  Both metas `verified_hpc` (`59d4486`). Deferred (pre-existing, gate
+  fidelity): `compatible_outer_twist` renders `SimpleCorootImageMismatch`
+  via Display instead of upstream's "Matrix does not map simple coroot N to
+  coroot M" wording.
+- In flight: agent-89 — `op:=` OPERATOR_BECOMES compound assignment
+  (lexer.w:507-516; parser.y:263-278 three productions:
+  IDENT/assignable_subsn/field). Oracle ground truth probed by orchestrator:
+  pure desugar `x := op(x,e)` with static-type equality (a[2] /:= 2 on
+  [int] rejected "found rat while int was needed"); yields the NEW value;
+  vec append `v #:= 3` and concat `v ##:= [4,5]` work; row selector `M#0`
+  is NOT an assignment target (syntax error); no string special-casing.
+  agent-90 — twisted slice 3 (`twisted_KL_sum_at_s` both overloads,
+  `with_integral_block` ProperSubsystem arm; workorder lines 120-127).
+- Queue after these: twisted slices 4 (twisted_deform) and 5
+  (twisted_full_deform recursion, may force KL_table::swallow/partial merge);
+  then next-wave A (non-integral common block, domain_builtins.rs:9431 gate)
+  → C (KL_sum_at_s lambda-rho) → B (full_deform scope check) → E/F
+  (Weyl_orbit size, integrality_points display) → locator step-5
+  (print_partial_common_block attitude + ext-block simple_pi).
+
 ## Checkpoint - 2026-08-19 (locator anchors frozen; global.w batches in flight)
 
 - Signature reconciliation (docs/REMAINING_BUILTINS.md 2026-08-18 entry,
