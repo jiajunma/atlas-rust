@@ -1,0 +1,28 @@
+rb : RootDatum
+rb := simply_connected(Lie_type("B2"),true)
+ib : InnerClass
+ib := inner_class(rb,[[1,0],[0,1]])
+rfb : RealForm
+rfb := real_form(ib,2)
+pb : Param
+pb := param(KGB(rfb,5),[1,1],[1,0]/2)
+twisted_KL_sum_at_s(pb)
+twisted_KL_sum_at_s(pb,[[1,0],[0,1]])
+pb4 : Param
+pb4 := param(KGB(rfb,4),[1,1],[1,0]/2)
+twisted_KL_sum_at_s(pb4)
+twisted_KL_sum_at_s(pb4,[[1,0],[0,1]])
+ra : RootDatum
+ra := simply_connected(Lie_type("A2"),true)
+ia : InnerClass
+ia := inner_class(ra,[[1,0],[0,1]])
+rfa : RealForm
+rfa := real_form(ia,1)
+pa : Param
+pa := param(KGB(rfa,3),[0,0],[1,0]/2)
+twisted_KL_sum_at_s(pa)
+twisted_KL_sum_at_s(pa,[[1,0],[0,1]])
+pa1 : Param
+pa1 := param(KGB(rfa,3),[1,0],[1,0]/2)
+twisted_KL_sum_at_s(pa1)
+twisted_KL_sum_at_s(pa1,[[1,0],[0,1]])

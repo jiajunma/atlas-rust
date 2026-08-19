@@ -195,7 +195,10 @@ fn rat_dot(value: &RationalWeight, coweight: &[i32]) -> i32 {
 
 /// Upstream `RatWeight::integer_diff<int>`: the exact integral difference
 /// of two rational weights, narrowed coordinatewise to `int`.
-fn integer_diff(left: &RationalWeight, right: &RationalWeight) -> Result<Vec<i32>, StructureError> {
+pub(crate) fn integer_diff(
+    left: &RationalWeight,
+    right: &RationalWeight,
+) -> Result<Vec<i32>, StructureError> {
     let difference = left.sub(right)?;
     Ok(difference
         .integral_coordinates()?

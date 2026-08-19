@@ -8,30 +8,34 @@
 //! Simplifications, in the shape of the frozen `domain/deform` contract
 //! that [`RepContext::deformation_terms`] already documents:
 //!
-//! - Only the trivial block modifier is supported: the parent block is the
-//!   FULL block of the real form (upstream `lookup_full_block`), and
-//!   `lambda_rho` is supplied once by the caller instead of per block
-//!   element from the upstream `StandardReprMod` pool
-//!   (`common_block::sr`, blocks.cpp:1260-1264). Per-element `lambda_rho`
-//!   genuinely varies across a full block (the SL(2,R) block at
-//!   `gamma = 2*rho` has `[1]` on the compact-Cartan element and `[0]` on
-//!   the split ones), so callers must pass parameters whose deformation
-//!   terms all share the supplied value — the language layer uses
-//!   `rc.lambda_rho(p)` of the looked-up parameter, exactly like the
-//!   verified `deform` arm.
-//! - Common blocks on a PROPER integral subsystem are not ported (no
-//!   `SubSystem`/`simp_int` machinery exists in the crate). The
-//!   [`IntegralBlockScope`] classification detects the rank-0 case (no
-//!   integral roots at all), where the common block is the singleton
-//!   `{p}` of length 0 — the language layer takes that fast path — and
-//!   rejects intermediate ranks with [`StructureError::NotYetImplemented`].
+//! - Only the trivial block modifier is supported. On the full block
+//!   (upstream `lookup_full_block`), `lambda_rho` is supplied once by the
+//!   caller instead of per block element from the upstream
+//!   `StandardReprMod` pool (`common_block::sr`, blocks.cpp:1260-1264).
+//!   Per-element `lambda_rho` genuinely varies across a full block (the
+//!   SL(2,R) block at `gamma = 2*rho` has `[1]` on the compact-Cartan
+//!   element and `[0]` on the split ones), so callers must pass parameters
+//!   whose deformation terms all share the supplied value — the language
+//!   layer uses `rc.lambda_rho(p)` of the looked-up parameter, exactly like
+//!   the verified `deform` arm. On a PROPER integral subsystem the parent
+//!   is a [`PartialBlock`] (the `common_block` of `common_context`,
+//!   repr.cpp:2666-2670) and each row's reconstruction uses its own stored
+//!   `gamma_lambda` exactly as upstream's `common_block::sr` does; see
+//!   [`KlSumParent`]. The `twisted_KL_sum_at_s` drivers accept both parent
+//!   kinds; [`twisted_deformation_terms`] remains full-block-only (slice 4
+//!   of docs/slices/twisted_ext_proper_workorder.md).
+//! - The rank-0 integral subsystem is detected by [`IntegralBlockScope`]:
+//!   the common block is the singleton `{p}` of length 0, and the language
+//!   layer takes that fast path.
 //! - Upstream's `block_modifier`-indexed singular-orbit computations
 //!   (repr.cpp:2380-2390 and 2617-2633, via `ext_block::reduce_to` and the
 //!   inverse of `bm.simple_pi`) coincide with
 //!   [`ExtBlock::singular_orbits`] of the plain simple-coroot singular set
 //!   when `bm` is trivial (`bm.simp_int` is then the identity-indexed
 //!   simple list and `bm.simple_pi` the identity permutation); see
-//!   [`singular_orbits_at`].
+//!   [`singular_orbits_at`]. The twisted KL sums take the caller-folded
+//!   orbit flags, so a partial parent folds its subsystem-generator
+//!   singular set (`common_context::singular`) the same way.
 //! - The `weyl::alcove_center` shrink (repr.cpp:2556-2557) is applied before
 //!   recursive twisted deformation when `gamma.denominator() > 2^rank`.
 //! - `Rep_table` memoisation (`deformation_unit`/`alcove_hash`) is replaced
@@ -41,10 +45,13 @@
 
 use crate::ext_block::ExtBlock;
 use crate::ext_kl::{contributions, ExtKlTable};
-use crate::ext_param::{extended_restrict_to_k, scaled_extended_finalise, ExtRepContext};
+use crate::ext_param::{
+    extended_restrict_to_k, integer_diff, scaled_extended_finalise, ExtRepContext,
+};
 use crate::kl_polynomial::KlPol;
 use crate::kl_table::KlTable;
 use crate::matreduc::{exp_i, inverse_upper_triangular, IntMatrix};
+use crate::partial_block::PartialBlock;
 use crate::rep_context::{RepContext, StandardRepr};
 use crate::{BlockGraph, KType, RankFlags, RationalWeight, StructureError, Weight};
 
@@ -454,18 +461,91 @@ pub fn twisted_deformation_terms(
 // Twisted KL sums at s.
 // ---------------------------------------------------------------------------
 
+/// The parent common block a twisted KL sum reads (`parent` of
+/// repr.cpp:2304-2350, `block` of repr.cpp:2371-2423): either the full
+/// block of the real form with the caller-supplied constant `lambda_rho`
+/// (the module-level caveat), or a proper-subsystem [`PartialBlock`],
+/// whose per-row `gamma_lambda` reconstructs each term's own `lambda_rho`
+/// exactly as `common_block::sr` does (blocks.cpp:1260-1264: `lambda_rho =
+/// gamma.integer_diff(context().gamma_lambda_rho(z))`).
+pub enum KlSumParent<'a> {
+    /// The full block (`lookup_full_block`) plus the shared `lambda_rho`.
+    Full {
+        /// The parent block graph.
+        block: &'a BlockGraph,
+        /// The constant `lambda_rho` of the looked-up parameter.
+        lambda_rho: &'a Weight,
+    },
+    /// A partial (proper-subsystem) common block.
+    Partial(&'a PartialBlock),
+}
+
+impl KlSumParent<'_> {
+    /// The parent-block x-coordinate of `z`, or an invariant error.
+    fn x(&self, z: usize) -> Result<crate::KgbId, StructureError> {
+        let x = match self {
+            Self::Full { block, .. } => block.x(z),
+            Self::Partial(block) => block.x(z),
+        };
+        x.ok_or(StructureError::BlockInvariantViolation {
+            invariant: "block element x coordinate",
+        })
+    }
+
+    /// The parent-block length of `z`, or an invariant error.
+    fn length(&self, z: usize) -> Result<usize, StructureError> {
+        let length = match self {
+            Self::Full { block, .. } => block.length(z),
+            Self::Partial(block) => block.length(z),
+        };
+        length.ok_or(StructureError::BlockInvariantViolation {
+            invariant: "block element length",
+        })
+    }
+
+    /// `parent.sr(z, gamma)` (blocks.cpp:1260-1264): the parameter of
+    /// parent row `z` at infinitesimal character `gamma`. The full-block
+    /// variant uses the caller-supplied constant `lambda_rho`; the partial
+    /// variant derives each row's own from its stored `gamma_lambda`
+    /// (`integer_diff(gamma - rho, gamma_lambda(z))`, integral because the
+    /// row lies in gamma's common block).
+    fn sr(
+        &self,
+        rc: &RepContext,
+        z: usize,
+        gamma: &RationalWeight,
+    ) -> Result<StandardRepr, StructureError> {
+        match self {
+            Self::Full { lambda_rho, .. } => rc.sr_gamma(self.x(z)?, lambda_rho, gamma),
+            Self::Partial(block) => {
+                let gamma_lambda =
+                    block
+                        .gamma_lambda(z)
+                        .ok_or(StructureError::BlockInvariantViolation {
+                            invariant: "block element gamma_lambda",
+                        })?;
+                let lambda_rho = integer_diff(&gamma.sub(rc.rho())?, gamma_lambda)?;
+                rc.sr_gamma(self.x(z)?, &Weight::new(lambda_rho), gamma)
+            }
+        }
+    }
+}
+
 /// The free function `twisted_KL_sum` (repr.cpp:2304-2350): the alternating
 /// twisted KL column sum at `q = s` of the EXTENDED-block element `y`,
 /// with signs from the EXTENDED block's own length function
-/// (`eblock.length`, repr.cpp:2339-2344). `parent`/`gamma`/`lambda_rho`
-/// reconstruct the contribution targets (`parent.sr`, repr.cpp:2346).
+/// (`eblock.length`, repr.cpp:2339-2344). `singular_orbits` flags the
+/// singular generators in extended-block orbit numbering (the caller folds
+/// the parent's own singular set; see [`singular_orbits_at`] and
+/// [`KlSumParent`]), and `parent`/`gamma` reconstruct the contribution
+/// targets (`parent.sr`, repr.cpp:2346).
 pub fn twisted_kl_sum(
     rc: &RepContext,
     eblock: &ExtBlock,
     y: usize,
-    parent: &BlockGraph,
+    parent: &KlSumParent,
     gamma: &RationalWeight,
-    lambda_rho: &Weight,
+    singular_orbits: &RankFlags,
 ) -> Result<Vec<(StandardRepr, SplitInteger)>, StructureError> {
     let mut kl_tab = ExtKlTable::new(eblock)?;
     kl_tab.fill_columns(y + 1)?;
@@ -477,8 +557,7 @@ pub fn twisted_kl_sum(
         pool_at_s.push(pool.get(index).map_or(SplitInteger::zero(), evaluate_at_s));
     }
 
-    let singular_orbits = singular_orbits_at(rc, eblock, gamma)?;
-    let contrib = contributions(eblock, &singular_orbits, y);
+    let contrib = contributions(eblock, singular_orbits, y);
 
     let mut result = Vec::new();
     let parity = eblock.length(y) % 2;
@@ -492,7 +571,7 @@ pub fn twisted_kl_sum(
             eval = eval.negate(); // flip sign at odd length difference
         }
         for &(element, coefficient) in &contrib[x] {
-            let sr = rc.sr_gamma(block_x(parent, eblock.z(element))?, lambda_rho, gamma)?;
+            let sr = parent.sr(rc, eblock.z(element), gamma)?;
             add_param_term(&mut result, sr, eval.mul_int(coefficient));
         }
     }
@@ -502,30 +581,29 @@ pub fn twisted_kl_sum(
 /// `Rep_table::twisted_KL_column_at_s` (repr.cpp:2371-2423): the
 /// alternating twisted KL column sum at `q = s` of the parameter at
 /// PARENT block element `y0`, with signs from the PARENT block's length
-/// function (`block.length(eblock.z(x))`, repr.cpp:2416) — unlike
+/// function (`parent.length(eblock.z(x))`, repr.cpp:2416) — unlike
 /// [`twisted_kl_sum`], which uses extended-block lengths.
 pub fn twisted_kl_column_at_s(
     rc: &RepContext,
     eblock: &ExtBlock,
-    parent: &BlockGraph,
+    parent: &KlSumParent,
     y0: usize,
     gamma: &RationalWeight,
-    lambda_rho: &Weight,
+    singular_orbits: &RankFlags,
 ) -> Result<Vec<(StandardRepr, SplitInteger)>, StructureError> {
     if !eblock.is_present(y0) {
         return Err(StructureError::RepInvariantViolation {
             invariant: "twisted KL column: parameter is not delta-fixed in its block",
         });
     }
-    let singular_orbits = singular_orbits_at(rc, eblock, gamma)?;
     let y = eblock.element(y0);
-    let contrib = contributions(eblock, &singular_orbits, y);
+    let contrib = contributions(eblock, singular_orbits, y);
 
     let mut kl_tab = ExtKlTable::new(eblock)?;
     kl_tab.fill_columns(y + 1)?;
 
     let mut result = Vec::new();
-    let y_length = block_length(parent, y0)?;
+    let y_length = parent.length(y0)?;
     for x in (0..=y).rev() {
         let pol = kl_tab.p(x, y); // flip sign included (ext_kl.cpp:149-154)
         if pol.is_zero() {
@@ -533,7 +611,7 @@ pub fn twisted_kl_column_at_s(
         }
         let eval = evaluate_at_s(&pol);
         let eval = if !y_length
-            .wrapping_sub(block_length(parent, eblock.z(x))?)
+            .wrapping_sub(parent.length(eblock.z(x))?)
             .is_multiple_of(2)
         {
             eval.negate() // alternating sum of the KL column at s
@@ -541,7 +619,7 @@ pub fn twisted_kl_column_at_s(
             eval
         };
         for &(element, coefficient) in &contrib[x] {
-            let sr = rc.sr_gamma(block_x(parent, eblock.z(element))?, lambda_rho, gamma)?;
+            let sr = parent.sr(rc, eblock.z(element), gamma)?;
             add_param_term(&mut result, sr, eval.mul_int(coefficient));
         }
     }
@@ -1263,13 +1341,19 @@ mod tests {
         let eblock = identity_ext_block(&ctx);
         let y0 = block_element_of(&rc, &ctx, &eblock, &q, &lambda_rho);
         let expected = vec![(q.clone(), SplitInteger::new(1, 0))];
+        let parent = KlSumParent::Full {
+            block: &ctx.block,
+            lambda_rho: &lambda_rho,
+        };
+        let singular_orbits = singular_orbits_at(&rc, &eblock, q.gamma()).unwrap();
         // Rep_table variant (distinguished involution, parent lengths).
         let column =
-            twisted_kl_column_at_s(&rc, &eblock, &ctx.block, y0, q.gamma(), &lambda_rho).unwrap();
+            twisted_kl_column_at_s(&rc, &eblock, &parent, y0, q.gamma(), &singular_orbits).unwrap();
         assert_eq!(column, expected);
         // Free-function variant (external delta, extended lengths).
         let ext_y = eblock.element(y0);
-        let sum = twisted_kl_sum(&rc, &eblock, ext_y, &ctx.block, q.gamma(), &lambda_rho).unwrap();
+        let sum =
+            twisted_kl_sum(&rc, &eblock, ext_y, &parent, q.gamma(), &singular_orbits).unwrap();
         assert_eq!(sum, expected);
     }
 
@@ -1310,11 +1394,18 @@ mod tests {
         let eblock = identity_ext_block(&ctx);
         let y0 = block_element_of(&rc, &ctx, &eblock, &q2, &lambda_rho);
         let expected = vec![(q2.clone(), SplitInteger::new(1, 0))];
+        let parent = KlSumParent::Full {
+            block: &ctx.block,
+            lambda_rho: &lambda_rho,
+        };
+        let singular_orbits = singular_orbits_at(&rc, &eblock, q2.gamma()).unwrap();
         let column =
-            twisted_kl_column_at_s(&rc, &eblock, &ctx.block, y0, q2.gamma(), &lambda_rho).unwrap();
+            twisted_kl_column_at_s(&rc, &eblock, &parent, y0, q2.gamma(), &singular_orbits)
+                .unwrap();
         assert_eq!(column, expected);
         let ext_y = eblock.element(y0);
-        let sum = twisted_kl_sum(&rc, &eblock, ext_y, &ctx.block, q2.gamma(), &lambda_rho).unwrap();
+        let sum =
+            twisted_kl_sum(&rc, &eblock, ext_y, &parent, q2.gamma(), &singular_orbits).unwrap();
         assert_eq!(sum, expected);
     }
 
@@ -1429,12 +1520,16 @@ mod tests {
         let sr_y = rc
             .sr_gamma(ctx.block.x(y0).unwrap(), &lambda_rho, &gamma)
             .unwrap();
+        let parent = KlSumParent::Full {
+            block: &ctx.block,
+            lambda_rho: &lambda_rho,
+        };
         let sum =
-            twisted_kl_column_at_s(&rc, &eblock, &ctx.block, y0, &gamma, &lambda_rho).unwrap();
+            twisted_kl_column_at_s(&rc, &eblock, &parent, y0, &gamma, &singular_orbits).unwrap();
         assert!(sum.contains(&(sr_y.clone(), SplitInteger::new(1, 0))));
         let ext_y = eblock.element(y0);
         let sum_free =
-            twisted_kl_sum(&rc, &eblock, ext_y, &ctx.block, &gamma, &lambda_rho).unwrap();
+            twisted_kl_sum(&rc, &eblock, ext_y, &parent, &gamma, &singular_orbits).unwrap();
         assert!(sum_free.contains(&(sr_y, SplitInteger::new(1, 0))));
     }
 

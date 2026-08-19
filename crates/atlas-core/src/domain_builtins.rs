@@ -46,12 +46,12 @@ use atlas_real_group::{
     BlockModifier, BlockTopology, CartanClassification, CartanClassificationBudget, CartanId,
     CommonContext, Coweight, ExternalFormOrder, GlobalKgb, InnerClass, InnerClassLayout,
     IntegerLatticeBudget, IntegralBlockScope, IntegralSubsystem, InvolutionId, InvolutionTable,
-    InvolutionTableBudget, KType, KgbGraph, KgbId, KgbStatus, KlPol, KlTable, LatticeInvolution,
-    LocatedBlock, ModTwoVector, PartialBlock, RankFlags, RationalWeight, RealFormPresentation,
-    RealFormSeed, RelationBasis, RelationError, RelationGenerator, RelationMatrix, RepContext,
-    RepTableOwner, RootId, RootInvolutionData, RootKind, RootSystem, SplitInteger, StandardRepr,
-    StandardReprMod, StrongRealClassification, StructureError, WeakRealFormId, Weight, WeylAction,
-    WeylElement, WeylInterface,
+    InvolutionTableBudget, KType, KgbGraph, KgbId, KgbStatus, KlPol, KlSumParent, KlTable,
+    LatticeInvolution, LocatedBlock, ModTwoVector, PartialBlock, RankFlags, RationalWeight,
+    RealFormPresentation, RealFormSeed, RelationBasis, RelationError, RelationGenerator,
+    RelationMatrix, RepContext, RepTableOwner, RootId, RootInvolutionData, RootKind, RootSystem,
+    SplitInteger, StandardRepr, StandardReprMod, StrongRealClassification, StructureError,
+    WeakRealFormId, Weight, WeylAction, WeylElement, WeylInterface,
 };
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
@@ -3899,9 +3899,27 @@ fn build_partial_ext_block(
     twist: &[usize],
     span: SourceSpan,
 ) -> Result<(PartialBlock, usize, ExtBlock), Diagnostic> {
-    let rc = ctxt.rep_context();
     let (block, entry) =
         PartialBlock::build_full(ctxt, seed).map_err(|error| structure_diagnostic(error, span))?;
+    let eb = tuned_partial_ext_block(ctxt, &block, delta, twist, span)?;
+    Ok((block, entry, eb))
+}
+
+/// The extended block over an EXISTING partial parent block
+/// (ext_block.cpp:618-668 via [`ExtBlock::build_partial`]), with the sign
+/// flips tuned by the partial-parent star oracle (ext_block.cpp:1707-1876
+/// via ext_block.cpp:2283-2310). `fold_orbits` orbit indices are subsystem
+/// generator numbers, so `tune_signs` needs the parent root numbers. Only
+/// the identity generator attitude is supported; `build_partial` keeps the
+/// loud NYI for non-identity `simple_pi`.
+fn tuned_partial_ext_block(
+    ctxt: &CommonContext<'_, '_>,
+    block: &PartialBlock,
+    delta: &LatticeInvolution,
+    twist: &[usize],
+    span: SourceSpan,
+) -> Result<ExtBlock, Diagnostic> {
+    let rc = ctxt.rep_context();
     let simp_int: Vec<RootId> = (0..ctxt.subsystem().rank())
         .map(|s| {
             ctxt.subsystem()
@@ -3911,20 +3929,16 @@ fn build_partial_ext_block(
         .collect();
     let bm = BlockModifier::trivial(rc.root_system(), simp_int.clone())
         .map_err(|error| structure_diagnostic(error, span))?;
-    let mut eb = ExtBlock::build_partial(&block, ctxt, &bm, delta, twist)
+    let mut eb = ExtBlock::build_partial(block, ctxt, &bm, delta, twist)
         .map_err(|error| structure_diagnostic(error, span))?;
-    // The constructor leaves the sign flips cleared; tune them with the
-    // partial-parent star oracle (ext_block.cpp:1707-1876 via
-    // ext_block.cpp:2283-2310). `fold_orbits` orbit indices are subsystem
-    // generator numbers, so `tune_signs` needs the parent root numbers.
     let context =
         ExtRepContext::new(rc, delta.clone()).map_err(|error| structure_diagnostic(error, span))?;
     let simply_ints: Vec<usize> = simp_int.iter().map(|id| id.index()).collect();
-    let mut oracle = PartialBlockOracle::new(&context, &block);
+    let mut oracle = PartialBlockOracle::new(&context, block);
     if !eb.tune_signs(&mut oracle, &simply_ints) {
         return Err(runtime(span, "extended block sign tuning failed"));
     }
-    Ok((block, entry, eb))
+    Ok(eb)
 }
 
 /// The partial-parent counterpart of `fiber_param` (atlas-types.w:7398-7404,
@@ -8179,11 +8193,19 @@ fn twisted_reducibility_lookup(
 }
 
 /// Shared tail of the three twisted wrappers after their gates: run
-/// `compute` on the full block plus the extended block over `delta`, or
-/// short-circuit the rank-0 integral subsystem (the common block is the
-/// singleton `{p}` of length 0 — empty deformation terms, and `1*p` for
-/// the KL sums, repr.cpp:2435-2436). A proper integral subsystem fails
-/// loudly (no `SubSystem` port).
+/// `compute` on the parameter's common block plus the extended block over
+/// `delta`, or short-circuit the rank-0 integral subsystem (the common
+/// block is the singleton `{p}` of length 0 — empty deformation terms, and
+/// `1*p` for the KL sums, repr.cpp:2435-2436). On a proper integral
+/// subsystem the common block comes from `Rep_table::lookup_full_block`
+/// (repr.cpp:1773-1794, which makes the query dominant first) and the
+/// extended block is built over that partial parent
+/// (`common_block::extended_block`, blocks.cpp:1305-1310). `compute`
+/// receives the parent block view, the extended block, the parameter's
+/// parent row, the block's infinitesimal character, and the
+/// singular-orbit flags folded from the parent's own singular set
+/// (`common_block::singular(gamma)`, blocks.cpp:701-709, folded by
+/// `ext_block::reduce_to`).
 fn with_integral_block<T>(
     parameter: &ParamValue,
     rc: &RepContext<'_>,
@@ -8191,11 +8213,63 @@ fn with_integral_block<T>(
     twist_data: &(LatticeInvolution, Vec<usize>),
     span: SourceSpan,
     singleton: impl FnOnce() -> T,
-    compute: impl FnOnce(&BlockGraph, &ExtBlock, usize, &Weight) -> Result<T, Diagnostic>,
+    compute: impl FnOnce(
+        KlSumParent<'_>,
+        &ExtBlock,
+        usize,
+        &RationalWeight,
+        &RankFlags,
+    ) -> Result<T, Diagnostic>,
 ) -> Result<T, Diagnostic> {
     match integral_block_scope(rc, sr.gamma()).map_err(|error| structure_diagnostic(error, span))? {
         IntegralBlockScope::Singleton => Ok(singleton()),
-        IntegralBlockScope::ProperSubsystem => Err(proper_subsystem_diagnostic(span)),
+        IntegralBlockScope::ProperSubsystem => {
+            // Rep_table::lookup (repr.cpp:1796-1824) as
+            // Rep_table::twisted_KL_column_at_s calls it
+            // (repr.cpp:2378-2382), in the lookup_full_block shape the
+            // slice plan fixes (docs/slices/twisted_ext_proper_workorder.md
+            // slice 3): the query made dominant, its full common block on
+            // gamma's integral subsystem, and its row there.
+            let located = parameter
+                .context
+                .rep
+                .lookup_full_block(sr)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            if !located.has_identity_generator_attitude() {
+                return Err(runtime(
+                    span,
+                    "partial common block on a non-identity integral-subsystem attitude is not yet supported",
+                ));
+            }
+            let prepared = located.prepared_query();
+            let seed = StandardReprMod::mod_reduce(rc, prepared)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let ctxt = CommonContext::integral(rc, seed.gamma_lambda())
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let block = located.block();
+            let eblock =
+                tuned_partial_ext_block(&ctxt, &block, &twist_data.0, &twist_data.1, span)?;
+            // common_block::singular(gamma) over the subsystem generators
+            // (blocks.cpp:701-708), folded to extended-block orbits
+            // (repr.cpp:2380-2390 with trivial bm).
+            let singular = ctxt
+                .singular_flags(prepared.gamma())
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let mut singular_flags = RankFlags::empty();
+            for (s, &flag) in singular.iter().enumerate() {
+                if flag {
+                    singular_flags.set(s);
+                }
+            }
+            let singular_orbits = eblock.singular_orbits(&singular_flags);
+            compute(
+                KlSumParent::Partial(&block),
+                &eblock,
+                located.raw_row(),
+                prepared.gamma(),
+                &singular_orbits,
+            )
+        }
         IntegralBlockScope::Full => {
             let block = full_block_of(parameter, span)?;
             let eblock = build_ext_block(&block, parameter, &twist_data.0, &twist_data.1, span)?;
@@ -8203,7 +8277,18 @@ fn with_integral_block<T>(
                 .lambda_rho(sr)
                 .map_err(|error| structure_diagnostic(error, span))?;
             let y0 = twisted_block_index(&block.graph, &eblock, rc, sr, &lambda_rho, span)?;
-            compute(&block.graph, &eblock, y0, &lambda_rho)
+            let singular_orbits = singular_orbits_at(rc, &eblock, sr.gamma())
+                .map_err(|error| structure_diagnostic(error, span))?;
+            compute(
+                KlSumParent::Full {
+                    block: &block.graph,
+                    lambda_rho: &lambda_rho,
+                },
+                &eblock,
+                y0,
+                sr.gamma(),
+                &singular_orbits,
+            )
         }
     }
 }
@@ -16557,7 +16642,8 @@ pub(crate) fn call_with_printed(
         // wrapper maps each to `Split_integer(c, -c)` = c(1-s)
         // (atlas-types.w:8146-8147). The rank-0 integral subsystem (the
         // A1 nu=[1]/2 case) is the singleton block, whose terms are
-        // empty (repr.cpp:2435-2436); a proper subsystem is not ported.
+        // empty (repr.cpp:2435-2436); a proper subsystem is slice 4 of the
+        // work order and still fails loudly.
         "twisted_deform" => {
             arity(name, arguments, 1, span)?;
             let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
@@ -16579,16 +16665,18 @@ pub(crate) fn call_with_printed(
                 &(delta, twist),
                 span,
                 Vec::new,
-                |block, eblock, y0, lambda_rho| {
-                    let gamma = parameter.repr.gamma();
-                    let singular_orbits = singular_orbits_at(&rc, eblock, gamma)
-                        .map_err(|error| structure_diagnostic(error, span))?;
+                |parent, eblock, y0, gamma, singular_orbits| {
+                    let KlSumParent::Full { block, lambda_rho } = parent else {
+                        // twisted_deformation_terms on a partial parent is
+                        // not yet ported (work order slice 4).
+                        return Err(proper_subsystem_diagnostic(span));
+                    };
                     let raw = twisted_deformation_terms(
                         &rc,
                         block,
                         eblock,
                         y0,
-                        &singular_orbits,
+                        singular_orbits,
                         gamma,
                         lambda_rho,
                     )
@@ -16618,7 +16706,9 @@ pub(crate) fn call_with_printed(
         // external-delta path builds the extended block over the USER's
         // delta and signs by the extended block's own lengths
         // (`twisted_kl_sum`, repr.cpp:2304-2350). The rank-0 integral
-        // subsystem's singleton block gives `1*p` (P_{y,y} = 1).
+        // subsystem's singleton block gives `1*p` (P_{y,y} = 1); a proper
+        // integral subsystem runs the same sums over the partial parent
+        // (`with_integral_block`).
         "twisted_KL_sum_at_s" => {
             let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
                 return Err(type_error(
@@ -16658,13 +16748,12 @@ pub(crate) fn call_with_printed(
                 // The singleton column sum is 1*sr (repr.cpp:2435-2436
                 // leaves only the x == y entry of the KL table).
                 || vec![(SplitValue::new(1, 0), sr.clone())],
-                |block, eblock, y0, lambda_rho| {
-                    let gamma = sr.gamma();
+                |parent, eblock, y0, gamma, singular_orbits| {
                     let raw = if distinguished {
-                        twisted_kl_column_at_s(&rc, eblock, block, y0, gamma, lambda_rho)
+                        twisted_kl_column_at_s(&rc, eblock, &parent, y0, gamma, singular_orbits)
                     } else {
                         let ext_y = eblock.element(y0);
-                        twisted_kl_sum(&rc, eblock, ext_y, block, gamma, lambda_rho)
+                        twisted_kl_sum(&rc, eblock, ext_y, &parent, gamma, singular_orbits)
                     }
                     .map_err(|error| structure_diagnostic(error, span))?;
                     let mut terms = Vec::new();
@@ -18973,6 +19062,119 @@ mod tests {
                 .expect("rank-0 condensed KLV")
                 .to_string(),
             "([final parameter(x=10,lambda=[2,2]/1,nu=[1,1]/4)],\n| 1 |\n,[[ ],[ 1 ]])"
+        );
+    }
+
+    // The strings below are the verified oracle outputs (local oracle run
+    // 2026-08-19, upstream rev 4d3e9449) for slice 3 of
+    // docs/slices/twisted_ext_proper_workorder.md:
+    // tests/fixtures/domain/twisted_kl_proper.atlas and
+    // tests/fixtures/domain/twisted_kl_proper_rejected.atlas.
+    #[test]
+    fn twisted_kl_sum_at_s_proper_subsystems_match_oracle() {
+        let identity = matrix(2, 2, vec![1, 0, 0, 1]);
+
+        // B2 split form 2: pb (x=5) and pb4 (x=4) at gamma = [5,3]/2,
+        // whose rank-1 integral subsystem gives the 3-element partial
+        // parent. Both overloads — the distinguished-vs-external delta
+        // pair of twisted_family.atlas:28-29 — collapse to 1*p.
+        let datum = fixture_datum("B2", true);
+        let inner =
+            call("inner_class", &[datum, identity.clone()], span()).expect("B2 inner class");
+        let real = call("real_form", &[inner, int(2)], span()).expect("split B2 form");
+        let pb = sl2r_param(&real, 5, &[1, 1], &[1, 0], 2);
+        let pb4 = sl2r_param(&real, 4, &[1, 1], &[1, 0], 2);
+        for (parameter, expected) in [
+            (pb, "\n1*parameter(x=5,lambda=[2,2]/1,nu=[1,-1]/2) [12]"),
+            (pb4, "\n1*parameter(x=4,lambda=[2,2]/1,nu=[1,-1]/2) [12]"),
+        ] {
+            assert_eq!(
+                call(
+                    "twisted_KL_sum_at_s",
+                    std::slice::from_ref(&parameter),
+                    span()
+                )
+                .expect("proper-subsystem twisted KL column")
+                .to_string(),
+                expected
+            );
+            assert_eq!(
+                call(
+                    "twisted_KL_sum_at_s",
+                    &[parameter, identity.clone()],
+                    span()
+                )
+                .expect("proper-subsystem twisted KL sum")
+                .to_string(),
+                expected
+            );
+        }
+
+        // A2 quasisplit form 1, nu=[1,0]/2 on x=3 (lambda variants
+        // [0,0] and [1,0]): gamma's integral subsystem has rank 1 (the
+        // print_block shows the one-element [rn] block).
+        let datum = fixture_datum("A2", true);
+        let inner =
+            call("inner_class", &[datum, identity.clone()], span()).expect("A2 inner class");
+        let real = call("real_form", &[inner, int(1)], span()).expect("A2 form 1");
+        let pa = sl2r_param(&real, 3, &[0, 0], &[1, 0], 2);
+        let pa1 = sl2r_param(&real, 3, &[1, 0], &[1, 0], 2);
+        for (parameter, expected) in [
+            (pa, "\n1*parameter(x=3,lambda=[1,1]/1,nu=[0,0]/1) [3]"),
+            (pa1, "\n1*parameter(x=3,lambda=[2,1]/1,nu=[0,0]/1) [5]"),
+        ] {
+            assert_eq!(
+                call(
+                    "twisted_KL_sum_at_s",
+                    std::slice::from_ref(&parameter),
+                    span()
+                )
+                .expect("proper-subsystem twisted KL column")
+                .to_string(),
+                expected
+            );
+            assert_eq!(
+                call(
+                    "twisted_KL_sum_at_s",
+                    &[parameter, identity.clone()],
+                    span()
+                )
+                .expect("proper-subsystem twisted KL sum")
+                .to_string(),
+                expected
+            );
+        }
+
+        // The rejected fixture's gate failures on proper-subsystem input.
+        let datum = fixture_datum("B2", true);
+        let inner =
+            call("inner_class", &[datum, identity.clone()], span()).expect("B2 inner class");
+        let real = call("real_form", &[inner, int(2)], span()).expect("split B2 form");
+        let pb = sl2r_param(&real, 5, &[1, 1], &[1, 0], 2);
+        let c10 = sl2r_param(&real, 10, &[1, 1], &[1, 0], 2);
+        let error = call("twisted_KL_sum_at_s", std::slice::from_ref(&c10), span())
+            .expect_err("non-final proper parameter is rejected");
+        assert_eq!(
+            error.message,
+            "Cannot compute Kazhdan-Lusztig sum:\n  \
+             non-final parameter(x=10,lambda=[2,2]/1,nu=[1,0]/2)\n  \
+             Parameter is not semifinal"
+        );
+        let error = call(
+            "twisted_KL_sum_at_s",
+            &[pb.clone(), matrix(2, 2, vec![-1, 0, 0, -1])],
+            span(),
+        )
+        .expect_err("a non-distinguished involution is rejected");
+        assert_eq!(error.message, "Root datum involution is not distinguished");
+
+        // twisted_deform on the partial parent stays slice 4: still the
+        // loud NYI.
+        let error = call("twisted_deform", std::slice::from_ref(&pb), span())
+            .expect_err("twisted_deform on a proper subsystem is not yet implemented");
+        assert_eq!(
+            error.message,
+            "common block on a proper integral subsystem is not yet implemented"
         );
     }
 
