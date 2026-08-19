@@ -45,9 +45,7 @@
 
 use crate::ext_block::ExtBlock;
 use crate::ext_kl::{contributions, ExtKlTable};
-use crate::ext_param::{
-    extended_restrict_to_k, integer_diff, scaled_extended_finalise, ExtRepContext,
-};
+use crate::ext_param::{extended_restrict_to_k, scaled_extended_finalise, ExtRepContext};
 use crate::kl_polynomial::KlPol;
 use crate::kl_table::KlTable;
 use crate::matreduc::{exp_i, inverse_upper_triangular, IntMatrix};
@@ -480,8 +478,41 @@ pub enum KlSumParent<'a> {
         /// The constant `lambda_rho` of the looked-up parameter.
         lambda_rho: &'a Weight,
     },
-    /// A partial (proper-subsystem) common block.
-    Partial(&'a PartialBlock),
+    /// A partial common block, optionally viewed through the lookup
+    /// modifier that relates its stored representative to the query.
+    Partial {
+        block: &'a PartialBlock,
+        modifier: Option<&'a crate::BlockModifier>,
+    },
+}
+
+/// Owned parent returned by reducibility-point lookup during recursive
+/// twisted deformation. The recursive driver must keep the selected parent
+/// alive while [`twisted_deformation_terms`] borrows its block view.
+pub enum DeformParent {
+    Full {
+        block: Box<BlockGraph>,
+        lambda_rho: Weight,
+    },
+    Partial {
+        block: std::sync::Arc<PartialBlock>,
+        modifier: crate::BlockModifier,
+    },
+}
+
+impl DeformParent {
+    fn as_kl_sum_parent(&self) -> KlSumParent<'_> {
+        match self {
+            Self::Full { block, lambda_rho } => KlSumParent::Full {
+                block: block.as_ref(),
+                lambda_rho,
+            },
+            Self::Partial { block, modifier } => KlSumParent::Partial {
+                block,
+                modifier: Some(modifier),
+            },
+        }
+    }
 }
 
 impl KlSumParent<'_> {
@@ -489,7 +520,7 @@ impl KlSumParent<'_> {
     fn x(&self, z: usize) -> Result<crate::KgbId, StructureError> {
         let x = match self {
             Self::Full { block, .. } => block.x(z),
-            Self::Partial(block) => block.x(z),
+            Self::Partial { block, .. } => block.x(z),
         };
         x.ok_or(StructureError::BlockInvariantViolation {
             invariant: "block element x coordinate",
@@ -500,7 +531,7 @@ impl KlSumParent<'_> {
     fn length(&self, z: usize) -> Result<usize, StructureError> {
         let length = match self {
             Self::Full { block, .. } => block.length(z),
-            Self::Partial(block) => block.length(z),
+            Self::Partial { block, .. } => block.length(z),
         };
         length.ok_or(StructureError::BlockInvariantViolation {
             invariant: "block element length",
@@ -521,15 +552,16 @@ impl KlSumParent<'_> {
     ) -> Result<StandardRepr, StructureError> {
         match self {
             Self::Full { lambda_rho, .. } => rc.sr_gamma(self.x(z)?, lambda_rho, gamma),
-            Self::Partial(block) => {
-                let gamma_lambda =
-                    block
-                        .gamma_lambda(z)
-                        .ok_or(StructureError::BlockInvariantViolation {
-                            invariant: "block element gamma_lambda",
-                        })?;
-                let lambda_rho = integer_diff(&gamma.sub(rc.rho())?, gamma_lambda)?;
-                rc.sr_gamma(self.x(z)?, &Weight::new(lambda_rho), gamma)
+            Self::Partial { block, modifier } => {
+                let srm = block
+                    .element(z)
+                    .ok_or(StructureError::BlockInvariantViolation {
+                        invariant: "block element representative",
+                    })?;
+                match modifier {
+                    Some(modifier) => rc.sr_with_modifier(srm, modifier, gamma),
+                    None => srm.to_standard(rc, gamma),
+                }
             }
         }
     }
@@ -793,20 +825,18 @@ pub fn block_deformation_to_height(
 ///
 /// `lookup` plays the role of `rt.lookup(zi, index, bm)` +
 /// `block.extended_block(bm, ...)` at a reducibility-point parameter with
-/// INTEGRAL gamma: it must return the parameter's full block, the extended
-/// block over `ctx.delta()`, and the parameter's PARENT block index. It is
-/// only invoked in the [`IntegralBlockScope::Full`] case; the rank-0
-/// singleton block has a single length-0 element and contributes no
-/// deformation terms, and a proper integral subsystem fails loudly with
-/// [`StructureError::NotYetImplemented`].
-///
-/// The non-trivial block modifiers needed at a reducibility point on a
-/// proper integral subsystem remain a deviation from upstream and fail
-/// loudly rather than computing on the wrong block.
+/// INTEGRAL gamma: it returns the parameter's interval-below common block,
+/// the extended block over `ctx.delta()`, the parent row, and the singular
+/// extended-generator orbits. This applies to both full and proper integral
+/// subsystems; the rank-0 singleton contributes no deformation terms and
+/// does not call `lookup`. Non-trivial block modifiers remain a loud NYI.
 pub fn twisted_deformation(
     ctx: &ExtRepContext,
     z: &StandardRepr,
-    lookup: &mut dyn FnMut(&StandardRepr) -> Result<(BlockGraph, ExtBlock, usize), StructureError>,
+    lookup: &mut dyn FnMut(
+        &StandardRepr,
+    )
+        -> Result<(DeformParent, ExtBlock, usize, RankFlags), StructureError>,
 ) -> Result<(Vec<(KType, SplitInteger)>, bool), StructureError> {
     let mut never_cancel = || false;
     match twisted_deformation_with_cancel(ctx, z, lookup, &mut never_cancel)? {
@@ -821,7 +851,10 @@ pub fn twisted_deformation(
 pub fn twisted_deformation_with_cancel(
     ctx: &ExtRepContext,
     z: &StandardRepr,
-    lookup: &mut dyn FnMut(&StandardRepr) -> Result<(BlockGraph, ExtBlock, usize), StructureError>,
+    lookup: &mut dyn FnMut(
+        &StandardRepr,
+    )
+        -> Result<(DeformParent, ExtBlock, usize, RankFlags), StructureError>,
     cancelled: &mut dyn FnMut() -> bool,
 ) -> Result<Option<(Vec<(KType, SplitInteger)>, bool)>, StructureError> {
     if cancelled() {
@@ -888,25 +921,14 @@ pub fn twisted_deformation_with_cancel(
                 // The rank-0 integral block is the length-0 singleton; its
                 // deformation terms are empty (repr.cpp:2435-2436).
             }
-            IntegralBlockScope::ProperSubsystem => {
-                return Err(StructureError::NotYetImplemented {
-                    feature: "common block on a proper integral subsystem",
-                });
-            }
-            IntegralBlockScope::Full => {
-                let (block, eblock, index) = lookup(&zi)?;
+            IntegralBlockScope::ProperSubsystem | IntegralBlockScope::Full => {
+                let (parent, eblock, index, singular_orbits) = lookup(&zi)?;
                 if cancelled() {
                     return Ok(None);
                 }
-                let singular_orbits = singular_orbits_at(rc, &eblock, zi.gamma())?;
-                let lambda_rho = rc.lambda_rho(&zi)?;
-                let parent = KlSumParent::Full {
-                    block: &block,
-                    lambda_rho: &lambda_rho,
-                };
                 let terms = twisted_deformation_terms(
                     rc,
-                    &parent,
+                    &parent.as_kl_sum_parent(),
                     &eblock,
                     index,
                     &singular_orbits,
@@ -1236,7 +1258,7 @@ mod tests {
     /// parameters with reducibility points; the fixtures have none.
     fn identity_lookup(
         _zi: &StandardRepr,
-    ) -> Result<(BlockGraph, ExtBlock, usize), StructureError> {
+    ) -> Result<(DeformParent, ExtBlock, usize, RankFlags), StructureError> {
         unreachable!("the twisted_family fixture parameters have no reducibility points")
     }
 

@@ -4,6 +4,24 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-20 (`twisted_full_deform` slice 5 local)
+
+- `twisted_full_deform` reducibility recursion now uses
+  `RepTable::lookup` interval-below partial blocks for both Full and
+  ProperSubsystem scopes, matching repr.cpp:2605. Rebuilding a full block
+  at a Full-scope reducibility point caused the B2 anchor's two spurious
+  `[13]` terms.
+- `scaled_extended_finalise` now scales `RepContext::nu(sr)`, not `gamma`,
+  while preserving `lambda_rho`; the old expression only worked when
+  `lambda_rho == 0`.
+- `tests/fixtures/domain/twisted_full_deform_proper.atlas` is byte-identical
+  to the local oracle for x=5 at integral/half-integral nu and non-final x=10.
+  Local gates: atlas-core 329/329, atlas-real-group 478/478, clippy and fmt
+  clean. HPC reference capture, fixture registration, fat differential, and
+  `verified_hpc` metadata remain pending.
+- Oracle correction: x=10 is accepted by `twisted_full_deform`; do not create
+  a rejected fixture for it.
+
 ## Checkpoint - 2026-08-19 late night (handoff mid-slice; UNCOMMITTED work in tree)
 
 Branch `codex/continue-atlas-port` (push to main too). Pushed HEAD =

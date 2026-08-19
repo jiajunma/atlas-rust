@@ -1,5 +1,21 @@
 # Remaining builtin coverage (post-language-gate)
 
+## twisted_full_deform partial lookup landed locally (2026-08-20, HPC pending)
+
+Recursive `twisted_full_deform` now uses `RepTable::lookup` at every
+non-singleton reducibility point, including when the integral subsystem is
+the full root system. This matches `repr.cpp:2605`: the deformation terms
+run over the interval-below partial common block, not a rebuilt full block.
+The old full-block path produced two spurious B2 `[13]` terms.
+
+`scaled_extended_finalise` also now scales `RepContext::nu(sr)` while keeping
+`lambda_rho` fixed; it previously fed `gamma` back as `nu`, which is only
+equivalent when `lambda_rho` is zero. The B2 nonzero-lambda case is pinned by
+a unit test. `tests/fixtures/domain/twisted_full_deform_proper.atlas` is
+byte-identical against the local oracle for the x=5 integral anchor, its
+half-integral counterpart, and the x=10 non-final input. HPC capture and full
+differential registration remain pending.
+
 ## global.w batch 4 landed locally (2026-08-19, HPC capture pending)
 
 The LAST global.w slice (work order `docs/slices/global_batch4_workorder.md`):

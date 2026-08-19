@@ -2341,11 +2341,28 @@ impl StarOracle for ExtParamOracle<'_> {
 pub struct PartialBlockOracle<'a> {
     ctx: &'a ExtRepContext<'a>,
     parent: &'a PartialBlock,
+    modifier: Option<&'a crate::BlockModifier>,
 }
 
 impl<'a> PartialBlockOracle<'a> {
     pub fn new(ctx: &'a ExtRepContext<'a>, parent: &'a PartialBlock) -> Self {
-        Self { ctx, parent }
+        Self {
+            ctx,
+            parent,
+            modifier: None,
+        }
+    }
+
+    pub fn with_modifier(
+        ctx: &'a ExtRepContext<'a>,
+        parent: &'a PartialBlock,
+        modifier: &'a crate::BlockModifier,
+    ) -> Self {
+        Self {
+            ctx,
+            parent,
+            modifier: Some(modifier),
+        }
     }
 }
 
@@ -2353,10 +2370,22 @@ impl StarOracle for PartialBlockOracle<'_> {
     type Param = ExtParam;
 
     fn def_ext(&mut self, z: usize) -> ExtParam {
-        let element = self
+        let mut element = self
             .parent
             .element(z)
-            .expect("in-range parent block element");
+            .expect("in-range parent block element")
+            .clone();
+        if let Some(modifier) = self.modifier {
+            let shifted = element
+                .gamma_lambda()
+                .add(modifier.shift())
+                .expect("lookup modifier shift matches the parent rank");
+            element.set_gamma_lambda(shifted);
+            self.ctx
+                .rc()
+                .transform_srm::<false>(modifier.w(), &mut element)
+                .expect("lookup modifier transports a stored block row");
+        }
         default_extend_srm(self.ctx, element.x(), element.gamma_lambda().clone())
             .expect("default extension of a fixed block element")
     }
@@ -2898,7 +2927,7 @@ pub fn scaled_extended_finalise(
 
     // First approximation to the result is the scaled input; importantly,
     // lambda (equivalently lambda_rho) is held fixed here.
-    let scaled_nu = scale_rational_weight(sr.gamma(), factor_num, factor_den)?;
+    let scaled_nu = scale_rational_weight(&rc.nu(sr)?, factor_num, factor_den)?;
     let scaled_sr = rc.sr(sr.x(), &rc.lambda_rho(sr)?, &scaled_nu)?;
     let mut gamma = scaled_sr.gamma().clone();
 
@@ -3168,6 +3197,22 @@ mod tests {
         let ctx = ExtRepContext::new(&rc, identity_delta(&rc)).unwrap();
         let (result, flip) = scaled_extended_finalise(&ctx, &pa2, 3, 2).unwrap();
         assert_eq!(result, param(&rc, 2, &[0], &[3], 2));
+        assert!(!flip);
+    }
+
+    #[test]
+    fn scaled_b2_parameter_keeps_lambda_rho_and_scales_only_nu() {
+        let fixture = b2_fixture();
+        let rc = fixture.rc();
+        let parameter = param(&rc, 5, &[1, 1], &[1, -1], 1);
+        assert!(matches!(parameter.is_final(&rc), Ok(true)));
+        let ctx = ExtRepContext::new(&rc, identity_delta(&rc)).unwrap();
+
+        let (scaled, flip) = scaled_extended_finalise(&ctx, &parameter, 1, 2).unwrap();
+
+        assert_eq!(rc.lambda_rho(&scaled).unwrap(), weight(&[1, 1]));
+        assert_eq!(rc.nu(&scaled).unwrap(), rational(&[1, -1], 2));
+        assert_eq!(scaled, param(&rc, 5, &[1, 1], &[1, -1], 2));
         assert!(!flip);
     }
 

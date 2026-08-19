@@ -1,0 +1,15 @@
+rb : RootDatum
+rb := simply_connected(Lie_type("B2"),true)
+ib : InnerClass
+ib := inner_class(rb,[[1,0],[0,1]])
+rfb : RealForm
+rfb := real_form(ib,2)
+p : Param
+p := param(KGB(rfb,5),[1,1],[1,0]/1)
+twisted_full_deform(p)
+pb : Param
+pb := param(KGB(rfb,5),[1,1],[1,0]/2)
+twisted_full_deform(pb)
+c10 : Param
+c10 := param(KGB(rfb,10),[1,1],[1,0]/2)
+twisted_full_deform(c10)

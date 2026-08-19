@@ -44,14 +44,14 @@ use atlas_real_group::{
     twisted_deformation_terms, twisted_deformation_with_cancel, twisted_kl_column_at_s,
     twisted_kl_sum, AdjointFiberBudget, BareBlock, BasedRootDatum, BlockDescent, BlockGraph,
     BlockModifier, BlockTopology, CartanClassification, CartanClassificationBudget, CartanId,
-    CommonContext, Coweight, ExternalFormOrder, GlobalKgb, InnerClass, InnerClassLayout,
-    IntegerLatticeBudget, IntegralBlockScope, IntegralSubsystem, InvolutionId, InvolutionTable,
-    InvolutionTableBudget, KType, KgbGraph, KgbId, KgbStatus, KlPol, KlSumParent, KlTable,
-    LatticeInvolution, LocatedBlock, ModTwoVector, PartialBlock, RankFlags, RationalWeight,
-    RealFormPresentation, RealFormSeed, RelationBasis, RelationError, RelationGenerator,
-    RelationMatrix, RepContext, RepTableOwner, RootId, RootInvolutionData, RootKind, RootSystem,
-    SplitInteger, StandardRepr, StandardReprMod, StrongRealClassification, StructureError,
-    WeakRealFormId, Weight, WeylAction, WeylElement, WeylInterface,
+    CommonContext, Coweight, DeformParent, ExternalFormOrder, GlobalKgb, InnerClass,
+    InnerClassLayout, IntegerLatticeBudget, IntegralBlockScope, IntegralSubsystem, InvolutionId,
+    InvolutionTable, InvolutionTableBudget, KType, KgbGraph, KgbId, KgbStatus, KlPol, KlSumParent,
+    KlTable, LatticeInvolution, LocatedBlock, ModTwoVector, PartialBlock, RankFlags,
+    RationalWeight, RealFormPresentation, RealFormSeed, RelationBasis, RelationError,
+    RelationGenerator, RelationMatrix, RepContext, RepTableOwner, RootId, RootInvolutionData,
+    RootKind, RootSystem, SplitInteger, StandardRepr, StandardReprMod, StrongRealClassification,
+    StructureError, WeakRealFormId, Weight, WeylAction, WeylElement, WeylInterface,
 };
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
@@ -2414,7 +2414,7 @@ fn compute_twisted_full_deform(
 
     let real_form = &parameter.context;
     let mut lookup =
-        |zi: &StandardRepr| twisted_reducibility_lookup(real_form, &rc, &delta, &twist, zi);
+        |zi: &StandardRepr| twisted_reducibility_lookup(real_form, &rc, &delta, &twist, zi, span);
     let mut cancelled = || deadline_expired(deadline);
     let mut terms: Vec<(SplitValue, KType)> = Vec::new();
     for (final_sr, finalise_flip) in &finals {
@@ -3929,12 +3929,31 @@ fn tuned_partial_ext_block(
         .collect();
     let bm = BlockModifier::trivial(rc.root_system(), simp_int.clone())
         .map_err(|error| structure_diagnostic(error, span))?;
-    let mut eb = ExtBlock::build_partial(block, ctxt, &bm, delta, twist)
+    tuned_partial_ext_block_with_modifier(ctxt, block, &bm, delta, twist, span)
+}
+
+fn tuned_partial_ext_block_with_modifier(
+    ctxt: &CommonContext<'_, '_>,
+    block: &PartialBlock,
+    modifier: &BlockModifier,
+    delta: &LatticeInvolution,
+    twist: &[usize],
+    span: SourceSpan,
+) -> Result<ExtBlock, Diagnostic> {
+    let rc = ctxt.rep_context();
+    let simp_int: Vec<RootId> = (0..ctxt.subsystem().rank())
+        .map(|s| {
+            ctxt.subsystem()
+                .parent_root(s)
+                .expect("subsystem generator in range")
+        })
+        .collect();
+    let mut eb = ExtBlock::build_partial(block, ctxt, modifier, delta, twist)
         .map_err(|error| structure_diagnostic(error, span))?;
     let context =
         ExtRepContext::new(rc, delta.clone()).map_err(|error| structure_diagnostic(error, span))?;
     let simply_ints: Vec<usize> = simp_int.iter().map(|id| id.index()).collect();
-    let mut oracle = PartialBlockOracle::new(&context, block);
+    let mut oracle = PartialBlockOracle::with_modifier(&context, block, modifier);
     if !eb.tune_signs(&mut oracle, &simply_ints) {
         return Err(runtime(span, "extended block sign tuning failed"));
     }
@@ -8106,92 +8125,49 @@ fn twisted_block_index(
 /// The `rt.lookup(zi, index, bm)` + `block.extended_block(bm, ...)` step
 /// of `Rep_table::twisted_deformation` at a reducibility point with
 /// INTEGRAL gamma (repr.cpp:2617-2633, trivial block modifier): rebuild
-/// `zi`'s full block against the dual class's quasisplit form, the
-/// extended block over `ctx`'s delta, and `zi`'s parent block index.
-/// Crate calls only, so the closure [`twisted_deformation`] expects can
-/// stay `StructureError`-typed.
+/// `zi`'s interval-below common block, extended block, parent row, and
+/// singular orbits. Upstream uses `Rep_table::lookup` here even when the
+/// integral subsystem is the full root system (repr.cpp:2605); rebuilding
+/// the entire full block retains rows above `zi` and produces spurious
+/// deformation terms.
 fn twisted_reducibility_lookup(
     context: &Arc<RealFormContext>,
     rc: &RepContext<'_>,
     delta: &LatticeInvolution,
     twist: &[usize],
     zi: &StandardRepr,
-) -> Result<(BlockGraph, ExtBlock, usize), StructureError> {
-    let parent = &context.parent;
-    let dual_inner = dual_inner_class(&parent.inner_class, WEYL_BUDGET, ROOT_BUDGET)?;
-    let dual_classification =
-        CartanClassification::build(&dual_inner, &cartan_classification_budget())?;
-    let dual_strong = StrongRealClassification::build(&dual_classification, FIBER_BUDGET)?;
-    let dual_order = ExternalFormOrder::build(&dual_inner, &dual_classification)?;
-    let dual_internal = dual_order
-        .internal(dual_order.quasisplit_external())
-        .ok_or(StructureError::RepInvariantViolation {
-            invariant: "dual inner class has no quasisplit form",
-        })?;
-    let mut dual_table = InvolutionTable::new(
-        &dual_inner,
-        InvolutionTableBudget::new(FIBER_BUDGET, INTEGER_BUDGET),
-    )?;
-    let fundamental =
-        dual_classification
-            .cartan_ids()
-            .next()
-            .ok_or(StructureError::RepInvariantViolation {
-                invariant: "empty Cartan classification",
+    span: SourceSpan,
+) -> Result<(DeformParent, ExtBlock, usize, RankFlags), StructureError> {
+    let located = context.rep.lookup(zi)?;
+    if !located.has_identity_generator_attitude() {
+        return Err(StructureError::NotYetImplemented {
+            feature: "partial common block on a non-identity integral-subsystem attitude",
+        });
+    }
+    let prepared = located.prepared_query();
+    let seed = StandardReprMod::mod_reduce(rc, prepared)?;
+    let ctxt = CommonContext::integral(rc, seed.gamma_lambda())?;
+    let block = located.block();
+    let modifier = located.block_modifier().clone();
+    let eblock =
+        tuned_partial_ext_block_with_modifier(&ctxt, &block, &modifier, delta, twist, span)
+            .map_err(|_| StructureError::RepInvariantViolation {
+                invariant: "twisted deformation partial extended block",
             })?;
-    dual_table.add_cartan(&dual_classification, fundamental)?;
-    let seed = RealFormSeed::build(
-        &dual_inner,
-        &dual_classification,
-        &dual_strong,
-        &dual_table,
-        dual_internal,
-        &INTEGER_BUDGET,
-        FIBER_BUDGET,
-    )?;
-    let dual_graph = KgbGraph::build(
-        &dual_inner,
-        &dual_classification,
-        &dual_strong,
-        &mut dual_table,
-        &seed,
-    )?;
-    let block = BlockGraph::build(
-        &context.graph,
-        &context.table,
-        &dual_graph,
-        &dual_table,
-        &dual_inner,
-        WEYL_BUDGET,
-    )?;
-    // build_ext_block's dual twist data (ext_block.cpp:618-668).
-    let matrix = delta.weight_matrix();
-    let dual_delta =
-        LatticeInvolution::new(dual_inner.datum(), transpose(matrix), matrix.to_vec())?;
-    let dual_twist = dual_inner.based_involution_twist(dual_delta.clone())?;
-    let eblock = ExtBlock::build(
-        &block,
-        &context.graph,
-        &context.table,
-        &dual_graph,
-        &dual_table,
-        delta,
-        twist,
-        &dual_delta,
-        &dual_twist,
-        parent.root_datum.datum.cartan_matrix(),
-    )?;
-    let lambda_rho = rc.lambda_rho(zi)?;
-    let index = (0..block.size())
-        .find(|&z| {
-            block.x(z) == Some(zi.x())
-                && eblock.is_present(z)
-                && rc.sr_gamma(zi.x(), &lambda_rho, zi.gamma()).ok().as_ref() == Some(zi)
-        })
-        .ok_or(StructureError::RepInvariantViolation {
-            invariant: "twisted deformation: reducibility parameter not in its block",
-        })?;
-    Ok((block, eblock, index))
+    let singular = ctxt.singular_flags(prepared.gamma())?;
+    let mut singular_flags = RankFlags::empty();
+    for (s, &flag) in singular.iter().enumerate() {
+        if flag {
+            singular_flags.set(s);
+        }
+    }
+    let singular_orbits = eblock.singular_orbits(&singular_flags);
+    Ok((
+        DeformParent::Partial { block, modifier },
+        eblock,
+        located.raw_row(),
+        singular_orbits,
+    ))
 }
 
 /// Shared tail of the three twisted wrappers after their gates: run
@@ -8249,8 +8225,14 @@ fn with_integral_block<T>(
             let ctxt = CommonContext::integral(rc, seed.gamma_lambda())
                 .map_err(|error| structure_diagnostic(error, span))?;
             let block = located.block();
-            let eblock =
-                tuned_partial_ext_block(&ctxt, &block, &twist_data.0, &twist_data.1, span)?;
+            let eblock = tuned_partial_ext_block_with_modifier(
+                &ctxt,
+                &block,
+                located.block_modifier(),
+                &twist_data.0,
+                &twist_data.1,
+                span,
+            )?;
             // common_block::singular(gamma) over the subsystem generators
             // (blocks.cpp:701-708), folded to extended-block orbits
             // (repr.cpp:2380-2390 with trivial bm).
@@ -8265,7 +8247,10 @@ fn with_integral_block<T>(
             }
             let singular_orbits = eblock.singular_orbits(&singular_flags);
             compute(
-                KlSumParent::Partial(&block),
+                KlSumParent::Partial {
+                    block: &block,
+                    modifier: Some(located.block_modifier()),
+                },
                 &eblock,
                 located.raw_row(),
                 prepared.gamma(),
