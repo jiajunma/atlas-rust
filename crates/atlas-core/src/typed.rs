@@ -3376,8 +3376,8 @@ fn convert_overload_application(
     resolve_name_first: bool,
 ) -> Result<TypedExpr, Diagnostic> {
     let variants = merged_variants(name, analysis.overloads, analysis.types);
-    let hidden_special = hidden_special_builtin(name);
-    if resolve_name_first && variants.is_empty() && hidden_special.is_none() {
+    let has_hidden_special = hidden_special_builtin(name).is_some();
+    if resolve_name_first && variants.is_empty() && !has_hidden_special {
         // Atlas resolves the callee before analysing its arguments.  This is
         // observable for `foo(missing)`: the undefined function wins over an
         // error in an argument that would never be evaluated.
@@ -3399,14 +3399,17 @@ fn convert_overload_application(
     }
     let a_priori_type = Type::tuple(a_priori.clone());
     // `resolve_overload` first honours an exact ordinary overload, then
-    // recognises the hidden generic row `#`, and only afterwards considers
-    // coercible ordinary overloads (axis.w:2458-2550).
+    // recognises the hidden generic row `#`/`##` instances, and only
+    // afterwards considers coercible ordinary overloads (axis.w:2458-2595).
     let exact = variants
         .iter()
         .position(|variant| variant.arg_type == a_priori_type);
-    let use_hidden =
-        exact.is_none() && hidden_special.is_some() && matches!(&a_priori_type, Type::Row(_));
-    let inexact = if exact.is_none() && !use_hidden {
+    let hidden = if exact.is_none() {
+        hidden_special_variant(name, &a_priori_type, analysis.types)
+    } else {
+        None
+    };
+    let inexact = if exact.is_none() && hidden.is_none() {
         variants.iter().position(|variant| {
             crate::coercions::is_close(&a_priori_type, &variant.arg_type, analysis.types) & 0x1 != 0
         })
@@ -3414,7 +3417,7 @@ fn convert_overload_application(
         None
     };
     let position = exact.or(inexact);
-    if position.is_none() && !use_hidden {
+    if position.is_none() && hidden.is_none() {
         let message = if variants.len() == 1 {
             format!(
                 "found {} while {} was needed.",
@@ -3431,12 +3434,10 @@ fn convert_overload_application(
         return Err(type_error(message, span));
     }
     let hidden_variant;
-    let variant = if use_hidden {
-        let index = hidden_special.expect("hidden special was checked above");
-        let builtin = &builtin_registry()[index];
+    let variant = if let Some((index, result_type)) = hidden {
         hidden_variant = MergedVariant {
-            arg_type: builtin.arg_type.clone(),
-            result_type: builtin.result.clone(),
+            arg_type: a_priori_type.clone(),
+            result_type,
             origin: OverloadOrigin::Builtin(index),
         };
         &hidden_variant
@@ -3722,6 +3723,10 @@ enum ScalarOp {
     VecToBitset,
     VecJoin,
     VecRowJoin,
+    RowSuffixElement,
+    RowPrefixElement,
+    RowJoinRows,
+    RowJoinRowOfRows,
     VecSuffix,
     VecPrefix,
     VecSubtract,
@@ -4834,6 +4839,51 @@ fn run_scalar(
                 Value::Vector(Vec32(joined))
             })),
             other => panic!("vector row join saw {other:?}"),
+        },
+        // Generic row operators (axis.w:8895-8938): suffix/prefix extend a
+        // row by one element; the joins concatenate two rows or fold a row
+        // of rows. Elements keep whatever value shape they carry.
+        ScalarOp::RowSuffixElement | ScalarOp::RowPrefixElement => {
+            let (first, second) = expect_pair(arguments);
+            let (mut entries, element, at_back) = match operation {
+                ScalarOp::RowSuffixElement => match (first, second) {
+                    (Value::List(entries), element) => (entries, element, true),
+                    (first, second) => panic!("row suffix saw {first:?} and {second:?}"),
+                },
+                ScalarOp::RowPrefixElement => match (first, second) {
+                    (element, Value::List(entries)) => (entries, element, false),
+                    (first, second) => panic!("row prefix saw {first:?} and {second:?}"),
+                },
+                _ => unreachable!(),
+            };
+            Ok(at_builtin_level(level, || {
+                if at_back {
+                    entries.push(element);
+                } else {
+                    entries.insert(0, element);
+                }
+                Value::List(entries)
+            }))
+        }
+        ScalarOp::RowJoinRows => match expect_pair(arguments) {
+            (Value::List(mut left), Value::List(right)) => Ok(at_builtin_level(level, || {
+                left.extend(right);
+                Value::List(left)
+            })),
+            (first, second) => panic!("row join saw {first:?} and {second:?}"),
+        },
+        ScalarOp::RowJoinRowOfRows => match expect_unary(arguments) {
+            Value::List(rows) => Ok(at_builtin_level(level, || {
+                let mut joined = Vec::new();
+                for row in rows {
+                    match row {
+                        Value::List(entries) => joined.extend(entries),
+                        other => panic!("row-of-rows join saw {other:?}"),
+                    }
+                }
+                Value::List(joined)
+            })),
+            other => panic!("row-of-rows join saw {other:?}"),
         },
         // vector suffix/prefix (global.w:3657-3673): the element narrows
         // through int_val before the gate.
@@ -6714,6 +6764,42 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 int_type(),
                 0,
                 ScalarOp::ListCardinality,
+            ),
+            // The remaining generic row operators are special instances too
+            // (axis.w:2549-2595, 8776-8786): suffix/prefix element extension
+            // on ([*],*)/(*,[*]) and row concatenation on ([*],[*])/[[*]].
+            // Their `[*]` components are registry-local wildcards; the
+            // recognition logic computes the concrete result type.
+            hidden_scalar_builtin(
+                "#",
+                Type::tuple(vec![Type::row(Type::Undetermined), Type::Undetermined]),
+                Type::row(Type::Undetermined),
+                1,
+                ScalarOp::RowSuffixElement,
+            ),
+            hidden_scalar_builtin(
+                "#",
+                Type::tuple(vec![Type::Undetermined, Type::row(Type::Undetermined)]),
+                Type::row(Type::Undetermined),
+                2,
+                ScalarOp::RowPrefixElement,
+            ),
+            hidden_scalar_builtin(
+                "##",
+                Type::tuple(vec![
+                    Type::row(Type::Undetermined),
+                    Type::row(Type::Undetermined),
+                ]),
+                Type::row(Type::Undetermined),
+                0,
+                ScalarOp::RowJoinRows,
+            ),
+            hidden_scalar_builtin(
+                "##",
+                Type::row(Type::row(Type::Undetermined)),
+                Type::row(Type::Undetermined),
+                0,
+                ScalarOp::RowJoinRowOfRows,
             ),
             // global.w:4478-4493: retain zero-row/zero-column dimensions,
             // narrow and bound both dimensions before the no-value gate.
@@ -8926,6 +9012,87 @@ fn hidden_special_builtin(name: &str) -> Option<usize> {
     builtin_registry()
         .iter()
         .position(|builtin| builtin.name == name && !builtin.overload_visible)
+}
+
+/// Locate a hidden builtin for `name` by its argument pattern.
+fn hidden_builtin_by_pattern(name: &str, pattern: impl Fn(&Type) -> bool) -> Option<usize> {
+    builtin_registry().iter().position(|builtin| {
+        builtin.name == name && !builtin.overload_visible && pattern(&builtin.arg_type)
+    })
+}
+
+/// The generic special operators `#`/`##` (axis.w:2473-2595): recognised
+/// from the a-priori type when no exact ordinary overload matched, taking
+/// precedence over every coercible one. Returns the registry index and the
+/// concrete result type; the a-priori type itself serves as the argument
+/// pattern, since upstream reuses the already-converted arguments unchanged.
+fn hidden_special_variant(
+    name: &str,
+    a_priori_type: &Type,
+    types: &TypeTable,
+) -> Option<(usize, Type)> {
+    match name {
+        "#" => match a_priori_type {
+            // sizeof_row (axis.w:2544-2548): the length of any row value.
+            Type::Row(_) => {
+                let index = hidden_builtin_by_pattern("#", |arg| matches!(arg, Type::Row(_)))?;
+                Some((index, int_type()))
+            }
+            Type::Tuple(components) if components.len() == 2 => {
+                // suffix_element (axis.w:2552-2560), tried before prefix:
+                // ([T],element) where T specialises the element type. A `*`
+                // component adopts the element type, so `[]#3` works
+                // (upstream mutates the a-priori component the same way).
+                if let Type::Row(component) = &components[0] {
+                    let mut component = component.as_ref().clone();
+                    if component.specialise(&components[1], types) {
+                        let index = hidden_builtin_by_pattern(
+                            "#",
+                            |arg| matches!(arg, Type::Tuple(parts) if matches!(parts.first(), Some(Type::Row(_)))),
+                        )?;
+                        return Some((index, Type::row(component)));
+                    }
+                }
+                // prefix_element (axis.w:2561-2569): (element,[T]).
+                if let Type::Row(component) = &components[1] {
+                    let mut component = component.as_ref().clone();
+                    if component.specialise(&components[0], types) {
+                        let index = hidden_builtin_by_pattern(
+                            "#",
+                            |arg| matches!(arg, Type::Tuple(parts) if matches!(parts.get(1), Some(Type::Row(_)))),
+                        )?;
+                        return Some((index, Type::row(component)));
+                    }
+                }
+                None
+            }
+            _ => None,
+        },
+        "##" => match a_priori_type {
+            // join_rows_row (axis.w:2577-2582): fold a row of rows.
+            Type::Row(component) if matches!(component.as_ref(), Type::Row(_)) => {
+                let index = hidden_builtin_by_pattern(
+                    "##",
+                    |arg| matches!(arg, Type::Row(inner) if matches!(inner.as_ref(), Type::Row(_))),
+                )?;
+                Some((index, component.as_ref().clone()))
+            }
+            // join_rows (axis.w:2583-2595): two rows of the same type.
+            Type::Tuple(components)
+                if components.len() == 2
+                    && matches!(&components[0], Type::Row(_))
+                    && components[0] == components[1] =>
+            {
+                let index = hidden_builtin_by_pattern(
+                    "##",
+                    |arg| matches!(arg, Type::Tuple(parts) if parts.iter().all(|part| matches!(part, Type::Row(_)))),
+                )?;
+                Some((index, components[0].clone()))
+            }
+            _ => None,
+        },
+        _ => None,
+    }
 }
 
 impl TypedExpr {
@@ -11983,6 +12150,97 @@ mod tests {
                 ..
             }] if value == &BigInt::from(2)
         ));
+    }
+
+    #[test]
+    fn generic_row_operators_resolve_like_the_upstream_special_instances() {
+        // axis.w:2549-2595: the generic `#`/`##` row instances are recognised
+        // from the a-priori type once exact ordinary overloads fail, and win
+        // over coercible ones. Results stay row values and print compactly.
+        let int_row = Type::row(int_type());
+        for (source, printed) in [
+            ("[1,2]##[3,4]", "[1,2,3,4]"),
+            ("[]##[]", "[]"),
+            ("##([[1,2],[3,4]])", "[1,2,3,4]"),
+            ("##([[],[]])", "[]"),
+            ("[1,2]#3", "[1,2,3]"),
+            ("3#[1,2]", "[3,1,2]"),
+            ("[1,2]#3#4", "[1,2,3,4]"),
+            ("[\"a\",\"b\"]##[\"c\"]", "[\"a\",\"b\",\"c\"]"),
+        ] {
+            let (type_, value) = convert_and_run(source).expect(source);
+            assert_eq!(value.to_string(), printed, "source: {source}");
+            assert!(
+                matches!(type_, Type::Row(_)),
+                "source {source:?} keeps a row type, found {type_:?}"
+            );
+        }
+        let (type_, value) = convert_and_run("[1,2]##[3,4]").expect("bare row join");
+        assert_eq!(type_, int_row);
+        assert_eq!(value.to_string(), "[1,2,3,4]");
+
+        // Suffix beats prefix when both rows could serve (axis.w:2533-2541).
+        let (type_, value) = convert_and_run("[[2]]#[]").expect("ambiguous suffix");
+        assert_eq!(value.to_string(), "[[2],[]]");
+        assert_eq!(type_, Type::row(Type::row(int_type())));
+        let (_, value) = convert_and_run("[]#[[2]]").expect("suffix of an empty row");
+        assert_eq!(value.to_string(), "[[[2]]]");
+        let (_, value) = convert_and_run("[]#[]").expect("empty row suffixed by itself");
+        assert_eq!(value.to_string(), "[[]]");
+
+        // A `*` row component adopts the element type (axis.w:2524-2531).
+        for (source, printed) in [("[]#3", "[3]"), ("3#[]", "[3]"), ("[1]#[]", "[[1]]")] {
+            let (_, value) = convert_and_run(source).expect(source);
+            assert_eq!(value.to_string(), printed, "source: {source}");
+        }
+        let (type_, _) = convert_and_run("[]#3").expect("empty row suffix adopts int");
+        assert_eq!(type_, int_row);
+
+        // Exact ordinary overloads still preempt the generics (axis.w:1565-1573).
+        let (type_, value) = convert_and_run("(vec: [1,2]) # 3").expect("exact vec suffix");
+        assert_eq!(type_, primitive_type(Prim::Vec));
+        assert!(matches!(value, Value::Vector(_)), "vec suffix stays a vec");
+        let (_, value) = convert_and_run("\"a\"##\"b\"").expect("exact string concat");
+        assert_eq!(value.to_string(), "\"ab\"");
+        let (_, value) = convert_and_run("##([vec: [1], vec: [2]])").expect("exact vec row join");
+        assert!(
+            matches!(value, Value::Vector(_)),
+            "vec row join stays a vec"
+        );
+    }
+
+    #[test]
+    fn generic_row_operators_fail_with_the_oracle_wording() {
+        for (source, message) in [
+            (
+                "[1,2]##\"a\"",
+                "Failed to match '##' with argument type ([int],string)",
+            ),
+            (
+                "[1]#[\"a\"]",
+                "Failed to match '#' with argument type ([int],[string])",
+            ),
+            ("1#2", "Failed to match '#' with argument type (int,int)"),
+            ("#(1,2)", "Failed to match '#' with argument type (int,int)"),
+            (
+                "[1,2]##(3,4)",
+                "Failed to match '##' with argument type ([int],(int,int))",
+            ),
+            // Unequal row pairs match nothing: `==` upstream is structural,
+            // so `[*]` does not join `[int]` (axis.w:2585-2587).
+            (
+                "[]##[1,2]",
+                "Failed to match '##' with argument type ([*],[int])",
+            ),
+            (
+                "[1,2]##[]",
+                "Failed to match '##' with argument type ([int],[*])",
+            ),
+        ] {
+            let error = convert_and_run(source).expect_err(source);
+            assert_eq!(error.kind, ErrorKind::Type, "source: {source}");
+            assert_eq!(error.message, message, "source: {source}");
+        }
     }
 
     #[test]

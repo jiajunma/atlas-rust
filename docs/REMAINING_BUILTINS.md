@@ -228,11 +228,19 @@ Skipped / not ported:
 - `readline_completions` (4390): interactive REPL aid, no batch
   semantics.
 
-Pre-existing divergence surfaced by this batch (not global.w's): generic
-axis.w row operators `##`/`#` (suffix/prefix on ([*],*)/(*,[*])) are
-unimplemented, so bare `[1,2]##[3,4]`/`[1,2]#3` coerce to the vec
-overloads and print spaced, where the oracle resolves the row overloads
-and prints compact. Fixtures use explicit `vec:` casts to avoid this.
+~~Pre-existing divergence surfaced by this batch (not global.w's)~~ LANDED
+locally 2026-08-19 (HPC capture pending): the generic axis.w row operators
+`##`/`#` (join on ([*],[*])/[[*]], suffix/prefix on ([*],*)/(*,[*]),
+axis.w:2544-2595) are hidden scalar builtins recognised from the a-priori
+type between the exact and coercible ordinary overloads. Bare
+`[1,2]##[3,4]`/`[1,2]#3` now resolve the row generics and print compact
+(`[1,2,3,4]`/`[1,2,3]`), matching the oracle; fixtures
+`tests/fixtures/eval/row_operators.atlas` / `..._rejected.atlas` diff
+byte-identical / payload-identical against the local oracle. Suffix beats
+prefix when both apply; `*` row components adopt the element type; unequal
+row pairs (`[]##[1,2]`) fail with "Failed to match". The `#:=` combined
+assignment remains a pre-existing parser gap here (the oracle accepts it;
+the Rust lexer rejects it) and is not covered by these fixtures.
 
 Remaining global.w gap after batch 2 (batch-3 work order):
 
