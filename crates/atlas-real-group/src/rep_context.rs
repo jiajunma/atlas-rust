@@ -214,6 +214,16 @@ fn dot_numerator(coweight: &Coweight, numerator: &[i64]) -> i64 {
     total
 }
 
+/// Greatest common divisor of two non-negative integers.
+fn gcd_i64(mut left: i64, mut right: i64) -> i64 {
+    while right != 0 {
+        let rem = left % right;
+        left = right;
+        right = rem;
+    }
+    left.max(1)
+}
+
 /// Insert a term into the work queue ordered by decreasing height
 /// (repr.cpp:1300 `insert_into`).
 fn insert_into_by_height(
@@ -1791,26 +1801,41 @@ impl<'a> RepContext<'a> {
                 } else {
                     &mut odds
                 };
-                let entry = table.entry(num.unsigned_abs() as i64).or_insert(0);
-                *entry = (*entry).min(lwb as i64);
+                // repr.cpp:868-872: a fresh key stores lwb itself; an
+                // existing bound is only lowered, never raised.
+                table
+                    .entry(num.unsigned_abs() as i64)
+                    .and_modify(|bound| *bound = (*bound).min(lwb as i64))
+                    .or_insert(lwb as i64);
             }
         }
-        let mut fracs: std::collections::BTreeSet<(i64, i64)> = std::collections::BTreeSet::new();
+        // repr.cpp:881-887: the fractions live in a std::set<RatNum>, which
+        // normalizes each RatNum on construction and orders by value.
+        let mut fracs: Vec<(i64, i64)> = Vec::new();
         for (num, lwb) in &evens {
             let mut s = d * (lwb + 2);
             while s <= *num {
-                fracs.insert((s, *num));
+                fracs.push((s, *num));
                 s += 2 * d;
             }
         }
         for (num, lwb) in &odds {
             let mut s = if *lwb == 0 { d } else { d * (lwb + 2) };
             while s <= *num {
-                fracs.insert((s, *num));
+                fracs.push((s, *num));
                 s += 2 * d;
             }
         }
-        Ok(fracs.into_iter().collect())
+        for frac in &mut fracs {
+            let common = gcd_i64(frac.0, frac.1);
+            frac.0 /= common;
+            frac.1 /= common;
+        }
+        fracs.sort_by(|&(a, b), &(c, d)| {
+            (i128::from(a) * i128::from(d)).cmp(&(i128::from(c) * i128::from(b)))
+        });
+        fracs.dedup();
+        Ok(fracs)
     }
 
     /// `Rep_context::finals_for` (repr.cpp:1205-1297): decompose a
@@ -3692,6 +3717,46 @@ mod tests {
         assert_eq!(
             rc.lambda(&z).unwrap(),
             RationalWeight::new(vec![2, 2], 1).unwrap()
+        );
+    }
+
+    /// Regression for the reducibility_points complex-root seeding bug:
+    /// the lower-bound map seeded new keys with `0` instead of the lower
+    /// bound itself, so every complex root contributed a ghost point at 0.
+    /// Upstream repr.cpp:868-872 stores `lwb` for new keys and only ever
+    /// lowers an existing key. Anchors are oracle output on the B2 split
+    /// form: x=5, lambda_rho=[1,1], nu=[1,0]/1 prints []; x=10,
+    /// lambda_rho=[0,0], nu=[1,1]/2 prints [2/3,1/1].
+    #[test]
+    fn reducibility_points_complex_bound_starts_at_lwb() {
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2, -2], vec![-1, 2]],
+            vec![Weight::new(vec![2, -2]), Weight::new(vec![-1, 2])],
+            vec![Coweight::new(vec![1, 0]), Coweight::new(vec![0, 1])],
+        )
+        .unwrap();
+        let involution = LatticeInvolution::identity(&datum).unwrap();
+        let b2 = fixture(datum, involution, 8, 11);
+        let rc = b2.rc();
+        let empty = rc
+            .sr(
+                KgbId(5),
+                &Weight::new(vec![1, 1]),
+                &RationalWeight::new(vec![1, 0], 1).unwrap(),
+            )
+            .unwrap();
+        assert_eq!(rc.reducibility_points(&empty).unwrap(), Vec::new());
+        let nonzero = rc
+            .sr(
+                KgbId(10),
+                &Weight::new(vec![0, 0]),
+                &RationalWeight::new(vec![1, 1], 2).unwrap(),
+            )
+            .unwrap();
+        assert_eq!(
+            rc.reducibility_points(&nonzero).unwrap(),
+            vec![(2, 3), (1, 1)]
         );
     }
 
