@@ -1,0 +1,9 @@
+{
+  "fixture": "eval/back_trace_loops.atlas",
+  "fixture_sha256": "d9bce095cf65f9c7179264665b2d41be4352bbaf21dd68aa493a5b9b4062bf95",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_capture",
+  "rust_status": "pending",
+  "notes": "Loop trace variants (axis.w:6124-6132 shared catch, 6591 anonymous counted, 6683-6700 indexed counted): for-in (with frame dump), for-var@idx-in (dump has index first), counted from (iteration N (i=V), no dump), counted downto (reversed wording), anonymous counted (double space), reversed for-in via ~, pattern-for dump. While loops contribute no iteration line."
+}

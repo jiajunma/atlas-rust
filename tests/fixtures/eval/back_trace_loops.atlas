@@ -1,0 +1,14 @@
+for i in [2,1,0] do 6%i od
+back_trace
+for i@k in [2,1,0] do 6%i od
+back_trace
+for i:3 from 0 do 6%(2-i) od
+back_trace
+for i:3 downto 0 do 6%i od
+back_trace
+for :2 do 1%0 od
+back_trace
+for i in [2,1,0]~ do 6%i od
+back_trace
+for (a,b) in [(1,0)] do a%b od
+back_trace
