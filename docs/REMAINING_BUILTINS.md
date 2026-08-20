@@ -758,9 +758,14 @@ pinned oracle; HPC differential pending.
 orbit class size (innerclass.cpp:603-614), not the adjoint weak partition;
 `fiber_size` switched to `StrongRealClassification::fiber_size`, B2 rows
 restored in the block_sizes fixture (oracle 4/5/12 now reproduced).
-Known gap: Weyl_orbit/Weyl_orbit_ws oversize-vector semantics (wrapper
+~~Known gap: Weyl_orbit/Weyl_orbit_ws oversize-vector semantics (wrapper
 does no size check; v.size()!=rank output diverges from the oracle,
-details in docs/slices/post_weyl_lang_queue.md §1.5).
+details in docs/slices/post_weyl_lang_queue.md §1.5).~~ STALE as of
+2026-08-20: probed `Weyl_orbit(rb,[1,2,3,4])` on rank-2 B2 — Rust output
+is byte-identical to the oracle (both print the 8-column orbit matrix
+using the leading entries). Also `integrality_points` RatVec-list display
+(the row-3 caveat at the batch table) now matches the oracle verbatim
+(`[2/3,1/1]` / `[]` for [1,1]/2 and [1,0]/3 on B2).
 
 Remaining (unchanged): alcove_center/alcove_root_vertex,
 FPP_numers/FPP_w_shifts, root_expression/root_index/root_permutation
