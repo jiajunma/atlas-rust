@@ -34,9 +34,62 @@
    "text": "hi\n"
   },
   {
+   "kind": "ReportLine",
+   "text": "Defined u: (int->int)\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "Function defined at <standard input>:8:4-16"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "(x): *@(int,int)(2,x)\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "integer",
+    "value": 6
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "{-@int}"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "{#@vec}"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "{prints@T}"
+   }
+  },
+  {
    "kind": "Diagnostic",
    "category": "type",
-   "message": "No instance for mod@(int,int) found"
+   "message": "No instance for mod@(int,int) found\nError in 'set' command at <standard input>:7:0-20:"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "No instance for u@string found"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "No instance for +@int found"
   }
  ]
 }

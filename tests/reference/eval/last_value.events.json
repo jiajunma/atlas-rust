@@ -32,9 +32,32 @@
    }
   },
   {
+   "kind": "Value",
+   "value": {
+    "type": "integer",
+    "value": 11
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "x\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "integer",
+    "value": 11
+   }
+  },
+  {
    "kind": "Diagnostic",
    "category": "runtime",
    "message": "Modulo zero"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "Failed to match '+' with argument type (int,string)"
   }
  ]
 }
