@@ -501,9 +501,12 @@ integral subsystem by its ordered parent-simple root IDs, keys rows with the
 actual subsystem parent coroots, and builds full common blocks through
 subsystem generators.  B2 `[3,1]/2` gives a rank-one three-row block, and the
 A2 `KL_column` proper-subsystem event is runnable against its frozen oracle
-event. This remains deliberately weaker than upstream
+event. ~~This remains deliberately weaker than upstream
 `int_item(gamma, locator)`: Weyl-conjugate systems are not yet canonicalized
-together, and no `w`, `simple_pi`, or nontrivial block modifier is stored.
+together, and no `w`, `simple_pi`, or nontrivial block modifier is stored.~~
+RESOLVED 2026-08: `locator.rs` canonicalizes Weyl-conjugate integral systems
+(`int_item`-equivalent, locator.rs:313) and the block modifier (`w`,
+`simple_pi`, shift) is stored and transported.
 
 The proper-system print surface is now covered too: `print_block(Param)` and
 `print_common_block(Param)` render an embedded B2 rank-one block and are
@@ -568,8 +571,12 @@ commit re-probes atomically.  Fresh partial lookup returns the exact seed row,
 whereas later reduced-key hits use reverse registration's smallest row;
 promotion retires all overlapping partial records with one place-table pass.
 Deterministic tests cover full/partial commit races and failure-atomic overlap
-rejection.  Partial-partial merging remains a loud NYI, and the kernel is not
-yet owned by `RealFormContext` or consumed by language builtins.
+rejection.  ~~Partial-partial merging remains a loud NYI, and the kernel is not
+yet owned by `RealFormContext` or consumed by language builtins.~~ RESOLVED
+2026-08: the RepTable is owned by `RealFormContext`, partial-partial merging
+with cross-attitude row transport is implemented (`rep_table.rs`
+`State::overlap_hits` + `make_relative_to` merge, repr.cpp:1601-1707) and
+unit-tested (`rep_table.rs:2527+`).
 
 The first full common-block constructor is now present behind the language
 boundary as `PartialBlock::build_full`.  Its verified implementation domain is
@@ -599,7 +606,9 @@ proper-subsystem modifiers, or timed overload/cancellation semantics.
 `W_graph(Block)` and `W_cells(Block)` are implemented and locally match the
 HPC-captured A1 values, rejected calls, and upstream's observable no-value
 assignment bug (the graph is still built before its value is dropped).
-`block(Param)` remains deliberately unregistered.  A tempting implementation
+~~`block(Param)` remains deliberately unregistered.~~ RESOLVED 2026-08:
+`block(Param)` is registered (`typed.rs:9054`) and dispatched
+(`domain_builtins.rs:13124`) through the RepTable common block.  A tempting implementation
 through `common_block_srms`/the classic Block graph is not a compatible
 subset: the legal A1 parameter `param(KGB(rf,2),[1],[1]/2)` triggers Rust's
 height-parity invariant although upstream returns a one-element common block,

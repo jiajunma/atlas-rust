@@ -8,8 +8,8 @@
 //! Simplifications, in the shape of the frozen `domain/deform` contract
 //! that [`RepContext::deformation_terms`] already documents:
 //!
-//! - Only the trivial block modifier is supported. On the full block
-//!   (upstream `lookup_full_block`), `lambda_rho` is supplied once by the
+//! - The full block (upstream `lookup_full_block`) carries the trivial
+//!   block modifier; `lambda_rho` is supplied once by the
 //!   caller instead of per block element from the upstream
 //!   `StandardReprMod` pool (`common_block::sr`, blocks.cpp:1260-1264).
 //!   Per-element `lambda_rho` genuinely varies across a full block (the
@@ -20,7 +20,9 @@
 //!   the verified `deform` arm. On a PROPER integral subsystem the parent
 //!   is a [`PartialBlock`] (the `common_block` of `common_context`,
 //!   repr.cpp:2666-2670) and each row's reconstruction uses its own stored
-//!   `gamma_lambda` exactly as upstream's `common_block::sr` does; see
+//!   `gamma_lambda` plus the lookup's block modifier
+//!   (`RepContext::sr_with_modifier`, repr.cpp:815-823) exactly as
+//!   upstream's `common_block::sr` does; see
 //!   [`KlSumParent`]. The `twisted_KL_sum_at_s` drivers and
 //!   [`twisted_deformation_terms`] accept both parent kinds (slices 3-4 of
 //!   docs/slices/twisted_ext_proper_workorder.md).
@@ -1003,7 +1005,9 @@ pub fn block_deformation_to_height(
 /// the extended block over `ctx.delta()`, the parent row, and the singular
 /// extended-generator orbits. This applies to both full and proper integral
 /// subsystems; the rank-0 singleton contributes no deformation terms and
-/// does not call `lookup`. Non-trivial block modifiers remain a loud NYI.
+/// does not call `lookup`. A non-trivial block modifier rides in
+/// [`DeformParent::Partial`] and is applied through
+/// `RepContext::sr_with_modifier` (repr.cpp:815-823).
 pub fn twisted_deformation(
     ctx: &ExtRepContext,
     z: &StandardRepr,

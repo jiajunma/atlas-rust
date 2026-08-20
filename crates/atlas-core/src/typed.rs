@@ -3035,9 +3035,8 @@ fn lookup_assignable(
 
 /// The subscriptability check of a component assignment or transform
 /// (axis.w:8163-8172, 8531-8546: `subscr_base::index_kind` gated on
-/// `assignable`): only a row with an integer index is assignable here;
-/// vec/mat component assignment is upstream-legal but not yet implemented,
-/// matching the subscription read path.
+/// `assignable`): rows, vec, and mat (column or two-index entry) admit
+/// component assignment; ratvec is read-only upstream.
 fn component_type_for_assignment(
     aggregate_type: &Type,
     index_type: &Type,
@@ -7621,8 +7620,9 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             // (global.w:5195-5196) and the GF(2) builtins (:5211-5213).
             // The hidden "matrix slicer" (:5197-5198) and "transpose "
             // (:5188) copies are deliberately NOT registered: the 2-D slice
-            // and commabarlist row-display syntaxes that would call them are
-            // parser-level gaps (docs/REMAINING_BUILTINS.md, batch-4 note).
+            // and commabarlist row-display syntaxes desugar directly in the
+            // grammar (grammar.lalrpop:422-441, :504), so no builtin copy is
+            // ever called.
             scalar_builtin(
                 "swiss_matrix_knife",
                 Type::tuple(vec![

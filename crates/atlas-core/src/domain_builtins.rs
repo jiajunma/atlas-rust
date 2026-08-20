@@ -3920,10 +3920,10 @@ fn build_ext_block(
 /// `common_block` ctor, blocks.cpp:733-1081), and the extended block over
 /// that partial parent (ext_block.cpp:618-668 via
 /// [`ExtBlock::build_partial`]). A rank-0 subsystem falls out as the
-/// singleton block with empty generator tables. Only the identity
-/// generator attitude is supported; `build_partial` keeps the loud NYI
-/// for non-identity `simple_pi`. Returns the block, the seed's entry
-/// element, and the sign-tuned extended block.
+/// singleton block with empty generator tables. Non-identity generator
+/// attitudes are cofolded by `build_partial` (ext_block.cpp:636-663).
+/// Returns the block, the seed's entry element, and the sign-tuned
+/// extended block.
 fn build_partial_ext_block(
     ctxt: &CommonContext<'_, '_>,
     seed: &StandardReprMod,
@@ -3941,9 +3941,9 @@ fn build_partial_ext_block(
 /// (ext_block.cpp:618-668 via [`ExtBlock::build_partial`]), with the sign
 /// flips tuned by the partial-parent star oracle (ext_block.cpp:1707-1876
 /// via ext_block.cpp:2283-2310). `fold_orbits` orbit indices are subsystem
-/// generator numbers, so `tune_signs` needs the parent root numbers. Only
-/// the identity generator attitude is supported; `build_partial` keeps the
-/// loud NYI for non-identity `simple_pi`.
+/// generator numbers, so `tune_signs` needs the parent root numbers.
+/// Non-identity generator attitudes are cofolded by `build_partial`
+/// (ext_block.cpp:636-663).
 fn tuned_partial_ext_block(
     ctxt: &CommonContext<'_, '_>,
     block: &PartialBlock,
@@ -8200,8 +8200,10 @@ fn twisted_reducibility_lookup(
 /// `delta`, or short-circuit the rank-0 integral subsystem (the common
 /// block is the singleton `{p}` of length 0 — empty deformation terms, and
 /// `1*p` for the KL sums, repr.cpp:2435-2436). On a proper integral
-/// subsystem the common block comes from `Rep_table::lookup_full_block`
-/// (repr.cpp:1773-1794, which makes the query dominant first) and the
+/// subsystem the common block comes from `Rep_table::lookup`
+/// (repr.cpp:1796-1824, the partial interval-below block, exactly as
+/// `twisted_KL_column_at_s` and the `twisted_deformation` reducibility
+/// loop use it, repr.cpp:2378-2382/:2605-2606) and the
 /// extended block is built over that partial parent
 /// (`common_block::extended_block`, blocks.cpp:1305-1310). `compute`
 /// receives the parent block view, the extended block, the parameter's
