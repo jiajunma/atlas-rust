@@ -1,0 +1,9 @@
+{
+  "fixture": "eval/for_quiet_body.atlas",
+  "fixture_sha256": "8cc18cc3a918499c0e5b48eb5d84c559d0d1c05b64ee7240913258ff3184043e",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_capture",
+  "rust_status": "pending",
+  "notes": "iffor_loop unit (parser.y:365,506-521): quiet-if 'if c do e fi' is a general unit expression meaning 'if c then [e] else [] fi'; nested 'if c iffor fi' allowed; all for_loop forms accept an iffor_loop body without DO (wrapped in the '## ' drop-voids coercion), including DOWNTO; final line is rejected (quiet-if takes no else: unexpected ELSE, expecting FI)."
+}
