@@ -4,7 +4,7 @@
  "oracle": "atlas",
  "stage": "typed-pipeline-swap",
  "reference_status": "verified_hpc_reference",
- "rust_status": "pending_hpc_differential",
+ "rust_status": "verified_hpc",
  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
@@ -16,11 +16,12 @@
  "oracle_seconds": 0.012,
  "oracle_maxrss_kb": 3668,
  "oracle_maxrss_approximate": false,
- "notes": "back_trace populated on runtime errors (main.w:430-434, global.w:1135-1148): In-call-of lines (user overloads with name@argtype + call/defined-at spans, builtins built-in.), frame dumps for parametered closures, During-iteration lines for for-loops, sticky previous trace on empty traces. Reference frozen by HPC capture 3604415; Rust differential pending.",
+ "notes": "back_trace populated on runtime errors (main.w:430-434, global.w:1135-1148): In-call-of lines (user overloads with name@argtype + call/defined-at spans, builtins built-in.), frame dumps for parametered closures, During-iteration lines for for-loops, sticky previous trace on empty traces. Reference frozen by HPC capture 3604415; Rust differential 3604519 PASS (333 PASS + 1 declared PARTIAL container_syntax_errors).",
  "hpc_capture": {
   "fresh_process_required": true,
   "timeout_seconds": 30,
   "estimated_seconds": 5,
   "estimated_memory_mb": 128
- }
+ },
+ "differential_job": "3604519"
 }
