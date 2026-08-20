@@ -1,0 +1,14 @@
+set f(int x)=x%0
+set g(int x)=f(x)+1
+g(2)
+back_trace
+1%0
+back_trace
+set h(int a, string s)=a%#s
+h(3,"")
+back_trace
+set z()=7%0
+z()
+back_trace
+for i in [2,1,0] do 6%i od
+back_trace

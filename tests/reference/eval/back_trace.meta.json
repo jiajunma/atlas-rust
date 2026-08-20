@@ -1,0 +1,9 @@
+{
+  "fixture": "eval/back_trace.atlas",
+  "fixture_sha256": "ddbae7ba3906e251c97b6280a6d56699d48e0a8c65f857b747602f490820d145",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_capture",
+  "rust_status": "pending",
+  "notes": "back_trace system variable populated on runtime errors (main.w:430-434, global.w:1135-1148 set_back_trace): In-call-of lines for user overloads (name@argtype, call span, defined-at span) and builtins (built-in.), frame dumps { x=2 } for parametered closures (skipped when parameterless), During-iteration-N lines for for-loops, sticky previous trace when a failing evaluation leaves an empty trace. Deferred: recursive-closure self-binding dumps (need closure print port), verbose argument(s): suffix."
+}
