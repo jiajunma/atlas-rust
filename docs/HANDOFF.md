@@ -4,6 +4,33 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-20 morning (differential 3591705 all PASS; corpus 315+)
+
+- Fat differential **3591705 @ 722c05c: 325 PASS + 1 declared PARTIAL
+  (container_syntax_errors), 0 FAIL**; report SHA256
+  `c4285021b5799e373d8dc26c5f590982d77a2e9b5c43ea2e8e6bcd8e6de8b733`.
+  Four metas bumped to verified_hpc: twisted_deform_proper,
+  twisted_deform_proper_terms, twisted_deform_proper_rejected (capture
+  3591165), twisted_full_deform_proper (capture 3586686).
+- full_deform_proper events/meta frozen from capture 3586752 and
+  registered (`e3fa19f`); rust_status pending_hpc_differential — needs
+  one more fat differential at >= e3fa19f.
+- Wave A (non-integral common block work order) confirmed FULLY landed:
+  `length(Param)` reroutes through `rep.lookup(&dominant)`
+  (domain_builtins.rs:13970-13991), `dual_KL_block` via lookup_full_block
+  + BareBlock dual (:14566+), `print_partial_common_block` shared-lookup
+  with both headers (:10700+); fixtures length_dual_proper{,_a2},
+  print_partial_common_block_seq, print_partial_block_proper all
+  verified_hpc (3583557/3574934). The `common_block_rows` non-integral
+  gate (:9834-9871) remains only as the rank-0/Singleton arm + loud NYI —
+  workorder item 5 cleanup not done.
+- print_gradings/print_real_Weyl/print_blockstabilizer wrappers are
+  IMPLEMENTED (domain_builtins.rs:10270-10303, real_weyl.rs) — the old
+  "RealWeyl 已移植但缺 wrapper" note is stale.
+- agent-93 (read-only audit of genuinely-remaining items) in flight; use
+  its report to re-plan the queue — the HANDOFF/REMAINING_BUILTINS queues
+  are partially stale.
+
 ## Checkpoint - 2026-08-20 (`twisted_full_deform` slice 5 local)
 
 - `twisted_full_deform` reducibility recursion now uses

@@ -4,7 +4,7 @@
  "oracle": "atlas",
  "stage": "typed-pipeline-swap",
  "reference_status": "verified_hpc_reference",
- "rust_status": "pending_hpc_differential",
+ "rust_status": "verified_hpc",
  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
@@ -16,11 +16,13 @@
  "oracle_seconds": 0.051,
  "oracle_maxrss_kb": 4488,
  "oracle_maxrss_approximate": false,
- "notes": "twisted_deform non-empty proper-subsystem terms (24fab16): q2 = param(KGB(rfb,10),[0,0],[1,1]/2) on a cold pool (the q2/pb locator collision forbids sharing a session) yielding (-1+1s)*parameter(x=5,...) [3] + (-1+1s)*parameter(x=4,...) [3]; exercises the partial-parent recursion incl. per-row lambda_rho reconstruction. Reference frozen by HPC capture 3591165; Rust differential pending.",
+ "notes": "twisted_deform non-empty proper-subsystem terms (24fab16): q2 = param(KGB(rfb,10),[0,0],[1,1]/2) on a cold pool (the q2/pb locator collision forbids sharing a session) yielding (-1+1s)*parameter(x=5,...) [3] + (-1+1s)*parameter(x=4,...) [3]; exercises the partial-parent recursion incl. per-row lambda_rho reconstruction. Reference frozen by HPC capture 3591165; Rust differential 3591705 PASS (325 PASS + 1 declared PARTIAL, 0 FAIL).",
  "hpc_capture": {
   "fresh_process_required": true,
   "timeout_seconds": 30,
   "estimated_seconds": 5,
   "estimated_memory_mb": 128
- }
+ },
+ "differential_job": "3591705",
+ "differential_report_sha256": "c4285021b5799e373d8dc26c5f590982d77a2e9b5c43ea2e8e6bcd8e6de8b733"
 }
