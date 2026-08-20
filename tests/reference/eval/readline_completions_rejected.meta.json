@@ -1,0 +1,9 @@
+{
+  "fixture": "eval/readline_completions_rejected.atlas",
+  "fixture_sha256": "c5167b630cc09c13c1d8e450b6e4c911c30f8c51e503312e3240f1367537d29d",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_capture",
+  "rust_status": "pending",
+  "notes": "readline_completions with an int argument is the standard analysis type error (found int while string was needed)."
+}

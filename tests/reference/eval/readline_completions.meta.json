@@ -1,0 +1,9 @@
+{
+  "fixture": "eval/readline_completions.atlas",
+  "fixture_sha256": "e2ed3d786a08efe308a06232e89ee411055bdb0236dca477a0d3d98644707edb",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_capture",
+  "rust_status": "pending",
+  "notes": "readline_completions (global.w:4390-4391 wrapper, buffer.w:1175-1192): prefix match over keywords/primitive types/builtins (main_hash_table insertion order, 294 startup names) plus session globals and user overloads in first-definition order; forget removes, redefine-after-forget revives at the original position. Also covers the three system variables input_path/prelude_log/back_trace (main.w:408-435) that complete the startup list to 297 names."
+}

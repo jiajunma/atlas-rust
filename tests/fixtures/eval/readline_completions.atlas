@@ -1,0 +1,12 @@
+readline_completions("pri")
+readline_completions("zzz")
+set myvar=3
+set zfun(int x)=x+1
+set apple="hi"
+readline_completions("")
+readline_completions("z")
+forget myvar
+readline_completions("my")
+readline_completions("app")
+set myvar=7
+readline_completions("my")
