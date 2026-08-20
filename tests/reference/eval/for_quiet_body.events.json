@@ -1,0 +1,97 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "eval/for_quiet_body",
+ "status": "verified_hpc_reference",
+ "events": [
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[42]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[7]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[2]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[20]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[(0,0),(0,1),(1,0),(1,1)]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[7,7]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[5]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[3,2]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[\"bb\"]"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Variable i: int\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "two\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[[],[()],[]]"
+   }
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "syntax",
+   "message": "syntax error, unexpected ELSE, expecting FI"
+  }
+ ]
+}

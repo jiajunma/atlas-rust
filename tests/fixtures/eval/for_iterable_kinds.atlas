@@ -1,0 +1,11 @@
+for c in "abc" do c od
+for x in vec:[1,2] do x od
+set A=mat:[[1,2,3],[4,5,6]]
+for col in A do col od
+for col@k in A do (k,col) od
+for q in ratvec:[1/2,3/4] do q od
+for c in "ab" do prints(c) od
+for x in vec:[1,2] do prints(x) od
+for c in "ab"~ do c od
+for x in vec:[1,2,3]~ do x od
+for col in A~ do col od

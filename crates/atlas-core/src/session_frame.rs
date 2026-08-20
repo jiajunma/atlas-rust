@@ -164,6 +164,15 @@ impl<P: FileProvider, S: FileSink> SessionFrame<P, S> {
         let (text, line_map) = preprocess(raw_text);
         let id = self.next_source_id;
         self.next_source_id += 1;
+        // The back-trace location name (buffer.w:694): the top-level stream
+        // prints as `<standard input>`, include files by their resolved
+        // path (`active` is non-empty exactly while an include runs).
+        let trace_name = if self.active.is_empty() {
+            "<standard input>".to_owned()
+        } else {
+            origin.clone()
+        };
+        self.context.note_source_name(SourceId::new(id), trace_name);
         self.registry.insert(
             id,
             FileRecord {

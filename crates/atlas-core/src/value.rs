@@ -5,6 +5,7 @@ use std::rc::Rc;
 
 use malachite::{Integer as BigInt, Rational as BigRational};
 
+use crate::diagnostic::SourceSpan;
 use crate::frames::Frame;
 use crate::typed::TypedExpr;
 
@@ -57,6 +58,14 @@ pub struct Closure {
     pub recursive: bool,
     pub body: Rc<TypedExpr>,
     pub frame: Option<Rc<Frame>>,
+    /// The lambda's source location, reported as `defined at ...` in
+    /// back-trace call lines (upstream `lambda_struct::loc`).
+    pub span: SourceSpan,
+    /// Frame slot names in bind order (a recursive closure's slot 0 is the
+    /// self name), for the back-trace frame dump (axis.w:2896-2909). Empty
+    /// for closures whose call pushes no traced frame (upstream
+    /// `parameterless` closures, and the builtin-backed member closures).
+    pub param_names: Rc<[String]>,
 }
 
 /// How one bound value distributes into frame slots (upstream
@@ -86,6 +95,8 @@ impl fmt::Debug for Closure {
             .field("recursive", &self.recursive)
             .field("body", &self.body)
             .field("frame", &self.frame.as_ref().map(Rc::as_ptr))
+            .field("span", &self.span)
+            .field("param_names", &self.param_names)
             .finish()
     }
 }

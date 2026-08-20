@@ -1,0 +1,26 @@
+{
+ "fixture": "eval/for_quiet_body.atlas",
+ "fixture_sha256": "8cc18cc3a918499c0e5b48eb5d84c559d0d1c05b64ee7240913258ff3184043e",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "3604504",
+ "reference_commit": "aebfc7f44c5cdee5b6cda5ca999ca8cccbd54d2a",
+ "reference_report_sha256": "9af08e1588ff83ce8c209439c96314095f95d0270decba113400658925a8763b",
+ "source_archive_sha256": "b6b44f1761b005da962c3b28511be9d22a132e24fd3c1a33b271117a46c55ab6",
+ "oracle_exit_status": 1,
+ "oracle_seconds": 0.012,
+ "oracle_maxrss_kb": 3544,
+ "oracle_maxrss_approximate": false,
+ "notes": "iffor_loop unit (parser.y:365,506-521): quiet-if 'if c do e fi' is a general unit expression meaning 'if c then [e] else [] fi'; nested 'if c iffor fi' allowed; all for_loop forms accept a do-less iffor_loop body wrapped in the '## ' drop-voids row join, including DOWNTO; quiet-if takes no else (unexpected ELSE, expecting FI). Reference frozen by HPC capture 3604504; Rust differential pending iffor_loop.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
+}

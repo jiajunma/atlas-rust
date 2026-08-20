@@ -1,0 +1,13 @@
+if true do 42 fi
+if false do 42 fi
+if true if 1<2 do 7 fi fi
+for i:3 if i>1 do i fi od
+for x in [10,20] if x>10 do x fi od
+for i:2 for j:2 do (i,j) od od
+for:2 if true do 7 fi od
+for i:2 from 5 if i<6 do i fi od
+for i:3 downto 1 if i>1 do i fi od
+for x in ["a","bb"] if #x>1 do x fi od
+set i=0
+while i<3 do i:=i+1; if i=2 do prints("two") fi od
+if 1<0 do 1 else 2 fi

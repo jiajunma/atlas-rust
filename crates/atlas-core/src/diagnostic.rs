@@ -99,6 +99,11 @@ pub struct Diagnostic {
     /// unclean (upstream lexical recovery prints to stderr without setting
     /// the clean flag; exit status stays 0).
     pub warning: bool,
+    /// The back-trace lines accumulated while a runtime error unwinds
+    /// (upstream `error_base::back_trace`, axis-types.h:301-305), outermost
+    /// call first. The command layer copies a non-empty trace into the
+    /// `back_trace` system variable (global.w:1135-1148).
+    pub back_trace: Vec<String>,
 }
 
 impl Diagnostic {
@@ -108,6 +113,7 @@ impl Diagnostic {
             message: message.into(),
             span,
             warning: false,
+            back_trace: Vec::new(),
         }
     }
 
@@ -117,11 +123,19 @@ impl Diagnostic {
             message: message.into(),
             span,
             warning: true,
+            back_trace: Vec::new(),
         }
     }
 
     pub fn is_warning(&self) -> bool {
         self.warning
+    }
+
+    /// Prepend one trace line (upstream `error_base::trace` push_front,
+    /// axis-types.h:305): callers add lines innermost-first as the error
+    /// unwinds, so the finished trace reads outermost-first.
+    pub fn trace(&mut self, line: String) {
+        self.back_trace.insert(0, line);
     }
 }
 

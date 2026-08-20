@@ -3896,3 +3896,75 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   C KL_sum_at_s per-element lambda-rho; E Weyl_orbit oversize semantics;
   F integrality_points display; locator step 5 (print_partial_common_block
   attitude + ext-block simple_pi induced); `#:=` parser gap.
+
+## 2026-08-21: language-layer endgame — back_trace + tilde_opt + iffor_loop
+
+- readline_completions slice fully landed (`138e7c5` impl incl. startup
+  system variables input_path/prelude_log/back_trace and the const-override
+  ` (constant)` wording fix; differential **3604405 PASS**, 333 fixtures;
+  metas verified_hpc, LANGUAGE.md "interactive input and completion" row
+  promoted to supported, REMAINING_BUILTINS stale conclusions corrected
+  in `21efedd`). Registry audit: **469 builtins + 29 coercions all mapped**.
+- back_trace semantics locked by oracle probing (main.w:651,
+  global.w:1135-1148): runtime errors write the trace into the back_trace
+  global ONLY when the trace is non-empty (sticky otherwise); line format
+  `In call of g@int at <standard input>:3:0-4, defined at ...` with
+  0-BASED columns (Rust SourceSpan is 1-based — subtract); def span starts
+  at the function NAME (Rust function_binding currently starts at `(`);
+  closures with params append a frame dump `{ x=2 }`, zero-param closures
+  do not; builtin frames end `built-in.`; loop traces: `During iteration N
+  of the [reversed ]for-loop` + frame dump, counted loops `During iteration
+  N (i=V) of the counted [reversed ]for-loop` (no dump), anonymous counted
+  has a DOUBLE SPACE in `of the  counted for-loop`; while has no iteration
+  line. Recursive self-call traces (dynamic call line, self-binding dump
+  with embedded multi-line closure print) DEFERRED to the let_rec patch.
+- NEW grammar gap found: **tilde_opt on loops** (parser.y:319,523-571).
+  `for x in L~ do e od` reverses input traversal (@index counts DOWN);
+  `for x in L do e~ od` reverses output accumulation; both cancel.
+  Counted for: tilde after count/bound expr reverses counting direction,
+  tilde after body reverses accumulation; anonymous `for:n` allows only
+  the body tilde; **DOWNTO has NO tilde_opt** (syntax error
+  `unexpected '~', expecting OD`). `while c do e~ od` reverses the
+  collected body-value list (while DOES collect body values into a list —
+  verified: `while i<3 do begin i:=i+1; i end~ od` → [3,2,1]).
+- NEW grammar gap found: **iffor_loop / quiet-if unit** (parser.y:365,
+  506-521). `if c do e fi` is a general unit expression =
+  `if c then [e] else [] fi` (returns a ROW; `if true do 42 fi` → [42]);
+  `if c iffor fi` nests; every for_loop form accepts a do-less iffor_loop
+  body wrapped in the `## ` drop-voids coercion (`for i:3 if i>1 do i fi od`
+  → [2]); quiet-if takes NO else (`unexpected ELSE, expecting FI`).
+  Rust rejects all of these today.
+- Fixtures frozen: back_trace (`0df738a`, registered, capture 3604415),
+  back_trace_let_rec (`f833bf1`, capture 3604440, unregistered),
+  back_trace_loops (`a464e53`, capture 3604460, events/meta NOT generated),
+  for_reversed (`fc37303`, capture 3604471, unregistered),
+  for_reversed_extra (`46e52da`, capture 3604479, events/meta NOT
+  generated), for_quiet_body (`aebfc7f`, capture 3604504 submitted).
+  Local capture mirrors: /tmp/capture-3604471, /tmp/capture-3604479.
+- In flight (parallel, isolated): **agent-98** implements back_trace
+  call-stack tracing in the MAIN tree (evaluator + diagnostic + frames +
+  syntax + typed + value); **agent-99** implements tilde_opt in the
+  WORKTREE /Users/hoxide/mycodes/atlas-tilde-wt (branch codex/tilde-opt)
+  to avoid evaluator collisions — merge back after agent-98 lands, then
+  resume agent-99 for the iffor_loop/quiet-if extension (same ForTail
+  productions). Generator template for events/meta: /tmp/gen_readline_events.py
+  (accepted → rejected=False; error-line fixtures → rejected=True asserts
+  oracle==CLI diagnostics, so the downto `~` diagnostic must land first).
+- Known trap: /tmp/gen_back_trace_let_rec_events.py had a stale duplicate
+  build() call from template adaptation (rindex truncation) — check any
+  regenerated script has exactly one build().
+- After these land, the ONLY non-supported LANGUAGE.md row left is the KL
+  binary file format (filekl.w) — no language builtin touches it; deferred
+  pending USER DECISION (exclude from the language gate vs port filekl).
+  That decision gates goal completion.
+  - Closure-printer probes (oracle, locked 2026-08-21): let-bound closures
+    in frame dumps print multi-line too — `{ g=Function defined at
+    <standard input>:1:17-29\n(y): %@(int,int)(y,0) }` (name-anchored def
+    span; body = TYPED pretty-print with internal `op@type(args)` prefix
+    form); the rec_fun self-binding is the same with a `Recursive ` prefix
+    and `b = ` name line. Dynamic calls (through variables) trace as
+    `In call of g at 1:33-37, defined at 1:17-29.` — no @type suffix but
+    WITH defined-at taken from the closure value's span. Vec values dump
+    as `[ 3 ]`. So the slice after counted-for tracing is: typed-expr
+    pretty-printer + closure printer + let-frame dumps + dynamic-call
+    defined-at (covers back_trace_let_rec.atlas).
