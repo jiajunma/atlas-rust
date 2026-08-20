@@ -1,0 +1,9 @@
+{
+  "fixture": "eval/for_reversed.atlas",
+  "fixture_sha256": "070000fc62709c87a767ea991ae7acb313f156b8224b169f0bc3beb8128d394f",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_capture",
+  "rust_status": "pending",
+  "notes": "Reversed for-in loops (parser.y:523-531 tilde_opt): '~' after the iterable OR after the body each toggles iteration direction (both cancel); indexed and pattern forms reverse identically. Rust parser currently lacks tilde_opt in ForTail (grammar.lalrpop ForTail) — this fixture pins the gap."
+}

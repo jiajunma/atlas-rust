@@ -1,0 +1,5 @@
+for i in [1,2,3]~ do i od
+for i in [1,2,3] do i~ od
+for i in [1,2,3]~ do i~ od
+for i@k in [1,2,3]~ do (k,i) od
+for (a,b) in [(1,2),(3,4)]~ do a+b od
