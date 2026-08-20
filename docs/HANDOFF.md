@@ -4024,3 +4024,10 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   wording (`expecting IF or DO or FOR`) go to agent-99's next resume
   (grammar area, same worktree); break N goes to the main tree after
   agent-101 (closure printer) frees typed.rs.
+  - expr/tertiary level audit (parser.y:224-338 vs Rust, battery-diffed):
+    CLEAN — OPERATOR_BECOMES (`x+:=3`), return, let-patterns, top-level
+    multi-set `set (u,v)=(7,8)`, expression-level `set (p,q):=(4,5)`
+    (incl. the Undefined-identifier-in-multiple-assignment wording) all
+    match the oracle already. The only remaining grammar gaps are the
+    frozen ones: tilde_opt (done in worktree), iffor_loop/quiet-if,
+    non-row iteration (agent-99 in flight), op_cast, `$`, break N.
