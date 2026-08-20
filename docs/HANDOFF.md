@@ -3968,3 +3968,144 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
     as `[ 3 ]`. So the slice after counted-for tracing is: typed-expr
     pretty-printer + closure printer + let-frame dumps + dynamic-call
     defined-at (covers back_trace_let_rec.atlas).
+
+## 2026-08-21b: counted-for tracing landed; tilde merge; two more slices in flight
+
+- agent-100 landed (`6c25a29`): counted-for iteration trace lines
+  (`(i=V)`, downto → `counted reversed`, anonymous keeps the double-space
+  shared format, no frame dump) + group-transparent operator spans
+  (parser.y:366 peels Expr::Group; fixes the 5:18-24 off-by-one).
+  Differential for the combined tracing work pending the next full run.
+- tilde_opt (agent-99, worktree branch codex/tilde-opt) landed there as
+  `6401ca8` and was merged with main-tree tracing as `f123295`.
+  Merge-resolution semantics (KEEP THESE): the for-in trace reports a
+  TRAVERSAL-ORDER iteration counter, separate from the `@` index position
+  (oracle: `[2,1,0]~` fails at `iteration 0` with dump `{ i=0 }`);
+  `reversed` word in counted traces keys on descending (downto OR
+  count-side tilde). back_trace_loops.atlas byte-exact vs capture 3604460
+  incl. the reversed for-in line.
+- NEW gap found: for-in over NON-ROW iterables (string→1-char strings,
+  vec→ints, mat→columns as vecs, ratvec→rats; all reversal-compatible).
+  Rust only accepted rows. Fixture eval/for_iterable_kinds frozen
+  (`2457baf`, capture 3604537, events/meta generated, unregistered).
+- In flight: agent-99 (resumed, worktree) implements iffor_loop/quiet-if
+  + non-row iteration; agent-101 (main tree) implements the closure
+  printer + let-frame dumps + dynamic-call defined-at
+  (back_trace_let_rec.atlas, capture 3604440). After both land: merge
+  worktree into main, register the six pending fixtures
+  (back_trace_loops, back_trace_let_rec, for_reversed,
+  for_reversed_extra, for_quiet_body, for_iterable_kinds), run the merged
+  fat differential, bump metas, promote LANGUAGE.md rows.
+  - Extra tilde diagnostics probe (oracle, 2026-08-21b): anonymous counted
+    `for :3~ do 7 od` rejects with `unexpected '~', expecting IF or DO or
+    FOR` (agent-99's current wording lacks the expecting suffix — fix at
+    acceptance). NAMED plain counted `for i:3~ do i od` IS accepted and
+    counts down ([2,1,0]); only the anonymous form lacks the count-side
+    tilde.
+
+## 2026-08-21c: unit-production audit — three more gaps frozen
+
+- Systematic parser.y unit (339-386) vs Rust Atom audit found three more
+  gaps, all probed and frozen:
+  - **op_cast** (parser.y:381-383): `%@(int,int)`, `+@(int,int)`,
+    `prints@string` select one overload as a value; rejection
+    `No instance for mod@(int,int) found` (category type). Fixture
+    eval/op_cast, capture 3604565.
+  - **`$` last-value unit** (parser.y:343 make_dollar): value of the last
+    evaluated expression, sticky across runtime errors. Fixture
+    eval/last_value, capture 3604566.
+  - **break N** (parser.y:385 BREAK INT): unwinds N+1 loop levels (Rust's
+    Control::Break(levels) already unwinds — only the parser production
+    and the analysis-time depth check are missing); rejection
+    `Using 'break 2' requires 3 nested levels of loops`. Fixture
+    eval/break_levels, capture 3604567.
+  All three events/meta frozen (`9788171`), registration deferred.
+- Dispatch plan: op_cast + `$` + the anonymous-counted tilde diagnostic
+  wording (`expecting IF or DO or FOR`) go to agent-99's next resume
+  (grammar area, same worktree); break N goes to the main tree after
+  agent-101 (closure printer) frees typed.rs.
+  - expr/tertiary level audit (parser.y:224-338 vs Rust, battery-diffed):
+    CLEAN — OPERATOR_BECOMES (`x+:=3`), return, let-patterns, top-level
+    multi-set `set (u,v)=(7,8)`, expression-level `set (p,q):=(4,5)`
+    (incl. the Undefined-identifier-in-multiple-assignment wording) all
+    match the oracle already. The only remaining grammar gaps are the
+    frozen ones: tilde_opt (done in worktree), iffor_loop/quiet-if,
+    non-row iteration (agent-99 in flight), op_cast, `$`, break N.
+
+## 2026-08-21d: back_trace_let_rec landed; caselist dot-label gap found and frozen
+
+- agent-101 landed (`507cdda`): let-frame trace dumps
+  (`TypedExpr::LetGroup.names` + outlined `evaluate_let_frame`,
+  typed.rs:11479 — the outline is required, inlining blew the test-thread
+  stack on rec_fun depth 6), multi-line closure printer
+  (`closure_trace_string`/`trace_value_string`, typed.rs:11530+),
+  `compact_typed_expression` upgraded to `typed_expression_print`
+  (typed.rs:645) with Conditional/elif/Next printing and
+  `special_int_unary_print` (typed.rs:756, emulates the upstream
+  special-builtin rewrite `x+1 -> succ@int(x)` at print time since this
+  port deliberately skips that rewrite), dynamic call `defined at
+  <closure span>`. Verified: back_trace_let_rec + back_trace stdout
+  byte-identical to captures 3604440/3604415; 345 lib tests; clippy/fmt
+  clean. Registered in harness (`4c90145`); differential job 3604616.
+- back_trace_loops events/meta frozen (`b2c008f`, capture 3604460);
+  registration deferred until agent-99's iffor/non-row iteration lands
+  (the fixture's stdout is already produced correctly, but registration
+  rides the merged differential).
+- **caselist dot-label gap** (the last parser.y caselist production,
+  419/426 `pattern '.' IDENT ':' expr`): tag AFTER the dot, binding
+  pattern before — `(v).solution: #v`, `v.solution:`, `(a,b).pair:`,
+  `(,).pair:` (throwaway slots) all accepted by the oracle; Rust rejects
+  with `unexpected $undefined`. Real scripts use it
+  (classical_W_classes_and_reps.at `(alpha,s).split_class:`,
+  Gaussian_elim.at `(v,).affine_space:` — note trailing comma). Fixture
+  eval/case_dot_label frozen (`5af4824`, capture job 3604622). Rejected
+  wordings: `Branch has label bogus not associated to any variant of the
+  union type mvv`; `Multiple branches with label solution` (both
+  category type).
+- **set_type bare-form quirk** (both sides already match, no work):
+  `set_type name = (...)` WITHOUT the `[...]` list prints the definition
+  message but does NOT register injector tags in type_map, so a later
+  discrimination on that union fails with `Discrimination on expression
+  of type (void|vec) requires using 'set_type' for this type, and naming
+  injectors for it`. The list form `set_type [ name = (...) ]` registers
+  tags. Rust already mirrors this exactly.
+- break N dispatched to agent-102 (main tree; parser production
+  BREAK INT + analysis-time depth check; Control::Break(levels) unwind
+  already exists).
+
+### op_cast / `$` extended probes (2026-08-21d, oracle)
+
+- `IDENT '@' type` (parser.y:382) works on user overloads: `u@int`
+  evaluates to the closure and prints MULTI-LINE at top level
+  (`Function defined at <span>` + body line); `(u@int)(3)` applies.
+  Rejection wording `No instance for u@string found` / `No instance for
+  +@int found` (category type).
+- Unary operator casts accepted: `-@int` -> `{-@int}`, `#@vec` ->
+  `{#@vec}` (built-in closures print brace-wrapped name@type).
+- `prints@string` displays as `{prints@T}` — the generic type variable
+  leaks into the closure display even after a concrete cast.
+- `$` (last value): sticky across runtime AND type errors; void-valued
+  evaluations (`prints("x")`, `()`) do NOT update `$`; a bare `$` before
+  any value evaluates to void (no Value line, no error). Bare `f` for an
+  overload name is `Undefined identifier 'f'` (functions live in the
+  overload table, not the identifier table) — Rust already mirrors this.
+- op_cast/last_value fixtures extended, re-capture jobs 3604640/3604641;
+  these probes define agent-99's resume batch scope.
+
+### Counted-for tilde placement matrix (2026-08-21d, oracle probes)
+
+- `for i:3 from 5~ do i od` -> [7,6,5]: from-side tilde reverses the
+  counted range (starts at from+count-1, descends to from).
+- `for i:3~ do i od` -> [2,1,0]: count-side tilde on NAMED counted
+  accepted, implicit 0..n-1 reversed; but `for i:3~ from 5 do` rejects
+  with `unexpected FROM` (no expecting suffix) — after count-side tilde
+  no from/downto clause may follow.
+- Anonymous counted is bare only: `for :3 from 0 do` rejects
+  `unexpected FROM, expecting IF or DO or FOR`; `for :3~ do` rejects
+  `unexpected '~', expecting IF or DO or FOR`.
+- `for i:3 downto 0~ do` rejects `unexpected '~', expecting IF or DO or
+  FOR` (no tilde after downto bound).
+- `while c do e od~` rejects `unexpected '~', expecting '\n'` (trailing
+  tilde after od).
+- `for i@k in [7,8]~ do (k,i) od` -> [(1,8),(0,7)]: reversed for-in with
+  @index iterates pairs in reverse with original indices.

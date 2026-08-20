@@ -1,0 +1,11 @@
+set_type [ mvv = ( void no_vec | vec solution) ]
+case solution([4,5]) | (v).solution: #v | else 0 esac
+case solution([4,5]) | v.solution: #v | else 0 esac
+case no_vec() | (v).solution: #v | else 0 esac
+set_type [ t2 = ( (int,int) pair | vec lone) ]
+case pair(3,4) | (a,b).pair: a+b | (v).lone: #v esac
+case lone([1,2,3]) | (a,b).pair: a+b | (v).lone: #v esac
+case pair(3,4) | (,).pair: 99 | else 0 esac
+case pair(3,4) | x.pair: x | else (0,0) esac
+case solution([4,5]) | (x).bogus: 1 | else 0 esac
+case solution([4,5]) | (v).solution: 1 | solution(w): 2 | else 0 esac

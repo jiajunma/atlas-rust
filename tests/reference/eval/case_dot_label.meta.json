@@ -1,0 +1,26 @@
+{
+ "fixture": "eval/case_dot_label.atlas",
+ "fixture_sha256": "83809a3b6fdefb1c6ed2ef9c7c6911c9c48ef12da9abb66d9103431faf54c39f",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "3604622",
+ "reference_commit": "5af4824f49edaa53410751acc9100bf14a9c4ff0",
+ "reference_report_sha256": "aa23cafe289e0ef58bcd224d6b79bb8f90465c04fc621ad8c42544ac97125184",
+ "source_archive_sha256": "2328263d18831fe93dec3b6b6a29f521a5cb69fe98a3483e23c64dc4031a86be",
+ "oracle_exit_status": 1,
+ "oracle_seconds": 0.01,
+ "oracle_maxrss_kb": 3656,
+ "oracle_maxrss_approximate": false,
+ "notes": "caselist 'pattern . IDENT : expr' form (parser.y:419,426): label after dot with binding pattern before it; '(v).tag', 'v.tag', '(a,b).tag', '(,).tag' throwaway. Rejected: unknown label -> 'Branch has label X not associated to any variant of the union type T'; duplicate label -> 'Multiple branches with label X' (both category type). Quirk: bare 'set_type name = (...)' without [...] prints the definition but does not register injector tags, so later discrimination fails (Rust already mirrors).",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
+}

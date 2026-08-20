@@ -285,6 +285,10 @@ FIXTURE_PLANS = (
     # back_trace runtime-error call trace (global.w:1135-1148, axis.w
     # trace push points); reference frozen by capture 3604415.
     FixturePlan(name="eval/back_trace"),
+    # back_trace let-frame dumps + multi-line closure printer + rec_fun
+    # self-binding/dynamic call lines (axis.w:2882-2909, 3525-3557);
+    # reference frozen by capture 3604440.
+    FixturePlan(name="eval/back_trace_let_rec"),
     FixturePlan(name="eval/slices"),
     FixturePlan(name="eval/subscriptions"),
     FixturePlan(name="eval/context"),

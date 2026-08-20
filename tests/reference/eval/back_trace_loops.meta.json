@@ -1,9 +1,26 @@
 {
-  "fixture": "eval/back_trace_loops.atlas",
-  "fixture_sha256": "d9bce095cf65f9c7179264665b2d41be4352bbaf21dd68aa493a5b9b4062bf95",
-  "oracle": "atlas",
-  "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_capture",
-  "rust_status": "pending",
-  "notes": "Loop trace variants (axis.w:6124-6132 shared catch, 6591 anonymous counted, 6683-6700 indexed counted): for-in (with frame dump), for-var@idx-in (dump has index first), counted from (iteration N (i=V), no dump), counted downto (reversed wording), anonymous counted (double space), reversed for-in via ~, pattern-for dump. While loops contribute no iteration line."
+ "fixture": "eval/back_trace_loops.atlas",
+ "fixture_sha256": "d9bce095cf65f9c7179264665b2d41be4352bbaf21dd68aa493a5b9b4062bf95",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "3604460",
+ "reference_commit": "a464e537d2397ba349f7449a7f236d4e346e4c01",
+ "reference_report_sha256": "7914751b734ac64fa3f9dbcde7bdb4bfa829e083caf8210df5565e372e0db5a9",
+ "source_archive_sha256": "edd524b91e0945708e16f7cdd8fef4e9b25bb5774e6d31cd9005f776cb09717f",
+ "oracle_exit_status": 1,
+ "oracle_seconds": 0.011,
+ "oracle_maxrss_kb": 3644,
+ "oracle_maxrss_approximate": false,
+ "notes": "Loop trace variants (axis.w:6124-6132 shared catch, 6591 anonymous counted, 6683-6700 indexed counted): for-in (with frame dump), for-var@idx-in (dump has index first), counted from (iteration N (i=V), no dump), counted downto (reversed wording), anonymous counted (double space), reversed for-in via ~, pattern-for dump. While loops contribute no iteration line. Reference frozen by HPC capture 3604460; Rust differential pending harness registration.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
 }

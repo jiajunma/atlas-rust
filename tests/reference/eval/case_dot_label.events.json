@@ -1,0 +1,74 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "eval/case_dot_label",
+ "status": "verified_hpc_reference",
+ "events": [
+  {
+   "kind": "ReportLine",
+   "text": "Type name 'mvv' defined as (void|vec)\n  with injectors: no_vec, solution.\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "2"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "2"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "0"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Type name 't2' defined as ((int,int)|vec)\n  with injectors: pair, lone.\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "7"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "3"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "99"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "(3,4)"
+   }
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "Branch has label bogus not associated to any variant of the union type mvv"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "Multiple branches with label solution"
+  }
+ ]
+}

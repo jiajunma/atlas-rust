@@ -226,6 +226,9 @@ pub enum TypedExpr {
         /// One (shape, initializer) pair per binding in the group; each
         /// value distributes into the frame slots its shape describes.
         initializers: Vec<(SlotShape, TypedExpr)>,
+        /// Frame slot names in bind order across the group, for the
+        /// back-trace frame dump (axis.w:2896-2909).
+        names: Rc<[String]>,
         body: Box<TypedExpr>,
     },
     /// `if c then t else e fi` after balancing.
@@ -641,31 +644,47 @@ impl OverloadState {
     }
 }
 
-/// Compact rendering of a converted (typed) expression for the verbose
-/// analysis trace (main.w:528-540 `Converted expression:`). Mirrors the
-/// upstream `expression_base` prints for the node shapes the trace needs:
-/// denotations print their value, identifiers their name, and calls print
-/// `name(arg1,arg2)` (call_expression::print, axis.w:1912-1924). Other
-/// shapes are rendered structurally where cheap; the fallback keeps the
-/// trace parseable without claiming oracle fidelity for unverified nodes.
-fn compact_typed_expression(expression: &TypedExpr) -> String {
+/// Print a converted (typed) expression the way upstream prints its
+/// converted expression tree (`expression_base::print`): denotations print
+/// their value (axis.w:516-517), identifiers their name (axis.w:1255),
+/// builtin calls `name@argtype(args)` (overloaded_call::print,
+/// axis.w:2031-2036), dynamic calls `function(argument)` with the function
+/// parenthesised unless an identifier and the argument unless a tuple
+/// display (call_expression::print, axis.w:1925-1935), conditionals as
+/// ` if c then t else e fi ` with `elif` chaining (axis.w:4754-4766), and
+/// tuple/list displays as `(a,b)` / `[a,b]` (axis.w:761-768, 946-951).
+/// Used by the verbose analysis trace (main.w:528-540 `Converted
+/// expression:`), the dynamic-callee back-trace name
+/// (call_expression::function_name, axis.w:1911-1913), and the closure
+/// body print in frame dumps (print_lambda, axis.w:3045-3053). Node shapes
+/// beyond these keep the `<expression>` fallback rather than claiming
+/// oracle fidelity for unverified prints.
+fn typed_expression_print(expression: &TypedExpr) -> String {
     match expression {
         TypedExpr::Denotation(value) => value.to_string(),
         TypedExpr::GlobalIdent { name, .. } | TypedExpr::LocalIdent { name, .. } => name.clone(),
         TypedExpr::BuiltinCall {
-            builtin, arguments, ..
+            builtin: _,
+            arguments,
+            name,
+            ..
         }
         | TypedExpr::HungryBuiltinCall {
-            builtin, arguments, ..
+            builtin: _,
+            arguments,
+            name,
+            ..
         } => {
-            let name = builtin_registry()[*builtin].name;
-            let mut out = String::from(name);
+            if let Some(special) = special_int_unary_print(name, arguments) {
+                return special;
+            }
+            let mut out = name.clone();
             out.push('(');
             for (index, argument) in arguments.iter().enumerate() {
                 if index > 0 {
                     out.push(',');
                 }
-                out.push_str(&compact_typed_expression(argument));
+                out.push_str(&typed_expression_print(argument));
             }
             out.push(')');
             out
@@ -673,7 +692,7 @@ fn compact_typed_expression(expression: &TypedExpr) -> String {
         TypedExpr::TupleDisplay(elements) => {
             let inner = elements
                 .iter()
-                .map(compact_typed_expression)
+                .map(typed_expression_print)
                 .collect::<Vec<_>>()
                 .join(",");
             format!("({inner})")
@@ -681,25 +700,98 @@ fn compact_typed_expression(expression: &TypedExpr) -> String {
         TypedExpr::ListDisplay(elements) => {
             let inner = elements
                 .iter()
-                .map(compact_typed_expression)
+                .map(typed_expression_print)
                 .collect::<Vec<_>>()
                 .join(",");
             format!("[{inner}]")
         }
-        TypedExpr::Conversion { inner, .. } => compact_typed_expression(inner),
+        TypedExpr::Conversion { inner, .. } => typed_expression_print(inner),
         TypedExpr::FunctionCall {
             function, argument, ..
-        } => format!(
-            "{}({})",
-            compact_typed_expression(function),
-            compact_typed_expression(argument)
-        ),
+        } => {
+            let function_print = typed_expression_print(function);
+            let mut out = match function.as_ref() {
+                TypedExpr::GlobalIdent { .. } | TypedExpr::LocalIdent { .. } => function_print,
+                _ => format!("({function_print})"),
+            };
+            match argument.as_ref() {
+                TypedExpr::TupleDisplay(_) => out.push_str(&typed_expression_print(argument)),
+                _ => {
+                    out.push('(');
+                    out.push_str(&typed_expression_print(argument));
+                    out.push(')');
+                }
+            }
+            out
+        }
         TypedExpr::Sequence { first, second } => format!(
             "{};{}",
-            compact_typed_expression(first),
-            compact_typed_expression(second)
+            typed_expression_print(first),
+            typed_expression_print(second)
         ),
+        TypedExpr::Next { first, second } => format!(
+            "{} next {}",
+            typed_expression_print(first),
+            typed_expression_print(second)
+        ),
+        TypedExpr::Conditional { .. } => {
+            let mut out = String::from(" if ");
+            let mut current = expression;
+            loop {
+                let TypedExpr::Conditional {
+                    condition,
+                    then_branch,
+                    else_branch,
+                } = current
+                else {
+                    unreachable!("the loop only continues on conditional else branches")
+                };
+                out.push_str(&typed_expression_print(condition));
+                out.push_str(" then ");
+                out.push_str(&typed_expression_print(then_branch));
+                match else_branch.as_ref() {
+                    next @ TypedExpr::Conditional { .. } => {
+                        out.push_str(" elif ");
+                        current = next;
+                    }
+                    other => {
+                        out.push_str(" else ");
+                        out.push_str(&typed_expression_print(other));
+                        out.push_str(" fi ");
+                        break;
+                    }
+                }
+            }
+            out
+        }
         _ => "<expression>".to_string(),
+    }
+}
+
+/// The rewrites upstream's special integer builtins apply at call
+/// construction (global.w:2916-2983), reproduced at PRINT time because the
+/// Rust converter keeps the desugared call in its typed tree: `x+1` prints
+/// as `succ@int(x)`, `x-1` as `pred@int(x)`, `-1-x` as `~@int(x)`, and
+/// unary minus on an integer denotation folds to the negative denotation.
+fn special_int_unary_print(name: &str, arguments: &[TypedExpr]) -> Option<String> {
+    fn integer_denotation(expression: &TypedExpr) -> Option<&BigInt> {
+        match expression {
+            TypedExpr::Denotation(Value::Integer(value)) => Some(value),
+            _ => None,
+        }
+    }
+    match (name, arguments) {
+        ("+@(int,int)", [left, right]) if integer_denotation(right) == Some(&BigInt::from(1)) => {
+            Some(format!("succ@int({})", typed_expression_print(left)))
+        }
+        ("-@(int,int)", [left, right]) if integer_denotation(right) == Some(&BigInt::from(1)) => {
+            Some(format!("pred@int({})", typed_expression_print(left)))
+        }
+        ("-@(int,int)", [left, right]) if integer_denotation(left) == Some(&BigInt::from(-1)) => {
+            Some(format!("~@int({})", typed_expression_print(right)))
+        }
+        ("-@int", [operand]) => integer_denotation(operand).map(|value| format!("-{value}")),
+        _ => None,
     }
 }
 
@@ -1201,10 +1293,7 @@ impl TypedContext {
                         span: expression.span(),
                     });
                     events.push(TypedCommandEvent::Output {
-                        text: format!(
-                            "Converted expression: {}\n",
-                            compact_typed_expression(&typed)
-                        ),
+                        text: format!("Converted expression: {}\n", typed_expression_print(&typed)),
                         span: expression.span(),
                     });
                 }
@@ -2590,12 +2679,19 @@ pub fn convert_expr(
                         offset += 1;
                     }
                 }
-                groups.push(
+                // Slot names in bind order across the group's bindings,
+                // for the error-time frame dump (axis.w:2882-2909).
+                let names: Vec<String> = pending
+                    .iter()
+                    .flat_map(|(_, leaves, _)| leaves.iter().map(|(name, _, _, _)| name.clone()))
+                    .collect();
+                groups.push((
                     pending
                         .into_iter()
                         .map(|(shape, _, converted)| (shape, converted))
                         .collect::<Vec<_>>(),
-                );
+                    names,
+                ));
             }
             let mut converted = convert_expr(
                 body,
@@ -2610,9 +2706,10 @@ pub fn convert_expr(
                     loop_depth: analysis.loop_depth,
                 },
             )?;
-            for initializers in groups.into_iter().rev() {
+            for (initializers, names) in groups.into_iter().rev() {
                 converted = TypedExpr::LetGroup {
                     initializers,
+                    names: Rc::from(names),
                     body: Box::new(converted),
                 };
             }
@@ -10927,7 +11024,11 @@ impl TypedExpr {
                     )
                 }))
             }
-            Self::LetGroup { initializers, body } => {
+            Self::LetGroup {
+                initializers,
+                names,
+                body,
+            } => {
                 let mut slots = Vec::new();
                 for (shape, initializer) in initializers {
                     let value = force(initializer, context)?;
@@ -10938,7 +11039,7 @@ impl TypedExpr {
                 if slots.is_empty() {
                     body.evaluate(context, level)
                 } else {
-                    context.with_frame(slots, |context| body.evaluate(context, level))
+                    evaluate_let_frame(slots, names, body, context, level)
                 }
             }
             Self::Conditional {
@@ -11069,9 +11170,13 @@ impl TypedExpr {
                 let argument = force(argument, context)?;
                 match apply_closure(&closure, argument, context, level) {
                     Err(Control::Runtime(mut diagnostic)) => {
+                        // A dynamically computed callee prints its function
+                        // expression (call_expression::function_name,
+                        // axis.w:1911-1913); `defined` is the closure's
+                        // lambda location (report_origin, axis.w:3273-3274).
                         let callee = name
                             .clone()
-                            .unwrap_or_else(|| compact_typed_expression(function));
+                            .unwrap_or_else(|| typed_expression_print(function));
                         diagnostic.trace(format!(
                             "In call of {callee} {}, defined {}.",
                             trace_location(context, span),
@@ -11446,7 +11551,7 @@ fn apply_closure(
             Err(Control::Runtime(mut diagnostic)) => {
                 if let Some(frame) = frame {
                     if !closure.param_names.is_empty() {
-                        diagnostic.trace(frame_dump(&closure.param_names, &frame));
+                        diagnostic.trace(frame_dump(context, &closure.param_names, &frame));
                     }
                 }
                 Err(Control::Runtime(diagnostic))
@@ -11560,7 +11665,7 @@ fn eval_for_loop(
                 // The per-iteration frame dump, then the
                 // iteration line ahead of it (axis.w:6124-6161).
                 if let Some(frame) = frame {
-                    diagnostic.trace(frame_dump(names, &frame));
+                    diagnostic.trace(frame_dump(context, names, &frame));
                 }
                 diagnostic.trace(format!(
                     "During iteration {iteration} of the {}for-loop",
@@ -11578,10 +11683,33 @@ fn eval_for_loop(
     Ok(at_level(level, || Value::List(collected.clone())))
 }
 
+/// The traced frame of one let group (let_expression::evaluate catch,
+/// axis.w:2882-2909): an error unwinding through the bindings dumps the
+/// frame ahead of the inner trace lines, exactly like a call frame.
+/// Outlined from `evaluate` so the frame-dump machinery does not inflate
+/// the evaluator's (recursive) stack frame.
+#[inline(never)]
+fn evaluate_let_frame(
+    slots: Vec<Rc<Value>>,
+    names: &[String],
+    body: &TypedExpr,
+    context: &mut EvaluationContext,
+    level: Level,
+) -> Result<Option<Value>, Control> {
+    let (result, frame) = context.with_frame_traced(slots, |context| body.evaluate(context, level));
+    match result {
+        Err(Control::Runtime(mut diagnostic)) => {
+            diagnostic.trace(frame_dump(context, names, &frame));
+            Err(Control::Runtime(diagnostic))
+        }
+        other => other,
+    }
+}
+
 /// The local-variable trace line of one frame (axis.w:2896-2909):
 /// `{ name=value, ... }` with the standard value printer, read after
 /// unwinding so a slot reassigned before the error prints its current value.
-fn frame_dump(names: &[String], frame: &Frame) -> String {
+fn frame_dump(context: &EvaluationContext, names: &[String], frame: &Frame) -> String {
     let slots = frame.slot_snapshot();
     debug_assert_eq!(
         names.len(),
@@ -11596,13 +11724,64 @@ fn frame_dump(names: &[String], frame: &Frame) -> String {
         out.push_str(name);
         out.push('=');
         match slot {
-            Some(value) => out.push_str(&value.to_string()),
+            Some(value) => out.push_str(&trace_value_string(context, value)),
             // A call frame binds every slot before the body runs; an empty
             // slot can only appear after a pilfering builtin moved it out.
             None => out.push('*'),
         }
     }
     out.push_str(" }");
+    out
+}
+
+/// The frame-dump rendering of one slot value (axis.w:2905 prints `**it`,
+/// the standard value printer): closures use the multi-line
+/// `closure_value::print` (axis.w:3254-3271), everything else `Display`.
+fn trace_value_string(context: &EvaluationContext, value: &Value) -> String {
+    match value {
+        Value::Closure(closure) => closure_trace_string(context, closure),
+        other => other.to_string(),
+    }
+}
+
+/// `closure_value::print` (axis.w:3254-3271): a header naming the lambda's
+/// source location, then `print_lambda` (axis.w:3045-3053) — the parameter
+/// pattern in parentheses (`@@` when it binds no identifier) followed by
+/// `": "` and the converted body. A recursive closure prints its self name
+/// ahead of the parameter pattern (`name = `, axis.w:3265-3271). Tuple
+/// parameter patterns print flat (`(a,b)`); upstream additionally shows a
+/// whole-value name (`(a,b):w`), which this port does not retain.
+fn closure_trace_string(context: &EvaluationContext, closure: &Closure) -> String {
+    let mut out = String::new();
+    let names: &[String] = if closure.recursive {
+        out.push_str("Recursive function defined ");
+        out.push_str(&trace_location(context, &closure.span));
+        out.push('\n');
+        // The recursive self slot precedes the argument slots
+        // (axis.w:3548-3560 `maybe_push`).
+        match closure.param_names.split_first() {
+            Some((self_name, rest)) => {
+                out.push_str(self_name);
+                out.push_str(" = ");
+                rest
+            }
+            None => &[],
+        }
+    } else {
+        out.push_str("Function defined ");
+        out.push_str(&trace_location(context, &closure.span));
+        out.push('\n');
+        &closure.param_names
+    };
+    if names.is_empty() {
+        out.push_str("@@");
+    } else {
+        out.push('(');
+        out.push_str(&names.join(","));
+        out.push(')');
+    }
+    out.push_str(": ");
+    out.push_str(&typed_expression_print(&closure.body));
     out
 }
 
@@ -16543,6 +16722,94 @@ mod tests {
         context.execute(&command("m(5)")).expect_err("m fails");
         let trace = back_trace_lines(&mut context);
         assert_eq!(trace[1], "{ x=1 }", "trace: {trace:?}");
+    }
+
+    #[test]
+    fn let_frame_dumps_its_bindings() {
+        // axis.w:2882-2909: a let frame unwound by an error dumps its own
+        // bindings between the call frame and the failing builtin.
+        let mut context = TypedContext::new();
+        context
+            .execute(&command("set lf(int x)=let y=x+1 in y%0"))
+            .expect("define lf");
+        context.execute(&command("lf(3)")).expect_err("lf fails");
+        assert_eq!(
+            back_trace_lines(&mut context),
+            vec![
+                "In call of lf@int at <standard input>:1:0-5, defined at <standard input>:1:4-30.",
+                "{ x=3 }",
+                "{ y=4 }",
+                "In call of %@(int,int) at <standard input>:1:27-30, built-in.",
+            ]
+        );
+
+        // Non-integer values print with the standard value printer
+        // (a vec as `[ 3 ]`).
+        context
+            .execute(&command("set e(int x)=let v=vec:[x+2] in x%0"))
+            .expect("define e");
+        context.execute(&command("e(1)")).expect_err("e fails");
+        let trace = back_trace_lines(&mut context);
+        assert_eq!(trace[2], "{ v=[ 3 ] }", "trace: {trace:?}");
+    }
+
+    #[test]
+    fn closure_values_print_multi_line_in_frame_dumps() {
+        // A recursive closure's self slot prints `closure_value::print` for
+        // the recursive kind (axis.w:3265-3271): the definition location,
+        // then `name = (params): ` and the converted body, whose
+        // conditional carries its leading and trailing spaces
+        // (axis.w:4754-4766) and whose `n-1` prints as the upstream
+        // `pred@int(n)` rewrite (global.w:2977-2983).
+        let mut context = TypedContext::new();
+        context
+            .execute(&command(
+                "set bomb = rec_fun b(int n) int: if n=0 then 1%0 else b(n-1) fi",
+            ))
+            .expect("define bomb");
+        context
+            .execute(&command("bomb(1)"))
+            .expect_err("bomb fails");
+        let dump = |n: i64| {
+            format!(
+                "{{ b=Recursive function defined at <standard input>:1:11-63\nb = (n):  if =@(int,int)(n,0) then %@(int,int)(1,0) else b(pred@int(n)) fi , n={n} }}"
+            )
+        };
+        assert_eq!(
+            back_trace_lines(&mut context),
+            vec![
+                "In call of bomb@int at <standard input>:1:0-7, defined at <standard input>:1:11-63.".to_string(),
+                dump(1),
+                "In call of b at <standard input>:1:54-60, defined at <standard input>:1:11-63.".to_string(),
+                dump(0),
+                "In call of %@(int,int) at <standard input>:1:45-48, built-in.".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn dynamic_call_trace_line_names_the_definition_site() {
+        // A call through a variable prints the callee expression with no
+        // `@type` suffix and takes `defined` from the closure's lambda
+        // location (axis.w:1911-1913, 3273-3274); a let-bound closure in a
+        // frame dump prints the non-recursive multi-line form
+        // (axis.w:3260-3263).
+        let mut context = TypedContext::new();
+        context
+            .execute(&command("set h(int x)=let g(int y)=y%0 in g(x)"))
+            .expect("define h");
+        context.execute(&command("h(5)")).expect_err("h fails");
+        assert_eq!(
+            back_trace_lines(&mut context),
+            vec![
+                "In call of h@int at <standard input>:1:0-4, defined at <standard input>:1:4-37.",
+                "{ x=5 }",
+                "{ g=Function defined at <standard input>:1:17-29\n(y): %@(int,int)(y,0) }",
+                "In call of g at <standard input>:1:33-37, defined at <standard input>:1:17-29.",
+                "{ y=5 }",
+                "In call of %@(int,int) at <standard input>:1:26-29, built-in.",
+            ]
+        );
     }
 
     #[test]

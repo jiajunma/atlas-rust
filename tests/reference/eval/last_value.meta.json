@@ -1,0 +1,26 @@
+{
+ "fixture": "eval/last_value.atlas",
+ "fixture_sha256": "e722d3bfec119cb782614d7b86a04801996cd5b20af1df084f87e546b6bdcdc6",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "3604641",
+ "reference_commit": "e9aedf281ec9568c38eabb6d392e6d3c48bedc5d",
+ "reference_report_sha256": "9e023ca6673884b529594c8155e9d41caa72d033c21c40983d242d7f2f44b683",
+ "source_archive_sha256": "bd63509c675784a2a5d8bc102fb409f764f6a941a104f91c646e392123ab09cc",
+ "oracle_exit_status": 1,
+ "oracle_seconds": 0.011,
+ "oracle_maxrss_kb": 3592,
+ "oracle_maxrss_approximate": false,
+ "notes": "'$' unit (parser.y:343 make_dollar): value of the last evaluated expression; sticky across runtime errors. Reference frozen by HPC capture 3604566; Rust differential pending the '$' unit. EXTENDED 2026-08-21d: $ sticky across TYPE errors too, and void-valued evaluations (prints, ()) do NOT update $.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
+}

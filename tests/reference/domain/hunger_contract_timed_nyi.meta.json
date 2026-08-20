@@ -4,7 +4,7 @@
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
-  "rust_status": "verified_hpc_differential",
+  "rust_status": "verified_hpc",
   "reference_status": "verified_hpc_reference",
   "reference_job": "3545219",
   "note": "The timed twisted_full_deform overload is now implemented with a completed-result cache and cooperative cancellation; the pinned oracle returns the done union variant on this bounded A1 input.",

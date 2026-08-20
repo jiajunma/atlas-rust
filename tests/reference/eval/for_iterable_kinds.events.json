@@ -1,0 +1,97 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "eval/for_iterable_kinds",
+ "status": "verified_hpc_reference",
+ "events": [
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[\"a\",\"b\",\"c\"]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[1,2]"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Variable A: mat\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[[ 1, 2, 3 ],[ 4, 5, 6 ]]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[(0,[ 1, 2, 3 ]),(1,[ 4, 5, 6 ])]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[1/2,3/4]"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "a\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "b\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[(),()]"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "1\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "2\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[(),()]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[\"b\",\"a\"]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[3,2,1]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[[ 4, 5, 6 ],[ 1, 2, 3 ]]"
+   }
+  }
+ ]
+}

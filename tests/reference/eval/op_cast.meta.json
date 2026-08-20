@@ -1,0 +1,26 @@
+{
+ "fixture": "eval/op_cast.atlas",
+ "fixture_sha256": "e7485ba715494d02750fb51aeb7fcc73ee017d89d810533da14a2d0629ba3ddd",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "3604640",
+ "reference_commit": "e9aedf281ec9568c38eabb6d392e6d3c48bedc5d",
+ "reference_report_sha256": "11c2583fcf86a5225204dad5d7761b711170c6f6b9972f12c0fc08445aa51caa",
+ "source_archive_sha256": "bd63509c675784a2a5d8bc102fb409f764f6a941a104f91c646e392123ab09cc",
+ "oracle_exit_status": 1,
+ "oracle_seconds": 0.014,
+ "oracle_maxrss_kb": 3648,
+ "oracle_maxrss_approximate": false,
+ "notes": "Expression-level operator/identifier cast (parser.y:381-383): selects one overload as a first-class function value (%@(int,int), +@(int,int), prints@string); rejection 'No instance for mod@(int,int) found'. Reference frozen by HPC capture 3604565; Rust differential pending op_cast. EXTENDED 2026-08-21d: IDENT@type on user overloads (parser.y:382) \u2014 u@int prints the multi-line closure, (u@int)(3) applies; rejected u@string/+@int -> 'No instance for X found'; unary -@int, #@vec print {-@int}/{#@vec}; prints@string displays as {prints@T} (generic T).",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
+}
