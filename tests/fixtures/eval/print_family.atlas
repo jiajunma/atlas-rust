@@ -1,0 +1,12 @@
+to_string(42)
+to_string([1,2],3,"x")
+to_string()
+to_string(1,"a",[2,3],(4,5))
+set s=to_string(7,8)
+s
+print("a",1)
+print()
+print(1,"a",[2,3])
+error("boom")
+error()
+error("a",1,[2])

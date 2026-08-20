@@ -1,0 +1,9 @@
+{
+ "fixture": "eval/print_family.atlas",
+ "fixture_sha256": "950204b1ad0ee96647edcce40a8c0e3df070575b37ed4e4e64ea53edf51a64f7",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "pending_hpc_capture",
+ "rust_status": "pending",
+ "notes": "Variadic special builtins print/to_string/error (axis.w:2504 special operators, 8773+ wrappers; shared_variadic_builtin, never in the global overload table nor startup completions). to_string concatenates component displays with strings unquoted; print displays the argument tuple verbatim (strings quoted) and RETURNS it as value; error concatenates stripped text and raises runtime error with that message. Zero-arg forms: to_string()->\"\", print()->prints (), error()->empty runtime message. Used pervasively by atlas-scripts (to_string in 30+ files)."
+}
