@@ -4,6 +4,47 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-21b (readline_completions slice IN FLIGHT; main = `60c248f`)
+
+Branch `codex/continue-atlas-port` = **main = `60c248f`**. Regression
+differential **3604363 @ 08e37c1 (fat): runnable_status PASS** (330 fixtures,
+only the declared container_syntax_errors PARTIAL — harness-convention
+artifacts, not language defects).
+
+Correction to the 2026-08-21 registry-audit note below: `readline_completions`
+is NOT TTY-only — it is an ordinary `string->[string]` builtin callable in
+batch mode, so it is in scope for the language gate. Its semantics
+(buffer.w:1175-1192): prefix match over `main_hash_table` insertion order —
+keywords, primitive type names, builtins in upstream registration order (294
+startup names), then session globals/user overloads in first-definition order;
+`forget` removes, redefine-after-`forget` revives at the ORIGINAL position
+(hash codes are never recycled). The audit also missed three startup SYSTEM
+VARIABLES (not builtins): `input_path`/`prelude_log`/`back_trace`, all
+`[string]`, defined at startup (main.w:408-435); `prelude_log` is const.
+
+Slice state:
+- Fixtures `eval/readline_completions{,_rejected}` committed (`6df50f5`);
+  HPC capture **3604377** done; accepted events/meta generated and committed
+  (`60c248f`, verified_hpc_reference). Startup name order captured verbatim in
+  `/tmp/rlc_full_list.txt` (297 names; 294 static + 3 system variables).
+- Implementation delegated (subagent): new `BuiltinImpl::Completions`,
+  `STARTUP_COMPLETION_NAMES` const (294), session `completion_order` tracking
+  in TypedContext (append-only, skip startup names), candidates refreshed into
+  EvaluationContext at execute() top, system variables defined in
+  TypedContext::new (prelude_log const), plus the const-override wording fix
+  (` (constant)` suffix in define_variable's override report, oracle-verified).
+- Remaining in this slice: rejected-fixture events/meta (generator
+  `/tmp/gen_readline_events.py`, needs the implemented CLI for its
+  oracle-vs-CLI diagnostic assertion), FIXTURE_PLANS registration, fat
+  differential, then LANGUAGE.md row 39 → supported and REMAINING_BUILTINS
+  notes cleanup.
+- Follow-up slice (research delegated): `back_trace` runtime-error call-trace
+  population ("In call of g@int at <span>, defined at <span>." + "{ x=2 }"
+  frame dumps + builtin "built-in." lines, global.w:1100-1140) — no trace
+  machinery exists in the Rust evaluator yet.
+- Still deferred pending user decision: KL binary file formats (filekl.w,
+  no language builtin touches them).
+
 ## Checkpoint - 2026-08-21 (locator attitude slice RESOLVED; main = `e10de93`)
 
 Branch `codex/continue-atlas-port` = **main = `e10de93`** (the whole slice
