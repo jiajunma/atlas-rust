@@ -3,7 +3,24 @@
  "fixture_sha256": "629754af0246cea2c03c49d26899ec3c06d1be850d1a22210b252939ca8c8f1b",
  "oracle": "atlas",
  "stage": "typed-pipeline-swap",
- "reference_status": "pending_hpc_capture",
- "rust_status": "pending",
- "notes": "Multi-level break (parser.y:385 BREAK INT): break N unwinds N+1 loop levels; analysis rejection 'Using 'break 2' requires 3 nested levels of loops' when the nesting is shallower. Rust only has bare break."
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "3604567",
+ "reference_commit": "1835ee05b9598c324f96457809460da49f7935b6",
+ "reference_report_sha256": "6809616df5f0af3c3dc72e1a88391b5f51deca53f836e78608932591fa375667",
+ "source_archive_sha256": "711679e7c6cb71e19f3068a753dd4d60901cb55cfbe8074b158fcec7ff30effb",
+ "oracle_exit_status": 1,
+ "oracle_seconds": 0.012,
+ "oracle_maxrss_kb": 3640,
+ "oracle_maxrss_approximate": false,
+ "notes": "Multi-level break (parser.y:385 BREAK INT): break N unwinds N+1 loop levels; shallow nesting is an analysis error 'Using 'break 2' requires 3 nested levels of loops'. Reference frozen by HPC capture 3604567; Rust differential pending break INT.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
 }

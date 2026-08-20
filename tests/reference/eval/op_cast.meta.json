@@ -3,7 +3,24 @@
  "fixture_sha256": "99e3b637e2d8d9bc4457fe352346eafe200c381e8cf063e14d0d271c069f36e5",
  "oracle": "atlas",
  "stage": "typed-pipeline-swap",
- "reference_status": "pending_hpc_capture",
- "rust_status": "pending",
- "notes": "Expression-level operator/identifier cast (parser.y:381-383, operator '@' type | IDENT '@' type): selects one overload as a first-class function value; rejection wording 'No instance for mod@(int,int) found'. Rust currently rejects the syntax."
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "3604565",
+ "reference_commit": "1835ee05b9598c324f96457809460da49f7935b6",
+ "reference_report_sha256": "2bddcb4801bad164dff475aeba976bd92bbf70d63557b8295e73983315039cc4",
+ "source_archive_sha256": "711679e7c6cb71e19f3068a753dd4d60901cb55cfbe8074b158fcec7ff30effb",
+ "oracle_exit_status": 1,
+ "oracle_seconds": 0.011,
+ "oracle_maxrss_kb": 3604,
+ "oracle_maxrss_approximate": false,
+ "notes": "Expression-level operator/identifier cast (parser.y:381-383): selects one overload as a first-class function value (%@(int,int), +@(int,int), prints@string); rejection 'No instance for mod@(int,int) found'. Reference frozen by HPC capture 3604565; Rust differential pending op_cast.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
 }

@@ -1,0 +1,42 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "eval/op_cast",
+ "status": "verified_hpc_reference",
+ "events": [
+  {
+   "kind": "ReportLine",
+   "text": "Defined f: (int,int->int)\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "integer",
+    "value": 1
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Defined f2: (int,int->int)\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "integer",
+    "value": 7
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Defined g: (string->)\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "hi\n"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "No instance for mod@(int,int) found"
+  }
+ ]
+}

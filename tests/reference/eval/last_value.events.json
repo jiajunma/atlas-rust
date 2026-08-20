@@ -1,0 +1,40 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "eval/last_value",
+ "status": "verified_hpc_reference",
+ "events": [
+  {
+   "kind": "Value",
+   "value": {
+    "type": "integer",
+    "value": 10
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "integer",
+    "value": 10
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "integer",
+    "value": 11
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "integer",
+    "value": 11
+   }
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Modulo zero"
+  }
+ ]
+}
