@@ -282,6 +282,9 @@ FIXTURE_PLANS = (
     # (main.w:408-435); reference frozen by capture 3604377.
     FixturePlan(name="eval/readline_completions"),
     FixturePlan(name="eval/readline_completions_rejected"),
+    # back_trace runtime-error call trace (global.w:1135-1148, axis.w
+    # trace push points); reference frozen by capture 3604415.
+    FixturePlan(name="eval/back_trace"),
     FixturePlan(name="eval/slices"),
     FixturePlan(name="eval/subscriptions"),
     FixturePlan(name="eval/context"),

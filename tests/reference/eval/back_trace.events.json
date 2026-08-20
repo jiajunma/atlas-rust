@@ -1,0 +1,83 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "eval/back_trace",
+ "status": "verified_hpc_reference",
+ "events": [
+  {
+   "kind": "ReportLine",
+   "text": "Defined f: (int->int)\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Defined g: (int->int)\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[\"In call of g@int at <standard input>:3:0-4, defined at <standard input>:2:4-19.\",\"{ x=2 }\",\"In call of f@int at <standard input>:2:13-17, defined at <standard input>:1:4-16.\",\"{ x=2 }\",\"In call of %@(int,int) at <standard input>:1:13-16, built-in.\"]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[\"In call of %@(int,int) at <standard input>:5:0-3, built-in.\"]"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Defined h: (int,string->int)\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[\"In call of h@(int,string) at <standard input>:8:0-7, defined at <standard input>:7:4-27.\",\"{ a=3, s=\"\" }\",\"In call of %@(int,int) at <standard input>:7:23-27, built-in.\"]"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Defined z: (->int)\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[\"In call of z@void at <standard input>:11:0-3, defined at <standard input>:10:4-11.\",\"In call of %@(int,int) at <standard input>:10:8-11, built-in.\"]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[\"During iteration 2 of the for-loop\",\"{ i=0 }\",\"In call of %@(int,int) at <standard input>:13:20-23, built-in.\"]"
+   }
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Modulo zero"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Modulo zero"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Modulo zero"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Modulo zero"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Modulo zero"
+  }
+ ]
+}

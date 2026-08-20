@@ -1,9 +1,26 @@
 {
-  "fixture": "eval/back_trace.atlas",
-  "fixture_sha256": "ddbae7ba3906e251c97b6280a6d56699d48e0a8c65f857b747602f490820d145",
-  "oracle": "atlas",
-  "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_capture",
-  "rust_status": "pending",
-  "notes": "back_trace system variable populated on runtime errors (main.w:430-434, global.w:1135-1148 set_back_trace): In-call-of lines for user overloads (name@argtype, call span, defined-at span) and builtins (built-in.), frame dumps { x=2 } for parametered closures (skipped when parameterless), During-iteration-N lines for for-loops, sticky previous trace when a failing evaluation leaves an empty trace. Deferred: recursive-closure self-binding dumps (need closure print port), verbose argument(s): suffix."
+ "fixture": "eval/back_trace.atlas",
+ "fixture_sha256": "ddbae7ba3906e251c97b6280a6d56699d48e0a8c65f857b747602f490820d145",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "3604415",
+ "reference_commit": "cc49486c6f537d3bae93bed27e879091d6cb73b7",
+ "reference_report_sha256": "56343ced8d78cb68546f7209b08d47fc7a06c7ac462830ed469a4c5d08e10345",
+ "source_archive_sha256": "33c98dc8cccd90d2e5cad24d19e7309ec00b3114f1101d1bf7c3939ab22918f9",
+ "oracle_exit_status": 1,
+ "oracle_seconds": 0.012,
+ "oracle_maxrss_kb": 3668,
+ "oracle_maxrss_approximate": false,
+ "notes": "back_trace populated on runtime errors (main.w:430-434, global.w:1135-1148): In-call-of lines (user overloads with name@argtype + call/defined-at spans, builtins built-in.), frame dumps for parametered closures, During-iteration lines for for-loops, sticky previous trace on empty traces. Reference frozen by HPC capture 3604415; Rust differential pending.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
 }
