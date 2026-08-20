@@ -4,110 +4,55 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
-## Checkpoint - 2026-08-20 evening (locator attitude slice WIP; main stays at 8f5151e)
+## Checkpoint - 2026-08-21 (locator attitude slice RESOLVED; branch `f9dd1a4`)
 
-Branch `codex/continue-atlas-port` = main = `8f5151e` (all verified work
-pushed). ON TOP of that, the branch carries one WIP commit with the
-non-identity locator-attitude wiring — pushed to the branch ONLY, NOT to
-main, because one print-path scenario still diverges (see below).
+Branch `codex/continue-atlas-port` = `f9dd1a4`. The locator-attitude slice
+is COMPLETE pending HPC verification of the new fixture; the branch tip is
+intended for main once differential passes.
 
-### Verified and pushed this session (main `8f5151e`)
+### Resolved this session
 
-- `9700bec` reducibility_points: complex-root lower-bound map seeded new
-  keys at 0 (ghost points); now seeds at lwb (repr.cpp:868-872) and the
-  fraction set is normalized/ordered like upstream `std::set<RatNum>`.
-  Regression test + B2 battery byte-identical to oracle.
-- `091d7f7` PolP/KpolK coercions: Param->ParamPol via expand_final
-  (atlas-types.w:7710), KType->KTypePol via K_repr finals_for
-  (:5608). Fixes `first_term(p)`/`last_term(p)`/`K_type_pol(p)` on Param.
-  ALSO fixes a real bug in `finals_for_standard`'s Real arm
-  (rep_context.rs): the singular parity check must be guarded by
-  `eval==0`; non-singular real descents reflect lambda-rho 0-BASED with x
-  unchanged (repr.cpp:1283-1287). Note `finals_for` (same file, :1846)
-  always had the correct arm — the two are near-duplicates.
-- `7e820ae` rank-0 (T1/T2) support: Weyl transducer empty-piece guard,
-  topology radical = whole lattice for rootless data
-  (`IntegralBasis::full_space`), KGB graph tables stride `rank` not
-  `rank.max(1)`.
-- Fixtures `domain/polp_coercion` + `domain/torus_rank0`: HPC captures
-  3601990/3602031 PASS, events/meta committed (`8f5151e`), rust_status
-  pending_hpc_differential. **Fat differential 3602066 IN FLIGHT** —
-  collect it, and if PASS bump both metas to verified_hpc with
-  differential_job 3602066.
+- Differential **3602066 @ 8f5151e (fat): 328 PASS + 1 declared PARTIAL
+  (container_syntax_errors, its two pre-existing pending_features), 0
+  FAIL**. `domain/polp_coercion` + `domain/torus_rank0` metas bumped to
+  verified_hpc with differential_job 3602066 (commit `66ae893`).
+- WIP `2717af2`: non-identity locator-attitude wiring (build_partial
+  cofolding, lookup merge transport via `State::overlap_hits` +
+  make_relative_to + shift_srm/transform_srm, 3 language gates removed).
+- `f9dd1a4` ROOT CAUSE of the remaining print divergence: upstream
+  `twisted_KL_column_at_s` (repr.cpp:2378-2382) and the
+  `twisted_deformation` reducibility loop (repr.cpp:2605-2606) use the
+  PARTIAL `Rep_table::lookup`, so deform pools the small Bruhat-interval
+  block. `with_integral_block`'s ProperSubsystem arm used
+  `lookup_full_block` (slice-plan choice), pooling a full block at a
+  different attitude; later `print_partial_common_block` calls then hit a
+  record the oracle never has. Switching the arm to `lookup`
+  (domain_builtins.rs) fixed ALL divergences: probes lA-lE +
+  probe_locator/probe_locator2 byte-identical to the oracle, covering
+  deform-then-print in both orders and the mixed KL/full-deform battery.
+  Note the oracle's printed gamma-lambda depends on which locator created
+  the pooled record (shift-only print over attitude-stored rows,
+  atlas-types.w:6726-6732) — pool shape is observable, not just values.
+- New fixture `domain/locator_attitude` (registered in
+  pipeline_swap_diff.py): B2 split form 2, twisted_deform then
+  cross-attitude prints, twisted_KL_sum_at_s, twisted_full_deform both
+  params, closing prints. Locally byte-identical to oracle.
+  **HPC capture 3603952 IN FLIGHT** — then generate events/meta
+  (template /tmp/gen_polp_coercion_events.py), run fat differential, bump
+  to verified_hpc.
+- Gates: atlas-real-group 479/479, atlas-core 329/329, clippy -D
+  warnings, fmt; 29 twisted/partial/block fixtures locally byte-identical
+  (3 timed_* rejected fixtures differ only in the known accepted
+  diagnostic rendering — they PASS structurally on HPC).
 
-### WIP commit (branch only): non-identity locator attitude, step 3 wiring
+### Next steps
 
-Step-2 machinery already existed unwired: `block_modifier.rs`
-(transform_srm/shift_srm/make_relative_to/sr_with_modifier),
-`locator.rs`, `PartialBlockOracle::with_modifier`, `KlSumParent::sr`
-Partial arm via sr_with_modifier. This commit wires:
-
-- `ExtBlock::build_partial` (ext_block.rs): ports the cofolding
-  permutation (ext_block.cpp:636-663) — induced() orbit permutation,
-  forward-push of folded diagram/orbits/data (`push_permute`, semantics
-  v'[pi[i]]=v[i], permutations_def.h:62-80; dynkin::permute pushes both
-  axes), orbit member rewrite through bm.simple_pi with pair sorting.
-  Unit test `partial_ext_block_cofolds_non_identity_attitude` pins the
-  A2 swap case (data tables swap, orbits/diagram unchanged).
-- `RepTable::lookup` merge (rep_table.rs): the relative-attitude NYI is
-  gone; overlapping records at a different locator now get a per-record
-  `sub_to_new` modifier via `make_relative_to` (needs the hit row +
-  interval element: new `State::overlap_hits`), and pool rows are
-  transported by shift_srm + transform_srm::<false> (repr.cpp:1601-1607).
-- Language gates removed: twisted_reducibility_lookup,
-  with_integral_block ProperSubsystem arm, print_partial_common_block
-  (domain_builtins.rs). `tuned_partial_ext_block_with_modifier` now
-  passes the locator's simp_int parent numbers to tune_signs
-  (ext_block.cpp:1711-1712) instead of query-order parent_root(s);
-  identical for identity attitudes.
-
-### Verified in the WIP
-
-- The q2/pb shared-pool collision (the original blocker): one session
-  running twisted_deform(pb) then twisted_deform(q2) then both again —
-  byte-identical to oracle, both orders. Battery /tmp/probe_locator.atlas.
-- print_partial_common_block(pb/q2) alone, both orders: identical
-  (/tmp/lA.atlas, /tmp/lB.atlas).
-- Local gates: atlas-real-group 479/479, atlas-core 329/329, clippy
-  -D warnings clean, fmt applied.
-
-### KNOWN DIVERGENCE (why this is not on main)
-
-Case C (/tmp/lC.atlas): `twisted_deform(pb)` (interns the block via
-lookup_full_block at made-dominant pb's locator) then
-`print_partial_common_block(q2)`. Oracle prints q2-attitude
-gamma-lambdas ([1,-1]/2,[1,-1]/2,[3,3]/2); Rust prints the stored
-pb-attitude values ([3,-3]/2,[3,-3]/2,[1,1]/2). Analysis so far:
-
-- Upstream add_block_below REBUILDS the merged block at the new query's
-  attitude, so its shift-only print (block.shift(bm.shift),
-  atlas-types.w:6713-6735) always shows query-attitude rows.
-- Rust's `located_common_block_rows` applies only `relative_shift()`.
-  Per-row deltas are NOT constant ([-1,1] for x=4/5 rows, [1,1] for
-  x=10), so a pure shift can never map; the stored rows must be at the
-  wrong attitude — i.e. q2's lookup either probed into pb's record
-  directly (canonical key collision across locators?) or the merge
-  transport produced pb-attitude rows.
-- Likely fix direction: in `located_common_block_rows`, transport each
-  stored row with the full modifier (shift_srm + transform_srm::<false>,
-  i.e. the sr_with_modifier pattern) instead of shift-only; for identity
-  attitudes this reduces to the current verified behavior. Check whether
-  x columns stay put (transform moves x on complex cross; here the
-  oracle's x columns are unchanged, so w's per-row action must be
-  real-type affine reflections — verify).
-- Also verify why the merge/rebuild did not produce a q2-attitude block:
-  instrument `RepTable::lookup` for /tmp/lC.atlas (does the probe at the
-  top hit pb's record? does overlap_hits fire?).
-
-### Next steps after fixing case C
-
-1. Re-run /tmp/lC.atlas + /tmp/probe_locator2.atlas vs oracle.
-2. New fixture domain/locator_attitude (the q2/pb combined session,
-   prints + deforms), HPC capture + differential, verified_hpc.
-3. Then push the WIP to main.
-4. Remaining queue after this slice: agent-93 audit leftovers are nearly
-   exhausted — recheck docs/REMAINING_BUILTINS.md top entries against
-   the audit (much of the ~725-747 paragraph is stale).
+1. Collect capture 3603952 → events/meta (rust_status
+   pending_hpc_differential), commit, submit fat differential, on PASS
+   bump verified_hpc and push the whole slice to main.
+2. Remaining queue: agent-93 audit leftovers nearly exhausted — recheck
+   docs/REMAINING_BUILTINS.md top entries against the audit (much of the
+   ~725-747 paragraph is stale).
 
 ## Checkpoint - 2026-08-20 morning (differential 3591705 all PASS; corpus 315+)
 

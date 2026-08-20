@@ -34,14 +34,16 @@ Two findings recorded from that slice (agent-91):
   invariant rejects instead. Affects the slice-3 paths identically
   (`twisted_KL_sum_at_s` fails the same way on that anchor). Any fixture
   with gamma on the top alcove wall of a non-simply-laced datum hits this.
-- **q2/pb locator collision** (RESOLVED for the deform path 2026-08-20
-  evening, WIP commit on branch): `param(KGB(rfb,10),…)` and the pb anchor
-  intern the same block record under different locators; the second lookup
-  gets a non-identity query-to-stored attitude. The relative-attitude
-  merge + cofolded ext_block generators are now wired (see HANDOFF top
-  checkpoint); the combined-session deform battery is byte-identical to
-  the oracle. The print path (print_partial_common_block after a
-  cross-attitude deform intern) still diverges — tracked in HANDOFF.
+- **q2/pb locator collision** (FULLY RESOLVED 2026-08-21, branch
+  `f9dd1a4`): `param(KGB(rfb,10),…)` and the pb anchor intern the same
+  block record under different locators; the second lookup gets a
+  non-identity query-to-stored attitude. The relative-attitude merge +
+  cofolded ext_block generators are wired, AND the final print-path
+  divergence turned out to be a pool-shape bug: `with_integral_block`
+  used `lookup_full_block` where upstream uses the partial `lookup`
+  (repr.cpp:2378-2382, 2605-2606), so deform interned a full block the
+  oracle never pools. Fixture `domain/locator_attitude` pins the
+  combined deform+print battery; HPC capture 3603952 in flight.
 
 ## twisted_full_deform partial lookup landed locally (2026-08-20, HPC pending)
 
