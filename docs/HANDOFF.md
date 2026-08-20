@@ -3957,3 +3957,14 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   binary file format (filekl.w) — no language builtin touches it; deferred
   pending USER DECISION (exclude from the language gate vs port filekl).
   That decision gates goal completion.
+  - Closure-printer probes (oracle, locked 2026-08-21): let-bound closures
+    in frame dumps print multi-line too — `{ g=Function defined at
+    <standard input>:1:17-29\n(y): %@(int,int)(y,0) }` (name-anchored def
+    span; body = TYPED pretty-print with internal `op@type(args)` prefix
+    form); the rec_fun self-binding is the same with a `Recursive ` prefix
+    and `b = ` name line. Dynamic calls (through variables) trace as
+    `In call of g at 1:33-37, defined at 1:17-29.` — no @type suffix but
+    WITH defined-at taken from the closure value's span. Vec values dump
+    as `[ 3 ]`. So the slice after counted-for tracing is: typed-expr
+    pretty-printer + closure printer + let-frame dumps + dynamic-call
+    defined-at (covers back_trace_let_rec.atlas).
