@@ -4,7 +4,7 @@
  "oracle": "atlas",
  "stage": "typed-pipeline-swap",
  "reference_status": "verified_hpc_reference",
- "rust_status": "pending_hpc_differential",
+ "rust_status": "verified_hpc",
  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
@@ -16,11 +16,13 @@
  "oracle_seconds": 0.01,
  "oracle_maxrss_kb": 4300,
  "oracle_maxrss_approximate": false,
- "notes": "full_deform over partial common blocks (444e841+466e066): B2 anchors p (integral, nu=[1,-1]/1), pb (half-integral nu=[1,-1]/2), and c10 (non-final) \u2014 each yields two 1* K_type terms with per-row lambda from the interval-below partial block. Reference frozen by HPC capture 3586752; Rust differential pending.",
+ "notes": "full_deform over partial common blocks (444e841+466e066): B2 anchors p (integral, nu=[1,-1]/1), pb (half-integral nu=[1,-1]/2), and c10 (non-final) \u2014 each yields two 1* K_type terms with per-row lambda from the interval-below partial block. Reference frozen by HPC capture 3586752; Rust differential 3599345 PASS (326 PASS + 1 declared PARTIAL, 0 FAIL).",
  "hpc_capture": {
   "fresh_process_required": true,
   "timeout_seconds": 30,
   "estimated_seconds": 5,
   "estimated_memory_mb": 128
- }
+ },
+ "differential_job": "3599345",
+ "differential_report_sha256": "e234fdee9f72eaefd818216af4ca33cfe65ae36c3454adc90faa9c1abdb30b4a"
 }
