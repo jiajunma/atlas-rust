@@ -94,6 +94,10 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/twisted_deform_proper"),
     FixturePlan(name="domain/twisted_deform_proper_terms"),
     FixturePlan(name="domain/twisted_deform_proper_rejected"),
+    # full_deform over partial common blocks (466e066, next-wave B): B2
+    # integral/half-integral/non-final anchors. Reference frozen by HPC
+    # capture 3586752.
+    FixturePlan(name="domain/full_deform_proper"),
     # P2 Block W-graph overloads captured by HPC oracle 3543699.  The
     # full-integral A1 `block(Param)` path now uses the shared RepTable lookup;
     # the proper-integral KL_column case is covered by the shared subsystem

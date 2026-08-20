@@ -1,0 +1,26 @@
+{
+ "fixture": "domain/full_deform_proper.atlas",
+ "fixture_sha256": "b39649aa2a70eac71798ce77f6b06cdcca3ab79f413a9d9c454d8f703aee930c",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "3586752",
+ "reference_commit": "444e84181ade04c22777977738fa53654931ed64",
+ "reference_report_sha256": "a803873fdf432c2510a9f1769dafa8dd527ce950d52ebbb2ffba137059e19c36",
+ "source_archive_sha256": "b8b308f70441239c1cbd3bef4d9b157d199c8ee2edf3ab89f482790ca07c3eb9",
+ "oracle_exit_status": 0,
+ "oracle_seconds": 0.01,
+ "oracle_maxrss_kb": 4300,
+ "oracle_maxrss_approximate": false,
+ "notes": "full_deform over partial common blocks (444e841+466e066): B2 anchors p (integral, nu=[1,-1]/1), pb (half-integral nu=[1,-1]/2), and c10 (non-final) \u2014 each yields two 1* K_type terms with per-row lambda from the interval-below partial block. Reference frozen by HPC capture 3586752; Rust differential pending.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
+}
