@@ -4904,6 +4904,16 @@ enum BuiltinImpl {
     /// a hidden special instance matched by `hidden_special_variant` for any
     /// a-priori argument type.
     Prints,
+    /// The variadic generic `print@@T` (axis.w:8767, wrapper :8796-8802):
+    /// prints the argument verbatim (strings quoted) and returns it
+    /// unchanged at value-demanding levels.
+    Print,
+    /// The variadic generic `to_string@@T` (axis.w:8769, wrapper
+    /// :8841-8846): the stripped concatenation as a string value.
+    ToString,
+    /// The variadic generic `error@@T` (axis.w:8771, wrapper :8855-8859):
+    /// raises the stripped concatenation as a runtime error.
+    Error,
 }
 
 #[derive(Clone, Copy)]
@@ -5113,6 +5123,28 @@ impl Builtin {
                 context.print_text(prints_text(&arguments));
                 Ok(at_builtin_level(level, || Value::Tuple(Vec::new())))
             }
+            BuiltinImpl::Print => {
+                // axis.w:8796-8802: the argument prints verbatim (the
+                // standard value printer, quotes and all) at every level,
+                // and is returned unchanged when a value is demanded.
+                let value = if arguments.len() == 1 {
+                    arguments.into_iter().next().expect("one argument")
+                } else {
+                    Value::Tuple(arguments)
+                };
+                context.print_text(format!("{value}\n"));
+                Ok(at_builtin_level(level, || value))
+            }
+            BuiltinImpl::ToString => {
+                // axis.w:8841-8846: the stripped concatenation, no trailing
+                // newline; no value is produced in void context.
+                let text = stripped_text(&arguments);
+                Ok(at_builtin_level(level, || Value::String(text)))
+            }
+            BuiltinImpl::Error => {
+                // axis.w:8855-8859: always throws; the level is irrelevant.
+                Err(runtime(stripped_text(&arguments), span))
+            }
         }
     }
 }
@@ -5246,8 +5278,9 @@ fn at_builtin_level(level: Level, value: impl FnOnce() -> Value) -> Option<Value
 
 /// `to_string_aux` (axis.w:8819-8840) applied to the variadic argument
 /// tuple: string components print without quotes, every other value prints
-/// like `print`; one trailing newline (the wrapper's `std::endl`).
-fn prints_text(arguments: &[Value]) -> String {
+/// like `print`. No trailing newline — `prints` adds the wrapper's
+/// `std::endl` itself, `to_string` and `error` do not.
+fn stripped_text(arguments: &[Value]) -> String {
     fn component(text: &mut String, value: &Value) {
         match value {
             Value::String(string) => text.push_str(string),
@@ -5272,8 +5305,13 @@ fn prints_text(arguments: &[Value]) -> String {
             component(&mut text, value);
         }
     }
-    text.push('\n');
     text
+}
+
+/// `prints_wrapper`'s output (axis.w:8850-8853): the stripped text plus one
+/// trailing newline.
+fn prints_text(arguments: &[Value]) -> String {
+    format!("{}\n", stripped_text(arguments))
 }
 
 fn expect_unary(mut arguments: Vec<Value>) -> Value {
@@ -8128,6 +8166,35 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 overload_visible: false,
                 implementation: BuiltinImpl::Prints,
             },
+            // print@@T / to_string@@T / error@@T (axis.w:8767-8771): the
+            // remaining variadic specials, likewise matched by
+            // `hidden_special_variant` for any a-priori type; print's
+            // identity result and error's unknown result are produced
+            // there, not from these placeholder rows.
+            Builtin {
+                name: "print",
+                arg_type: Type::Undetermined,
+                result: Type::Undetermined,
+                hunger: 0,
+                overload_visible: false,
+                implementation: BuiltinImpl::Print,
+            },
+            Builtin {
+                name: "to_string",
+                arg_type: Type::Undetermined,
+                result: Type::Primitive(Prim::String),
+                hunger: 0,
+                overload_visible: false,
+                implementation: BuiltinImpl::ToString,
+            },
+            Builtin {
+                name: "error",
+                arg_type: Type::Undetermined,
+                result: Type::Undetermined,
+                hunger: 0,
+                overload_visible: false,
+                implementation: BuiltinImpl::Error,
+            },
             // global.w:4478-4493: retain zero-row/zero-column dimensions,
             // narrow and bound both dimensions before the no-value gate.
             scalar_builtin(
@@ -10424,6 +10491,24 @@ fn hidden_special_variant(
         "prints" => {
             let index = hidden_special_builtin("prints")?;
             Some((index, Type::void()))
+        }
+        // print@@T (axis.w:8767, selection :6780-6783): identity function
+        // type — the call's result type is the argument type itself.
+        "print" => {
+            let index = hidden_special_builtin("print")?;
+            Some((index, a_priori_type.clone()))
+        }
+        // to_string@@T (axis.w:8769, selection :6788-6790): always string.
+        "to_string" => {
+            let index = hidden_special_builtin("to_string")?;
+            Some((index, string_type()))
+        }
+        // error@@T (axis.w:8771, selection :6791-6794): the upstream result
+        // is unknown_type, fitting every context (the call always throws
+        // before the value is used); Undetermined specialises the same way.
+        "error" => {
+            let index = hidden_special_builtin("error")?;
+            Some((index, Type::Undetermined))
         }
         _ => None,
     }
@@ -16212,6 +16297,55 @@ mod tests {
     }
 
     #[test]
+    fn print_to_string_error_match_the_oracle() {
+        // axis.w:8767-8771, 8796-8859: print displays the argument tuple
+        // verbatim and returns it unchanged; to_string yields the stripped
+        // concatenation without a newline; error raises it as a runtime
+        // error (also with zero arguments).
+        let mut context = TypedContext::new();
+        let events = context
+            .execute(&command("print(\"a\", 1)"))
+            .expect("print runs");
+        match &events[..] {
+            [TypedCommandEvent::ReportLine { text, .. }, TypedCommandEvent::Value { value, .. }] => {
+                assert_eq!(text, "(\"a\",1)\n");
+                assert_eq!(value.to_string(), "(\"a\",1)");
+            }
+            other => panic!("unexpected events: {other:?}"),
+        }
+        let events = context.execute(&command("print(5)")).expect("print runs");
+        match &events[..] {
+            [TypedCommandEvent::ReportLine { text, .. }, TypedCommandEvent::Value { value, .. }] => {
+                assert_eq!(text, "5\n");
+                assert_eq!(value, &Value::Integer(5.into()));
+            }
+            other => panic!("unexpected events: {other:?}"),
+        }
+        for (source, expected) in [
+            ("to_string(42)", "\"42\""),
+            ("to_string([1,2], 3, \"x\")", "\"[1,2]3x\""),
+            ("to_string()", "\"\""),
+            ("to_string(1, \"a\", [2,3], (4,5))", "\"1a[2,3](4,5)\""),
+        ] {
+            let events = context.execute(&command(source)).expect("to_string runs");
+            match &events[..] {
+                [TypedCommandEvent::Value { value, .. }] => {
+                    assert_eq!(value.to_string(), expected, "source: {source}")
+                }
+                other => panic!("unexpected events for {source}: {other:?}"),
+            }
+        }
+        let error = context
+            .execute(&command("error(\"a\", 1, [2])"))
+            .expect_err("error raises");
+        assert!(error.to_string().contains("a1[2]"), "error: {error}");
+        let error = context
+            .execute(&command("error()"))
+            .expect_err("zero-argument error raises");
+        assert!(matches!(error.kind, ErrorKind::Runtime), "error: {error}");
+    }
+
+    #[test]
     fn relation_lattice_builtins_flow_through_tuple_results() {
         for (source, expected) in [
             (
@@ -16267,11 +16401,14 @@ mod tests {
         assert_eq!(STARTUP_COMPLETION_NAMES.len(), 294, "oracle startup count");
         let startup: BTreeSet<&str> = STARTUP_COMPLETION_NAMES.iter().copied().collect();
         for builtin in builtin_registry() {
-            // `prints` is a special operator upstream (axis.w:1798, 2504),
-            // never installed into the overload table, so the oracle's
-            // startup completions do not contain it (probe:
-            // `readline_completions("print")` lists no `prints`).
-            if builtin.name == "prints" {
+            // The variadic specials are special operators upstream
+            // (axis.w:1798-1816, 2504), never installed into the overload
+            // table, so the oracle's startup completions contain none of
+            // them (probes: `readline_completions("print")` lists the
+            // print_* domain printers but no `print`/`prints`;
+            // `readline_completions("to_")` and `("err")` likewise lack
+            // `to_string`/`error`).
+            if matches!(builtin.name, "print" | "prints" | "to_string" | "error") {
                 continue;
             }
             assert!(
