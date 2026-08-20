@@ -1,0 +1,9 @@
+{
+ "fixture": "eval/case_dot_label.atlas",
+ "fixture_sha256": "83809a3b6fdefb1c6ed2ef9c7c6911c9c48ef12da9abb66d9103431faf54c39f",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "pending_hpc_capture",
+ "rust_status": "pending",
+ "notes": "caselist 'pattern . IDENT : expr' form (parser.y:419,426): label after dot with binding pattern before it; '(v).tag', 'v.tag', '(a,b).tag', '(,).tag' throwaway. Rejected: unknown label -> 'Branch has label X not associated to any variant of the union type T'; duplicate label -> 'Multiple branches with label X' (both category type). Quirk: bare 'set_type name = (...)' without [...] prints the definition but does not register injector tags, so later discrimination fails (Rust already mirrors)."
+}
