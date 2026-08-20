@@ -569,6 +569,12 @@ FIXTURE_PLANS = (
     # Rank-0 (torus T1/T2) surface: inner_class, real_form, print_KGB,
     # param and reducibility_points on rootless data.
     FixturePlan(name="domain/torus_rank0"),
+    # Non-identity locator attitude: twisted_deform pools the partial
+    # interval block (repr.cpp:2605-2606 lookup, not a full block), then
+    # cross-attitude prints transport rows through the block modifier
+    # (make_relative_to, repr.cpp:338-350; print shift-only,
+    # atlas-types.w:6726-6732).
+    FixturePlan(name="domain/locator_attitude"),
     # KTypePol/ParamPol arithmetic: binary sums/differences, Split-scaled
     # products, the (Split,KType) term-list add, binary =/!=, and
     # truncate_above_height.

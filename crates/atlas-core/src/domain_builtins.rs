@@ -8229,14 +8229,17 @@ fn with_integral_block<T>(
         IntegralBlockScope::ProperSubsystem => {
             // Rep_table::lookup (repr.cpp:1796-1824) as
             // Rep_table::twisted_KL_column_at_s calls it
-            // (repr.cpp:2378-2382), in the lookup_full_block shape the
-            // slice plan fixes (docs/slices/twisted_ext_proper_workorder.md
-            // slice 3): the query made dominant, its full common block on
-            // gamma's integral subsystem, and its row there.
+            // (repr.cpp:2378-2382) and twisted_deformation does at each
+            // reducibility point (repr.cpp:2605-2606): the query
+            // normalised, its PARTIAL common block (Bruhat interval below
+            // the seed), and its row there.  The partial shape matters
+            // beyond the computed value: the pooled record is the small
+            // interval block, so later prints observe the same pool state
+            // as the oracle.
             let located = parameter
                 .context
                 .rep
-                .lookup_full_block(sr)
+                .lookup(sr)
                 .map_err(|error| structure_diagnostic(error, span))?;
             let prepared = located.prepared_query();
             let seed = StandardReprMod::mod_reduce(rc, prepared)
