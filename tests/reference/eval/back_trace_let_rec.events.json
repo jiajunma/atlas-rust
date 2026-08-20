@@ -1,0 +1,47 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "eval/back_trace_let_rec",
+ "status": "verified_hpc_reference",
+ "events": [
+  {
+   "kind": "ReportLine",
+   "text": "Defined lf: (int->int)\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[\"In call of lf@int at <standard input>:2:0-5, defined at <standard input>:1:4-30.\",\"{ x=3 }\",\"{ y=4 }\",\"In call of %@(int,int) at <standard input>:1:27-30, built-in.\"]"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Defined bomb: (int->int)\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[\"In call of bomb@int at <standard input>:5:0-7, defined at <standard input>:4:11-63.\",\"{ b=Recursive function defined at <standard input>:4:11-63"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "b = (n):  if =@(int,int)(n,0) then %@(int,int)(1,0) else b(pred@int(n)) fi , n=1 }\",\"In call of b at <standard input>:4:54-60, defined at <standard input>:4:11-63.\",\"{ b=Recursive function defined at <standard input>:4:11-63\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "b = (n):  if =@(int,int)(n,0) then %@(int,int)(1,0) else b(pred@int(n)) fi , n=0 }\",\"In call of %@(int,int) at <standard input>:4:45-48, built-in.\"]\n"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Modulo zero"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Modulo zero"
+  }
+ ]
+}
