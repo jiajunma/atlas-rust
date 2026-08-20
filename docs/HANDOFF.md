@@ -117,9 +117,8 @@ pb-attitude values ([3,-3]/2,[3,-3]/2,[1,1]/2). Analysis so far:
   Four metas bumped to verified_hpc: twisted_deform_proper,
   twisted_deform_proper_terms, twisted_deform_proper_rejected (capture
   3591165), twisted_full_deform_proper (capture 3586686).
-- full_deform_proper events/meta frozen from capture 3586752 and
-  registered (`e3fa19f`); rust_status pending_hpc_differential — needs
-  one more fat differential at >= e3fa19f.
+- full_deform_proper events/meta frozen from capture 3586752 and verified by
+  fat differential 3599345 (`bc94a31`).
 - Wave A (non-integral common block work order) confirmed FULLY landed:
   `length(Param)` reroutes through `rep.lookup(&dominant)`
   (domain_builtins.rs:13970-13991), `dual_KL_block` via lookup_full_block
@@ -152,9 +151,8 @@ pb-attitude values ([3,-3]/2,[3,-3]/2,[1,1]/2). Analysis so far:
   parameters.
 - Commits: `444e841` (fixture), `466e066` (algorithm), `b267f2a` (export).
   Local crate tests, clippy, fmt, and the focused deformation regressions
-  pass. HPC oracle capture for this new fixture is submitted as job
-  `3586752`; reference artifacts and differential registration remain
-  pending. Keep `fiber_probe.rs` untracked (user-owned).
+  pass. HPC capture 3586752 and differential 3599345 pass. Keep
+  `fiber_probe.rs` untracked (user-owned).
 
 - `twisted_full_deform` reducibility recursion now uses
   `RepTable::lookup` interval-below partial blocks for both Full and

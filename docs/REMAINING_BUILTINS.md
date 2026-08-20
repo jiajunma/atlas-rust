@@ -1,6 +1,6 @@
 # Remaining builtin coverage (post-language-gate)
 
-## full_deform common-block recursion landed locally (2026-08-20, HPC pending)
+## full_deform common-block recursion verified (2026-08-20)
 
 `full_deform` now looks up the interval-below partial block at each
 reducibility point and evaluates singular contributions with the stored
@@ -9,9 +9,8 @@ B2 `[13]` terms from the previous full-block approximation. The accepted
 anchor is `tests/fixtures/domain/full_deform_proper.atlas`; local output
 matches the oracle for integral, half-integral, and non-final parameters.
 Commits `466e066` and `b267f2a` contain the implementation and export. HPC
-capture job `3586752` is complete but its artifacts still need harvesting;
-do not mark this fixture `verified_hpc` until the differential is registered
-and passes.
+capture `3586752` and fat differential `3599345` both pass; the fixture is
+now `verified_hpc`.
 
 ## twisted_deform proper subsystems landed (2026-08-19/20, capture 3591165 in flight)
 
