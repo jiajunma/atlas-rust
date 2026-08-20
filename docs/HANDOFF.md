@@ -4,11 +4,10 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
-## Checkpoint - 2026-08-21 (locator attitude slice RESOLVED; branch `f9dd1a4`)
+## Checkpoint - 2026-08-21 (locator attitude slice RESOLVED; main = `e10de93`)
 
-Branch `codex/continue-atlas-port` = `f9dd1a4`. The locator-attitude slice
-is COMPLETE pending HPC verification of the new fixture; the branch tip is
-intended for main once differential passes.
+Branch `codex/continue-atlas-port` = **main = `e10de93`** (the whole slice
+landed on main after differential 3603961 PASS).
 
 ### Resolved this session
 
@@ -47,12 +46,16 @@ intended for main once differential passes.
 
 ### Next steps
 
-1. Collect capture 3603952 → events/meta (rust_status
-   pending_hpc_differential), commit, submit fat differential, on PASS
-   bump verified_hpc and push the whole slice to main.
-2. Remaining queue: agent-93 audit leftovers nearly exhausted — recheck
-   docs/REMAINING_BUILTINS.md top entries against the audit (much of the
-   ~725-747 paragraph is stale).
+1. ~~Collect capture 3603952~~ DONE: differential **3603961 @ 6384b05:
+   329 PASS + 1 declared PARTIAL**, locator_attitude verified_hpc, and the
+   whole slice pushed to **main = `e10de93`**.
+2. Registry audit (agent-94, 2026-08-21): all 469 upstream `(name,args)`
+   builtin pairs + 29 coercions ported; 0 missing overloads; no reachable
+   NYI gates. Only deliberate exclusions remain: `readline_completions`
+   (TTY-only) and KL binary file formats (no language builtin touches
+   them) — both deferred pending a user decision. The language-level port
+   is effectively COMPLETE; remaining work is semantic hardening (larger
+   differential corpora, more groups/types) rather than missing features.
 
 ## Checkpoint - 2026-08-20 morning (differential 3591705 all PASS; corpus 315+)
 

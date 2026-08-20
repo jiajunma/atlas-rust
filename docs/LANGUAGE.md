@@ -37,7 +37,7 @@ differential report naming the job.
 | exceptions and runtime errors | supported | B12 + rejected companions across all slices; `3501467`, `3501643` |
 | Atlas commands and batch files | supported | B7 forget/die, B9 redirect, B10 include, B13 dont, showall, quit, set quiet/verbose; `3501467`, `3501643`, `3506272` |
 | interactive input and completion | partial | TTY banner/prompt implemented; readline completion remains pending |
-| domain objects and mathematical operations | partial | Broad fixture coverage is HPC-verified, including P3 parameter twist `3543916`, but registry/NYI audits still find missing signatures, result/hunger mismatches, explicit unsupported paths, and silent deformation approximations; see `REMAINING_BUILTINS.md`. |
+| domain objects and mathematical operations | supported | Full builtin registry ported (all 469 upstream `(name,args)` signatures + 29 coercions; audit 2026-08-21), including locator-attitude block pooling (`3603961`), P3 parameter twist `3543916`, and the block/KL/deform wave; see `REMAINING_BUILTINS.md` for the historical ledger |
 | KL and file formats | planned | filekl.w is used only by stand-alone utilities; zero interpreter references — no Atlas-language builtin reads/writes KL binary files. Deferred outside the language-only gate pending a user decision (HANDOFF 2026-08-12b) |
 
 No row moves to `supported` merely because Rust compiles. It needs a reference
@@ -70,22 +70,18 @@ does not close the upstream builtin registry.  As of 2026-08-18
 (docs/REMAINING_BUILTINS.md registry reconciliation), all 305
 `atlas-types.w` `(name,args,result)` signatures have exact Rust
 registrations, including `block(Param)` and timed `full_deform(Param,int)`.
-What remains: (a) the `global.w` general-purpose builtins are now FULLY
-dispositioned (all four batches verified_hpc; final batch 4 —
-`swiss_matrix_knife`, `mod2_section`, `subspace_normal` — by fat
-differential 3577111 at `ae6723b`; the only leftovers are two
-parser-layer gaps, 2-D slice syntax `M[i:k,j:l]` and the commabarlist
-row display `[a,b | c,d]`, recorded in `REMAINING_BUILTINS.md`, plus the
-documented `readline_completions` exclusion), and (b) reachable loud
-NYIs in the representation-theory core: generator-attitude transport
-(the locator slice: canonical Reduced_param keying landed at `38a81f8`,
-consumer transport in flight), proper-subsystem twisted/ext recursion
-(slice-1A ExtBlock-over-PartialBlock landed at `1e36a3c`), non-integral
-common blocks, and the cross-block partial merge (landed at `584717a`,
-verified by fat differential 3581761). Readline completion (TTY-only) and
-KL binary file formats (no Atlas-language builtin touches them; filekl.w
-serves stand-alone utilities only) remain deferred outside the
-language-only gate pending a user decision.
+As of 2026-08-21 the registry audit (agent-94) confirms all 469 upstream
+`(name,args)` builtin pairs across `atlas-types.w` + `global.w` and all 29
+coercions have exact Rust counterparts, the 2-D slice `M[i:k,j:l]` and
+commabarlist row display `[a,b | c,d]` syntaxes are desugared in the grammar
+(the hidden `"matrix slicer"`/`"transpose "` copies need no registration),
+and no loud NYI gate is reachable from user code. The locator-attitude
+slice closed the last representation-core gap: cross-attitude block pooling
+and printing (`domain/locator_attitude`, fat differential `3603961`,
+329 PASS + 1 declared PARTIAL). Readline completion (TTY-only,
+`readline_completions`) and KL binary file formats (no Atlas-language
+builtin touches them; filekl.w serves stand-alone utilities only) remain
+deferred outside the language-only gate pending a user decision.
 
 ## Source compatibility rules
 
