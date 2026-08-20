@@ -4002,3 +4002,25 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
     acceptance). NAMED plain counted `for i:3~ do i od` IS accepted and
     counts down ([2,1,0]); only the anonymous form lacks the count-side
     tilde.
+
+## 2026-08-21c: unit-production audit — three more gaps frozen
+
+- Systematic parser.y unit (339-386) vs Rust Atom audit found three more
+  gaps, all probed and frozen:
+  - **op_cast** (parser.y:381-383): `%@(int,int)`, `+@(int,int)`,
+    `prints@string` select one overload as a value; rejection
+    `No instance for mod@(int,int) found` (category type). Fixture
+    eval/op_cast, capture 3604565.
+  - **`$` last-value unit** (parser.y:343 make_dollar): value of the last
+    evaluated expression, sticky across runtime errors. Fixture
+    eval/last_value, capture 3604566.
+  - **break N** (parser.y:385 BREAK INT): unwinds N+1 loop levels (Rust's
+    Control::Break(levels) already unwinds — only the parser production
+    and the analysis-time depth check are missing); rejection
+    `Using 'break 2' requires 3 nested levels of loops`. Fixture
+    eval/break_levels, capture 3604567.
+  All three events/meta frozen (`9788171`), registration deferred.
+- Dispatch plan: op_cast + `$` + the anonymous-counted tilde diagnostic
+  wording (`expecting IF or DO or FOR`) go to agent-99's next resume
+  (grammar area, same worktree); break N goes to the main tree after
+  agent-101 (closure printer) frees typed.rs.
