@@ -3,3 +3,9 @@ for i:3 from 0~ do i od
 set i=0
 while i<3 do begin i:=i+1; i end~ od
 for i:3 downto 2 do i~ od
+for i:3~ do i od
+for :3~ do 7 od
+for :3 from 0 do 9 od
+for i:3~ from 5 do i od
+for i:3 downto 0~ do i od
+while false do 1 od~
