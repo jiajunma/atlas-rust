@@ -185,10 +185,12 @@ pub enum Expr {
     },
     /// `while condition do body od` (parser.y:364): each iteration's body
     /// value is collected into a row; a missing condition (`while do …`)
-    /// is the constant true (parser.y:443).
+    /// is the constant true (parser.y:443). `out_reversed` is the tilde
+    /// before `od` (flags bit 1): the collected row is reversed.
     While {
         condition: Option<Box<Expr>>,
         body: Box<Expr>,
+        out_reversed: bool,
         span: SourceSpan,
     },
     /// `for pattern[@index] in row do body od` (parser.y:506-531). Boxed
@@ -323,7 +325,12 @@ pub struct CountedForLoop {
     /// `downto` counts down to the bound inclusive; otherwise the loop
     /// takes `count` increasing steps from the bound (default 0).
     pub decreasing: bool,
+    /// Tilde after the count or `from` bound (flags bit 0; never set for
+    /// `downto`): the loop variable counts down from bound+count-1.
+    pub in_reversed: bool,
     pub body: Expr,
+    /// Tilde before `od` (flags bit 1): reverse-collect the output row.
+    pub out_reversed: bool,
     pub span: SourceSpan,
 }
 
@@ -336,15 +343,21 @@ pub struct CaseExpr {
     pub span: SourceSpan,
 }
 
-/// The payload of a `for` loop: the element pattern (absent for the
-/// throw-away form), the optional `@`-bound 0-based index name, the row
-/// iterated over, and the body evaluated once per element.
+/// The payload of a `for pattern[@index] in row do body od` loop
+/// (parser.y:506-531): the element pattern (absent for the throw-away
+/// form), the optional `@`-bound index name, the row iterated over, and
+/// the body evaluated once per element.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ForLoop {
     pub pattern: Option<Pattern>,
     pub index: Option<SpannedValue<String>>,
     pub iterable: Box<Expr>,
+    /// Tilde after the in-part (flags bit 0): traverse the components in
+    /// reverse, with `@index` counting down from n-1.
+    pub in_reversed: bool,
     pub body: Box<Expr>,
+    /// Tilde before `od` (flags bit 1): reverse-collect the output row.
+    pub out_reversed: bool,
     pub span: SourceSpan,
 }
 
@@ -531,7 +544,9 @@ pub struct ParsedFor {
     pub pattern: Option<Pattern>,
     pub index: Option<SpannedValue<String>>,
     pub iterable: Expr,
+    pub in_reversed: bool,
     pub body: Expr,
+    pub out_reversed: bool,
     pub od: SourceSpan,
 }
 
@@ -1387,6 +1402,9 @@ fn bison_expecting(token: &ParserToken, expected: &[String]) -> Option<&'static 
         // container_syntax_errors tail): bison is in `'[' commalist_opt`
         // (parser.y:368-370), which expects only the closing bracket.
         ParserToken::Quit(_) if has("]") => Some("']'"),
+        // `for i:3 downto 2 do i~ od`: DOWNTO takes no tilde_opt
+        // (parser.y:569-571), so the state expects only OD.
+        ParserToken::Tilde(_) if has("od") => Some("OD"),
         _ => None,
     }
 }
@@ -1438,6 +1456,9 @@ fn bison_token_name(token: &ParserToken) -> Option<&'static str> {
         ParserToken::Colon(_) => Some("':'"),
         ParserToken::Equals(_) => Some("'='"),
         ParserToken::RBracket(_) => Some("']'"),
+        // The reversal tilde is a single-character token, so it prints
+        // quoted like `']'` (oracle: "unexpected '~', expecting OD").
+        ParserToken::Tilde(_) => Some("'~'"),
         // `M~[0:1, 0:1]` / `M[0:1, 0:1, 0:1]`: the two-dimensional slice has
         // no `~[` form and no third axis upstream, so the offending token
         // is the comma (parser.y:660-705).
@@ -1603,7 +1624,9 @@ pub struct ParsedCountedFor {
     pub count: Expr,
     pub bound: Option<Expr>,
     pub decreasing: bool,
+    pub in_reversed: bool,
     pub body: Expr,
+    pub out_reversed: bool,
     pub od: SourceSpan,
 }
 
@@ -1613,7 +1636,9 @@ fn counted_for_expression(for_span: SourceSpan, parsed: ParsedCountedFor) -> Exp
         count: parsed.count,
         bound: parsed.bound,
         decreasing: parsed.decreasing,
+        in_reversed: parsed.in_reversed,
         body: parsed.body,
+        out_reversed: parsed.out_reversed,
         span: join_span(for_span, parsed.od),
     }))
 }
@@ -1708,25 +1733,26 @@ fn case_select_expression(case_span: SourceSpan, condition: Expr, tail: ParsedCa
     }
 }
 
-fn while_expression(while_span: SourceSpan, tail: (Option<Expr>, Expr, SourceSpan)) -> Expr {
-    let (condition, body, od) = tail;
+fn while_expression(while_span: SourceSpan, tail: (Option<Expr>, Expr, SourceSpan, bool)) -> Expr {
+    let (condition, body, od, out_reversed) = tail;
     Expr::While {
         span: join_span(while_span, od),
         condition: condition.map(Box::new),
         body: Box::new(body),
+        out_reversed,
     }
 }
 
 fn prepend_while_effect(
     effect: Expr,
-    tail: (Option<Expr>, Expr, SourceSpan),
-) -> (Option<Expr>, Expr, SourceSpan) {
-    let (condition, body, od) = tail;
+    tail: (Option<Expr>, Expr, SourceSpan, bool),
+) -> (Option<Expr>, Expr, SourceSpan, bool) {
+    let (condition, body, od, out_reversed) = tail;
     let condition = condition.unwrap_or_else(|| Expr::Boolean {
         value: true,
         span: effect.span(),
     });
-    (Some(sequence(effect, condition)), body, od)
+    (Some(sequence(effect, condition)), body, od, out_reversed)
 }
 
 fn for_expression(for_span: SourceSpan, parsed: ParsedFor) -> Expr {
@@ -1735,7 +1761,9 @@ fn for_expression(for_span: SourceSpan, parsed: ParsedFor) -> Expr {
         index: parsed.index,
         span: join_span(for_span, parsed.od),
         iterable: Box::new(parsed.iterable),
+        in_reversed: parsed.in_reversed,
         body: Box::new(parsed.body),
+        out_reversed: parsed.out_reversed,
     }))
 }
 
@@ -2783,13 +2811,19 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
             )
         }
         Expr::While {
-            condition, body, ..
+            condition,
+            body,
+            out_reversed,
+            ..
         } => {
             let condition = condition
                 .as_ref()
                 .map(|condition| format!("{} ", compact_expression(condition)))
                 .unwrap_or_default();
-            format!("while {condition}do {} od", compact_expression(body))
+            // Upstream prints the reversal tilde fused to `od` (`~od`,
+            // axis.w:5387).
+            let od = if *out_reversed { "~od" } else { "od" };
+            format!("while {condition}do {} {od}", compact_expression(body))
         }
         Expr::For(loop_) => {
             let pattern = loop_
@@ -2802,8 +2836,11 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
                 .as_ref()
                 .map(|index| format!("@{}", index.value))
                 .unwrap_or_default();
+            // The tildes fuse to `do`/`od` (axis.w:5743-5746 print_body).
+            let do_ = if loop_.in_reversed { "~do" } else { "do" };
+            let od = if loop_.out_reversed { "~od" } else { "od" };
             format!(
-                "for {pattern}{index} in {} do {} od",
+                "for {pattern}{index} in {} {do_} {} {od}",
                 compact_expression(&loop_.iterable),
                 compact_expression(&loop_.body)
             )
@@ -2886,8 +2923,10 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
                 (Some(bound), false) => format!(" from {}", compact_expression(bound)),
                 (None, _) => String::new(),
             };
+            let do_ = if loop_.in_reversed { "~do" } else { "do" };
+            let od = if loop_.out_reversed { "~od" } else { "od" };
             format!(
-                "for {name}: {}{bound} do {} od",
+                "for {name}: {}{bound} {do_} {} {od}",
                 compact_expression(&loop_.count),
                 compact_expression(&loop_.body)
             )
@@ -3984,6 +4023,74 @@ mod tests {
         let source = SourceText::new(include_str!("../../../tests/fixtures/eval/loops_b4.atlas"));
         let program = parse(&source).expect("B4 loop fixture parses");
         assert_eq!(program.expressions.len(), 8);
+    }
+
+    #[test]
+    fn parses_loop_tilde_reversal_marks() {
+        // The two tildes of the for-in loop (parser.y:506-531): after the
+        // in-part (in_reversed) and after the body (out_reversed).
+        let Expr::For(loop_) = parse_one("for i in [1,2,3]~ do i~ od") else {
+            panic!("for loop parses")
+        };
+        assert!(loop_.in_reversed);
+        assert!(loop_.out_reversed);
+        let Expr::For(loop_) = parse_one("for i in [1,2,3] do i od") else {
+            panic!("for loop parses")
+        };
+        assert!(!loop_.in_reversed);
+        assert!(!loop_.out_reversed);
+
+        // The while tilde sits before `od` (parser.y:364); there is no
+        // input-side reversal for a while loop.
+        let Expr::While { out_reversed, .. } = parse_one("while do break~ od") else {
+            panic!("while loop parses")
+        };
+        assert!(out_reversed);
+        let Expr::While { out_reversed, .. } = parse_one("while x do y od") else {
+            panic!("while loop parses")
+        };
+        assert!(!out_reversed);
+
+        // Counted forms (parser.y:550-567): both tildes with FROM and with
+        // the bare count, only the body-side tilde for the anonymous form.
+        let Expr::CountedFor(loop_) = parse_one("for i:3 from 0~ do i od") else {
+            panic!("counted for parses")
+        };
+        assert!(loop_.in_reversed && !loop_.out_reversed && !loop_.decreasing);
+        let Expr::CountedFor(loop_) = parse_one("for i:3 do i~ od") else {
+            panic!("counted for parses")
+        };
+        assert!(!loop_.in_reversed && loop_.out_reversed);
+        let Expr::CountedFor(loop_) = parse_one("for :3 do 7~ od") else {
+            panic!("anonymous counted for parses")
+        };
+        assert!(loop_.name.is_none() && !loop_.in_reversed && loop_.out_reversed);
+
+        // The compact print fuses the tildes to `do`/`od` like the
+        // upstream `~do`/`~od` (axis.w:5743-5746).
+        assert_eq!(
+            compact_expression(&parse_one("for i in [1,2,3]~ do i~ od")),
+            "for i in [1,2,3] ~do i ~od"
+        );
+        assert_eq!(
+            compact_expression(&parse_one("while x do y~ od")),
+            "while x do y ~od"
+        );
+    }
+
+    #[test]
+    fn downto_rejects_a_tilde_like_the_oracle() {
+        // DOWNTO admits no tilde_opt (parser.y:569-571); the frozen oracle
+        // diagnostic (capture 3604479) names the token and the expected OD.
+        let error = parse(&SourceText::new("for i:3 downto 2 do i~ od"))
+            .expect_err("a tilde after a downto body is a syntax error");
+        assert_eq!(error.kind, crate::diagnostic::ErrorKind::Syntax);
+        assert_eq!(error.message, "syntax error, unexpected '~', expecting OD");
+        // The anonymous counted form has no tilde between the count and DO
+        // either (parser.y:565-566).
+        let error = parse(&SourceText::new("for :3~ do 7 od"))
+            .expect_err("the anonymous counted form takes no count-side tilde");
+        assert_eq!(error.kind, crate::diagnostic::ErrorKind::Syntax);
     }
 
     #[test]

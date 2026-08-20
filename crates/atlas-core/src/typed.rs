@@ -279,19 +279,26 @@ pub enum TypedExpr {
         second: Box<TypedExpr>,
     },
     /// A while loop collecting each completed iteration's body value into
-    /// a row; a missing condition is the constant true.
+    /// a row; a missing condition is the constant true. `out_reversed` is
+    /// the tilde before `od` (parser.y:364, flags bit 1): the collected
+    /// row is reversed.
     While {
         condition: Option<Box<TypedExpr>>,
         body: Box<TypedExpr>,
+        out_reversed: bool,
     },
     /// A for loop over a row value; each iteration distributes the element
     /// per `shape`, then pushes the 0-based index slot when `index` is set
-    /// (the upstream (pattern, index) pair wrap).
+    /// (the upstream (pattern, index) pair wrap). `in_reversed` traverses
+    /// the components in reverse (the index counting down from n-1);
+    /// `out_reversed` reverse-collects the output row.
     For {
         shape: SlotShape,
         index: bool,
         iterable: Box<TypedExpr>,
+        in_reversed: bool,
         body: Box<TypedExpr>,
+        out_reversed: bool,
     },
     /// `break`, unwound to the innermost loop boundary.
     Break,
@@ -353,10 +360,14 @@ pub enum TypedExpr {
     /// iterations collecting each body value; with `has_name` the counter
     /// is bound (as a constant) in a per-iteration frame, increasing from
     /// the bound (default 0), or decreasing to it inclusive when
-    /// `decreasing`.
+    /// `decreasing`. `in_reversed` (the count-side tilde, parser.y:550-567)
+    /// likewise counts down from bound+count-1; `out_reversed` (the
+    /// body-side tilde) reverse-collects the output row.
     CountedFor {
         has_name: bool,
         decreasing: bool,
+        in_reversed: bool,
+        out_reversed: bool,
         count: Box<TypedExpr>,
         bound: Option<Box<TypedExpr>>,
         body: Box<TypedExpr>,
@@ -2766,6 +2777,7 @@ pub fn convert_expr(
         Expr::While {
             condition,
             body,
+            out_reversed,
             span,
         } => {
             let condition = condition
@@ -2797,6 +2809,7 @@ pub fn convert_expr(
                 TypedExpr::While {
                     condition: condition.map(Box::new),
                     body: Box::new(body),
+                    out_reversed: *out_reversed,
                 },
                 *span,
                 analysis,
@@ -2807,7 +2820,9 @@ pub fn convert_expr(
                 pattern,
                 index,
                 iterable,
+                in_reversed,
                 body,
+                out_reversed,
                 span,
             } = loop_.as_ref();
             let mut found = Type::Undetermined;
@@ -2902,7 +2917,9 @@ pub fn convert_expr(
                     shape,
                     index: index.is_some(),
                     iterable: Box::new(iterable),
+                    in_reversed: *in_reversed,
                     body: Box::new(body),
+                    out_reversed: *out_reversed,
                 },
                 *span,
                 analysis,
@@ -3197,7 +3214,9 @@ pub fn convert_expr(
                 count,
                 bound,
                 decreasing,
+                in_reversed,
                 body,
+                out_reversed,
                 span,
             } = loop_.as_ref();
             let mut count_type = Type::Primitive(Prim::Int);
@@ -3242,6 +3261,8 @@ pub fn convert_expr(
                 TypedExpr::CountedFor {
                     has_name: name.is_some(),
                     decreasing: *decreasing,
+                    in_reversed: *in_reversed,
+                    out_reversed: *out_reversed,
                     count: Box::new(count),
                     bound,
                     body: Box::new(body),
@@ -10825,7 +10846,11 @@ impl TypedExpr {
                 first.evaluate(context, Level::NoValue)?;
                 second.evaluate(context, level)
             }
-            Self::While { condition, body } => {
+            Self::While {
+                condition,
+                body,
+                out_reversed,
+            } => {
                 let mut collected = Vec::new();
                 loop {
                     if let Some(condition) = condition {
@@ -10849,20 +10874,33 @@ impl TypedExpr {
                         Err(control) => return Err(control),
                     }
                 }
+                // The tilde before `od` reverse-collects the row.
+                if *out_reversed {
+                    collected.reverse();
+                }
                 Ok(at_level(level, || Value::List(collected.clone())))
             }
             Self::For {
                 shape,
                 index,
                 iterable,
+                in_reversed,
                 body,
+                out_reversed,
             } => {
                 let values = match force(iterable, context)? {
                     Value::List(values) => values,
                     other => panic!("analysis let a non-row iterable through: {other}"),
                 };
+                // The tilde after the in-part traverses the components in
+                // reverse; the `@` index still names the original position,
+                // so it counts down from n-1 (axis.w:6017-6026).
+                let mut iterations = values.into_iter().enumerate().collect::<Vec<_>>();
+                if *in_reversed {
+                    iterations.reverse();
+                }
                 let mut collected = Vec::new();
-                for (position, element) in values.into_iter().enumerate() {
+                for (position, element) in iterations {
                     let mut slots = Vec::new();
                     distribute(element, shape, &mut slots);
                     if *index {
@@ -10885,6 +10923,10 @@ impl TypedExpr {
                         }
                         Err(control) => return Err(control),
                     }
+                }
+                // The tilde before `od` reverse-collects the row.
+                if *out_reversed {
+                    collected.reverse();
                 }
                 Ok(at_level(level, || Value::List(collected.clone())))
             }
@@ -11001,6 +11043,8 @@ impl TypedExpr {
             Self::CountedFor {
                 has_name,
                 decreasing,
+                in_reversed,
+                out_reversed,
                 count,
                 bound,
                 body,
@@ -11014,16 +11058,18 @@ impl TypedExpr {
                     None => BigInt::from(0),
                 };
                 // Increasing takes `count` steps from the bound;
-                // decreasing runs from bound+count-1 down to the bound
-                // inclusive (axis.w:6638-6670).
-                let mut index = if *decreasing {
+                // decreasing (downto, or the count-side tilde) runs from
+                // bound+count-1 down to the bound inclusive
+                // (axis.w:6638-6670).
+                let descending = *decreasing || *in_reversed;
+                let mut index = if descending {
                     &lower + &count - BigInt::from(1)
                 } else {
                     lower.clone()
                 };
                 let mut collected = Vec::new();
                 loop {
-                    let active = if *decreasing {
+                    let active = if descending {
                         index >= lower
                     } else {
                         index < &lower + &count
@@ -11047,11 +11093,15 @@ impl TypedExpr {
                         Err(Control::Break(levels)) => return Err(Control::Break(levels - 1)),
                         Err(control) => return Err(control),
                     }
-                    if *decreasing {
+                    if descending {
                         index -= BigInt::from(1);
                     } else {
                         index += BigInt::from(1);
                     }
+                }
+                // The tilde before `od` reverse-collects the row.
+                if *out_reversed {
+                    collected.reverse();
                 }
                 Ok(at_level(level, || Value::List(collected.clone())))
             }
@@ -15630,6 +15680,46 @@ mod tests {
         let (_, value) =
             convert_and_run("for (a, b) in [(1, 2), (3, 4)] do a + b od").expect("tuple pattern");
         assert_eq!(value.to_string(), "[3,7]");
+    }
+
+    #[test]
+    fn loop_tildes_reverse_traversal_and_collection() {
+        // The frozen oracle captures for for_reversed (3604471) and
+        // for_reversed_extra (3604479): the in-part tilde traverses in
+        // reverse (the `@` index counts down from n-1), the body-side tilde
+        // reverse-collects the row, and two tildes cancel out.
+        for (source, expected) in [
+            ("for i in [1,2,3]~ do i od", "[3,2,1]"),
+            ("for i in [1,2,3] do i~ od", "[3,2,1]"),
+            ("for i in [1,2,3]~ do i~ od", "[1,2,3]"),
+            ("for i@k in [1,2,3]~ do (k,i) od", "[(2,3),(1,2),(0,1)]"),
+            ("for (a,b) in [(1,2),(3,4)]~ do a+b od", "[7,3]"),
+            ("for i:3 from 0 do i~ od", "[2,1,0]"),
+            ("for i:3 from 0~ do i od", "[2,1,0]"),
+            ("for i:3 from 0~ do i~ od", "[0,1,2]"),
+            ("for i:3 do i~ od", "[2,1,0]"),
+            ("for i:3~ do i od", "[2,1,0]"),
+            ("for i:3 downto 0 do i od", "[2,1,0]"),
+            // The anonymous counted form admits only the body-side tilde
+            // (parser.y:565-566, flags=2*t+4).
+            ("for :3 do 7~ od", "[7,7,7]"),
+            // The while tilde reverse-collects the row of body values
+            // (parser.y:364, flags=2*t).
+            (
+                "let i = 0 in while i < 3 do begin i := i + 1; i end~ od",
+                "[3,2,1]",
+            ),
+        ] {
+            let (_, value) = convert_and_run(source)
+                .unwrap_or_else(|error| panic!("{source} should convert and run: {error:?}"));
+            assert_eq!(value.to_string(), expected, "source: {source}");
+        }
+
+        // A break in a reverse-collecting loop keeps the completed
+        // iterations, still in reverse (axis.w:5994-6004 left-alignment).
+        let (_, value) = convert_and_run("for i in [1,2,3] do if i = 3 then break fi; i * 10~ od")
+            .expect("break in a reverse-collecting loop");
+        assert_eq!(value.to_string(), "[20,10]");
     }
 
     #[test]

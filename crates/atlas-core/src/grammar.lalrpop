@@ -643,41 +643,67 @@ CasePatternTail: PatternTail = {
 // Atlas's do_expr (parser.y:438-443) permits effect-only expressions before
 // the guard. Each prefix is evaluated at no-value level; `dont` supplies the
 // false guard, while bare `do` supplies true.
-WhileTail: (Option<Expr>, Expr, SourceSpan) = {
+// The trailing bool is the tilde after the body (parser.y:364 `WHILE
+// do_expr tilde_opt OD`, flags=2*t): it reverse-collects the row of body
+// values (axis.w out_reversed).
+WhileTail: (Option<Expr>, Expr, SourceSpan, bool) = {
     <effect:AssignmentExpr> ";" <tail:WhileTail> => prepend_while_effect(effect, tail),
-    <dont:"dont"> <od:"od"> => (
+    <dont:"dont"> <out_reversed:TildeOpt> <od:"od"> => (
         Some(Expr::Boolean { value: false, span: dont }),
         Expr::Dont { span: dont },
         od,
+        out_reversed,
     ),
-    <_do:"do"> <body:Expr> <od:"od"> => (None, body, od),
-    <condition:AssignmentExpr> <_do:"do"> <body:Expr> <od:"od"> => (Some(condition), body, od),
+    <_do:"do"> <body:Expr> <out_reversed:TildeOpt> <od:"od"> => (None, body, od, out_reversed),
+    <condition:AssignmentExpr> <_do:"do"> <body:Expr> <out_reversed:TildeOpt> <od:"od"> => {
+        (Some(condition), body, od, out_reversed)
+    },
 };
 
-// `FOR pattern_opt ['@' IDENT] IN expr DO expr OD` (parser.y:506-531); the
-// loop pattern reuses the let-binding pattern grammar, exactly like the
-// upstream pair wrap (pattern, index).
+// `FOR pattern_opt ['@' IDENT] IN expr tilde_opt DO expr tilde_opt OD`
+// (parser.y:506-531); the loop pattern reuses the let-binding pattern
+// grammar, exactly like the upstream pair wrap (pattern, index). The first
+// tilde (flags bit 0) traverses the in-part in reverse (the `@` index counts
+// down from n-1); the second (bit 1) reverse-collects the output row.
 ForTail: ParsedFor = {
-    <pattern:ForPattern> <index:ForIndex?> <_in:"in"> <iterable:Expr> <_do:"do">
-        <body:Expr> <od:"od"> => {
-        ParsedFor { pattern, index, iterable, body, od }
+    <pattern:ForPattern> <index:ForIndex?> <_in:"in"> <iterable:Expr> <in_reversed:TildeOpt>
+        <_do:"do"> <body:Expr> <out_reversed:TildeOpt> <od:"od"> => {
+        ParsedFor { pattern, index, iterable, in_reversed, body, out_reversed, od }
     },
 };
 
 // Counted for loops (parser.y:550-573): `FOR IDENT ':' count [FROM bound |
 // DOWNTO bound] DO body OD`, or the anonymous `FOR ':' count DO body OD`.
+// Both tildes are admitted around DO/OD except that DOWNTO takes none
+// (parser.y:569-571) and the anonymous form only the one after the body
+// (flags=2*t+4); the count-side tilde counts the loop variable down from
+// bound+count-1.
 CountedForTail: ParsedCountedFor = {
-    <name:"identifier"> ":" <count:Expr> "from" <bound:Expr> "do" <body:Expr> <od:"od"> => {
-        ParsedCountedFor { name: Some(name), count, bound: Some(bound), decreasing: false, body, od }
+    <name:"identifier"> ":" <count:Expr> "from" <bound:Expr> <in_reversed:TildeOpt> "do"
+        <body:Expr> <out_reversed:TildeOpt> <od:"od"> => {
+        ParsedCountedFor {
+            name: Some(name), count, bound: Some(bound), decreasing: false, in_reversed,
+            body, out_reversed, od,
+        }
     },
     <name:"identifier"> ":" <count:Expr> "downto" <bound:Expr> "do" <body:Expr> <od:"od"> => {
-        ParsedCountedFor { name: Some(name), count, bound: Some(bound), decreasing: true, body, od }
+        ParsedCountedFor {
+            name: Some(name), count, bound: Some(bound), decreasing: true, in_reversed: false,
+            body, out_reversed: false, od,
+        }
     },
-    <name:"identifier"> ":" <count:Expr> "do" <body:Expr> <od:"od"> => {
-        ParsedCountedFor { name: Some(name), count, bound: None, decreasing: false, body, od }
+    <name:"identifier"> ":" <count:Expr> <in_reversed:TildeOpt> "do" <body:Expr>
+        <out_reversed:TildeOpt> <od:"od"> => {
+        ParsedCountedFor {
+            name: Some(name), count, bound: None, decreasing: false, in_reversed,
+            body, out_reversed, od,
+        }
     },
-    ":" <count:Expr> "do" <body:Expr> <od:"od"> => {
-        ParsedCountedFor { name: None, count, bound: None, decreasing: false, body, od }
+    ":" <count:Expr> "do" <body:Expr> <out_reversed:TildeOpt> <od:"od"> => {
+        ParsedCountedFor {
+            name: None, count, bound: None, decreasing: false, in_reversed: false,
+            body, out_reversed, od,
+        }
     },
 };
 
