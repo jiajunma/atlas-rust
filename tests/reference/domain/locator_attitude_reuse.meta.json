@@ -1,0 +1,26 @@
+{
+ "fixture": "domain/locator_attitude_reuse.atlas",
+ "fixture_sha256": "5c089f4633935f4948270c4a408ee5ad717ac80569fc72be909ba34cca1159f4",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "3603738",
+ "reference_commit": "23904bc5abe8a5559ed608cc915fd15e03234bc7",
+ "reference_report_sha256": "342bb80684b7bc8c33708784bc4c5af367342b53f378087cb728f3de9cde23bf",
+ "source_archive_sha256": "8ce0505767f0747f02724f2d04bb6e591cee3f4a41951a7f5ca32e95d23214ee",
+ "oracle_exit_status": 0,
+ "oracle_seconds": 0.011,
+ "oracle_maxrss_kb": 4472,
+ "oracle_maxrss_approximate": false,
+ "notes": "B2 locator-attitude cache reuse: partial q2->pb printing and full twisted_deform(pb2)->partial q22 printing. Reference frozen by HPC capture 3603738; Rust differential pending.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 1200,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
+}
