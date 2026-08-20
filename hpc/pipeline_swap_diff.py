@@ -289,6 +289,10 @@ FIXTURE_PLANS = (
     # self-binding/dynamic call lines (axis.w:2882-2909, 3525-3557);
     # reference frozen by capture 3604440.
     FixturePlan(name="eval/back_trace_let_rec"),
+    # break N multi-level unwind (parser.y:385-386, axis.w:673-685
+    # may_break depth check) + the generic prints builtin; reference
+    # frozen by capture 3604567.
+    FixturePlan(name="eval/break_levels"),
     FixturePlan(name="eval/slices"),
     FixturePlan(name="eval/subscriptions"),
     FixturePlan(name="eval/context"),
