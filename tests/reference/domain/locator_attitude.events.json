@@ -1,0 +1,198 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "domain/locator_attitude",
+ "status": "verified_hpc_reference",
+ "events": [
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'rb': RootDatum\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "simply connected root datum of Lie type 'B2'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'ib': InnerClass\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "Complex reductive group of type B2, with involution defining"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "inner class of type 'c', with 3 real forms and 3 dual real forms\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'rfb': RealForm\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "connected split real group with Lie algebra 'so(3,2)'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'pb': Param\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "final parameter(x=5,lambda=[2,2]/1,nu=[1,-1]/2)"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "Empty sum of standard modules"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "0:  0  [i1]  *   (*,*)  *(x=5,gamma-lambda=  [1,-1]/2)  1^e\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'q2': Param\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "final parameter(x=10,lambda=[1,1]/1,nu=[1,1]/2)"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "0:  0  [i1]  1   (2,*)  *(x= 4,gamma-lambda=  [1,-1]/2)  1^e\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "1:  0  [i1]  0   (2,*)  *(x= 5,gamma-lambda=  [1,-1]/2)  1^e\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "2:  1  [r1]  2   (0,1)  *(x=10,gamma-lambda=   [3,3]/2)  1^2x1^e\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Subset {1} in the following common block:\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "0:  0  [i1]  1   (2,*)  *(x= 4,gamma-lambda=  [3,-3]/2)  1^e\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "1:  0  [i1]  0   (2,*)  *(x= 5,gamma-lambda=  [3,-3]/2)  1^e\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "2:  1  [r1]  2   (0,1)  *(x=10,gamma-lambda=   [1,1]/2)  1^2x1^e\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": ""
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "1*parameter(x=10,lambda=[1,1]/1,nu=[1,1]/2) [0]\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "-1*parameter(x=5,lambda=[2,-1]/1,nu=[1,-1]/2) [3]\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "-1*parameter(x=4,lambda=[2,-1]/1,nu=[1,-1]/2) [3]\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": ""
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "(1+0s)* K_type(x=10, lambda=[1,1]/1) [0]\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "(-1+1s)* K_type(x=6, lambda=[0,1]/1) [2]\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "(-1+1s)* K_type(x=0, lambda=[0,1]/1) [3]\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "(-1+1s)* K_type(x=1, lambda=[0,1]/1) [3]\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "(-1+1s)* K_type(x=2, lambda=[0,1]/1) [3]\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "(-1+1s)* K_type(x=3, lambda=[0,1]/1) [3]\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": ""
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "1* K_type(x=2, lambda=[0,4]/1) [12]\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "1* K_type(x=3, lambda=[0,4]/1) [12]\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "0:  0  [i1]  1   (2,*)  *(x= 4,gamma-lambda=  [1,-1]/2)  1^e\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "1:  0  [i1]  0   (2,*)  *(x= 5,gamma-lambda=  [1,-1]/2)  1^e\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "2:  1  [r1]  2   (0,1)  *(x=10,gamma-lambda=   [3,3]/2)  1^2x1^e\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Subset {1} in the following common block:\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "0:  0  [i1]  1   (2,*)  *(x= 4,gamma-lambda=  [3,-3]/2)  1^e\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "1:  0  [i1]  0   (2,*)  *(x= 5,gamma-lambda=  [3,-3]/2)  1^e\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "2:  1  [r1]  2   (0,1)  *(x=10,gamma-lambda=   [1,1]/2)  1^2x1^e\n"
+  }
+ ]
+}

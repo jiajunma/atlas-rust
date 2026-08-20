@@ -1,0 +1,26 @@
+{
+ "fixture": "domain/locator_attitude.atlas",
+ "fixture_sha256": "0c01093ae43e419ff405705eed9703fd78ae51a2ad7d8b92ba485ad952cc39ab",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "3603952",
+ "reference_commit": "f9dd1a4939279d27f78583102eebada8d0b9db1b",
+ "reference_report_sha256": "58a5ccbd6053aca3bd64115130f278bd5cb6835a3c662cab45106c01e4bb1f9f",
+ "source_archive_sha256": "d73d116dfdc49474d4667a00658d616818bd9e161dfa944ad61e28e6a22ee77b",
+ "oracle_exit_status": 0,
+ "oracle_seconds": 0.013,
+ "oracle_maxrss_kb": 4592,
+ "oracle_maxrss_approximate": false,
+ "notes": "Non-identity locator attitude pooling: twisted_deform interns the PARTIAL interval block (repr.cpp:2378-2382, 2605-2606), then cross-attitude print_partial_common_block calls transport stored rows through the block modifier (make_relative_to, repr.cpp:338-350; shift-only print, atlas-types.w:6726-6732). Reference frozen by HPC capture 3603952; Rust differential pending.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
+}
