@@ -4128,3 +4128,11 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   is used by 30+ atlas-scripts files, so this was a real coverage hole
   the builtin-registry audit missed (the specials are not in
   atlas-types.w's table).
+
+### Special-operator sweep CLOSED (2026-08-21e)
+
+axis.w:1806 is_special_operator is the complete list: `#` (size_of),
+`##` (concatenate), protected `## `, print, prints, to_string, error.
+Rust has `#`, `##`, protected `## `, prints; print/to_string/error are
+the frozen print_family batch. No other hidden special operators exist
+— after print_family lands this class is provably complete.
