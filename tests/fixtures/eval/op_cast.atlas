@@ -5,3 +5,11 @@ f2(3,4)
 set g=prints@string
 g("hi")
 set h=mod@(int,int)
+set u(int x)=2*x
+u@int
+(u@int)(3)
+u@string
+-@int
+#@vec
+prints@string
++@int
