@@ -166,8 +166,10 @@ impl fmt::Display for Value {
             } => write!(formatter, "{value}.{injector_name}"),
             Self::Domain(value) => write!(formatter, "{value}"),
             // Upstream prints `Function defined <loc>` plus the lambda text
-            // (axis.w:3254-3271); the source location is not carried yet, so
-            // only the head is printed.
+            // (axis.w:3254-3271). Display has no access to the source-name
+            // table, so it prints only the head; the back-trace frame dump
+            // (typed.rs `closure_trace_string`) renders the full multi-line
+            // form.
             Self::Closure(_) => write!(formatter, "Function defined"),
             Self::List(values) => {
                 write!(formatter, "[")?;
