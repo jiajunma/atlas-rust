@@ -1,0 +1,22 @@
+rb : RootDatum
+rb := simply_connected(Lie_type("B2"),true)
+ib : InnerClass
+ib := inner_class(rb,[[1,0],[0,1]])
+
+rfb : RealForm
+rfb := real_form(ib,2)
+pb : Param
+pb := param(KGB(rfb,5),[1,1],[1,0]/2)
+q2 : Param
+q2 := param(KGB(rfb,10),[0,0],[1,1]/2)
+print_partial_common_block(q2)
+print_partial_common_block(pb)
+
+rfb2 : RealForm
+rfb2 := real_form(ib,2)
+pb2 : Param
+pb2 := param(KGB(rfb2,5),[1,1],[1,0]/2)
+q22 : Param
+q22 := param(KGB(rfb2,10),[0,0],[1,1]/2)
+twisted_deform(pb2)
+print_partial_common_block(q22)

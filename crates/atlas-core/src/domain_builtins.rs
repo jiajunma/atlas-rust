@@ -9982,6 +9982,7 @@ fn located_common_block_rows(
     context: &Arc<RealFormContext>,
     located: &LocatedBlock,
     span: SourceSpan,
+    transport_full_attitude: bool,
 ) -> Result<Vec<CommonBlockRow>, Diagnostic> {
     let block = located.block();
     let rc = rep_context(context);
@@ -10015,23 +10016,33 @@ fn located_common_block_rows(
         // with `real_unique` per element. A bare add leaves an
         // im(1-theta_x) residue that the oracle never prints (A2 SL(3,R)
         // anchor defect).
-        let shifted = stored
-            .gamma_lambda()
-            .add(located.relative_shift())
-            .map_err(|error| structure_diagnostic(error, span))?;
-        let gamma_lambda = StandardReprMod::build(&rc, stored.x(), &shifted)
-            .map_err(|error| structure_diagnostic(error, span))?
-            .gamma_lambda()
-            .clone();
+        let adapted = if transport_full_attitude
+            && located.is_full()
+            && !located.has_identity_generator_attitude()
+        {
+            let mut adapted = stored.clone();
+            rc.shift_srm(located.block_modifier().shift(), &mut adapted)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            rc.transform_srm::<false>(located.block_modifier().w(), &mut adapted)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            adapted
+        } else {
+            let shifted = stored
+                .gamma_lambda()
+                .add(located.relative_shift())
+                .map_err(|error| structure_diagnostic(error, span))?;
+            StandardReprMod::build(&rc, stored.x(), &shifted)
+                .map_err(|error| structure_diagnostic(error, span))?
+        };
         rows.push(CommonBlockRow {
-            x: stored.x(),
+            x: adapted.x(),
             length: block
                 .length(z)
                 .ok_or_else(|| runtime(span, "common block length out of range"))?,
             descents,
             crosses,
             cayleys,
-            gamma_lambda,
+            gamma_lambda: adapted.gamma_lambda().clone(),
             survives: block.survives(z, &singular),
         });
     }
@@ -10689,7 +10700,7 @@ pub(crate) fn print_text(
                 text.push(')');
             }
             text.push_str(":\n");
-            let rows = located_common_block_rows(&parameter.context, &located, span)?;
+            let rows = located_common_block_rows(&parameter.context, &located, span, false)?;
             text.push_str(&render_common_block(&parameter.context, &rows));
             Ok(text)
         }
@@ -10774,7 +10785,7 @@ pub(crate) fn print_text(
                 }
                 text.push_str(&format!("{init}}} in the following common block:\n"));
             }
-            let rows = located_common_block_rows(&parameter.context, &located, span)?;
+            let rows = located_common_block_rows(&parameter.context, &located, span, true)?;
             text.push_str(&render_common_block(&parameter.context, &rows));
             Ok(text)
         }

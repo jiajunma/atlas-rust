@@ -407,6 +407,7 @@ FIXTURE_PLANS = (
     # frozen by captures 3574723 (w=<1>), 3574854 (<0.2> permuted), and
     # 3574845 (rank-0, <0.1.0>).
     FixturePlan(name="domain/common_block_locator"),
+    FixturePlan(name="domain/locator_attitude_reuse"),
     FixturePlan(name="domain/common_block_simple_pi"),
     FixturePlan(name="domain/common_block_rank0_locator"),
     # Slice 1B (twisted_ext_proper_workorder.md): extended_block on a
