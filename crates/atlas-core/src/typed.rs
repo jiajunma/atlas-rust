@@ -759,6 +759,318 @@ pub enum TypedCommandEvent {
     },
 }
 
+/// The startup completion names (buffer.w:1175-1192): every
+/// `main_hash_table` entry present at session start, in hash-code order —
+/// 34 keywords, 21 primitive type names, then the builtins in upstream
+/// registration order (NOT this crate's registry order). Captured
+/// verbatim from the oracle (`readline_completions("")` on a fresh
+/// session); "transpose " (trailing space) and "matrix slicer" are the
+/// deliberately unregistered hidden builtins (see the registry batch-4
+/// comment). The three startup system variables (main.w:408-435) are NOT
+/// here: they are session globals, seeded in `TypedContext::new`.
+const STARTUP_COMPLETION_NAMES: &[&str] = &[
+    "quit",
+    "set",
+    "let",
+    "in",
+    "begin",
+    "end",
+    "if",
+    "then",
+    "else",
+    "elif",
+    "fi",
+    "and",
+    "or",
+    "not",
+    "next",
+    "do",
+    "dont",
+    "from",
+    "downto",
+    "while",
+    "for",
+    "od",
+    "case",
+    "esac",
+    "rec_fun",
+    "true",
+    "false",
+    "die",
+    "break",
+    "return",
+    "set_type",
+    "whattype",
+    "showall",
+    "forget",
+    "int",
+    "rat",
+    "string",
+    "bool",
+    "vec",
+    "mat",
+    "ratvec",
+    "LieType",
+    "RootDatum",
+    "WeylElt",
+    "InnerClass",
+    "RealForm",
+    "CartanClass",
+    "KGBElt",
+    "Block",
+    "Split",
+    "KType",
+    "KTypePol",
+    "Param",
+    "ParamPol",
+    "void",
+    "-",
+    "succ",
+    "+",
+    "pred",
+    "~",
+    "*",
+    "\\",
+    "%",
+    "\\%",
+    "^",
+    "AND",
+    "OR",
+    "XOR",
+    "AND_NOT",
+    "bitwise_subset",
+    "nth_set_bit",
+    "bit_length",
+    "to_bitset",
+    "/",
+    "floor",
+    "ceil",
+    "frac",
+    "=",
+    "!=",
+    ">=",
+    ">",
+    "<=",
+    "<",
+    "##",
+    "ascii",
+    "readline_completions",
+    "#",
+    "shape",
+    "row",
+    "column",
+    "rows",
+    "columns",
+    "flex_add",
+    "flex_sub",
+    "convolve",
+    "null",
+    "transpose ",
+    "id_mat",
+    "diagonal",
+    "stack_rows",
+    "swiss_matrix_knife",
+    "matrix slicer",
+    "gcd",
+    "Bezout",
+    "echelon",
+    "linear_solve",
+    "diagonalize",
+    "adapted_basis",
+    "kernel",
+    "eigen_lattice",
+    "row_saturate",
+    "Smith",
+    "invert",
+    "mod2_section",
+    "subspace_normal",
+    "elapsed_ms",
+    "Lie_type",
+    "extend",
+    "Cartan_matrix",
+    "Cartan_matrix_type",
+    "is_Cartan_matrix",
+    "simple_factors",
+    "rank",
+    "Smith_Cartan",
+    "filter_units",
+    "ann_mod",
+    "replace_gen",
+    "quotient_basis",
+    "involution",
+    "prefers_coroots",
+    "root_datum",
+    "simply_connected",
+    "adjoint",
+    "semisimple_rank",
+    "nr_of_posroots",
+    "two_rho",
+    "two_rho_check",
+    "root",
+    "coroot",
+    "root_index",
+    "coroot_index",
+    "root_expression",
+    "coroot_expression",
+    "is_long_root",
+    "is_long_coroot",
+    "root_involution",
+    "root_ladder_bottoms",
+    "coroot_ladder_bottoms",
+    "fundamental_weight",
+    "fundamental_coweight",
+    "simple_roots",
+    "simple_coroots",
+    "posroots",
+    "poscoroots",
+    "root_coradical",
+    "coroot_radical",
+    "dual",
+    "derived_info",
+    "mod_central_torus_info",
+    "integrality_datum",
+    "integrality_rank",
+    "is_integrally_dominant",
+    "integrality_points",
+    "Weyl_orbit",
+    "Weyl_orbit_ws",
+    "cofolded",
+    "walls",
+    "alcove_center",
+    "walls_attitude",
+    "alcove_root_vertex",
+    "basic_orbit_ws",
+    "affine_orbit_ws",
+    "FPP_numers",
+    "FPP_w_shifts",
+    "W_elt",
+    "word",
+    "length",
+    "from_dominant",
+    "root_permutation",
+    "classify_involution",
+    "inner_class",
+    "twisted_involution",
+    "distinguished_involution",
+    "dual_datum",
+    "form_names",
+    "dual_form_names",
+    "nr_of_real_forms",
+    "nr_of_dual_real_forms",
+    "nr_of_Cartan_classes",
+    "block_sizes",
+    "block_size",
+    "occurrence_matrix",
+    "dual_occurrence_matrix",
+    "real_form",
+    "form_number",
+    "quasisplit_form",
+    "components_rank",
+    "KGB_size",
+    "base_grading_vector",
+    "Cartan_order",
+    "KGB_Hasse",
+    "dual_real_form",
+    "dual_quasisplit_form",
+    "central_fiber",
+    "initial_torus_bits",
+    "Cartan_class",
+    "most_split_Cartan",
+    "Cartan_info",
+    "real_forms",
+    "dual_real_forms",
+    "fiber_partition",
+    "square_classes",
+    "KGB",
+    "cross",
+    "Cayley",
+    "status",
+    "KGB_elt",
+    "twist",
+    "torus_bits",
+    "torus_factor",
+    "block",
+    "element",
+    "index",
+    "inverse_Cayley",
+    "K_type",
+    "height",
+    "equivalent",
+    "is_standard",
+    "is_dominant",
+    "is_zero",
+    "is_semifinal",
+    "is_final",
+    "dominant",
+    "to_canonical_fiber",
+    "normal",
+    "theta_stable",
+    "null_K_module",
+    "last_term",
+    "first_term",
+    "truncate_above_height",
+    "KGP_sum",
+    "K_type_formula",
+    "branch",
+    "param",
+    "orientation_nr",
+    "reducibility_points",
+    "print_block",
+    "print_common_block",
+    "print_partial_block",
+    "print_partial_common_block",
+    "partial_block",
+    "block_Hasse",
+    "KL_block",
+    "dual_KL_block",
+    "partial_KL_block",
+    "W_graph",
+    "W_cells",
+    "strong_components",
+    "default_extended",
+    "shift_flip",
+    "extended_block",
+    "partial_extended_KL_block",
+    "null_module",
+    "K_type_pol",
+    "deform",
+    "twisted_deform",
+    "block_deform",
+    "full_deform",
+    "twisted_full_deform",
+    "KL_sum_at_s",
+    "KL_sum_at_s_to_height",
+    "twisted_KL_sum_at_s",
+    "KL_column",
+    "scale_extended",
+    "K_type_pol_extended",
+    "finalize_extended",
+    "raw_KL",
+    "dual_KL",
+    "raw_ext_KL",
+    "print_gradings",
+    "print_real_Weyl",
+    "print_strong_real",
+    "print_blocku",
+    "print_blockd",
+    "print_blockstabilizer",
+    "print_KGB",
+    "print_KGB_order",
+    "print_KGB_graph",
+    "print_X",
+    "print_KL_basis",
+    "print_prim_KL",
+    "print_KL_list",
+    "print_W_cells",
+    "print_W_graph",
+];
+
+/// The startup system variables (main.w:408-435), in definition order:
+/// the `-path` search list (empty in batch mode), the prelude log
+/// (declared constant upstream), and the error back-trace (the upstream
+/// trace machinery is not ported, so this stays empty).
+const SYSTEM_VARIABLE_NAMES: &[&str] = &["input_path", "prelude_log", "back_trace"];
+
 /// Persistent state for command-at-a-time typed execution.
 #[derive(Default)]
 pub struct TypedContext {
@@ -772,11 +1084,26 @@ pub struct TypedContext {
     /// `set verbose` = 1; the verbose analysis trace prints when this is
     /// nonzero.
     verbosity: u8,
+    /// Session completion names in order of first definition (the
+    /// upstream hash codes allocated after the startup entries; they are
+    /// never recycled, so a forgotten-then-redefined name revives at its
+    /// original position). Seeded with the system variables.
+    completion_order: Vec<String>,
 }
 
 impl TypedContext {
     pub fn new() -> Self {
-        Self::default()
+        let mut context = Self::default();
+        for &name in SYSTEM_VARIABLE_NAMES {
+            context.globals.define(
+                name,
+                Type::row(string_type()),
+                crate::frames::global_with(Rc::new(Value::List(Vec::new()))),
+            );
+            context.completion_order.push(name.to_owned());
+        }
+        context.globals.mark_const("prelude_log");
+        context
     }
 
     pub fn globals(&self) -> &IdTable {
@@ -784,6 +1111,7 @@ impl TypedContext {
     }
 
     pub fn execute(&mut self, command: &Command) -> Result<Vec<TypedCommandEvent>, Diagnostic> {
+        self.refresh_completion_candidates();
         match command {
             Command::Expression(expression) => {
                 // The verbose analysis trace (main.w:495-516, 528-540):
@@ -872,6 +1200,7 @@ impl TypedContext {
                             type_.clone(),
                             crate::frames::unset_global(),
                         );
+                        self.note_completion_name(name);
                         return Ok(vec![TypedCommandEvent::ReportLine {
                             text: format!(
                                 "Declaring identifier '{name}': {}\n",
@@ -916,6 +1245,7 @@ impl TypedContext {
                 })?;
                 self.globals
                     .define(name.clone(), type_.clone(), crate::frames::unset_global());
+                self.note_completion_name(name);
                 Ok(vec![TypedCommandEvent::ReportLine {
                     text: format!(
                         "Declaring identifier '{name}': {}\n",
@@ -991,6 +1321,37 @@ impl TypedContext {
                 text: self.show_all_text(),
                 span: *span,
             }]),
+        }
+    }
+
+    /// Refresh the completion candidate snapshot the
+    /// `readline_completions` builtin reads (buffer.w:1175-1192): the
+    /// static startup names (upstream hash codes are never recycled, so a
+    /// redefined builtin keeps its startup position) followed by the
+    /// session names still present in the identifier or overload table.
+    fn refresh_completion_candidates(&mut self) {
+        let mut candidates: Vec<String> = STARTUP_COMPLETION_NAMES
+            .iter()
+            .map(|name| (*name).to_owned())
+            .collect();
+        for name in &self.completion_order {
+            if self.globals.lookup(name).is_some() || !self.overloads.user_variants(name).is_empty()
+            {
+                candidates.push(name.clone());
+            }
+        }
+        self.evaluation.set_completion_candidates(candidates);
+    }
+
+    /// Record a session name for completions (buffer.w:1175-1192): the
+    /// upstream hash code is allocated at first definition and never
+    /// recycled, so a name enters the order once; a name already in the
+    /// startup hash table keeps its startup position (no duplicate).
+    fn note_completion_name(&mut self, name: &str) {
+        if !STARTUP_COMPLETION_NAMES.contains(&name)
+            && !self.completion_order.iter().any(|known| known == name)
+        {
+            self.completion_order.push(name.to_owned());
         }
     }
 
@@ -1102,10 +1463,15 @@ impl TypedContext {
         constant: bool,
         span: SourceSpan,
     ) -> TypedCommandEvent {
-        let previous = self
-            .globals
-            .lookup(name)
-            .map(|(type_, _)| type_.borrow().display(&self.types).to_string());
+        let previous = self.globals.lookup(name).map(|(type_, _)| {
+            // global.w:911-994: an overridden CONSTANT binding is noted
+            // with a ` (constant)` suffix after its type.
+            let mut text = type_.borrow().display(&self.types).to_string();
+            if self.globals.is_const(name) {
+                text.push_str(" (constant)");
+            }
+            text
+        });
         self.globals.define(
             name.to_owned(),
             type_.clone(),
@@ -1114,6 +1480,7 @@ impl TypedContext {
         if constant {
             self.globals.mark_const(name);
         }
+        self.note_completion_name(name);
         let role = if constant { "Constant" } else { "Variable" };
         let mut text = format!("{role} {name}: {}", type_.display(&self.types));
         if let Some(previous) = previous {
@@ -1139,6 +1506,7 @@ impl TypedContext {
         let (old_n, n) =
             self.overloads
                 .add_user(name, function_type.clone(), value, &self.types, span)?;
+        self.note_completion_name(name);
         let prefix = if n == old_n {
             "Redefined ".to_string()
         } else if n == 1 {
@@ -4323,6 +4691,10 @@ enum BuiltinImpl {
         name: &'static str,
     },
     DomainRelation(Relation),
+    /// readline_completions (global.w:3546-3561): filters the completion
+    /// candidate snapshot the command layer stashed in the evaluation
+    /// context by the argument prefix.
+    Completions,
 }
 
 #[derive(Clone, Copy)]
@@ -4509,6 +4881,21 @@ impl Builtin {
                         Relation::NotEqual => first != second,
                         _ => panic!("ordered domain relation is not registered"),
                     })
+                }))
+            }
+            BuiltinImpl::Completions => {
+                let Value::String(prefix) = expect_unary(arguments) else {
+                    panic!("readline_completions saw a non-string argument")
+                };
+                Ok(at_builtin_level(level, || {
+                    Value::List(
+                        context
+                            .completion_candidates()
+                            .iter()
+                            .filter(|name| name.starts_with(prefix.as_str()))
+                            .map(|name| Value::String(name.clone()))
+                            .collect(),
+                    )
                 }))
             }
         }
@@ -7348,6 +7735,18 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 ScalarOp::StringToAscii,
             ),
             scalar_builtin("ascii", int_type(), string_type(), 0, ScalarOp::AsciiChar),
+            // readline_completions (global.w:4390-4391, wrapper
+            // :3546-3561): the line-editing completion list exposed as a
+            // builtin; the run arm reads the per-command candidate
+            // snapshot from the evaluation context.
+            Builtin {
+                name: "readline_completions",
+                arg_type: string_type(),
+                result: Type::row(string_type()),
+                hunger: 0,
+                overload_visible: true,
+                implementation: BuiltinImpl::Completions,
+            },
             // sizeof instances (global.w:4392-4395): string byte count, vec
             // and ratvec lengths, and the matrix column count.
             scalar_builtin("#", string_type(), int_type(), 0, ScalarOp::SizeOf),
@@ -15281,5 +15680,142 @@ mod tests {
                 .unwrap_or_else(|error| panic!("{source} should run: {error:?}"));
             assert_eq!(value.to_string(), expected, "source: {source}");
         }
+    }
+
+    fn completion_values(context: &mut TypedContext, prefix: &str) -> Vec<String> {
+        let events = context
+            .execute(&command(&format!("readline_completions(\"{prefix}\")")))
+            .expect("readline_completions runs");
+        match &events[..] {
+            [TypedCommandEvent::Value {
+                value: Value::List(names),
+                ..
+            }] => names
+                .iter()
+                .map(|name| match name {
+                    Value::String(name) => name.clone(),
+                    other => panic!("non-string completion {other:?}"),
+                })
+                .collect(),
+            other => panic!("unexpected completion events {other:?}"),
+        }
+    }
+
+    #[test]
+    fn startup_completion_names_cover_the_registry() {
+        // buffer.w:1175-1192 with the oracle capture: every registered
+        // builtin appears in the startup completion list, and from index
+        // 55 on (after the 34 keywords and 21 type names) every startup
+        // name is a registered builtin except the two deliberately
+        // unregistered hidden copies (registry batch-4 comment).
+        assert_eq!(STARTUP_COMPLETION_NAMES.len(), 294, "oracle startup count");
+        let startup: BTreeSet<&str> = STARTUP_COMPLETION_NAMES.iter().copied().collect();
+        for builtin in builtin_registry() {
+            assert!(
+                startup.contains(builtin.name),
+                "registry builtin '{}' missing from STARTUP_COMPLETION_NAMES",
+                builtin.name
+            );
+        }
+        let registry: BTreeSet<&str> = builtin_registry()
+            .iter()
+            .map(|builtin| builtin.name)
+            .collect();
+        for &name in &STARTUP_COMPLETION_NAMES[55..] {
+            assert!(
+                registry.contains(name) || name == "transpose " || name == "matrix slicer",
+                "startup completion name '{name}' is not a registered builtin"
+            );
+        }
+        // The three system variables are session globals, not static
+        // startup names.
+        for name in SYSTEM_VARIABLE_NAMES {
+            assert!(!startup.contains(name), "'{name}' is not static");
+        }
+    }
+
+    #[test]
+    fn startup_system_variables_are_empty_string_rows() {
+        // main.w:408-435: batch mode starts all three as empty [string].
+        let mut context = TypedContext::new();
+        for name in SYSTEM_VARIABLE_NAMES {
+            let events = context.execute(&command(name)).expect("system variable");
+            assert!(matches!(
+                &events[..],
+                [TypedCommandEvent::Value {
+                    value: Value::List(items),
+                    ..
+                }] if items.is_empty()
+            ));
+            let events = context
+                .execute(&command(&format!("whattype {name}")))
+                .expect("whattype runs");
+            assert!(matches!(
+                &events[..],
+                [TypedCommandEvent::ReportLine { text, .. }] if text == "Type: [string]\n"
+            ));
+        }
+    }
+
+    #[test]
+    fn readline_completions_tracks_the_session_state() {
+        let mut context = TypedContext::new();
+        // Fresh session: the 294 startup names plus the three system
+        // variables (main.w:408-435), in that order.
+        let all = completion_values(&mut context, "");
+        assert_eq!(all.len(), 297);
+        assert_eq!(&all[..3], &["quit", "set", "let"]);
+        assert_eq!(&all[294..], &["input_path", "prelude_log", "back_trace"]);
+
+        // Prefix filtering keeps the startup order; unknown prefixes
+        // complete to nothing.
+        let print_names = completion_values(&mut context, "pri");
+        assert_eq!(print_names.len(), 19);
+        assert_eq!(print_names[0], "print_block");
+        assert_eq!(print_names[18], "print_W_graph");
+        assert!(completion_values(&mut context, "zzz").is_empty());
+
+        // Session definitions append in definition order.
+        context
+            .execute(&command("set myvar=3"))
+            .expect("define myvar");
+        context
+            .execute(&command("set zfun(int x)=x+1"))
+            .expect("define zfun");
+        context
+            .execute(&command("set apple=\"hi\""))
+            .expect("define apple");
+        let all = completion_values(&mut context, "");
+        assert_eq!(&all[297..], &["myvar", "zfun", "apple"]);
+        assert_eq!(completion_values(&mut context, "z"), &["zfun"]);
+        assert_eq!(completion_values(&mut context, "my"), &["myvar"]);
+        assert_eq!(completion_values(&mut context, "app"), &["apple"]);
+
+        // `forget` drops the name; redefining revives it at its ORIGINAL
+        // position (upstream hash codes are never recycled).
+        context
+            .execute(&command("forget myvar"))
+            .expect("forget myvar");
+        assert!(completion_values(&mut context, "my").is_empty());
+        context
+            .execute(&command("set myvar=7"))
+            .expect("redefine myvar");
+        let all = completion_values(&mut context, "");
+        assert_eq!(&all[297..], &["myvar", "zfun", "apple"]);
+        assert_eq!(completion_values(&mut context, "my"), &["myvar"]);
+    }
+
+    #[test]
+    fn overriding_a_constant_reports_the_constant_suffix() {
+        // global.w:911-994: the override report notes a constant previous
+        // binding with a ` (constant)` suffix after its type.
+        let mut context = TypedContext::new();
+        context.execute(&command("set !c=1")).expect("const define");
+        let events = context.execute(&command("set c=2")).expect("override");
+        assert!(matches!(
+            &events[..],
+            [TypedCommandEvent::ReportLine { text, .. }]
+                if text == "Variable c: int (overriding previous instance, which had type int (constant))\n"
+        ));
     }
 }

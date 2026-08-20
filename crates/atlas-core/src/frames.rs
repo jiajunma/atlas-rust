@@ -39,6 +39,10 @@ pub struct EvaluationContext {
     /// `*output_stream` mid-evaluation); the command layer drains it into
     /// report events after each top-level evaluation.
     printed: Vec<String>,
+    /// Names the `readline_completions` builtin completes from
+    /// (buffer.w:1175-1192). The command layer refreshes this snapshot at
+    /// each command boundary, so a call sees post-previous-command state.
+    completion_candidates: Vec<String>,
 }
 
 impl EvaluationContext {
@@ -62,6 +66,17 @@ impl EvaluationContext {
     /// gamma=...` before raising `No valid extended block`).
     pub fn printed_buffer(&mut self) -> &mut Vec<String> {
         &mut self.printed
+    }
+
+    /// Replace the completion candidate snapshot (command layer, once per
+    /// command).
+    pub fn set_completion_candidates(&mut self, candidates: Vec<String>) {
+        self.completion_candidates = candidates;
+    }
+
+    /// The current completion candidate snapshot, in upstream hash order.
+    pub fn completion_candidates(&self) -> &[String] {
+        &self.completion_candidates
     }
 
     /// The current chain head, for capture into a closure value.
