@@ -277,6 +277,11 @@ FIXTURE_PLANS = (
     # mod2_section, subspace_normal; reference frozen by capture 3576078.
     FixturePlan(name="eval/global_batch4"),
     FixturePlan(name="eval/global_batch4_rejected"),
+    # readline_completions (global.w:4390-4391, buffer.w:1175-1192) + the
+    # startup system variables input_path/prelude_log/back_trace
+    # (main.w:408-435); reference frozen by capture 3604377.
+    FixturePlan(name="eval/readline_completions"),
+    FixturePlan(name="eval/readline_completions_rejected"),
     FixturePlan(name="eval/slices"),
     FixturePlan(name="eval/subscriptions"),
     FixturePlan(name="eval/context"),
