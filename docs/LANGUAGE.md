@@ -80,11 +80,22 @@ slice closed the last representation-core gap: cross-attitude block pooling
 and printing (`domain/locator_attitude`, fat differential `3603961`,
 329 PASS + 1 declared PARTIAL). Readline completion landed 2026-08-21
 (`readline_completions` + the `input_path`/`prelude_log`/`back_trace`
-system variables, differential `3604405` PASS, 333 fixtures); only the
-`back_trace` runtime-error trace population (fixture captured, `3604415`)
-and KL binary file formats (no Atlas-language builtin touches them;
-filekl.w serves stand-alone utilities only) remain — the latter deferred
-outside the language-only gate pending a user decision.
+system variables, differential `3604405` PASS, 333 fixtures). The
+`back_trace` runtime-error trace then landed in full: call traces
+(`3604519` PASS), loop-iteration lines and counted-for variants
+(including the reversed/anonymous-counted wordings and for-in frame
+dumps), let-frame dumps with the multi-line closure printer, and
+rec_fun self-binding/dynamic `defined at` lines (`3604616` PASS,
+334 fixtures + 1 declared PARTIAL). The remaining grammar-level gaps
+are all frozen with HPC-captured references and pending landing:
+loop `~` reversal beyond counted forms, the general quiet-if
+(`if c do e fi`) and `iffor` loop bodies, non-row (string/vec/mat/
+ratvec) iteration, `break N` multi-level unwind, operator/name casts
+(`op@type`, `f@type`), the `$` last-value unit, and the caselist
+`pattern.tag:` branch form — plus KL binary file formats (no
+Atlas-language builtin touches them; filekl.w serves stand-alone
+utilities only), deferred outside the language-only gate pending a
+user decision.
 
 ## Source compatibility rules
 
