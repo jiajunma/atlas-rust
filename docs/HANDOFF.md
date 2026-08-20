@@ -3996,3 +3996,9 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   (back_trace_loops, back_trace_let_rec, for_reversed,
   for_reversed_extra, for_quiet_body, for_iterable_kinds), run the merged
   fat differential, bump metas, promote LANGUAGE.md rows.
+  - Extra tilde diagnostics probe (oracle, 2026-08-21b): anonymous counted
+    `for :3~ do 7 od` rejects with `unexpected '~', expecting IF or DO or
+    FOR` (agent-99's current wording lacks the expecting suffix — fix at
+    acceptance). NAMED plain counted `for i:3~ do i od` IS accepted and
+    counts down ([2,1,0]); only the anonymous form lacks the count-side
+    tilde.
