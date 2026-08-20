@@ -1,0 +1,26 @@
+{
+ "fixture": "domain/twisted_deform_proper.atlas",
+ "fixture_sha256": "b202b693af244e8b1cdaed9e91a5b85b6eec0240301ea38fcecdf84019d3a7b0",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "3591165",
+ "reference_commit": "444e84181ade04c22777977738fa53654931ed64",
+ "reference_report_sha256": "5fd54cabc1c5094bc4632bbdf1d11b5a859bec9e92082d710a31aa2beae1fc23",
+ "source_archive_sha256": "b8b308f70441239c1cbd3bef4d9b157d199c8ee2edf3ab89f482790ca07c3eb9",
+ "oracle_exit_status": 0,
+ "oracle_seconds": 0.102,
+ "oracle_maxrss_kb": 4488,
+ "oracle_maxrss_approximate": false,
+ "notes": "twisted_deform on proper integral subsystems (24fab16, slice 4): pb/pb4 (B2 split form 2) and pa/pa1 (A2 su(2,1)) anchors, all 'Empty sum of standard modules'. Reference frozen by HPC capture 3591165; Rust differential pending.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
+}

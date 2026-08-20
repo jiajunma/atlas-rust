@@ -88,6 +88,12 @@ FIXTURE_PLANS = (
     # local oracle capture 2026-08-20 is byte-identical for integral,
     # half-integral, and non-final B2 parameters.
     FixturePlan(name="domain/twisted_full_deform_proper"),
+    # Twisted deformation on proper integral subsystems (24fab16, slice 4):
+    # pb/pa empty-sum anchors, non-empty q2 terms on a cold pool, and the
+    # non-final/overload rejections. Reference frozen by HPC capture 3591165.
+    FixturePlan(name="domain/twisted_deform_proper"),
+    FixturePlan(name="domain/twisted_deform_proper_terms"),
+    FixturePlan(name="domain/twisted_deform_proper_rejected"),
     # P2 Block W-graph overloads captured by HPC oracle 3543699.  The
     # full-integral A1 `block(Param)` path now uses the shared RepTable lookup;
     # the proper-integral KL_column case is covered by the shared subsystem
