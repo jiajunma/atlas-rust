@@ -1,0 +1,37 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "eval/for_reversed_extra",
+ "status": "verified_hpc_reference",
+ "events": [
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[2,1,0]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[2,1,0]"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Variable i: int\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[3,2,1]"
+   }
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "syntax",
+   "message": "syntax error, unexpected '~', expecting OD"
+  }
+ ]
+}

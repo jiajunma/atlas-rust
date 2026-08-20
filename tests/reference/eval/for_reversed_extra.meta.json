@@ -1,9 +1,26 @@
 {
-  "fixture": "eval/for_reversed_extra.atlas",
-  "fixture_sha256": "934b49e897a0c88f650c683e5d37f68bdfe719e1fcd4c8c76bf8de828ba75716",
-  "oracle": "atlas",
-  "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_capture",
-  "rust_status": "pending",
-  "notes": "Tilde beyond for-in (parser.y:319 tilde_opt): counted-for body tilde and count-expr tilde each reverse; while collects body values into a list and body tilde reverses it; the DOWNTO counted production (parser.y:569-571) has NO tilde_opt so 'for i:3 downto 2 do i~ od' is a syntax error (unexpected '~', expecting OD)."
+ "fixture": "eval/for_reversed_extra.atlas",
+ "fixture_sha256": "934b49e897a0c88f650c683e5d37f68bdfe719e1fcd4c8c76bf8de828ba75716",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "3604479",
+ "reference_commit": "46e52dab9bae9515c707a9a4537eef06159e05e2",
+ "reference_report_sha256": "ead5d401e2f42bc449e33c956f627d132b76f73b45239d54e0ef740f2c8af38b",
+ "source_archive_sha256": "501af3b0cbc333fb84aa29fd6581845011f9045240d79cb567c33db7bb19e880",
+ "oracle_exit_status": 1,
+ "oracle_seconds": 0.014,
+ "oracle_maxrss_kb": 3516,
+ "oracle_maxrss_approximate": false,
+ "notes": "Tilde beyond for-in (parser.y:319 tilde_opt): counted-for body tilde and count-expr tilde each reverse; while collects body values into a list and body tilde reverses it; the DOWNTO counted production (parser.y:569-571) has NO tilde_opt so 'for i:3 downto 2 do i~ od' is a syntax error (unexpected '~', expecting OD). Reference frozen by HPC capture 3604479; Rust differential pending tilde_opt.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
 }
