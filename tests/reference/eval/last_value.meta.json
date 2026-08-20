@@ -1,0 +1,9 @@
+{
+ "fixture": "eval/last_value.atlas",
+ "fixture_sha256": "34581dc30b16d002cdce4ec3c63fab0c1947fed042ab44fbfa42dcec1242ef1c",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "pending_hpc_capture",
+ "rust_status": "pending",
+ "notes": "'$' unit (parser.y:343 make_dollar): the value of the last evaluated expression; sticky across runtime errors (after 1%0 the value stays 11). Rust currently rejects '$'."
+}

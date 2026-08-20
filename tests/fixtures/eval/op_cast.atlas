@@ -1,0 +1,7 @@
+set f=%@(int,int)
+f(7,3)
+set f2=+@(int,int)
+f2(3,4)
+set g=prints@string
+g("hi")
+set h=mod@(int,int)

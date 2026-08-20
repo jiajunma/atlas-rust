@@ -1,0 +1,9 @@
+{
+ "fixture": "eval/break_levels.atlas",
+ "fixture_sha256": "629754af0246cea2c03c49d26899ec3c06d1be850d1a22210b252939ca8c8f1b",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "pending_hpc_capture",
+ "rust_status": "pending",
+ "notes": "Multi-level break (parser.y:385 BREAK INT): break N unwinds N+1 loop levels; analysis rejection 'Using 'break 2' requires 3 nested levels of loops' when the nesting is shallower. Rust only has bare break."
+}

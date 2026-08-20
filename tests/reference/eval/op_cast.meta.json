@@ -1,0 +1,9 @@
+{
+ "fixture": "eval/op_cast.atlas",
+ "fixture_sha256": "99e3b637e2d8d9bc4457fe352346eafe200c381e8cf063e14d0d271c069f36e5",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "pending_hpc_capture",
+ "rust_status": "pending",
+ "notes": "Expression-level operator/identifier cast (parser.y:381-383, operator '@' type | IDENT '@' type): selects one overload as a first-class function value; rejection wording 'No instance for mod@(int,int) found'. Rust currently rejects the syntax."
+}

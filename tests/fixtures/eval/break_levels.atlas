@@ -1,0 +1,2 @@
+for i:2 do for j:2 do for k:2 do begin if i=1 then break 2 fi; prints((i,j,k)) end od od od
+for i:2 do for j:2 do begin if i=1 then break 2 fi; prints((i,j)) end od od
