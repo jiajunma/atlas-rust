@@ -4031,3 +4031,44 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
     match the oracle already. The only remaining grammar gaps are the
     frozen ones: tilde_opt (done in worktree), iffor_loop/quiet-if,
     non-row iteration (agent-99 in flight), op_cast, `$`, break N.
+
+## 2026-08-21d: back_trace_let_rec landed; caselist dot-label gap found and frozen
+
+- agent-101 landed (`507cdda`): let-frame trace dumps
+  (`TypedExpr::LetGroup.names` + outlined `evaluate_let_frame`,
+  typed.rs:11479 — the outline is required, inlining blew the test-thread
+  stack on rec_fun depth 6), multi-line closure printer
+  (`closure_trace_string`/`trace_value_string`, typed.rs:11530+),
+  `compact_typed_expression` upgraded to `typed_expression_print`
+  (typed.rs:645) with Conditional/elif/Next printing and
+  `special_int_unary_print` (typed.rs:756, emulates the upstream
+  special-builtin rewrite `x+1 -> succ@int(x)` at print time since this
+  port deliberately skips that rewrite), dynamic call `defined at
+  <closure span>`. Verified: back_trace_let_rec + back_trace stdout
+  byte-identical to captures 3604440/3604415; 345 lib tests; clippy/fmt
+  clean. Registered in harness (`4c90145`); differential job 3604616.
+- back_trace_loops events/meta frozen (`b2c008f`, capture 3604460);
+  registration deferred until agent-99's iffor/non-row iteration lands
+  (the fixture's stdout is already produced correctly, but registration
+  rides the merged differential).
+- **caselist dot-label gap** (the last parser.y caselist production,
+  419/426 `pattern '.' IDENT ':' expr`): tag AFTER the dot, binding
+  pattern before — `(v).solution: #v`, `v.solution:`, `(a,b).pair:`,
+  `(,).pair:` (throwaway slots) all accepted by the oracle; Rust rejects
+  with `unexpected $undefined`. Real scripts use it
+  (classical_W_classes_and_reps.at `(alpha,s).split_class:`,
+  Gaussian_elim.at `(v,).affine_space:` — note trailing comma). Fixture
+  eval/case_dot_label frozen (`5af4824`, capture job 3604622). Rejected
+  wordings: `Branch has label bogus not associated to any variant of the
+  union type mvv`; `Multiple branches with label solution` (both
+  category type).
+- **set_type bare-form quirk** (both sides already match, no work):
+  `set_type name = (...)` WITHOUT the `[...]` list prints the definition
+  message but does NOT register injector tags in type_map, so a later
+  discrimination on that union fails with `Discrimination on expression
+  of type (void|vec) requires using 'set_type' for this type, and naming
+  injectors for it`. The list form `set_type [ name = (...) ]` registers
+  tags. Rust already mirrors this exactly.
+- break N dispatched to agent-102 (main tree; parser production
+  BREAK INT + analysis-time depth check; Control::Break(levels) unwind
+  already exists).
