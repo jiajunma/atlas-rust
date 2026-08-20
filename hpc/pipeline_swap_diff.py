@@ -565,6 +565,9 @@ FIXTURE_PLANS = (
     # :5608-5617 K_type_to_poly, :7710-7717 param_to_poly) including the
     # non-dominant expand_final reflection path (repr.cpp:1283-1287).
     FixturePlan(name="domain/polp_coercion"),
+    # Rank-0 (torus T1/T2) surface: inner_class, real_form, print_KGB,
+    # param and reducibility_points on rootless data.
+    FixturePlan(name="domain/torus_rank0"),
     # KTypePol/ParamPol arithmetic: binary sums/differences, Split-scaled
     # products, the (Split,KType) term-list add, binary =/!=, and
     # truncate_above_height.

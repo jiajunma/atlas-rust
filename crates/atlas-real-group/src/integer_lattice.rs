@@ -349,6 +349,22 @@ pub(crate) struct IntegralBasis {
 }
 
 impl IntegralBasis {
+    /// The standard basis of the whole lattice: the radical of a
+    /// rootless datum (Lie type T_k), whose kernel computation has no
+    /// rows to reduce.
+    pub(crate) fn full_space(ambient_rank: usize) -> Self {
+        let mut columns = Vec::with_capacity(ambient_rank);
+        for index in 0..ambient_rank {
+            let mut column = vec![Integer::from(0u8); ambient_rank];
+            column[index] = Integer::from(1u8);
+            columns.push(column);
+        }
+        Self {
+            ambient_rank,
+            columns,
+        }
+    }
+
     fn kernel_columns(
         transformed_columns: &IntegerMatrix,
         start: usize,

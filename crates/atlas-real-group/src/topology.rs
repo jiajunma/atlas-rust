@@ -15,7 +15,7 @@ use malachite::base::num::basic::traits::Zero;
 use malachite::Rational;
 
 use crate::integer_lattice::{
-    reduce_basis_mod_two, saturated_kernel, IntegerLatticeBudget, IntegerMatrix,
+    reduce_basis_mod_two, saturated_kernel, IntegerLatticeBudget, IntegerMatrix, IntegralBasis,
 };
 use crate::mod_two::{ModTwoAmbientMap, ModTwoSubquotient, ModTwoSubspace, ModTwoVector};
 use crate::real_form_seed::invert_rational;
@@ -159,7 +159,12 @@ pub(crate) fn dual_component_group_trivial(
         .iter()
         .map(|root| root.as_slice().to_vec())
         .collect();
-    let radical = saturated_kernel(&IntegerMatrix::from_i32_rows(&root_rows, budget)?, budget)?;
+    let radical = if root_rows.is_empty() {
+        // Rootless datum (T_k): the radical is the whole lattice.
+        IntegralBasis::full_space(rank)
+    } else {
+        saturated_kernel(&IntegerMatrix::from_i32_rows(&root_rows, budget)?, budget)?
+    };
     if radical.rank() != rank - semisimple_rank {
         return Err(StructureError::LayoutInvariantViolation {
             invariant: "radical rank",
@@ -251,7 +256,12 @@ pub fn dual_component_group_rank(
         .iter()
         .map(|root| root.as_slice().to_vec())
         .collect();
-    let radical = saturated_kernel(&IntegerMatrix::from_i32_rows(&root_rows, budget)?, budget)?;
+    let radical = if root_rows.is_empty() {
+        // Rootless datum (T_k): the radical is the whole lattice.
+        IntegralBasis::full_space(rank)
+    } else {
+        saturated_kernel(&IntegerMatrix::from_i32_rows(&root_rows, budget)?, budget)?
+    };
     if radical.rank() != rank - semisimple_rank {
         return Err(StructureError::LayoutInvariantViolation {
             invariant: "radical rank",

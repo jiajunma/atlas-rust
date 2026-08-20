@@ -1,0 +1,23 @@
+lt : LieType
+lt := Lie_type("T1")
+rd : RootDatum
+rd := simply_connected(lt,true)
+ic : InnerClass
+ic := inner_class(rd,[[1]])
+ic
+lt2 : LieType
+lt2 := Lie_type("T2")
+rd2 : RootDatum
+rd2 := simply_connected(lt2,true)
+ic2 : InnerClass
+ic2 := inner_class(rd2,[[1,0],[0,1]])
+rf : RealForm
+rf := real_form(ic2,0)
+rf
+print_KGB(rf)
+x : KGBElt
+x := KGB(rf,0)
+p : Param
+p := param(x,[0,0],[1,1]/2)
+p
+reducibility_points(p)

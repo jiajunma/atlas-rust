@@ -499,12 +499,16 @@ impl CompactWeyl {
     ) -> Vec<Vec<u8>> {
         use rayon::prelude::*;
         let rank = self.transducers.len();
+        // Rank 0 (T1): no transducers and no roots, so every element
+        // (the identity) has the empty permutation.
+        let width = piece_perms
+            .first()
+            .and_then(|perms| perms.first())
+            .map_or(0, |perm| perm.len());
         elements
             .par_iter()
             .map(|elt| {
-                let mut perm: Vec<u8> = (0..piece_perms[0][0].len())
-                    .map(|index| index as u8)
-                    .collect();
+                let mut perm: Vec<u8> = (0..width).map(|index| index as u8).collect();
                 for i in 0..rank {
                     perm = Self::compose_perms(&piece_perms[i][elt[i] as usize], &perm);
                 }

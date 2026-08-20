@@ -142,9 +142,9 @@ impl KgbGraph {
         // BFS.
         let mut elements: Vec<TitsElement> = try_capacity(expected)?;
         let mut index: BTreeMap<TitsElement, usize> = BTreeMap::new();
-        let mut statuses: Vec<Option<KgbStatus>> = try_capacity(expected * rank.max(1))?;
-        let mut cross_raw: Vec<Option<usize>> = try_capacity(expected * rank.max(1))?;
-        let mut cayley_raw: Vec<Option<usize>> = try_capacity(expected * rank.max(1))?;
+        let mut statuses: Vec<Option<KgbStatus>> = try_capacity(expected * rank)?;
+        let mut cross_raw: Vec<Option<usize>> = try_capacity(expected * rank)?;
+        let mut cayley_raw: Vec<Option<usize>> = try_capacity(expected * rank)?;
         intern(
             seed.element().clone(),
             expected,
@@ -377,12 +377,12 @@ impl KgbGraph {
         new_elements.resize(size, None);
         let mut element_position: Vec<usize> = try_capacity(size)?;
         element_position.resize(size, 0);
-        let mut new_statuses: Vec<Option<KgbStatus>> = try_capacity(size * rank.max(1))?;
-        new_statuses.resize(size * rank.max(1), None);
-        let mut new_cross: Vec<Option<KgbId>> = try_capacity(size * rank.max(1))?;
-        new_cross.resize(size * rank.max(1), None);
-        let mut new_cayley: Vec<Option<KgbId>> = try_capacity(size * rank.max(1))?;
-        new_cayley.resize(size * rank.max(1), None);
+        let mut new_statuses: Vec<Option<KgbStatus>> = try_capacity(size * rank)?;
+        new_statuses.resize(size * rank, None);
+        let mut new_cross: Vec<Option<KgbId>> = try_capacity(size * rank)?;
+        new_cross.resize(size * rank, None);
+        let mut new_cayley: Vec<Option<KgbId>> = try_capacity(size * rank)?;
+        new_cayley.resize(size * rank, None);
         for (old, element) in elements.into_iter().enumerate() {
             let new = forward[old];
             new_elements[new] = Some(element);
@@ -413,9 +413,8 @@ impl KgbGraph {
         let cayley = new_cayley;
 
         // Inverse-Cayley installation, ascending over the sorted numbering.
-        let mut inverse_cayley: Vec<Option<(KgbId, Option<KgbId>)>> =
-            try_capacity(size * rank.max(1))?;
-        inverse_cayley.resize(size * rank.max(1), None);
+        let mut inverse_cayley: Vec<Option<(KgbId, Option<KgbId>)>> = try_capacity(size * rank)?;
+        inverse_cayley.resize(size * rank, None);
         for source in 0..size {
             for generator in 0..rank {
                 if let Some(target) = cayley[source * rank + generator] {
