@@ -1,0 +1,91 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "eval/back_trace_loops",
+ "status": "verified_hpc_reference",
+ "events": [
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[\"During iteration 2 of the for-loop\",\"{ i=0 }\",\"In call of %@(int,int) at <standard input>:1:20-23, built-in.\"]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[\"During iteration 2 of the for-loop\",\"{ k=2, i=0 }\",\"In call of %@(int,int) at <standard input>:3:22-25, built-in.\"]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[\"During iteration 2 (i=2) of the counted for-loop\",\"In call of %@(int,int) at <standard input>:5:18-24, built-in.\"]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[\"During iteration 2 (i=0) of the counted reversed for-loop\",\"In call of %@(int,int) at <standard input>:7:20-23, built-in.\"]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[\"During iteration 0 of the  counted for-loop\",\"In call of %@(int,int) at <standard input>:9:10-13, built-in.\"]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[\"During iteration 0 of the reversed for-loop\",\"{ i=0 }\",\"In call of %@(int,int) at <standard input>:11:21-24, built-in.\"]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[\"During iteration 0 of the for-loop\",\"{ a=1, b=0 }\",\"In call of %@(int,int) at <standard input>:13:24-27, built-in.\"]"
+   }
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Modulo zero"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Modulo zero"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Modulo zero"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Modulo zero"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Modulo zero"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Modulo zero"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "runtime",
+   "message": "Modulo zero"
+  }
+ ]
+}
