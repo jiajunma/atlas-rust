@@ -1,9 +1,26 @@
 {
-  "fixture": "eval/for_iterable_kinds.atlas",
-  "fixture_sha256": "7b549294aea9a02ea196ad9805cde35174dfd8d2ebf6b8eac28374a29e34af01",
-  "oracle": "atlas",
-  "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_capture",
-  "rust_status": "pending",
-  "notes": "for-in over non-row iterables (axis.w for_expression sub_type kinds): strings yield 1-char strings, vecs yield int components, mats yield columns as vecs (mat:[[1,2,3],[4,5,6]] is the 3x2 transpose; columns print [ 1, 2, 3 ],[ 4, 5, 6 ]), ratvecs yield rats; '@' index counts over the iteration order; body-tilde reversal applies to every kind. Rust currently rejects all non-row iterables (Cannot iterate over value of type ...)."
+ "fixture": "eval/for_iterable_kinds.atlas",
+ "fixture_sha256": "7b549294aea9a02ea196ad9805cde35174dfd8d2ebf6b8eac28374a29e34af01",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "3604537",
+ "reference_commit": "6815329601a265f9c81c3a90f03635620ca6bf23",
+ "reference_report_sha256": "26d96efe78408304d9b216e436212f51e60e2ba2953805783bb7fd98898a01a7",
+ "source_archive_sha256": "e4ada90197461b0ec6dc806f6d32d80716a25df95ec0ff186d251d5058232aa5",
+ "oracle_exit_status": 0,
+ "oracle_seconds": 0.028,
+ "oracle_maxrss_kb": 3584,
+ "oracle_maxrss_approximate": false,
+ "notes": "for-in over non-row iterables (axis.w for_expression sub_type kinds): strings yield 1-char strings, vecs yield int components, mats yield columns as vecs (mat:[[1,2,3],[4,5,6]] is the 3x2 transpose; columns print [ 1, 2, 3 ],[ 4, 5, 6 ]), ratvecs yield rats; '@' index counts over the iteration order; body-tilde reversal applies to every kind. Reference frozen by HPC capture 3604537; Rust differential pending non-row iteration.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
 }
