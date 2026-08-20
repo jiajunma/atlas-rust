@@ -313,8 +313,11 @@ pub enum TypedExpr {
         iterable: Box<TypedExpr>,
         body: Box<TypedExpr>,
     },
-    /// `break`, unwound to the innermost loop boundary.
-    Break,
+    /// `break N`, unwound through `levels + 1` enclosing loop boundaries
+    /// (parser.y:385-386, axis.w:665 `loop_break(depth)`).
+    Break {
+        levels: usize,
+    },
     /// `dont` terminates the current while iteration without an error.
     Dont,
     /// `die` (upstream `shell`, axis.w:621-630): analysing it succeeds
@@ -3419,20 +3422,32 @@ pub fn convert_expr(
                 analysis,
             )
         }
-        Expr::Break { span } => {
-            // `break` is legal only lexically inside a loop; upstream
-            // rejects it during analysis, before anything evaluates
-            // (mirroring the `return` check above).
-            if analysis.loop_depth == 0 {
-                return Err(type_error(
-                    "Using 'break' not in the reach of any loop".into(),
-                    *span,
-                ));
+        Expr::Break { levels, span } => {
+            // `break N` is legal only when N+1 loops lexically enclose it;
+            // upstream rejects it during analysis (axis.w:673-685,
+            // layer::may_break), before anything evaluates.
+            if analysis.loop_depth <= *levels {
+                let message = if *levels == 0 {
+                    "Using 'break' not in the reach of any loop".to_string()
+                } else {
+                    format!(
+                        "Using 'break {}' requires {} nested levels of loops",
+                        levels,
+                        levels + 1
+                    )
+                };
+                return Err(type_error(message, *span));
             }
             // A break yields no value and converts as void, so a
             // `… then break fi` branch balances against the implicit
             // void else branch.
-            conform_types(&Type::void(), required, TypedExpr::Break, *span, analysis)
+            conform_types(
+                &Type::void(),
+                required,
+                TypedExpr::Break { levels: *levels },
+                *span,
+                analysis,
+            )
         }
         Expr::Dont { span } => {
             if analysis.loop_depth == 0 {
@@ -4885,6 +4900,10 @@ enum BuiltinImpl {
     /// candidate snapshot the command layer stashed in the evaluation
     /// context by the argument prefix.
     Completions,
+    /// The variadic generic `prints@@T` (axis.w:8773, wrapper :8850-8853):
+    /// a hidden special instance matched by `hidden_special_variant` for any
+    /// a-priori argument type.
+    Prints,
 }
 
 #[derive(Clone, Copy)]
@@ -5088,6 +5107,12 @@ impl Builtin {
                     )
                 }))
             }
+            BuiltinImpl::Prints => {
+                // axis.w:8850-8853: the report is written at every level;
+                // only single_value yields the (empty tuple) value.
+                context.print_text(prints_text(&arguments));
+                Ok(at_builtin_level(level, || Value::Tuple(Vec::new())))
+            }
         }
     }
 }
@@ -5217,6 +5242,38 @@ fn at_builtin_level(level: Level, value: impl FnOnce() -> Value) -> Option<Value
         Level::NoValue => None,
         Level::SingleValue => Some(value()),
     }
+}
+
+/// `to_string_aux` (axis.w:8819-8840) applied to the variadic argument
+/// tuple: string components print without quotes, every other value prints
+/// like `print`; one trailing newline (the wrapper's `std::endl`).
+fn prints_text(arguments: &[Value]) -> String {
+    fn component(text: &mut String, value: &Value) {
+        match value {
+            Value::String(string) => text.push_str(string),
+            other => text.push_str(&other.to_string()),
+        }
+    }
+    let mut text = String::new();
+    // A single argument arrives unwrapped (the variadic tuple collapses), so
+    // a lone tuple's components print individually; anything else prints as
+    // one value.
+    if arguments.len() == 1 {
+        match &arguments[0] {
+            Value::Tuple(components) => {
+                for value in components {
+                    component(&mut text, value);
+                }
+            }
+            value => component(&mut text, value),
+        }
+    } else {
+        for value in arguments {
+            component(&mut text, value);
+        }
+    }
+    text.push('\n');
+    text
 }
 
 fn expect_unary(mut arguments: Vec<Value>) -> Value {
@@ -8059,6 +8116,18 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 0,
                 ScalarOp::RowJoinRowOfRows,
             ),
+            // prints@@T (axis.w:8773): the variadic generic printer is a
+            // hidden special instance; the `*` argument is a registry-local
+            // wildcard matched by `hidden_special_variant` for any a-priori
+            // type, and the result is always void.
+            Builtin {
+                name: "prints",
+                arg_type: Type::Undetermined,
+                result: Type::void(),
+                hunger: 0,
+                overload_visible: false,
+                implementation: BuiltinImpl::Prints,
+            },
             // global.w:4478-4493: retain zero-row/zero-column dimensions,
             // narrow and bound both dimensions before the no-value gate.
             scalar_builtin(
@@ -10350,6 +10419,12 @@ fn hidden_special_variant(
             }
             _ => None,
         },
+        // prints@@T (axis.w:8773, wrapper :8850-8853): the variadic generic
+        // printer matches any a-priori type; the result is always void.
+        "prints" => {
+            let index = hidden_special_builtin("prints")?;
+            Some((index, Type::void()))
+        }
         _ => None,
     }
 }
@@ -11147,7 +11222,7 @@ impl TypedExpr {
                 }
                 Ok(at_level(level, || Value::List(collected.clone())))
             }
-            Self::Break => Err(Control::Break(0)),
+            Self::Break { levels } => Err(Control::Break(*levels)),
             Self::Dont => Err(Control::Dont),
             Self::Die { span } => Err(runtime("I die", *span)),
             Self::UnionInject {
@@ -16073,6 +16148,70 @@ mod tests {
     }
 
     #[test]
+    fn break_levels_match_the_oracle() {
+        // `break N` needs N+1 lexically enclosing loops (parser.y:385-386,
+        // axis.w:673-685 layer::may_break); the check runs during analysis.
+        let error = convert_and_run("for i:2 do break 1 od").expect_err("shallow break 1");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(
+            error.message,
+            "Using 'break 1' requires 2 nested levels of loops"
+        );
+
+        let error = convert_and_run("break 2").expect_err("top-level break 2");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(
+            error.message,
+            "Using 'break 2' requires 3 nested levels of loops"
+        );
+
+        // `break 0` is exactly `break`, including the plain-break message.
+        let error = convert_and_run("break 0").expect_err("top-level break 0");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(error.message, "Using 'break' not in the reach of any loop");
+
+        // With enough depth, `break 2` unwinds all three loops; the
+        // already-completed i=0 rows survive, the breaking iterations
+        // contribute nothing (eval/break_levels fixture).
+        let (_, value) = convert_and_run(
+            "for i:2 do for j:2 do for k:2 do begin if i=1 then break 2 fi; (i,j,k) end od od od",
+        )
+        .expect("break 2 inside three loops");
+        assert_eq!(value.to_string(), "[[[(0,0,0),(0,0,1)],[(0,1,0),(0,1,1)]]]");
+
+        // `break 1` unwinds both loops; only the completed i=0 row survives.
+        let (_, value) =
+            convert_and_run("for i:2 do for j:2 do begin if i=1 then break 1 fi; (i,j) end od od")
+                .expect("break 1 inside two loops");
+        assert_eq!(value.to_string(), "[[(0,0),(0,1)]]");
+    }
+
+    #[test]
+    fn prints_builtin_matches_the_oracle() {
+        // axis.w:8773, 8819-8853: the variadic generic printer emits string
+        // components without quotes, other values like `print`, then one
+        // newline; a lone tuple argument prints component-wise.
+        let mut context = TypedContext::new();
+        for (source, expected) in [
+            ("prints((0,0,1))", "001\n"),
+            ("prints(\"ab\", 4)", "ab4\n"),
+            ("prints(5)", "5\n"),
+            ("prints(\"x\", (1,2), [3])", "x(1,2)[3]\n"),
+        ] {
+            let events = context.execute(&command(source)).expect("prints runs");
+            match &events[..] {
+                [TypedCommandEvent::ReportLine { text, .. }, TypedCommandEvent::Value { value, type_, .. }] =>
+                {
+                    assert_eq!(text, expected, "source: {source}");
+                    assert_eq!(value, &Value::Tuple(Vec::new()), "source: {source}");
+                    assert!(type_.is_void(), "source: {source}");
+                }
+                other => panic!("unexpected events for {source}: {other:?}"),
+            }
+        }
+    }
+
+    #[test]
     fn relation_lattice_builtins_flow_through_tuple_results() {
         for (source, expected) in [
             (
@@ -16128,6 +16267,13 @@ mod tests {
         assert_eq!(STARTUP_COMPLETION_NAMES.len(), 294, "oracle startup count");
         let startup: BTreeSet<&str> = STARTUP_COMPLETION_NAMES.iter().copied().collect();
         for builtin in builtin_registry() {
+            // `prints` is a special operator upstream (axis.w:1798, 2504),
+            // never installed into the overload table, so the oracle's
+            // startup completions do not contain it (probe:
+            // `readline_completions("print")` lists no `prints`).
+            if builtin.name == "prints" {
+                continue;
+            }
             assert!(
                 startup.contains(builtin.name),
                 "registry builtin '{}' missing from STARTUP_COMPLETION_NAMES",

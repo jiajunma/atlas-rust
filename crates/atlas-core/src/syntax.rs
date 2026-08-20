@@ -194,9 +194,11 @@ pub enum Expr {
     /// `for pattern[@index] in row do body od` (parser.y:506-531). Boxed
     /// to keep `Expr` small, like `RecLambda`.
     For(Box<ForLoop>),
-    /// `break` (parser.y BREAK unit): unwinds to the innermost loop, whose
-    /// breaking iteration contributes no value to the collected row.
+    /// `break` / `break N` (parser.y:385-386 BREAK / BREAK INT units):
+    /// unwinds `levels + 1` loops; the breaking iteration of each unwound
+    /// loop contributes no value to the collected row.
     Break {
+        levels: usize,
         span: SourceSpan,
     },
     /// `dont` is admitted only by the while `do_expr` grammar.
@@ -599,7 +601,7 @@ impl Expr {
             | Self::Sequence { span, .. }
             | Self::Next { span, .. }
             | Self::While { span, .. }
-            | Self::Break { span }
+            | Self::Break { span, .. }
             | Self::Dont { span }
             | Self::Die { span } => *span,
             Self::ComponentAssignment(assignment) => assignment.span,
@@ -1456,6 +1458,21 @@ fn join_span(start: SourceSpan, end: SourceSpan) -> SourceSpan {
         start.start,
         end.end,
     )
+}
+
+/// The level count of a `break N` unit (parser.y:386 `make_break(stoi)`):
+/// the literal is non-negative by tokenisation; an out-of-range literal
+/// saturates so analysis still reports the depth error.
+fn break_level(value: &BigInt) -> usize {
+    usize::try_from(value).unwrap_or(usize::MAX)
+}
+
+fn break_shape(levels: usize) -> String {
+    if levels == 0 {
+        "break".to_string()
+    } else {
+        format!("break {levels}")
+    }
 }
 
 fn unary(op: UnaryOp, operand: Expr, operator: SourceSpan) -> Expr {
@@ -2830,7 +2847,7 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
                 compact_expression(&loop_.body)
             )
         }
-        Expr::Break { .. } => "break".to_string(),
+        Expr::Break { levels, .. } => break_shape(*levels),
         Expr::Dont { .. } => "dont".to_string(),
         Expr::Die { .. } => "die".to_string(),
         Expr::Case(case) => {
@@ -3255,7 +3272,7 @@ mod tests {
                 expression_shape(&loop_.iterable),
                 expression_shape(&loop_.body)
             ),
-            Expr::Break { .. } => "break".to_string(),
+            Expr::Break { levels, .. } => break_shape(*levels),
             Expr::Dont { .. } => "dont".to_string(),
             Expr::Die { .. } => "die".to_string(),
             Expr::Case(case) => {
@@ -3999,6 +4016,23 @@ mod tests {
         .expect_err("break with a value is a syntax error");
         assert_eq!(error.kind, crate::diagnostic::ErrorKind::Syntax);
         assert_eq!(error.message, "syntax error, unexpected IDENT");
+    }
+
+    #[test]
+    fn break_accepts_an_integer_level() {
+        // parser.y:385-386: BREAK is BREAK 0; BREAK INT unwinds INT+1 loops.
+        assert_eq!(expression_shape(&parse_one("break")), "break");
+        assert_eq!(expression_shape(&parse_one("break 0")), "break");
+        assert_eq!(expression_shape(&parse_one("break 2")), "break 2");
+        assert_eq!(
+            expression_shape(&parse_one("while do break 1 od")),
+            "while(;break 1)"
+        );
+        // The level spans both tokens, like the oracle's error location.
+        let Expr::Break { span, .. } = parse_one("break 12") else {
+            panic!("break 12 parses as a break")
+        };
+        assert_eq!(span.end.column - span.start.column, 8);
     }
 
     #[test]
