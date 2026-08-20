@@ -741,8 +741,9 @@ print_gradings/print_real_Weyl/print_blockstabilizer (RealWeyl crate
 对偶 datum 重放后右乘对偶最长元，不能用对偶 classification 的
 canonical 代表元，cartanclass.cpp:121；尚缺语言层 wrapper 注册), print_X (GlobalTitsGroup 600+), print_common_block/
 print_block(Param)/print_common_block (srm pool, last; print_partial_* 钉住版未安装),
-reducibility_points, KType/Rep skips (K_type_pol/first_term/last_term/
-null_module/W_cells), small items (semisimple_rank/two_rho_check/
+KType/Rep skips (null_module 变体/W_cells——K_type_pol/first_term/
+last_term 的 PolP 强转 gate 已落地 `domain/polp_coercion`;
+reducibility_points 已注册并修复复根 lwb 播种), small items (semisimple_rank/two_rho_check/
 simple_coroots/poscoroots/coroot_radical/mod_central_torus_info/adjoint).
 
 ## Batch status (2026-08-09)

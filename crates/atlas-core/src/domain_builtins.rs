@@ -1922,6 +1922,49 @@ pub(crate) fn coerce(tag: &str, value: Value, span: SourceSpan) -> Result<Value,
                 format!("expected an (int,int) pair, found {other}"),
             )),
         },
+        // K_type_to_poly (atlas-types.w:5608-5617): expand the K-type
+        // into its final constituents (K_repr finals_for) and collect
+        // them in canonical K_type_pol term order.
+        "KpolK" => match value {
+            Value::Domain(DomainValue::KType(ktype_value)) => {
+                let rc = rep_context(&ktype_value.context);
+                let mut terms: Vec<(SplitValue, KType)> = Vec::new();
+                for (ktype, coefficient) in ktype_value
+                    .ktype
+                    .finals_for(&rc)
+                    .map_err(|error| structure_diagnostic(error, span))?
+                {
+                    merge_ktype_term(&mut terms, ktype, SplitValue::new(coefficient, 0));
+                }
+                sort_ktypepol_terms(&mut terms);
+                Ok(Value::Domain(DomainValue::KTypePol(KTypePolValue {
+                    rf: Arc::clone(&ktype_value.context),
+                    terms,
+                })))
+            }
+            other => Err(type_error(span, format!("expected a KType, found {other}"))),
+        },
+        // param_to_poly (atlas-types.w:7710-7717): expand the parameter
+        // into its final standard constituents (repr.cpp:1299-1306
+        // expand_final) and collect them in SR_poly term order.
+        "PolP" => match value {
+            Value::Domain(DomainValue::Param(parameter)) => {
+                let rc = rep_context(&parameter.context);
+                let mut terms: Vec<(SplitValue, StandardRepr)> = Vec::new();
+                for (repr, coefficient) in rc
+                    .expand_final(&parameter.repr)
+                    .map_err(|error| structure_diagnostic(error, span))?
+                {
+                    merge_pol_term(&mut terms, SplitValue::new(coefficient, 0), repr);
+                }
+                sort_parampol_terms(&mut terms);
+                Ok(Value::Domain(DomainValue::ParamPol(ParamPolValue {
+                    rf: Arc::clone(&parameter.context),
+                    terms,
+                })))
+            }
+            other => Err(type_error(span, format!("expected a Param, found {other}"))),
+        },
         other => Err(runtime(
             span,
             format!("conversion '{other}' is not implemented"),

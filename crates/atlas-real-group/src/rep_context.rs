@@ -2215,44 +2215,62 @@ impl<'a> RepContext<'a> {
                             continue 'restart;
                         }
                         KgbStatus::Real => {
-                            let eval_lr = pair(&lr, &datum.simple_coroots()[s])?;
-                            if eval_lr % 2 == 0 {
-                                continue;
-                            }
-                            let shift = (eval_lr + 1) / 2;
-                            let mut projected = Vec::new();
-                            projected.try_reserve_exact(lr.rank()).map_err(|_| {
-                                StructureError::AllocationFailed {
-                                    requested: lr.rank(),
+                            if eval == 0 {
+                                // Singular real root (repr.cpp:1266-1282):
+                                // non-parity generators are skipped; a
+                                // parity real generator is replaced by its
+                                // inverse Cayley image(s) projected to the
+                                // wall, and the current parameter is
+                                // rewritten away.
+                                let eval_lr = pair(&lr, &datum.simple_coroots()[s])?;
+                                if eval_lr % 2 == 0 {
+                                    continue;
                                 }
-                            })?;
-                            for (&entry, &root_entry) in
-                                lr.as_slice().iter().zip(datum.simple_roots()[s].as_slice())
-                            {
-                                projected.push(
-                                    entry
-                                        .checked_sub(
-                                            root_entry
-                                                .checked_mul(shift)
-                                                .ok_or(StructureError::ArithmeticOverflow)?,
-                                        )
-                                        .ok_or(StructureError::ArithmeticOverflow)?,
-                                );
+                                let shift = (eval_lr + 1) / 2;
+                                let mut projected = Vec::new();
+                                projected.try_reserve_exact(lr.rank()).map_err(|_| {
+                                    StructureError::AllocationFailed {
+                                        requested: lr.rank(),
+                                    }
+                                })?;
+                                for (&entry, &root_entry) in
+                                    lr.as_slice().iter().zip(datum.simple_roots()[s].as_slice())
+                                {
+                                    projected.push(
+                                        entry
+                                            .checked_sub(
+                                                root_entry
+                                                    .checked_mul(shift)
+                                                    .ok_or(StructureError::ArithmeticOverflow)?,
+                                            )
+                                            .ok_or(StructureError::ArithmeticOverflow)?,
+                                    );
+                                }
+                                lr = Weight::new(projected);
+                                let gamma = RationalWeight::new(
+                                    gamma_numerator.clone(),
+                                    gamma_denominator,
+                                )?;
+                                let Some((first, second)) = self.graph().inverse_cayley(x, s)?
+                                else {
+                                    return Err(StructureError::RepInvariantViolation {
+                                        invariant: "parity real inverse Cayley",
+                                    });
+                                };
+                                if let Some(second) = second {
+                                    todo.push((self.sr_gamma(second, &lr, &gamma)?, coef));
+                                }
+                                todo.push((self.sr_gamma(first, &lr, &gamma)?, coef));
+                                dropped = true;
+                                break 'restart;
                             }
-                            lr = Weight::new(projected);
-                            let gamma =
-                                RationalWeight::new(gamma_numerator.clone(), gamma_denominator)?;
-                            let Some((first, second)) = self.graph().inverse_cayley(x, s)? else {
-                                return Err(StructureError::RepInvariantViolation {
-                                    invariant: "parity real inverse Cayley",
-                                });
-                            };
-                            if let Some(second) = second {
-                                todo.push((self.sr_gamma(second, &lr, &gamma)?, coef));
-                            }
-                            todo.push((self.sr_gamma(first, &lr, &gamma)?, coef));
-                            dropped = true;
-                            break 'restart;
+                            // eval < 0 (repr.cpp:1283-1287): real roots act
+                            // trivially on KGB elements, so x is unchanged;
+                            // reflect lambda-rho 0-based and gamma, keep
+                            // the coefficient.
+                            self.simple_reflect(s, &mut lr, 0)?;
+                            self.simple_reflect_numerator(s, &mut gamma_numerator)?;
+                            continue 'restart;
                         }
                     }
                 }

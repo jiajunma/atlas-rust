@@ -11395,7 +11395,7 @@ fn apply_conversion(tag: &str, value: Value, span: SourceSpan) -> Result<Value, 
                 })
                 .collect::<Result<Vec<_>, Control>>()?,
         )),
-        "LT" | "RdIc" | "IcRf" | "RdRf" | "SpI" | "Sp(I,I)" => {
+        "LT" | "RdIc" | "IcRf" | "RdRf" | "SpI" | "Sp(I,I)" | "KpolK" | "PolP" => {
             domain_builtins::coerce(tag, value, span).map_err(Control::Runtime)
         }
         other => Err(runtime(
