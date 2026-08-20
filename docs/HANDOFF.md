@@ -4072,3 +4072,22 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
 - break N dispatched to agent-102 (main tree; parser production
   BREAK INT + analysis-time depth check; Control::Break(levels) unwind
   already exists).
+
+### op_cast / `$` extended probes (2026-08-21d, oracle)
+
+- `IDENT '@' type` (parser.y:382) works on user overloads: `u@int`
+  evaluates to the closure and prints MULTI-LINE at top level
+  (`Function defined at <span>` + body line); `(u@int)(3)` applies.
+  Rejection wording `No instance for u@string found` / `No instance for
+  +@int found` (category type).
+- Unary operator casts accepted: `-@int` -> `{-@int}`, `#@vec` ->
+  `{#@vec}` (built-in closures print brace-wrapped name@type).
+- `prints@string` displays as `{prints@T}` — the generic type variable
+  leaks into the closure display even after a concrete cast.
+- `$` (last value): sticky across runtime AND type errors; void-valued
+  evaluations (`prints("x")`, `()`) do NOT update `$`; a bare `$` before
+  any value evaluates to void (no Value line, no error). Bare `f` for an
+  overload name is `Undefined identifier 'f'` (functions live in the
+  overload table, not the identifier table) — Rust already mirrors this.
+- op_cast/last_value fixtures extended, re-capture jobs 3604640/3604641;
+  these probes define agent-99's resume batch scope.
