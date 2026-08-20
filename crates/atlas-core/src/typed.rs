@@ -18,7 +18,7 @@ use crate::coercions::{coercion_between, row_coercion};
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
 use crate::domain_builtins;
 use crate::formula::FormulaOperator;
-use crate::frames::{EvaluationContext, GlobalCell};
+use crate::frames::{EvaluationContext, Frame, GlobalCell};
 use crate::linear_values::{Matrix, RatVec, Vec32};
 use crate::matreduc;
 use crate::syntax::{
@@ -238,6 +238,9 @@ pub enum TypedExpr {
     BuiltinCall {
         builtin: usize,
         arguments: Vec<TypedExpr>,
+        /// The resolved `name@argtype` for the back-trace call line
+        /// (axis.w:1647-1648 builds it at overload resolution).
+        name: String,
         span: SourceSpan,
     },
     /// A top-level builtin RHS of a simple assignment whose hungry operand
@@ -246,6 +249,8 @@ pub enum TypedExpr {
     HungryBuiltinCall {
         builtin: usize,
         arguments: Vec<TypedExpr>,
+        /// The resolved `name@argtype` for the back-trace call line.
+        name: String,
         pilfer: PilferDestination,
         pilfer_index: usize,
         span: SourceSpan,
@@ -260,6 +265,10 @@ pub enum TypedExpr {
         /// A recursive closure additionally binds itself at slot 0.
         recursive: bool,
         body: Rc<TypedExpr>,
+        /// The lambda's source location (`defined at ...` in back-traces).
+        span: SourceSpan,
+        /// Frame slot names in bind order, for the back-trace frame dump.
+        param_names: Rc<[String]>,
     },
     /// `return value`, unwound to the innermost call boundary.
     Return {
@@ -270,6 +279,10 @@ pub enum TypedExpr {
     FunctionCall {
         function: Box<TypedExpr>,
         argument: Box<TypedExpr>,
+        /// The resolved `name@argtype` for the back-trace call line; `None`
+        /// for a dynamically computed callee (upstream prints the callee
+        /// expression there, axis.w:1913-1915).
+        name: Option<String>,
         span: SourceSpan,
     },
     /// `first; second`: the first half evaluates for effects at `NoValue`;
@@ -284,12 +297,16 @@ pub enum TypedExpr {
         condition: Option<Box<TypedExpr>>,
         body: Box<TypedExpr>,
     },
-    /// A for loop over a row value; each iteration distributes the element
-    /// per `shape`, then pushes the 0-based index slot when `index` is set
-    /// (the upstream (pattern, index) pair wrap).
+    /// A for loop over a row value; each iteration pushes the 0-based
+    /// index slot when `index` is set, then distributes the element per
+    /// `shape` (the upstream (index, pattern) pair wrap).
     For {
         shape: SlotShape,
         index: bool,
+        /// Frame slot names in bind order (the index name, then the
+        /// pattern leaves), for the back-trace frame dump
+        /// (axis.w:6124-6161).
+        names: Rc<[String]>,
         iterable: Box<TypedExpr>,
         body: Box<TypedExpr>,
     },
@@ -1067,8 +1084,8 @@ const STARTUP_COMPLETION_NAMES: &[&str] = &[
 
 /// The startup system variables (main.w:408-435), in definition order:
 /// the `-path` search list (empty in batch mode), the prelude log
-/// (declared constant upstream), and the error back-trace (the upstream
-/// trace machinery is not ported, so this stays empty).
+/// (declared constant upstream), and the error back-trace, rewritten with
+/// the trace lines of every caught runtime error (global.w:1135-1148).
 const SYSTEM_VARIABLE_NAMES: &[&str] = &["input_path", "prelude_log", "back_trace"];
 
 /// Persistent state for command-at-a-time typed execution.
@@ -1110,6 +1127,39 @@ impl TypedContext {
         &self.globals
     }
 
+    /// Record a source buffer's trace display name (buffer.w:694): the
+    /// session frame calls this as it registers each buffer.
+    pub fn note_source_name(&mut self, id: crate::diagnostic::SourceId, name: String) {
+        self.evaluation.note_source_name(id, name);
+    }
+
+    /// Evaluate one top-level expression; on a runtime error with a
+    /// non-empty back-trace, store the trace lines in the `back_trace`
+    /// system variable (global.w:1127, 1135-1148). An empty trace keeps the
+    /// previous value (the upstream `set_back_trace` no-ops on empty).
+    fn evaluate_with_trace(&mut self, typed: &TypedExpr) -> Result<Value, Diagnostic> {
+        match evaluate_command_expr(typed, &mut self.evaluation) {
+            Ok(value) => Ok(value),
+            Err(diagnostic) => {
+                if diagnostic.kind == ErrorKind::Runtime && !diagnostic.back_trace.is_empty() {
+                    // Upstream writes through a raw pointer captured at
+                    // startup; here the name is looked up, so a user who
+                    // forgot or redefined `back_trace` loses the update.
+                    if let Some((_, cell)) = self.globals.lookup("back_trace") {
+                        *cell.borrow_mut() = Some(Rc::new(Value::List(
+                            diagnostic
+                                .back_trace
+                                .iter()
+                                .map(|line| Value::String(line.clone()))
+                                .collect(),
+                        )));
+                    }
+                }
+                Err(diagnostic)
+            }
+        }
+    }
+
     pub fn execute(&mut self, command: &Command) -> Result<Vec<TypedCommandEvent>, Diagnostic> {
         self.refresh_completion_candidates();
         match command {
@@ -1147,7 +1197,7 @@ impl TypedContext {
                         span: expression.span(),
                     });
                 }
-                let value = match evaluate_command_expr(&typed, &mut self.evaluation) {
+                let value = match self.evaluate_with_trace(&typed) {
                     Ok(value) => value,
                     Err(diagnostic) => {
                         // Upstream keeps text printed before the failure
@@ -1216,7 +1266,7 @@ impl TypedContext {
                     &mut type_,
                     &Analysis::new(&self.types, &self.globals, &self.overloads),
                 )?;
-                let value = match evaluate_command_expr(&typed, &mut self.evaluation) {
+                let value = match self.evaluate_with_trace(&typed) {
                     Ok(value) => value,
                     Err(diagnostic) => {
                         // Printed text survives the failure (see the
@@ -1556,7 +1606,7 @@ impl TypedContext {
         let mut printed = Vec::new();
         let mut evaluated = Vec::with_capacity(pending.len());
         for pending in pending {
-            let value = match evaluate_command_expr(&pending.typed, &mut self.evaluation) {
+            let value = match self.evaluate_with_trace(&pending.typed) {
                 Ok(value) => value,
                 Err(diagnostic) => {
                     // Printed text survives the failure (see the
@@ -1689,7 +1739,7 @@ impl TypedContext {
             self.globals.define(
                 field_name.value.clone(),
                 function_type,
-                crate::frames::global_with(Rc::new(member_closure(body))),
+                crate::frames::global_with(Rc::new(member_closure(body, field.span))),
             );
             names.push(field_name.value.clone());
         }
@@ -1779,14 +1829,19 @@ fn parameter_body(name: &str, span: SourceSpan) -> TypedExpr {
 }
 
 /// A one-argument closure value with no captured frame, used for the
-/// projector and injector globals a `set_type` definition installs.
-fn member_closure(body: TypedExpr) -> Value {
+/// projector and injector globals a `set_type` definition installs. These
+/// stand in for upstream's `projector_value`/`injector_value`; their
+/// back-trace origin wording (`projector defined ...`, axis.w:4479/4577) is
+/// not ported, and they push no traced frame (empty `param_names`).
+fn member_closure(body: TypedExpr, span: SourceSpan) -> Value {
     Value::Closure(Rc::new(Closure {
         parameters: 1,
         shapes: Rc::from(vec![SlotShape::Leaf]),
         recursive: false,
         body: Rc::new(body),
         frame: None,
+        span,
+        param_names: Rc::from(Vec::new()),
     }))
 }
 
@@ -2585,6 +2640,7 @@ pub fn convert_expr(
                     TypedExpr::BuiltinCall {
                         builtin: inverse,
                         arguments: vec![argument],
+                        name: format!("/@{}", int_type().display(analysis.types)),
                         span: *span,
                     },
                     *span,
@@ -2682,6 +2738,9 @@ pub fn convert_expr(
                 TypedExpr::FunctionCall {
                     function: Box::new(function),
                     argument: Box::new(argument),
+                    // A dynamically computed callee has no resolved overload
+                    // name; the trace falls back to the callee rendering.
+                    name: None,
                     span: *span,
                 },
                 *span,
@@ -2822,8 +2881,8 @@ pub fn convert_expr(
                 ));
             };
             // The pattern claims the row's component; the `@` name binds
-            // the 0-based index as int (the upstream (pattern, index)
-            // pair wrap, in that slot order).
+            // the 0-based index as int (the upstream (index, pattern) pair
+            // wrap, in that slot order).
             let leaves = match pattern {
                 Some(pattern) => bind_pattern_leaves(pattern, &component, analysis.types)?,
                 None => Vec::new(),
@@ -2858,6 +2917,18 @@ pub fn convert_expr(
                 }
             }
             let mut offset = 0;
+            // The upstream (pattern, index) pair wrap is push_front-built
+            // (parser.y:533-537, parsetree.w:1383-1385), so the INDEX takes
+            // slot 0 and the pattern leaves follow (observable in the
+            // back-trace frame dump: `{ k=0, i=2 }` for `for i@k`).
+            if let Some(index) = index {
+                locals.insert(
+                    index.value.clone(),
+                    (Rc::new(RefCell::new(Type::Primitive(Prim::Int))), 0, offset),
+                );
+                constant_locals.remove(&index.value);
+                offset += 1;
+            }
             for (name, _, constant, leaf_type) in &leaves {
                 locals.insert(
                     name.clone(),
@@ -2870,17 +2941,17 @@ pub fn convert_expr(
                 }
                 offset += 1;
             }
-            if let Some(index) = index {
-                locals.insert(
-                    index.value.clone(),
-                    (Rc::new(RefCell::new(Type::Primitive(Prim::Int))), 0, offset),
-                );
-                constant_locals.remove(&index.value);
-            }
             let shape = pattern
                 .as_ref()
                 .map(pattern_slot_shape)
                 .unwrap_or(SlotShape::Discard);
+            // Slot names in bind order (the index name, then the leaves),
+            // for the error-time frame dump (axis.w:6124-6161).
+            let names: Vec<String> = index
+                .iter()
+                .map(|index| index.value.clone())
+                .chain(leaves.iter().map(|(name, _, _, _)| name.clone()))
+                .collect();
             let mut body_type = Type::Undetermined;
             let body = convert_expr(
                 body,
@@ -2901,6 +2972,7 @@ pub fn convert_expr(
                 TypedExpr::For {
                     shape,
                     index: index.is_some(),
+                    names: Rc::from(names),
                     iterable: Box::new(iterable),
                     body: Box::new(body),
                 },
@@ -3801,6 +3873,7 @@ fn prepare_hungry_assignment(
     let TypedExpr::BuiltinCall {
         builtin,
         arguments,
+        name,
         span,
     } = converted
     else {
@@ -3815,6 +3888,7 @@ fn prepare_hungry_assignment(
             return TypedExpr::BuiltinCall {
                 builtin,
                 arguments,
+                name,
                 span,
             };
         }
@@ -3847,6 +3921,7 @@ fn prepare_hungry_assignment(
             return TypedExpr::BuiltinCall {
                 builtin,
                 arguments,
+                name,
                 span,
             };
         }
@@ -3854,6 +3929,7 @@ fn prepare_hungry_assignment(
     TypedExpr::HungryBuiltinCall {
         builtin,
         arguments,
+        name,
         pilfer,
         pilfer_index,
         span,
@@ -4245,11 +4321,15 @@ fn convert_lambda_expression(
     }
     let mut parameter_types = Vec::with_capacity(parameters.len());
     let mut shapes = Vec::with_capacity(parameters.len());
+    // Frame slot names in bind order, retained for the error-time frame
+    // dump (axis.w:2896-2909).
+    let mut param_names = Vec::new();
     let mut offset = 0;
     for (parameter_type, shape, leaves) in converted_parameters {
         parameter_types.push(parameter_type);
         shapes.push(shape);
         for (name, _, constant, leaf_type) in leaves {
+            param_names.push(name.clone());
             locals.insert(name.clone(), (Rc::new(RefCell::new(leaf_type)), 0, offset));
             if constant {
                 constant_locals.insert(name.clone());
@@ -4275,6 +4355,8 @@ fn convert_lambda_expression(
         shapes: Rc::from(shapes),
         recursive: false,
         body: Rc::new(body),
+        span,
+        param_names: Rc::from(param_names),
     };
     if required.is_void() {
         let mut dummy = Type::Undetermined;
@@ -4356,8 +4438,12 @@ fn convert_rec_lambda_expression(
         (Rc::new(RefCell::new(function_type.clone())), 0, 0),
     );
     let mut offset = 1;
+    // Frame slot names in bind order: the self binding at slot 0, then the
+    // parameter leaves (for the error-time frame dump, axis.w:2896-2909).
+    let mut param_names = vec![self_name.clone()];
     for (_, _, leaves) in converted_parameters {
         for (name, _, constant, leaf_type) in leaves {
+            param_names.push(name.clone());
             locals.insert(name.clone(), (Rc::new(RefCell::new(leaf_type)), 0, offset));
             if constant {
                 constant_locals.insert(name.clone());
@@ -4383,6 +4469,8 @@ fn convert_rec_lambda_expression(
         shapes: Rc::from(shapes),
         recursive: true,
         body: Rc::new(body),
+        span: *span,
+        param_names: Rc::from(param_names),
     };
     if required.is_void() {
         let mut dummy = result_type.resolve();
@@ -4502,6 +4590,10 @@ fn convert_overload_application(
             }
         })
         .collect::<Result<Vec<_>, _>>()?;
+    // The resolved call name retained for the error back-trace
+    // (axis.w:1647-1648): the overload name and its argument type, e.g.
+    // `g@int`, `%@(int,int)`, `z@void` for a zero-parameter variant.
+    let trace_name = format!("{name}@{}", variant.arg_type.display(analysis.types));
     match variant.origin {
         OverloadOrigin::Builtin(index) => conform_types(
             &variant.result_type,
@@ -4509,6 +4601,7 @@ fn convert_overload_application(
             TypedExpr::BuiltinCall {
                 builtin: index,
                 arguments,
+                name: trace_name,
                 span,
             },
             span,
@@ -4532,6 +4625,7 @@ fn convert_overload_application(
                 TypedExpr::FunctionCall {
                     function: Box::new(TypedExpr::Denotation(user.value.clone())),
                     argument: Box::new(argument),
+                    name: Some(trace_name),
                     span,
                 },
                 span,
@@ -10738,6 +10832,7 @@ impl TypedExpr {
             Self::BuiltinCall {
                 builtin,
                 arguments,
+                name,
                 span,
             } => {
                 let mut values = arguments
@@ -10753,11 +10848,24 @@ impl TypedExpr {
                     };
                     values = components;
                 }
-                builtin_registry()[*builtin].run(values, *span, level, context)
+                match builtin_registry()[*builtin].run(values, *span, level, context) {
+                    // Arguments evaluate OUTSIDE the traced region
+                    // (axis.w:2184-2189): only errors from the builtin
+                    // itself earn the call line.
+                    Err(Control::Runtime(mut diagnostic)) => {
+                        diagnostic.trace(format!(
+                            "In call of {name} {}, built-in.",
+                            trace_location(context, span)
+                        ));
+                        Err(Control::Runtime(diagnostic))
+                    }
+                    other => other,
+                }
             }
             Self::HungryBuiltinCall {
                 builtin,
                 arguments,
+                name,
                 pilfer,
                 pilfer_index,
                 span,
@@ -10791,13 +10899,24 @@ impl TypedExpr {
                     };
                     values = components;
                 }
-                builtin_registry()[*builtin].run(values, *span, level, context)
+                match builtin_registry()[*builtin].run(values, *span, level, context) {
+                    Err(Control::Runtime(mut diagnostic)) => {
+                        diagnostic.trace(format!(
+                            "In call of {name} {}, built-in.",
+                            trace_location(context, span)
+                        ));
+                        Err(Control::Runtime(diagnostic))
+                    }
+                    other => other,
+                }
             }
             Self::Closure {
                 parameters,
                 shapes,
                 recursive,
                 body,
+                span,
+                param_names,
             } => Ok(at_level(level, || {
                 Value::Closure(Rc::new(Closure {
                     parameters: *parameters,
@@ -10805,6 +10924,8 @@ impl TypedExpr {
                     recursive: *recursive,
                     body: Rc::clone(body),
                     frame: context.capture(),
+                    span: *span,
+                    param_names: param_names.clone(),
                 }))
             })),
             Self::Return { value } => {
@@ -10812,14 +10933,33 @@ impl TypedExpr {
                 Err(Control::Return(value))
             }
             Self::FunctionCall {
-                function, argument, ..
+                function,
+                argument,
+                name,
+                span,
             } => {
                 let closure = force(function, context)?;
                 let Value::Closure(closure) = closure else {
                     panic!("analysis let a non-function callee through: {closure}")
                 };
+                // The callee and argument evaluate OUTSIDE the traced
+                // region (axis.w:2184-2189): only errors from the call
+                // itself earn the call line.
                 let argument = force(argument, context)?;
-                apply_closure(&closure, argument, context, level)
+                match apply_closure(&closure, argument, context, level) {
+                    Err(Control::Runtime(mut diagnostic)) => {
+                        let callee = name
+                            .clone()
+                            .unwrap_or_else(|| compact_typed_expression(function));
+                        diagnostic.trace(format!(
+                            "In call of {callee} {}, defined {}.",
+                            trace_location(context, span),
+                            trace_location(context, &closure.span)
+                        ));
+                        Err(Control::Runtime(diagnostic))
+                    }
+                    other => other,
+                }
             }
             Self::Sequence { first, second } => {
                 first.evaluate(context, Level::NoValue)?;
@@ -10854,6 +10994,7 @@ impl TypedExpr {
             Self::For {
                 shape,
                 index,
+                names,
                 iterable,
                 body,
             } => {
@@ -10863,18 +11004,22 @@ impl TypedExpr {
                 };
                 let mut collected = Vec::new();
                 for (position, element) in values.into_iter().enumerate() {
+                    // The index slot precedes the pattern slots, matching
+                    // the analysis-time layout (upstream pair wrap).
                     let mut slots = Vec::new();
-                    distribute(element, shape, &mut slots);
                     if *index {
                         slots.push(Rc::new(Value::Integer(BigInt::from(position))));
                     }
-                    let result = if slots.is_empty() {
+                    distribute(element, shape, &mut slots);
+                    let (result, frame) = if slots.is_empty() {
                         // A pure-discard layer pushes no frame, matching the
                         // analysis-time empty-layer rule.
-                        body.evaluate(context, Level::SingleValue)
+                        (body.evaluate(context, Level::SingleValue), None)
                     } else {
-                        context
-                            .with_frame(slots, |context| body.evaluate(context, Level::SingleValue))
+                        let (result, frame) = context.with_frame_traced(slots, |context| {
+                            body.evaluate(context, Level::SingleValue)
+                        });
+                        (result, Some(frame))
                     };
                     match result {
                         Ok(Some(value)) => collected.push(value),
@@ -10882,6 +11027,16 @@ impl TypedExpr {
                         Err(Control::Break(0)) => break,
                         Err(Control::Break(levels)) => {
                             return Err(Control::Break(levels - 1));
+                        }
+                        Err(Control::Runtime(mut diagnostic)) => {
+                            // The per-iteration frame dump, then the
+                            // iteration line ahead of it (axis.w:6124-6161).
+                            if let Some(frame) = frame {
+                                diagnostic.trace(frame_dump(names, &frame));
+                            }
+                            diagnostic
+                                .trace(format!("During iteration {position} of the for-loop"));
+                            return Err(Control::Runtime(diagnostic));
                         }
                         Err(control) => return Err(control),
                     }
@@ -11146,19 +11301,80 @@ fn apply_closure(
             .insert(0, Rc::new(Value::Closure(closure.clone())));
     }
     context.with_context(closure.frame.clone(), |context| {
-        let result = match slots {
+        let (result, frame) = match slots {
             Some(slots) => {
-                context.with_frame(slots, |context| closure.body.evaluate(context, level))
+                let (result, frame) = context
+                    .with_frame_traced(slots, |context| closure.body.evaluate(context, level));
+                (result, Some(frame))
             }
-            None => closure.body.evaluate(context, level),
+            None => (closure.body.evaluate(context, level), None),
         };
         match result {
             // An explicit `return` ends the call and supplies its value
             // (upstream function_return caught in apply, axis.w:3569-3571).
             Err(Control::Return(value)) => Ok(at_level(level, move || value.clone())),
+            // A runtime error unwinding through a call with named slots
+            // earns the local-variable trace line (axis.w:3525-3533);
+            // parameterless closures push no frame and no line.
+            Err(Control::Runtime(mut diagnostic)) => {
+                if let Some(frame) = frame {
+                    if !closure.param_names.is_empty() {
+                        diagnostic.trace(frame_dump(&closure.param_names, &frame));
+                    }
+                }
+                Err(Control::Runtime(diagnostic))
+            }
             other => other,
         }
     })
+}
+
+/// The upstream source-location rendering (parsetree.w:173-180):
+/// `at NAME:LINE:COL-COL` with 1-based lines and 0-based columns (Rust
+/// spans are 1-based), end exclusive on a single line, and
+/// `at NAME:LINE:COL--ENDLINE:ENDCOL` across lines (a doubled dash).
+fn trace_location(context: &EvaluationContext, span: &SourceSpan) -> String {
+    let name = context.source_name(span.source_id());
+    let start_column = span.start.column.saturating_sub(1);
+    let end_column = span.end.column.saturating_sub(1);
+    if span.start.line == span.end.line {
+        format!("at {name}:{}:{start_column}-{end_column}", span.start.line)
+    } else {
+        // Upstream prints `'-'` unconditionally, then `'-':EL:':'` when the
+        // span crosses lines — a doubled dash (parsetree.w:173-180).
+        format!(
+            "at {name}:{}:{start_column}--{}:{end_column}",
+            span.start.line, span.end.line
+        )
+    }
+}
+
+/// The local-variable trace line of one frame (axis.w:2896-2909):
+/// `{ name=value, ... }` with the standard value printer, read after
+/// unwinding so a slot reassigned before the error prints its current value.
+fn frame_dump(names: &[String], frame: &Frame) -> String {
+    let slots = frame.slot_snapshot();
+    debug_assert_eq!(
+        names.len(),
+        slots.len(),
+        "analysis keeps slot names and values in step"
+    );
+    let mut out = String::from("{ ");
+    for (index, (name, slot)) in names.iter().zip(slots.iter()).enumerate() {
+        if index > 0 {
+            out.push_str(", ");
+        }
+        out.push_str(name);
+        out.push('=');
+        match slot {
+            Some(value) => out.push_str(&value.to_string()),
+            // A call frame binds every slot before the body runs; an empty
+            // slot can only appear after a pilfering builtin moved it out.
+            None => out.push('*'),
+        }
+    }
+    out.push_str(" }");
+    out
 }
 
 /// Bind one value against a slot shape, pushing leaves left-to-right
@@ -15755,6 +15971,159 @@ mod tests {
                 [TypedCommandEvent::ReportLine { text, .. }] if text == "Type: [string]\n"
             ));
         }
+    }
+
+    /// The current `back_trace` global as plain strings.
+    fn back_trace_lines(context: &mut TypedContext) -> Vec<String> {
+        let events = context
+            .execute(&command("back_trace"))
+            .expect("back_trace reads");
+        match &events[..] {
+            [TypedCommandEvent::Value {
+                value: Value::List(items),
+                ..
+            }] => items
+                .iter()
+                .map(|item| match item {
+                    Value::String(line) => line.clone(),
+                    other => panic!("non-string trace line {other:?}"),
+                })
+                .collect(),
+            other => panic!("unexpected back_trace events {other:?}"),
+        }
+    }
+
+    #[test]
+    fn trace_location_renders_upstream_spans() {
+        use crate::diagnostic::{SourceId, SourcePosition};
+        let mut context = EvaluationContext::new();
+        let position = |line, column| SourcePosition { line, column };
+        // Single line: 1-based line, 0-based columns, end exclusive
+        // (parsetree.w:173-180); the stdin buffer is `<standard input>`.
+        let span = SourceSpan::new(SourceId::new(7), 0, 4, position(3, 1), position(3, 5));
+        assert_eq!(trace_location(&context, &span), "at <standard input>:3:0-4");
+        // Across lines: `LINE:COL--ENDLINE:ENDCOL` (the doubled dash is
+        // upstream's unconditional `-` plus the multi-line `-EL:`).
+        let span = SourceSpan::new(SourceId::new(7), 0, 10, position(3, 2), position(5, 4));
+        assert_eq!(
+            trace_location(&context, &span),
+            "at <standard input>:3:1--5:3"
+        );
+        // A registered buffer prints its recorded name (buffer.w:694).
+        context.note_source_name(SourceId::new(7), "lib.at".to_owned());
+        let span = SourceSpan::new(SourceId::new(7), 0, 4, position(3, 1), position(3, 5));
+        assert_eq!(trace_location(&context, &span), "at lib.at:3:0-4");
+    }
+
+    #[test]
+    fn runtime_error_populates_back_trace() {
+        // The fixture chain: a call boundary line (outermost first), then
+        // the frame dump, down to the failing builtin (axis.w:2253-2265,
+        // 2896-2909).
+        let mut context = TypedContext::new();
+        context
+            .execute(&command("set f(int x)=x%0"))
+            .expect("define f");
+        context
+            .execute(&command("set g(int x)=f(x)+1"))
+            .expect("define g");
+        let error = context.execute(&command("g(2)")).expect_err("g(2) fails");
+        assert_eq!(error.kind, ErrorKind::Runtime);
+        assert_eq!(
+            error.back_trace,
+            vec![
+                "In call of g@int at <standard input>:1:0-4, defined at <standard input>:1:4-19.",
+                "{ x=2 }",
+                "In call of f@int at <standard input>:1:13-17, defined at <standard input>:1:4-16.",
+                "{ x=2 }",
+                "In call of %@(int,int) at <standard input>:1:13-16, built-in.",
+            ]
+        );
+        assert_eq!(back_trace_lines(&mut context), error.back_trace);
+
+        // A failing top-level builtin call replaces the trace.
+        context.execute(&command("1%0")).expect_err("1%0 fails");
+        assert_eq!(
+            back_trace_lines(&mut context),
+            vec!["In call of %@(int,int) at <standard input>:1:0-3, built-in."]
+        );
+
+        // A multi-parameter frame dumps every slot in bind order.
+        context
+            .execute(&command("set h(int a, string s)=a%#s"))
+            .expect("define h");
+        context.execute(&command("h(3,\"\")")).expect_err("h fails");
+        assert_eq!(
+            back_trace_lines(&mut context),
+            vec![
+                "In call of h@(int,string) at <standard input>:1:0-7, defined at <standard input>:1:4-27.",
+                "{ a=3, s=\"\" }",
+                "In call of %@(int,int) at <standard input>:1:23-27, built-in.",
+            ]
+        );
+
+        // A parameterless closure traces no frame dump.
+        context.execute(&command("set z()=7%0")).expect("define z");
+        context.execute(&command("z()")).expect_err("z fails");
+        assert_eq!(
+            back_trace_lines(&mut context),
+            vec![
+                "In call of z@void at <standard input>:1:0-3, defined at <standard input>:1:4-11.",
+                "In call of %@(int,int) at <standard input>:1:8-11, built-in.",
+            ]
+        );
+    }
+
+    #[test]
+    fn back_trace_is_sticky_when_the_trace_is_empty() {
+        // set_back_trace no-ops on an empty trace (global.w:1137): `die`
+        // crosses no call boundary, so the previous trace survives.
+        let mut context = TypedContext::new();
+        context.execute(&command("1%0")).expect_err("1%0 fails");
+        let trace = back_trace_lines(&mut context);
+        context.execute(&command("die")).expect_err("die fails");
+        assert_eq!(back_trace_lines(&mut context), trace);
+
+        // A failing `set` initializer also stores the trace
+        // (global.w:1127).
+        context
+            .execute(&command("set r = 1%0"))
+            .expect_err("set fails");
+        assert_eq!(
+            back_trace_lines(&mut context),
+            vec!["In call of %@(int,int) at <standard input>:1:8-11, built-in."]
+        );
+    }
+
+    #[test]
+    fn for_loop_error_traces_iteration_and_frame() {
+        // axis.w:6124-6132: the iteration line, then the loop-variable
+        // frame dump, then the inner call lines.
+        let mut context = TypedContext::new();
+        context
+            .execute(&command("for i in [2,1,0] do 6%i od"))
+            .expect_err("loop fails");
+        assert_eq!(
+            back_trace_lines(&mut context),
+            vec![
+                "During iteration 2 of the for-loop",
+                "{ i=0 }",
+                "In call of %@(int,int) at <standard input>:1:20-23, built-in.",
+            ]
+        );
+    }
+
+    #[test]
+    fn frame_dump_reads_the_current_slot_values() {
+        // The catch reads the frame at throw time (axis.w:2896-2909), so a
+        // reassigned parameter prints its value at the moment of failure.
+        let mut context = TypedContext::new();
+        context
+            .execute(&command("set m(int x)=(x:=1; x%0)"))
+            .expect("define m");
+        context.execute(&command("m(5)")).expect_err("m fails");
+        let trace = back_trace_lines(&mut context);
+        assert_eq!(trace[1], "{ x=1 }", "trace: {trace:?}");
     }
 
     #[test]

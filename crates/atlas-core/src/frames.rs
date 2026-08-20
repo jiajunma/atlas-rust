@@ -16,8 +16,10 @@
 //! fully evaluated; no borrow is ever held across a nested evaluation.
 
 use std::cell::RefCell;
+use std::collections::BTreeMap;
 use std::rc::Rc;
 
+use crate::diagnostic::SourceId;
 use crate::value::Value;
 
 /// A shared runtime value (upstream `shared_value`).
@@ -27,6 +29,15 @@ pub type SharedValue = Rc<Value>;
 pub struct Frame {
     next: Option<Rc<Frame>>,
     slots: RefCell<Vec<Option<SharedValue>>>,
+}
+
+impl Frame {
+    /// Snapshot of the slot values for the error-time local-variable trace
+    /// (axis.w:2896-2909): read under a short borrow, after unwinding, so a
+    /// slot reassigned before the error prints its CURRENT value.
+    pub fn slot_snapshot(&self) -> Vec<Option<SharedValue>> {
+        self.slots.borrow().clone()
+    }
 }
 
 /// The evaluation context: the current head of the frame chain. Empty
@@ -43,6 +54,11 @@ pub struct EvaluationContext {
     /// (buffer.w:1175-1192). The command layer refreshes this snapshot at
     /// each command boundary, so a call sees post-previous-command state.
     completion_candidates: Vec<String>,
+    /// Display names of source buffers for back-trace locations
+    /// (buffer.w:694): the top-level stream is `<standard input>`, include
+    /// files their resolved path. The session frame records each buffer as
+    /// it registers it; unknown ids fall back to `<standard input>`.
+    source_names: BTreeMap<u64, String>,
 }
 
 impl EvaluationContext {
@@ -79,6 +95,21 @@ impl EvaluationContext {
         &self.completion_candidates
     }
 
+    /// Record a source buffer's trace display name (session frame, once per
+    /// registered buffer).
+    pub fn note_source_name(&mut self, id: SourceId, name: String) {
+        self.source_names.insert(id.get(), name);
+    }
+
+    /// The trace display name of a source buffer (buffer.w:694): buffers
+    /// the session frame did not name print as `<standard input>`.
+    pub fn source_name(&self, id: SourceId) -> &str {
+        self.source_names
+            .get(&id.get())
+            .map(String::as_str)
+            .unwrap_or("<standard input>")
+    }
+
     /// The current chain head, for capture into a closure value.
     pub fn capture(&self) -> Option<Rc<Frame>> {
         self.current.clone()
@@ -91,15 +122,27 @@ impl EvaluationContext {
         slots: Vec<SharedValue>,
         body: impl FnOnce(&mut Self) -> R,
     ) -> R {
+        self.with_frame_traced(slots, body).0
+    }
+
+    /// Like [`Self::with_frame`], but also hands back the pushed frame so an
+    /// error unwinding through the call can dump its slots for the
+    /// local-variable back-trace line (axis.w:2896-2909).
+    pub fn with_frame_traced<R>(
+        &mut self,
+        slots: Vec<SharedValue>,
+        body: impl FnOnce(&mut Self) -> R,
+    ) -> (R, Rc<Frame>) {
         debug_assert!(!slots.is_empty(), "empty layers get no frame");
         let saved = self.current.take();
-        self.current = Some(Rc::new(Frame {
+        let frame = Rc::new(Frame {
             next: saved.clone(),
             slots: RefCell::new(slots.into_iter().map(Some).collect()),
-        }));
+        });
+        self.current = Some(frame.clone());
         let result = body(self);
         self.current = saved;
-        result
+        (result, frame)
     }
 
     /// Run `body` with the context swapped to a closure's captured chain

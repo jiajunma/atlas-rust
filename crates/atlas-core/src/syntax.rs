@@ -2029,14 +2029,25 @@ fn rec_lambda(
 }
 
 /// `name(params) = body` in a let declaration desugars to a plain lambda
-/// binding (parser.y:251-257).
+/// binding (parser.y:251-257). Upstream builds the lambda with the whole
+/// declaration's location (`@$`, starting at the NAME), and error
+/// back-traces report that span as `defined at ...`, so the desugared
+/// lambda spans from the name through the body rather than from the `(`.
 fn function_binding(
     target: SpannedValue<String>,
-    open: SourceSpan,
+    _open: SourceSpan,
     parameters: Vec<LambdaParam>,
     body: Expr,
 ) -> LetBinding {
-    let_binding(target, lambda(open, parameters, body))
+    let span = join_span(target.span, body.span());
+    let_binding(
+        target,
+        Expr::Lambda {
+            parameters,
+            span,
+            body: Box::new(body),
+        },
+    )
 }
 
 /// `operator(params) = body` in a global `set` declaration.  Atlas stores
