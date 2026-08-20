@@ -3968,3 +3968,31 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
     as `[ 3 ]`. So the slice after counted-for tracing is: typed-expr
     pretty-printer + closure printer + let-frame dumps + dynamic-call
     defined-at (covers back_trace_let_rec.atlas).
+
+## 2026-08-21b: counted-for tracing landed; tilde merge; two more slices in flight
+
+- agent-100 landed (`6c25a29`): counted-for iteration trace lines
+  (`(i=V)`, downto → `counted reversed`, anonymous keeps the double-space
+  shared format, no frame dump) + group-transparent operator spans
+  (parser.y:366 peels Expr::Group; fixes the 5:18-24 off-by-one).
+  Differential for the combined tracing work pending the next full run.
+- tilde_opt (agent-99, worktree branch codex/tilde-opt) landed there as
+  `6401ca8` and was merged with main-tree tracing as `f123295`.
+  Merge-resolution semantics (KEEP THESE): the for-in trace reports a
+  TRAVERSAL-ORDER iteration counter, separate from the `@` index position
+  (oracle: `[2,1,0]~` fails at `iteration 0` with dump `{ i=0 }`);
+  `reversed` word in counted traces keys on descending (downto OR
+  count-side tilde). back_trace_loops.atlas byte-exact vs capture 3604460
+  incl. the reversed for-in line.
+- NEW gap found: for-in over NON-ROW iterables (string→1-char strings,
+  vec→ints, mat→columns as vecs, ratvec→rats; all reversal-compatible).
+  Rust only accepted rows. Fixture eval/for_iterable_kinds frozen
+  (`2457baf`, capture 3604537, events/meta generated, unregistered).
+- In flight: agent-99 (resumed, worktree) implements iffor_loop/quiet-if
+  + non-row iteration; agent-101 (main tree) implements the closure
+  printer + let-frame dumps + dynamic-call defined-at
+  (back_trace_let_rec.atlas, capture 3604440). After both land: merge
+  worktree into main, register the six pending fixtures
+  (back_trace_loops, back_trace_let_rec, for_reversed,
+  for_reversed_extra, for_quiet_body, for_iterable_kinds), run the merged
+  fat differential, bump metas, promote LANGUAGE.md rows.
