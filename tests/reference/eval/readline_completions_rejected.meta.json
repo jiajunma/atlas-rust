@@ -1,9 +1,26 @@
 {
-  "fixture": "eval/readline_completions_rejected.atlas",
-  "fixture_sha256": "c5167b630cc09c13c1d8e450b6e4c911c30f8c51e503312e3240f1367537d29d",
-  "oracle": "atlas",
-  "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_capture",
-  "rust_status": "pending",
-  "notes": "readline_completions with an int argument is the standard analysis type error (found int while string was needed)."
+ "fixture": "eval/readline_completions_rejected.atlas",
+ "fixture_sha256": "c5167b630cc09c13c1d8e450b6e4c911c30f8c51e503312e3240f1367537d29d",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "3604377",
+ "reference_commit": "6df50f5031df0f065cecbd60b0a40047ac44118e",
+ "reference_report_sha256": "07093c47de6a99e8b8ff079caf8dd1924a46689e21567c9024200a9bcac9d5fc",
+ "source_archive_sha256": "26e6bb8b247004b191847f1635ef7009e3d069fe6ca46dbd35b447f8191c7ed3",
+ "oracle_exit_status": 1,
+ "oracle_seconds": 0.008,
+ "oracle_maxrss_kb": 3516,
+ "oracle_maxrss_approximate": false,
+ "notes": "readline_completions with an int argument is the standard analysis type error (found int while string was needed). Reference frozen by HPC capture 3604377; Rust differential pending.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
 }

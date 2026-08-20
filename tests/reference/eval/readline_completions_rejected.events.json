@@ -1,0 +1,12 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "eval/readline_completions_rejected",
+ "status": "verified_hpc_reference",
+ "events": [
+  {
+   "kind": "Diagnostic",
+   "category": "type",
+   "message": "found int while string was needed."
+  }
+ ]
+}
