@@ -1,9 +1,26 @@
 {
-  "fixture": "eval/readline_completions.atlas",
-  "fixture_sha256": "e2ed3d786a08efe308a06232e89ee411055bdb0236dca477a0d3d98644707edb",
-  "oracle": "atlas",
-  "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_capture",
-  "rust_status": "pending",
-  "notes": "readline_completions (global.w:4390-4391 wrapper, buffer.w:1175-1192): prefix match over keywords/primitive types/builtins (main_hash_table insertion order, 294 startup names) plus session globals and user overloads in first-definition order; forget removes, redefine-after-forget revives at the original position. Also covers the three system variables input_path/prelude_log/back_trace (main.w:408-435) that complete the startup list to 297 names."
+ "fixture": "eval/readline_completions.atlas",
+ "fixture_sha256": "e2ed3d786a08efe308a06232e89ee411055bdb0236dca477a0d3d98644707edb",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "3604377",
+ "reference_commit": "6df50f5031df0f065cecbd60b0a40047ac44118e",
+ "reference_report_sha256": "07093c47de6a99e8b8ff079caf8dd1924a46689e21567c9024200a9bcac9d5fc",
+ "source_archive_sha256": "26e6bb8b247004b191847f1635ef7009e3d069fe6ca46dbd35b447f8191c7ed3",
+ "oracle_exit_status": 0,
+ "oracle_seconds": 0.015,
+ "oracle_maxrss_kb": 3484,
+ "oracle_maxrss_approximate": false,
+ "notes": "readline_completions (global.w:4390-4391 wrapper, buffer.w:1175-1192): prefix match over main_hash_table insertion order \u2014 keywords, primitive type names, builtins in registration order (294 startup names), then session globals/user overloads in first-definition order; forget removes, redefine-after-forget revives at the original position. Also pins the three startup system variables input_path/prelude_log/back_trace (main.w:408-435). Reference frozen by HPC capture 3604377; Rust differential pending.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
 }

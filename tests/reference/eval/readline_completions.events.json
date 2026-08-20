@@ -1,0 +1,76 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "eval/readline_completions",
+ "status": "verified_hpc_reference",
+ "events": [
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[\"print_block\",\"print_common_block\",\"print_partial_block\",\"print_partial_common_block\",\"print_gradings\",\"print_real_Weyl\",\"print_strong_real\",\"print_blocku\",\"print_blockd\",\"print_blockstabilizer\",\"print_KGB\",\"print_KGB_order\",\"print_KGB_graph\",\"print_X\",\"print_KL_basis\",\"print_prim_KL\",\"print_KL_list\",\"print_W_cells\",\"print_W_graph\"]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[]"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Variable myvar: int\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Defined zfun: (int->int)\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Variable apple: string\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[\"quit\",\"set\",\"let\",\"in\",\"begin\",\"end\",\"if\",\"then\",\"else\",\"elif\",\"fi\",\"and\",\"or\",\"not\",\"next\",\"do\",\"dont\",\"from\",\"downto\",\"while\",\"for\",\"od\",\"case\",\"esac\",\"rec_fun\",\"true\",\"false\",\"die\",\"break\",\"return\",\"set_type\",\"whattype\",\"showall\",\"forget\",\"int\",\"rat\",\"string\",\"bool\",\"vec\",\"mat\",\"ratvec\",\"LieType\",\"RootDatum\",\"WeylElt\",\"InnerClass\",\"RealForm\",\"CartanClass\",\"KGBElt\",\"Block\",\"Split\",\"KType\",\"KTypePol\",\"Param\",\"ParamPol\",\"void\",\"-\",\"succ\",\"+\",\"pred\",\"~\",\"*\",\"\\\",\"%\",\"\\%\",\"^\",\"AND\",\"OR\",\"XOR\",\"AND_NOT\",\"bitwise_subset\",\"nth_set_bit\",\"bit_length\",\"to_bitset\",\"/\",\"floor\",\"ceil\",\"frac\",\"=\",\"!=\",\">=\",\">\",\"<=\",\"<\",\"##\",\"ascii\",\"readline_completions\",\"#\",\"shape\",\"row\",\"column\",\"rows\",\"columns\",\"flex_add\",\"flex_sub\",\"convolve\",\"null\",\"transpose \",\"id_mat\",\"diagonal\",\"stack_rows\",\"swiss_matrix_knife\",\"matrix slicer\",\"gcd\",\"Bezout\",\"echelon\",\"linear_solve\",\"diagonalize\",\"adapted_basis\",\"kernel\",\"eigen_lattice\",\"row_saturate\",\"Smith\",\"invert\",\"mod2_section\",\"subspace_normal\",\"elapsed_ms\",\"Lie_type\",\"extend\",\"Cartan_matrix\",\"Cartan_matrix_type\",\"is_Cartan_matrix\",\"simple_factors\",\"rank\",\"Smith_Cartan\",\"filter_units\",\"ann_mod\",\"replace_gen\",\"quotient_basis\",\"involution\",\"prefers_coroots\",\"root_datum\",\"simply_connected\",\"adjoint\",\"semisimple_rank\",\"nr_of_posroots\",\"two_rho\",\"two_rho_check\",\"root\",\"coroot\",\"root_index\",\"coroot_index\",\"root_expression\",\"coroot_expression\",\"is_long_root\",\"is_long_coroot\",\"root_involution\",\"root_ladder_bottoms\",\"coroot_ladder_bottoms\",\"fundamental_weight\",\"fundamental_coweight\",\"simple_roots\",\"simple_coroots\",\"posroots\",\"poscoroots\",\"root_coradical\",\"coroot_radical\",\"dual\",\"derived_info\",\"mod_central_torus_info\",\"integrality_datum\",\"integrality_rank\",\"is_integrally_dominant\",\"integrality_points\",\"Weyl_orbit\",\"Weyl_orbit_ws\",\"cofolded\",\"walls\",\"alcove_center\",\"walls_attitude\",\"alcove_root_vertex\",\"basic_orbit_ws\",\"affine_orbit_ws\",\"FPP_numers\",\"FPP_w_shifts\",\"W_elt\",\"word\",\"length\",\"from_dominant\",\"root_permutation\",\"classify_involution\",\"inner_class\",\"twisted_involution\",\"distinguished_involution\",\"dual_datum\",\"form_names\",\"dual_form_names\",\"nr_of_real_forms\",\"nr_of_dual_real_forms\",\"nr_of_Cartan_classes\",\"block_sizes\",\"block_size\",\"occurrence_matrix\",\"dual_occurrence_matrix\",\"real_form\",\"form_number\",\"quasisplit_form\",\"components_rank\",\"KGB_size\",\"base_grading_vector\",\"Cartan_order\",\"KGB_Hasse\",\"dual_real_form\",\"dual_quasisplit_form\",\"central_fiber\",\"initial_torus_bits\",\"Cartan_class\",\"most_split_Cartan\",\"Cartan_info\",\"real_forms\",\"dual_real_forms\",\"fiber_partition\",\"square_classes\",\"KGB\",\"cross\",\"Cayley\",\"status\",\"KGB_elt\",\"twist\",\"torus_bits\",\"torus_factor\",\"block\",\"element\",\"index\",\"inverse_Cayley\",\"K_type\",\"height\",\"equivalent\",\"is_standard\",\"is_dominant\",\"is_zero\",\"is_semifinal\",\"is_final\",\"dominant\",\"to_canonical_fiber\",\"normal\",\"theta_stable\",\"null_K_module\",\"last_term\",\"first_term\",\"truncate_above_height\",\"KGP_sum\",\"K_type_formula\",\"branch\",\"param\",\"orientation_nr\",\"reducibility_points\",\"print_block\",\"print_common_block\",\"print_partial_block\",\"print_partial_common_block\",\"partial_block\",\"block_Hasse\",\"KL_block\",\"dual_KL_block\",\"partial_KL_block\",\"W_graph\",\"W_cells\",\"strong_components\",\"default_extended\",\"shift_flip\",\"extended_block\",\"partial_extended_KL_block\",\"null_module\",\"K_type_pol\",\"deform\",\"twisted_deform\",\"block_deform\",\"full_deform\",\"twisted_full_deform\",\"KL_sum_at_s\",\"KL_sum_at_s_to_height\",\"twisted_KL_sum_at_s\",\"KL_column\",\"scale_extended\",\"K_type_pol_extended\",\"finalize_extended\",\"raw_KL\",\"dual_KL\",\"raw_ext_KL\",\"print_gradings\",\"print_real_Weyl\",\"print_strong_real\",\"print_blocku\",\"print_blockd\",\"print_blockstabilizer\",\"print_KGB\",\"print_KGB_order\",\"print_KGB_graph\",\"print_X\",\"print_KL_basis\",\"print_prim_KL\",\"print_KL_list\",\"print_W_cells\",\"print_W_graph\",\"input_path\",\"prelude_log\",\"back_trace\",\"myvar\",\"zfun\",\"apple\"]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[\"zfun\"]"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Identifier 'myvar' forgotten\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[]"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[\"apple\"]"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Variable myvar: int\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[\"myvar\"]"
+   }
+  }
+ ]
+}
