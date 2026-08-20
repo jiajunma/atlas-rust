@@ -1,0 +1,9 @@
+{
+  "fixture": "eval/for_reversed_extra.atlas",
+  "fixture_sha256": "934b49e897a0c88f650c683e5d37f68bdfe719e1fcd4c8c76bf8de828ba75716",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_capture",
+  "rust_status": "pending",
+  "notes": "Tilde beyond for-in (parser.y:319 tilde_opt): counted-for body tilde and count-expr tilde each reverse; while collects body values into a list and body tilde reverses it; the DOWNTO counted production (parser.y:569-571) has NO tilde_opt so 'for i:3 downto 2 do i~ od' is a syntax error (unexpected '~', expecting OD)."
+}
