@@ -767,9 +767,23 @@ using the leading entries). Also `integrality_points` RatVec-list display
 (the row-3 caveat at the batch table) now matches the oracle verbatim
 (`[2/3,1/1]` / `[]` for [1,1]/2 and [1,0]/3 on B2).
 
-Remaining (unchanged): alcove_center/alcove_root_vertex,
+Remaining (unchanged): ~~alcove_center/alcove_root_vertex,
 FPP_numers/FPP_w_shifts, root_expression/root_index/root_permutation
-(oracle root numbering), root_ladder_bottoms/coroot_ladder_bottoms, the
+(oracle root numbering), root_ladder_bottoms/coroot_ladder_bottoms~~ ALL
+STALE as of 2026-08-20 (direct local probes vs the pinned oracle, B2):
+alcove_center(Param), alcove_root_vertex, FPP_numers/FPP_w_shifts
+(incl. the "Rational weight is not in fundamental alcove (coroot -4,
+value N/D)" runtime wording), affine_orbit_ws, root_ladder_bottoms/
+coroot_ladder_bottoms, root_expression/root_index/coroot_expression/
+coroot_index, root_permutation(WeylElt), root_involution(RootDatum,int),
+semisimple_rank, two_rho_check, simple_coroots, poscoroots,
+coroot_radical, mod_central_torus_info, adjoint(LieType,bool) — every
+one registered with the oracle's signature and byte-identical output.
+basic_orbit_ws shares the oracle's (RootDatum,[int],int) signature.
+The genuinely-open remainder is the ext_param+star family (incl.
+shift_flip), the finalise-three partial signatures, print_X
+(GlobalTitsGroup), reducibility_points, the KType/Rep skips, and the
+locator non-identity-attitude gates. The
 ext_block builtins (extended_block/raw_ext_KL/partial_extended_KL_block —
 crate side landed 28e6109 + ext_kl in flight; shift_flip;
 finalize_extended/K_type_pol_extended/scale_extended; dual_KL_block),
