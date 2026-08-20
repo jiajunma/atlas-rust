@@ -4091,3 +4091,21 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   overload table, not the identifier table) — Rust already mirrors this.
 - op_cast/last_value fixtures extended, re-capture jobs 3604640/3604641;
   these probes define agent-99's resume batch scope.
+
+### Counted-for tilde placement matrix (2026-08-21d, oracle probes)
+
+- `for i:3 from 5~ do i od` -> [7,6,5]: from-side tilde reverses the
+  counted range (starts at from+count-1, descends to from).
+- `for i:3~ do i od` -> [2,1,0]: count-side tilde on NAMED counted
+  accepted, implicit 0..n-1 reversed; but `for i:3~ from 5 do` rejects
+  with `unexpected FROM` (no expecting suffix) — after count-side tilde
+  no from/downto clause may follow.
+- Anonymous counted is bare only: `for :3 from 0 do` rejects
+  `unexpected FROM, expecting IF or DO or FOR`; `for :3~ do` rejects
+  `unexpected '~', expecting IF or DO or FOR`.
+- `for i:3 downto 0~ do` rejects `unexpected '~', expecting IF or DO or
+  FOR` (no tilde after downto bound).
+- `while c do e od~` rejects `unexpected '~', expecting '\n'` (trailing
+  tilde after od).
+- `for i@k in [7,8]~ do (k,i) od` -> [(1,8),(0,7)]: reversed for-in with
+  @index iterates pairs in reverse with original indices.
