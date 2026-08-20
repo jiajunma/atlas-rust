@@ -786,6 +786,7 @@ extern {
         "next" => ParserToken::Next(<SourceSpan>),
         "from" => ParserToken::From(<SourceSpan>),
         "downto" => ParserToken::Downto(<SourceSpan>),
+        "quit" => ParserToken::Quit(<SourceSpan>),
         ";" => ParserToken::Semicolon(<SourceSpan>),
         "!" => ParserToken::Bang(<SourceSpan>),
         "@" => ParserToken::At(<SourceSpan>),

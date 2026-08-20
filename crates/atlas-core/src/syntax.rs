@@ -850,6 +850,10 @@ pub enum ParserToken {
     Next(SourceSpan),
     From(SourceSpan),
     Downto(SourceSpan),
+    /// `quit` (parser.y:170): a command-level token upstream, so it never
+    /// shifts inside an expression; it exists here so a dangling-bracket
+    /// parse that runs into it can name the bison token (`QUIT`).
+    Quit(SourceSpan),
     /// `!` — the const-binding marker in patterns, never a formula operator.
     Bang(SourceSpan),
     At(SourceSpan),
@@ -916,6 +920,7 @@ impl ParserToken {
             | Self::Next(span)
             | Self::From(span)
             | Self::Downto(span)
+            | Self::Quit(span)
             | Self::Bang(span)
             | Self::At(span)
             | Self::Dot(span)
@@ -983,6 +988,7 @@ impl fmt::Display for ParserToken {
             Self::Next(_) => "next",
             Self::From(_) => "from",
             Self::Downto(_) => "downto",
+            Self::Quit(_) => "quit",
             Self::Bang(_) => "!",
             Self::At(_) => "@",
             Self::Dot(_) => ".",
@@ -1123,6 +1129,7 @@ fn parser_tokens_from_tokens(
                         "next" => ParserToken::Next(span),
                         "from" => ParserToken::From(span),
                         "downto" => ParserToken::Downto(span),
+                        "quit" => ParserToken::Quit(span),
                         _ => ParserToken::Unsupported(SpannedValue { value: word, span }),
                     };
                     Some(Ok((token, span)))
@@ -1263,8 +1270,13 @@ fn syntax_error(
                 .copied()
                 .or_else(|| Some(source.span(source.as_str().len(), source.as_str().len()))),
         ),
-        lalrpop_util::ParseError::UnrecognizedEof { location, .. } => (
-            "unexpected end of input".to_string(),
+        lalrpop_util::ParseError::UnrecognizedEof { location, expected } => (
+            // Bison's `$end` prints as "end of file"; the expecting list is
+            // reported only for the open-container states the oracle pins
+            // down (`[` / `[4` at EOF expect `']'`, an unclosed tuple
+            // expects `','`), everything else is a bare message (probed
+            // locally against Atlas 4d3e9449; no frozen fixture covers EOF).
+            bison_eof_message(&expected),
             spans
                 .get(location)
                 .copied()
@@ -1323,6 +1335,24 @@ fn bison_syntax_message(token: &ParserToken, expected: &[String]) -> String {
     }
 }
 
+/// The oracle's EOF wording (bison `$end`): `syntax error, unexpected end
+/// of file[, expecting Y]`. Only the single-token open-container states get
+/// an expecting list; `']'` is checked before `','` because `[expr` at EOF
+/// has both in its LALRPOP expected set while the oracle reports `']'`.
+fn bison_eof_message(expected: &[String]) -> String {
+    let has = |needle: &str| {
+        let quoted = format!("\"{needle}\"");
+        expected.iter().any(|candidate| candidate == &quoted)
+    };
+    if has("]") {
+        "syntax error, unexpected end of file, expecting ']'".to_string()
+    } else if has(",") {
+        "syntax error, unexpected end of file, expecting ','".to_string()
+    } else {
+        "syntax error, unexpected end of file".to_string()
+    }
+}
+
 /// The `expecting Y` suffix for a syntax error, or `None` when the oracle
 /// reports no expecting list for the state (e.g. `[1,]` and `(1,]` report
 /// a bare `unexpected ']'`).
@@ -1353,6 +1383,10 @@ fn bison_expecting(token: &ParserToken, expected: &[String]) -> Option<&'static 
         // closing bracket; at command level (`1,2`) the newline.
         ParserToken::Comma(_) if has("]") => Some("']'"),
         ParserToken::Comma(_) => Some("'\\n'"),
+        // `[` left open when the harness-appended `quit` arrives (the
+        // container_syntax_errors tail): bison is in `'[' commalist_opt`
+        // (parser.y:368-370), which expects only the closing bracket.
+        ParserToken::Quit(_) if has("]") => Some("']'"),
         _ => None,
     }
 }
@@ -1400,6 +1434,7 @@ fn bison_token_name(token: &ParserToken) -> Option<&'static str> {
         ParserToken::Next(_) => Some("NEXT"),
         ParserToken::From(_) => Some("FROM"),
         ParserToken::Downto(_) => Some("DOWNTO"),
+        ParserToken::Quit(_) => Some("QUIT"),
         ParserToken::Colon(_) => Some("':'"),
         ParserToken::Equals(_) => Some("'='"),
         ParserToken::RBracket(_) => Some("']'"),
@@ -3704,6 +3739,43 @@ mod tests {
         .expect_err("rec_fun sugar without a result type");
         assert_eq!(error.kind, ErrorKind::Syntax);
         assert_eq!(error.message, "syntax error, unexpected IF");
+    }
+
+    #[test]
+    fn reports_bison_wording_for_quit_after_a_dangling_bracket() {
+        // Oracle (Atlas 4d3e9449), container_syntax_errors tail: `[` left
+        // open swallows the next line and stops at the harness-appended
+        // `quit` with `syntax error, unexpected QUIT, expecting ']'`
+        // (bison state `'[' commalist_opt`, parser.y:368-370).
+        let error = parse(&SourceText::new("[\n4\nquit\n")).expect_err("dangling `[` before quit");
+        assert_eq!(error.kind, ErrorKind::Syntax);
+        assert_eq!(
+            error.message,
+            "syntax error, unexpected QUIT, expecting ']'"
+        );
+    }
+
+    #[test]
+    fn reports_bison_wording_for_end_of_file() {
+        // Oracle (Atlas 4d3e9449), probed locally: `$end` prints as "end of
+        // file"; the open-container states carry a one-token expecting
+        // list, other states report the bare message.
+        for (source, message) in [
+            ("[\n", "syntax error, unexpected end of file, expecting ']'"),
+            (
+                "[4\n",
+                "syntax error, unexpected end of file, expecting ']'",
+            ),
+            (
+                "(1,2\n",
+                "syntax error, unexpected end of file, expecting ','",
+            ),
+            ("1 +\n", "syntax error, unexpected end of file"),
+        ] {
+            let error = parse(&SourceText::new(source)).expect_err(source);
+            assert_eq!(error.kind, ErrorKind::Syntax);
+            assert_eq!(error.message, message, "source: {source:?}");
+        }
     }
 
     #[test]
