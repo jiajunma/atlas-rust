@@ -4,7 +4,7 @@
  "oracle": "atlas",
  "stage": "typed-pipeline-swap",
  "reference_status": "verified_hpc_reference",
- "rust_status": "pending_hpc_differential",
+ "rust_status": "verified_hpc",
  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
@@ -16,11 +16,14 @@
  "oracle_seconds": 0.059,
  "oracle_maxrss_kb": 4176,
  "oracle_maxrss_approximate": false,
- "notes": "Rank-0 torus surface (T1 inner_class, T2 real_form/print_KGB/param/reducibility_points): empty Weyl transducer, whole-lattice radical basis, and zero-stride KGB tables. Reference frozen by HPC capture 3602031; Rust differential pending.",
+ "notes": "Rank-0 torus surface (T1 inner_class, T2 real_form/print_KGB/param/reducibility_points): empty Weyl transducer, whole-lattice radical basis, and zero-stride KGB tables. Reference frozen by HPC capture 3602031; Rust differential PASS in HPC job 3602066 (all checks exact).",
  "hpc_capture": {
   "fresh_process_required": true,
   "timeout_seconds": 30,
   "estimated_seconds": 5,
   "estimated_memory_mb": 128
- }
+ },
+ "differential_job": "3602066",
+ "differential_report_sha256": "2318dd9e9ab4d67c6e91bba0251e8885904770709bd4dd0c45e719d26747ce63",
+ "differential_commit": "8f5151e9907aff0b76173d69bfb0dde38fb5757e"
 }

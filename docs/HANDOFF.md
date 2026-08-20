@@ -138,6 +138,24 @@ pb-attitude values ([3,-3]/2,[3,-3]/2,[1,1]/2). Analysis so far:
 
 ## Checkpoint - 2026-08-20 (`twisted_full_deform` slice 5 local)
 
+## Checkpoint - 2026-08-20 (`full_deform` common-block recursion local)
+
+- Ordinary `full_deform` reducibility recursion now uses `RepTable::lookup`
+  and a partial/common-block deformation algorithm. The old full-block
+  reconstruction retained rows above the lookup interval and produced two
+  spurious B2 `[13]` terms.
+- `common_deformation_terms` ports the upstream singular contributions,
+  partial KL table, q=-1 accumulator, per-row `BlockModifier` transport,
+  and orientation correction. The B2 anchor fixture is
+  `tests/fixtures/domain/full_deform_proper.atlas`; local output is
+  byte-identical to the oracle for integral, half-integral, and non-final
+  parameters.
+- Commits: `444e841` (fixture), `466e066` (algorithm), `b267f2a` (export).
+  Local crate tests, clippy, fmt, and the focused deformation regressions
+  pass. HPC oracle capture for this new fixture is submitted as job
+  `3586752`; reference artifacts and differential registration remain
+  pending. Keep `fiber_probe.rs` untracked (user-owned).
+
 - `twisted_full_deform` reducibility recursion now uses
   `RepTable::lookup` interval-below partial blocks for both Full and
   ProperSubsystem scopes, matching repr.cpp:2605. Rebuilding a full block

@@ -4,7 +4,7 @@
  "oracle": "atlas",
  "stage": "typed-pipeline-swap",
  "reference_status": "verified_hpc_reference",
- "rust_status": "pending_hpc_differential",
+ "rust_status": "verified_hpc",
  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
@@ -16,11 +16,14 @@
  "oracle_seconds": 0.125,
  "oracle_maxrss_kb": 4288,
  "oracle_maxrss_approximate": false,
- "notes": "Direct Param->ParamPol / KType->KTypePol coercions (atlas-types.w :7710-7717 param_to_poly, :5608-5617 K_type_to_poly), including the non-dominant nu=[-1,-1]/2 expand_final reflection across real walls (repr.cpp:1283-1287). Reference frozen by HPC capture 3601990; Rust differential pending.",
+ "notes": "Direct Param->ParamPol / KType->KTypePol coercions (atlas-types.w :7710-7717 param_to_poly, :5608-5617 K_type_to_poly), including the non-dominant nu=[-1,-1]/2 expand_final reflection across real walls (repr.cpp:1283-1287). Reference frozen by HPC capture 3601990; Rust differential PASS in HPC job 3602066 (all checks exact).",
  "hpc_capture": {
   "fresh_process_required": true,
   "timeout_seconds": 30,
   "estimated_seconds": 5,
   "estimated_memory_mb": 128
- }
+ },
+ "differential_job": "3602066",
+ "differential_report_sha256": "2318dd9e9ab4d67c6e91bba0251e8885904770709bd4dd0c45e719d26747ce63",
+ "differential_commit": "8f5151e9907aff0b76173d69bfb0dde38fb5757e"
 }
