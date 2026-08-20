@@ -1,0 +1,9 @@
+{
+  "fixture": "eval/back_trace_let_rec.atlas",
+  "fixture_sha256": "9505a930339906636fcf5406abef040367938a72624609abc1db85f707b7f005",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_capture",
+  "rust_status": "pending",
+  "notes": "back_trace follow-up: let-frame dumps interleave in traces (axis.w:2882, { y=4 } between the call line and the inner builtin), and rec_fun self-binding dumps embed the multi-line closure printer ('Recursive function defined at <span>' + compact body, axis.w:3525-3557) with the recursive self-call rendered as a dynamic call line (no @type). Requires porting the closure/compact-expression printer for frame dumps."
+}

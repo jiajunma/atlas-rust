@@ -1,0 +1,6 @@
+set lf(int x)=let y=x+1 in y%0
+lf(3)
+back_trace
+set bomb = rec_fun b(int n) int: if n=0 then 1%0 else b(n-1) fi
+bomb(1)
+back_trace
