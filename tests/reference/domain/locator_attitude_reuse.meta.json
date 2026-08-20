@@ -4,7 +4,7 @@
  "oracle": "atlas",
  "stage": "typed-pipeline-swap",
  "reference_status": "verified_hpc_reference",
- "rust_status": "pending_hpc_differential",
+ "rust_status": "verified_hpc",
  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
@@ -16,11 +16,14 @@
  "oracle_seconds": 0.011,
  "oracle_maxrss_kb": 4472,
  "oracle_maxrss_approximate": false,
- "notes": "B2 locator-attitude cache reuse: partial q2->pb printing and full twisted_deform(pb2)->partial q22 printing. Reference frozen by HPC capture 3603738; Rust differential pending.",
+ "notes": "B2 locator-attitude cache reuse: partial q2->pb printing and full twisted_deform(pb2)->partial q22 printing. Reference frozen by HPC capture 3603738; Rust differential PASS in HPC job 3603961 (all checks exact).",
  "hpc_capture": {
   "fresh_process_required": true,
   "timeout_seconds": 1200,
   "estimated_seconds": 5,
   "estimated_memory_mb": 128
- }
+ },
+ "differential_job": "3603961",
+ "differential_report_sha256": "b270ef7b4c7177239681ba1d7fc4ffbdd9365f5062fb2e518a4a8a81eed1541c",
+ "differential_commit": "6384b050dc7a071493137da39ec5946c7d2b2049"
 }
