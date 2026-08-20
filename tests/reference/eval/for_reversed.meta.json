@@ -1,9 +1,26 @@
 {
-  "fixture": "eval/for_reversed.atlas",
-  "fixture_sha256": "070000fc62709c87a767ea991ae7acb313f156b8224b169f0bc3beb8128d394f",
-  "oracle": "atlas",
-  "stage": "typed-pipeline-swap",
-  "reference_status": "pending_hpc_capture",
-  "rust_status": "pending",
-  "notes": "Reversed for-in loops (parser.y:523-531 tilde_opt): '~' after the iterable OR after the body each toggles iteration direction (both cancel); indexed and pattern forms reverse identically. Rust parser currently lacks tilde_opt in ForTail (grammar.lalrpop ForTail) — this fixture pins the gap."
+ "fixture": "eval/for_reversed.atlas",
+ "fixture_sha256": "070000fc62709c87a767ea991ae7acb313f156b8224b169f0bc3beb8128d394f",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "3604471",
+ "reference_commit": "e8319919ccd32952639e7545a564490d2f5b8825",
+ "reference_report_sha256": "71b377d51f93d1793812c9e0e5769481bb1335bddb041ef5bc942db143756125",
+ "source_archive_sha256": "420dd207cb757ea7e6fdaa9229a9b9376c984cda4bb6f3649d595c3b5938d2ac",
+ "oracle_exit_status": 0,
+ "oracle_seconds": 0.01,
+ "oracle_maxrss_kb": 3496,
+ "oracle_maxrss_approximate": false,
+ "notes": "Reversed for-in loops (parser.y:523-531 tilde_opt): '~' after the iterable or after the body each toggles direction, both cancel; indexed and pattern forms reverse identically. Reference frozen by HPC capture 3604471; Rust differential pending.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
 }
