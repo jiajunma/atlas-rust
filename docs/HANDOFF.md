@@ -4109,3 +4109,22 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   tilde after od).
 - `for i@k in [7,8]~ do (k,i) od` -> [(1,8),(0,7)]: reversed for-in with
   @index iterates pairs in reverse with original indices.
+
+### print/to_string/error variadic specials (2026-08-21e, frozen)
+
+- Oracle probe + capture 3604701: `to_string` concatenates component
+  displays with strings unquoted (`to_string(1,"a",[2,3],(4,5))` ->
+  `"1a[2,3](4,5)"`, zero args -> `""`); `print` displays the argument
+  TUPLE verbatim (strings stay quoted: `print("a",1)` prints
+  `("a",1)`) and RETURNS it as the value (zero args prints `()`);
+  `error` concatenates stripped text and raises it as a runtime error
+  (zero args -> empty message). All three are shared_variadic_builtin
+  specials (axis.w:2504, 8773+): never in the global overload table,
+  never in startup completions. Rust currently reports Undefined
+  identifier for all three; prints alone was done twice (agent-99
+  worktree + agent-102 da7bae0 — dedupe at merge).
+- Fixture eval/print_family frozen (events/meta, capture 3604701);
+  implementation is the batch after agent-99's current one. to_string
+  is used by 30+ atlas-scripts files, so this was a real coverage hole
+  the builtin-registry audit missed (the specials are not in
+  atlas-types.w's table).
