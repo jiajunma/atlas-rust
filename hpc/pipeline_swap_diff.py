@@ -293,6 +293,9 @@ FIXTURE_PLANS = (
     # may_break depth check) + the generic prints builtin; reference
     # frozen by capture 3604567.
     FixturePlan(name="eval/break_levels"),
+    # print/to_string/error variadic specials (axis.w:8767-8771,
+    # 8796-8859); reference frozen by capture 3604701.
+    FixturePlan(name="eval/print_family"),
     FixturePlan(name="eval/slices"),
     FixturePlan(name="eval/subscriptions"),
     FixturePlan(name="eval/context"),
