@@ -296,6 +296,26 @@ FIXTURE_PLANS = (
     # print/to_string/error variadic specials (axis.w:8767-8771,
     # 8796-8859); reference frozen by capture 3604701.
     FixturePlan(name="eval/print_family"),
+    # back_trace inside loop bodies: trace frames across for/while
+    # iterations; reference frozen by capture 3604460.
+    FixturePlan(name="eval/back_trace_loops"),
+    # Caselist dot-label branches `pattern.tag: expr` (parser.y:419,426);
+    # reference frozen by capture 3604622.
+    FixturePlan(name="eval/case_dot_label"),
+    # for-loop iteration over non-row iterables (int/vec/mat etc.) and
+    # quiet `if` bodies; reference frozen by captures 3604537/3604504.
+    FixturePlan(name="eval/for_iterable_kinds"),
+    FixturePlan(name="eval/for_quiet_body"),
+    # Reversed iteration `for i:n~` / count-side tilde placement matrix;
+    # reference frozen by captures 3604471/3604660.
+    FixturePlan(name="eval/for_reversed"),
+    FixturePlan(name="eval/for_reversed_extra"),
+    # `$` last-value sticky semantics (void results do not update);
+    # reference frozen by capture 3604641.
+    FixturePlan(name="eval/last_value"),
+    # Operator cast `op@type` / `IDENT@type` (parser.y:381-383);
+    # reference frozen by capture 3604640.
+    FixturePlan(name="eval/op_cast"),
     FixturePlan(name="eval/slices"),
     FixturePlan(name="eval/subscriptions"),
     FixturePlan(name="eval/context"),
