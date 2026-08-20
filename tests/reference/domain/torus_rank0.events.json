@@ -1,0 +1,158 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "domain/torus_rank0",
+ "status": "verified_hpc_reference",
+ "events": [
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'lt': LieType\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "Lie type 'T1'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'rd': RootDatum\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "root datum of Lie type 'T1'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'ic': InnerClass\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "Complex reductive group of type T1, with involution defining"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "inner class of type 'c', with 1 real form and 1 dual real form\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "Complex reductive group of type T1, with involution defining"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "inner class of type 'c', with 1 real form and 1 dual real form\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'lt2': LieType\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "Lie type 'T1.T1'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'rd2': RootDatum\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "root datum of Lie type 'T1.T1'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'ic2': InnerClass\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "Complex reductive group of type T1.T1, with involution defining"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "inner class of type 'cc', with 1 real form and 1 dual real form\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'rf': RealForm\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "compact connected quasisplit real group with Lie algebra 'u(1).u(1)'"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "compact connected quasisplit real group with Lie algebra 'u(1).u(1)'"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "kgbsize: 1\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Base grading: [].\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "0:  0  []     (0,0)#0 e\n"
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'x': KGBElt\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "KGB element #0"
+   }
+  },
+  {
+   "kind": "ReportLine",
+   "text": "Declaring identifier 'p': Param\n"
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "final parameter(x=0,lambda=[0,0]/1,nu=[0,0]/1)"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "final parameter(x=0,lambda=[0,0]/1,nu=[0,0]/1)"
+   }
+  },
+  {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[]"
+   }
+  }
+ ]
+}

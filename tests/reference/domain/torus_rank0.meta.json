@@ -1,0 +1,26 @@
+{
+ "fixture": "domain/torus_rank0.atlas",
+ "fixture_sha256": "42d5aa81b747ab4abc78b64d4ce57ee2001850c1d983bc0e42d4a2a508aeca83",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "3602031",
+ "reference_commit": "7e820aeb47be2c203c4e58373c6f71482f8f510b",
+ "reference_report_sha256": "3cf1b0337df7df8df3aed3d7b008bb07ccba48a64d0d5e472879c6c52e9cc092",
+ "source_archive_sha256": "0e364f41a1e7f7df503884ddc77f91c8dfa2f37806ddda99e8bdfd364cb21363",
+ "oracle_exit_status": 0,
+ "oracle_seconds": 0.059,
+ "oracle_maxrss_kb": 4176,
+ "oracle_maxrss_approximate": false,
+ "notes": "Rank-0 torus surface (T1 inner_class, T2 real_form/print_KGB/param/reducibility_points): empty Weyl transducer, whole-lattice radical basis, and zero-stride KGB tables. Reference frozen by HPC capture 3602031; Rust differential pending.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
+}

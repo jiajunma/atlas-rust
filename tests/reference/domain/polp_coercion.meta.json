@@ -1,0 +1,26 @@
+{
+ "fixture": "domain/polp_coercion.atlas",
+ "fixture_sha256": "90582be585a30846d9f311925563d370a86a666358a93a8326f3882e4d0bf144",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "3601990",
+ "reference_commit": "091d7f7501763840789a401a0804a9e39a69c3a7",
+ "reference_report_sha256": "2e33ed998d9be650e4159dfec88796d761ee43f918cb3b4ab19b467d189eb480",
+ "source_archive_sha256": "00c8866dc99fd6c9d43f7bec977a165beb1a5cc73b6cd3c334d8eba34cfdfa58",
+ "oracle_exit_status": 0,
+ "oracle_seconds": 0.125,
+ "oracle_maxrss_kb": 4288,
+ "oracle_maxrss_approximate": false,
+ "notes": "Direct Param->ParamPol / KType->KTypePol coercions (atlas-types.w :7710-7717 param_to_poly, :5608-5617 K_type_to_poly), including the non-dominant nu=[-1,-1]/2 expand_final reflection across real walls (repr.cpp:1283-1287). Reference frozen by HPC capture 3601990; Rust differential pending.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 5,
+  "estimated_memory_mb": 128
+ }
+}
