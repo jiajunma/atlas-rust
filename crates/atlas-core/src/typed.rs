@@ -2874,129 +2874,7 @@ pub fn convert_expr(
                 analysis,
             )
         }
-        Expr::For(loop_) => {
-            let ForLoop {
-                pattern,
-                index,
-                iterable,
-                in_reversed,
-                body,
-                out_reversed,
-                span,
-            } = loop_.as_ref();
-            let mut found = Type::Undetermined;
-            let iterable = convert_expr(iterable, &mut found, analysis)?;
-            let Type::Row(component) = found else {
-                return Err(type_error(
-                    format!(
-                        "Cannot iterate over value of type {}",
-                        found.display(analysis.types)
-                    ),
-                    loop_.iterable.span(),
-                ));
-            };
-            // The pattern claims the row's component; the `@` name binds
-            // the 0-based index as int (the upstream (index, pattern) pair
-            // wrap, in that slot order).
-            let leaves = match pattern {
-                Some(pattern) => bind_pattern_leaves(pattern, &component, analysis.types)?,
-                None => Vec::new(),
-            };
-            let mut names = BTreeSet::new();
-            for (name, name_span, _, _) in &leaves {
-                if !names.insert(name.as_str()) {
-                    return Err(Diagnostic::new(
-                        ErrorKind::Name,
-                        format!("Multiple binding of '{name}' in same scope"),
-                        Some(*name_span),
-                    ));
-                }
-            }
-            if let Some(index) = index {
-                if !names.insert(index.value.as_str()) {
-                    return Err(Diagnostic::new(
-                        ErrorKind::Name,
-                        format!("Multiple binding of '{}' in same scope", index.value),
-                        Some(index.span),
-                    ));
-                }
-            }
-            let mut locals = analysis.locals.clone();
-            let mut constant_locals = analysis.constant_locals.clone();
-            // Like a let group: a layer binding no slot claims no frame,
-            // so depths shift only when a slot exists (empty-layer rule).
-            let layer_slots = leaves.len() + usize::from(index.is_some());
-            if layer_slots > 0 {
-                for (_, depth, _) in locals.values_mut() {
-                    *depth += 1;
-                }
-            }
-            let mut offset = 0;
-            // The upstream (pattern, index) pair wrap is push_front-built
-            // (parser.y:533-537, parsetree.w:1383-1385), so the INDEX takes
-            // slot 0 and the pattern leaves follow (observable in the
-            // back-trace frame dump: `{ k=0, i=2 }` for `for i@k`).
-            if let Some(index) = index {
-                locals.insert(
-                    index.value.clone(),
-                    (Rc::new(RefCell::new(Type::Primitive(Prim::Int))), 0, offset),
-                );
-                constant_locals.remove(&index.value);
-                offset += 1;
-            }
-            for (name, _, constant, leaf_type) in &leaves {
-                locals.insert(
-                    name.clone(),
-                    (Rc::new(RefCell::new(leaf_type.clone())), 0, offset),
-                );
-                if *constant {
-                    constant_locals.insert(name.clone());
-                } else {
-                    constant_locals.remove(name);
-                }
-                offset += 1;
-            }
-            let shape = pattern
-                .as_ref()
-                .map(pattern_slot_shape)
-                .unwrap_or(SlotShape::Discard);
-            // Slot names in bind order (the index name, then the leaves),
-            // for the error-time frame dump (axis.w:6124-6161).
-            let names: Vec<String> = index
-                .iter()
-                .map(|index| index.value.clone())
-                .chain(leaves.iter().map(|(name, _, _, _)| name.clone()))
-                .collect();
-            let mut body_type = Type::Undetermined;
-            let body = convert_expr(
-                body,
-                &mut body_type,
-                &Analysis {
-                    types: analysis.types,
-                    globals: analysis.globals,
-                    overloads: analysis.overloads,
-                    locals,
-                    constant_locals,
-                    in_function: analysis.in_function,
-                    loop_depth: analysis.loop_depth + 1,
-                },
-            )?;
-            conform_types(
-                &Type::row(body_type),
-                required,
-                TypedExpr::For {
-                    shape,
-                    index: index.is_some(),
-                    names: Rc::from(names),
-                    iterable: Box::new(iterable),
-                    in_reversed: *in_reversed,
-                    body: Box::new(body),
-                    out_reversed: *out_reversed,
-                },
-                *span,
-                analysis,
-            )
-        }
+        Expr::For(loop_) => convert_for_loop(loop_, required, analysis),
         Expr::Case(case) => {
             let crate::syntax::CaseExpr {
                 subject,
@@ -3280,70 +3158,7 @@ pub fn convert_expr(
                 analysis,
             )
         }
-        Expr::CountedFor(loop_) => {
-            let crate::syntax::CountedForLoop {
-                name,
-                count,
-                bound,
-                decreasing,
-                in_reversed,
-                body,
-                out_reversed,
-                span,
-            } = loop_.as_ref();
-            let mut count_type = Type::Primitive(Prim::Int);
-            let count = convert_expr(count, &mut count_type, analysis)?;
-            let bound = match bound {
-                Some(bound) => {
-                    let mut bound_type = Type::Primitive(Prim::Int);
-                    Some(Box::new(convert_expr(bound, &mut bound_type, analysis)?))
-                }
-                None => None,
-            };
-            // The loop variable is bound as a CONSTANT int (axis.w:6484).
-            let mut locals = analysis.locals.clone();
-            let mut constant_locals = analysis.constant_locals.clone();
-            if let Some(name) = name {
-                for (_, depth, _) in locals.values_mut() {
-                    *depth += 1;
-                }
-                locals.insert(
-                    name.value.clone(),
-                    (Rc::new(RefCell::new(Type::Primitive(Prim::Int))), 0, 0),
-                );
-                constant_locals.insert(name.value.clone());
-            }
-            let mut body_type = Type::Undetermined;
-            let body = convert_expr(
-                body,
-                &mut body_type,
-                &Analysis {
-                    types: analysis.types,
-                    globals: analysis.globals,
-                    overloads: analysis.overloads,
-                    locals,
-                    constant_locals,
-                    in_function: analysis.in_function,
-                    loop_depth: analysis.loop_depth + 1,
-                },
-            )?;
-            conform_types(
-                &Type::row(body_type),
-                required,
-                TypedExpr::CountedFor {
-                    name: name.as_ref().map(|name| name.value.clone()),
-                    decreasing: *decreasing,
-                    in_reversed: *in_reversed,
-                    out_reversed: *out_reversed,
-                    count: Box::new(count),
-                    bound,
-                    body: Box::new(body),
-                    span: *span,
-                },
-                *span,
-                analysis,
-            )
-        }
+        Expr::CountedFor(loop_) => convert_counted_for_loop(loop_, required, analysis),
         Expr::Break { span } => {
             // `break` is legal only lexically inside a loop; upstream
             // rejects it during analysis, before anything evaluates
@@ -3375,6 +3190,219 @@ pub fn convert_expr(
             Ok(TypedExpr::Die { span: *span })
         }
     }
+}
+
+/// Convert a `for pattern[@index] in iterable do body od` loop
+/// (parser.y:506-531). Kept out of `convert_expr`'s frame: the branch
+/// locals are heavy, and the giant dispatcher recurses per subexpression.
+fn convert_for_loop(
+    loop_: &ForLoop,
+    required: &mut Type,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, Diagnostic> {
+    let ForLoop {
+        pattern,
+        index,
+        iterable,
+        in_reversed,
+        body,
+        out_reversed,
+        iffor_body,
+        span,
+    } = loop_;
+    let mut found = Type::Undetermined;
+    let iterable = convert_expr(iterable, &mut found, analysis)?;
+    // The iterated component (parser.y:506-531 accepts every
+    // subscriptable aggregate): a row yields its component, a
+    // string its one-character strings, a vec its int entries, a
+    // ratvec its rat entries, a mat its column vecs.
+    let component = match &found {
+        Type::Row(component) => component.as_ref().clone(),
+        Type::Primitive(Prim::String) => string_type(),
+        Type::Primitive(Prim::Vec) => int_type(),
+        Type::Primitive(Prim::RatVec) => rat_type(),
+        Type::Primitive(Prim::Mat) => primitive_type(Prim::Vec),
+        _ => {
+            return Err(type_error(
+                format!(
+                    "Cannot iterate over value of type {}",
+                    found.display(analysis.types)
+                ),
+                loop_.iterable.span(),
+            ));
+        }
+    };
+    // The pattern claims the row's component; the `@` name binds
+    // the 0-based index as int (the upstream (index, pattern) pair
+    // wrap, in that slot order).
+    let leaves = match pattern {
+        Some(pattern) => bind_pattern_leaves(pattern, &component, analysis.types)?,
+        None => Vec::new(),
+    };
+    let mut names = BTreeSet::new();
+    for (name, name_span, _, _) in &leaves {
+        if !names.insert(name.as_str()) {
+            return Err(Diagnostic::new(
+                ErrorKind::Name,
+                format!("Multiple binding of '{name}' in same scope"),
+                Some(*name_span),
+            ));
+        }
+    }
+    if let Some(index) = index {
+        if !names.insert(index.value.as_str()) {
+            return Err(Diagnostic::new(
+                ErrorKind::Name,
+                format!("Multiple binding of '{}' in same scope", index.value),
+                Some(index.span),
+            ));
+        }
+    }
+    let mut locals = analysis.locals.clone();
+    let mut constant_locals = analysis.constant_locals.clone();
+    // Like a let group: a layer binding no slot claims no frame,
+    // so depths shift only when a slot exists (empty-layer rule).
+    let layer_slots = leaves.len() + usize::from(index.is_some());
+    if layer_slots > 0 {
+        for (_, depth, _) in locals.values_mut() {
+            *depth += 1;
+        }
+    }
+    let mut offset = 0;
+    // The upstream (pattern, index) pair wrap is push_front-built
+    // (parser.y:533-537, parsetree.w:1383-1385), so the INDEX takes
+    // slot 0 and the pattern leaves follow (observable in the
+    // back-trace frame dump: `{ k=0, i=2 }` for `for i@k`).
+    if let Some(index) = index {
+        locals.insert(
+            index.value.clone(),
+            (Rc::new(RefCell::new(Type::Primitive(Prim::Int))), 0, offset),
+        );
+        constant_locals.remove(&index.value);
+        offset += 1;
+    }
+    for (name, _, constant, leaf_type) in &leaves {
+        locals.insert(
+            name.clone(),
+            (Rc::new(RefCell::new(leaf_type.clone())), 0, offset),
+        );
+        if *constant {
+            constant_locals.insert(name.clone());
+        } else {
+            constant_locals.remove(name);
+        }
+        offset += 1;
+    }
+    let shape = pattern
+        .as_ref()
+        .map(pattern_slot_shape)
+        .unwrap_or(SlotShape::Discard);
+    // Slot names in bind order (the index name, then the leaves),
+    // for the error-time frame dump (axis.w:6124-6161).
+    let names: Vec<String> = index
+        .iter()
+        .map(|index| index.value.clone())
+        .chain(leaves.iter().map(|(name, _, _, _)| name.clone()))
+        .collect();
+    let mut body_type = Type::Undetermined;
+    let body = convert_expr(
+        body,
+        &mut body_type,
+        &Analysis {
+            types: analysis.types,
+            globals: analysis.globals,
+            overloads: analysis.overloads,
+            locals,
+            constant_locals,
+            in_function: analysis.in_function,
+            loop_depth: analysis.loop_depth + 1,
+        },
+    )?;
+    let loop_type = Type::row(body_type);
+    let converted = TypedExpr::For {
+        shape,
+        index: index.is_some(),
+        names: Rc::from(names),
+        iterable: Box::new(iterable),
+        in_reversed: *in_reversed,
+        body: Box::new(body),
+        out_reversed: *out_reversed,
+    };
+    if *iffor_body {
+        return join_iffor_body(converted, &loop_type, required, *span, analysis);
+    }
+    conform_types(&loop_type, required, converted, *span, analysis)
+}
+
+/// Convert a counted `for` loop (parser.y:550-573); kept out of
+/// `convert_expr`'s frame like `convert_for_loop`.
+fn convert_counted_for_loop(
+    loop_: &crate::syntax::CountedForLoop,
+    required: &mut Type,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, Diagnostic> {
+    let crate::syntax::CountedForLoop {
+        name,
+        count,
+        bound,
+        decreasing,
+        in_reversed,
+        body,
+        out_reversed,
+        iffor_body,
+        span,
+    } = loop_;
+    let mut count_type = Type::Primitive(Prim::Int);
+    let count = convert_expr(count, &mut count_type, analysis)?;
+    let bound = match bound {
+        Some(bound) => {
+            let mut bound_type = Type::Primitive(Prim::Int);
+            Some(Box::new(convert_expr(bound, &mut bound_type, analysis)?))
+        }
+        None => None,
+    };
+    // The loop variable is bound as a CONSTANT int (axis.w:6484).
+    let mut locals = analysis.locals.clone();
+    let mut constant_locals = analysis.constant_locals.clone();
+    if let Some(name) = name {
+        for (_, depth, _) in locals.values_mut() {
+            *depth += 1;
+        }
+        locals.insert(
+            name.value.clone(),
+            (Rc::new(RefCell::new(Type::Primitive(Prim::Int))), 0, 0),
+        );
+        constant_locals.insert(name.value.clone());
+    }
+    let mut body_type = Type::Undetermined;
+    let body = convert_expr(
+        body,
+        &mut body_type,
+        &Analysis {
+            types: analysis.types,
+            globals: analysis.globals,
+            overloads: analysis.overloads,
+            locals,
+            constant_locals,
+            in_function: analysis.in_function,
+            loop_depth: analysis.loop_depth + 1,
+        },
+    )?;
+    let loop_type = Type::row(body_type);
+    let converted = TypedExpr::CountedFor {
+        name: name.as_ref().map(|name| name.value.clone()),
+        decreasing: *decreasing,
+        in_reversed: *in_reversed,
+        out_reversed: *out_reversed,
+        count: Box::new(count),
+        bound,
+        body: Box::new(body),
+        span: *span,
+    };
+    if *iffor_body {
+        return join_iffor_body(converted, &loop_type, required, *span, analysis);
+    }
+    conform_types(&loop_type, required, converted, *span, analysis)
 }
 
 /// Convert the ordinary one-name assignment path. `set x := value` and
@@ -4810,6 +4838,11 @@ enum BuiltinImpl {
     /// candidate snapshot the command layer stashed in the evaluation
     /// context by the argument prefix.
     Completions,
+    /// prints (axis.w:8851-8855 prints_wrapper, 8821-8848 to_string_aux):
+    /// writes its arguments unseparated and unquoted (a tuple argument
+    /// expands one level), followed by a newline, at BOTH levels; yields
+    /// the empty tuple at single_value.
+    Prints,
 }
 
 #[derive(Clone, Copy)]
@@ -5013,7 +5046,34 @@ impl Builtin {
                     )
                 }))
             }
+            BuiltinImpl::Prints => {
+                let mut text = String::new();
+                for argument in &arguments {
+                    append_stripped(&mut text, argument);
+                }
+                text.push('\n');
+                context.print_text(text);
+                Ok(at_builtin_level(level, || Value::Tuple(Vec::new())))
+            }
         }
+    }
+}
+
+/// Append one prints argument (axis.w:8821-8848 to_string_aux): a string
+/// prints WITHOUT its quotes, a tuple expands ONE level (its string
+/// components likewise unquoted), everything else prints as `print` would.
+fn append_stripped(text: &mut String, value: &Value) {
+    match value {
+        Value::String(string) => text.push_str(string),
+        Value::Tuple(components) => {
+            for component in components {
+                match component {
+                    Value::String(string) => text.push_str(string),
+                    other => text.push_str(&other.to_string()),
+                }
+            }
+        }
+        other => text.push_str(&other.to_string()),
     }
 }
 
@@ -7984,6 +8044,17 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 0,
                 ScalarOp::RowJoinRowOfRows,
             ),
+            // prints (axis.w:1797 prints_name, 8851-8855): a hidden special
+            // function whose undetermined pattern matches any argument; the
+            // recognition logic in hidden_special_variant resolves it.
+            Builtin {
+                name: "prints",
+                arg_type: Type::Undetermined,
+                result: Type::void(),
+                hunger: 0,
+                overload_visible: false,
+                implementation: BuiltinImpl::Prints,
+            },
             // global.w:4478-4493: retain zero-row/zero-column dimensions,
             // narrow and bound both dimensions before the no-value gate.
             scalar_builtin(
@@ -10275,8 +10346,37 @@ fn hidden_special_variant(
             }
             _ => None,
         },
+        // prints (axis.w:2466-2468, 2500-2506): the special generic
+        // function matches ANY a-priori type and yields void.
+        "prints" => {
+            let index = hidden_builtin_by_pattern("prints", |_| true)?;
+            Some((index, Type::void()))
+        }
         _ => None,
     }
+}
+
+/// Wrap an iffor-bodied loop in the protected `## ` concatenation
+/// (parser.y:317-324, 528-571; axis.w:1785 protected_concatenate_name):
+/// the loop yields a row of rows that is joined by a DIRECT call to the
+/// hidden row-of-rows `##` instance, bypassing overload resolution so a
+/// user-defined `##` cannot shadow it.
+fn join_iffor_body(
+    loop_typed: TypedExpr,
+    loop_type: &Type,
+    required: &mut Type,
+    span: SourceSpan,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, Diagnostic> {
+    let (builtin, result_type) = hidden_special_variant("##", loop_type, analysis.types)
+        .expect("an iffor-bodied loop yields a row of rows");
+    let call = TypedExpr::BuiltinCall {
+        builtin,
+        arguments: vec![loop_typed],
+        name: format!("## @{}", loop_type.display(analysis.types)),
+        span,
+    };
+    conform_types(&result_type, required, call, span, analysis)
 }
 
 impl TypedExpr {
@@ -11028,68 +11128,17 @@ impl TypedExpr {
                 in_reversed,
                 body,
                 out_reversed,
-            } => {
-                let values = match force(iterable, context)? {
-                    Value::List(values) => values,
-                    other => panic!("analysis let a non-row iterable through: {other}"),
-                };
-                // The tilde after the in-part traverses the components in
-                // reverse; the `@` index still names the original position,
-                // so it counts down from n-1 (axis.w:6017-6026).
-                let mut iterations = values.into_iter().enumerate().collect::<Vec<_>>();
-                if *in_reversed {
-                    iterations.reverse();
-                }
-                let mut collected = Vec::new();
-                // The trace reports the traversal-order iteration counter
-                // (0-based), which differs from the `@` index position
-                // under reversed traversal (axis.w:6124-6161).
-                for (iteration, (position, element)) in iterations.into_iter().enumerate() {
-                    // The index slot precedes the pattern slots, matching
-                    // the analysis-time layout (upstream pair wrap).
-                    let mut slots = Vec::new();
-                    if *index {
-                        slots.push(Rc::new(Value::Integer(BigInt::from(position))));
-                    }
-                    distribute(element, shape, &mut slots);
-                    let (result, frame) = if slots.is_empty() {
-                        // A pure-discard layer pushes no frame, matching the
-                        // analysis-time empty-layer rule.
-                        (body.evaluate(context, Level::SingleValue), None)
-                    } else {
-                        let (result, frame) = context.with_frame_traced(slots, |context| {
-                            body.evaluate(context, Level::SingleValue)
-                        });
-                        (result, Some(frame))
-                    };
-                    match result {
-                        Ok(Some(value)) => collected.push(value),
-                        Ok(None) => unreachable!("single-value loop body yields a value"),
-                        Err(Control::Break(0)) => break,
-                        Err(Control::Break(levels)) => {
-                            return Err(Control::Break(levels - 1));
-                        }
-                        Err(Control::Runtime(mut diagnostic)) => {
-                            // The per-iteration frame dump, then the
-                            // iteration line ahead of it (axis.w:6124-6161).
-                            if let Some(frame) = frame {
-                                diagnostic.trace(frame_dump(names, &frame));
-                            }
-                            diagnostic.trace(format!(
-                                "During iteration {iteration} of the {}for-loop",
-                                if *in_reversed { "reversed " } else { "" },
-                            ));
-                            return Err(Control::Runtime(diagnostic));
-                        }
-                        Err(control) => return Err(control),
-                    }
-                }
-                // The tilde before `od` reverse-collects the row.
-                if *out_reversed {
-                    collected.reverse();
-                }
-                Ok(at_level(level, || Value::List(collected.clone())))
-            }
+            } => eval_for_loop(
+                shape,
+                *index,
+                names,
+                iterable,
+                *in_reversed,
+                body,
+                *out_reversed,
+                level,
+                context,
+            ),
             Self::Break => Err(Control::Break(0)),
             Self::Dont => Err(Control::Dont),
             Self::Die { span } => Err(runtime("I die", *span)),
@@ -11425,6 +11474,108 @@ fn trace_location(context: &EvaluationContext, span: &SourceSpan) -> String {
             span.start.line, span.end.line
         )
     }
+}
+
+/// Evaluate a `for pattern[@index] in iterable do body od` loop. Kept out
+/// of `TypedExpr::evaluate`'s frame: the branch locals are heavy, and the
+/// giant dispatcher recurses per subexpression.
+#[allow(clippy::too_many_arguments)]
+fn eval_for_loop(
+    shape: &SlotShape,
+    index: bool,
+    names: &[String],
+    iterable: &TypedExpr,
+    in_reversed: bool,
+    body: &TypedExpr,
+    out_reversed: bool,
+    level: Level,
+    context: &mut EvaluationContext,
+) -> Result<Option<Value>, Control> {
+    let values: Vec<Value> = match force(iterable, context)? {
+        Value::List(values) => values,
+        // A string iterates its one-character strings, a vec its
+        // int entries, a ratvec its rat entries, a mat its
+        // column vecs (the aggregate for-in of parser.y:506-531,
+        // mirroring subscription's component types).
+        Value::String(text) => text
+            .as_bytes()
+            .iter()
+            .map(|byte| Value::String(String::from_utf8_lossy(&[*byte]).into_owned()))
+            .collect(),
+        Value::Vector(Vec32(entries)) => entries
+            .iter()
+            .map(|entry| Value::Integer(BigInt::from(*entry)))
+            .collect(),
+        Value::RatVector(ratvec) => ratvec
+            .numerators()
+            .iter()
+            .map(|numerator| {
+                Value::Rational(BigRational::from_integers(
+                    BigInt::from(*numerator),
+                    BigInt::from(ratvec.denominator()),
+                ))
+            })
+            .collect(),
+        Value::Matrix(matrix) => (0..matrix.cols())
+            .map(|column| Value::Vector(matrix.column(column)))
+            .collect(),
+        other => panic!("analysis let a non-iterable value through: {other}"),
+    };
+    // The tilde after the in-part traverses the components in
+    // reverse; the `@` index still names the original position,
+    // so it counts down from n-1 (axis.w:6017-6026).
+    let mut iterations = values.into_iter().enumerate().collect::<Vec<_>>();
+    if in_reversed {
+        iterations.reverse();
+    }
+    let mut collected = Vec::new();
+    // The trace reports the traversal-order iteration counter
+    // (0-based), which differs from the `@` index position
+    // under reversed traversal (axis.w:6124-6161).
+    for (iteration, (position, element)) in iterations.into_iter().enumerate() {
+        // The index slot precedes the pattern slots, matching
+        // the analysis-time layout (upstream pair wrap).
+        let mut slots = Vec::new();
+        if index {
+            slots.push(Rc::new(Value::Integer(BigInt::from(position))));
+        }
+        distribute(element, shape, &mut slots);
+        let (result, frame) = if slots.is_empty() {
+            // A pure-discard layer pushes no frame, matching the
+            // analysis-time empty-layer rule.
+            (body.evaluate(context, Level::SingleValue), None)
+        } else {
+            let (result, frame) = context
+                .with_frame_traced(slots, |context| body.evaluate(context, Level::SingleValue));
+            (result, Some(frame))
+        };
+        match result {
+            Ok(Some(value)) => collected.push(value),
+            Ok(None) => unreachable!("single-value loop body yields a value"),
+            Err(Control::Break(0)) => break,
+            Err(Control::Break(levels)) => {
+                return Err(Control::Break(levels - 1));
+            }
+            Err(Control::Runtime(mut diagnostic)) => {
+                // The per-iteration frame dump, then the
+                // iteration line ahead of it (axis.w:6124-6161).
+                if let Some(frame) = frame {
+                    diagnostic.trace(frame_dump(names, &frame));
+                }
+                diagnostic.trace(format!(
+                    "During iteration {iteration} of the {}for-loop",
+                    if in_reversed { "reversed " } else { "" },
+                ));
+                return Err(Control::Runtime(diagnostic));
+            }
+            Err(control) => return Err(control),
+        }
+    }
+    // The tilde before `od` reverse-collects the row.
+    if out_reversed {
+        collected.reverse();
+    }
+    Ok(at_level(level, || Value::List(collected.clone())))
 }
 
 /// The local-variable trace line of one frame (axis.w:2896-2909):
@@ -15984,9 +16135,110 @@ mod tests {
         assert_eq!(error.kind, ErrorKind::Type);
         assert_eq!(error.message, "Cannot iterate over value of type int");
 
+        let error = convert_and_run("for b in true do b od").expect_err("non-aggregate iterable");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(error.message, "Cannot iterate over value of type bool");
+
         let error = convert_and_run("while 1 do 2 od").expect_err("non-boolean condition");
         assert_eq!(error.kind, ErrorKind::Type);
         assert_eq!(error.message, "found int while bool was needed.");
+    }
+
+    #[test]
+    fn quiet_if_and_iffor_loops_evaluate_like_the_oracle() {
+        // parser.y:365 quiet-if: `if c do e fi` is `if c then [e] else [] fi`.
+        let (_, value) = convert_and_run("if true do 42 fi").expect("quiet-if then");
+        assert_eq!(value.to_string(), "[42]");
+        let (_, value) = convert_and_run("if false do 42 fi").expect("quiet-if else");
+        assert_eq!(value.to_string(), "[]");
+        // The nested iffor form (parser.y:317-324).
+        let (_, value) = convert_and_run("if true if 1<2 do 7 fi fi").expect("nested iffor");
+        assert_eq!(value.to_string(), "[7]");
+
+        // An iffor-bodied loop yields a row of rows that the protected
+        // `## ` joins (parser.y:528-571, axis.w:1785) — on every for form.
+        let (_, value) = convert_and_run("for i:3 if i>1 do i fi od").expect("counted iffor");
+        assert_eq!(value.to_string(), "[2]");
+        let (_, value) =
+            convert_and_run("for x in [10,20] if x>10 do x fi od").expect("for-in iffor");
+        assert_eq!(value.to_string(), "[20]");
+        let (_, value) =
+            convert_and_run("for i:2 for j:2 do (i,j) od od").expect("nested loop iffor");
+        assert_eq!(value.to_string(), "[(0,0),(0,1),(1,0),(1,1)]");
+        let (_, value) = convert_and_run("for:2 if true do 7 fi od").expect("anonymous iffor");
+        assert_eq!(value.to_string(), "[7,7]");
+        let (_, value) = convert_and_run("for i:2 from 5 if i<6 do i fi od").expect("from iffor");
+        assert_eq!(value.to_string(), "[5]");
+        let (_, value) =
+            convert_and_run("for i:3 downto 1 if i>1 do i fi od").expect("downto iffor");
+        assert_eq!(value.to_string(), "[3,2]");
+        let (_, value) = convert_and_run("for x in [\"a\",\"bb\"] if #x>1 do x fi od")
+            .expect("string-row iffor");
+        assert_eq!(value.to_string(), "[\"bb\"]");
+    }
+
+    #[test]
+    fn for_in_iterates_strings_vecs_mats_and_ratvecs() {
+        // parser.y:506-531 accepts every subscriptable aggregate; the
+        // iterated component mirrors subscription: string→1-char string,
+        // vec→int, mat→column vec, ratvec→rat.
+        let (_, value) = convert_and_run("for c in \"abc\" do c od").expect("string iteration");
+        assert_eq!(value.to_string(), "[\"a\",\"b\",\"c\"]");
+        let (_, value) = convert_and_run("for x in vec:[1,2] do x od").expect("vec iteration");
+        assert_eq!(value.to_string(), "[1,2]");
+        let (_, value) =
+            convert_and_run("for q in ratvec:[1/2,3/4] do q od").expect("ratvec iteration");
+        assert_eq!(value.to_string(), "[1/2,3/4]");
+        let (_, value) =
+            convert_and_run("for col in mat:[[1,2,3],[4,5,6]] do col od").expect("mat iteration");
+        assert_eq!(value.to_string(), "[[ 1, 2, 3 ],[ 4, 5, 6 ]]");
+        let (_, value) = convert_and_run("for col@k in mat:[[1,2,3],[4,5,6]] do (k,col) od")
+            .expect("mat iteration with index");
+        assert_eq!(value.to_string(), "[(0,[ 1, 2, 3 ]),(1,[ 4, 5, 6 ])]");
+        // The in-part tilde reverses the traversal of every kind.
+        let (_, value) = convert_and_run("for c in \"ab\"~ do c od").expect("reversed string");
+        assert_eq!(value.to_string(), "[\"b\",\"a\"]");
+        let (_, value) = convert_and_run("for x in vec:[1,2,3]~ do x od").expect("reversed vec");
+        assert_eq!(value.to_string(), "[3,2,1]");
+        let (_, value) =
+            convert_and_run("for col in mat:[[1,2,3],[4,5,6]]~ do col od").expect("reversed mat");
+        assert_eq!(value.to_string(), "[[ 4, 5, 6 ],[ 1, 2, 3 ]]");
+    }
+
+    #[test]
+    fn prints_outputs_stripped_text_and_yields_void() {
+        // prints (axis.w:8851-8855, 8821-8848): strings print unquoted, a
+        // tuple argument expands one level, no separators, one newline.
+        let prints_and_run = |source: &str| -> (Type, Option<Value>, Vec<String>) {
+            let source = SourceText::new(source);
+            let program = parse(&source).expect("prints source parses");
+            assert_eq!(program.expressions.len(), 1);
+            let table = TypeTable::new();
+            let overloads = OverloadState::default();
+            let globals = IdTable::new();
+            let analysis = Analysis::new(&table, &globals, &overloads);
+            let mut required = Type::Undetermined;
+            let typed = convert_expr(&program.expressions[0], &mut required, &analysis)
+                .expect("prints converts");
+            let mut context = EvaluationContext::new();
+            let value = typed
+                .evaluate(&mut context, Level::SingleValue)
+                .expect("prints evaluates");
+            (required, value, context.take_printed())
+        };
+        let (required, value, printed) = prints_and_run("prints(\"two\")");
+        assert_eq!(required, Type::void());
+        assert_eq!(value, Some(Value::Tuple(Vec::new())));
+        assert_eq!(printed, vec!["two\n".to_string()]);
+        // Several arguments and a tuple argument concatenate unseparated.
+        let (_, value, printed) = prints_and_run("prints(\"a\", 1, (\"b\", 2))");
+        assert_eq!(value, Some(Value::Tuple(Vec::new())));
+        assert_eq!(printed, vec!["a1b2\n".to_string()]);
+        // At no-value level the text still prints; only the value vanishes
+        // (the first half of a sequence evaluates at no-value).
+        let (_, value, printed) = prints_and_run("prints(\"x\"); 42");
+        assert_eq!(value, Some(Value::Integer(BigInt::from(42))));
+        assert_eq!(printed, vec!["x\n".to_string()]);
     }
 
     #[test]
@@ -16045,8 +16297,11 @@ mod tests {
         assert_eq!(STARTUP_COMPLETION_NAMES.len(), 294, "oracle startup count");
         let startup: BTreeSet<&str> = STARTUP_COMPLETION_NAMES.iter().copied().collect();
         for builtin in builtin_registry() {
+            // `prints` is a special variadic function upstream
+            // (axis.w prints_builtin), declared OUTSIDE the global overload
+            // table, so it never appears in the startup completions.
             assert!(
-                startup.contains(builtin.name),
+                startup.contains(builtin.name) || builtin.name == "prints",
                 "registry builtin '{}' missing from STARTUP_COMPLETION_NAMES",
                 builtin.name
             );

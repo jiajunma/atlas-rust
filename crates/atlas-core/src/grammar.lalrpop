@@ -14,6 +14,7 @@ use super::{
     call_suffix, postfix, prefix_operator_call, slice_suffix, matrix_slice_suffix, start_binary_formula, start_prefix_formula,
     subscription_suffix, pair_index, type_group, type_function, type_primitive, type_row, type_union_append,
     type_union_start, type_variant, type_wild_row, unary, finish_conditional, if_tail,
+    quiet_if_expression, nested_iffor_expression,
     anonymous_parameter, const_pattern_name, finish_pattern, pattern_binding, pattern_empty_tuple,
     pattern_name, pattern_slots, pattern_tuple, prepend_while_effect, tuple_parameter,
     whattype_command, while_expression, bar_list_expression,
@@ -495,6 +496,15 @@ CallArguments: Vec<Expr> = {
 
 Atom: Expr = {
     <if_span:"if"> <tail:IfTail> => finish_conditional(if_span, tail),
+    // Quiet-if (parser.y:365): `if c do e fi` desugars to
+    // `if c then [e] else [] fi`; the nested form `if c iffor fi`
+    // (parser.y:317-324) takes an iffor_loop as its then branch.
+    <if_span:"if"> <condition:Expr> "do" <body:Expr> <fi:"fi"> => {
+        quiet_if_expression(if_span, condition, body, fi)
+    },
+    <if_span:"if"> <condition:Expr> <inner:IfforLoop> <fi:"fi"> => {
+        nested_iffor_expression(if_span, condition, inner, fi)
+    },
     <integer:"integer"> => Expr::Integer { value: integer.value, span: integer.span },
     <boolean:"boolean"> => Expr::Boolean { value: boolean.value, span: boolean.span },
     <string:"string"> => Expr::String { value: string.value, span: string.span },
@@ -668,8 +678,28 @@ WhileTail: (Option<Expr>, Expr, SourceSpan, bool) = {
 ForTail: ParsedFor = {
     <pattern:ForPattern> <index:ForIndex?> <_in:"in"> <iterable:Expr> <in_reversed:TildeOpt>
         <_do:"do"> <body:Expr> <out_reversed:TildeOpt> <od:"od"> => {
-        ParsedFor { pattern, index, iterable, in_reversed, body, out_reversed, od }
+        ParsedFor { pattern, index, iterable, in_reversed, body, out_reversed, iffor_body: false, od }
     },
+    // The do-less iffor body (parser.y:317-324, 506-531): the whole loop
+    // is wrapped in the protected `## ` concatenation at conversion time.
+    <pattern:ForPattern> <index:ForIndex?> <_in:"in"> <iterable:Expr> <in_reversed:TildeOpt>
+        <body:IfforLoop> <out_reversed:TildeOpt> <od:"od"> => {
+        ParsedFor { pattern, index, iterable, in_reversed, body, out_reversed, iffor_body: true, od }
+    },
+};
+
+// The do-less loop body (parser.y:317-324, iffor_loop): a quiet-if, a
+// nested `if c iffor fi`, or another for loop. Every form yields a row, so
+// the enclosing loop collects a row of rows that `## ` joins.
+IfforLoop: Expr = {
+    <if_span:"if"> <condition:Expr> "do" <body:Expr> <fi:"fi"> => {
+        quiet_if_expression(if_span, condition, body, fi)
+    },
+    <if_span:"if"> <condition:Expr> <inner:IfforLoop> <fi:"fi"> => {
+        nested_iffor_expression(if_span, condition, inner, fi)
+    },
+    <for_span:"for"> <tail:ForTail> => for_expression(for_span, tail),
+    <for_span:"for"> <tail:CountedForTail> => counted_for_expression(for_span, tail),
 };
 
 // Counted for loops (parser.y:550-573): `FOR IDENT ':' count [FROM bound |
@@ -683,26 +713,52 @@ CountedForTail: ParsedCountedFor = {
         <body:Expr> <out_reversed:TildeOpt> <od:"od"> => {
         ParsedCountedFor {
             name: Some(name), count, bound: Some(bound), decreasing: false, in_reversed,
-            body, out_reversed, od,
+            body, out_reversed, iffor_body: false, od,
+        }
+    },
+    <name:"identifier"> ":" <count:Expr> "from" <bound:Expr> <in_reversed:TildeOpt>
+        <body:IfforLoop> <out_reversed:TildeOpt> <od:"od"> => {
+        ParsedCountedFor {
+            name: Some(name), count, bound: Some(bound), decreasing: false, in_reversed,
+            body, out_reversed, iffor_body: true, od,
         }
     },
     <name:"identifier"> ":" <count:Expr> "downto" <bound:Expr> "do" <body:Expr> <od:"od"> => {
         ParsedCountedFor {
             name: Some(name), count, bound: Some(bound), decreasing: true, in_reversed: false,
-            body, out_reversed: false, od,
+            body, out_reversed: false, iffor_body: false, od,
+        }
+    },
+    <name:"identifier"> ":" <count:Expr> "downto" <bound:Expr> <body:IfforLoop> <od:"od"> => {
+        ParsedCountedFor {
+            name: Some(name), count, bound: Some(bound), decreasing: true, in_reversed: false,
+            body, out_reversed: false, iffor_body: true, od,
         }
     },
     <name:"identifier"> ":" <count:Expr> <in_reversed:TildeOpt> "do" <body:Expr>
         <out_reversed:TildeOpt> <od:"od"> => {
         ParsedCountedFor {
             name: Some(name), count, bound: None, decreasing: false, in_reversed,
-            body, out_reversed, od,
+            body, out_reversed, iffor_body: false, od,
+        }
+    },
+    <name:"identifier"> ":" <count:Expr> <in_reversed:TildeOpt> <body:IfforLoop>
+        <out_reversed:TildeOpt> <od:"od"> => {
+        ParsedCountedFor {
+            name: Some(name), count, bound: None, decreasing: false, in_reversed,
+            body, out_reversed, iffor_body: true, od,
         }
     },
     ":" <count:Expr> "do" <body:Expr> <out_reversed:TildeOpt> <od:"od"> => {
         ParsedCountedFor {
             name: None, count, bound: None, decreasing: false, in_reversed: false,
-            body, out_reversed, od,
+            body, out_reversed, iffor_body: false, od,
+        }
+    },
+    ":" <count:Expr> <body:IfforLoop> <out_reversed:TildeOpt> <od:"od"> => {
+        ParsedCountedFor {
+            name: None, count, bound: None, decreasing: false, in_reversed: false,
+            body, out_reversed, iffor_body: true, od,
         }
     },
 };

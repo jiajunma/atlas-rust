@@ -331,6 +331,10 @@ pub struct CountedForLoop {
     pub body: Expr,
     /// Tilde before `od` (flags bit 1): reverse-collect the output row.
     pub out_reversed: bool,
+    /// The body is a do-less iffor_loop (parser.y:317-324, 556-571): the
+    /// loop's row of rows is joined by the protected `## ` call during
+    /// conversion (axis.w:1785).
+    pub iffor_body: bool,
     pub span: SourceSpan,
 }
 
@@ -358,6 +362,10 @@ pub struct ForLoop {
     pub body: Box<Expr>,
     /// Tilde before `od` (flags bit 1): reverse-collect the output row.
     pub out_reversed: bool,
+    /// The body is a do-less iffor_loop (parser.y:317-324, 506-531): the
+    /// loop's row of rows is joined by the protected `## ` call during
+    /// conversion (axis.w:1785).
+    pub iffor_body: bool,
     pub span: SourceSpan,
 }
 
@@ -547,6 +555,7 @@ pub struct ParsedFor {
     pub in_reversed: bool,
     pub body: Expr,
     pub out_reversed: bool,
+    pub iffor_body: bool,
     pub od: SourceSpan,
 }
 
@@ -1405,6 +1414,9 @@ fn bison_expecting(token: &ParserToken, expected: &[String]) -> Option<&'static 
         // `for i:3 downto 2 do i~ od`: DOWNTO takes no tilde_opt
         // (parser.y:569-571), so the state expects only OD.
         ParserToken::Tilde(_) if has("od") => Some("OD"),
+        // `if 1<0 do 1 else 2 fi`: the quiet-if (parser.y:365) takes no
+        // ELSE, so the state expects only FI.
+        ParserToken::Else(_) if has("fi") => Some("FI"),
         _ => None,
     }
 }
@@ -1627,6 +1639,7 @@ pub struct ParsedCountedFor {
     pub in_reversed: bool,
     pub body: Expr,
     pub out_reversed: bool,
+    pub iffor_body: bool,
     pub od: SourceSpan,
 }
 
@@ -1639,6 +1652,7 @@ fn counted_for_expression(for_span: SourceSpan, parsed: ParsedCountedFor) -> Exp
         in_reversed: parsed.in_reversed,
         body: parsed.body,
         out_reversed: parsed.out_reversed,
+        iffor_body: parsed.iffor_body,
         span: join_span(for_span, parsed.od),
     }))
 }
@@ -1764,6 +1778,7 @@ fn for_expression(for_span: SourceSpan, parsed: ParsedFor) -> Expr {
         in_reversed: parsed.in_reversed,
         body: Box::new(parsed.body),
         out_reversed: parsed.out_reversed,
+        iffor_body: parsed.iffor_body,
     }))
 }
 
@@ -2435,6 +2450,43 @@ fn finish_conditional(open: SourceSpan, tail: ParsedIf) -> Expr {
         then_branch: Box::new(tail.then_branch),
         else_branch: Box::new(else_branch),
         span,
+    }
+}
+
+/// The quiet-if `if condition do body fi` (parser.y:365): sugar for
+/// `if condition then [body] else [] fi`, so the branches balance as rows.
+fn quiet_if_expression(if_span: SourceSpan, condition: Expr, body: Expr, fi: SourceSpan) -> Expr {
+    Expr::Conditional {
+        condition: Box::new(condition),
+        then_branch: Box::new(Expr::List {
+            elements: vec![body],
+            span: fi,
+        }),
+        else_branch: Box::new(Expr::List {
+            elements: Vec::new(),
+            span: fi,
+        }),
+        span: join_span(if_span, fi),
+    }
+}
+
+/// The nested form `if condition iffor_loop fi` (parser.y:317-324): the
+/// iffor body (itself a quiet-if or an iffor-bodied loop, hence a row) is
+/// the then branch, with an empty row for else.
+fn nested_iffor_expression(
+    if_span: SourceSpan,
+    condition: Expr,
+    inner: Expr,
+    fi: SourceSpan,
+) -> Expr {
+    Expr::Conditional {
+        condition: Box::new(condition),
+        then_branch: Box::new(inner),
+        else_branch: Box::new(Expr::List {
+            elements: Vec::new(),
+            span: fi,
+        }),
+        span: join_span(if_span, fi),
     }
 }
 
@@ -4113,6 +4165,79 @@ mod tests {
         let error = parse(&SourceText::new("for :3~ do 7 od"))
             .expect_err("the anonymous counted form takes no count-side tilde");
         assert_eq!(error.kind, crate::diagnostic::ErrorKind::Syntax);
+    }
+
+    #[test]
+    fn parses_quiet_if_and_iffor_bodies() {
+        // parser.y:365: `if c do e fi` desugars to `if c then [e] else [] fi`.
+        let Expr::Conditional {
+            then_branch,
+            else_branch,
+            ..
+        } = parse_one("if true do 42 fi")
+        else {
+            panic!("quiet-if parses as a conditional")
+        };
+        assert!(matches!(then_branch.as_ref(), Expr::List { elements, .. } if elements.len() == 1));
+        assert!(matches!(else_branch.as_ref(), Expr::List { elements, .. } if elements.is_empty()));
+
+        // parser.y:317-324: the nested form takes an iffor_loop as its
+        // then branch, again with an empty-row else.
+        let Expr::Conditional {
+            then_branch,
+            else_branch,
+            ..
+        } = parse_one("if a if b do 1 fi fi")
+        else {
+            panic!("nested iffor parses as a conditional")
+        };
+        assert!(matches!(then_branch.as_ref(), Expr::Conditional { .. }));
+        assert!(matches!(else_branch.as_ref(), Expr::List { elements, .. } if elements.is_empty()));
+
+        // Every for form admits the do-less iffor body and marks it; the
+        // ordinary do body leaves the mark clear.
+        let Expr::CountedFor(loop_) = parse_one("for i:3 if i>1 do i fi od") else {
+            panic!("counted for with iffor body parses")
+        };
+        assert!(loop_.iffor_body);
+        let Expr::CountedFor(loop_) = parse_one("for i:3 do i od") else {
+            panic!("counted for with do body parses")
+        };
+        assert!(!loop_.iffor_body);
+        let Expr::For(loop_) = parse_one("for x in [10,20] if x>10 do x fi od") else {
+            panic!("for-in with iffor body parses")
+        };
+        assert!(loop_.iffor_body);
+        let Expr::CountedFor(loop_) = parse_one("for i:2 from 5 if i<6 do i fi od") else {
+            panic!("from-counted for with iffor body parses")
+        };
+        assert!(loop_.iffor_body && !loop_.decreasing);
+        let Expr::CountedFor(loop_) = parse_one("for i:3 downto 1 if i>1 do i fi od") else {
+            panic!("downto for with iffor body parses")
+        };
+        assert!(loop_.iffor_body && loop_.decreasing);
+        let Expr::CountedFor(loop_) = parse_one("for:2 if true do 7 fi od") else {
+            panic!("anonymous counted for with iffor body parses")
+        };
+        assert!(loop_.iffor_body && loop_.name.is_none());
+
+        // A nested loop body: the outer loop is iffor-bodied, the inner an
+        // ordinary do loop.
+        let Expr::CountedFor(outer) = parse_one("for i:2 for j:2 do (i,j) od od") else {
+            panic!("nested for loops parse")
+        };
+        assert!(outer.iffor_body);
+        assert!(matches!(&outer.body, Expr::CountedFor(inner) if !inner.iffor_body));
+    }
+
+    #[test]
+    fn quiet_if_rejects_else_like_the_oracle() {
+        // The quiet-if (parser.y:365) admits no ELSE; the frozen oracle
+        // diagnostic (capture 3604504) names the token and the expected FI.
+        let error = parse(&SourceText::new("if 1<0 do 1 else 2 fi"))
+            .expect_err("a quiet-if takes no else branch");
+        assert_eq!(error.kind, crate::diagnostic::ErrorKind::Syntax);
+        assert_eq!(error.message, "syntax error, unexpected ELSE, expecting FI");
     }
 
     #[test]
