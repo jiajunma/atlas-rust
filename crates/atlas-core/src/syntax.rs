@@ -2575,14 +2575,25 @@ fn expression_from_formula(tree: FormulaTree<Expr>) -> Expr {
     }
 }
 
+/// The span a formula operand contributes to its operator call. Upstream's
+/// parser reduces `'(' expr ')'` to the inner node with ITS location
+/// (parser.y:366 `{ $$=$2; }`), so grouping parentheses never widen an
+/// expression's location; peel them recursively here.
+fn operand_span(expression: &Expr) -> SourceSpan {
+    match expression {
+        Expr::Group { inner, .. } => operand_span(inner),
+        other => other.span(),
+    }
+}
+
 fn operator_call(operator: FormulaOperator, arguments: Vec<Expr>) -> Expr {
     debug_assert!(matches!(arguments.len(), 1 | 2));
     let span = match arguments.as_slice() {
         [operand] => operator
             .span
-            .map(|operator_span| join_span(operator_span, operand.span()))
-            .unwrap_or_else(|| operand.span()),
-        [left, right] => join_span(left.span(), right.span()),
+            .map(|operator_span| join_span(operator_span, operand_span(operand)))
+            .unwrap_or_else(|| operand_span(operand)),
+        [left, right] => join_span(operand_span(left), operand_span(right)),
         _ => unreachable!("Atlas formula operators have arity one or two"),
     };
     Expr::OperatorCall {

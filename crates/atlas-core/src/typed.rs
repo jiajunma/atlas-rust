@@ -367,12 +367,11 @@ pub enum TypedExpr {
         span: SourceSpan,
     },
     /// A counted for loop (upstream `counted_for_expression`): `count`
-    /// iterations collecting each body value; with `has_name` the counter
-    /// is bound (as a constant) in a per-iteration frame, increasing from
-    /// the bound (default 0), or decreasing to it inclusive when
-    /// `decreasing`.
+    /// iterations collecting each body value; with `name` the counter is
+    /// bound (as a constant) in a per-iteration frame, increasing from the
+    /// bound (default 0), or decreasing to it inclusive when `decreasing`.
     CountedFor {
-        has_name: bool,
+        name: Option<String>,
         decreasing: bool,
         count: Box<TypedExpr>,
         bound: Option<Box<TypedExpr>>,
@@ -3312,7 +3311,7 @@ pub fn convert_expr(
                 &Type::row(body_type),
                 required,
                 TypedExpr::CountedFor {
-                    has_name: name.is_some(),
+                    name: name.as_ref().map(|name| name.value.clone()),
                     decreasing: *decreasing,
                     count: Box::new(count),
                     bound,
@@ -11154,7 +11153,7 @@ impl TypedExpr {
                 apply_closure(&closure, value.as_ref().clone(), context, level)
             }
             Self::CountedFor {
-                has_name,
+                name,
                 decreasing,
                 count,
                 bound,
@@ -11177,6 +11176,7 @@ impl TypedExpr {
                     lower.clone()
                 };
                 let mut collected = Vec::new();
+                let mut position = 0usize;
                 loop {
                     let active = if *decreasing {
                         index >= lower
@@ -11186,7 +11186,7 @@ impl TypedExpr {
                     if !active {
                         break;
                     }
-                    let result = if *has_name {
+                    let result = if name.is_some() {
                         context
                             .with_frame(vec![Rc::new(Value::Integer(index.clone()))], |context| {
                                 body.evaluate(context, Level::SingleValue)
@@ -11200,8 +11200,30 @@ impl TypedExpr {
                         // The breaking iteration contributes no value.
                         Err(Control::Break(0)) => break,
                         Err(Control::Break(levels)) => return Err(Control::Break(levels - 1)),
+                        Err(Control::Runtime(mut diagnostic)) => {
+                            // Iteration line only, no frame dump
+                            // (axis.w:6587-6594, 6685-6698). A named loop
+                            // reports its counter by name and notes
+                            // `reversed` when decreasing; the anonymous
+                            // catch shares one format string, keeping its
+                            // double space and no `reversed` mention.
+                            let line = match name {
+                                Some(name) if *decreasing => format!(
+                                    "During iteration {position} ({name}={index}) of the counted reversed for-loop"
+                                ),
+                                Some(name) => format!(
+                                    "During iteration {position} ({name}={index}) of the counted for-loop"
+                                ),
+                                None => {
+                                    format!("During iteration {position} of the  counted for-loop")
+                                }
+                            };
+                            diagnostic.trace(line);
+                            return Err(Control::Runtime(diagnostic));
+                        }
                         Err(control) => return Err(control),
                     }
+                    position += 1;
                     if *decreasing {
                         index -= BigInt::from(1);
                     } else {
@@ -16109,6 +16131,52 @@ mod tests {
                 "During iteration 2 of the for-loop",
                 "{ i=0 }",
                 "In call of %@(int,int) at <standard input>:1:20-23, built-in.",
+            ]
+        );
+    }
+
+    #[test]
+    fn counted_for_loop_error_traces_the_iteration() {
+        // axis.w:6685-6698: a named counted loop reports the iteration
+        // count and the counter value by name, with no frame dump;
+        // `downto` is the counted REVERSED loop.
+        let mut context = TypedContext::new();
+        context
+            .execute(&command("for i:3 from 0 do 6%(2-i) od"))
+            .expect_err("loop fails");
+        assert_eq!(
+            back_trace_lines(&mut context),
+            vec![
+                "During iteration 2 (i=2) of the counted for-loop",
+                "In call of %@(int,int) at <standard input>:1:18-24, built-in.",
+            ]
+        );
+
+        context
+            .execute(&command("for i:3 downto 0 do 6%i od"))
+            .expect_err("loop fails");
+        assert_eq!(
+            back_trace_lines(&mut context),
+            vec![
+                "During iteration 2 (i=0) of the counted reversed for-loop",
+                "In call of %@(int,int) at <standard input>:1:20-23, built-in.",
+            ]
+        );
+    }
+
+    #[test]
+    fn anonymous_counted_for_loop_error_keeps_the_shared_format() {
+        // axis.w:6587-6594: the anonymous catch shares one format string,
+        // so no counter value and a double space before `counted` survive.
+        let mut context = TypedContext::new();
+        context
+            .execute(&command("for :2 do 1%0 od"))
+            .expect_err("loop fails");
+        assert_eq!(
+            back_trace_lines(&mut context),
+            vec![
+                "During iteration 0 of the  counted for-loop",
+                "In call of %@(int,int) at <standard input>:1:10-13, built-in.",
             ]
         );
     }
