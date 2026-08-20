@@ -4,7 +4,7 @@
  "oracle": "atlas",
  "stage": "typed-pipeline-swap",
  "reference_status": "verified_hpc_reference",
- "rust_status": "pending_hpc_differential",
+ "rust_status": "verified_hpc",
  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
@@ -16,11 +16,12 @@
  "oracle_seconds": 0.015,
  "oracle_maxrss_kb": 3484,
  "oracle_maxrss_approximate": false,
- "notes": "readline_completions (global.w:4390-4391 wrapper, buffer.w:1175-1192): prefix match over main_hash_table insertion order \u2014 keywords, primitive type names, builtins in registration order (294 startup names), then session globals/user overloads in first-definition order; forget removes, redefine-after-forget revives at the original position. Also pins the three startup system variables input_path/prelude_log/back_trace (main.w:408-435). Reference frozen by HPC capture 3604377; Rust differential pending.",
+ "notes": "readline_completions (global.w:4390-4391 wrapper, buffer.w:1175-1192): prefix match over main_hash_table insertion order \u2014 keywords, primitive type names, builtins in registration order (294 startup names), then session globals/user overloads in first-definition order; forget removes, redefine-after-forget revives at the original position. Also pins the three startup system variables input_path/prelude_log/back_trace (main.w:408-435). Reference frozen by HPC capture 3604377; Rust differential 3604405 PASS (333 fixtures).",
  "hpc_capture": {
   "fresh_process_required": true,
   "timeout_seconds": 30,
   "estimated_seconds": 5,
   "estimated_memory_mb": 128
- }
+ },
+ "differential_job": "3604405"
 }

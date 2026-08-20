@@ -152,12 +152,12 @@ signatures from the batch-4 sweep; global.w is now FULLY dispositioned):
   divergence NOT covered by the fixtures: `[ | 3]` enters the union-TYPE
   grammar upstream ("unexpected INT, expecting '|'") while the Rust parser
   reports "expecting ']'" for the same offending INT token.
-- `readline_completions` (string->[string]) (global.w:4390-4391): callable
-  and observable in batch mode, but its output enumerates `main_hash_table`
-  in INSERTION order — session- and hash-order-dependent (`#readline_completions("")`
-  is 297 at startup upstream). A stable differential target would require
-  replicating upstream's identifier insertion sequence byte-for-byte; its
-  purpose is readline completion for front-ends. Documented exclusion.
+- `readline_completions` (string->[string]) (global.w:4390-4391): LANDED
+  2026-08-21 (`138e7c5`, differential 3604405 PASS). The insertion-order
+  problem was solved by capturing the 294-name startup list verbatim from
+  the oracle (`STARTUP_COMPLETION_NAMES` in typed.rs) and tracking session
+  names in first-definition order; the three startup system variables
+  `input_path`/`prelude_log`/`back_trace` (main.w:408-435) landed with it.
 
 ## global.w batch 3 landed locally (2026-08-19, HPC capture pending)
 
@@ -313,8 +313,8 @@ Skipped / not ported:
 - `"transpose "` (mat->mat) (5188): upstream registers it with a trailing
   space precisely so users cannot name it; not registered here (same for
   `"matrix slicer"`).
-- `readline_completions` (4390): interactive REPL aid, no batch
-  semantics.
+- `readline_completions` (4390): LANDED 2026-08-21 (see the batch-4-era
+  note above); batch-mode semantics pinned by `eval/readline_completions`.
 
 ~~Pre-existing divergence surfaced by this batch (not global.w's)~~ LANDED
 locally 2026-08-19 (HPC capture pending): the generic axis.w row operators
@@ -402,8 +402,9 @@ Remaining global.w gap after batch 2 (batch-3 work order):
 - `invert` (mat->mat,int)
 - `mod2_section` (mat->mat)
 - `subspace_normal` (mat->mat,mat,mat,[int])
-- hidden `"transpose "` (mat->mat) and `readline_completions` — decide
-  whether these are ever worth registering.
+- hidden `"transpose "` (mat->mat): deliberately unregistered (the grammar
+  desugars the 2-D slice syntax; the name is unnameable by users).
+  `readline_completions`: LANDED 2026-08-21 (differential 3604405).
 
 ## global.w batch 1 landed locally (2026-08-18, HPC capture pending)
 

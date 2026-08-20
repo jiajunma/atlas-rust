@@ -4,7 +4,7 @@
  "oracle": "atlas",
  "stage": "typed-pipeline-swap",
  "reference_status": "verified_hpc_reference",
- "rust_status": "pending_hpc_differential",
+ "rust_status": "verified_hpc",
  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
@@ -16,11 +16,12 @@
  "oracle_seconds": 0.008,
  "oracle_maxrss_kb": 3516,
  "oracle_maxrss_approximate": false,
- "notes": "readline_completions with an int argument is the standard analysis type error (found int while string was needed). Reference frozen by HPC capture 3604377; Rust differential pending.",
+ "notes": "readline_completions with an int argument is the standard analysis type error (found int while string was needed). Reference frozen by HPC capture 3604377; Rust differential 3604405 PASS (333 fixtures).",
  "hpc_capture": {
   "fresh_process_required": true,
   "timeout_seconds": 30,
   "estimated_seconds": 5,
   "estimated_memory_mb": 128
- }
+ },
+ "differential_job": "3604405"
 }

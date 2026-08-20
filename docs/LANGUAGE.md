@@ -36,7 +36,7 @@ differential report naming the job.
 | constructors, overloads, implicit conversions | supported | B8 + b8c/b8d operator overloads and `whattype * ?`; `3501643` |
 | exceptions and runtime errors | supported | B12 + rejected companions across all slices; `3501467`, `3501643` |
 | Atlas commands and batch files | supported | B7 forget/die, B9 redirect, B10 include, B13 dont, showall, quit, set quiet/verbose; `3501467`, `3501643`, `3506272` |
-| interactive input and completion | partial | TTY banner/prompt implemented; readline completion remains pending |
+| interactive input and completion | supported | TTY banner/prompt + `readline_completions` (batch-observable) with oracle-frozen startup name order; `3604377`, `3604405` |
 | domain objects and mathematical operations | supported | Full builtin registry ported (all 469 upstream `(name,args)` signatures + 29 coercions; audit 2026-08-21), including locator-attitude block pooling (`3603961`), P3 parameter twist `3543916`, and the block/KL/deform wave; see `REMAINING_BUILTINS.md` for the historical ledger |
 | KL and file formats | planned | filekl.w is used only by stand-alone utilities; zero interpreter references — no Atlas-language builtin reads/writes KL binary files. Deferred outside the language-only gate pending a user decision (HANDOFF 2026-08-12b) |
 
@@ -78,10 +78,13 @@ commabarlist row display `[a,b | c,d]` syntaxes are desugared in the grammar
 and no loud NYI gate is reachable from user code. The locator-attitude
 slice closed the last representation-core gap: cross-attitude block pooling
 and printing (`domain/locator_attitude`, fat differential `3603961`,
-329 PASS + 1 declared PARTIAL). Readline completion (TTY-only,
-`readline_completions`) and KL binary file formats (no Atlas-language
-builtin touches them; filekl.w serves stand-alone utilities only) remain
-deferred outside the language-only gate pending a user decision.
+329 PASS + 1 declared PARTIAL). Readline completion landed 2026-08-21
+(`readline_completions` + the `input_path`/`prelude_log`/`back_trace`
+system variables, differential `3604405` PASS, 333 fixtures); only the
+`back_trace` runtime-error trace population (fixture captured, `3604415`)
+and KL binary file formats (no Atlas-language builtin touches them;
+filekl.w serves stand-alone utilities only) remain — the latter deferred
+outside the language-only gate pending a user decision.
 
 ## Source compatibility rules
 
