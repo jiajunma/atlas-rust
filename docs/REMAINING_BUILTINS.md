@@ -22,12 +22,14 @@ Two findings recorded from that slice (agent-91):
   invariant rejects instead. Affects the slice-3 paths identically
   (`twisted_KL_sum_at_s` fails the same way on that anchor). Any fixture
   with gamma on the top alcove wall of a non-simply-laced datum hits this.
-- **q2/pb locator collision**: `param(KGB(rfb,10),…)` and the pb anchor
+- **q2/pb locator collision** (RESOLVED for the deform path 2026-08-20
+  evening, WIP commit on branch): `param(KGB(rfb,10),…)` and the pb anchor
   intern the same block record under different locators; the second lookup
-  gets a non-identity query-to-stored attitude and trips the locator gate
-  `has_identity_generator_attitude` (upstream handles both via a
-  non-trivial `block_modifier`). Hence the separate
-  `twisted_deform_proper_terms` fixture on a cold pool.
+  gets a non-identity query-to-stored attitude. The relative-attitude
+  merge + cofolded ext_block generators are now wired (see HANDOFF top
+  checkpoint); the combined-session deform battery is byte-identical to
+  the oracle. The print path (print_partial_common_block after a
+  cross-attitude deform intern) still diverges — tracked in HANDOFF.
 
 ## twisted_full_deform partial lookup landed locally (2026-08-20, HPC pending)
 

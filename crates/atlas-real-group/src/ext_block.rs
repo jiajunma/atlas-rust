@@ -932,14 +932,15 @@ impl ExtBlock {
     ///   subsystem generator twist (common_block::fold_orbits,
     ///   blocks.cpp:1288-1292, via rootdata.cpp:1553-1577), so orbit member
     ///   indices are subsystem generator numbers. `tune_signs` must
-    ///   translate them back to parent root numbers through
-    ///   [`IntegralSubsystem::parent_root`] (the `simply_ints` argument).
-    /// - Only the identity generator attitude is ported: upstream permutes
-    ///   the folded generators by `induced(bm.simple_pi)`
-    ///   (ext_block.cpp:638-663), which is a no-op for identity
-    ///   `simple_pi`; anything else fails loudly (the locator slice owns
-    ///   the non-identity attitude). The `bm.shift`/`bm.w` transport inside
-    ///   [`transformed_twisted`] IS ported.
+    ///   translate them back to parent root numbers through the locator's
+    ///   `simp_int` list (the `simply_ints` argument): after the cofolding
+    ///   permutation below, orbit members are `simp_int` POSITIONS.
+    /// - The generator attitude is cofolded after `complete_construction`
+    ///   (ext_block.cpp:636-663): diagram, orbits, and link tables are
+    ///   permuted by [`induced`]`(orbits, bm.simple_pi)` and each orbit's
+    ///   member numbers are rewritten through `bm.simple_pi`. The
+    ///   `bm.shift`/`bm.w` transport inside [`transformed_twisted`] applies
+    ///   likewise.
     ///
     /// Like [`Self::build`], the sign flips start cleared; callers run
     /// [`Self::tune_signs`] with a `PartialBlock`-backed
@@ -954,15 +955,9 @@ impl ExtBlock {
         let rc = ctxt.rep_context();
         let sub = ctxt.subsystem();
         let block_rank = sub.rank();
-        let identity_attitude = bm.simple_pi().len() == block_rank
-            && bm
-                .simple_pi()
-                .iter()
-                .enumerate()
-                .all(|(s, &image)| image == s);
-        if !identity_attitude {
-            return Err(StructureError::NotYetImplemented {
-                feature: "extended block with non-identity generator attitude",
+        if bm.simple_pi().len() != block_rank {
+            return Err(StructureError::RepInvariantViolation {
+                invariant: "generator attitude rank matches the integral subsystem",
             });
         }
 
@@ -979,12 +974,39 @@ impl ExtBlock {
         }
 
         let folded = folded_cartan(&cartan, &orbits)?;
-        Ok(Self::complete_construction(
-            parent,
-            orbits,
-            &fixed_points,
-            folded,
-        ))
+        let mut block = Self::complete_construction(parent, orbits, &fixed_points, folded);
+
+        // The cofolded generator attitude (ext_block.cpp:636-663): permute
+        // the folded diagram, the orbits, and the per-generator link tables
+        // by the orbit permutation induced from `bm.simple_pi`, then rewrite
+        // each orbit's member generator numbers through `bm.simple_pi`
+        // itself (keeping pairs sorted).  Identity attitudes induce the
+        // identity permutation, so this is a no-op on the existing paths.
+        let opi = induced(&block.orbits, bm.simple_pi());
+        if !opi.iter().enumerate().all(|(index, &image)| index == image) {
+            // dynkin::permute (dynkin.cpp:339-349): forward push both axes.
+            let diagram_rank = block.folded.len();
+            let mut diagram = vec![vec![0_i32; diagram_rank]; diagram_rank];
+            for (i, row) in block.folded.iter().enumerate() {
+                for (j, &entry) in row.iter().enumerate() {
+                    diagram[opi[i]][opi[j]] = entry;
+                }
+            }
+            block.folded = diagram;
+            // Permutation::permute (permutations_def.h:62-80): v'[pi[i]] = v[i].
+            push_permute(&opi, &mut block.orbits);
+            for orbit in &mut block.orbits {
+                orbit.s0 = bm.simple_pi()[orbit.s0];
+                if orbit.is_orbit_pair() {
+                    orbit.s1 = bm.simple_pi()[orbit.s1];
+                    if orbit.s0 > orbit.s1 {
+                        std::mem::swap(&mut orbit.s0, &mut orbit.s1);
+                    }
+                }
+            }
+            push_permute(&opi, &mut block.data);
+        }
+        Ok(block)
     }
 
     /// Upstream `complete_construction` (ext_block.cpp:696-856): build the
@@ -1694,6 +1716,15 @@ pub fn induced(orbits: &[ExtGen], simple_pi: &[usize]) -> Vec<usize> {
         }
     }
     result
+}
+
+/// Upstream `Permutation::permute` on a vector (permutations_def.h:62-80):
+/// forward push, `v'[pi[i]] = v[i]`.
+fn push_permute<T: Clone>(pi: &[usize], v: &mut [T]) {
+    let old = v.to_owned();
+    for (index, &image) in pi.iter().enumerate() {
+        v[image] = old[index].clone();
+    }
 }
 
 /// Upstream `check_quadratic` (ext_block.cpp:2140-2173): check the
@@ -3004,10 +3035,11 @@ mod tests {
     }
 
     #[test]
-    fn partial_ext_block_rejects_non_identity_attitude() {
-        // A non-identity simple_pi is the locator slice's domain; the
-        // constructor must fail loudly rather than skip the generator
-        // permutation of ext_block.cpp:638-663.
+    fn partial_ext_block_cofolds_non_identity_attitude() {
+        // The generator swap simple_pi=[1,0] on A2 (ext_block.cpp:636-663):
+        // induced() yields the orbit swap, so the per-generator link tables
+        // swap places while the (symmetric) folded diagram and the rewritten
+        // orbits come out unchanged.
         let fixture = partial_fixture(a2_datum(), 8, 6);
         let rc = fixture.rc();
         let gamma = RationalWeight::new(vec![1, 1], 1).unwrap();
@@ -3025,6 +3057,9 @@ mod tests {
         let simp_int: Vec<RootId> = (0..ctxt.subsystem().rank())
             .map(|s| ctxt.subsystem().parent_root(s).unwrap())
             .collect();
+        let identity_bm = BlockModifier::trivial(rc.root_system(), simp_int.clone()).unwrap();
+        let reference =
+            ExtBlock::build_partial(&block, &ctxt, &identity_bm, &delta, &twist).unwrap();
         let locator = BlockLocator::from_parts(
             u32::MAX,
             WeylElement::identity(rc.root_system()).unwrap(),
@@ -3032,9 +3067,10 @@ mod tests {
             vec![1, 0], // the generator swap: not the identity
         );
         let bm = BlockModifier::from_locator(locator, RationalWeight::zero(2).unwrap());
-        assert!(matches!(
-            ExtBlock::build_partial(&block, &ctxt, &bm, &delta, &twist),
-            Err(StructureError::NotYetImplemented { .. })
-        ));
+        let swapped = ExtBlock::build_partial(&block, &ctxt, &bm, &delta, &twist).unwrap();
+        assert_eq!(swapped.orbits, reference.orbits);
+        assert_eq!(swapped.folded, reference.folded);
+        assert_eq!(swapped.data[0], reference.data[1]);
+        assert_eq!(swapped.data[1], reference.data[0]);
     }
 }

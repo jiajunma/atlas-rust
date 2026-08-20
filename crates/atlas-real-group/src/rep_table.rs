@@ -461,6 +461,28 @@ impl State {
         records
     }
 
+    /// The hit detail of [`Self::overlap_records`] (upstream
+    /// `append_block_containing`, repr.cpp:1671-1693): per overlapping
+    /// record, the stored row of the FIRST interval element whose key
+    /// matched it, plus that interval element's index.  The row is the
+    /// `place[h].second` upstream feeds to `make_relative_to` as `srm0`.
+    fn overlap_hits(&self, keys: &[ReducedParamKey]) -> Vec<(Arc<BlockRecord>, usize, usize)> {
+        let mut seen = HashSet::new();
+        let mut hits = Vec::new();
+        for (index, key) in keys.iter().enumerate() {
+            let Some(place) = self.places.get(key) else {
+                continue;
+            };
+            let Some(record) = self.active(place.block) else {
+                continue;
+            };
+            if seen.insert(record.id) {
+                hits.push((record, place.row, index));
+            }
+        }
+        hits
+    }
+
     /// The identity half of [`Self::overlap_records`], used to re-verify a
     /// probed overlap set at commit time.
     fn overlap_ids(&self, keys: &[ReducedParamKey]) -> HashSet<BlockId> {
@@ -740,11 +762,11 @@ impl RepTable {
     /// query's own attitude, swallow every cached block the interval
     /// overlaps (`append_block_containing` + `swallow_blocks_and_append`,
     /// repr.cpp:1671-1693, 1695-1740) by rebuilding the block on the union
-    /// of the element lists, and retire the swallowed records.  The merge
-    /// stays inside the identity relative attitude: overlapping records at a
-    /// different locator attitude would need the `block_modifier` row
-    /// transport (shift + `transform<false>`) of repr.cpp:1601-1607, which
-    /// is not yet wired.
+    /// of the element lists, and retire the swallowed records.  Overlapping
+    /// records at a different locator attitude are merged through the
+    /// `block_modifier` row transport (shift + `transform<false>`) of
+    /// repr.cpp:1601-1607, with each record's `sub_to_new` modifier built
+    /// by `make_relative_to` (repr.cpp:338-350).
     fn lookup(
         &self,
         rc: &RepContext<'_>,
@@ -775,27 +797,51 @@ impl RepTable {
                     drop(state);
                     return Self::located(rc, record, row, &seed, query, reduced.locator);
                 }
-                state.overlap_records(&interval_keys)
+                state.overlap_hits(&interval_keys)
             };
-            if overlap
-                .iter()
-                .any(|record| record.locator != reduced.locator)
-            {
-                return Err(StructureError::NotYetImplemented {
-                    feature: "merging partial representation blocks at a relative attitude",
-                });
+
+            // Relative attitudes (repr.cpp:1671-1693): per overlapping
+            // record whose stored locator differs from the query's, build
+            // the `sub_to_new` block_modifier — the query locator made
+            // relative to the stored one, plus the integral-orthogonal
+            // shift — so the stored rows can be transported to the query
+            // attitude before pooling.
+            let mut modifiers: Vec<Option<BlockModifier>> = Vec::with_capacity(overlap.len());
+            for (record, stored_row, hit_index) in &overlap {
+                if record.locator == reduced.locator {
+                    modifiers.push(None);
+                    continue;
+                }
+                let srm0 = record.block.element(*stored_row).ok_or(
+                    StructureError::RepInvariantViolation {
+                        invariant: "overlapping block hit row representative",
+                    },
+                )?;
+                let mut modifier = BlockModifier::from_locator(
+                    reduced.locator.clone(),
+                    RationalWeight::zero(rc.rank())?,
+                );
+                rc.make_relative_to(
+                    &record.locator,
+                    srm0,
+                    &mut modifier,
+                    interval[*hit_index].clone(),
+                )?;
+                modifiers.push(Some(modifier));
             }
 
             // Pool extension (repr.cpp:1601-1607): append every row of every
             // overlapping block, keyed-deduped against the pool.  Identity
             // relative attitude means shift 0 and `w` the identity, so the
-            // stored srms are inserted as-is; a stored row whose key already
-            // occurs in the pool is the same param class (upstream's
-            // shift-transported row `hash.match`-es the pooled interval
-            // element), so it is skipped rather than duplicated.
+            // stored srms are inserted as-is; a non-identity attitude's rows
+            // are transported by `shift` then `transform<false>` first.  A
+            // stored row whose key already occurs in the pool is the same
+            // param class (upstream's shift-transported row `hash.match`-es
+            // the pooled interval element), so it is skipped rather than
+            // duplicated.
             let mut pool = interval.clone();
             let mut pool_keys = interval_keys.clone();
-            for record in &overlap {
+            for ((record, _, _), modifier) in overlap.iter().zip(modifiers.iter()) {
                 for row in 0..record.block.size() {
                     let element =
                         record
@@ -804,10 +850,20 @@ impl RepTable {
                             .ok_or(StructureError::RepInvariantViolation {
                                 invariant: "representation block row representative",
                             })?;
-                    let key = Self::canonical_key(rc, element, &reduced.locator, &reduced.coroots)?;
+                    let transported = match modifier {
+                        None => element.clone(),
+                        Some(modifier) => {
+                            let mut rep = element.clone();
+                            rc.shift_srm(modifier.shift(), &mut rep)?;
+                            rc.transform_srm::<false>(modifier.w(), &mut rep)?;
+                            rep
+                        }
+                    };
+                    let key =
+                        Self::canonical_key(rc, &transported, &reduced.locator, &reduced.coroots)?;
                     if !pool_keys.contains(&key) {
                         pool_keys.push(key);
-                        pool.push(element.clone());
+                        pool.push(transported);
                     }
                 }
             }
@@ -825,7 +881,7 @@ impl RepTable {
             #[cfg(test)]
             self.hooks.pause_before_commit(false);
 
-            let expected_overlap = overlap.iter().map(|record| record.id).collect();
+            let expected_overlap = overlap.iter().map(|(record, _, _)| record.id).collect();
             let committed = {
                 let mut state = self.lock_state()?;
                 state.commit_partial(

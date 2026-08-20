@@ -3973,18 +3973,16 @@ fn tuned_partial_ext_block_with_modifier(
     span: SourceSpan,
 ) -> Result<ExtBlock, Diagnostic> {
     let rc = ctxt.rep_context();
-    let simp_int: Vec<RootId> = (0..ctxt.subsystem().rank())
-        .map(|s| {
-            ctxt.subsystem()
-                .parent_root(s)
-                .expect("subsystem generator in range")
-        })
-        .collect();
+    // tune_signs' `simply_ints` (ext_block.cpp:1711-1712): the locator's
+    // `simp_int` parent root numbers, indexed by simp_int POSITION — after
+    // build_partial's cofolding permutation, orbit members are exactly
+    // those positions.  For an identity attitude this list coincides with
+    // the subsystem generators in query order (`parent_root(s)`).
+    let simply_ints: Vec<usize> = modifier.simp_int().iter().map(|id| id.index()).collect();
     let mut eb = ExtBlock::build_partial(block, ctxt, modifier, delta, twist)
         .map_err(|error| structure_diagnostic(error, span))?;
     let context =
         ExtRepContext::new(rc, delta.clone()).map_err(|error| structure_diagnostic(error, span))?;
-    let simply_ints: Vec<usize> = simp_int.iter().map(|id| id.index()).collect();
     let mut oracle = PartialBlockOracle::with_modifier(&context, block, modifier);
     if !eb.tune_signs(&mut oracle, &simply_ints) {
         return Err(runtime(span, "extended block sign tuning failed"));
@@ -8171,11 +8169,6 @@ fn twisted_reducibility_lookup(
     span: SourceSpan,
 ) -> Result<(DeformParent, ExtBlock, usize, RankFlags), StructureError> {
     let located = context.rep.lookup(zi)?;
-    if !located.has_identity_generator_attitude() {
-        return Err(StructureError::NotYetImplemented {
-            feature: "partial common block on a non-identity integral-subsystem attitude",
-        });
-    }
     let prepared = located.prepared_query();
     let seed = StandardReprMod::mod_reduce(rc, prepared)?;
     let ctxt = CommonContext::integral(rc, seed.gamma_lambda())?;
@@ -8245,12 +8238,6 @@ fn with_integral_block<T>(
                 .rep
                 .lookup_full_block(sr)
                 .map_err(|error| structure_diagnostic(error, span))?;
-            if !located.has_identity_generator_attitude() {
-                return Err(runtime(
-                    span,
-                    "partial common block on a non-identity integral-subsystem attitude is not yet supported",
-                ));
-            }
             let prepared = located.prepared_query();
             let seed = StandardReprMod::mod_reduce(rc, prepared)
                 .map_err(|error| structure_diagnostic(error, span))?;
@@ -10757,12 +10744,6 @@ pub(crate) fn print_text(
                 .rep
                 .lookup(&parameter.repr)
                 .map_err(|error| structure_diagnostic(error, span))?;
-            if !located.has_identity_generator_attitude() {
-                return Err(runtime(
-                    span,
-                    "partial common block on a non-identity integral-subsystem attitude is not yet supported",
-                ));
-            }
             let block = located.block();
             let init = located.raw_row();
             let hasse = block_bruhat_hasse(block.as_ref());
