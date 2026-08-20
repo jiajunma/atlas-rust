@@ -29,9 +29,41 @@
    }
   },
   {
+   "kind": "Value",
+   "value": {
+    "type": "display",
+    "display": "[2,1,0]"
+   }
+  },
+  {
    "kind": "Diagnostic",
    "category": "syntax",
    "message": "syntax error, unexpected '~', expecting OD"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "syntax",
+   "message": "syntax error, unexpected '~', expecting IF or DO or FOR"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "syntax",
+   "message": "syntax error, unexpected FROM, expecting IF or DO or FOR"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "syntax",
+   "message": "syntax error, unexpected FROM"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "syntax",
+   "message": "syntax error, unexpected '~', expecting IF or DO or FOR"
+  },
+  {
+   "kind": "Diagnostic",
+   "category": "syntax",
+   "message": "syntax error, unexpected QUIT"
   }
  ]
 }
