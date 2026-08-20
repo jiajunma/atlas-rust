@@ -1,0 +1,9 @@
+{
+  "fixture": "eval/for_iterable_kinds.atlas",
+  "fixture_sha256": "7b549294aea9a02ea196ad9805cde35174dfd8d2ebf6b8eac28374a29e34af01",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "pending_hpc_capture",
+  "rust_status": "pending",
+  "notes": "for-in over non-row iterables (axis.w for_expression sub_type kinds): strings yield 1-char strings, vecs yield int components, mats yield columns as vecs (mat:[[1,2,3],[4,5,6]] is the 3x2 transpose; columns print [ 1, 2, 3 ],[ 4, 5, 6 ]), ratvecs yield rats; '@' index counts over the iteration order; body-tilde reversal applies to every kind. Rust currently rejects all non-row iterables (Cannot iterate over value of type ...)."
+}
