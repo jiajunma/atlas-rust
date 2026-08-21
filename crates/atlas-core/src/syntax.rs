@@ -175,6 +175,14 @@ pub enum Expr {
         body: Box<Expr>,
         span: SourceSpan,
     },
+    /// `name @ type` / `operator @ type` (parser.y:381-382): the operator
+    /// cast selects one overload-table instance by name and argument type
+    /// and yields it as a function value (axis.w:7356-7391 op_cast_expr).
+    OpCast {
+        name: SpannedValue<String>,
+        arg_type: TypeExpr,
+        span: SourceSpan,
+    },
     /// `first; second` sequencing (parser.y:243): the first expression
     /// evaluates for effects against a void context; the sequence yields
     /// the second expression's value.
@@ -208,6 +216,12 @@ pub enum Expr {
     /// `die` (parser.y:383 DIE unit): passes analysis against any required
     /// type; evaluating it raises the runtime error `I die` (axis.w:630).
     Die {
+        span: SourceSpan,
+    },
+    /// `$` (parser.y:343, `make_dollar`): the value of the last evaluated
+    /// top-level expression, captured as a denotation at analysis time
+    /// (axis.w:610-624 `last_value_computed`).
+    LastValue {
         span: SourceSpan,
     },
     /// `case subject | tag[(pattern)]: body … [else body] esac`
@@ -620,12 +634,14 @@ impl Expr {
             | Self::Group { span, .. }
             | Self::Conditional { span, .. }
             | Self::Cast { span, .. }
+            | Self::OpCast { span, .. }
             | Self::Sequence { span, .. }
             | Self::Next { span, .. }
             | Self::While { span, .. }
             | Self::Break { span }
             | Self::Dont { span }
-            | Self::Die { span } => *span,
+            | Self::Die { span }
+            | Self::LastValue { span } => *span,
             Self::ComponentAssignment(assignment) => assignment.span,
             Self::ComponentTransform(transform) => transform.span,
             Self::FieldAssignment(assignment) => assignment.span,
@@ -842,6 +858,7 @@ pub enum ParserToken {
     ReverseLBracket(SourceSpan),
     RBracket(SourceSpan),
     Tilde(SourceSpan),
+    Dollar(SourceSpan),
     Let(SourceSpan),
     In(SourceSpan),
     Begin(SourceSpan),
@@ -912,6 +929,7 @@ impl ParserToken {
             | Self::ReverseLBracket(span)
             | Self::RBracket(span)
             | Self::Tilde(span)
+            | Self::Dollar(span)
             | Self::Let(span)
             | Self::In(span)
             | Self::Begin(span)
@@ -980,6 +998,7 @@ impl fmt::Display for ParserToken {
             Self::ReverseLBracket(_) => "~[",
             Self::RBracket(_) => "]",
             Self::Tilde(_) => "~",
+            Self::Dollar(_) => "$",
             Self::Let(_) => "let",
             Self::In(_) => "in",
             Self::Begin(_) => "begin",
@@ -1195,6 +1214,9 @@ fn parser_tokens_from_tokens(
                         '~' if reversal_tilde => ParserToken::Tilde(span),
                         '~' => parser_operator("~".to_owned(), span)
                             .expect("tilde has a fixed Atlas priority"),
+                        // `$` (parser.y:343 `make_dollar`): the last-value
+                        // reference, a unit in the oracle grammar.
+                        '$' => ParserToken::Dollar(span),
                         _ => ParserToken::Unsupported(SpannedValue {
                             value: punctuation.to_string(),
                             span,
@@ -1346,13 +1368,7 @@ fn syntax_error(
 /// `'\n'` is supplied explicitly (our Command start symbol omits the
 /// trailing newline that bison's `input: expr '\n'` demands).
 fn bison_syntax_message(token: &ParserToken, expected: &[String]) -> String {
-    // `$` is a defined single-character token in the oracle grammar, so it
-    // prints quoted (`'$'`); every other unsupported character is the
-    // bison `$undefined` (there is no literal for it).
-    let name = match token {
-        ParserToken::Unsupported(value) if value.value == "$" => "'$'",
-        _ => bison_token_name(token).unwrap_or("$undefined"),
-    };
+    let name = bison_token_name(token).unwrap_or("$undefined");
     match bison_expecting(token, expected) {
         Some(expecting) => format!("syntax error, unexpected {name}, expecting {expecting}"),
         None => format!("syntax error, unexpected {name}"),
@@ -1398,6 +1414,7 @@ fn bison_expecting(token: &ParserToken, expected: &[String]) -> Option<&'static 
         ParserToken::Becomes(_) => Some("'\\n'"),
         // `1 $ + 2`: `$` is a defined single-character token, so bison
         // names it `'$'`, and the command level expects the newline.
+        ParserToken::Dollar(_) => Some("'\\n'"),
         ParserToken::Unsupported(_) if has("|") => Some("-> or '|'"),
         ParserToken::Unsupported(_) => Some("'\\n'"),
         // `(1]`: inside a parenthesized expression bison expects `','`
@@ -1414,6 +1431,17 @@ fn bison_expecting(token: &ParserToken, expected: &[String]) -> Option<&'static 
         // `for i:3 downto 2 do i~ od`: DOWNTO takes no tilde_opt
         // (parser.y:569-571), so the state expects only OD.
         ParserToken::Tilde(_) if has("od") => Some("OD"),
+        // `for :3~ do 7 od` and `for i:3 downto 0~ do i od`: the
+        // anonymous count and the DOWNTO bound take no tilde_opt
+        // (parser.y:557-573), so bison sits in the after-count state
+        // that expects the loop body to start (IF, DO or FOR).
+        ParserToken::Tilde(_) if has("do") && has("if") && has("for") => Some("IF or DO or FOR"),
+        // `for :3 from 0 do 9 od`: the anonymous count takes no FROM
+        // (parser.y:565-567), same after-count state. The named
+        // `for i:3~ from 5` instead lands in an expression-start state
+        // whose long expecting list bison suppresses
+        // (YYERROR_VERBOSE_ARGS_MAXIMUM), so it stays bare.
+        ParserToken::From(_) if has("do") && has("if") && has("for") => Some("IF or DO or FOR"),
         // `if 1<0 do 1 else 2 fi`: the quiet-if (parser.y:365) takes no
         // ELSE, so the state expects only FI.
         ParserToken::Else(_) if has("fi") => Some("FI"),
@@ -1471,6 +1499,9 @@ fn bison_token_name(token: &ParserToken) -> Option<&'static str> {
         // The reversal tilde is a single-character token, so it prints
         // quoted like `']'` (oracle: "unexpected '~', expecting OD").
         ParserToken::Tilde(_) => Some("'~'"),
+        // `$` is a defined single-character token (parser.y:343), so it
+        // prints quoted like `']'`.
+        ParserToken::Dollar(_) => Some("'$'"),
         // `M~[0:1, 0:1]` / `M[0:1, 0:1, 0:1]`: the two-dimensional slice has
         // no `~[` form and no third axis upstream, so the offending token
         // is the comma (parser.y:660-705).
@@ -2396,6 +2427,17 @@ fn case_branch(tag: SpannedValue<String>, pattern: Option<Pattern>, body: Expr) 
     }
 }
 
+/// The dot-label branch `pattern . tag : body` (parser.y:419): same branch
+/// shape as `tag(pattern): body`, but the span starts at the pattern.
+fn dot_case_branch(pattern: Pattern, tag: SpannedValue<String>, body: Expr) -> CaseBranch {
+    CaseBranch {
+        span: join_span(pattern.span(), body.span()),
+        tag: Some(tag),
+        pattern: Some(pattern),
+        body,
+    }
+}
+
 fn else_branch(else_span: SourceSpan, body: Expr) -> CaseBranch {
     CaseBranch {
         tag: None,
@@ -2502,6 +2544,28 @@ fn cast_expression(target: TypeExpr, body: Expr) -> Expr {
         target,
         body: Box::new(body),
         span,
+    }
+}
+
+/// `operator @ type` (parser.y:381): the cast span starts at the operator.
+fn op_cast_expression(operator: crate::formula::FormulaOperator, arg_type: TypeExpr) -> Expr {
+    let operator_span = operator.span.expect("grammar operators carry spans");
+    Expr::OpCast {
+        span: join_span(operator_span, arg_type.span()),
+        name: SpannedValue {
+            value: operator.symbol,
+            span: operator_span,
+        },
+        arg_type,
+    }
+}
+
+/// `IDENT @ type` (parser.y:382).
+fn op_cast_identifier(name: SpannedValue<String>, arg_type: TypeExpr) -> Expr {
+    Expr::OpCast {
+        span: join_span(name.span, arg_type.span()),
+        name,
+        arg_type,
     }
 }
 
@@ -2877,6 +2941,7 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
         Expr::Cast { target, body, .. } => {
             format!("{}: {}", compact_type(target), compact_expression(body))
         }
+        Expr::OpCast { name, arg_type, .. } => format!("{}@{}", name.value, compact_type(arg_type)),
         Expr::Sequence { first, second, .. } => {
             format!(
                 "{}; {}",
@@ -2921,6 +2986,7 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
         }
         Expr::Break { .. } => "break".to_string(),
         Expr::Dont { .. } => "dont".to_string(),
+        Expr::LastValue { .. } => "$".to_string(),
         Expr::Die { .. } => "die".to_string(),
         Expr::Case(case) => {
             let branches = case
@@ -3300,6 +3366,11 @@ mod tests {
                 target.resolve().display(&crate::types::TypeTable::new()),
                 expression_shape(body)
             ),
+            Expr::OpCast { name, arg_type, .. } => format!(
+                "op_cast({};{})",
+                name.value,
+                arg_type.resolve().display(&crate::types::TypeTable::new())
+            ),
             Expr::Call {
                 callee, arguments, ..
             } => format!(
@@ -3347,6 +3418,7 @@ mod tests {
                 expression_shape(&loop_.body)
             ),
             Expr::Break { .. } => "break".to_string(),
+            Expr::LastValue { .. } => "$".to_string(),
             Expr::Dont { .. } => "dont".to_string(),
             Expr::Die { .. } => "die".to_string(),
             Expr::Case(case) => {
@@ -4160,11 +4232,79 @@ mod tests {
             .expect_err("a tilde after a downto body is a syntax error");
         assert_eq!(error.kind, crate::diagnostic::ErrorKind::Syntax);
         assert_eq!(error.message, "syntax error, unexpected '~', expecting OD");
-        // The anonymous counted form has no tilde between the count and DO
-        // either (parser.y:565-566).
-        let error = parse(&SourceText::new("for :3~ do 7 od"))
-            .expect_err("the anonymous counted form takes no count-side tilde");
+    }
+
+    #[test]
+    fn misplaced_tildes_and_from_report_the_after_count_state() {
+        // Capture 3604660 pins the oracle wording for the extended
+        // for_reversed_extra tail: the anonymous count and the DOWNTO
+        // bound take no tilde_opt, and the anonymous count takes no FROM,
+        // so bison reports the after-count state that expects the loop
+        // body to start (IF or DO or FOR).
+        for (source, message) in [
+            (
+                "for :3~ do 7 od",
+                "syntax error, unexpected '~', expecting IF or DO or FOR",
+            ),
+            (
+                "for :3 from 0 do 9 od",
+                "syntax error, unexpected FROM, expecting IF or DO or FOR",
+            ),
+            (
+                "for i:3 downto 0~ do i od",
+                "syntax error, unexpected '~', expecting IF or DO or FOR",
+            ),
+        ] {
+            let error = parse(&SourceText::new(source)).expect_err(source);
+            assert_eq!(error.kind, crate::diagnostic::ErrorKind::Syntax);
+            assert_eq!(error.message, message, "source: {source:?}");
+        }
+        // The named `for i:3~ from 5` lands in an expression-start state
+        // whose expecting list bison suppresses as too long
+        // (YYERROR_VERBOSE_ARGS_MAXIMUM), so the message stays bare.
+        let error = parse(&SourceText::new("for i:3~ from 5 do i od"))
+            .expect_err("FROM after a reversed named count is a syntax error");
         assert_eq!(error.kind, crate::diagnostic::ErrorKind::Syntax);
+        assert_eq!(error.message, "syntax error, unexpected FROM");
+    }
+
+    #[test]
+    fn parses_operator_casts() {
+        // parser.y:381-382: `operator @ type` and `IDENT @ type` are
+        // units; the compact print keeps the `name@type` spelling.
+        for source in ["-@int", "u@int", "%@(int,int)", "prints@string"] {
+            assert_eq!(compact_expression(&parse_one(source)), source);
+        }
+    }
+
+    #[test]
+    fn dot_label_case_branches_normalize_to_the_tag_pattern_shape() {
+        // parser.y:419,426 (`pattern '.' IDENT ':' expr`): make_case_node
+        // takes the tag and pattern swapped, so the dot form builds the
+        // same branch as `tag(pattern): body` (capture 3604622 pins the
+        // acceptance set, including the `(,)` throw-away).
+        for (dot, plain) in [
+            (
+                "case x | (v).solution: #v | else 0 esac",
+                "case x | solution(v): #v | else 0 esac",
+            ),
+            (
+                "case x | v.solution: #v | else 0 esac",
+                "case x | solution(v): #v | else 0 esac",
+            ),
+            (
+                "case x | (a,b).pair: a+b esac",
+                "case x | pair(a,b): a+b esac",
+            ),
+            ("case x | (,).pair: 99 esac", "case x | pair(,): 99 esac"),
+        ] {
+            // Spans necessarily differ; the compact print is the
+            // span-insensitive shape (and matches the oracle's own
+            // normalization of `(x).bogus: 1` to `bogus(x):1`).
+            let dotted = compact_expression(&parse_one(dot));
+            let plain = compact_expression(&parse_one(plain));
+            assert_eq!(dotted, plain, "dot form: {dot:?}");
+        }
     }
 
     #[test]

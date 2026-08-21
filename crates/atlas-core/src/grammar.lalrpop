@@ -1,10 +1,11 @@
 use super::{
     anonymous_field, assignment, binary, case_branch, case_expression, cast_expression, declaration,
-    definition, elif_tail, else_branch, extend_operator_formula, forget_command, multi_assignment,
+    definition, dot_case_branch, elif_tail, else_branch, extend_operator_formula, forget_command, multi_assignment,
     component_assignment, component_transform, field_assignment, field_transform, operate_assignment,
     finish_let, expression_list, finish_operator_formula, for_expression, join_span, lambda,
     lambda_parameter, lambda_parameters, let_bindings, forget_overload_command,
     let_expression, list_expression, named_field, rec_function_binding, rec_lambda, return_expression,
+    op_cast_expression, op_cast_identifier,
     selector_suffix, operator_selector, sequence, set_command, set_type_command, show_overloads_command,
     operator_function_binding,
     type_definition, type_spec_span,
@@ -533,6 +534,16 @@ Atom: Expr = {
     // `die` (parser.y:383): a unit that type-checks anywhere and throws
     // `I die` when evaluated.
     <span:"die"> => Expr::Die { span },
+    // `$` (parser.y:343): the last-value unit.
+    <span:"$"> => Expr::LastValue { span },
+    // Operator casts (parser.y:381-382): `operator @ type` and
+    // `IDENT @ type` select one overload instance as a function value.
+    <operator:Operator> <_at:"@"> <arg_type:TypeExprNode> => {
+        op_cast_expression(operator, arg_type)
+    },
+    <name:"identifier"> <_at:"@"> <arg_type:TypeExprNode> => {
+        op_cast_identifier(name, arg_type)
+    },
     // Case discrimination (parser.y:480-482, caselist): `case subject |
     // tag(pattern): body | tag: body | else body esac`.
     <case:"case"> <subject:Expr> <_bar:"|"> <branches:CaseBranches> <esac:"esac"> => {
@@ -619,6 +630,13 @@ CaseBranch: CaseBranch = {
     <tag:"identifier"> <_colon:":"> <body:Expr> => case_branch(tag, None, body),
     <tag:"identifier"> <pattern:CasePattern> <_colon:":"> <body:Expr> => {
         case_branch(tag, Some(pattern), body)
+    },
+    // parser.y:419,426 `pattern '.' IDENT ':' expr`: the label follows the
+    // dot and the pattern binds the payload (`(v).solution:`, `v.tag:`,
+    // `(a,b).pair:`, `(,).pair:`); normalized to the same branch shape as
+    // `tag(pattern):` with the arguments swapped (make_case_node($3,$1)).
+    <pattern:Pattern> <_dot:"."> <tag:"identifier"> <_colon:":"> <body:Expr> => {
+        dot_case_branch(pattern, tag, body)
     },
     <else_span:"else"> <body:Expr> => else_branch(else_span, body),
 };
@@ -836,6 +854,7 @@ extern {
         "~[" => ParserToken::ReverseLBracket(<SourceSpan>),
         "]" => ParserToken::RBracket(<SourceSpan>),
         "~" => ParserToken::Tilde(<SourceSpan>),
+        "$" => ParserToken::Dollar(<SourceSpan>),
         "let" => ParserToken::Let(<SourceSpan>),
         "in" => ParserToken::In(<SourceSpan>),
         "begin" => ParserToken::Begin(<SourceSpan>),

@@ -468,7 +468,7 @@ impl<P: FileProvider, S: FileSink> SessionFrame<P, S> {
                 } => {
                     if !is_void_type {
                         events.push(SessionEvent::Output {
-                            text: format!("Value: {value}\n"),
+                            text: format!("Value: {}\n", self.context.render_value(&value)),
                             span,
                         });
                     }

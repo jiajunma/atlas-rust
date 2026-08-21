@@ -24,7 +24,7 @@ use crate::matreduc;
 use crate::syntax::{
     compact_expression, compact_pattern, Command, ComponentAssignmentExpr, ComponentTransformExpr,
     Expr, FieldAssignmentExpr, FieldTransformExpr, ForLoop, LambdaParam, LetBinding,
-    MultiAssignmentExpr, Pattern, TypeSpec,
+    MultiAssignmentExpr, Pattern, SpannedValue, TypeExpr, TypeSpec,
 };
 use crate::types::{Prim, Type, TypeBinding, TypeNumber, TypeTable};
 use crate::value::{Closure, SlotShape, Value};
@@ -429,10 +429,20 @@ pub struct Analysis<'a> {
     /// (mirrors `in_function`; upstream rejects a stray `break` during
     /// analysis, before anything evaluates).
     loop_depth: usize,
+    /// The `$` captures (axis.w:573-582): the last top-level value and its
+    /// type cell, snapshotted into a denotation at analysis time.
+    last_value: &'a Value,
+    last_value_type: &'a TypeCell,
 }
 
 impl<'a> Analysis<'a> {
-    pub fn new(types: &'a TypeTable, globals: &'a IdTable, overloads: &'a OverloadState) -> Self {
+    pub fn new(
+        types: &'a TypeTable,
+        globals: &'a IdTable,
+        overloads: &'a OverloadState,
+        last_value: &'a Value,
+        last_value_type: &'a TypeCell,
+    ) -> Self {
         Self {
             types,
             globals,
@@ -441,6 +451,8 @@ impl<'a> Analysis<'a> {
             constant_locals: BTreeSet::new(),
             in_function: false,
             loop_depth: 0,
+            last_value,
+            last_value_type,
         }
     }
 
@@ -454,6 +466,8 @@ impl<'a> Analysis<'a> {
             constant_locals: self.constant_locals.clone(),
             in_function: self.in_function,
             loop_depth: self.loop_depth + 1,
+            last_value: self.last_value,
+            last_value_type: self.last_value_type,
         }
     }
 }
@@ -1192,11 +1206,15 @@ const STARTUP_COMPLETION_NAMES: &[&str] = &[
 const SYSTEM_VARIABLE_NAMES: &[&str] = &["input_path", "prelude_log", "back_trace"];
 
 /// Persistent state for command-at-a-time typed execution.
-#[derive(Default)]
 pub struct TypedContext {
     types: TypeTable,
     globals: IdTable,
     evaluation: EvaluationContext,
+    /// The `$` state (axis.w:573-582): value and type of the last
+    /// non-void top-level expression. Both start at the empty tuple/void,
+    /// and a failed or void evaluation leaves them untouched (sticky).
+    last_value: Value,
+    last_type: TypeCell,
     /// The overload table: startup overloads hidden by
     /// `forget name @ type` plus user `set` definitions.
     overloads: OverloadState,
@@ -1209,6 +1227,23 @@ pub struct TypedContext {
     /// never recycled, so a forgotten-then-redefined name revives at its
     /// original position). Seeded with the system variables.
     completion_order: Vec<String>,
+}
+
+impl Default for TypedContext {
+    fn default() -> Self {
+        Self {
+            types: TypeTable::default(),
+            globals: IdTable::default(),
+            evaluation: EvaluationContext::default(),
+            // Upstream seeds `$` with the empty tuple at void so a reference
+            // before any assignment type-checks (and prints nothing).
+            last_value: Value::Tuple(Vec::new()),
+            last_type: Rc::new(RefCell::new(Type::void())),
+            overloads: OverloadState::default(),
+            verbosity: 0,
+            completion_order: Vec::new(),
+        }
+    }
 }
 
 impl TypedContext {
@@ -1228,6 +1263,17 @@ impl TypedContext {
 
     pub fn globals(&self) -> &IdTable {
         &self.globals
+    }
+
+    /// The top-level `Value: ` rendering (main.w:533-540 prints
+    /// `*last_value` with the standard value printer): closures take the
+    /// multi-line `closure_value::print` (axis.w:3254-3271), every other
+    /// value uses `Display`.
+    pub fn render_value(&self, value: &Value) -> String {
+        match value {
+            Value::Closure(closure) => closure_trace_string(&self.evaluation, closure),
+            other => other.to_string(),
+        }
     }
 
     /// Record a source buffer's trace display name (buffer.w:694): the
@@ -1285,7 +1331,13 @@ impl TypedContext {
                 let typed = convert_expr(
                     expression,
                     &mut type_,
-                    &Analysis::new(&self.types, &self.globals, &self.overloads),
+                    &Analysis::new(
+                        &self.types,
+                        &self.globals,
+                        &self.overloads,
+                        &self.last_value,
+                        &self.last_type,
+                    ),
                 )?;
                 if self.verbosity > 0 {
                     events.push(TypedCommandEvent::Output {
@@ -1307,6 +1359,13 @@ impl TypedContext {
                     }
                 };
                 events.extend(self.drain_printed(expression.span()));
+                // A non-void result refreshes `$` (main.w:533-540); a void
+                // value (`()`, `prints(...)`) and any failure leave the
+                // previous value sticky.
+                if !type_.is_void() {
+                    self.last_value = value.clone();
+                    *self.last_type.borrow_mut() = type_.clone();
+                }
                 events.push(TypedCommandEvent::Value {
                     value,
                     type_,
@@ -1364,7 +1423,13 @@ impl TypedContext {
                 let typed = convert_expr(
                     value,
                     &mut type_,
-                    &Analysis::new(&self.types, &self.globals, &self.overloads),
+                    &Analysis::new(
+                        &self.types,
+                        &self.globals,
+                        &self.overloads,
+                        &self.last_value,
+                        &self.last_type,
+                    ),
                 )?;
                 let value = match self.evaluate_with_trace(&typed) {
                     Ok(value) => value,
@@ -1448,7 +1513,26 @@ impl TypedContext {
                     span: *span,
                 }])
             }
-            Command::Set { bindings, span } => self.execute_set(bindings, *span),
+            Command::Set { bindings, span } => {
+                self.execute_set(bindings, *span).map_err(|mut diagnostic| {
+                    // Upstream appends the command context to any error
+                    // escaping a 'set' command (global.w:1116-1130): the
+                    // original message, then "Error in 'set' command at
+                    // <loc>:" (indented like every multi-line message
+                    // continuation). The parser rule `SET declarations
+                    // '\n'` (parser.y:140) makes @$ cover the terminating
+                    // newline, so the location end extends one column past
+                    // the last initializer token.
+                    let mut location_span = *span;
+                    location_span.end.column += 1;
+                    location_span.byte_end += 1;
+                    let location = trace_location(&self.evaluation, &location_span);
+                    diagnostic
+                        .message
+                        .push_str(&format!("\n  Error in 'set' command {location}:"));
+                    diagnostic
+                })
+            }
             Command::ShowOverloads { name, span } => {
                 // show_overloads (global.w:1790-1799): one line per active
                 // variant, argument and result types printed independently.
@@ -1689,7 +1773,13 @@ impl TypedContext {
         // anything evaluates or binds.
         let mut pending = Vec::with_capacity(bindings.len());
         {
-            let analysis = Analysis::new(&self.types, &self.globals, &self.overloads);
+            let analysis = Analysis::new(
+                &self.types,
+                &self.globals,
+                &self.overloads,
+                &self.last_value,
+                &self.last_type,
+            );
             for binding in bindings {
                 let mut found = pattern_type(&binding.pattern);
                 let typed = convert_expr(&binding.initializer, &mut found, &analysis)?;
@@ -1888,7 +1978,13 @@ impl TypedContext {
         convert_expr(
             target,
             &mut type_,
-            &Analysis::new(&self.types, &self.globals, &self.overloads),
+            &Analysis::new(
+                &self.types,
+                &self.globals,
+                &self.overloads,
+                &self.last_value,
+                &self.last_type,
+            ),
         )?;
         Ok(vec![TypedCommandEvent::ReportLine {
             text: format!("Type: {}\n", type_.display(&self.types)),
@@ -2322,6 +2418,11 @@ pub fn convert_expr(
             convert_list_expression(elements, *span, required, analysis)
                 .map_err(|error| error.into_diagnostic(analysis, "components of list expression"))
         }
+        Expr::OpCast {
+            name,
+            arg_type,
+            span,
+        } => convert_op_cast(name, arg_type, *span, required, analysis),
         Expr::Identifier { name, span } => {
             if let Some((type_, depth, offset)) = analysis.locals.get(name) {
                 let found = type_.borrow().clone();
@@ -2636,6 +2737,8 @@ pub fn convert_expr(
                             constant_locals: constant_locals.clone(),
                             in_function: analysis.in_function,
                             loop_depth: analysis.loop_depth,
+                            last_value: analysis.last_value,
+                            last_value_type: analysis.last_value_type,
                         },
                     )?;
                     // The pattern supplies the RHS context first. Omitted
@@ -2704,6 +2807,8 @@ pub fn convert_expr(
                     constant_locals,
                     in_function: analysis.in_function,
                     loop_depth: analysis.loop_depth,
+                    last_value: analysis.last_value,
+                    last_value_type: analysis.last_value_type,
                 },
             )?;
             for (initializers, names) in groups.into_iter().rev() {
@@ -3019,6 +3124,7 @@ pub fn convert_expr(
             let mut common = required.clone();
             let mut converted_branches = Vec::new();
             let mut fallback = None;
+            let mut seen_labels = BTreeSet::new();
             for branch in branches {
                 let Some(tag) = &branch.tag else {
                     let mut found = Type::Undetermined;
@@ -3040,16 +3146,26 @@ pub fn convert_expr(
                     .iter()
                     .position(|field| field.as_deref() == Some(tag.value.as_str()))
                 else {
-                    return Err(Diagnostic::new(
-                        ErrorKind::Name,
+                    // Capture 3604622: the oracle reports the first unknown
+                    // label against the subject's union type by name.
+                    return Err(type_error(
                         format!(
-                            "Injector '{}' does not belong to type {}",
+                            "Branch has label {} not associated to any variant of the union type {}",
                             tag.value,
                             subject_type.display(analysis.types)
                         ),
-                        Some(tag.span),
+                        tag.span,
                     ));
                 };
+                // A repeated label is rejected before its branch is
+                // converted (axis.w:5712-5717: `choices[k]` already
+                // filled), with the whole discrimination as context.
+                if !seen_labels.insert(tag.value.as_str()) {
+                    return Err(type_error(
+                        format!("Multiple branches with label {}", tag.value),
+                        tag.span,
+                    ));
+                }
                 let payload = variants[index].clone();
                 let (shape, leaves) = match &branch.pattern {
                     Some(pattern) => {
@@ -3118,6 +3234,8 @@ pub fn convert_expr(
                         constant_locals,
                         in_function: analysis.in_function,
                         loop_depth: analysis.loop_depth,
+                        last_value: analysis.last_value,
+                        last_value_type: analysis.last_value_type,
                     },
                 )?;
                 if !common.specialise(&found, analysis.types) {
@@ -3286,7 +3404,101 @@ pub fn convert_expr(
             // only evaluation throws.
             Ok(TypedExpr::Die { span: *span })
         }
+        Expr::LastValue { span } => convert_last_value(*span, required, analysis),
     }
+}
+
+/// Convert `$` (axis.w:610-624 `last_value_computed`): the last top-level
+/// value is snapshotted into a denotation AT ANALYSIS TIME (a captured
+/// occurrence inside a function body does not track later updates), then
+/// conformed to the required type like any denotation.
+fn convert_last_value(
+    span: SourceSpan,
+    required: &mut Type,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, Diagnostic> {
+    let found = analysis.last_value_type.borrow().clone();
+    conform_types(
+        &found,
+        required,
+        TypedExpr::Denotation(analysis.last_value.clone()),
+        span,
+        analysis,
+    )
+}
+
+/// The function value a builtin overload instance casts to (the upstream
+/// capture_expression around the table's shared_function): the display
+/// name uses the REGISTERED argument type, with the generic `*`
+/// (undetermined) pattern printing as `T` like the oracle's polymorphic
+/// variable (`{prints@T}`, capture 3604640).
+fn builtin_function_value(index: usize, types: &TypeTable) -> Value {
+    let builtin = &builtin_registry()[index];
+    let argument = if matches!(builtin.arg_type, Type::Undetermined) {
+        "T".to_owned()
+    } else {
+        builtin.arg_type.display(types).to_string()
+    };
+    Value::BuiltinFunction {
+        builtin: index,
+        name: format!("{}@{}", builtin.name, argument),
+    }
+}
+
+/// Convert an operator cast `name @ type` (parser.y:381-382;
+/// axis.w:7356-7391 op_cast_expr). An exact overload-table entry (startup
+/// builtin or user `set` variant) wins; otherwise the hidden generic
+/// `prints` instance accepts any argument type, its upstream entry being
+/// `prints@@T`. Anything else is the oracle's `No instance for name@type
+/// found` (capture 3604640). Upstream's second-chance unique polymorphic
+/// variant match has no frozen fixture yet and is not attempted.
+fn convert_op_cast(
+    name: &SpannedValue<String>,
+    arg_type: &TypeExpr,
+    span: SourceSpan,
+    required: &mut Type,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, Diagnostic> {
+    let cast_type = arg_type.resolve();
+    let merged = merged_variants(&name.value, analysis.overloads, analysis.types);
+    if let Some(variant) = merged.iter().find(|variant| variant.arg_type == cast_type) {
+        let (value, deduced) = match variant.origin {
+            OverloadOrigin::Builtin(index) => (
+                builtin_function_value(index, analysis.types),
+                Type::function(variant.arg_type.clone(), variant.result_type.clone()),
+            ),
+            OverloadOrigin::User(user_index) => {
+                let user = &analysis.overloads.user_variants(&name.value)[user_index];
+                (user.value.clone(), user.function_type.clone())
+            }
+        };
+        return conform_types(
+            &deduced,
+            required,
+            TypedExpr::Denotation(value),
+            span,
+            analysis,
+        );
+    }
+    if name.value == "prints" {
+        let index = hidden_builtin_by_pattern("prints", |_| true)
+            .expect("the prints builtin is always registered");
+        return conform_types(
+            &Type::function(cast_type, Type::void()),
+            required,
+            TypedExpr::Denotation(builtin_function_value(index, analysis.types)),
+            span,
+            analysis,
+        );
+    }
+    Err(type_error(
+        format!(
+            "No instance for {}@{} found",
+            name.value,
+            cast_type.display(analysis.types)
+        ),
+        span,
+    ))
 }
 
 /// Convert a `for pattern[@index] in iterable do body od` loop
@@ -3413,6 +3625,8 @@ fn convert_for_loop(
             constant_locals,
             in_function: analysis.in_function,
             loop_depth: analysis.loop_depth + 1,
+            last_value: analysis.last_value,
+            last_value_type: analysis.last_value_type,
         },
     )?;
     let loop_type = Type::row(body_type);
@@ -3483,6 +3697,8 @@ fn convert_counted_for_loop(
             constant_locals,
             in_function: analysis.in_function,
             loop_depth: analysis.loop_depth + 1,
+            last_value: analysis.last_value,
+            last_value_type: analysis.last_value_type,
         },
     )?;
     let loop_type = Type::row(body_type);
@@ -4495,6 +4711,8 @@ fn convert_lambda_expression(
         // A closure evaluates in its captured context, not the defining
         // loop's; `break` legality starts over at the function boundary.
         loop_depth: 0,
+        last_value: analysis.last_value,
+        last_value_type: analysis.last_value_type,
     };
     let closure = |body: TypedExpr| TypedExpr::Closure {
         parameters: parameters.len(),
@@ -4609,6 +4827,8 @@ fn convert_rec_lambda_expression(
         // A closure evaluates in its captured context, not the defining
         // loop's; `break` legality starts over at the function boundary.
         loop_depth: 0,
+        last_value: analysis.last_value,
+        last_value_type: analysis.last_value_type,
     };
     let closure = |body: TypedExpr| TypedExpr::Closure {
         parameters: parameters.len(),
@@ -11160,31 +11380,58 @@ impl TypedExpr {
                 name,
                 span,
             } => {
-                let closure = force(function, context)?;
-                let Value::Closure(closure) = closure else {
-                    panic!("analysis let a non-function callee through: {closure}")
-                };
+                let callee = force(function, context)?;
                 // The callee and argument evaluate OUTSIDE the traced
                 // region (axis.w:2184-2189): only errors from the call
                 // itself earn the call line.
                 let argument = force(argument, context)?;
-                match apply_closure(&closure, argument, context, level) {
-                    Err(Control::Runtime(mut diagnostic)) => {
-                        // A dynamically computed callee prints its function
-                        // expression (call_expression::function_name,
-                        // axis.w:1911-1913); `defined` is the closure's
-                        // lambda location (report_origin, axis.w:3273-3274).
-                        let callee = name
-                            .clone()
-                            .unwrap_or_else(|| typed_expression_print(function));
-                        diagnostic.trace(format!(
-                            "In call of {callee} {}, defined {}.",
-                            trace_location(context, span),
-                            trace_location(context, &closure.span)
-                        ));
-                        Err(Control::Runtime(diagnostic))
+                match callee {
+                    Value::Closure(closure) => {
+                        match apply_closure(&closure, argument, context, level) {
+                            Err(Control::Runtime(mut diagnostic)) => {
+                                // A dynamically computed callee prints its function
+                                // expression (call_expression::function_name,
+                                // axis.w:1911-1913); `defined` is the closure's
+                                // lambda location (report_origin, axis.w:3273-3274).
+                                let callee = name
+                                    .clone()
+                                    .unwrap_or_else(|| typed_expression_print(function));
+                                diagnostic.trace(format!(
+                                    "In call of {callee} {}, defined {}.",
+                                    trace_location(context, span),
+                                    trace_location(context, &closure.span)
+                                ));
+                                Err(Control::Runtime(diagnostic))
+                            }
+                            other => other,
+                        }
                     }
-                    other => other,
+                    // An operator-cast builtin value applies like a
+                    // BuiltinCall: a tuple argument against a tuple
+                    // parameter unpacks before the run.
+                    Value::BuiltinFunction { builtin, name } => {
+                        let mut values = vec![argument];
+                        if matches!(builtin_registry()[builtin].arg_type, Type::Tuple(_))
+                            && matches!(values.first(), Some(Value::Tuple(_)))
+                        {
+                            let Value::Tuple(components) = values.pop().expect("one argument")
+                            else {
+                                unreachable!("tuple shape checked above")
+                            };
+                            values = components;
+                        }
+                        match builtin_registry()[builtin].run(values, *span, level, context) {
+                            Err(Control::Runtime(mut diagnostic)) => {
+                                diagnostic.trace(format!(
+                                    "In call of {name} {}, built-in.",
+                                    trace_location(context, span)
+                                ));
+                                Err(Control::Runtime(diagnostic))
+                            }
+                            other => other,
+                        }
+                    }
+                    other => panic!("analysis let a non-function callee through: {other}"),
                 }
             }
             Self::Sequence { first, second } => {
@@ -12443,7 +12690,9 @@ mod tests {
         assert_eq!(program.expressions.len(), 1);
         let table = TypeTable::new();
         let overloads = OverloadState::default();
-        let analysis = Analysis::new(&table, globals, &overloads);
+        let last_value = Value::Tuple(Vec::new());
+        let last_type: TypeCell = Rc::new(RefCell::new(Type::void()));
+        let analysis = Analysis::new(&table, globals, &overloads, &last_value, &last_type);
         let mut required = Type::Undetermined;
         let typed = convert_expr(&program.expressions[0], &mut required, &analysis)?;
         let mut context = EvaluationContext::new();
@@ -14770,7 +15019,9 @@ mod tests {
         let table = TypeTable::new();
         let globals = IdTable::new();
         let overloads = OverloadState::default();
-        let analysis = Analysis::new(&table, &globals, &overloads);
+        let last_value = Value::Tuple(Vec::new());
+        let last_type: TypeCell = Rc::new(RefCell::new(Type::void()));
+        let analysis = Analysis::new(&table, &globals, &overloads, &last_value, &last_type);
         let mut required = Type::Undetermined;
         let typed = convert_expr(&program.expressions[0], &mut required, &analysis)
             .expect("list cardinality converts");
@@ -15381,7 +15632,9 @@ mod tests {
         let table = TypeTable::new();
         let globals = IdTable::new();
         let overloads = OverloadState::default();
-        let analysis = Analysis::new(&table, &globals, &overloads);
+        let last_value = Value::Tuple(Vec::new());
+        let last_type: TypeCell = Rc::new(RefCell::new(Type::void()));
+        let analysis = Analysis::new(&table, &globals, &overloads, &last_value, &last_type);
         let mut required = Type::Undetermined;
         let typed = convert_expr(&program.expressions[0], &mut required, &analysis)
             .expect("power converts");
@@ -16395,7 +16648,9 @@ mod tests {
             let table = TypeTable::new();
             let overloads = OverloadState::default();
             let globals = IdTable::new();
-            let analysis = Analysis::new(&table, &globals, &overloads);
+            let last_value = Value::Tuple(Vec::new());
+            let last_type: TypeCell = Rc::new(RefCell::new(Type::void()));
+            let analysis = Analysis::new(&table, &globals, &overloads, &last_value, &last_type);
             let mut required = Type::Undetermined;
             let typed = convert_expr(&program.expressions[0], &mut required, &analysis)
                 .expect("prints converts");
@@ -16871,6 +17126,152 @@ mod tests {
             &events[..],
             [TypedCommandEvent::ReportLine { text, .. }]
                 if text == "Variable c: int (overriding previous instance, which had type int (constant))\n"
+        ));
+    }
+
+    fn last_value_display(context: &mut TypedContext) -> String {
+        let events = context.execute(&command("$")).expect("$ evaluates");
+        match &events[..] {
+            [TypedCommandEvent::Value { value, .. }] => value.to_string(),
+            other => panic!("unexpected $ events {other:?}"),
+        }
+    }
+
+    #[test]
+    fn operator_casts_capture_overload_instances() {
+        // op_cast.atlas (capture 3604640): `name @ type` captures the
+        // exactly matching overload instance as a function value.
+        let mut context = TypedContext::new();
+        context
+            .execute(&command("set f=%@(int,int)"))
+            .expect("define f");
+        let events = context.execute(&command("f(7,3)")).expect("f(7,3)");
+        assert!(matches!(
+            &events[..],
+            [TypedCommandEvent::Value { value, .. }] if value.to_string() == "1"
+        ));
+        // A builtin cast value prints `{name@argtype}` (the registered
+        // argument type; the generic prints instance shows `T`).
+        for (source, expected) in [
+            ("-@int", "{-@int}"),
+            ("#@vec", "{#@vec}"),
+            ("prints@string", "{prints@T}"),
+        ] {
+            let events = context.execute(&command(source)).expect(source);
+            assert!(
+                matches!(
+                    &events[..],
+                    [TypedCommandEvent::Value { value, .. }] if value.to_string() == expected
+                ),
+                "source: {source}"
+            );
+        }
+        // A user `set` variant casts to its closure, callable in place.
+        context
+            .execute(&command("set u(int x)=2*x"))
+            .expect("define u");
+        let events = context.execute(&command("(u@int)(3)")).expect("(u@int)(3)");
+        assert!(matches!(
+            &events[..],
+            [TypedCommandEvent::Value { value, .. }] if value.to_string() == "6"
+        ));
+        // No exact instance (unknown name, wrong argument type, or an
+        // arity the operator has no overload for) is the oracle wording.
+        for (source, message) in [
+            ("mod@(int,int)", "No instance for mod@(int,int) found"),
+            ("u@string", "No instance for u@string found"),
+            ("+@int", "No instance for +@int found"),
+        ] {
+            let error = context.execute(&command(source)).expect_err(source);
+            assert_eq!(error.kind, ErrorKind::Type);
+            assert_eq!(error.message, message, "source: {source}");
+        }
+    }
+
+    #[test]
+    fn dot_label_discrimination_matches_and_rejects_like_the_oracle() {
+        // case_dot_label.atlas (capture 3604622): the dot-label form
+        // evaluates like `tag(pattern):`, an unknown label and a repeated
+        // label carry the oracle's wording (category type).
+        let mut context = TypedContext::new();
+        context
+            .execute(&command("set_type [ mvv = ( void no_vec | vec solution) ]"))
+            .expect("define mvv");
+        for (source, expected) in [
+            ("case solution([4,5]) | (v).solution: #v | else 0 esac", "2"),
+            ("case solution([4,5]) | v.solution: #v | else 0 esac", "2"),
+            ("case no_vec() | (v).solution: #v | else 0 esac", "0"),
+        ] {
+            let events = context.execute(&command(source)).expect(source);
+            assert!(matches!(
+                &events[..],
+                [TypedCommandEvent::Value { value, .. }] if value.to_string() == expected
+            ));
+        }
+        let error = context
+            .execute(&command(
+                "case solution([4,5]) | (x).bogus: 1 | else 0 esac",
+            ))
+            .expect_err("unknown label");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(
+            error.message,
+            "Branch has label bogus not associated to any variant of the union type mvv"
+        );
+        let error = context
+            .execute(&command(
+                "case solution([4,5]) | (v).solution: 1 | solution(w): 2 | else 0 esac",
+            ))
+            .expect_err("duplicate label");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(error.message, "Multiple branches with label solution");
+    }
+
+    #[test]
+    fn dollar_captures_the_last_value_and_stays_sticky() {
+        // axis.w:573-624 (`last_value_computed`): `$` snapshots the last
+        // non-void top-level value at analysis time. Frozen by
+        // last_value.atlas (capture 3604641).
+        let mut context = TypedContext::new();
+        // Before any value exists, `$` is the void empty tuple: the
+        // command type-checks and yields no printable value.
+        let events = context.execute(&command("$")).expect("initial $");
+        assert!(matches!(
+            &events[..],
+            [TypedCommandEvent::Value { value: Value::Tuple(elements), type_, .. }]
+                if elements.is_empty() && type_.is_void()
+        ));
+        context.execute(&command("5+5")).expect("5+5");
+        assert_eq!(last_value_display(&mut context), "10");
+        context.execute(&command("$+1")).expect("$+1");
+        assert_eq!(last_value_display(&mut context), "11");
+        // A runtime failure leaves the previous value in place.
+        context.execute(&command("1%0")).expect_err("modulo zero");
+        assert_eq!(last_value_display(&mut context), "11");
+        // A type failure does too.
+        context
+            .execute(&command("1+\"s\""))
+            .expect_err("type error");
+        assert_eq!(last_value_display(&mut context), "11");
+        // A void evaluation (`prints`) is not a value update.
+        context.execute(&command("prints(\"x\")")).expect("prints");
+        assert_eq!(last_value_display(&mut context), "11");
+    }
+
+    #[test]
+    fn dollar_inside_a_function_captures_at_definition_time() {
+        // axis.w:612-616: the capture happens at analysis time, so a
+        // defined function does NOT track later `$` updates.
+        let mut context = TypedContext::new();
+        context.execute(&command("7")).expect("seed $");
+        context
+            .execute(&command("set f(int x)=x+$"))
+            .expect("define f");
+        context.execute(&command("100")).expect("move $ on");
+        let events = context.execute(&command("f(1)")).expect("f(1)");
+        assert!(matches!(
+            &events[..],
+            [TypedCommandEvent::Value { value, .. }] if value.to_string() == "8"
         ));
     }
 }

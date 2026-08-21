@@ -41,6 +41,16 @@ pub enum Value {
     /// A non-recursive closure: the shared typed body plus the captured
     /// frame chain (upstream `closure_value`, axis.w:3209-3236).
     Closure(Rc<Closure>),
+    /// An overload-table instance captured by an operator cast
+    /// `name @ type` (axis.w:7356-7391 wraps the table's shared_function in
+    /// a capture_expression); printed as `{name@argtype}` with the
+    /// REGISTERED argument type (so `prints@string` shows `{prints@T}`).
+    BuiltinFunction {
+        /// Index into the startup builtin registry.
+        builtin: usize,
+        /// The display name `{name}@{registered arg type}`.
+        name: String,
+    },
 }
 
 /// The payload of a closure value. The body is shared between every closure
@@ -171,6 +181,7 @@ impl fmt::Display for Value {
             // (typed.rs `closure_trace_string`) renders the full multi-line
             // form.
             Self::Closure(_) => write!(formatter, "Function defined"),
+            Self::BuiltinFunction { name, .. } => write!(formatter, "{{{name}}}"),
             Self::List(values) => {
                 write!(formatter, "[")?;
                 for (index, value) in values.iter().enumerate() {
