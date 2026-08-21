@@ -38,7 +38,7 @@ differential report naming the job.
 | Atlas commands and batch files | supported | B7 forget/die, B9 redirect, B10 include, B13 dont, showall, quit, set quiet/verbose; `3501467`, `3501643`, `3506272` |
 | interactive input and completion | supported | TTY banner/prompt + `readline_completions` (batch-observable) with oracle-frozen startup name order; `3604377`, `3604405` |
 | domain objects and mathematical operations | supported | Full builtin registry ported (all 469 upstream `(name,args)` signatures + 29 coercions; audit 2026-08-21), including locator-attitude block pooling (`3603961`), P3 parameter twist `3543916`, and the block/KL/deform wave; see `REMAINING_BUILTINS.md` for the historical ledger |
-| KL and file formats | planned | filekl.w is used only by stand-alone utilities; zero interpreter references — no Atlas-language builtin reads/writes KL binary files. Deferred outside the language-only gate pending a user decision (HANDOFF 2026-08-12b) |
+| KL and file formats | supported | filekl.w block/matrix/KL-store formats read+written byte-compatibly (atlas-real-group `filekl` module; no interpreter builtin touches them — the row covers the stand-alone tool layer). Differential: `3608036`, Rust-written A1/A2/B2/G2 blocks read back by upstream KLread, 183/183 polynomial pairs match |
 
 No row moves to `supported` merely because Rust compiles. It needs a reference
 corpus, Rust implementation, and HPC differential report.
@@ -95,10 +95,10 @@ non-row (string/vec/mat/ratvec) iteration, operator/name casts
 (`op@type`, `f@type`), the `$` last-value unit, and the caselist
 `pattern.tag:` branch form (merged differential `3607276` PASS,
 345 fixtures: 343 PASS + 2 declared PARTIAL). Every grammar-level row
-of the matrix is now supported. The only remaining `planned` surface
-is KL binary file formats: no Atlas-language builtin reads or writes
-them (filekl.w serves stand-alone utilities only), deferred outside
-the language-only gate pending a user decision.
+of the matrix is now supported, and the last non-grammar surface — KL
+binary file formats — is covered by the filekl adapter (differential
+`3608036`: upstream KLread reads Rust-written blocks back with all
+183 probed polynomial pairs matching).
 
 ## Source compatibility rules
 
