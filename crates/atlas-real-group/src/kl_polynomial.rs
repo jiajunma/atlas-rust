@@ -226,6 +226,10 @@ impl KlHashTable {
     pub fn len(&self) -> usize {
         self.pool.len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.pool.is_empty()
+    }
 }
 
 #[cfg(test)]

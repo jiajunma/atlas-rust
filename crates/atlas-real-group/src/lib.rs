@@ -24,6 +24,7 @@ mod error;
 pub mod ext_block;
 pub mod ext_kl;
 pub mod ext_param;
+mod filekl;
 mod form_name;
 mod global_kgb;
 // Consumer is the synthetic-real-form builder; the carrier lands first so
@@ -99,6 +100,10 @@ pub use dual::{
 };
 pub use dynkin::bourbaki_permutation;
 pub use error::StructureError;
+pub use filekl::{
+    write_block_file, write_kl_store, write_matrix_file, BlockInfo, MatrixInfo, PolynomialInfo,
+    ProgressInfo, MAGIC_CODE, NO_GOOD_ASCENT, UNDEF_BLOCK,
+};
 pub use form_name::form_type_name;
 pub use global_kgb::{GlobalKgb, GlobalKgbPrint, GlobalKgbPrintRow};
 pub use grading::{CartanGradingData, Grading};
@@ -115,9 +120,9 @@ pub use involution_table::{
     InvolutionId, InvolutionRecord, InvolutionTable, InvolutionTableBudget,
 };
 pub use kgb_graph::{KgbGraph, KgbId, KgbStatus};
-pub use kl_polynomial::KlPol;
+pub use kl_polynomial::{KlHashTable, KlPol};
 pub use kl_support::RankFlags;
-pub use kl_table::{KlTable, MuPair, SharedKlTable};
+pub use kl_table::{KlTable, KlTableHandle, MuPair, SharedKlTable};
 pub use ktype::KType;
 pub use lattice::{pair, Coweight, RationalCoweight, RationalWeight, Weight};
 pub use layout::InnerClassLayout;
