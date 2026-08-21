@@ -99,6 +99,7 @@ FIXTURE_PLANS = (
     # capture 3586752.
     FixturePlan(name="domain/full_deform_proper"),
     FixturePlan(name="domain/deform_proper"),
+    FixturePlan(name="domain/partial_kl_block_proper"),
     # P2 Block W-graph overloads captured by HPC oracle 3543699.  The
     # full-integral A1 `block(Param)` path now uses the shared RepTable lookup;
     # the proper-integral KL_column case is covered by the shared subsystem
