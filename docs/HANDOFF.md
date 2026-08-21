@@ -4136,3 +4136,33 @@ axis.w:1806 is_special_operator is the complete list: `#` (size_of),
 Rust has `#`, `##`, protected `## `, prints; print/to_string/error are
 the frozen print_family batch. No other hidden special operators exist
 — after print_family lands this class is provably complete.
+
+## 2026-08-21f: print_family verified; final merge staged
+
+- print/to_string/error landed in main (`a9d078d`), registered
+  (`a877560`), differential `3604733` PASS (336 PASS + 1 known
+  container_syntax_errors PARTIAL), meta bumped to verified_hpc
+  (`05625c5`). Special-operator class is closed 7/7.
+- The 8 frozen fixtures (back_trace_loops, case_dot_label,
+  for_iterable_kinds, for_quiet_body, for_reversed, for_reversed_extra,
+  last_value, op_cast) are pre-registered in FIXTURE_PLANS (`0769fcd`)
+  and pass every harness configuration check locally (validate_plan
+  coverage, sha256, names, statuses, revision, exit status).
+- FACT CORRECTION: agent-99 batch-1 `4c3b120` (quiet-if/iffor, non-row
+  iteration, hidden prints) is NOT in main — `4024094` merged main
+  INTO codex/tilde-opt, not the reverse. Local pre-check of the 4
+  batch-1 fixtures against main HEAD fails as expected; they pass only
+  after the codex/tilde-opt merge.
+- Merge preview (scratch worktree, since aborted): only typed.rs
+  conflicts, 9 hunks, all on known overlap surfaces — prints
+  registration arm (dedupe), startup-completion exemption test
+  (dedupe), eval_for_loop extracted version (keep main structure,
+  absorb worktree features), agent-99's function outlining (do not
+  revert). grammar.lalrpop and syntax.rs auto-merge cleanly.
+- Post-PASS mechanics staged: `/tmp/bump_metas.py <job>` bumps the 8
+  metas (indent=1 format verified against print_family.meta.json);
+  `/tmp/language_md_promotion.txt` holds the LANGUAGE.md "Current
+  Language Slice" replacement paragraph (fill in JOBID).
+- After the merged fat differential PASSes, the only non-supported
+  matrix row is KL binary file formats (deferred pending user
+  decision) — that is the endgame question for the language gate.
