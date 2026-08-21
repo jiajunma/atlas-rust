@@ -1167,3 +1167,23 @@ took 0.012/0.008s and 4368/4288 KiB; report SHA256 is
   `d59adb977b717ab1f43559f877ee8f64896d8b64a7e887da86b99341afaa31d0`.
   Partial formula progress is not retained after timeout and remains an
   unprobed compatibility/performance boundary.
+
+## Final grammar wave known limitations (2026-08-21)
+
+- `op@type` / `IDENT@type` casts resolve only exact matches in the merged
+  overload variants (builtin -> `BuiltinFunction` value, user -> closure).
+  Upstream's second pass — a unique polymorphic variant whose pattern
+  matches the requested type — is not implemented (no fixture covers it;
+  noted at `convert_op_cast` in typed.rs).
+- `$` in the verbose "Converted expression" trace prints the captured value
+  itself; upstream prints `(type:$)` (axis.w:610-624 area). Runtime and
+  type behavior match; only the verbose rendering differs.
+- `for_reversed_extra`'s trailing `while false do 1 od~` line is a declared
+  harness PARTIAL: the tilde swallows the newline, so the oracle parsed the
+  capture-appended `quit` (`unexpected QUIT`) where the CLI faithfully
+  reports `unexpected end of file` (registered as PendingCase, same class
+  as the dangling-bracket entry).
+- Failing `set` commands append the oracle's command-context line
+  `Error in 'set' command at <loc>:` (global.w:1116-1130); the location
+  spans the terminating newline because parser.y:140's `@$` includes the
+  `'\n'` token (end column one past the last initializer token).
