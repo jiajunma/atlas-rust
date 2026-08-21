@@ -4166,3 +4166,9 @@ the frozen print_family batch. No other hidden special operators exist
 - After the merged fat differential PASSes, the only non-supported
   matrix row is KL binary file formats (deferred pending user
   decision) — that is the endgame question for the language gate.
+- Also staged: `/tmp/postmerge_check.py` runs the 8 frozen fixtures
+  through the harness against the main-tree debug binary in one command
+  (exit 1 on any non-PASS). All three /tmp helpers are session scratch —
+  rebuild them from this note if /tmp is cleared; the bump script logic
+  is: load meta, set rust_status=verified_hpc, add differential_job,
+  write back with indent=1 + trailing newline.
