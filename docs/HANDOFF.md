@@ -35,13 +35,13 @@ LANGUAGE.md row was the KL binary file formats (filekl.w) — now implemented:
   KLread.cpp`) and on HPC against
   `/public/home/majj/atlasofliegroups/sources/stand-alone/KLread` with
   locally-dumped files (LE format is cross-platform).
-- Formal HPC artifact: job **3608036** submitted 2026-08-21; on PASS,
-  promote the LANGUAGE.md KL row to `supported` citing 3608036 and record
-  the取舍 here (KLread-only oracle: matstat/polstat do not link — missing
-  rootdata/repr symbols — and are not needed).
-- After that the goal-completion audit runs: matrix zero pending rows, all
-  metas verified_hpc, `cargo test -p atlas-core --lib` + clippy/fmt clean,
-  HANDOFF current.
+- Formal HPC artifact: job **3608036 COMPLETED exit 0** (cpu, 1m35s,
+  `results/c19c755…/3608036/filekl_report.json`): 4/4 blocks PASS,
+  183/183 polynomial pairs. LANGUAGE.md KL row promoted to `supported`
+  (`7c8c319`). 取舍 recorded: KLread-only oracle (matstat/polstat do not
+  link — missing rootdata/repr symbols — and are not needed).
+- Goal-completion audit next: matrix zero pending rows (verified), all
+  metas verified_hpc, `cargo test -p atlas-core --lib` + clippy/fmt clean.
 
 ## Checkpoint - 2026-08-21b (readline_completions slice IN FLIGHT; main = `60c248f`)
 
