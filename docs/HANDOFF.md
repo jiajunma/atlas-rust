@@ -4172,3 +4172,32 @@ the frozen print_family batch. No other hidden special operators exist
   rebuild them from this note if /tmp is cleared; the bump script logic
   is: load meta, set rust_status=verified_hpc, add differential_job,
   write back with indent=1 + trailing newline.
+
+## 2026-08-21g: final grammar wave merged; differential 3607276 in flight
+
+- agent-99's last four slices landed on codex/tilde-opt as `773030d`
+  (op_cast exact-match casts, `$` analysis-time capture, caselist
+  dot-label branches, tilde expecting-matrix wordings) plus a main-agent
+  addition: failing `set` commands now append the oracle context line
+  `Error in 'set' command at <loc>:` (global.w:1116-1130; the location
+  spans the terminating newline because parser.y:140's `@$` includes the
+  `'\n'` token).
+- Main was merged INTO the worktree first (`060086e`): 9 conflict hunks
+  resolved (syntax.rs break_shape union; typed.rs prints dedupe,
+  variadic-special registry/selector arms, eval_for_loop keeps the
+  extracted helper and absorbs break-N, startup-completion exemption for
+  all four variadics, main's fuller tests kept, dead append_stripped
+  dropped). The worktree then fast-forwarded into main with no further
+  conflicts.
+- Local gates on the merged main: 361 lib tests green, clippy
+  `-D warnings` clean, fmt clean, 8-fixture gate 7 PASS + 1 declared
+  PARTIAL (for_reversed_extra's trailing-tilde quit artifact, registered
+  as PendingCase in `ccb7885`). Full 345-fixture local sweep: only
+  fromfile_accepted_b10 (HPC-absolute include path) and kgb_hasse (60s
+  local timeout) fail locally — both environmental, both previously PASS
+  on HPC.
+- Merged fat differential submitted as job `3607276` (all 345 fixtures).
+  On PASS: run `/tmp/bump_metas.py 3607276`, apply
+  `/tmp/language_md_promotion.txt` (LANGUAGE.md slice paragraph), commit
+  and push. The only remaining matrix row is then KL binary file formats,
+  deferred pending user decision.
