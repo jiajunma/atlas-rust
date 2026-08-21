@@ -116,10 +116,6 @@
   {
    "kind": "ReportLine",
    "text": "(-1+1s)*parameter(x=0,lambda=[0,1]/1,nu=[0,0]/1) [2]\n"
-  },
-  {
-   "kind": "ReportLine",
-   "text": "Bye.\n"
   }
  ]
 }
