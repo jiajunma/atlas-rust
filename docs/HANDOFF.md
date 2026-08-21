@@ -4201,3 +4201,18 @@ the frozen print_family batch. No other hidden special operators exist
   `/tmp/language_md_promotion.txt` (LANGUAGE.md slice paragraph), commit
   and push. The only remaining matrix row is then KL binary file formats,
   deferred pending user decision.
+
+## 2026-08-21h: merged differential 3607276 PASS — language matrix closed
+
+- Job `3607276` (fat, 4m12s) on the merged tree `060086e`: 345 fixtures,
+  **343 PASS + 2 declared PARTIAL, 0 FAIL**. The PARTIALs are the two
+  registered harness artifacts (container_syntax_errors dangling bracket,
+  for_reversed_extra trailing-tilde quit). All 8 frozen fixtures pass.
+- The 8 metas are bumped to verified_hpc with differential_job=3607276;
+  LANGUAGE.md's Current Language Slice paragraph now records every
+  grammar-level row as supported. The meta census shows zero remaining
+  pending_hpc_differential entries.
+- ENDGAME DECISION POINT: the only non-supported matrix row is KL binary
+  file formats (filekl.w, stand-alone utilities; no Atlas-language builtin
+  reads or writes them). Deferred pending a user decision: exclude from
+  the language gate vs port filekl.

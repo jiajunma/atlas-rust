@@ -4,7 +4,7 @@
  "oracle": "atlas",
  "stage": "typed-pipeline-swap",
  "reference_status": "verified_hpc_reference",
- "rust_status": "pending_hpc_differential",
+ "rust_status": "verified_hpc",
  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
@@ -16,11 +16,12 @@
  "oracle_seconds": 0.011,
  "oracle_maxrss_kb": 3520,
  "oracle_maxrss_approximate": false,
- "notes": "Tilde beyond for-in (parser.y:319 tilde_opt): counted-for body tilde and count-expr tilde each reverse; while collects body values into a list and body tilde reverses it; the DOWNTO counted production (parser.y:569-571) has NO tilde_opt so 'for i:3 downto 2 do i~ od' is a syntax error (unexpected '~', expecting OD). Reference frozen by HPC capture 3604479; Rust differential pending tilde_opt. EXTENDED 2026-08-21d: count-side tilde placement matrix \u2014 'for i:3~ do' accepted (reversed implicit range); rejections: anonymous count tilde and anonymous from ('expecting IF or DO or FOR'), count-tilde then FROM ('unexpected FROM', no suffix), downto-bound tilde, trailing od tilde ('expecting '\\n'').",
+ "notes": "Tilde beyond for-in (parser.y:319 tilde_opt): counted-for body tilde and count-expr tilde each reverse; while collects body values into a list and body tilde reverses it; the DOWNTO counted production (parser.y:569-571) has NO tilde_opt so 'for i:3 downto 2 do i~ od' is a syntax error (unexpected '~', expecting OD). Reference frozen by HPC capture 3604479; Rust differential pending tilde_opt. EXTENDED 2026-08-21d: count-side tilde placement matrix — 'for i:3~ do' accepted (reversed implicit range); rejections: anonymous count tilde and anonymous from ('expecting IF or DO or FOR'), count-tilde then FROM ('unexpected FROM', no suffix), downto-bound tilde, trailing od tilde ('expecting '\\n'').",
  "hpc_capture": {
   "fresh_process_required": true,
   "timeout_seconds": 30,
   "estimated_seconds": 5,
   "estimated_memory_mb": 128
- }
+ },
+ "differential_job": "3607276"
 }

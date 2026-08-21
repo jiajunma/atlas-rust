@@ -86,16 +86,19 @@ system variables, differential `3604405` PASS, 333 fixtures). The
 (including the reversed/anonymous-counted wordings and for-in frame
 dumps), let-frame dumps with the multi-line closure printer, and
 rec_fun self-binding/dynamic `defined at` lines (`3604616` PASS,
-334 fixtures + 1 declared PARTIAL). The remaining grammar-level gaps
-are all frozen with HPC-captured references and pending landing:
-loop `~` reversal beyond counted forms, the general quiet-if
-(`if c do e fi`) and `iffor` loop bodies, non-row (string/vec/mat/
-ratvec) iteration, `break N` multi-level unwind, operator/name casts
+334 fixtures + 1 declared PARTIAL). The final grammar-level wave then
+closed every remaining gap: `break N` multi-level unwind (`3604680`),
+the print/to_string/error variadic specials (`3604733`), loop `~`
+reversal in all positions (counted, from-side, for-in, while/until),
+the general quiet-if (`if c do e fi`) and `iffor` loop bodies,
+non-row (string/vec/mat/ratvec) iteration, operator/name casts
 (`op@type`, `f@type`), the `$` last-value unit, and the caselist
-`pattern.tag:` branch form — plus KL binary file formats (no
-Atlas-language builtin touches them; filekl.w serves stand-alone
-utilities only), deferred outside the language-only gate pending a
-user decision.
+`pattern.tag:` branch form (merged differential `3607276` PASS,
+345 fixtures: 343 PASS + 2 declared PARTIAL). Every grammar-level row
+of the matrix is now supported. The only remaining `planned` surface
+is KL binary file formats: no Atlas-language builtin reads or writes
+them (filekl.w serves stand-alone utilities only), deferred outside
+the language-only gate pending a user decision.
 
 ## Source compatibility rules
 
