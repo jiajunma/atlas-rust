@@ -309,7 +309,24 @@ FIXTURE_PLANS = (
     # Reversed iteration `for i:n~` / count-side tilde placement matrix;
     # reference frozen by captures 3604471/3604660.
     FixturePlan(name="eval/for_reversed"),
-    FixturePlan(name="eval/for_reversed_extra"),
+    # The trailing `while false do 1 od~` line ends with a tilde that
+    # swallows its newline, so the oracle continued onto the capture-time
+    # appended `quit` (`unexpected QUIT`) where the CLI faithfully reports
+    # `unexpected end of file` — the same harness artifact class as the
+    # dangling-bracket entry in commands/container_syntax_errors.
+    FixturePlan(
+        name="eval/for_reversed_extra",
+        runnable_lines=(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
+        runnable_events=(0, 1, 2, 3, 4, 5, 6, 7, 8, 9),
+        pending=(
+            PendingCase(
+                feature="trailing tilde swallows the capture-appended quit",
+                source_line=11,
+                reference_event=10,
+                reason="the oracle parsed the harness-appended `quit` where the CLI sees EOF",
+            ),
+        ),
+    ),
     # `$` last-value sticky semantics (void results do not update);
     # reference frozen by capture 3604641.
     FixturePlan(name="eval/last_value"),
