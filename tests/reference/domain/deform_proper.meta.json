@@ -1,0 +1,26 @@
+{
+ "fixture": "domain/deform_proper.atlas",
+ "fixture_sha256": "3519dcdd48c783cc6becd65ac2eadd2d906b278e8b8d784eb2d08d1ece3ec772",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "3611271",
+ "reference_commit": "0ea05a895ac3f013c074c62cc72db0db12a827b4",
+ "reference_report_sha256": "34b5c70a611eec27664c14735a5fd5e92f376bfd399d9aec3aaa7c4d39a5abfe",
+ "source_archive_sha256": "28050af9bf6ba517266159d5c9824305840ef7dff8ce269e8d53b8e0235e15fc",
+ "oracle_exit_status": 0,
+ "oracle_seconds": 0.013,
+ "oracle_maxrss_kb": 4448,
+ "oracle_maxrss_approximate": false,
+ "notes": "B2 and A2 proper-subsystem ordinary deform; captured by HPC reference job 3611271.",
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 1200,
+  "estimated_seconds": 20,
+  "estimated_memory_mb": 128
+ }
+}

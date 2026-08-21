@@ -16605,36 +16605,27 @@ pub(crate) fn call_with_printed(
             let finals = rc
                 .finals_for_standard(&parameter.repr)
                 .map_err(|error| structure_diagnostic(error, span))?;
-            let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
-            // The deform block pairs the real form with its dual's
-            // quasisplit form (matching lookup_full_block).
-            let dual_quasisplit = dual_parent.order.quasisplit_external();
-            let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
             let mut terms: Vec<(SplitValue, StandardRepr)> = Vec::new();
             for (final_sr, final_coef) in finals {
-                let block = BlockGraph::build(
-                    &parameter.context.graph,
-                    &parameter.context.table,
-                    &dual_rf.graph,
-                    &dual_rf.table,
-                    &dual_rf.parent.inner_class,
-                    WEYL_BUDGET,
+                // Upstream deform_wrapper looks up the interval-below
+                // partial common block for each final (atlas-types.w:8084-
+                // 8104), rather than rebuilding a full dual block.  Besides
+                // preserving proper-subsystem descent, this reuses the
+                // RepTable's pooled block/KL state.
+                let located = parameter
+                    .context
+                    .rep
+                    .lookup(&final_sr)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                let block = located.block();
+                let dterms = common_deformation_terms(
+                    &rc,
+                    &block,
+                    located.block_modifier(),
+                    located.raw_row(),
+                    final_sr.gamma(),
                 )
                 .map_err(|error| structure_diagnostic(error, span))?;
-                let mut kl_table =
-                    KlTable::new(&block).map_err(|error| structure_diagnostic(error, span))?;
-                kl_table
-                    .fill(0)
-                    .map_err(|error| structure_diagnostic(error, span))?;
-                let q_index = (0..block.size())
-                    .find(|&z| block.x(z) == Some(final_sr.x()))
-                    .ok_or_else(|| runtime(span, "parameter not in the common block"))?;
-                let lam_rho = rc
-                    .lambda_rho(&final_sr)
-                    .map_err(|error| structure_diagnostic(error, span))?;
-                let dterms = rc
-                    .deformation_terms(&block, q_index, final_sr.gamma(), &lam_rho, &kl_table)
-                    .map_err(|error| structure_diagnostic(error, span))?;
                 for (term_sr, coefficient) in dterms {
                     // Split_integer(c, -c) * it->second (atlas-types.w:8103).
                     let scaled = SplitValue::new(
