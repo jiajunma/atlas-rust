@@ -4,6 +4,45 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-21i (filekl landed; formal differential 3608036 IN FLIGHT; main = `c19c755`)
+
+Branch `codex/continue-atlas-port` = **main = `c19c755`**, pushed and
+HPC-synced. Merged differential **3607276 (fat): 343 PASS + 2 declared
+PARTIAL** (container_syntax_errors dangling paren, for_reversed_extra
+trailing tilde — both harness artifacts registered as PendingCase).
+Language matrix: **347/347 metas verified_hpc**; the ONLY remaining
+LANGUAGE.md row was the KL binary file formats (filekl.w) — now implemented:
+
+- `crates/atlas-real-group/src/filekl.rs` (c19c755): block/matrix/KL-store
+  readers+writers plus read-only progress reader, byte-faithful to filekl.w
+  (LE, magic 0x06ABDCF0, 5-byte store offsets, degree>=32 read rejection;
+  upstream master kl.cpp:223-232 prim_map regression deliberately NOT
+  replicated — canonical format keeps the y bit). 15 in-file unit tests,
+  clippy/fmt clean.
+- `crates/atlas-real-group/tests/filekl_dump.rs`: `#[ignore]`d dump driver
+  (pub API only; quasisplit form via `ExternalFormOrder`, dual quasisplit —
+  the interpreter's `full_block_of` recipe). Dumps A1(3)/A2(6)/B2(12)/G2(12)
+  blocks + JSON expectations when `FILEKL_DUMP_DIR` is set.
+- `hpc/filekl_diff.py` + `hpc/filekl_diff.sbatch`: KLread-oracle
+  differential. KLread output format facts (KLread.cpp main loop): poly
+  terms print DECREASING degree joined by " + ", `q^{n}` for degree>=10,
+  trailing `.`; `value at q=1` only for non-constant polys; zero-polynomial
+  queries (triangularity / real non-parity) go to STDERR as errors, so the
+  driver counts "no output + zero expectation" as pass. `-q` suppresses the
+  `rank=..., block size=...` header — do NOT pass it.
+- **Rehearsal already PASS 4/4 (183 pairs)**: locally against a fresh
+  KLread build (KLread.cpp is self-contained: `clang++ -std=c++17
+  KLread.cpp`) and on HPC against
+  `/public/home/majj/atlasofliegroups/sources/stand-alone/KLread` with
+  locally-dumped files (LE format is cross-platform).
+- Formal HPC artifact: job **3608036** submitted 2026-08-21; on PASS,
+  promote the LANGUAGE.md KL row to `supported` citing 3608036 and record
+  the取舍 here (KLread-only oracle: matstat/polstat do not link — missing
+  rootdata/repr symbols — and are not needed).
+- After that the goal-completion audit runs: matrix zero pending rows, all
+  metas verified_hpc, `cargo test -p atlas-core --lib` + clippy/fmt clean,
+  HANDOFF current.
+
 ## Checkpoint - 2026-08-21b (readline_completions slice IN FLIGHT; main = `60c248f`)
 
 Branch `codex/continue-atlas-port` = **main = `60c248f`**. Regression
