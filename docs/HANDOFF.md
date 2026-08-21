@@ -6,6 +6,25 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
 ## Checkpoint - 2026-08-21i (filekl landed; formal differential 3608036 IN FLIGHT; main = `c19c755`)
 
+## Checkpoint - 2026-08-21j (ordinary deform proper lookup verified)
+
+- Ordinary `deform(Param)` no longer rebuilds a full dual `BlockGraph` for
+  each final. It now uses `RepTable::lookup` and the existing
+  `common_deformation_terms` partial-block algorithm, preserving proper
+  subsystem descent, locator modifiers, and pooled KL state.
+- Fixture `domain/deform_proper` covers B2 and A2 proper-subsystem parameters.
+  Reference capture **3611271** and fat differential **3611540** pass; the
+  latter reports 344 PASS plus the two pre-existing harness PARTIAL cases.
+- The timed corpus driver `hpc/script_corpus_diff.py` now records C++/Rust
+  wall time, peak RSS, timeout state, and ratios. A first seven-script run
+  completed as measurement-only because those definitions-only scripts make
+  the upstream process exit with its own load errors; use explicit call
+  workloads for algorithm benchmarks.
+- Next P0: replace `partial_KL_block(Param)`'s full-block/manual closure with
+  `LocatedBlock` partial lookup, shared KL table, partial singular/final
+  helpers, and modifier-aware survivor parameters. Then run the same
+  fixture-first capture/differential loop.
+
 Branch `codex/continue-atlas-port` = **main = `c19c755`**, pushed and
 HPC-synced. Merged differential **3607276 (fat): 343 PASS + 2 declared
 PARTIAL** (container_syntax_errors dangling paren, for_reversed_extra

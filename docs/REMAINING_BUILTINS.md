@@ -1,5 +1,18 @@
 # Remaining builtin coverage (post-language-gate)
 
+## ordinary deform proper lookup verified (2026-08-21)
+
+`deform(Param)` now uses the `RepTable::lookup` partial common block for each
+final, including the stored locator modifier and shared KL state, instead of
+rebuilding a full dual block. `tests/fixtures/domain/deform_proper.atlas`
+covers B2 and A2 proper subsystems; HPC capture 3611271 and fat differential
+3611540 pass.
+
+The next confirmed semantic gap is `partial_KL_block(Param)`, which still
+constructs a full `BlockGraph` and manually computes its downset. Port it to
+`LocatedBlock` plus `with_kl_table`, `partial_block_finals_for`, and
+modifier-aware survivor parameters before treating the builtin as complete.
+
 ## full_deform common-block recursion verified (2026-08-20)
 
 `full_deform` now looks up the interval-below partial block at each
