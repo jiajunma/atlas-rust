@@ -23,10 +23,87 @@ Env: REPORT (output json), SIZE_CAP bytes (default 2 MiB), TIMEOUT seconds.
 import glob
 import json
 import os
+import pathlib
 import re
+import resource
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
+
+
+TIME_BIN = shutil.which("time")
+USE_GNU_TIME = bool(TIME_BIN and sys.platform != "darwin")
+
+
+def parse_time_metrics(path):
+    if not path.exists():
+        return None
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        if "maximum resident set size" in line.lower():
+            digits = re.sub(r"\D", "", line.split(":", 1)[-1])
+            if digits:
+                return int(digits)
+    return None
+
+
+def measure_command(argv, *, cwd, timeout, input_text=None):
+    """Run one interpreter and return output plus wall time and peak RSS."""
+    started = time.monotonic()
+    timed_out = False
+    command = list(argv)
+    temporary = None
+    metric_path = None
+    if USE_GNU_TIME:
+        temporary = tempfile.TemporaryDirectory()
+        metric_path = os.path.join(temporary.name, "time.metrics")
+        command = [TIME_BIN, "-v", "-o", metric_path, *command]
+    try:
+        completed = subprocess.run(
+            command,
+            input=input_text,
+            text=True,
+            capture_output=True,
+            timeout=timeout,
+            cwd=cwd,
+        )
+        stdout, stderr, exit_status = (
+            completed.stdout,
+            completed.stderr,
+            completed.returncode,
+        )
+    except subprocess.TimeoutExpired as error:
+        timed_out = True
+        stdout = error.stdout or ""
+        stderr = error.stderr or ""
+        if isinstance(stdout, bytes):
+            stdout = stdout.decode("utf-8", errors="replace")
+        if isinstance(stderr, bytes):
+            stderr = stderr.decode("utf-8", errors="replace")
+        exit_status = None
+    seconds = round(time.monotonic() - started, 3)
+    if metric_path is not None:
+        maxrss_kb = parse_time_metrics(pathlib.Path(metric_path))
+        temporary.cleanup()
+        approximate = False
+    else:
+        approximate = True
+        try:
+            maxrss_kb = int(resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss)
+            if sys.platform == "darwin":
+                maxrss_kb //= 1024
+        except (AttributeError, ValueError):
+            maxrss_kb = None
+    return {
+        "stdout": stdout,
+        "stderr": stderr,
+        "exit_status": exit_status,
+        "timed_out": timed_out,
+        "seconds": seconds,
+        "maxrss_kb": maxrss_kb,
+        "maxrss_approximate": approximate,
+    }
 
 
 def classify_rust(stderr: str) -> str:
@@ -60,49 +137,47 @@ def run_corpus(atlas_bin, cli_bin, files, size_cap, timeout):
             continue
         text = open(path, encoding="utf-8", errors="replace").read()
 
-        start = time.monotonic()
-        try:
-            cpp = subprocess.run(
-                [atlas_bin],
-                input=text + "\nquit\n",
-                text=True,
-                capture_output=True,
-                timeout=timeout,
-                cwd=scripts_dir,
-            )
-            cpp_ok = cpp.returncode == 0 and "error" not in cpp.stderr.lower()
-            cpp_out = cpp.stdout
-        except subprocess.TimeoutExpired:
-            cpp_ok, cpp_out = False, ""
-        entry["cpp_seconds"] = round(time.monotonic() - start, 3)
+        cpp = measure_command(
+            [atlas_bin], input_text=text + "\nquit\n",
+            timeout=timeout, cwd=scripts_dir,
+        )
+        cpp_ok = (
+            not cpp["timed_out"] and cpp["exit_status"] == 0
+            and "error" not in cpp["stderr"].lower()
+        )
+        cpp_out = cpp["stdout"]
+        for key in ("seconds", "maxrss_kb", "maxrss_approximate", "timed_out"):
+            entry[f"cpp_{key}"] = cpp[key]
 
-        start = time.monotonic()
-        try:
-            # Mirror the C++ invocation: cwd = atlas-scripts so `<basic.at`
-            # resolves (and prints) the same cwd-relative spelling.
-            rust = subprocess.run(
-                [cli_bin, os.path.abspath(path)],
-                text=True,
-                capture_output=True,
-                timeout=timeout,
-                cwd=scripts_dir,
+        # Mirror the C++ invocation: cwd = atlas-scripts so `<basic.at`
+        # resolves (and prints) the same cwd-relative spelling.
+        rust = measure_command(
+            [cli_bin], input_text=text + "\nquit\n",
+            timeout=timeout, cwd=scripts_dir,
+        )
+        for key in ("seconds", "maxrss_kb", "maxrss_approximate", "timed_out"):
+            entry[f"rust_{key}"] = rust[key]
+        if cpp["seconds"] > 0:
+            entry["rust_to_cpp_seconds"] = round(
+                rust["seconds"] / cpp["seconds"], 3
             )
-        except subprocess.TimeoutExpired:
-            entry["category"] = "RUST_EVAL_FAIL"
-            entry["rust_first_error"] = "(timeout)"
-            entries.append(entry)
-            continue
-        entry["rust_seconds"] = round(time.monotonic() - start, 3)
+        if cpp["maxrss_kb"] and rust["maxrss_kb"]:
+            entry["rust_to_cpp_maxrss"] = round(
+                rust["maxrss_kb"] / cpp["maxrss_kb"], 3
+            )
 
         if not cpp_ok:
             entry["category"] = "CPP_FAIL"
-        elif rust.returncode == 0:
+        elif rust["timed_out"]:
+            entry["category"] = "RUST_EVAL_FAIL"
+            entry["rust_first_error"] = "(timeout)"
+        elif rust["exit_status"] == 0:
             entry["category"] = (
-                "MATCH" if rust.stdout == cpp_out else "OUTPUT_DIFF"
+                "MATCH" if rust["stdout"] == cpp_out else "OUTPUT_DIFF"
             )
         else:
-            entry["category"] = classify_rust(rust.stderr)
-            entry["rust_first_error"] = first_error(rust.stderr)
+            entry["category"] = classify_rust(rust["stderr"])
+            entry["rust_first_error"] = first_error(rust["stderr"])
         entries.append(entry)
     return entries
 
@@ -135,6 +210,36 @@ def main() -> int:
             sorted(histogram.items(), key=lambda kv: -kv[1])
         ),
         "scripts": entries,
+    }
+    comparable = [
+        entry for entry in entries
+        if entry.get("category") in {"MATCH", "OUTPUT_DIFF"}
+        and "rust_to_cpp_seconds" in entry
+    ]
+    report["benchmark_summary"] = {
+        "comparable_scripts": len(comparable),
+        "rust_faster": sum(
+            entry["rust_to_cpp_seconds"] < 1 for entry in comparable
+        ),
+        "within_2x": sum(
+            entry["rust_to_cpp_seconds"] <= 2 for entry in comparable
+        ),
+        "over_5x_slower": sum(
+            entry["rust_to_cpp_seconds"] > 5 for entry in comparable
+        ),
+        "slowest": [
+            {
+                "script": entry["script"],
+                "rust_to_cpp_seconds": entry["rust_to_cpp_seconds"],
+                "rust_seconds": entry["rust_seconds"],
+                "cpp_seconds": entry["cpp_seconds"],
+            }
+            for entry in sorted(
+                comparable,
+                key=lambda item: item["rust_to_cpp_seconds"],
+                reverse=True,
+            )[:10]
+        ],
     }
     path = os.environ.get("REPORT", "script_corpus_report.json")
     with open(path, "w", encoding="utf-8") as handle:
