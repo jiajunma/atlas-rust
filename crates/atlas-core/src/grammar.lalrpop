@@ -9,7 +9,7 @@ use super::{
     selector_suffix, operator_selector, sequence, set_command, set_type_command, show_overloads_command,
     operator_function_binding,
     type_definition, type_spec_span,
-    unit_selector, next_sequence, case_select_expression, counted_for_expression,
+    unit_selector, next_sequence, break_level, case_select_expression, counted_for_expression,
     tuple_expression, function_binding,
     prepend_let_group,
     call_suffix, postfix, prefix_operator_call, slice_suffix, matrix_slice_suffix, start_binary_formula, start_prefix_formula,
@@ -530,7 +530,14 @@ Atom: Expr = {
     <while_span:"while"> <tail:WhileTail> => while_expression(while_span, tail),
     <for_span:"for"> <tail:ForTail> => for_expression(for_span, tail),
     <for_span:"for"> <tail:CountedForTail> => counted_for_expression(for_span, tail),
-    <span:"break"> => Expr::Break { span },
+    // `break` / `break N` (parser.y:385-386): plain `break` unwinds one
+    // loop; `break N` unwinds N+1. The analysis layer checks that enough
+    // loops lexically enclose the unit (axis.w:673-685).
+    <span:"break"> => Expr::Break { levels: 0, span },
+    <span:"break"> <level:"integer"> => Expr::Break {
+        levels: break_level(&level.value),
+        span: join_span(span, level.span),
+    },
     // `die` (parser.y:383): a unit that type-checks anywhere and throws
     // `I die` when evaluated.
     <span:"die"> => Expr::Die { span },

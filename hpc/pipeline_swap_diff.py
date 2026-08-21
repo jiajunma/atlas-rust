@@ -289,6 +289,50 @@ FIXTURE_PLANS = (
     # self-binding/dynamic call lines (axis.w:2882-2909, 3525-3557);
     # reference frozen by capture 3604440.
     FixturePlan(name="eval/back_trace_let_rec"),
+    # break N multi-level unwind (parser.y:385-386, axis.w:673-685
+    # may_break depth check) + the generic prints builtin; reference
+    # frozen by capture 3604567.
+    FixturePlan(name="eval/break_levels"),
+    # print/to_string/error variadic specials (axis.w:8767-8771,
+    # 8796-8859); reference frozen by capture 3604701.
+    FixturePlan(name="eval/print_family"),
+    # back_trace inside loop bodies: trace frames across for/while
+    # iterations; reference frozen by capture 3604460.
+    FixturePlan(name="eval/back_trace_loops"),
+    # Caselist dot-label branches `pattern.tag: expr` (parser.y:419,426);
+    # reference frozen by capture 3604622.
+    FixturePlan(name="eval/case_dot_label"),
+    # for-loop iteration over non-row iterables (int/vec/mat etc.) and
+    # quiet `if` bodies; reference frozen by captures 3604537/3604504.
+    FixturePlan(name="eval/for_iterable_kinds"),
+    FixturePlan(name="eval/for_quiet_body"),
+    # Reversed iteration `for i:n~` / count-side tilde placement matrix;
+    # reference frozen by captures 3604471/3604660.
+    FixturePlan(name="eval/for_reversed"),
+    # The trailing `while false do 1 od~` line ends with a tilde that
+    # swallows its newline, so the oracle continued onto the capture-time
+    # appended `quit` (`unexpected QUIT`) where the CLI faithfully reports
+    # `unexpected end of file` — the same harness artifact class as the
+    # dangling-bracket entry in commands/container_syntax_errors.
+    FixturePlan(
+        name="eval/for_reversed_extra",
+        runnable_lines=(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
+        runnable_events=(0, 1, 2, 3, 4, 5, 6, 7, 8, 9),
+        pending=(
+            PendingCase(
+                feature="trailing tilde swallows the capture-appended quit",
+                source_line=11,
+                reference_event=10,
+                reason="the oracle parsed the harness-appended `quit` where the CLI sees EOF",
+            ),
+        ),
+    ),
+    # `$` last-value sticky semantics (void results do not update);
+    # reference frozen by capture 3604641.
+    FixturePlan(name="eval/last_value"),
+    # Operator cast `op@type` / `IDENT@type` (parser.y:381-383);
+    # reference frozen by capture 3604640.
+    FixturePlan(name="eval/op_cast"),
     FixturePlan(name="eval/slices"),
     FixturePlan(name="eval/subscriptions"),
     FixturePlan(name="eval/context"),

@@ -320,8 +320,11 @@ pub enum TypedExpr {
         body: Box<TypedExpr>,
         out_reversed: bool,
     },
-    /// `break`, unwound to the innermost loop boundary.
-    Break,
+    /// `break N`, unwound through `levels + 1` enclosing loop boundaries
+    /// (parser.y:385-386, axis.w:665 `loop_break(depth)`).
+    Break {
+        levels: usize,
+    },
     /// `dont` terminates the current while iteration without an error.
     Dont,
     /// `die` (upstream `shell`, axis.w:621-630): analysing it succeeds
@@ -3374,20 +3377,32 @@ pub fn convert_expr(
             )
         }
         Expr::CountedFor(loop_) => convert_counted_for_loop(loop_, required, analysis),
-        Expr::Break { span } => {
-            // `break` is legal only lexically inside a loop; upstream
-            // rejects it during analysis, before anything evaluates
-            // (mirroring the `return` check above).
-            if analysis.loop_depth == 0 {
-                return Err(type_error(
-                    "Using 'break' not in the reach of any loop".into(),
-                    *span,
-                ));
+        Expr::Break { levels, span } => {
+            // `break N` is legal only when N+1 loops lexically enclose it;
+            // upstream rejects it during analysis (axis.w:673-685,
+            // layer::may_break), before anything evaluates.
+            if analysis.loop_depth <= *levels {
+                let message = if *levels == 0 {
+                    "Using 'break' not in the reach of any loop".to_string()
+                } else {
+                    format!(
+                        "Using 'break {}' requires {} nested levels of loops",
+                        levels,
+                        levels + 1
+                    )
+                };
+                return Err(type_error(message, *span));
             }
             // A break yields no value and converts as void, so a
             // `… then break fi` branch balances against the implicit
             // void else branch.
-            conform_types(&Type::void(), required, TypedExpr::Break, *span, analysis)
+            conform_types(
+                &Type::void(),
+                required,
+                TypedExpr::Break { levels: *levels },
+                *span,
+                analysis,
+            )
         }
         Expr::Dont { span } => {
             if analysis.loop_depth == 0 {
@@ -5155,11 +5170,23 @@ enum BuiltinImpl {
     /// candidate snapshot the command layer stashed in the evaluation
     /// context by the argument prefix.
     Completions,
-    /// prints (axis.w:8851-8855 prints_wrapper, 8821-8848 to_string_aux):
-    /// writes its arguments unseparated and unquoted (a tuple argument
-    /// expands one level), followed by a newline, at BOTH levels; yields
-    /// the empty tuple at single_value.
+    /// The variadic generic `prints@@T` (axis.w:8773, wrapper :8850-8853):
+    /// a hidden special instance matched by `hidden_special_variant` for any
+    /// a-priori argument type. Writes its arguments unseparated and
+    /// unquoted (a tuple argument expands one level), followed by a newline,
+    /// at BOTH levels; yields the empty tuple at single_value
+    /// (axis.w:8821-8848 to_string_aux).
     Prints,
+    /// The variadic generic `print@@T` (axis.w:8767, wrapper :8796-8802):
+    /// prints the argument verbatim (strings quoted) and returns it
+    /// unchanged at value-demanding levels.
+    Print,
+    /// The variadic generic `to_string@@T` (axis.w:8769, wrapper
+    /// :8841-8846): the stripped concatenation as a string value.
+    ToString,
+    /// The variadic generic `error@@T` (axis.w:8771, wrapper :8855-8859):
+    /// raises the stripped concatenation as a runtime error.
+    Error,
 }
 
 #[derive(Clone, Copy)]
@@ -5364,33 +5391,34 @@ impl Builtin {
                 }))
             }
             BuiltinImpl::Prints => {
-                let mut text = String::new();
-                for argument in &arguments {
-                    append_stripped(&mut text, argument);
-                }
-                text.push('\n');
-                context.print_text(text);
+                // axis.w:8850-8853: the report is written at every level;
+                // only single_value yields the (empty tuple) value.
+                context.print_text(prints_text(&arguments));
                 Ok(at_builtin_level(level, || Value::Tuple(Vec::new())))
             }
-        }
-    }
-}
-
-/// Append one prints argument (axis.w:8821-8848 to_string_aux): a string
-/// prints WITHOUT its quotes, a tuple expands ONE level (its string
-/// components likewise unquoted), everything else prints as `print` would.
-fn append_stripped(text: &mut String, value: &Value) {
-    match value {
-        Value::String(string) => text.push_str(string),
-        Value::Tuple(components) => {
-            for component in components {
-                match component {
-                    Value::String(string) => text.push_str(string),
-                    other => text.push_str(&other.to_string()),
-                }
+            BuiltinImpl::Print => {
+                // axis.w:8796-8802: the argument prints verbatim (the
+                // standard value printer, quotes and all) at every level,
+                // and is returned unchanged when a value is demanded.
+                let value = if arguments.len() == 1 {
+                    arguments.into_iter().next().expect("one argument")
+                } else {
+                    Value::Tuple(arguments)
+                };
+                context.print_text(format!("{value}\n"));
+                Ok(at_builtin_level(level, || value))
+            }
+            BuiltinImpl::ToString => {
+                // axis.w:8841-8846: the stripped concatenation, no trailing
+                // newline; no value is produced in void context.
+                let text = stripped_text(&arguments);
+                Ok(at_builtin_level(level, || Value::String(text)))
+            }
+            BuiltinImpl::Error => {
+                // axis.w:8855-8859: always throws; the level is irrelevant.
+                Err(runtime(stripped_text(&arguments), span))
             }
         }
-        other => text.push_str(&other.to_string()),
     }
 }
 
@@ -5519,6 +5547,44 @@ fn at_builtin_level(level: Level, value: impl FnOnce() -> Value) -> Option<Value
         Level::NoValue => None,
         Level::SingleValue => Some(value()),
     }
+}
+
+/// `to_string_aux` (axis.w:8819-8840) applied to the variadic argument
+/// tuple: string components print without quotes, every other value prints
+/// like `print`. No trailing newline — `prints` adds the wrapper's
+/// `std::endl` itself, `to_string` and `error` do not.
+fn stripped_text(arguments: &[Value]) -> String {
+    fn component(text: &mut String, value: &Value) {
+        match value {
+            Value::String(string) => text.push_str(string),
+            other => text.push_str(&other.to_string()),
+        }
+    }
+    let mut text = String::new();
+    // A single argument arrives unwrapped (the variadic tuple collapses), so
+    // a lone tuple's components print individually; anything else prints as
+    // one value.
+    if arguments.len() == 1 {
+        match &arguments[0] {
+            Value::Tuple(components) => {
+                for value in components {
+                    component(&mut text, value);
+                }
+            }
+            value => component(&mut text, value),
+        }
+    } else {
+        for value in arguments {
+            component(&mut text, value);
+        }
+    }
+    text
+}
+
+/// `prints_wrapper`'s output (axis.w:8850-8853): the stripped text plus one
+/// trailing newline.
+fn prints_text(arguments: &[Value]) -> String {
+    format!("{}\n", stripped_text(arguments))
 }
 
 fn expect_unary(mut arguments: Vec<Value>) -> Value {
@@ -8361,9 +8427,10 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 0,
                 ScalarOp::RowJoinRowOfRows,
             ),
-            // prints (axis.w:1797 prints_name, 8851-8855): a hidden special
-            // function whose undetermined pattern matches any argument; the
-            // recognition logic in hidden_special_variant resolves it.
+            // prints@@T (axis.w:8773): the variadic generic printer is a
+            // hidden special instance; the `*` argument is a registry-local
+            // wildcard matched by `hidden_special_variant` for any a-priori
+            // type, and the result is always void.
             Builtin {
                 name: "prints",
                 arg_type: Type::Undetermined,
@@ -8371,6 +8438,35 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 hunger: 0,
                 overload_visible: false,
                 implementation: BuiltinImpl::Prints,
+            },
+            // print@@T / to_string@@T / error@@T (axis.w:8767-8771): the
+            // remaining variadic specials, likewise matched by
+            // `hidden_special_variant` for any a-priori type; print's
+            // identity result and error's unknown result are produced
+            // there, not from these placeholder rows.
+            Builtin {
+                name: "print",
+                arg_type: Type::Undetermined,
+                result: Type::Undetermined,
+                hunger: 0,
+                overload_visible: false,
+                implementation: BuiltinImpl::Print,
+            },
+            Builtin {
+                name: "to_string",
+                arg_type: Type::Undetermined,
+                result: Type::Primitive(Prim::String),
+                hunger: 0,
+                overload_visible: false,
+                implementation: BuiltinImpl::ToString,
+            },
+            Builtin {
+                name: "error",
+                arg_type: Type::Undetermined,
+                result: Type::Undetermined,
+                hunger: 0,
+                overload_visible: false,
+                implementation: BuiltinImpl::Error,
             },
             // global.w:4478-4493: retain zero-row/zero-column dimensions,
             // narrow and bound both dimensions before the no-value gate.
@@ -10663,11 +10759,29 @@ fn hidden_special_variant(
             }
             _ => None,
         },
-        // prints (axis.w:2466-2468, 2500-2506): the special generic
-        // function matches ANY a-priori type and yields void.
+        // prints@@T (axis.w:8773, wrapper :8850-8853): the variadic generic
+        // printer matches any a-priori type; the result is always void.
         "prints" => {
-            let index = hidden_builtin_by_pattern("prints", |_| true)?;
+            let index = hidden_special_builtin("prints")?;
             Some((index, Type::void()))
+        }
+        // print@@T (axis.w:8767, selection :6780-6783): identity function
+        // type — the call's result type is the argument type itself.
+        "print" => {
+            let index = hidden_special_builtin("print")?;
+            Some((index, a_priori_type.clone()))
+        }
+        // to_string@@T (axis.w:8769, selection :6788-6790): always string.
+        "to_string" => {
+            let index = hidden_special_builtin("to_string")?;
+            Some((index, string_type()))
+        }
+        // error@@T (axis.w:8771, selection :6791-6794): the upstream result
+        // is unknown_type, fitting every context (the call always throws
+        // before the value is used); Undetermined specialises the same way.
+        "error" => {
+            let index = hidden_special_builtin("error")?;
+            Some((index, Type::Undetermined))
         }
         _ => None,
     }
@@ -11491,7 +11605,7 @@ impl TypedExpr {
                 level,
                 context,
             ),
-            Self::Break => Err(Control::Break(0)),
+            Self::Break { levels } => Err(Control::Break(*levels)),
             Self::Dont => Err(Control::Dont),
             Self::Die { span } => Err(runtime("I die", *span)),
             Self::UnionInject {
@@ -16577,102 +16691,116 @@ mod tests {
     }
 
     #[test]
-    fn quiet_if_and_iffor_loops_evaluate_like_the_oracle() {
-        // parser.y:365 quiet-if: `if c do e fi` is `if c then [e] else [] fi`.
-        let (_, value) = convert_and_run("if true do 42 fi").expect("quiet-if then");
-        assert_eq!(value.to_string(), "[42]");
-        let (_, value) = convert_and_run("if false do 42 fi").expect("quiet-if else");
-        assert_eq!(value.to_string(), "[]");
-        // The nested iffor form (parser.y:317-324).
-        let (_, value) = convert_and_run("if true if 1<2 do 7 fi fi").expect("nested iffor");
-        assert_eq!(value.to_string(), "[7]");
+    fn break_levels_match_the_oracle() {
+        // `break N` needs N+1 lexically enclosing loops (parser.y:385-386,
+        // axis.w:673-685 layer::may_break); the check runs during analysis.
+        let error = convert_and_run("for i:2 do break 1 od").expect_err("shallow break 1");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(
+            error.message,
+            "Using 'break 1' requires 2 nested levels of loops"
+        );
 
-        // An iffor-bodied loop yields a row of rows that the protected
-        // `## ` joins (parser.y:528-571, axis.w:1785) — on every for form.
-        let (_, value) = convert_and_run("for i:3 if i>1 do i fi od").expect("counted iffor");
-        assert_eq!(value.to_string(), "[2]");
+        let error = convert_and_run("break 2").expect_err("top-level break 2");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(
+            error.message,
+            "Using 'break 2' requires 3 nested levels of loops"
+        );
+
+        // `break 0` is exactly `break`, including the plain-break message.
+        let error = convert_and_run("break 0").expect_err("top-level break 0");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(error.message, "Using 'break' not in the reach of any loop");
+
+        // With enough depth, `break 2` unwinds all three loops; the
+        // already-completed i=0 rows survive, the breaking iterations
+        // contribute nothing (eval/break_levels fixture).
+        let (_, value) = convert_and_run(
+            "for i:2 do for j:2 do for k:2 do begin if i=1 then break 2 fi; (i,j,k) end od od od",
+        )
+        .expect("break 2 inside three loops");
+        assert_eq!(value.to_string(), "[[[(0,0,0),(0,0,1)],[(0,1,0),(0,1,1)]]]");
+
+        // `break 1` unwinds both loops; only the completed i=0 row survives.
         let (_, value) =
-            convert_and_run("for x in [10,20] if x>10 do x fi od").expect("for-in iffor");
-        assert_eq!(value.to_string(), "[20]");
-        let (_, value) =
-            convert_and_run("for i:2 for j:2 do (i,j) od od").expect("nested loop iffor");
-        assert_eq!(value.to_string(), "[(0,0),(0,1),(1,0),(1,1)]");
-        let (_, value) = convert_and_run("for:2 if true do 7 fi od").expect("anonymous iffor");
-        assert_eq!(value.to_string(), "[7,7]");
-        let (_, value) = convert_and_run("for i:2 from 5 if i<6 do i fi od").expect("from iffor");
-        assert_eq!(value.to_string(), "[5]");
-        let (_, value) =
-            convert_and_run("for i:3 downto 1 if i>1 do i fi od").expect("downto iffor");
-        assert_eq!(value.to_string(), "[3,2]");
-        let (_, value) = convert_and_run("for x in [\"a\",\"bb\"] if #x>1 do x fi od")
-            .expect("string-row iffor");
-        assert_eq!(value.to_string(), "[\"bb\"]");
+            convert_and_run("for i:2 do for j:2 do begin if i=1 then break 1 fi; (i,j) end od od")
+                .expect("break 1 inside two loops");
+        assert_eq!(value.to_string(), "[[(0,0),(0,1)]]");
     }
 
     #[test]
-    fn for_in_iterates_strings_vecs_mats_and_ratvecs() {
-        // parser.y:506-531 accepts every subscriptable aggregate; the
-        // iterated component mirrors subscription: string→1-char string,
-        // vec→int, mat→column vec, ratvec→rat.
-        let (_, value) = convert_and_run("for c in \"abc\" do c od").expect("string iteration");
-        assert_eq!(value.to_string(), "[\"a\",\"b\",\"c\"]");
-        let (_, value) = convert_and_run("for x in vec:[1,2] do x od").expect("vec iteration");
-        assert_eq!(value.to_string(), "[1,2]");
-        let (_, value) =
-            convert_and_run("for q in ratvec:[1/2,3/4] do q od").expect("ratvec iteration");
-        assert_eq!(value.to_string(), "[1/2,3/4]");
-        let (_, value) =
-            convert_and_run("for col in mat:[[1,2,3],[4,5,6]] do col od").expect("mat iteration");
-        assert_eq!(value.to_string(), "[[ 1, 2, 3 ],[ 4, 5, 6 ]]");
-        let (_, value) = convert_and_run("for col@k in mat:[[1,2,3],[4,5,6]] do (k,col) od")
-            .expect("mat iteration with index");
-        assert_eq!(value.to_string(), "[(0,[ 1, 2, 3 ]),(1,[ 4, 5, 6 ])]");
-        // The in-part tilde reverses the traversal of every kind.
-        let (_, value) = convert_and_run("for c in \"ab\"~ do c od").expect("reversed string");
-        assert_eq!(value.to_string(), "[\"b\",\"a\"]");
-        let (_, value) = convert_and_run("for x in vec:[1,2,3]~ do x od").expect("reversed vec");
-        assert_eq!(value.to_string(), "[3,2,1]");
-        let (_, value) =
-            convert_and_run("for col in mat:[[1,2,3],[4,5,6]]~ do col od").expect("reversed mat");
-        assert_eq!(value.to_string(), "[[ 4, 5, 6 ],[ 1, 2, 3 ]]");
+    fn prints_builtin_matches_the_oracle() {
+        // axis.w:8773, 8819-8853: the variadic generic printer emits string
+        // components without quotes, other values like `print`, then one
+        // newline; a lone tuple argument prints component-wise.
+        let mut context = TypedContext::new();
+        for (source, expected) in [
+            ("prints((0,0,1))", "001\n"),
+            ("prints(\"ab\", 4)", "ab4\n"),
+            ("prints(5)", "5\n"),
+            ("prints(\"x\", (1,2), [3])", "x(1,2)[3]\n"),
+        ] {
+            let events = context.execute(&command(source)).expect("prints runs");
+            match &events[..] {
+                [TypedCommandEvent::ReportLine { text, .. }, TypedCommandEvent::Value { value, type_, .. }] =>
+                {
+                    assert_eq!(text, expected, "source: {source}");
+                    assert_eq!(value, &Value::Tuple(Vec::new()), "source: {source}");
+                    assert!(type_.is_void(), "source: {source}");
+                }
+                other => panic!("unexpected events for {source}: {other:?}"),
+            }
+        }
     }
 
     #[test]
-    fn prints_outputs_stripped_text_and_yields_void() {
-        // prints (axis.w:8851-8855, 8821-8848): strings print unquoted, a
-        // tuple argument expands one level, no separators, one newline.
-        let prints_and_run = |source: &str| -> (Type, Option<Value>, Vec<String>) {
-            let source = SourceText::new(source);
-            let program = parse(&source).expect("prints source parses");
-            assert_eq!(program.expressions.len(), 1);
-            let table = TypeTable::new();
-            let overloads = OverloadState::default();
-            let globals = IdTable::new();
-            let last_value = Value::Tuple(Vec::new());
-            let last_type: TypeCell = Rc::new(RefCell::new(Type::void()));
-            let analysis = Analysis::new(&table, &globals, &overloads, &last_value, &last_type);
-            let mut required = Type::Undetermined;
-            let typed = convert_expr(&program.expressions[0], &mut required, &analysis)
-                .expect("prints converts");
-            let mut context = EvaluationContext::new();
-            let value = typed
-                .evaluate(&mut context, Level::SingleValue)
-                .expect("prints evaluates");
-            (required, value, context.take_printed())
-        };
-        let (required, value, printed) = prints_and_run("prints(\"two\")");
-        assert_eq!(required, Type::void());
-        assert_eq!(value, Some(Value::Tuple(Vec::new())));
-        assert_eq!(printed, vec!["two\n".to_string()]);
-        // Several arguments and a tuple argument concatenate unseparated.
-        let (_, value, printed) = prints_and_run("prints(\"a\", 1, (\"b\", 2))");
-        assert_eq!(value, Some(Value::Tuple(Vec::new())));
-        assert_eq!(printed, vec!["a1b2\n".to_string()]);
-        // At no-value level the text still prints; only the value vanishes
-        // (the first half of a sequence evaluates at no-value).
-        let (_, value, printed) = prints_and_run("prints(\"x\"); 42");
-        assert_eq!(value, Some(Value::Integer(BigInt::from(42))));
-        assert_eq!(printed, vec!["x\n".to_string()]);
+    fn print_to_string_error_match_the_oracle() {
+        // axis.w:8767-8771, 8796-8859: print displays the argument tuple
+        // verbatim and returns it unchanged; to_string yields the stripped
+        // concatenation without a newline; error raises it as a runtime
+        // error (also with zero arguments).
+        let mut context = TypedContext::new();
+        let events = context
+            .execute(&command("print(\"a\", 1)"))
+            .expect("print runs");
+        match &events[..] {
+            [TypedCommandEvent::ReportLine { text, .. }, TypedCommandEvent::Value { value, .. }] => {
+                assert_eq!(text, "(\"a\",1)\n");
+                assert_eq!(value.to_string(), "(\"a\",1)");
+            }
+            other => panic!("unexpected events: {other:?}"),
+        }
+        let events = context.execute(&command("print(5)")).expect("print runs");
+        match &events[..] {
+            [TypedCommandEvent::ReportLine { text, .. }, TypedCommandEvent::Value { value, .. }] => {
+                assert_eq!(text, "5\n");
+                assert_eq!(value, &Value::Integer(5.into()));
+            }
+            other => panic!("unexpected events: {other:?}"),
+        }
+        for (source, expected) in [
+            ("to_string(42)", "\"42\""),
+            ("to_string([1,2], 3, \"x\")", "\"[1,2]3x\""),
+            ("to_string()", "\"\""),
+            ("to_string(1, \"a\", [2,3], (4,5))", "\"1a[2,3](4,5)\""),
+        ] {
+            let events = context.execute(&command(source)).expect("to_string runs");
+            match &events[..] {
+                [TypedCommandEvent::Value { value, .. }] => {
+                    assert_eq!(value.to_string(), expected, "source: {source}")
+                }
+                other => panic!("unexpected events for {source}: {other:?}"),
+            }
+        }
+        let error = context
+            .execute(&command("error(\"a\", 1, [2])"))
+            .expect_err("error raises");
+        assert!(error.to_string().contains("a1[2]"), "error: {error}");
+        let error = context
+            .execute(&command("error()"))
+            .expect_err("zero-argument error raises");
+        assert!(matches!(error.kind, ErrorKind::Runtime), "error: {error}");
     }
 
     #[test]
@@ -16731,9 +16859,16 @@ mod tests {
         assert_eq!(STARTUP_COMPLETION_NAMES.len(), 294, "oracle startup count");
         let startup: BTreeSet<&str> = STARTUP_COMPLETION_NAMES.iter().copied().collect();
         for builtin in builtin_registry() {
-            // `prints` is a special variadic function upstream
-            // (axis.w prints_builtin), declared OUTSIDE the global overload
-            // table, so it never appears in the startup completions.
+            // The variadic specials are special operators upstream
+            // (axis.w:1798-1816, 2504), never installed into the overload
+            // table, so the oracle's startup completions contain none of
+            // them (probes: `readline_completions("print")` lists the
+            // print_* domain printers but no `print`/`prints`;
+            // `readline_completions("to_")` and `("err")` likewise lack
+            // `to_string`/`error`).
+            if matches!(builtin.name, "print" | "prints" | "to_string" | "error") {
+                continue;
+            }
             assert!(
                 startup.contains(builtin.name) || builtin.name == "prints",
                 "registry builtin '{}' missing from STARTUP_COMPLETION_NAMES",

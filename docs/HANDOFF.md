@@ -4109,3 +4109,66 @@ fixture manifest, exit code, and checksums in the reference metadata/report.
   tilde after od).
 - `for i@k in [7,8]~ do (k,i) od` -> [(1,8),(0,7)]: reversed for-in with
   @index iterates pairs in reverse with original indices.
+
+### print/to_string/error variadic specials (2026-08-21e, frozen)
+
+- Oracle probe + capture 3604701: `to_string` concatenates component
+  displays with strings unquoted (`to_string(1,"a",[2,3],(4,5))` ->
+  `"1a[2,3](4,5)"`, zero args -> `""`); `print` displays the argument
+  TUPLE verbatim (strings stay quoted: `print("a",1)` prints
+  `("a",1)`) and RETURNS it as the value (zero args prints `()`);
+  `error` concatenates stripped text and raises it as a runtime error
+  (zero args -> empty message). All three are shared_variadic_builtin
+  specials (axis.w:2504, 8773+): never in the global overload table,
+  never in startup completions. Rust currently reports Undefined
+  identifier for all three; prints alone was done twice (agent-99
+  worktree + agent-102 da7bae0 — dedupe at merge).
+- Fixture eval/print_family frozen (events/meta, capture 3604701);
+  implementation is the batch after agent-99's current one. to_string
+  is used by 30+ atlas-scripts files, so this was a real coverage hole
+  the builtin-registry audit missed (the specials are not in
+  atlas-types.w's table).
+
+### Special-operator sweep CLOSED (2026-08-21e)
+
+axis.w:1806 is_special_operator is the complete list: `#` (size_of),
+`##` (concatenate), protected `## `, print, prints, to_string, error.
+Rust has `#`, `##`, protected `## `, prints; print/to_string/error are
+the frozen print_family batch. No other hidden special operators exist
+— after print_family lands this class is provably complete.
+
+## 2026-08-21f: print_family verified; final merge staged
+
+- print/to_string/error landed in main (`a9d078d`), registered
+  (`a877560`), differential `3604733` PASS (336 PASS + 1 known
+  container_syntax_errors PARTIAL), meta bumped to verified_hpc
+  (`05625c5`). Special-operator class is closed 7/7.
+- The 8 frozen fixtures (back_trace_loops, case_dot_label,
+  for_iterable_kinds, for_quiet_body, for_reversed, for_reversed_extra,
+  last_value, op_cast) are pre-registered in FIXTURE_PLANS (`0769fcd`)
+  and pass every harness configuration check locally (validate_plan
+  coverage, sha256, names, statuses, revision, exit status).
+- FACT CORRECTION: agent-99 batch-1 `4c3b120` (quiet-if/iffor, non-row
+  iteration, hidden prints) is NOT in main — `4024094` merged main
+  INTO codex/tilde-opt, not the reverse. Local pre-check of the 4
+  batch-1 fixtures against main HEAD fails as expected; they pass only
+  after the codex/tilde-opt merge.
+- Merge preview (scratch worktree, since aborted): only typed.rs
+  conflicts, 9 hunks, all on known overlap surfaces — prints
+  registration arm (dedupe), startup-completion exemption test
+  (dedupe), eval_for_loop extracted version (keep main structure,
+  absorb worktree features), agent-99's function outlining (do not
+  revert). grammar.lalrpop and syntax.rs auto-merge cleanly.
+- Post-PASS mechanics staged: `/tmp/bump_metas.py <job>` bumps the 8
+  metas (indent=1 format verified against print_family.meta.json);
+  `/tmp/language_md_promotion.txt` holds the LANGUAGE.md "Current
+  Language Slice" replacement paragraph (fill in JOBID).
+- After the merged fat differential PASSes, the only non-supported
+  matrix row is KL binary file formats (deferred pending user
+  decision) — that is the endgame question for the language gate.
+- Also staged: `/tmp/postmerge_check.py` runs the 8 frozen fixtures
+  through the harness against the main-tree debug binary in one command
+  (exit 1 on any non-PASS). All three /tmp helpers are session scratch —
+  rebuild them from this note if /tmp is cleared; the bump script logic
+  is: load meta, set rust_status=verified_hpc, add differential_job,
+  write back with indent=1 + trailing newline.
