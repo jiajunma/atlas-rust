@@ -1,0 +1,21 @@
+{
+ "fixture": "eval/vec_slices.atlas",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "upstream_evidence": ["sources/interpreter/axis.w:3846-3897", "sources/interpreter/axis.w:4407-4427"],
+ "notes": "One-dimensional slices on vec/ratvec/mat: vec and ratvec select the entry range, mat selects columns (including reverse-from-the-end via ~). Empty bounds yield an empty value. Reference captured by HPC job 3614492, differential pending.",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "fixture_sha256": "c6e9e3c15382cd559f9df8b72cbecbc2fbd8895f261e7f2c4762ea66bf257b3f",
+ "reference_job": "3614492",
+ "reference_commit": "7c77199c803d262c7399b3da4ad5320a42e60f10",
+ "reference_report_sha256": "044ea78e9d89fb4f4f09b94d9c3cb268dba6406ff59f3540da493f2a633997f6",
+ "oracle_exit_status": 0,
+ "oracle_seconds": 0.011,
+ "oracle_maxrss_kb": 3508,
+ "oracle_maxrss_approximate": false,
+ "differential_job": "pending"
+}

@@ -1,0 +1,23 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "eval/vec_slices",
+ "status": "verified_hpc_reference",
+ "events": [
+  {"kind": "ReportLine", "text": "Declaring identifier 'v': vec\n"},
+  {"kind": "Value", "value": {"type": "display", "display": "[ 3, 1, 4, 1, 5 ]"}},
+  {"kind": "Value", "value": {"type": "display", "display": "[ 3, 1, 4, 1, 5 ]"}},
+  {"kind": "Value", "value": {"type": "display", "display": "[ 5, 1, 4, 1, 3 ]"}},
+  {"kind": "Value", "value": {"type": "display", "display": "[ 1, 4, 1 ]"}},
+  {"kind": "Value", "value": {"type": "display", "display": "[ ]"}},
+  {"kind": "ReportLine", "text": "Declaring identifier 'rv': ratvec\n"},
+  {"kind": "Value", "value": {"type": "display", "display": "[ 1, 2, 3 ]/2"}},
+  {"kind": "Value", "value": {"type": "display", "display": "[ 1, 2, 3 ]/2"}},
+  {"kind": "Value", "value": {"type": "display", "display": "[ 3, 2, 1 ]/2"}},
+  {"kind": "Value", "value": {"type": "display", "display": "[ 2, 3 ]/2"}},
+  {"kind": "ReportLine", "text": "Declaring identifier 'M': mat\n"},
+  {"kind": "Value", "value": {"type": "display", "display": "\n| 1, 3, 5 |\n| 2, 4, 6 |"}},
+  {"kind": "Value", "value": {"type": "display", "display": "\n| 1, 3, 5 |\n| 2, 4, 6 |"}},
+  {"kind": "Value", "value": {"type": "display", "display": "\n| 5, 3, 1 |\n| 6, 4, 2 |"}},
+  {"kind": "Value", "value": {"type": "display", "display": "\n| 3 |\n| 4 |"}}
+ ]
+}
