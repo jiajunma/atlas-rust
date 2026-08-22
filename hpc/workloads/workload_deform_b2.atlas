@@ -5,7 +5,8 @@ ib := inner_class(rb,[[1,0],[0,1]])
 rfb : RealForm
 rfb := real_form(ib,2)
 p : Param
+q : ParamPol
 i : int
 r : int
 r := 0
-while r < 20 do i := 0; while i < 6 do p := param(KGB(rfb,i),[1,1],[1,0]/2); deform(p); i := i + 1; () od; r := r + 1; () od
+while r < 100 do i := 0; while i < 6 do p := param(KGB(rfb,i),[1,1],[1,0]/2); q := deform(p); i := i + 1; () od; r := r + 1; () od

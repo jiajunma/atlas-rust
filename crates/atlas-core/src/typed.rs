@@ -10454,8 +10454,11 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 1,
             ),
             // deform_wrapper (atlas-types.w:8084-8105): the KL deformation
-            // of a parameter, producing an SR_poly (ParamPol).
-            domain_builtin_validate(
+            // of a parameter, producing an SR_poly (ParamPol). Its
+            // no_value gate comes FIRST (atlas-types.w:8085-8087, right
+            // after the type-level get_own), so it skips — precedent
+            // block_deform (atlas-types.w:8182).
+            domain_builtin_skip(
                 "deform",
                 primitive_type(Prim::Param),
                 primitive_type(Prim::ParamPol),
