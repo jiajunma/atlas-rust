@@ -4482,3 +4482,77 @@ the frozen print_family batch. No other hidden special operators exist
 - Known not-done: `P[t]:=s` coefficient ASSIGNMENT (upstream
   assign_coef, atlas-types.w:5655/7771) not yet implemented; watch the
   corpus for it.
+
+## 2026-08-22: corpus loop — do_expr, tabled patterns, return cells, inner-class chain
+
+- `075c5e8`/`2e1df2d` do_expr refactor + lalrpop borrow-after-move fix.
+- `66982ed` `bind_pattern_leaves` expands Tabled types (fixes destructuring
+  a tabled tuple like `ratmat(M,,d)`); whole-pattern binds keep the tabled
+  type.
+- `3d9a332` a local variable shadowing an overload name untables only when
+  the local type is `Function` with undetermined list (fixes lazy_lists
+  `denom`).
+- `67a1395` empty root datum: `build_explicit_datum` accepts a 0x0 Lie
+  type (atlas-types.w:1230); `as_matrix_rows_and_cols` preserves column
+  count for 0xN matrices; lattice_rank<semisimple_rank and the Cartan
+  check failures report the oracle wording "Matrices of (co)roots give
+  invalid Cartan matrix".
+- `f070407` return values convert against a per-function RESULT-TYPE CELL
+  (`Analysis.return_type`): `convert_lambda_expression` builds a placeholder
+  cell, seeds it with the annotated/tabled result type, specialises it with
+  the converted body type, and `Expr::Return` converts against the cell —
+  so `return` in a void context (for-loop body) is no longer voided
+  (fixes `lex_lesseq`-style functions returning () and W_orbit's
+  "(bool,WeylElt) while void was needed").
+- `2ad918c` `extend` validates per-letter rank bounds
+  (lwb[1,2,2,4,6,4,2,0]/upb, total-rank cap 32) with the oracle's exact
+  wordings, and expands 'T' into `rank` separate T1 factors so rank 0
+  adds nothing (atlas-types.w:205-207). This cleared 172 corpus scripts
+  blocked on "Too few inner class symbols"
+  (`inner_class(simply_connected("G2"),"e")` built a spurious T0 factor).
+- `167e11d` every LINE of a multi-line report is prefixed by setw(2*depth)
+  (global.cpp:2972-2984): the `set_type` echo's `with injectors:` line
+  indents too. OUTPUT_DIFF dropped 34→10.
+- `d16bb00` counted-for loops steer the body from the REQUIRED type like
+  ordinary for loops (axis.w:6457-6464): row context hands the component
+  type down, other types go through row_coercion wrapping the loop.
+  Fixes polynomial.at:358 `for i:r do for j:c do [M[i,j]] od od`
+  ([[vec]] target).
+- `0e24226` component/field transforms only optimise to an in-place
+  transform when the resolved call is a BUILTIN whose first argument is
+  the unconverted selection (axis.w:8422-8455, 8572-8596); a user
+  overload (e.g. `set # = #@([vec],vec)` storing a BuiltinFunction
+  denotation, basic.at:468) or an implicit conversion falls back to an
+  ordinary component/field assignment of the whole call. Killed the
+  typed.rs:4290 `unreachable!` panic in 9 scripts (all ParamPol users
+  via W_order.at's `new#:=j`). Known divergence: the fallback does not
+  let-wrap a side-effecting index expression (upstream does); the index
+  is re-evaluated inside the converted call's subscription.
+- `a9eba08` real-form order tiebreak: adjoint fiber bit i maps to the
+  i-th TWIST-FIXED simple generator ascending — upstream defines the key
+  by `compacts.unslice(simple_roots_imaginary())` (cartanclass.cpp:929-948,
+  innerclass.cpp:656-663). The previous shift-based "verification"
+  (first flipped position of the grading shift) misassigned bits whenever
+  a shift flipped more than one simple-imaginary position (A3 dual) and
+  fired its own invariant on essentially every nontrivial inner class
+  (180 corpus scripts blocked at basic.at:1380). Replaced by the direct
+  unslice enumeration.
+- `be68ac4` discrimination (`case`) branches convert against the SHARED
+  context type, not an undetermined type merged afterwards
+  (axis.w:5179-5189: no balancing; void context voids every branch) —
+  fixes Gaussian_elim.at:86 `case pi | pivot: i+:=1 | else () esac` in a
+  do-body. Same commit: the for-loop aggregate is untabled before the
+  iterability check (axis-types.w:375-384 `kind()` untables), so a tabled
+  row like `sparse_mat` iterates (sparse.at).
+- grammar: `'@' cast` parses as a nullary lambda whose body is the cast
+  (parser.y:226) — number_theory.at:102 `@bool: is_Fermat_prime(b,n)`.
+- Corpus trajectory (240 scripts, HPC script_corpus.sbatch):
+  3614728: MATCH 4-ish/OUTPUT_DIFF 21, blockers ratmat 84 + W_orbit 29;
+  3614734 (f070407): MATCH 10, inner-class blocker 172 surfaced;
+  3614781 (167e11d): MATCH 35, OUTPUT_DIFF 10, twist-fixed 171 surfaced;
+  3614790 (0e24226): panics gone, polynomial gone, MATCH 35, 7
+  PARSE_FAIL (`@bool:`) — since fixed.
+- Watch: e8_gap.at matrix subscription out-of-range at
+  `e8_gap_sgn_reflection[1,power_3[j]]` (suspect `^[...]` matrix-from-rows
+  shape); corpus stderr cascades ("Abandoning reading of file") make later
+  syntax errors noise — only the FIRST error (report category) matters.
