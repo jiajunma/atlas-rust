@@ -14832,7 +14832,9 @@ pub(crate) fn call_with_printed(
                 .into_iter()
                 .enumerate()
             {
-                if flag { singular |= 1 << s; }
+                if flag {
+                    singular |= 1 << s;
+                }
             }
             // Survivors in subset order (loc[z] = survivors.size()).
             let mut loc = vec![usize::MAX; size];
@@ -14844,9 +14846,7 @@ pub(crate) fn call_with_printed(
                 let mut survives = true;
                 for s in 0..block.rank() {
                     if singular & (1 << s) != 0
-                        && block
-                            .descent(z, s)
-                            .is_some_and(|d| d.is_descent())
+                        && block.descent(z, s).is_some_and(|d| d.is_descent())
                     {
                         survives = false;
                         break;

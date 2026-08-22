@@ -3449,24 +3449,56 @@ fn convert_last_value(
 /// variable (`{prints@T}`, capture 3604640).
 fn builtin_function_value(index: usize, types: &TypeTable) -> Value {
     let builtin = &builtin_registry()[index];
-    let argument = if matches!(builtin.arg_type, Type::Undetermined) {
-        "T".to_owned()
-    } else {
-        builtin.arg_type.display(types).to_string()
-    };
+    let argument = generic_type_display(&builtin.arg_type, types);
     Value::BuiltinFunction {
         builtin: index,
         name: format!("{}@{}", builtin.name, argument),
     }
 }
 
+/// Render a generic special operator's registered argument pattern. The
+/// upstream capture printer calls an undetermined component `T`, including
+/// when it is nested inside a row or tuple (`#@[T]`, `##@([T],[T])`), while
+/// ordinary type diagnostics continue to print the same component as `*`.
+fn generic_type_display(type_: &Type, types: &TypeTable) -> String {
+    match type_ {
+        Type::Undetermined => "T".to_owned(),
+        Type::Row(component) => format!("[{}]", generic_type_display(component, types)),
+        Type::Tuple(components) => {
+            if components.is_empty() {
+                "void".to_owned()
+            } else {
+                format!(
+                    "({})",
+                    components
+                        .iter()
+                        .map(|component| generic_type_display(component, types))
+                        .collect::<Vec<_>>()
+                        .join(",")
+                )
+            }
+        }
+        Type::Union(variants) => format!(
+            "({})",
+            variants
+                .iter()
+                .map(|variant| generic_type_display(variant, types))
+                .collect::<Vec<_>>()
+                .join("|")
+        ),
+        other => other.display(types).to_string(),
+    }
+}
+
 /// Convert an operator cast `name @ type` (parser.y:381-382;
 /// axis.w:7356-7391 op_cast_expr). An exact overload-table entry (startup
-/// builtin or user `set` variant) wins; otherwise the hidden generic
-/// `prints` instance accepts any argument type, its upstream entry being
-/// `prints@@T`. Anything else is the oracle's `No instance for name@type
-/// found` (capture 3604640). Upstream's second-chance unique polymorphic
-/// variant match has no frozen fixture yet and is not attempted.
+/// builtin or user `set` variant) wins; otherwise the hidden generic special
+/// instances accept the argument patterns described below, with `prints@@T`
+/// accepting any argument type. The other generic special operators (`print`, `to_string`,
+/// `error`, `#`, and `##`) use the same controlled fallback described by
+/// `axis.w:6743-6848`; ordinary overloads are never selected by mere
+/// specialisability. Anything else is the oracle's `No instance for
+/// name@type found` (capture 3604640).
 fn convert_op_cast(
     name: &SpannedValue<String>,
     arg_type: &TypeExpr,
@@ -3495,11 +3527,11 @@ fn convert_op_cast(
             analysis,
         );
     }
-    if name.value == "prints" {
-        let index = hidden_builtin_by_pattern("prints", |_| true)
-            .expect("the prints builtin is always registered");
+    if let Some((index, result_type)) =
+        hidden_special_variant(&name.value, &cast_type, analysis.types)
+    {
         return conform_types(
-            &Type::function(cast_type, Type::void()),
+            &Type::function(cast_type.clone(), result_type),
             required,
             TypedExpr::Denotation(builtin_function_value(index, analysis.types)),
             span,
@@ -17320,6 +17352,28 @@ mod tests {
             let error = context.execute(&command(source)).expect_err(source);
             assert_eq!(error.kind, ErrorKind::Type);
             assert_eq!(error.message, message, "source: {source}");
+        }
+    }
+
+    #[test]
+    fn operator_casts_select_generic_special_instances() {
+        let mut context = TypedContext::new();
+        for (source, expected) in [
+            ("print@int", "{print@T}"),
+            ("prints@int", "{prints@T}"),
+            ("to_string@int", "{to_string@T}"),
+            ("error@int", "{error@T}"),
+            ("##@([int],[int])", "{##@([T],[T])}"),
+            ("#@[int]", "{#@[T]}"),
+        ] {
+            let events = context.execute(&command(source)).expect(source);
+            assert!(
+                matches!(
+                    &events[..],
+                    [TypedCommandEvent::Value { value, .. }] if value.to_string() == expected
+                ),
+                "source: {source}"
+            );
         }
     }
 

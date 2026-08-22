@@ -1,0 +1,13 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "eval/op_cast_specials",
+ "status": "pending_hpc_reference",
+ "events": [
+  {"kind": "Value", "value": {"type": "display", "display": "{print@T}"}},
+  {"kind": "Value", "value": {"type": "display", "display": "{prints@T}"}},
+  {"kind": "Value", "value": {"type": "display", "display": "{to_string@T}"}},
+  {"kind": "Value", "value": {"type": "display", "display": "{error@T}"}},
+  {"kind": "Value", "value": {"type": "display", "display": "{##@([T],[T])}"}},
+  {"kind": "Value", "value": {"type": "display", "display": "{#@[T]}"}}
+ ]
+}

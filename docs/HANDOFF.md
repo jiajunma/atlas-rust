@@ -4,6 +4,25 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-22b (generic operator casts local; HPC unavailable)
+
+- `op@type` now implements the upstream generic-special fallback for `print`,
+  `prints`, `to_string`, `error`, `#`, and `##`, including nested wildcard
+  capture names (`T`) and the existing exact-overload precedence. The RED/GREEN
+  regression is `typed::tests::operator_casts_select_generic_special_instances`;
+  local CLI output matches the upstream executable for the six-line fixture
+  `eval/op_cast_specials`.
+- New fixture/reference files are intentionally marked
+  `pending_hpc_reference` / `pending_hpc_differential`. The reference capture
+  and differential could not be submitted or collected because `ikkemhpc`
+  (`10.26.14.64:22`) timed out and the local SOCKS5 proxy was not listening.
+  Do not promote this slice or `partial_kl_block_proper` until HPC evidence is
+  available.
+- Fresh local gates after the slice: atlas-core **362 passed**,
+  atlas-real-group **494 passed**, Clippy (`-D warnings`) clean, rustfmt and
+  `git diff --check` clean. The existing untracked
+  `crates/atlas-real-group/examples/fiber_probe.rs` remains user-owned.
+
 ## Checkpoint - 2026-08-22a (partial_KL_block LocatedBlock rewrite FIXED; differential 3612366 IN FLIGHT)
 
 Branch = **main = `6c5a081`**, pushed + HPC-synced. The 2026-08-21j P0 is
