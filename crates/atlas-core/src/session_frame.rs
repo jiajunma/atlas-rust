@@ -474,10 +474,16 @@ impl<P: FileProvider, S: FileSink> SessionFrame<P, S> {
                     }
                 }
                 SessionEvent::ReportLine { text, span } => {
-                    events.push(SessionEvent::Output {
-                        text: format!("{}{text}", "  ".repeat(self.active.len())),
-                        span,
-                    });
+                    // Upstream prefixes EVERY line with setw(2*depth)
+                    // (global.cpp:2972-2984): a multi-line report like the
+                    // set_type echo indents its `with injectors:` line too.
+                    let indent = "  ".repeat(self.active.len());
+                    let text = text
+                        .split_inclusive('\n')
+                        .filter(|line| !line.is_empty())
+                        .map(|line| format!("{indent}{line}"))
+                        .collect();
+                    events.push(SessionEvent::Output { text, span });
                 }
                 SessionEvent::Diagnostic(diagnostic) => {
                     if diagnostic.kind != ErrorKind::Io {
