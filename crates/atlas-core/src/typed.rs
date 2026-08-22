@@ -3296,27 +3296,18 @@ pub fn convert_expr(
                     subject.span(),
                 ));
             };
-            // Branch bodies share one type pattern, converted in source
-            // order: the first body fixes it and a later mismatch reports
-            // against what the earlier branches needed.
+            // Branch bodies convert against ONE shared type pattern seeded
+            // with the required type (axis.w:5179-5189: discrimination
+            // branches use "the type provided by the context as possibly
+            // modified by the conversion of previous branches" — no
+            // balancing), so a void context voids every branch.
             let mut common = required.clone();
             let mut converted_branches = Vec::new();
             let mut fallback = None;
             let mut seen_labels = BTreeSet::new();
             for branch in branches {
                 let Some(tag) = &branch.tag else {
-                    let mut found = Type::Undetermined;
-                    let body = convert_expr(&branch.body, &mut found, analysis)?;
-                    if !common.specialise(&found, analysis.types) {
-                        return Err(type_error(
-                            format!(
-                                "found {} while {} was needed.",
-                                found.display(analysis.types),
-                                common.display(analysis.types)
-                            ),
-                            branch.body.span(),
-                        ));
-                    }
+                    let body = convert_expr(&branch.body, &mut common, analysis)?;
                     fallback = Some(Box::new(body));
                     continue;
                 };
@@ -3400,10 +3391,9 @@ pub fn convert_expr(
                         constant_locals.remove(name);
                     }
                 }
-                let mut found = Type::Undetermined;
                 let body = convert_expr(
                     &branch.body,
-                    &mut found,
+                    &mut common,
                     &Analysis {
                         types: analysis.types,
                         globals: analysis.globals,
@@ -3417,16 +3407,6 @@ pub fn convert_expr(
                         last_value_type: analysis.last_value_type,
                     },
                 )?;
-                if !common.specialise(&found, analysis.types) {
-                    return Err(type_error(
-                        format!(
-                            "found {} while {} was needed.",
-                            found.display(analysis.types),
-                            common.display(analysis.types)
-                        ),
-                        branch.body.span(),
-                    ));
-                }
                 converted_branches.push((index as u16, shape, body));
             }
             conform_types(
@@ -3778,7 +3758,14 @@ fn convert_for_loop(
     // the term itself (axis.w:5926-5936 `index_kind` retries with
     // KType and Param index types) and the component is the Split
     // coefficient.
-    let (index_type, component) = match &found {
+    // The aggregate's STRUCTURE decides iterability, so a tabled type
+    // stands for its expansion (axis-types.w:375-384: `kind()` untables);
+    // a tabled row like `sparse_mat` iterates its (tabled) component.
+    let untabled = match &found {
+        Type::Tabled(number) => analysis.types.expansion(*number).clone(),
+        other => other.clone(),
+    };
+    let (index_type, component) = match &untabled {
         Type::Row(component) => (int_type(), component.as_ref().clone()),
         Type::Primitive(Prim::String) => (int_type(), string_type()),
         Type::Primitive(Prim::Vec) => (int_type(), int_type()),
