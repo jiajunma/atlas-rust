@@ -2448,6 +2448,19 @@ pub fn convert_expr(
                     .map(|(element, component)| convert_expr(element, component, analysis))
                     .collect::<Result<Vec<_>, _>>()?;
                 let found = Type::tuple(components);
+                // A void context voids the display as a whole
+                // (conform_types' voiding), e.g. the non-final component
+                // `(e:=S1[i],j:=i+1)` of an if-condition sequence
+                // (combinatorics.at:826).
+                if required.is_void() {
+                    return conform_types(
+                        &found,
+                        required,
+                        TypedExpr::TupleDisplay(converted),
+                        *span,
+                        analysis,
+                    );
+                }
                 if let Some(coercion) =
                     crate::coercions::coercion_between(&found, required, analysis.types)
                 {
