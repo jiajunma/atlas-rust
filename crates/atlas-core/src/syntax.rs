@@ -1805,10 +1805,25 @@ fn while_expression(while_span: SourceSpan, tail: (Option<Expr>, Expr, SourceSpa
     }
 }
 
-/// `while let bindings in condition do ... od` makes the let expression the
-/// loop guard, so its bindings are rebuilt for every iteration.
-fn while_let_condition(let_span: SourceSpan, bindings: Vec<LetBinding>, condition: Expr) -> Expr {
-    let_expression(let_span, finish_let(bindings, condition))
+/// `while let bindings in condition do body od` rebuilds the bindings for
+/// every iteration and keeps them visible to both the guard and body. Desugar
+/// it to an unconditional while whose body breaks when the guard is false.
+fn while_let_tail(
+    let_span: SourceSpan,
+    bindings: Vec<LetBinding>,
+    condition: Expr,
+    body: Expr,
+    od: SourceSpan,
+    out_reversed: bool,
+) -> (Option<Expr>, Expr, SourceSpan, bool) {
+    let conditional = Expr::Conditional {
+        span: join_span(condition.span(), body.span()),
+        condition: Box::new(condition),
+        then_branch: Box::new(body),
+        else_branch: Box::new(Expr::Break { levels: 0, span: od }),
+    };
+    let scoped_body = let_expression(let_span, finish_let(bindings, conditional));
+    (None, scoped_body, od, out_reversed)
 }
 
 fn prepend_while_effect(
