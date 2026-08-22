@@ -12,6 +12,13 @@ spelling `T` (`#@[T]`, `##@([T],[T])`) rather than the diagnostic spelling
 `verified_hpc` for both fixtures (349-fixture runnable PASS; whole-run
 `PARTIAL` only for existing declared harness cases).
 
+## String slices verified (2026-08-22)
+
+String one-dimensional slices are implemented in `typed.rs` with upstream
+byte-length, half-open, from-end, reverse-range, and diagnostic behavior.
+Fixtures `eval/string_slices{,_rejected}` are verified by reference capture
+3614066 and differential 3614103 (351-fixture runnable PASS).
+
 ## ordinary deform proper lookup verified (2026-08-21)
 
 `deform(Param)` now uses the `RepTable::lookup` partial common block for each

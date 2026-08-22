@@ -29,6 +29,21 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   The existing untracked `crates/atlas-real-group/examples/fiber_probe.rs`
   remains user-owned.
 
+## Checkpoint - 2026-08-22c (string slices HPC-verified)
+
+- The upstream script corpus workload **3614053** ran six scripts with the
+  fixed GCC 12.1 runtime: C++ exit 0 for all, and the first Rust blocker was
+  `Cannot slice value of type string` while loading `basic.at`. This exposed
+  the missing string slice family in the Rust typed evaluator.
+- `Value::String` one-dimensional slices now support byte-length half-open
+  ranges, from-end bounds, reverse ranges, and exact range/type diagnostics.
+  Reference capture **3614066**, preflight **3614104**, and CPU differential
+  **3614103** all pass; differential has 351 fixtures and 3 pre-existing
+  declared pending cases, with both string-slice fixtures exact.
+- The corpus harness itself now binds `/public/software/gcc/gcc-12.1` directly
+  and records C++/Rust stderr and exit status (`a6a8549`), so missing
+  `GLIBCXX_*` cannot be misclassified as a language mismatch.
+
 ## Checkpoint - 2026-08-22a (partial_KL_block LocatedBlock rewrite FIXED; differential 3612366 IN FLIGHT)
 
 Branch = **main = `6c5a081`**, pushed + HPC-synced. The 2026-08-21j P0 is
