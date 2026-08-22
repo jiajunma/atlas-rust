@@ -3158,6 +3158,11 @@ fn compact_expressions(expressions: &[Expr]) -> String {
 }
 
 fn compact_type(type_expr: &TypeExpr) -> String {
+    // A user type name has no table here; print it as written rather than
+    // collapsing to the undetermined `*`.
+    if let TypeExpr::Named { name, .. } = type_expr {
+        return name.clone();
+    }
     type_expr
         .resolve()
         .display(&crate::types::TypeTable::new())

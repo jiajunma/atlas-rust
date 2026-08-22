@@ -113,6 +113,10 @@ pub struct Lexer<'a> {
     /// Names registered by `set_type`, shared with the session's typed
     /// context (lexer.w:419-448 `is_defined_type`).
     defined_types: std::rc::Rc<std::cell::RefCell<std::collections::BTreeSet<String>>>,
+    /// Between `set_type [` and the end of that command every identifier
+    /// lexes as TYPE_ID, so mutually recursive definitions and the injector
+    /// or projector names scan uniformly (lexer.w:425-428, 473-476).
+    type_defining: bool,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -141,6 +145,7 @@ impl<'a> Lexer<'a> {
             previous_termination: None,
             at_command_start: true,
             defined_types,
+            type_defining: false,
         }
     }
 
@@ -169,6 +174,7 @@ impl<'a> Lexer<'a> {
         self.nesting.clear();
         self.prevent_termination = None;
         self.previous_termination = None;
+        self.type_defining = false;
         self.at_command_start = true;
         self.ended = self.offset >= bytes.len();
     }
@@ -205,6 +211,9 @@ impl<'a> Lexer<'a> {
             b'\n' => {
                 self.offset += 1;
                 self.at_command_start = true;
+                // The command-terminating newline ends the type_defining
+                // state (lexer.w: state=ended resets at the next token).
+                self.type_defining = false;
                 Ok(token(source, TokenKind::Newline, start, self.offset))
             }
             b'0'..=b'9' => {
@@ -223,11 +232,11 @@ impl<'a> Lexer<'a> {
                 }
                 let word = &source.as_str()[start..self.offset];
                 let kind = if KEYWORDS.contains(&word) {
-                    self.apply_keyword(word);
+                    self.apply_keyword(word)?;
                     TokenKind::Keyword(word.to_owned())
                 } else if PRIMITIVE_TYPES.contains(&word) {
                     TokenKind::PrimitiveType(word.to_owned())
-                } else if self.defined_types.borrow().contains(word) {
+                } else if self.type_defining || self.defined_types.borrow().contains(word) {
                     TokenKind::TypeIdentifier
                 } else {
                     TokenKind::Identifier
@@ -404,7 +413,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn apply_keyword(&mut self, word: &str) {
+    fn apply_keyword(&mut self, word: &str) -> Result<(), Diagnostic> {
         match word {
             "let" => self.nesting.push(NestingKind::Let),
             "begin" | "if" | "while" | "for" | "case" => self.nesting.push(NestingKind::Block),
@@ -422,9 +431,19 @@ impl<'a> Lexer<'a> {
             "and" | "or" | "not" => self.prevent_termination = Some('~'),
             "whattype" => self.prevent_termination = Some('W'),
             "set" => self.prevent_termination = Some('S'),
-            "set_type" => self.prevent_termination = Some('T'),
+            "set_type" => {
+                self.prevent_termination = Some('T');
+                // lexer.w:473-476: with the newline-suppressing 'T' active,
+                // skip ahead (across newlines and comments) and enter the
+                // type_defining state only for the `set_type [ ... ]` form.
+                self.skip_space()?;
+                if self.source.as_str().as_bytes().get(self.offset) == Some(&b'[') {
+                    self.type_defining = true;
+                }
+            }
             _ => {}
         }
+        Ok(())
     }
 
     fn apply_punctuation(&mut self, c: char) {

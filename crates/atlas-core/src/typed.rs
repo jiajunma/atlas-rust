@@ -2378,7 +2378,15 @@ pub fn convert_expr(
         Expr::Cast { target, body, .. } => {
             // The cast's whole effect is conversion-time: convert the body
             // against the denoted type, then conform THAT to the context.
-            let mut cast_type = target.resolve();
+            // The target resolves against the session table so user type
+            // names (TYPE_ID) are valid cast targets.
+            let mut cast_type = target.resolve_in(analysis.types).map_err(|unknown| {
+                Diagnostic::new(
+                    ErrorKind::Name,
+                    format!("undefined type name '{}'", unknown.value),
+                    Some(unknown.span),
+                )
+            })?;
             let converted = convert_expr(body, &mut cast_type, analysis)?;
             conform_types(&cast_type, required, converted, expression.span(), analysis)
         }
@@ -3586,7 +3594,13 @@ fn convert_op_cast(
     required: &mut Type,
     analysis: &Analysis<'_>,
 ) -> Result<TypedExpr, Diagnostic> {
-    let cast_type = arg_type.resolve();
+    let cast_type = arg_type.resolve_in(analysis.types).map_err(|unknown| {
+        Diagnostic::new(
+            ErrorKind::Name,
+            format!("undefined type name '{}'", unknown.value),
+            Some(unknown.span),
+        )
+    })?;
     let merged = merged_variants(&name.value, analysis.overloads, analysis.types);
     if let Some(variant) = merged.iter().find(|variant| variant.arg_type == cast_type) {
         let (value, deduced) = match variant.origin {
@@ -4744,7 +4758,16 @@ fn convert_parameter(
 ) -> Result<(Type, SlotShape, Vec<PatternLeaf>), Diagnostic> {
     match parameter {
         LambdaParam::Typed(typed) => {
-            let declared = typed.type_expr.resolve();
+            // Resolve against the session table so user-defined type names
+            // (TYPE_ID annotations like `(maybe_a_vec x)`) bind; an unknown
+            // name is the same diagnostic as a set_type spec reference.
+            let declared = typed.type_expr.resolve_in(types).map_err(|unknown| {
+                Diagnostic::new(
+                    ErrorKind::Name,
+                    format!("undefined type name '{}'", unknown.value),
+                    Some(unknown.span),
+                )
+            })?;
             let leaves = bind_pattern_leaves(&typed.pattern, &declared, types)?;
             Ok((declared, pattern_slot_shape(&typed.pattern), leaves))
         }
@@ -4915,7 +4938,14 @@ fn convert_rec_lambda_expression(
         parameter_types.push(parameter_type.clone());
         shapes.push(shape.clone());
     }
-    let function_type = Type::function(Type::tuple(parameter_types), result_type.resolve());
+    let resolved_result = result_type.resolve_in(analysis.types).map_err(|unknown| {
+        Diagnostic::new(
+            ErrorKind::Name,
+            format!("undefined type name '{}'", unknown.value),
+            Some(unknown.span),
+        )
+    })?;
+    let function_type = Type::function(Type::tuple(parameter_types), resolved_result.clone());
     let mut locals = analysis.locals.clone();
     let mut constant_locals = analysis.constant_locals.clone();
     // The call frame always holds the self binding, so depths shift by one
@@ -4965,7 +4995,7 @@ fn convert_rec_lambda_expression(
         param_names: Rc::from(param_names),
     };
     if required.is_void() {
-        let mut dummy = result_type.resolve();
+        let mut dummy = resolved_result.clone();
         let converted = convert_expr(body, &mut dummy, &body_analysis)?;
         return Ok(TypedExpr::Void(Box::new(closure(converted))));
     }
@@ -4979,7 +5009,7 @@ fn convert_rec_lambda_expression(
             *span,
         ));
     }
-    let mut result_required = result_type.resolve();
+    let mut result_required = resolved_result;
     let converted = convert_expr(body, &mut result_required, &body_analysis)?;
     Ok(closure(converted))
 }
