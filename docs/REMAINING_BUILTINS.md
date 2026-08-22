@@ -1199,7 +1199,8 @@ took 0.012/0.008s and 4368/4288 KiB; report SHA256 is
   overload variants (builtin -> `BuiltinFunction` value, user -> closure).
   Generic special operators have a separate upstream-controlled cast path;
   its positive and rejected shape fixtures are frozen locally in
-  `eval/op_cast_specials{,_rejected}` but await HPC capture/differential.
+  `eval/op_cast_specials{,_rejected}`; both were verified by reference capture
+  3613892 and differential 3613996.
   Upstream's separate second pass for a unique ordinary polymorphic variant
   remains unimplemented (no fixture covers it; see `convert_op_cast`).
 - `$` in the verbose "Converted expression" trace prints the captured value

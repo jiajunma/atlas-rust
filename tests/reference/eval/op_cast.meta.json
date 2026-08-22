@@ -16,7 +16,7 @@
  "oracle_seconds": 0.014,
  "oracle_maxrss_kb": 3648,
  "oracle_maxrss_approximate": false,
- "notes": "Expression-level operator/identifier cast (parser.y:381-383): selects one overload as a first-class function value (%@(int,int), +@(int,int), prints@string); rejection 'No instance for mod@(int,int) found'. Reference frozen by HPC capture 3604565; Rust differential pending op_cast. EXTENDED 2026-08-21d: IDENT@type on user overloads (parser.y:382) — u@int prints the multi-line closure, (u@int)(3) applies; rejected u@string/+@int -> 'No instance for X found'; unary -@int, #@vec print {-@int}/{#@vec}; prints@string displays as {prints@T} (generic T).",
+ "notes": "Expression-level operator/identifier cast (parser.y:381-383): selects one overload as a first-class function value (%@(int,int), +@(int,int), prints@string); rejection 'No instance for mod@(int,int) found'. Reference frozen by HPC capture 3604565; Rust differential 3607276 PASS. EXTENDED 2026-08-21d: IDENT@type on user overloads (parser.y:382) — u@int prints the multi-line closure, (u@int)(3) applies; rejected u@string/+@int -> 'No instance for X found'; unary -@int, #@vec print {-@int}/{#@vec}; prints@string displays as {prints@T} (generic T).",
  "hpc_capture": {
   "fresh_process_required": true,
   "timeout_seconds": 30,
