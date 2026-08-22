@@ -2598,6 +2598,30 @@ pub fn convert_expr(
                 Type::Primitive(Prim::RatVec) if int_index => Type::Primitive(Prim::Rat),
                 Type::Primitive(Prim::Mat) if int_index => Type::Primitive(Prim::Vec),
                 Type::Primitive(Prim::Mat) if pair_index => Type::Primitive(Prim::Int),
+                // Term-coefficient selection (axis.w:3962-3969,
+                // index_kind's K_type_poly_term and mod_poly_term).
+                Type::Primitive(Prim::KTypePol)
+                    if matches!(index_type, Type::Primitive(Prim::KType)) =>
+                {
+                    if *reversed {
+                        return Err(type_error(
+                            "Cannot do reversed subscription of a KTypePol".into(),
+                            *span,
+                        ));
+                    }
+                    Type::Primitive(Prim::Split)
+                }
+                Type::Primitive(Prim::ParamPol)
+                    if matches!(index_type, Type::Primitive(Prim::Param)) =>
+                {
+                    if *reversed {
+                        return Err(type_error(
+                            "Cannot do reversed subscription of a ParamPol".into(),
+                            *span,
+                        ));
+                    }
+                    Type::Primitive(Prim::Split)
+                }
                 _ => {
                     return Err(type_error(
                         format!(
@@ -11570,6 +11594,44 @@ impl TypedExpr {
                             Ok(at_level(level, || Value::Vector(matrix.column(position))))
                         }
                     },
+                    // Term-coefficient selection
+                    // (atlas-types.w:5631-5643, 7744-7759): the mismatch
+                    // and finality checks run at every level, only the
+                    // push is gated.
+                    Value::Domain(crate::domain_builtins::DomainValue::KTypePol(
+                        polynomial,
+                    )) => {
+                        let Value::Domain(crate::domain_builtins::DomainValue::KType(ktype)) =
+                            index
+                        else {
+                            panic!("analysis let a non-KType index into a KTypePol: {index}")
+                        };
+                        let coefficient = crate::domain_builtins::ktype_pol_coefficient(
+                            &polynomial,
+                            &ktype,
+                            *span,
+                        )
+                        .map_err(Control::Runtime)?;
+                        Ok(at_level(level, || {
+                            Value::Domain(crate::domain_builtins::DomainValue::Split(coefficient))
+                        }))
+                    }
+                    Value::Domain(crate::domain_builtins::DomainValue::ParamPol(polynomial)) => {
+                        let Value::Domain(crate::domain_builtins::DomainValue::Param(parameter)) =
+                            index
+                        else {
+                            panic!("analysis let a non-Param index into a ParamPol: {index}")
+                        };
+                        let coefficient = crate::domain_builtins::param_pol_coefficient(
+                            &polynomial,
+                            &parameter,
+                            *span,
+                        )
+                        .map_err(Control::Runtime)?;
+                        Ok(at_level(level, || {
+                            Value::Domain(crate::domain_builtins::DomainValue::Split(coefficient))
+                        }))
+                    }
                     other => panic!("analysis let a non-subscriptable value through: {other}"),
                 }
             }

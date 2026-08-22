@@ -6946,6 +6946,92 @@ fn expand_final(
         .collect())
 }
 
+/// `test_final` for K-types (atlas-types.w:6613-6630): reject a non-final
+/// K-type with the oracle's diagnostic. Upstream's reason chain reports
+/// "not standard" only when the dominant/nonzero/semifinal/normal chain
+/// all pass (its first `if` is overwritten by the chain that follows).
+fn test_final_ktype(ktype: &KTypeValue, descr: &str, span: SourceSpan) -> Result<(), Diagnostic> {
+    let rc = rep_context(&ktype.context);
+    let term = &ktype.ktype;
+    let check = |predicate: &dyn Fn(&KType, &RepContext<'_>) -> Result<bool, StructureError>| {
+        predicate(term, &rc).map_err(|error| structure_diagnostic(error, span))
+    };
+    if check(&KType::is_final)? {
+        return Ok(());
+    }
+    let reason = if !check(&KType::is_dominant)? {
+        "not dominant"
+    } else if !check(&KType::is_nonzero)? {
+        "zero"
+    } else if !check(&KType::is_semifinal)? {
+        "not semifinal"
+    } else if !check(&KType::is_normal)? {
+        "not normal"
+    } else {
+        "not standard"
+    };
+    let shown = DomainValue::KType(ktype.clone()).to_string();
+    Err(runtime(
+        span,
+        format!("{descr}:\n  {shown}\n  K-type is {reason}"),
+    ))
+}
+
+/// Term-coefficient selection into a KTypePol (atlas-types.w:5631-5643
+/// `K_type_pol_coefficient::evaluate`): an absent term has coefficient 0.
+pub fn ktype_pol_coefficient(
+    polynomial: &KTypePolValue,
+    ktype: &KTypeValue,
+    span: SourceSpan,
+) -> Result<SplitValue, Diagnostic> {
+    require_same_form_value(
+        &polynomial.rf,
+        &ktype.context,
+        "Real form mismatch when subscripting KTypePol value",
+        span,
+    )?;
+    test_final_ktype(ktype, "In subscription of KTypePol value", span)?;
+    Ok(polynomial
+        .terms
+        .iter()
+        .find(|(_, term)| *term == ktype.ktype)
+        .map(|(coefficient, _)| *coefficient)
+        .unwrap_or_else(|| SplitValue::new(0, 0)))
+}
+
+/// Term-coefficient selection into a ParamPol (atlas-types.w:7744-7759
+/// `module_coefficient::evaluate`): the query parameter is moved to its
+/// dominant representative before the lookup; an absent term has
+/// coefficient 0.
+pub fn param_pol_coefficient(
+    polynomial: &ParamPolValue,
+    parameter: &ParamValue,
+    span: SourceSpan,
+) -> Result<SplitValue, Diagnostic> {
+    require_same_form_value(
+        &polynomial.rf,
+        &parameter.context,
+        "Real form mismatch when subscripting ParamPol value",
+        span,
+    )?;
+    test_standard(parameter, "In subscription of ParamPol value", span)?;
+    let rc = rep_context(&polynomial.rf);
+    let dominant = parameter.repr.made_dominant(&rc).map_err(|error| match error {
+        // Unreachable after `test_standard`, but keep the oracle's prose
+        // (repr.cpp:577) should the invariant key ever surface.
+        StructureError::RepInvariantViolation {
+            invariant: "standard parameter in make_dominant",
+        } => runtime(span, "Non standard parameter in make_dominant"),
+        other => structure_diagnostic(other, span),
+    })?;
+    Ok(polynomial
+        .terms
+        .iter()
+        .find(|(_, term)| *term == dominant)
+        .map(|(coefficient, _)| *coefficient)
+        .unwrap_or_else(|| SplitValue::new(0, 0)))
+}
+
 /// Insert or merge one polynomial term (upstream
 /// `K_type_pol::add_term` / `SR_poly::add_term`): like terms sum their
 /// Split coefficients and a zero coefficient removes the term.
