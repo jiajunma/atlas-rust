@@ -11837,7 +11837,46 @@ pub(crate) fn call_with_printed(
             };
             let rank = as_usize(&arguments[2], span)?;
             let letter = type_string.chars().next().unwrap_or('T');
-            lie_type.add_simple_factor(letter, rank);
+            // Lie_type_value::add_simple_factor (atlas-types.w:165-208):
+            // per-letter rank bounds, a total-rank cap, and 'T' expanding
+            // to `rank` separate T1 factors (so rank 0 adds nothing).
+            let Some(letter_index) = "ABCDEFGT".find(letter) else {
+                return Err(runtime(span, format!("Invalid type letter '{letter}'")));
+            };
+            let lower = [1, 2, 2, 4, 6, 4, 2, 0][letter_index];
+            let upper = [RANK_MAX, RANK_MAX, RANK_MAX, RANK_MAX, 8, 4, 2, RANK_MAX][letter_index];
+            if rank < lower {
+                return Err(runtime(
+                    span,
+                    format!("Too small rank {rank} for Lie type {letter}"),
+                ));
+            }
+            if rank > upper {
+                if upper != RANK_MAX {
+                    return Err(runtime(
+                        span,
+                        format!("Too large rank {rank} for Lie type {letter}"),
+                    ));
+                }
+                return Err(runtime(
+                    span,
+                    format!("Rank {rank} exceeds implementation limit {RANK_MAX}"),
+                ));
+            }
+            let total = lie_type.total_rank() + rank;
+            if total > RANK_MAX {
+                return Err(runtime(
+                    span,
+                    format!("Total rank {total} exceeds implementation limit {RANK_MAX}"),
+                ));
+            }
+            if letter == 'T' {
+                for _ in 0..rank {
+                    lie_type.add_simple_factor('T', 1);
+                }
+            } else {
+                lie_type.add_simple_factor(letter, rank);
+            }
             Ok(Value::Domain(DomainValue::LieType(lie_type)))
         }
         "Lie_type" => {
