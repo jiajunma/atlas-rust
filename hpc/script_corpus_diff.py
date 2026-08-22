@@ -148,6 +148,8 @@ def run_corpus(atlas_bin, cli_bin, files, size_cap, timeout):
         cpp_out = cpp["stdout"]
         for key in ("seconds", "maxrss_kb", "maxrss_approximate", "timed_out"):
             entry[f"cpp_{key}"] = cpp[key]
+        entry["cpp_exit_status"] = cpp["exit_status"]
+        entry["cpp_stderr"] = cpp["stderr"]
 
         # Mirror the C++ invocation: cwd = atlas-scripts so `<basic.at`
         # resolves (and prints) the same cwd-relative spelling.
@@ -157,6 +159,8 @@ def run_corpus(atlas_bin, cli_bin, files, size_cap, timeout):
         )
         for key in ("seconds", "maxrss_kb", "maxrss_approximate", "timed_out"):
             entry[f"rust_{key}"] = rust[key]
+        entry["rust_exit_status"] = rust["exit_status"]
+        entry["rust_stderr"] = rust["stderr"]
         if cpp["seconds"] > 0:
             entry["rust_to_cpp_seconds"] = round(
                 rust["seconds"] / cpp["seconds"], 3
