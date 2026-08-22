@@ -1438,33 +1438,37 @@ fn dual_lie_type(lie_type: &LieTypeValue) -> LieTypeValue {
 /// Matrix columns are the basis vectors, matching Atlas's `mat` convention.
 fn build_explicit_datum(
     simple_roots: &[Vec<i32>],
+    root_columns: usize,
     simple_coroots: &[Vec<i32>],
+    coroot_columns: usize,
     prefers_coroots: bool,
     span: SourceSpan,
 ) -> Result<RootDatumHandle, Diagnostic> {
     let lattice_rank = simple_roots.len();
-    let semisimple_rank = simple_roots.first().map_or(0, Vec::len);
-    if lattice_rank == 0 || semisimple_rank == 0 {
-        return Err(runtime(
-            span,
-            "Implicit conversion to matrix for an empty set of vectors",
-        ));
-    }
+    let semisimple_rank = root_columns;
+    // A 0x0 pair is legal upstream: it builds the empty-Lie-type datum
+    // (`root_datum(null(0,0),null(0,0),false)`, atlas-types.w:1230-1254).
+    // Only genuine shape mismatches between roots and coroots are errors.
     if simple_roots.iter().any(|row| row.len() != semisimple_rank)
         || simple_coroots.len() != lattice_rank
+        || coroot_columns != semisimple_rank
         || simple_coroots
             .iter()
-            .any(|row| row.len() != semisimple_rank)
+            .any(|row| row.len() != coroot_columns)
     {
         let root_shape = format!("{},{}", lattice_rank, semisimple_rank);
-        let coroot_shape = format!(
-            "{},{}",
-            simple_coroots.len(),
-            simple_coroots.first().map_or(0, Vec::len)
-        );
+        let coroot_shape = format!("{},{}", simple_coroots.len(), coroot_columns);
         return Err(runtime(
             span,
             format!("Sizes ({root_shape}),({coroot_shape}) of simple (co)root systems differ"),
+        ));
+    }
+    // More roots than the lattice rank can never pair to a valid Cartan
+    // matrix; upstream reports it as a Cartan error (atlas-types.w:1256).
+    if lattice_rank < semisimple_rank {
+        return Err(runtime(
+            span,
+            "Matrices of (co)roots give invalid Cartan matrix",
         ));
     }
 
@@ -1509,7 +1513,17 @@ fn build_explicit_datum(
     }
     let lie_type = infer_lie_type(&cartan, lattice_rank, span)?;
     let datum = BasedRootDatum::from_simple_data(lattice_rank, cartan, roots, coroots)
-        .map_err(|error| runtime(span, error.to_string()))?;
+        .map_err(|error| match error {
+            // Upstream funnels every Cartan-level failure through
+            // test_Cartan_matrix's catch (atlas-types.w:1255-1258).
+            StructureError::NonSquareCartan
+            | StructureError::InvalidCartanMatrix
+            | StructureError::RootPairingMismatch { .. } => runtime(
+                span,
+                "Matrices of (co)roots give invalid Cartan matrix",
+            ),
+            other => runtime(span, other.to_string()),
+        })?;
     Ok(RootDatumHandle {
         isogeny: classify_isogeny(&datum),
         datum: Arc::new(datum),
@@ -2210,6 +2224,27 @@ fn as_matrix(value: &Value, span: SourceSpan) -> Result<Vec<Vec<i32>>, Diagnosti
         return Err(type_error(span, "expected a square mat"));
     }
     Ok(rows)
+}
+
+/// Row extraction that also reports the true column count: a bare
+/// `Vec<Vec<i32>>` cannot distinguish a 0x0 matrix from a 0xN one, and
+/// `root_datum` must (0xN roots over a rank-0 lattice is a Cartan error,
+/// not a torus).
+fn as_matrix_rows_and_cols(
+    value: &Value,
+    span: SourceSpan,
+) -> Result<(Vec<Vec<i32>>, usize), Diagnostic> {
+    if let Value::Matrix(matrix) = value {
+        let rows = as_matrix_rows(value, span)?;
+        // Undo the zero-row special case: it encodes 0xN as N empty rows.
+        if matrix.rows() == 0 {
+            return Ok((Vec::new(), matrix.cols()));
+        }
+        return Ok((rows, matrix.cols()));
+    }
+    let rows = as_matrix_rows(value, span)?;
+    let cols = rows.first().map_or(0, Vec::len);
+    Ok((rows, cols))
 }
 
 fn as_matrix_rows(value: &Value, span: SourceSpan) -> Result<Vec<Vec<i32>>, Diagnostic> {
@@ -11885,10 +11920,17 @@ pub(crate) fn call_with_printed(
                 Ok(Value::Domain(DomainValue::RootDatum(handle)))
             }
             [simple_roots, simple_coroots, Value::Boolean(prefers_coroots)] => {
-                let simple_roots = as_matrix_rows(simple_roots, span)?;
-                let simple_coroots = as_matrix_rows(simple_coroots, span)?;
-                let handle =
-                    build_explicit_datum(&simple_roots, &simple_coroots, *prefers_coroots, span)?;
+                let (simple_roots, root_columns) = as_matrix_rows_and_cols(simple_roots, span)?;
+                let (simple_coroots, coroot_columns) =
+                    as_matrix_rows_and_cols(simple_coroots, span)?;
+                let handle = build_explicit_datum(
+                    &simple_roots,
+                    root_columns,
+                    &simple_coroots,
+                    coroot_columns,
+                    *prefers_coroots,
+                    span,
+                )?;
                 Ok(Value::Domain(DomainValue::RootDatum(handle)))
             }
             [Value::Domain(DomainValue::RootDatum(source)), lattice] => {
