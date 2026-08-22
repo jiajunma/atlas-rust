@@ -18,7 +18,7 @@ use super::{
     quiet_if_expression, nested_iffor_expression,
     anonymous_parameter, const_pattern_name, finish_pattern, pattern_binding, pattern_empty_tuple,
     pattern_name, pattern_slots, pattern_tuple, prepend_while_effect, tuple_parameter,
-    whattype_command, while_expression, bar_list_expression,
+    whattype_command, while_expression, while_let_condition, bar_list_expression,
     BinaryOp, CaseBranch, Command, Expr, LambdaParam, LetBinding, ParsedFor, ParsedIf,
     ParsedLet, ParserToken, PatternTail, PostfixSuffix, Prim, Program, SlotTail, SpannedValue,
     TypeExpr, TypeField, TypeSpec, TypeVariantSlot, UnaryOp, Pattern, TypeDefinition,
@@ -699,6 +699,10 @@ WhileTail: (Option<Expr>, Expr, SourceSpan, bool) = {
     <_do:"do"> <body:Expr> <out_reversed:TildeOpt> <od:"od"> => (None, body, od, out_reversed),
     <condition:AssignmentExpr> <_do:"do"> <body:Expr> <out_reversed:TildeOpt> <od:"od"> => {
         (Some(condition), body, od, out_reversed)
+    },
+    <let_span:"let"> <bindings:LetBindings> <_in:"in"> <condition:AssignmentExpr>
+        <_do:"do"> <body:Expr> <out_reversed:TildeOpt> <od:"od"> => {
+        (Some(while_let_condition(let_span, bindings, condition)), body, od, out_reversed)
     },
 };
 

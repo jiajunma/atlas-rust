@@ -1,0 +1,2 @@
+set gcd_loop(int a,int b)=while let r=a%b in r.!= do a:=b; b:=r od; b
+gcd_loop(30,12)

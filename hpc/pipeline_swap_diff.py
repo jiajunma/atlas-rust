@@ -346,6 +346,8 @@ FIXTURE_PLANS = (
     FixturePlan(name="eval/operator_alias"),
     # Typed lambda result annotations `(int x)bool: ...`, parser.y:227-230.
     FixturePlan(name="eval/typed_lambda_result"),
+    # While-let guard form (`while let ... in ... do ... od`).
+    FixturePlan(name="eval/while_let"),
     FixturePlan(name="eval/slices"),
     FixturePlan(name="eval/subscriptions"),
     FixturePlan(name="eval/context"),

@@ -1805,6 +1805,12 @@ fn while_expression(while_span: SourceSpan, tail: (Option<Expr>, Expr, SourceSpa
     }
 }
 
+/// `while let bindings in condition do ... od` makes the let expression the
+/// loop guard, so its bindings are rebuilt for every iteration.
+fn while_let_condition(let_span: SourceSpan, bindings: Vec<LetBinding>, condition: Expr) -> Expr {
+    let_expression(let_span, finish_let(bindings, condition))
+}
+
 fn prepend_while_effect(
     effect: Expr,
     tail: (Option<Expr>, Expr, SourceSpan, bool),
