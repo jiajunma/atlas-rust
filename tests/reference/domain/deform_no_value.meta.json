@@ -1,0 +1,21 @@
+{
+  "fixture": "domain/deform_no_value.atlas",
+  "fixture_sha256": "d8e88f7ce70a482fa70d490febb29fe5579575525ded04536f2888f3245eb98c",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "upstream_evidence": [
+    "sources/interpreter/atlas-types.w:8085-8087"
+  ],
+  "rust_status": "pending_differential",
+  "oracle_exit_status": 0,
+  "notes": "deform(Param) in statement position inside a begin block: the upstream deform_wrapper no-value gate (atlas-types.w:8085-8087) silently skips the computation, so only the prints(\"done\") output appears. Captured by HPC reference job 3614307.",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3614307",
+  "reference_report_sha256": "8b41752775c357fd8fd6bd92cd034b7b95b37c164396a3ed52eec9af083fba70",
+  "source_archive_sha256": "9368f82e0c15a340664a7261efddc1eb87afdecbf16fbc8b2b234dae5b783c37",
+  "differential_job": "pending",
+  "oracle_seconds": 0.012,
+  "oracle_maxrss_kb": 4200
+}
