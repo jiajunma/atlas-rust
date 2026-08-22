@@ -1,6 +1,10 @@
 {
  "schema": "atlas-eval-events-v0",
  "fixture": "eval/string_slices_rejected",
- "status": "pending_hpc_reference",
- "events": []
+ "status": "verified_hpc_reference",
+ "events": [
+  {"kind": "Diagnostic", "category": "runtime", "message": "lower bound -1 out of range (should be >=0) in slice \"abc\"[-1:2]"},
+  {"kind": "Diagnostic", "category": "runtime", "message": "upper bound 4 out of range (should be <=3) in slice \"abc\"[0:4]"},
+  {"kind": "Diagnostic", "category": "type", "message": "found string while int was needed."}
+ ]
 }

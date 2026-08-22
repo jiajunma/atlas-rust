@@ -2656,23 +2656,26 @@ pub fn convert_expr(
             }
             let mut array_type = Type::Undetermined;
             let converted_array = convert_expr(array, &mut array_type, analysis)?;
-            // Only row slicing is implemented; anything else is the
-            // analysis-time error upstream raises from the `make_slice`
-            // default case (axis.w:4171-4173).
-            let Type::Row(component) = array_type else {
-                return Err(type_error(
-                    format!(
-                        "Cannot slice value of type {}",
-                        array_type.display(analysis.types)
-                    ),
-                    *span,
-                ));
+            // Rows and strings use the one-dimensional slice families. The
+            // latter is byte-indexed by the upstream `std::string` wrapper
+            // (axis.w:4379-4402), while the result remains a string.
+            let found = match &array_type {
+                Type::Row(component) => Type::row((*component).clone()),
+                Type::Primitive(Prim::String) => Type::Primitive(Prim::String),
+                _ => {
+                    return Err(type_error(
+                        format!(
+                            "Cannot slice value of type {}",
+                            array_type.display(analysis.types)
+                        ),
+                        *span,
+                    ));
+                }
             };
             let mut bound_type = Type::Primitive(Prim::Int);
             let converted_lower = convert_expr(lower, &mut bound_type, analysis)?;
             let mut bound_type = Type::Primitive(Prim::Int);
             let converted_upper = convert_expr(upper, &mut bound_type, analysis)?;
-            let found = Type::row((*component).clone());
             conform_types(
                 &found,
                 required,
@@ -11418,9 +11421,19 @@ impl TypedExpr {
                 }
                 let upper = expect_integer(force(upper, context)?, *span, "slice upper bound")?;
                 let lower = expect_integer(force(lower, context)?, *span, "slice lower bound")?;
-                let values = expect_typed_list(force(array, context)?, *span, "slice")?;
-                let sliced = evaluate_slice(values, lower, upper, *flags, source, *span)?;
-                Ok(at_level(level, || Value::List(sliced.clone())))
+                match force(array, context)? {
+                    Value::List(values) => {
+                        let sliced = evaluate_slice(values, lower, upper, *flags, source, *span)?;
+                        Ok(at_level(level, || Value::List(sliced.clone())))
+                    }
+                    Value::String(value) => {
+                        let sliced = evaluate_string_slice(
+                            value, lower, upper, *flags, source, *span,
+                        )?;
+                        Ok(at_level(level, || Value::String(sliced.clone())))
+                    }
+                    other => panic!("analysis let a non-slice value through: {other}"),
+                }
             }
             Self::BarList { rows, span } => {
                 // Evaluate every entry first, then narrow row by row (the
@@ -12541,6 +12554,80 @@ fn evaluate_slice(
         result.reverse();
     }
     Ok(result)
+}
+
+fn evaluate_string_slice(
+    value: String,
+    lower: BigInt,
+    upper: BigInt,
+    flags: crate::syntax::SliceFlags,
+    source: &str,
+    span: SourceSpan,
+) -> Result<String, Control> {
+    let Some((lower, upper)) = slice_bounds(
+        lower,
+        upper,
+        value.len(),
+        flags,
+        source,
+        span,
+    )?
+    else {
+        return Ok(String::new());
+    };
+    let bytes = value.as_bytes();
+    let selected = &bytes[lower..upper];
+    if flags.reverse_output {
+        Ok(String::from_utf8_lossy(&selected.iter().rev().copied().collect::<Vec<_>>()).into_owned())
+    } else {
+        Ok(String::from_utf8_lossy(selected).into_owned())
+    }
+}
+
+fn slice_bounds(
+    lower: BigInt,
+    upper: BigInt,
+    length: usize,
+    flags: crate::syntax::SliceFlags,
+    source: &str,
+    span: SourceSpan,
+) -> Result<Option<(usize, usize)>, Control> {
+    let length_big = BigInt::from(length);
+    let lower = if flags.lower_from_end {
+        &length_big - lower
+    } else {
+        lower
+    };
+    let upper = if flags.upper_from_end {
+        &length_big - upper
+    } else {
+        upper
+    };
+    let lower_out_of_range = lower < 0;
+    let upper_out_of_range = upper > length_big;
+    if lower_out_of_range || upper_out_of_range {
+        let message = match (lower_out_of_range, upper_out_of_range) {
+            (true, true) => format!(
+                "both bounds {lower}:{upper} out of range (should be >=0 respectively <={length}) in slice {source}"
+            ),
+            (true, false) => {
+                format!("lower bound {lower} out of range (should be >=0) in slice {source}")
+            }
+            (false, true) => format!(
+                "upper bound {upper} out of range (should be <={length}) in slice {source}"
+            ),
+            (false, false) => unreachable!(),
+        };
+        return Err(runtime(message, span));
+    }
+    if lower >= upper {
+        return Ok(None);
+    }
+    let lower_index = usize::try_from(&lower)
+        .map_err(|_| runtime("slice lower bound is not a machine index", span))?;
+    let upper_index = usize::try_from(&upper)
+        .map_err(|_| runtime("slice upper bound is not a machine index", span))?;
+    Ok(Some((lower_index, upper_index)))
 }
 
 fn list_to_vec32(values: Vec<Value>, span: SourceSpan) -> Result<Vec32, Control> {
@@ -13736,6 +13823,17 @@ mod tests {
                 Value::Integer(20.into()),
                 Value::Integer(30.into())
             ])
+        );
+
+        let (_, value) = convert_and_run("\"abc\"[1:]").expect("string slice");
+        assert_eq!(value, Value::String("bc".into()));
+        let (_, value) = convert_and_run("\"abc\"~[0:2]").expect("reversed string slice");
+        assert_eq!(value, Value::String("cb".into()));
+        let error = convert_and_run("\"abc\"[-1:2]").expect_err("string slice range");
+        assert_eq!(error.kind, ErrorKind::Runtime);
+        assert_eq!(
+            error.message,
+            "lower bound -1 out of range (should be >=0) in slice \"abc\"[-1:2]"
         );
     }
 

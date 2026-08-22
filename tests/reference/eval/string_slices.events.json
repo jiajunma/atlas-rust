@@ -1,7 +1,7 @@
 {
  "schema": "atlas-eval-events-v0",
  "fixture": "eval/string_slices",
- "status": "pending_hpc_reference",
+ "status": "verified_hpc_reference",
  "events": [
   {"kind": "Value", "value": {"type": "string", "value": "ab"}},
   {"kind": "Value", "value": {"type": "string", "value": "bc"}},

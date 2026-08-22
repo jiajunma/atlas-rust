@@ -336,9 +336,12 @@ FIXTURE_PLANS = (
     # reference frozen by capture 3604640.
     FixturePlan(name="eval/op_cast"),
     # Generic special operator casts and their strict wildcard-shape
-    # rejections; reference capture is pending for the repair slice.
+    # rejections; reference captured by 3613892, differential 3613996.
     FixturePlan(name="eval/op_cast_specials"),
     FixturePlan(name="eval/op_cast_specials_rejected"),
+    # String slices (axis.w:4379-4402); reference captured by 3614066.
+    FixturePlan(name="eval/string_slices"),
+    FixturePlan(name="eval/string_slices_rejected"),
     FixturePlan(name="eval/slices"),
     FixturePlan(name="eval/subscriptions"),
     FixturePlan(name="eval/context"),
