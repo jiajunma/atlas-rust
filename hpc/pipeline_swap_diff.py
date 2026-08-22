@@ -335,6 +335,10 @@ FIXTURE_PLANS = (
     # Operator cast `op@type` / `IDENT@type` (parser.y:381-383);
     # reference frozen by capture 3604640.
     FixturePlan(name="eval/op_cast"),
+    # Generic special operator casts and their strict wildcard-shape
+    # rejections; reference capture is pending for the repair slice.
+    FixturePlan(name="eval/op_cast_specials"),
+    FixturePlan(name="eval/op_cast_specials_rejected"),
     FixturePlan(name="eval/slices"),
     FixturePlan(name="eval/subscriptions"),
     FixturePlan(name="eval/context"),

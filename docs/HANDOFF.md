@@ -8,10 +8,13 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
 - `op@type` now implements the upstream generic-special fallback for `print`,
   `prints`, `to_string`, `error`, `#`, and `##`, including nested wildcard
-  capture names (`T`) and the existing exact-overload precedence. The RED/GREEN
-  regression is `typed::tests::operator_casts_select_generic_special_instances`;
-  local CLI output matches the upstream executable for the six-line fixture
-  `eval/op_cast_specials`.
+  capture names (`T`) and the existing exact-overload precedence. A repair
+  pass now uses strict cast-shape predicates for `#`/`##`, rejecting wildcard
+  row/scalar combinations the oracle rejects, and renders `##@[[int]]` as
+  `{##@([[T]])}`. The RED/GREEN regression is
+  `typed::tests::operator_casts_select_generic_special_instances`; local CLI
+  output matches the upstream executable for both positive and rejected probes
+  in `eval/op_cast_specials{,_rejected}`.
 - New fixture/reference files are intentionally marked
   `pending_hpc_reference` / `pending_hpc_differential`. The reference capture
   and differential could not be submitted or collected because `ikkemhpc`

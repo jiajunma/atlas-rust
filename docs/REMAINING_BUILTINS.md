@@ -1194,11 +1194,13 @@ took 0.012/0.008s and 4368/4288 KiB; report SHA256 is
 
 ## Final grammar wave known limitations (2026-08-21)
 
-- `op@type` / `IDENT@type` casts resolve only exact matches in the merged
+- Ordinary `op@type` / `IDENT@type` casts resolve exact matches in the merged
   overload variants (builtin -> `BuiltinFunction` value, user -> closure).
-  Upstream's second pass — a unique polymorphic variant whose pattern
-  matches the requested type — is not implemented (no fixture covers it;
-  noted at `convert_op_cast` in typed.rs).
+  Generic special operators have a separate upstream-controlled cast path;
+  its positive and rejected shape fixtures are frozen locally in
+  `eval/op_cast_specials{,_rejected}` but await HPC capture/differential.
+  Upstream's separate second pass for a unique ordinary polymorphic variant
+  remains unimplemented (no fixture covers it; see `convert_op_cast`).
 - `$` in the verbose "Converted expression" trace prints the captured value
   itself; upstream prints `(type:$)` (axis.w:610-624 area). Runtime and
   type behavior match; only the verbose rendering differs.

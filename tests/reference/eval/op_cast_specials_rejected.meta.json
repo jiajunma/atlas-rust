@@ -1,0 +1,16 @@
+{
+ "fixture": "eval/op_cast_specials_rejected.atlas",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "pending_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "upstream_evidence": [
+  "sources/interpreter/axis.w:6726-6857",
+  "sources/interpreter/axis.w:8767-8872"
+ ],
+ "notes": "Local oracle probe confirms the rejected generic operator-cast shapes. HPC reference capture and differential are required before compatibility is claimed.",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "fixture_sha256": "b59c5953bde964bafc926b523deb43ca081d1fdb5b2055157f902ac228c70b6a",
+ "reference_job": "pending",
+ "differential_job": "pending"
+}

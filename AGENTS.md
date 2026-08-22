@@ -84,6 +84,18 @@ not a source-level C++ translation.
 - Prevention: audit every helper call before the final move into the fiber
   model, then require a passing HPC preflight such as job `3463683`.
 
+### Generic operator-cast shape matching
+
+- Root cause: routing `op@type` through ordinary wildcard specialisation let
+  `#@([*],int)` and related row/scalar patterns bind a scalar wildcard to a
+  row, although upstream's operator-cast branch uses strict structural equality.
+- Diagnostic: compare the positive/rejected `op_cast_specials` probes against
+  the local Atlas oracle; the rejected forms must report `No instance ...` and
+  `##@[[int]]` must display `{##@([[T]])}`.
+- Prevention: keep ordinary call matching and operator-cast matching separate;
+  use the exact `axis.w:6750-6857` shape predicates for generic `#`/`##` casts,
+  then require the HPC reference/differential gate before promotion.
+
 ## Rustcox reuse
 
 `rustcox` is a related but separate project. Its Coxeter, root-system, Bruhat,

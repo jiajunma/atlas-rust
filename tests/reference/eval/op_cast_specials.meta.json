@@ -10,7 +10,7 @@
  ],
  "notes": "Local oracle probe confirms generic operator casts for print, prints, to_string, error, #, and ##. HPC reference capture and differential are required before compatibility is claimed.",
  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
- "fixture_sha256": "477a8f1347da2af44ca61b62e33c26e5ad59aa677f2bde2242b0206b699bf044",
+ "fixture_sha256": "56f09b6326c16e5bf0806e79a44030ecae18c24bf7b39833924983f6343f7b0d",
  "local_reference_binary_sha256": "23371d61f97e59a693a0d27b586157c59303cb10dfe3e63769ad1c9253443565",
  "reference_job": "pending",
  "differential_job": "pending"

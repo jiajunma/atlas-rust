@@ -8,6 +8,7 @@
   {"kind": "Value", "value": {"type": "display", "display": "{to_string@T}"}},
   {"kind": "Value", "value": {"type": "display", "display": "{error@T}"}},
   {"kind": "Value", "value": {"type": "display", "display": "{##@([T],[T])}"}},
+  {"kind": "Value", "value": {"type": "display", "display": "{##@([[T]])}"}},
   {"kind": "Value", "value": {"type": "display", "display": "{#@[T]}"}}
  ]
 }

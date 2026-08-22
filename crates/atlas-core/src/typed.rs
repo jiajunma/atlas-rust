@@ -3463,7 +3463,14 @@ fn builtin_function_value(index: usize, types: &TypeTable) -> Value {
 fn generic_type_display(type_: &Type, types: &TypeTable) -> String {
     match type_ {
         Type::Undetermined => "T".to_owned(),
-        Type::Row(component) => format!("[{}]", generic_type_display(component, types)),
+        Type::Row(component) => {
+            let display = format!("[{}]", generic_type_display(component, types));
+            if matches!(component.as_ref(), Type::Row(_)) {
+                format!("({display})")
+            } else {
+                display
+            }
+        }
         Type::Tuple(components) => {
             if components.is_empty() {
                 "void".to_owned()
@@ -3527,8 +3534,7 @@ fn convert_op_cast(
             analysis,
         );
     }
-    if let Some((index, result_type)) =
-        hidden_special_variant(&name.value, &cast_type, analysis.types)
+    if let Some((index, result_type)) = hidden_special_cast_variant(&name.value, &cast_type)
     {
         return conform_types(
             &Type::function(cast_type.clone(), result_type),
@@ -10819,6 +10825,68 @@ fn hidden_special_variant(
     }
 }
 
+/// Operator casts use the exact structural predicates in axis.w:6750-6857.
+/// They must not reuse the ordinary-call wildcard specialisation rules: for
+/// example, `#@([*],int)` is rejected by the oracle rather than binding the
+/// scalar wildcard to a row.
+fn hidden_special_cast_variant(name: &str, cast_type: &Type) -> Option<(usize, Type)> {
+    match name {
+        "print" => Some((hidden_special_builtin("print")?, cast_type.clone())),
+        "prints" => Some((hidden_special_builtin("prints")?, Type::void())),
+        "to_string" => Some((hidden_special_builtin("to_string")?, string_type())),
+        "error" => Some((hidden_special_builtin("error")?, Type::Undetermined)),
+        "#" => match cast_type {
+            Type::Row(_) => Some((
+                hidden_builtin_by_pattern("#", |arg| matches!(arg, Type::Row(_)))?,
+                int_type(),
+            )),
+            Type::Tuple(components) if components.len() == 2 => {
+                if let Type::Row(component) = &components[0] {
+                    if component.as_ref() == &components[1] {
+                        return Some((
+                            hidden_builtin_by_pattern("#", |arg| {
+                                matches!(arg, Type::Tuple(parts) if matches!(parts.first(), Some(Type::Row(_))))
+                            })?,
+                            components[0].clone(),
+                        ));
+                    }
+                }
+                if let Type::Row(component) = &components[1] {
+                    if component.as_ref() == &components[0] {
+                        return Some((
+                            hidden_builtin_by_pattern("#", |arg| {
+                                matches!(arg, Type::Tuple(parts) if matches!(parts.get(1), Some(Type::Row(_))))
+                            })?,
+                            components[1].clone(),
+                        ));
+                    }
+                }
+                None
+            }
+            _ => None,
+        },
+        "##" => match cast_type {
+            Type::Row(component) if matches!(component.as_ref(), Type::Row(_)) => Some((
+                hidden_builtin_by_pattern("##", |arg| {
+                    matches!(arg, Type::Row(inner) if matches!(inner.as_ref(), Type::Row(_)))
+                })?,
+                component.as_ref().clone(),
+            )),
+            Type::Tuple(components)
+                if components.len() == 2
+                    && matches!(&components[0], Type::Row(_))
+                    && components[0] == components[1] => Some((
+                hidden_builtin_by_pattern("##", |arg| {
+                    matches!(arg, Type::Tuple(parts) if parts.iter().all(|part| matches!(part, Type::Row(_))))
+                })?,
+                components[0].clone(),
+            )),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
 /// Wrap an iffor-bodied loop in the protected `## ` concatenation
 /// (parser.y:317-324, 528-571; axis.w:1785 protected_concatenate_name):
 /// the loop yields a row of rows that is joined by a DIRECT call to the
@@ -17364,6 +17432,7 @@ mod tests {
             ("to_string@int", "{to_string@T}"),
             ("error@int", "{error@T}"),
             ("##@([int],[int])", "{##@([T],[T])}"),
+            ("##@[[int]]", "{##@([[T]])}"),
             ("#@[int]", "{#@[T]}"),
         ] {
             let events = context.execute(&command(source)).expect(source);
@@ -17372,6 +17441,15 @@ mod tests {
                     &events[..],
                     [TypedCommandEvent::Value { value, .. }] if value.to_string() == expected
                 ),
+                "source: {source}"
+            );
+        }
+        for source in ["#@([*],int)", "#@([int],[*])", "#@([*],[*])"] {
+            let error = context.execute(&command(source)).expect_err(source);
+            assert_eq!(error.kind, ErrorKind::Type, "source: {source}");
+            assert_eq!(
+                error.message,
+                format!("No instance for {source} found"),
                 "source: {source}"
             );
         }
