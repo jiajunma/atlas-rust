@@ -735,13 +735,14 @@ WhileTail: (Expr, SourceSpan, bool) = {
 DoExpr: Expr = {
     <let_span:"let"> <tail:DoLetTail> => let_expression(let_span, tail),
     <effect:AssignmentExpr> ";" <rest:DoExpr> => sequence(effect, rest),
-    <condition:AssignmentExpr> <do_span:"do"> <body:Expr> =>
-        do_expression(condition, body, join_span(condition.span(), body.span())),
-    <do_span:"do"> <body:Expr> => do_expression(
-        Expr::Boolean { value: true, span: do_span },
-        body,
-        join_span(do_span, body.span()),
-    ),
+    <condition:AssignmentExpr> <do_span:"do"> <body:Expr> => {
+        let span = join_span(condition.span(), body.span());
+        do_expression(condition, body, span)
+    },
+    <do_span:"do"> <body:Expr> => {
+        let span = join_span(do_span, body.span());
+        do_expression(Expr::Boolean { value: true, span: do_span }, body, span)
+    },
     <span:"dont"> => Expr::Dont { span },
     <if_span:"if"> <tail:DoIfTail> => finish_conditional(if_span, tail),
     <_open:"("> <e:DoExpr> <_close:")"> => e,
