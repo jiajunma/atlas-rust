@@ -4,6 +4,42 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-22g (while-let value contexts; corpus gate in flight)
+
+- Full script-corpus run **3614308** (240 `atlas-scripts/*.at`): 9 MATCH,
+  2 SKIPPED_LARGE, **229 RUST_EVAL_FAIL with one shared root cause** —
+  `basic.at:204` `set_bit_positions` uses
+  `while let pow = AND_NOT(n,n-1) in !=pow do n-:=pow; bit_length(pow)-1 od`
+  in a `vec` (value) context. Our parse-time desugar rewrites while-let to
+  `while true do (let … in if guard then body else break)`, and our `break`
+  converted as void, so the branch balance (typed.rs `balance`) picked void
+  as the common type and the loop typed `[void]`: `found [void] while vec
+  was needed.`
+- Fix (commit `900c8fb`): `break` now converts in ANY context without
+  touching the required type, exactly like the upstream breaker
+  (axis.w:673-685) and our existing `die`; `while` additionally implements
+  the upstream void context (body against void) and int context
+  (yields_count, make_while_loop flag 0x8 — only COMPLETED iterations
+  count, a breaking iteration does not). New fixture
+  `eval/while_let_values.atlas` probes both (`vec` result and `int`
+  count). Existing `eval/while_let` only covered the void/statement
+  position, which is why the gap was invisible.
+- `deform` in statement position silently skips per the upstream no-value
+  gate (atlas-types.w:8085-8087); registered as Skip like `block_deform`
+  (commit `fb09851`), fixture `domain/deform_no_value.atlas`, reference
+  capture **3614307** PASS (`verified_hpc_reference`, meta committed in
+  `3da0aef`).
+- Benchmark convention reminder: every differential/corpus report carries
+  `benchmark_summary` (rust_to_cpp_seconds, maxrss ratio); present the
+  numbers to the user whenever a report lands.
+- In flight at handoff: preflight **3614439**, reference capture
+  **3614440** (`eval/while_let_values`), full corpus rerun **3614441**,
+  fat fixture differential **3614405** (covers `deform_no_value`; queued
+  before the break fix, so it uses the previous binary).
+- NOTE: `crates/atlas-real-group/examples/fiber_probe.rs` is user-owned and
+  must never be committed; it is now gitignored after an accidental
+  `git add -A` sweep was reverted (`fe0ebf0`).
+
 ## Checkpoint - 2026-08-22b (generic operator casts HPC-verified)
 
 - `op@type` now implements the upstream generic-special fallback for `print`,
