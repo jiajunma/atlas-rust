@@ -485,6 +485,11 @@ impl<P: FileProvider, S: FileSink> SessionFrame<P, S> {
                         .collect();
                     events.push(SessionEvent::Output { text, span });
                 }
+                SessionEvent::PlainReportLine { text, span } => {
+                    // forget / forget-overload reports skip the indent
+                    // (global.w:1241-1261).
+                    events.push(SessionEvent::Output { text, span });
+                }
                 SessionEvent::Diagnostic(diagnostic) => {
                     if diagnostic.kind != ErrorKind::Io {
                         self.clean = false;

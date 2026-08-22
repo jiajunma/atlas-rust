@@ -910,6 +910,14 @@ pub enum TypedCommandEvent {
         text: String,
         span: SourceSpan,
     },
+    /// A report line that upstream prints WITHOUT the include-depth
+    /// indentation (`global_forget_identifier` global.w:1241-1248 and
+    /// `global_forget_overload` global.w:1253-1261 write to
+    /// `*output_stream` directly, unlike the definition reports).
+    PlainReportLine {
+        text: String,
+        span: SourceSpan,
+    },
     Output {
         text: String,
         span: SourceSpan,
@@ -1520,7 +1528,8 @@ impl TypedContext {
                 let was_known = self.globals.remove(&name.value);
                 self.defined_type_names.borrow_mut().remove(&name.value);
                 let state = if was_known { "forgotten" } else { "not known" };
-                Ok(vec![TypedCommandEvent::ReportLine {
+                // global.w:1241-1248: no input-level indentation here.
+                Ok(vec![TypedCommandEvent::PlainReportLine {
                     text: format!("Identifier '{}' {state}\n", name.value),
                     span: *span,
                 }])
@@ -1542,7 +1551,8 @@ impl TypedContext {
                 })?;
                 let removed = self.overloads.remove(&name.value, &resolved);
                 let state = if removed { "forgotten" } else { "not known" };
-                Ok(vec![TypedCommandEvent::ReportLine {
+                // global.w:1253-1261: no input-level indentation here either.
+                Ok(vec![TypedCommandEvent::PlainReportLine {
                     text: format!(
                         "Definition of '{}@{}' {state}\n",
                         name.value,

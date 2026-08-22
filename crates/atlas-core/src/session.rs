@@ -27,6 +27,12 @@ pub enum SessionEvent {
         text: String,
         span: SourceSpan,
     },
+    /// See `TypedCommandEvent::PlainReportLine`: printed verbatim, never
+    /// indented by include depth.
+    PlainReportLine {
+        text: String,
+        span: SourceSpan,
+    },
     Diagnostic(Diagnostic),
 }
 
@@ -125,6 +131,9 @@ fn session_event(event: TypedCommandEvent) -> SessionEvent {
             span,
         },
         TypedCommandEvent::ReportLine { text, span } => SessionEvent::ReportLine { text, span },
+        TypedCommandEvent::PlainReportLine { text, span } => {
+            SessionEvent::PlainReportLine { text, span }
+        }
         TypedCommandEvent::Output { text, span } => SessionEvent::Output { text, span },
     }
 }
