@@ -3808,9 +3808,13 @@ fn convert_for_loop(
     // whole loop.
     let row_of_type = Type::row(Type::Undetermined);
     let mut conv: Option<&crate::coercions::Coercion> = None;
-    let mut body_type = if required.is_void() {
+    let mut body_type = if required.is_void() && !*iffor_body {
         Type::void()
-    } else if required.can_specialise(&row_of_type, analysis.types) {
+    } else if required.is_void() || required.can_specialise(&row_of_type, analysis.types) {
+        // An iffor loop in void context still builds its row of rows;
+        // the enclosing `## ` join is what gets voided (axis.w: the
+        // parser wraps the loop in a protected-concatenate call, so the
+        // loop's own required type is never void).
         match row_component(required, analysis.types) {
             Some(component) => component,
             None => Type::Undetermined,
@@ -3828,6 +3832,12 @@ fn convert_for_loop(
             *span,
         ));
     };
+    // An iffor body is a conditional producing ROWS (parser.y:509-522
+    // wraps the branches in list displays and the loop in a `## ` join):
+    // its component is itself a row of the loop's eventual component.
+    if *iffor_body && !body_type.is_void() {
+        body_type = Type::row(body_type);
+    }
     let body = convert_expr(
         body,
         &mut body_type,

@@ -59,6 +59,13 @@ def measure_command(argv, *, cwd, timeout, input_text=None):
         temporary = tempfile.TemporaryDirectory()
         metric_path = os.path.join(temporary.name, "time.metrics")
         command = [TIME_BIN, "-v", "-o", metric_path, *command]
+
+    def limit_memory():
+        # Contain runaway allocations (e.g. a diverging lazy list) so one
+        # script cannot OOM-kill the whole SLURM job.
+        cap = int(os.environ.get("MEM_CAP_GB", "6")) * 1024**3
+        resource.setrlimit(resource.RLIMIT_AS, (cap, cap))
+
     try:
         completed = subprocess.run(
             command,
@@ -67,6 +74,7 @@ def measure_command(argv, *, cwd, timeout, input_text=None):
             capture_output=True,
             timeout=timeout,
             cwd=cwd,
+            preexec_fn=limit_memory,
         )
         stdout, stderr, exit_status = (
             completed.stdout,
