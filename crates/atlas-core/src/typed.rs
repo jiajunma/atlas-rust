@@ -12342,17 +12342,6 @@ fn expect_list(value: Value) -> Vec<Value> {
     }
 }
 
-fn expect_typed_list(
-    value: Value,
-    span: SourceSpan,
-    operation: &str,
-) -> Result<Vec<Value>, Control> {
-    match value {
-        Value::List(values) => Ok(values),
-        _ => Err(runtime(format!("{operation} requires a list"), span)),
-    }
-}
-
 fn expect_integer(value: Value, span: SourceSpan, operation: &str) -> Result<BigInt, Control> {
     match value {
         Value::Integer(value) => Ok(value),
@@ -12549,7 +12538,13 @@ fn evaluate_slice(
         .map_err(|_| runtime("slice lower bound is not a machine index", span))?;
     let upper_index = usize::try_from(&upper)
         .map_err(|_| runtime("slice upper bound is not a machine index", span))?;
-    let mut result = values[lower_index..upper_index].to_vec();
+    let mut result = if flags.reverse_output {
+        let reverse_lower = values.len() - upper_index;
+        let reverse_upper = values.len() - lower_index;
+        values[reverse_lower..reverse_upper].to_vec()
+    } else {
+        values[lower_index..upper_index].to_vec()
+    };
     if flags.reverse_output {
         result.reverse();
     }
@@ -12576,7 +12571,12 @@ fn evaluate_string_slice(
         return Ok(String::new());
     };
     let bytes = value.as_bytes();
-    let selected = &bytes[lower..upper];
+    let (selected_lower, selected_upper) = if flags.reverse_output {
+        (bytes.len() - upper, bytes.len() - lower)
+    } else {
+        (lower, upper)
+    };
+    let selected = &bytes[selected_lower..selected_upper];
     if flags.reverse_output {
         Ok(String::from_utf8_lossy(&selected.iter().rev().copied().collect::<Vec<_>>()).into_owned())
     } else {
