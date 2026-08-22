@@ -222,6 +222,12 @@ pub struct TypeBinding {
     /// Field (tuple) or injector (union) names, positionally; `None` for
     /// anonymous components. Empty when the definition has none.
     pub fields: Vec<Option<String>>,
+    /// When a later `set_type` defines a structurally equivalent type, the
+    /// new entry forwards to the earlier canonical number (upstream
+    /// `type_expr::add_typedefs` reduces every equivalence class to one
+    /// entry, so a re-included identical definition reuses the first
+    /// number and old bindings keep matching, axis-types.w:1024-1051).
+    pub merged_into: Option<TypeNumber>,
 }
 
 /// The typedef table (upstream `type_expr::type_map`). Bracketed
@@ -252,6 +258,102 @@ impl TypeTable {
         binding.fields = fields;
     }
 
+    /// Mark `number` as merged into the canonical `target`, and give the
+    /// canonical entry the newer field names (upstream
+    /// `clean_out_type_identifier`, global.w:1176-1232: the names may
+    /// differ even when the types coincide).
+    pub fn merge_into(
+        &mut self,
+        number: TypeNumber,
+        target: TypeNumber,
+        fields: Vec<Option<String>>,
+    ) {
+        self.bindings[number.0].merged_into = Some(target);
+        self.bindings[target.0].fields = fields;
+    }
+
+    /// The canonical number: follows the merge chain.
+    pub fn canonical(&self, number: TypeNumber) -> TypeNumber {
+        let mut current = number;
+        while let Some(next) = self.bindings[current.0].merged_into {
+            current = next;
+        }
+        current
+    }
+
+    /// Coinductive structural equivalence of two tabled types
+    /// (axis-types.w:976-1000): expansions are compared component by
+    /// component, and a pair already under comparison counts as equal, so
+    /// recursive types (IntList) equate with their redefinitions.
+    pub fn equivalent(&self, a: TypeNumber, b: TypeNumber) -> bool {
+        fn go(
+            table: &TypeTable,
+            a: &Type,
+            b: &Type,
+            memo: &mut std::collections::HashSet<(usize, usize)>,
+        ) -> bool {
+            match (a, b) {
+                (Type::Tabled(x), Type::Tabled(y)) => {
+                    if x == y {
+                        return true;
+                    }
+                    if !memo.insert((x.0, y.0)) {
+                        return true;
+                    }
+                    let xa = table.expansion(*x).clone();
+                    let yb = table.expansion(*y).clone();
+                    go(table, &xa, &yb, memo)
+                }
+                (Type::Undetermined, Type::Undetermined) => true,
+                (Type::Primitive(x), Type::Primitive(y)) => x == y,
+                (Type::Function(x), Type::Function(y)) => {
+                    go(table, &x.0, &y.0, memo) && go(table, &x.1, &y.1, memo)
+                }
+                (Type::Row(x), Type::Row(y)) => go(table, x, y, memo),
+                (Type::Tuple(x), Type::Tuple(y)) | (Type::Union(x), Type::Union(y)) => {
+                    x.len() == y.len()
+                        && x.iter().zip(y).all(|(s, t)| go(table, s, t, memo))
+                }
+                _ => false,
+            }
+        }
+        let mut memo = std::collections::HashSet::new();
+        let ea = self.expansion(a).clone();
+        let eb = self.expansion(b).clone();
+        go(self, &ea, &eb, &mut memo)
+    }
+
+    /// Rewrite every stored reference to a merged number to its canonical
+    /// number (group members resolved before their sibling was merged still
+    /// point at the placeholder). Aliases are rewritten as well.
+    pub fn canonicalise_references(&mut self) {
+        let canonical: Vec<TypeNumber> = (0..self.bindings.len())
+            .map(|index| self.canonical(TypeNumber(index)))
+            .collect();
+        fn rewrite(canonical: &[TypeNumber], type_: &mut Type) {
+            match type_ {
+                Type::Tabled(number) => *number = canonical[number.0],
+                Type::Function(parts) => {
+                    rewrite(canonical, &mut parts.0);
+                    rewrite(canonical, &mut parts.1);
+                }
+                Type::Row(inner) => rewrite(canonical, inner),
+                Type::Tuple(components) | Type::Union(components) => {
+                    for component in components {
+                        rewrite(canonical, component);
+                    }
+                }
+                Type::Undetermined | Type::Primitive(_) => {}
+            }
+        }
+        for binding in &mut self.bindings {
+            rewrite(&canonical, &mut binding.definition);
+        }
+        for alias in self.aliases.values_mut() {
+            rewrite(&canonical, alias);
+        }
+    }
+
     pub fn binding(&self, number: TypeNumber) -> &TypeBinding {
         &self.bindings[number.0]
     }
@@ -265,6 +367,7 @@ impl TypeTable {
             .iter()
             .position(|binding| binding.name == name)
             .map(TypeNumber)
+            .map(|number| self.canonical(number))
     }
 
     /// Register a single-name `set_type` alias; it stays out of the tabled
@@ -422,6 +525,7 @@ mod tests {
             name: "maybe_a_vec".into(),
             definition: Type::union_of(vec![Type::void(), Type::Primitive(Prim::Vec)]),
             fields: vec![Some("no_vec".into()), Some("solution".into())],
+            merged_into: None,
         });
         let tabled = Type::Tabled(number);
         assert_eq!(tabled.display(&table).to_string(), "maybe_a_vec");
@@ -429,6 +533,7 @@ mod tests {
             name: "other".into(),
             definition: Type::union_of(vec![Type::void(), Type::Primitive(Prim::Vec)]),
             fields: Vec::new(),
+            merged_into: None,
         });
         assert_ne!(Type::Tabled(number), Type::Tabled(other));
         // Tabled-vs-structural comparison expands the definition.

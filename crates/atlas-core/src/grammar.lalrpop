@@ -500,6 +500,9 @@ PostfixSuffix: PostfixSuffix = {
     <_dot:"."> <name:"identifier"> => selector_suffix(name),
     <_dot:"."> <operator:Operator> => operator_selector(operator),
     <_dot:"."> <unit:UnitSelector> => unit_selector(unit),
+    // `unit: '(' expr ')'` (parser.y:366) makes a parenthesised expression
+    // a selector too: `v.(is_imaginary(x))` applies it to the receiver.
+    <_dot:"."> <_open:"("> <inner:Expr> <_close:")"> => unit_selector(inner),
 };
 
 // `selector: unit` (parser.y:321) — a literal in selector position.

@@ -1,0 +1,18 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "eval/user_type_cast",
+ "status": "verified_hpc_reference",
+ "events": [
+  {"kind": "ReportLine", "text": "Type name 'linear_solution' defined as (void|(vec,int,mat))\n  with injectors: empty_set, affine_subspace.\n"},
+  {"kind": "ReportLine", "text": "Type name 'maybe_a_vec' defined as (void|vec)\n  with injectors: no_vec, solution.\n"},
+  {"kind": "ReportLine", "text": "Type name 'maybe_a_ratvec' defined as (void|ratvec)\n  with injectors: no_ratvec, solution.\n"},
+  {"kind": "ReportLine", "text": "Type name 'maybe_a_mat' defined as (void|mat)\n  with injectors: no_mat, solution.\n"},
+  {"kind": "ReportLine", "text": "Defined pick: (int->maybe_a_vec)\n"},
+  {"kind": "Value", "value": {"type": "display", "display": "().no_vec"}},
+  {"kind": "Value", "value": {"type": "display", "display": "[ 3 ].solution"}},
+  {"kind": "ReportLine", "text": "Defined force: (maybe_a_vec->vec)\n"},
+  {"kind": "Value", "value": {"type": "display", "display": "[ 7 ]"}},
+  {"kind": "Value", "value": {"type": "display", "display": "[ 2 ].solution"}},
+  {"kind": "ReportLine", "text": "Type: maybe_a_vec\n"}
+ ]
+}

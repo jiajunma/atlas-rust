@@ -1869,6 +1869,7 @@ impl TypedContext {
                         name: definition.name.value.clone(),
                         definition: Type::Undetermined,
                         fields: Vec::new(),
+                        merged_into: None,
                     })
                 })
                 .collect();
@@ -1878,6 +1879,25 @@ impl TypedContext {
                 self.types.update(number, expansion, fields);
                 targets.push(Type::Tabled(number));
             }
+            // Pass 3 (axis-types.w:1024-1051): every equivalence class
+            // reduces to one entry. A re-included identical definition
+            // merges into the earlier number, so functions written against
+            // the first include still match.
+            for target in targets.iter_mut() {
+                let Type::Tabled(number) = target else { continue };
+                let canonical = (0..number.0)
+                    .map(TypeNumber)
+                    .find(|candidate| {
+                        self.types.binding(*candidate).merged_into.is_none()
+                            && self.types.equivalent(*number, *candidate)
+                    });
+                if let Some(canonical) = canonical {
+                    let fields = self.types.binding(*number).fields.clone();
+                    self.types.merge_into(*number, canonical, fields);
+                    *target = Type::Tabled(canonical);
+                }
+            }
+            self.types.canonicalise_references();
         } else {
             let definition = definitions
                 .first()
@@ -4887,13 +4907,23 @@ fn convert_lambda_expression(
             span,
         ));
     }
+    if let Type::Tabled(number) = required {
+        // A tabled required type only CHECKS its expansion (specialise does
+        // not unwrap it, and the tabled type has no holes to fill): convert
+        // the body against the expansion's fixed result type instead.
+        let Type::Function(parts) = analysis.types.expansion(*number).clone() else {
+            unreachable!("specialise accepted a non-function expansion")
+        };
+        let mut result = parts.1;
+        let converted = convert_expr(body, &mut result, &body_analysis)?;
+        return Ok(closure(converted));
+    }
     let Type::Function(parts) = required else {
         unreachable!("specialising to a function pattern yields a function type")
     };
     let converted = convert_expr(body, &mut parts.1, &body_analysis)?;
     Ok(closure(converted))
 }
-
 /// Convert a recursive function literal (axis.w:3137-3158): the declared
 /// result type makes the function type fully determined, the self name is
 /// bound to that type ahead of the parameters (one shared layer, so a call
