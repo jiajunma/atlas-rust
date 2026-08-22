@@ -1,0 +1,12 @@
+{
+ "fixture": "eval/string_slices_rejected.atlas",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "pending_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "upstream_evidence": ["sources/interpreter/axis.w:4281-4301", "sources/interpreter/axis.w:4383-4396"],
+ "notes": "Rejected string-slice bounds/type cases; HPC capture and differential pending.",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "reference_job": "pending",
+ "differential_job": "pending"
+}

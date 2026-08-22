@@ -1,0 +1,12 @@
+{
+ "fixture": "eval/string_slices.atlas",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "pending_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "upstream_evidence": ["sources/interpreter/axis.w:4108-4176", "sources/interpreter/axis.w:4379-4402"],
+ "notes": "String slices use byte length, half-open bounds, from-end flags, and reverse output; HPC capture and differential pending.",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "reference_job": "pending",
+ "differential_job": "pending"
+}
