@@ -56,6 +56,15 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   also passed (report SHA256
   `1dfde96bf955370bc3b8fa9cc4b7c6a7b19504335fdc584f16e5acf626dd36ac`).
 
+## Checkpoint - 2026-08-22e (typed lambda result annotations HPC-verified)
+
+- Corpus rerun **3614180** moved past operator aliases and exposed
+  `(int i)bool: ...` result annotations in `basic.at`. The parser now lowers
+  typed lambda results through the existing cast path.
+- Reference capture **3614208**, preflight **3614209**, and differential
+  **3614211** pass; the differential has 353 fixtures and 3 pre-existing
+  declared pending cases, with `typed_lambda_result` exact.
+
 ## Checkpoint - 2026-08-22a (partial_KL_block LocatedBlock rewrite FIXED; differential 3612366 IN FLIGHT)
 
 Branch = **main = `6c5a081`**, pushed + HPC-synced. The 2026-08-21j P0 is

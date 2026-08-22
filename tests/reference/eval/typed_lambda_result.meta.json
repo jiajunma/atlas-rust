@@ -3,9 +3,9 @@
  "oracle": "atlas",
  "stage": "typed-pipeline-swap",
  "reference_status": "verified_hpc_reference",
- "rust_status": "pending_hpc_differential",
+ "rust_status": "verified_hpc",
  "upstream_evidence": ["sources/interpreter/parser.y:227-230"],
- "notes": "Typed lambda result annotation `(int x)bool: ...`; reference captured by HPC job 3614208, differential pending.",
+ "notes": "Typed lambda result annotation `(int x)bool: ...`; reference captured by HPC job 3614208 and differential 3614211 PASS.",
  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
@@ -17,5 +17,10 @@
  "oracle_seconds": 0.01,
  "oracle_maxrss_kb": 3472,
  "oracle_maxrss_approximate": false,
- "differential_job": "pending"
+ "differential_job": "3614211",
+ "differential_source_commit": "38e09d5eb7e19104c2593af8b7e269dce049671d",
+ "differential_report_sha256": "d30a3170552d725d155a4f0c4f0558c3c4b55d02ba394ba02798377d6afa8b65",
+ "rust_seconds": 0.005,
+ "rust_maxrss_kb": 5720,
+ "rust_maxrss_approximate": false
 }

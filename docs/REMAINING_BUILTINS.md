@@ -25,6 +25,12 @@ Fixtures `eval/string_slices{,_rejected}` are verified by reference capture
 operator overload table. `eval/operator_alias` is verified by reference
 capture 3614131 and differential 3614146 (352-fixture runnable PASS).
 
+## Typed lambda result annotations verified (2026-08-22)
+
+`(params) result_type: body` is parsed and routed through the typed cast
+path. `eval/typed_lambda_result` is verified by capture 3614208 and
+differential 3614211 (353-fixture runnable PASS).
+
 ## ordinary deform proper lookup verified (2026-08-21)
 
 `deform(Param)` now uses the `RepTable::lookup` partial common block for each
