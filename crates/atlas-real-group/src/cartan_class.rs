@@ -44,15 +44,16 @@ impl TwistedConjugacyClass {
 /// The full twisted-conjugacy partition of one inner class's twisted
 /// involutions, with a membership lookup.
 ///
-/// Classes are in the deterministic enumeration order (matrix-lexicographic;
-/// NOT graded — the identity class generally sorts last). This raw order is
-/// an implementation detail of the orbit walk: the Cartan-numbering consumer
-/// [`crate::CartanClassification`] reorders the classes into Atlas's BFS
-/// discovery order through this partition's membership map. The lookup key
-/// is the root-image permutation, which does not encode the datum, so
-/// [`Self::class_of`] gates datum and distinguished-involution provenance
-/// before the map hit; a miss after those gates is an invariant violation,
-/// never a recoverable absence.
+/// Classes are in Cayley-BFS discovery order from the fundamental (identity)
+/// class, exactly like upstream's task 1 (innerclass.cpp:218-291), and every
+/// class membership is filled by cross-action closure
+/// (involutions.cpp:362-379); the Weyl group is never enumerated. The
+/// Cartan-numbering consumer [`crate::CartanClassification`] still reorders
+/// the classes into its own BFS positions through this partition's
+/// membership map. The lookup key is the root-image permutation, which does
+/// not encode the datum, so [`Self::class_of`] gates datum and
+/// distinguished-involution provenance before the map hit; a miss after
+/// those gates is an invariant violation, never a recoverable absence.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TwistedConjugacyPartition {
     datum: BasedRootDatum,
