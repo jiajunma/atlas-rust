@@ -4872,7 +4872,19 @@ fn bind_pattern_leaves(
                     *span,
                 )
             };
-            let Type::Tuple(components) = found else {
+            // A tabled (named) type is transparent here: upstream's
+            // `type.kind()`/`type.tuple()` accessors untable, so a tuple
+            // pattern destructures the expansion (axis-types.w:376-382,
+            // thread_bindings axis.w:2743-2754). The `whole` name, if any,
+            // still binds to the tabled type itself.
+            let expanded;
+            let expanded_found = if let Type::Tabled(number) = found {
+                expanded = types.expansion(*number).clone();
+                &expanded
+            } else {
+                found
+            };
+            let Type::Tuple(components) = expanded_found else {
                 return Err(mismatch());
             };
             if components.len() != elements.len() {
