@@ -1,0 +1,22 @@
+{
+ "fixture": "domain/partial_kl_block_proper.atlas",
+ "fixture_sha256": "7dad8e5e0dd9096d569f8687feb61b28c946becdcc2bc8957343ce8a362f0bfa",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "upstream_evidence": [
+  "sources/interpreter/atlas-types.w:6998-7051",
+  "sources/gkmod/blocks.cpp:323-368"
+ ],
+ "rust_status": "verified_hpc",
+ "oracle_exit_status": 0,
+ "notes": "Proper partial_KL_block case (A2 split, x=3, gamma=[1,1]/2): the Bruhat downward closure of the start element reaches a second survivor (x=0, nu=0) with a nontrivial 2x2 condensed KL matrix. This is the case the pre-LocatedBlock implementation could not reproduce (removed from the original partial_kl_block fixture); the lookup-based rewrite matches the oracle exactly.",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "3612358",
+ "source_archive_sha256": "45efa21fca7fe8876d57e27cbb8ca8936fc58b69613b70fd756174178a3c5fec",
+ "capture_artifacts_sha256": "see reference_capture_report.json.sha256 in job 3612358",
+ "differential_job": "pending",
+ "oracle_seconds": 0.014,
+ "oracle_maxrss_kb": 4384
+}
