@@ -199,6 +199,13 @@ fn expanded<'a>(type_: &'a Type, table: &'a TypeTable) -> &'a Type {
 
 /// Structural equality through tabled expansions.
 fn same(a: &Type, b: &Type, table: &TypeTable) -> bool {
+    // The table canonicalises, so two tabled types compare by NUMBER
+    // (types.rs:110-113). Besides being cheaper, this is what keeps
+    // recursive types (e.g. inf_list = (->inf_node), whose expansion
+    // refers back to itself) from expanding forever here.
+    if let (Type::Tabled(x), Type::Tabled(y)) = (a, b) {
+        return x == y;
+    }
     let (a, b) = (expanded(a, table), expanded(b, table));
     match (a, b) {
         (Type::Primitive(x), Type::Primitive(y)) => x == y,
@@ -273,6 +280,14 @@ pub fn is_close(x: &Type, y: &Type, table: &TypeTable) -> u8 {
 /// broadest, `*` narrowest; a primitive absorbs whatever coerces into it;
 /// rows and tuples go componentwise; functions need equal argument types.
 pub fn broader_eq(a: &Type, b: &Type, table: &TypeTable) -> bool {
+    // Equal tabled numbers are equal types (the table canonicalises);
+    // short-circuiting also keeps recursive types from expanding
+    // forever, as in `same`.
+    if let (Type::Tabled(x), Type::Tabled(y)) = (a, b) {
+        if x == y {
+            return true;
+        }
+    }
     let (a, b) = (expanded(a, table), expanded(b, table));
     if a.is_void() {
         return true;
