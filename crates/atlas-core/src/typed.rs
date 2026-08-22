@@ -2660,7 +2660,7 @@ pub fn convert_expr(
             // latter is byte-indexed by the upstream `std::string` wrapper
             // (axis.w:4379-4402), while the result remains a string.
             let found = match &array_type {
-                Type::Row(component) => Type::row((*component).clone()),
+                Type::Row(component) => Type::Row(component.clone()),
                 Type::Primitive(Prim::String) => Type::Primitive(Prim::String),
                 _ => {
                     return Err(type_error(
