@@ -52,7 +52,9 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   stores an existing function value directly in the operator overload table.
   Reference capture **3614131** and differential **3614146** PASS; the latter
   has 352 fixtures and 3 pre-existing declared pending cases, with the new
-  `operator_alias` fixture exact.
+  `operator_alias` fixture exact. A clean-output HPC preflight **3614162**
+  also passed (report SHA256
+  `1dfde96bf955370bc3b8fa9cc4b7c6a7b19504335fdc584f16e5acf626dd36ac`).
 
 ## Checkpoint - 2026-08-22a (partial_KL_block LocatedBlock rewrite FIXED; differential 3612366 IN FLIGHT)
 
