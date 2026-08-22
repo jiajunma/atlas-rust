@@ -132,7 +132,7 @@ def first_error(stderr: str) -> str:
     return "(no diagnostic)"
 
 
-def run_corpus(atlas_bin, cli_bin, files, size_cap, timeout):
+def run_corpus(atlas_bin, cli_bin, files, size_cap, timeout, on_entry=None):
     scripts_dir = os.path.join(os.path.dirname(atlas_bin) or ".", "atlas-scripts")
     entries = []
     for path in files:
@@ -142,6 +142,8 @@ def run_corpus(atlas_bin, cli_bin, files, size_cap, timeout):
         if size > size_cap:
             entry["category"] = "SKIPPED_LARGE"
             entries.append(entry)
+            if on_entry:
+                on_entry(entries)
             continue
         text = open(path, encoding="utf-8", errors="replace").read()
 
@@ -191,22 +193,12 @@ def run_corpus(atlas_bin, cli_bin, files, size_cap, timeout):
             entry["category"] = classify_rust(rust["stderr"])
             entry["rust_first_error"] = first_error(rust["stderr"])
         entries.append(entry)
+        if on_entry:
+            on_entry(entries)
     return entries
 
 
-def main() -> int:
-    # The Rust CLI runs with cwd=scripts_dir, so its path must be absolute.
-    atlas_bin, cli_bin = sys.argv[1], os.path.abspath(sys.argv[2])
-    patterns = sys.argv[3:] or [
-        os.path.join(
-            os.path.dirname(atlas_bin) or ".", "atlas-scripts", "*.at"
-        )
-    ]
-    files = sorted({p for pattern in patterns for p in glob.glob(pattern)})
-    size_cap = int(os.environ.get("SIZE_CAP", 2 * 1024 * 1024))
-    timeout = int(os.environ.get("TIMEOUT", 120))
-    entries = run_corpus(atlas_bin, cli_bin, files, size_cap, timeout)
-
+def build_report(entries):
     counts = {}
     histogram = {}
     for entry in entries:
@@ -253,7 +245,36 @@ def main() -> int:
             )[:10]
         ],
     }
+    return report
+
+
+def main() -> int:
+    # The Rust CLI runs with cwd=scripts_dir, so its path must be absolute.
+    atlas_bin, cli_bin = sys.argv[1], os.path.abspath(sys.argv[2])
+    patterns = sys.argv[3:] or [
+        os.path.join(
+            os.path.dirname(atlas_bin) or ".", "atlas-scripts", "*.at"
+        )
+    ]
+    files = sorted({p for pattern in patterns for p in glob.glob(pattern)})
+    size_cap = int(os.environ.get("SIZE_CAP", 2 * 1024 * 1024))
+    timeout = int(os.environ.get("TIMEOUT", 120))
     path = os.environ.get("REPORT", "script_corpus_report.json")
+
+    # Checkpoint after EVERY script: a wall-clock kill of the SLURM job must
+    # not lose the whole run, and the tee'd log shows live progress.
+    def checkpoint(entries):
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(build_report(entries), handle, indent=2)
+        last = entries[-1]
+        print(
+            f"[{len(entries)}/{len(files)}] {last['script']}: {last['category']}",
+            flush=True,
+        )
+
+    entries = run_corpus(atlas_bin, cli_bin, files, size_cap, timeout, checkpoint)
+    report = build_report(entries)
+    counts = report["counts"]
     with open(path, "w", encoding="utf-8") as handle:
         json.dump(report, handle, indent=2)
     print(f"corpus: {len(entries)} scripts")
