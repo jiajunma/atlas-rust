@@ -1,0 +1,10 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "eval/operator_alias",
+ "status": "pending_hpc_reference",
+ "events": [
+  {"kind": "ReportLine", "text": "Added definition [6] of ^: (bool,bool->bool)\n"},
+  {"kind": "Value", "value": {"type": "boolean", "value": true}},
+  {"kind": "ReportLine", "text": "Overloaded instances of '^'\n  (int,int)->int\n  (rat,int)->rat\n  vec->mat\n  mat->mat\n  (int,[vec])->mat\n  (bool,bool)->bool\n"}
+ ]
+}

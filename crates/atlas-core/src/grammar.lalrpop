@@ -75,6 +75,9 @@ pub Command: Command = {
         <parameters:LambdaParametersOpt> <_close:")"> <_equals:"="> <body:Expr> => {
         set_command(set, vec![operator_function_binding(operator, open, parameters, body)])
     },
+    <set:"set"> <operator:Operator> <_equals:"="> <body:Expr> => {
+        set_command(set, vec![operator_value_binding(operator, body)])
+    },
     <set:"set"> <bindings:LetBindings> => set_command(set, bindings),
     // forget (parser.y:141-142,155-157): an identifier drops its global
     // binding; `name @ type` (identifier or operator) removes ONE overload.

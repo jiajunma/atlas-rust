@@ -342,6 +342,8 @@ FIXTURE_PLANS = (
     # String slices (axis.w:4379-4402); reference captured by 3614066.
     FixturePlan(name="eval/string_slices"),
     FixturePlan(name="eval/string_slices_rejected"),
+    # Operator value aliases (`set ^ = !=@(bool,bool)`), parser.y:151-153.
+    FixturePlan(name="eval/operator_alias"),
     FixturePlan(name="eval/slices"),
     FixturePlan(name="eval/subscriptions"),
     FixturePlan(name="eval/context"),

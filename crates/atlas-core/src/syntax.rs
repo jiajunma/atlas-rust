@@ -2159,6 +2159,18 @@ fn operator_function_binding(
     function_binding(name, open, parameters, body)
 }
 
+/// `set operator = expression` stores an already-created function value in
+/// the operator overload table (parser.y:151-153), rather than wrapping it in
+/// a new lambda.
+fn operator_value_binding(target: FormulaOperator, body: Expr) -> LetBinding {
+    let span = target.span.expect("grammar operators carry spans");
+    let name = SpannedValue {
+        value: target.symbol,
+        span,
+    };
+    let_binding(name, body)
+}
+
 /// `rec_fun name(params) = result: body` in a let declaration desugars to
 /// `name = rec_fun name (params) result: body` (parser.y:256-257).
 fn rec_function_binding(
