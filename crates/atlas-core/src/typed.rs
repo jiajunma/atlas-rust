@@ -441,6 +441,11 @@ pub struct Analysis<'a> {
     /// Set while converting a function body: `return` is legal only there
     /// (the axis layer's return_type marker).
     in_function: bool,
+    /// The enclosing function's result-type cell (axis.w:313,342-365):
+    /// `return e` converts `e` against THIS type regardless of the local
+    /// context, and specialisations flow back into the function type.
+    /// `None` outside function bodies (upstream `return_type==nullptr`).
+    return_type: Option<TypeCell>,
     /// Number of enclosing loops: `break` is legal only when nonzero
     /// (mirrors `in_function`; upstream rejects a stray `break` during
     /// analysis, before anything evaluates).
@@ -466,6 +471,7 @@ impl<'a> Analysis<'a> {
             locals: BTreeMap::new(),
             constant_locals: BTreeSet::new(),
             in_function: false,
+            return_type: None,
             loop_depth: 0,
             last_value,
             last_value_type,
@@ -481,6 +487,7 @@ impl<'a> Analysis<'a> {
             locals: self.locals.clone(),
             constant_locals: self.constant_locals.clone(),
             in_function: self.in_function,
+            return_type: self.return_type.clone(),
             loop_depth: self.loop_depth + 1,
             last_value: self.last_value,
             last_value_type: self.last_value_type,
@@ -2388,18 +2395,22 @@ pub fn convert_expr(
         } => convert_lambda_expression(parameters, body, *span, required, analysis),
         Expr::RecLambda { .. } => convert_rec_lambda_expression(expression, required, analysis),
         Expr::Return { value, span } => {
-            // `return` is legal only lexically inside a function body (the
-            // axis layer's return_type marker); upstream rejects it during
-            // analysis, before anything evaluates.
-            if !analysis.in_function {
+            // `return` is legal only lexically inside a function body
+            // (upstream `layer::may_return`, axis.w:381-384); the value
+            // converts against the function's result type — shared through
+            // the analysis cell so specialisations stick (axis.w:717-721) —
+            // NEVER against the local context, which may be void (a `return`
+            // inside a statement-position loop body still returns a value).
+            let Some(return_cell) = &analysis.return_type else {
                 return Err(type_error(
                     "One can only use 'return' within a function body".into(),
                     *span,
                 ));
-            }
-            // The enclosing context is the function's result type;
-            // evaluation unwinds to the innermost call boundary.
-            let converted = convert_expr(value, required, analysis)?;
+            };
+            let mut target = return_cell.borrow().clone();
+            let converted = convert_expr(value, &mut target, analysis)?;
+            *return_cell.borrow_mut() = target;
+            // The expression itself produces no value: `required` untouched.
             Ok(TypedExpr::Return {
                 value: Box::new(converted),
             })
@@ -2840,6 +2851,7 @@ pub fn convert_expr(
                             locals: locals.clone(),
                             constant_locals: constant_locals.clone(),
                             in_function: analysis.in_function,
+                            return_type: analysis.return_type.clone(),
                             loop_depth: analysis.loop_depth,
                             last_value: analysis.last_value,
                             last_value_type: analysis.last_value_type,
@@ -2910,6 +2922,7 @@ pub fn convert_expr(
                     locals,
                     constant_locals,
                     in_function: analysis.in_function,
+                    return_type: analysis.return_type.clone(),
                     loop_depth: analysis.loop_depth,
                     last_value: analysis.last_value,
                     last_value_type: analysis.last_value_type,
@@ -3398,6 +3411,7 @@ pub fn convert_expr(
                         locals,
                         constant_locals,
                         in_function: analysis.in_function,
+                        return_type: analysis.return_type.clone(),
                         loop_depth: analysis.loop_depth,
                         last_value: analysis.last_value,
                         last_value_type: analysis.last_value_type,
@@ -3910,6 +3924,7 @@ fn convert_for_loop(
             locals,
             constant_locals,
             in_function: analysis.in_function,
+            return_type: analysis.return_type.clone(),
             loop_depth: analysis.loop_depth + 1,
             last_value: analysis.last_value,
             last_value_type: analysis.last_value_type,
@@ -3991,6 +4006,7 @@ fn convert_counted_for_loop(
             locals,
             constant_locals,
             in_function: analysis.in_function,
+            return_type: analysis.return_type.clone(),
             loop_depth: analysis.loop_depth + 1,
             last_value: analysis.last_value,
             last_value_type: analysis.last_value_type,
@@ -5017,6 +5033,10 @@ fn convert_lambda_expression(
             offset += 1;
         }
     }
+    // The shared result-type cell (axis.w:313): `return` clauses convert
+    // against it even from void contexts, and narrowings they alone make
+    // flow back into the function type after the body is converted.
+    let return_cell: TypeCell = Rc::new(RefCell::new(Type::Undetermined));
     let body_analysis = Analysis {
         types: analysis.types,
         globals: analysis.globals,
@@ -5024,6 +5044,7 @@ fn convert_lambda_expression(
         locals,
         constant_locals,
         in_function: true,
+        return_type: Some(return_cell.clone()),
         // A closure evaluates in its captured context, not the defining
         // loop's; `break` legality starts over at the function boundary.
         loop_depth: 0,
@@ -5039,6 +5060,9 @@ fn convert_lambda_expression(
         param_names: Rc::from(param_names),
     };
     if required.is_void() {
+        // Upstream converts the body against a dummy result type
+        // (axis.w:3105-3109): the cell stays undetermined, and `return`
+        // clauses check against it without affecting anything.
         let mut dummy = Type::Undetermined;
         let converted = convert_expr(body, &mut dummy, &body_analysis)?;
         return Ok(TypedExpr::Void(Box::new(closure(converted))));
@@ -5062,13 +5086,30 @@ fn convert_lambda_expression(
             unreachable!("specialise accepted a non-function expansion")
         };
         let mut result = parts.1;
+        // The expansion is fully determined, so `return` clauses cannot
+        // narrow it; seeding the cell lets them type-check against it.
+        *return_cell.borrow_mut() = result.clone();
         let converted = convert_expr(body, &mut result, &body_analysis)?;
         return Ok(closure(converted));
     }
     let Type::Function(parts) = required else {
         unreachable!("specialising to a function pattern yields a function type")
     };
+    *return_cell.borrow_mut() = parts.1.clone();
     let converted = convert_expr(body, &mut parts.1, &body_analysis)?;
+    // Propagate narrowings that only `return` clauses made (the body's own
+    // narrowings are already in `parts.1`; a conflict means a return type
+    // disagreed with the body, which upstream rejects at the return).
+    if !parts.1.specialise(&return_cell.borrow(), analysis.types) {
+        return Err(type_error(
+            format!(
+                "type {} does not match required pattern {}",
+                return_cell.borrow().display(analysis.types),
+                parts.1.display(analysis.types)
+            ),
+            span,
+        ));
+    }
     Ok(closure(converted))
 }
 /// Convert a recursive function literal (axis.w:3137-3158): the declared
@@ -5157,6 +5198,9 @@ fn convert_rec_lambda_expression(
         locals,
         constant_locals,
         in_function: true,
+        // The declared result type is fully determined, so a shared cell
+        // suffices for `return` clauses (axis.w:3154 f_type.func()->result).
+        return_type: Some(Rc::new(RefCell::new(resolved_result.clone()))),
         // A closure evaluates in its captured context, not the defining
         // loop's; `break` legality starts over at the function boundary.
         loop_depth: 0,
@@ -5271,7 +5315,15 @@ fn convert_overload_application(
     let expected: Vec<Type> = if expressions.len() == 1 {
         vec![variant.arg_type.clone()]
     } else {
-        match &variant.arg_type {
+        // A tabled parameter type stands for its expansion: upstream converts
+        // the argument tuple against arg_type whose accessors untable
+        // (axis-types.w:376-382), so the per-argument slots are the
+        // expansion's components, not the named type itself.
+        let mut argument_type = &variant.arg_type;
+        while let Type::Tabled(number) = argument_type {
+            argument_type = analysis.types.expansion(*number);
+        }
+        match argument_type {
             Type::Tuple(components) => components.clone(),
             single => vec![single.clone()],
         }
