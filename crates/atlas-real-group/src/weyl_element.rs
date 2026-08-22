@@ -194,6 +194,29 @@ impl WeylElement {
         Ok((product, change))
     }
 
+    /// `s * self` for a KNOWN left descent, given the simple reflection's
+    /// root permutation: no matrix materialization and no length recount (a
+    /// left descent drops the length by exactly one). For hot peeling loops
+    /// such as [`ParabolicPieces::key`]; the general
+    /// [`Self::left_multiply_simple`] rebuilds the reflection through a
+    /// fresh `WeylAction` matrix per call, which dominates large KGB sorts.
+    fn left_descend(&self, reflection: &[RootId]) -> Self {
+        debug_assert!(self.length > 0);
+        let count = self.permutation.len();
+        let mut permutation = Vec::with_capacity(count);
+        let mut inverse = Vec::with_capacity(count);
+        for index in 0..count {
+            permutation.push(reflection[self.permutation[index].0]);
+            // (s w)^{-1} = w^{-1} s.
+            inverse.push(self.inverse[reflection[index].0]);
+        }
+        Self {
+            permutation,
+            inverse,
+            length: self.length - 1,
+        }
+    }
+
     pub fn inverse(&self) -> Self {
         Self {
             permutation: self.inverse.clone(),
@@ -421,6 +444,10 @@ fn simple_id(system: &RootSystem, generator: usize) -> Result<RootId, StructureE
 pub struct ParabolicPieces {
     /// Per internal level: minimal coset representative -> piece index.
     levels: Vec<BTreeMap<WeylElement, usize>>,
+    /// Per EXTERNAL generator: the simple reflection's root permutation.
+    /// Cached once at build so [`Self::key`]'s descent peeling never
+    /// materializes a reflection matrix.
+    reflections: Vec<Vec<RootId>>,
 }
 
 impl ParabolicPieces {
@@ -430,6 +457,11 @@ impl ParabolicPieces {
             return Err(StructureError::WeylElementInvariantViolation {
                 invariant: "interface provenance",
             });
+        }
+        let mut reflections = try_capacity(rank)?;
+        for generator in 0..rank {
+            let action = WeylAction::simple_reflection(system.datum(), generator)?;
+            reflections.push(system.action_permutation(&action)?);
         }
         let mut levels = try_capacity(rank)?;
         for level in 0..rank {
@@ -461,7 +493,7 @@ impl ParabolicPieces {
             }
             levels.push(index);
         }
-        Ok(Self { levels })
+        Ok(Self { levels, reflections })
     }
 
     /// The element's piece list in internal-level order: the unique
@@ -495,13 +527,9 @@ impl ParabolicPieces {
                 for internal in 0..level {
                     let generator = interface.outward[internal];
                     if minimal.has_left_descent(system, generator)? {
-                        let (next, change) = minimal.left_multiply_simple(system, generator)?;
-                        if change != -1 {
-                            return Err(StructureError::WeylElementInvariantViolation {
-                                invariant: "descent peeling",
-                            });
-                        }
-                        minimal = next;
+                        // A left descent shortens by exactly one: descend via
+                        // the cached reflection permutation, no recount.
+                        minimal = minimal.left_descend(&self.reflections[generator]);
                         descended = true;
                         break;
                     }
