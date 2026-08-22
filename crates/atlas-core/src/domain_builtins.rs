@@ -220,16 +220,161 @@ struct DeformationCache {
     values: HashMap<FullDeformKey, Vec<(SplitValue, KType)>>,
 }
 
+/// A real form's KGB pipeline: the completed involution table, the KGB
+/// graph, and the representation-table owner sharing them. Built LAZILY on
+/// first use (see [`RealFormContext::kgb`]): upstream constructs a RealForm
+/// value cheaply and completes the KGB graph only on first demand
+/// (kgb.cpp), so `real_form(E8_ic, 2)` must not enumerate its 320,206
+/// elements before a builtin actually reads the graph.
+#[derive(Debug)]
+struct KgbBundle {
+    table: Arc<InvolutionTable>,
+    graph: Arc<KgbGraph>,
+    rep: Arc<RepTableOwner>,
+}
+
+/// The seed a form's KGB pipeline is built from: the form's elected seed
+/// (the canonical `build_real_form` construction) or the caller's custom
+/// (cocharacter, torus part) pair (`real_form_value::build`,
+/// atlas-types.w:3543-3544 — only `synthetic_real_form` plans that failed
+/// the default-seed test take the custom path).
+#[derive(Debug, Eq, PartialEq)]
+enum RealFormSeedPlan {
+    Default,
+    Custom {
+        cocharacter: Vec<BigRational>,
+        torus_part: ModTwoVector,
+    },
+}
+
 #[derive(Debug)]
 pub struct RealFormContext {
     parent: Arc<InnerClassContext>,
     external: usize,
     internal: WeakRealFormId,
-    table: Arc<InvolutionTable>,
-    graph: Arc<KgbGraph>,
-    rep: Arc<RepTableOwner>,
+    seed: RealFormSeedPlan,
+    kgb: Mutex<Option<Arc<KgbBundle>>>,
     full_deform_cache: Mutex<DeformationCache>,
     twisted_full_deform_cache: Mutex<DeformationCache>,
+}
+
+impl RealFormContext {
+    /// The form's KGB pipeline, built on first demand. The build runs the
+    /// exact pipeline `build_real_form` used to run eagerly (fresh table,
+    /// fundamental Cartan, seed, graph, representation owner); it runs
+    /// OUTSIDE the mutex, double-checked on re-entry like the
+    /// `canonical_forms` dance, so concurrent first uses do not serialize
+    /// behind a KGB completion and the first installed bundle wins.
+    fn kgb(&self, span: SourceSpan) -> Result<Arc<KgbBundle>, Diagnostic> {
+        if let Some(bundle) = self
+            .kgb
+            .lock()
+            .map_err(|_| runtime(span, "KGB pipeline cache poisoned"))?
+            .as_ref()
+        {
+            return Ok(Arc::clone(bundle));
+        }
+        let bundle = Arc::new(
+            self.build_kgb()
+                .map_err(|error| runtime(span, error.to_string()))?,
+        );
+        let mut slot = self
+            .kgb
+            .lock()
+            .map_err(|_| runtime(span, "KGB pipeline cache poisoned"))?;
+        if let Some(existing) = slot.as_ref() {
+            return Ok(Arc::clone(existing));
+        }
+        *slot = Some(Arc::clone(&bundle));
+        Ok(bundle)
+    }
+
+    /// The `StructureError` form of [`RealFormContext::kgb`], for the
+    /// `StructureError`-typed helpers (`located_*`) that carry no span.
+    fn kgb_or_structure(&self) -> Result<Arc<KgbBundle>, StructureError> {
+        if let Some(bundle) = self
+            .kgb
+            .lock()
+            .map_err(|_| StructureError::RepInvariantViolation {
+                invariant: "KGB pipeline cache poisoned",
+            })?
+            .as_ref()
+        {
+            return Ok(Arc::clone(bundle));
+        }
+        let bundle = Arc::new(self.build_kgb()?);
+        let mut slot = self
+            .kgb
+            .lock()
+            .map_err(|_| StructureError::RepInvariantViolation {
+                invariant: "KGB pipeline cache poisoned",
+            })?;
+        if let Some(existing) = slot.as_ref() {
+            return Ok(Arc::clone(existing));
+        }
+        *slot = Some(Arc::clone(&bundle));
+        Ok(bundle)
+    }
+
+    /// The already-built bundle, for the Display paths of values whose
+    /// construction forced the build (KType, Param, the polynomials):
+    /// printing must not trigger the deferred pipeline. `None` only when no
+    /// builtin has touched the form's pipeline, which a constructed value
+    /// rules out.
+    fn built_kgb(&self) -> Option<Arc<KgbBundle>> {
+        self.kgb.lock().ok()?.as_ref().cloned()
+    }
+
+    /// The exact pipeline `build_real_form`/`build_custom_real_form` used to
+    /// run eagerly: a fresh involution table over the fundamental Cartan,
+    /// the form's seed (elected or custom), the completed KGB graph, and
+    /// the shared representation-table owner.
+    fn build_kgb(&self) -> Result<KgbBundle, StructureError> {
+        let parent = &self.parent;
+        let mut table = InnerClassContext::fresh_table(parent)?;
+        let fundamental = parent.classification.cartan_ids().next().ok_or(
+            StructureError::RepInvariantViolation {
+                invariant: "empty classification",
+            },
+        )?;
+        table.add_cartan(&parent.classification, fundamental)?;
+        let seed = match &self.seed {
+            RealFormSeedPlan::Default => RealFormSeed::build(
+                &parent.inner_class,
+                &parent.classification,
+                &parent.strong,
+                &table,
+                self.internal,
+                &INTEGER_BUDGET,
+                FIBER_BUDGET,
+            )?,
+            RealFormSeedPlan::Custom {
+                cocharacter,
+                torus_part,
+            } => RealFormSeed::custom(
+                &parent.inner_class,
+                &parent.classification,
+                &table,
+                self.internal,
+                cocharacter,
+                torus_part.clone(),
+            )?,
+        };
+        let graph = KgbGraph::build(
+            &parent.inner_class,
+            &parent.classification,
+            &parent.strong,
+            &mut table,
+            &seed,
+        )?;
+        let table = Arc::new(table);
+        let graph = Arc::new(graph);
+        let rep = Arc::new(RepTableOwner::from_shared(
+            Arc::clone(&table),
+            Arc::clone(&graph),
+        )?);
+        Ok(KgbBundle { table, graph, rep })
+    }
 }
 
 /// A Block value: the owning real form and dual real form contexts with
@@ -501,20 +646,26 @@ impl Eq for DomainValue {}
 /// The owning-form identity of a [`RealFormContext`], matching the
 /// `RealReductiveGroup operator==` (realredgp.h:142-149): same inner
 /// class and form, same base cocharacter, same initial torus part — the
-/// custom-seed identity.
+/// custom-seed identity. Compared WITHOUT forcing the lazy KGB build: the
+/// seed plan carries exactly the compared datum (elected seed for the
+/// default construction, the caller's pair for a custom one), and a custom
+/// plan is only ever installed when its pair differs from the elected seed
+/// (`synthetic_real_form`'s `default_seed` test), so `Default == Custom`
+/// is correctly false.
 fn same_real_form(left: &RealFormContext, right: &RealFormContext) -> bool {
     left.parent.inner_class == right.parent.inner_class
         && left.internal == right.internal
-        && left.graph.cocharacter() == right.graph.cocharacter()
-        && left.graph.seed_element().torus_bits() == right.graph.seed_element().torus_bits()
+        && left.seed == right.seed
 }
 
 /// Pointer-owner equality used by wrappers that compare their
-/// `shared_real_form` fields directly. Canonical construction shares one
-/// `RepTableOwner` through the parent weak cache; custom construction always
-/// creates a fresh owner even when the mathematical real forms are equal.
+/// `shared_real_form` fields directly. The owner now lives inside the
+/// context's lazy KGB bundle, so two values share an owner exactly when
+/// they reference the same context object: canonical construction hands
+/// out the cached Arc, and custom construction always creates a fresh
+/// context (and owner) even when the mathematical real forms are equal.
 fn same_real_form_owner(left: &RealFormContext, right: &RealFormContext) -> bool {
-    Arc::ptr_eq(&left.rep, &right.rep)
+    std::ptr::eq(left, right)
 }
 
 impl fmt::Display for DomainValue {
@@ -618,7 +769,12 @@ impl fmt::Display for DomainValue {
             // chain, ` K-type`, then print_K_type (basic_io.cpp:158-163)
             // whose own leading space gives `final K-type K_type(...)`.
             Self::KType(value) => {
-                let rc = rep_context(&value.context);
+                // A constructed KType implies the form's KGB pipeline was
+                // already built, so this never forces the deferred build.
+                let Some(bundle) = value.context.built_kgb() else {
+                    return write!(formatter, "K-type of an unbuilt real form");
+                };
+                let rc = bundle.rep.context();
                 let adjectives = ktype_adjective(&rc, &value.ktype);
                 write!(
                     formatter,
@@ -650,7 +806,10 @@ impl fmt::Display for DomainValue {
                         ),
                     };
                 }
-                let rc = rep_context(&value.context);
+                let Some(bundle) = value.context.built_kgb() else {
+                    return write!(formatter, "parameter of an unbuilt real form");
+                };
+                let rc = bundle.rep.context();
                 let adjectives = repr_adjective(&rc, &value.repr);
                 write!(
                     formatter,
@@ -671,11 +830,35 @@ impl fmt::Display for DomainValue {
     }
 }
 
-/// Borrow the representation context of a real form's frozen pipeline from
-/// its shared owner. The owner keeps the table, graph, derived invariants, and
-/// future common-block cache on the same lifetime boundary.
-fn rep_context(context: &RealFormContext) -> RepContext<'_> {
-    context.rep.context()
+/// Owning handle for a real form's representation context: keeps the
+/// lazily-built KGB bundle alive while the borrowed [`RepContext`] is in
+/// use. The owner keeps the table, graph, derived invariants, and future
+/// common-block cache on the same lifetime boundary.
+struct RepContextOwner {
+    bundle: Arc<KgbBundle>,
+}
+
+impl RepContextOwner {
+    fn context(&self) -> RepContext<'_> {
+        self.bundle.rep.context()
+    }
+}
+
+/// Borrow the representation context of a real form's pipeline, building
+/// the KGB bundle on first demand (upstream builds the KGB graph on first
+/// demand too — kgb.cpp).
+fn rep_context(context: &RealFormContext, span: SourceSpan) -> Result<RepContextOwner, Diagnostic> {
+    Ok(RepContextOwner {
+        bundle: context.kgb(span)?,
+    })
+}
+
+/// The `StructureError` form of [`rep_context`], for the `StructureError`-
+/// typed helpers that carry no span.
+fn rep_context_structure(context: &RealFormContext) -> Result<RepContextOwner, StructureError> {
+    Ok(RepContextOwner {
+        bundle: context.kgb_or_structure()?,
+    })
 }
 
 /// The 6-way adjective chain for a K-type (atlas-types.w:5228-5235).
@@ -771,7 +954,12 @@ fn ktype_pol_display(value: &KTypePolValue) -> String {
         .terms
         .iter()
         .any(|(coefficient, _)| coefficient.f() != 0);
-    let rc = rep_context(&value.rf);
+    let Some(bundle) = value.rf.built_kgb() else {
+        // Unreachable: a nonempty KTypePol is only built through builtins
+        // that forced the form's KGB pipeline.
+        return "K-type sum of an unbuilt real form".to_string();
+    };
+    let rc = bundle.rep.context();
     let mut out = String::new();
     for (coefficient, ktype) in &value.terms {
         out.push('\n');
@@ -816,7 +1004,12 @@ fn param_pol_display(value: &ParamPolValue) -> String {
         .terms
         .iter()
         .any(|(coefficient, _)| coefficient.f() != 0);
-    let rc = rep_context(&value.rf);
+    let Some(bundle) = value.rf.built_kgb() else {
+        // Unreachable: a nonempty ParamPol is only built through builtins
+        // that forced the form's KGB pipeline.
+        return "standard-module sum of an unbuilt real form".to_string();
+    };
+    let rc = bundle.rep.context();
     let mut out = String::new();
     for (coefficient, repr) in &value.terms {
         out.push('\n');
@@ -1981,7 +2174,8 @@ pub(crate) fn coerce(tag: &str, value: Value, span: SourceSpan) -> Result<Value,
         // them in canonical K_type_pol term order.
         "KpolK" => match value {
             Value::Domain(DomainValue::KType(ktype_value)) => {
-                let rc = rep_context(&ktype_value.context);
+                let rc_owner = rep_context(&ktype_value.context, span)?;
+                let rc = rc_owner.context();
                 let mut terms: Vec<(SplitValue, KType)> = Vec::new();
                 for (ktype, coefficient) in ktype_value
                     .ktype
@@ -2003,7 +2197,8 @@ pub(crate) fn coerce(tag: &str, value: Value, span: SourceSpan) -> Result<Value,
         // expand_final) and collect them in SR_poly term order.
         "PolP" => match value {
             Value::Domain(DomainValue::Param(parameter)) => {
-                let rc = rep_context(&parameter.context);
+                let rc_owner = rep_context(&parameter.context, span)?;
+                let rc = rc_owner.context();
                 let mut terms: Vec<(SplitValue, StandardRepr)> = Vec::new();
                 for (repr, coefficient) in rc
                     .expand_final(&parameter.repr)
@@ -2045,49 +2240,17 @@ fn build_real_form(
         }
     }
 
-    // Construct outside the cache lock. KGB completion can be expensive, and
-    // concurrent callers must not serialize unrelated real forms behind it.
-    let mut table =
-        InnerClassContext::fresh_table(parent).map_err(|error| runtime(span, error.to_string()))?;
-    let fundamental = parent
-        .classification
-        .cartan_ids()
-        .next()
-        .ok_or_else(|| runtime(span, "empty classification"))?;
-    table
-        .add_cartan(&parent.classification, fundamental)
-        .map_err(|error| runtime(span, error.to_string()))?;
-    let seed = RealFormSeed::build(
-        &parent.inner_class,
-        &parent.classification,
-        &parent.strong,
-        &table,
-        internal,
-        &INTEGER_BUDGET,
-        FIBER_BUDGET,
-    )
-    .map_err(|error| runtime(span, error.to_string()))?;
-    let graph = KgbGraph::build(
-        &parent.inner_class,
-        &parent.classification,
-        &parent.strong,
-        &mut table,
-        &seed,
-    )
-    .map_err(|error| runtime(span, error.to_string()))?;
-    let table = Arc::new(table);
-    let graph = Arc::new(graph);
-    let rep = Arc::new(
-        RepTableOwner::from_shared(Arc::clone(&table), Arc::clone(&graph))
-            .map_err(|error| runtime(span, error.to_string()))?,
-    );
+    // Construction is cheap: the KGB pipeline (table, graph, rep owner) is
+    // deferred to first use — see RealFormContext::kgb. Upstream semantics
+    // match: `real_form_value::build` only freezes the form's identity, and
+    // the oracle accepts `set rf = real_form(E8_ic, 2)` instantly although
+    // completing that KGB enumerates 320,206 elements.
     let candidate = Arc::new(RealFormContext {
         parent: Arc::clone(parent),
         external,
         internal,
-        table,
-        graph,
-        rep,
+        seed: RealFormSeedPlan::Default,
+        kgb: Mutex::new(None),
         full_deform_cache: Mutex::new(DeformationCache::default()),
         twisted_full_deform_cache: Mutex::new(DeformationCache::default()),
     });
@@ -2104,8 +2267,9 @@ fn build_real_form(
         }
     }
 
-    // A concurrent builder may have installed the same form while this KGB
-    // graph was being completed. Preserve the first live canonical owner.
+    // A concurrent builder may have installed the same form while this
+    // candidate was being constructed. Preserve the first live canonical
+    // owner.
     let mut canonical_forms = parent
         .canonical_forms
         .lock()
@@ -2121,55 +2285,26 @@ fn build_real_form(
 }
 
 /// The custom-seed construction of `real_form_value::build`
-/// (atlas-types.w:3543-3544): a fresh KGB pipeline seeded with the
-/// caller's (cocharacter, torus part) pair rather than the form's elected
-/// seed. Only `synthetic_real_form` plans that failed the default test
-/// reach here.
+/// (atlas-types.w:3543-3544): the caller's (cocharacter, torus part) pair
+/// is frozen as the seed plan, and the custom-seeded KGB pipeline is built
+/// on first use like the canonical one. Only `synthetic_real_form` plans
+/// that failed the default test reach here.
 fn build_custom_real_form(
     parent: &Arc<InnerClassContext>,
     plan: &SyntheticRealForm,
-    span: SourceSpan,
+    _span: SourceSpan,
 ) -> Result<Arc<RealFormContext>, Diagnostic> {
-    let mut table =
-        InnerClassContext::fresh_table(parent).map_err(|error| runtime(span, error.to_string()))?;
-    let fundamental = parent
-        .classification
-        .cartan_ids()
-        .next()
-        .ok_or_else(|| runtime(span, "empty classification"))?;
-    table
-        .add_cartan(&parent.classification, fundamental)
-        .map_err(|error| runtime(span, error.to_string()))?;
-    let seed = RealFormSeed::custom(
-        &parent.inner_class,
-        &parent.classification,
-        &table,
-        plan.internal,
-        &plan.cocharacter,
-        plan.torus_part.clone(),
-    )
-    .map_err(|error| runtime(span, error.to_string()))?;
-    let graph = KgbGraph::build(
-        &parent.inner_class,
-        &parent.classification,
-        &parent.strong,
-        &mut table,
-        &seed,
-    )
-    .map_err(|error| runtime(span, error.to_string()))?;
-    let table = Arc::new(table);
-    let graph = Arc::new(graph);
-    let rep = Arc::new(
-        RepTableOwner::from_shared(Arc::clone(&table), Arc::clone(&graph))
-            .map_err(|error| runtime(span, error.to_string()))?,
-    );
+    // Like the canonical construction, only the identity and seed plan are
+    // frozen here; the custom-seed KGB pipeline is deferred to first use.
     Ok(Arc::new(RealFormContext {
         parent: Arc::clone(parent),
         external: plan.external,
         internal: plan.internal,
-        table,
-        graph,
-        rep,
+        seed: RealFormSeedPlan::Custom {
+            cocharacter: plan.cocharacter.clone(),
+            torus_part: plan.torus_part.clone(),
+        },
+        kgb: Mutex::new(None),
         full_deform_cache: Mutex::new(DeformationCache::default()),
         twisted_full_deform_cache: Mutex::new(DeformationCache::default()),
     }))
@@ -2410,7 +2545,8 @@ fn full_deformation_terms(
         if deadline_expired(deadline) {
             return Ok(None);
         }
-        let located = context
+        let bundle = context.kgb(span)?;
+        let located = bundle
             .rep
             .lookup(&zi)
             .map_err(|error| structure_diagnostic(error, span))?;
@@ -2468,7 +2604,8 @@ fn compute_full_deform(
     span: SourceSpan,
     deadline: Option<Instant>,
 ) -> Result<Option<Vec<(SplitValue, KType)>>, Diagnostic> {
-    let rc = rep_context(&parameter.context);
+    let rc_owner = rep_context(&parameter.context, span)?;
+    let rc = rc_owner.context();
     let finals = rc
         .finals_for(&parameter.repr)
         .map_err(|error| structure_diagnostic(error, span))?;
@@ -2505,7 +2642,8 @@ fn compute_twisted_full_deform(
     span: SourceSpan,
     timer_ms: Option<i32>,
 ) -> Result<Option<Vec<(SplitValue, KType)>>, Diagnostic> {
-    let rc = rep_context(&parameter.context);
+    let rc_owner = rep_context(&parameter.context, span)?;
+    let rc = rc_owner.context();
     let (delta, twist) = distinguished_twist(parameter, span)?;
     let context = ExtRepContext::new(&rc, delta.clone())
         .map_err(|error| structure_diagnostic(error, span))?;
@@ -2917,7 +3055,8 @@ fn located_row_parameter(
     located: &LocatedBlock,
     row: usize,
 ) -> Result<StandardRepr, StructureError> {
-    let rc = rep_context(context);
+    let rc_owner = rep_context_structure(context)?;
+    let rc = rc_owner.context();
     let block = located.block();
     let stored = block.element(row).ok_or(StructureError::IndexOutOfRange {
         index: row,
@@ -2946,7 +3085,8 @@ fn located_singular_flags(
     context: &Arc<RealFormContext>,
     located: &LocatedBlock,
 ) -> Result<Vec<bool>, StructureError> {
-    let rc = rep_context(context);
+    let rc_owner = rep_context_structure(context)?;
+    let rc = rc_owner.context();
     let system = rc.root_system();
     let gamma = located.prepared_query().gamma();
     let modifier = located.block_modifier();
@@ -3008,13 +3148,14 @@ fn kl_sum_at_s_terms(
 ) -> Result<Vec<(SplitValue, StandardRepr)>, Diagnostic> {
     test_standard(parameter, "Cannot compute Kazhdan-Lusztig sum", span)?;
     test_final(parameter, "Cannot compute Kazhdan-Lusztig sum", span)?;
-    let rc = rep_context(&parameter.context);
+    let rc_owner = rep_context(&parameter.context, span)?;
+    let rc = rc_owner.context();
     let normalised = parameter
         .repr
         .normalised(&rc)
         .map_err(|error| structure_diagnostic(error, span))?;
-    let located = parameter
-        .context
+    let located = rc_owner
+        .bundle
         .rep
         .lookup(&normalised)
         .map_err(|error| structure_diagnostic(error, span))?;
@@ -3309,7 +3450,8 @@ fn common_block_members(
 /// parameter with the oracle's two-line diagnostic; `descr` is
 /// "Cannot generate block" or "Cannot generate extended block".
 fn test_standard(parameter: &ParamValue, descr: &str, span: SourceSpan) -> Result<(), Diagnostic> {
-    let rc = rep_context(&parameter.context);
+    let rc_owner = rep_context(&parameter.context, span)?;
+    let rc = rc_owner.context();
     let standard = parameter
         .repr
         .is_standard(&rc)
@@ -3329,7 +3471,8 @@ fn test_standard(parameter: &ParamValue, descr: &str, span: SourceSpan) -> Resul
 /// `test_standard` there is no "not standard" case — the reason chain is
 /// dominant, then normal, then nonzero, then semifinal.
 fn test_final(parameter: &ParamValue, descr: &str, span: SourceSpan) -> Result<(), Diagnostic> {
-    let rc = rep_context(&parameter.context);
+    let rc_owner = rep_context(&parameter.context, span)?;
+    let rc = rc_owner.context();
     let repr = &parameter.repr;
     let reason = if !repr
         .is_dominant(&rc)
@@ -3365,7 +3508,8 @@ fn parameter_integrality_rank(
     parameter: &ParamValue,
     span: SourceSpan,
 ) -> Result<usize, Diagnostic> {
-    let rc = rep_context(&parameter.context);
+    let rc_owner = rep_context(&parameter.context, span)?;
+    let rc = rc_owner.context();
     IntegralSubsystem::integral(rc.root_system(), parameter.repr.gamma())
         .map(|subsystem| subsystem.rank())
         .map_err(|error| structure_diagnostic(error, span))
@@ -3479,6 +3623,7 @@ fn common_block_gamma_lambdas(
     span: SourceSpan,
 ) -> Result<Vec<Option<RationalWeight>>, Diagnostic> {
     let size = block.graph.size();
+    let df_bundle = block.dual_rf.kgb(span)?;
     let mut gl: Vec<Option<RationalWeight>> = vec![None; size];
     for z in 0..size {
         if !members[z] {
@@ -3486,8 +3631,7 @@ fn common_block_gamma_lambdas(
         }
         let x = block.graph.x(z).expect("in-range block element");
         let y = block.graph.y(z).expect("in-range block element");
-        let dual_bits = block
-            .dual_rf
+        let dual_bits = df_bundle
             .graph
             .element(y)
             .ok_or_else(|| runtime(span, "dual KGB element out of range"))?
@@ -3902,12 +4046,14 @@ fn build_ext_block(
         .based_involution_twist(dual_delta.clone())
         .map_err(|e| structure_diagnostic(e, span))?;
     let cartan = parameter.context.parent.root_datum.datum.cartan_matrix();
+    let rf_bundle = block.rf.kgb(span)?;
+    let df_bundle = block.dual_rf.kgb(span)?;
     ExtBlock::build(
         &block.graph,
-        &block.rf.graph,
-        &block.rf.table,
-        &block.dual_rf.graph,
-        &block.dual_rf.table,
+        &rf_bundle.graph,
+        &rf_bundle.table,
+        &df_bundle.graph,
+        &df_bundle.table,
         delta,
         twist,
         &dual_delta,
@@ -4005,7 +4151,8 @@ fn partial_block_param(
     z: usize,
     span: SourceSpan,
 ) -> Result<Value, Diagnostic> {
-    let rc = rep_context(&parameter.context);
+    let rc_owner = rep_context(&parameter.context, span)?;
+    let rc = rc_owner.context();
     let gl = block.gamma_lambda(z).expect("in-range parent row");
     let lambda_rho = integer_diff_weight(gamma_rho, gl, span)?;
     let repr = rc
@@ -4026,7 +4173,8 @@ fn extended_block_partial(
     gamma: &RationalWeight,
     span: SourceSpan,
 ) -> Result<Value, Diagnostic> {
-    let rc = rep_context(&parameter.context);
+    let rc_owner = rep_context(&parameter.context, span)?;
+    let rc = rc_owner.context();
     let seed = StandardReprMod::mod_reduce(&rc, &parameter.repr)
         .map_err(|error| structure_diagnostic(error, span))?;
     let ctxt = CommonContext::integral(&rc, seed.gamma_lambda())
@@ -4111,7 +4259,8 @@ fn raw_ext_kl_partial(
     twist: &[usize],
     span: SourceSpan,
 ) -> Result<Value, Diagnostic> {
-    let rc = rep_context(&parameter.context);
+    let rc_owner = rep_context(&parameter.context, span)?;
+    let rc = rc_owner.context();
     let seed = StandardReprMod::mod_reduce(&rc, &parameter.repr)
         .map_err(|error| structure_diagnostic(error, span))?;
     let ctxt = CommonContext::integral(&rc, seed.gamma_lambda())
@@ -4201,7 +4350,8 @@ fn partial_extended_kl_block_partial(
     twist: &[usize],
     span: SourceSpan,
 ) -> Result<Value, Diagnostic> {
-    let rc = rep_context(&parameter.context);
+    let rc_owner = rep_context(&parameter.context, span)?;
+    let rc = rc_owner.context();
     let seed = StandardReprMod::mod_reduce(&rc, &parameter.repr)
         .map_err(|error| structure_diagnostic(error, span))?;
     let ctxt = CommonContext::integral(&rc, seed.gamma_lambda())
@@ -6986,7 +7136,8 @@ fn expand_final(
 /// "not standard" only when the dominant/nonzero/semifinal/normal chain
 /// all pass (its first `if` is overwritten by the chain that follows).
 fn test_final_ktype(ktype: &KTypeValue, descr: &str, span: SourceSpan) -> Result<(), Diagnostic> {
-    let rc = rep_context(&ktype.context);
+    let rc_owner = rep_context(&ktype.context, span)?;
+    let rc = rc_owner.context();
     let term = &ktype.ktype;
     let check = |predicate: &dyn Fn(&KType, &RepContext<'_>) -> Result<bool, StructureError>| {
         predicate(term, &rc).map_err(|error| structure_diagnostic(error, span))
@@ -7050,7 +7201,8 @@ pub fn param_pol_coefficient(
         span,
     )?;
     test_standard(parameter, "In subscription of ParamPol value", span)?;
-    let rc = rep_context(&polynomial.rf);
+    let rc_owner = rep_context(&polynomial.rf, span)?;
+    let rc = rc_owner.context();
     let dominant = parameter.repr.made_dominant(&rc).map_err(|error| match error {
         // Unreachable after `test_standard`, but keep the oracle's prose
         // (repr.cpp:577) should the invariant key ever surface.
@@ -7271,11 +7423,13 @@ fn build_block(
     df: &Arc<RealFormContext>,
     span: SourceSpan,
 ) -> Result<BlockValue, Diagnostic> {
+    let rf_bundle = rf.kgb(span)?;
+    let df_bundle = df.kgb(span)?;
     let graph = BlockGraph::build(
-        &rf.graph,
-        &rf.table,
-        &df.graph,
-        &df.table,
+        &rf_bundle.graph,
+        &rf_bundle.table,
+        &df_bundle.graph,
+        &df_bundle.table,
         &df.parent.inner_class,
         WEYL_BUDGET,
     )
@@ -7307,7 +7461,7 @@ fn block_generator_check(
     span: SourceSpan,
 ) -> Result<usize, Diagnostic> {
     let generator = as_wrapped_u32(value, span)?;
-    let rank = block.rf.graph.semisimple_rank();
+    let rank = block.rf.kgb(span)?.graph.semisimple_rank();
     if generator as usize >= rank {
         return Err(runtime(
             span,
@@ -7346,15 +7500,15 @@ fn block_fiber_check(
     span: SourceSpan,
 ) -> Result<(), Diagnostic> {
     let mismatch = || runtime(span, "Fiber mismatch KGB and dual KGB elements");
-    let x_involution = block
-        .rf
+    let rf_bundle = block.rf.kgb(span)?;
+    let x_involution = rf_bundle
         .graph
         .involution_of(x)
-        .and_then(|involution| block.rf.table.record(involution))
+        .and_then(|involution| rf_bundle.table.record(involution))
         .ok_or_else(mismatch)?;
     let word = x_involution
         .weyl_element()
-        .reduced_word(block.rf.table.root_system())
+        .reduced_word(rf_bundle.table.root_system())
         .map_err(|error| runtime(span, error.to_string()))?;
     let dual_class = &block.dual_rf.parent.inner_class;
     let dual_twist = dual_class
@@ -7366,11 +7520,11 @@ fn block_fiber_check(
         .map_err(|error| runtime(span, error.to_string()))?;
     let dual_w = block_dual_involution(&word, dual_class.root_system(), &dual_twist, &dual_longest)
         .map_err(|error| runtime(span, error.to_string()))?;
-    let y_involution = block
-        .dual_rf
+    let df_bundle = block.dual_rf.kgb(span)?;
+    let y_involution = df_bundle
         .graph
         .involution_of(y)
-        .and_then(|involution| block.dual_rf.table.record(involution))
+        .and_then(|involution| df_bundle.table.record(involution))
         .ok_or_else(mismatch)?;
     if dual_w != *y_involution.weyl_element() {
         return Err(mismatch());
@@ -7572,7 +7726,8 @@ fn torus_bits_value(
     id: KgbId,
     span: SourceSpan,
 ) -> Result<Value, Diagnostic> {
-    let element = context
+    let bundle = context.kgb(span)?;
+    let element = bundle
         .graph
         .element(id)
         .ok_or_else(|| runtime(span, "Inexistent KGB element"))?;
@@ -7592,7 +7747,8 @@ fn any_cayley(
     id: KgbId,
     span: SourceSpan,
 ) -> Result<KgbId, Diagnostic> {
-    let graph = &context.graph;
+    let bundle = context.kgb(span)?;
+    let graph = &bundle.graph;
     match graph
         .status(id, generator)
         .ok_or_else(|| runtime(span, "Inexistent KGB element"))?
@@ -7611,8 +7767,7 @@ fn any_cayley(
 }
 
 /// Upstream status coding: 0=C- 1=ic 2=r 3=nc 4=C+.
-fn status_code(context: &Arc<RealFormContext>, generator: usize, id: KgbId) -> Option<i32> {
-    let graph = &context.graph;
+fn status_code(graph: &KgbGraph, generator: usize, id: KgbId) -> Option<i32> {
     Some(match graph.status(id, generator)? {
         KgbStatus::ImaginaryCompact => 1,
         KgbStatus::Real => 2,
@@ -8049,15 +8204,17 @@ fn ext_is_fixed(
     twist: &[usize],
     span: SourceSpan,
 ) -> Result<bool, Diagnostic> {
-    let rc = rep_context(context);
+    let rc_owner = rep_context(context, span)?;
+    let rc = rc_owner.context();
     let z = parameter
         .normalised(&rc)
         .map_err(|error| structure_diagnostic(error, span))?;
     // x: the twisted element must be z's own; `None` is upstream's
     // UndefKGB, which never equals a real element number.
-    let Some(twisted_x) = context
+    let Some(twisted_x) = rc_owner
+        .bundle
         .graph
-        .twisted(z.x(), &context.table, delta, twist)
+        .twisted(z.x(), &rc_owner.bundle.table, delta, twist)
         .map_err(|error| structure_diagnostic(error, span))?
     else {
         return Ok(false);
@@ -8166,7 +8323,8 @@ fn finalize_extended_gates(
         return Err(runtime(span, "Parameter not fixed by given involution"));
     }
     // atlas-types.w:8528-8532: theta = i_tab.matrix(kgb.involution(x)).
-    let rc = rep_context(&parameter.context);
+    let rc_owner = rep_context(&parameter.context, span)?;
+    let rc = rc_owner.context();
     let theta = rc
         .theta(&parameter.repr)
         .map_err(|error| structure_diagnostic(error, span))?;
@@ -8188,7 +8346,8 @@ fn finalize_extended_gates(
 /// run them.
 fn twisted_deform_gates(parameter: &ParamValue, span: SourceSpan) -> Result<(), Diagnostic> {
     test_standard(parameter, "Cannot compute twisted deformation terms", span)?;
-    let rc = rep_context(&parameter.context);
+    let rc_owner = rep_context(&parameter.context, span)?;
+    let rc = rc_owner.context();
     if !rc.is_delta_fixed(&parameter.repr) {
         return Err(runtime(
             span,
@@ -8209,7 +8368,8 @@ fn twisted_deform_gates(parameter: &ParamValue, span: SourceSpan) -> Result<(), 
 /// fix check. No `test_final` (unlike `twisted_deform`).
 fn twisted_full_deform_gates(parameter: &ParamValue, span: SourceSpan) -> Result<(), Diagnostic> {
     test_standard(parameter, "Cannot compute full twisted deformation", span)?;
-    let rc = rep_context(&parameter.context);
+    let rc_owner = rep_context(&parameter.context, span)?;
+    let rc = rc_owner.context();
     if !rc.is_delta_fixed(&parameter.repr) {
         return Err(runtime(
             span,
@@ -8230,7 +8390,8 @@ fn twisted_kl_sum_gates(
 ) -> Result<StandardRepr, Diagnostic> {
     test_standard(parameter, "Cannot compute Kazhdan-Lusztig sum", span)?;
     test_final(parameter, "Cannot compute Kazhdan-Lusztig sum", span)?;
-    let rc = rep_context(&parameter.context);
+    let rc_owner = rep_context(&parameter.context, span)?;
+    let rc = rc_owner.context();
     let sr = parameter
         .repr
         .made_dominant(&rc)
@@ -8310,7 +8471,8 @@ fn twisted_reducibility_lookup(
     zi: &StandardRepr,
     span: SourceSpan,
 ) -> Result<(DeformParent, ExtBlock, usize, RankFlags), StructureError> {
-    let located = context.rep.lookup(zi)?;
+    let bundle = context.kgb_or_structure()?;
+    let located = bundle.rep.lookup(zi)?;
     let prepared = located.prepared_query();
     let seed = StandardReprMod::mod_reduce(rc, prepared)?;
     let ctxt = CommonContext::integral(rc, seed.gamma_lambda())?;
@@ -8380,8 +8542,8 @@ fn with_integral_block<T>(
             // beyond the computed value: the pooled record is the small
             // interval block, so later prints observe the same pool state
             // as the oracle.
-            let located = parameter
-                .context
+            let bundle = parameter.context.kgb(span)?;
+            let located = bundle
                 .rep
                 .lookup(sr)
                 .map_err(|error| structure_diagnostic(error, span))?;
@@ -8459,9 +8621,10 @@ fn twist_element(
     if id.is_undefined() {
         return Err(runtime(span, "Inexistent KGB element"));
     }
-    let target = context
+    let bundle = context.kgb(span)?;
+    let target = bundle
         .graph
-        .twisted(id, &context.table, delta, twist)
+        .twisted(id, &bundle.table, delta, twist)
         .map_err(|error| runtime(span, error.to_string()))?
         .unwrap_or(KgbId::UNDEFINED);
     Ok(Value::Domain(DomainValue::KgbElement(
@@ -8538,7 +8701,8 @@ fn build_kgb_element(
         .iter()
         .map(|&numerator| BigRational::from(numerator) / BigRational::from(factor.denominator()))
         .collect();
-    let Some(bits) = context
+    let bundle = context.kgb(span)?;
+    let Some(bits) = bundle
         .graph
         .seed_torus_part(&matrix, &factor)
         .map_err(|error| runtime(span, error.to_string()))?
@@ -8569,12 +8733,12 @@ fn build_kgb_element(
         })?;
     // A twisted involution whose Cartan the form does not meet is upstream's
     // empty tau packet: UndefKGB either way.
-    let Some(involution_id) = context.table.lookup(&element) else {
+    let Some(involution_id) = bundle.table.lookup(&element) else {
         return Err(runtime(span, "KGB element not present"));
     };
-    context
+    bundle
         .graph
-        .lookup(&context.table, involution_id, bits)
+        .lookup(&bundle.table, involution_id, bits)
         .map_err(|error| runtime(span, error.to_string()))?
         .ok_or_else(|| runtime(span, "KGB element not present"))
 }
@@ -9250,7 +9414,7 @@ fn check_generator(
     generator: usize,
     span: SourceSpan,
 ) -> Result<(), Diagnostic> {
-    let rank = context.graph.semisimple_rank();
+    let rank = context.kgb(span)?.graph.semisimple_rank();
     if generator >= rank {
         // Posroot and negative indices are a documented phase-1 deferral;
         // the message echoes the user index like upstream
@@ -9300,7 +9464,7 @@ pub(crate) fn validate(
             arity(name, arguments, 2, span)?;
             let context = as_real_form(&arguments[0], span)?;
             let index = as_integer(&arguments[1], span)?;
-            let size = BigInt::from(context.graph.size());
+            let size = BigInt::from(context.kgb(span)?.graph.size());
             if index < 0 || index >= size {
                 return Err(runtime(span, format!("Inexistent KGB element: {index}")));
             }
@@ -9391,7 +9555,7 @@ pub(crate) fn validate(
                 let generator = as_usize(&arguments[0], span)?;
                 let (context, id) = as_kgb_element(&arguments[1], span)?;
                 check_generator(context, generator, span)?;
-                if context.graph.element(id).is_none() {
+                if context.kgb(span)?.graph.element(id).is_none() {
                     return Err(runtime(span, "Inexistent KGB element"));
                 }
             }
@@ -9788,7 +9952,8 @@ pub(crate) fn validate(
         "KGP_sum" => {
             arity(name, arguments, 1, span)?;
             let ktype = as_ktype(&arguments[0], span)?;
-            let rc = rep_context(&ktype.context);
+            let rc_owner = rep_context(&ktype.context, span)?;
+            let rc = rc_owner.context();
             if !ktype
                 .ktype
                 .is_semifinal(&rc)
@@ -9805,7 +9970,8 @@ pub(crate) fn validate(
         "K_type_formula" => {
             arity(name, arguments, 2, span)?;
             let ktype = as_ktype(&arguments[0], span)?;
-            let rc = rep_context(&ktype.context);
+            let rc_owner = rep_context(&ktype.context, span)?;
+            let rc = rc_owner.context();
             if !ktype
                 .ktype
                 .is_semifinal(&rc)
@@ -9959,11 +10125,11 @@ struct CommonBlockRow {
 
 /// printInvolution of the KGB involution at `x` (prettyprint.cpp:219-232):
 /// one-based generator digits, '^' for crosses, 'x' for conjugations, `e`
-/// closing.
-fn involution_expression(context: &RealFormContext, x: KgbId) -> String {
-    let record = context
+/// closing. `bundle` is the form's already-forced KGB pipeline.
+fn involution_expression(context: &RealFormContext, bundle: &KgbBundle, x: KgbId) -> String {
+    let record = bundle
         .table
-        .record(context.graph.involution_of(x).expect("in-range"))
+        .record(bundle.graph.involution_of(x).expect("in-range"))
         .expect("in-range");
     let word = context
         .parent
@@ -10002,7 +10168,8 @@ fn common_block_rows(
     sr: &StandardRepr,
     span: SourceSpan,
 ) -> Result<(Vec<CommonBlockRow>, usize), Diagnostic> {
-    let rc = rep_context(context);
+    let rc_owner = rep_context(context, span)?;
+    let rc = rc_owner.context();
     let datum = context.parent.root_datum.datum.clone();
     let gamma = sr.gamma().clone();
     let (seed_x, seed_gamma_lambda) = rc
@@ -10132,7 +10299,8 @@ fn located_common_block_rows(
     transport_full_attitude: bool,
 ) -> Result<Vec<CommonBlockRow>, Diagnostic> {
     let block = located.block();
-    let rc = rep_context(context);
+    let rc_owner = rep_context(context, span)?;
+    let rc = rc_owner.context();
     let singular = located_singular_flags(context, located)
         .map_err(|error| structure_diagnostic(error, span))?;
     let mut rows = Vec::with_capacity(block.size());
@@ -10213,7 +10381,8 @@ fn partial_block_rows(
     gamma: &RationalWeight,
     span: SourceSpan,
 ) -> Result<(Vec<CommonBlockRow>, usize), Diagnostic> {
-    let rc = rep_context(context);
+    let rc_owner = rep_context(context, span)?;
+    let rc = rc_owner.context();
     let seed = StandardReprMod::mod_reduce(&rc, seed_repr)
         .map_err(|error| structure_diagnostic(error, span))?;
     let ctxt = CommonContext::integral(&rc, seed.gamma_lambda())
@@ -10286,7 +10455,8 @@ fn fresh_common_block_rows(
     seed_repr: &StandardRepr,
     span: SourceSpan,
 ) -> Result<(Vec<CommonBlockRow>, usize), Diagnostic> {
-    let rc = rep_context(context);
+    let rc_owner = rep_context(context, span)?;
+    let rc = rc_owner.context();
     let seed = StandardReprMod::mod_reduce(&rc, seed_repr)
         .map_err(|error| structure_diagnostic(error, span))?;
     let ctxt = CommonContext::integral(&rc, seed.gamma_lambda())
@@ -10343,7 +10513,12 @@ fn fresh_common_block_rows(
 /// FULL datum's semisimple rank (common_block::print uses
 /// root_datum().semisimple_rank(), not the block rank), which shows on
 /// rank-0 integral subsystems.
-fn render_common_block(context: &RealFormContext, rows: &[CommonBlockRow]) -> String {
+fn render_common_block(
+    context: &RealFormContext,
+    rows: &[CommonBlockRow],
+    span: SourceSpan,
+) -> Result<String, Diagnostic> {
+    let bundle = context.kgb(span)?;
     let datum_rank = context.parent.root_datum.datum.semisimple_rank();
     let size = rows.len();
     let width = digits(size - 1);
@@ -10408,10 +10583,10 @@ fn render_common_block(context: &RealFormContext, rows: &[CommonBlockRow]) -> St
         ));
         text.push(')');
         text.push_str(&" ".repeat(2));
-        text.push_str(&involution_expression(context, row.x));
+        text.push_str(&involution_expression(context, &bundle, row.x));
         text.push('\n');
     }
-    text
+    Ok(text)
 }
 
 /// Printer wrappers (atlas-types.w:8944-8957, 8850-8859): the report text
@@ -10427,7 +10602,7 @@ pub(crate) fn print_text(
         "print_KGB" => {
             let context = as_real_form(&arguments[0], span)?;
             if arguments.len() == 1 {
-                return Ok(print_kgb(context, None));
+                return print_kgb(context, None, span);
             }
             // print_KGB_selection_wrapper (atlas-types.w:8958-8973): the
             // listed elements must belong to the SAME real form.
@@ -10448,7 +10623,7 @@ pub(crate) fn print_text(
                 }
                 which.push(id);
             }
-            Ok(print_kgb(context, Some(&which)))
+            print_kgb(context, Some(&which), span)
         }
         "print_strong_real" => {
             arity(name, arguments, 1, span)?;
@@ -10495,7 +10670,8 @@ pub(crate) fn print_text(
         "print_KGB_order" | "print_KGB_graph" => {
             arity(name, arguments, 1, span)?;
             let context = as_real_form(&arguments[0], span)?;
-            let graph = &context.graph;
+            let bundle = context.kgb(span)?;
+            let graph = &bundle.graph;
             let hasse = graph.bruhat_hasse();
             if name == "print_KGB_order" {
                 let mut text = format!("kgbsize: {}\n", graph.size());
@@ -10583,7 +10759,8 @@ pub(crate) fn print_text(
             if name == "print_block" {
                 if let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] {
                     test_standard(parameter, "Cannot generate block", span)?;
-                    let rc = rep_context(&parameter.context);
+                    let rc_owner = rep_context(&parameter.context, span)?;
+                    let rc = rc_owner.context();
                     if matches!(
                         integral_block_scope(&rc, parameter.repr.gamma())
                             .map_err(|error| structure_diagnostic(error, span))?,
@@ -10602,14 +10779,14 @@ pub(crate) fn print_text(
                             fresh_common_block_rows(&parameter.context, &parameter.repr, span)?;
                         let mut text =
                             format!("Parameter defines element {init} of the following block:\n");
-                        text.push_str(&render_common_block(&parameter.context, &rows));
+                        text.push_str(&render_common_block(&parameter.context, &rows, span)?);
                         return Ok(text);
                     }
                     let (rows, init) =
                         common_block_rows(&parameter.context, &parameter.repr, span)?;
                     let mut text =
                         format!("Parameter defines element {init} of the following block:\n");
-                    text.push_str(&render_common_block(&parameter.context, &rows));
+                    text.push_str(&render_common_block(&parameter.context, &rows, span)?);
                     return Ok(text);
                 }
             }
@@ -10617,7 +10794,8 @@ pub(crate) fn print_text(
                 return Err(type_error(span, "expected a Block"));
             };
             let graph = &block.graph;
-            let primal = &block.rf.graph;
+            let primal_bundle = block.rf.kgb(span)?;
+            let primal = &primal_bundle.graph;
             let size = graph.size();
             let width = digits(size - 1);
             let mut max_x = 0;
@@ -10732,8 +10910,7 @@ pub(crate) fn print_text(
                 text.push_str(&" ".repeat(2));
                 // Weyl word (prettyprint::printWeylElt, basic_io.cpp:100-118):
                 // one-based generators comma-separated, `e` for the identity.
-                let record = block
-                    .rf
+                let record = primal_bundle
                     .table
                     .record(primal.involution_of(id).expect("in-range"))
                     .expect("in-range");
@@ -10809,13 +10986,14 @@ pub(crate) fn print_text(
                 ));
             };
             test_standard(parameter, "Cannot generate block", span)?;
-            let rc = rep_context(&parameter.context);
+            let rc_owner = rep_context(&parameter.context, span)?;
+            let rc = rc_owner.context();
             let dominant = parameter
                 .repr
                 .made_dominant(&rc)
                 .map_err(|error| structure_diagnostic(error, span))?;
-            let located = parameter
-                .context
+            let located = rc_owner
+                .bundle
                 .rep
                 .lookup_full_block(&dominant)
                 .map_err(|error| structure_diagnostic(error, span))?;
@@ -10848,7 +11026,7 @@ pub(crate) fn print_text(
             }
             text.push_str(":\n");
             let rows = located_common_block_rows(&parameter.context, &located, span, false)?;
-            text.push_str(&render_common_block(&parameter.context, &rows));
+            text.push_str(&render_common_block(&parameter.context, &rows, span)?);
             Ok(text)
         }
         // print_part_param_block_wrapper (atlas-types.w:6700-6711): the
@@ -10872,7 +11050,7 @@ pub(crate) fn print_text(
                 parameter.repr.gamma(),
                 span,
             )?;
-            Ok(render_common_block(&parameter.context, &rows))
+            Ok(render_common_block(&parameter.context, &rows, span)?)
         }
         // print_pc_block_wrapper (atlas-types.w:6713-6735): `Rep_table::
         // lookup` (repr.cpp:1796-1824) normalises the parameter and, on a
@@ -10897,8 +11075,8 @@ pub(crate) fn print_text(
                 ));
             };
             test_standard(parameter, "Cannot generate block", span)?;
-            let located = parameter
-                .context
+            let bundle = parameter.context.kgb(span)?;
+            let located = bundle
                 .rep
                 .lookup(&parameter.repr)
                 .map_err(|error| structure_diagnostic(error, span))?;
@@ -10933,7 +11111,7 @@ pub(crate) fn print_text(
                 text.push_str(&format!("{init}}} in the following common block:\n"));
             }
             let rows = located_common_block_rows(&parameter.context, &located, span, true)?;
-            text.push_str(&render_common_block(&parameter.context, &rows));
+            text.push_str(&render_common_block(&parameter.context, &rows, span)?);
             Ok(text)
         }
         // only the unitary block elements (the involution support is
@@ -10949,7 +11127,8 @@ pub(crate) fn print_text(
                 return Err(type_error(span, "expected a Block"));
             };
             let graph = &block.graph;
-            let primal = &block.rf.graph;
+            let primal_bundle = block.rf.kgb(span)?;
+            let primal = &primal_bundle.graph;
             let size = graph.size();
             let width = digits(size - 1);
             let mut max_x = 0;
@@ -10982,8 +11161,7 @@ pub(crate) fn print_text(
             for z in 0..size {
                 let support = {
                     let id = graph.x(z).expect("in-range");
-                    let record = block
-                        .rf
+                    let record = primal_bundle
                         .table
                         .record(primal.involution_of(id).expect("in-range"))
                         .expect("in-range");
@@ -11022,8 +11200,7 @@ pub(crate) fn print_text(
                 text.push_str(&" ".repeat(pad));
                 text.push_str(&block_descent_set(graph, z, rank, &support));
                 text.push_str(&" ".repeat(pad));
-                let record = block
-                    .rf
+                let record = primal_bundle
                     .table
                     .record(primal.involution_of(id).expect("in-range"))
                     .expect("in-range");
@@ -11325,8 +11502,13 @@ fn digits(mut value: usize) -> usize {
 /// the wrapper's `kgbsize` line and the `Base grading` header print first.
 /// `Some` is the selection variant: no header lines, the listed rows in
 /// list order; the `#` flag's inner class is present in BOTH variants.
-fn print_kgb(context: &Arc<RealFormContext>, which: Option<&[KgbId]>) -> String {
-    let graph = &context.graph;
+fn print_kgb(
+    context: &Arc<RealFormContext>,
+    which: Option<&[KgbId]>,
+    span: SourceSpan,
+) -> Result<String, Diagnostic> {
+    let bundle = context.kgb(span)?;
+    let graph = &bundle.graph;
     let parent = &context.parent;
     let rank = graph.semisimple_rank();
     let size = graph.size();
@@ -11372,9 +11554,9 @@ fn print_kgb(context: &Arc<RealFormContext>, which: Option<&[KgbId]>) -> String 
                 representative.weyl_action(),
             )
             .expect("the Cartan representative realizes in the root system");
-            context.table.lookup(&canonical) == graph.involution_of(id)
+            bundle.table.lookup(&canonical) == graph.involution_of(id)
         };
-        let record = context
+        let record = bundle
             .table
             .record(graph.involution_of(id).expect("in-range element"))
             .expect("the graph's involutions are table records");
@@ -11453,7 +11635,7 @@ fn print_kgb(context: &Arc<RealFormContext>, which: Option<&[KgbId]>) -> String 
         text.push('e');
         text.push('\n');
     }
-    text
+    Ok(text)
 }
 
 /// output::printStrongReal (output.cpp:490-540) behind
@@ -13005,7 +13187,8 @@ pub(crate) fn call_with_printed(
                     ),
                 ));
             };
-            let rc = rep_context(&parameter.context);
+            let rc_owner = rep_context(&parameter.context, span)?;
+            let rc = rc_owner.context();
             let centered = domain_alcove_center(&rc, &parameter.repr)
                 .map_err(|error| structure_diagnostic(error, span))?;
             Ok(Value::Domain(DomainValue::Param(ParamValue {
@@ -13317,7 +13500,8 @@ pub(crate) fn call_with_printed(
                     return Err(type_error(span, "expected a Param"));
                 };
                 test_standard(parameter, "Cannot generate block", span)?;
-                let rc = rep_context(&parameter.context);
+                let rc_owner = rep_context(&parameter.context, span)?;
+                let rc = rc_owner.context();
                 let dominant = parameter
                     .repr
                     .made_dominant(&rc)
@@ -13336,8 +13520,8 @@ pub(crate) fn call_with_printed(
                     }
                     IntegralBlockScope::ProperSubsystem | IntegralBlockScope::Full => {}
                 }
-                let located = parameter
-                    .context
+                let bundle = parameter.context.kgb(span)?;
+                let located = bundle
                     .rep
                     .lookup_full_block(&dominant)
                     .map_err(|error| structure_diagnostic(error, span))?;
@@ -13471,6 +13655,7 @@ pub(crate) fn call_with_printed(
         "Cartan_class" => {
             if let [Value::Domain(DomainValue::KgbElement(form, id))] = arguments {
                 let cartan = form
+                    .kgb(span)?
                     .graph
                     .cartan_of(*id)
                     .ok_or_else(|| runtime(span, "Inexistent KGB element"))?;
@@ -13550,7 +13735,8 @@ pub(crate) fn call_with_printed(
         "KGB_Hasse" => {
             arity(name, arguments, 1, span)?;
             let context = as_real_form(&arguments[0], span)?;
-            let graph = &context.graph;
+            let bundle = context.kgb(span)?;
+            let graph = &bundle.graph;
             let n = graph.size();
             let hasse = graph.bruhat_hasse();
             let mut columns = vec![vec![0_i32; n]; n];
@@ -13877,7 +14063,9 @@ pub(crate) fn call_with_printed(
         "KGB_size" => {
             arity(name, arguments, 1, span)?;
             let context = as_real_form(&arguments[0], span)?;
-            Ok(Value::Integer(BigInt::from(context.graph.size())))
+            Ok(Value::Integer(BigInt::from(
+                context.kgb(span)?.graph.size(),
+            )))
         }
         // central_fiber_wrapper (atlas-types.w:3915-3929): the fundamental
         // fiber's stabilizer torus parts, wrapped as a row of vec.
@@ -13908,13 +14096,14 @@ pub(crate) fn call_with_printed(
             let index = as_integer(&arguments[1], span)?;
             // Upstream rejects negative and oversized numbers alike with the
             // value echoed (atlas-types.w:4412 `KGB_elt_wrapper`).
-            let size = BigInt::from(context.graph.size());
+            let bundle = context.kgb(span)?;
+            let size = BigInt::from(bundle.graph.size());
             if index < 0 || index >= size {
                 return Err(runtime(span, format!("Inexistent KGB element: {index}")));
             }
             let index =
                 usize::try_from(&index).map_err(|_| runtime(span, "Inexistent KGB element"))?;
-            let id = context
+            let id = bundle
                 .graph
                 .ids()
                 .nth(index)
@@ -13982,7 +14171,8 @@ pub(crate) fn call_with_printed(
                         // (atlas-types.w:6474-6483): unlike the int overload,
                         // this does not make the parameter dominant first.
                         let coordinates = as_weight_vec(&arguments[0], span)?;
-                        let rc = rep_context(&parameter.context);
+                        let rc_owner = rep_context(&parameter.context, span)?;
+                        let rc = rc_owner.context();
                         let root = rc
                             .root_system()
                             .id_of(&Weight::new(coordinates))
@@ -14002,7 +14192,8 @@ pub(crate) fn call_with_printed(
                         })));
                     }
                     let s = parameter_generator(parameter, &arguments[0], span)?;
-                    let rc = rep_context(&parameter.context);
+                    let rc_owner = rep_context(&parameter.context, span)?;
+                    let rc = rc_owner.context();
                     let z = parameter
                         .repr
                         .made_dominant(&rc)
@@ -14037,6 +14228,7 @@ pub(crate) fn call_with_printed(
             let (context, id) = as_kgb_element(&arguments[1], span)?;
             check_generator(context, generator, span)?;
             let target = context
+                .kgb(span)?
                 .graph
                 .cross(id, generator)
                 .ok_or_else(|| runtime(span, "Inexistent KGB element"))?;
@@ -14058,7 +14250,8 @@ pub(crate) fn call_with_printed(
                         // and a nonintegral one deliberately share the same
                         // diagnostic; an undefined transform returns input.
                         let coordinates = as_weight_vec(&arguments[0], span)?;
-                        let rc = rep_context(&parameter.context);
+                        let rc_owner = rep_context(&parameter.context, span)?;
+                        let rc = rc_owner.context();
                         let root = Weight::new(coordinates);
                         let Some(result) = rc.any_cayley_root(&root, &parameter.repr).map_err(
                             |error| match error {
@@ -14083,7 +14276,8 @@ pub(crate) fn call_with_printed(
                         })));
                     }
                     let s = parameter_generator(parameter, &arguments[0], span)?;
-                    let rc = rep_context(&parameter.context);
+                    let rc_owner = rep_context(&parameter.context, span)?;
+                    let rc = rc_owner.context();
                     let z = parameter
                         .repr
                         .made_dominant(&rc)
@@ -14185,7 +14379,7 @@ pub(crate) fn call_with_printed(
             let generator = as_usize(&arguments[0], span)?;
             let (context, id) = as_kgb_element(&arguments[1], span)?;
             check_generator(context, generator, span)?;
-            let code = status_code(context, generator, id)
+            let code = status_code(&context.kgb(span)?.graph, generator, id)
                 .ok_or_else(|| runtime(span, "Inexistent KGB element"))?;
             Ok(Value::Integer(BigInt::from(code)))
         }
@@ -14201,13 +14395,14 @@ pub(crate) fn call_with_printed(
                 // then the shared partial-block lookup on the integral
                 // subsystem; the length is the representative's height
                 // inside that located block (never the full-rank block).
-                let rc = rep_context(&parameter.context);
+                let rc_owner = rep_context(&parameter.context, span)?;
+                let rc = rc_owner.context();
                 let z = parameter
                     .repr
                     .made_dominant(&rc)
                     .map_err(|e| runtime(span, e.to_string()))?;
-                let located = parameter
-                    .context
+                let located = rc_owner
+                    .bundle
                     .rep
                     .lookup(&z)
                     .map_err(|error| structure_diagnostic(error, span))?;
@@ -14219,6 +14414,7 @@ pub(crate) fn call_with_printed(
             }
             let (context, id) = as_kgb_element(&arguments[0], span)?;
             let length = context
+                .kgb(span)?
                 .graph
                 .length(id)
                 .ok_or_else(|| runtime(span, "Inexistent KGB element"))?;
@@ -14249,10 +14445,11 @@ pub(crate) fn call_with_printed(
                 );
             }
             let (context, id) = as_kgb_element(&arguments[0], span)?;
-            let involution = context
+            let bundle = context.kgb(span)?;
+            let involution = bundle
                 .graph
                 .involution_of(id)
-                .and_then(|involution| context.table.record(involution))
+                .and_then(|involution| bundle.table.record(involution))
                 .ok_or_else(|| runtime(span, "Inexistent KGB element"))?;
             matrix_value(involution.theta().weight_matrix(), span)
         }
@@ -14276,7 +14473,8 @@ pub(crate) fn call_with_printed(
                     ),
                 ));
             };
-            let rc = rep_context(&parameter.context);
+            let rc_owner = rep_context(&parameter.context, span)?;
+            let rc = rc_owner.context();
             let points = rc
                 .reducibility_points(&parameter.repr)
                 .map_err(|error| structure_diagnostic(error, span))?;
@@ -14300,11 +14498,12 @@ pub(crate) fn call_with_printed(
                     ),
                 ));
             };
-            let rc = rep_context(&parameter.context);
+            let rc_owner = rep_context(&parameter.context, span)?;
+            let rc = rc_owner.context();
             let root_system = rc.inner_class().root_system();
             let z = &parameter.repr;
-            let involution_id = parameter
-                .context
+            let involution_id = rc_owner
+                .bundle
                 .graph
                 .involution_of(z.x())
                 .ok_or_else(|| runtime(span, "Inexistent KGB element"))?;
@@ -14568,7 +14767,8 @@ pub(crate) fn call_with_printed(
                 ));
             };
             validate_kl_column(parameter, span)?;
-            let rc = rep_context(&parameter.context);
+            let rc_owner = rep_context(&parameter.context, span)?;
+            let rc = rc_owner.context();
             let normalised = parameter
                 .repr
                 .normalised(&rc)
@@ -14588,8 +14788,8 @@ pub(crate) fn call_with_printed(
                 }
                 IntegralBlockScope::ProperSubsystem | IntegralBlockScope::Full => {}
             }
-            let located = parameter
-                .context
+            let located = rc_owner
+                .bundle
                 .rep
                 .lookup(&normalised)
                 .map_err(|error| structure_diagnostic(error, span))?;
@@ -14645,7 +14845,8 @@ pub(crate) fn call_with_printed(
                 ));
             };
             test_standard(parameter, "KL_block requires a standard parameter", span)?;
-            let rc = rep_context(&parameter.context);
+            let rc_owner = rep_context(&parameter.context, span)?;
+            let rc = rc_owner.context();
             let dominant = parameter
                 .repr
                 .made_dominant(&rc)
@@ -14669,8 +14870,8 @@ pub(crate) fn call_with_printed(
                 }
                 IntegralBlockScope::ProperSubsystem | IntegralBlockScope::Full => {}
             }
-            let located = parameter
-                .context
+            let located = rc_owner
+                .bundle
                 .rep
                 .lookup_full_block(&dominant)
                 .map_err(|error| structure_diagnostic(error, span))?;
@@ -14807,8 +15008,8 @@ pub(crate) fn call_with_printed(
             // (atlas-types.w:7076-7091): the locator resolves it as the
             // full block over the full/proper/rank-0 uniform subsystem,
             // transporting the query onto the stored block's attitude.
-            let located = parameter
-                .context
+            let bundle = parameter.context.kgb(span)?;
+            let located = bundle
                 .rep
                 .lookup_full_block(&parameter.repr)
                 .map_err(|error| structure_diagnostic(error, span))?;
@@ -14911,8 +15112,8 @@ pub(crate) fn call_with_printed(
                 ));
             };
             test_standard(parameter, "Cannot generate block", span)?;
-            let located = parameter
-                .context
+            let bundle = parameter.context.kgb(span)?;
+            let located = bundle
                 .rep
                 .lookup(&parameter.repr)
                 .map_err(|error| structure_diagnostic(error, span))?;
@@ -15051,13 +15252,14 @@ pub(crate) fn call_with_printed(
                     ),
                 ));
             };
-            let rc = rep_context(&parameter.context);
+            let rc_owner = rep_context(&parameter.context, span)?;
+            let rc = rc_owner.context();
             let normalised = parameter
                 .repr
                 .normalised(&rc)
                 .map_err(|error| structure_diagnostic(error, span))?;
-            let located = parameter
-                .context
+            let located = rc_owner
+                .bundle
                 .rep
                 .lookup(&normalised)
                 .map_err(|error| structure_diagnostic(error, span))?;
@@ -15223,8 +15425,8 @@ pub(crate) fn call_with_printed(
             // the full common block returned by Rep_table::lookup_full_block.
             // Its PartialBlock topology is already expressed in integral-
             // subsystem generator numbering, including imaginary grading.
-            let located = parameter
-                .context
+            let bundle = parameter.context.kgb(span)?;
+            let located = bundle
                 .rep
                 .lookup_full_block(&parameter.repr)
                 .map_err(|error| structure_diagnostic(error, span))?;
@@ -15371,8 +15573,8 @@ pub(crate) fn call_with_printed(
                 ));
             };
             test_standard(parameter, "Cannot generate block", span)?;
-            let located = parameter
-                .context
+            let bundle = parameter.context.kgb(span)?;
+            let located = bundle
                 .rep
                 .lookup_full_block(&parameter.repr)
                 .map_err(|error| structure_diagnostic(error, span))?;
@@ -15418,7 +15620,8 @@ pub(crate) fn call_with_printed(
                 ));
             };
             let (delta, gamma) = shift_flip_gates(parameter, &arguments[1], &arguments[2], span)?;
-            let rc = rep_context(&parameter.context);
+            let rc_owner = rep_context(&parameter.context, span)?;
+            let rc = rc_owner.context();
             let context = ExtRepContext::new(&rc, delta)
                 .map_err(|error| structure_diagnostic(error, span))?;
             let extension = shifted_default_extension(&context, &parameter.repr, &gamma)
@@ -15505,7 +15708,8 @@ pub(crate) fn call_with_printed(
             let dual_quasisplit = dual_parent.order.quasisplit_external();
             let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
             let block = build_block(&parameter.context, &dual_rf, span)?;
-            let rc = rep_context(&parameter.context);
+            let rc_owner = rep_context(&parameter.context, span)?;
+            let rc = rc_owner.context();
             let lambda_rho = rc
                 .lambda_rho(&parameter.repr)
                 .map_err(|error| structure_diagnostic(error, span))?;
@@ -15871,7 +16075,8 @@ pub(crate) fn call_with_printed(
             };
             let (delta, factor_num, factor_den) =
                 scale_extended_gates(parameter, &arguments[1], factor, span)?;
-            let rc = rep_context(&parameter.context);
+            let rc_owner = rep_context(&parameter.context, span)?;
+            let rc = rc_owner.context();
             let context = ExtRepContext::new(&rc, delta)
                 .map_err(|error| structure_diagnostic(error, span))?;
             let (repr, flip) =
@@ -15904,7 +16109,8 @@ pub(crate) fn call_with_printed(
                 ));
             };
             let delta = k_type_pol_extended_gates(parameter, &arguments[1], span)?;
-            let rc = rep_context(&parameter.context);
+            let rc_owner = rep_context(&parameter.context, span)?;
+            let rc = rc_owner.context();
             let context = ExtRepContext::new(&rc, delta)
                 .map_err(|error| structure_diagnostic(error, span))?;
             let restricted = extended_restrict_to_k(&context, &parameter.repr)
@@ -15937,7 +16143,8 @@ pub(crate) fn call_with_printed(
                 ));
             };
             let delta = finalize_extended_gates(parameter, &arguments[1], span)?;
-            let rc = rep_context(&parameter.context);
+            let rc_owner = rep_context(&parameter.context, span)?;
+            let rc = rc_owner.context();
             let context = ExtRepContext::new(&rc, delta)
                 .map_err(|error| structure_diagnostic(error, span))?;
             let finalized = extended_finalise(&context, &parameter.repr)
@@ -16023,9 +16230,10 @@ pub(crate) fn call_with_printed(
         "torus_factor" => {
             arity(name, arguments, 1, span)?;
             let (context, id) = as_kgb_element(&arguments[0], span)?;
-            let factor = context
+            let bundle = context.kgb(span)?;
+            let factor = bundle
                 .graph
-                .torus_factor(id, &context.table)
+                .torus_factor(id, &bundle.table)
                 .map_err(|error| runtime(span, error.to_string()))?;
             Ok(Value::RatVector(ratvec_from_rationals(
                 factor.to_rationals(),
@@ -16129,11 +16337,12 @@ pub(crate) fn call_with_printed(
                     }
                 }
             }
-            let rc = rep_context(&parameter.context);
+            let rc_owner = rep_context(&parameter.context, span)?;
+            let rc = rc_owner.context();
             let x = parameter.repr.x();
             // srm: gamma-lambda unique modulo X* (StandardReprMod::mod_reduce).
-            let bits = parameter
-                .context
+            let bits = rc_owner
+                .bundle
                 .graph
                 .element(x)
                 .ok_or_else(|| runtime(span, "KGB element"))?;
@@ -16160,11 +16369,11 @@ pub(crate) fn call_with_printed(
                 lambda.push(diff);
             }
             // l = base_grading_vector - torus_factor(x) (ell, ext_block.cpp:215).
-            let cocharacter = parameter.context.graph.cocharacter().to_rationals();
-            let factor = parameter
-                .context
+            let cocharacter = rc_owner.bundle.graph.cocharacter().to_rationals();
+            let factor = rc_owner
+                .bundle
                 .graph
-                .torus_factor(x, &parameter.context.table)
+                .torus_factor(x, &rc_owner.bundle.table)
                 .map_err(|error| structure_diagnostic(error, span))?;
             let factor_rat = factor.to_rationals();
             let mut l = Vec::new();
@@ -16190,8 +16399,8 @@ pub(crate) fn call_with_printed(
             let theta_id = rc
                 .involution_of(x)
                 .map_err(|error| structure_diagnostic(error, span))?;
-            let theta_rows = parameter
-                .context
+            let theta_rows = rc_owner
+                .bundle
                 .table
                 .record(theta_id)
                 .ok_or_else(|| runtime(span, "involution record"))?
@@ -16248,7 +16457,7 @@ pub(crate) fn call_with_printed(
             arity(name, arguments, 1, span)?;
             let context = as_real_form(&arguments[0], span)?;
             Ok(Value::RatVector(ratvec_from_rationals(
-                context.graph.cocharacter().to_rationals(),
+                context.kgb(span)?.graph.cocharacter().to_rationals(),
                 span,
             )?))
         }
@@ -16258,6 +16467,7 @@ pub(crate) fn call_with_printed(
             arity(name, arguments, 1, span)?;
             let context = as_real_form(&arguments[0], span)?;
             let base = context
+                .kgb(span)?
                 .graph
                 .ids()
                 .next()
@@ -16287,7 +16497,8 @@ pub(crate) fn call_with_printed(
                         format!("Rank mismatch: ({rank},{})", lam_rho.len()),
                     ));
                 }
-                let rc = rep_context(context);
+                let rc_owner = rep_context(context, span)?;
+                let rc = rc_owner.context();
                 let ktype = KType::sr_k(&rc, x, &Weight::new(lam_rho.clone()))
                     .map_err(|error| structure_diagnostic(error, span))?;
                 Ok(Value::Domain(DomainValue::KType(KTypeValue {
@@ -16296,7 +16507,8 @@ pub(crate) fn call_with_printed(
                 })))
             }
             [Value::Domain(DomainValue::Param(parameter))] => {
-                let rc = rep_context(&parameter.context);
+                let rc_owner = rep_context(&parameter.context, span)?;
+                let rc = rc_owner.context();
                 let ktype = rc
                     .sr_k_of_standard(&parameter.repr)
                     .map_err(|error| structure_diagnostic(error, span))?;
@@ -16335,7 +16547,8 @@ pub(crate) fn call_with_printed(
                         ),
                     ));
                 }
-                let rc = rep_context(context);
+                let rc_owner = rep_context(context, span)?;
+                let rc = rc_owner.context();
                 let repr = rc
                     .sr(x, &Weight::new(lam_rho), &nu_weight)
                     .map_err(|error| structure_diagnostic(error, span))?;
@@ -16345,7 +16558,8 @@ pub(crate) fn call_with_printed(
                 })))
             }
             [Value::Domain(DomainValue::KType(ktype))] => {
-                let rc = rep_context(&ktype.context);
+                let rc_owner = rep_context(&ktype.context, span)?;
+                let rc = rc_owner.context();
                 let repr = rc
                     .sr_of_ktype(&ktype.ktype)
                     .map_err(|error| structure_diagnostic(error, span))?;
@@ -16387,7 +16601,8 @@ pub(crate) fn call_with_printed(
             arity(name, arguments, 1, span)?;
             let result = match &arguments[0] {
                 Value::Domain(DomainValue::KType(ktype)) => {
-                    let rc = rep_context(&ktype.context);
+                    let rc_owner = rep_context(&ktype.context, span)?;
+                    let rc = rc_owner.context();
                     match name {
                         "is_standard" => ktype.ktype.is_standard(&rc),
                         "is_dominant" => ktype.ktype.is_dominant(&rc),
@@ -16398,7 +16613,8 @@ pub(crate) fn call_with_printed(
                     }
                 }
                 Value::Domain(DomainValue::Param(parameter)) => {
-                    let rc = rep_context(&parameter.context);
+                    let rc_owner = rep_context(&parameter.context, span)?;
+                    let rc = rc_owner.context();
                     match name {
                         "is_standard" => parameter.repr.is_standard(&rc),
                         "is_dominant" => parameter.repr.is_dominant(&rc),
@@ -16436,7 +16652,8 @@ pub(crate) fn call_with_printed(
                         "Real form mismatch when testing equivalence",
                         span,
                     )?;
-                    let rc = rep_context(&left.context);
+                    let rc_owner = rep_context(&left.context, span)?;
+                    let rc = rc_owner.context();
                     let result = left
                         .ktype
                         .equivalent(&rc, &right.ktype)
@@ -16453,7 +16670,8 @@ pub(crate) fn call_with_printed(
                         "Real form mismatch when testing equivalence",
                         span,
                     )?;
-                    let rc = rep_context(&left.context);
+                    let rc_owner = rep_context(&left.context, span)?;
+                    let rc = rc_owner.context();
                     let result = left
                         .repr
                         .equivalent(&rc, &right.repr)
@@ -16475,7 +16693,8 @@ pub(crate) fn call_with_printed(
             arity(name, arguments, 1, span)?;
             match (&arguments[0], name) {
                 (Value::Domain(DomainValue::KType(ktype)), _) => {
-                    let rc = rep_context(&ktype.context);
+                    let rc_owner = rep_context(&ktype.context, span)?;
+                    let rc = rc_owner.context();
                     let transformed = match name {
                         "dominant" => ktype.ktype.made_dominant(&rc),
                         "normal" => ktype.ktype.normalised(&rc),
@@ -16490,7 +16709,8 @@ pub(crate) fn call_with_printed(
                     })))
                 }
                 (Value::Domain(DomainValue::Param(parameter)), "dominant" | "normal") => {
-                    let rc = rep_context(&parameter.context);
+                    let rc_owner = rep_context(&parameter.context, span)?;
+                    let rc = rc_owner.context();
                     let transformed = match name {
                         "dominant" => parameter.repr.made_dominant(&rc),
                         "normal" => parameter.repr.normalised(&rc),
@@ -16588,7 +16808,8 @@ pub(crate) fn call_with_printed(
             let Value::Domain(DomainValue::ParamPol(pol)) = &arguments[0] else {
                 return Err(type_error(span, "expected a ParamPol"));
             };
-            let rc = rep_context(&pol.rf);
+            let rc_owner = rep_context(&pol.rf, span)?;
+            let rc = rc_owner.context();
             let mut terms: Vec<(SplitValue, KType)> = Vec::new();
             for (coefficient, repr) in &pol.terms {
                 let ktype = rc
@@ -16617,7 +16838,8 @@ pub(crate) fn call_with_printed(
         "KGP_sum" => {
             arity(name, arguments, 1, span)?;
             let ktype = as_ktype(&arguments[0], span)?;
-            let rc = rep_context(&ktype.context);
+            let rc_owner = rep_context(&ktype.context, span)?;
+            let rc = rc_owner.context();
             if !ktype
                 .ktype
                 .is_semifinal(&rc)
@@ -16662,7 +16884,8 @@ pub(crate) fn call_with_printed(
             let ktype = as_ktype(&arguments[0], span)?;
             let bound = i64::try_from(&as_integer(&arguments[1], span)?)
                 .map_err(|_| runtime(span, "Integer value to big for conversion"))?;
-            let rc = rep_context(&ktype.context);
+            let rc_owner = rep_context(&ktype.context, span)?;
+            let rc = rc_owner.context();
             if !ktype
                 .ktype
                 .is_semifinal(&rc)
@@ -16706,7 +16929,8 @@ pub(crate) fn call_with_printed(
             }
             let max_level = u32::try_from(bound)
                 .map_err(|_| runtime(span, "Integer value to big for conversion"))?;
-            let rc = rep_context(&pol.rf);
+            let rc_owner = rep_context(&pol.rf, span)?;
+            let rc = rc_owner.context();
             let mut remainder = pol.terms.clone();
             let mut result: Vec<(SplitValue, KType)> = Vec::new();
             let mut count: u64 = 0;
@@ -16765,7 +16989,8 @@ pub(crate) fn call_with_printed(
                     ),
                 ));
             };
-            let rc = rep_context(&parameter.context);
+            let rc_owner = rep_context(&parameter.context, span)?;
+            let rc = rc_owner.context();
             let finals = rc
                 .finals_for_standard(&parameter.repr)
                 .map_err(|error| structure_diagnostic(error, span))?;
@@ -16776,8 +17001,8 @@ pub(crate) fn call_with_printed(
                 // 8104), rather than rebuilding a full dual block.  Besides
                 // preserving proper-subsystem descent, this reuses the
                 // RepTable's pooled block/KL state.
-                let located = parameter
-                    .context
+                let located = rc_owner
+                    .bundle
                     .rep
                     .lookup(&final_sr)
                     .map_err(|error| structure_diagnostic(error, span))?;
@@ -16827,7 +17052,8 @@ pub(crate) fn call_with_printed(
                 ));
             };
             twisted_deform_gates(parameter, span)?;
-            let rc = rep_context(&parameter.context);
+            let rc_owner = rep_context(&parameter.context, span)?;
+            let rc = rc_owner.context();
             let (delta, twist) = distinguished_twist(parameter, span)?;
             let mut terms: Vec<(SplitValue, StandardRepr)> = with_integral_block(
                 parameter,
@@ -16878,7 +17104,8 @@ pub(crate) fn call_with_printed(
                     ),
                 ));
             };
-            let rc = rep_context(&parameter.context);
+            let rc_owner = rep_context(&parameter.context, span)?;
+            let rc = rc_owner.context();
             let (sr, twist_data) = match arguments.len() {
                 1 => {
                     let sr = twisted_kl_sum_gates(parameter, span)?;
@@ -17060,7 +17287,8 @@ pub(crate) fn call_with_printed(
             let bound = i32::try_from(&as_integer(&arguments[2], span)?)
                 .map_err(|_| runtime(span, "Integer value to big for conversion"))?;
             let height_bound = if bound < 0 { u32::MAX } else { bound as u32 };
-            let rc = rep_context(&parameter.context);
+            let rc_owner = rep_context(&parameter.context, span)?;
+            let rc = rc_owner.context();
             let mut deformed_terms: Vec<(SplitValue, StandardRepr)> = Vec::new();
             let mut remainder_terms = accumulator.terms.clone();
             let nu = rc
@@ -17198,7 +17426,8 @@ pub(crate) fn call_with_printed(
                 // KGB element, lambda-rho, and the info character gamma —
                 // NOT the input nu.
                 Value::Domain(DomainValue::Param(parameter)) => {
-                    let rc = rep_context(&parameter.context);
+                    let rc_owner = rep_context(&parameter.context, span)?;
+                    let rc = rc_owner.context();
                     let (lam_rho, gamma) = if parameter.repr.is_undefined() {
                         rc.undefined_decomposition(&parameter.repr)
                             .map_err(|error| structure_diagnostic(error, span))?
@@ -17245,7 +17474,8 @@ pub(crate) fn call_with_printed(
                 twist_element(context, *id, &delta, &twist, span)
             }
             [Value::Domain(DomainValue::Param(parameter))] => {
-                let rc = rep_context(&parameter.context);
+                let rc_owner = rep_context(&parameter.context, span)?;
+                let rc = rc_owner.context();
                 twist_parameter(parameter, rc.inner_twisted(&parameter.repr), span)
             }
             [Value::Domain(DomainValue::KgbElement(context, id)), matrix] => {
@@ -17254,7 +17484,8 @@ pub(crate) fn call_with_printed(
             }
             [Value::Domain(DomainValue::Param(parameter)), matrix] => {
                 let (delta, twist) = compatible_outer_twist(&parameter.context, matrix, span)?;
-                let rc = rep_context(&parameter.context);
+                let rc_owner = rep_context(&parameter.context, span)?;
+                let rc = rc_owner.context();
                 twist_parameter(parameter, rc.twisted(&parameter.repr, &delta, &twist), span)
             }
             _ => Err(type_error(
@@ -17563,7 +17794,8 @@ pub(crate) fn call_with_printed(
                     "Real form mismatch when adding a KType to a KTypePol",
                     span,
                 )?;
-                let rc = rep_context(&accumulator.rf);
+                let rc_owner = rep_context(&accumulator.rf, span)?;
+                let rc = rc_owner.context();
                 let finals = finals_of_final(ktype, &rc, span)?;
                 let mut terms = accumulator.terms.clone();
                 for (coefficient, term) in finals {
@@ -17618,7 +17850,8 @@ pub(crate) fn call_with_printed(
                     "Real form mismatch when adding a term to a K_type",
                     span,
                 )?;
-                let rc = rep_context(&accumulator.rf);
+                let rc_owner = rep_context(&accumulator.rf, span)?;
+                let rc = rc_owner.context();
                 let finals = finals_of_final(ktype, &rc, span)?;
                 let mut terms = accumulator.terms.clone();
                 for (final_coefficient, final_term) in finals {
@@ -17633,7 +17866,8 @@ pub(crate) fn call_with_printed(
             // add_K_type_termlist_wrapper (atlas-types.w:5741-5775):
             // expand every K-type through finals_for in source-list order.
             [Value::Domain(DomainValue::KTypePol(accumulator)), Value::List(term_list)] => {
-                let rc = rep_context(&accumulator.rf);
+                let rc_owner = rep_context(&accumulator.rf, span)?;
+                let rc = rc_owner.context();
                 let mut terms = accumulator.terms.clone();
                 for term in term_list {
                     let Value::Tuple(term) = term else {
@@ -17671,7 +17905,8 @@ pub(crate) fn call_with_printed(
                     "Real form mismatch when adding a Param to a ParamPol",
                     span,
                 )?;
-                let rc = rep_context(&accumulator.rf);
+                let rc_owner = rep_context(&accumulator.rf, span)?;
+                let rc = rc_owner.context();
                 let expanded = expand_final(parameter, &rc, span)?;
                 let mut terms = accumulator.terms.clone();
                 for (coefficient, term) in expanded {
@@ -17726,7 +17961,8 @@ pub(crate) fn call_with_printed(
                     "Real form mismatch when adding a term to a module",
                     span,
                 )?;
-                let rc = rep_context(&accumulator.rf);
+                let rc_owner = rep_context(&accumulator.rf, span)?;
+                let rc = rc_owner.context();
                 let mut terms = accumulator.terms.clone();
                 for (final_coefficient, final_term) in expand_final(parameter, &rc, span)? {
                     merge_pol_term(&mut terms, final_coefficient.mul(*coefficient), final_term);
@@ -17738,7 +17974,8 @@ pub(crate) fn call_with_printed(
                 })))
             }
             [Value::Domain(DomainValue::ParamPol(accumulator)), Value::List(term_list)] => {
-                let rc = rep_context(&accumulator.rf);
+                let rc_owner = rep_context(&accumulator.rf, span)?;
+                let rc = rc_owner.context();
                 let mut terms = accumulator.terms.clone();
                 for term in term_list {
                     let Value::Tuple(term) = term else {
@@ -17791,7 +18028,8 @@ pub(crate) fn call_with_printed(
                     "Real form mismatch when subtracting a KType from a KTypePol",
                     span,
                 )?;
-                let rc = rep_context(&accumulator.rf);
+                let rc_owner = rep_context(&accumulator.rf, span)?;
+                let rc = rc_owner.context();
                 let finals = finals_of_final(ktype, &rc, span)?;
                 let mut terms = accumulator.terms.clone();
                 for (coefficient, term) in finals {
@@ -17831,7 +18069,8 @@ pub(crate) fn call_with_printed(
                     "Real form mismatch when subtracting a Param from a ParamPol",
                     span,
                 )?;
-                let rc = rep_context(&accumulator.rf);
+                let rc_owner = rep_context(&accumulator.rf, span)?;
+                let rc = rc_owner.context();
                 let expanded = expand_final(parameter, &rc, span)?;
                 let mut terms = accumulator.terms.clone();
                 for (coefficient, term) in expanded {
@@ -17990,7 +18229,8 @@ pub(crate) fn call_with_printed(
             // (repr.cpp:701-709).
             [Value::Domain(DomainValue::Param(parameter)), Value::Rational(factor)] => {
                 let (numerator, denominator) = rational_pair(factor, span)?;
-                let rc = rep_context(&parameter.context);
+                let rc_owner = rep_context(&parameter.context, span)?;
+                let rc = rc_owner.context();
                 let repr = rc
                     .scale(&parameter.repr, numerator, denominator)
                     .map_err(|error| structure_diagnostic(error, span))?;
@@ -18004,7 +18244,8 @@ pub(crate) fn call_with_printed(
             // finals_for (repr.cpp:1161-1170).
             [Value::Domain(DomainValue::ParamPol(pol)), Value::Rational(factor)] => {
                 let (numerator, denominator) = rational_pair(factor, span)?;
-                let rc = rep_context(&pol.rf);
+                let rc_owner = rep_context(&pol.rf, span)?;
+                let rc = rc_owner.context();
                 let mut terms: Vec<(SplitValue, StandardRepr)> = Vec::new();
                 for (coefficient, repr) in &pol.terms {
                     let scaled = rc
@@ -21347,9 +21588,15 @@ mod tests {
         let second = build_real_form(&parent, 0, span()).expect("cached canonical form");
 
         assert!(Arc::ptr_eq(&first, &second));
-        assert!(Arc::ptr_eq(&first.rep, &second.rep));
-        assert!(std::ptr::eq(first.table.as_ref(), first.rep.table()));
-        assert!(std::ptr::eq(first.graph.as_ref(), first.rep.graph()));
+        // The KGB pipeline is deferred: construction alone must not build it.
+        assert!(first.built_kgb().is_none());
+        let bundle = first.kgb(span()).expect("KGB pipeline builds on first use");
+        assert!(Arc::ptr_eq(
+            &bundle,
+            &second.kgb(span()).expect("cached KGB pipeline")
+        ));
+        assert!(std::ptr::eq(bundle.table.as_ref(), bundle.rep.table()));
+        assert!(std::ptr::eq(bundle.graph.as_ref(), bundle.rep.graph()));
     }
 
     #[test]
@@ -21403,13 +21650,19 @@ mod tests {
             .expect("second builder does not panic")
             .expect("second canonical form");
         assert!(Arc::ptr_eq(&first, &second));
-        assert!(Arc::ptr_eq(&first.rep, &second.rep));
+        assert!(Arc::ptr_eq(
+            &first.kgb(span()).expect("first KGB pipeline"),
+            &second.kgb(span()).expect("second KGB pipeline"),
+        ));
 
         let cached = parent.canonical_forms.lock().expect("canonical cache lock")[0]
             .upgrade()
             .expect("winner remains cached while handles are live");
         assert!(Arc::ptr_eq(&first, &cached));
-        assert!(Arc::ptr_eq(&first.rep, &cached.rep));
+        assert!(Arc::ptr_eq(
+            &first.kgb(span()).expect("first KGB pipeline"),
+            &cached.kgb(span()).expect("cached KGB pipeline"),
+        ));
     }
 
     #[test]
@@ -21423,14 +21676,24 @@ mod tests {
 
         let first = build_real_form(&parent, 0, span()).expect("first canonical form");
         let context_weak = Arc::downgrade(&first);
-        let rep_weak = Arc::downgrade(&first.rep);
+        let rep_weak = {
+            let bundle = first.kgb(span()).expect("KGB pipeline builds on first use");
+            Arc::downgrade(&bundle.rep)
+        };
         drop(first);
         assert!(context_weak.upgrade().is_none());
         assert!(rep_weak.upgrade().is_none());
 
         let rebuilt = build_real_form(&parent, 0, span()).expect("rebuilt canonical form");
-        assert!(std::ptr::eq(rebuilt.table.as_ref(), rebuilt.rep.table()));
-        assert!(std::ptr::eq(rebuilt.graph.as_ref(), rebuilt.rep.graph()));
+        let rebuilt_bundle = rebuilt.kgb(span()).expect("rebuilt KGB pipeline");
+        assert!(std::ptr::eq(
+            rebuilt_bundle.table.as_ref(),
+            rebuilt_bundle.rep.table()
+        ));
+        assert!(std::ptr::eq(
+            rebuilt_bundle.graph.as_ref(),
+            rebuilt_bundle.rep.graph()
+        ));
     }
 
     #[test]
@@ -21476,7 +21739,10 @@ mod tests {
         let second_canonical =
             build_real_form(&second_parent, 0, span()).expect("second canonical form");
         assert!(!Arc::ptr_eq(&first_canonical, &second_canonical));
-        assert!(!Arc::ptr_eq(&first_canonical.rep, &second_canonical.rep));
+        assert!(!Arc::ptr_eq(
+            &first_canonical.kgb(span()).expect("first KGB pipeline"),
+            &second_canonical.kgb(span()).expect("second KGB pipeline"),
+        ));
 
         let custom = || {
             call(
@@ -21498,7 +21764,12 @@ mod tests {
         };
         assert!(same_real_form(&first_custom, &second_custom));
         assert!(!Arc::ptr_eq(&first_custom, &second_custom));
-        assert!(!Arc::ptr_eq(&first_custom.rep, &second_custom.rep));
+        assert!(!Arc::ptr_eq(
+            &first_custom.kgb(span()).expect("first custom KGB pipeline"),
+            &second_custom
+                .kgb(span())
+                .expect("second custom KGB pipeline"),
+        ));
         assert!(!same_real_form_owner(&first_custom, &second_custom));
     }
 
