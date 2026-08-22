@@ -1,0 +1,12 @@
+{
+ "fixture": "eval/typed_lambda_result.atlas",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "pending_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "upstream_evidence": ["sources/interpreter/parser.y:227-230"],
+ "notes": "Typed lambda result annotation `(int x)bool: ...`; HPC reference capture and differential pending.",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "reference_job": "pending",
+ "differential_job": "pending"
+}

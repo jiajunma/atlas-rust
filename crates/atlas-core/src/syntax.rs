@@ -1957,6 +1957,18 @@ fn lambda(open: SourceSpan, parameters: Vec<LambdaParam>, body: Expr) -> Expr {
     }
 }
 
+/// `(params) result_type: body` annotates the lambda result (parser.y:227-230).
+/// Reuse the existing cast node so the typed evaluator converts the body
+/// against the declared result type before constructing the closure.
+fn lambda_with_result(
+    open: SourceSpan,
+    parameters: Vec<LambdaParam>,
+    result_type: TypeExpr,
+    body: Expr,
+) -> Expr {
+    lambda(open, parameters, cast_expression(result_type, body))
+}
+
 fn lambda_parameter(type_expr: TypeExpr, pattern: Pattern) -> LambdaParam {
     LambdaParam::Typed(Box::new(TypedParam {
         span: join_span(type_expr.span(), pattern.span()),

@@ -344,6 +344,8 @@ FIXTURE_PLANS = (
     FixturePlan(name="eval/string_slices_rejected"),
     # Operator value aliases (`set ^ = !=@(bool,bool)`), parser.y:151-153.
     FixturePlan(name="eval/operator_alias"),
+    # Typed lambda result annotations `(int x)bool: ...`, parser.y:227-230.
+    FixturePlan(name="eval/typed_lambda_result"),
     FixturePlan(name="eval/slices"),
     FixturePlan(name="eval/subscriptions"),
     FixturePlan(name="eval/context"),

@@ -3,7 +3,7 @@ use super::{
     definition, dot_case_branch, elif_tail, else_branch, extend_operator_formula, forget_command, multi_assignment,
     component_assignment, component_transform, field_assignment, field_transform, operate_assignment,
     finish_let, expression_list, finish_operator_formula, for_expression, join_span, lambda,
-    lambda_parameter, lambda_parameters, let_bindings, forget_overload_command,
+    lambda_parameter, lambda_parameters, lambda_with_result, let_bindings, forget_overload_command,
     let_expression, list_expression, named_field, rec_function_binding, rec_lambda, return_expression,
     op_cast_expression, op_cast_identifier,
     selector_suffix, operator_selector, sequence, set_command, set_type_command, show_overloads_command,
@@ -105,6 +105,10 @@ pub Expr: Expr = {
     // greedily take the rest of the expression (parser.y:224-238).
     <open:"("> <parameters:LambdaParameters> <_close:")"> ":" <body:Expr> => {
         lambda(open, parameters, body)
+    },
+    <open:"("> <parameters:LambdaParameters> <_close:")">
+        <result_type:TypeExprNode> ":" <body:Expr> => {
+        lambda_with_result(open, parameters, result_type, body)
     },
     <rec_span:"rec_fun"> <self_name:"identifier"> <_open:"(">
         <parameters:LambdaParametersOpt> <_close:")">

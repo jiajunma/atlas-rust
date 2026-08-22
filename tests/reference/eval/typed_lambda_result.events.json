@@ -1,0 +1,9 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "eval/typed_lambda_result",
+ "status": "pending_hpc_reference",
+ "events": [
+  {"kind": "ReportLine", "text": "Defined f: (int->bool)\n"},
+  {"kind": "Value", "value": {"type": "boolean", "value": false}}
+ ]
+}
