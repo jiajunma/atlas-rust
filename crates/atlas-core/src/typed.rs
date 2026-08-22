@@ -1233,6 +1233,13 @@ pub struct TypedContext {
     /// never recycled, so a forgotten-then-redefined name revives at its
     /// original position). Seeded with the system variables.
     completion_order: Vec<String>,
+    /// Names of user-defined types (lexer.w:419-448): the lexer consults
+    /// this set to emit `TYPE_ID` for defined type names in later commands.
+    /// Shared (Rc) with the session so each new command's lexer sees the
+    /// same live set. `forget` removes the name here even though the
+    /// TypeTable keeps the equation (upstream behaviour: the name stops
+    /// lexing as TYPE_ID once forgotten).
+    defined_type_names: Rc<RefCell<BTreeSet<String>>>,
 }
 
 impl Default for TypedContext {
@@ -1248,6 +1255,7 @@ impl Default for TypedContext {
             overloads: OverloadState::default(),
             verbosity: 0,
             completion_order: Vec::new(),
+            defined_type_names: Rc::new(RefCell::new(BTreeSet::new())),
         }
     }
 }
@@ -1269,6 +1277,12 @@ impl TypedContext {
 
     pub fn globals(&self) -> &IdTable {
         &self.globals
+    }
+
+    /// The live set of user-defined type names, shared with the lexers the
+    /// session builds for later commands (lexer.w:419-448).
+    pub fn defined_type_names(&self) -> Rc<RefCell<BTreeSet<String>>> {
+        Rc::clone(&self.defined_type_names)
     }
 
     /// The top-level `Value: ` rendering (main.w:533-540 prints
@@ -1484,9 +1498,10 @@ impl TypedContext {
             Command::Forget { name, span } => {
                 // global_forget_identifier (global.w:1241-1248): the report
                 // goes to standard output and never fails the command. The
-                // upstream type-identifier cleanup has no counterpart yet:
-                // the tabled type map supports no removal.
+                // tabled type map supports no removal, so only the lexer
+                // set is updated: the name stops lexing as TYPE_ID.
                 let was_known = self.globals.remove(&name.value);
+                self.defined_type_names.borrow_mut().remove(&name.value);
                 let state = if was_known { "forgotten" } else { "not known" };
                 Ok(vec![TypedCommandEvent::ReportLine {
                     text: format!("Identifier '{}' {state}\n", name.value),
@@ -1874,6 +1889,14 @@ impl TypedContext {
             self.types
                 .add_alias(definition.name.value.clone(), expansion.clone());
             targets.push(expansion);
+        }
+        // lexer.w:419-448: every freshly defined type name now lexes as
+        // TYPE_ID in later commands, so the lexer set is updated here.
+        {
+            let mut names = self.defined_type_names.borrow_mut();
+            for definition in definitions {
+                names.insert(definition.name.value.clone());
+            }
         }
         let mut events = Vec::with_capacity(definitions.len());
         for (definition, target) in definitions.iter().zip(&targets) {

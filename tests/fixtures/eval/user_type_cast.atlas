@@ -1,0 +1,15 @@
+set_type
+[ linear_solution = ( void empty_set | (vec,int,mat) affine_subspace )
+, maybe_a_vec =     ( void no_vec | vec solution)
+, maybe_a_ratvec =  ( void no_ratvec | ratvec solution )
+, maybe_a_mat =     ( void no_mat | mat solution )
+]
+set pick (int n) = maybe_a_vec:
+  if n=0 then no_vec() else solution([n]) fi
+pick(0)
+pick(3)
+set force (maybe_a_vec x) = vec:
+  case x | solution(s): s | else error("no vector") esac
+force(pick(7))
+maybe_a_vec: pick(2)
+whattype pick

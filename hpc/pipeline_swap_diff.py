@@ -359,6 +359,9 @@ FIXTURE_PLANS = (
     # columns), incl. empty bounds and reverse output — the basic.at:361
     # `set ~ (vec v)= vec: v~[:]` idiom.
     FixturePlan(name="eval/vec_slices"),
+    # User-defined type names lex as TYPE_ID (lexer.w:419-448): result
+    # annotations and casts with set_type names (basic.at:592 idiom).
+    FixturePlan(name="eval/user_type_cast"),
     FixturePlan(name="eval/subscriptions"),
     FixturePlan(name="eval/context"),
     FixturePlan(name="eval/exact_numerics"),

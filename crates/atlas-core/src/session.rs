@@ -39,7 +39,7 @@ pub fn run_source_with_context(
     source: &SourceText,
     context: &mut TypedContext,
 ) -> Vec<SessionEvent> {
-    let mut lexer = Lexer::new(source);
+    let mut lexer = Lexer::with_defined_types(source, context.defined_type_names());
     let mut command = Vec::new();
     let mut events = Vec::new();
 

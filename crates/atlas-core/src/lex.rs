@@ -15,6 +15,10 @@ pub enum TokenKind {
     Keyword(String),
     PrimitiveType(String),
     Identifier,
+    /// A name currently registered as a user-defined type (lexer.w:419-448
+    /// TYPE_ID): the lexer checks the session's defined-type table, so a
+    /// name reclassified by `set_type` switches token kind mid-stream.
+    TypeIdentifier,
     Integer,
     String,
     Operator(String),
@@ -106,6 +110,9 @@ pub struct Lexer<'a> {
     prevent_termination: Option<char>,
     previous_termination: Option<char>,
     at_command_start: bool,
+    /// Names registered by `set_type`, shared with the session's typed
+    /// context (lexer.w:419-448 `is_defined_type`).
+    defined_types: std::rc::Rc<std::cell::RefCell<std::collections::BTreeSet<String>>>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -117,6 +124,13 @@ enum NestingKind {
 
 impl<'a> Lexer<'a> {
     pub fn new(source: &'a SourceText) -> Self {
+        Self::with_defined_types(source, Default::default())
+    }
+
+    pub fn with_defined_types(
+        source: &'a SourceText,
+        defined_types: std::rc::Rc<std::cell::RefCell<std::collections::BTreeSet<String>>>,
+    ) -> Self {
         Self {
             source,
             offset: 0,
@@ -126,6 +140,7 @@ impl<'a> Lexer<'a> {
             prevent_termination: None,
             previous_termination: None,
             at_command_start: true,
+            defined_types,
         }
     }
 
@@ -212,6 +227,8 @@ impl<'a> Lexer<'a> {
                     TokenKind::Keyword(word.to_owned())
                 } else if PRIMITIVE_TYPES.contains(&word) {
                     TokenKind::PrimitiveType(word.to_owned())
+                } else if self.defined_types.borrow().contains(word) {
+                    TokenKind::TypeIdentifier
                 } else {
                     TokenKind::Identifier
                 };

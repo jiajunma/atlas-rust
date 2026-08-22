@@ -843,6 +843,9 @@ pub enum ParserToken {
     Boolean(SpannedValue<bool>),
     String(SpannedValue<String>),
     Identifier(SpannedValue<String>),
+    /// A defined type name (lexer.w:419-448 TYPE_ID); the lexer produces it
+    /// only for names currently registered by `set_type`.
+    TypeIdentifier(SpannedValue<String>),
     Operator(SpannedValue<FormulaOperator>),
     /// An operator immediately followed by `:=` (lexer.w:507-516), e.g.
     /// `+:=`; the payload is the bare operator symbol.
@@ -915,6 +918,7 @@ impl ParserToken {
             Self::Boolean(value) => value.span,
             Self::String(value) => value.span,
             Self::Identifier(value) => value.span,
+            Self::TypeIdentifier(value) => value.span,
             Self::Operator(value) => value.span,
             Self::OperatorBecomes(value) => value.span,
             Self::PrimitiveType(value) => value.span,
@@ -983,6 +987,7 @@ impl fmt::Display for ParserToken {
             Self::Boolean(_) => "boolean",
             Self::String(_) => "string",
             Self::Identifier(_) => "identifier",
+            Self::TypeIdentifier(_) => "type identifier",
             Self::Operator(operator) => operator.value.symbol.as_str(),
             Self::OperatorBecomes(operator) => {
                 return write!(formatter, "{}:=", operator.value);
@@ -1134,6 +1139,13 @@ fn parser_tokens_from_tokens(
                 }
                 TokenKind::Identifier => Some(Ok((
                     ParserToken::Identifier(SpannedValue {
+                        value: token.lexeme,
+                        span,
+                    }),
+                    span,
+                ))),
+                TokenKind::TypeIdentifier => Some(Ok((
+                    ParserToken::TypeIdentifier(SpannedValue {
                         value: token.lexeme,
                         span,
                     }),
@@ -1458,6 +1470,7 @@ fn bison_expecting(token: &ParserToken, expected: &[String]) -> Option<&'static 
 fn bison_token_name(token: &ParserToken) -> Option<&'static str> {
     match token {
         ParserToken::Identifier(_) => Some("IDENT"),
+        ParserToken::TypeIdentifier(_) => Some("TYPE_ID"),
         ParserToken::Integer(_) => Some("INT"),
         ParserToken::Unsupported(_) => None, // maps to `$undefined` below
         ParserToken::If(_) => Some("IF"),

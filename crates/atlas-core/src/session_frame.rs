@@ -191,7 +191,7 @@ impl<P: FileProvider, S: FileSink> SessionFrame<P, S> {
         events: &mut Vec<SessionEvent>,
     ) -> Outcome {
         let source = self.register(origin, &raw_text);
-        let mut lexer = Lexer::new(&source);
+        let mut lexer = Lexer::with_defined_types(&source, self.context.defined_type_names());
         let mut command: Vec<Token> = Vec::new();
         let depth = self.active.len();
 

@@ -195,6 +195,10 @@ Cast: Expr = {
 TypeExprNode: TypeExpr = {
     <prim:"primitive_type"> => type_primitive(prim),
     <span:"void"> => TypeExpr::Void { span },
+    <name:"type_identifier"> => TypeExpr::Named {
+        name: name.value,
+        span: name.span,
+    },
     <open:"["> <inner:TypeUnionList> <close:"]"> => type_row(open, inner, close),
     <open:"["> <_star:"*"> <close:"]"> => type_wild_row(open, close),
     <open:"("> <inner:TypeUnionList> <close:")"> => type_group(open, inner, close),
@@ -234,12 +238,18 @@ TypeFieldNode: TypeField = {
 
 // Type expressions inside a `set_type` spec additionally allow defined type
 // names (parser.y:784-796). These parallel the shared TypeExprNode rules so
-// the extra `"identifier"` alternative never leaks into expression/cast
-// contexts and perturbs their LR states.
+// the `"identifier"` alternative never leaks into expression/cast contexts
+// and perturbs their LR states. Already-defined names lex as
+// "type_identifier" (lexer.w:419-448); plain "identifier" still covers names
+// introduced later in the same `set_type [...]` group.
 SpecTypeNode: TypeExpr = {
     <prim:"primitive_type"> => type_primitive(prim),
     <span:"void"> => TypeExpr::Void { span },
     <name:"identifier"> => TypeExpr::Named {
+        name: name.value,
+        span: name.span,
+    },
+    <name:"type_identifier"> => TypeExpr::Named {
         name: name.value,
         span: name.span,
     },
@@ -857,6 +867,7 @@ extern {
         "boolean" => ParserToken::Boolean(<SpannedValue<bool>>),
         "string" => ParserToken::String(<SpannedValue<String>>),
         "identifier" => ParserToken::Identifier(<SpannedValue<String>>),
+        "type_identifier" => ParserToken::TypeIdentifier(<SpannedValue<String>>),
         "operator" => ParserToken::Operator(<SpannedValue<FormulaOperator>>),
         "operator_becomes" => ParserToken::OperatorBecomes(<SpannedValue<String>>),
         "primitive_type" => ParserToken::PrimitiveType(<SpannedValue<Prim>>),
