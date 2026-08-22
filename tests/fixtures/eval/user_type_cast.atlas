@@ -12,4 +12,4 @@ set force (maybe_a_vec x) = vec:
   case x | solution(s): s | else error("no vector") esac
 force(pick(7))
 maybe_a_vec: pick(2)
-whattype pick
+whattype pick(1)

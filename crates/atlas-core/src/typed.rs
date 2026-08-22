@@ -1900,19 +1900,23 @@ impl TypedContext {
         }
         let mut events = Vec::with_capacity(definitions.len());
         for (definition, target) in definitions.iter().zip(&targets) {
-            let text = self.define_type_members(definition, target);
+            let text = self.define_type_members(definition, target, span)?;
             events.push(TypedCommandEvent::ReportLine { text, span });
         }
         Ok(events)
     }
 
-    /// Install the projector (struct) or injector (union) globals of one
-    /// definition as one-argument closures, and render its report line.
+    /// Install the projector (struct) or injector (union) functions of one
+    /// definition in the overload table (global.w:1398-1410 adds each one
+    /// with `overload_table::add`, so same-named members of later types
+    /// overload or replace exactly like user `set` definitions), and render
+    /// the report line.
     fn define_type_members(
         &mut self,
         definition: &crate::syntax::TypeDefinition,
         target: &Type,
-    ) -> String {
+        span: SourceSpan,
+    ) -> Result<String, Diagnostic> {
         let expansion = match target {
             Type::Tabled(number) => self.types.expansion(*number).clone(),
             other => other.clone(),
@@ -1923,7 +1927,7 @@ impl TypedContext {
             expansion.display(&self.types)
         );
         let fields = match &definition.spec {
-            TypeSpec::Alias(_) => return heading,
+            TypeSpec::Alias(_) => return Ok(heading),
             TypeSpec::Struct(fields) | TypeSpec::Union(fields) => fields,
         };
         let components: &[Type] = match &expansion {
@@ -1955,18 +1959,20 @@ impl TypedContext {
                     },
                 )
             };
-            self.globals.define(
-                field_name.value.clone(),
+            self.overloads.add_user(
+                &field_name.value,
                 function_type,
-                crate::frames::global_with(Rc::new(member_closure(body, field.span))),
-            );
+                member_closure(body, field.span),
+                &self.types,
+                span,
+            )?;
             names.push(field_name.value.clone());
         }
         if names.is_empty() {
-            return heading;
+            return Ok(heading);
         }
         let role = if union { "injectors" } else { "projectors" };
-        format!("{heading}  with {role}: {}.\n", names.join(", "))
+        Ok(format!("{heading}  with {role}: {}.\n", names.join(", ")))
     }
 
     /// `whattype` (parser.y:169-171): a defined type name prints its
