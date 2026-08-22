@@ -7,7 +7,7 @@ use super::{
     let_expression, list_expression, named_field, rec_function_binding, rec_lambda, return_expression,
     op_cast_expression, op_cast_identifier,
     selector_suffix, operator_selector, sequence, set_command, set_type_command, show_overloads_command,
-    operator_function_binding,
+    operator_function_binding, operator_value_binding,
     type_definition, type_spec_span,
     unit_selector, next_sequence, break_level, case_select_expression, counted_for_expression,
     tuple_expression, function_binding,
