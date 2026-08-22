@@ -1,7 +1,7 @@
 {
  "schema": "atlas-eval-events-v0",
  "fixture": "eval/operator_alias",
- "status": "pending_hpc_reference",
+ "status": "verified_hpc_reference",
  "events": [
   {"kind": "ReportLine", "text": "Added definition [6] of ^: (bool,bool->bool)\n"},
   {"kind": "Value", "value": {"type": "boolean", "value": true}},
