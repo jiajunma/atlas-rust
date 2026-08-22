@@ -17,8 +17,8 @@ use super::{
     type_union_start, type_variant, type_wild_row, unary, finish_conditional, if_tail,
     quiet_if_expression, nested_iffor_expression,
     anonymous_parameter, const_pattern_name, finish_pattern, pattern_binding, pattern_empty_tuple,
-    pattern_name, pattern_slots, pattern_tuple, prepend_while_effect, tuple_parameter,
-    whattype_command, while_expression, while_let_tail, bar_list_expression,
+    pattern_name, pattern_slots, pattern_tuple, tuple_parameter,
+    whattype_command, while_expression, bar_list_expression, do_expression,
     BinaryOp, CaseBranch, Command, Expr, LambdaParam, LetBinding, ParsedFor, ParsedIf,
     ParsedLet, ParserToken, PatternTail, PostfixSuffix, Prim, Program, SlotTail, SpannedValue,
     TypeExpr, TypeField, TypeSpec, TypeVariantSlot, UnaryOp, Pattern, TypeDefinition,
@@ -718,27 +718,48 @@ CasePatternTail: PatternTail = {
     },
 };
 
-// Atlas's do_expr (parser.y:438-443) permits effect-only expressions before
-// the guard. Each prefix is evaluated at no-value level; `dont` supplies the
-// false guard, while bare `do` supplies true.
-// The trailing bool is the tilde after the body (parser.y:364 `WHILE
-// do_expr tilde_opt OD`, flags=2*t): it reverse-collects the row of body
-// values (axis.w out_reversed).
-WhileTail: (Option<Expr>, Expr, SourceSpan, bool) = {
-    <effect:AssignmentExpr> ";" <tail:WhileTail> => prepend_while_effect(effect, tail),
-    <dont:"dont"> <out_reversed:TildeOpt> <od:"od"> => (
-        Some(Expr::Boolean { value: false, span: dont }),
-        Expr::Dont { span: dont },
-        od,
-        out_reversed,
+// Atlas's do_expr (parser.y:438-464): the while-loop body grammar. The
+// body is one do_expr whose evaluation sets the while-condition flag
+// (axis.w:5553-5580); the flag, not a separate guard, drives
+// termination. The trailing bool is the tilde after the body
+// (parser.y:364 `WHILE do_expr tilde_opt OD`, flags=2*t): it
+// reverse-collects the row of body values (axis.w out_reversed).
+WhileTail: (Expr, SourceSpan, bool) = {
+    <body:DoExpr> <out_reversed:TildeOpt> <od:"od"> => (body, od, out_reversed),
+};
+
+// do_expr (parser.y:438-464): effect prefixes sequence in; `dont` is the
+// constant-false guard; bare `do` the constant-true one; the if and let
+// forms recurse into do_expr branches. The case forms
+// (parser.y:447-458) are not yet admitted.
+DoExpr: Expr = {
+    <let_span:"let"> <tail:DoLetTail> => let_expression(let_span, tail),
+    <effect:AssignmentExpr> ";" <rest:DoExpr> => sequence(effect, rest),
+    <condition:AssignmentExpr> <do_span:"do"> <body:Expr> =>
+        do_expression(condition, body, join_span(condition.span(), body.span())),
+    <do_span:"do"> <body:Expr> => do_expression(
+        Expr::Boolean { value: true, span: do_span },
+        body,
+        join_span(do_span, body.span()),
     ),
-    <_do:"do"> <body:Expr> <out_reversed:TildeOpt> <od:"od"> => (None, body, od, out_reversed),
-    <condition:AssignmentExpr> <_do:"do"> <body:Expr> <out_reversed:TildeOpt> <od:"od"> => {
-        (Some(condition), body, od, out_reversed)
+    <span:"dont"> => Expr::Dont { span },
+    <if_span:"if"> <tail:DoIfTail> => finish_conditional(if_span, tail),
+    <_open:"("> <e:DoExpr> <_close:")"> => e,
+};
+
+// do_lettail (parser.y:466-468): declarations then a do_expr body.
+DoLetTail: ParsedLet = {
+    <bindings:LetBindings> <_in:"in"> <body:DoExpr> => finish_let(bindings, body),
+    <bindings:LetBindings> <_then:"then"> <tail:DoLetTail> => prepend_let_group(bindings, tail),
+};
+
+// do_iftail (parser.y:470-473): both branches are do_exprs.
+DoIfTail: ParsedIf = {
+    <condition:Expr> "then" <then_branch:DoExpr> "else" <else_branch:DoExpr> <close:"fi"> => {
+        if_tail(condition, then_branch, Some(else_branch), close)
     },
-    <let_span:"let"> <bindings:LetBindings> <_in:"in"> <condition:AssignmentExpr>
-        <_do:"do"> <body:Expr> <out_reversed:TildeOpt> <od:"od"> => {
-        while_let_tail(let_span, bindings, condition, body, od, out_reversed)
+    <condition:Expr> "then" <then_branch:DoExpr> "elif" <tail:DoIfTail> => {
+        elif_tail(condition, then_branch, tail)
     },
 };
 

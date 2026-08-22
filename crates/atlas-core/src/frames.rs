@@ -59,9 +59,25 @@ pub struct EvaluationContext {
     /// files their resolved path. The session frame records each buffer as
     /// it registers it; unknown ids fall back to `<standard input>`.
     source_names: BTreeMap<u64, String>,
+    /// Upstream's global `while_condition_result` (axis.w:5553-5580): a
+    /// do_expr sets it AFTER its body ran (so a nested loop cannot clobber
+    /// it), and a while loop reads it after each body evaluation —
+    /// `false` ends the loop without collecting that iteration's value.
+    while_condition_result: std::cell::Cell<bool>,
 }
 
 impl EvaluationContext {
+    /// Set the while-condition flag (do_expr/dont evaluation).
+    pub fn set_while_condition_result(&self, value: bool) {
+        self.while_condition_result.set(value);
+    }
+
+    /// Read the while-condition flag (while loop, after each body
+    /// evaluation).
+    pub fn while_condition_result(&self) -> bool {
+        self.while_condition_result.get()
+    }
+
     pub fn new() -> Self {
         Self::default()
     }

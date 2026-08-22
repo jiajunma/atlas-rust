@@ -42,7 +42,6 @@ use std::time::Instant;
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Control {
     Break(usize),
-    Dont,
     Return(Value),
     Runtime(Diagnostic),
 }
@@ -294,17 +293,28 @@ pub enum TypedExpr {
         first: Box<TypedExpr>,
         second: Box<TypedExpr>,
     },
-    /// A while loop collecting each completed iteration's body value into
-    /// a row; a missing condition is the constant true. `out_reversed` is
-    /// the tilde before `od` (parser.y:364, flags bit 1): the collected
-    /// row is reversed. `yields_count` is the upstream int-context variant
+    /// A while loop over a single do_expr body (axis.w:5373-5403): each
+    /// iteration evaluates the body, then reads the while-condition flag
+    /// the body set — `false` ends the loop without collecting. Completed
+    /// iterations' values collect into a row. `out_reversed` is the tilde
+    /// before `od` (parser.y:364, flags bit 1): the collected row is
+    /// reversed. `yields_count` is the upstream int-context variant
     /// (axis.w:5424-5435, make_while_loop flag 0x8): the body is converted
     /// against void and the loop yields the number of iterations done.
     While {
-        condition: Option<Box<TypedExpr>>,
         body: Box<TypedExpr>,
         out_reversed: bool,
         yields_count: bool,
+    },
+    /// A do_expr guard (axis.w:5476-5580 `do_expression` /
+    /// `forever_expression` / `dont_expression`): the condition evaluates
+    /// against bool; when false the flag is cleared and NO value is
+    /// produced even at a value level, when true the body evaluates and
+    /// the flag is set afterwards. `condition: None` is the
+    /// constant-folded `forever` case (bare `do` or `true`).
+    Do {
+        condition: Option<Box<TypedExpr>>,
+        body: Box<TypedExpr>,
     },
     /// A for loop over a row value; each iteration pushes the 0-based
     /// index slot when `index` is set, then distributes the element per
@@ -2056,7 +2066,7 @@ fn evaluate_command_expr(
         .evaluate(context, Level::SingleValue)
         .map_err(|control| match control {
             Control::Runtime(diagnostic) => diagnostic,
-            Control::Break(_) | Control::Dont | Control::Return(_) => Diagnostic::new(
+            Control::Break(_) | Control::Return(_) => Diagnostic::new(
                 ErrorKind::Runtime,
                 "illegal control flow at top level",
                 None,
@@ -3130,35 +3140,16 @@ pub fn convert_expr(
             })
         }
         Expr::While {
-            condition,
             body,
             out_reversed,
             span,
         } => {
-            let condition = condition
-                .as_ref()
-                .map(|condition| {
-                    // A-priori conversion, then the bool check with the
-                    // upstream `found … while … was needed.` wording.
-                    let mut found = Type::Undetermined;
-                    let converted = convert_expr(condition, &mut found, analysis)?;
-                    if !Type::Primitive(Prim::Bool).specialise(&found, analysis.types) {
-                        return Err(type_error(
-                            format!(
-                                "found {} while bool was needed.",
-                                found.display(analysis.types)
-                            ),
-                            condition.span(),
-                        ));
-                    }
-                    Ok(converted)
-                })
-                .transpose()?;
             // Upstream (axis.w:5424-5435): in a void context the body
             // converts against void and no row is built; in an int context
             // the loop yields the number of iterations done
             // (make_while_loop flag 0x8); otherwise it collects a row of
-            // body values against a fresh component pattern.
+            // body values against a fresh component pattern. The body is a
+            // single do_expr whose flag drives termination at evaluation.
             if required.is_void() {
                 let mut void = Type::void();
                 let body = convert_expr(body, &mut void, &analysis.in_loop())?;
@@ -3166,7 +3157,6 @@ pub fn convert_expr(
                     &Type::void(),
                     required,
                     TypedExpr::While {
-                        condition: condition.map(Box::new),
                         body: Box::new(body),
                         out_reversed: *out_reversed,
                         yields_count: false,
@@ -3182,7 +3172,6 @@ pub fn convert_expr(
                     &Type::Primitive(Prim::Int),
                     required,
                     TypedExpr::While {
-                        condition: condition.map(Box::new),
                         body: Box::new(body),
                         out_reversed: *out_reversed,
                         yields_count: true,
@@ -3199,7 +3188,6 @@ pub fn convert_expr(
                 &Type::row(component),
                 required,
                 TypedExpr::While {
-                    condition: condition.map(Box::new),
                     body: Box::new(body),
                     out_reversed: *out_reversed,
                     yields_count: false,
@@ -3207,6 +3195,38 @@ pub fn convert_expr(
                 *span,
                 analysis,
             )
+        }
+        Expr::Do {
+            condition,
+            body,
+            span,
+        } => {
+            if analysis.loop_depth == 0 {
+                return Err(type_error(
+                    "Using 'do' not in the reach of any loop".into(),
+                    *span,
+                ));
+            }
+            // axis.w:5532-5550: the body converts against the required type
+            // in ALL cases; a constant-false condition then drops it (the
+            // `dont` expression), a constant-true one keeps just the body
+            // (the `forever` expression).
+            let body = convert_expr(body, required, analysis)?;
+            if let Expr::Boolean { value, .. } = &**condition {
+                if !value {
+                    return Ok(TypedExpr::Dont);
+                }
+                return Ok(TypedExpr::Do {
+                    condition: None,
+                    body: Box::new(body),
+                });
+            }
+            let mut bool_type = Type::Primitive(Prim::Bool);
+            let condition = convert_expr(condition, &mut bool_type, analysis)?;
+            Ok(TypedExpr::Do {
+                condition: Some(Box::new(condition)),
+                body: Box::new(body),
+            })
         }
         Expr::For(loop_) => convert_for_loop(loop_, required, analysis),
         Expr::Case(case) => {
@@ -3536,7 +3556,12 @@ pub fn convert_expr(
                     *span,
                 ));
             }
-            conform_types(&Type::void(), required, TypedExpr::Dont, *span, analysis)
+            // Upstream `dont` is the kind-2 sequence (false, die): its type
+            // is the DROPPED body's, converted against the required type —
+            // and `die` leaves the required type untouched (axis.w:634-638).
+            // So `dont` passes analysis against any context, exactly like
+            // `die`; evaluation just clears the while-condition flag.
+            Ok(TypedExpr::Dont)
         }
         Expr::Die { span } => {
             // `die` passes analysis trivially in ANY context, leaving the
@@ -11949,41 +11974,39 @@ impl TypedExpr {
                 second.evaluate(context, level)
             }
             Self::While {
-                condition,
                 body,
                 out_reversed,
                 yields_count,
             } => {
+                // axis.w:5620-5652: evaluate the do_expr body, then read
+                // the while-condition flag IT set — `false` ends the loop
+                // without collecting that iteration. The flag (not the
+                // value) drives termination, so a void-context body that
+                // produces nothing still terminates correctly.
                 let mut collected = Vec::new();
                 let mut iterations: usize = 0;
                 loop {
-                    if let Some(condition) = condition {
-                        match force(condition, context)? {
-                            Value::Boolean(true) => {}
-                            Value::Boolean(false) => break,
-                            other => {
-                                panic!("analysis let a non-boolean loop condition through: {other}")
-                            }
-                        }
-                    }
-                    // The int-context variant (axis.w:5424-5435, flag 0x8)
-                    // runs the body for effects only and counts the
-                    // COMPLETED iterations; a breaking one does not count.
                     let body_level = if *yields_count {
                         Level::NoValue
                     } else {
                         Level::SingleValue
                     };
                     match body.evaluate(context, body_level) {
-                        Ok(Some(value)) => {
-                            collected.push(value);
+                        Ok(value) => {
+                            if !context.while_condition_result() {
+                                break;
+                            }
                             iterations += 1;
+                            match value {
+                                Some(value) => collected.push(value),
+                                None if *yields_count || matches!(body_level, Level::NoValue) => {}
+                                None => {
+                                    unreachable!("single-value loop body yields a value")
+                                }
+                            }
                         }
-                        Ok(None) if *yields_count => iterations += 1,
-                        Ok(None) => unreachable!("single-value loop body yields a value"),
                         // The breaking iteration contributes no value.
                         Err(Control::Break(0)) => break,
-                        Err(Control::Dont) => break,
                         Err(Control::Break(levels)) => {
                             return Err(Control::Break(levels - 1));
                         }
@@ -11998,6 +12021,28 @@ impl TypedExpr {
                     collected.reverse();
                 }
                 Ok(at_level(level, || Value::List(collected.clone())))
+            }
+            Self::Do { condition, body } => {
+                // axis.w:5564-5576: on a false guard, clear the flag and
+                // produce NO value (even at a value level); on a true
+                // guard, evaluate the body and only THEN set the flag, so
+                // a nested loop's flag writes cannot clobber it.
+                let guard = match condition {
+                    Some(condition) => match force(condition, context)? {
+                        Value::Boolean(guard) => guard,
+                        other => {
+                            panic!("analysis let a non-boolean do condition through: {other}")
+                        }
+                    },
+                    None => true,
+                };
+                if !guard {
+                    context.set_while_condition_result(false);
+                    return Ok(None);
+                }
+                let value = body.evaluate(context, level)?;
+                context.set_while_condition_result(true);
+                Ok(value)
             }
             Self::For {
                 shape,
@@ -12019,7 +12064,12 @@ impl TypedExpr {
                 context,
             ),
             Self::Break { levels } => Err(Control::Break(*levels)),
-            Self::Dont => Err(Control::Dont),
+            // dont_expression (axis.w:5579-5580): clear the flag, push
+            // nothing — the enclosing while ends without collecting.
+            Self::Dont => {
+                context.set_while_condition_result(false);
+                Ok(None)
+            }
             Self::Die { span } => Err(runtime("I die", *span)),
             Self::UnionInject {
                 tag,

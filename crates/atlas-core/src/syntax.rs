@@ -191,14 +191,25 @@ pub enum Expr {
         second: Box<Expr>,
         span: SourceSpan,
     },
-    /// `while condition do body od` (parser.y:364): each iteration's body
-    /// value is collected into a row; a missing condition (`while do …`)
-    /// is the constant true (parser.y:443). `out_reversed` is the tilde
-    /// before `od` (flags bit 1): the collected row is reversed.
+    /// `while do_expr od` (parser.y:364): the body is a single do_expr
+    /// whose evaluation drives termination through the while-condition
+    /// flag (axis.w:5553-5580): each iteration's value is collected into
+    /// a row. `out_reversed` is the tilde before `od` (flags bit 1): the
+    /// collected row is reversed.
     While {
-        condition: Option<Box<Expr>>,
         body: Box<Expr>,
         out_reversed: bool,
+        span: SourceSpan,
+    },
+    /// A do_expr guard (parser.y:441-442): `condition do body`, or bare
+    /// `do body` with `condition` the constant true. Analysis converts
+    /// the body against the required type in all cases, then drops it
+    /// for a constant-false condition (axis.w:5532-5550). Evaluation
+    /// sets the while-condition flag AFTER the body ran, so a nested
+    /// loop cannot clobber it.
+    Do {
+        condition: Box<Expr>,
+        body: Box<Expr>,
         span: SourceSpan,
     },
     /// `for pattern[@index] in row do body od` (parser.y:506-531). Boxed
@@ -640,6 +651,7 @@ impl Expr {
             | Self::Sequence { span, .. }
             | Self::Next { span, .. }
             | Self::While { span, .. }
+            | Self::Do { span, .. }
             | Self::Break { span, .. }
             | Self::Dont { span }
             | Self::Die { span }
@@ -1808,47 +1820,24 @@ fn case_select_expression(case_span: SourceSpan, condition: Expr, tail: ParsedCa
     }
 }
 
-fn while_expression(while_span: SourceSpan, tail: (Option<Expr>, Expr, SourceSpan, bool)) -> Expr {
-    let (condition, body, od, out_reversed) = tail;
+fn while_expression(while_span: SourceSpan, tail: (Expr, SourceSpan, bool)) -> Expr {
+    let (body, od, out_reversed) = tail;
     Expr::While {
         span: join_span(while_span, od),
-        condition: condition.map(Box::new),
         body: Box::new(body),
         out_reversed,
     }
 }
 
-/// `while let bindings in condition do body od` rebuilds the bindings for
-/// every iteration and keeps them visible to both the guard and body. Desugar
-/// it to an unconditional while whose body breaks when the guard is false.
-fn while_let_tail(
-    let_span: SourceSpan,
-    bindings: Vec<LetBinding>,
-    condition: Expr,
-    body: Expr,
-    od: SourceSpan,
-    out_reversed: bool,
-) -> (Option<Expr>, Expr, SourceSpan, bool) {
-    let conditional = Expr::Conditional {
-        span: join_span(condition.span(), body.span()),
+/// `condition do body` (parser.y:440 `tertiary DO expr`, a kind-2
+/// sequence); bare `do body` supplies the constant-true guard
+/// (parser.y:441).
+fn do_expression(condition: Expr, body: Expr, span: SourceSpan) -> Expr {
+    Expr::Do {
         condition: Box::new(condition),
-        then_branch: Box::new(body),
-        else_branch: Box::new(Expr::Break { levels: 0, span: od }),
-    };
-    let scoped_body = let_expression(let_span, finish_let(bindings, conditional));
-    (None, scoped_body, od, out_reversed)
-}
-
-fn prepend_while_effect(
-    effect: Expr,
-    tail: (Option<Expr>, Expr, SourceSpan, bool),
-) -> (Option<Expr>, Expr, SourceSpan, bool) {
-    let (condition, body, od, out_reversed) = tail;
-    let condition = condition.unwrap_or_else(|| Expr::Boolean {
-        value: true,
-        span: effect.span(),
-    });
-    (Some(sequence(effect, condition)), body, od, out_reversed)
+        body: Box::new(body),
+        span,
+    }
 }
 
 fn for_expression(for_span: SourceSpan, parsed: ParsedFor) -> Expr {
@@ -3025,19 +3014,23 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
             )
         }
         Expr::While {
-            condition,
             body,
             out_reversed,
             ..
         } => {
-            let condition = condition
-                .as_ref()
-                .map(|condition| format!("{} ", compact_expression(condition)))
-                .unwrap_or_default();
             // Upstream prints the reversal tilde fused to `od` (`~od`,
             // axis.w:5387).
             let od = if *out_reversed { "~od" } else { "od" };
-            format!("while {condition}do {} {od}", compact_expression(body))
+            format!("while {} {od}", compact_expression(body))
+        }
+        Expr::Do {
+            condition, body, ..
+        } => {
+            format!(
+                "{} do {}",
+                compact_expression(condition),
+                compact_expression(body)
+            )
         }
         Expr::For(loop_) => {
             let pattern = loop_
@@ -3472,14 +3465,12 @@ mod tests {
                     expression_shape(second)
                 )
             }
-            Expr::While {
+            Expr::While { body, .. } => format!("while({})", expression_shape(body)),
+            Expr::Do {
                 condition, body, ..
             } => format!(
-                "while({};{})",
-                condition
-                    .as_ref()
-                    .map(|condition| expression_shape(condition))
-                    .unwrap_or_default(),
+                "do({};{})",
+                expression_shape(condition),
                 expression_shape(body)
             ),
             Expr::For(loop_) => format!(
