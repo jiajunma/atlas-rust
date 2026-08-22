@@ -3995,7 +3995,36 @@ fn convert_counted_for_loop(
         );
         constant_locals.insert(name.value.clone());
     }
-    let mut body_type = Type::Undetermined;
+    // The required type steers the body exactly as in convert_for_loop
+    // (axis.w:6457-6464 cfor_expr case): a void context evaluates the body
+    // for its side effects; a row context hands its component type to the
+    // body; any other required type must be reachable by a registered row
+    // coercion, which then wraps the whole loop.
+    let row_of_type = Type::row(Type::Undetermined);
+    let mut conv: Option<&crate::coercions::Coercion> = None;
+    let mut body_type = if required.is_void() && !*iffor_body {
+        Type::void()
+    } else if required.is_void() || required.can_specialise(&row_of_type, analysis.types) {
+        match row_component(required, analysis.types) {
+            Some(component) => component,
+            None => Type::Undetermined,
+        }
+    } else if let Some((coercion, component)) = row_coercion(required, analysis.types) {
+        conv = Some(coercion);
+        component.clone()
+    } else {
+        return Err(type_error(
+            format!(
+                "found {} while {} was needed.",
+                row_of_type.display(analysis.types),
+                required.display(analysis.types)
+            ),
+            *span,
+        ));
+    };
+    if *iffor_body && !body_type.is_void() {
+        body_type = Type::row(body_type);
+    }
     let body = convert_expr(
         body,
         &mut body_type,
@@ -4025,6 +4054,15 @@ fn convert_counted_for_loop(
     };
     if *iffor_body {
         return join_iffor_body(converted, &loop_type, required, *span, analysis);
+    }
+    if let Some(coercion) = conv {
+        let converted = TypedExpr::Conversion {
+            tag: coercion.tag,
+            inner: Box::new(converted),
+            span: *span,
+        };
+        let target = coercion.to.clone();
+        return conform_types(&target, required, converted, *span, analysis);
     }
     conform_types(&loop_type, required, converted, *span, analysis)
 }
