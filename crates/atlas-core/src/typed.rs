@@ -4291,53 +4291,40 @@ fn resolve_projector(
     Ok((position, component.clone()))
 }
 
-/// Factor the converted desugared operator call of a transform assignment
-/// into the operation to apply, its converted right operand, and the result
-/// coercion (if the call needed one). The Rust converter never applies the
-/// upstream `x+1` → `succ(x)` argument-dropping optimisation, so a binary
-/// call always keeps both operands.
+/// Try to factor the converted desugared operator call of a transform
+/// assignment into the builtin operation to apply and its converted right
+/// operand. Upstream only builds an in-place transform when the resolved
+/// call is a `builtin_call` whose FIRST argument is the unconverted
+/// selection (a subscription for `a[i] op:= v`, a projector call for
+/// `p.f op:= v`); a user overload, an implicit conversion, or any other
+/// shape reverts to an ordinary assignment of the whole call
+/// (axis.w:8422-8455 `field_trans_stat`, axis.w:8572-8596
+/// `comp_trans_stat`). Returns the call back when the optimisation does
+/// not apply. The Rust converter never applies the upstream `x+1` →
+/// `succ(x)` argument-dropping optimisation, so an optimisable binary
+/// call keeps both operands.
 fn factor_transform_call(
     call: TypedExpr,
-) -> (TransformOperation, Box<TypedExpr>, Option<&'static str>) {
-    let (call, conversion) = match call {
-        TypedExpr::Conversion { tag, inner, .. } => (*inner, Some(tag)),
-        other => (other, None),
-    };
+    selection_is_subscription: bool,
+) -> Result<(TransformOperation, Box<TypedExpr>), TypedExpr> {
     match call {
         TypedExpr::BuiltinCall {
             builtin,
             mut arguments,
             ..
-        } => {
+        } if arguments.len() == 2
+            && if selection_is_subscription {
+                matches!(arguments[0], TypedExpr::Subscription { .. })
+            } else {
+                matches!(arguments[0], TypedExpr::FunctionCall { .. })
+            } =>
+        {
             let rhs = arguments
                 .pop()
                 .expect("a binary operator call holds its right operand");
-            (
-                TransformOperation::Builtin(builtin),
-                Box::new(rhs),
-                conversion,
-            )
+            Ok((TransformOperation::Builtin(builtin), Box::new(rhs)))
         }
-        TypedExpr::FunctionCall {
-            function, argument, ..
-        } => {
-            let TypedExpr::Denotation(value) = *function else {
-                unreachable!("a user overload applies its denotation")
-            };
-            let Value::Closure(closure) = value else {
-                unreachable!("user overloads always hold closures")
-            };
-            let rhs = match *argument {
-                TypedExpr::TupleDisplay(mut arguments) => Box::new(
-                    arguments
-                        .pop()
-                        .expect("a binary operator call holds its right operand"),
-                ),
-                single => Box::new(single),
-            };
-            (TransformOperation::Closure(closure), rhs, conversion)
-        }
-        other => unreachable!("transform conversion yields a call, found {other:?}"),
+        other => Err(other),
     }
 }
 
@@ -4442,43 +4429,65 @@ fn convert_component_transform(
     };
     let mut call_required = component_type.clone();
     let converted_call = convert_expr(&call, &mut call_required, analysis)?;
-    let (operation, rhs, conversion) = factor_transform_call(converted_call);
-    // The vec/mat transform range check fires on the component READ, whose
-    // diagnostic quotes the selection (`M[5]`, pair index without the tuple
-    // parentheses `M[5,0]`) — not the whole transform compact.
-    let selection = match &transform.index {
-        Expr::Tuple { elements, .. } if elements.len() == 2 => format!(
-            "{}{}[{},{}]",
-            transform.name,
-            if transform.reversed { "~" } else { "" },
-            compact_expression(&elements[0]),
-            compact_expression(&elements[1])
-        ),
-        index => format!(
-            "{}{}[{}]",
-            transform.name,
-            if transform.reversed { "~" } else { "" },
-            compact_expression(index)
-        ),
+    // The optimised in-place transform applies only to a row/vec entry
+    // selected by an int index (subscr_base::row_entry, axis.w:8560-8562);
+    // matrix selections and any call the factorer rejects (user overload,
+    // implicit conversion) become an ordinary component assignment whose
+    // value is the whole call (axis.w:8597-8604). Unlike upstream we do
+    // not let-wrap a side-effecting index expression here; the converted
+    // subscription inside the call re-evaluates it.
+    let row_entry = matches!(&aggregate_type, Type::Row(_) | Type::Primitive(Prim::Vec))
+        && matches!(index_type, Type::Primitive(Prim::Int));
+    let factored = if row_entry {
+        factor_transform_call(converted_call, true)
+    } else {
+        Err(converted_call)
     };
-    conform_types(
-        &component_type,
-        required,
-        TypedExpr::ComponentTransform {
+    let converted = match factored {
+        Ok((operation, rhs)) => {
+            // The vec/mat transform range check fires on the component READ,
+            // whose diagnostic quotes the selection (`M[5]`, pair index
+            // without the tuple parentheses `M[5,0]`) — not the whole
+            // transform compact.
+            let selection = match &transform.index {
+                Expr::Tuple { elements, .. } if elements.len() == 2 => format!(
+                    "{}{}[{},{}]",
+                    transform.name,
+                    if transform.reversed { "~" } else { "" },
+                    compact_expression(&elements[0]),
+                    compact_expression(&elements[1])
+                ),
+                index => format!(
+                    "{}{}[{}]",
+                    transform.name,
+                    if transform.reversed { "~" } else { "" },
+                    compact_expression(index)
+                ),
+            };
+            TypedExpr::ComponentTransform {
+                target,
+                name: transform.name.clone(),
+                index: Box::new(converted_index),
+                reversed: transform.reversed,
+                operation,
+                rhs,
+                conversion: None,
+                selection,
+                source: compact,
+                span: transform.span,
+            }
+        }
+        Err(call) => TypedExpr::ComponentAssignment {
             target,
             name: transform.name.clone(),
             index: Box::new(converted_index),
             reversed: transform.reversed,
-            operation,
-            rhs,
-            conversion,
-            selection,
+            value: Box::new(call),
             source: compact,
             span: transform.span,
         },
-        transform.span,
-        analysis,
-    )
+    };
+    conform_types(&component_type, required, converted, transform.span, analysis)
 }
 
 /// `p.f := v` (parser.y:266, axis.w:8194-8239 `field_ass_stat`).
@@ -4553,22 +4562,28 @@ fn convert_field_transform(
     };
     let mut call_required = component_type.clone();
     let converted_call = convert_expr(&call, &mut call_required, analysis)?;
-    let (operation, rhs, conversion) = factor_transform_call(converted_call);
-    conform_types(
-        &component_type,
-        required,
-        TypedExpr::FieldTransform {
+    // As for the component transform: only a builtin call whose first
+    // argument is the unconverted projector call becomes an in-place
+    // transform; anything else assigns the whole call (axis.w:8422-8455).
+    let converted = match factor_transform_call(converted_call, false) {
+        Ok((operation, rhs)) => TypedExpr::FieldTransform {
             target,
             name: transform.name.clone(),
             position,
             operation,
             rhs,
-            conversion,
+            conversion: None,
             span: transform.span,
         },
-        transform.span,
-        analysis,
-    )
+        Err(call) => TypedExpr::FieldAssignment {
+            target,
+            name: transform.name.clone(),
+            position,
+            value: Box::new(call),
+            span: transform.span,
+        },
+    };
+    conform_types(&component_type, required, converted, transform.span, analysis)
 }
 
 /// Rebuild exactly the simple-assignment cases selected by upstream's
