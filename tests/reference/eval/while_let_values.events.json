@@ -1,0 +1,12 @@
+{
+ "schema": "atlas-eval-events-v0",
+ "fixture": "eval/while_let_values",
+ "status": "verified_hpc_reference",
+ "events": [
+  {"kind": "ReportLine", "text": "Defined bit_positions: (int->vec)\n"},
+  {"kind": "Value", "value": {"type": "display", "display": "[ 0, 2, 3 ]"}},
+  {"kind": "Value", "value": {"type": "display", "display": "[ ]"}},
+  {"kind": "ReportLine", "text": "Defined bit_count: (int->int)\n"},
+  {"kind": "Value", "value": {"type": "integer", "value": 3}}
+ ]
+}

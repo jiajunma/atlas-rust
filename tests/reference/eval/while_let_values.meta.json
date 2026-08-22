@@ -1,0 +1,21 @@
+{
+ "fixture": "eval/while_let_values.atlas",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "rust_status": "pending_hpc_differential",
+ "upstream_evidence": ["sources/interpreter/axis.w:5424-5435", "sources/interpreter/axis.w:673-685"],
+ "notes": "While-let in value contexts: a vec context collects the row of body values (the basic.at:204 set_bit_positions idiom) and an int context yields the completed-iteration count (make_while_loop flag 0x8). The break in the desugared guard branch converts in any context, like the upstream breaker. Reference captured by HPC job 3614440, differential pending.",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "fixture_sha256": "2e36825bd208dd084a7ddd65d22082d91fbc821646b142e97e589f06065946e3",
+ "reference_job": "3614440",
+ "reference_commit": "288cd7ef0396776056591936ff2ad2c1bafe5c73",
+ "reference_report_sha256": "697b56706fff58637334e32004c2c5dac437473ce58628d5ea4c92d24d8aaee6",
+ "oracle_exit_status": 0,
+ "oracle_seconds": 0.012,
+ "oracle_maxrss_kb": 3544,
+ "oracle_maxrss_approximate": false,
+ "differential_job": "pending"
+}
