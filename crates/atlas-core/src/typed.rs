@@ -11712,7 +11712,7 @@ impl TypedExpr {
                 yields_count,
             } => {
                 let mut collected = Vec::new();
-                let mut iterations: i64 = 0;
+                let mut iterations: usize = 0;
                 loop {
                     if let Some(condition) = condition {
                         match force(condition, context)? {
@@ -11748,7 +11748,7 @@ impl TypedExpr {
                     }
                 }
                 if *yields_count {
-                    return Ok(at_level(level, || Value::Integer(iterations)));
+                    return Ok(at_level(level, || Value::Integer(BigInt::from(iterations))));
                 }
                 // The tilde before `od` reverse-collects the row.
                 if *out_reversed {
