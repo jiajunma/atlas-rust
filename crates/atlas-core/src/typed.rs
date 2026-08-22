@@ -11428,22 +11428,23 @@ impl TypedExpr {
                     }
                     Value::Matrix(mut matrix) => match index {
                         Value::Tuple(pair) if pair.len() == 2 => {
-                            let column =
+                            let row =
                                 expect_integer(pair[0].clone(), *span, "assignment index")?;
-                            let row = expect_integer(pair[1].clone(), *span, "assignment index")?;
-                            let column = checked_index_word(
+                            let column =
+                                expect_integer(pair[1].clone(), *span, "assignment index")?;
+                            let row = checked_index_word(
                                 "initial index",
-                                &column,
-                                matrix.cols(),
+                                &row,
+                                matrix.rows(),
                                 *reversed,
                                 "matrix entry assignment",
                                 source,
                                 *span,
                             )?;
-                            let row = checked_index_word(
+                            let column = checked_index_word(
                                 "final index",
-                                &row,
-                                matrix.rows(),
+                                &column,
+                                matrix.cols(),
                                 *reversed,
                                 "matrix entry assignment",
                                 source,
@@ -11607,21 +11608,22 @@ impl TypedExpr {
                     }
                     Value::Matrix(mut matrix) => match index {
                         Value::Tuple(pair) if pair.len() == 2 => {
-                            let column = expect_integer(pair[0].clone(), *span, "transform index")?;
-                            let row = expect_integer(pair[1].clone(), *span, "transform index")?;
-                            let column = checked_index_word(
+                            let row = expect_integer(pair[0].clone(), *span, "transform index")?;
+                            let column =
+                                expect_integer(pair[1].clone(), *span, "transform index")?;
+                            let row = checked_index_word(
                                 "initial index",
-                                &column,
-                                matrix.cols(),
+                                &row,
+                                matrix.rows(),
                                 *reversed,
                                 "matrix subscription",
                                 selection,
                                 *span,
                             )?;
-                            let row = checked_index_word(
+                            let column = checked_index_word(
                                 "final index",
-                                &row,
-                                matrix.rows(),
+                                &column,
+                                matrix.cols(),
                                 *reversed,
                                 "matrix subscription",
                                 selection,
@@ -11774,24 +11776,27 @@ impl TypedExpr {
                     }
                     Value::Matrix(matrix) => match index {
                         // Two-index entry selection (parser.y:585-598): the
+                        // first index is the ROW, the second the COLUMN
+                        // (oracle: (mat:[[1,2],[3,4]])[0,1] = 3). The
                         // reversed form counts BOTH indices from the end.
                         Value::Tuple(pair) if pair.len() == 2 => {
-                            let column =
+                            let row =
                                 expect_integer(pair[0].clone(), *span, "subscription index")?;
-                            let row = expect_integer(pair[1].clone(), *span, "subscription index")?;
-                            let column = checked_index_word(
+                            let column =
+                                expect_integer(pair[1].clone(), *span, "subscription index")?;
+                            let row = checked_index_word(
                                 "initial index",
-                                &column,
-                                matrix.cols(),
+                                &row,
+                                matrix.rows(),
                                 *reversed,
                                 "matrix subscription",
                                 source,
                                 *span,
                             )?;
-                            let row = checked_index_word(
+                            let column = checked_index_word(
                                 "final index",
-                                &row,
-                                matrix.rows(),
+                                &column,
+                                matrix.cols(),
                                 *reversed,
                                 "matrix subscription",
                                 source,
@@ -13890,9 +13895,9 @@ mod tests {
             ("rv[0]", "1/2"),
             ("rv~[1]", "1/2"),
             ("M[0]", "[ 1, 3 ]"),
-            ("M[0,1]", "3"),
-            ("M[1,0]", "2"),
-            ("M~[1,0]", "3"),
+            ("M[0,1]", "2"),
+            ("M[1,0]", "3"),
+            ("M~[1,0]", "2"),
         ] {
             let (_, value) = convert_and_run_with(source, &globals).expect(source);
             assert_eq!(value.to_string(), expected, "source: {source}");
@@ -13914,7 +13919,7 @@ mod tests {
             other => panic!("expected matrix, got {other:?}"),
         };
         assert_eq!(matrix.entry(0, 0), Some(1));
-        assert_eq!(matrix.entry(1, 0), Some(9));
+        assert_eq!(matrix.entry(1, 0), Some(3));
         assert_eq!(matrix.entry(0, 1), Some(9));
         assert_eq!(matrix.entry(1, 1), Some(19));
 
