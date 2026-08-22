@@ -1,0 +1,13 @@
+ra : RootDatum
+ra := simply_connected(Lie_type("A3"),true)
+ia : InnerClass
+ia := inner_class(ra,[[1,0,0],[0,1,0],[0,0,1]])
+n : int
+n := nr_of_real_forms(ia)
+rfa : RealForm
+rfa := real_form(ia,n-1)
+p : Param
+i : int
+r : int
+r := 0
+while r < 10 do i := 0; while i < 6 do p := param(KGB(rfa,i),[1,1,1],[1,1,0]/2); deform(p); i := i + 1; () od; r := r + 1; () od

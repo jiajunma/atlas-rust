@@ -1,0 +1,11 @@
+ra : RootDatum
+ra := simply_connected(Lie_type("A2"),true)
+ia2 : InnerClass
+ia2 := inner_class(ra,[[0,1],[1,0]])
+rs : RealForm
+rs := real_form(ia2,0)
+p : Param
+i : int
+r : int
+r := 0
+while r < 50 do i := 0; while i < 4 do p := param(KGB(rs,i),[0,0],[1,1]/2); partial_KL_block(p); i := i + 1; () od; r := r + 1; () od
