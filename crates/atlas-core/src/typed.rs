@@ -3661,6 +3661,19 @@ fn convert_op_cast(
     ))
 }
 
+/// The component type when `type_` is (or expands to) a row; `None`
+/// for an undetermined slot, which the body's a priori type fills.
+fn row_component(type_: &Type, table: &TypeTable) -> Option<Type> {
+    match type_ {
+        Type::Row(component) => Some(component.as_ref().clone()),
+        Type::Tabled(number) => match table.expansion(*number) {
+            Type::Row(component) => Some(component.as_ref().clone()),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
 /// Convert a `for pattern[@index] in iterable do body od` loop
 /// (parser.y:506-531). Kept out of `convert_expr`'s frame: the branch
 /// locals are heavy, and the giant dispatcher recurses per subexpression.
@@ -3786,7 +3799,35 @@ fn convert_for_loop(
         .map(|index| index.value.clone())
         .chain(leaves.iter().map(|(name, _, _, _)| name.clone()))
         .collect();
-    let mut body_type = Type::Undetermined;
+    // The required type steers the body (axis.w:5883-5924 for_expr
+    // case): a void context evaluates the body for its side effects; a
+    // row context hands its component type to the body, so e.g. a
+    // `[(Split,KType)]` requirement narrows a body yielding
+    // `(int,KType)` per component; any other required type must be
+    // reachable by a registered row coercion, which then wraps the
+    // whole loop.
+    let row_of_type = Type::row(Type::Undetermined);
+    let mut conv: Option<&crate::coercions::Coercion> = None;
+    let mut body_type = if required.is_void() {
+        Type::void()
+    } else if required.can_specialise(&row_of_type, analysis.types) {
+        match row_component(required, analysis.types) {
+            Some(component) => component,
+            None => Type::Undetermined,
+        }
+    } else if let Some((coercion, component)) = row_coercion(required, analysis.types) {
+        conv = Some(coercion);
+        component.clone()
+    } else {
+        return Err(type_error(
+            format!(
+                "found {} while {} was needed.",
+                row_of_type.display(analysis.types),
+                required.display(analysis.types)
+            ),
+            *span,
+        ));
+    };
     let body = convert_expr(
         body,
         &mut body_type,
@@ -3814,6 +3855,15 @@ fn convert_for_loop(
     };
     if *iffor_body {
         return join_iffor_body(converted, &loop_type, required, *span, analysis);
+    }
+    if let Some(coercion) = conv {
+        let converted = TypedExpr::Conversion {
+            tag: coercion.tag,
+            inner: Box::new(converted),
+            span: *span,
+        };
+        let target = coercion.to.clone();
+        return conform_types(&target, required, converted, *span, analysis);
     }
     conform_types(&loop_type, required, converted, *span, analysis)
 }
