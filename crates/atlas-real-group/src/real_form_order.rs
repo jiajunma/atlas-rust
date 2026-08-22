@@ -278,11 +278,13 @@ impl DepthTables {
     }
 }
 
-/// Verify the port-side coordinate parity the complement trick rides on:
-/// every adjoint-fiber basis bit must flip exactly ONE simple-imaginary
-/// position whose root is a twist-fixed SIMPLE generator of the datum, the
-/// induced map must be injective, and it must cover every twist-fixed
-/// generator. Returns the generator index per adjoint bit.
+/// Map each adjoint-fiber basis bit to the simple generator whose position
+/// the upstream `unslice` lands it on: `specialGrading`'s partition overload
+/// (cartanclass.cpp:929-948) calls `compacts.unslice(imaginary_simples)`
+/// with `imaginary_simples = G.simple_roots_imaginary()`, the twist-fixed
+/// simple generators in ascending order (innerclass.cpp:656-663), so fiber
+/// bit `i` maps to the `i`-th twist-fixed generator. Returns the generator
+/// index per adjoint bit.
 fn verified_generator_map(
     inner_class: &InnerClass,
     grading: &CartanGradingData,
@@ -310,43 +312,7 @@ fn verified_generator_map(
     }
 
     let mut generator_of_bit = try_capacity(dimension)?;
-    let mut seen = BTreeSet::new();
-    for bit in 0..dimension {
-        let shift =
-            grading
-                .grading_shift(bit)
-                .ok_or(StructureError::RealFormOrderInvariantViolation {
-                    invariant: "grading shift",
-                })?;
-        // The oracle's shifts are coroot·root parities (realredgp.cpp:277-280)
-        // and can flip more than one simple-imaginary position (e.g. the
-        // A3 dual's single fiber bit). The tiebreak key only needs one
-        // representative generator, so take the first flipped position.
-        let mut flipped = shift.noncompact_indices();
-        let position = flipped
-            .next()
-            .ok_or(StructureError::RealFormOrderInvariantViolation {
-                invariant: "empty grading shift",
-            })?;
-        let root = grading.imaginary_simple_root(position).ok_or(
-            StructureError::RealFormOrderInvariantViolation {
-                invariant: "grading shift",
-            },
-        )?;
-        let generator = (0..semisimple_rank)
-            .find(|&candidate| {
-                root_system
-                    .root(root)
-                    .is_some_and(|weight| weight == &datum.simple_roots()[candidate])
-            })
-            .ok_or(StructureError::RealFormOrderInvariantViolation {
-                invariant: "twist-fixed generator coordinate",
-            })?;
-        if !fixed_generators.contains(&generator) || !seen.insert(generator) {
-            return Err(StructureError::RealFormOrderInvariantViolation {
-                invariant: "twist-fixed generator coordinate",
-            });
-        }
+    for &generator in &fixed_generators {
         if generator >= MAX_KEY_GENERATORS {
             return Err(StructureError::RealFormOrderInvariantViolation {
                 invariant: "tiebreak key width",
