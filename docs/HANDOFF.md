@@ -4573,3 +4573,31 @@ the frozen print_family batch. No other hidden special operators exist
   `piece_root_permutations`/`element_root_permutations` (weyl_transducer.rs).
   Corpus job 3614854 cancelled at 45/240 (31 E8-budget failures made its
   continuation useless); re-submitted as 3614863 on this fix.
+- `33982ff` matrix pair subscription is (row, column), not (column, row):
+  all three typed.rs sites (read, assign, transform) had treated pair[0]
+  as the column. Oracle evidence: `mat:[[1,2],[3,4]]` builds columns
+  [1,3],[2,4], and M[0,1]=3. The old unit tests had frozen the wrong
+  semantics and were corrected. Root cause of e8_gap.at:575 out-of-range.
+- `fda87a6` grammar: a `.` selector also accepts an if-expression as its
+  unit (parser.y:321, `selector: unit`) — combinatorics.at:629
+  `. if sign else +@(int,int) then -@(int,int) fi` (the else-first form
+  already existed in IfTail). Source of 5 corpus PARSE_FAILs.
+- `7581708` a tuple display in void context is voided componentwise
+  instead of erroring "found (int,int) while void was needed"
+  (combinatorics.at:826 `if (e:=S1[i],j:=i+1); while ...`, also
+  `begin (1,2); 3 end`). Job 3614878's histogram was 43x this error —
+  all already fixed before resubmit.
+- `ace208c` lazy KGB pipeline: upstream real_form is a cheap handle; the
+  KGB graph is built only when a builtin needs it. Eager construction
+  cost ~90s per script loading groups.at for E8 forms never touched.
+  RealFormContext now holds `seed: RealFormSeedPlan` +
+  `kgb: Mutex<Option<Arc<KgbBundle>>>` (double-checked, build outside
+  the lock); ~169 use sites go through kgb()/kgb_or_structure().
+  NOTE: probing the oracle with `KGB_size` was a mis-measurement — it
+  does NOT build the graph either.
+- Residual E8 perf (post lazy-KGB): scripts that DO touch E8 KGB still
+  pay rf1 19s / rf2 68s (KGB=67,110 / 320,206). Hot spots from gdb
+  sampling: `ParabolicPieces` key() ~150K x 100us (mitigated by
+  acea32d left_descend), plus KGB BFS `InvolutionTable::push_record`
+  (TwistedInvolution::new / RootInvolutionData::new / saturated_kernel).
+  perf(1) symbolisation fails on the HPC nodes; use gdb stack sampling.
