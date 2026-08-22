@@ -506,6 +506,10 @@ PostfixSuffix: PostfixSuffix = {
     // `unit: '(' expr ')'` (parser.y:366) makes a parenthesised expression
     // a selector too: `v.(is_imaginary(x))` applies it to the receiver.
     <_dot:"."> <_open:"("> <inner:Expr> <_close:")"> => unit_selector(inner),
+    // `selector: unit` also admits the if-forms (parser.y:321,335-336):
+    // `f. if c else g then h fi` applies the conditional to the receiver
+    // (combinatorics.at:629).
+    <_dot:"."> <if_span:"if"> <tail:IfTail> => unit_selector(finish_conditional(if_span, tail)),
 };
 
 // `selector: unit` (parser.y:321) — a literal in selector position.
