@@ -4556,3 +4556,20 @@ the frozen print_family batch. No other hidden special operators exist
   `e8_gap_sgn_reflection[1,power_3[j]]` (suspect `^[...]` matrix-from-rows
   shape); corpus stderr cascades ("Abandoning reading of file") make later
   syntax errors noise — only the FIRST error (report category) matters.
+- `9159a84` **E8 blocker fixed**: `twisted_conjugacy_partition` no longer
+  enumerates the Weyl group. New `InnerClass::involution_orbits`: phase 1
+  Cayley BFS from the identity twisted involution (innerclass.cpp:218-291,
+  positive imaginary roots in upstream RootNbr order, successors
+  canonicalized, deduped by root-image permutation), phase 2 cross-action
+  closure `w ↦ s·w·twist(s)` per class (involutions.cpp:362-379, the
+  `Cartan_orbit` constructor). Oracle-measured E8 numbers: 10 Cartan
+  classes, 199,952 twisted involutions total (vs |W|=696,729,600, so the
+  old filter-all-of-W approach could never fit the 4M budget). The budget
+  now bounds the TOTAL twisted-involution count (upstream InvolutionTable
+  size). Partition class order is now Cayley-BFS order (fundamental
+  class first); `CartanClassification` still reorders via its own BFS, so
+  consumers are order-insensitive. Removed now-dead
+  `theta_generator_permutation`/`inverse_permutation` (inner_class.rs) and
+  `piece_root_permutations`/`element_root_permutations` (weyl_transducer.rs).
+  Corpus job 3614854 cancelled at 45/240 (31 E8-budget failures made its
+  continuation useless); re-submitted as 3614863 on this fix.
