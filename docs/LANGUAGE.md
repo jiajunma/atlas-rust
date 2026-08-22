@@ -92,8 +92,8 @@ the print/to_string/error variadic specials (`3604733`), loop `~`
 reversal in all positions (counted, from-side, for-in, while/until),
 the general quiet-if (`if c do e fi`) and `iffor` loop bodies,
 non-row (string/vec/mat/ratvec) iteration, exact operator/name casts
-(`op@type`, `f@type`) and their generic-special extension (the latter awaits
-HPC capture), the `$` last-value unit, and the caselist
+(`op@type`, `f@type`) and the verified generic-special extension
+(`op_cast_specials`, differential `3613996`), the `$` last-value unit, and the caselist
 `pattern.tag:` branch form (merged differential `3607276` PASS,
 345 fixtures: 343 PASS + 2 declared PARTIAL). Every grammar-level row
 of the matrix is now supported, and the last non-grammar surface — KL

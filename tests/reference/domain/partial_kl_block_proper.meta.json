@@ -16,7 +16,12 @@
  "reference_job": "3612358",
  "source_archive_sha256": "45efa21fca7fe8876d57e27cbb8ca8936fc58b69613b70fd756174178a3c5fec",
  "capture_artifacts_sha256": "see reference_capture_report.json.sha256 in job 3612358",
- "differential_job": "pending",
+ "differential_job": "3612366",
+ "differential_source_commit": "6c5a0811cbe6905d78ef17992f088295e2088822",
+ "differential_report_sha256": "9b1a54aa3aa9f32fe892714950b49eec0feca29296e712447ae82c3f6385339c",
+ "rust_seconds": 0.006,
+ "rust_maxrss_kb": 7700,
+ "rust_maxrss_approximate": false,
  "oracle_seconds": 0.014,
  "oracle_maxrss_kb": 4384
 }

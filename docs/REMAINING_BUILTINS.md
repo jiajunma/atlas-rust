@@ -1,15 +1,16 @@
 # Remaining builtin coverage (post-language-gate)
 
-## Generic operator casts implemented locally (2026-08-22)
+## Generic operator casts implemented and verified (2026-08-22)
 
 `op@type` now falls through to the upstream-controlled generic special
 operator selection for `print`, `prints`, `to_string`, `error`, `#`, and `##`
 (`axis.w:6726-6848`). Nested wildcard patterns use the oracle's capture
 spelling `T` (`#@[T]`, `##@([T],[T])`) rather than the diagnostic spelling
-`*`. The positive probe is frozen as
-`tests/fixtures/eval/op_cast_specials.atlas` with local-oracle events, but
-both reference capture and differential verification remain pending because
-the HPC login host was unreachable on 2026-08-22.
+`*`. The positive and rejected probes are frozen as
+`tests/fixtures/eval/op_cast_specials{,_rejected}.atlas`; reference capture
+3613892 is `verified_hpc_reference`; CPU differential 3613996 is
+`verified_hpc` for both fixtures (349-fixture runnable PASS; whole-run
+`PARTIAL` only for existing declared harness cases).
 
 ## ordinary deform proper lookup verified (2026-08-21)
 

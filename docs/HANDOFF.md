@@ -4,7 +4,7 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
-## Checkpoint - 2026-08-22b (generic operator casts local; HPC unavailable)
+## Checkpoint - 2026-08-22b (generic operator casts HPC-verified)
 
 - `op@type` now implements the upstream generic-special fallback for `print`,
   `prints`, `to_string`, `error`, `#`, and `##`, including nested wildcard
@@ -15,16 +15,19 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   `typed::tests::operator_casts_select_generic_special_instances`; local CLI
   output matches the upstream executable for both positive and rejected probes
   in `eval/op_cast_specials{,_rejected}`.
-- New fixture/reference files are intentionally marked
-  `pending_hpc_reference` / `pending_hpc_differential`. The reference capture
-  and differential could not be submitted or collected because `ikkemhpc`
-  (`10.26.14.64:22`) timed out and the local SOCKS5 proxy was not listening.
-  Do not promote this slice or `partial_kl_block_proper` until HPC evidence is
-  available.
-- Fresh local gates after the slice: atlas-core **362 passed**,
-  atlas-real-group **494 passed**, Clippy (`-D warnings`) clean, rustfmt and
-  `git diff --check` clean. The existing untracked
-  `crates/atlas-real-group/examples/fiber_probe.rs` remains user-owned.
+- Positive and rejected fixture references are HPC-captured by job
+  **3613892** (`verified_hpc_reference`, exact binary pin, live submit-tree
+  provenance); CPU differential **3613996** reports **349 fixtures,
+  runnable PASS** and both new fixtures PASS exactly (whole-run PARTIAL only
+  for the pre-existing declared harness cases). The
+  `partial_kl_block_proper` differential **3612366** is complete and PASS for
+  that fixture; its metadata now records the report SHA256.
+- HPC preflight **3613988** passed on `cu023` with Rust 1.96 and exit 0;
+  report SHA256 `6e802cd5667432348756a320bb6fe42e371788dcbb362fb5b9cef427f846c3c4`.
+  Differential report SHA256 is
+  `0d8da8638583cb25242c7e69af86ec18a81597ff850388dd280af709270217e6`.
+  The existing untracked `crates/atlas-real-group/examples/fiber_probe.rs`
+  remains user-owned.
 
 ## Checkpoint - 2026-08-22a (partial_KL_block LocatedBlock rewrite FIXED; differential 3612366 IN FLIGHT)
 
