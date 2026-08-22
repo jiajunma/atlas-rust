@@ -4,6 +4,34 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-22a (partial_KL_block LocatedBlock rewrite FIXED; differential 3612366 IN FLIGHT)
+
+Branch = **main = `6c5a081`**, pushed + HPC-synced. The 2026-08-21j P0 is
+done: `partial_KL_block(Param)` now goes through `RepTable::lookup`
+(`LocatedBlock` partial block + shared KL table + modifier-aware survivor
+parameters via `located_row_parameter`/`located_singular_flags`).
+
+- **Root cause of the proper-case gap** (found via oracle capture 3612358
+  of the new fixture `domain/partial_kl_block_proper`): BOTH the old
+  full-block path and the first WIP used a cross/Cayley DESCENT closure
+  for the partial subset, but upstream (atlas-types.w:7010-7014) takes the
+  **Bruhat downward closure** of the start element (`subset.back_up` over
+  the Hasse diagram). Second fidelity fix: the index matrix is
+  identity-initialised with only the strict upper triangle grouped into a
+  pool preseeded `{0, 1}` (atlas-types.w:6957-6971) — not a full-matrix
+  first-seen grouping.
+- Fixed arm lives at domain_builtins.rs:14784 ("partial_KL_block"); dead
+  `block_finals_for` removed. Local gates: clippy/fmt clean; fixtures
+  partial_kl_block, deform_proper, twisted_deform_proper(+_terms),
+  full_deform_proper, twisted_full_deform_proper all PASS locally; the new
+  fixture's events/meta generated from capture 3612358 and PASS locally.
+- Formal verification: fat differential **3612366** submitted; on PASS set
+  the meta's differential_job and record here.
+- Old meta note to retire on PASS: partial_kl_block.meta.json still says
+  the A2 x=3 proper case "needs the common-block srm descent statuses …
+  removed from the fixture" — that limit is now covered by
+  partial_kl_block_proper.
+
 ## Checkpoint - 2026-08-21i (filekl landed; formal differential 3608036 IN FLIGHT; main = `c19c755`)
 
 ## Checkpoint - 2026-08-21j (ordinary deform proper lookup verified)
