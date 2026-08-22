@@ -2984,8 +2984,21 @@ pub fn convert_expr(
             // value is used only when the overload table has no variants.
             if let Expr::Identifier { name, .. } = callee.as_ref() {
                 let local = analysis.locals.get(name);
-                let local_function = local
-                    .is_some_and(|(type_, _, _)| matches!(&*type_.borrow(), Type::Function(_)));
+                // `local_type_p->kind()==function_type` untables (axis.w:2431,
+                // axis-types.w:378): a local whose NAMED type expands to a
+                // function (e.g. inf_list = (->inf_node)) still shadows the
+                // overload table.
+                let local_function = local.is_some_and(|(type_, _, _)| {
+                    let type_ = type_.borrow();
+                    match &*type_ {
+                        Type::Function(_) => true,
+                        Type::Tabled(number) => matches!(
+                            analysis.types.expansion(*number),
+                            Type::Function(_)
+                        ),
+                        _ => false,
+                    }
+                });
                 let use_overloads = !local_function
                     && (!merged_variants(name, analysis.overloads, analysis.types).is_empty()
                         || (local.is_none() && analysis.globals.lookup(name).is_none()));
