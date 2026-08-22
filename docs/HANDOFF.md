@@ -44,6 +44,16 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   and records C++/Rust stderr and exit status (`a6a8549`), so missing
   `GLIBCXX_*` cannot be misclassified as a language mismatch.
 
+## Checkpoint - 2026-08-22d (operator value aliases HPC-verified)
+
+- Corpus rerun **3614111** removed the string-slice blocker and exposed the
+  next parser gap: upstream `basic.at:21` uses `set ^ = !=@(bool,bool)`.
+- Added the operator-value alias grammar/action (`parser.y:151-153`), which
+  stores an existing function value directly in the operator overload table.
+  Reference capture **3614131** and differential **3614146** PASS; the latter
+  has 352 fixtures and 3 pre-existing declared pending cases, with the new
+  `operator_alias` fixture exact.
+
 ## Checkpoint - 2026-08-22a (partial_KL_block LocatedBlock rewrite FIXED; differential 3612366 IN FLIGHT)
 
 Branch = **main = `6c5a081`**, pushed + HPC-synced. The 2026-08-21j P0 is

@@ -3,9 +3,9 @@
  "oracle": "atlas",
  "stage": "typed-pipeline-swap",
  "reference_status": "verified_hpc_reference",
- "rust_status": "pending_hpc_differential",
+ "rust_status": "verified_hpc",
  "upstream_evidence": ["sources/interpreter/parser.y:151-153", "sources/interpreter/global.w:950-964"],
- "notes": "Operator value alias form `set ^ = !=@(bool,bool)`; reference captured by HPC job 3614131, differential pending.",
+ "notes": "Operator value alias form `set ^ = !=@(bool,bool)`; reference captured by HPC job 3614131 and differential 3614146 PASS.",
  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
@@ -20,5 +20,10 @@
  "oracle_seconds": 0.01,
  "oracle_maxrss_kb": 3400,
  "oracle_maxrss_approximate": false,
- "differential_job": "pending"
+ "differential_job": "3614146",
+ "differential_source_commit": "afffbc1161d0ca5ba915b1fd0d7db417f319f50f",
+ "differential_report_sha256": "ca8ff89d6b0913df4c09446ac839f72266163757315a8e3b431f1c2ea63ae5d9",
+ "rust_seconds": 0.005,
+ "rust_maxrss_kb": 5584,
+ "rust_maxrss_approximate": false
 }

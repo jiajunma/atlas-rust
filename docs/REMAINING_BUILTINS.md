@@ -19,6 +19,12 @@ byte-length, half-open, from-end, reverse-range, and diagnostic behavior.
 Fixtures `eval/string_slices{,_rejected}` are verified by reference capture
 3614066 and differential 3614103 (351-fixture runnable PASS).
 
+## Operator value aliases verified (2026-08-22)
+
+`set operator = expression` now aliases an existing function value into the
+operator overload table. `eval/operator_alias` is verified by reference
+capture 3614131 and differential 3614146 (352-fixture runnable PASS).
+
 ## ordinary deform proper lookup verified (2026-08-21)
 
 `deform(Param)` now uses the `RepTable::lookup` partial common block for each
