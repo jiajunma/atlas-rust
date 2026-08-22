@@ -3684,13 +3684,25 @@ fn convert_for_loop(
     // The iterated component (parser.y:506-531 accepts every
     // subscriptable aggregate): a row yields its component, a
     // string its one-character strings, a vec its int entries, a
-    // ratvec its rat entries, a mat its column vecs.
-    let component = match &found {
-        Type::Row(component) => component.as_ref().clone(),
-        Type::Primitive(Prim::String) => string_type(),
-        Type::Primitive(Prim::Vec) => int_type(),
-        Type::Primitive(Prim::RatVec) => rat_type(),
-        Type::Primitive(Prim::Mat) => primitive_type(Prim::Vec),
+    // ratvec its rat entries, a mat its column vecs. When the
+    // aggregate is not int-indexable, the polynomial types index by
+    // the term itself (axis.w:5926-5936 `index_kind` retries with
+    // KType and Param index types) and the component is the Split
+    // coefficient.
+    let (index_type, component) = match &found {
+        Type::Row(component) => (int_type(), component.as_ref().clone()),
+        Type::Primitive(Prim::String) => (int_type(), string_type()),
+        Type::Primitive(Prim::Vec) => (int_type(), int_type()),
+        Type::Primitive(Prim::RatVec) => (int_type(), rat_type()),
+        Type::Primitive(Prim::Mat) => (int_type(), primitive_type(Prim::Vec)),
+        Type::Primitive(Prim::KTypePol) => (
+            primitive_type(Prim::KType),
+            primitive_type(Prim::Split),
+        ),
+        Type::Primitive(Prim::ParamPol) => (
+            primitive_type(Prim::Param),
+            primitive_type(Prim::Split),
+        ),
         _ => {
             return Err(type_error(
                 format!(
@@ -3701,9 +3713,10 @@ fn convert_for_loop(
             ));
         }
     };
-    // The pattern claims the row's component; the `@` name binds
-    // the 0-based index as int (the upstream (index, pattern) pair
-    // wrap, in that slot order).
+    // The pattern claims the iterated component; the `@` name binds the
+    // index (the upstream (index, pattern) pair wrap, in that slot order):
+    // the 0-based position as int for ordinary aggregates, the KType or
+    // Param term for the polynomial types.
     let leaves = match pattern {
         Some(pattern) => bind_pattern_leaves(pattern, &component, analysis.types)?,
         None => Vec::new(),
@@ -3745,7 +3758,7 @@ fn convert_for_loop(
     if let Some(index) = index {
         locals.insert(
             index.value.clone(),
-            (Rc::new(RefCell::new(Type::Primitive(Prim::Int))), 0, offset),
+            (Rc::new(RefCell::new(index_type.clone())), 0, offset),
         );
         constant_locals.remove(&index.value);
         offset += 1;
@@ -12235,8 +12248,16 @@ fn eval_for_loop(
     level: Level,
     context: &mut EvaluationContext,
 ) -> Result<Option<Value>, Control> {
-    let values: Vec<Value> = match force(iterable, context)? {
-        Value::List(values) => values,
+    // The traversal list pairs the `@` index value with the component.
+    // Ordinary aggregates index by position (int); the polynomial types
+    // index by the term itself (axis.w:5926-5936: KTypePol by KType,
+    // ParamPol by Param), the component being the Split coefficient.
+    let values: Vec<(Value, Value)> = match force(iterable, context)? {
+        Value::List(values) => values
+            .into_iter()
+            .enumerate()
+            .map(|(position, element)| (Value::Integer(BigInt::from(position)), element))
+            .collect(),
         // A string iterates its one-character strings, a vec its
         // int entries, a ratvec its rat entries, a mat its
         // column vecs (the aggregate for-in of parser.y:506-531,
@@ -12244,31 +12265,62 @@ fn eval_for_loop(
         Value::String(text) => text
             .as_bytes()
             .iter()
-            .map(|byte| Value::String(String::from_utf8_lossy(&[*byte]).into_owned()))
+            .enumerate()
+            .map(|(position, byte)| {
+                (
+                    Value::Integer(BigInt::from(position)),
+                    Value::String(String::from_utf8_lossy(&[*byte]).into_owned()),
+                )
+            })
             .collect(),
         Value::Vector(Vec32(entries)) => entries
             .iter()
-            .map(|entry| Value::Integer(BigInt::from(*entry)))
+            .enumerate()
+            .map(|(position, entry)| {
+                (
+                    Value::Integer(BigInt::from(position)),
+                    Value::Integer(BigInt::from(*entry)),
+                )
+            })
             .collect(),
         Value::RatVector(ratvec) => ratvec
             .numerators()
             .iter()
-            .map(|numerator| {
-                Value::Rational(BigRational::from_integers(
-                    BigInt::from(*numerator),
-                    BigInt::from(ratvec.denominator()),
-                ))
+            .enumerate()
+            .map(|(position, numerator)| {
+                (
+                    Value::Integer(BigInt::from(position)),
+                    Value::Rational(BigRational::from_integers(
+                        BigInt::from(*numerator),
+                        BigInt::from(ratvec.denominator()),
+                    )),
+                )
             })
             .collect(),
         Value::Matrix(matrix) => (0..matrix.cols())
-            .map(|column| Value::Vector(matrix.column(column)))
+            .map(|column| {
+                (
+                    Value::Integer(BigInt::from(column)),
+                    Value::Vector(matrix.column(column)),
+                )
+            })
+            .collect(),
+        Value::Domain(crate::domain_builtins::DomainValue::KTypePol(polynomial)) => polynomial
+            .iteration_terms()
+            .into_iter()
+            .map(|(index, coefficient)| (Value::Domain(index), Value::Domain(coefficient)))
+            .collect(),
+        Value::Domain(crate::domain_builtins::DomainValue::ParamPol(polynomial)) => polynomial
+            .iteration_terms()
+            .into_iter()
+            .map(|(index, coefficient)| (Value::Domain(index), Value::Domain(coefficient)))
             .collect(),
         other => panic!("analysis let a non-iterable value through: {other}"),
     };
     // The tilde after the in-part traverses the components in
     // reverse; the `@` index still names the original position,
     // so it counts down from n-1 (axis.w:6017-6026).
-    let mut iterations = values.into_iter().enumerate().collect::<Vec<_>>();
+    let mut iterations = values;
     if in_reversed {
         iterations.reverse();
     }
@@ -12276,12 +12328,12 @@ fn eval_for_loop(
     // The trace reports the traversal-order iteration counter
     // (0-based), which differs from the `@` index position
     // under reversed traversal (axis.w:6124-6161).
-    for (iteration, (position, element)) in iterations.into_iter().enumerate() {
+    for (iteration, (index_value, element)) in iterations.into_iter().enumerate() {
         // The index slot precedes the pattern slots, matching
         // the analysis-time layout (upstream pair wrap).
         let mut slots = Vec::new();
         if index {
-            slots.push(Rc::new(Value::Integer(BigInt::from(position))));
+            slots.push(Rc::new(index_value));
         }
         distribute(element, shape, &mut slots);
         let (result, frame) = if slots.is_empty() {

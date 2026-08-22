@@ -381,6 +381,46 @@ pub struct ParamPolValue {
     terms: Vec<(SplitValue, StandardRepr)>,
 }
 
+impl KTypePolValue {
+    /// The `(index, coefficient)` pairs of a for-in traversal
+    /// (axis.w:5926-5936: `K_type_poly_term` — index KType, component
+    /// Split), in stored term order.
+    pub fn iteration_terms(&self) -> Vec<(DomainValue, DomainValue)> {
+        self.terms
+            .iter()
+            .map(|(coefficient, ktype)| {
+                (
+                    DomainValue::KType(KTypeValue {
+                        context: Arc::clone(&self.rf),
+                        ktype: ktype.clone(),
+                    }),
+                    DomainValue::Split(*coefficient),
+                )
+            })
+            .collect()
+    }
+}
+
+impl ParamPolValue {
+    /// The `(index, coefficient)` pairs of a for-in traversal
+    /// (axis.w:5926-5936: `mod_poly_term` — index Param, component Split),
+    /// in stored term order.
+    pub fn iteration_terms(&self) -> Vec<(DomainValue, DomainValue)> {
+        self.terms
+            .iter()
+            .map(|(coefficient, repr)| {
+                (
+                    DomainValue::Param(ParamValue {
+                        context: Arc::clone(&self.rf),
+                        repr: repr.clone(),
+                    }),
+                    DomainValue::Split(*coefficient),
+                )
+            })
+            .collect()
+    }
+}
+
 /// The domain payload of [`Value::Domain`]. Equality is STRUCTURAL: two
 /// independently constructed handles for the same mathematical object
 /// compare equal, matching upstream's memoized handles.
