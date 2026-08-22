@@ -4,6 +4,53 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-23a (TYPE_ID lexer classification; basic.at loads to line 1721)
+
+- Corpus-driven clearing of `basic.at` load blockers continues. Jobs
+  3614515 → 3614589 → 3614650 → 3614661 trace the progress:
+  - `b781734`: user-defined type names now lex as **TYPE_ID**
+    (lexer.w:419-448): `TypedContext` owns a shared
+    `Rc<RefCell<BTreeSet<String>>>` that `execute_set_type` fills and
+    `forget` drains; both `session.rs` and `session_frame.rs` lexers see
+    it. Grammar accepts `type_identifier` in `TypeExprNode` (casts and
+    result annotations), `SpecTypeNode`, equation names, field names,
+    `forget`, and `whattype` (parser.y:142,163-167,185-186).
+  - `020bbdc`: `set_type` injectors/projectors join the **overload table**
+    (`OverloadState::add_user`) instead of overwriting a global
+    (global.w:1398-1410 uses `overload_table::add`; basic.at defines
+    `solution` for three unions). Same `is_close` conflict rules as `set`.
+  - `b8b973c`: **type_defining lexer state** (lexer.w:473-476): between
+    `set_type [` and the command end every identifier lexes as TYPE_ID, so
+    re-included files (double `<basic.at`) re-parse. Lambda parameter
+    annotations, casts, op-casts, and rec-lambda result annotations now
+    `resolve_in(&types)` instead of `resolve()` against an empty table
+    (the `(*->*)` bug: `(maybe_a_vec x)` parameters stayed Undetermined).
+  - `18ad7b5`: **tabled-type canonicalisation** (axis-types.w:1024-1051):
+    `TypeTable::equivalent` is a coinductive structural comparison;
+    `execute_set_type` pass 3 merges an equivalent new definition into the
+    earlier number (`merged_into`), so double-included `basic.at` types
+    stay identical to first-include bindings. `canonicalise_references`
+    rewrites merged numbers in stored expansions; `lookup` follows the
+    chain. Also: parenthesised-expression selectors `v.(f(x))`
+    (parser.y:321+366), and the lambda conversion no longer panics when
+    the required type is a tabled function type (specialise only CHECKS
+    the expansion; lazy_lists.at hit the `unreachable!`).
+  - `af928ae`: for-in over **KTypePol/ParamPol** iterates by term
+    (axis.w:5926-5936 `index_kind` retries): index type KType/Param,
+    component Split; `eval_for_loop` now pairs an index VALUE with each
+    component instead of assuming positional int indices.
+- basic.at progression: 592 (TYPE_ID) → 593 (injector overloads) → 659
+  (case over user union) → 1626 (paren selector) → double-include type
+  identity (634) → 1721 (`for x@q in P` over KTypePol). Next corpus run
+  (3614661) shows what follows.
+- `eval/user_type_cast.atlas` fixture + reference capture **3614600**
+  committed; differential pending.
+- Benchmark snapshot (3614515, 9 MATCH scripts): E8_small_block… 73.9x
+  slower (3.917s vs 0.053s — real compute, investigate after corpus is
+  green), ellipticExceptional 50.6x but millisecond-scale (startup),
+  other 7 within 0.7x–2.9x.
+- Fat differential **3614405** still PENDING (fat partition busy).
+
 ## Checkpoint - 2026-08-22g (while-let value contexts; corpus gate in flight)
 
 - Full script-corpus run **3614308** (240 `atlas-scripts/*.at`): 9 MATCH,
