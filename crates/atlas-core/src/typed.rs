@@ -4199,6 +4199,19 @@ fn component_type_for_assignment(
         Type::Primitive(Prim::Vec) if int_index => return Ok(Type::Primitive(Prim::Int)),
         Type::Primitive(Prim::Mat) if int_index => return Ok(Type::Primitive(Prim::Vec)),
         Type::Primitive(Prim::Mat) if pair_index => return Ok(Type::Primitive(Prim::Int)),
+        // Term-coefficient assignment `P[t]:=s` (axis.w:3962-3969 term
+        // kinds are assignable; atlas-types.w:5650-5659, 7766-7782
+        // `assign_coef`).
+        Type::Primitive(Prim::KTypePol)
+            if matches!(index_type, Type::Primitive(Prim::KType)) =>
+        {
+            return Ok(Type::Primitive(Prim::Split))
+        }
+        Type::Primitive(Prim::ParamPol)
+            if matches!(index_type, Type::Primitive(Prim::Param)) =>
+        {
+            return Ok(Type::Primitive(Prim::Split))
+        }
         _ => {}
     }
     let message = if transform {
@@ -11471,6 +11484,70 @@ impl TypedExpr {
                             Ok(at_level(level, || value.clone()))
                         }
                     },
+                    // Term-coefficient assignment `P[t]:=s`
+                    // (atlas-types.w:5650-5659, 7766-7782 `assign_coef`):
+                    // finality is tested on the term, then a zero
+                    // coefficient clears it and a nonzero one sets it.
+                    Value::Domain(crate::domain_builtins::DomainValue::KTypePol(
+                        mut polynomial,
+                    )) => {
+                        let Value::Domain(crate::domain_builtins::DomainValue::KType(ktype)) =
+                            index
+                        else {
+                            panic!("analysis let a non-KType index into a KTypePol assignment: {index}")
+                        };
+                        let Value::Domain(crate::domain_builtins::DomainValue::Split(
+                            coefficient,
+                        )) = &value
+                        else {
+                            panic!("analysis let a non-Split coefficient through: {value}")
+                        };
+                        crate::domain_builtins::ktype_pol_assign_coef(
+                            &mut polynomial,
+                            &ktype,
+                            *coefficient,
+                            *span,
+                        )
+                        .map_err(Control::Runtime)?;
+                        write_aggregate(
+                            target,
+                            Value::Domain(crate::domain_builtins::DomainValue::KTypePol(
+                                polynomial,
+                            )),
+                            context,
+                        );
+                        Ok(at_level(level, || value.clone()))
+                    }
+                    Value::Domain(crate::domain_builtins::DomainValue::ParamPol(
+                        mut polynomial,
+                    )) => {
+                        let Value::Domain(crate::domain_builtins::DomainValue::Param(parameter)) =
+                            index
+                        else {
+                            panic!("analysis let a non-Param index into a ParamPol assignment: {index}")
+                        };
+                        let Value::Domain(crate::domain_builtins::DomainValue::Split(
+                            coefficient,
+                        )) = &value
+                        else {
+                            panic!("analysis let a non-Split coefficient through: {value}")
+                        };
+                        crate::domain_builtins::param_pol_assign_coef(
+                            &mut polynomial,
+                            &parameter,
+                            *coefficient,
+                            *span,
+                        )
+                        .map_err(Control::Runtime)?;
+                        write_aggregate(
+                            target,
+                            Value::Domain(crate::domain_builtins::DomainValue::ParamPol(
+                                polynomial,
+                            )),
+                            context,
+                        );
+                        Ok(at_level(level, || value.clone()))
+                    }
                     other => {
                         panic!("analysis let a non-aggregate component assignment through: {other}")
                     }

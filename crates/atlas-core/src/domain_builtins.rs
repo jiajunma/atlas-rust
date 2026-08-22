@@ -7067,11 +7067,63 @@ pub fn param_pol_coefficient(
         .unwrap_or_else(|| SplitValue::new(0, 0)))
 }
 
+/// Coefficient assignment into a KTypePol (atlas-types.w:5650-5659
+/// `K_type_pol_value::assign_coef`): the term must be final; a zero
+/// coefficient clears the term and a nonzero one inserts or overwrites it.
+pub fn ktype_pol_assign_coef(
+    polynomial: &mut KTypePolValue,
+    ktype: &KTypeValue,
+    coefficient: SplitValue,
+    span: SourceSpan,
+) -> Result<(), Diagnostic> {
+    test_final_ktype(ktype, "In coefficient assignment for KTypePol value", span)?;
+    match polynomial
+        .terms
+        .iter()
+        .position(|(_, term)| *term == ktype.ktype)
+    {
+        Some(position) if coefficient.is_zero() => {
+            polynomial.terms.remove(position);
+        }
+        Some(position) => polynomial.terms[position].0 = coefficient,
+        None if !coefficient.is_zero() => polynomial.terms.push((coefficient, ktype.ktype.clone())),
+        None => {}
+    }
+    Ok(())
+}
+
+/// Coefficient assignment into a ParamPol (atlas-types.w:7766-7782
+/// `virtual_module_value::assign_coef`): the parameter must be final; the
+/// term is keyed by the parameter AS GIVEN (no move to the dominant
+/// representative, unlike subscripting).
+pub fn param_pol_assign_coef(
+    polynomial: &mut ParamPolValue,
+    parameter: &ParamValue,
+    coefficient: SplitValue,
+    span: SourceSpan,
+) -> Result<(), Diagnostic> {
+    test_final(parameter, "In coefficient assignment for ParamPol value", span)?;
+    match polynomial
+        .terms
+        .iter()
+        .position(|(_, term)| *term == parameter.repr)
+    {
+        Some(position) if coefficient.is_zero() => {
+            polynomial.terms.remove(position);
+        }
+        Some(position) => polynomial.terms[position].0 = coefficient,
+        None if !coefficient.is_zero() => {
+            polynomial.terms.push((coefficient, parameter.repr.clone()))
+        }
+        None => {}
+    }
+    Ok(())
+}
+
 /// Insert or merge one polynomial term (upstream
 /// `K_type_pol::add_term` / `SR_poly::add_term`): like terms sum their
 /// Split coefficients and a zero coefficient removes the term.
-fn merge_pol_term<T: Clone + PartialEq>(
-    terms: &mut Vec<(SplitValue, T)>,
+fn merge_pol_term<T: Clone + PartialEq>(    terms: &mut Vec<(SplitValue, T)>,
     coefficient: SplitValue,
     term: T,
 ) {
