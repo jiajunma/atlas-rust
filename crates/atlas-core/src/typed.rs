@@ -297,11 +297,14 @@ pub enum TypedExpr {
     /// A while loop collecting each completed iteration's body value into
     /// a row; a missing condition is the constant true. `out_reversed` is
     /// the tilde before `od` (parser.y:364, flags bit 1): the collected
-    /// row is reversed.
+    /// row is reversed. `yields_count` is the upstream int-context variant
+    /// (axis.w:5424-5435, make_while_loop flag 0x8): the body is converted
+    /// against void and the loop yields the number of iterations done.
     While {
         condition: Option<Box<TypedExpr>>,
         body: Box<TypedExpr>,
         out_reversed: bool,
+        yields_count: bool,
     },
     /// A for loop over a row value; each iteration pushes the 0-based
     /// index slot when `index` is set, then distributes the element per
@@ -3066,6 +3069,43 @@ pub fn convert_expr(
                     Ok(converted)
                 })
                 .transpose()?;
+            // Upstream (axis.w:5424-5435): in a void context the body
+            // converts against void and no row is built; in an int context
+            // the loop yields the number of iterations done
+            // (make_while_loop flag 0x8); otherwise it collects a row of
+            // body values against a fresh component pattern.
+            if required.is_void() {
+                let mut void = Type::void();
+                let body = convert_expr(body, &mut void, &analysis.in_loop())?;
+                return conform_types(
+                    &Type::void(),
+                    required,
+                    TypedExpr::While {
+                        condition: condition.map(Box::new),
+                        body: Box::new(body),
+                        out_reversed: *out_reversed,
+                        yields_count: false,
+                    },
+                    *span,
+                    analysis,
+                );
+            }
+            if matches!(required, Type::Primitive(Prim::Int)) {
+                let mut void = Type::void();
+                let body = convert_expr(body, &mut void, &analysis.in_loop())?;
+                return conform_types(
+                    &Type::Primitive(Prim::Int),
+                    required,
+                    TypedExpr::While {
+                        condition: condition.map(Box::new),
+                        body: Box::new(body),
+                        out_reversed: *out_reversed,
+                        yields_count: true,
+                    },
+                    *span,
+                    analysis,
+                );
+            }
             // The body converts against a fresh component pattern with the
             // loop depth raised; the loop's type is a row of that pattern.
             let mut component = Type::Undetermined;
@@ -3077,6 +3117,7 @@ pub fn convert_expr(
                     condition: condition.map(Box::new),
                     body: Box::new(body),
                     out_reversed: *out_reversed,
+                    yields_count: false,
                 },
                 *span,
                 analysis,
@@ -3396,16 +3437,12 @@ pub fn convert_expr(
                 };
                 return Err(type_error(message, *span));
             }
-            // A break yields no value and converts as void, so a
-            // `… then break fi` branch balances against the implicit
-            // void else branch.
-            conform_types(
-                &Type::void(),
-                required,
-                TypedExpr::Break { levels: *levels },
-                *span,
-                analysis,
-            )
+            // A break yields no value and, like the upstream breaker
+            // (axis.w:673-685), converts in ANY context without touching the
+            // required type — the enclosing balance (e.g. the `else break`
+            // branch of a desugared while-let, parser.y:438-443) must not
+            // see void drag the common type down.
+            Ok(TypedExpr::Break { levels: *levels })
         }
         Expr::Dont { span } => {
             if analysis.loop_depth == 0 {
@@ -11672,8 +11709,10 @@ impl TypedExpr {
                 condition,
                 body,
                 out_reversed,
+                yields_count,
             } => {
                 let mut collected = Vec::new();
+                let mut iterations: i64 = 0;
                 loop {
                     if let Some(condition) = condition {
                         match force(condition, context)? {
@@ -11684,8 +11723,20 @@ impl TypedExpr {
                             }
                         }
                     }
-                    match body.evaluate(context, Level::SingleValue) {
-                        Ok(Some(value)) => collected.push(value),
+                    // The int-context variant (axis.w:5424-5435, flag 0x8)
+                    // runs the body for effects only and counts the
+                    // COMPLETED iterations; a breaking one does not count.
+                    let body_level = if *yields_count {
+                        Level::NoValue
+                    } else {
+                        Level::SingleValue
+                    };
+                    match body.evaluate(context, body_level) {
+                        Ok(Some(value)) => {
+                            collected.push(value);
+                            iterations += 1;
+                        }
+                        Ok(None) if *yields_count => iterations += 1,
                         Ok(None) => unreachable!("single-value loop body yields a value"),
                         // The breaking iteration contributes no value.
                         Err(Control::Break(0)) => break,
@@ -11695,6 +11746,9 @@ impl TypedExpr {
                         }
                         Err(control) => return Err(control),
                     }
+                }
+                if *yields_count {
+                    return Ok(at_level(level, || Value::Integer(iterations)));
                 }
                 // The tilde before `od` reverse-collects the row.
                 if *out_reversed {

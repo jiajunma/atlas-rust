@@ -1,0 +1,7 @@
+set bit_positions (int n) = vec:
+  while let pow = AND_NOT(n,n-1) in !=pow do n-:=pow; bit_length(pow)-1 od
+bit_positions(13)
+bit_positions(0)
+set bit_count (int n) = int:
+  while let pow = AND_NOT(n,n-1) in !=pow do n-:=pow; 0 od
+bit_count(13)

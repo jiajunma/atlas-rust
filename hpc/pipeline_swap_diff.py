@@ -351,6 +351,9 @@ FIXTURE_PLANS = (
     FixturePlan(name="eval/typed_lambda_result"),
     # While-let guard form (`while let ... in ... do ... od`).
     FixturePlan(name="eval/while_let"),
+    # While-let in value context: row of body values and the int-context
+    # iteration count (axis.w:5456-5463, make_while_loop flags 0x8).
+    FixturePlan(name="eval/while_let_values"),
     FixturePlan(name="eval/slices"),
     FixturePlan(name="eval/subscriptions"),
     FixturePlan(name="eval/context"),
