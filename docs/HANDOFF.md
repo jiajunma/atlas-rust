@@ -4446,3 +4446,39 @@ the frozen print_family batch. No other hidden special operators exist
   file formats (filekl.w, stand-alone utilities; no Atlas-language builtin
   reads or writes them). Deferred pending a user decision: exclude from
   the language gate vs port filekl.
+
+## 2026-08-23b: corpus loop — for-loop required steering, recursive-type fix, term subscription
+
+- `6feff9e` `convert_for_loop` now mirrors the upstream for_expr case
+  (axis.w:5883-5924): the REQUIRED type steers the body — row context
+  hands its component type to the body (so a `[(Split,KType)]`
+  requirement narrows a body yielding `(int,KType)` per component; this
+  unblocked basic.at:1721 `0*P + for x@q in P do (+%x,q) od`), a void
+  context evaluates the body for side effects, and other required types
+  go through a registered row coercion wrapping the loop.
+- `6208ae0` iffor fix: the iffor body is a conditional producing ROWS
+  (parser.y:509-522 wraps branches in list displays and the loop in a
+  protected `## ` join), so its required component is itself a row of
+  the loop's eventual component, and a void context never reaches an
+  iffor body (the join is voided instead). Nested `for A for B if …`
+  loops parse as outer-iffor over inner-for (iffor_loop includes
+  for_loop), which the row-wrap handles. Same commit: corpus driver
+  caps each child at MEM_CAP_GB (default 6) GiB via RLIMIT_AS so one
+  diverging script cannot OOM-kill the SLURM job (job 3614680 was
+  cgroup-OOMed by lazy_lists.at before).
+- `544b316` tabled types compare by NUMBER in `coercions::same` /
+  `broader_eq`. Root cause of the lazy_lists.at OOM/SIGSEGV: expansion-
+  first structural comparison recursed forever on recursive types
+  (`inf_list = (->inf_node)`) — diagnosed by gdb stack sampling on the
+  live runaway process (all frames `coercions::same`). The table
+  canonicalises, so number equality is type equality.
+- `9f4d015` KTypePol[KType] / ParamPol[Param] term-coefficient
+  subscription (analysis + eval), with the oracle's real-form mismatch,
+  test_final (K-type reason chain: dominant/zero/semifinal/normal, else
+  "not standard") and test_standard + made_dominant lookup; reversed
+  subscription rejected at analysis. Unblocks basic.at:2046 `branch`.
+- Corpus trajectory: basic.at blocker moved 1721 → 339 → 2046 → (runs
+  to end; only the 5 subscription errors remained at 6208ae0).
+- Known not-done: `P[t]:=s` coefficient ASSIGNMENT (upstream
+  assign_coef, atlas-types.w:5655/7771) not yet implemented; watch the
+  corpus for it.
