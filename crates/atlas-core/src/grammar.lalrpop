@@ -132,6 +132,9 @@ pub Expr: Expr = {
         rec_lambda(rec_span, self_name, parameters, result_type, body)
     },
     <at:"@"> ":" <body:Expr> => lambda(at, Vec::new(), body),
+    // `@ cast` (parser.y:226): a nullary lambda whose body is a cast,
+    // e.g. `@bool: ok(x)` (make_lambda_node with empty pattern and type).
+    <at:"@"> <cast:Cast> => lambda(at, Vec::new(), cast),
     <return_span:"return"> <value:Expr> => return_expression(return_span, value),
     // Sequencing (parser.y:243): `tertiary ';' expr`, right-recursive, so
     // `a; b; c` is `a; (b; c)`. `next` (parser.y:236) shares the
