@@ -546,9 +546,14 @@ impl InnerClass {
         weyl_budget: usize,
     ) -> Result<Vec<TwistedInvolution>, StructureError> {
         let orbits = self.involution_orbits(weyl_budget)?;
-        let mut involutions = try_capacity(orbits.iter().map(|(_, members)| members.len()).sum())?;
-        for (_, members) in orbits {
-            involutions.extend(members);
+        let mut involutions = try_capacity(
+            orbits
+                .iter()
+                .map(|orbit| orbit.permutations.len())
+                .sum(),
+        )?;
+        for orbit in orbits {
+            involutions.extend(orbit.materialize(self)?);
         }
         Ok(involutions)
     }
@@ -580,12 +585,15 @@ impl InnerClass {
         let orbits = self.involution_orbits(weyl_budget)?;
         let mut classes = try_capacity(orbits.len())?;
         let mut class_by_permutation = BTreeMap::new();
-        for (representative, members) in orbits {
+        for orbit in orbits {
             let class_index = classes.len();
-            for member in &members {
-                class_by_permutation.insert(involution_key(member), class_index);
+            for permutation in &orbit.permutations {
+                class_by_permutation.insert(permutation.clone(), class_index);
             }
-            classes.push(TwistedConjugacyClass::new(representative, members.len()));
+            classes.push(TwistedConjugacyClass::new(
+                orbit.representative,
+                orbit.permutations.len(),
+            ));
         }
         Ok(TwistedConjugacyPartition::new(
             self.datum.clone(),
@@ -613,7 +621,7 @@ impl InnerClass {
     fn involution_orbits(
         &self,
         weyl_budget: usize,
-    ) -> Result<Vec<(TwistedInvolution, Vec<TwistedInvolution>)>, StructureError> {
+    ) -> Result<Vec<ClassOrbit>, StructureError> {
         let delta = self.distinguished_involution.involution();
         let rank = self.datum.semisimple_rank();
         let identity = TwistedInvolution::new(
@@ -670,44 +678,57 @@ impl InnerClass {
             cursor += 1;
         }
 
-        // Phase two: per-class cross-action closure (w |-> s w twist(s)).
-        let twist = self.generator_twist()?;
+        // Phase two: per-class cross-action closure, AT THE PERMUTATION
+        // LEVEL. For theta_w = w after distinguished, the cross action
+        // w |-> s w twist(s) induces theta |-> r_s theta r_s (the twist cancels
+        // against delta), a plain conjugation by the simple root reflection.
+        // Materializing a TwistedInvolution per BFS EDGE would dominate the
+        // runtime (E8: ~1.6M edges against 199,952 members), so members are
+        // stored as root-image permutations plus parent links; matrices are
+        // rebuilt only on demand (ClassOrbit::materialize, for the test-only
+        // twisted_involutions listing).
+        let mut reflection_perms: Vec<Vec<u8>> = Vec::with_capacity(rank);
+        for generator in 0..rank {
+            let reflection = WeylAction::simple_reflection(&self.datum, generator)?;
+            let permutation = self.roots.action_permutation(&reflection)?;
+            reflection_perms.push(permutation.into_iter().map(|id| id.0 as u8).collect());
+        }
         let mut orbits = try_capacity(representatives.len())?;
         let mut total = 0_usize;
         for representative in representatives {
-            let mut members = vec![representative.clone()];
+            let representative_key = involution_key(&representative);
+            let mut permutations = vec![representative_key];
+            let mut parents: Vec<(u32, u8)> = vec![(u32::MAX, 0)];
             let mut seen: BTreeSet<Vec<u8>> = BTreeSet::new();
-            seen.insert(involution_key(&representative));
+            seen.insert(permutations[0].clone());
             let mut cursor = 0_usize;
-            while cursor < members.len() {
+            while cursor < permutations.len() {
+                let current = permutations[cursor].clone();
                 for generator in 0..rank {
-                    let action = self.twisted_conjugate_action(
-                        members[cursor].weyl_action(),
-                        generator,
-                        &twist,
-                    )?;
-                    let next = TwistedInvolution::new(&self.datum, &self.roots, delta, action)
-                        .map_err(|error| match error {
-                            StructureError::InvalidInvolution => {
-                                StructureError::CartanClassificationInvariantViolation {
-                                    invariant: "cross-action closure",
-                                }
-                            }
-                            other => other,
-                        })?;
-                    if seen.insert(involution_key(&next)) {
-                        members.push(next);
+                    let reflection = &reflection_perms[generator];
+                    // next = reflection after current after reflection.
+                    let mut next = try_capacity(current.len())?;
+                    for &image in reflection.iter() {
+                        next.push(reflection[current[image as usize] as usize]);
+                    }
+                    if seen.insert(next.clone()) {
+                        permutations.push(next);
+                        parents.push((cursor as u32, generator as u8));
                     }
                 }
                 cursor += 1;
             }
             total = total
-                .checked_add(members.len())
+                .checked_add(permutations.len())
                 .ok_or(StructureError::ArithmeticOverflow)?;
             if total > weyl_budget {
                 return Err(StructureError::ResourceLimitExceeded { limit: weyl_budget });
             }
-            orbits.push((representative, members));
+            orbits.push(ClassOrbit {
+                representative,
+                permutations,
+                parents,
+            });
         }
         Ok(orbits)
     }
@@ -722,6 +743,51 @@ fn involution_key(involution: &TwistedInvolution) -> Vec<u8> {
         .iter()
         .map(|id| id.0 as u8)
         .collect()
+}
+
+/// One twisted-conjugacy class as generated by
+/// [`InnerClass::involution_orbits`]: the canonical representative, the
+/// root-image permutation of every member (BFS discovery order, member 0 is
+/// the representative), and per-member parent links `(parent_index,
+/// generator)` so member matrices can be replayed on demand instead of
+/// being stored during the closure.
+struct ClassOrbit {
+    representative: TwistedInvolution,
+    permutations: Vec<Vec<u8>>,
+    parents: Vec<(u32, u8)>,
+}
+
+impl ClassOrbit {
+    /// Rebuild every member's `TwistedInvolution` from the parent links:
+    /// member `i`'s Weyl action is `s after parent after twist(s)`, where
+    /// `(parent, s)` is its parent link (BFS order guarantees the parent's
+    /// action is already built).
+    fn materialize(
+        &self,
+        inner_class: &InnerClass,
+    ) -> Result<Vec<TwistedInvolution>, StructureError> {
+        let datum = inner_class.datum();
+        let roots = inner_class.root_system();
+        let delta = inner_class.distinguished_involution().involution();
+        let twist = inner_class.generator_twist()?;
+        let rank = datum.semisimple_rank();
+        let reflections = (0..rank)
+            .map(|generator| WeylAction::simple_reflection(datum, generator))
+            .collect::<Result<Vec<_>, _>>()?;
+        let mut actions: Vec<WeylAction> = try_capacity(self.permutations.len())?;
+        actions.push(self.representative.weyl_action().clone());
+        for index in 1..self.permutations.len() {
+            let (parent, generator) = self.parents[index];
+            let action = reflections[usize::from(generator)]
+                .compose(&actions[parent as usize])?
+                .compose(&reflections[twist[usize::from(generator)]])?;
+            actions.push(action);
+        }
+        actions
+            .into_iter()
+            .map(|action| TwistedInvolution::new(datum, roots, delta, action))
+            .collect()
+    }
 }
 
 fn positive_root_sum(
