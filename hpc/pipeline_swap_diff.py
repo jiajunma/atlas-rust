@@ -355,6 +355,10 @@ FIXTURE_PLANS = (
     # iteration count (axis.w:5456-5463, make_while_loop flags 0x8).
     FixturePlan(name="eval/while_let_values"),
     FixturePlan(name="eval/slices"),
+    # One-dimensional vec/ratvec/mat slices (axis.w:3846-3897; mat selects
+    # columns), incl. empty bounds and reverse output — the basic.at:361
+    # `set ~ (vec v)= vec: v~[:]` idiom.
+    FixturePlan(name="eval/vec_slices"),
     FixturePlan(name="eval/subscriptions"),
     FixturePlan(name="eval/context"),
     FixturePlan(name="eval/exact_numerics"),

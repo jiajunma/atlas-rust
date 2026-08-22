@@ -2659,12 +2659,16 @@ pub fn convert_expr(
             }
             let mut array_type = Type::Undetermined;
             let converted_array = convert_expr(array, &mut array_type, analysis)?;
-            // Rows and strings use the one-dimensional slice families. The
-            // latter is byte-indexed by the upstream `std::string` wrapper
-            // (axis.w:4379-4402), while the result remains a string.
+            // Rows, strings, vecs, ratvecs and matrices use the
+            // one-dimensional slice families (axis.w:3846-3897). The string
+            // case is byte-indexed by the upstream `std::string` wrapper
+            // (axis.w:4379-4402), while the result remains a string; the
+            // matrix case selects COLUMNS (matrix_slice, axis.w:4407-4427).
             let found = match &array_type {
                 Type::Row(component) => Type::Row(component.clone()),
-                Type::Primitive(Prim::String) => Type::Primitive(Prim::String),
+                Type::Primitive(
+                    primitive @ (Prim::String | Prim::Vec | Prim::RatVec | Prim::Mat),
+                ) => Type::Primitive(*primitive),
                 _ => {
                     return Err(type_error(
                         format!(
@@ -11472,6 +11476,21 @@ impl TypedExpr {
                         )?;
                         Ok(at_level(level, || Value::String(sliced.clone())))
                     }
+                    Value::Vector(vector) => {
+                        let sliced =
+                            evaluate_vec_slice(vector, lower, upper, *flags, source, *span)?;
+                        Ok(at_level(level, || Value::Vector(sliced.clone())))
+                    }
+                    Value::RatVector(value) => {
+                        let sliced =
+                            evaluate_ratvec_slice(value, lower, upper, *flags, source, *span)?;
+                        Ok(at_level(level, || Value::RatVector(sliced.clone())))
+                    }
+                    Value::Matrix(matrix) => {
+                        let sliced =
+                            evaluate_matrix_slice(matrix, lower, upper, *flags, source, *span)?;
+                        Ok(at_level(level, || Value::Matrix(sliced.clone())))
+                    }
                     other => panic!("analysis let a non-slice value through: {other}"),
                 }
             }
@@ -12639,6 +12658,88 @@ fn evaluate_string_slice(
     } else {
         Ok(String::from_utf8_lossy(selected).into_owned())
     }
+}
+
+/// `vector_slice` (axis.w:4322-4342): the reversed form takes the range from
+/// the reversed storage, i.e. slices then reverses.
+fn evaluate_vec_slice(
+    vector: Vec32,
+    lower: BigInt,
+    upper: BigInt,
+    flags: crate::syntax::SliceFlags,
+    source: &str,
+    span: SourceSpan,
+) -> Result<Vec32, Control> {
+    let Some((lower, upper)) = slice_bounds(lower, upper, vector.0.len(), flags, source, span)?
+    else {
+        return Ok(Vec32(Vec::new()));
+    };
+    let entries = &vector.0;
+    let selected: Vec<i32> = if flags.reverse_output {
+        entries[entries.len() - upper..entries.len() - lower]
+            .iter()
+            .rev()
+            .copied()
+            .collect()
+    } else {
+        entries[lower..upper].to_vec()
+    };
+    Ok(Vec32(selected))
+}
+
+/// `ratvec_slice` (axis.w:4348-4368): slice the numerators and keep the
+/// common denominator; the constructor re-normalises.
+fn evaluate_ratvec_slice(
+    value: RatVec,
+    lower: BigInt,
+    upper: BigInt,
+    flags: crate::syntax::SliceFlags,
+    source: &str,
+    span: SourceSpan,
+) -> Result<RatVec, Control> {
+    let Some((lower, upper)) =
+        slice_bounds(lower, upper, value.numerators().len(), flags, source, span)?
+    else {
+        return Ok(RatVec::new(Vec::new(), 1).expect("empty ratvec is valid"));
+    };
+    let numerators = value.numerators();
+    let selected: Vec<i64> = if flags.reverse_output {
+        numerators[numerators.len() - upper..numerators.len() - lower]
+            .iter()
+            .rev()
+            .copied()
+            .collect()
+    } else {
+        numerators[lower..upper].to_vec()
+    };
+    Ok(RatVec::new(selected, value.denominator()).expect("slicing keeps the common denominator"))
+}
+
+/// `matrix_slice` (axis.w:4407-4427): one-dimensional matrix slices select
+/// COLUMNS; the reversed form walks the columns from the end.
+fn evaluate_matrix_slice(
+    matrix: Matrix,
+    lower: BigInt,
+    upper: BigInt,
+    flags: crate::syntax::SliceFlags,
+    source: &str,
+    span: SourceSpan,
+) -> Result<Matrix, Control> {
+    let columns = matrix.cols();
+    let Some((lower, upper)) = slice_bounds(lower, upper, columns, flags, source, span)? else {
+        return Ok(Matrix::from_columns(matrix.rows(), 0, Vec::new()).expect("zero columns"));
+    };
+    let selected: Vec<usize> = if flags.reverse_output {
+        ((columns - upper)..(columns - lower)).rev().collect()
+    } else {
+        (lower..upper).collect()
+    };
+    let mut data = Vec::with_capacity(matrix.rows() * (upper - lower));
+    for column in selected {
+        data.extend_from_slice(&matrix.column(column).0);
+    }
+    Ok(Matrix::from_columns(matrix.rows(), upper - lower, data)
+        .expect("slice column count matches"))
 }
 
 fn slice_bounds(
