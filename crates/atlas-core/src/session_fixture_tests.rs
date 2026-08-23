@@ -33,6 +33,7 @@ fn values(events: &[SessionEvent]) -> Vec<Value> {
             SessionEvent::Value { value, .. } => Some(value.clone()),
             SessionEvent::Output { .. }
             | SessionEvent::ReportLine { .. }
+            | SessionEvent::PlainReportLine { .. }
             | SessionEvent::Diagnostic(_) => None,
         })
         .collect()
@@ -45,7 +46,8 @@ fn diagnostics(events: &[SessionEvent]) -> Vec<crate::diagnostic::Diagnostic> {
             SessionEvent::Diagnostic(diagnostic) => Some(diagnostic.clone()),
             SessionEvent::Value { .. }
             | SessionEvent::Output { .. }
-            | SessionEvent::ReportLine { .. } => None,
+            | SessionEvent::ReportLine { .. }
+            | SessionEvent::PlainReportLine { .. } => None,
         })
         .collect()
 }
@@ -379,6 +381,7 @@ fn involution_table_fixture_prints_the_frozen_kgb_and_strong_real_text() {
             SessionEvent::ReportLine { text, .. } => Some(text.as_str()),
             SessionEvent::Value { .. }
             | SessionEvent::Output { .. }
+            | SessionEvent::PlainReportLine { .. }
             | SessionEvent::Diagnostic(_) => None,
         })
         .collect();

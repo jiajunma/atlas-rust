@@ -295,6 +295,7 @@ mod tests {
                 SessionEvent::Value { value, .. } => Some(value.clone()),
                 SessionEvent::Output { .. }
                 | SessionEvent::ReportLine { .. }
+                | SessionEvent::PlainReportLine { .. }
                 | SessionEvent::Diagnostic(_) => None,
             })
             .collect();
@@ -440,6 +441,7 @@ mod tests {
                 SessionEvent::Value { value, .. } => Some(value.clone()),
                 SessionEvent::Output { .. }
                 | SessionEvent::ReportLine { .. }
+                | SessionEvent::PlainReportLine { .. }
                 | SessionEvent::Diagnostic(_) => None,
             })
             .collect::<Vec<_>>();
@@ -995,7 +997,7 @@ mod tests {
         assert_eq!(events.len(), 4);
         assert!(matches!(
             events[0],
-            SessionEvent::ReportLine { ref text, .. } if text == "Identifier 'x' not known\n"
+            SessionEvent::PlainReportLine { ref text, .. } if text == "Identifier 'x' not known\n"
         ));
         assert!(matches!(
             events[1],
@@ -1004,7 +1006,7 @@ mod tests {
         ));
         assert!(matches!(
             events[2],
-            SessionEvent::ReportLine { ref text, .. }
+            SessionEvent::PlainReportLine { ref text, .. }
                 if text == "Definition of '+@(int,int)' forgotten\n"
         ));
         // With the int+int overload forgotten, 1 + 2 resolves through the
