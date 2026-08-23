@@ -126,6 +126,20 @@ peak RSS for both binaries:
 | 3622312 | 24a0d1d | partial_kl_a2 | 0.012 | 0.023 | 1.9 | MATCH |
 | 3622312 | 24a0d1d | partial_kl_b3 | 0.012 | 0.018 | 1.5 | MATCH |
 
+Heavier iteration counts (~100-150x, oracle 0.5-0.9s per workload),
+job 3622323 @ 3ef1a6f, all 4 MATCH:
+
+| job | commit | workload | cpp s | rust s | ratio | cpp MB | rust MB |
+|---|---|---|---|---|---|---|---|
+| 3622323 | 3ef1a6f | deform_a3 (30k calls) | 0.73 | 1.22 | 1.68 | 4 | 8 |
+| 3622323 | 3ef1a6f | deform_b2 (60k calls) | 0.85 | 1.67 | 1.97 | 5 | 9 |
+| 3622323 | 3ef1a6f | partial_kl_a2 (40k calls) | 0.54 | 1.64 | 3.05 | 5 | 9 |
+| 3622323 | 3ef1a6f | partial_kl_b3 (18k calls) | 0.70 | 1.31 | 1.88 | 4 | 8 |
+
+Real compute ratios are 1.7x-3.0x slower than the oracle on these
+small-group loops (vs the 12.97x corpus median, which is dominated by
+startup + overload resolution on heavier scripts).
+
 WARNING (3622312): all four workloads finish in 10-25 ms on BOTH
 interpreters — the loops are too light to measure anything but process
 startup, so these ratios are noise. The workloads need heavier iteration
