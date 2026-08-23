@@ -25,6 +25,11 @@ git worktree add "$check_dir" HEAD
 cd "$check_dir"
 export CARGO_TARGET_DIR="$check_dir/target"
 cargo check --workspace --all-targets 2>&1 | grep -E '^(error|warning: unused)' -A 12 || true
-echo "CHECK_DONE status=${PIPESTATUS[0]}"
+check_status=${PIPESTATUS[0]}
+echo "CHECK_DONE status=$check_status"
+if [[ "$check_status" -eq 0 ]]; then
+  cargo test --workspace 2>&1 | grep -E '^(error|test result|failures:|---- .* stdout)' -A 6 || true
+  echo "TEST_DONE status=${PIPESTATUS[0]}"
+fi
 cd "$submit_dir"
 git worktree remove --force "$check_dir"
