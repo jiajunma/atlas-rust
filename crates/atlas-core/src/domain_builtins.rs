@@ -2746,6 +2746,35 @@ fn determinant_i32(matrix: &[Vec<i32>]) -> i64 {
     total
 }
 
+/// rootdata.cpp:849-853: the fundamental (co)weight numerators are
+/// `basis_mat * inverse_Cartan` products in AMBIENT lattice coordinates, not
+/// the (co)root-basis coordinates a Cramer solve produces. `basis[j]` is the
+/// j-th simple (co)root, `coordinates` the Cramer numerators for the solved
+/// row/column of `det(C) * C^{-1}`, and `denominator` is det(C); its sign is
+/// folded into the numerators so the RatVec denominator stays positive.
+fn ambient_rational_combination(
+    basis: &[&[i32]],
+    coordinates: &[i64],
+    denominator: i64,
+    lattice_rank: usize,
+) -> Option<RatVec> {
+    let mut numerators = vec![0_i64; lattice_rank];
+    for (&coefficient, vector) in coordinates.iter().zip(basis) {
+        for (slot, &entry) in numerators.iter_mut().zip(vector.iter()) {
+            *slot += coefficient * i64::from(entry);
+        }
+    }
+    let denominator = if denominator < 0 {
+        for slot in &mut numerators {
+            *slot = -*slot;
+        }
+        -denominator
+    } else {
+        denominator
+    };
+    RatVec::new(numerators, denominator as u64)
+}
+
 /// Cramer's rule for `matrix x = rhs`: returns the i64 solution and the
 /// (nonzero) determinant.
 fn cramer_solution(matrix: &[Vec<i32>], rhs: &[i32]) -> Option<(Vec<i64>, i64)> {
@@ -12670,10 +12699,30 @@ pub(crate) fn call_with_printed(
             if index >= handle.datum.semisimple_rank() {
                 return Err(runtime(span, "index out of range"));
             }
-            let mut numerator = vec![0_i64; handle.datum.lattice_rank()];
-            numerator[index] = 1;
-            let value = RatVec::new(numerator, 1)
-                .ok_or_else(|| runtime(span, "invalid fundamental weight"))?;
+            // rootdata.cpp:850: weight_numer = (root_mat*iC.transposed()).columns(),
+            // so row i of det(C)*C^{-1} combines the simple roots; row i of
+            // C^{-1} is the solution of C^T y = e_i.
+            let cartan = handle.datum.cartan_matrix();
+            let transposed: Vec<Vec<i32>> = (0..cartan.len())
+                .map(|row| (0..cartan.len()).map(|column| cartan[column][row]).collect())
+                .collect();
+            let mut rhs = vec![0_i32; transposed.len()];
+            rhs[index] = 1;
+            let (coordinates, denominator) = cramer_solution(&transposed, &rhs)
+                .ok_or_else(|| runtime(span, "singular Cartan matrix"))?;
+            let basis: Vec<&[i32]> = handle
+                .datum
+                .simple_roots()
+                .iter()
+                .map(|root| root.as_slice())
+                .collect();
+            let value = ambient_rational_combination(
+                &basis,
+                &coordinates,
+                denominator,
+                handle.datum.lattice_rank(),
+            )
+            .ok_or_else(|| runtime(span, "invalid fundamental weight"))?;
             Ok(Value::RatVector(value))
         }
         "fundamental_coweight" => {
@@ -12683,15 +12732,27 @@ pub(crate) fn call_with_printed(
             if index >= handle.datum.semisimple_rank() {
                 return Err(runtime(span, "index out of range"));
             }
-            // C^{-1} column i via Cramer: solve C x = e_i.
+            // rootdata.cpp:853: coweight_numer = (coroot_mat*iC).columns(),
+            // so column i of det(C)*C^{-1} combines the simple coroots;
+            // column i of C^{-1} is the solution of C x = e_i.
             let cartan = handle.datum.cartan_matrix();
             let mut rhs = vec![0_i32; cartan.len()];
             rhs[index] = 1;
-            let (mut numerator, denominator) = cramer_solution(cartan, &rhs)
+            let (coordinates, denominator) = cramer_solution(cartan, &rhs)
                 .ok_or_else(|| runtime(span, "singular Cartan matrix"))?;
-            numerator.resize(handle.datum.lattice_rank(), 0);
-            let value = RatVec::new(numerator, denominator.unsigned_abs())
-                .ok_or_else(|| runtime(span, "invalid fundamental coweight"))?;
+            let basis: Vec<&[i32]> = handle
+                .datum
+                .simple_coroots()
+                .iter()
+                .map(|coroot| coroot.as_slice())
+                .collect();
+            let value = ambient_rational_combination(
+                &basis,
+                &coordinates,
+                denominator,
+                handle.datum.lattice_rank(),
+            )
+            .ok_or_else(|| runtime(span, "invalid fundamental coweight"))?;
             Ok(Value::RatVector(value))
         }
         "simple_factors" => {

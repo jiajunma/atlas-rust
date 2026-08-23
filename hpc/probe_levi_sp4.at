@@ -1,0 +1,26 @@
+<basic.at
+<parabolics.at
+set G=Sp(4,R)
+set x=KGB(G,9)
+set rd=root_datum(x)
+set theta=involution(x)
+theta
+rho(rd)
+set lambda=(1-theta)*rho(rd)
+lambda
+numer(lambda)
+set (w,ld)=from_dominant(rd,numer(lambda))
+w
+ld
+set S=zero_simple_coroots(rd,ld)
+S
+set x2=cross(inverse(w),x)
+#x2
+involution(x2)
+Levi_coweight(rd,S)
+simple_roots(rd)
+columns_with(is_member(S),simple_roots(rd))
+Levi_coweight(rd,S)*involution(x2)*columns_with(is_member(S),simple_roots(rd))
+has_theta_stable_Levi((S,x2))
+real_Levi(x)
+quit
