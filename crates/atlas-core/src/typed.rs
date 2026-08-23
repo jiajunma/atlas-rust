@@ -559,6 +559,14 @@ pub struct UserOverload {
 pub struct OverloadState {
     forgotten: Vec<(String, Type)>,
     user: BTreeMap<String, Vec<UserOverload>>,
+    /// Merged per-name variant lists (see [`merged_variants`]), rebuilt only
+    /// after a `set`/`forget` mutation. Call sites per session number in the
+    /// thousands while the variant list for a name is fixed between
+    /// mutations — upstream keeps ONE persistent table whose order is fixed
+    /// at insertion time (global.w:1004-1023), so caching matches the oracle
+    /// and removes the per-call rebuild (deep clones + `is_close` insert
+    /// scans) that dominated type-checking the corpus scripts.
+    merged_cache: std::cell::RefCell<std::collections::HashMap<String, Rc<Vec<MergedVariant>>>>,
 }
 
 impl OverloadState {
@@ -589,6 +597,7 @@ impl OverloadState {
         types: &TypeTable,
         span: SourceSpan,
     ) -> Result<(usize, usize), Diagnostic> {
+        self.merged_cache.borrow_mut().clear();
         // A tabled function type (lazy_lists.at's inf_list) keeps its
         // name for the report but contributes its expansion's argument
         // type to overload matching.
@@ -600,7 +609,9 @@ impl OverloadState {
             },
             _ => unreachable!("only function-typed values enter the overload table"),
         };
-        let merged = merged_variants(name, self, types);
+        // Build the pre-mutation view directly: the caching wrapper would
+        // re-populate the just-cleared cache with the stale list.
+        let merged = build_merged_variants(name, self, types);
         let old_n = merged.len();
         let mut lower = 0;
         let mut upper = old_n;
@@ -664,6 +675,7 @@ impl OverloadState {
     /// shadowed by `set` stays hidden, so forgetting the user replacement
     /// never resurrects the builtin). `false` when nothing matched.
     fn remove(&mut self, name: &str, arg_type: &Type) -> bool {
+        self.merged_cache.borrow_mut().clear();
         if let Some(users) = self.user.get_mut(name) {
             let position = users.iter().position(
                 |user| matches!(&user.function_type, Type::Function(parts) if parts.0 == *arg_type),
@@ -856,8 +868,21 @@ struct MergedVariant {
 
 /// The active variants for `name`: startup overloads not hidden by
 /// `forget`, with user variants inserted at the position the upstream
-/// single-table ordering gives them.
-fn merged_variants(name: &str, overloads: &OverloadState, types: &TypeTable) -> Vec<MergedVariant> {
+/// single-table ordering gives them. Cached on the overload state; every
+/// mutation (`add_user`, `remove`) clears the cache.
+fn merged_variants(name: &str, overloads: &OverloadState, types: &TypeTable) -> Rc<Vec<MergedVariant>> {
+    if let Some(cached) = overloads.merged_cache.borrow().get(name) {
+        return Rc::clone(cached);
+    }
+    let merged = Rc::new(build_merged_variants(name, overloads, types));
+    overloads
+        .merged_cache
+        .borrow_mut()
+        .insert(name.to_owned(), Rc::clone(&merged));
+    merged
+}
+
+fn build_merged_variants(name: &str, overloads: &OverloadState, types: &TypeTable) -> Vec<MergedVariant> {
     let mut merged: Vec<MergedVariant> = overload_variants(name)
         .iter()
         .copied()
@@ -1603,7 +1628,7 @@ impl TypedContext {
                 } else {
                     format!("Overloaded instances of '{}'\n", name.value)
                 };
-                for variant in &variants {
+                for variant in variants.iter() {
                     text.push_str(&format!(
                         "  {}->{}\n",
                         variant.arg_type.display(&self.types),
@@ -1667,7 +1692,8 @@ impl TypedContext {
             }
         }
         for name in names {
-            for variant in merged_variants(name, &self.overloads, &self.types) {
+            let variants = merged_variants(name, &self.overloads, &self.types);
+            for variant in variants.iter() {
                 let source = match variant.origin {
                     OverloadOrigin::Builtin(_index) => {
                         format!("{{{}@{}}}", name, variant.arg_type.display(&self.types))
