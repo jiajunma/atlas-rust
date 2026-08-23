@@ -432,7 +432,20 @@ impl TypeTable {
     }
 
     pub fn expansion(&self, number: TypeNumber) -> &Type {
-        &self.bindings[number.0].definition
+        // Follow definition chains: a merged group member's stored
+        // definition may be a plain `Tabled` reference to the canonical
+        // entry (canonicalise_anonymous), and upstream
+        // `type_expr::expansion` is the FULLY untabled structure
+        // (axis-types.w:976-1000 compares those). Chains point at strictly
+        // earlier numbers, so this terminates.
+        let mut current = number;
+        loop {
+            let definition = &self.bindings[current.0].definition;
+            match definition {
+                Type::Tabled(next) if *next != current => current = *next,
+                _ => return definition,
+            }
+        }
     }
 
     pub fn lookup(&self, name: &str) -> Option<TypeNumber> {
