@@ -4686,3 +4686,25 @@ the frozen print_family batch. No other hidden special operators exist
   to matrix-level `InnerClass::canonicalize` (still the public API for
   rep_context/ktype) — any change there needs both paths updated and an
   HPC differential gate.
+- `ff8fb34` fix: `case` discrimination follows the merge chain AND a
+  Tabled definition to the canonical union entry. Root cause: in a
+  bracketed set_type group with structurally equal members
+  (conjugate.at's maybe_a_mover/maybe_a_conjugator = (void|WeylElt)),
+  pass-3 merge + canonicalise_anonymous leave the merged member's
+  stored definition as a plain `Tabled` reference to the canonical
+  entry; the discrimination check read `binding(n).definition`
+  directly and saw the reference, not the Union. This single blocker
+  accounted for 132/134 RUST_EVAL_FAIL in corpus 3615339 (MATCH 83).
+  Minimal HPC probe that reproduced it:
+  `set_type [a=(void x|int y), b=(void x|int y)]` then
+  `set f(b v)=int: case v | y(v):v | x: 0 esac`.
+- Remaining single-hit issue seen in 3615339: induction_sp4.at fails
+  with "Runtime error at basic.at:25:58: Levi factor is not
+  theta-stable" via `real_Levi(KGB(G,9))`/`real_Levi(KGB(G,7))` in
+  parabolics.at — likely a real behavioral difference (upstream
+  accepts that Levi). Investigate after the corpus rerun.
+- Corpus 3616252 submitted at 6dff4ab (includes discrimination fix +
+  the orbit-construction perf). Expect the 132 discrimination failures
+  to clear and per-script times to drop ~4s; remaining gap to oracle
+  (~0.05s/script vs ~0.8s) is other eager E8 work, not orbit
+  construction.
