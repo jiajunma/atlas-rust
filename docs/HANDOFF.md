@@ -4644,3 +4644,24 @@ the frozen print_family batch. No other hidden special operators exist
 - quick_check.sbatch gotcha: cargo check needs --all-targets to compile
   test code (a new enum variant broke 5 exhaustive test matches only
   there); the worktree approach keeps it parallel-safe with corpus.
+- Corpus 3615211 (6f8d821): MATCH 82, OUTPUT_DIFF 20, RUST_EVAL_FAIL 136
+  (135x `No instance for maximal@KGPElt found` at parabolics.at:124).
+  Benchmark: comparable 102, 95 over 5x slower; every script pays a
+  constant ~4-5s — gdb sampling pins it on EAGER E8 inner-class
+  construction (involution_orbits ~3.7s for 199,952 involutions).
+  Upstream is ALSO eager (innerclass.cpp construct task 1) but does it
+  in ms — this is a per-operation perf gap, not a laziness gap.
+  Perf subagent task assigned (see below).
+- `eeee72a` batch: (a) TypeTable::canonicalise_anonymous — anonymous
+  sub-types equal to a named tabled type become references to it
+  (add_typedefs reduces equivalence classes, axis-types.w:1024-1051);
+  fixes the `(vec,int,orbit_data)` echo. (b) forget of a TYPE name
+  reports "forgotten". (c) operator casts match instances with
+  Type::equals (tabled == expansion): maximal@KGPElt.
+- Residual known hole: forget removes a type name from the lexer set
+  but not from TypeTable (no remove API); reusing the name would still
+  resolve the old binding. No corpus evidence yet.
+- gdb sampling recipe that works: `cd dir; bash -c "exec BIN < in > /dev/null 2>&1" & PID=$!; sleep N; gdb -p $PID -batch -ex "bt 22"`.
+  `A && B &` backgrounds the WHOLE list as a subshell (you sample bash);
+  perf symbolisation fails on the nodes; block-buffered stdout means a
+  hung run leaves an empty file.
