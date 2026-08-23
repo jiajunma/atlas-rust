@@ -3370,23 +3370,36 @@ pub fn convert_expr(
             // (axis-types.w:2890-2910); a structural union from the
             // single-name form is rejected with the upstream wording.
             let tabled_union = match &subject_type {
-                Type::Tabled(number) => match &analysis.types.binding(*number).definition {
-                    Type::Union(variants)
-                        if analysis.types.binding(*number).fields.len() == variants.len()
-                            && analysis
-                                .types
-                                .binding(*number)
-                                .fields
-                                .iter()
-                                .all(Option::is_some) =>
-                    {
-                        Some((
-                            variants.clone(),
-                            analysis.types.binding(*number).fields.clone(),
-                        ))
+                Type::Tabled(number) => {
+                    // Follow the merge chain and a Tabled definition: a
+                    // group member whose expansion equals an earlier type
+                    // merges into it, and its stored definition may just
+                    // reference the canonical entry (conjugate.at's
+                    // maybe_a_conjugator = (void no_w| WeylElt w) merging
+                    // into maybe_a_mover). Upstream keeps ONE type_map
+                    // entry per class, so discrimination always sees the
+                    // canonical union.
+                    let mut current = analysis.types.canonical(*number);
+                    loop {
+                        let binding = analysis.types.binding(current);
+                        match &binding.definition {
+                            Type::Tabled(next) => {
+                                let next = analysis.types.canonical(*next);
+                                if next == current {
+                                    break None;
+                                }
+                                current = next;
+                            }
+                            Type::Union(variants)
+                                if binding.fields.len() == variants.len()
+                                    && binding.fields.iter().all(Option::is_some) =>
+                            {
+                                break Some((variants.clone(), binding.fields.clone()));
+                            }
+                            _ => break None,
+                        }
                     }
-                    _ => None,
-                },
+                }
                 _ => None,
             };
             let Some((variants, injector_names)) = tabled_union else {
