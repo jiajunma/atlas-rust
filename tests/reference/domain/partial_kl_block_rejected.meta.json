@@ -20,6 +20,12 @@
  "oracle_seconds": 0.114,
  "oracle_maxrss_kb": 4320,
  "oracle_maxrss_approximate": false,
+ "differential_job": "3621052",
+ "differential_source_commit": "67afa3f93b03939e1542da8227fa9d1414a03d9a",
+ "differential_report_sha256": "03e56805b41b07ae7c10cf2f245f59cfe08d9d13184adf71d9996b190f3e6d8b",
+ "rust_seconds": 0.007,
+ "rust_maxrss_kb": 7120,
+ "rust_maxrss_approximate": false,
  "hpc_capture": {
   "fresh_process_required": true,
   "timeout_seconds": 30,
