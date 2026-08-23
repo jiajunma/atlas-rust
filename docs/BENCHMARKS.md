@@ -91,6 +91,7 @@ and the oracle (`script_corpus_report.json` under results/<commit>/<job>/).
 | 3616252 | 6dff4ab | 104 | 97 | orbit-construction perf landed: 174/238 scripts improved >0.5s, median 4.26s -> 3.67s; ~2.8s/script hot spot still unidentified |
 | 3617082 | 29651e4 | 229 | 222 | discrimination unblock (132 scripts now run deep enough to compare) |
 | 3617285 | c13b06a | 234 | 227 | deeper coverage; echo regression fixed next commit |
+| 3617878 | 0ab4baa | 236 | 229 | MATCH 45->93 (echo regression + Levi fixes landed); gdb sampling (GKfast.at, generic_degrees.at) pinned the ~2.8s hot spot: `coercions::same`/`is_close` under `typed::merged_variants` in overload resolution |
 
 Orbit-construction detail (agent-106, jobs 3616233/3616234/3616245):
 groups.at load 4.39s -> 0.83s wall (oracle 0.05s); E8 involution partition
@@ -101,7 +102,8 @@ matrix path), u128-packed simple-root-image keys (injective: involutions
 are linear, simple roots a Z-basis), classification reuses the partition's
 BFS order.
 
-Remaining per-script gap is NOT orbit construction: a constant ~2.8s
-unidentified hot spot per corpus script (median 3.67s vs oracle ~0.1s).
-Next step: hpc/perf_sample.sbatch gdb sampling of a slow script
-(e.g. springer_table_E8.at).
+Remaining per-script gap is NOT orbit construction. gdb sampling
+(jobs 3617887/3617888, GKfast.at + generic_degrees.at) pinned it to
+overload resolution: `coercions::same`/`is_close` called from
+`typed::merged_variants` under `convert_overload_application`, plus heavy
+malloc/free churn (deep type clones). Fix in progress (agent-111).
