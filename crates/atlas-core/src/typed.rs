@@ -13087,7 +13087,9 @@ fn value_string(context: &EvaluationContext, value: &Value) -> String {
             value: payload,
             ..
         } => format!("{}.{}", value_string(context, payload), injector_name),
-        Value::Domain(inner) => value_string(context, inner),
+        // DomainValue leaves are domain handles (real forms, params, …);
+        // they never contain closures, so plain Display suffices.
+        Value::Domain(_) => value.to_string(),
         other => other.to_string(),
     }
 }
