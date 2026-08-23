@@ -40,7 +40,7 @@ use atlas_real_group::{
     filter_relation_units as domain_filter_relation_units, inner_class_with_twisted_involution,
     integral_block_scope, layout_involution, longest_action, minimal_torus_part,
     on_basis as lattice_on_basis, pair, quotient_relation_basis as domain_quotient_relation_basis,
-    replace_relation_generators as domain_replace_relation_generators, singular_orbits_at,
+    replace_relation_generators as domain_replace_relation_generators,
     twisted_deformation_terms, twisted_deformation_with_cancel, twisted_kl_column_at_s,
     twisted_kl_sum, AdjointFiberBudget, BareBlock, BasedRootDatum, BlockDescent, BlockGraph,
     BlockModifier, BlockTopology, CartanClassification, CartanClassificationBudget, CartanId,
@@ -8463,27 +8463,6 @@ fn full_block_of(parameter: &ParamValue, span: SourceSpan) -> Result<BlockValue,
     build_block(&parameter.context, &dual_rf, span)
 }
 
-/// Locate `sr` in its full block, as `Rep_table::lookup` reports it: an
-/// x-coordinate match that is present in the extended block and whose
-/// reconstruction at `sr`'s own data equals `sr` (the `block_element_of`
-/// helper semantics of the crate's deform.rs tests).
-fn twisted_block_index(
-    block: &BlockGraph,
-    eblock: &ExtBlock,
-    rc: &RepContext<'_>,
-    sr: &StandardRepr,
-    lambda_rho: &Weight,
-    span: SourceSpan,
-) -> Result<usize, Diagnostic> {
-    (0..block.size())
-        .find(|&z| {
-            block.x(z) == Some(sr.x())
-                && eblock.is_present(z)
-                && rc.sr_gamma(sr.x(), lambda_rho, sr.gamma()).ok().as_ref() == Some(sr)
-        })
-        .ok_or_else(|| runtime(span, "parameter not in the common block"))
-}
-
 /// The `rt.lookup(zi, index, bm)` + `block.extended_block(bm, ...)` step
 /// of `Rep_table::twisted_deformation` at a reducibility point with
 /// INTEGRAL gamma (repr.cpp:2617-2633, trivial block modifier): rebuild
@@ -8532,18 +8511,29 @@ fn twisted_reducibility_lookup(
 /// `compute` on the parameter's common block plus the extended block over
 /// `delta`, or short-circuit the rank-0 integral subsystem (the common
 /// block is the singleton `{p}` of length 0 — empty deformation terms, and
-/// `1*p` for the KL sums, repr.cpp:2435-2436). On a proper integral
-/// subsystem the common block comes from `Rep_table::lookup`
-/// (repr.cpp:1796-1824, the partial interval-below block, exactly as
-/// `twisted_KL_column_at_s` and the `twisted_deformation` reducibility
-/// loop use it, repr.cpp:2378-2382/:2605-2606) and the
-/// extended block is built over that partial parent
+/// `1*p` for the KL sums, repr.cpp:2435-2436). Every nonzero-rank integral
+/// subsystem — proper or the full root system — takes the common block
+/// from `Rep_table::lookup` (repr.cpp:1796-1824, the partial interval-below
+/// block, exactly as `twisted_KL_column_at_s` and the `twisted_deformation`
+/// reducibility loop use it, repr.cpp:2378-2382/:2605-2606; upstream calls
+/// `lookup` even when the integral subsystem is the full root system) and
+/// the extended block is built over that partial parent
 /// (`common_block::extended_block`, blocks.cpp:1305-1310). `compute`
 /// receives the parent block view, the extended block, the parameter's
 /// parent row, the block's infinitesimal character, and the
 /// singular-orbit flags folded from the parent's own singular set
 /// (`common_block::singular(gamma)`, blocks.cpp:701-709, folded by
 /// `ext_block::reduce_to`).
+///
+/// The lookup path is not optional at full integral gamma: a delta-fixed
+/// parameter can sit on a full-block element whose y-class is NOT the
+/// delta-fixed one (the full block's y-classes are propagated from its own
+/// generator, not from the seed), so the seed is absent from the full
+/// block's extended block — gl4H.at's `twisted_KL_sum_at_s(trivial(G))`
+/// for `G=quasicompact_form(GL(8,R))` failed this way ("parameter not in
+/// the common block", the seed x=5 missing from the 25-element fixed
+/// fiber). The interval-below block is propagated from the seed itself, so
+/// the delta-fixed seed is always present.
 fn with_integral_block<T>(
     parameter: &ParamValue,
     rc: &RepContext<'_>,
@@ -8561,7 +8551,7 @@ fn with_integral_block<T>(
 ) -> Result<T, Diagnostic> {
     match integral_block_scope(rc, sr.gamma()).map_err(|error| structure_diagnostic(error, span))? {
         IntegralBlockScope::Singleton => Ok(singleton()),
-        IntegralBlockScope::ProperSubsystem => {
+        IntegralBlockScope::ProperSubsystem | IntegralBlockScope::Full => {
             // Rep_table::lookup (repr.cpp:1796-1824) as
             // Rep_table::twisted_KL_column_at_s calls it
             // (repr.cpp:2378-2382) and twisted_deformation does at each
@@ -8611,26 +8601,6 @@ fn with_integral_block<T>(
                 &eblock,
                 located.raw_row(),
                 prepared.gamma(),
-                &singular_orbits,
-            )
-        }
-        IntegralBlockScope::Full => {
-            let block = full_block_of(parameter, span)?;
-            let eblock = build_ext_block(&block, parameter, &twist_data.0, &twist_data.1, span)?;
-            let lambda_rho = rc
-                .lambda_rho(sr)
-                .map_err(|error| structure_diagnostic(error, span))?;
-            let y0 = twisted_block_index(&block.graph, &eblock, rc, sr, &lambda_rho, span)?;
-            let singular_orbits = singular_orbits_at(rc, &eblock, sr.gamma())
-                .map_err(|error| structure_diagnostic(error, span))?;
-            compute(
-                KlSumParent::Full {
-                    block: &block.graph,
-                    lambda_rho: &lambda_rho,
-                },
-                &eblock,
-                y0,
-                sr.gamma(),
                 &singular_orbits,
             )
         }
@@ -17099,8 +17069,9 @@ pub(crate) fn call_with_printed(
         // wrapper maps each to `Split_integer(c, -c)` = c(1-s)
         // (atlas-types.w:8146-8147). The rank-0 integral subsystem (the
         // A1 nu=[1]/2 case) is the singleton block, whose terms are
-        // empty (repr.cpp:2435-2436); a proper subsystem runs the same
-        // recursion over the partial parent (`with_integral_block`).
+        // empty (repr.cpp:2435-2436); any larger subsystem — proper or the
+        // full root system — runs the same recursion over the lookup
+        // interval-below parent (`with_integral_block`).
         "twisted_deform" => {
             arity(name, arguments, 1, span)?;
             let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
@@ -17152,8 +17123,9 @@ pub(crate) fn call_with_printed(
         // external-delta path builds the extended block over the USER's
         // delta and signs by the extended block's own lengths
         // (`twisted_kl_sum`, repr.cpp:2304-2350). The rank-0 integral
-        // subsystem's singleton block gives `1*p` (P_{y,y} = 1); a proper
-        // integral subsystem runs the same sums over the partial parent
+        // subsystem's singleton block gives `1*p` (P_{y,y} = 1); any larger
+        // integral subsystem — proper or the full root system — runs the
+        // same sums over the lookup interval-below parent
         // (`with_integral_block`).
         "twisted_KL_sum_at_s" => {
             let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {

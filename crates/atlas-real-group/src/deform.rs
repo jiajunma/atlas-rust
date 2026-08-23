@@ -176,8 +176,12 @@ pub enum IntegralBlockScope {
     /// at `s` is `1*p` (the `x == y == 0` column entry).
     Singleton,
     /// Every simple coroot (hence every coroot) pairs integrally: the
-    /// common block is the full block with trivial block modifier, which
-    /// the drivers below accept as a [`BlockGraph`].
+    /// common block is the full block. Drivers still take it from
+    /// `Rep_table::lookup` (the interval-below partial block), as upstream
+    /// does even at a full integral subsystem (repr.cpp:2378-2382): the
+    /// full block's y-classes are propagated from its own generator, so a
+    /// delta-fixed seed can be absent from the full block's extended
+    /// block, while the seed-propagated interval block always contains it.
     Full,
     /// A proper integral subsystem: common-block support is not ported.
     /// Callers must fail loudly rather than silently computing on the full
