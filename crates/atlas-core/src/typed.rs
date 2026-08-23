@@ -602,7 +602,7 @@ impl OverloadState {
             match crate::coercions::is_close(&arg_type, &existing.arg_type, types) {
                 0x6 => lower = slot + 1,
                 0x5 => upper = upper.min(slot),
-                0x7 if arg_type == existing.arg_type => {
+                0x7 if arg_type.equals(&existing.arg_type, types) => {
                     replacement = Some(slot);
                     break;
                 }

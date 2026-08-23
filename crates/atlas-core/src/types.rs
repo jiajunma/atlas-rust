@@ -212,6 +212,33 @@ impl Type {
     pub fn display<'a>(&'a self, table: &'a TypeTable) -> TypeDisplay<'a> {
         TypeDisplay { type_: self, table }
     }
+
+    /// Upstream `type_expr::operator==` (axis-types.w:807-825): structural
+    /// equality, except that a tabled type equals its expansion (two tabled
+    /// types are equal only when their type numbers are, which also keeps
+    /// recursive types from expanding forever).
+    pub fn equals(&self, other: &Type, table: &TypeTable) -> bool {
+        match (self, other) {
+            (Type::Tabled(own), Type::Tabled(another)) => own == another,
+            (Type::Tabled(number), _) => table.expansion(*number).equals(other, table),
+            (_, Type::Tabled(number)) => self.equals(table.expansion(*number), table),
+            (Type::Undetermined, Type::Undetermined) => true,
+            (Type::Primitive(own), Type::Primitive(another)) => own == another,
+            (Type::Function(own), Type::Function(another)) => {
+                own.0.equals(&another.0, table) && own.1.equals(&another.1, table)
+            }
+            (Type::Row(own), Type::Row(another)) => own.equals(another, table),
+            (Type::Tuple(own), Type::Tuple(another))
+            | (Type::Union(own), Type::Union(another)) => {
+                own.len() == another.len()
+                    && own
+                        .iter()
+                        .zip(another)
+                        .all(|(component, other)| component.equals(other, table))
+            }
+            _ => false,
+        }
+    }
 }
 
 /// One typedef-table entry: variant/field names live here, never in `Type`.
