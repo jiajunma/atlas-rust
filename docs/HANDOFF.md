@@ -4708,3 +4708,19 @@ the frozen print_family batch. No other hidden special operators exist
   to clear and per-script times to drop ~4s; remaining gap to oracle
   (~0.05s/script vs ~0.8s) is other eager E8 work, not orbit
   construction.
+- `29651e4` fix: `TypeTable::expansion` follows Tabled definition
+  chains to the fully untabled structure (upstream expansion,
+  axis-types.w:976-1000). One-level expansion returned another Tabled
+  for a merged group member, so `equivalent()` never merged
+  structurally equal group members (maybe_a_mover/maybe_a_conjugator),
+  and overload add then rejected the second `set any(...)` with
+  "Cannot overload" (132 corpus scripts, corpus 3616252). Oracle probe
+  confirms: `set_type [a=(void x|int y), b=(void x|int y)]` echoes BOTH
+  as "(void|int)" and `set f(b v)=...` reports "Defined f: (a->int)"
+  (canonical name).
+- Perf status after 3616252 (incl. `874a89f`): 174/238 scripts
+  improved >0.5s, median 4.26s -> 3.67s per script, but still ~97
+  scripts >5x slower than the oracle (~0.1s). The orbit-construction
+  fix accounts for ~0.7s; the remaining ~2.8s per-script hot spot is
+  unidentified — sample with the gdb recipe again once the corpus is
+  green.
