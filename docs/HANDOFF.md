@@ -4724,3 +4724,22 @@ the frozen print_family batch. No other hidden special operators exist
   fix accounts for ~0.7s; the remaining ~2.8s per-script hot spot is
   unidentified — sample with the gdb recipe again once the corpus is
   green.
+- `c13b06a` batch (after corpus 3617082: EVAL_FAIL 134->9, MATCH 87,
+  OUTPUT_DIFF 142): (a) set_type single-name alias echo prints the type
+  AS WRITTEN — a tabled RHS shows its name ("Parabolic defined as
+  KGPElt"); ALL 14 sampled OUTPUT_DIFF scripts differed only in this
+  echo + the Levi cast report line. (b) op-cast `f@T`: the resulting
+  function type uses the WRITTEN T (axis.w:6761-6764
+  type_expr(ctype.copy(), res_t.copy())), not the stored instance type.
+  (c) `return` leaked its raw a-priori type when the declared result
+  was desugared to a body cast (lambda_with_result): the shared return
+  cell is now seeded from an outermost body cast when undetermined
+  (upstream seeds from the declared result, axis.w:313). Minimal probes
+  (HPC, both binaries): `set f(int n)=(mat,[int]): let rv=null(2,0)
+  then ib=null(0) in if n>0 then return(rv,ib) fi; (rv,ib)` — oracle
+  accepts (vec->[int] coercion at return), we rejected.
+- Corpus 3617082 benchmark: comparable 229, 222 over 5x slower; the
+  per-script gap is now ~3.7s median vs oracle ~0.1s — after the orbit
+  fix (~0.7s of it), ~2.8s/脚本 unknown hot spot remains. Next perf
+  step: gdb-sample a slow script (e.g. springer_table_E8.at) with the
+  documented recipe.
