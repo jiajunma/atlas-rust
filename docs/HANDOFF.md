@@ -4939,3 +4939,38 @@ the frozen print_family batch. No other hidden special operators exist
   pair of fixes). Probes live in /public/home/majj/gl4h-probes/ (NOT in
   atlas-scripts). NOTE: corpus rerun should re-confirm gl4H.at end to
   end; the extended_block fix may repair other scripts too.
+
+## Checkpoint 2026-08-24a (corpus 238/238 individually green)
+
+- Corpus 3617953 (9a33da9): MATCH 236/240, OUTPUT_DIFF 2, fat 3617912
+  both large E8 cell scripts MATCH. Recorded in BENCHMARKS.md.
+- exceptionalData.at: single-name set_type must say "redefined as" when
+  the name was already a defined type (global.w:1384-1391; the bracketed
+  form always prints "defined as", global.w:1635-1647). Fixed in b28664c;
+  MATCH confirmed by targeted corpus 3621033.
+- example.at was TWO printing bugs, both in the value-printing paths:
+  1. Closures nested in containers printed the bare Display head
+     "Function defined" instead of the multi-line closure_value::print
+     (axis.w:3254-3271). Fixed by a recursive value_string in typed.rs
+     used by render_value/trace_value_string AND by
+     print/prints/to_string/error (b28664c + 5e66582; DomainValue leaves
+     can't hold closures, baf6820).
+  2. Projector applications printed as `((Function defined)(f))(mu)`
+     because analysis inlines the set_type projector closure as a
+     Denotation in a FunctionCall. Upstream keeps a projector_call node
+     (axis.w:4495-4532) that prints postfix `argument.field` with the
+     CALL-SITE name (build_call(name) — an aliased projector prints its
+     alias). Fixed in typed_expression_print (bb8e539): Denotation of a
+     closure whose body is TupleProject prints `arg.<trace-name part>`.
+     MATCH confirmed by targeted corpus 3621110.
+- Infrastructure: quick_check now also runs `cargo test --workspace`
+  (bae6d65) with correct status capture and a kept full log (130e61b),
+  and uses a PER-JOB worktree (5e66582) — job 3621023's cleanup deleted
+  3621032's shared checkout mid-test ("couldn't read build.rs").
+  Full cargo test currently red: 2 stale syntax shape assertions from
+  075c5e8's do_expr reframing (break_accepts_an_integer_level,
+  parses_loop_and_break_forms) and one REAL stack overflow in
+  typed::tests::let_function_sugar_and_recursion_evaluate (SIGABRT,
+  reproduced with per-job worktree in 3621075). Diagnosis job 3621118
+  runs the two stale tests solo for exact shapes and the overflow test
+  with RUST_MIN_STACK=32M to distinguish depth from runaway recursion.
