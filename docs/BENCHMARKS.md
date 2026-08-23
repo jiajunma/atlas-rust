@@ -109,3 +109,16 @@ Remaining per-script gap is NOT orbit construction. gdb sampling
 overload resolution: `coercions::same`/`is_close` called from
 `typed::merged_variants` under `convert_overload_application`, plus heavy
 malloc/free churn (deep type clones). Fix in progress (agent-111).
+
+## Dedicated workload benchmarks (hpc/workloads/*.atlas)
+
+Four self-contained loop workloads (deform_A3, deform_B2, partial_KL_A2,
+partial_KL_B3) run through the corpus driver, which records wall time and
+peak RSS for both binaries:
+
+    sbatch --export=ALL,TIMEOUT=600 hpc/script_corpus.sbatch \
+      '/public/home/majj/atlas-rust/hpc/workloads/workload_*.atlas'
+
+| job | commit | workload | cpp s | rust s | ratio | notes |
+|---|---|---|---|---|---|---|
+| — | — | (pending first run after HPC reconnect) | | | | |
