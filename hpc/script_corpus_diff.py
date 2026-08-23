@@ -132,6 +132,35 @@ def first_error(stderr: str) -> str:
     return "(no diagnostic)"
 
 
+def diff_snippet(cpp_out: str, rust_out: str) -> dict:
+    """Compact triage data for an OUTPUT_DIFF: first divergence plus counts.
+
+    Stored per entry so one corpus run yields actionable fix buckets without
+    re-running both interpreters by hand.
+    """
+    cpp_lines = cpp_out.splitlines()
+    rust_lines = rust_out.splitlines()
+    first = None
+    differing = 0
+    for i in range(max(len(cpp_lines), len(rust_lines))):
+        cpp_line = cpp_lines[i] if i < len(cpp_lines) else None
+        rust_line = rust_lines[i] if i < len(rust_lines) else None
+        if cpp_line != rust_line:
+            differing += 1
+            if first is None:
+                first = {
+                    "line": i + 1,
+                    "cpp": (cpp_line if cpp_line is not None else "<missing>")[:160],
+                    "rust": (rust_line if rust_line is not None else "<missing>")[:160],
+                }
+    return {
+        "first": first,
+        "differing_lines": differing,
+        "cpp_lines": len(cpp_lines),
+        "rust_lines": len(rust_lines),
+    }
+
+
 def run_corpus(atlas_bin, cli_bin, files, size_cap, timeout, on_entry=None):
     scripts_dir = os.path.join(os.path.dirname(atlas_bin) or ".", "atlas-scripts")
     entries = []
@@ -189,6 +218,8 @@ def run_corpus(atlas_bin, cli_bin, files, size_cap, timeout, on_entry=None):
             entry["category"] = (
                 "MATCH" if rust["stdout"] == cpp_out else "OUTPUT_DIFF"
             )
+            if entry["category"] == "OUTPUT_DIFF":
+                entry["output_diff"] = diff_snippet(cpp_out, rust["stdout"])
         else:
             entry["category"] = classify_rust(rust["stderr"])
             entry["rust_first_error"] = first_error(rust["stderr"])
@@ -201,17 +232,26 @@ def run_corpus(atlas_bin, cli_bin, files, size_cap, timeout, on_entry=None):
 def build_report(entries):
     counts = {}
     histogram = {}
+    diff_histogram = {}
     for entry in entries:
         counts[entry["category"]] = counts.get(entry["category"], 0) + 1
         if "rust_first_error" in entry:
             key = entry["rust_first_error"]
             histogram[key] = histogram.get(key, 0) + 1
+        snippet = entry.get("output_diff", {}).get("first")
+        if snippet:
+            # Bucket by the cpp line shape so one fix targets a whole family.
+            shape = re.sub(r"\d+", "N", snippet["cpp"])[:100]
+            diff_histogram[shape] = diff_histogram.get(shape, 0) + 1
     report = {
         "schema": "atlas-script-corpus-diff-v1",
         "total": len(entries),
         "counts": counts,
         "first_error_histogram": dict(
             sorted(histogram.items(), key=lambda kv: -kv[1])
+        ),
+        "output_diff_histogram": dict(
+            sorted(diff_histogram.items(), key=lambda kv: -kv[1])
         ),
         "scripts": entries,
     }
