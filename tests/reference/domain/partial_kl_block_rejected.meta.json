@@ -1,0 +1,29 @@
+{
+ "fixture": "domain/partial_kl_block_rejected.atlas",
+ "fixture_sha256": "5c0e0e0e2acd675ea711638ffbf753cf041964c30ef87e935360ccb64add3409",
+ "oracle": "atlas",
+ "stage": "typed-pipeline-swap",
+ "reference_status": "verified_hpc_reference",
+ "upstream_evidence": [
+  "sources/interpreter/atlas-types.w:6998-7039",
+  "sources/interpreter/atlas-types.w:6605-6611"
+ ],
+ "rust_status": "verified_hpc",
+ "oracle_exit_status": 1,
+ "notes": "Rejected coverage pins the partial_KL_block standardness gate (test_standard, atlas-types.w:7000): a non-standard A1 parameter is refused with the oracle's three-line 'partial_KL_block requires a standard parameter' diagnostic before any block lookup.",
+ "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+ "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+ "reference_job": "3621006",
+ "reference_commit": "40da8debab24d9c99efccb8d02cae2a55d8f05ff",
+ "reference_report_sha256": "0409362b88f7e03393ee3177179133d7209e248414c7ae3ebaeed3dda7622f8a",
+ "source_archive_sha256": "06c7030274424d4ffd82728af86354f085885198cac5ebdf90f59a6c4e7c40a6",
+ "oracle_seconds": 0.114,
+ "oracle_maxrss_kb": 4320,
+ "oracle_maxrss_approximate": false,
+ "hpc_capture": {
+  "fresh_process_required": true,
+  "timeout_seconds": 30,
+  "estimated_seconds": 1,
+  "estimated_memory_mb": 64
+ }
+}
