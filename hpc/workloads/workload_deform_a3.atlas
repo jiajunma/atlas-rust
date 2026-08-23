@@ -11,4 +11,4 @@ q : ParamPol
 i : int
 r : int
 r := 0
-while r < 30 do i := 0; while i < 6 do p := param(KGB(rfa,i),[1,1,1],[1,1,0]/2); q := deform(p); i := i + 1; () od; r := r + 1; () od
+while r < 5000 do i := 0; while i < 6 do p := param(KGB(rfa,i),[1,1,1],[1,1,0]/2); q := deform(p); i := i + 1; () od; r := r + 1; () od

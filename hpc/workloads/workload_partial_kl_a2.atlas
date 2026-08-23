@@ -9,4 +9,4 @@ v : ([Param],mat,[vec])
 i : int
 r : int
 r := 0
-while r < 100 do i := 0; while i < 4 do p := param(KGB(rs,i),[0,0],[1,1]/2); v := partial_KL_block(p); i := i + 1; () od; r := r + 1; () od
+while r < 10000 do i := 0; while i < 4 do p := param(KGB(rs,i),[0,0],[1,1]/2); v := partial_KL_block(p); i := i + 1; () od; r := r + 1; () od

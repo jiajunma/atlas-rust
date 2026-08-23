@@ -121,4 +121,13 @@ peak RSS for both binaries:
 
 | job | commit | workload | cpp s | rust s | ratio | notes |
 |---|---|---|---|---|---|---|
-| — | — | (pending first run after HPC reconnect) | | | | |
+| 3622312 | 24a0d1d | deform_a3 | 0.016 | 0.016 | 1.0 | MATCH; all 4 workloads MATCH |
+| 3622312 | 24a0d1d | deform_b2 | 0.015 | 0.024 | 1.6 | MATCH |
+| 3622312 | 24a0d1d | partial_kl_a2 | 0.012 | 0.023 | 1.9 | MATCH |
+| 3622312 | 24a0d1d | partial_kl_b3 | 0.012 | 0.018 | 1.5 | MATCH |
+
+WARNING (3622312): all four workloads finish in 10-25 ms on BOTH
+interpreters — the loops are too light to measure anything but process
+startup, so these ratios are noise. The workloads need heavier iteration
+counts (or larger groups) before their numbers mean anything; use the
+script-corpus ledger above for real per-script timing until then.
