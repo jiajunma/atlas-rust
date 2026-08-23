@@ -11358,7 +11358,24 @@ fn overload_variants(name: &str) -> &'static [usize] {
         .unwrap_or(&[])
 }
 
+/// The names that have at least one hidden (non-overload-visible) builtin:
+/// a static set so the per-call-site check is one hash lookup instead of a
+/// full registry scan.
+fn hidden_special_names() -> &'static std::collections::HashSet<&'static str> {
+    static NAMES: OnceLock<std::collections::HashSet<&'static str>> = OnceLock::new();
+    NAMES.get_or_init(|| {
+        builtin_registry()
+            .iter()
+            .filter(|builtin| !builtin.overload_visible)
+            .map(|builtin| builtin.name)
+            .collect()
+    })
+}
+
 fn hidden_special_builtin(name: &str) -> Option<usize> {
+    if !hidden_special_names().contains(name) {
+        return None;
+    }
     builtin_registry()
         .iter()
         .position(|builtin| builtin.name == name && !builtin.overload_visible)
