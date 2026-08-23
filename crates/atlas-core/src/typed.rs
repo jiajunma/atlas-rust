@@ -1347,13 +1347,10 @@ impl TypedContext {
 
     /// The top-level `Value: ` rendering (main.w:533-540 prints
     /// `*last_value` with the standard value printer): closures take the
-    /// multi-line `closure_value::print` (axis.w:3254-3271), every other
-    /// value uses `Display`.
+    /// multi-line `closure_value::print` (axis.w:3254-3271) at ANY depth
+    /// inside containers, every other value uses `Display`.
     pub fn render_value(&self, value: &Value) -> String {
-        match value {
-            Value::Closure(closure) => closure_trace_string(&self.evaluation, closure),
-            other => other.to_string(),
-        }
+        value_string(&self.evaluation, value)
     }
 
     /// Record a source buffer's trace display name (buffer.w:694): the
@@ -2009,6 +2006,18 @@ impl TypedContext {
                 .add_alias(definition.name.value.clone(), expansion.clone());
             targets.push(expansion);
         }
+        // global.w:1384: the single-name form says "redefined as" when the
+        // name was already a defined type; capture the flags before the
+        // lexer set below is updated. The bracketed form always prints
+        // "defined as" (global.w:1635-1647 cleans out silently).
+        let redefinitions: Vec<bool> = definitions
+            .iter()
+            .map(|definition| {
+                self.defined_type_names
+                    .borrow()
+                    .contains(&definition.name.value)
+            })
+            .collect();
         // lexer.w:419-448: every freshly defined type name now lexes as
         // TYPE_ID in later commands, so the lexer set is updated here.
         {
@@ -2018,8 +2027,11 @@ impl TypedContext {
             }
         }
         let mut events = Vec::with_capacity(definitions.len());
-        for (definition, target) in definitions.iter().zip(&targets) {
-            let text = self.define_type_members(definition, target, tabled, span)?;
+        for ((definition, target), redefine) in
+            definitions.iter().zip(&targets).zip(&redefinitions)
+        {
+            let text =
+                self.define_type_members(definition, target, tabled, *redefine, span)?;
             events.push(TypedCommandEvent::ReportLine { text, span });
         }
         Ok(events)
@@ -2035,6 +2047,7 @@ impl TypedContext {
         definition: &crate::syntax::TypeDefinition,
         target: &Type,
         tabled: bool,
+        redefine: bool,
         span: SourceSpan,
     ) -> Result<String, Diagnostic> {
         let expansion = match target {
@@ -2060,8 +2073,9 @@ impl TypedContext {
             )
         } else {
             format!(
-                "Type name '{}' defined as {}\n",
+                "Type name '{}' {} as {}\n",
                 definition.name.value,
+                if redefine { "redefined" } else { "defined" },
                 target.display(&self.types)
             )
         };
@@ -13034,8 +13048,46 @@ fn frame_dump(context: &EvaluationContext, names: &[String], frame: &Frame) -> S
 /// the standard value printer): closures use the multi-line
 /// `closure_value::print` (axis.w:3254-3271), everything else `Display`.
 fn trace_value_string(context: &EvaluationContext, value: &Value) -> String {
+    value_string(context, value)
+}
+
+/// The standard value printer recurses through containers, so a closure
+/// nested in a tuple, list, union payload, or domain wrapper still prints
+/// its full multi-line `closure_value::print` form (axis.w:3254-3271) —
+/// not the bare "Function defined" head that `Display` falls back to.
+/// (Corpus 3617953: example.at printed `(Function defined,…)` where the
+/// oracle prints `(Function defined at hodge_tensor.at:36:3-37 …)`.)
+fn value_string(context: &EvaluationContext, value: &Value) -> String {
     match value {
         Value::Closure(closure) => closure_trace_string(context, closure),
+        Value::Tuple(values) => {
+            let mut out = String::from("(");
+            for (index, element) in values.iter().enumerate() {
+                if index > 0 {
+                    out.push(',');
+                }
+                out.push_str(&value_string(context, element));
+            }
+            out.push(')');
+            out
+        }
+        Value::List(values) => {
+            let mut out = String::from("[");
+            for (index, element) in values.iter().enumerate() {
+                if index > 0 {
+                    out.push(',');
+                }
+                out.push_str(&value_string(context, element));
+            }
+            out.push(']');
+            out
+        }
+        Value::Union {
+            injector_name,
+            value: payload,
+            ..
+        } => format!("{}.{}", value_string(context, payload), injector_name),
+        Value::Domain(inner) => value_string(context, inner),
         other => other.to_string(),
     }
 }
