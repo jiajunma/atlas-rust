@@ -1,5 +1,4 @@
-use std::collections::BTreeMap;
-
+use crate::inner_class::{PermutationKey, PermutationKeyMap};
 use crate::twisted_involution::compose_matrices;
 use crate::{
     BasedRootDatum, CartanGradingData, CayleyCrossDecomposition, RealFormLabels,
@@ -48,18 +47,22 @@ impl TwistedConjugacyClass {
 /// class, exactly like upstream's task 1 (innerclass.cpp:218-291), and every
 /// class membership is filled by cross-action closure
 /// (involutions.cpp:362-379); the Weyl group is never enumerated. The
-/// Cartan-numbering consumer [`crate::CartanClassification`] still reorders
-/// the classes into its own BFS positions through this partition's
-/// membership map. The lookup key is the root-image permutation, which does
-/// not encode the datum, so [`Self::class_of`] gates datum and
-/// distinguished-involution provenance before the map hit; a miss after
-/// those gates is an invariant violation, never a recoverable absence.
-#[derive(Clone, Debug, Eq, PartialEq)]
+/// lookup key is the root-image permutation, which does not encode the
+/// datum, so [`Self::class_of`] gates datum and distinguished-involution
+/// provenance before the map hit; a miss after those gates is an invariant
+/// violation, never a recoverable absence. The stored key is the permutation
+/// packed down to its simple-root images (see
+/// [`crate::inner_class::PermutationKey`]), an EXACT injective key — a
+/// root-datum involution is a linear map and the simple roots span the root
+/// lattice — hashed with a fast non-cryptographic hasher, so the E8-class
+/// 199,952-member map stays cheap without any semantic change.
+#[derive(Clone, Debug, PartialEq)]
 pub struct TwistedConjugacyPartition {
     datum: BasedRootDatum,
     distinguished: RootInvolutionData,
     classes: Vec<TwistedConjugacyClass>,
-    class_by_permutation: BTreeMap<Vec<u8>, usize>,
+    simple_positions: Vec<u8>,
+    class_by_key: PermutationKeyMap<usize>,
 }
 
 impl TwistedConjugacyPartition {
@@ -67,13 +70,15 @@ impl TwistedConjugacyPartition {
         datum: BasedRootDatum,
         distinguished: RootInvolutionData,
         classes: Vec<TwistedConjugacyClass>,
-        class_by_permutation: BTreeMap<Vec<u8>, usize>,
+        simple_positions: Vec<u8>,
+        class_by_key: PermutationKeyMap<usize>,
     ) -> Self {
         Self {
             datum,
             distinguished,
             classes,
-            class_by_permutation,
+            simple_positions,
+            class_by_key,
         }
     }
 
@@ -86,7 +91,9 @@ impl TwistedConjugacyPartition {
     /// [`Self::class_of`] without the provenance gates, for consumers that
     /// derive the permutation from a lattice involution directly.
     pub(crate) fn class_index_of_permutation(&self, permutation: &[u8]) -> Option<usize> {
-        self.class_by_permutation.get(permutation).copied()
+        self.class_by_key
+            .get(&PermutationKey::pack(permutation, &self.simple_positions))
+            .copied()
     }
 
     /// The index of the class containing this twisted involution.
@@ -111,7 +118,7 @@ impl TwistedConjugacyPartition {
             .iter()
             .map(|id| id.0 as u8)
             .collect();
-        self.class_by_permutation.get(&key).copied().ok_or(
+        self.class_index_of_permutation(&key).ok_or(
             StructureError::CartanClassificationInvariantViolation {
                 invariant: "enumerated class lookup",
             },

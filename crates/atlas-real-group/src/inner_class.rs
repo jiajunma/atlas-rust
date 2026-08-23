@@ -1,4 +1,5 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
+use std::rc::Rc;
 
 use crate::grading::try_capacity;
 use crate::twisted_involution::compose_matrices;
@@ -583,12 +584,27 @@ impl InnerClass {
         weyl_budget: usize,
     ) -> Result<TwistedConjugacyPartition, StructureError> {
         let orbits = self.involution_orbits(weyl_budget)?;
+        let simple_positions: Vec<u8> = self
+            .roots
+            .simple_root_ids()
+            .iter()
+            .map(|id| id.0 as u8)
+            .collect();
+        let member_count: usize = orbits.iter().map(|orbit| orbit.permutations.len()).sum();
         let mut classes = try_capacity(orbits.len())?;
-        let mut class_by_permutation = BTreeMap::new();
+        let mut class_by_key = PermutationKeyMap::default();
+        class_by_key
+            .try_reserve(member_count)
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: member_count,
+            })?;
         for orbit in orbits {
             let class_index = classes.len();
             for permutation in &orbit.permutations {
-                class_by_permutation.insert(permutation.clone(), class_index);
+                class_by_key.insert(
+                    PermutationKey::pack(permutation, &simple_positions),
+                    class_index,
+                );
             }
             classes.push(TwistedConjugacyClass::new(
                 orbit.representative,
@@ -599,8 +615,14 @@ impl InnerClass {
             self.datum.clone(),
             self.distinguished_involution.clone(),
             classes,
-            class_by_permutation,
+            simple_positions,
+            class_by_key,
         ))
+    }
+
+    /// The permutation-level orbit machinery over this inner class.
+    pub(crate) fn permutation_orbits(&self) -> Result<PermutationOrbits<'_>, StructureError> {
+        PermutationOrbits::new(self)
     }
 
     /// The twisted-conjugacy classes, each as (canonical representative, full
@@ -618,6 +640,12 @@ impl InnerClass {
     /// (upstream's InvolutionTable size), not the Weyl group order — this is
     /// what keeps the E8 inner class affordable (199,952 twisted involutions
     /// out of |W| = 696,729,600).
+    ///
+    /// Both phases run at the root-image-permutation level through
+    /// [`PermutationOrbits`]; the owning [`TwistedInvolution`] (matrix
+    /// provenance, full [`RootInvolutionData`] validation) is rebuilt only
+    /// for freshly discovered class representatives, so the E8 construction
+    /// pays the matrix cost once per CLASS instead of once per Cayley edge.
     fn involution_orbits(
         &self,
         weyl_budget: usize,
@@ -630,21 +658,35 @@ impl InnerClass {
             delta,
             WeylAction::identity(&self.datum)?,
         )?;
+        let mut orbit_machine = PermutationOrbits::new(self)?;
 
-        // Phase one: canonical class representatives by Cayley BFS.
+        // Phase one: canonical class representatives by Cayley BFS. The
+        // representative matrices are replayed from the recorded
+        // canonicalizing word only when the canonical permutation is new, so
+        // discovery order and representatives match the historic matrix-level
+        // loop exactly.
+        let active = vec![true; rank];
         let mut representatives: Vec<TwistedInvolution> = vec![identity];
-        let mut seen_canonical: BTreeSet<Vec<u8>> = BTreeSet::new();
-        seen_canonical.insert(involution_key(&representatives[0]));
+        let mut representative_permutations = vec![involution_key(&representatives[0])];
+        let mut seen_canonical = PermutationKeySet::default();
+        seen_canonical.insert(PermutationKey::pack(
+            &representative_permutations[0],
+            orbit_machine.simple_positions(),
+        ));
         let mut cursor = 0_usize;
         while cursor < representatives.len() {
-            let twisted = representatives[cursor].clone();
-            let data = twisted.root_involution();
-            // Positive imaginary roots in upstream RootNbr order.
+            let permutation = representative_permutations[cursor].clone();
+            // Positive imaginary roots in upstream RootNbr order. Imaginary
+            // means fixed by the involution's root permutation.
             let mut imaginary = Vec::new();
-            for root in data.roots_of_kind(RootKind::Imaginary) {
+            for (index, &image) in permutation.iter().enumerate() {
+                if usize::from(image) != index {
+                    continue;
+                }
+                let root = RootId(index);
                 let coordinates = self.roots.simple_coordinates(root).ok_or(
                     StructureError::IndexOutOfRange {
-                        index: root.0,
+                        index,
                         upper_bound: self.roots.roots().len(),
                     },
                 )?;
@@ -657,22 +699,26 @@ impl InnerClass {
             }
             imaginary.sort_by(|(left, _), (right, _)| left.cmp(right));
             for (_, root) in imaginary {
-                let reflection = WeylAction::root_reflection(&self.datum, &self.roots, root)?;
-                let action = reflection.compose(twisted.weyl_action())?;
-                // The successor by an imaginary root is always a twisted
-                // involution (theta(r_alpha) = r_alpha for imaginary alpha).
-                let successor = TwistedInvolution::new(&self.datum, &self.roots, delta, action)
-                    .map_err(|error| match error {
-                        StructureError::InvalidInvolution => {
-                            StructureError::CartanClassificationInvariantViolation {
-                                invariant: "Cayley successor",
-                            }
-                        }
-                        other => other,
-                    })?;
-                let (canonical, _) = self.canonicalize(successor)?;
-                if seen_canonical.insert(involution_key(&canonical)) {
-                    representatives.push(canonical);
+                let successor = orbit_machine.cayley_successor(&permutation, root)?;
+                let (canonical_permutation, word) =
+                    orbit_machine.canonicalize(&successor, &active)?;
+                if seen_canonical.insert(PermutationKey::pack(
+                    &canonical_permutation,
+                    orbit_machine.simple_positions(),
+                )) {
+                    let representative = self.cayley_representative(
+                        &representatives[cursor],
+                        root,
+                        &word,
+                        &orbit_machine.twist,
+                    )?;
+                    debug_assert_eq!(
+                        involution_key(&representative),
+                        canonical_permutation,
+                        "permutation-level canonicalize diverges from the matrix replay"
+                    );
+                    representatives.push(representative);
+                    representative_permutations.push(canonical_permutation);
                 }
             }
             cursor += 1;
@@ -687,32 +733,60 @@ impl InnerClass {
         // stored as root-image permutations plus parent links; matrices are
         // rebuilt only on demand (ClassOrbit::materialize, for the test-only
         // twisted_involutions listing).
-        let mut reflection_perms: Vec<Vec<u8>> = Vec::with_capacity(rank);
-        for generator in 0..rank {
-            let reflection = WeylAction::simple_reflection(&self.datum, generator)?;
-            let permutation = self.roots.action_permutation(&reflection)?;
-            reflection_perms.push(permutation.into_iter().map(|id| id.0 as u8).collect());
-        }
         let mut orbits = try_capacity(representatives.len())?;
         let mut total = 0_usize;
-        for representative in representatives {
-            let representative_key = involution_key(&representative);
-            let mut permutations = vec![representative_key];
+        let mut seen = PermutationKeySet::default();
+        let mut next: Vec<u8> = Vec::new();
+        let packed = orbit_machine.simple_positions.len() <= 16;
+        for (representative, representative_permutation) in representatives
+            .into_iter()
+            .zip(representative_permutations)
+        {
+            let mut permutations = vec![representative_permutation];
             let mut parents: Vec<(u32, u8)> = vec![(u32::MAX, 0)];
-            let mut seen: BTreeSet<Vec<u8>> = BTreeSet::new();
-            seen.insert(permutations[0].clone());
+            seen.clear();
+            seen.insert(PermutationKey::pack(
+                &permutations[0],
+                orbit_machine.simple_positions(),
+            ));
             let mut cursor = 0_usize;
             while cursor < permutations.len() {
-                let current = permutations[cursor].clone();
                 for generator in 0..rank {
-                    let reflection = &reflection_perms[generator];
-                    // next = reflection after current after reflection.
-                    let mut next = try_capacity(current.len())?;
-                    for &image in reflection.iter() {
-                        next.push(reflection[current[image as usize] as usize]);
+                    let reflection = &orbit_machine.simple_reflections[generator];
+                    // next = reflection after current after reflection. Probe
+                    // on the simple-root images alone (an injective key), so
+                    // the full successor permutation is computed only for
+                    // genuine new members — about one edge in eight for E8.
+                    if packed {
+                        let mut key = 0_u128;
+                        {
+                            let current = &permutations[cursor];
+                            for (shift, &position) in
+                                orbit_machine.simple_positions.iter().enumerate()
+                            {
+                                let image = reflection
+                                    [current[usize::from(reflection[usize::from(position)])]
+                                        as usize];
+                                key |= u128::from(image) << (8 * shift);
+                            }
+                        }
+                        if !seen.insert(PermutationKey::Packed(key)) {
+                            continue;
+                        }
                     }
-                    if seen.insert(next.clone()) {
-                        permutations.push(next);
+                    next.clear();
+                    next.try_reserve(reflection.len())
+                        .map_err(|_| StructureError::AllocationFailed {
+                            requested: reflection.len(),
+                        })?;
+                    {
+                        let current = &permutations[cursor];
+                        for &image in reflection.iter() {
+                            next.push(reflection[current[usize::from(image)] as usize]);
+                        }
+                    }
+                    if packed || seen.insert(PermutationKey::Full(next.clone())) {
+                        permutations.push(next.clone());
                         parents.push((cursor as u32, generator as u8));
                     }
                 }
@@ -732,17 +806,402 @@ impl InnerClass {
         }
         Ok(orbits)
     }
+
+    /// Rebuild the canonical representative discovered by a Cayley step: the
+    /// successor action `r_root after parent` conjugated by the recorded
+    /// canonicalizing word, then fully validated as a [`TwistedInvolution`].
+    /// The word comes from the permutation-level canonicalization, whose
+    /// decisions are the same pairings the matrix-level
+    /// [`Self::canonicalize`] computes, so this is the representative the
+    /// historic loop would have stored.
+    fn cayley_representative(
+        &self,
+        parent: &TwistedInvolution,
+        root: RootId,
+        word: &[usize],
+        twist: &[usize],
+    ) -> Result<TwistedInvolution, StructureError> {
+        let delta = self.distinguished_involution.involution();
+        let reflection = WeylAction::root_reflection(&self.datum, &self.roots, root)?;
+        let mut action = reflection.compose(parent.weyl_action())?;
+        for &generator in word {
+            action = self.twisted_conjugate_action(&action, generator, twist)?;
+        }
+        TwistedInvolution::new(&self.datum, &self.roots, delta, action).map_err(|error| {
+            match error {
+                StructureError::InvalidInvolution => {
+                    StructureError::CartanClassificationInvariantViolation {
+                        invariant: "Cayley successor",
+                    }
+                }
+                other => other,
+            }
+        })
+    }
 }
 
 /// The partition/lookup key of a twisted involution: its root-image
 /// permutation (see [`TwistedConjugacyPartition`]).
-fn involution_key(involution: &TwistedInvolution) -> Vec<u8> {
+pub(crate) fn involution_key(involution: &TwistedInvolution) -> Vec<u8> {
     involution
         .root_involution()
         .image_permutation()
         .iter()
         .map(|id| id.0 as u8)
         .collect()
+}
+
+/// FxHash-style hasher for root-image permutation keys.
+///
+/// The orbit structures hash 240-byte permutation keys hundreds of thousands
+/// of times per inner class (E8: ~1.6M cross-action edges plus one partition
+/// entry per member), so the default SipHasher would dominate the closure.
+/// Collisions still compare the full key, so the hash choice never affects
+/// semantics, only probe speed.
+#[derive(Clone, Default)]
+pub(crate) struct PermutationHasher(u64);
+
+impl std::hash::Hasher for PermutationHasher {
+    fn finish(&self) -> u64 {
+        self.0
+    }
+
+    fn write(&mut self, bytes: &[u8]) {
+        const SEED: u64 = 0x51_7c_c1_b7_27_22_0a_95;
+        let mut chunks = bytes.chunks_exact(8);
+        for chunk in &mut chunks {
+            let value = u64::from_le_bytes(chunk.try_into().unwrap_or([0; 8]));
+            self.0 = (self.0.rotate_left(5) ^ value).wrapping_mul(SEED);
+        }
+        let remainder = chunks.remainder();
+        if !remainder.is_empty() {
+            let mut tail = 0_u64;
+            for &byte in remainder {
+                tail = (tail << 8) | u64::from(byte);
+            }
+            self.0 = (self.0.rotate_left(5) ^ tail).wrapping_mul(SEED);
+        }
+    }
+}
+
+pub(crate) type PermutationHasherBuilder = std::hash::BuildHasherDefault<PermutationHasher>;
+
+/// Dedup/lookup key of a root-image permutation: the images of the SIMPLE
+/// roots only.
+///
+/// A root-datum involution is a linear map of the root lattice, and the
+/// simple roots form a Z-basis of that lattice, so the simple-root images
+/// determine the map — and therefore the full root permutation — EXACTLY.
+/// This is an injective key, not a digest: equality semantics are unchanged.
+/// For semisimple rank <= 16 the key packs into a u128, which keeps the E8
+/// cross-action closure's ~1.6M probes to an integer hash and compare
+/// instead of a 240-byte key chase. Rank > 16 with <= 255 roots (the u8
+/// encoding's own ceiling) needs at least 17 disjoint A1 factors; that case
+/// falls back to the full permutation.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub(crate) enum PermutationKey {
+    Packed(u128),
+    Full(Vec<u8>),
+}
+
+impl PermutationKey {
+    /// The key of a full root-image permutation, given the simple roots'
+    /// positions in the permutation (generator order).
+    pub(crate) fn pack(permutation: &[u8], simple_positions: &[u8]) -> Self {
+        if simple_positions.len() <= 16 {
+            let mut packed = 0_u128;
+            for (shift, &position) in simple_positions.iter().enumerate() {
+                packed |= u128::from(permutation[usize::from(position)]) << (8 * shift);
+            }
+            Self::Packed(packed)
+        } else {
+            Self::Full(permutation.to_vec())
+        }
+    }
+}
+
+pub(crate) type PermutationKeySet =
+    std::collections::HashSet<PermutationKey, PermutationHasherBuilder>;
+pub(crate) type PermutationKeyMap<V> =
+    std::collections::HashMap<PermutationKey, V, PermutationHasherBuilder>;
+
+/// Permutation-level twisted-involution orbit machinery.
+///
+/// A twisted involution `w after delta` is represented by its root-image
+/// permutation — the same key [`TwistedConjugacyPartition`] stores. Cayley
+/// succession (`r_alpha after theta`), canonicalization, and cross-action
+/// closure (`r_s theta r_s`) are all permutation compositions on the finite
+/// root system, so the orbit construction never touches lattice matrices.
+/// Every decision the matrix-level [`InnerClass::canonicalize`] makes is a
+/// pairing of a root-sum or a positivity query of a permuted root, both of
+/// which are replicated here exactly, so the canonicalizing words — and
+/// hence the representatives replayed from them — are unchanged.
+pub(crate) struct PermutationOrbits<'a> {
+    inner_class: &'a InnerClass,
+    /// Distinguished generator twist: `twist[s]` is the generator whose
+    /// simple root is the distinguished image of `alpha_s`.
+    twist: Vec<usize>,
+    /// `minus[r]` is the root id of `-r` (every root's negative is a root).
+    minus: Vec<u8>,
+    /// Simple-root positions in the permutation, in generator order (the
+    /// packing layout of [`PermutationKey`]).
+    simple_positions: Vec<u8>,
+    /// Root permutations of the simple reflections, per generator.
+    simple_reflections: Vec<Vec<u8>>,
+    /// Cached root permutations of arbitrary-root reflections (Cayley roots).
+    reflection_cache: Vec<Option<Rc<[u8]>>>,
+}
+
+impl<'a> PermutationOrbits<'a> {
+    fn new(inner_class: &'a InnerClass) -> Result<Self, StructureError> {
+        let roots = inner_class.root_system();
+        let datum = inner_class.datum();
+        let count = roots.roots().len();
+        let twist = inner_class.generator_twist()?;
+        let simple_positions = roots
+            .simple_root_ids()
+            .iter()
+            .map(|id| id.0 as u8)
+            .collect();
+        let mut minus = try_capacity(count)?;
+        for (_, root, _) in roots.entries() {
+            let mut negated = try_capacity(root.as_slice().len())?;
+            for &coordinate in root.as_slice() {
+                negated.push(
+                    coordinate
+                        .checked_neg()
+                        .ok_or(StructureError::ArithmeticOverflow)?,
+                );
+            }
+            minus.push(
+                roots
+                    .id_of(&Weight::new(negated))
+                    .ok_or(StructureError::InvalidRootAutomorphism)?
+                    .0 as u8,
+            );
+        }
+        let mut simple_reflections = try_capacity(datum.semisimple_rank())?;
+        for generator in 0..datum.semisimple_rank() {
+            let action = WeylAction::simple_reflection(datum, generator)?;
+            let permutation = roots.action_permutation(&action)?;
+            simple_reflections
+                .push(permutation.into_iter().map(|id| id.0 as u8).collect());
+        }
+        let mut reflection_cache = try_capacity(count)?;
+        reflection_cache.resize_with(count, || None);
+        Ok(Self {
+            inner_class,
+            twist,
+            minus,
+            simple_positions,
+            simple_reflections,
+            reflection_cache,
+        })
+    }
+
+    /// The simple-root packing layout of [`PermutationKey`].
+    pub(crate) fn simple_positions(&self) -> &[u8] {
+        &self.simple_positions
+    }
+
+    /// The root permutation of the reflection in `root`, cached per root.
+    fn reflection_permutation(&mut self, root: RootId) -> Result<&[u8], StructureError> {
+        if self.reflection_cache[root.0].is_none() {
+            let roots = self.inner_class.root_system();
+            let action = WeylAction::root_reflection(self.inner_class.datum(), roots, root)?;
+            let permutation: Vec<u8> = roots
+                .action_permutation(&action)?
+                .into_iter()
+                .map(|id| id.0 as u8)
+                .collect();
+            self.reflection_cache[root.0] = Some(Rc::from(permutation.into_boxed_slice()));
+        }
+        match &self.reflection_cache[root.0] {
+            Some(permutation) => Ok(permutation),
+            None => Err(StructureError::CartanClassificationInvariantViolation {
+                invariant: "reflection permutation cache",
+            }),
+        }
+    }
+
+    /// The Cayley successor `r_root after theta` at the permutation level.
+    pub(crate) fn cayley_successor(
+        &mut self,
+        permutation: &[u8],
+        root: RootId,
+    ) -> Result<Vec<u8>, StructureError> {
+        let reflection = self.reflection_permutation(root)?;
+        Ok(permutation
+            .iter()
+            .map(|&image| reflection[usize::from(image)])
+            .collect())
+    }
+
+    /// [`InnerClass::canonicalize_with_generators`] at the permutation
+    /// level: the same three phases (dominant real sum, then dominant
+    /// imaginary sum on its walls, then positivity in the residual complex
+    /// subsystem) driven by the same pairings, so the returned word and
+    /// canonical permutation are the matrix-level result transported through
+    /// `theta |-> root-image permutation`.
+    pub(crate) fn canonicalize(
+        &self,
+        permutation: &[u8],
+        active: &[bool],
+    ) -> Result<(Vec<u8>, Vec<usize>), StructureError> {
+        let inner_class = self.inner_class;
+        let datum = inner_class.datum();
+        let roots = inner_class.root_system();
+        let mut permutation = permutation.to_vec();
+        let mut real_sum = self.kind_sum(&permutation, RootKind::Real)?;
+        let mut imaginary_sum = self.kind_sum(&permutation, RootKind::Imaginary)?;
+        let positive_root_count = roots.roots().len() / 2;
+        // Same termination caps as the matrix-level canonicalize.
+        let phase_one_cap = positive_root_count
+            .checked_add(1)
+            .and_then(|bound| bound.checked_mul(bound))
+            .ok_or(StructureError::ArithmeticOverflow)?;
+        let phase_three_cap = positive_root_count;
+        let word_capacity = positive_root_count
+            .checked_mul(2)
+            .ok_or(StructureError::ArithmeticOverflow)?;
+        let mut word = try_capacity(word_capacity)?;
+
+        // Phase one (compare `make_root_sums_dominant`).
+        let mut steps = 0_usize;
+        loop {
+            let mut changed = false;
+            for generator in 0..datum.semisimple_rank() {
+                if !active
+                    .get(generator)
+                    .copied()
+                    .ok_or(StructureError::IndexOutOfRange {
+                        index: generator,
+                        upper_bound: active.len(),
+                    })?
+                {
+                    continue;
+                }
+                let real_pairing = pair(&real_sum, &datum.simple_coroots()[generator])?;
+                let should_reflect = real_pairing < 0
+                    || (real_pairing == 0
+                        && pair(&imaginary_sum, &datum.simple_coroots()[generator])? < 0);
+                if should_reflect {
+                    if steps == phase_one_cap {
+                        return Err(StructureError::CartanClassificationInvariantViolation {
+                            invariant: "canonicalize phase-one termination",
+                        });
+                    }
+                    real_sum = datum.reflect_weight(generator, &real_sum)?;
+                    imaginary_sum = datum.reflect_weight(generator, &imaginary_sum)?;
+                    self.conjugate(&mut permutation, generator);
+                    word.try_reserve(1)
+                        .map_err(|_| StructureError::AllocationFailed { requested: 1 })?;
+                    word.push(generator);
+                    steps += 1;
+                    changed = true;
+                    break;
+                }
+            }
+            if !changed {
+                break;
+            }
+        }
+
+        // Phase two: the residual generators (identical sum pairings).
+        let residual_generators =
+            inner_class.residual_generators(&real_sum, &imaginary_sum, active)?;
+
+        // Phase three (compare `make_residual_action_positive`): the matrix
+        // level tests `w(alpha_{twist(g)})`, which is `theta(alpha_g)` — the
+        // permutation image of the g-th simple root.
+        let mut steps = 0_usize;
+        loop {
+            let mut changed = false;
+            for (generator, &residual) in residual_generators.iter().enumerate() {
+                if !residual {
+                    continue;
+                }
+                let simple = *roots.simple_root_ids().get(generator).ok_or(
+                    StructureError::IndexOutOfRange {
+                        index: generator,
+                        upper_bound: roots.simple_root_ids().len(),
+                    },
+                )?;
+                let image = *permutation.get(simple.0).ok_or(StructureError::IndexOutOfRange {
+                    index: simple.0,
+                    upper_bound: permutation.len(),
+                })?;
+                let is_positive = roots
+                    .is_positive(RootId(usize::from(image)))
+                    .ok_or(StructureError::InvalidRootAutomorphism)?;
+                if !is_positive {
+                    if steps == phase_three_cap {
+                        return Err(StructureError::CartanClassificationInvariantViolation {
+                            invariant: "canonicalize phase-three termination",
+                        });
+                    }
+                    self.conjugate(&mut permutation, generator);
+                    word.try_reserve(1)
+                        .map_err(|_| StructureError::AllocationFailed { requested: 1 })?;
+                    word.push(generator);
+                    steps += 1;
+                    changed = true;
+                    break;
+                }
+            }
+            if !changed {
+                break;
+            }
+        }
+        Ok((permutation, word))
+    }
+
+    /// Replace `p` by `s p s`, the permutation shadow of
+    /// [`InnerClass::twisted_conjugate_action`]: `s_g w s_{twist(g)} delta =
+    /// s_g theta s_g` because `s_{twist(g)} delta = delta s_g`.
+    fn conjugate(&self, permutation: &mut Vec<u8>, generator: usize) {
+        let reflection = &self.simple_reflections[generator];
+        let previous = permutation.clone();
+        for (slot, &reflected) in permutation.iter_mut().zip(reflection.iter()) {
+            *slot = reflection[usize::from(previous[usize::from(reflected)])];
+        }
+    }
+
+    /// Sum of the positive roots of one kind in ambient coordinates — the
+    /// permutation-level shadow of `positive_root_sum`, with kinds read off
+    /// the permutation (fixed is imaginary, negated is real).
+    fn kind_sum(&self, permutation: &[u8], kind: RootKind) -> Result<Weight, StructureError> {
+        let roots = self.inner_class.root_system();
+        let mut sum = try_capacity(roots.lattice_rank())?;
+        sum.resize(roots.lattice_rank(), 0_i32);
+        for (index, &image) in permutation.iter().enumerate() {
+            let matches = if usize::from(image) == index {
+                kind == RootKind::Imaginary
+            } else if image == self.minus[index] {
+                kind == RootKind::Real
+            } else {
+                kind == RootKind::Complex
+            };
+            if !matches {
+                continue;
+            }
+            let root_id = RootId(index);
+            match roots.is_positive(root_id) {
+                Some(true) => {}
+                Some(false) => continue,
+                None => return Err(StructureError::InvalidRootAutomorphism),
+            }
+            let root = roots
+                .root(root_id)
+                .ok_or(StructureError::InvalidRootAutomorphism)?;
+            for (total, &coordinate) in sum.iter_mut().zip(root.as_slice()) {
+                *total = total
+                    .checked_add(coordinate)
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+            }
+        }
+        Ok(Weight::new(sum))
+    }
 }
 
 /// One twisted-conjugacy class as generated by
@@ -1133,9 +1592,11 @@ mod tests {
         .unwrap();
 
         assert_eq!(inner_class.twisted_involutions(6).unwrap().len(), 4);
+        // The budget bounds the TOTAL twisted-involution count: the two
+        // classes have sizes 1 and 3, so a budget of 3 trips on the second.
         assert_eq!(
-            inner_class.twisted_involutions(5),
-            Err(StructureError::ResourceLimitExceeded { limit: 5 })
+            inner_class.twisted_involutions(3),
+            Err(StructureError::ResourceLimitExceeded { limit: 3 })
         );
     }
 

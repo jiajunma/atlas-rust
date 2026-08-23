@@ -8,9 +8,8 @@ use crate::grading::try_capacity;
 use crate::integer_lattice::IntegerLatticeBudget;
 use crate::{
     AdjointCartanFiber, CartanClass, CartanFiber, CartanGradingData, CayleyCrossDecomposition,
-    Grading, InnerClass, RealFormLabels, RootKind, RootSystem, StructureError,
-    TwistedConjugacyClass, TwistedInvolution, WeakRealFormId, WeakRealFormPartition, Weight,
-    WeylAction, WeylElement,
+    Grading, InnerClass, RealFormLabels, RootSystem, StructureError, WeakRealFormId,
+    WeakRealFormPartition, Weight, WeylElement,
 };
 
 /// Stable identifier for one Cartan class of one inner class.
@@ -107,110 +106,69 @@ impl CartanClassification {
         inner_class: &InnerClass,
         budget: &CartanClassificationBudget,
     ) -> Result<Self, StructureError> {
-        let datum = inner_class.datum();
         let root_system = inner_class.root_system();
-        let delta = inner_class.distinguished_involution().involution();
         let partition =
             std::sync::Arc::new(inner_class.twisted_conjugacy_partition(budget.weyl_budget)?);
         let class_count = partition.classes().len();
 
         // Atlas Cartan order (innerclass.cpp:218-291, task 1): BFS discovery.
-        // Cartan[0] is the fundamental class at the identity twisted
-        // involution (innerclass.cpp:145 seeds `Cartan(1,C_info(...))` with
-        // the default TwistedInvolution). Walking parents in discovery order,
-        // each parent's positive imaginary roots Cayley-transform the parent
-        // representative; the successor is canonicalized and appended only if
-        // its class has no number yet. Representatives are therefore the
-        // canonical twisted involutions upstream compares and stores
-        // (innerclass.cpp:252-263), never raw enumeration members.
+        // The partition's classes are ALREADY in that order: involution_orbits
+        // seeds the fundamental class at the identity twisted involution and
+        // appends each canonicalized Cayley successor in discovery order, with
+        // positive imaginary roots in upstream RootNbr order — the same walk
+        // upstream performs. The representatives are therefore the canonical
+        // twisted involutions upstream compares and stores
+        // (innerclass.cpp:252-263), never raw enumeration members, and the
+        // historic re-numbering BFS here collapsed to the identity map.
         //
         // The upstream loop conjugates each root down to a simple one and
         // Cayley-transforms by that simple reflection; the crate transforms
         // by the root's own reflection directly. The two successors are
         // twisted-conjugate (the descent conjugator carries `s_alpha w` to
-        // `s_k c(w)`), so they land on the same class and canonicalize to
-        // the same representative.
-        let identity_twisted =
-            TwistedInvolution::new(datum, root_system, delta, WeylAction::identity(datum)?)?;
-        let fundamental_raw = partition.class_of(&identity_twisted)?;
-        let mut representatives = try_capacity(class_count)?;
-        let mut raw_of_position = try_capacity(class_count)?;
-        let mut position_of_raw = try_capacity(class_count)?;
-        position_of_raw.resize(class_count, usize::MAX);
-        representatives.push(identity_twisted);
-        raw_of_position.push(fundamental_raw);
-        position_of_raw[fundamental_raw] = 0;
-
-        // The Cayley-link relation, filled as the BFS discovers it (upstream
-        // `Cartan[ii].below.insert(i)`), then an order-independent transitive
-        // closure: the BFS number of a more-split class need not exceed its
-        // parent's, so the incremental upstream scheme would under-close.
+        // `s_k c(w)`), so they land on the same class.
+        //
+        // What remains is the Cayley-link relation (upstream
+        // `Cartan[ii].below.insert(i)`), filled at the permutation level:
+        // the successor's class needs no canonicalization, because
+        // canonicalizing is twisted conjugation and stays inside the class.
+        let class_infos: Vec<_> = partition.classes().to_vec();
         let mut below = try_capacity(class_count)?;
         for _ in 0..class_count {
             let mut row = try_capacity(class_count)?;
             row.resize(class_count, false);
             below.push(row);
         }
-        let mut cursor = 0_usize;
-        while cursor < representatives.len() {
-            let twisted = representatives[cursor].clone();
-            let data = twisted.root_involution();
-            // Positive imaginary roots in upstream RootNbr order.
-            let mut imaginary = try_capacity(root_system.roots().len())?;
-            for root in data.roots_of_kind(RootKind::Imaginary) {
-                let coordinates = root_system.simple_coordinates(root).ok_or(
-                    StructureError::IndexOutOfRange {
-                        index: root.0,
+        let mut orbit_machine = inner_class.permutation_orbits()?;
+        for (cursor, class_info) in class_infos.iter().enumerate() {
+            let permutation = crate::inner_class::involution_key(class_info.representative());
+            for (index, &image) in permutation.iter().enumerate() {
+                // Imaginary means fixed by the involution's root permutation.
+                if usize::from(image) != index {
+                    continue;
+                }
+                let root = crate::RootId::from_usize(index);
+                let Some(coordinates) = root_system.simple_coordinates(root) else {
+                    return Err(StructureError::IndexOutOfRange {
+                        index,
                         upper_bound: root_system.roots().len(),
+                    });
+                };
+                if !coordinates.iter().all(|&coordinate| coordinate >= 0) {
+                    continue;
+                }
+                let successor = orbit_machine.cayley_successor(&permutation, root)?;
+                let target = partition.class_index_of_permutation(&successor).ok_or(
+                    StructureError::CartanClassificationInvariantViolation {
+                        invariant: "enumerated class lookup",
                     },
                 )?;
-                if coordinates.iter().all(|&coordinate| coordinate >= 0) {
-                    imaginary.push((upstream_positive_key(coordinates)?, root));
-                }
-            }
-            imaginary.sort_by(|(left, _), (right, _)| left.cmp(right));
-            for (_, root) in imaginary {
-                let reflection = WeylAction::root_reflection(datum, root_system, root)?;
-                let action = reflection.compose(twisted.weyl_action())?;
-                let successor =
-                    TwistedInvolution::new(datum, root_system, delta, action).map_err(|error| {
-                        match error {
-                            StructureError::InvalidInvolution => {
-                                StructureError::CartanClassificationInvariantViolation {
-                                    invariant: "Cayley successor",
-                                }
-                            }
-                            other => other,
-                        }
-                    })?;
-                let (canonical, _conjugator) = inner_class.canonicalize(successor)?;
-                let raw = partition.class_of(&canonical)?;
-                if position_of_raw[raw] == usize::MAX {
-                    position_of_raw[raw] = representatives.len();
-                    raw_of_position.push(raw);
-                    representatives.push(canonical);
-                }
-                let target_position = position_of_raw[raw];
-                if target_position == cursor {
+                if target == cursor {
                     return Err(StructureError::CartanClassificationInvariantViolation {
                         invariant: "Cayley successor",
                     });
                 }
-                below[target_position][cursor] = true;
+                below[target][cursor] = true;
             }
-            cursor += 1;
-        }
-        if representatives.len() != class_count {
-            return Err(StructureError::CartanClassificationInvariantViolation {
-                invariant: "Cartan discovery completeness",
-            });
-        }
-        let mut class_infos = try_capacity(class_count)?;
-        for (representative, &raw) in representatives.into_iter().zip(&raw_of_position) {
-            class_infos.push(TwistedConjugacyClass::new(
-                representative,
-                partition.classes()[raw].twisted_involution_count(),
-            ));
         }
 
         // Phase 1: the fiber chain and decomposition at every representative.
@@ -639,7 +597,7 @@ pub(crate) fn upstream_positive_key(
 
 #[cfg(test)]
 mod tests {
-    use crate::{BasedRootDatum, Coweight, LatticeInvolution, Weight};
+    use crate::{BasedRootDatum, Coweight, LatticeInvolution, TwistedInvolution, Weight, WeylAction};
 
     use super::*;
 

@@ -1532,10 +1532,16 @@ impl TypedContext {
                 // goes to standard output and never fails the command. The
                 // tabled type map supports no removal, so only the lexer
                 // set is updated: the name stops lexing as TYPE_ID.
-                let was_known = self.globals.remove(&name.value);
-                self.defined_type_names.borrow_mut().remove(&name.value);
-                let state = if was_known { "forgotten" } else { "not known" };
+                // global_forget_identifier (global.w:1241-1248): the report
+                // goes to standard output and never fails the command. A
+                // TYPE name also counts as known (upstream removes it from
+                // the id table via clean_out_type_identifier): Levi_
+                // subgroups.at's closing `forget orbit_data` reports
+                // "forgotten", not "not known".
+                let was_type = self.defined_type_names.borrow_mut().remove(&name.value);
+                let was_known = self.globals.remove(&name.value) || was_type;
                 // global.w:1241-1248: no input-level indentation here.
+                let state = if was_known { "forgotten" } else { "not known" };
                 Ok(vec![TypedCommandEvent::PlainReportLine {
                     text: format!("Identifier '{}' {state}\n", name.value),
                     span: *span,
@@ -1920,7 +1926,11 @@ impl TypedContext {
                 .collect();
             // Pass 2: resolve each spec with every group name visible.
             for (definition, number) in definitions.iter().zip(numbers) {
-                let (expansion, fields) = resolve_type_spec(&definition.spec, &self.types)?;
+                let (mut expansion, fields) = resolve_type_spec(&definition.spec, &self.types)?;
+                // Upstream reduces every structural equivalence class to
+                // one type_map entry (axis-types.w:1024-1051): an anonymous
+                // sub-type equal to an earlier named one references it.
+                self.types.canonicalise_anonymous(&mut expansion);
                 self.types.update(number, expansion, fields);
                 targets.push(Type::Tabled(number));
             }
@@ -3771,7 +3781,15 @@ fn convert_op_cast(
         )
     })?;
     let merged = merged_variants(&name.value, analysis.overloads, analysis.types);
-    if let Some(variant) = merged.iter().find(|variant| variant.arg_type == cast_type) {
+    // The instance test is structural (no wildcard specialisation — see
+    // the operator-cast guard in AGENTS.md) but upstream's equality is
+    // type_expr::operator==, which treats a tabled type as equal to its
+    // expansion (axis-types.w:807-825): `maximal@KGPElt` selects the
+    // ([int],KGBElt) overload (parabolics.at:124).
+    if let Some(variant) = merged
+        .iter()
+        .find(|variant| variant.arg_type.equals(&cast_type, analysis.types))
+    {
         let (value, deduced) = match variant.origin {
             OverloadOrigin::Builtin(index) => (
                 builtin_function_value(index, analysis.types),

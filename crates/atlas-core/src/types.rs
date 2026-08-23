@@ -387,6 +387,46 @@ impl TypeTable {
         }
     }
 
+    /// Replace anonymous sub-types that are structurally equal to a named,
+    /// unmerged tabled type with a reference to it (upstream
+    /// `type_expr::add_typedefs`, axis-types.w:1024-1051, reduces every
+    /// structural equivalence class to ONE type_map entry, so an
+    /// anonymously written `[int,WeylElt]` inside a later definition IS
+    /// Levi_subgroups.at's `orbit_data` and echoes under that name).
+    /// Children are rewritten bottom-up; unresolved placeholders of the
+    /// group under construction (definition still Undetermined) are
+    /// skipped.
+    pub fn canonicalise_anonymous(&self, type_: &mut Type) {
+        match type_ {
+            Type::Function(parts) => {
+                self.canonicalise_anonymous(&mut parts.0);
+                self.canonicalise_anonymous(&mut parts.1);
+            }
+            Type::Row(inner) => self.canonicalise_anonymous(inner),
+            Type::Tuple(components) | Type::Union(components) => {
+                for component in components {
+                    self.canonicalise_anonymous(component);
+                }
+            }
+            Type::Undetermined | Type::Primitive(_) | Type::Tabled(_) => {}
+        }
+        if matches!(
+            type_,
+            Type::Undetermined | Type::Primitive(_) | Type::Tabled(_)
+        ) {
+            return;
+        }
+        for (index, binding) in self.bindings.iter().enumerate() {
+            if binding.merged_into.is_none()
+                && binding.definition != Type::Undetermined
+                && binding.definition.equals(type_, self)
+            {
+                *type_ = Type::Tabled(TypeNumber(index));
+                return;
+            }
+        }
+    }
+
     pub fn binding(&self, number: TypeNumber) -> &TypeBinding {
         &self.bindings[number.0]
     }
