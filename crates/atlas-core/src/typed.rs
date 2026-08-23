@@ -597,7 +597,10 @@ impl OverloadState {
         types: &TypeTable,
         span: SourceSpan,
     ) -> Result<(usize, usize), Diagnostic> {
-        self.merged_cache.borrow_mut().clear();
+        // Only THIS name's merged view changes; leave the other cached
+        // names warm (a corpus script interleaves hundreds of `set`
+        // commands with call sites of unrelated names).
+        self.merged_cache.borrow_mut().remove(name);
         // A tabled function type (lazy_lists.at's inf_list) keeps its
         // name for the report but contributes its expansion's argument
         // type to overload matching.
@@ -675,7 +678,7 @@ impl OverloadState {
     /// shadowed by `set` stays hidden, so forgetting the user replacement
     /// never resurrects the builtin). `false` when nothing matched.
     fn remove(&mut self, name: &str, arg_type: &Type) -> bool {
-        self.merged_cache.borrow_mut().clear();
+        self.merged_cache.borrow_mut().remove(name);
         if let Some(users) = self.user.get_mut(name) {
             let position = users.iter().position(
                 |user| matches!(&user.function_type, Type::Function(parts) if parts.0 == *arg_type),
@@ -868,8 +871,8 @@ struct MergedVariant {
 
 /// The active variants for `name`: startup overloads not hidden by
 /// `forget`, with user variants inserted at the position the upstream
-/// single-table ordering gives them. Cached on the overload state; every
-/// mutation (`add_user`, `remove`) clears the cache.
+/// single-table ordering gives them. Cached on the overload state; the
+/// `add_user`/`remove` mutations invalidate the entry for their name.
 fn merged_variants(name: &str, overloads: &OverloadState, types: &TypeTable) -> Rc<Vec<MergedVariant>> {
     if let Some(cached) = overloads.merged_cache.borrow().get(name) {
         return Rc::clone(cached);
