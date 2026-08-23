@@ -4974,3 +4974,20 @@ the frozen print_family batch. No other hidden special operators exist
   reproduced with per-job worktree in 3621075). Diagnosis job 3621118
   runs the two stale tests solo for exact shapes and the overflow test
   with RUST_MIN_STACK=32M to distinguish depth from runaway recursion.
+
+## Recovery runbook 2026-08-24b (HPC login node outage)
+
+- Login node 10.26.14.64 was unreachable (100% ping loss, ssh timeout)
+  from ~01:54+08. Commits a0c733a/7fce0f4 were pushed to GitHub but NOT
+  rsynced to HPC; quick_check for them never ran.
+- On reconnect, in order:
+  1. `rsync -az --delete .git/ ikkemhpc:/public/home/majj/atlas-rust/.git/`
+     then `ssh ikkemhpc 'cd /public/home/majj/atlas-rust && git reset --hard HEAD && sbatch hpc/quick_check.sbatch'`
+  2. Let agent-111 (overload perf) land its work; at a quiet point rerun
+     the FULL corpus: `sbatch --export=ALL,TIMEOUT=300 hpc/script_corpus.sbatch`
+     and confirm 240/240 MATCH on one HEAD.
+  3. Benchmark workloads (self-contained, no includes) via the corpus
+     driver — no new sbatch needed:
+     `sbatch --export=ALL,TIMEOUT=600 hpc/script_corpus.sbatch '/public/home/majj/atlas-rust/hpc/workloads/workload_*.atlas'`
+     Report lands in results/<commit>/<jobid>/script_corpus_report.json
+     with seconds/maxrss for both binaries; record into BENCHMARKS.md.
