@@ -1996,17 +1996,27 @@ impl TypedContext {
             Type::Tabled(number) => self.types.expansion(*number).clone(),
             other => other.clone(),
         };
-        // The bracketed (tabled) form echoes with void arrow sides shown
-        // (global.w:1647, "defined as (void->int)"); the single-name
-        // alias form keeps the plain spelling (global.w:1390, "(->int)").
-        let heading = format!(
-            "Type name '{}' defined as {}\n",
-            definition.name.value,
-            match target {
-                Type::Tabled(_) => expansion.display_in_set_type(&self.types).to_string(),
-                _ => expansion.display(&self.types).to_string(),
-            }
-        );
+        // The bracketed (tabled) form echoes the expansion with void
+        // arrow sides shown (global.w:1647, "defined as (void->int)").
+        // The single-name alias form echoes the type AS WRITTEN
+        // (global.w:1390): a tabled right-hand side prints its NAME
+        // ("Type name 'Parabolic' defined as KGPElt"), a structural one
+        // its plain spelling ("(->int)").
+        let heading = match &definition.spec {
+            TypeSpec::Alias(_) => format!(
+                "Type name '{}' defined as {}\n",
+                definition.name.value,
+                target.display(&self.types)
+            ),
+            _ => format!(
+                "Type name '{}' defined as {}\n",
+                definition.name.value,
+                match target {
+                    Type::Tabled(_) => expansion.display_in_set_type(&self.types).to_string(),
+                    _ => expansion.display(&self.types).to_string(),
+                }
+            ),
+        };
         let fields = match &definition.spec {
             TypeSpec::Alias(_) => return Ok(heading),
             TypeSpec::Struct(fields) | TypeSpec::Union(fields) => fields,
@@ -3803,16 +3813,20 @@ fn convert_op_cast(
         .iter()
         .find(|variant| variant.arg_type.equals(&cast_type, analysis.types))
     {
-        let (value, deduced) = match variant.origin {
-            OverloadOrigin::Builtin(index) => (
-                builtin_function_value(index, analysis.types),
-                Type::function(variant.arg_type.clone(), variant.result_type.clone()),
-            ),
+        // The cast value's type uses the WRITTEN argument type, not the
+        // stored one (axis.w:6761-6764: type_expr(ctype.copy(), res_t)) —
+        // `complex_Levi@ComplexParabolic` reports
+        // (ComplexParabolic->RootDatum) even when the selected instance
+        // was stored with the structural (RootDatum,[int]).
+        let value = match variant.origin {
+            OverloadOrigin::Builtin(index) => builtin_function_value(index, analysis.types),
             OverloadOrigin::User(user_index) => {
-                let user = &analysis.overloads.user_variants(&name.value)[user_index];
-                (user.value.clone(), user.function_type.clone())
+                analysis.overloads.user_variants(&name.value)[user_index]
+                    .value
+                    .clone()
             }
         };
+        let deduced = Type::function(cast_type.clone(), variant.result_type.clone());
         return conform_types(
             &deduced,
             required,
@@ -5284,6 +5298,21 @@ fn convert_lambda_expression(
         unreachable!("specialising to a function pattern yields a function type")
     };
     *return_cell.borrow_mut() = parts.1.clone();
+    // `set f(...) = T: body` desugars the declared result into a `T: body`
+    // cast (syntax.rs lambda_with_result), so the cell seeded above is
+    // still undetermined when the context gave nothing. Seed it from that
+    // cast — upstream seeds the shared result cell from the lambda's
+    // declared result directly (axis.w:313) — otherwise a `return` clause
+    // narrows the cell to its raw a-priori type (`return null(0)` inside
+    // `set f(...)=[int]: ...` leaked vec and then contradicted the body's
+    // coerced [int]).
+    if matches!(*return_cell.borrow(), Type::Undetermined) {
+        if let Expr::Cast { target, .. } = body {
+            if let Ok(declared) = target.resolve_in(analysis.types) {
+                *return_cell.borrow_mut() = declared;
+            }
+        }
+    }
     let converted = convert_expr(body, &mut parts.1, &body_analysis)?;
     // Propagate narrowings that only `return` clauses made (the body's own
     // narrowings are already in `parts.1`; a conflict means a return type
