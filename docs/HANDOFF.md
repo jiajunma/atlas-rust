@@ -4892,3 +4892,50 @@ the frozen print_family batch. No other hidden special operators exist
 - Lesson: when every OUTPUT_DIFF shows the same first-divergence line,
   fix that before dispatching per-script buckets — the histogram's job
   is exactly to expose this.
+- gl4H.at corpus failure (`Runtime error at hermitian.at:30:47: parameter
+  not in the common block`, triggered by `twisted_KL_sum_at_s(p)` in the
+  c-form formula for p=trivial(quasicompact_form(GL(8,R))) and
+  trivial(SL(4,H))): TWO root causes, both fixed.
+  (1) `KgbGraph::twisted_with_destination` (kgb_graph.rs) looked up the
+  delta-twisted Tits element by RAW mod-2 torus bits, but upstream
+  `KGB::lookup` first REDUCES the candidate against the renamed
+  involution's mod space (`ic.involution_table().reduce(a)`,
+  kgb.cpp:716-719) before comparing against the stored (reduced) fiber
+  representatives. Where the twisted bits are only mod-space-equivalent to
+  the stored ones we returned UndefKGB: `twist(KGB(G,2))` for
+  G=quasicompact_form(GL(4,R)) gave #4294967295 vs oracle #2 (twisted
+  bits 0101 reduce to the stored 1010 mod im(1+theta_2)). This poisoned
+  every consumer: the ext_block fixed-point test
+  (`transformed_twisted`/`ExtBlock::build`) dropped the delta-fixed seed,
+  so the fixed fiber of trivial(GL(8,R))'s common block (25 elements,
+  x=0,1,2,3,4,8,...) lacked the seed x=5. Fix `7b6bb90`: delegate to the
+  already-verified reducing `KgbGraph::lookup`. Side effect also fixed:
+  `extended_block(p,delta)` for the same p previously PANICKED
+  (usize::MAX fiber index in the wrapper's `signed()`); now matches the
+  oracle (25-element fiber). Debugging lesson: on panic, stdout buffered
+  by the CLI is LOST — a probe printing progress before the failing call
+  shows nothing; bisect with separate one-call probe files, and note the
+  "parameter not in the common block" prose has three emit sites
+  (domain_builtins.rs common-block seed search x2, formerly
+  twisted_block_index x1) — the twisted one was a symptom, not the cause.
+  (2) `with_integral_block` (domain_builtins.rs) rebuilt the FULL dual
+  block for `IntegralBlockScope::Full` and searched it for the seed, but
+  upstream `Rep_table::twisted_KL_column_at_s`/`twisted_deformation`
+  always use `Rep_table::lookup` — the seed-rooted Bruhat interval-below
+  common block — even at a full integral subsystem (repr.cpp:2378-2382,
+  2605-2606); the full block's y-classes are propagated from its own
+  generator, so a delta-fixed seed can sit on a non-fixed y-class there
+  (and its `block.length` signs differ from the common block's). Fix
+  `305d3a9`: Full now shares the lookup path with ProperSubsystem,
+  matching the crate's own recursive twisted_deformation driver
+  (deform.rs:1102); the homegrown `twisted_block_index` helper is gone.
+  Verified on HPC clone /public/home/majj/atlas-rust-gl4h (release build
+  of 7b6bb90): twisted_KL_sum_at_s matches the oracle line-for-line for
+  trivial(quasicompact_form(GL(n,R))) n=2,4,6,8 (1,3,7,25 terms) and
+  trivial(SL(4,H)) (130 lines), KL_sum_at_s(GL(8)) still matches (105
+  lines), and gl4H.at lines 1-8 (`twisted_c_form_irreducible_as_sum_of_
+  standards` for both forms, 105 terms each) match the oracle exactly
+  (212 parameter lines). quick_check job 3617949 (compile gate for the
+  pair of fixes). Probes live in /public/home/majj/gl4h-probes/ (NOT in
+  atlas-scripts). NOTE: corpus rerun should re-confirm gl4H.at end to
+  end; the extended_block fix may repair other scripts too.
