@@ -4784,3 +4784,11 @@ the frozen print_family batch. No other hidden special operators exist
   fix (~0.7s of it), ~2.8s/脚本 unknown hot spot remains. Next perf
   step: gdb-sample a slow script (e.g. springer_table_E8.at) with the
   documented recipe.
+- `0ab4baa` fix: bracketed set_type members with ALL fields unnamed
+  parse as a plain type expression (Alias-shaped spec). (a) The echo
+  must key on the set_type FORM (bracketed vs single-name), not the
+  spec kind — `set_type [ t0 = (int,int) ]` echoes "(int,int)" while
+  `set_type Parabolic = KGPElt` echoes "KGPElt". Keying on spec kind
+  (c13b06a) regressed 42 previously-MATCH corpus scripts. (b) Pad
+  binding.fields with None per component in pass 2, or whattype zips
+  components against an empty list and prints "(  )".
