@@ -4859,3 +4859,36 @@ the frozen print_family batch. No other hidden special operators exist
   output matches oracle except the pre-existing WeylClassTable set_type
   echo formatting (`(int,int->int)` vs `((int,int)->int)`, unrelated).
   quick_check job 3617899: CHECK_DONE status=0.
+
+## Checkpoint 2026-08-23d (corpus 3617910: one echo root cause for all 144 diffs)
+
+- Corpus 3617910 (952b2c7, driver with output_diff snippets 3f6dc19):
+  MATCH 93 / OUTPUT_DIFF 144 / RUST_EVAL_FAIL 1 (gl4H.at panicked in
+  ext_block.rs — fixed by 7b6bb90) / SKIPPED_LARGE 2. Recorded in
+  BENCHMARKS.md ledger (median rust/cpp 29.5x, slowest 76.8x — numbers
+  predate the overload-cache perf commits 659df32/f1c5fc5).
+- The output_diff_histogram collapsed all 144 OUTPUT_DIFFs to a single
+  root cause: the bracketed `set_type` echo printed tuple/union arrow
+  sides naked — rust `(int,int->int)` vs oracle `((int,int)->int)`.
+  Mechanism: upstream `type_expr::add_typedefs` interns EVERY anonymous
+  sub-type, so in the echo (`type.untabled()`, global.w:1647) a function
+  arrow side has `raw_kind()==tabled`, not `tuple_type`, and keeps its
+  parentheses (axis-types.w:1620-1635 prints naked only for DIRECT
+  tuple/union). The single-name alias form echoes the checked type
+  uninterned, so it stays naked (global.w:1390). Oracle probes on HPC:
+  `set_type [ T = ((int,int->int) f) ]` echoes "(((int,int)->int))";
+  same for union args, row-nested, and the result side;
+  `set_type G = ((int,int->int) f, int x)` echoes naked.
+- Fix 9a33da9: `write_arrow_side` in types.rs keeps parens for
+  tuple/union sides when `void_arrow` (the bracketed-echo mode, used
+  only by `display_in_set_type`). Unit tests added from the probes.
+- Verification in flight: quick_check 3617952, corpus 3617953 at
+  9a33da9 (also carries 659df32+f1c5fc5 overload-cache perf and
+  7b6bb90 gl4H ext_block fix — corpus 3617953 doubles as the perf
+  before/after measurement).
+- Also this round: agent-111 landed OverloadState merged-variants cache
+  (659df32, per-name) plus precise invalidation (f1c5fc5); its own
+  HPC timing verification jobs were 3617924/3617925.
+- Lesson: when every OUTPUT_DIFF shows the same first-divergence line,
+  fix that before dispatching per-script buckets — the histogram's job
+  is exactly to expose this.
