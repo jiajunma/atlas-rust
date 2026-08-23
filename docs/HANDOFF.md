@@ -4,6 +4,33 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-23c (overload-resolution hot spot found + first fix; corpus diff snippets)
+
+- Perf root cause for the residual per-script gap (median ~4.6s vs oracle
+  ~0.15s; NOT size-correlated: 93KB basic.at 0.17s, 604B GKfast.at 8.7s):
+  gdb sampling via `hpc/perf_sample.sbatch` (jobs 3617887/3617888,
+  GKfast.at + generic_degrees.at) shows all samples in
+  `coercions::same`/`is_close` <- `typed::merged_variants` <-
+  `convert_overload_application`, plus malloc/free churn (deep type
+  clones). First fix landed: `659df32` caches merged overload variants
+  per name in OverloadState (agent-111). Re-measure via corpus before
+  deeper surgery (is_close expansion caching / clone reduction may
+  remain).
+- Corpus driver enhanced (commit `3f6dc19`): each OUTPUT_DIFF entry now
+  carries `output_diff` (first divergent line, both versions, differing
+  line count) and the report has an `output_diff_histogram` bucketing
+  first-diff cpp line shapes — triage buckets come straight from one run.
+- Corpus 3617878 (0ab4baa): MATCH 93 / OUTPUT_DIFF 143 / EVAL_FAIL 2 /
+  SKIPPED 2. EVAL_FAIL down to 2i12.at (Hecke decompose assert,
+  agent-110) and gl4H.at ("parameter not in the common block", fixed by
+  agent-109 in `305d3a9`: route full-integral twisted KL/deform blocks
+  through Rep_table-style lookup). example.at pars[7] crash was already
+  cured by the Levi fix `a0cbcd9`; `bad6338` matches upstream
+  PreRootDatum equality for RootDatum `=`. quick_check 3617890 green.
+- Large scripts: the 2 SKIPPED_LARGE (~3MB E8 cell data) run separately on
+  fat: `sbatch --partition=fat --mem=32G --export=ALL,SIZE_CAP=4000000,MEM_CAP_GB=24,TIMEOUT=1200 hpc/script_corpus.sbatch <paths>` (job 3617912).
+- Ledger rows live in docs/BENCHMARKS.md ("Script-corpus ledger").
+
 ## Checkpoint - 2026-08-23b (fundamental_(co)weight ambient coordinates; induction_sp4 unblocked)
 
 - Corpus failure: `induction_sp4.at` died at
@@ -4808,3 +4835,27 @@ the frozen print_family batch. No other hidden special operators exist
   theta-stable [4,3,2,1], total 10. NOTE: corpus 3617878 (at 0ab4baa)
   globbed only 76 scripts and did NOT include example.at — the next
   full corpus rerun should re-confirm it.
+- 2i12.at corpus failure (`Runtime error at basic.at:23:61: assertion
+  failed` inside `decompose(0,1,delta,B,g)`, 2i12.at:34): root cause was
+  RootDatum `=` semantics, not Hecke math. Upstream compares root data as
+  bare `PreRootDatum` (simple roots, simple coroots, `prefer_co`;
+  prerootdata.cpp `operator==`), while our derived PartialEq on
+  `RootDatumHandle` (domain_builtins.rs) also compared the lie_type and
+  isogeny provenance fields. `integrality_datum` hardcodes
+  `DatumIsogeny::SimplyConnected` when lattice_rank==semisimple_rank, but
+  the same datum built via `root_datum(LieType, lattice)` gets
+  `classify_isogeny` -> `Other`, so `w.root_datum=p.integrality_datum`
+  was false and the single-argument assert in `cross@(WeylElt,Param)`
+  (basic.at:1827) fired. Call chain: decompose -> generate_subspace ->
+  neighbors -> ext_cross (type 2r21) -> ext_cross_special ->
+  ext_cross_simple -> ext_cross_2 -> test_ext_cross -> cross(WeylElt,Param).
+  Fix `bad6338`: manual `PartialEq for RootDatumHandle` comparing only
+  `datum` + `prefers_coroots`. Debugging lesson: the default-message
+  assert (`assert(b)` -> "assertion failed" at basic.at:23) is always one
+  of the few single-argument assert sites (basic.at:1521/1524/1827/1830,
+  tits.at:56/60, Wdelta.at:46, lattice.at:49/208); bisect by rebuilding
+  the script's intermediate values with `prints` on both binaries. Verified
+  on HPC clone /public/home/majj/atlas-rust-2i12: full 2i12.at exits 0,
+  output matches oracle except the pre-existing WeylClassTable set_type
+  echo formatting (`(int,int->int)` vs `((int,int)->int)`, unrelated).
+  quick_check job 3617899: CHECK_DONE status=0.
