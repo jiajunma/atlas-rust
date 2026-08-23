@@ -30,7 +30,10 @@ check_status=${PIPESTATUS[0]}
 echo "CHECK_DONE status=$check_status"
 if [[ "$check_status" -eq 0 ]]; then
   test_log="$submit_dir/atlas-test-${SLURM_JOB_ID}.log"
-  cargo test --workspace > "$test_log" 2>&1 && test_status=0 || test_status=$?
+  # The evaluator recurses deeper than the 2MB default test-thread stack
+  # (typed::tests::let_function_sugar_and_recursion_evaluate SIGABRTs
+  # without this; with 32M it passes in 0.01s — depth, not runaway).
+  RUST_MIN_STACK=33554432 cargo test --workspace > "$test_log" 2>&1 && test_status=0 || test_status=$?
   grep -E '^(test result|error|failures:)' "$test_log" | tail -25 || true
   echo "TEST_DONE status=$test_status log=$test_log"
 fi

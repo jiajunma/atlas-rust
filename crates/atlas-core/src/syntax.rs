@@ -4195,13 +4195,15 @@ mod tests {
             "seq(assign(x,1);+@4(x,1))"
         );
         // A while with a condition, and the bare-do constant-true form.
+        // Since 075c5e8 the body is a single do_expr (parser.y:364):
+        // `while c do b od` is do(c;b), bare `do` adds a true guard.
         assert_eq!(
             expression_shape(&parse_one("while x < 5 do x := x + 1 od")),
-            "while(<@2(x,5);assign(x,+@4(x,1)))"
+            "while(do(<@2(x,5);assign(x,+@4(x,1))))"
         );
         assert_eq!(
             expression_shape(&parse_one("while do break od")),
-            "while(;break)"
+            "while(do(true;break))"
         );
         // The for-loop pattern reuses the binding grammar; `@` binds the index.
         assert_eq!(
@@ -4243,7 +4245,7 @@ mod tests {
         assert_eq!(expression_shape(&parse_one("break 2")), "break 2");
         assert_eq!(
             expression_shape(&parse_one("while do break 1 od")),
-            "while(;break 1)"
+            "while(do(true;break 1))"
         );
         // The level spans both tokens, like the oracle's error location.
         let Expr::Break { span, .. } = parse_one("break 12") else {
