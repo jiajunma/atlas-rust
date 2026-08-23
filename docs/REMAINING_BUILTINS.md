@@ -39,10 +39,14 @@ rebuilding a full dual block. `tests/fixtures/domain/deform_proper.atlas`
 covers B2 and A2 proper subsystems; HPC capture 3611271 and fat differential
 3611540 pass.
 
-The next confirmed semantic gap is `partial_KL_block(Param)`, which still
-constructs a full `BlockGraph` and manually computes its downset. Port it to
-`LocatedBlock` plus `with_kl_table`, `partial_block_finals_for`, and
-modifier-aware survivor parameters before treating the builtin as complete.
+The `partial_KL_block(Param)` gap is closed. The `LocatedBlock` port landed
+in `6c5a081` (oracle capture 3612358, fat differential 3612366 PASS), and
+`40da8de` finishes the oracle alignment: the upstream `test_standard` gate
+(atlas-types.w:7000, byte-exact "partial_KL_block requires a standard
+parameter" diagnostic), condensation over the record's shared KL table via
+`with_kl_table` instead of a per-call `KlTable`, and rejected fixture
+`tests/fixtures/domain/partial_kl_block_rejected.atlas` (capture 3621006,
+differential 3621052).
 
 ## full_deform common-block recursion verified (2026-08-20)
 
