@@ -508,8 +508,10 @@ PostfixSuffix: PostfixSuffix = {
     <_dot:"."> <_open:"("> <inner:Expr> <_close:")"> => unit_selector(inner),
     // `selector: unit` also admits the if-forms (parser.y:321,335-336):
     // `f. if c else g then h fi` applies the conditional to the receiver
-    // (combinatorics.at:629).
+    // (combinatorics.at:629), and the case-forms (parser.y:350-359):
+    // `alpha.case stats[i] in ... esac` (synthetic.at:139).
     <_dot:"."> <if_span:"if"> <tail:IfTail> => unit_selector(finish_conditional(if_span, tail)),
+    <_dot:"."> <e:CaseExpr> => unit_selector(e),
 };
 
 // `selector: unit` (parser.y:321) — a literal in selector position.
@@ -603,6 +605,13 @@ Atom: Expr = {
     },
     // Case discrimination (parser.y:480-482, caselist): `case subject |
     // tag(pattern): body | tag: body | else body esac`.
+    <e:CaseExpr> => e,
+};
+
+// The case-expression forms (parser.y:350-359,480-482), factored out so
+// `selector: unit` can reuse them after `.` (synthetic.at:139
+// `alpha.case stats[i] in v0,v0,... esac`).
+CaseExpr: Expr = {
     <case:"case"> <subject:Expr> <_bar:"|"> <branches:CaseBranches> <esac:"esac"> => {
         case_expression(case, subject, branches, esac)
     },

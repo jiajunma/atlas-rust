@@ -4286,8 +4286,19 @@ fn component_type_for_assignment(
     );
     // axis.w:8163-8172 (`comp_ass_stat::assignability`): rows, vec, and mat
     // (column or two-index entry) admit component assignment; ratvec is
-    // read-only upstream and falls to the generic diagnostic.
-    match aggregate_type {
+    // read-only upstream and falls to the generic diagnostic. index_kind
+    // untables the aggregate (axis-types.w:375-384), so a tabled row like
+    // sparse.at's sparse_mat assigns through its expansion; the diagnostic
+    // still prints the original named type.
+    let expanded_aggregate;
+    let aggregate_kind: &Type = match aggregate_type {
+        Type::Tabled(number) => {
+            expanded_aggregate = analysis.types.expansion(*number).clone();
+            &expanded_aggregate
+        }
+        other => other,
+    };
+    match aggregate_kind {
         Type::Row(component) if int_index => return Ok((**component).clone()),
         Type::Primitive(Prim::Vec) if int_index => return Ok(Type::Primitive(Prim::Int)),
         Type::Primitive(Prim::Mat) if int_index => return Ok(Type::Primitive(Prim::Vec)),
@@ -5415,9 +5426,12 @@ fn convert_overload_application(
     // `resolve_overload` first honours an exact ordinary overload, then
     // recognises the hidden generic row `#`/`##` instances, and only
     // afterwards considers coercible ordinary overloads (axis.w:2458-2595).
+    // Upstream's exact test is type_expr::operator==, which treats a tabled
+    // type as equal to its expansion (axis-types.w:807-825) — a call with a
+    // KGBElt_gen argument exactly matches a (InnerClass,mat,ratvec) overload.
     let exact = variants
         .iter()
-        .position(|variant| variant.arg_type == a_priori_type);
+        .position(|variant| variant.arg_type.equals(&a_priori_type, analysis.types));
     let hidden = if exact.is_none() {
         hidden_special_variant(name, &a_priori_type, analysis.types)
     } else {
@@ -11218,6 +11232,24 @@ fn hidden_special_variant(
     a_priori_type: &Type,
     types: &TypeTable,
 ) -> Option<(usize, Type)> {
+    // Every upstream shape test goes through kind()/component_type(), which
+    // untable transparently (axis-types.w:375-384): a tabled row like
+    // orbit_data still matches the generic `#`/`##` instances.
+    let expanded_top;
+    let a_priori_type: &Type = match a_priori_type {
+        Type::Tabled(number) => {
+            expanded_top = types.expansion(*number).clone();
+            &expanded_top
+        }
+        other => other,
+    };
+    // Untabled view of one level down, for the row-component shape tests.
+    fn untabled<'t>(type_: &'t Type, types: &'t TypeTable) -> &'t Type {
+        match type_ {
+            Type::Tabled(number) => types.expansion(*number),
+            other => other,
+        }
+    }
     match name {
         "#" => match a_priori_type {
             // sizeof_row (axis.w:2544-2548): the length of any row value.
@@ -11230,7 +11262,7 @@ fn hidden_special_variant(
                 // ([T],element) where T specialises the element type. A `*`
                 // component adopts the element type, so `[]#3` works
                 // (upstream mutates the a-priori component the same way).
-                if let Type::Row(component) = &components[0] {
+                if let Type::Row(component) = untabled(&components[0], types) {
                     let mut component = component.as_ref().clone();
                     if component.specialise(&components[1], types) {
                         let index = hidden_builtin_by_pattern(
@@ -11241,7 +11273,7 @@ fn hidden_special_variant(
                     }
                 }
                 // prefix_element (axis.w:2561-2569): (element,[T]).
-                if let Type::Row(component) = &components[1] {
+                if let Type::Row(component) = untabled(&components[1], types) {
                     let mut component = component.as_ref().clone();
                     if component.specialise(&components[0], types) {
                         let index = hidden_builtin_by_pattern(
@@ -11256,8 +11288,9 @@ fn hidden_special_variant(
             _ => None,
         },
         "##" => match a_priori_type {
-            // join_rows_row (axis.w:2577-2582): fold a row of rows.
-            Type::Row(component) if matches!(component.as_ref(), Type::Row(_)) => {
+            // join_rows_row (axis.w:2577-2582): fold a row of rows; the
+            // component may itself be a tabled row (a row of orbit_data).
+            Type::Row(component) if matches!(untabled(component, types), Type::Row(_)) => {
                 let index = hidden_builtin_by_pattern(
                     "##",
                     |arg| matches!(arg, Type::Row(inner) if matches!(inner.as_ref(), Type::Row(_))),
@@ -11267,8 +11300,8 @@ fn hidden_special_variant(
             // join_rows (axis.w:2583-2595): two rows of the same type.
             Type::Tuple(components)
                 if components.len() == 2
-                    && matches!(&components[0], Type::Row(_))
-                    && components[0] == components[1] =>
+                    && matches!(untabled(&components[0], types), Type::Row(_))
+                    && components[0].equals(&components[1], types) =>
             {
                 let index = hidden_builtin_by_pattern(
                     "##",
