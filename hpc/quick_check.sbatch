@@ -28,8 +28,10 @@ cargo check --workspace --all-targets 2>&1 | grep -E '^(error|warning: unused)' 
 check_status=${PIPESTATUS[0]}
 echo "CHECK_DONE status=$check_status"
 if [[ "$check_status" -eq 0 ]]; then
-  cargo test --workspace 2>&1 | grep -E '^(error|test result|failures:|---- .* stdout)' -A 6 || true
-  echo "TEST_DONE status=${PIPESTATUS[0]}"
+  test_log="$submit_dir/atlas-test-${SLURM_JOB_ID}.log"
+  cargo test --workspace > "$test_log" 2>&1 && test_status=0 || test_status=$?
+  grep -E '^(test result|error|failures:)' "$test_log" | tail -25 || true
+  echo "TEST_DONE status=$test_status log=$test_log"
 fi
 cd "$submit_dir"
 git worktree remove --force "$check_dir"
