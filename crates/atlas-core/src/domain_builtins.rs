@@ -102,12 +102,27 @@ impl LieTypeValue {
 }
 
 /// A root datum handle with its construction provenance.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq)]
 pub struct RootDatumHandle {
     datum: Arc<BasedRootDatum>,
     lie_type: LieTypeValue,
     isogeny: DatumIsogeny,
     prefers_coroots: bool,
+}
+
+impl PartialEq for RootDatumHandle {
+    /// Upstream compares root data as bare `PreRootDatum` values
+    /// (`PreRootDatum::operator==`, prerootdata.cpp): simple roots, simple
+    /// coroots, and the coroot preference. The Lie-type label and isogeny
+    /// are construction provenance only (e.g. `integrality_datum` reports a
+    /// full-rank subsystem as simply connected while the same datum built
+    /// via `root_datum(LieType, lattice)` is `Other`), so they must not
+    /// take part in `=`@(RootDatum,RootDatum); otherwise
+    /// `assert(w.root_datum=p.integrality_datum)` in basic.at's
+    /// `cross@(WeylElt,Param)` fails for 2i12.at.
+    fn eq(&self, other: &Self) -> bool {
+        self.datum == other.datum && self.prefers_coroots == other.prefers_coroots
+    }
 }
 
 impl RootDatumHandle {
