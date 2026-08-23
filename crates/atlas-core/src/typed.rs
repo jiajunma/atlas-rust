@@ -2635,7 +2635,19 @@ pub fn convert_expr(
                             .iter()
                             .all(|part| matches!(part, Type::Primitive(Prim::Int)))
             );
-            let found = match &array_type {
+            // `aggr.kind()` untables transparently (axis-types.w:375-384),
+            // so a tabled row like Levi_subgroups.at's `orbit_data`
+            // subscripts through its expansion; the not_so diagnostic still
+            // prints the original (named) type, as upstream prints `aggr`.
+            let expanded_array;
+            let array_kind: &Type = match &array_type {
+                Type::Tabled(number) => {
+                    expanded_array = analysis.types.expansion(*number).clone();
+                    &expanded_array
+                }
+                other => other,
+            };
+            let found = match array_kind {
                 Type::Row(component) if int_index => (**component).clone(),
                 Type::Primitive(Prim::String) if int_index => Type::Primitive(Prim::String),
                 Type::Primitive(Prim::Vec) if int_index => Type::Primitive(Prim::Int),
