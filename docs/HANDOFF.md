@@ -4601,3 +4601,27 @@ the frozen print_family batch. No other hidden special operators exist
   acea32d left_descend), plus KGB BFS `InvolutionTable::push_record`
   (TwistedInvolution::new / RootInvolutionData::new / saturated_kernel).
   perf(1) symbolisation fails on the HPC nodes; use gdb stack sampling.
+- `433a21b` forget/forget-overload reports are NOT indented by include
+  depth: upstream global_forget_identifier (global.w:1241-1248) and
+  global_forget_overload (global.w:1253-1261) write to *output_stream
+  directly; only definition reports emit setw(2*input_level)
+  (global.w:937/1162/1388/1399). The centralised ReportLine indenter in
+  session_frame.rs padded "Identifier 'save_s' forgotten" inside
+  ratmat.at — the single OUTPUT_DIFF line in A1/center/central/
+  Gaussian_elim_Jeff. New PlainReportLine event variant renders verbatim.
+- untable read subscription: subscr_base::index_kind tests
+  aggr.kind()==row_type and type_expr kind() untables transparently
+  (axis-types.w:375-384), so a tabled row like Levi_subgroups.at's
+  orbit_data=[orbit_entry] subscripts with int (47 corpus scripts
+  blocked). The read path matched the raw Type; assignment already
+  untabled. The not_so diagnostic still prints the original named type.
+- overload twin check uses table-aware equality: upstream
+  type_expr::operator== (axis-types.w:807-825) treats a tabled type as
+  equal to its expansion, so synthetic.at:21 `set KGB_elt(KGBElt_gen x)`
+  REPLACES the builtin KGB_elt@(InnerClass,mat,ratvec) (oracle:
+  "Redefined KGB_elt: (KGBElt_gen->KGBElt)"). Structural == fell into
+  the too-close error arm. New Type::equals(table) mirrors the operator.
+- hpc/quick_check.sbatch: compiles HEAD in a throwaway git worktree with
+  its own CARGO_TARGET_DIR — safe beside a running corpus job (which
+  owns the main checkout target/). Never cargo-check in the main
+  checkout while corpus runs, and never compile locally at all.
