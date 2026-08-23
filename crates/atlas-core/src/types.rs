@@ -213,6 +213,12 @@ impl Type {
         TypeDisplay { type_: self, table }
     }
 
+    /// The bracketed `set_type` echo spelling (global.w:1647 prints
+    /// `type.untabled()`, where a void function-arrow side shows `void`).
+    pub fn display_in_set_type<'a>(&'a self, table: &'a TypeTable) -> SetTypeDisplay<'a> {
+        SetTypeDisplay { type_: self, table }
+    }
+
     /// Upstream `type_expr::operator==` (axis-types.w:807-825): structural
     /// equality, except that a tabled type equals its expansion (two tabled
     /// types are equal only when their type numbers are, which also keeps
@@ -421,25 +427,47 @@ pub struct TypeDisplay<'a> {
 
 impl fmt::Display for TypeDisplay<'_> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write_type(self.type_, self.table, formatter)
+        write_type(self.type_, self.table, formatter, false)
+    }
+}
+
+/// The bracketed `set_type` echo spelling: identical to [`TypeDisplay`]
+/// except a void side of a function arrow prints as `void`.
+pub struct SetTypeDisplay<'a> {
+    type_: &'a Type,
+    table: &'a TypeTable,
+}
+
+impl fmt::Display for SetTypeDisplay<'_> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write_type(self.type_, self.table, formatter, true)
     }
 }
 
 /// Top-level printing: `void` for the empty tuple, otherwise as a
-/// parenthesised list; upstream axis-types.w:1610-1675.
-fn write_type(type_: &Type, table: &TypeTable, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+/// parenthesised list; upstream axis-types.w:1610-1675. `void_arrow`
+/// selects the bracketed `set_type` echo spelling, where a void side of
+/// a function arrow prints as `void` (oracle: `set_type [ il = (->int)
+/// ]` echoes "defined as (void->int)") instead of nothing (everywhere
+/// else: `Defined g: (->int)`).
+fn write_type(
+    type_: &Type,
+    table: &TypeTable,
+    out: &mut fmt::Formatter<'_>,
+    void_arrow: bool,
+) -> fmt::Result {
     match type_ {
         Type::Undetermined => write!(out, "*"),
         Type::Primitive(prim) => write!(out, "{}", prim.name()),
         Type::Row(component) => {
             write!(out, "[")?;
-            write_type(component, table, out)?;
+            write_type(component, table, out, void_arrow)?;
             write!(out, "]")
         }
         Type::Tuple(components) if components.is_empty() => write!(out, "void"),
         Type::Tuple(_) | Type::Union(_) | Type::Function(_) => {
             write!(out, "(")?;
-            write_naked(type_, table, out)?;
+            write_naked(type_, table, out, void_arrow)?;
             write!(out, ")")
         }
         Type::Tabled(number) => write!(out, "{}", table.binding(*number).name),
@@ -447,18 +475,28 @@ fn write_type(type_: &Type, table: &TypeTable, out: &mut fmt::Formatter<'_>) -> 
 }
 
 /// Inside parentheses tuples, unions, and function arrows print WITHOUT
-/// their own parens, and a void side of an arrow prints as nothing:
-/// `(int,int->int)`, `(int|string)`, `(->)`.
-fn write_naked(type_: &Type, table: &TypeTable, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+/// their own parens, and a void side of an arrow prints as nothing
+/// (or `void` in the set_type echo): `(int,int->int)`, `(int|string)`,
+/// `(->)`.
+fn write_naked(
+    type_: &Type,
+    table: &TypeTable,
+    out: &mut fmt::Formatter<'_>,
+    void_arrow: bool,
+) -> fmt::Result {
     match type_ {
         Type::Function(parts) => {
             let (argument, result) = &**parts;
             if !argument.is_void() {
-                write_arrow_side(argument, table, out)?;
+                write_arrow_side(argument, table, out, void_arrow)?;
+            } else if void_arrow {
+                write!(out, "void")?;
             }
             write!(out, "->")?;
             if !result.is_void() {
-                write_arrow_side(result, table, out)?;
+                write_arrow_side(result, table, out, void_arrow)?;
+            } else if void_arrow {
+                write!(out, "void")?;
             }
             Ok(())
         }
@@ -467,7 +505,7 @@ fn write_naked(type_: &Type, table: &TypeTable, out: &mut fmt::Formatter<'_>) ->
                 if index > 0 {
                     write!(out, ",")?;
                 }
-                write_type(component, table, out)?;
+                write_type(component, table, out, void_arrow)?;
             }
             Ok(())
         }
@@ -476,20 +514,25 @@ fn write_naked(type_: &Type, table: &TypeTable, out: &mut fmt::Formatter<'_>) ->
                 if index > 0 {
                     write!(out, "|")?;
                 }
-                write_type(variant, table, out)?;
+                write_type(variant, table, out, void_arrow)?;
             }
             Ok(())
         }
-        other => write_type(other, table, out),
+        other => write_type(other, table, out, void_arrow),
     }
 }
 
 /// One side of a function arrow: tuple and union LISTS print naked, but a
 /// nested function type keeps its own parentheses.
-fn write_arrow_side(type_: &Type, table: &TypeTable, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+fn write_arrow_side(
+    type_: &Type,
+    table: &TypeTable,
+    out: &mut fmt::Formatter<'_>,
+    void_arrow: bool,
+) -> fmt::Result {
     match type_ {
-        Type::Tuple(_) | Type::Union(_) => write_naked(type_, table, out),
-        other => write_type(other, table, out),
+        Type::Tuple(_) | Type::Union(_) => write_naked(type_, table, out, void_arrow),
+        other => write_type(other, table, out, void_arrow),
     }
 }
 

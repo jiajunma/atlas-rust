@@ -589,10 +589,17 @@ impl OverloadState {
         types: &TypeTable,
         span: SourceSpan,
     ) -> Result<(usize, usize), Diagnostic> {
-        let Type::Function(parts) = &function_type else {
-            unreachable!("only function-typed values enter the overload table")
+        // A tabled function type (lazy_lists.at's inf_list) keeps its
+        // name for the report but contributes its expansion's argument
+        // type to overload matching.
+        let arg_type = match &function_type {
+            Type::Function(parts) => parts.0.clone(),
+            Type::Tabled(number) => match types.expansion(*number) {
+                Type::Function(parts) => parts.0.clone(),
+                _ => unreachable!("tabled function type expands to a function"),
+            },
+            _ => unreachable!("only function-typed values enter the overload table"),
         };
-        let arg_type = parts.0.clone();
         let merged = merged_variants(name, self, types);
         let old_n = merged.len();
         let mut lower = 0;
@@ -1864,7 +1871,18 @@ impl TypedContext {
             debug_assert_eq!(slots.len(), leaves.len());
             for ((name, name_span, constant, leaf_type), slot) in leaves.into_iter().zip(slots) {
                 let value = Rc::try_unwrap(slot).unwrap_or_else(|rc| (*rc).clone());
-                let event = if matches!(leaf_type, Type::Function(_)) {
+                // global.w:938: the routing tests kind()==function_type,
+                // which untables — a tabled function type (lazy_lists.at's
+                // inf_list = (->inf_node)) also joins the overload table
+                // and reports "Defined", never "Variable".
+                let is_function = match &leaf_type {
+                    Type::Function(_) => true,
+                    Type::Tabled(number) => {
+                        matches!(self.types.expansion(*number), Type::Function(_))
+                    }
+                    _ => false,
+                };
+                let event = if is_function {
                     self.add_overload(&name, leaf_type, value, name_span)?
                 } else {
                     self.define_variable(&name, leaf_type, value, constant, name_span)
@@ -1968,10 +1986,16 @@ impl TypedContext {
             Type::Tabled(number) => self.types.expansion(*number).clone(),
             other => other.clone(),
         };
+        // The bracketed (tabled) form echoes with void arrow sides shown
+        // (global.w:1647, "defined as (void->int)"); the single-name
+        // alias form keeps the plain spelling (global.w:1390, "(->int)").
         let heading = format!(
             "Type name '{}' defined as {}\n",
             definition.name.value,
-            expansion.display(&self.types)
+            match target {
+                Type::Tabled(_) => expansion.display_in_set_type(&self.types).to_string(),
+                _ => expansion.display(&self.types).to_string(),
+            }
         );
         let fields = match &definition.spec {
             TypeSpec::Alias(_) => return Ok(heading),
@@ -1982,6 +2006,19 @@ impl TypedContext {
             _ => &[],
         };
         let union = matches!(definition.spec, TypeSpec::Union(_));
+        // The echo prints EVERY field position (global.w:1705-1725): an
+        // unnamed hole contributes just its separator, so `(, int x, int
+        // mu)` reports "with projectors: , x, mu.".
+        let display_names: Vec<String> = fields
+            .iter()
+            .map(|field| {
+                field
+                    .name
+                    .as_ref()
+                    .map(|name| name.value.clone())
+                    .unwrap_or_default()
+            })
+            .collect();
         let mut names = Vec::new();
         for (index, field) in fields.iter().enumerate() {
             let Some(field_name) = &field.name else {
@@ -2019,7 +2056,10 @@ impl TypedContext {
             return Ok(heading);
         }
         let role = if union { "injectors" } else { "projectors" };
-        Ok(format!("{heading}  with {role}: {}.\n", names.join(", ")))
+        Ok(format!(
+            "{heading}  with {role}: {}.\n",
+            display_names.join(", ")
+        ))
     }
 
     /// `whattype` (parser.y:169-171): a defined type name prints its
@@ -2043,8 +2083,14 @@ impl TypedContext {
                                 type_equation(components, &binding.fields, ", ", &self.types)
                             }
                             other => {
+                                // Oracle: `whattype il2` on a tabled
+                                // function type shows (void->int) — the
+                                // same spelling as the set_type echo.
                                 return Ok(vec![TypedCommandEvent::ReportLine {
-                                    text: format!("Defined type: {}\n", other.display(&self.types)),
+                                    text: format!(
+                                        "Defined type: {}\n",
+                                        other.display_in_set_type(&self.types)
+                                    ),
                                     span,
                                 }])
                             }
