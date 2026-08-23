@@ -78,3 +78,30 @@ The full differential suite is 189 fixtures, 0 FAIL (1 known PARTIAL),
 all byte-identical. HPC wall times there include shared-node contention
 and whole-fixture multi-row scripts, so they overstate the per-parameter
 cost measured here; RSS is meaningful: kgb_hasse (E7) peaks at ~12GB.
+
+## Script-corpus ledger (HPC cpu partition, 240 atlas-scripts, both binaries per script)
+
+Every corpus run records wall time and peak RSS per script for the Rust CLI
+and the oracle (`script_corpus_report.json` under results/<commit>/<job>/).
+"over_5x" counts scripts where rust_seconds/cpp_seconds > 5.
+
+| job | commit | comparable | over_5x | notes |
+|---|---|---|---|---|
+| 3615211 | eeee72a~ | 104 | 95 | every script pays ~4-5s constant: eager E8 inner-class orbit construction |
+| 3616252 | 6dff4ab | 104 | 97 | orbit-construction perf landed: 174/238 scripts improved >0.5s, median 4.26s -> 3.67s; ~2.8s/script hot spot still unidentified |
+| 3617082 | 29651e4 | 229 | 222 | discrimination unblock (132 scripts now run deep enough to compare) |
+| 3617285 | c13b06a | 234 | 227 | deeper coverage; echo regression fixed next commit |
+
+Orbit-construction detail (agent-106, jobs 3616233/3616234/3616245):
+groups.at load 4.39s -> 0.83s wall (oracle 0.05s); E8 involution partition
+1331ms -> 261ms, classification 1758ms -> 270ms (199,952 involutions, 10
+Cartan classes unchanged); E7 142ms -> 17.8ms; F4 9ms -> 1.7ms. Method:
+permutation-level Cayley BFS + canonicalize (decision-identical to the
+matrix path), u128-packed simple-root-image keys (injective: involutions
+are linear, simple roots a Z-basis), classification reuses the partition's
+BFS order.
+
+Remaining per-script gap is NOT orbit construction: a constant ~2.8s
+unidentified hot spot per corpus script (median 3.67s vs oracle ~0.1s).
+Next step: hpc/perf_sample.sbatch gdb sampling of a slow script
+(e.g. springer_table_E8.at).
