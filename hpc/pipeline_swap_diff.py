@@ -470,6 +470,8 @@ FIXTURE_PLANS = (
     FixturePlan(name="domain/timed_full_deform_timeout_negative"),
     # Batch 6: partial_KL_block (first extended-block surface).
     FixturePlan(name="domain/partial_kl_block"),
+    # partial_KL_block standardness gate (test_standard, atlas-types.w:7000).
+    FixturePlan(name="domain/partial_kl_block_rejected"),
     # Batch 5: KL_column (partial block), including the A2 proper-integral
     # subsystem case now handled by the subsystem-aware RepTable path.
     FixturePlan(name="domain/kl_column"),

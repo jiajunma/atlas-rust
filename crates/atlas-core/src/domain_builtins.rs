@@ -15298,6 +15298,11 @@ pub(crate) fn call_with_printed(
                     ),
                 ));
             };
+            test_standard(
+                parameter,
+                "partial_KL_block requires a standard parameter",
+                span,
+            )?;
             let rc_owner = rep_context(&parameter.context, span)?;
             let rc = rc_owner.context();
             let normalised = parameter
@@ -15310,11 +15315,6 @@ pub(crate) fn call_with_printed(
                 .lookup(&normalised)
                 .map_err(|error| structure_diagnostic(error, span))?;
             let block = located.block();
-            let mut kl_table = KlTable::from_handle(block.clone())
-                .map_err(|error| structure_diagnostic(error, span))?;
-            kl_table
-                .fill(0)
-                .map_err(|error| structure_diagnostic(error, span))?;
             let size = block.size();
             let z0 = located.raw_row();
             // Partial block: the Bruhat downward closure of z0
@@ -15367,34 +15367,47 @@ pub(crate) fn call_with_printed(
             let n = survivors.len();
             // Condense the KL polynomials into M (atlas-types.w:6922-6948):
             // M(loc[f], loc[y]) +=/-= KL_pol(x, y) over the finals of x.
-            let mut matrix: Vec<Vec<KlPol>> = vec![vec![KlPol::zero(); n]; n];
-            for x in 0..size {
-                for f in partial_block_finals_for(&block, x, singular)
-                    .map_err(|error| structure_diagnostic(error, span))?
-                {
-                    let i = loc[f];
-                    if i == usize::MAX {
-                        continue;
-                    }
-                    let sign_even = block.length(x).is_some_and(|lx| {
-                        (lx as i64 - block.length(f).unwrap_or(0) as i64).rem_euclid(2) == 0
-                    });
-                    // Only survivors `y >= x` contribute
-                    // (atlas-types.w:6923-6926 `start` skip).
-                    let first = survivors.partition_point(|&y| y < x);
-                    for (j, &y) in survivors.iter().enumerate().skip(first) {
-                        let polynomial = kl_pol_at(&kl_table, x, y, span)?;
-                        if polynomial.is_zero() {
-                            continue;
+            // Uses the record's shared KL table (upstream `block.kl_tab`);
+            // the callback is non-reentrant, so only table/block probes run
+            // inside (KL_block pattern).
+            let matrix = located
+                .with_kl_table(|kl_table| {
+                    kl_table.fill(0)?;
+                    let mut matrix: Vec<Vec<KlPol>> = vec![vec![KlPol::zero(); n]; n];
+                    for x in 0..size {
+                        for f in partial_block_finals_for(&block, x, singular)? {
+                            let i = loc[f];
+                            if i == usize::MAX {
+                                continue;
+                            }
+                            let sign_even = block.length(x).is_some_and(|lx| {
+                                (lx as i64 - block.length(f).unwrap_or(0) as i64).rem_euclid(2)
+                                    == 0
+                            });
+                            // Only survivors `y >= x` contribute
+                            // (atlas-types.w:6923-6926 `start` skip).
+                            let first = survivors.partition_point(|&y| y < x);
+                            for (j, &y) in survivors.iter().enumerate().skip(first) {
+                                let index = kl_table.kl_pol(x, y)?;
+                                let polynomial = kl_table.pool().get(index).ok_or(
+                                    StructureError::RepInvariantViolation {
+                                        invariant: "partial block KL polynomial pool index",
+                                    },
+                                )?;
+                                if polynomial.is_zero() {
+                                    continue;
+                                }
+                                matrix[i][j] = if sign_even {
+                                    matrix[i][j].add(polynomial)
+                                } else {
+                                    matrix[i][j].sub(polynomial)
+                                };
+                            }
                         }
-                        if sign_even {
-                            matrix[i][j] = matrix[i][j].add(&polynomial);
-                        } else {
-                            matrix[i][j] = matrix[i][j].sub(&polynomial);
-                        }
                     }
-                }
-            }
+                    Ok(matrix)
+                })
+                .map_err(|error| structure_diagnostic(error, span))?;
             // Group distinct polynomials (atlas-types.w:6957-6971): the pool
             // starts with the zero and constant polynomials; the index
             // matrix is an identity matrix (`matrix_value(int)` semantics)
