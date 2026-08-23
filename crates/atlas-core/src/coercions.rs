@@ -221,26 +221,93 @@ fn same(a: &Type, b: &Type, table: &TypeTable) -> bool {
     }
 }
 
-/// The first registered coercion from `from` to `to`, if any.
+/// Top-level shape of a type for coercion shortlisting: `same` holds only
+/// between equal gates (its match arms require equal constructors, and equal
+/// primitives), so entries whose endpoint gates differ can never match.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Gate {
+    Primitive(Prim),
+    Row,
+    Tuple,
+    Union,
+    Function,
+    Undetermined,
+}
+
+fn gate_of(type_: &Type, table: &TypeTable) -> Option<Gate> {
+    match expanded(type_, table) {
+        Type::Primitive(prim) => Some(Gate::Primitive(*prim)),
+        Type::Row(_) => Some(Gate::Row),
+        Type::Tuple(_) => Some(Gate::Tuple),
+        Type::Union(_) => Some(Gate::Union),
+        Type::Function(_) => Some(Gate::Function),
+        Type::Undetermined => Some(Gate::Undetermined),
+        // A self-referential placeholder mid-`set_type` (expansion follows
+        // chains, so a Tabled result refers to itself): no gate, scan all.
+        Type::Tabled(_) => None,
+    }
+}
+
+/// Gate of a ground table entry endpoint (entries contain no tabled types).
+fn gate_of_ground(type_: &Type) -> Gate {
+    match type_ {
+        Type::Primitive(prim) => Gate::Primitive(*prim),
+        Type::Row(_) => Gate::Row,
+        Type::Tuple(_) => Gate::Tuple,
+        Type::Union(_) => Gate::Union,
+        Type::Function(_) => Gate::Function,
+        Type::Undetermined => Gate::Undetermined,
+        Type::Tabled(_) => unreachable!("coercion table entries are ground"),
+    }
+}
+
+/// Per-entry endpoint gates, parallel to [`coercion_table`].
+fn coercion_gates() -> &'static [(Gate, Gate)] {
+    static GATES: OnceLock<Vec<(Gate, Gate)>> = OnceLock::new();
+    GATES.get_or_init(|| {
+        coercion_table()
+            .iter()
+            .map(|coercion| (gate_of_ground(&coercion.from), gate_of_ground(&coercion.to)))
+            .collect()
+    })
+}
+
+/// The first registered coercion from `from` to `to`, if any. The gate
+/// filter only prunes entries that `same` would certainly reject, so the
+/// first-match order of the surviving entries is unchanged.
 pub fn coercion_between<'a>(from: &Type, to: &Type, table: &TypeTable) -> Option<&'a Coercion> {
-    coercion_table()
-        .iter()
-        .find(|coercion| same(&coercion.from, from, table) && same(&coercion.to, to, table))
+    let entries = coercion_table().iter().zip(coercion_gates());
+    match (gate_of(from, table), gate_of(to, table)) {
+        (Some(from_gate), Some(to_gate)) => entries
+            .filter(move |(_, gates)| **gates == (from_gate, to_gate))
+            .map(|(coercion, _)| coercion)
+            .find(|coercion| same(&coercion.from, from, table) && same(&coercion.to, to, table)),
+        _ => entries
+            .map(|(coercion, _)| coercion)
+            .find(|coercion| same(&coercion.from, from, table) && same(&coercion.to, to, table)),
+    }
 }
 
 /// For a list display in non-row context `final_type`: the FIRST table
 /// entry with a row `from` and that target, yielding the component type the
 /// display's elements must take (`mat` context yields `vec`, never `[int]`).
 pub fn row_coercion<'a>(final_type: &Type, table: &TypeTable) -> Option<(&'a Coercion, &'a Type)> {
-    coercion_table().iter().find_map(|coercion| {
-        if !same(&coercion.to, final_type, table) {
-            return None;
-        }
-        match &coercion.from {
-            Type::Row(component) => Some((coercion, component.as_ref())),
-            _ => None,
-        }
-    })
+    let target_gate = gate_of(final_type, table);
+    coercion_table()
+        .iter()
+        .zip(coercion_gates())
+        // The gate prunes only entries `same` would certainly reject.
+        .filter(move |(_, gates)| target_gate.is_none_or(|gate| gates.1 == gate))
+        .map(|(coercion, _)| coercion)
+        .find_map(|coercion| {
+            if !same(&coercion.to, final_type, table) {
+                return None;
+            }
+            match &coercion.from {
+                Type::Row(component) => Some((coercion, component.as_ref())),
+                _ => None,
+            }
+        })
 }
 
 /// Three-bit proximity: 0x1 `x` coerces to `y`, 0x2 `y` to `x`, 0x4 close.

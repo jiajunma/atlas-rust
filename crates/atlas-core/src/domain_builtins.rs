@@ -405,12 +405,13 @@ pub struct BlockValue {
 
 /// The Weyl side of one root datum: the enumerated semisimple root system
 /// the word-level kernel operates on, plus the internal generator
-/// renumbering that fixes the upstream canonical-word choice.
+/// renumbering that fixes the upstream canonical-word choice. The system
+/// and interface are shared per datum (see [`weyl_datum_shared`]).
 #[derive(Debug)]
 pub struct WeylEltContext {
     handle: RootDatumHandle,
-    system: RootSystem,
-    interface: WeylInterface,
+    system: Arc<RootSystem>,
+    interface: Arc<WeylInterface>,
 }
 
 /// A WeylElt value: the element with its construction context and its
@@ -4658,7 +4659,7 @@ fn integrality_simples_roots(
     gamma: &RatVec,
     span: SourceSpan,
 ) -> Result<Vec<RootId>, Diagnostic> {
-    let root_system = RootSystem::enumerate(&handle.datum, ROOT_BUDGET)
+    let root_system = weyl_datum_shared(&handle.datum).map(|shared| shared.0)
         .map_err(|error| runtime(span, error.to_string()))?;
     let denominator = gamma.denominator() as i64;
     let mut integral = Vec::new();
@@ -9260,12 +9261,12 @@ fn length_query(
 
 /// The enumerated root system of one datum plus its upstream `RootNbr`
 /// numbering: the shared setup of the signed root-numbering builtins
-/// (atlas-types.w:1478-1485).
+/// (atlas-types.w:1478-1485). The system is shared per datum.
 fn signed_roots(
     handle: &RootDatumHandle,
     span: SourceSpan,
-) -> Result<(RootSystem, RootNumbering), Diagnostic> {
-    let system = RootSystem::enumerate(&handle.datum, ROOT_BUDGET)
+) -> Result<(Arc<RootSystem>, RootNumbering), Diagnostic> {
+    let system = weyl_datum_shared(&handle.datum).map(|shared| shared.0)
         .map_err(|error| runtime(span, error.to_string()))?;
     let numbering = RootNumbering::new(&system, handle.prefers_coroots());
     Ok((system, numbering))
@@ -9336,15 +9337,44 @@ fn as_weyl_elt(value: &Value, span: SourceSpan) -> Result<&WeylEltValue, Diagnos
     }
 }
 
-/// The datum's Weyl side, built on demand: every finite root system fits
-/// the shared root budget (E8 needs 240 of the 4096 slots).
+/// Session-wide cache of the per-datum Weyl side — the enumerated root
+/// system plus the generator renumbering interface. Both are pure in the
+/// datum, and scripts build Weyl elements in loops (the load-time tables
+/// of the cells.at chain call `W_elt`-family builtins once per group
+/// element); upstream builds the WeylGroup ONCE per inner class
+/// (innerclass.cpp) rather than per builtin call.
+fn weyl_datum_shared(
+    datum: &BasedRootDatum,
+) -> Result<(Arc<RootSystem>, Arc<WeylInterface>), StructureError> {
+    static CACHE: std::sync::OnceLock<
+        std::sync::Mutex<Vec<(BasedRootDatum, Arc<RootSystem>, Arc<WeylInterface>)>>,
+    > = std::sync::OnceLock::new();
+    let cache = CACHE.get_or_init(|| std::sync::Mutex::new(Vec::new()));
+    if let Some(entry) = cache
+        .lock()
+        .expect("Weyl datum cache poisoned")
+        .iter()
+        .find(|(key, _, _)| key == datum)
+    {
+        return Ok((Arc::clone(&entry.1), Arc::clone(&entry.2)));
+    }
+    let system = Arc::new(RootSystem::enumerate(datum, ROOT_BUDGET)?);
+    let interface = Arc::new(WeylInterface::new(datum.cartan_matrix())?);
+    cache
+        .lock()
+        .expect("Weyl datum cache poisoned")
+        .push((datum.clone(), Arc::clone(&system), Arc::clone(&interface)));
+    Ok((system, interface))
+}
+
+/// The datum's Weyl side, shared per datum through [`weyl_datum_shared`]:
+/// every finite root system fits the shared root budget (E8 needs 240 of
+/// the 4096 slots).
 fn build_weyl_context(
     handle: &RootDatumHandle,
     span: SourceSpan,
 ) -> Result<Arc<WeylEltContext>, Diagnostic> {
-    let system = RootSystem::enumerate(&handle.datum, ROOT_BUDGET)
-        .map_err(|error| runtime(span, error.to_string()))?;
-    let interface = WeylInterface::new(handle.datum.cartan_matrix())
+    let (system, interface) = weyl_datum_shared(&handle.datum)
         .map_err(|error| runtime(span, error.to_string()))?;
     Ok(Arc::new(WeylEltContext {
         handle: handle.clone(),
@@ -12789,7 +12819,7 @@ pub(crate) fn call_with_printed(
                     ),
                 ));
             }
-            let root_system = RootSystem::enumerate(&handle.datum, ROOT_BUDGET)
+            let root_system = weyl_datum_shared(&handle.datum).map(|shared| shared.0)
                 .map_err(|error| runtime(span, error.to_string()))?;
             let numbering = RootNumbering::new(&root_system, handle.prefers_coroots());
             let (walls, integrals) = wall_set(&root_system, &numbering, gamma);
@@ -12818,7 +12848,7 @@ pub(crate) fn call_with_printed(
             let Value::List(wall_entries) = &arguments[1] else {
                 return Err(type_error(span, "expected a row of integers"));
             };
-            let root_system = RootSystem::enumerate(&handle.datum, ROOT_BUDGET)
+            let root_system = weyl_datum_shared(&handle.datum).map(|shared| shared.0)
                 .map_err(|error| runtime(span, error.to_string()))?;
             let numbering = RootNumbering::new(&root_system, handle.prefers_coroots());
             let num_roots = root_system.roots().len();
@@ -13083,7 +13113,7 @@ pub(crate) fn call_with_printed(
                     ),
                 ));
             }
-            let root_system = RootSystem::enumerate(&handle.datum, ROOT_BUDGET)
+            let root_system = weyl_datum_shared(&handle.datum).map(|shared| shared.0)
                 .map_err(|error| runtime(span, error.to_string()))?;
             let numbering = RootNumbering::new(&root_system, handle.prefers_coroots());
             let (walls, _integrals) = wall_set(&root_system, &numbering, gamma);
@@ -13134,7 +13164,7 @@ pub(crate) fn call_with_printed(
                     ),
                 ));
             }
-            let root_system = RootSystem::enumerate(&handle.datum, ROOT_BUDGET)
+            let root_system = weyl_datum_shared(&handle.datum).map(|shared| shared.0)
                 .map_err(|error| runtime(span, error.to_string()))?;
             let numbering = RootNumbering::new(&root_system, handle.prefers_coroots());
             let semisimple = handle.datum.semisimple_rank();
@@ -13362,7 +13392,7 @@ pub(crate) fn call_with_printed(
             let Value::RatVector(gamma) = &arguments[1] else {
                 return Err(type_error(span, "expected a rational vector"));
             };
-            let root_system = RootSystem::enumerate(&handle.datum, ROOT_BUDGET)
+            let root_system = weyl_datum_shared(&handle.datum).map(|shared| shared.0)
                 .map_err(|error| runtime(span, error.to_string()))?;
             let simple = integrality_simples_roots(handle, gamma, span)?;
             for &root in &simple {
@@ -13392,7 +13422,7 @@ pub(crate) fn call_with_printed(
                     ),
                 ));
             }
-            let root_system = RootSystem::enumerate(&handle.datum, ROOT_BUDGET)
+            let root_system = weyl_datum_shared(&handle.datum).map(|shared| shared.0)
                 .map_err(|error| runtime(span, error.to_string()))?;
             let denominator = gamma.denominator();
             let mut products: std::collections::BTreeSet<i64> = std::collections::BTreeSet::new();
@@ -13430,7 +13460,7 @@ pub(crate) fn call_with_printed(
                 return Err(type_error(span, "expected a rational vector"));
             };
             let simple = integrality_simples_roots(handle, gamma, span)?;
-            let root_system = RootSystem::enumerate(&handle.datum, ROOT_BUDGET)
+            let root_system = weyl_datum_shared(&handle.datum).map(|shared| shared.0)
                 .map_err(|error| runtime(span, error.to_string()))?;
             // Order the simple roots by their first nonzero datum-simple
             // coordinate (the oracle's simpleBasis RootNbr order), so the
@@ -13499,7 +13529,7 @@ pub(crate) fn call_with_printed(
             let Value::Domain(DomainValue::RootDatum(handle)) = &arguments[0] else {
                 return Err(type_error(span, "expected a RootDatum"));
             };
-            let root_system = RootSystem::enumerate(&handle.datum, ROOT_BUDGET)
+            let root_system = weyl_datum_shared(&handle.datum).map(|shared| shared.0)
                 .map_err(|error| runtime(span, error.to_string()))?;
             let positive: Vec<RootId> = (0..root_system.roots().len())
                 .filter(|&index| {
@@ -16316,7 +16346,8 @@ pub(crate) fn call_with_printed(
             // test_compatible (atlas-types.w:4627-4633): the twist must
             // preserve the root datum.
             {
-                let root_system = RootSystem::enumerate(&datum, ROOT_BUDGET)
+                let root_system = weyl_datum_shared(&datum)
+                    .map(|shared| shared.0)
                     .map_err(|error| structure_diagnostic(error, span))?;
                 let simple_roots = datum.simple_roots().to_vec();
                 let simple_coroots = datum.simple_coroots().to_vec();
@@ -17674,7 +17705,8 @@ pub(crate) fn call_with_printed(
             };
             let datum = &context.inner_class.datum();
             let rank = datum.semisimple_rank();
-            let system = RootSystem::enumerate(datum, ROOT_BUDGET)
+            let system = weyl_datum_shared(datum)
+                .map(|shared| shared.0)
                 .map_err(|error| runtime(span, error.to_string()))?;
             let distinguished = context.inner_class.distinguished_involution();
             let image = distinguished.image_permutation();
