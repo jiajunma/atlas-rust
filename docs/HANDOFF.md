@@ -4792,3 +4792,19 @@ the frozen print_family batch. No other hidden special operators exist
   (c13b06a) regressed 42 previously-MATCH corpus scripts. (b) Pad
   binding.fields with None per component in pass 2, or whattype zips
   components against an empty list and prints "(  )".
+- example.at corpus failure (3617285, at c13b06a): `set pars=theta_stable_parabolics(G)`
+  for G=Sp(4,R) yielded 5 parabolics, so `pars[7]` died with
+  "index 7 out of range (0<= . <5)". Root cause is the
+  fundamental_(co)weight ambient-coordinate bug fixed by `a0cbcd9`
+  (domain_builtins.rs): the builtins returned (co)root-basis
+  coordinates; for Sp(4,R) the wrong Levi_coweight [1,2] vs [1,1]
+  made has_theta_stable_Levi reject real_Levi(KGB(G,9)), halving the
+  theta-stable list. No new code change needed. Verified by bisect job
+  3617886 (clone /public/home/majj/atlas-rust-ex1): c13b06a release
+  build reproduces the exact corpus error (exit=1), a0cbcd9 exits 0
+  and `Variable P: KGPElt` binds. Per-S probe
+  (/public/home/majj/ex1-probes/probe_ex1.at) now matches the oracle
+  exactly: parabolics counts [11,6,4,1] for S=[], [0], [1], [0,1],
+  theta-stable [4,3,2,1], total 10. NOTE: corpus 3617878 (at 0ab4baa)
+  globbed only 76 scripts and did NOT include example.at — the next
+  full corpus rerun should re-confirm it.
