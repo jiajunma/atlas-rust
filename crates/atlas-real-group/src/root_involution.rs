@@ -1,5 +1,3 @@
-use std::collections::BTreeSet;
-
 use crate::{LatticeInvolution, RootId, RootSystem, StructureError};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -168,46 +166,60 @@ fn subsystem_simple_roots(
                 .is_some_and(|coordinates| coordinates.iter().all(|&coordinate| coordinate >= 0))
         })
         .collect::<Vec<_>>();
+    // Membership by simple coordinates through a hash set of slices: the
+    // decomposability probe below runs once per (candidate, summand) pair,
+    // and the historic ordered-set-of-vectors with a fresh remainder
+    // allocation per probe dominated RootInvolutionData::new (E8 identity
+    // class: ~120 x 120 probes per call). Collisions compare exactly, so
+    // semantics are unchanged.
     let positive_coordinates = positive
         .iter()
         .map(|&root| {
             root_system
                 .simple_coordinates(root)
-                .map(|coordinates| coordinates.to_vec())
                 .ok_or(StructureError::IndexOutOfRange {
                     index: root.0,
                     upper_bound: root_system.roots().len(),
                 })
         })
-        .collect::<Result<BTreeSet<_>, _>>()?;
+        .collect::<Result<Vec<_>, _>>()?;
+    let mut members: std::collections::HashSet<&[i32], crate::inner_class::PermutationHasherBuilder> =
+        std::collections::HashSet::default();
+    members
+        .try_reserve(positive_coordinates.len())
+        .map_err(|_| StructureError::AllocationFailed {
+            requested: positive_coordinates.len(),
+        })?;
+    for coordinates in &positive_coordinates {
+        members.insert(coordinates);
+    }
+    let rank = root_system.datum().semisimple_rank();
+    let mut remainder: Vec<i32> = Vec::new();
+    remainder
+        .try_reserve(rank)
+        .map_err(|_| StructureError::AllocationFailed { requested: rank })?;
     let mut simple_roots = Vec::new();
-    for candidate in positive {
-        let candidate_coordinates =
-            root_system
-                .simple_coordinates(candidate)
-                .ok_or(StructureError::IndexOutOfRange {
-                    index: candidate.0,
-                    upper_bound: root_system.roots().len(),
-                })?;
-        let mut decomposable = false;
-        for summand in &positive_coordinates {
-            let remainder = candidate_coordinates
-                .iter()
-                .zip(summand)
-                .map(|(&candidate_coordinate, &summand_coordinate)| {
+    'candidate: for (candidate_index, &candidate) in positive.iter().enumerate() {
+        let candidate_coordinates = positive_coordinates[candidate_index];
+        for (summand_index, summand) in positive_coordinates.iter().enumerate() {
+            if summand_index == candidate_index {
+                continue;
+            }
+            remainder.clear();
+            for (&candidate_coordinate, &summand_coordinate) in
+                candidate_coordinates.iter().zip(*summand)
+            {
+                remainder.push(
                     candidate_coordinate
                         .checked_sub(summand_coordinate)
-                        .ok_or(StructureError::ArithmeticOverflow)
-                })
-                .collect::<Result<Vec<_>, _>>()?;
-            if positive_coordinates.contains(&remainder) {
-                decomposable = true;
-                break;
+                        .ok_or(StructureError::ArithmeticOverflow)?,
+                );
+            }
+            if members.contains(remainder.as_slice()) {
+                continue 'candidate;
             }
         }
-        if !decomposable {
-            simple_roots.push(candidate);
-        }
+        simple_roots.push(candidate);
     }
     Ok(simple_roots)
 }

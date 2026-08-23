@@ -1159,11 +1159,34 @@ impl<'a> PermutationOrbits<'a> {
     /// Replace `p` by `s p s`, the permutation shadow of
     /// [`InnerClass::twisted_conjugate_action`]: `s_g w s_{twist(g)} delta =
     /// s_g theta s_g` because `s_{twist(g)} delta = delta s_g`.
-    fn conjugate(&self, permutation: &mut Vec<u8>, generator: usize) {
+    pub(crate) fn conjugate(&self, permutation: &mut Vec<u8>, generator: usize) {
         let reflection = &self.simple_reflections[generator];
         let previous = permutation.clone();
         for (slot, &reflected) in permutation.iter_mut().zip(reflection.iter()) {
             *slot = reflection[usize::from(previous[usize::from(reflected)])];
+        }
+    }
+
+    /// Left-multiply by a simple reflection: `p |-> s_g p` (a Cayley step's
+    /// `r_root after theta` when the root is simple).
+    pub(crate) fn left_multiply_reflection(&self, permutation: &mut [u8], generator: usize) {
+        let reflection = &self.simple_reflections[generator];
+        for entry in permutation.iter_mut() {
+            *entry = reflection[usize::from(*entry)];
+        }
+    }
+
+    /// The kind of `root` under the involution with this root permutation:
+    /// fixed is imaginary, negated is real, anything else is complex — the
+    /// [`RootInvolutionData`] classification read off the permutation.
+    pub(crate) fn kind(&self, permutation: &[u8], root: RootId) -> RootKind {
+        let image = permutation[root.0];
+        if usize::from(image) == root.0 {
+            RootKind::Imaginary
+        } else if image == self.minus[root.0] {
+            RootKind::Real
+        } else {
+            RootKind::Complex
         }
     }
 

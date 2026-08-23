@@ -72,38 +72,40 @@ impl CayleyCrossDecomposition {
                     .ok_or(StructureError::InvalidRootAutomorphism)?,
             );
         }
-        let mut twist = try_capacity(semisimple_rank)?;
-        for &simple_id in &simple_ids {
-            let image = delta_data
-                .image(simple_id)
-                .ok_or(StructureError::InvalidBasedAutomorphism)?;
-            let position = simple_ids
-                .iter()
-                .position(|&candidate| candidate == image)
-                .ok_or(StructureError::InvalidBasedAutomorphism)?;
-            twist.push(position);
-        }
         let identity = WeylAction::identity(datum)?;
+
+        // Peeling and replay run at the root-image-permutation level through
+        // PermutationOrbits: every peeled step's decision is the sign of a
+        // simple-coordinate image and the kind of a simple root, both read
+        // off the permutation directly, so the letters — and hence every
+        // output — match the historic matrix-level loop, without paying a
+        // full RootInvolutionData construction per step. (The per-step
+        // involution revalidation disappears with the matrices; the peeled
+        // and replayed values are involutions by construction, and the final
+        // replay-equality check below still compares the full permutation,
+        // which for a fixed distinguished involution determines the lattice
+        // matrix exactly.)
+        let mut orbit_machine = inner_class.permutation_orbits()?;
+        let distinguished_permutation: Vec<u8> = delta_data
+            .image_permutation()
+            .iter()
+            .map(|id| id.0 as u8)
+            .collect();
 
         // Peel: lowest external descent first. A descent's kind decides the
         // letter: Real is a Cayley letter, Complex a cross letter, and an
         // imaginary root can never be a descent.
         let mut letters: Vec<Letter> = Vec::new();
-        let mut current = twisted.clone();
+        let mut current = crate::inner_class::involution_key(twisted);
         let mut steps = 0_usize;
         loop {
             let mut descent = None;
             for (generator, &simple_id) in simple_ids.iter().enumerate() {
-                let theta_image = current
-                    .root_involution()
-                    .image(simple_id)
-                    .ok_or(StructureError::InvalidRootAutomorphism)?;
-                let image = delta_data
-                    .image(theta_image)
-                    .ok_or(StructureError::InvalidRootAutomorphism)?;
-                let coordinates = root_system.simple_coordinates(image).ok_or(
+                let theta_image = usize::from(current[simple_id.0]);
+                let image = usize::from(distinguished_permutation[theta_image]);
+                let coordinates = root_system.simple_coordinates(RootId::from_usize(image)).ok_or(
                     StructureError::IndexOutOfRange {
-                        index: image.0,
+                        index: image,
                         upper_bound: root_system.roots().len(),
                     },
                 )?;
@@ -113,7 +115,10 @@ impl CayleyCrossDecomposition {
                 }
             }
             let Some(generator) = descent else {
-                if current.weyl_action() != &identity {
+                // The Weyl part is the identity exactly when theta equals
+                // delta as a root permutation (the reflection representation
+                // is faithful).
+                if current != distinguished_permutation {
                     return Err(StructureError::CayleyCrossInvariantViolation {
                         invariant: "peeling termination",
                     });
@@ -130,29 +135,21 @@ impl CayleyCrossDecomposition {
                 .checked_add(1)
                 .ok_or(StructureError::ArithmeticOverflow)?;
             let simple_id = simple_ids[generator];
-            let kind = current
-                .root_involution()
-                .kind(simple_id)
-                .ok_or(StructureError::InvalidRootAutomorphism)?;
-            let reflection = WeylAction::simple_reflection(datum, generator)?;
-            let new_action = match kind {
+            match orbit_machine.kind(&current, simple_id) {
                 RootKind::Real => {
                     letters.push(Letter::Cayley(generator));
-                    reflection.compose(current.weyl_action())?
+                    orbit_machine.left_multiply_reflection(&mut current, generator);
                 }
                 RootKind::Complex => {
                     letters.push(Letter::Cross(generator));
-                    reflection
-                        .compose(current.weyl_action())?
-                        .compose(&WeylAction::simple_reflection(datum, twist[generator])?)?
+                    orbit_machine.conjugate(&mut current, generator);
                 }
                 RootKind::Imaginary => {
                     return Err(StructureError::CayleyCrossInvariantViolation {
                         invariant: "descent kind",
                     });
                 }
-            };
-            current = TwistedInvolution::new(datum, root_system, delta, new_action)?;
+            }
         }
 
         // Replay the word in reverse, growing the Cayley set; cross letters
@@ -194,27 +191,23 @@ impl CayleyCrossDecomposition {
                 cross_action.compose(&WeylAction::simple_reflection(datum, generator)?)?;
         }
 
-        // Replay verification: cross letters in order, then ascending Cayley
-        // reflections with per-step imaginarity, must reproduce the input.
-        let mut replay = TwistedInvolution::new(datum, root_system, delta, identity)?;
+        // Replay verification, at the permutation level: cross letters in
+        // order, then ascending Cayley reflections with per-step
+        // imaginarity, must reproduce the input's root permutation (which,
+        // for this fixed distinguished involution, is the full involution).
+        let mut replay = distinguished_permutation.clone();
         for &generator in &cross_word {
-            let reflection = WeylAction::simple_reflection(datum, generator)?;
-            let new_action = reflection
-                .compose(replay.weyl_action())?
-                .compose(&WeylAction::simple_reflection(datum, twist[generator])?)?;
-            replay = TwistedInvolution::new(datum, root_system, delta, new_action)?;
+            orbit_machine.conjugate(&mut replay, generator);
         }
         for &root in &cayley_roots {
-            if replay.root_involution().kind(root) != Some(RootKind::Imaginary) {
+            if orbit_machine.kind(&replay, root) != RootKind::Imaginary {
                 return Err(StructureError::CayleyCrossInvariantViolation {
                     invariant: "Cayley root imaginary",
                 });
             }
-            let reflection = WeylAction::root_reflection(datum, root_system, root)?;
-            let new_action = reflection.compose(replay.weyl_action())?;
-            replay = TwistedInvolution::new(datum, root_system, delta, new_action)?;
+            replay = orbit_machine.cayley_successor(&replay, root)?;
         }
-        if replay != *twisted {
+        if replay != crate::inner_class::involution_key(twisted) {
             return Err(StructureError::CayleyCrossInvariantViolation {
                 invariant: "replay equality",
             });
