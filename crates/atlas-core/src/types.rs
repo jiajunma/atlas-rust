@@ -576,7 +576,13 @@ fn write_naked(
 }
 
 /// One side of a function arrow: tuple and union LISTS print naked, but a
-/// nested function type keeps its own parentheses.
+/// nested function type keeps its own parentheses. Upstream prints naked
+/// only when the side's `raw_kind()` is directly tuple/union
+/// (axis-types.w:1620-1635); in the bracketed `set_type` echo
+/// (`void_arrow`) every anonymous sub-type was interned by `add_typedefs`,
+/// so the side is a TABLED reference and keeps its own parentheses
+/// (oracle: `set_type [ T = ((int,int->int) f) ]` echoes
+/// "defined as (((int,int)->int))").
 fn write_arrow_side(
     type_: &Type,
     table: &TypeTable,
@@ -584,7 +590,9 @@ fn write_arrow_side(
     void_arrow: bool,
 ) -> fmt::Result {
     match type_ {
-        Type::Tuple(_) | Type::Union(_) => write_naked(type_, table, out, void_arrow),
+        Type::Tuple(_) | Type::Union(_) if !void_arrow => {
+            write_naked(type_, table, out, void_arrow)
+        }
         other => write_type(other, table, out, void_arrow),
     }
 }
@@ -638,6 +646,48 @@ mod tests {
                 Type::Primitive(Prim::Bool),
             )),
             "((int->bool)->bool)"
+        );
+    }
+
+    #[test]
+    fn set_type_echo_parenthesises_tuple_and_union_arrow_sides() {
+        let table = TypeTable::new();
+        let show_set_type =
+            |type_: &Type| type_.display_in_set_type(&table).to_string();
+        let int = Type::Primitive(Prim::Int);
+        let int_pair = Type::tuple(vec![int.clone(), int.clone()]);
+        // Oracle probes (HPC, upstream atlas): the bracketed form echoes
+        // (((int,int)->int),int), ((int|string)->int), [((int,int)->int)],
+        // ((int->(int,int))->int); the plain display stays naked.
+        assert_eq!(
+            show_set_type(&Type::tuple(vec![
+                Type::function(int_pair.clone(), int.clone()),
+                int.clone(),
+            ])),
+            "(((int,int)->int),int)"
+        );
+        assert_eq!(
+            show_set_type(&Type::function(
+                Type::union_of(vec![int.clone(), Type::Primitive(Prim::String)]),
+                int.clone(),
+            )),
+            "((int|string)->int)"
+        );
+        assert_eq!(
+            show_set_type(&Type::row(Type::function(int_pair.clone(), int.clone()))),
+            "[((int,int)->int)]"
+        );
+        assert_eq!(
+            show_set_type(&Type::function(
+                Type::function(int.clone(), int_pair.clone()),
+                int.clone(),
+            )),
+            "((int->(int,int))->int)"
+        );
+        // A void arrow side still shows void in the bracketed echo.
+        assert_eq!(
+            show_set_type(&Type::function(Type::void(), int.clone())),
+            "(void->int)"
         );
     }
 
