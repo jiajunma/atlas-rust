@@ -4991,3 +4991,51 @@ the frozen print_family batch. No other hidden special operators exist
      `sbatch --export=ALL,TIMEOUT=600 hpc/script_corpus.sbatch '/public/home/majj/atlas-rust/hpc/workloads/workload_*.atlas'`
      Report lands in results/<commit>/<jobid>/script_corpus_report.json
      with seconds/maxrss for both binaries; record into BENCHMARKS.md.
+
+## Perf work 2026-08-24c (overload resolution + Weyl sharing; agent-111)
+
+- Root cause of the ~4.6s/script rust-vs-oracle gap (gdb + perf -F 999
+  with force-frame-pointers on HPC; plain `-g` unwinding breaks through
+  Rust's omitted frame pointers, use `RUSTFLAGS="-C
+  force-frame-pointers=yes"` builds for profiling):
+  `merged_variants` rebuilt the full ordered variant list of a name on
+  EVERY call site (twice: the call-head dispatch emptiness check and
+  convert_overload_application itself) — deep clones of all builtin
+  variants plus `is_close` insert-position scans of every user variant
+  against every builtin variant.
+- Fixes (all local `cargo check`+focused tests green, HPC quick_check
+  compile gate green):
+  - `659df32` + `f1c5fc5`: cache merged variants per name in
+    OverloadState; invalidate ONLY the mutated name (a corpus script
+    interleaves hundreds of `set` commands with call sites of unrelated
+    names, so full-cache clears kept every name cold). `add_user` must
+    build its pre-mutation view with the uncached builder — the caching
+    wrapper would re-populate the just-invalidated entry with the stale
+    list (this broke 5 overload unit tests until fixed).
+  - `ff23515`: (a) coercion_between/row_coercion now gate the 29-entry
+    table scan by top-level shape (same() requires equal gates, so the
+    filter only prunes certain non-matches; first-match order
+    unchanged). (b) `weyl_datum_shared` caches
+    (Arc<RootSystem>, Arc<WeylInterface>) per datum content —
+    build_weyl_context and 12 direct RootSystem::enumerate sites
+    re-enumerated per builtin call while scripts build Weyl elements per
+    group element in load-time loops; upstream builds the WeylGroup once
+    per inner class (innerclass.cpp). WeylEltContext fields are Arc now.
+- HPC seconds (perf_build_time job 3621094 @ e347894; before = 3617892):
+  GKfast 8.72→1.84, generic_degrees 8.77→1.85, test_braid 8.79→1.84,
+  class_tables 5.69→1.24, basic.at 0.17→0.08. Corpus 3617953 (9a33da9):
+  MATCH 236/240, median rust/cpp ratio 29.5x→12.97x.
+- Remaining hot spots (fp profile of test_braid.at, pre-ff23515):
+  CartanClassification::build 22% via build_inner_class (load-time
+  distinct inner classes — classification_cached MISSES are legitimate,
+  distinct fingerprints; the gap is algorithmic inside
+  involution_orbits/twisted_conjugacy_partition, ~18% self),
+  TypedContext::execute 10.8% self, memcmp 9% under execute_tokens
+  (lexer/parser lane), malloc/free ~13%. The <1s/script target needs the
+  atlas-real-group classification speedup next.
+- KNOWN UNRELATED RED: quick_check's new `cargo test --workspace` phase
+  fails on typed::tests::let_function_sugar_and_recursion_evaluate
+  (stack overflow, SIGABRT) — reproduced locally; reverting typed.rs /
+  coercions.rs / domain_builtins.rs to pre-perf commits does NOT cure
+  it, so it belongs to the do_expr/evaluator lane (see 2026-08-24a
+  checkpoint, diagnosis job 3621118), not to the perf commits.
