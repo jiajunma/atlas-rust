@@ -4625,3 +4625,22 @@ the frozen print_family batch. No other hidden special operators exist
   its own CARGO_TARGET_DIR — safe beside a running corpus job (which
   owns the main checkout target/). Never cargo-check in the main
   checkout while corpus runs, and never compile locally at all.
+- OUTPUT_DIFF sweep (probe: double-run 32 scripts vs oracle, classify
+  diff lines): every non-forget diff fell into three classes, all fixed:
+  (a) set_type echo must print EVERY field position — holes contribute
+  just their separator (global.w:1705-1725): `with projectors: , x, mu.`;
+  (b) bracketed set_type echo AND whattype print a void function-arrow
+  side as `void` (`(void->int)`), while definition reports print it
+  empty (`(->int)`) — Type::display_in_set_type threads a void_arrow
+  flag (single-name set_type keeps the plain spelling, global.w:1390);
+  (c) a tabled FUNCTION type routes set bindings to the overload table
+  (global.w:938 kind() untables) — inf_list = (->inf_node) reports
+  `Defined Fibonacci: inf_list`, not `Variable ...`; add_user takes the
+  arg type from the expansion but keeps the tabled type for the report.
+- Corpus trajectory: 3614947 (ace208c, lazy KGB): MATCH 43,
+  OUTPUT_DIFF 36, RUST_EVAL_FAIL 159 — histogram dominated by two
+  already-fixed blockers (134x orbit_data subscript, 7x KGB_elt
+  overload). 3615064 resubmitted at the full fix batch.
+- quick_check.sbatch gotcha: cargo check needs --all-targets to compile
+  test code (a new enum variant broke 5 exhaustive test matches only
+  there); the worktree approach keeps it parallel-safe with corpus.
