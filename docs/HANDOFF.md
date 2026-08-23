@@ -4665,3 +4665,24 @@ the frozen print_family batch. No other hidden special operators exist
   `A && B &` backgrounds the WHOLE list as a subshell (you sample bash);
   perf symbolisation fails on the nodes; block-buffered stdout means a
   hung run leaves an empty file.
+- InnerClass orbit-construction perf landed (`eeee72a` real-group part +
+  `874a89f`): groups.at load 4.39s -> 0.85s (oracle 0.05s), E8
+  involution_orbits 1.33s -> 0.24s, classification 1.76s -> 0.27s
+  (199,952 involutions, 10 classes unchanged; E7 142->18ms, F4 9->1.7ms).
+  Design: (a) `PermutationOrbits` runs the phase-1 Cayley BFS and
+  canonicalize at the root-image-permutation level — decisions are
+  provably identical to the matrix path (same pairings, same word), so
+  representatives are rebuilt once per class by replaying the word with
+  full `TwistedInvolution::new` validation; (b) phase-2 cross-closure
+  probes use `PermutationKey`, the simple-root images packed into u128 —
+  EXACT and injective because a root-datum involution is a linear map and
+  the simple roots are a Z-basis of the root lattice (`Full(Vec<u8>)`
+  fallback above rank 16); (c) `CartanClassification::build` reuses the
+  partition's class order (it already IS the Atlas Cayley-BFS discovery
+  order) instead of re-running the BFS; (d) CayleyCross peel/replay and
+  subsystem_simple_roots run at permutation level. Gotchas for future
+  agents: the u8-permutation encoding still caps at 255 roots (E8 has
+  240); the permutation-level canonicalize MUST stay decision-identical
+  to matrix-level `InnerClass::canonicalize` (still the public API for
+  rep_context/ktype) — any change there needs both paths updated and an
+  HPC differential gate.
