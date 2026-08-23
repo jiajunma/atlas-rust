@@ -1926,7 +1926,22 @@ impl TypedContext {
                 .collect();
             // Pass 2: resolve each spec with every group name visible.
             for (definition, number) in definitions.iter().zip(numbers) {
-                let (mut expansion, fields) = resolve_type_spec(&definition.spec, &self.types)?;
+                let (mut expansion, mut fields) = resolve_type_spec(&definition.spec, &self.types)?;
+                // A bracketed member written without any field names
+                // parses as a plain type expression (Alias-shaped spec)
+                // and yields no field slots; the tabled entry still needs
+                // one (empty) slot per component, or `whattype` zips the
+                // components with an empty field list and prints "(  )".
+                if fields.is_empty() {
+                    match &expansion {
+                        Type::Tuple(components) | Type::Union(components)
+                            if !components.is_empty() =>
+                        {
+                            fields = vec![None; components.len()];
+                        }
+                        _ => {}
+                    }
+                }
                 // Upstream reduces every structural equivalence class to
                 // one type_map entry (axis-types.w:1024-1051): an anonymous
                 // sub-type equal to an earlier named one references it.
@@ -1975,7 +1990,7 @@ impl TypedContext {
         }
         let mut events = Vec::with_capacity(definitions.len());
         for (definition, target) in definitions.iter().zip(&targets) {
-            let text = self.define_type_members(definition, target, span)?;
+            let text = self.define_type_members(definition, target, tabled, span)?;
             events.push(TypedCommandEvent::ReportLine { text, span });
         }
         Ok(events)
@@ -1990,6 +2005,7 @@ impl TypedContext {
         &mut self,
         definition: &crate::syntax::TypeDefinition,
         target: &Type,
+        tabled: bool,
         span: SourceSpan,
     ) -> Result<String, Diagnostic> {
         let expansion = match target {
@@ -1997,25 +2013,28 @@ impl TypedContext {
             other => other.clone(),
         };
         // The bracketed (tabled) form echoes the expansion with void
-        // arrow sides shown (global.w:1647, "defined as (void->int)").
-        // The single-name alias form echoes the type AS WRITTEN
-        // (global.w:1390): a tabled right-hand side prints its NAME
-        // ("Type name 'Parabolic' defined as KGPElt"), a structural one
-        // its plain spelling ("(->int)").
-        let heading = match &definition.spec {
-            TypeSpec::Alias(_) => format!(
-                "Type name '{}' defined as {}\n",
-                definition.name.value,
-                target.display(&self.types)
-            ),
-            _ => format!(
+        // arrow sides shown (global.w:1647, "defined as (void->int)") —
+        // even when no field is named and the spec parses as a plain
+        // type expression (`set_type [ t0 = (int,int) ]` echoes
+        // "(int,int)"). The single-name alias form echoes the type AS
+        // WRITTEN (global.w:1390): a tabled right-hand side prints its
+        // NAME ("Type name 'Parabolic' defined as KGPElt"), a
+        // structural one its plain spelling ("(->int)").
+        let heading = if tabled {
+            format!(
                 "Type name '{}' defined as {}\n",
                 definition.name.value,
                 match target {
                     Type::Tabled(_) => expansion.display_in_set_type(&self.types).to_string(),
                     _ => expansion.display(&self.types).to_string(),
                 }
-            ),
+            )
+        } else {
+            format!(
+                "Type name '{}' defined as {}\n",
+                definition.name.value,
+                target.display(&self.types)
+            )
         };
         let fields = match &definition.spec {
             TypeSpec::Alias(_) => return Ok(heading),
