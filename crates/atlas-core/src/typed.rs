@@ -766,8 +766,29 @@ fn typed_expression_print(expression: &TypedExpr) -> String {
         }
         TypedExpr::Conversion { inner, .. } => typed_expression_print(inner),
         TypedExpr::FunctionCall {
-            function, argument, ..
+            function,
+            argument,
+            name,
+            ..
         } => {
+            // A call whose function slot holds a `set_type`-installed
+            // projector closure is upstream's projector_call
+            // (axis.w:4495-4532): it prints postfix, `argument.field`,
+            // with the field name taken from the call-site trace name
+            // (so a projector aliased under another `set` name prints
+            // that name, like upstream's build_call(name)).
+            if let TypedExpr::Denotation(Value::Closure(closure)) = function.as_ref() {
+                if matches!(closure.body.as_ref(), TypedExpr::TupleProject { .. }) {
+                    if let Some(trace) = name {
+                        let field = trace.split('@').next().unwrap_or(trace);
+                        return format!(
+                            "{}.{}",
+                            typed_expression_print(argument),
+                            field
+                        );
+                    }
+                }
+            }
             let function_print = typed_expression_print(function);
             let mut out = match function.as_ref() {
                 TypedExpr::GlobalIdent { .. } | TypedExpr::LocalIdent { .. } => function_print,
