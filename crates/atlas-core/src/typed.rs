@@ -2278,7 +2278,19 @@ fn convert_list_expression(
         return conform_types(&Type::row(component), required, display, span, analysis)
             .map_err(BalanceConversionError::Diagnostic);
     }
-    let (mut component, coercion_tag) = match &*required {
+    // The row-context test untables transparently (axis-types.w:375-384
+    // `kind()`): a tabled row like sparse.at's `sparse_column` hands its
+    // expansion's component type down; conform_types still specialises
+    // against the original tabled pattern.
+    let expanded_required;
+    let required_kind: &Type = match &*required {
+        Type::Tabled(number) => {
+            expanded_required = analysis.types.expansion(*number).clone();
+            &expanded_required
+        }
+        other => other,
+    };
+    let (mut component, coercion_tag) = match required_kind {
         Type::Undetermined => (Type::Undetermined, None),
         Type::Row(component) => (component.as_ref().clone(), None),
         other => match row_coercion(other, analysis.types) {
