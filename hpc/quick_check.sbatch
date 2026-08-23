@@ -17,8 +17,9 @@ submit_dir="${SLURM_SUBMIT_DIR:?SLURM_SUBMIT_DIR is required}"
 cd "$submit_dir"
 export PATH="$HOME/.cargo/bin:$PATH"
 
-check_dir="$submit_dir-check"
-git worktree remove --force "$check_dir" 2>/dev/null || true
+check_dir="$submit_dir-check-${SLURM_JOB_ID}"
+# Per-job worktree: a concurrent quick_check must never remove this one
+# (job 3621023's cleanup deleted 3621032's checkout mid-test).
 git worktree prune
 rm -rf "$check_dir"
 git worktree add "$check_dir" HEAD

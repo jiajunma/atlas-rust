@@ -6045,30 +6045,33 @@ impl Builtin {
             BuiltinImpl::Prints => {
                 // axis.w:8850-8853: the report is written at every level;
                 // only single_value yields the (empty tuple) value.
-                context.print_text(prints_text(&arguments));
+                let text = prints_text(context, &arguments);
+                context.print_text(text);
                 Ok(at_builtin_level(level, || Value::Tuple(Vec::new())))
             }
             BuiltinImpl::Print => {
                 // axis.w:8796-8802: the argument prints verbatim (the
-                // standard value printer, quotes and all) at every level,
+                // standard value printer, quotes and all — closures print
+                // their full multi-line form at any depth) at every level,
                 // and is returned unchanged when a value is demanded.
                 let value = if arguments.len() == 1 {
                     arguments.into_iter().next().expect("one argument")
                 } else {
                     Value::Tuple(arguments)
                 };
-                context.print_text(format!("{value}\n"));
+                let text = value_string(context, &value);
+                context.print_text(format!("{text}\n"));
                 Ok(at_builtin_level(level, || value))
             }
             BuiltinImpl::ToString => {
                 // axis.w:8841-8846: the stripped concatenation, no trailing
                 // newline; no value is produced in void context.
-                let text = stripped_text(&arguments);
+                let text = stripped_text(context, &arguments);
                 Ok(at_builtin_level(level, || Value::String(text)))
             }
             BuiltinImpl::Error => {
                 // axis.w:8855-8859: always throws; the level is irrelevant.
-                Err(runtime(stripped_text(&arguments), span))
+                Err(runtime(stripped_text(context, &arguments), span))
             }
         }
     }
@@ -6205,11 +6208,14 @@ fn at_builtin_level(level: Level, value: impl FnOnce() -> Value) -> Option<Value
 /// tuple: string components print without quotes, every other value prints
 /// like `print`. No trailing newline — `prints` adds the wrapper's
 /// `std::endl` itself, `to_string` and `error` do not.
-fn stripped_text(arguments: &[Value]) -> String {
-    fn component(text: &mut String, value: &Value) {
+fn stripped_text(context: &EvaluationContext, arguments: &[Value]) -> String {
+    fn component(context: &EvaluationContext, text: &mut String, value: &Value) {
         match value {
             Value::String(string) => text.push_str(string),
-            other => text.push_str(&other.to_string()),
+            // The standard value printer, so a closure argument (or one
+            // nested in a tuple) prints its full multi-line form
+            // (axis.w:3254-3271), not the bare Display head.
+            other => text.push_str(&value_string(context, other)),
         }
     }
     let mut text = String::new();
@@ -6220,14 +6226,14 @@ fn stripped_text(arguments: &[Value]) -> String {
         match &arguments[0] {
             Value::Tuple(components) => {
                 for value in components {
-                    component(&mut text, value);
+                    component(context, &mut text, value);
                 }
             }
-            value => component(&mut text, value),
+            value => component(context, &mut text, value),
         }
     } else {
         for value in arguments {
-            component(&mut text, value);
+            component(context, &mut text, value);
         }
     }
     text
@@ -6235,8 +6241,8 @@ fn stripped_text(arguments: &[Value]) -> String {
 
 /// `prints_wrapper`'s output (axis.w:8850-8853): the stripped text plus one
 /// trailing newline.
-fn prints_text(arguments: &[Value]) -> String {
-    format!("{}\n", stripped_text(arguments))
+fn prints_text(context: &EvaluationContext, arguments: &[Value]) -> String {
+    format!("{}\n", stripped_text(context, arguments))
 }
 
 fn expect_unary(mut arguments: Vec<Value>) -> Value {
