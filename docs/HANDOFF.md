@@ -4,6 +4,47 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-23b (fundamental_(co)weight ambient coordinates; induction_sp4 unblocked)
+
+- Corpus failure: `induction_sp4.at` died at
+  `Runtime error at basic.at:25:58: Levi factor is not theta-stable` from
+  `real_Levi(KGB(G,9))`, G=Sp(4,R). Probe `hpc/probe_levi_sp4.at` (run
+  against both interpreters, cwd=atlas-scripts) bisected the chain
+  involution/rho/from_dominant/zero_simple_coroots/cross — all matched —
+  to the FIRST divergence: `Levi_coweight(rd,[0])` gave `[1,2]` vs the
+  oracle's `[1,1]`.
+- Root cause: the `fundamental_weight`/`fundamental_coweight` builtins in
+  `crates/atlas-core/src/domain_builtins.rs` returned the (co)root-BASIS
+  coordinates (bare `e_i`, resp. the Cramer solution of `C x = e_i`)
+  instead of AMBIENT lattice coordinates. Upstream
+  (rootdata.cpp:849-853, 1012-1016) multiplies by the simple (co)root
+  matrix: `weight_numer=(root_mat*iC.transposed()).columns()`,
+  `coweight_numer=(coroot_mat*iC).columns()`. Simply connected data have
+  simple coroots = `e_i`, so the old code coincided with upstream there —
+  which is why `tests/fixtures/domain/fundamental.atlas` (sc A2/B2/A3
+  only) stayed green. Fix commit `a0cbcd9`: solve `C^T y = e_i` (weights)
+  resp. `C x = e_i` (coweights) via Cramer, then combine the simple
+  (co)roots with those coefficients via the new
+  `ambient_rational_combination` helper (folds the det(C) sign into the
+  numerators so the RatVec denominator stays positive).
+- Oracle anchors (Sp(4,R)): fw=[1,0]/1,[1,1]/1; fcw=[1,0]/1,[1,1]/2.
+  (SL(3,R)): fw=[1,0]/1,[1,1]/1; fcw=[2,-1]/3,[1,1]/3.
+- Verification: probe diff vs oracle + quick_check job (see entry body
+  when filled). Convention note: `rsync -az --delete .git/` WIPES
+  HPC-side worktree metadata under `.git/worktrees/` — recreate the
+  metadata dir (`commondir`=`../..`, `gitdir`=<wt>/.git, `HEAD`=full sha)
+  or `git worktree repair` afterwards when keeping a persistent build
+  worktree like `/public/home/majj/atlas-rust-levi`.
+- Verification results (fix commit `a0cbcd9`, binary built in
+  `/public/home/majj/atlas-rust-levi/target`): every `Value:` line of
+  `probe_levi_sp4.at` is now IDENTICAL to the oracle, including
+  `Levi_coweight(rd,[0]) = [1,1]`, `has_theta_stable_Levi = true`, and
+  `real_Levi(x) = disconnected split real group with Lie algebra
+  'sl(2,R).gl(1,R)'`. Full `induction_sp4.at` loads with exit 0; the only
+  remaining diff vs the oracle is the pre-existing set_type echo spelling
+  (`ratmat`/`orbit_data`/`Std_Levi_table` name vs expansion), unrelated
+  to this fix. quick_check job **3617819**: `CHECK_DONE status=0`.
+
 ## Checkpoint - 2026-08-23a (TYPE_ID lexer classification; basic.at loads to line 1721)
 
 - Corpus-driven clearing of `basic.at` load blockers continues. Jobs
