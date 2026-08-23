@@ -788,8 +788,14 @@ impl KgbGraph {
     /// [`InnerClass::based_involution_twist`] first). The Weyl part is
     /// renamed letter-by-letter (upstream `WeylGroup::translation`), the
     /// torus part transports by delta's mod-2 coweight action plus the
-    /// grading correction `g - g*delta`, and the result is looked up by
-    /// RAW bits without reducing, exactly as upstream's `lookup`.
+    /// grading correction `g - g*delta`, and the result is looked up
+    /// through [`Self::lookup`] — upstream's `KGB::lookup` first REDUCES
+    /// the candidate torus part against the renamed involution's mod space
+    /// (`ic.involution_table().reduce(a)`, kgb.cpp:716-719) and only then
+    /// raw-compares against the stored (reduced) representatives. Skipping
+    /// the reduction misses elements whose twisted bits are merely
+    /// mod-space-equivalent to the stored ones (GL(4,R) element #2 under
+    /// the distinguished twist: 0101 reduces to the stored 1010).
     /// `Ok(None)` is upstream's `UndefKGB`: the correction is
     /// non-integral, or the twisted element is not in this form's graph.
     pub fn twisted(
@@ -870,17 +876,11 @@ impl KgbGraph {
         }
         bits.xor_assign(&ModTwoVector::from_ones(coordinates.len(), correction)?)?;
 
-        // lookup: the fiber over the renamed involution, raw-bit equality.
-        let Some(position) = self.positions.iter().position(|entry| entry.0 == target) else {
-            return Ok(Some((None, target)));
-        };
-        for index in self.first_of_tau[position]..self.first_of_tau[position + 1] {
-            let candidate = &self.elements[index];
-            if candidate.torus_bits() == &bits {
-                return Ok(Some((Some(KgbId(index)), target)));
-            }
-        }
-        Ok(Some((None, target)))
+        // lookup: reduce the twisted bits against the renamed involution's
+        // mod space, then match the (reduced) fiber representatives —
+        // upstream `KGB::lookup` (kgb.cpp:716-726).
+        let found = self.lookup(table, target, bits)?;
+        Ok(Some((found, target)))
     }
 
     fn check_indices(&self, id: KgbId, generator: usize) -> Result<(), StructureError> {
