@@ -147,3 +147,4 @@ interpreters — the loops are too light to measure anything but process
 startup, so these ratios are noise. The workloads need heavier iteration
 counts (or larger groups) before their numbers mean anything; use the
 script-corpus ledger above for real per-script timing until then.
+| 3622804 | 7c325cf | 1 targeted | — | i64 fast path in bounded_linear_combination (460370e): unipotent 68.0s -> 65.7s (-3%). Confirms the big win must come from caching the per-call KGB rebuild, not micro-arithmetic |
