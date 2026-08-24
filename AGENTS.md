@@ -72,6 +72,14 @@ not a source-level C++ translation.
    (blockers, root causes, disproven hypotheses, HPC quirks) goes into
    `docs/REMAINING_BUILTINS.md` and `docs/HANDOFF.md`; do not rely on
    session scratch files for project state.
+6. **Parallel subagent discipline (2026-08-24).** When several coding agents
+   run at once: each gets an explicit file-ownership boundary in its brief;
+   each verifies from its OWN HPC `git worktree` (never `git reset --hard`
+   the shared `/public/home/majj/atlas-rust` checkout — parent only); each
+   works on a local `agent-<topic>` branch and must not leave the shared
+   local checkout switched to it (parent merges after HPC verification).
+   Active-agent ownership is listed in `docs/HANDOFF.md` "Current frontier";
+   check it before dispatching new work to avoid double-dispatch.
 
 ## Verified repair guard
 
