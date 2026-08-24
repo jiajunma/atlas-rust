@@ -5190,3 +5190,49 @@ Output still MATCH; the slowdown is in the single big E8 build. Bisect by
 re-running that script at each commit; likely candidate: 1cca878's inline
 SmallVec rows copying on E8's wide BFS frontiers, or the pointer-eq gate
 adding a branch that almost never hits for E8.
+
+## Perf work 2026-08-24h — typed-side coercion machinery (agent-116)
+
+Targets from perf-fp2 @ 6b5df6a (test_braid): coercion_between 5.59% self,
+OverloadState::add_user 3.27%, SourceText::position 1.45%.
+
+- `4ed8fe0` coercions.rs: (a) the 29-entry coercion table is now bucketed
+  ONCE by (from-gate, to-gate) — 25 gate codes (20 prims + row/tuple/
+  union/function/undetermined), registration order preserved inside each
+  bucket, so the first-match result is provably the linear scan's; the
+  None-gate (self-referential set_type placeholder) fallback still scans
+  all. (b) `is_close` now follows upstream's control flow
+  (axis-types.w:3258-3285): the table is consulted only when a primitive
+  is involved; aggregate pairs go straight to the componentwise
+  recursion. Equivalence argument (verified entry-by-entry against the
+  fixed table): every row-to-row entry derives from a component coercion
+  the recursion also finds ([int]->[rat] iff int->rat; [vec]<->[[int]]
+  iff vec<->[int]; likewise the ratvec/[rat] entries), no tuple-to-tuple
+  or function entries exist, and gate-mismatched pairs can never satisfy
+  `same`. New unit tests pin the bucket index against a naive scan over a
+  22-type cross product and pin is_close bits on aggregate pairs.
+- `9e81bc3` source.rs: `SourceText::span` shares one line lookup and one
+  prefix scan for both endpoints (lexer takes a span per token); columns
+  count non-continuation bytes instead of decoding chars; same-line end
+  columns extend the start column. Stored byte offsets and positions are
+  unchanged (sweep test compares span() against position() pairs over a
+  multiline Unicode text).
+- Verification: quick_check 3623641 green (862 tests; the job's FAILED
+  state was only the final `git worktree remove` — rsync of .git had
+  wiped the HPC-side worktree registrations; use
+  `rsync -a --exclude=/worktrees .git` from now on). Targeted corpus
+  3623672 @ c6f453c: test_braid/class_tables/GKfast/generic_degrees/
+  example/all all MATCH. Full corpus 3623704 @ 06b85d7: MATCH 238/238 +
+  2 SKIPPED_LARGE, median rust/cpp 4.42x -> 4.09x, over_5x 34 -> 26,
+  within_2x 41 -> 49 (benchmark rows in BENCHMARKS.md; that commit stack
+  also carries agent-115's BFS/classification chain, which owns the
+  unipotent 59.7 -> 41.5s win).
+- Memoization considered and REJECTED for now: types are not interned,
+  so a coercion memo needs structural digests + table-generation
+  invalidation; with the gate bucket the lookup is already O(bucket) and
+  deterministic — a hashmap probe would cost about the same while adding
+  collision/invalidation risk.
+- Remaining typed-side hot spots (unchanged, not mine or not clean):
+  parser __reduce ~3% (generated lalrpop code — do not hand-edit, rule
+  4), lexer's per-token span construction (1.45% -> ~halved by 9e81bc3;
+  fully killing it needs deferred spans in the lexer lane).
