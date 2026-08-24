@@ -5075,3 +5075,40 @@ From `results/fc85095.../3622339/script_corpus_report.json` (238 MATCH):
 - Residual check after the cache lands: if a fixed ~0.5-2s gap remains on
   tiny scripts (2i12.at was 2.19s vs 0.28s), profile interpreter/lib-load
   startup next; that is a different hotspot than KGB.
+
+## Perf finding 2026-08-24d — KGB rebuild hypothesis DISPROVEN (probe job 3622804)
+
+The `ATLAS_PROBE_KGB=1` build counter (7c325cf) on
+unipotent_representations_exceptional.at prints exactly 26 `KGB_PROBE build`
+lines for the script's 26 groups: every real form's KGB pipeline is built
+ONCE. The per-real-form cache (RealFormContext::kgb Mutex + canonical_forms
+Weak cache, domain_builtins.rs:283-305/2240-2301) already works; the repeated
+`external/internal` pairs in the probe are distinct inner classes (E6 sc/ad,
+E7 sc/ad share external ids). Do NOT build a per-real-form KGB cache — the
+77s was the sum of 26 one-time builds, dominated by E7/E8 graph sizes.
+
+What the 2026-08-24b stack really showed: one long serial
+`InvolutionTable::add_cartan` phase (push_record per twisted involution,
+each paying a malachite saturated_kernel) plus the parallel KGB BFS
+(from_par_iter). Post-fast-path sampling (job 3622836) shows 7/25 samples
+parked in rayon LockLatch (main thread waiting on the parallel BFS — normal,
+NOT starvation: RAYON_NUM_THREADS=4 is unchanged at 66.2s, threads=1 is
+WORSE at 81.0s; jobs 3622856/3622857), 3/25 in push_record, the rest
+scattered across typed-evaluator script overhead and malloc.
+
+Landed against this (all verified MATCH on the unipotent script):
+- 460370e i64/i128 fast path in bounded_linear_combination: 68.0 -> 65.7s.
+- 9dc4b37 HashMap intern index (dedup-only, never iterated) + ModTwoVector
+  inline words (SmallVec<[u64;2]>, RANK_MAX=32 always fits): with f1a1c18
+  and 6b5df6a in the same build, 65.7 -> 60.6s.
+
+Residual gap to the oracle is 10.2x (60.6s vs 5.9s). Next levers, in
+suspected impact order:
+1. Serial add_cartan: per (record, generator) two WeylElement::multiply
+   calls, each 2 Vec allocs + O(#roots) (E8: 240 roots x ~10^6 edges).
+2. Parallel BFS per-element costs: cross_pregated/cayley_pregated +
+   per-element `Vec::with_capacity(rank)` result buffers.
+3. Per-inner-class shared InvolutionTable across real forms (upstream
+   shares Cartan classes per ComplexReductiveGroup): ~3x table work for
+   E8's 3 forms, but invasive (KgbBundle.table is Arc<InvolutionTable> and
+   KgbGraph::build takes &mut table).
