@@ -5408,3 +5408,10 @@ auto-vectorizes, iter().filter(byte-mask).count() does not; and any
 per-token O(line) work is O(n^2) on single-line scripts, which the corpus
 contains (E8_small_block). Both source.rs position paths are now
 documented with the single-line hazard.
+
+Remaining non-lexer SourceText::span/position callers audited: all cold.
+session_frame.rs abandon() takes one position() per error unwind;
+syntax.rs's two span(len, len) calls are parse-error EOF fallbacks;
+grammar join_span only combines existing SourceSpan values without
+touching text. No other O(line-prefix) hot path exists.
+
