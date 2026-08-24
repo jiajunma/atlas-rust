@@ -19,6 +19,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use malachite::{Integer, Rational};
+use smallvec::SmallVec;
 
 use crate::grading::try_capacity;
 use crate::tits_element::apply_matrix_mod_two;
@@ -143,8 +144,10 @@ impl KgbGraph {
         let mut elements: Vec<TitsElement> = try_capacity(expected)?;
         // Dedup index: hash map, since ids come from insertion order in
         // `elements` and the map itself is never iterated (upstream uses a
-        // hash table over Tits elements the same way).
-        let mut index: HashMap<TitsElement, usize> = HashMap::new();
+        // hash table over Tits elements the same way). The FxHash-style
+        // hasher keeps the per-edge intern probes off SipHash; the map is
+        // never iterated, so the hash choice is unobservable.
+        let mut index: TitsIndex = HashMap::default();
         index
             .try_reserve(expected)
             .map_err(|_| StructureError::AllocationFailed { requested: expected })?;
@@ -167,14 +170,19 @@ impl KgbGraph {
         while cursor < elements.len() {
             let window_end = (cursor + KGB_BLOCK).min(elements.len());
             // Phase 1: parallel pure computation over the window (table and
-            // coset are read-only during the BFS; intern is deferred).
+            // coset are read-only during the BFS; intern is deferred). The
+            // per-element result row is a SmallVec: rank <= 8 (everything
+            // through E8) stays inline, sparing one heap buffer per element.
             let computed: Vec<
-                Result<Vec<(KgbStatus, Option<TitsElement>, Option<TitsElement>)>, StructureError>,
+                Result<
+                    SmallVec<[(KgbStatus, Option<TitsElement>, Option<TitsElement>); 8]>,
+                    StructureError,
+                >,
             > = (cursor..window_end)
                 .into_par_iter()
                 .map(|i| {
                     let current = &elements[i];
-                    let mut results = Vec::with_capacity(rank);
+                    let mut results = SmallVec::with_capacity(rank);
                     for generator in 0..rank {
                         let kind = table
                             .simple_root_kind(current.involution(), generator)
@@ -906,6 +914,10 @@ impl KgbGraph {
     }
 }
 
+/// The BFS dedup map: Tits element -> insertion id, with the crate's
+/// FxHash-style hasher (dedup-only, never iterated).
+type TitsIndex = HashMap<TitsElement, usize, crate::inner_class::PermutationHasherBuilder>;
+
 /// Insert-or-lookup against the a-priori size bound; new elements extend the
 /// flat per-generator slots.
 #[allow(clippy::too_many_arguments)]
@@ -914,7 +926,7 @@ fn intern(
     expected: usize,
     rank: usize,
     elements: &mut Vec<TitsElement>,
-    index: &mut HashMap<TitsElement, usize>,
+    index: &mut TitsIndex,
     statuses: &mut Vec<Option<KgbStatus>>,
     cross_raw: &mut Vec<Option<usize>>,
     cayley_raw: &mut Vec<Option<usize>>,
