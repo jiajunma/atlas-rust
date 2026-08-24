@@ -5059,3 +5059,19 @@ Two attack lines:
 2. ARITHMETIC: saturated_kernel/add_row_multiple runs big-integer
    (malachite) multiplies in the inner loop; upstream lattice code keeps
    machine-int fast paths. Consider i64 fast path with overflow fallback.
+
+## Perf finding 2026-08-24c (full-corpus per-script analysis, job 3622339 @ fc85095)
+
+From `results/fc85095.../3622339/script_corpus_report.json` (238 MATCH):
+
+- The mid-tier offenders cluster tightly: gl4H/test_non_distinguished/
+  example/test_K/all/speh all sit at rust≈4.4-5.2s vs cpp≈0.38-0.42s.
+  These scripts all build groups and compute K types, i.e. KGB-dense work.
+- `E8_small_block_cell_parameter_numbers.at` is the worst ratio (76.7x,
+  rust 3.91s vs cpp 0.05s): E8 KGB graph rebuilt per access, same root cause.
+- Prediction: the per-real-form KGB cache (agent-114) should collapse this
+  whole mid-tier cluster, not just the unipotent outlier. Verify on the next
+  full-corpus rerun by checking the 4.4s cluster drops toward cpp+ε.
+- Residual check after the cache lands: if a fixed ~0.5-2s gap remains on
+  tiny scripts (2i12.at was 2.19s vs 0.28s), profile interpreter/lib-load
+  startup next; that is a different hotspot than KGB.
