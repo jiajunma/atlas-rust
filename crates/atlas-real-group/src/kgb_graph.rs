@@ -166,7 +166,11 @@ impl KgbGraph {
         )?;
         let mut cursor = 0_usize;
         use rayon::prelude::*;
-        const KGB_BLOCK: usize = 64;
+        // Parallel window: one per-element, per-generator Tits computation
+        // row. 512 amortizes the per-window join/synchronize cost better than
+        // 64 for E8-scale KGB graphs while keeping the intern (serial) phase
+        // bounded; the per-element result row stays inline via SmallVec.
+        const KGB_BLOCK: usize = 512;
         while cursor < elements.len() {
             let window_end = (cursor + KGB_BLOCK).min(elements.len());
             // Phase 1: parallel pure computation over the window (table and
