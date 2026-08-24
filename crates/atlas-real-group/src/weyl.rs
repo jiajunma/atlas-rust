@@ -126,6 +126,67 @@ impl WeylAction {
         }
     }
 
+    /// `s_generator after self` (matrix `s * M`), by reflection sparsity:
+    /// `s = I - alpha*beta^T` gives `(s*M)[i][j] = M[i][j] - alpha_i *
+    /// (beta^T M)[j]`, rank^2 instead of rank^3 per lattice. Exact integer
+    /// equality with
+    /// `WeylAction::simple_reflection(datum, generator)?.compose(self)`.
+    pub(crate) fn left_compose_simple(&self, generator: usize) -> Result<Self, StructureError> {
+        let rank = self.rank();
+        let datum = &*self.datum;
+        if generator >= datum.semisimple_rank() {
+            return Err(StructureError::IndexOutOfRange {
+                index: generator,
+                upper_bound: datum.semisimple_rank(),
+            });
+        }
+        Ok(Self {
+            datum: std::sync::Arc::clone(&self.datum),
+            weight_matrix: reflection_left(
+                datum.simple_roots()[generator].as_slice(),
+                datum.simple_coroots()[generator].as_slice(),
+                &self.weight_matrix,
+                rank,
+            )?,
+            coweight_matrix: reflection_left(
+                datum.simple_coroots()[generator].as_slice(),
+                datum.simple_roots()[generator].as_slice(),
+                &self.coweight_matrix,
+                rank,
+            )?,
+        })
+    }
+
+    /// `self after s_generator` (matrix `M * s`), by reflection sparsity:
+    /// `(M*s)[i][j] = M[i][j] - (M*alpha)[i] * beta_j`. Exact integer
+    /// equality with `self.compose(&WeylAction::simple_reflection(datum,
+    /// generator)?)` (see [`Self::left_compose_simple`]).
+    pub(crate) fn right_compose_simple(&self, generator: usize) -> Result<Self, StructureError> {
+        let rank = self.rank();
+        let datum = &*self.datum;
+        if generator >= datum.semisimple_rank() {
+            return Err(StructureError::IndexOutOfRange {
+                index: generator,
+                upper_bound: datum.semisimple_rank(),
+            });
+        }
+        Ok(Self {
+            datum: std::sync::Arc::clone(&self.datum),
+            weight_matrix: reflection_right(
+                datum.simple_roots()[generator].as_slice(),
+                datum.simple_coroots()[generator].as_slice(),
+                &self.weight_matrix,
+                rank,
+            )?,
+            coweight_matrix: reflection_right(
+                datum.simple_coroots()[generator].as_slice(),
+                datum.simple_roots()[generator].as_slice(),
+                &self.coweight_matrix,
+                rank,
+            )?,
+        })
+    }
+
     /// The shared datum behind this action (Arc refcount bump).
     pub fn datum_arc(&self) -> &std::sync::Arc<BasedRootDatum> {
         &self.datum
@@ -253,6 +314,74 @@ fn compose_matrices_fast(left: &[Vec<i32>], right: &[Vec<i32>]) -> Vec<Vec<i32>>
     matrix
 }
 
+/// `(s * M)` for the reflection `s = I - alpha*beta^T`, rank^2 via the
+/// shared row vector `beta^T M`. Same small-entry i64 accumulation
+/// discipline as [`compose_matrices`].
+fn reflection_left(
+    alpha: &[i32],
+    beta: &[i32],
+    matrix: &[Vec<i32>],
+    rank: usize,
+) -> Result<Vec<Vec<i32>>, StructureError> {
+    if matrix.len() != rank
+        || alpha.len() != rank
+        || beta.len() != rank
+        || matrix.iter().any(|row| row.len() != rank)
+    {
+        return Err(StructureError::RankMismatch {
+            expected: rank,
+            actual: matrix.len(),
+        });
+    }
+    let mut pairing_row = vec![0_i64; rank];
+    for (column, entry) in pairing_row.iter_mut().enumerate() {
+        let mut sum: i64 = 0;
+        for (index, &beta_entry) in beta.iter().enumerate() {
+            sum += i64::from(beta_entry) * i64::from(matrix[index][column]);
+        }
+        *entry = sum;
+    }
+    let mut result = zero_matrix(rank)?;
+    for (row, target_row) in result.iter_mut().enumerate() {
+        for (column, entry) in target_row.iter_mut().enumerate() {
+            *entry = (i64::from(matrix[row][column])
+                - i64::from(alpha[row]) * pairing_row[column]) as i32;
+        }
+    }
+    Ok(result)
+}
+
+/// `(M * s)` for the reflection `s = I - alpha*beta^T`, rank^2 via the
+/// shared column vector `M * alpha` (see [`reflection_left`]).
+fn reflection_right(
+    alpha: &[i32],
+    beta: &[i32],
+    matrix: &[Vec<i32>],
+    rank: usize,
+) -> Result<Vec<Vec<i32>>, StructureError> {
+    if matrix.len() != rank
+        || alpha.len() != rank
+        || beta.len() != rank
+        || matrix.iter().any(|row| row.len() != rank)
+    {
+        return Err(StructureError::RankMismatch {
+            expected: rank,
+            actual: matrix.len(),
+        });
+    }
+    let mut result = zero_matrix(rank)?;
+    for (row, target_row) in result.iter_mut().enumerate() {
+        let mut image: i64 = 0;
+        for (index, &entry) in matrix[row].iter().enumerate() {
+            image += i64::from(entry) * i64::from(alpha[index]);
+        }
+        for (column, entry) in target_row.iter_mut().enumerate() {
+            *entry = (i64::from(matrix[row][column]) - image * i64::from(beta[column])) as i32;
+        }
+    }
+    Ok(result)
+}
+
 fn apply_matrix(matrix: &[Vec<i32>], coordinates: &[i32]) -> Result<Vec<i32>, StructureError> {
     let rank = matrix.len();
     if coordinates.len() != rank {
@@ -376,6 +505,29 @@ mod tests {
     use crate::pair;
 
     use super::*;
+
+    #[test]
+    fn sparse_simple_composes_equal_the_full_compose_path() {
+        let datum =
+            BasedRootDatum::standard(vec![vec![2, -2], vec![-1, 2]]).expect("B2 datum");
+        let group = WeylGroup::new(datum);
+        let generators = [group.simple_reflection(0).unwrap(), group.simple_reflection(1).unwrap()];
+        let element = generators[0]
+            .compose(&generators[1])
+            .unwrap()
+            .compose(&generators[0])
+            .unwrap();
+        for (generator, simple) in generators.iter().enumerate() {
+            assert_eq!(
+                element.left_compose_simple(generator).unwrap(),
+                simple.compose(&element).unwrap(),
+            );
+            assert_eq!(
+                element.right_compose_simple(generator).unwrap(),
+                element.compose(simple).unwrap(),
+            );
+        }
+    }
 
     #[test]
     fn simple_reflection_uses_the_full_lattice_action() {

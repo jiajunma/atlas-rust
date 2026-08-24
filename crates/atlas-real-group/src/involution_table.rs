@@ -399,9 +399,14 @@ impl InvolutionTable {
                     self.records[cursor].element.length(),
                     neighbor.length(),
                 )?;
-                let new_action = self.reflection_actions[generator]
-                    .compose(self.records[cursor].involution.weyl_action())?
-                    .compose(&self.reflection_actions[self.twist[generator]])?;
+                // The same product `s_g * w * s_{twist(g)}` at the matrix
+                // level, by reflection sparsity (rank^2 per compose instead
+                // of rank^3; exact integer equality with the compose path).
+                let new_action = self.records[cursor]
+                    .involution
+                    .weyl_action()
+                    .left_compose_simple(generator)?
+                    .right_compose_simple(self.twist[generator])?;
                 // Transport the image basis across the cross edge
                 // (involutions.cpp:242-243): the PLAIN generator s, not
                 // twist(s) — delta is already incorporated in theta.
