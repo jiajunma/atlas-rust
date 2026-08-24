@@ -5441,6 +5441,12 @@ Verified: quick_check 3624219 green (498 real-group tests), targeted
 corpus 3624220 5/5 MATCH: unipotent 22.8 -> 15.27s (ratio 3.88x -> 2.47x
 vs cpp 6.18s; session chain 59.7 -> 15.3s = -74%), example 1.21s,
 test_K 1.19s, parameters 0.35s, E8_small_block 0.12s flat.
+Full-corpus gate 3624257: 238/238 MATCH + 2 SKIPPED_LARGE, unipotent
+14.64s (2.40x). NOTE on attribution: the job was submitted at b456e1c
+but its `git rev-parse HEAD` at job start recorded 32097c1 (agent-116's
+simple-reflection cache landed in between), so that row measures the
+union of both commits; the b456e1c-only number is the 3624220 targeted
+run above.
 
 Remaining levers (supersedes the 2026-08-24j list):
 1. Parallel KGB BFS worker-side cost (cross_pregated/cayley_pregated +
