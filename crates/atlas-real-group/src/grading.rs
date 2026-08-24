@@ -76,6 +76,7 @@ impl CartanGradingData {
     /// cannot express fiber identity, so `m_alpha` is built against
     /// [`AdjointCartanFiber::ambient_fiber`], the exact source the adjoint
     /// descent was proved against.
+    #[inline(never)]
     pub fn build(
         root_system: &RootSystem,
         root_involution: &RootInvolutionData,

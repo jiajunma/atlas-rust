@@ -574,6 +574,7 @@ impl InnerClass {
     ///
     /// This is the single orbit implementation;
     /// [`Self::twisted_conjugacy_classes`] is a thin wrapper over it.
+    #[inline(never)]
     pub fn twisted_conjugacy_partition(
         &self,
         weyl_budget: usize,
@@ -642,6 +643,7 @@ impl InnerClass {
     /// provenance, full [`RootInvolutionData`] validation) is rebuilt only
     /// for freshly discovered class representatives, so the E8 construction
     /// pays the matrix cost once per CLASS instead of once per Cayley edge.
+    #[inline(never)]
     fn involution_orbits(
         &self,
         weyl_budget: usize,
@@ -814,6 +816,7 @@ impl InnerClass {
     /// decisions are the same pairings the matrix-level
     /// [`Self::canonicalize`] computes, so this is the representative the
     /// historic loop would have stored.
+    #[inline(never)]
     fn cayley_representative(
         &self,
         parent: &TwistedInvolution,
@@ -1025,6 +1028,7 @@ impl<'a> PermutationOrbits<'a> {
     }
 
     /// The Cayley successor `r_root after theta` at the permutation level.
+    #[inline(never)]
     pub(crate) fn cayley_successor(
         &mut self,
         permutation: &[u8],
@@ -1043,6 +1047,7 @@ impl<'a> PermutationOrbits<'a> {
     /// subsystem) driven by the same pairings, so the returned word and
     /// canonical permutation are the matrix-level result transported through
     /// `theta |-> root-image permutation`.
+    #[inline(never)]
     pub(crate) fn canonicalize(
         &self,
         permutation: &[u8],
@@ -1159,6 +1164,7 @@ impl<'a> PermutationOrbits<'a> {
     /// Replace `p` by `s p s`, the permutation shadow of
     /// [`InnerClass::twisted_conjugate_action`]: `s_g w s_{twist(g)} delta =
     /// s_g theta s_g` because `s_{twist(g)} delta = delta s_g`.
+    #[inline(never)]
     pub(crate) fn conjugate(&self, permutation: &mut Vec<u8>, generator: usize) {
         let reflection = &self.simple_reflections[generator];
         let previous = permutation.clone();
@@ -1193,6 +1199,7 @@ impl<'a> PermutationOrbits<'a> {
     /// Sum of the positive roots of one kind in ambient coordinates — the
     /// permutation-level shadow of `positive_root_sum`, with kinds read off
     /// the permutation (fixed is imaginary, negated is real).
+    #[inline(never)]
     fn kind_sum(&self, permutation: &[u8], kind: RootKind) -> Result<Weight, StructureError> {
         let roots = self.inner_class.root_system();
         let mut sum = try_capacity(roots.lattice_rank())?;

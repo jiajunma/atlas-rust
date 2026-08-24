@@ -297,6 +297,7 @@ impl AdjointCartanFiber {
     /// Derive the adjoint action from a validated root-data involution and
     /// build its exact finite fiber. All structural and integral work is
     /// caller-bounded.
+    #[inline(never)]
     pub fn build(
         root_system: &RootSystem,
         root_involution: &RootInvolutionData,

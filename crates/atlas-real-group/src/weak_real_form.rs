@@ -50,6 +50,7 @@ impl WeakRealFormPartition {
     /// `max_elements` is the caller's bound on the enumerated fiber size
     /// `2^dimension`; the walk cost is bounded by that count times the
     /// imaginary rank, so no second knob exists.
+    #[inline(never)]
     pub fn build(grading: &CartanGradingData, max_elements: usize) -> Result<Self, StructureError> {
         let adjoint = grading.adjoint_fiber();
         let dimension = adjoint.dimension();

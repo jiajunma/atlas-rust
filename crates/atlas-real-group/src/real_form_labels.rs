@@ -32,6 +32,7 @@ impl RealFormLabels {
     /// grading at the decomposition's composed involution, the decomposition
     /// must factor through this distinguished involution, and each partition
     /// must share its grading data's fiber.
+    #[inline(never)]
     pub fn build(
         inner_class: &InnerClass,
         fundamental_grading: &CartanGradingData,

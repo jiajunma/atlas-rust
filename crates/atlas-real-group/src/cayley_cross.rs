@@ -37,6 +37,7 @@ impl CayleyCrossDecomposition {
     /// automorphism guarantee, which grounds the generator-index cross word.
     /// `max_peeling_steps` is defensive: given the provenance gate, peeling
     /// strictly reduces the Weyl length by one or two per step.
+    #[inline(never)]
     pub fn build(
         inner_class: &InnerClass,
         twisted: &TwistedInvolution,

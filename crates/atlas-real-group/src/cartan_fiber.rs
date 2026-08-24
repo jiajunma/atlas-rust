@@ -59,6 +59,7 @@ impl CartanFiber {
     /// Build this layer's low-pivot packed fiber group from a pairing-preserving
     /// dual-lattice involution. The exact integral reduction is bounded by
     /// `budget`.
+    #[inline(never)]
     pub fn build(
         involution: &LatticeInvolution,
         budget: &IntegerLatticeBudget,
