@@ -739,72 +739,96 @@ impl InnerClass {
             .into_iter()
             .zip(representative_permutations)
         {
-            // The representative's permutation seeds the flat member buffer.
-            let mut permutations = representative_permutation;
-            let mut parents: Vec<(u32, u8)> = vec![(u32::MAX, 0)];
-            seen.clear();
-            seen.insert(PermutationKey::pack(
-                &permutations,
-                orbit_machine.simple_positions(),
-            ));
-            let mut cursor = 0_usize;
-            while cursor < parents.len() {
-                for generator in 0..rank {
-                    let reflection = &orbit_machine.simple_reflections[generator];
-                    // next = reflection after current after reflection. Probe
-                    // on the simple-root images alone (an injective key), so
-                    // the full successor permutation is computed only for
-                    // genuine new members — about one edge in eight for E8.
-                    if packed {
-                        let mut key = 0_u128;
-                        {
-                            let current =
-                                &permutations[cursor * stride..(cursor + 1) * stride];
-                            for (shift, &position) in
-                                orbit_machine.simple_positions.iter().enumerate()
-                            {
-                                let image = reflection
-                                    [current[usize::from(reflection[usize::from(position)])]
-                                        as usize];
-                                key |= u128::from(image) << (8 * shift);
-                            }
-                        }
-                        if !seen.insert(PermutationKey::Packed(key)) {
-                            continue;
-                        }
-                    }
-                    next.clear();
-                    next.try_reserve(reflection.len())
-                        .map_err(|_| StructureError::AllocationFailed {
-                            requested: reflection.len(),
-                        })?;
-                    {
-                        let current = &permutations[cursor * stride..(cursor + 1) * stride];
-                        for &image in reflection.iter() {
-                            next.push(reflection[current[usize::from(image)] as usize]);
-                        }
-                    }
-                    if packed || seen.insert(PermutationKey::Full(next.clone())) {
-                        permutations.extend_from_slice(&next);
-                        parents.push((cursor as u32, generator as u8));
-                    }
-                }
-                cursor += 1;
-            }
+            let orbit = Self::orbit_cross_closure(
+                &orbit_machine,
+                representative,
+                representative_permutation,
+                rank,
+                stride,
+                packed,
+                &mut seen,
+                &mut next,
+            )?;
             total = total
-                .checked_add(parents.len())
+                .checked_add(orbit.member_count())
                 .ok_or(StructureError::ArithmeticOverflow)?;
             if total > weyl_budget {
                 return Err(StructureError::ResourceLimitExceeded { limit: weyl_budget });
             }
-            orbits.push(ClassOrbit {
-                representative,
-                permutations,
-                stride,
-                parents,
-            });
+            orbits.push(orbit);
         }
         Ok(orbits)
+    }
+
+    /// Profiling-visible extraction of the phase-two per-class BFS.
+    #[inline(never)]
+    fn orbit_cross_closure(
+        orbit_machine: &PermutationOrbits,
+        representative: TwistedInvolution,
+        representative_permutation: Vec<u8>,
+        rank: usize,
+        stride: usize,
+        packed: bool,
+        seen: &mut PermutationKeySet,
+        next: &mut Vec<u8>,
+    ) -> Result<ClassOrbit, StructureError> {
+        // The representative's permutation seeds the flat member buffer.
+        let mut permutations = representative_permutation;
+        let mut parents: Vec<(u32, u8)> = vec![(u32::MAX, 0)];
+        seen.clear();
+        seen.insert(PermutationKey::pack(
+            &permutations,
+            orbit_machine.simple_positions(),
+        ));
+        let mut cursor = 0_usize;
+        while cursor < parents.len() {
+            for generator in 0..rank {
+                let reflection = &orbit_machine.simple_reflections[generator];
+                // next = reflection after current after reflection. Probe
+                // on the simple-root images alone (an injective key), so
+                // the full successor permutation is computed only for
+                // genuine new members — about one edge in eight for E8.
+                if packed {
+                    let mut key = 0_u128;
+                    {
+                        let current = &permutations[cursor * stride..(cursor + 1) * stride];
+                        for (shift, &position) in
+                            orbit_machine.simple_positions.iter().enumerate()
+                        {
+                            let image = reflection
+                                [current[usize::from(reflection[usize::from(position)])]
+                                as usize];
+                            key |= u128::from(image) << (8 * shift);
+                        }
+                    }
+                    if !seen.insert(PermutationKey::Packed(key)) {
+                        continue;
+                    }
+                }
+                next.clear();
+                next.try_reserve(reflection.len())
+                    .map_err(|_| StructureError::AllocationFailed {
+                        requested: reflection.len(),
+                    })?;
+                {
+                    let current = &permutations[cursor * stride..(cursor + 1) * stride];
+                    for &image in reflection.iter() {
+                        next.push(reflection[current[usize::from(image)] as usize]);
+                    }
+                }
+                if packed || seen.insert(PermutationKey::Full(next.clone())) {
+                    permutations.extend_from_slice(&next);
+                    parents.push((cursor as u32, generator as u8));
+                }
+            }
+            cursor += 1;
+        }
+        Ok(ClassOrbit {
+            representative,
+            permutations,
+            stride,
+            parents,
+        })
     }
 
     /// Rebuild the canonical representative discovered by a Cayley step: the
