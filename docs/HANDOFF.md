@@ -5270,3 +5270,69 @@ OverloadState::add_user 3.27%, SourceText::position 1.45%.
   <sha>"). Always use `--exclude=/worktrees` (agent-116's workaround).
   If a worktree's gitdir link is broken, re-register or re-add it before
   submitting bisect jobs.
+
+## Perf work 2026-08-24j (involution-table BFS + record classification; agent-117)
+
+Lever 1+2 of the 2026-08-24d list, all verified MATCH on the 5-script KGB
+corpus (quick_check 3623634/3623650/3623964 green; corpus 3623635, 3623687,
+3623965):
+
+- `907dcd4` allocation-free cross-edge probes: `InvolutionTable`'s dedup
+  index moved from `BTreeMap<Vec<RootId>>` (240-entry ordered-map key chase
+  per probe) to a hash map on an INJECTIVE packed key — simple-root images
+  only, u128 for rank <= 16 and <= 256 roots (the inner_class
+  `PermutationKey` layout), full permutation otherwise (foreign-length keys
+  go to the Full variant, preserving the provenance test). The BFS dedup
+  probe reads only the rank simple positions of `s*w*twist(s)`; the full
+  neighbor permutation is composed (one buffer, no temporary WeylElement
+  products) only for NEW involutions (1/rank of edges).
+  `InvolutionTable::cayley` probes the packed key directly instead of
+  materializing `s*w` per call (hot from the KGB BFS's cayley_pregated).
+  unipotent 59.7 -> 52.7s.
+- `1cca878` KGB BFS phase-1 rows as `SmallVec<[_; 8]>` (rank <= 8 stays
+  inline) + FxHash-style hasher for the Tits intern map (dedup-only).
+- `06b85d7` scratch-buffer root classification in `RootInvolutionData::new`
+  (was 3 Vec allocs per root per record) + `RootSystem::id_of_slice`.
+- `9b6f20f` Arc ptr-eq fast path in `WeylAction::compose`'s datum gate
+  (compose chains share the same Arc; contents compare unchanged).
+  unipotent 52.7 -> 41.5s (both stops).
+- `9e74504` permutation-level record classification: post-907dcd4 sampling
+  (3623688) showed 8/20 main-thread samples in `RootInvolutionData::new`
+  (per record: 240 roots x 2 checked-i128 matrix applies + binary search).
+  `push_record` now composes `w_perm[delta_perm[r]]` — equal to the
+  composed theta matrix action by definition — via
+  `TwistedInvolution::new_from_root_images` /
+  `RootInvolutionData::from_images`, with the Real/Imaginary test reading a
+  precomputed `RootSystem::negatives` table. The theta matrices and
+  `LatticeInvolution` validation are unchanged; only the per-root
+  re-derivation (guaranteed by the distinguished/Weyl factors) is skipped.
+  `RootInvolutionData::new` keeps full validation for all other callers.
+  unipotent 41.5 -> 22.8s (ratio 3.88x vs cpp 5.88s).
+
+Post-9e74504 profile (gdb main-thread sample 3623966, 15 samples): 8/15
+parked in rayon LockLatch (parallel KGB BFS worker wait — the workers' own
+cost is invisible to main-thread sampling; use perf on workers next), the
+serial add_cartan remnant scattered: subsystem_simple_roots 2/15 (O(P^2)
+decomposability probes per record x2 kinds, already hash-set based),
+from_images 2/15, push_record self 2/15, saturated_kernel /
+verify_annihilation 2/15, malloc noise. No single dominant serial frame
+left.
+
+Remaining levers (updated):
+1. Parallel KGB BFS worker-side cost (cross_pregated/cayley_pregated +
+   phase-2 serial intern): sample a WORKER thread (gdb `thread apply all
+   bt` or perf) before choosing.
+2. Per-record memory: each InvolutionRecord owns a full BasedRootDatum
+   clone inside LatticeInvolution (root_involution.involution.datum) plus
+   two 240xusize WeylElement vectors; unipotent rust_maxrss 3.7GB vs cpp
+   881MB. Arc-ing the datum in LatticeInvolution or shrinking RootId to
+   u32 are both broad but mechanical; expect both RSS and allocator wins.
+3. subsystem_simple_roots O(P^2) per record, if worker sampling clears.
+4. Lever 3 (shared InvolutionTable per inner class) is DEFERRED with a
+   concrete hazard: a shared table's orbit-slice order depends on which
+   form builds first (form A {0,2,3} then form B adds 1 AFTER 3), so
+   absolute InvolutionIds — and any TitsElement ordering that reads them —
+   become build-order-dependent. Current per-form fresh tables match the
+   oracle; a shared table must reproduce upstream's exact add order under
+   lazy per-form demand, which is fragile. Not worth it while levers 1-2
+   remain.
