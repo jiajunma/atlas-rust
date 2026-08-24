@@ -5574,3 +5574,71 @@ prompts must tell agents: work on a local branch named agent-<topic>,
 commit there, push the branch, and NEVER leave the shared checkout on
 their branch (switch back or use a local git worktree). Parent merges
 the branch after HPC verification.
+
+## Perf work 2026-08-24n — fixed memory baseline ATTRIBUTED to real-group (agent-mem)
+
+Frontier item 4 (flat ~130-147MB rust maxrss vs cpp 6-14MB) is now
+attributed. Massif job 3624381 @ 7ff10a1: `valgrind --tool=massif
+--threshold=0.2` on groups.at from a dedicated worktree
+(/public/home/majj/atlas-rust-mem; ms_print at
+/public/home/majj/atlas-rust-mem/massif.groups.txt, local copy
+target/tmp/massif.groups.txt; reusable driver hpc/massif_profile.sbatch).
+No-valgrind baseline in the same job: 142,492KB maxrss, 0.31s — matches
+corpus 3624108 (137.9MB).
+
+Scoping fact from the corpus numbers: the baseline is NOT process
+startup. Scripts whose include closure never reaches groups.at sit at
+4-7MB rust (weak_packet_reports 4.4, std_decs 6.6; basic.at ALONE 10.3
+vs cpp 4.4). Every script whose closure reaches groups.at (directly or
+via test.at / class_tables.at / all.at) jumps to a flat 134-151MB. The
+jump is groups.at's eager `inner_class(simply_connected("E6/E7/E8"),..)`
++ real_form definitions (plus F4/G2), dominated by E8.
+
+Massif attribution (peak snapshot 93: 103.2MB heap; final live heap
+35.3MB, yet maxrss stays ~139MB — glibc arenas retain the freed
+transient pages):
+
+- 63.9% (66MB) TRANSIENT: the ClassOrbit.permutations flat buffers
+  (240B per member x 199,952 E8 members ~= 48MB + Vec doubling
+  overshoot) for ALL Cartan classes of one side are alive at once until
+  TwistedConjugacyPartition assembly consumes them
+  (involution_orbits phase two; ClassOrbit at inner_class.rs:1236-1245,
+  fill loop at inner_class.rs:596-609).
+- 26.7% (27.5MB) RETAINED for the session: the class_by_key
+  PermutationKeyMap, 199,952 entries x ~69B = 13.76MB PER SIDE. E8 pays
+  it twice: build_inner_class_context (domain_builtins.rs:2092-2100)
+  builds primal AND dual classifications in parallel, and both Arc into
+  InnerClassContext AND the never-evicting static CLASSIFICATION_CACHE
+  (domain_builtins.rs:1979).
+- Residual ~8MB: typed-side convert residuals (~2MB), retained sources,
+  the static builtin registry, misc.
+
+Conclusion: ~93% of peak heap is inside
+atlas_real_group::cartan_classification::CartanClassification::build.
+The fix belongs to the real-group lane, not atlas-core; agent-mem made
+no crate changes. Ranked levers for that lane:
+1. Stream phase two: insert each class's members into class_by_key as
+   its orbit closes instead of accumulating every ClassOrbit buffer to
+   end-of-build. Kills the 48-66MB transient — and because glibc keeps
+   the arena pages, the transient is what pins maxrss.
+2. Shrink the retained map: the key is rank x u8 simple-root images
+   (8B for E8); 69B/entry is hashbrown overhead + key padding. A
+   sorted-vec or compact map cuts the retained 27.5MB severalfold.
+3. Representation gap (2026-08-24m follow-up 2): WeylAction carries an
+   Arc<BasedRootDatum> plus two rank x rank Vec<Vec<i32>> per twisted
+   involution vs upstream's 32-byte WeylElt; matters wherever members
+   get materialized.
+
+atlas-core-side levers considered and deliberately NOT taken:
+- Sequential primal+dual classification would shave ~25MB off the peak
+  but adds ~200ms per novel E8-class inner class (groups.at 0.31 ->
+  ~0.51s) — a time regression in the perf lane; left parallel.
+- Evicting CLASSIFICATION_CACHE changes nothing here: the session's
+  InnerClassContexts hold the same Arcs.
+- malloc_trim after library load (atlas-cli lane) could hand back the
+  arena slack (35MB live vs 139MB maxrss after load); unverified.
+
+Target check: with levers 1+2 done in real-group, groups.at lands near
+the basic.at-level residual (~10-15MB), under the 40MB goal, with zero
+atlas-core changes. Nothing structurally wrong was found on the
+atlas-core side at library scale.
