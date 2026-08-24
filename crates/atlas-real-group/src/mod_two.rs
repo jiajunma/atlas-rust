@@ -1,3 +1,5 @@
+use smallvec::SmallVec;
+
 use crate::StructureError;
 
 /// A dynamically sized vector over `F_2`.
@@ -5,6 +7,9 @@ use crate::StructureError;
 /// This represents finite mod-two quotient data used by Cartan fibers. It is
 /// deliberately separate from the Malachite-backed integer layer: its words
 /// encode elements of a finite vector space, not unbounded integer values.
+/// Storage is inline up to two words (128 bits — every Atlas lattice rank,
+/// RANK_MAX = 32, fits with room), so the millions of per-element clones in
+/// the KGB BFS never touch the heap; larger dimensions spill to the heap.
 ///
 /// The derived `Ord` is an arbitrary but deterministic total order for map
 /// keys, not a mathematical order. The derives are sound because every
@@ -12,13 +17,13 @@ use crate::StructureError;
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ModTwoVector {
     dimension: usize,
-    words: Vec<u64>,
+    words: SmallVec<[u64; 2]>,
 }
 
 impl ModTwoVector {
     pub fn zero(dimension: usize) -> Result<Self, StructureError> {
         let word_count = word_count(dimension)?;
-        let mut words = Vec::new();
+        let mut words = SmallVec::new();
         words
             .try_reserve_exact(word_count)
             .map_err(|_| StructureError::AllocationFailed {

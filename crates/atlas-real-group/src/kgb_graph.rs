@@ -15,7 +15,7 @@
 //! exactly: BFS discovery order within each tau packet, packets ordered
 //! by the sorted involutions.
 
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use malachite::{Integer, Rational};
@@ -141,7 +141,13 @@ impl KgbGraph {
 
         // BFS.
         let mut elements: Vec<TitsElement> = try_capacity(expected)?;
-        let mut index: BTreeMap<TitsElement, usize> = BTreeMap::new();
+        // Dedup index: hash map, since ids come from insertion order in
+        // `elements` and the map itself is never iterated (upstream uses a
+        // hash table over Tits elements the same way).
+        let mut index: HashMap<TitsElement, usize> = HashMap::new();
+        index
+            .try_reserve(expected)
+            .map_err(|_| StructureError::AllocationFailed { requested: expected })?;
         let mut statuses: Vec<Option<KgbStatus>> = try_capacity(expected * rank)?;
         let mut cross_raw: Vec<Option<usize>> = try_capacity(expected * rank)?;
         let mut cayley_raw: Vec<Option<usize>> = try_capacity(expected * rank)?;
@@ -908,7 +914,7 @@ fn intern(
     expected: usize,
     rank: usize,
     elements: &mut Vec<TitsElement>,
-    index: &mut BTreeMap<TitsElement, usize>,
+    index: &mut HashMap<TitsElement, usize>,
     statuses: &mut Vec<Option<KgbStatus>>,
     cross_raw: &mut Vec<Option<usize>>,
     cayley_raw: &mut Vec<Option<usize>>,
