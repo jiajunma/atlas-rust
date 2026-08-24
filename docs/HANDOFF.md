@@ -5179,3 +5179,14 @@ generic_degrees / test_braid ~1.8s, class_tables 1.22s @ 24a0d1d
 `/public/home/majj/atlas-scripts` (does not exist). A bad glob silently
 yields `corpus: 0 scripts` (jobs 3623642, 3623661 wasted a build each).
 Always use absolute paths under the oracle repo.
+
+## Perf finding 2026-08-24g — E8_small_block regression @ 9b6f20f (job 3623687)
+
+unipotent improved to 41.5s but E8_small_block_cell_parameter_numbers.at
+regressed 3.91s -> 15.97s between 907dcd4 and 9b6f20f (commits in window:
+1cca878 BFS result-row inlining + Tits hasher, 06b85d7 scratch-buffer root
+classification, 9b6f20f pointer-equality gate in WeylAction::compose).
+Output still MATCH; the slowdown is in the single big E8 build. Bisect by
+re-running that script at each commit; likely candidate: 1cca878's inline
+SmallVec rows copying on E8's wide BFS frontiers, or the pointer-eq gate
+adding a branch that almost never hits for E8.
