@@ -1247,11 +1247,9 @@ took 0.012/0.008s and 4368/4288 KiB; report SHA256 is
   `compact_expression` keeps the source/infix shape for diagnostics that
   quote an expression. The `eval/verbose_dollar` fixture pins both this and
   `(type:$)`.
-- KNOWN (2026-08-24, unprobed): out-of-range subscription/slice diagnostics
-  quote the index expression in the oracle's TYPED form
-  (`subscription [1,2,3][+@(int,int)(1,2)]`) while the CLI quotes the parse
-  tree (`subscription [1,2,3][1+2]`). No fixture covers an operator at a
-  subscription/slice bound that also goes out of range, so the differential
-  has not caught it. Fix would regenerate the `source` field from the
-  converted `TypedExpr` (via `typed_expression_print`) instead of the parse
-  tree at `convert_expr` time.
+- VERIFIED 2026-08-24: out-of-range subscription/slice diagnostics quote the
+  CONVERTED (typed) index/bound expressions (`subscription
+  [1,2,3][+@(int,int)(1,2)]`), matching the oracle. `convert_expr` now builds
+  the `source` field via `typed_expression_print` for the single-index and
+  slice bound positions (pair-index subscripts still use the parse-tree
+  compact for its `M[5,0]` tuple shape).

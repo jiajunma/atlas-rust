@@ -2913,7 +2913,10 @@ pub fn convert_expr(
             };
             // The pair-index subscription prints without the tuple
             // parentheses in the range diagnostic (`M[5,0]`, while the
-            // assignment compact keeps them: `M[(5,0)]:=1`).
+            // assignment compact keeps them: `M[(5,0)]:=1`). The oracle
+            // quotes the CONVERTED (typed) sub-expressions in the range
+            // message (`subscription [1,2,3][+@(int,int)(1,2)]`), so the
+            // single-index source uses the typed printer, not the parse tree.
             let source = match &**index {
                 Expr::Tuple { elements, .. } if elements.len() == 2 => format!(
                     "{}{}[{},{}]",
@@ -2922,7 +2925,11 @@ pub fn convert_expr(
                     compact_expression(&elements[0]),
                     compact_expression(&elements[1])
                 ),
-                _ => compact_expression(expression),
+                _ => format!(
+                    "{}[{}]",
+                    typed_expression_print(&converted_array),
+                    typed_expression_print(&converted_index)
+                ),
             };
             conform_types(
                 &found,
@@ -2994,22 +3001,30 @@ pub fn convert_expr(
                     ));
                 }
                 let mut converted_bounds = converted_bounds.into_iter();
+                let row_lower = converted_bounds.next().expect("row lower bound");
+                let row_upper = converted_bounds.next().expect("row upper bound");
+                let column_lower = converted_bounds.next().expect("column lower bound");
+                let column_upper = converted_bounds.next().expect("column upper bound");
                 let found = Type::Primitive(Prim::Mat);
+                let source = format!(
+                    "{}[{}:{},{}:{}]",
+                    typed_expression_print(&converted_array),
+                    typed_expression_print(&row_lower),
+                    typed_expression_print(&row_upper),
+                    typed_expression_print(&column_lower),
+                    typed_expression_print(&column_upper)
+                );
                 return conform_types(
                     &found,
                     required,
                     TypedExpr::Slice {
                         array: Box::new(converted_array),
-                        lower: Box::new(converted_bounds.next().expect("row lower bound")),
-                        upper: Box::new(converted_bounds.next().expect("row upper bound")),
-                        column_lower: Some(Box::new(
-                            converted_bounds.next().expect("column lower bound"),
-                        )),
-                        column_upper: Some(Box::new(
-                            converted_bounds.next().expect("column upper bound"),
-                        )),
+                        lower: Box::new(row_lower),
+                        upper: Box::new(row_upper),
+                        column_lower: Some(Box::new(column_lower)),
+                        column_upper: Some(Box::new(column_upper)),
                         flags: *flags,
-                        source: compact_expression(expression),
+                        source,
                         span: *span,
                     },
                     *span,
@@ -3042,6 +3057,12 @@ pub fn convert_expr(
             let converted_lower = convert_expr(lower, &mut bound_type, analysis)?;
             let mut bound_type = Type::Primitive(Prim::Int);
             let converted_upper = convert_expr(upper, &mut bound_type, analysis)?;
+            let source = format!(
+                "{}[{}:{}]",
+                typed_expression_print(&converted_array),
+                typed_expression_print(&converted_lower),
+                typed_expression_print(&converted_upper)
+            );
             conform_types(
                 &found,
                 required,
@@ -3052,7 +3073,7 @@ pub fn convert_expr(
                     column_lower: None,
                     column_upper: None,
                     flags: *flags,
-                    source: compact_expression(expression),
+                    source,
                     span: *span,
                 },
                 *span,
