@@ -106,6 +106,12 @@ impl EvaluationContext {
         self.completion_candidates = candidates;
     }
 
+    /// Append one freshly defined live name to the snapshot (the
+    /// append-only fast path; order matches the completion order).
+    pub fn push_completion_candidate(&mut self, name: String) {
+        self.completion_candidates.push(name);
+    }
+
     /// The current completion candidate snapshot, in upstream hash order.
     pub fn completion_candidates(&self) -> &[String] {
         &self.completion_candidates

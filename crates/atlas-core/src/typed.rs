@@ -1314,6 +1314,14 @@ pub struct TypedContext {
     /// never recycled, so a forgotten-then-redefined name revives at its
     /// original position). Seeded with the system variables.
     completion_order: Vec<String>,
+    /// The recorded names that are currently live (bound in the identifier
+    /// table or carrying user overloads); kept in sync by the note/forget
+    /// paths so the candidate snapshot can be maintained incrementally.
+    completion_live: BTreeSet<String>,
+    /// Set when a name left the live set or a recorded name revived (the
+    /// append-only fast path cannot represent middle removals or position
+    /// restoration); the next command rebuilds the snapshot in order.
+    completion_dirty: bool,
     /// Names of user-defined types (lexer.w:419-448): the lexer consults
     /// this set to emit `TYPE_ID` for defined type names in later commands.
     /// Shared (Rc) with the session so each new command's lexer sees the
@@ -1336,6 +1344,8 @@ impl Default for TypedContext {
             overloads: OverloadState::default(),
             verbosity: 0,
             completion_order: Vec::new(),
+            completion_live: BTreeSet::new(),
+            completion_dirty: true,
             defined_type_names: Rc::new(RefCell::new(BTreeSet::new())),
         }
     }
@@ -1586,6 +1596,7 @@ impl TypedContext {
                 // "forgotten", not "not known".
                 let was_type = self.defined_type_names.borrow_mut().remove(&name.value);
                 let was_known = self.globals.remove(&name.value) || was_type;
+                self.invalidate_completion_candidates();
                 // global.w:1241-1248: no input-level indentation here.
                 let state = if was_known { "forgotten" } else { "not known" };
                 Ok(vec![TypedCommandEvent::PlainReportLine {
@@ -1609,6 +1620,7 @@ impl TypedContext {
                     )
                 })?;
                 let removed = self.overloads.remove(&name.value, &resolved);
+                self.invalidate_completion_candidates();
                 let state = if removed { "forgotten" } else { "not known" };
                 // global.w:1253-1261: no input-level indentation here either.
                 Ok(vec![TypedCommandEvent::PlainReportLine {
@@ -1671,17 +1683,28 @@ impl TypedContext {
     /// redefined builtin keeps its startup position) followed by the
     /// session names still present in the identifier or overload table.
     fn refresh_completion_candidates(&mut self) {
+        // The snapshot is the constant startup names plus the live
+        // completion-order names. Definitions append through
+        // `note_completion_name`; only a forget/revive (rare) forces this
+        // full rebuild. Skipping the per-command rebuild removes hundreds
+        // of string clones for every command in long include chains.
+        if !self.completion_dirty {
+            return;
+        }
         let mut candidates: Vec<String> = STARTUP_COMPLETION_NAMES
             .iter()
             .map(|name| (*name).to_owned())
             .collect();
+        self.completion_live.clear();
         for name in &self.completion_order {
             if self.globals.lookup(name).is_some() || !self.overloads.user_variants(name).is_empty()
             {
+                self.completion_live.insert(name.clone());
                 candidates.push(name.clone());
             }
         }
         self.evaluation.set_completion_candidates(candidates);
+        self.completion_dirty = false;
     }
 
     /// Record a session name for completions (buffer.w:1175-1192): the
@@ -1689,11 +1712,33 @@ impl TypedContext {
     /// recycled, so a name enters the order once; a name already in the
     /// startup hash table keeps its startup position (no duplicate).
     fn note_completion_name(&mut self, name: &str) {
-        if !STARTUP_COMPLETION_NAMES.contains(&name)
-            && !self.completion_order.iter().any(|known| known == name)
-        {
-            self.completion_order.push(name.to_owned());
+        if STARTUP_COMPLETION_NAMES.contains(&name) {
+            return;
         }
+        if self.completion_order.iter().any(|known| known == name) {
+            // A re-definition of a recorded name. It was live before unless
+            // an intervening `forget` dropped it; reviving restores its
+            // original position, which the append-only path cannot express.
+            if !self.completion_live.contains(name) {
+                self.completion_dirty = true;
+            }
+            return;
+        }
+        self.completion_order.push(name.to_owned());
+        self.completion_live.insert(name.to_owned());
+        // The caller defines the name immediately before noting it, so it
+        // is live; append to the snapshot unless a rebuild is pending (the
+        // rebuild then picks the name up from completion_order).
+        if !self.completion_dirty {
+            self.evaluation.push_completion_candidate(name.to_owned());
+        }
+    }
+
+    /// Mark the completion snapshot stale after a `forget`/`forget @`
+    /// command or a type-member definition: those can drop a recorded name
+    /// from the live set or revive one without a note.
+    fn invalidate_completion_candidates(&mut self) {
+        self.completion_dirty = true;
     }
 
     fn show_all_text(&self) -> String {
@@ -2154,6 +2199,11 @@ impl TypedContext {
                 span,
             )?;
             names.push(field_name.value.clone());
+        }
+        // Type members join the overload table without a completion note;
+        // a member sharing a recorded name could revive it, so rebuild.
+        if !names.is_empty() {
+            self.invalidate_completion_candidates();
         }
         if names.is_empty() {
             return Ok(heading);
