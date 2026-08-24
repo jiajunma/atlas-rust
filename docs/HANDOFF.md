@@ -5336,3 +5336,19 @@ Remaining levers (updated):
    oracle; a shared table must reproduce upstream's exact add order under
    lazy per-form demand, which is fragile. Not worth it while levers 1-2
    remain.
+
+### Bisect conclusion (2026-08-24i, final)
+
+- bisect2 3623976 final: 1cca878=15.96s, 06b85d7=15.98s, 9b6f20f=15.97s.
+  bisect3 3623991: 4ed8fe0=3.91s. Since 9e81bc3 is the only commit between
+  4ed8fe0 and 1cca878, the culprit is CONFIRMED: `9e81bc3`
+  (SourceText::span byte-filter column scan). Mechanism: per-token span on
+  a single-line 430KB file is O(n^2) either way, but the old
+  `chars().count()` prefix scan was auto-vectorized (~3.9s) while the new
+  `iter().filter(b & 0xC0 != 0x80).count()` is scalar (~16s).
+- Real-group trio (1cca878/06b85d7/9b6f20f) fully EXONERATED — all their
+  numbers match the 15.97s they inherited from 9e81bc3.
+- Fix dispatched to agent-116: incremental line/column cursor in the lexer
+  (offset advances monotonically, so per-token span becomes amortized O(1);
+  positions must stay byte-identical, pinned by the sweep test). Target:
+  E8_small_block well under the 3.91s baseline, not just back to it.
