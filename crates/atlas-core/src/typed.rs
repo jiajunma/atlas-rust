@@ -1381,7 +1381,14 @@ impl TypedContext {
     /// multi-line `closure_value::print` (axis.w:3254-3271) at ANY depth
     /// inside containers, every other value uses `Display`.
     pub fn render_value(&self, value: &Value) -> String {
-        value_string(&self.evaluation, value)
+        let mut rendered = value_string(&self.evaluation, value);
+        // Matrix::Display retains its trailing row delimiter when nested in a
+        // tuple or domain value. A top-level Value event supplies the final
+        // event newline itself, so remove only that one delimiter here.
+        if matches!(value, Value::Matrix(_)) {
+            rendered.pop();
+        }
+        rendered
     }
 
     /// Record a source buffer's trace display name (buffer.w:694): the
