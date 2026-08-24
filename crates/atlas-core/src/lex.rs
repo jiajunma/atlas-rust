@@ -6,8 +6,8 @@
 //! that want the complete token stream in one operation.
 
 use crate::{
-    diagnostic::{Diagnostic, ErrorKind},
-    source::SourceText,
+    diagnostic::{Diagnostic, ErrorKind, SourceSpan},
+    source::{LineCursor, SourceText},
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -117,6 +117,11 @@ pub struct Lexer<'a> {
     /// lexes as TYPE_ID, so mutually recursive definitions and the injector
     /// or projector names scan uniformly (lexer.w:425-428, 473-476).
     type_defining: bool,
+    /// Incremental line/column position of the furthest spanned byte: token
+    /// offsets are monotonic across a scan, so per-token spans advance the
+    /// cursor by the token's width instead of rescanning the line prefix
+    /// (O(n^2) on single-line files — the E8_small_block regression).
+    cursor: LineCursor,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -146,6 +151,7 @@ impl<'a> Lexer<'a> {
             at_command_start: true,
             defined_types,
             type_defining: false,
+            cursor: LineCursor::new(),
         }
     }
 
@@ -157,6 +163,21 @@ impl<'a> Lexer<'a> {
     /// for parser integrations that need to identify the point of failure.
     pub fn offset(&self) -> usize {
         self.offset
+    }
+
+    /// A span through the incremental cursor (see the `cursor` field).
+    fn span(&mut self, start: usize, end: usize) -> SourceSpan {
+        self.source.span_with_cursor(&mut self.cursor, start, end)
+    }
+
+    /// A token spanning `start..end` with no decoded value.
+    fn token(&mut self, kind: TokenKind, start: usize, end: usize) -> Token {
+        Token {
+            kind,
+            lexeme: self.source.as_str()[start..end].to_owned(),
+            value: None,
+            span: self.span(start, end),
+        }
     }
 
     /// Discard the rest of the physical line after the parser rejects a
@@ -214,14 +235,14 @@ impl<'a> Lexer<'a> {
                 // The command-terminating newline ends the type_defining
                 // state (lexer.w: state=ended resets at the next token).
                 self.type_defining = false;
-                Ok(token(source, TokenKind::Newline, start, self.offset))
+                Ok(self.token(TokenKind::Newline, start, self.offset))
             }
             b'0'..=b'9' => {
                 self.offset += 1;
                 while self.offset < bytes.len() && bytes[self.offset].is_ascii_digit() {
                     self.offset += 1;
                 }
-                Ok(token(source, TokenKind::Integer, start, self.offset))
+                Ok(self.token(TokenKind::Integer, start, self.offset))
             }
             b'_' | b'a'..=b'z' | b'A'..=b'Z' => {
                 self.offset += 1;
@@ -241,18 +262,13 @@ impl<'a> Lexer<'a> {
                 } else {
                     TokenKind::Identifier
                 };
-                Ok(token(source, kind, start, self.offset))
+                Ok(self.token(kind, start, self.offset))
             }
             b'"' => self.consume_string(start),
             b':' if bytes.get(self.offset + 1) == Some(&b'=') => {
                 self.offset += 2;
                 self.prevent_termination = Some(':');
-                Ok(token(
-                    source,
-                    TokenKind::Operator(":=".into()),
-                    start,
-                    self.offset,
-                ))
+                Ok(self.token(TokenKind::Operator(":=".into()), start, self.offset))
             }
             b'!' if bytes.get(self.offset + 1) == Some(&b'=') => {
                 self.offset += 2;
@@ -267,22 +283,12 @@ impl<'a> Lexer<'a> {
             b'-' if bytes.get(self.offset + 1) == Some(&b'>') => {
                 self.offset += 2;
                 self.operator_termination('-');
-                Ok(token(
-                    source,
-                    TokenKind::Operator("->".into()),
-                    start,
-                    self.offset,
-                ))
+                Ok(self.token(TokenKind::Operator("->".into()), start, self.offset))
             }
             b'~' if bytes.get(self.offset + 1) == Some(&b'[') => {
                 self.offset += 2;
                 self.nesting.push(NestingKind::Group);
-                Ok(token(
-                    source,
-                    TokenKind::Operator("~[".into()),
-                    start,
-                    self.offset,
-                ))
+                Ok(self.token(TokenKind::Operator("~[".into()), start, self.offset))
             }
             b'\\' if bytes.get(self.offset + 1) == Some(&b'%') => {
                 self.offset += 2;
@@ -299,12 +305,7 @@ impl<'a> Lexer<'a> {
                 if operator == "!" {
                     // Bare `!` is the const-pattern marker, never a formula
                     // operator and never an operate-assign head.
-                    return Ok(token(
-                        source,
-                        TokenKind::Operator(operator),
-                        start,
-                        self.offset,
-                    ));
+                    return Ok(self.token(TokenKind::Operator(operator), start, self.offset));
                 }
                 let symbol = operator.chars().next().expect("one-character operator");
                 self.finish_operator(start, &operator, symbol)
@@ -312,12 +313,7 @@ impl<'a> Lexer<'a> {
             c if b"()[]{};,?.~:|@$".contains(&c) => {
                 self.offset += 1;
                 self.apply_punctuation(c as char);
-                Ok(token(
-                    source,
-                    TokenKind::Punctuation(c as char),
-                    start,
-                    self.offset,
-                ))
+                Ok(self.token(TokenKind::Punctuation(c as char), start, self.offset))
             }
             _ => {
                 let character = source.as_str()[start..]
@@ -331,8 +327,7 @@ impl<'a> Lexer<'a> {
                 // terminating newline (probe `(`` then `2`).
                 self.nesting.clear();
                 self.prevent_termination = None;
-                Ok(token(
-                    source,
+                Ok(self.token(
                     TokenKind::Unsupported(character.to_string()),
                     start,
                     self.offset,
@@ -388,7 +383,7 @@ impl<'a> Lexer<'a> {
             kind: TokenKind::Directive(kind),
             lexeme: self.source.as_str()[start..self.offset].to_owned(),
             value: Some(name),
-            span: self.source.span(start, self.offset),
+            span: self.span(start, self.offset),
         })
     }
 
@@ -499,25 +494,20 @@ impl<'a> Lexer<'a> {
                 kind: TokenKind::OperatorBecomes(operator.to_owned()),
                 lexeme: self.source.as_str()[start..self.offset].to_owned(),
                 value: None,
-                span: self.source.span(start, self.offset),
+                span: self.span(start, self.offset),
             });
         }
         self.offset = saved;
         self.operator_termination(symbol);
-        Ok(token(
-            self.source,
-            TokenKind::Operator(operator.to_owned()),
-            start,
-            saved,
-        ))
+        Ok(self.token(TokenKind::Operator(operator.to_owned()), start, saved))
     }
 
-    fn eof_token(&self) -> Token {
+    fn eof_token(&mut self) -> Token {
         Token {
             kind: TokenKind::Eof,
             lexeme: String::new(),
             value: None,
-            span: self.source.span(self.offset, self.offset),
+            span: self.span(self.offset, self.offset),
         }
     }
 
@@ -536,7 +526,7 @@ impl<'a> Lexer<'a> {
         if depth == 0 {
             Ok(())
         } else {
-            let span = self.source.span(start, self.offset);
+            let span = self.span(start, self.offset);
             Err(Diagnostic::new(
                 ErrorKind::Lexical,
                 format!(
@@ -568,17 +558,18 @@ impl<'a> Lexer<'a> {
             }
         }
         if !closed {
+            let span = self.span(start, self.offset);
             let recovered = Token {
                 kind: TokenKind::String,
                 lexeme: self.source.as_str()[start..self.offset].to_owned(),
                 value: Some(self.source.as_str()[start + 1..self.offset].replace("\"\"", "\"")),
-                span: self.source.span(start, self.offset),
+                span: span.clone(),
             };
             self.pending = Some(recovered);
             return Err(Diagnostic::warning(
                 ErrorKind::Lexical,
                 "Closing string denotation.",
-                Some(self.source.span(start, self.offset)),
+                Some(span),
             ));
         }
         let raw = &self.source.as_str()[start + 1..self.offset - 1];
@@ -586,7 +577,7 @@ impl<'a> Lexer<'a> {
             kind: TokenKind::String,
             lexeme: self.source.as_str()[start..self.offset].to_owned(),
             value: Some(raw.replace("\"\"", "\"")),
-            span: self.source.span(start, self.offset),
+            span: self.span(start, self.offset),
         })
     }
 }
@@ -671,15 +662,6 @@ pub fn tokenize_with_diagnostics(source: &SourceText) -> LexOutput {
                 errors.push(error);
             }
         }
-    }
-}
-
-fn token(source: &SourceText, kind: TokenKind, start: usize, end: usize) -> Token {
-    Token {
-        kind,
-        lexeme: source.as_str()[start..end].to_owned(),
-        value: None,
-        span: source.span(start, end),
     }
 }
 

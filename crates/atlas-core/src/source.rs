@@ -9,6 +9,32 @@ pub struct SourceText {
     line_starts: Vec<usize>,
 }
 
+/// An incremental line/column cursor for consumers that scan a source
+/// front-to-back (the lexer takes a span per token, and on a single-line
+/// file the independent `position()` calls cost O(line) per token — O(n^2)
+/// over the file). Position queries for non-decreasing byte offsets advance
+/// the cursor by the distance only; a rare rewind (lookahead probes,
+/// out-of-order diagnostic spans) falls back to a one-off prefix rescan.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct LineCursor {
+    /// Byte offset the position below describes (always a char boundary).
+    offset: usize,
+    /// Zero-based line index of `offset`.
+    line_index: usize,
+    /// One-based column of `offset`, counting Unicode scalar values.
+    column: usize,
+}
+
+impl LineCursor {
+    pub fn new() -> Self {
+        Self {
+            offset: 0,
+            line_index: 0,
+            column: 1,
+        }
+    }
+}
+
 impl SourceText {
     pub fn new(text: impl Into<String>) -> Self {
         Self::with_id(SourceId::anonymous(), text)
@@ -105,6 +131,59 @@ impl SourceText {
             },
         )
     }
+
+    /// [`SourceText::position`] through an incremental cursor: advances from
+    /// the cursor's byte to `byte` (counting newlines and non-continuation
+    /// bytes), or rescans the line prefix once when `byte` lies behind the
+    /// cursor. Same positions as `position`, byte for byte.
+    pub fn position_with_cursor(&self, cursor: &mut LineCursor, byte: usize) -> SourcePosition {
+        let byte = self.adjusted(byte);
+        if byte < cursor.offset {
+            let line_index = self.line_index(byte);
+            let column = self.column(self.line_starts[line_index], byte);
+            *cursor = LineCursor {
+                offset: byte,
+                line_index,
+                column,
+            };
+            return SourcePosition {
+                line: line_index + 1,
+                column,
+            };
+        }
+        let bytes = self.text.as_bytes();
+        while cursor.offset < byte {
+            match bytes[cursor.offset] {
+                b'\n' => {
+                    cursor.line_index += 1;
+                    cursor.column = 1;
+                }
+                // Continuation bytes are not scalar values: no column.
+                b if b & 0xC0 != 0x80 => cursor.column += 1,
+                _ => {}
+            }
+            cursor.offset += 1;
+        }
+        SourcePosition {
+            line: cursor.line_index + 1,
+            column: cursor.column,
+        }
+    }
+
+    /// [`SourceText::span`] through an incremental cursor (see
+    /// [`SourceText::position_with_cursor`]); the lexer's per-token path.
+    pub fn span_with_cursor(
+        &self,
+        cursor: &mut LineCursor,
+        start: usize,
+        end: usize,
+    ) -> SourceSpan {
+        let byte_start = start.min(self.text.len());
+        let byte_end = end.min(self.text.len());
+        let start = self.position_with_cursor(cursor, start);
+        let end = self.position_with_cursor(cursor, end);
+        SourceSpan::new(self.source_id, byte_start, byte_end, start, end)
+    }
 }
 
 #[cfg(test)]
@@ -170,6 +249,39 @@ mod tests {
                     "span({start}, {end})"
                 );
             }
+        }
+    }
+
+    #[test]
+    fn cursor_spans_match_the_independent_position_calls() {
+        // Multiline + Unicode text, walked the way the lexer walks: token
+        // spans in scan order (monotonic), with out-of-order probes mixed in
+        // to exercise the rewind fallback.
+        let source = SourceText::with_id(SourceId::new(4), "aé bc\n中x def\nlast é\n");
+        let mut cursor = LineCursor::new();
+        let len = source.as_str().len();
+        for end in 0..=len + 1 {
+            for start in (0..=end).step_by(3) {
+                let span = source.span_with_cursor(&mut cursor, start, end);
+                assert_eq!(
+                    (span.start, span.end),
+                    (source.position(start), source.position(end)),
+                    "span_with_cursor({start}, {end})"
+                );
+                assert_eq!(span.byte_range(), start.min(len)..end.min(len));
+            }
+        }
+        // A single very long line (the E8_small_block shape): monotonic
+        // per-token spans must stay correct without rescanning the prefix.
+        let long = SourceText::with_id(SourceId::new(5), "x".repeat(100_000));
+        let mut cursor = LineCursor::new();
+        for start in (0..100_000).step_by(997) {
+            let span = long.span_with_cursor(&mut cursor, start, start + 500);
+            assert_eq!(
+                (span.start, span.end),
+                (long.position(start), long.position(start + 500)),
+                "long-line span at {start}"
+            );
         }
     }
 }
