@@ -5342,6 +5342,7 @@ Remaining levers (updated):
 - bisect2 3623976 final: 1cca878=15.96s, 06b85d7=15.98s, 9b6f20f=15.97s.
   bisect3 3623991: 4ed8fe0=3.91s. Since 9e81bc3 is the only commit between
   4ed8fe0 and 1cca878, the culprit is CONFIRMED: `9e81bc3`
+  (bisect3's direct measurement of 9e81bc3 = 15.97s sealed it)
   (SourceText::span byte-filter column scan). Mechanism: per-token span on
   a single-line 430KB file is O(n^2) either way, but the old
   `chars().count()` prefix scan was auto-vectorized (~3.9s) while the new
