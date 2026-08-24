@@ -5737,3 +5737,39 @@ cost left to sample — the BFS parallel phase is now a small fraction.
 The serial levers above (esp. 2 and 5) are the next unipotent candidates;
 both are in crates/atlas-real-group, distinct from agent-117's
 cartan_classification.rs/inner_class.rs lane.
+
+## Perf work 2026-08-24q — matrix framing semantics + re-validation baseline
+
+- Semantic diff gate 3627336 (ec456bf, matrix event framing) and 3627507
+  (75d3128, +new_trusted) both report runnable_status PASS: 357 PASS /
+  0 FAIL / 2 declared harness PARTIAL. The `vec_slices` matrix-display
+  mismatch was fixed at the EVENT layer (SessionEvent::Value gains a
+  compact_matrix_display flag set for top-level mat assignments and
+  top-level one-dimensional matrix slices; two-dimensional slices, BarList
+  literals and coercions keep the trailing row delimiter). Do NOT try to
+  fix this by stripping the newline inside Matrix::Display or by marking
+  Matrix values — both experiments caused 50 and 3 fixture regressions
+  (3626844, 3627040) before the event-level flag landed.
+- Perf: `LatticeInvolution::new_trusted` (75d3128) skips the
+  squared-equals + pairing re-validation inside `push_record`'s
+  `TwistedInvolution::new_from_root_images` (the BFS composes w∘delta from
+  validated factors; upstream add_cross never re-validates). Full diff gate
+  3627507 green. MEASURED NEGATIVE for unipotent wall time on fat node:
+  16.8s -> 14.4s is dominated by node-to-node variance (oracle 5.90-6.24s
+  across runs); no reliable speedup attributable. Keep the change (it
+  removes ~3 O(rank^3) checks per record with zero semantic surface).
+- Current unipotent baseline @ 75d3128: rust 14.4s / 3.72GB maxrss vs
+  oracle 5.9s / 881MB (ratio ~2.4x). gdb all-thread sampling 3627509/3627510
+  shows the KGB BFS parallel window is SMALL: workers park in
+  wait_until_cold/sleep (15-26 frames), main thread serializes on
+  TypedExpr::evaluate (20) + build_kgb (10) + Arc::drop_slow (8) +
+  push_record/add_cartan (3 each). Allocation/drop traffic (malloc/free,
+  finish_grow, drop_in_place<RepTableOwner/RealFormContext/Value>) is
+  visible throughout. The 3.7GB maxrss is NOT mostly the datum clone
+  (BasedRootDatum is ~1KB; 2e5 records would be ~200MB) — it is the
+  per-record RootInvolutionData (image_by_root 240xRootId + kind_by_root
+  + WeylElement 480xRootId) and TitsElement graph. Next candidates
+  (unowned): shrink RootId to u32, or Arc the datum inside LatticeInvolution
+  (HANDOFF 2026-08-24o lever 2) — both mechanical but broad; verify with
+  massif before committing. perf record is BLOCKED on this cluster
+  (perf_event_paranoid=2, no samples); use gdb sampling or massif.
