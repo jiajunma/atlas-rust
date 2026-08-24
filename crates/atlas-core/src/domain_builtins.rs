@@ -1998,12 +1998,31 @@ fn classification_cached(
         class_budget.max_fiber_elements(),
         class_budget.max_peeling_steps(),
     );
+    // HPC probe (ATLAS_PROBE_CLASSIFICATION=1): one line per call with the
+    // fingerprint hash and hit/miss, to measure how often loading scripts
+    // rebuild the same classification.
+    static PROBE: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    let probe = *PROBE.get_or_init(|| std::env::var_os("ATLAS_PROBE_CLASSIFICATION").is_some());
+    let probe_hash = if probe {
+        use std::hash::{Hash, Hasher};
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        fingerprint.hash(&mut hasher);
+        hasher.finish()
+    } else {
+        0
+    };
     if let Some(existing) = classification_cache()
         .lock()
         .expect("classification cache poisoned")
         .get(&fingerprint)
     {
+        if probe {
+            eprintln!("CLASSIFICATION_PROBE hit hash={probe_hash:016x}");
+        }
         return Ok(std::sync::Arc::clone(existing));
+    }
+    if probe {
+        eprintln!("CLASSIFICATION_PROBE miss hash={probe_hash:016x}");
     }
     let classification = std::sync::Arc::new(
         CartanClassification::build(inner_class, class_budget)
