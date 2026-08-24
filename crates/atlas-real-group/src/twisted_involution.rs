@@ -66,6 +66,60 @@ impl TwistedInvolution {
         })
     }
 
+    /// [`Self::new`] with the root action supplied as a permutation: the
+    /// involution table's records compose `w after delta` at the
+    /// permutation level (`w_perm[delta_perm[r]]`, equal to the composed
+    /// matrix action), so the per-root matrix classification of
+    /// [`RootInvolutionData::new`] collapses to array reads. Same datum and
+    /// shape gates, same matrix-level validation of the composed
+    /// involution; `root_images` must be that matrix action on this system.
+    pub(crate) fn new_from_root_images(
+        datum: &BasedRootDatum,
+        root_system: &RootSystem,
+        distinguished: &LatticeInvolution,
+        weyl_action: WeylAction,
+        root_images: Vec<crate::RootId>,
+    ) -> Result<Self, StructureError> {
+        if root_system.datum() != datum
+            || distinguished.datum() != datum
+            || weyl_action.datum() != datum
+        {
+            return Err(StructureError::DatumMismatch);
+        }
+        let rank = datum.lattice_rank();
+        if root_system.lattice_rank() != rank {
+            return Err(StructureError::RankMismatch {
+                expected: rank,
+                actual: root_system.lattice_rank(),
+            });
+        }
+        if distinguished.lattice_rank() != rank {
+            return Err(StructureError::RankMismatch {
+                expected: rank,
+                actual: distinguished.lattice_rank(),
+            });
+        }
+        if weyl_action.rank() != rank {
+            return Err(StructureError::RankMismatch {
+                expected: rank,
+                actual: weyl_action.rank(),
+            });
+        }
+        let involution = LatticeInvolution::new(
+            datum,
+            compose_matrices(weyl_action.matrix(), distinguished.weight_matrix())?,
+            compose_matrices(
+                weyl_action.coweight_matrix(),
+                distinguished.coweight_matrix(),
+            )?,
+        )?;
+        let root_involution = RootInvolutionData::from_images(root_system, involution, root_images)?;
+        Ok(Self {
+            weyl_action,
+            root_involution,
+        })
+    }
+
     pub fn weyl_action(&self) -> &WeylAction {
         &self.weyl_action
     }

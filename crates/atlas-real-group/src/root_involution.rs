@@ -101,6 +101,57 @@ impl RootInvolutionData {
         &self.involution
     }
 
+    /// Classification from a KNOWN root permutation, for callers that
+    /// already hold the involution's root action as a permutation (the
+    /// involution table's cross-edge BFS composes `w after delta` at the
+    /// permutation level, which equals the matrix action by definition of
+    /// matrix composition). This skips the per-root matrix applications,
+    /// root-id lookups, and coroot transport re-checks of [`Self::new`];
+    /// the caller's contract is that `image_by_root` IS the involution's
+    /// root action on this system, as the distinguished/Weyl factors of the
+    /// table's records guarantee.
+    pub(crate) fn from_images(
+        root_system: &RootSystem,
+        involution: LatticeInvolution,
+        image_by_root: Vec<RootId>,
+    ) -> Result<Self, StructureError> {
+        if involution.datum() != root_system.datum() {
+            return Err(StructureError::DatumMismatch);
+        }
+        if involution.lattice_rank() != root_system.lattice_rank() {
+            return Err(StructureError::RankMismatch {
+                expected: root_system.lattice_rank(),
+                actual: involution.lattice_rank(),
+            });
+        }
+        if image_by_root.len() != root_system.roots().len() {
+            return Err(StructureError::RootSystemInvariantViolation {
+                invariant: "involution root action",
+            });
+        }
+        let negatives = root_system.negatives();
+        let mut kind_by_root = Vec::with_capacity(image_by_root.len());
+        for (index, &image) in image_by_root.iter().enumerate() {
+            kind_by_root.push(if image.0 == index {
+                RootKind::Imaginary
+            } else if image == negatives[index] {
+                RootKind::Real
+            } else {
+                RootKind::Complex
+            });
+        }
+        let imaginary_simple_roots =
+            subsystem_simple_roots(root_system, &kind_by_root, RootKind::Imaginary)?;
+        let real_simple_roots = subsystem_simple_roots(root_system, &kind_by_root, RootKind::Real)?;
+        Ok(Self {
+            involution,
+            image_by_root,
+            kind_by_root,
+            imaginary_simple_roots,
+            real_simple_roots,
+        })
+    }
+
     pub fn image(&self, root: RootId) -> Option<RootId> {
         self.image_by_root.get(root.0).copied()
     }

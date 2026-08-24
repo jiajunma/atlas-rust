@@ -632,11 +632,21 @@ fn push_record(
             limit: budget.max_involutions,
         });
     }
-    let involution = TwistedInvolution::new(
+    // The record's root action of theta = w after delta, composed at the
+    // permutation level: `w_perm[delta_perm[r]]` equals the composed matrix
+    // action, so classification needs no per-root matrix work.
+    let delta_images = inner_class.distinguished_involution().image_permutation();
+    let w_images = element.image_permutation();
+    let mut root_images = try_capacity(delta_images.len())?;
+    for delta_image in delta_images {
+        root_images.push(w_images[delta_image.0]);
+    }
+    let involution = TwistedInvolution::new_from_root_images(
         inner_class.datum(),
         inner_class.root_system(),
         inner_class.distinguished_involution().involution(),
         action,
+        root_images,
     )?;
     let theta = involution.root_involution().involution();
     let eigenlattice =

@@ -166,6 +166,8 @@ pub struct RootSystem {
     /// same relation on the paired coroots.
     min_roots: Vec<RootSet>,
     min_coroots: Vec<RootSet>,
+    /// Negation table: `negatives[r]` is the id of `-r`.
+    negatives: Vec<RootId>,
 }
 
 impl RootSystem {
@@ -273,6 +275,32 @@ impl RootSystem {
             simple_ids.push(id);
         }
         let (min_roots, min_coroots) = build_ladder_bottoms(&roots, &coroots)?;
+        // Negation table: `negatives[r]` is the id of `-r` (every root's
+        // negative is a root). Precomputed once so involution classification
+        // reads it instead of re-deriving the negative per root.
+        let mut negatives = Vec::new();
+        negatives
+            .try_reserve_exact(count)
+            .map_err(|_| StructureError::AllocationFailed { requested: count })?;
+        for root in &roots {
+            let mut negated = Vec::with_capacity(root.as_slice().len());
+            for &coordinate in root.as_slice() {
+                negated.push(
+                    coordinate
+                        .checked_neg()
+                        .ok_or(StructureError::ArithmeticOverflow)?,
+                );
+            }
+            negatives.push(
+                roots
+                    .binary_search_by(|candidate| candidate.as_slice().cmp(negated.as_slice()))
+                    .ok()
+                    .map(RootId)
+                    .ok_or(StructureError::RootSystemInvariantViolation {
+                        invariant: "root negation closure",
+                    })?,
+            );
+        }
         Ok(Self {
             datum,
             roots,
@@ -282,6 +310,7 @@ impl RootSystem {
             simple_ids,
             min_roots,
             min_coroots,
+            negatives,
         })
     }
 
@@ -380,6 +409,11 @@ impl RootSystem {
             .binary_search_by(|candidate| candidate.as_slice().cmp(root))
             .ok()
             .map(RootId)
+    }
+
+    /// The negation table: `negatives()[r]` is the id of `-r`.
+    pub(crate) fn negatives(&self) -> &[RootId] {
+        &self.negatives
     }
 
     /// Ladder-bottom roots for `alpha`: every root `beta` such that
