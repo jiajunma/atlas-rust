@@ -5353,3 +5353,16 @@ Remaining levers (updated):
   (offset advances monotonically, so per-token span becomes amortized O(1);
   positions must stay byte-identical, pinned by the sweep test). Target:
   E8_small_block well under the 3.91s baseline, not just back to it.
+
+### Startup-overhead hypothesis disproven (2026-08-24i)
+
+Corpus 3623704 per-script numbers: the fastest scripts run in 5ms wall
+(cyclotomic_field_bracket.at rust=0.005s vs cpp=0.007s), so the Rust CLI
+has NO meaningful fixed startup/prelude cost. The corpus median (0.647s
+rust, delta vs cpp ~0.5s) is uniform interpreter-throughput gap, not
+startup. Implication for future perf work: do not chase startup; profile
+mid-size scripts (e.g. class_tables.at 0.64s) for spread-out evaluator
+cost (Rc<Value> traffic, overload resolution, parser reduce). The
+per-script tail above 5x is otherwise all small scripts at 5-7x plus
+E8_small_block (being fixed by the lexer cursor) and unipotent (agent-115
+lane, 59.7 -> 22.8s at 7231e4c).
