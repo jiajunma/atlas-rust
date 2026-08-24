@@ -5461,9 +5461,17 @@ Remaining levers (supersedes the 2026-08-24j list):
 ## Current frontier (2026-08-24, post-corpus-3624108)
 
 State: full corpus 3624108 @ 83dd11a — 238/238 MATCH + 2 SKIPPED_LARGE,
-median rust/cpp 4.01x, over_5x 23, within_2x 50. The port itself is
-complete (all formerly-unregistered builtins are live; corpus is the
-empirical gate). Remaining work is performance only:
+then 3624257 @ 32097c1 238/238 (median 3.29x, over_5x 6) and 3624259
+verified the 2 large scripts — corpus coverage is 240/240, zero skips.
+The port itself is complete (all formerly-unregistered builtins are live;
+`star` probed on HPC 3624320: the ORACLE also reports "Undefined
+identifier 'star'" — it is not an upstream startup builtin, nothing
+missing). Remaining work is performance only. ACTIVE AGENTS (do not
+double-dispatch): agent-117 owns CartanClassification::build
+(cartan_classification.rs only), agent-118 owns the WeylElement compact
+representation (weyl_element.rs/weyl_transducer.rs/weyl.rs/weyl_size.rs),
+agent-119 owns the fixed memory baseline (atlas-core only). All three
+verify from dedicated HPC worktrees — nobody resets the main checkout.
 
 1. **5-7x small-script tail** (~23 scripts, rust 0.3-0.7s vs cpp 0.05-0.12s;
    worst ellipticExceptional.at 13.8x). Uniform evaluator throughput, NOT
@@ -5497,7 +5505,11 @@ empirical gate). Remaining work is performance only:
 Ops: .git sync MUST use `rsync -a --exclude=/worktrees` (no --delete);
 corpus globs must be absolute under the oracle atlas-scripts dir; bisect
 jobs must verify `git rev-parse --short HEAD` after checkout before
-benchmarking (a failed checkout once benchmarked the wrong binary).
+benchmarking (a failed checkout once benchmarked the wrong binary). Main
+checkout /public/home/majj/atlas-rust is shared state: agents verify from
+their own `git worktree add` directories and MUST NOT `git reset --hard`
+the main checkout (job 3624257 caught a mid-flight reset by commit
+stamping; treat main-checkout resets as parent-only).
 
 ## Perf work 2026-08-24m — tail attribution + simple-reflection cache (agent-116)
 
