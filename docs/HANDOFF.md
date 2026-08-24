@@ -5416,6 +5416,42 @@ grammar join_span only combines existing SourceSpan values without
 touching text. No other O(line-prefix) hot path exists.
 
 
+## Perf work 2026-08-24l — mod-space cross-edge transport (agent-115)
+
+`b456e1c`: the last exact rational matrix work in the per-record path is
+gone from the BFS. `push_record` used to run
+`negative_coweight_eigenspace` (saturated kernel over `Integer`) +
+`reduce_basis_mod_two` for EVERY record; the profile remnant after
+9e74504 showed `saturated_kernel` as the dominant serial frame. Now the
+record's mod-2 dedup subspace is seeded fresh at the orbit's canonical
+involution and thereafter TRANSPORTED along the cross edge
+(`transport_mod_space`, involution_table.rs) — upstream's
+`mod_space.apply(torus_simple_reflection[s])` (involutions.cpp:256):
+`b |-> b XOR <b, alpha_s> * beta_s` on coweight parities with the PLAIN
+generator s (theta' = s*theta*s since s_twist*delta = delta*s). Exactness
+argument: E(-1) of s*theta*s is s(E), reflection is F2-linear, and
+`ModTwoSubspace::insert` builds a canonical RREF basis (insertion-order
+independent), so the transported object equals the fresh reduction BIT FOR
+BIT — pinned by `b2_mod_space_transport_matches_fresh_reduction`, which
+recomputes fresh per record over the full B2 table. Precomputed
+`root_parity`/`coroot_parity` vectors live on the table;
+`tits_element::parity_vector` is now `pub(crate)`.
+
+Verified: quick_check 3624219 green (498 real-group tests), targeted
+corpus 3624220 5/5 MATCH: unipotent 22.8 -> 15.27s (ratio 3.88x -> 2.47x
+vs cpp 6.18s; session chain 59.7 -> 15.3s = -74%), example 1.21s,
+test_K 1.19s, parameters 0.35s, E8_small_block 0.12s flat.
+
+Remaining levers (supersedes the 2026-08-24j list):
+1. Parallel KGB BFS worker-side cost (cross_pregated/cayley_pregated +
+   phase-2 serial intern): sample a WORKER thread before choosing.
+2. Per-record memory (datum clone + two 240xusize WeylElement vecs;
+   unipotent rust_maxrss 3.6GB vs cpp 860MB — now only 4.2x, was 10x+ at
+   session start; RootId u32 or Arc'd datum are broad but mechanical).
+3. subsystem_simple_roots O(P^2) per record.
+4. Shared InvolutionTable per inner class stays DEFERRED (orbit-slice
+   order hazard, see 2026-08-24j).
+
 ## Current frontier (2026-08-24, post-corpus-3624108)
 
 State: full corpus 3624108 @ 83dd11a — 238/238 MATCH + 2 SKIPPED_LARGE,
@@ -5428,11 +5464,12 @@ empirical gate). Remaining work is performance only:
    startup (5ms floor proven). agent-116 is profiling class_tables.at /
    ellipticExceptional.at to attribute it (Value boxing? overload
    resolution? typecheck?).
-2. **unipotent 22.3s (3.81x)** — agent-115's lane; chain so far
-   77.2 -> 22.3s. Next candidate (unowned, invasive): share the
-   InvolutionTable across an inner class (E8's three forms rebuild the
-   ~10^5-record table 3x; KgbBundle.table is Arc and KgbGraph::build wants
-   &mut table — needs a design).
+2. **unipotent 15.3s (2.47x)** — agent-115's lane; chain so far
+   77.2 -> 15.3s (2026-08-24l mod-space transport, b456e1c). Next
+   candidate (unowned, invasive): share the InvolutionTable across an
+   inner class (E8's three forms rebuild the ~10^5-record table 3x;
+   KgbBundle.table is Arc and KgbGraph::build wants &mut table — needs a
+   design; order hazard documented 2026-08-24j).
 3. Everything else is <= 5.5x or already fast.
 
 Ops: .git sync MUST use `rsync -a --exclude=/worktrees` (no --delete);
