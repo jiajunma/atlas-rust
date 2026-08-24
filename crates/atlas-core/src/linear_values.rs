@@ -363,11 +363,7 @@ impl fmt::Display for Matrix {
                 let entry = self.data[col * self.rows + row];
                 write!(formatter, "{entry:>width$}")?;
             }
-            if row + 1 == self.rows {
-                write!(formatter, " |")?;
-            } else {
-                writeln!(formatter, " |")?;
-            }
+            writeln!(formatter, " |")?;
         }
         Ok(())
     }
@@ -400,7 +396,7 @@ mod tests {
     fn matrix_prints_column_widths_inside_bar_frames() {
         let matrix = Matrix::from_columns(2, 2, vec![1, 3, 2, 44]).expect("consistent dimensions");
         assert_eq!(matrix.entry(0, 1), Some(2));
-        assert_eq!(matrix.to_string(), "\n| 1,  2 |\n| 3, 44 |");
+        assert_eq!(matrix.to_string(), "\n| 1,  2 |\n| 3, 44 |\n");
         let empty = Matrix::from_columns(0, 3, Vec::new()).expect("empty is consistent");
         assert_eq!(empty.to_string(), "The 0x3 matrix");
     }
