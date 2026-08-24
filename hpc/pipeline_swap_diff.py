@@ -353,7 +353,11 @@ FIXTURE_PLANS = (
     FixturePlan(name="eval/while_let"),
     # While-let in value context: row of body values and the int-context
     # iteration count (axis.w:5456-5463, make_while_loop flags 0x8).
-    FixturePlan(name="eval/while_let_values"),
+    FixturePlan(
+        name="eval/while_let_values",
+        runnable_lines=(1, 3, 4, 5, 7),
+        silent_lines=(2, 6),
+    ),
     FixturePlan(name="eval/slices"),
     # One-dimensional vec/ratvec/mat slices (axis.w:3846-3897; mat selects
     # columns), incl. empty bounds and reverse output — the basic.at:361
@@ -361,7 +365,11 @@ FIXTURE_PLANS = (
     FixturePlan(name="eval/vec_slices"),
     # User-defined type names lex as TYPE_ID (lexer.w:419-448): result
     # annotations and casts with set_type names (basic.at:592 idiom).
-    FixturePlan(name="eval/user_type_cast"),
+    FixturePlan(
+        name="eval/user_type_cast",
+        runnable_lines=(1, 7, 9, 10, 11, 13, 14, 15),
+        silent_lines=(2, 3, 4, 5, 6, 8, 12),
+    ),
     FixturePlan(name="eval/subscriptions"),
     FixturePlan(name="eval/context"),
     FixturePlan(name="eval/exact_numerics"),
