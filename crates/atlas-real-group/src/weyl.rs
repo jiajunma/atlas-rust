@@ -96,7 +96,10 @@ impl WeylAction {
 
     /// Return the composite `self after right`.
     pub fn compose(&self, right: &Self) -> Result<Self, StructureError> {
-        if self.datum != right.datum {
+        // Compose chains clone the SAME Arc, so the pointer fast path skips
+        // a deep datum compare per compose; distinct allocations still
+        // compare contents (semantics unchanged).
+        if !std::sync::Arc::ptr_eq(&self.datum, &right.datum) && self.datum != right.datum {
             return Err(StructureError::DatumMismatch);
         }
         let rank = self.rank();
