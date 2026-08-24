@@ -2079,19 +2079,33 @@ fn build_inner_class_context(
     span: SourceSpan,
 ) -> Result<Arc<InnerClassContext>, Diagnostic> {
     let class_budget = cartan_classification_budget();
-    let classification = classification_cached(&inner_class, &class_budget, span)?;
+    // The dual side: the dual form count is the dual fundamental weak
+    // partition size, and the correspondence pairs each Cartan class with
+    // its dual class (upstream dual InnerClass constructor,
+    // innerclass.cpp:435).
+    let dual_inner = dual_inner_class(&inner_class, WEYL_BUDGET, ROOT_BUDGET)
+        .map_err(|error| runtime(span, error.to_string()))?;
+    // Primal and dual classifications are independent pure computations
+    // (split E8: ~200ms each on HPC), so build them on two threads; the
+    // results feed the same content-keyed cache either way, and the primal
+    // error keeps its sequential precedence.
+    let (classification, dual_classification) = std::thread::scope(|scope| {
+        let dual =
+            scope.spawn(|| classification_cached(&dual_inner, &class_budget, span));
+        let primal = classification_cached(&inner_class, &class_budget, span);
+        (
+            primal,
+            dual.join().expect("dual classification thread panicked"),
+        )
+    });
+    let classification = classification?;
+    let dual_classification = dual_classification?;
     let strong = StrongRealClassification::build(&classification, FIBER_BUDGET)
         .map_err(|error| runtime(span, error.to_string()))?;
     let order = ExternalFormOrder::build(&inner_class, &classification)
         .map_err(|error| runtime(span, error.to_string()))?;
     let layout = InnerClassLayout::build(&inner_class, &INTEGER_BUDGET)
         .map_err(|error| runtime(span, error.to_string()))?;
-    // The dual side once: the dual form count is the dual fundamental weak
-    // partition size, and the correspondence pairs each Cartan class with its
-    // dual class (upstream dual InnerClass constructor, innerclass.cpp:435).
-    let dual_inner = dual_inner_class(&inner_class, WEYL_BUDGET, ROOT_BUDGET)
-        .map_err(|error| runtime(span, error.to_string()))?;
-    let dual_classification = classification_cached(&dual_inner, &class_budget, span)?;
     let dual_form_count = dual_classification.weak_real_form_count();
     let dual_cartans = dual_cartan_correspondence(
         &inner_class,
