@@ -5565,3 +5565,12 @@ Follow-up ranking for the remaining tail (post-32097c1):
    (hashing 8xi32 coordinate vectors) and the involution-table intern —
    a faster hasher or sorted-vec dedup.
 4. malloc/free ~10-15%: Vec churn across the same paths.
+
+Ops addendum (2026-08-24n): agents share the LOCAL checkout too —
+agent-117 created branch agent-cartan-perf in the parent repo and left
+the checkout switched, stranding a parent commit on its branch (recovered
+by cherry-pick to codex/continue-atlas-port as e886d00). Future dispatch
+prompts must tell agents: work on a local branch named agent-<topic>,
+commit there, push the branch, and NEVER leave the shared checkout on
+their branch (switch back or use a local git worktree). Parent merges
+the branch after HPC verification.
