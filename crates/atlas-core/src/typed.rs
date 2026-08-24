@@ -2926,8 +2926,9 @@ pub fn convert_expr(
                     compact_expression(&elements[1])
                 ),
                 _ => format!(
-                    "{}[{}]",
+                    "{}{}[{}]",
                     typed_expression_print(&converted_array),
+                    if *reversed { "~" } else { "" },
                     typed_expression_print(&converted_index)
                 ),
             };
