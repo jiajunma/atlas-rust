@@ -5366,3 +5366,45 @@ cost (Rc<Value> traffic, overload resolution, parser reduce). The
 per-script tail above 5x is otherwise all small scripts at 5-7x plus
 E8_small_block (being fixed by the lexer cursor) and unipotent (agent-115
 lane, 59.7 -> 22.8s at 7231e4c).
+
+## Perf work 2026-08-24k — lexer LineCursor fixes the 9e81bc3 regression (agent-116)
+
+Root cause (bisect 3623976/3623991 + 2026-08-24i correction):
+E8_small_block_cell_parameter_numbers.at is a single ~430KB LINE of nested
+int literals (~70k tokens, no KGB work). The lexer takes one span per
+token; every span cost an O(line) column scan, so the file was O(n^2).
+9e81bc3 replaced chars().count() (LLVM auto-vectorizes it, ~3.9s) with a
+byte-filter count (not vectorized, ~16s scalar) — same asymptotics, 4x
+worse constant.
+
+Fix (c0d021b): LineCursor on the lexer (crates/atlas-core/src/source.rs +
+lex.rs). Token offsets are monotonic across a scan, so each span advances
+the cursor by the token width — amortized O(1) per token, O(n) per file.
+The cursor is lazy: it only moves inside span construction, so
+finish_operator's offset rewind never touches it. Rare out-of-order spans
+(directive tokens around a quoted filename, the doubled unterminated-
+string span) hit a one-off prefix-rescan fallback in
+position_with_cursor. SourceText::span/position are unchanged and remain
+the API for syntax/diagnostic callers; only the lexer's 10 span/token
+construction sites (7 source.span + the token() helper + eof_token) moved
+to span_with_cursor.
+
+Verified (all HPC @ c0d021b):
+- quick_check 3624061 green: 863 unit tests, including the new
+  cursor_spans_match_the_independent_position_calls (span_with_cursor vs
+  independent position() over multiline Unicode text with rewind probes,
+  plus a 100k-char single line).
+- Timer 3624066 (dedicated worktree, /usr/bin/time -v, 3 runs):
+  E8_small_block 0.11s every run — vs 15.97s regressed, vs 3.91s
+  pre-9e81bc3 baseline, vs cpp 0.053s oracle (ratio ~2.1x, was 296x).
+  Peak RSS ~89MB.
+- Corpus subset 3624062 (test_braid/class_tables/GKfast/generic_degrees/
+  example/all, oracle-absolute globs): 6/6 MATCH, timings flat vs
+  3623676 — no cost on ordinary multi-line scripts.
+
+Lesson for the ledger: on this codebase's release profile, rely on
+MEASUREMENT for "trivially equivalent" loop rewrites — chars().count()
+auto-vectorizes, iter().filter(byte-mask).count() does not; and any
+per-token O(line) work is O(n^2) on single-line scripts, which the corpus
+contains (E8_small_block). Both source.rs position paths are now
+documented with the single-line hazard.
