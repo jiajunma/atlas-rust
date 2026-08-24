@@ -147,5 +147,6 @@ interpreters — the loops are too light to measure anything but process
 startup, so these ratios are noise. The workloads need heavier iteration
 counts (or larger groups) before their numbers mean anything; use the
 script-corpus ledger above for real per-script timing until then.
-| 3622804 | 7c325cf | 1 targeted | — | i64 fast path in bounded_linear_combination (460370e): unipotent 68.0s -> 65.7s (-3%). Confirms the big win must come from caching the per-call KGB rebuild, not micro-arithmetic |
-| 3622901 | 9dc4b37 | 1 targeted | — | KGB-build micro-opts (f1a1c18 flat class-orbit buffer + 9dc4b37 hash-map intern index/inline mod-two + 6b5df6a two-thread Cartan classification): unipotent 65.7s -> 60.6s (-8%, -21% vs the 77.2s pre-LTO baseline; ratio 13.4x -> 10.19x). MATCH. Per-real-form KGB cache still pending (agent-114) |
+| 3622804 | 7c325cf | 1 targeted | — | i64 fast path in bounded_linear_combination (460370e): unipotent 68.0s -> 65.7s (-3%). The same job's ATLAS_PROBE_KGB output shows 26 builds for 26 groups: the per-real-form KGB cache ALREADY works, no rebuild per call (see HANDOFF 2026-08-24d) |
+| 3622901 | 9dc4b37 | 1 targeted | — | KGB-build micro-opts (f1a1c18 flat class-orbit buffer + 9dc4b37 hash-map intern index/inline mod-two + 6b5df6a two-thread Cartan classification): unipotent 65.7s -> 60.6s (-8%, -21% vs the 77.2s pre-LTO baseline; ratio 13.4x -> 10.19x). MATCH |
+| 3622856/3622857 | 9faf2e4 | 1 targeted x2 | — | RAYON_NUM_THREADS=4 unchanged (66.2s), threads=1 WORSE (81.0s): the rayon BFS helps; latch-park samples are normal main-thread waiting, not starvation |
