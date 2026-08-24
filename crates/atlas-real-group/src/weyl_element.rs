@@ -63,9 +63,12 @@ impl WeylElement {
         Self::from_permutation(system, system.action_permutation(action)?)
     }
 
-    /// The single private entry point establishing the inverse (with a free
-    /// bijectivity check) and the positivity-counted length.
-    fn from_permutation(
+    /// The single entry point establishing the inverse (with a free
+    /// bijectivity check) and the positivity-counted length. `pub(crate)`
+    /// for the involution table's cross-edge BFS, which composes the
+    /// neighbor permutation directly instead of paying two temporary
+    /// `multiply` products per edge.
+    pub(crate) fn from_permutation(
         system: &RootSystem,
         permutation: Vec<RootId>,
     ) -> Result<Self, StructureError> {

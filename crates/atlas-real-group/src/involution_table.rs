@@ -13,10 +13,11 @@
 //! Numbering is the caller's Cartan add order (the documented discipline is
 //! ascending [`CartanId`]) with an external-order BFS inside each orbit.
 
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::grading::try_capacity;
+use crate::inner_class::PermutationHasherBuilder;
 use crate::integer_lattice::{negative_coweight_eigenspace, reduce_basis_mod_two};
 use crate::real_projection::RealProjection;
 use crate::{
@@ -101,6 +102,95 @@ impl InvolutionRecord {
     }
 }
 
+/// Dedup/lookup key of a table entry: the images of the SIMPLE roots only.
+///
+/// A Weyl element is fixed by its simple-root images, so the packed key is
+/// injective — equality semantics are unchanged. For semisimple rank <= 16
+/// with <= 256 roots the key packs into a u128 (the layout of
+/// `inner_class::PermutationKey`), which keeps the E8 cross-action BFS's
+/// ~1.6M probes to an integer hash and compare instead of chasing 240-entry
+/// ordered-map keys. Larger tables fall back to the full permutation.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+enum DedupKey {
+    Packed(u128),
+    Full(Box<[RootId]>),
+}
+
+/// The table's dedup index, with its keying discipline. The map is probed
+/// and inserted only — never iterated — so the hash order is unobservable.
+#[derive(Clone, Debug)]
+struct DedupIndex {
+    map: HashMap<DedupKey, InvolutionId, PermutationHasherBuilder>,
+    /// Simple roots' positions in the root enumeration, generator order
+    /// (the packing layout of [`DedupKey::Packed`]).
+    simple_positions: Vec<usize>,
+    root_count: usize,
+    packed: bool,
+}
+
+impl DedupIndex {
+    fn new(root_system: &RootSystem) -> Self {
+        let simple_positions: Vec<usize> = root_system
+            .simple_root_ids()
+            .iter()
+            .map(|id| id.0)
+            .collect();
+        let root_count = root_system.roots().len();
+        let packed = simple_positions.len() <= 16 && root_count <= usize::from(u8::MAX) + 1;
+        Self {
+            map: HashMap::default(),
+            simple_positions,
+            root_count,
+            packed,
+        }
+    }
+
+    /// The packed key of the permutation whose simple-root images are
+    /// `image(0..rank)`: generator order, 8 bits per generator.
+    fn pack(&self, image: impl Fn(usize) -> RootId) -> u128 {
+        let mut key = 0_u128;
+        for shift in 0..self.simple_positions.len() {
+            key |= (image(shift).0 as u128) << (8 * shift);
+        }
+        key
+    }
+
+    fn key_of(&self, permutation: &[RootId]) -> DedupKey {
+        // A foreign-length permutation keys as Full even in packed mode, so
+        // it can never alias a stored Packed key (provenance contract).
+        if self.packed && permutation.len() == self.root_count {
+            DedupKey::Packed(self.pack(|simple| permutation[self.simple_positions[simple]]))
+        } else {
+            DedupKey::Full(permutation.into())
+        }
+    }
+
+    fn get(&self, key: &DedupKey) -> Option<InvolutionId> {
+        self.map.get(key).copied()
+    }
+
+    fn insert(&mut self, key: DedupKey, id: InvolutionId) {
+        self.map.insert(key, id);
+    }
+}
+
+/// `left after middle after right` as permutations: `left[middle[right[i]]]`.
+/// The single composed buffer replaces the two temporary `WeylElement`
+/// products (four heap buffers and a discarded inverse pass) the cross-edge
+/// loop used to pay per edge.
+fn compose_permutation(
+    left: &[RootId],
+    middle: &[RootId],
+    right: &[RootId],
+    count: usize,
+) -> Result<Vec<RootId>, StructureError> {
+    let mut composed = try_capacity(count)?;
+    for index in 0..count {
+        composed.push(left[middle[right[index].0].0]);
+    }
+    Ok(composed)
+}
+
 /// The involution table: per-Cartan contiguous orbit slices of twisted
 /// involutions, shared across the real forms of one inner class.
 #[derive(Clone, Debug)]
@@ -112,7 +202,7 @@ pub struct InvolutionTable {
     reflection_actions: Vec<WeylAction>,
     two_rho: Weight,
     records: Vec<InvolutionRecord>,
-    index_by_permutation: BTreeMap<Vec<RootId>, InvolutionId>,
+    index: DedupIndex,
     cross_links: Vec<Vec<InvolutionId>>,
     orbits: Vec<(CartanId, usize, usize)>,
 }
@@ -176,7 +266,7 @@ impl InvolutionTable {
             reflection_actions,
             two_rho: Weight::new(two_rho),
             records: Vec::new(),
-            index_by_permutation: BTreeMap::new(),
+            index: DedupIndex::new(root_system),
             cross_links: Vec::new(),
             orbits: Vec::new(),
         })
@@ -217,6 +307,12 @@ impl InvolutionTable {
             .map_err(|_| StructureError::AllocationFailed {
                 requested: expected,
             })?;
+        self.index
+            .map
+            .try_reserve(expected)
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: expected,
+            })?;
 
         // Seed: convert the matrix-level representative once, then apply the
         // (W_length + #Cayley)/2 formula. `CayleyCrossDecomposition` is a
@@ -245,7 +341,7 @@ impl InvolutionTable {
             &self.budget,
             &self.two_rho,
             &mut self.records,
-            &mut self.index_by_permutation,
+            &mut self.index,
             seed_element,
             representative.weyl_action().clone(),
             length_sum / 2,
@@ -254,43 +350,70 @@ impl InvolutionTable {
 
         // External-order BFS. Cross links are filled at each node's visit,
         // so after the orbit closes every (generator, node) edge is an O(1)
-        // stored link.
+        // stored link. The dedup probe is allocation-free on the hit path
+        // (the majority: rank-1 of every rank edges): the neighbor's packed
+        // simple-image key decides membership, and the full neighbor
+        // permutation — one composed buffer, no temporary WeylElement
+        // products — is built only for NEW involutions, matching the cost
+        // profile of upstream's add_cross (involutions.cpp:228-258), which
+        // pays one fixed-size twistedConjugate per edge.
         let semisimple_rank = self.twist.len();
+        let root_count = self.inner_class.root_system().roots().len();
         let mut cursor = start;
         while cursor < self.records.len() {
-            let current_element = self.records[cursor].element.clone();
-            let current_action = self.records[cursor].involution.weyl_action().clone();
-            let current_length = self.records[cursor].involution_length;
-            let current_projection = self.records[cursor].projection().clone();
             let mut links = try_capacity(semisimple_rank)?;
             for generator in 0..semisimple_rank {
-                let neighbor = self.reflections[generator]
-                    .multiply(self.inner_class.root_system(), &current_element)?
-                    .multiply(
-                        self.inner_class.root_system(),
-                        &self.reflections[self.twist[generator]],
-                    )?;
-                if let Some(&existing) = self.index_by_permutation.get(neighbor.image_permutation())
-                {
-                    links.push(existing);
-                    continue;
-                }
-                let new_length =
-                    stepped_length(current_length, current_element.length(), neighbor.length())?;
+                // The composed neighbor `s * w * twist(s)`, as permutations:
+                // `composed[i] = left[current[right[i]]]`.
+                let composed = {
+                    let current = self.records[cursor].element.image_permutation();
+                    let left = self.reflections[generator].image_permutation();
+                    let right = self.reflections[self.twist[generator]].image_permutation();
+                    if self.index.packed {
+                        let probe = DedupKey::Packed(self.index.pack(|simple| {
+                            let position = self.index.simple_positions[simple];
+                            left[current[right[position].0].0]
+                        }));
+                        if let Some(existing) = self.index.get(&probe) {
+                            links.push(existing);
+                            None
+                        } else {
+                            Some(compose_permutation(left, current, right, root_count)?)
+                        }
+                    } else {
+                        let composed = compose_permutation(left, current, right, root_count)?;
+                        let probe = DedupKey::Full(composed.as_slice().into());
+                        if let Some(existing) = self.index.get(&probe) {
+                            links.push(existing);
+                            None
+                        } else {
+                            Some(composed)
+                        }
+                    }
+                };
+                let Some(composed) = composed else { continue };
+                let neighbor =
+                    WeylElement::from_permutation(self.inner_class.root_system(), composed)?;
+                let new_length = stepped_length(
+                    self.records[cursor].involution_length,
+                    self.records[cursor].element.length(),
+                    neighbor.length(),
+                )?;
                 let new_action = self.reflection_actions[generator]
-                    .compose(&current_action)?
+                    .compose(self.records[cursor].involution.weyl_action())?
                     .compose(&self.reflection_actions[self.twist[generator]])?;
                 // Transport the image basis across the cross edge
                 // (involutions.cpp:242-243): the PLAIN generator s, not
                 // twist(s) — delta is already incorporated in theta.
-                let transported =
-                    current_projection.transported(self.reflection_actions[generator].matrix())?;
+                let transported = self.records[cursor]
+                    .projection()
+                    .transported(self.reflection_actions[generator].matrix())?;
                 let id = push_record(
                     &self.inner_class,
                     &self.budget,
                     &self.two_rho,
                     &mut self.records,
-                    &mut self.index_by_permutation,
+                    &mut self.index,
                     neighbor,
                     new_action,
                     new_length,
@@ -319,9 +442,7 @@ impl InvolutionTable {
     /// complete equality key; a same-cardinality foreign system remains the
     /// caller's contract.
     pub fn lookup(&self, element: &WeylElement) -> Option<InvolutionId> {
-        self.index_by_permutation
-            .get(element.image_permutation())
-            .copied()
+        self.index.get(&self.index.key_of(element.image_permutation()))
     }
 
     /// Bounded by the involution count.
@@ -355,6 +476,10 @@ impl InvolutionTable {
     /// been added. The stage-(e) contract adds the form's upward-closed
     /// Cartan set first, after which `None` is the caller's invariant
     /// violation.
+    ///
+    /// The packed probe answers from the simple-root images of `s * w`
+    /// alone — an injective key — so the hot path never materializes the
+    /// product element.
     pub fn cayley(
         &self,
         generator: usize,
@@ -374,11 +499,17 @@ impl InvolutionTable {
                     index: generator,
                     upper_bound: self.reflections.len(),
                 })?;
+        let current = record.element.image_permutation();
+        let left = reflection.image_permutation();
+        if self.index.packed {
+            let probe = DedupKey::Packed(self.index.pack(|simple| {
+                let position = self.index.simple_positions[simple];
+                left[current[position].0]
+            }));
+            return Ok(self.index.get(&probe));
+        }
         let product = reflection.multiply(self.inner_class.root_system(), &record.element)?;
-        Ok(self
-            .index_by_permutation
-            .get(product.image_permutation())
-            .copied())
+        Ok(self.index.get(&self.index.key_of(product.image_permutation())))
     }
 
     /// One accessor covering upstream's three `is_*_simple` tests.
@@ -489,7 +620,7 @@ fn push_record(
     budget: &InvolutionTableBudget,
     two_rho: &Weight,
     records: &mut Vec<InvolutionRecord>,
-    index_by_permutation: &mut BTreeMap<Vec<RootId>, InvolutionId>,
+    index: &mut DedupIndex,
     element: WeylElement,
     action: WeylAction,
     involution_length: usize,
@@ -536,9 +667,8 @@ fn push_record(
     };
     let weyl_length = element.length();
     let id = InvolutionId(records.len());
-    let mut key = try_capacity(element.image_permutation().len())?;
-    key.extend_from_slice(element.image_permutation());
-    index_by_permutation.insert(key, id);
+    let key = index.key_of(element.image_permutation());
+    index.insert(key, id);
     records.push(InvolutionRecord {
         element,
         involution,
