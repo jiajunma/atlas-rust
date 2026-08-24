@@ -38,38 +38,49 @@ impl RootInvolutionData {
             });
         }
         validate_simple_root_images(root_system, &involution)?;
-        let mut image_by_root = Vec::with_capacity(root_system.roots().len());
-        let mut kind_by_root = Vec::with_capacity(root_system.roots().len());
+        let root_count = root_system.roots().len();
+        let mut image_by_root = Vec::with_capacity(root_count);
+        let mut kind_by_root = Vec::with_capacity(root_count);
+        // Scratch buffers: one matrix application per root (and per coroot
+        // transport check) without a fresh vector per root.
+        let mut image_buf = Vec::with_capacity(involution.lattice_rank());
+        let mut coroot_buf = Vec::with_capacity(involution.lattice_rank());
         for (_, root, coroot) in root_system.entries() {
-            let image = involution.act_on_weight(root)?;
+            involution.act_on_weight_into(root.as_slice(), &mut image_buf)?;
             let image_id = root_system
-                .id_of(&image)
+                .id_of_slice(&image_buf)
                 .ok_or(StructureError::InvalidRootAutomorphism)?;
             let image_coroot =
                 root_system
                     .coroot(image_id)
                     .ok_or(StructureError::IndexOutOfRange {
                         index: image_id.0,
-                        upper_bound: root_system.roots().len(),
+                        upper_bound: root_count,
                     })?;
-            if involution.act_on_coweight(coroot)? != *image_coroot {
+            involution.act_on_coweight_into(coroot.as_slice(), &mut coroot_buf)?;
+            if coroot_buf.as_slice() != image_coroot.as_slice() {
                 return Err(StructureError::InvalidRootDatumAutomorphism);
             }
-            let negative = root
-                .as_slice()
-                .iter()
-                .map(|coordinate| {
-                    coordinate
-                        .checked_neg()
-                        .ok_or(StructureError::ArithmeticOverflow)
-                })
-                .collect::<Result<Vec<_>, _>>()?;
-            let kind = if image == *root {
+            let kind = if image_buf.as_slice() == root.as_slice() {
                 RootKind::Imaginary
-            } else if image.as_slice() == negative.as_slice() {
-                RootKind::Real
             } else {
-                RootKind::Complex
+                let mut is_negative = true;
+                for (&image_coordinate, &coordinate) in
+                    image_buf.iter().zip(root.as_slice().iter())
+                {
+                    let negated = coordinate
+                        .checked_neg()
+                        .ok_or(StructureError::ArithmeticOverflow)?;
+                    if image_coordinate != negated {
+                        is_negative = false;
+                        break;
+                    }
+                }
+                if is_negative {
+                    RootKind::Real
+                } else {
+                    RootKind::Complex
+                }
             };
             image_by_root.push(image_id);
             kind_by_root.push(kind);

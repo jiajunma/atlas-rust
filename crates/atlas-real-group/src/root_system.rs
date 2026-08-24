@@ -370,8 +370,14 @@ impl RootSystem {
     }
 
     pub fn id_of(&self, root: &Weight) -> Option<RootId> {
+        self.id_of_slice(root.as_slice())
+    }
+
+    /// `id_of` on bare coordinates, for bulk classification loops that hold
+    /// the image in a reusable buffer instead of a fresh `Weight`.
+    pub(crate) fn id_of_slice(&self, root: &[i32]) -> Option<RootId> {
         self.roots
-            .binary_search_by(|candidate| candidate.as_slice().cmp(root.as_slice()))
+            .binary_search_by(|candidate| candidate.as_slice().cmp(root))
             .ok()
             .map(RootId)
     }

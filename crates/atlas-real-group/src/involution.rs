@@ -93,6 +93,26 @@ impl LatticeInvolution {
     pub fn act_on_coweight(&self, coweight: &Coweight) -> Result<Coweight, StructureError> {
         apply_matrix(&self.coweight_action, coweight.as_slice()).map(Coweight::new)
     }
+
+    /// `act_on_weight` into a caller-owned buffer, for bulk loops (the
+    /// root-classification pass pays one vector per root otherwise).
+    pub(crate) fn act_on_weight_into(
+        &self,
+        coordinates: &[i32],
+        out: &mut Vec<i32>,
+    ) -> Result<(), StructureError> {
+        apply_matrix_into(&self.weight_action, coordinates, out)
+    }
+
+    /// `act_on_coweight` into a caller-owned buffer (see
+    /// [`Self::act_on_weight_into`]).
+    pub(crate) fn act_on_coweight_into(
+        &self,
+        coordinates: &[i32],
+        out: &mut Vec<i32>,
+    ) -> Result<(), StructureError> {
+        apply_matrix_into(&self.coweight_action, coordinates, out)
+    }
 }
 
 fn identity_matrix(rank: usize) -> Result<Vec<Vec<i32>>, StructureError> {
@@ -151,24 +171,33 @@ fn preserves_pairing(
 }
 
 fn apply_matrix(matrix: &[Vec<i32>], coordinates: &[i32]) -> Result<Vec<i32>, StructureError> {
+    let mut out = Vec::with_capacity(coordinates.len());
+    apply_matrix_into(matrix, coordinates, &mut out)?;
+    Ok(out)
+}
+
+fn apply_matrix_into(
+    matrix: &[Vec<i32>],
+    coordinates: &[i32],
+    out: &mut Vec<i32>,
+) -> Result<(), StructureError> {
     if matrix.len() != coordinates.len() {
         return Err(StructureError::RankMismatch {
             expected: matrix.len(),
             actual: coordinates.len(),
         });
     }
-    matrix
-        .iter()
-        .map(|row| {
-            if row.len() != coordinates.len() {
-                return Err(StructureError::InvalidInvolution);
-            }
-            i32::try_from(checked_sum(
-                row.iter().copied().zip(coordinates.iter().copied()),
-            )?)
-            .map_err(|_| StructureError::ArithmeticOverflow)
-        })
-        .collect()
+    out.clear();
+    for row in matrix {
+        if row.len() != coordinates.len() {
+            return Err(StructureError::InvalidInvolution);
+        }
+        out.push(
+            i32::try_from(checked_sum(row.iter().copied().zip(coordinates.iter().copied()))?)
+                .map_err(|_| StructureError::ArithmeticOverflow)?,
+        );
+    }
+    Ok(())
 }
 
 fn checked_sum(mut pairs: impl Iterator<Item = (i32, i32)>) -> Result<i128, StructureError> {
