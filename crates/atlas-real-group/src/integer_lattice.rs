@@ -2042,6 +2042,36 @@ fn bounded_linear_combination(
     right_value: &Integer,
     max_coefficient_bits: u64,
 ) -> Result<Integer, StructureError> {
+    // Fast path: all four operands fit an i64 (the common case — lattice
+    // entries in involution-table work stay machine-sized, as upstream's
+    // `long`-based lattice.cpp assumes). The bound check below is the exact
+    // i64 image of the generic one, so both paths agree on acceptance; the
+    // products fit i128 with room (|i64|^2 < 2^126), and only a result that
+    // outgrows i64 falls through to the generic arithmetic.
+    if let (Ok(left_factor), Ok(left_value), Ok(right_factor), Ok(right_value)) = (
+        i64::try_from(left_factor),
+        i64::try_from(left_value),
+        i64::try_from(right_factor),
+        i64::try_from(right_value),
+    ) {
+        let left_bits = product_bit_bound_i64(left_factor, left_value);
+        let right_bits = product_bit_bound_i64(right_factor, right_value);
+        let bound = match (left_bits, right_bits) {
+            (0, bits) | (bits, 0) => bits,
+            // Each side is at most 128, so this cannot overflow.
+            (left, right) => left.max(right) + 1,
+        };
+        if bound > max_coefficient_bits {
+            return Err(resource_limit("coefficient bits", max_coefficient_bits));
+        }
+        let value = (left_factor as i128) * (left_value as i128)
+            + (right_factor as i128) * (right_value as i128);
+        if let Ok(small) = i64::try_from(value) {
+            return Ok(Integer::from(small));
+        }
+        // Rare: a machine-sized result window was exceeded. Fall through to
+        // the generic path, which recomputes the same (already-checked) value.
+    }
     let left_bits = product_bit_bound(left_factor, left_value)?;
     let right_bits = product_bit_bound(right_factor, right_value)?;
     let bound = match (left_bits, right_bits) {
@@ -2064,6 +2094,21 @@ fn product_bit_bound(left: &Integer, right: &Integer) -> Result<u64, StructureEr
     left.significant_bits()
         .checked_add(right.significant_bits())
         .ok_or_else(|| resource_limit("coefficient bits", u64::MAX))
+}
+
+/// `significant_bits` of a nonzero i64 (bits of its absolute value).
+fn significant_bits_i64(value: i64) -> u64 {
+    debug_assert_ne!(value, 0);
+    64 - u64::from(value.unsigned_abs().leading_zeros())
+}
+
+/// The i64 image of [`product_bit_bound`]; each operand contributes at most
+/// 64 bits, so the sum cannot overflow.
+fn product_bit_bound_i64(left: i64, right: i64) -> u64 {
+    if left == 0 || right == 0 {
+        return 0;
+    }
+    significant_bits_i64(left) + significant_bits_i64(right)
 }
 
 fn verify_annihilation(
@@ -2419,6 +2464,54 @@ mod tests {
             &budget(),
         )
         .unwrap()
+    }
+
+    #[test]
+    fn linear_combination_fast_path_matches_generic_arithmetic() {
+        let cases: &[(i64, i64, i64, i64)] = &[
+            (1, 7, -3, 5),
+            (-1, i64::MIN, 0, 0),
+            (2, -9, 2, 9),
+            (0, 0, 1, -1),
+            (i64::MAX, 1, 1, -4),
+        ];
+        for &(lf, lv, rf, rv) in cases {
+            let expected = Integer::from(lf) * Integer::from(lv)
+                + Integer::from(rf) * Integer::from(rv);
+            assert_eq!(
+                bounded_linear_combination(
+                    &Integer::from(lf),
+                    &Integer::from(lv),
+                    &Integer::from(rf),
+                    &Integer::from(rv),
+                    256,
+                )
+                .unwrap(),
+                expected,
+            );
+        }
+    }
+
+    #[test]
+    fn linear_combination_fast_path_keeps_the_coefficient_budget() {
+        // significant_bits(16) = 5 per side, so the bound is 6 > 4: the fast
+        // path must reject exactly like the generic one.
+        let sixteen = Integer::from(16);
+        assert_eq!(
+            bounded_linear_combination(&sixteen, &sixteen, &Integer::ZERO, &Integer::ZERO, 4),
+            Err(StructureError::IntegerLatticeResourceLimit {
+                resource: "coefficient bits",
+                limit: 4,
+            })
+        );
+        // A result beyond the i64 window (2^40 * 2^40 = 2^80, bound 82)
+        // falls through to the generic arithmetic with the same value.
+        let base = Integer::from(1_i64 << 40);
+        let expected = &base * &base;
+        assert_eq!(
+            bounded_linear_combination(&base, &base, &Integer::ZERO, &Integer::ZERO, 128).unwrap(),
+            expected,
+        );
     }
 
     fn integer_column(values: &[i32]) -> Vec<Integer> {
