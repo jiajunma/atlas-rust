@@ -5039,3 +5039,23 @@ the frozen print_family batch. No other hidden special operators exist
   coercions.rs / domain_builtins.rs to pre-perf commits does NOT cure
   it, so it belongs to the do_expr/evaluator lane (see 2026-08-24a
   checkpoint, diagnosis job 3621118), not to the perf commits.
+
+## Perf finding 2026-08-24b (unipotent_representations_exceptional.at, job 3622755)
+
+gdb sampling (20/20 samples, 3s interval) shows the 77s outlier is spent in
+KGB graph construction, called per KGB print from the script:
+
+  malachite Natural::mul <- integer_lattice::bounded_linear_combination
+  <- IntegerMatrix::add_row_multiple <- saturated_kernel
+  <- negative_coweight_eigenspace <- involution_table::push_record
+  <- InvolutionTable::add_cartan <- KgbGraph::build
+  <- RealFormContext::build_kgb <- RealFormContext::kgb
+  <- call_with_printed (per-call!)
+
+Two attack lines:
+1. CACHE: RealFormContext::kgb appears to rebuild the KGB graph on every
+   call; upstream caches per RealForm. A per-real-form KGB cache in the
+   evaluator context should collapse repeated builds.
+2. ARITHMETIC: saturated_kernel/add_row_multiple runs big-integer
+   (malachite) multiplies in the inner loop; upstream lattice code keeps
+   machine-int fast paths. Consider i64 fast path with overflow fallback.
