@@ -49,6 +49,31 @@ impl LatticeInvolution {
         })
     }
 
+    /// Assemble from matrices whose involution/pairing invariants the caller
+    /// has ALREADY established through an independent channel. The
+    /// involution-table BFS composes `w after delta` from validated Weyl and
+    /// distinguished factors, so re-running the full O(rank^3) squared-equals
+    /// and pairing checks on every one of the ~1e5 pushed records is pure
+    /// defensive overhead (upstream `add_cross` never re-validates either).
+    /// Shape checks remain: a mismatch here is a genuine bug and still fails
+    /// fast, exactly as `RootInvolutionData::from_images` already does for the
+    /// per-root classification half of the same construction.
+    pub(crate) fn new_trusted(
+        datum: &BasedRootDatum,
+        weight_action: Vec<Vec<i32>>,
+        coweight_action: Vec<Vec<i32>>,
+    ) -> Result<Self, StructureError> {
+        let rank = datum.lattice_rank();
+        if !is_square_of_rank(&weight_action, rank) || !is_square_of_rank(&coweight_action, rank) {
+            return Err(StructureError::InvalidInvolution);
+        }
+        Ok(Self {
+            datum: datum.clone(),
+            weight_action,
+            coweight_action,
+        })
+    }
+
     pub fn lattice_rank(&self) -> usize {
         self.weight_action.len()
     }

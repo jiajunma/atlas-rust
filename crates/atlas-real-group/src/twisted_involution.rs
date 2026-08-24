@@ -105,7 +105,7 @@ impl TwistedInvolution {
                 actual: weyl_action.rank(),
             });
         }
-        let involution = LatticeInvolution::new(
+        let involution = LatticeInvolution::new_trusted(
             datum,
             compose_matrices(weyl_action.matrix(), distinguished.weight_matrix())?,
             compose_matrices(
