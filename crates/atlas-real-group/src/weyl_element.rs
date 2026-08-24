@@ -7,10 +7,10 @@
 //! persistent KGB elements, so no budget knob exists at this layer.
 //!
 //! An element is represented by its permutation of the enumerated roots of
-//! one ambient [`RootSystem`], stored in fixed stack arrays for every system
-//! the upstream transducer covers (at most E8's 240 roots — the fixed-size
-//! `WeylElt` discipline of weyl.h:60-80) with a heap fallback for larger
-//! closures, so multiplication on the inline tiers never allocates. The only
+//! one ambient [`RootSystem`], stored with its inverse in ONE exact-size
+//! flat buffer (`data[..count]` forward, `data[count..]` inverse): one
+//! allocation per element instead of two, and a pointer-sized struct, so
+//! the element stays cheap to store per involution/Tits record. The only
 //! provenance check expressible per operation is the root-count match; the
 //! single-ambient-system discipline is the caller's contract, owned by the
 //! KGB stages. Antisymmetry of the permutation is guaranteed by keeping the
@@ -23,154 +23,51 @@
 //! `WeylElt::pieces` arrays lexicographically), so the KGB renumbering
 //! consumes it verbatim.
 
-use std::cmp::Ordering;
 use std::collections::BTreeMap;
-use std::hash::{Hash, Hasher};
 
 use crate::grading::try_capacity;
 use crate::{RootId, RootSystem, StructureError, WeylAction};
 
-/// Root-count ceiling of the small inline tier: every system through
-/// B4/C4 (32 roots), covering the low-rank braid/word-heavy scripts whose
-/// per-letter operations would otherwise pay a 240-entry memset per step.
-const SMALL_ROOTS: usize = 32;
-
-/// Root-count ceiling of the inline tier: E8's 240 roots, so every
-/// semisimple system of rank <= 8 multiplies without touching the heap.
-const MAX_INLINE_ROOTS: usize = 240;
-
-/// Permutation storage: fixed stack arrays below the inline ceilings, heap
-/// vectors beyond. The array tail past the live prefix is zero-filled and
-/// never read; equality, hashing, and ordering see only the prefix.
-#[derive(Clone, Debug)]
-enum Repr {
-    Small {
-        permutation: [RootId; SMALL_ROOTS],
-        inverse: [RootId; SMALL_ROOTS],
-    },
-    Inline {
-        permutation: [RootId; MAX_INLINE_ROOTS],
-        inverse: [RootId; MAX_INLINE_ROOTS],
-    },
-    Heap {
-        permutation: Vec<RootId>,
-        inverse: Vec<RootId>,
-    },
-}
-
-impl Repr {
-    /// The live permutation prefix (the element's forward root action).
-    fn permutation(&self, count: usize) -> &[RootId] {
-        match self {
-            Repr::Small { permutation, .. } => &permutation[..count],
-            Repr::Inline { permutation, .. } => &permutation[..count],
-            Repr::Heap { permutation, .. } => permutation,
-        }
-    }
-
-    /// The live inverse-permutation prefix.
-    fn inverse(&self, count: usize) -> &[RootId] {
-        match self {
-            Repr::Small { inverse, .. } => &inverse[..count],
-            Repr::Inline { inverse, .. } => &inverse[..count],
-            Repr::Heap { inverse, .. } => inverse,
-        }
-    }
-}
-
-/// The single representation-construction site: `fill` establishes the
-/// live prefix of both buffers. The heap tier keeps the `try_capacity`
-/// allocation-failure gate of the pre-inline implementation; the inline
-/// tiers cannot fail to allocate.
-fn build_repr(
+/// The single construction site: one exact-size buffer holding the forward
+/// permutation in `[..count]` and its inverse in `[count..]`, filled by
+/// `fill` through the split views. Keeps the `try_capacity`
+/// allocation-failure gate of the two-`Vec` implementation.
+fn build_data(
     count: usize,
     fill: impl FnOnce(&mut [RootId], &mut [RootId]) -> Result<(), StructureError>,
-) -> Result<Repr, StructureError> {
-    if count <= SMALL_ROOTS {
-        let mut permutation = [RootId(0); SMALL_ROOTS];
-        let mut inverse = [RootId(0); SMALL_ROOTS];
-        fill(&mut permutation[..count], &mut inverse[..count])?;
-        Ok(Repr::Small {
-            permutation,
-            inverse,
-        })
-    } else if count <= MAX_INLINE_ROOTS {
-        let mut permutation = [RootId(0); MAX_INLINE_ROOTS];
-        let mut inverse = [RootId(0); MAX_INLINE_ROOTS];
-        fill(&mut permutation[..count], &mut inverse[..count])?;
-        Ok(Repr::Inline {
-            permutation,
-            inverse,
-        })
-    } else {
-        let mut permutation = try_capacity(count)?;
-        permutation.resize(count, RootId(0));
-        let mut inverse = try_capacity(count)?;
-        inverse.resize(count, RootId(0));
-        fill(&mut permutation, &mut inverse)?;
-        Ok(Repr::Heap {
-            permutation,
-            inverse,
-        })
-    }
+) -> Result<Box<[RootId]>, StructureError> {
+    let mut data = try_capacity(count.checked_add(count).ok_or(
+        StructureError::ArithmeticOverflow,
+    )?)?;
+    data.resize(2 * count, RootId(0));
+    let (permutation, inverse) = data.split_at_mut(count);
+    fill(permutation, inverse)?;
+    debug_assert_eq!(data.len(), data.capacity());
+    Ok(data.into_boxed_slice())
 }
 
 /// A Weyl-group element as a permutation of the enumerated roots.
 ///
-/// Equality, hashing, and ordering are the live permutation prefix — the
-/// pre-inline derived-trait contract preserved by hand (slice ordering IS
-/// the old `Vec` lexicographic order, prefix rule included), so the unused
-/// array tail can never leak into comparisons. `inverse` and `length` are
-/// functions of the permutation established by every constructor, hence
-/// prefix equality implies full equality.
-#[derive(Clone)]
+/// Field order is load-bearing: `data` comes first so the derived `Ord` is
+/// the documented lexicographic root-permutation order (the inverse half is
+/// a function of the forward half, so it can only refine ties between
+/// foreign elements, which no single-system consumer ever compares), and
+/// since the inverse and `length` are functions of the permutation
+/// established by every constructor, the derived `Eq`/`Hash` agree with
+/// permutation-only equality.
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct WeylElement {
-    repr: Repr,
-    /// Live prefix length, i.e. the ambient root count: the provenance gate.
+    /// Forward permutation in `[..count]`, its inverse in `[count..]`.
+    data: Box<[RootId]>,
+    /// The ambient root count: the provenance gate.
     count: usize,
     length: usize,
-}
-
-impl PartialEq for WeylElement {
-    fn eq(&self, other: &Self) -> bool {
-        self.permutation_slice() == other.permutation_slice()
-    }
-}
-
-impl Eq for WeylElement {}
-
-impl Hash for WeylElement {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.permutation_slice().hash(state);
-    }
-}
-
-impl PartialOrd for WeylElement {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for WeylElement {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.permutation_slice().cmp(other.permutation_slice())
-    }
-}
-
-impl std::fmt::Debug for WeylElement {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        formatter
-            .debug_struct("WeylElement")
-            .field("permutation", &self.permutation_slice())
-            .field("length", &self.length)
-            .finish()
-    }
 }
 
 impl WeylElement {
     pub fn identity(system: &RootSystem) -> Result<Self, StructureError> {
         let count = system.roots().len();
-        let repr = build_repr(count, |permutation, inverse| {
+        let data = build_data(count, |permutation, inverse| {
             for index in 0..count {
                 permutation[index] = RootId(index);
                 inverse[index] = RootId(index);
@@ -178,7 +75,7 @@ impl WeylElement {
             Ok(())
         })?;
         Ok(Self {
-            repr,
+            data,
             count,
             length: 0,
         })
@@ -194,13 +91,13 @@ impl WeylElement {
         // callers. The range error matches `WeylAction::simple_reflection`.
         let cached = reflection_permutation(system, generator)?;
         let count = cached.len();
-        let repr = build_repr(count, |permutation, inverse| {
+        let data = build_data(count, |permutation, inverse| {
             permutation.copy_from_slice(cached);
             inverse.copy_from_slice(cached);
             Ok(())
         })?;
         Ok(Self {
-            repr,
+            data,
             count,
             length: 1,
         })
@@ -228,7 +125,7 @@ impl WeylElement {
             });
         }
         const UNSET: usize = usize::MAX;
-        let repr = build_repr(count, |perm_buf, inv_buf| {
+        let data = build_data(count, |perm_buf, inv_buf| {
             perm_buf.copy_from_slice(&permutation);
             for slot in inv_buf.iter_mut() {
                 *slot = RootId(UNSET);
@@ -249,9 +146,9 @@ impl WeylElement {
             }
             Ok(())
         })?;
-        let length = count_length(system, repr.permutation(count));
+        let length = count_length(system, &data[..count]);
         Ok(Self {
-            repr,
+            data,
             count,
             length,
         })
@@ -314,16 +211,16 @@ impl WeylElement {
         let left_inverse = self.inverse_slice();
         let right_permutation = right.permutation_slice();
         let right_inverse = right.inverse_slice();
-        let repr = build_repr(count, |permutation, inverse| {
+        let data = build_data(count, |permutation, inverse| {
             for index in 0..count {
                 permutation[index] = left_permutation[right_permutation[index].0];
                 inverse[index] = right_inverse[left_inverse[index].0];
             }
             Ok(())
         })?;
-        let length = count_length(system, repr.permutation(count));
+        let length = count_length(system, &data[..count]);
         Ok(Self {
-            repr,
+            data,
             count,
             length,
         })
@@ -349,7 +246,7 @@ impl WeylElement {
         let count = self.count;
         let current_permutation = self.permutation_slice();
         let current_inverse = self.inverse_slice();
-        let repr = build_repr(count, |permutation, inverse| {
+        let data = build_data(count, |permutation, inverse| {
             for index in 0..count {
                 permutation[index] = reflection[current_permutation[index].0];
                 // (s w)^{-1} = w^{-1} s, and the reflection is an involution.
@@ -364,7 +261,7 @@ impl WeylElement {
         };
         Ok((
             Self {
-                repr,
+                data,
                 count,
                 length,
             },
@@ -389,7 +286,7 @@ impl WeylElement {
         let count = self.count;
         let current_permutation = self.permutation_slice();
         let current_inverse = self.inverse_slice();
-        let repr = build_repr(count, |permutation, inverse| {
+        let data = build_data(count, |permutation, inverse| {
             for index in 0..count {
                 permutation[index] = current_permutation[reflection[index].0];
                 // (w s)^{-1} = s w^{-1}, and the reflection is an involution.
@@ -404,7 +301,7 @@ impl WeylElement {
         };
         Ok((
             Self {
-                repr,
+                data,
                 count,
                 length,
             },
@@ -421,9 +318,9 @@ impl WeylElement {
         let count = self.count;
         let current_permutation = self.permutation_slice();
         let current_inverse = self.inverse_slice();
-        // Infallible fill; the heap tier's allocation failure aborts, as the
-        // pre-inline `Vec::with_capacity` construction did.
-        let repr = build_repr(count, |permutation, inverse| {
+        // Infallible fill; an allocation failure aborts through `expect`,
+        // as the pre-flatbuffer `Vec::with_capacity` construction did.
+        let data = build_data(count, |permutation, inverse| {
             for index in 0..count {
                 permutation[index] = reflection[current_permutation[index].0];
                 // (s w)^{-1} = w^{-1} s.
@@ -433,7 +330,7 @@ impl WeylElement {
         })
         .expect("left_descend fill is infallible");
         Self {
-            repr,
+            data,
             count,
             length: self.length - 1,
         }
@@ -443,14 +340,14 @@ impl WeylElement {
         let count = self.count;
         let current_permutation = self.permutation_slice();
         let current_inverse = self.inverse_slice();
-        let repr = build_repr(count, |permutation, inverse| {
+        let data = build_data(count, |permutation, inverse| {
             permutation.copy_from_slice(current_inverse);
             inverse.copy_from_slice(current_permutation);
             Ok(())
         })
         .expect("inverse fill is infallible");
         Self {
-            repr,
+            data,
             count,
             length: self.length,
         }
@@ -459,20 +356,20 @@ impl WeylElement {
     /// A reduced word by lowest-left-descent peeling, composing
     /// left-to-right: `w = s_{word[0]} * s_{word[1]} * ...`.
     ///
-    /// Peels in place on scratch buffers: the forward permutation composes
-    /// per-slot and the inverse goes through a double buffer, so no
-    /// per-letter element (or heap pair, pre-inline) is constructed.
+    /// Peels in place on one scratch buffer: the forward permutation
+    /// composes per-slot and the inverse goes through a scratch third, so
+    /// no per-letter element (or heap pair, pre-flatbuffer) is constructed.
     pub fn reduced_word(&self, system: &RootSystem) -> Result<Vec<usize>, StructureError> {
         self.check_provenance(system)?;
         let mut word = try_capacity(self.length)?;
         let count = self.count;
-        let mut buffers = PeelBuffers::new(count, self.permutation_slice(), self.inverse_slice());
+        let mut buffers = PeelBuffers::new(count, self.permutation_slice(), self.inverse_slice())?;
         let simple_ids = system.simple_root_ids();
         let positivity = system.positivity();
         for _ in 0..self.length {
             // The lowest left descent: `w^{-1}(alpha_s) < 0` reads the
             // inverse. A non-identity element always has one; the error is
-            // the same dead branch the pre-inline loop carried.
+            // the same dead branch the pre-flatbuffer loop carried.
             let mut generator = None;
             for candidate in 0..simple_ids.len() {
                 if !positivity[buffers.inverse()[simple_ids[candidate].0].0] {
@@ -509,7 +406,7 @@ impl WeylElement {
     ///
     /// Composed in a single pass against the cached simple-reflection
     /// permutations — one length recount, no intermediate elements (the
-    /// pre-inline form paid two reflection elements and two general
+    /// pre-flatbuffer form paid two reflection elements and two general
     /// `multiply` recounts). The error sequence is unchanged: provenance,
     /// twist permutation, the `twist` range read, then the generator range
     /// read (via the reflection cache, as `simple_reflection` did).
@@ -532,7 +429,7 @@ impl WeylElement {
         let count = self.count;
         let current_permutation = self.permutation_slice();
         let current_inverse = self.inverse_slice();
-        let repr = build_repr(count, |permutation, inverse| {
+        let data = build_data(count, |permutation, inverse| {
             for index in 0..count {
                 // (s_g w s_t)(i) = s_g(w(s_t(i))).
                 permutation[index] = left[current_permutation[right[index].0].0];
@@ -542,9 +439,9 @@ impl WeylElement {
             }
             Ok(())
         })?;
-        let length = count_length(system, repr.permutation(count));
+        let length = count_length(system, &data[..count]);
         Ok(Self {
-            repr,
+            data,
             count,
             length,
         })
@@ -561,14 +458,14 @@ impl WeylElement {
         Ok(())
     }
 
-    /// The live permutation prefix.
+    /// The live forward-permutation half.
     fn permutation_slice(&self) -> &[RootId] {
-        self.repr.permutation(self.count)
+        &self.data[..self.count]
     }
 
-    /// The live inverse-permutation prefix.
+    /// The live inverse-permutation half.
     fn inverse_slice(&self) -> &[RootId] {
-        self.repr.inverse(self.count)
+        &self.data[self.count..]
     }
 
     /// The canonical reduced word of the upstream transducer
@@ -593,7 +490,7 @@ impl WeylElement {
         }
         let mut word = try_capacity(self.length)?;
         let count = self.count;
-        let mut buffers = PeelBuffers::new(count, self.permutation_slice(), self.inverse_slice());
+        let mut buffers = PeelBuffers::new(count, self.permutation_slice(), self.inverse_slice())?;
         let simple_ids = system.simple_root_ids();
         let positivity = system.positivity();
         while !buffers.is_identity(count) {
@@ -619,76 +516,42 @@ impl WeylElement {
     }
 }
 
-/// Scratch buffers for in-place word peeling: the forward permutation
-/// composes in place (`out[i] = reflection[perm[i]]` touches only slot
-/// `i`), while the inverse (`out[i] = inverse[reflection[i]]` reads
-/// arbitrary slots) goes through the scratch double buffer.
-enum PeelBuffers {
-    Small {
-        permutation: [RootId; SMALL_ROOTS],
-        inverse: [RootId; SMALL_ROOTS],
-        scratch: [RootId; SMALL_ROOTS],
-    },
-    Inline {
-        permutation: [RootId; MAX_INLINE_ROOTS],
-        inverse: [RootId; MAX_INLINE_ROOTS],
-        scratch: [RootId; MAX_INLINE_ROOTS],
-    },
-    Heap {
-        permutation: Vec<RootId>,
-        inverse: Vec<RootId>,
-        scratch: Vec<RootId>,
-    },
+/// Scratch for in-place word peeling, one flat buffer of `3 * count`
+/// slots: the forward permutation (`[..count]`) composes in place
+/// (`out[i] = reflection[perm[i]]` touches only slot `i`), while the
+/// inverse (`[count..2*count]`, `out[i] = inverse[reflection[i]]` reads
+/// arbitrary slots) goes through the scratch third (`[2*count..]`).
+struct PeelBuffers {
+    data: Vec<RootId>,
+    count: usize,
 }
 
 impl PeelBuffers {
-    fn new(count: usize, permutation: &[RootId], inverse: &[RootId]) -> Self {
-        if count <= SMALL_ROOTS {
-            let mut permutation_buf = [RootId(0); SMALL_ROOTS];
-            permutation_buf[..count].copy_from_slice(permutation);
-            let mut inverse_buf = [RootId(0); SMALL_ROOTS];
-            inverse_buf[..count].copy_from_slice(inverse);
-            Self::Small {
-                permutation: permutation_buf,
-                inverse: inverse_buf,
-                scratch: [RootId(0); SMALL_ROOTS],
-            }
-        } else if count <= MAX_INLINE_ROOTS {
-            let mut permutation_buf = [RootId(0); MAX_INLINE_ROOTS];
-            permutation_buf[..count].copy_from_slice(permutation);
-            let mut inverse_buf = [RootId(0); MAX_INLINE_ROOTS];
-            inverse_buf[..count].copy_from_slice(inverse);
-            Self::Inline {
-                permutation: permutation_buf,
-                inverse: inverse_buf,
-                scratch: [RootId(0); MAX_INLINE_ROOTS],
-            }
-        } else {
-            Self::Heap {
-                permutation: permutation.to_vec(),
-                inverse: inverse.to_vec(),
-                scratch: inverse.to_vec(),
-            }
-        }
+    fn new(
+        count: usize,
+        permutation: &[RootId],
+        inverse: &[RootId],
+    ) -> Result<Self, StructureError> {
+        let mut data = try_capacity(
+            count
+                .checked_add(count)
+                .and_then(|double| double.checked_add(count))
+                .ok_or(StructureError::ArithmeticOverflow)?,
+        )?;
+        data.extend_from_slice(permutation);
+        data.extend_from_slice(inverse);
+        data.resize(3 * count, RootId(0));
+        Ok(Self { data, count })
     }
 
-    /// The live inverse prefix (the left-descent read).
+    /// The live inverse third (the left-descent read).
     fn inverse(&self) -> &[RootId] {
-        match self {
-            Self::Small { inverse, .. } => inverse,
-            Self::Inline { inverse, .. } => inverse,
-            Self::Heap { inverse, .. } => inverse,
-        }
+        &self.data[self.count..2 * self.count]
     }
 
-    /// Whether the live permutation prefix is the identity.
+    /// Whether the live forward permutation is the identity.
     fn is_identity(&self, count: usize) -> bool {
-        let permutation: &[RootId] = match self {
-            Self::Small { permutation, .. } => permutation,
-            Self::Inline { permutation, .. } => permutation,
-            Self::Heap { permutation, .. } => permutation,
-        };
-        permutation[..count]
+        self.data[..count]
             .iter()
             .enumerate()
             .all(|(index, image)| image.0 == index)
@@ -696,31 +559,15 @@ impl PeelBuffers {
 
     /// `reflection * current` in place, one left-descent step.
     fn peel(&mut self, count: usize, reflection: &[RootId]) {
-        let (permutation, inverse, scratch): (&mut [RootId], &mut [RootId], &mut [RootId]) =
-            match self {
-                Self::Small {
-                    permutation,
-                    inverse,
-                    scratch,
-                } => (permutation, inverse, scratch),
-                Self::Inline {
-                    permutation,
-                    inverse,
-                    scratch,
-                } => (permutation, inverse, scratch),
-                Self::Heap {
-                    permutation,
-                    inverse,
-                    scratch,
-                } => (permutation, inverse, scratch),
-            };
-        for slot in permutation[..count].iter_mut() {
+        let (permutation, rest) = self.data.split_at_mut(count);
+        let (inverse, scratch) = rest.split_at_mut(count);
+        for slot in permutation.iter_mut() {
             *slot = reflection[slot.0];
         }
         for index in 0..count {
             scratch[index] = inverse[reflection[index].0];
         }
-        inverse[..count].copy_from_slice(&scratch[..count]);
+        inverse.copy_from_slice(scratch);
     }
 }
 /// The internal generator renumbering of the upstream `WeylGroup`
