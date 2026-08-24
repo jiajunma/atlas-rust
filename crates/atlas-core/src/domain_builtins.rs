@@ -2033,12 +2033,26 @@ fn classification_cached(
         return Ok(std::sync::Arc::clone(existing));
     }
     if probe {
-        eprintln!("CLASSIFICATION_PROBE miss hash={probe_hash:016x}");
+        eprintln!(
+            "CLASSIFICATION_PROBE miss hash={probe_hash:016x} rank={} roots={}",
+            inner_class.datum().semisimple_rank(),
+            inner_class.root_system().roots().len()
+        );
     }
+    let started = probe.then(std::time::Instant::now);
     let classification = std::sync::Arc::new(
         CartanClassification::build(inner_class, class_budget)
             .map_err(|error| runtime(span, error.to_string()))?,
     );
+    if probe {
+        let elapsed = started.expect("probe timer").elapsed();
+        eprintln!(
+            "CLASSIFICATION_PROBE built hash={probe_hash:016x} classes={} members={} ms={}",
+            classification.cartan_classes().len(),
+            classification.twisted_involution_count(),
+            elapsed.as_millis()
+        );
+    }
     let _ = span;
     classification_cache()
         .lock()
