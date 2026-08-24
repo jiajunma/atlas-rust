@@ -5,7 +5,7 @@
   "events": [
     {
       "kind": "Output",
-      "text": "Expression before type analysis: 1\n"
+      "text": "Expression before type analysis: +(1,*(2,3))\n"
     },
     {
       "kind": "Output",
@@ -13,13 +13,13 @@
     },
     {
       "kind": "Output",
-      "text": "Converted expression: 1\n"
+      "text": "Converted expression: +@(int,int)(1,*@(int,int)(2,3))\n"
     },
     {
       "kind": "Value",
       "value": {
         "type": "integer",
-        "value": 1
+        "value": 7
       }
     },
     {
@@ -38,7 +38,7 @@
       "kind": "Value",
       "value": {
         "type": "integer",
-        "value": 1
+        "value": 7
       }
     },
     {

@@ -1,6 +1,6 @@
 {
   "fixture": "eval/verbose_dollar",
-  "fixture_sha256": "9299d54ee3880912319b2c8b35816a7b0750b7fb67fb6b0f7c0304ee7e660ad8",
+  "fixture_sha256": "bd970a82c9e3e18de4d1aa50fca78c3e6e33ea83d2367c25bff068af908b295f",
   "oracle": "atlas",
   "stage": "typed-pipeline-swap",
   "reference_status": "verified_hpc_reference",
@@ -12,7 +12,7 @@
   "oracle_seconds": 0.01,
   "oracle_maxrss_kb": 3520,
   "oracle_maxrss_approximate": false,
-  "notes": "Verbose-mode `$` (last_value) renders the oracle's capture_expression print name `(type:$)` (axis.w:596-602), not the captured value. Reference verified by direct oracle probe 2026-08-24; differential pending.",
+  "notes": "Verbose-mode `$` (last_value) renders the oracle's capture_expression print name `(type:$)` (axis.w:596-602), and the 'Expression before type analysis' line renders operator applications in prefix form (`+(1,*(2,3))`, parsetree.w operator<<). Reference verified by direct oracle probe 2026-08-24; differential pending.",
   "hpc_capture": {
     "fresh_process_required": true,
     "timeout_seconds": 30,

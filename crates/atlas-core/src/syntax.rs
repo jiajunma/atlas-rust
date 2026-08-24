@@ -2815,16 +2815,29 @@ fn operator_call(operator: FormulaOperator, arguments: Vec<Expr>) -> Expr {
 /// oracle's expression printer produces the same shape in diagnostics that
 /// quote an expression (`x:=2` in the constant-assignment error).
 pub(crate) fn compact_expression(expression: &Expr) -> String {
+    expr_print(expression, false)
+}
+
+/// The oracle's parse-tree printer (`parsetree.w` operator<<): operator
+/// applications print in PREFIX form (`+(1,2)`, `-(1)`) recursively through
+/// every container, used by the verbose "Expression before type analysis"
+/// trace (main.w:514). `compact_expression` keeps the source/infix shape for
+/// diagnostics that quote an expression.
+pub(crate) fn parse_tree_print(expression: &Expr) -> String {
+    expr_print(expression, true)
+}
+
+fn expr_print(expression: &Expr, operator_prefix: bool) -> String {
     match expression {
         Expr::Integer { value, .. } => value.to_string(),
         Expr::Boolean { value, .. } => value.to_string(),
         Expr::String { value, .. } => format!("\"{value}\""),
-        Expr::Tuple { elements, .. } => format!("({})", compact_expressions(elements)),
-        Expr::List { elements, .. } => format!("[{}]", compact_expressions(elements)),
+        Expr::Tuple { elements, .. } => format!("({})", expr_print_many(elements, operator_prefix)),
+        Expr::List { elements, .. } => format!("[{}]", expr_print_many(elements, operator_prefix)),
         Expr::BarList { rows, .. } => format!(
             "[{}]",
             rows.iter()
-                .map(|row| compact_expressions(row))
+                .map(|row| expr_print_many(row, operator_prefix))
                 .collect::<Vec<_>>()
                 .join("|")
         ),
@@ -2835,9 +2848,9 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
             ..
         } => format!(
             "{}{}{}]",
-            compact_expression(array),
+            expr_print(array, operator_prefix),
             if *reversed { "~[" } else { "[" },
-            compact_expression(index)
+            expr_print(index, operator_prefix)
         ),
         Expr::Slice {
             array,
@@ -2849,27 +2862,27 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
         } => match (column_lower, column_upper) {
             (Some(column_lower), Some(column_upper)) => format!(
                 "{}[{}:{},{}:{}]",
-                compact_expression(array),
-                compact_expression(lower),
-                compact_expression(upper),
-                compact_expression(column_lower),
-                compact_expression(column_upper)
+                expr_print(array, operator_prefix),
+                expr_print(lower, operator_prefix),
+                expr_print(upper, operator_prefix),
+                expr_print(column_lower, operator_prefix),
+                expr_print(column_upper, operator_prefix)
             ),
             _ => format!(
                 "{}[{}:{}]",
-                compact_expression(array),
-                compact_expression(lower),
-                compact_expression(upper)
+                expr_print(array, operator_prefix),
+                expr_print(lower, operator_prefix),
+                expr_print(upper, operator_prefix)
             ),
         },
         Expr::Identifier { name, .. } => name.clone(),
         Expr::Assignment { name, value, .. } => {
-            format!("{name}:={}", compact_expression(value))
+            format!("{name}:={}", expr_print(value, operator_prefix))
         }
         Expr::MultiAssignment(assignment) => format!(
             "set {}:={}",
             compact_pattern(&assignment.pattern),
-            compact_expression(&assignment.value)
+            expr_print(&assignment.value, operator_prefix)
         ),
         // The assignment family prints as the oracle's parsetree.w:2989-3020:
         // plain assignments without spaces, transforms with spaces.
@@ -2877,29 +2890,29 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
             "{}{}{}]:={}",
             assignment.name,
             if assignment.reversed { "~[" } else { "[" },
-            compact_expression(&assignment.index),
-            compact_expression(&assignment.value)
+            expr_print(&assignment.index, operator_prefix),
+            expr_print(&assignment.value, operator_prefix)
         ),
         Expr::ComponentTransform(transform) => format!(
             "{}{}{}] {}:= {}",
             transform.name,
             if transform.reversed { "~[" } else { "[" },
-            compact_expression(&transform.index),
+            expr_print(&transform.index, operator_prefix),
             transform.operator,
-            compact_expression(&transform.value)
+            expr_print(&transform.value, operator_prefix)
         ),
         Expr::FieldAssignment(assignment) => format!(
             "{}.{}:={}",
             assignment.name,
             assignment.field,
-            compact_expression(&assignment.value)
+            expr_print(&assignment.value, operator_prefix)
         ),
         Expr::FieldTransform(transform) => format!(
             "{}.{} {}:= {}",
             transform.name,
             transform.field,
             transform.operator,
-            compact_expression(&transform.value)
+            expr_print(&transform.value, operator_prefix)
         ),
         Expr::Let {
             binding_groups,
@@ -2915,7 +2928,7 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
                             format!(
                                 "{} = {}",
                                 compact_pattern(&binding.pattern),
-                                compact_expression(&binding.initializer)
+                                expr_print(&binding.initializer, operator_prefix)
                             )
                         })
                         .collect::<Vec<_>>()
@@ -2923,13 +2936,13 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
                 })
                 .collect::<Vec<_>>()
                 .join(" then ");
-            format!("let {groups} in {}", compact_expression(body))
+            format!("let {groups} in {}", expr_print(body, operator_prefix))
         }
         Expr::Unary {
             op: UnaryOp::Not,
             operand,
             ..
-        } => format!("not {}", compact_expression(operand)),
+        } => format!("not {}", expr_print(operand, operator_prefix)),
         Expr::Binary { op, lhs, rhs, .. } => {
             let keyword = match op {
                 BinaryOp::And => "and",
@@ -2937,8 +2950,8 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
             };
             format!(
                 "{} {keyword} {}",
-                compact_expression(lhs),
-                compact_expression(rhs)
+                expr_print(lhs, operator_prefix),
+                expr_print(rhs, operator_prefix)
             )
         }
         Expr::OperatorCall {
@@ -2946,21 +2959,30 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
             arguments,
             ..
         } => match arguments.as_slice() {
-            [operand] => format!("{}{}", operator.symbol, compact_expression(operand)),
+            [operand] if operator_prefix => {
+                format!("{}({})", operator.symbol, expr_print(operand, operator_prefix))
+            }
+            [lhs, rhs] if operator_prefix => format!(
+                "{}({},{})",
+                operator.symbol,
+                expr_print(lhs, operator_prefix),
+                expr_print(rhs, operator_prefix)
+            ),
+            [operand] => format!("{}{}", operator.symbol, expr_print(operand, operator_prefix)),
             [lhs, rhs] => format!(
                 "{}{}{}",
-                compact_expression(lhs),
+                expr_print(lhs, operator_prefix),
                 operator.symbol,
-                compact_expression(rhs)
+                expr_print(rhs, operator_prefix)
             ),
-            _ => format!("{}({})", operator.symbol, compact_expressions(arguments)),
+            _ => format!("{}({})", operator.symbol, expr_print_many(arguments, operator_prefix)),
         },
         Expr::Call {
             callee, arguments, ..
         } => format!(
             "{}({})",
-            compact_expression(callee),
-            compact_expressions(arguments)
+            expr_print(callee, operator_prefix),
+            expr_print_many(arguments, operator_prefix)
         ),
         Expr::Lambda {
             parameters, body, ..
@@ -2971,7 +2993,7 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
                 .map(compact_parameter)
                 .collect::<Vec<_>>()
                 .join(","),
-            compact_expression(body)
+            expr_print(body, operator_prefix)
         ),
         Expr::RecLambda {
             self_name,
@@ -2987,10 +3009,10 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
                 .collect::<Vec<_>>()
                 .join(","),
             compact_type(result_type),
-            compact_expression(body)
+            expr_print(body, operator_prefix)
         ),
-        Expr::Return { value, .. } => format!("return {}", compact_expression(value)),
-        Expr::Group { inner, .. } => format!("({})", compact_expression(inner)),
+        Expr::Return { value, .. } => format!("return {}", expr_print(value, operator_prefix)),
+        Expr::Group { inner, .. } => format!("({})", expr_print(inner, operator_prefix)),
         Expr::Conditional {
             condition,
             then_branch,
@@ -2998,19 +3020,19 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
             ..
         } => format!(
             "if {} then {} else {} fi",
-            compact_expression(condition),
-            compact_expression(then_branch),
-            compact_expression(else_branch)
+            expr_print(condition, operator_prefix),
+            expr_print(then_branch, operator_prefix),
+            expr_print(else_branch, operator_prefix)
         ),
         Expr::Cast { target, body, .. } => {
-            format!("{}: {}", compact_type(target), compact_expression(body))
+            format!("{}: {}", compact_type(target), expr_print(body, operator_prefix))
         }
         Expr::OpCast { name, arg_type, .. } => format!("{}@{}", name.value, compact_type(arg_type)),
         Expr::Sequence { first, second, .. } => {
             format!(
                 "{}; {}",
-                compact_expression(first),
-                compact_expression(second)
+                expr_print(first, operator_prefix),
+                expr_print(second, operator_prefix)
             )
         }
         Expr::While {
@@ -3021,15 +3043,15 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
             // Upstream prints the reversal tilde fused to `od` (`~od`,
             // axis.w:5387).
             let od = if *out_reversed { "~od" } else { "od" };
-            format!("while {} {od}", compact_expression(body))
+            format!("while {} {od}", expr_print(body, operator_prefix))
         }
         Expr::Do {
             condition, body, ..
         } => {
             format!(
                 "{} do {}",
-                compact_expression(condition),
-                compact_expression(body)
+                expr_print(condition, operator_prefix),
+                expr_print(body, operator_prefix)
             )
         }
         Expr::For(loop_) => {
@@ -3048,8 +3070,8 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
             let od = if loop_.out_reversed { "~od" } else { "od" };
             format!(
                 "for {pattern}{index} in {} {do_} {} {od}",
-                compact_expression(&loop_.iterable),
-                compact_expression(&loop_.body)
+                expr_print(&loop_.iterable, operator_prefix),
+                expr_print(&loop_.body, operator_prefix)
             )
         }
         Expr::Break { levels, .. } => break_shape(*levels),
@@ -3070,27 +3092,27 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
                         .as_ref()
                         .map(compact_case_pattern)
                         .unwrap_or_default();
-                    format!("{tag}{pattern}: {}", compact_expression(&branch.body))
+                    format!("{tag}{pattern}: {}", expr_print(&branch.body, operator_prefix))
                 })
                 .collect::<Vec<_>>()
                 .join(" | ");
             format!(
                 "case {} | {branches} esac",
-                compact_expression(&case.subject)
+                expr_print(&case.subject, operator_prefix)
             )
         }
         Expr::Next { first, second, .. } => {
             format!(
                 "{} next {}",
-                compact_expression(first),
-                compact_expression(second)
+                expr_print(first, operator_prefix),
+                expr_print(second, operator_prefix)
             )
         }
         Expr::IntCase(case) => {
             let then = case
                 .then_branch
                 .as_ref()
-                .map(|branch| format!("then {} ", compact_expression(branch)))
+                .map(|branch| format!("then {} ", expr_print(branch, operator_prefix)))
                 .unwrap_or_default();
             let branches = case
                 .branches
@@ -3101,11 +3123,11 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
             let else_ = case
                 .else_branch
                 .as_ref()
-                .map(|branch| format!(" else {}", compact_expression(branch)))
+                .map(|branch| format!(" else {}", expr_print(branch, operator_prefix)))
                 .unwrap_or_default();
             format!(
                 "case {} {then}in {branches}{else_} esac",
-                compact_expression(&case.condition)
+                expr_print(&case.condition, operator_prefix)
             )
         }
         Expr::UnionCase(case) => {
@@ -3117,7 +3139,7 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
                 .join(" | ");
             format!(
                 "case {} in {branches} esac",
-                compact_expression(&case.condition)
+                expr_print(&case.condition, operator_prefix)
             )
         }
         Expr::CountedFor(loop_) => {
@@ -3127,25 +3149,25 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
                 .map(|name| name.value.clone())
                 .unwrap_or_default();
             let bound = match (&loop_.bound, loop_.decreasing) {
-                (Some(bound), true) => format!(" downto {}", compact_expression(bound)),
-                (Some(bound), false) => format!(" from {}", compact_expression(bound)),
+                (Some(bound), true) => format!(" downto {}", expr_print(bound, operator_prefix)),
+                (Some(bound), false) => format!(" from {}", expr_print(bound, operator_prefix)),
                 (None, _) => String::new(),
             };
             let do_ = if loop_.in_reversed { "~do" } else { "do" };
             let od = if loop_.out_reversed { "~od" } else { "od" };
             format!(
                 "for {name}: {}{bound} {do_} {} {od}",
-                compact_expression(&loop_.count),
-                compact_expression(&loop_.body)
+                expr_print(&loop_.count, operator_prefix),
+                expr_print(&loop_.body, operator_prefix)
             )
         }
     }
 }
 
-fn compact_expressions(expressions: &[Expr]) -> String {
+fn expr_print_many(expressions: &[Expr], operator_prefix: bool) -> String {
     expressions
         .iter()
-        .map(compact_expression)
+        .map(|expression| expr_print(expression, operator_prefix))
         .collect::<Vec<_>>()
         .join(",")
 }

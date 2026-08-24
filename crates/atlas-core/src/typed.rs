@@ -1439,7 +1439,7 @@ impl TypedContext {
                     events.push(TypedCommandEvent::Output {
                         text: format!(
                             "Expression before type analysis: {}\n",
-                            compact_expression(expression)
+                            crate::syntax::parse_tree_print(expression)
                         ),
                         span: expression.span(),
                     });

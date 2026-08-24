@@ -1241,11 +1241,9 @@ took 0.012/0.008s and 4368/4288 KiB; report SHA256 is
   `Error in 'set' command at <loc>:` (global.w:1116-1130); the location
   spans the terminating newline because parser.y:140's `@$` includes the
   `'\n'` token (end column one past the last initializer token).
-- NEW (2026-08-24, unprobed): the verbose "Expression before type analysis"
-  line prints the PARSE TREE, which the oracle renders in prefix form
-  (`+(1,1)` for `1+1`) while the CLI's `compact_expression` prints the
-  source infix form (`1+1`). Only the verbose trace differs; no fixture
-  currently covers an operator expression under `set verbose` (lex/basic
-  has no operator), so the differential has not caught it. `eval/verbose_dollar`
-  deliberately uses literals (`1`, `"hi"`) to pin `(type:$)` without
-  entangling this separate rendering gap.
+- VERIFIED 2026-08-24: the verbose "Expression before type analysis" line
+  now renders operator applications in PREFIX form (`+(1,*(2,3))`) via
+  `parse_tree_print` (parsetree.w operator<<), matching the oracle.
+  `compact_expression` keeps the source/infix shape for diagnostics that
+  quote an expression. The `eval/verbose_dollar` fixture pins both this and
+  `(type:$)`.
