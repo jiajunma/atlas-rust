@@ -53,8 +53,16 @@ impl WeylElement {
         system: &RootSystem,
         generator: usize,
     ) -> Result<Self, StructureError> {
-        let action = WeylAction::simple_reflection(system.datum(), generator)?;
-        Self::from_action(system, &action)
+        // A simple reflection is an involution of length exactly 1, so the
+        // cached permutation IS its own inverse and no length scan is
+        // needed; the matrix path stays with `from_action`'s general
+        // callers. The range error matches `WeylAction::simple_reflection`.
+        let permutation = reflection_permutation(system, generator)?;
+        Ok(Self {
+            permutation: permutation.to_vec(),
+            inverse: permutation.to_vec(),
+            length: 1,
+        })
     }
 
     /// Build the element realizing a matrix-level action, making the two
@@ -178,10 +186,36 @@ impl WeylElement {
         system: &RootSystem,
         generator: usize,
     ) -> Result<(Self, isize), StructureError> {
-        let reflection = Self::simple_reflection(system, generator)?;
-        let product = reflection.multiply(system, self)?;
-        let change = unit_length_change(self.length, product.length)?;
-        Ok((product, change))
+        let reflection = reflection_permutation(system, generator)?;
+        self.check_provenance(system)?;
+        // l(s w) = l(w) ± 1, signed by the left descent: no reflection
+        // matrix, no length recount (the descent read is O(1)).
+        let change: isize = if self.has_left_descent(system, generator)? {
+            -1
+        } else {
+            1
+        };
+        let count = self.permutation.len();
+        let mut permutation = try_capacity(count)?;
+        let mut inverse = try_capacity(count)?;
+        for index in 0..count {
+            permutation.push(reflection[self.permutation[index].0]);
+            // (s w)^{-1} = w^{-1} s, and the reflection is an involution.
+            inverse.push(self.inverse[reflection[index].0]);
+        }
+        let length = if change < 0 {
+            self.length - 1
+        } else {
+            self.length + 1
+        };
+        Ok((
+            Self {
+                permutation,
+                inverse,
+                length,
+            },
+            change,
+        ))
     }
 
     /// `self * s` with its length change, mirroring
@@ -191,10 +225,34 @@ impl WeylElement {
         system: &RootSystem,
         generator: usize,
     ) -> Result<(Self, isize), StructureError> {
-        let reflection = Self::simple_reflection(system, generator)?;
-        let product = self.multiply(system, &reflection)?;
-        let change = unit_length_change(self.length, product.length)?;
-        Ok((product, change))
+        let reflection = reflection_permutation(system, generator)?;
+        self.check_provenance(system)?;
+        let change: isize = if self.has_right_descent(system, generator)? {
+            -1
+        } else {
+            1
+        };
+        let count = self.permutation.len();
+        let mut permutation = try_capacity(count)?;
+        let mut inverse = try_capacity(count)?;
+        for index in 0..count {
+            permutation.push(self.permutation[reflection[index].0]);
+            // (w s)^{-1} = s w^{-1}, and the reflection is an involution.
+            inverse.push(reflection[self.inverse[index].0]);
+        }
+        let length = if change < 0 {
+            self.length - 1
+        } else {
+            self.length + 1
+        };
+        Ok((
+            Self {
+                permutation,
+                inverse,
+                length,
+            },
+            change,
+        ))
     }
 
     /// `s * self` for a KNOWN left descent, given the simple reflection's
@@ -429,6 +487,20 @@ fn simple_id(system: &RootSystem, generator: usize) -> Result<RootId, StructureE
         })
 }
 
+/// The system's cached simple-reflection permutation, with the range
+/// error the matrix path produced (`WeylAction::simple_reflection`).
+fn reflection_permutation(
+    system: &RootSystem,
+    generator: usize,
+) -> Result<&[RootId], StructureError> {
+    system
+        .simple_reflection_permutation(generator)
+        .ok_or(StructureError::IndexOutOfRange {
+            index: generator,
+            upper_bound: system.datum().semisimple_rank(),
+        })
+}
+
 /// The per-level `EltPiece` indexing of the upstream transducer
 /// (`WeylGroup::Transducer::Transducer`, weyl.cpp:289-416): for each
 /// internal generator `i`, the minimal coset representatives of
@@ -569,20 +641,6 @@ fn lowest_left_descent(
     Err(StructureError::WeylElementInvariantViolation {
         invariant: "descent peeling",
     })
-}
-
-fn unit_length_change(before: usize, after: usize) -> Result<isize, StructureError> {
-    let before = isize::try_from(before).map_err(|_| StructureError::ArithmeticOverflow)?;
-    let after = isize::try_from(after).map_err(|_| StructureError::ArithmeticOverflow)?;
-    let change = after
-        .checked_sub(before)
-        .ok_or(StructureError::ArithmeticOverflow)?;
-    if change != 1 && change != -1 {
-        return Err(StructureError::WeylElementInvariantViolation {
-            invariant: "simple length step",
-        });
-    }
-    Ok(change)
 }
 
 fn check_twist(twist: &[usize], rank: usize) -> Result<(), StructureError> {

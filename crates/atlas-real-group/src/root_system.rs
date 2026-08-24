@@ -168,6 +168,12 @@ pub struct RootSystem {
     min_coroots: Vec<RootSet>,
     /// Negation table: `negatives[r]` is the id of `-r`.
     negatives: Vec<RootId>,
+    /// Root permutation of each simple reflection, in generator order.
+    /// Recomputing one per `WeylElement::simple_reflection` call (two
+    /// rank×rank matrices, then a matvec plus binary search per root —
+    /// 240 matvecs per W-word letter on E8) dominated word-heavy scripts,
+    /// so the table is built once alongside the negation table.
+    simple_reflections: Vec<Vec<RootId>>,
 }
 
 impl RootSystem {
@@ -301,7 +307,7 @@ impl RootSystem {
                     })?,
             );
         }
-        Ok(Self {
+        let mut system = Self {
             datum,
             roots,
             coroots,
@@ -311,7 +317,17 @@ impl RootSystem {
             min_roots,
             min_coroots,
             negatives,
-        })
+            simple_reflections: Vec::new(),
+        };
+        // One-time fill through the matrix path, so the cached table is by
+        // construction the same permutations `action_permutation` derives.
+        system.simple_reflections = (0..semisimple_rank)
+            .map(|generator| {
+                WeylAction::simple_reflection(&system.datum, generator)
+                    .and_then(|action| system.action_permutation(&action))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(system)
     }
 
     pub fn lattice_rank(&self) -> usize {
@@ -414,6 +430,12 @@ impl RootSystem {
     /// The negation table: `negatives()[r]` is the id of `-r`.
     pub(crate) fn negatives(&self) -> &[RootId] {
         &self.negatives
+    }
+
+    /// Root permutation of simple reflection `generator` (the table built
+    /// at construction); `None` when `generator` is out of range.
+    pub(crate) fn simple_reflection_permutation(&self, generator: usize) -> Option<&[RootId]> {
+        self.simple_reflections.get(generator).map(Vec::as_slice)
     }
 
     /// Ladder-bottom roots for `alpha`: every root `beta` such that
