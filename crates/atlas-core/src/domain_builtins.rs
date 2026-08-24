@@ -345,6 +345,17 @@ impl RealFormContext {
     /// the form's seed (elected or custom), the completed KGB graph, and
     /// the shared representation-table owner.
     fn build_kgb(&self) -> Result<KgbBundle, StructureError> {
+        // HPC probe (ATLAS_PROBE_KGB=1): one line per KGB pipeline build,
+        // to measure whether scripts rebuild the same real form's graph.
+        static PROBE: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+        if *PROBE.get_or_init(|| std::env::var_os("ATLAS_PROBE_KGB").is_some()) {
+            eprintln!(
+                "KGB_PROBE build external={} internal={:?} custom_seed={}",
+                self.external,
+                self.internal,
+                matches!(self.seed, RealFormSeedPlan::Custom { .. }),
+            );
+        }
         let parent = &self.parent;
         let mut table = InnerClassContext::fresh_table(parent)?;
         let fundamental = parent.classification.cartan_ids().next().ok_or(
