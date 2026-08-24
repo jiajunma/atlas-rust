@@ -1276,7 +1276,16 @@ impl ClassOrbit {
 
     /// Every member's root-image permutation, in BFS discovery order.
     fn members(&self) -> impl Iterator<Item = &[u8]> {
-        self.permutations.chunks_exact(self.stride)
+        if self.stride == 0 {
+            // A rank-zero orbit still has one empty permutation member. Avoid
+            // `chunks_exact(0)`, which panics before the class can be indexed.
+            let empty: &[u8] = &[];
+            Box::new(std::iter::repeat_n(empty, self.member_count()))
+                as Box<dyn Iterator<Item = &[u8]>>
+        } else {
+            Box::new(self.permutations.chunks_exact(self.stride))
+                as Box<dyn Iterator<Item = &[u8]>>
+        }
     }
 
     /// Rebuild every member's `TwistedInvolution` from the parent links:
@@ -2181,6 +2190,18 @@ mod tests {
             compact.canonicalize(foreign),
             Err(StructureError::DistinguishedInvolutionMismatch)
         );
+    }
+
+    #[test]
+    fn rank_zero_partition_keeps_one_empty_permutation_member() {
+        let datum = BasedRootDatum::from_simple_data(0, vec![], vec![], vec![]).unwrap();
+        let identity = LatticeInvolution::identity(&datum).unwrap();
+        let inner_class = InnerClass::from_root_involution(datum, identity, 1).unwrap();
+        let partition = inner_class.twisted_conjugacy_partition(1).unwrap();
+
+        assert_eq!(partition.classes().len(), 1);
+        assert_eq!(partition.classes()[0].twisted_involution_count(), 1);
+        assert_eq!(partition.class_index_of_permutation(&[]), Some(0));
     }
 
     #[test]
