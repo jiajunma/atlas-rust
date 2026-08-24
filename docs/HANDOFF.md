@@ -5072,6 +5072,10 @@ From `results/fc85095.../3622339/script_corpus_report.json` (238 MATCH):
 - Prediction: the per-real-form KGB cache (agent-114) should collapse this
   whole mid-tier cluster, not just the unipotent outlier. Verify on the next
   full-corpus rerun by checking the 4.4s cluster drops toward cpp+ε.
+- SUPERSEDED by finding 2026-08-24d below: the per-real-form KGB cache
+  already exists and works (probe 3622804: exactly 26 builds for 26 groups).
+  The mid-tier cluster cost is one-time KGB builds + typed-evaluator
+  overhead, not rebuilds.
 - Residual check after the cache lands: if a fixed ~0.5-2s gap remains on
   tiny scripts (2i12.at was 2.19s vs 0.28s), profile interpreter/lib-load
   startup next; that is a different hotspot than KGB.
