@@ -5171,3 +5171,11 @@ generic_degrees / test_braid ~1.8s, class_tables 1.22s @ 24a0d1d
   all recreate /public/home/majj/atlas-rust-perf — never run them
   concurrently; sequence: perf_build_time, then perf_fp2, then probes.
 
+
+## Ops note 2026-08-24f — corpus glob paths
+
+`script_corpus.sbatch <globs>` matches against the ORACLE's script dir
+(`/public/home/majj/atlasofliegroups-4d3e9449/atlas-scripts/`), not
+`/public/home/majj/atlas-scripts` (does not exist). A bad glob silently
+yields `corpus: 0 scripts` (jobs 3623642, 3623661 wasted a build each).
+Always use absolute paths under the oracle repo.
