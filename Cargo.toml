@@ -10,3 +10,11 @@ version = "0.1.0"
 
 [workspace.dependencies]
 atlas-core = { path = "crates/atlas-core" }
+
+# Benchmarks and corpus comparisons use the release profile; link-time
+# optimization plus a single codegen unit give the interpreter loop a
+# free 5-15% (panic=abort is NOT allowed: domain_builtins.rs and
+# rep_table.rs rely on catch_unwind).
+[profile.release]
+lto = "fat"
+codegen-units = 1
