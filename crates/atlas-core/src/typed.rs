@@ -98,6 +98,13 @@ pub enum TransformOperation {
 #[derive(Clone, Debug, PartialEq)]
 pub enum TypedExpr {
     Denotation(Value),
+    /// `$` captured at analysis time: evaluates to the snapshotted last
+    /// value like a denotation, but the verbose trace prints the oracle's
+    /// `(type:$)` spelling (axis.w:596-602), not the value itself.
+    CapturedLastValue {
+        value: Value,
+        type_display: String,
+    },
     TupleDisplay(Vec<TypedExpr>),
     ListDisplay(Vec<TypedExpr>),
     /// A registered coercion applied to a fully converted inner expression.
@@ -721,6 +728,7 @@ impl OverloadState {
 fn typed_expression_print(expression: &TypedExpr) -> String {
     match expression {
         TypedExpr::Denotation(value) => value.to_string(),
+        TypedExpr::CapturedLastValue { type_display, .. } => type_display.clone(),
         TypedExpr::GlobalIdent { name, .. } | TypedExpr::LocalIdent { name, .. } => name.clone(),
         TypedExpr::BuiltinCall {
             builtin: _,
@@ -3852,10 +3860,14 @@ fn convert_last_value(
     analysis: &Analysis<'_>,
 ) -> Result<TypedExpr, Diagnostic> {
     let found = analysis.last_value_type.borrow().clone();
+    let type_display = format!("({}:$)", found.display(analysis.types));
     conform_types(
         &found,
         required,
-        TypedExpr::Denotation(analysis.last_value.clone()),
+        TypedExpr::CapturedLastValue {
+            value: analysis.last_value.clone(),
+            type_display,
+        },
         span,
         analysis,
     )
@@ -11653,6 +11665,7 @@ impl TypedExpr {
         let _ = context;
         match self {
             Self::Denotation(value) => Ok(at_level(level, || value.clone())),
+            Self::CapturedLastValue { value, .. } => Ok(at_level(level, || value.clone())),
             Self::TupleDisplay(elements) => {
                 let values = elements
                     .iter()
