@@ -5703,3 +5703,37 @@ buffer (from_composition could fuse them); ParabolicPieces::build/key
 remain permutation-BFS based (a pieces-native key would need the
 blocked API change). Both are small compared to
 CartanClassification::build (agent-115) and the per-record lanes.
+
+## Perf work 2026-08-24p — unipotent all-thread sampling (parent, job 3624911)
+
+Driver hpc/perf_sample_workers.sbatch (gdb `thread apply all bt`) on
+unipotent_representations_exceptional.at @ f38ceb9, 5 samples over the
+~10s run, local copy target/tmp/perf-workers-3624911.out.
+
+FINDING: the rayon workers do NOTHING in this phase — all 4 are parked in
+`sleep::Sleep::sleep`/`wait_until_cold` in EVERY sample. The remaining
+~10s is fully serial on the main thread, split across:
+1. `WeylElement::from_permutation` under `InvolutionTable::add_cartan`
+   (sample 1).
+2. `LatticeInvolution::new` -> `preserves_pairing` FULL VALIDATION per
+   pushed record (sample 2, `push_record`) — the table-internal path
+   still pays validation even though the record is constructed from
+   known-good factors (cf. RootInvolutionData::from_images which already
+   skips re-derivation; LatticeInvolution itself has no such fast path).
+3. malloc in `compose_permutation` under add_cartan (sample 3) —
+   per-composition buffer growth.
+4. `kgb_graph::intern` (sample 4).
+5. A deep quicksort inlined into `RealFormContext::build_kgb`
+   (sample 5) = kgb_graph.rs:331 `keyed.sort_unstable()` over one entry
+   PER INVOLUTION RECORD (~2e5 for E8), key = (inv_len, weyl_len,
+   Vec<usize> ParabolicPieces key, id) — the Vec<usize> key is a heap
+   allocation per record (computed in the par_iter at :319-330, the one
+   parallel burst) AND an expensive lexicographic compare in the serial
+   sort. A packed/fixed-width key would cut both.
+
+Frontier lever 1 (parallel KGB BFS worker-side cost) is thereby CLOSED
+with a negative result for the unipotent tail: there is no worker-side
+cost left to sample — the BFS parallel phase is now a small fraction.
+The serial levers above (esp. 2 and 5) are the next unipotent candidates;
+both are in crates/atlas-real-group, distinct from agent-117's
+cartan_classification.rs/inner_class.rs lane.
