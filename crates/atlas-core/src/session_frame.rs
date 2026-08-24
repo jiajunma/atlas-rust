@@ -464,11 +464,16 @@ impl<P: FileProvider, S: FileSink> SessionFrame<P, S> {
                 SessionEvent::Value {
                     value,
                     is_void_type,
+                    compact_matrix_display,
                     span,
                 } => {
                     if !is_void_type {
+                        let mut rendered = self.context.render_value(&value);
+                        if compact_matrix_display && matches!(value, crate::value::Value::Matrix(_)) {
+                            rendered.pop();
+                        }
                         events.push(SessionEvent::Output {
-                            text: format!("Value: {}\n", self.context.render_value(&value)),
+                            text: format!("Value: {rendered}\n"),
                             span,
                         });
                     }

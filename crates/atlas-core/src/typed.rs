@@ -960,6 +960,7 @@ pub enum TypedCommandEvent {
     Value {
         value: Value,
         type_: Type,
+        compact_matrix_display: bool,
         span: SourceSpan,
     },
     ReportLine {
@@ -1475,6 +1476,8 @@ impl TypedContext {
                     *self.last_type.borrow_mut() = type_.clone();
                 }
                 events.push(TypedCommandEvent::Value {
+                    compact_matrix_display: matches!(typed, TypedExpr::GlobalAssignment { .. })
+                        || matches!(typed, TypedExpr::Slice { column_lower: None, .. }),
                     value,
                     type_,
                     span: expression.span(),

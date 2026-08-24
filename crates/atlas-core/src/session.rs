@@ -17,6 +17,7 @@ pub enum SessionEvent {
     Value {
         value: Value,
         is_void_type: bool,
+        compact_matrix_display: bool,
         span: SourceSpan,
     },
     Output {
@@ -125,9 +126,15 @@ pub(crate) fn execute_tokens(
 /// output shapes are identical; only the value keeps its void flag).
 fn session_event(event: TypedCommandEvent) -> SessionEvent {
     match event {
-        TypedCommandEvent::Value { value, type_, span } => SessionEvent::Value {
+        TypedCommandEvent::Value {
+            value,
+            type_,
+            compact_matrix_display,
+            span,
+        } => SessionEvent::Value {
             value,
             is_void_type: type_.is_void(),
+            compact_matrix_display,
             span,
         },
         TypedCommandEvent::ReportLine { text, span } => SessionEvent::ReportLine { text, span },
