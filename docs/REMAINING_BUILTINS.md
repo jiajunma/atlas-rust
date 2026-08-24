@@ -1223,17 +1223,20 @@ took 0.012/0.008s and 4368/4288 KiB; report SHA256 is
   Generic special operators have a separate upstream-controlled cast path;
   its positive and rejected shape fixtures are frozen locally in
   `eval/op_cast_specials{,_rejected}`; both were verified by reference capture
-  3613892 and differential 3613996.
-  Upstream's separate second pass for a unique ordinary polymorphic variant
-  remains unimplemented (no fixture covers it; see `convert_op_cast`).
-- `$` in the verbose "Converted expression" trace prints the captured value
-  itself; upstream prints `(type:$)` (axis.w:610-624 area). Runtime and
-  type behavior match; only the verbose rendering differs.
-- `for_reversed_extra`'s trailing `while false do 1 od~` line is a declared
-  harness PARTIAL: the tilde swallows the newline, so the oracle parsed the
-  capture-appended `quit` (`unexpected QUIT`) where the CLI faithfully
-  reports `unexpected end of file` (registered as PendingCase, same class
-  as the dangling-bracket entry).
+  3613892 and differential 3613996. VERIFIED 2026-08-24: upstream
+  `op_cast_expr` (axis.w:6750-6769) has NO second pass — `overload_table::entry`
+  (global.w:435-442) is exact `arg_type == arg_t` only, then the special
+  operators, then `No instance for name@type found`. The earlier "separate
+  second pass for a unique ordinary polymorphic variant" note was incorrect:
+  an ordinary overload is never selected by specialisability (oracle probe:
+  `set f=%@(int,int); f@string` -> `No instance for f@string found`, matching
+  `convert_op_cast`).
+- `$` in the verbose "Converted expression" trace now prints `(type:$)` like
+  the oracle (axis.w:596-602 `capture_expression`); fixed in ef3bc5c.
+- `for_reversed_extra`'s trailing `while false do 1 od~` line and the dangling
+  `[` in `commands/container_syntax_errors` are no longer PARTIAL: the diff
+  driver now feeds stdin + capture-time `quit` (like the oracle capture), so
+  both report `unexpected QUIT`. Fixed in 274759f.
 - Failing `set` commands append the oracle's command-context line
   `Error in 'set' command at <loc>:` (global.w:1116-1130); the location
   spans the terminating newline because parser.y:140's `@$` includes the
