@@ -547,12 +547,7 @@ impl InnerClass {
         weyl_budget: usize,
     ) -> Result<Vec<TwistedInvolution>, StructureError> {
         let orbits = self.involution_orbits(weyl_budget)?;
-        let mut involutions = try_capacity(
-            orbits
-                .iter()
-                .map(|orbit| orbit.permutations.len())
-                .sum(),
-        )?;
+        let mut involutions = try_capacity(orbits.iter().map(|orbit| orbit.member_count()).sum())?;
         for orbit in orbits {
             involutions.extend(orbit.materialize(self)?);
         }
@@ -590,7 +585,7 @@ impl InnerClass {
             .iter()
             .map(|id| id.0 as u8)
             .collect();
-        let member_count: usize = orbits.iter().map(|orbit| orbit.permutations.len()).sum();
+        let member_count: usize = orbits.iter().map(|orbit| orbit.member_count()).sum();
         let mut classes = try_capacity(orbits.len())?;
         let mut class_by_key = PermutationKeyMap::default();
         class_by_key
@@ -600,7 +595,8 @@ impl InnerClass {
             })?;
         for orbit in orbits {
             let class_index = classes.len();
-            for permutation in &orbit.permutations {
+            let orbit_member_count = orbit.member_count();
+            for permutation in orbit.members() {
                 class_by_key.insert(
                     PermutationKey::pack(permutation, &simple_positions),
                     class_index,
@@ -608,7 +604,7 @@ impl InnerClass {
             }
             classes.push(TwistedConjugacyClass::new(
                 orbit.representative,
-                orbit.permutations.len(),
+                orbit_member_count,
             ));
         }
         Ok(TwistedConjugacyPartition::new(
@@ -738,19 +734,21 @@ impl InnerClass {
         let mut seen = PermutationKeySet::default();
         let mut next: Vec<u8> = Vec::new();
         let packed = orbit_machine.simple_positions.len() <= 16;
+        let stride = self.roots.roots().len();
         for (representative, representative_permutation) in representatives
             .into_iter()
             .zip(representative_permutations)
         {
-            let mut permutations = vec![representative_permutation];
+            // The representative's permutation seeds the flat member buffer.
+            let mut permutations = representative_permutation;
             let mut parents: Vec<(u32, u8)> = vec![(u32::MAX, 0)];
             seen.clear();
             seen.insert(PermutationKey::pack(
-                &permutations[0],
+                &permutations,
                 orbit_machine.simple_positions(),
             ));
             let mut cursor = 0_usize;
-            while cursor < permutations.len() {
+            while cursor < parents.len() {
                 for generator in 0..rank {
                     let reflection = &orbit_machine.simple_reflections[generator];
                     // next = reflection after current after reflection. Probe
@@ -760,7 +758,8 @@ impl InnerClass {
                     if packed {
                         let mut key = 0_u128;
                         {
-                            let current = &permutations[cursor];
+                            let current =
+                                &permutations[cursor * stride..(cursor + 1) * stride];
                             for (shift, &position) in
                                 orbit_machine.simple_positions.iter().enumerate()
                             {
@@ -780,20 +779,20 @@ impl InnerClass {
                             requested: reflection.len(),
                         })?;
                     {
-                        let current = &permutations[cursor];
+                        let current = &permutations[cursor * stride..(cursor + 1) * stride];
                         for &image in reflection.iter() {
                             next.push(reflection[current[usize::from(image)] as usize]);
                         }
                     }
                     if packed || seen.insert(PermutationKey::Full(next.clone())) {
-                        permutations.push(next.clone());
+                        permutations.extend_from_slice(&next);
                         parents.push((cursor as u32, generator as u8));
                     }
                 }
                 cursor += 1;
             }
             total = total
-                .checked_add(permutations.len())
+                .checked_add(parents.len())
                 .ok_or(StructureError::ArithmeticOverflow)?;
             if total > weyl_budget {
                 return Err(StructureError::ResourceLimitExceeded { limit: weyl_budget });
@@ -801,6 +800,7 @@ impl InnerClass {
             orbits.push(ClassOrbit {
                 representative,
                 permutations,
+                stride,
                 parents,
             });
         }
@@ -1235,11 +1235,26 @@ impl<'a> PermutationOrbits<'a> {
 /// being stored during the closure.
 struct ClassOrbit {
     representative: TwistedInvolution,
-    permutations: Vec<Vec<u8>>,
+    /// Member permutations packed flat: member `i` occupies
+    /// `permutations[i * stride .. (i + 1) * stride]`. One contiguous
+    /// allocation replaces one 240-byte heap Vec per member (E8: 199,952
+    /// allocations per inner class), which was a top malloc/memcmp source.
+    permutations: Vec<u8>,
+    stride: usize,
     parents: Vec<(u32, u8)>,
 }
 
 impl ClassOrbit {
+    /// The number of class members (member 0 is the representative).
+    fn member_count(&self) -> usize {
+        self.parents.len()
+    }
+
+    /// Every member's root-image permutation, in BFS discovery order.
+    fn members(&self) -> impl Iterator<Item = &[u8]> {
+        self.permutations.chunks_exact(self.stride)
+    }
+
     /// Rebuild every member's `TwistedInvolution` from the parent links:
     /// member `i`'s Weyl action is `s after parent after twist(s)`, where
     /// `(parent, s)` is its parent link (BFS order guarantees the parent's
@@ -1256,9 +1271,9 @@ impl ClassOrbit {
         let reflections = (0..rank)
             .map(|generator| WeylAction::simple_reflection(datum, generator))
             .collect::<Result<Vec<_>, _>>()?;
-        let mut actions: Vec<WeylAction> = try_capacity(self.permutations.len())?;
+        let mut actions: Vec<WeylAction> = try_capacity(self.member_count())?;
         actions.push(self.representative.weyl_action().clone());
-        for index in 1..self.permutations.len() {
+        for index in 1..self.member_count() {
             let (parent, generator) = self.parents[index];
             let action = reflections[usize::from(generator)]
                 .compose(&actions[parent as usize])?
