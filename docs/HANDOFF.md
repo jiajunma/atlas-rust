@@ -5467,11 +5467,14 @@ The port itself is complete (all formerly-unregistered builtins are live;
 `star` probed on HPC 3624320: the ORACLE also reports "Undefined
 identifier 'star'" — it is not an upstream startup builtin, nothing
 missing). Remaining work is performance only. ACTIVE AGENTS (do not
-double-dispatch): agent-117 owns CartanClassification::build
-(cartan_classification.rs only), agent-118 owns the WeylElement compact
-representation (weyl_element.rs/weyl_transducer.rs/weyl.rs/weyl_size.rs),
-agent-119 owns the fixed memory baseline (atlas-core only). All three
-verify from dedicated HPC worktrees — nobody resets the main checkout.
+double-dispatch): agent-117 owns CartanClassification::build + the
+~140MB fixed memory baseline levers (inner_class.rs/
+cartan_classification.rs; massif attribution in 2026-08-24n),
+agent-120 owns unipotent 3.7GB-vs-881MB maxrss ATTRIBUTION ONLY
+(read-only, own worktree atlas-rust-unipmem). CLOSED lanes:
+agent-118 WeylElement (57da89a landed, see 2026-08-24o), agent-119
+memory-baseline attribution (handed to agent-117). All agents verify
+from dedicated HPC worktrees — nobody resets the main checkout.
 
 1. **5-7x small-script tail** (~23 scripts, rust 0.3-0.7s vs cpp 0.05-0.12s;
    worst ellipticExceptional.at 13.8x). Uniform evaluator throughput, NOT
@@ -5487,8 +5490,9 @@ verify from dedicated HPC worktrees — nobody resets the main checkout.
    Vecs were never the small-script bottleneck — allocation halving plus
    algorithmic wins left GKfast/test_braid/class_tables/W_reps flat
    while unipotent dropped 32%.
-2. **unipotent 15.3s (2.47x)** — agent-115's lane; chain so far
-   77.2 -> 15.3s (2026-08-24l mod-space transport, b456e1c). Next
+2. **unipotent 9.99s (2.10x)** — chain so far 77.2 -> 9.99s
+   (2026-08-24l mod-space transport b456e1c, 2026-08-24o flat
+   WeylElement 57da89a). Next
    candidate (unowned, invasive): share the InvolutionTable across an
    inner class (E8's three forms rebuild the ~10^5-record table 3x;
    KgbBundle.table is Arc and KgbGraph::build wants &mut table — needs a
@@ -5502,8 +5506,8 @@ verify from dedicated HPC worktrees — nobody resets the main checkout.
    AST/SourceText retention? boxed values in the global overload
    table?), plausibly the SAME root as frontier item 1's fixed ~0.45s
    time cost — whoever profiles the include closure should capture a
-   heap profile too. Separate big-memory case: unipotent 3.6GB vs
-   860MB (4.24x) is agent-115's per-record lane (lever 2 above).
+   heap profile too. Separate big-memory case: unipotent 3.72GB vs
+   881MB (4.2x, job 3624894 @ 57da89a) — attribution owned by agent-120.
 
 Ops: .git sync MUST use `rsync -a --exclude=/worktrees` (no --delete);
 corpus globs must be absolute under the oracle atlas-scripts dir; bisect
