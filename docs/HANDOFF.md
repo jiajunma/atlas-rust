@@ -5236,3 +5236,37 @@ OverloadState::add_user 3.27%, SourceText::position 1.45%.
   parser __reduce ~3% (generated lalrpop code — do not hand-edit, rule
   4), lexer's per-token span construction (1.45% -> ~halved by 9e81bc3;
   fully killing it needs deferred spans in the lexer lane).
+
+## E8_small_block regression: correction and bisect (2026-08-24i)
+
+- **The script has NO KGB build.** `E8_small_block_cell_parameter_numbers.at`
+  is a single-line (~430KB) `set cells_small=[[...]]` giant nested-int
+  literal assignment. agent-116's note "the cost is in the single E8 KGB
+  build" is a wrong premise — the hot path is lex/parse/eval of a huge
+  literal, i.e. the typed/lexer lane, not real-group.
+- Corrected bisect window: 3.91s @ 907dcd4 (bisect job 3623712, cu054,
+  re-measured) vs 15.97s @ 06b85d7 (corpus 3623704 report, run AT 06b85d7).
+  So the culprit is <= 06b85d7: candidates {4ed8fe0, 9e81bc3, 1cca878}.
+  9b6f20f is excluded (landed after the 15.97s measurement); 06b85d7
+  itself only touches real-group code and is implausible for a
+  parse-bound script.
+- Prime suspect: `9e81bc3` SourceText::span — for a single-line file every
+  per-token span still pays an O(line-prefix) column scan, i.e. O(n^2) over
+  70k tokens; check whether the rewrite pessimized it (old code did two
+  `chars().count()` prefix scans; new does one byte-filter prefix scan +
+  short extension — should be faster, so if it regressed something else is
+  going on, e.g. `adjusted()` or an accidental extra scan).
+- Second suspect: `4ed8fe0` is_close restructure (per-element recursion on
+  row/row pairs during literal type-check could have changed cost shape).
+- Bisect jobs in flight: 3623976 (worktree atlas-rust-bisect; 1cca878,
+  06b85d7, 9b6f20f) and 3623991 (worktree atlas-rust-bisect3; 4ed8fe0,
+  9e81bc3). Scripts: `bisect2.sbatch` / `bisect3.sbatch` in those
+  worktrees; output `bisect2-3623976.out` / `bisect3-3623991.out`.
+  Each point does `git checkout -f + reset --hard + rev-parse HEAD guard`
+  before building (a failed checkout previously benchmarked the wrong
+  binary — see failed 3623959).
+- Ops note: `rsync -a --delete .git` to HPC WIPES HPC-side worktree
+  registrations (broke bisect 3623959 mid-run with "Could not read
+  <sha>"). Always use `--exclude=/worktrees` (agent-116's workaround).
+  If a worktree's gitdir link is broken, re-register or re-add it before
+  submitting bisect jobs.
