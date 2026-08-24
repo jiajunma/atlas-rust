@@ -17,7 +17,7 @@ The report includes a histogram of first-error messages on the Rust side —
 the corpus-driven priority list for the next language features.
 
 Usage: script_corpus_diff.py <atlas-binary> <atlas-cli-binary> [globs...]
-Env: REPORT (output json), SIZE_CAP bytes (default 2 MiB), TIMEOUT seconds.
+Env: REPORT (output json), SIZE_CAP bytes (default 4 MiB), TIMEOUT seconds.
 """
 
 import glob
@@ -297,7 +297,10 @@ def main() -> int:
         )
     ]
     files = sorted({p for pattern in patterns for p in glob.glob(pattern)})
-    size_cap = int(os.environ.get("SIZE_CAP", 2 * 1024 * 1024))
+    # Default cap covers the two 3.06MB single-line-literal scripts
+    # (E8_big_block_cell_parameter_numbers.at, cells.E8.repsonly.at) —
+    # post-LineCursor they parse linearly (0.56s each, corpus 3624259).
+    size_cap = int(os.environ.get("SIZE_CAP", 4 * 1024 * 1024))
     timeout = int(os.environ.get("TIMEOUT", 120))
     path = os.environ.get("REPORT", "script_corpus_report.json")
 
