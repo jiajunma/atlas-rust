@@ -5116,3 +5116,58 @@ suspected impact order:
    shares Cartan classes per ComplexReductiveGroup): ~3x table work for
    E8's 3 forms, but invasive (KgbBundle.table is Arc<InvolutionTable> and
    KgbGraph::build takes &mut table).
+
+## Perf work 2026-08-24e (completion refresh + E8 classification wall; agent-115)
+
+Baseline for this round: perf_build_time 3622331-ish numbers, GKfast /
+generic_degrees / test_braid ~1.8s, class_tables 1.22s @ 24a0d1d
+(pre-LTO). All jobs below run at the pushed HEAD named in the commit list.
+
+- `b1daede`: execute() rebuilt the completion-candidate snapshot (294
+  startup names + every session name, each String-cloned) at the top of
+  EVERY command — O(commands x names) over long include chains. Now
+  incremental: append-only push on new definitions, dirty-flag rebuild only
+  after forget/revive/set_type. fp profile: TypedContext::execute self
+  13.65% -> 0.58%. The candidates feed ONLY the readline_completions
+  builtin (typed.rs:6108), so batch loads never read them.
+- `ed215e0` + `5c424f1`: ATLAS_PROBE_CLASSIFICATION=1 (env-gated, keep it)
+  prints hit/miss + rank/roots/classes/members/ms per
+  classification_cached call. test_braid.at (probe 3622847): 12 miss / 2
+  hit, ALL DISTINCT fingerprints — per-fingerprint InnerClassContext
+  caching is useless here, and it would also break the white-box isolation
+  contract of
+  domain_builtins::tests::real_form_owner_caches_are_isolated_for_custom_and_distinct_inner_contexts
+  (two identical inner_class calls must NOT share an Arc). The load-time
+  wall is TWO split-E8 builds (primal+dual, rank 8, 240 roots, 199,952
+  members each, ~223ms apiece) + 2xE7 (16ms) + 4xE6-size (~3ms).
+- `f1a1c18`: ClassOrbit member permutations stored flat (one Vec<u8>,
+  stride = root count) instead of one 240-byte heap Vec per member.
+  test_braid 1.09 -> 1.03s (less than hoped: the storage was not the
+  dominant cost inside the E8 cross-action closure; the seen-set probes
+  and key-building loop are).
+- `6b5df6a`: build_inner_class_context builds primal and dual
+  Cartan classifications on two std::thread::scope threads (independent
+  pure computations, same content-keyed cache; primal error precedence
+  preserved). test_braid 1.03 -> 0.79s.
+- HPC seconds (perf_build_time 3622928 @ 6b5df6a): GKfast 0.81,
+  generic_degrees 0.80, test_braid 0.79, class_tables 0.66, basic.at 0.04
+  (oracle ~0.12-0.18s; ratios now ~4.5-5.5x, all five under 1s).
+  quick_check green at both stops: 3622871 (f1a1c18), 3622906 (6b5df6a).
+  Full-corpus differential submitted as 3622952 @ 6b5df6a — compare its
+  median ratio against 3622339's 10.25x when it lands.
+- Remaining typed-side hot spots (perf-fp2 @ f1a1c18, test_braid):
+  coercion_between 5.61% self (millions of tiny gated table scans from
+  is_close + convert paths; no cheap key for memoization since types are
+  not interned), convert_overload_application 5.64% cum,
+  OverloadState::add_user 3.27% (inherent per-variant is_close scan),
+  SourceText::position 1.95% self via lex::token (2 span positions per
+  token; partition_point + per-line char count — a line-index or deferred
+  spans would kill it, but the lexer lane has other agents active),
+  parser __reduce 3.09%.
+- Tooling notes: perf annotate came back EMPTY under the fat-LTO
+  codegen-units=1 release profile (no debug info); add `debug = true` to
+  [profile.release] locally if instruction-level attribution is needed.
+  probe_classification.sbatch / perf_fp*.sbatch / perf_build_time.sbatch
+  all recreate /public/home/majj/atlas-rust-perf — never run them
+  concurrently; sequence: perf_build_time, then perf_fp2, then probes.
+
