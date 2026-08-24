@@ -5415,3 +5415,27 @@ syntax.rs's two span(len, len) calls are parse-error EOF fallbacks;
 grammar join_span only combines existing SourceSpan values without
 touching text. No other O(line-prefix) hot path exists.
 
+
+## Current frontier (2026-08-24, post-corpus-3624108)
+
+State: full corpus 3624108 @ 83dd11a — 238/238 MATCH + 2 SKIPPED_LARGE,
+median rust/cpp 4.01x, over_5x 23, within_2x 50. The port itself is
+complete (all formerly-unregistered builtins are live; corpus is the
+empirical gate). Remaining work is performance only:
+
+1. **5-7x small-script tail** (~23 scripts, rust 0.3-0.7s vs cpp 0.05-0.12s;
+   worst ellipticExceptional.at 13.8x). Uniform evaluator throughput, NOT
+   startup (5ms floor proven). agent-116 is profiling class_tables.at /
+   ellipticExceptional.at to attribute it (Value boxing? overload
+   resolution? typecheck?).
+2. **unipotent 22.3s (3.81x)** — agent-115's lane; chain so far
+   77.2 -> 22.3s. Next candidate (unowned, invasive): share the
+   InvolutionTable across an inner class (E8's three forms rebuild the
+   ~10^5-record table 3x; KgbBundle.table is Arc and KgbGraph::build wants
+   &mut table — needs a design).
+3. Everything else is <= 5.5x or already fast.
+
+Ops: .git sync MUST use `rsync -a --exclude=/worktrees` (no --delete);
+corpus globs must be absolute under the oracle atlas-scripts dir; bisect
+jobs must verify `git rev-parse --short HEAD` after checkout before
+benchmarking (a failed checkout once benchmarked the wrong binary).
