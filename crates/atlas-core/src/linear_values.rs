@@ -16,12 +16,21 @@ pub struct Vec32(pub Vec<i32>);
 
 /// An Atlas `mat`: `rows x cols` int entries stored column-major (the
 /// upstream constructor fills by columns).
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct Matrix {
     rows: usize,
     cols: usize,
     data: Vec<i32>,
+    trailing_newline: bool,
 }
+
+impl PartialEq for Matrix {
+    fn eq(&self, other: &Self) -> bool {
+        self.rows == other.rows && self.cols == other.cols && self.data == other.data
+    }
+}
+
+impl Eq for Matrix {}
 
 /// An Atlas `ratvec`: i64 numerators over one u64 denominator, normalised
 /// (gcd divided out, denominator positive) on every construction.
@@ -34,7 +43,19 @@ pub struct RatVec {
 impl Matrix {
     /// Build from column-major data; `data.len()` must be `rows * cols`.
     pub fn from_columns(rows: usize, cols: usize, data: Vec<i32>) -> Option<Self> {
-        (data.len() == rows.checked_mul(cols)?).then_some(Self { rows, cols, data })
+        (data.len() == rows.checked_mul(cols)?).then_some(Self {
+            rows,
+            cols,
+            data,
+            trailing_newline: true,
+        })
+    }
+
+    /// Mark a derived slice for Atlas's compact top-level matrix rendering.
+    /// The flag is display-only and is intentionally ignored by equality.
+    pub fn without_trailing_newline(mut self) -> Self {
+        self.trailing_newline = false;
+        self
     }
 
     pub fn rows(&self) -> usize {
@@ -363,7 +384,11 @@ impl fmt::Display for Matrix {
                 let entry = self.data[col * self.rows + row];
                 write!(formatter, "{entry:>width$}")?;
             }
-            writeln!(formatter, " |")?;
+            if row + 1 == self.rows && !self.trailing_newline {
+                write!(formatter, " |")?;
+            } else {
+                writeln!(formatter, " |")?;
+            }
         }
         Ok(())
     }

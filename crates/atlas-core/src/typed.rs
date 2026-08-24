@@ -8096,7 +8096,7 @@ fn run_scalar(
             )
             .map_err(|message| runtime(message, span))?;
             Ok(at_builtin_level(level, || {
-                Value::Matrix(sliced.to_matrix())
+                Value::Matrix(sliced.to_matrix().without_trailing_newline())
             }))
         }
         // mod2_section(mat->mat) (global.w:5043-5053, bitvector.cpp:346-405):
@@ -12251,7 +12251,7 @@ impl TypedExpr {
                         l,
                     )
                     .map_err(|message| runtime(message, *span))?;
-                    return Ok(at_level(level, || Value::Matrix(sliced.to_matrix())));
+                    return Ok(at_level(level, || Value::Matrix(sliced.to_matrix().without_trailing_newline())));
                 }
                 let upper = expect_integer(force(upper, context)?, *span, "slice upper bound")?;
                 let lower = expect_integer(force(lower, context)?, *span, "slice lower bound")?;
@@ -12279,7 +12279,7 @@ impl TypedExpr {
                     Value::Matrix(matrix) => {
                         let sliced =
                             evaluate_matrix_slice(matrix, lower, upper, *flags, source, *span)?;
-                        Ok(at_level(level, || Value::Matrix(sliced.clone())))
+                        Ok(at_level(level, || Value::Matrix(sliced.clone().without_trailing_newline())))
                     }
                     other => panic!("analysis let a non-slice value through: {other}"),
                 }
@@ -12316,7 +12316,8 @@ impl TypedExpr {
                 Ok(at_level(level, || {
                     Value::Matrix(
                         crate::linear_values::Matrix::from_columns(height, width, data.clone())
-                            .expect("commabarlist rows are rectangular"),
+                            .expect("commabarlist rows are rectangular")
+                             .without_trailing_newline(),
                     )
                 }))
             }
@@ -13633,7 +13634,8 @@ fn evaluate_matrix_slice(
         data.extend_from_slice(&matrix.column(column).0);
     }
     Ok(Matrix::from_columns(matrix.rows(), upper - lower, data)
-        .expect("slice column count matches"))
+        .expect("slice column count matches")
+        .without_trailing_newline())
 }
 
 fn slice_bounds(
@@ -13915,24 +13917,30 @@ fn apply_conversion(tag: &str, value: Value, span: SourceSpan) -> Result<Value, 
                     other => panic!("M[V] conversion saw column {other}"),
                 })
                 .collect();
-            Ok(Value::Matrix(columns_to_matrix(
-                columns,
-                "Implicit conversion to matrix for an empty set of vectors",
-                "Vector sizes differ in conversion to matrix",
-                span,
-            )?))
+            Ok(Value::Matrix(
+                columns_to_matrix(
+                    columns,
+                    "Implicit conversion to matrix for an empty set of vectors",
+                    "Vector sizes differ in conversion to matrix",
+                    span,
+                )?
+                .without_trailing_newline(),
+            ))
         }
         "M[[I]]" => {
             let columns = expect_list(value)
                 .into_iter()
                 .map(|column| list_to_vec32(expect_list(column), span))
                 .collect::<Result<Vec<_>, _>>()?;
-            Ok(Value::Matrix(columns_to_matrix(
-                columns,
-                "Cannot convert empty list of lists to matrix",
-                "List sizes differ in conversion to matrix",
-                span,
-            )?))
+            Ok(Value::Matrix(
+                columns_to_matrix(
+                    columns,
+                    "Cannot convert empty list of lists to matrix",
+                    "List sizes differ in conversion to matrix",
+                    span,
+                )?
+                .without_trailing_newline(),
+            ))
         }
         "[V]M" => match value {
             Value::Matrix(matrix) => Ok(matrix_to_vectors(matrix)),
