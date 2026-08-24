@@ -5481,9 +5481,12 @@ verify from dedicated HPC worktrees — nobody resets the main checkout.
    evaluation — typed symbols are all < 1% self post-gate-index.
    32097c1's RootSystem simple-reflection cache cut ellipticExceptional
    14x -> 2.46x, class_tables 5.2x -> 4.31x, GKfast 3.8x -> 3.0x.
-   Remaining: CartanClassification::build (agent-115 lane) and the
-   WeylElement heap-Vec representation vs upstream's 32-byte transducer
-   pieces (ranked follow-ups in 2026-08-24m).
+   Remaining: CartanClassification::build (agent-115 lane). The
+   WeylElement heap-Vec representation follow-up is CLOSED with a
+   negative result for the small-script tail (2026-08-24o): the heap
+   Vecs were never the small-script bottleneck — allocation halving plus
+   algorithmic wins left GKfast/test_braid/class_tables/W_reps flat
+   while unipotent dropped 32%.
 2. **unipotent 15.3s (2.47x)** — agent-115's lane; chain so far
    77.2 -> 15.3s (2026-08-24l mod-space transport, b456e1c). Next
    candidate (unowned, invasive): share the InvolutionTable across an
@@ -5642,3 +5645,57 @@ Target check: with levers 1+2 done in real-group, groups.at lands near
 the basic.at-level residual (~10-15MB), under the 40MB goal, with zero
 atlas-core changes. Nothing structurally wrong was found on the
 atlas-core side at library scale.
+
+## Perf work 2026-08-24o — WeylElement flat representation (agent-118 / agent-weyl)
+
+Task: replace WeylElement's two heap Vecs with a compact fixed-size
+representation inspired by upstream's 32-byte transducer pieces. TWO
+designs were tried; the first was falsified by measurement, the second
+landed.
+
+Attempt 1 (754f66b, tiered inline arrays [RootId;32]/[RootId;240] +
+heap fallback): corpus 3624438/3624439 all 7 MATCH but a hard
+REGRESSION on small scripts — GKfast 0.62 -> 1.14s (6.22x),
+class_tables 0.52 -> 0.83s, test_braid 0.64 -> 1.09s, example 1.07 ->
+2.34s, maxrss ~135 -> 194-323MB (example 680MB); only unipotent
+improved (14.64 -> 10.58s). Root cause: Rust enum layout makes
+sizeof(WeylElement) the LARGEST tier (3.8KB) regardless of the active
+one, so every element stored in involution/Tits records, the block
+dual_position HashMap, and cartan_classification's visited BTreeSet
+ballooned ~15x for small systems. Lesson (disproven hypothesis,
+recorded per convention): a fixed-size PERMUTATION representation pays
+its worst case in every stored element — unlike upstream's 8-byte
+WeylElt pieces, root permutations are inherently O(#roots), and the
+pure-pieces design is blocked by the pinned `image_permutation() ->
+&[RootId]` borrow API (cartan_class/cartan_classification are another
+agent's lane). WeylElement heap Vecs were NOT the small-script tail
+bottleneck.
+
+Landed (57da89a, flat exact-size Box<[RootId]>): forward permutation
+and inverse in ONE exact-size buffer split at `count` — one allocation
+per element instead of two, 24-byte struct (was 56B), derived
+trait contract (permutation-lexicographic Eq/Ord/Hash) restored
+verbatim, all public signatures unchanged, error priority per method
+preserved. Plus two algorithmic wins kept from 754f66b:
+reduced_word/canonical_word peel in place on one 3*count scratch Vec
+(no per-letter element construction — hot per block element in
+block.rs:213/kgb_graph.rs:855), and twisted_conjugate composes
+s_g*w*s_tg in a single pass against the cached reflection permutations
+(one length recount instead of two reflection elements + two general
+multiplies; error order provenance -> twist -> range reads unchanged).
+
+Verified from worktree /public/home/majj/atlas-rust-weyl @ 57da89a:
+quick_check 3624892 green (865 unit tests); corpus 3624893 (6 scripts)
++ 3624894 (unipotent, fat) all 7 MATCH — GKfast 0.657s/3.10x,
+test_braid 0.643s/3.48x, class_tables 0.518s/4.35x, example
+1.111s/2.59x, generic_degrees 0.637s/3.43x, W_reps 0.456s/4.22x (all
+flat vs the 3624257 @ 32097c1 baseline, regression fully reverted,
+maxrss back to ~140MB flat), and unipotent 14.64 -> 9.99s (-32%,
+ratio 2.40x -> 2.10x vs cpp 4.76s; session chain 59.7 -> 10.0s, -83%).
+
+Residual Weyl-side levers, unowned: involution-table BFS still pays
+one intermediate `composed` Vec per NEW record on top of the element
+buffer (from_composition could fuse them); ParabolicPieces::build/key
+remain permutation-BFS based (a pieces-native key would need the
+blocked API change). Both are small compared to
+CartanClassification::build (agent-115) and the per-record lanes.
