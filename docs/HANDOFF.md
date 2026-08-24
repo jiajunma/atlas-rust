@@ -5471,6 +5471,16 @@ empirical gate). Remaining work is performance only:
    KgbBundle.table is Arc and KgbGraph::build wants &mut table — needs a
    design; order hazard documented 2026-08-24j).
 3. Everything else is <= 5.5x or already fast.
+4. **Memory baseline (new finding, 2026-08-24, same corpus 3624108
+   maxrss fields)**: rust sits at a flat ~130-147MB maxrss on ~230
+   scripts vs cpp 6-14MB (median ratio 12.11x, 234/238 scripts >= 2x;
+   worst ratio groups.at 21.2x = 138MB vs 6.5MB). The flatness across
+   unrelated scripts says fixed per-process retention (loaded-module
+   AST/SourceText retention? boxed values in the global overload
+   table?), plausibly the SAME root as frontier item 1's fixed ~0.45s
+   time cost — whoever profiles the include closure should capture a
+   heap profile too. Separate big-memory case: unipotent 3.6GB vs
+   860MB (4.24x) is agent-115's per-record lane (lever 2 above).
 
 Ops: .git sync MUST use `rsync -a --exclude=/worktrees` (no --delete);
 corpus globs must be absolute under the oracle atlas-scripts dir; bisect
