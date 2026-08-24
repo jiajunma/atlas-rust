@@ -225,29 +225,15 @@ FIXTURE_PLANS = (
         runnable_lines=(1,),
         runnable_events=(0, 1),
     ),
-    # The dangling `[` line is excluded: the oracle saw the capture-time
-    # appended `quit` (`unexpected QUIT, expecting ']'`) where the CLI sees
-    # EOF, so that event stays pending; the `4` line after it belongs to the
-    # same unclosed command (swallowed by the open bracket) and produced no
-    # oracle event of its own, so it is pending on the same event.
+    # The dangling `[` on line 7 reads the capture-appended `quit` and
+    # reports `unexpected QUIT, expecting ']'` (matching the oracle now that
+    # the diff driver feeds the same stdin + quit); line 8 is swallowed by
+    # the still-open bracket and produces no event of its own.
     FixturePlan(
         name="commands/container_syntax_errors",
-        runnable_lines=(1, 2, 3, 4, 5, 6),
-        runnable_events=(0, 1, 2, 3, 4, 5),
-        pending=(
-            PendingCase(
-                feature="dangling open bracket sees capture-time quit",
-                source_line=7,
-                reference_event=6,
-                reason="the oracle parsed the harness-appended `quit` where the CLI sees EOF",
-            ),
-            PendingCase(
-                feature="swallowed line after the dangling open bracket",
-                source_line=8,
-                reference_event=6,
-                reason="the oracle's unclosed `[` swallows this line before quit",
-            ),
-        ),
+        runnable_lines=(1, 2, 3, 4, 5, 6, 7),
+        runnable_events=(0, 1, 2, 3, 4, 5, 6),
+        silent_lines=(8,),
     ),
     # The final let command spans lines 12-14; the two continuation lines are
     # part of the runnable input but produce no event of their own.
@@ -315,23 +301,9 @@ FIXTURE_PLANS = (
     # reference frozen by captures 3604471/3604660.
     FixturePlan(name="eval/for_reversed"),
     # The trailing `while false do 1 od~` line ends with a tilde that
-    # swallows its newline, so the oracle continued onto the capture-time
-    # appended `quit` (`unexpected QUIT`) where the CLI faithfully reports
-    # `unexpected end of file` — the same harness artifact class as the
-    # dangling-bracket entry in commands/container_syntax_errors.
-    FixturePlan(
-        name="eval/for_reversed_extra",
-        runnable_lines=(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
-        runnable_events=(0, 1, 2, 3, 4, 5, 6, 7, 8, 9),
-        pending=(
-            PendingCase(
-                feature="trailing tilde swallows the capture-appended quit",
-                source_line=11,
-                reference_event=10,
-                reason="the oracle parsed the harness-appended `quit` where the CLI sees EOF",
-            ),
-        ),
-    ),
+    # swallows its newline; the diff driver now appends the same `quit` the
+    # oracle capture did, so both report `unexpected QUIT`.
+    FixturePlan(name="eval/for_reversed_extra"),
     # `$` last-value sticky semantics (void results do not update);
     # reference frozen by capture 3604641.
     FixturePlan(name="eval/last_value"),
@@ -1217,11 +1189,22 @@ def run_fixture(
         exit_status = None
         elapsed = 0.0
     else:
+        # Feed the runnable source through stdin with the capture-time
+        # `quit` appended, exactly like the oracle capture
+        # (reference_capture.py:78). A dangling `[` or a trailing `~` that
+        # swallows its newline then reads the appended `quit` and reports
+        # `unexpected QUIT`, matching the oracle, instead of the CLI's EOF
+        # diagnostic that only a bare file read would produce.
+        stdin_source = selected_source
+        if not stdin_source.endswith("\n"):
+            stdin_source += "\n"
+        stdin_bytes = (stdin_source + "quit\n").encode("utf-8")
         stdout, stderr, exit_status, timed_out, elapsed, maxrss_kb, maxrss_approximate = (
             measure_command(
-                [str(cli_bin), str(selected_path.resolve())],
+                [str(cli_bin)],
                 cwd=workspace_root,
                 timeout=timeout,
+                input_bytes=stdin_bytes,
             )
         )
         elapsed = round(elapsed, 3)
