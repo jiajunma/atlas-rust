@@ -5461,9 +5461,15 @@ empirical gate). Remaining work is performance only:
 
 1. **5-7x small-script tail** (~23 scripts, rust 0.3-0.7s vs cpp 0.05-0.12s;
    worst ellipticExceptional.at 13.8x). Uniform evaluator throughput, NOT
-   startup (5ms floor proven). agent-116 is profiling class_tables.at /
-   ellipticExceptional.at to attribute it (Value boxing? overload
-   resolution? typecheck?).
+   startup (5ms floor proven). ATTRIBUTED by agent-116 (2026-08-24m,
+   profiles 3624174): the tail is real-group Weyl plumbing (per-letter
+   reflection rebuilds, CartanClassification::build), not typed
+   evaluation — typed symbols are all < 1% self post-gate-index.
+   32097c1's RootSystem simple-reflection cache cut ellipticExceptional
+   14x -> 2.46x, class_tables 5.2x -> 4.31x, GKfast 3.8x -> 3.0x.
+   Remaining: CartanClassification::build (agent-115 lane) and the
+   WeylElement heap-Vec representation vs upstream's 32-byte transducer
+   pieces (ranked follow-ups in 2026-08-24m).
 2. **unipotent 15.3s (2.47x)** — agent-115's lane; chain so far
    77.2 -> 15.3s (2026-08-24l mod-space transport, b456e1c). Next
    candidate (unowned, invasive): share the InvolutionTable across an
@@ -5486,3 +5492,58 @@ Ops: .git sync MUST use `rsync -a --exclude=/worktrees` (no --delete);
 corpus globs must be absolute under the oracle atlas-scripts dir; bisect
 jobs must verify `git rev-parse --short HEAD` after checkout before
 benchmarking (a failed checkout once benchmarked the wrong binary).
+
+## Perf work 2026-08-24m — tail attribution + simple-reflection cache (agent-116)
+
+Profiles: job 3624174 @ 813f119, `perf record -F 1999 -g` over 40-run
+loops (sub-second scripts need looping; single runs yield no samples).
+Reports at /public/home/majj/perf-tail-{class_tables.at,
+ellipticExceptional.at,test.at}-{flat,children}.txt, local copies
+target/tmp/perf-tail-*-flat.txt.
+
+ATTRIBUTION of the 5-7x tail (frontier item 1): it is NOT typed-evaluator
+overhead. All three sampled scripts are dominated by atlas-real-group
+Weyl plumbing: ellipticExceptional (worst ratio) = 35% weyl::apply_matrix
++ 34% iterator-collect + 9% RootSystem::from_closure; class_tables =
+30% CartanClassification::build + 10% apply_matrix + 9% collect + 8%
+HashMap::insert + ~15% malloc/free traffic; test.at = 49%
+CartanClassification::build + 14% HashMap::insert. Typed-side self times
+are all < 1% per symbol post-gate-index (coercion_between 0.61% on
+class_tables, evaluate 0.60%, __reduce 0.40%). The pre-fix chain: every
+left/right_multiply_simple rebuilt the reflection via two rank x rank
+matrices + WeylAction Arc, then re-derived its root permutation with a
+matvec + binary search per root (E8: 240 matvecs per W-word LETTER), and
+multiply recounted the length over all roots.
+
+Fix (32097c1, weyl_element.rs + root_system.rs): RootSystem builds the
+per-generator simple-reflection root permutations ONCE in from_closure
+(through the existing matrix path, so the table is by construction what
+action_permutation derives). WeylElement::simple_reflection reads the
+cache (a reflection is an involution of length 1: permutation == inverse,
+no length scan); left/right_multiply_simple compose against the cached
+permutation and take the length change from the O(1) descent read
+(l(ws) = l(w)+-1). Error precedence preserved (range error from the
+reflection lookup, then provenance); unit_length_change removed as dead.
+Upstream comparison (structure/weyl.h): upstream WeylElt is a 32-byte
+fixed array of transducer pieces — per-letter multiply is a table
+lookup, no allocation at all; our 2x240-entry heap Vecs per element are
+the residual representation gap (see follow-ups).
+
+Verified @ 32097c1 (includes agent-115's b456e1c; deltas vs 3624062 @
+c0d021b): quick_check 3624255 green; corpus subset 3624256 8/8 MATCH with
+ellipticExceptional 0.155s/14x -> 0.027s/2.46x (-83%), class_tables
+0.615 -> 0.509s (4.31x), GKfast 0.74 -> 0.63s (3.02x), test_braid
+0.73 -> 0.62s (3.32x), generic_degrees 0.73 -> 0.61s (3.33x), example
+1.18 -> 1.07s, all 1.18 -> 1.05s, test.at flat 0.32s/5.55x (49%
+CartanClassification::build — other lane).
+
+Follow-up ranking for the remaining tail (post-32097c1):
+1. CartanClassification::build (29-49% on class_tables/test.at) —
+   agent-115's lane, actively improving (9e74504, b456e1c, ...).
+2. WeylElement representation: 2 heap Vecs + per-multiply allocation vs
+   upstream's 32-byte transducer pieces; big win for W-word/KGB paths,
+   big change (Ord/Hash contracts are permutation-lexicographic).
+3. HashMap::insert 8-14%: root-closure dedup in RootSystem::enumerate
+   (hashing 8xi32 coordinate vectors) and the involution-table intern —
+   a faster hasher or sorted-vec dedup.
+4. malloc/free ~10-15%: Vec churn across the same paths.
