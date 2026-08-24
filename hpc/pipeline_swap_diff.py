@@ -314,6 +314,9 @@ FIXTURE_PLANS = (
     # rejections; reference captured by 3613892, differential 3613996.
     FixturePlan(name="eval/op_cast_specials"),
     FixturePlan(name="eval/op_cast_specials_rejected"),
+    # Verbose-mode `$` renders `(type:$)` (capture_expression print name,
+    # axis.w:596-602), not the captured value.
+    FixturePlan(name="eval/verbose_dollar"),
     # String slices (axis.w:4379-4402); reference captured by 3614066.
     FixturePlan(name="eval/string_slices"),
     FixturePlan(name="eval/string_slices_rejected"),

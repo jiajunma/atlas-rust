@@ -1,0 +1,22 @@
+{
+  "fixture": "eval/verbose_dollar",
+  "fixture_sha256": "9299d54ee3880912319b2c8b35816a7b0750b7fb67fb6b0f7c0304ee7e660ad8",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "rust_status": "pending_hpc",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "oracle_exit_status": 0,
+  "oracle_seconds": 0.01,
+  "oracle_maxrss_kb": 3520,
+  "oracle_maxrss_approximate": false,
+  "notes": "Verbose-mode `$` (last_value) renders the oracle's capture_expression print name `(type:$)` (axis.w:596-602), not the captured value. Reference verified by direct oracle probe 2026-08-24; differential pending.",
+  "hpc_capture": {
+    "fresh_process_required": true,
+    "timeout_seconds": 30,
+    "estimated_seconds": 5,
+    "estimated_memory_mb": 128
+  }
+}

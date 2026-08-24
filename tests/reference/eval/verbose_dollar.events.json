@@ -1,0 +1,83 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "eval/verbose_dollar",
+  "status": "verified_hpc_reference",
+  "events": [
+    {
+      "kind": "Output",
+      "text": "Expression before type analysis: 1\n"
+    },
+    {
+      "kind": "Output",
+      "text": "Type found: int\n"
+    },
+    {
+      "kind": "Output",
+      "text": "Converted expression: 1\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 1
+      }
+    },
+    {
+      "kind": "Output",
+      "text": "Expression before type analysis: $\n"
+    },
+    {
+      "kind": "Output",
+      "text": "Type found: int\n"
+    },
+    {
+      "kind": "Output",
+      "text": "Converted expression: (int:$)\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "integer",
+        "value": 1
+      }
+    },
+    {
+      "kind": "Output",
+      "text": "Expression before type analysis: \"hi\"\n"
+    },
+    {
+      "kind": "Output",
+      "text": "Type found: string\n"
+    },
+    {
+      "kind": "Output",
+      "text": "Converted expression: \"hi\"\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "string",
+        "value": "hi"
+      }
+    },
+    {
+      "kind": "Output",
+      "text": "Expression before type analysis: $\n"
+    },
+    {
+      "kind": "Output",
+      "text": "Type found: string\n"
+    },
+    {
+      "kind": "Output",
+      "text": "Converted expression: (string:$)\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "string",
+        "value": "hi"
+      }
+    }
+  ]
+}
