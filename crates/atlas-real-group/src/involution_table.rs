@@ -10,6 +10,13 @@
 //! `1-theta` at the orbit's canonical involution (involutions.cpp:196-208)
 //! and transported along the cross-action BFS (involutions.cpp:242-243),
 //! because the basis is path-dependent and `y_lift`'s signs depend on it.
+//! The mod-2 dedup subspace is likewise seeded fresh and thereafter
+//! transported along the cross edge (involutions.cpp:256,
+//! [`transport_mod_space`]) — its basis is canonical RREF
+//! ([`ModTwoSubspace::insert`]), hence path-INDEPENDENT, so the cheap
+//! word-parallel transport reproduces the fresh
+//! `negative_coweight_eigenspace` + `reduce_basis_mod_two` result exactly
+//! while skipping that exact rational matrix work per record.
 //! Numbering is the caller's Cartan add order (the documented discipline is
 //! ascending [`CartanId`]) with an external-order BFS inside each orbit.
 
@@ -22,7 +29,7 @@ use crate::integer_lattice::{negative_coweight_eigenspace, reduce_basis_mod_two}
 use crate::real_projection::RealProjection;
 use crate::{
     CartanClassification, CartanId, CayleyCrossDecomposition, InnerClass, IntegerLatticeBudget,
-    LatticeInvolution, ModTwoSubspace, RootId, RootKind, RootSystem, StructureError,
+    LatticeInvolution, ModTwoSubspace, ModTwoVector, RootId, RootKind, RootSystem, StructureError,
     TwistedInvolution, Weight, WeylAction, WeylElement,
 };
 
@@ -48,7 +55,7 @@ impl InvolutionTableBudget {
 }
 
 /// One twisted involution's record: canonical-from-theta data plus the
-/// path-transported `(1-theta)X^*` image-basis pair.
+/// path-transported `(1-theta)X^*` image-basis pair and dedup subspace.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InvolutionRecord {
     element: WeylElement,
@@ -75,7 +82,10 @@ impl InvolutionRecord {
     }
 
     /// The X_* mod-2 dedup subspace; its ordered basis serves the
-    /// inverse-Cayley repair of the Tits stage.
+    /// inverse-Cayley repair of the Tits stage. Seeded fresh at the orbit's
+    /// canonical involution, then transported along the cross edge that first
+    /// reached the record ([`transport_mod_space`]) — value-identical to a
+    /// fresh reduction because the basis is canonical RREF.
     pub fn mod_space(&self) -> &ModTwoSubspace {
         &self.mod_space
     }
@@ -200,6 +210,12 @@ pub struct InvolutionTable {
     twist: Vec<usize>,
     reflections: Vec<WeylElement>,
     reflection_actions: Vec<WeylAction>,
+    /// Mod-2 reductions of the simple roots and coroots, per generator:
+    /// the cross-edge transport of the dedup subspace applies
+    /// `b |-> b XOR <b, alpha_s> * beta_s` (upstream
+    /// `mod_space.apply(torus_simple_reflection[s])`, involutions.cpp:256).
+    root_parity: Vec<ModTwoVector>,
+    coroot_parity: Vec<ModTwoVector>,
     two_rho: Weight,
     records: Vec<InvolutionRecord>,
     index: DedupIndex,
@@ -246,6 +262,16 @@ impl InvolutionTable {
         }
 
         let lattice_rank = datum.lattice_rank();
+        let mut root_parity = try_capacity(semisimple_rank)?;
+        let mut coroot_parity = try_capacity(semisimple_rank)?;
+        for generator in 0..semisimple_rank {
+            root_parity.push(crate::tits_element::parity_vector(
+                datum.simple_roots()[generator].as_slice(),
+            )?);
+            coroot_parity.push(crate::tits_element::parity_vector(
+                datum.simple_coroots()[generator].as_slice(),
+            )?);
+        }
         let mut two_rho = try_capacity(lattice_rank)?;
         two_rho.resize(lattice_rank, 0_i32);
         for (id, root, _) in root_system.entries() {
@@ -264,6 +290,8 @@ impl InvolutionTable {
             twist,
             reflections,
             reflection_actions,
+            root_parity,
+            coroot_parity,
             two_rho: Weight::new(two_rho),
             records: Vec::new(),
             index: DedupIndex::new(root_system),
@@ -346,6 +374,7 @@ impl InvolutionTable {
             representative.weyl_action().clone(),
             length_sum / 2,
             None,
+            None,
         )?;
 
         // External-order BFS. Cross links are filled at each node's visit,
@@ -413,6 +442,14 @@ impl InvolutionTable {
                 let transported = self.records[cursor]
                     .projection()
                     .transported(self.reflection_actions[generator].matrix())?;
+                // Transport the dedup subspace across the same edge
+                // (involutions.cpp:256): canonical RREF, so the result equals
+                // the fresh per-record `reduce_basis_mod_two` bit for bit.
+                let transported_space = transport_mod_space(
+                    self.records[cursor].mod_space(),
+                    &self.root_parity[generator],
+                    &self.coroot_parity[generator],
+                )?;
                 let id = push_record(
                     &self.inner_class,
                     &self.budget,
@@ -423,6 +460,7 @@ impl InvolutionTable {
                     new_action,
                     new_length,
                     Some(transported),
+                    Some(transported_space),
                 )?;
                 links.push(id);
             }
@@ -611,12 +649,40 @@ fn stepped_length(
     }
 }
 
-/// The single entry path: every record field except the image-basis pair is
-/// derived fresh from theta; the pair is seeded from theta at the orbit's
-/// canonical involution and thereafter TRANSPORTED along the cross edge that
-/// first reached the record (`Some`), matching upstream's `add_involution` /
-/// `add_cross` split — the basis is path-dependent, so it is never
-/// re-derived from theta away from the seed.
+/// The cross-edge transport of the dedup subspace: the `-1` coweight
+/// eigenspace of `s theta s` is `s(E)`, and [`ModTwoSubspace`] keeps a
+/// canonical RREF basis (insertion-order independent), so re-inserting the
+/// reflected basis vectors reproduces the fresh
+/// `reduce_basis_mod_two(negative_coweight_eigenspace(..))` object exactly.
+/// This is upstream's `mod_space.apply(torus_simple_reflection[s])`
+/// (involutions.cpp:256): `b |-> b XOR <b, alpha_s> * beta_s` on coweight
+/// parities, with the PLAIN generator s, matching the projection transport.
+fn transport_mod_space(
+    space: &ModTwoSubspace,
+    root_parity: &ModTwoVector,
+    coroot_parity: &ModTwoVector,
+) -> Result<ModTwoSubspace, StructureError> {
+    let mut transported = ModTwoSubspace::new(space.dimension())?;
+    for basis in space.basis_vectors() {
+        let mut image = basis.clone();
+        if root_parity.dot(basis)? {
+            image.xor_assign(coroot_parity)?;
+        }
+        transported.insert(image)?;
+    }
+    Ok(transported)
+}
+
+/// The single entry path: every record field except the image-basis pair and
+/// the dedup subspace is derived fresh from theta; those two are seeded from
+/// theta at the orbit's canonical involution and thereafter TRANSPORTED along
+/// the cross edge that first reached the record (`Some`), matching upstream's
+/// `add_involution` / `add_cross` split. The image basis is path-dependent,
+/// so it is never re-derived from theta away from the seed; the dedup
+/// subspace is path-INDEPENDENT (canonical RREF), but transporting it via
+/// [`transport_mod_space`] is word-parallel cheap while the fresh
+/// `negative_coweight_eigenspace` + `reduce_basis_mod_two` pair is exact
+/// rational matrix work — the dominant serial cost of the BFS.
 /// A free function over disjoint table fields so the BFS can hold the
 /// reflection caches while inserting.
 #[allow(clippy::too_many_arguments)]
@@ -630,6 +696,7 @@ fn push_record(
     action: WeylAction,
     involution_length: usize,
     transported_projection: Option<RealProjection>,
+    transported_mod_space: Option<ModTwoSubspace>,
 ) -> Result<InvolutionId, StructureError> {
     if records.len() == budget.max_involutions {
         return Err(StructureError::InvolutionTableResourceLimit {
@@ -654,9 +721,14 @@ fn push_record(
         root_images,
     )?;
     let theta = involution.root_involution().involution();
-    let eigenlattice =
-        negative_coweight_eigenspace(theta.coweight_matrix(), &budget.integer_lattice)?;
-    let mod_space = reduce_basis_mod_two(&eigenlattice)?;
+    let mod_space = match transported_mod_space {
+        Some(space) => space,
+        None => {
+            let eigenlattice =
+                negative_coweight_eigenspace(theta.coweight_matrix(), &budget.integer_lattice)?;
+            reduce_basis_mod_two(&eigenlattice)?
+        }
+    };
     let theta_two_rho = theta.act_on_weight(two_rho)?;
     let mut coordinates = try_capacity(two_rho.as_slice().len())?;
     for (&plain, &reflected) in two_rho.as_slice().iter().zip(theta_two_rho.as_slice()) {
@@ -948,6 +1020,28 @@ mod tests {
         let recomputed = RealProjection::build(record.theta()).unwrap();
         assert_eq!(recomputed.lift_mat, vec![vec![-2], vec![2]]);
         assert_ne!(recomputed, *record.projection());
+    }
+
+    /// The cross-edge `mod_space` transport must reproduce the fresh
+    /// `negative_coweight_eigenspace` + `reduce_basis_mod_two` reduction on
+    /// EVERY record: the `-1` eigenspace is reflection-equivariant and the
+    /// RREF basis is canonical, so the equality is exact, not approximate.
+    #[test]
+    fn b2_mod_space_transport_matches_fresh_reduction() {
+        let (inner_class, classification) = context(vec![vec![2, -2], vec![-1, 2]], None, 8, 8);
+        let table = filled_table(&inner_class, &classification, 8);
+        let budget = IntegerLatticeBudget::new(64, 100_000, 100_000, 128);
+        for index in 0..table.involution_count() {
+            let record = table.record(InvolutionId(index)).unwrap();
+            let eigenlattice =
+                negative_coweight_eigenspace(record.theta().coweight_matrix(), &budget).unwrap();
+            let fresh = reduce_basis_mod_two(&eigenlattice).unwrap();
+            assert_eq!(
+                record.mod_space(),
+                &fresh,
+                "transported mod_space differs from the fresh reduction at record {index}"
+            );
+        }
     }
 
     #[test]

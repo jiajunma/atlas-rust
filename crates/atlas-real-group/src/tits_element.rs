@@ -462,7 +462,7 @@ fn required_record(
 }
 
 /// The mod-2 reduction of an integer vector: bits at the odd coordinates.
-fn parity_vector(coordinates: &[i32]) -> Result<ModTwoVector, StructureError> {
+pub(crate) fn parity_vector(coordinates: &[i32]) -> Result<ModTwoVector, StructureError> {
     let mut ones = try_capacity(coordinates.len())?;
     for (index, &value) in coordinates.iter().enumerate() {
         if value % 2 != 0 {
