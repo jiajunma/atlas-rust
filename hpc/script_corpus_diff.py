@@ -70,7 +70,7 @@ def measure_command(argv, *, cwd, timeout, input_text=None):
         completed = subprocess.run(
             command,
             input=input_text,
-            text=True,
+            universal_newlines=True,
             capture_output=True,
             timeout=timeout,
             cwd=cwd,
