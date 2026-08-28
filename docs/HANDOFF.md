@@ -4,6 +4,38 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-28b (compact-primary involution records)
+
+- Commit `bf7bb57` moves the fixed `WeylElt` into `InvolutionRecord` as its
+  primary Weyl value and removes the parallel `compact_elements` vector.
+  Compact length, descents, words, twists, lookup, and KGB sort keys now read
+  the record directly. `legacy_element: WeylElement` remains only as the
+  compatibility/oracle field for consumers not yet migrated.
+- Record construction unconditionally proves compact/legacy coherence without
+  allocating a word or full permutation: it applies the compact elected word
+  in reverse order to every simple root through cached reflection
+  permutations. Simple-root images are an injective Weyl key. The release
+  regression rejects two distinct length-one elements; B3 covers record/index
+  completeness and record `Clone`/`Eq` coherence.
+- TDD evidence: dirty focused job **3645958** failed at the intended missing
+  record-owned compact API; **3646012** failed at the intended missing
+  coherence gate. After implementation and review repair, **3646018** passed.
+  Exact-commit focused job **3646031** passed `cargo check`, Weyl debug/release
+  (`62/62` each), InvolutionTable debug/release (`16/16` each), and KGB
+  debug/release (`11/11` each).
+- Exact-commit differential **3646032** matched
+  `unipotent_representations_exceptional.at`: Rust `8.440s`, C++ `4.818s`
+  (1.752x), Rust peak RSS `3,702,644KB`, C++ `881,296KB` (4.201x). Compared
+  with clean baseline **3645946** (`9.196s` / `5.326s`, 4.202x RSS), this is
+  run variance: no measurable speed change, and the legacy-per-record memory
+  gap remains.
+- Full exact-commit pipeline differential **3646033** passed all 360 fixtures
+  with zero pending cases (`compatibility_claim=true`, clean commit
+  `bf7bb57ddbe64db652f4f8bd4afb515bbb563846`). Next remove internal
+  `record.weyl_element()` consumers incrementally; `minimal_torus` identity and
+  left-descent queries are the smallest clean next boundary, followed by
+  GlobalKGB twisted commutation and explicit output materialization.
+
 ## Checkpoint - 2026-08-28 (compact KGB lookup boundary)
 
 - `InvolutionTable` now keeps a `WeylElt -> InvolutionId` index alongside the

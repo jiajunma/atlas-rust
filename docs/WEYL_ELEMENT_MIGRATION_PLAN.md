@@ -217,19 +217,24 @@ enumeration and permutation-level optimizations.
 
 ### Current Progress
 
-- `InvolutionTable` now owns a shared `CompactWeyl` context and a parallel
-  `Vec<WeylElt>` shadow store.
+- `InvolutionRecord` now stores `WeylElt` as its primary Weyl value; the
+  parallel table-level compact vector has been removed. Compact length,
+  descents, words, twists, lookup, and ordering read the record value.
 - The seed is encoded through the checked `encode_element` boundary.
 - Every newly discovered cross-action neighbor is computed through compact
-  `inner_mult` plus C++-style local `inner_left_mult`, then checked against the
-  legacy composed root permutation before insertion.
-- The public `InvolutionRecord` and all downstream matrix/root APIs remain
-  unchanged. This is an intermediate shadow migration, deliberately retaining
-  the legacy element as the behavior oracle until HPC differential results are
-  available.
-- Local `involution_table` tests pass 8/8 after this integration. The next
-  required gate is a focused HPC run containing this exact table integration,
-  followed by differential fixtures before changing the record's primary field.
+  `inner_mult` plus C++-style local `inner_left_mult`. Record insertion then
+  compares all simple-root images against the legacy composed permutation in
+  debug and release builds, without allocating a word or full permutation.
+- `legacy_element: WeylElement` remains as the compatibility/oracle field for
+  downstream consumers not yet migrated. Removing it is the remaining memory
+  step; the compact-primary move alone intentionally does not change RSS.
+- Exact-commit focused job 3646031 passed Weyl 62/62, InvolutionTable 16/16,
+  and KGB 11/11 in both debug and release. Unipotent differential 3646032
+  matched, and full pipeline differential 3646033 passed 360/360 fixtures.
+- The next slice is to replace internal `record.weyl_element()` consumers with
+  compact table operations, starting with `minimal_torus` identity/left
+  descent and GlobalKGB twisted commutation. External formatting and APIs keep
+  an explicit materialization boundary until those consumers are migrated.
 
 ## 7. Phase 4: Migrate Tits, KGB, and Remaining Real-Group Callers
 
