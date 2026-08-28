@@ -231,10 +231,14 @@ enumeration and permutation-level optimizations.
 - Exact-commit focused job 3646031 passed Weyl 62/62, InvolutionTable 16/16,
   and KGB 11/11 in both debug and release. Unipotent differential 3646032
   matched, and full pipeline differential 3646033 passed 360/360 fixtures.
-- The next slice is to replace internal `record.weyl_element()` consumers with
-  compact table operations, starting with `minimal_torus` identity/left
-  descent and GlobalKGB twisted commutation. External formatting and APIs keep
-  an explicit materialization boundary until those consumers are migrated.
+- `minimal_torus_part` now uses compact identity and ordered left-descent table
+  operations instead of reading `record.weyl_element()`. Exact-commit focused
+  job 3646081 passed Weyl 62/62, InvolutionTable 17/17, and KGB 11/11 in both
+  debug and release; minimal-torus job 3646082 passed 4/4; full pipeline
+  differential 3646083 passed 360/360 fixtures with zero pending cases.
+- The next internal consumer is GlobalKGB twisted commutation. External
+  formatting and APIs keep an explicit materialization boundary until the
+  remaining consumers are migrated.
 
 ## 7. Phase 4: Migrate Tits, KGB, and Remaining Real-Group Callers
 

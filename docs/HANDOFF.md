@@ -4,6 +4,33 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-28c (compact minimal-torus reduction)
+
+- Commit `45a37a8` adds `InvolutionTable::weyl_first_left_descent` and moves
+  `minimal_torus_part` identity and ordered left-descent queries to the
+  record-owned compact `WeylElt`. The compatibility permutation is no longer
+  read in this reduction loop. Invalid-ID, identity, no-descent, and lazy
+  generator-error precedence remain unchanged.
+- TDD evidence: focused RED job **3646046** failed at the intended missing
+  compact table operation. Dirty GREEN jobs **3646056** and **3646057** passed
+  the focused gate and the four `minimal_torus` tests respectively. The
+  read-only review found no actionable issue.
+- Exact-commit focused job **3646081** passed `cargo check`, Weyl debug/release
+  (`62/62` each), InvolutionTable debug/release (`17/17` each), and KGB
+  debug/release (`11/11` each). Exact `minimal_torus` job **3646082** passed
+  `4/4` tests from its separate `target-minimal` directory.
+- Full exact-commit pipeline differential **3646083** passed all 360 fixtures
+  with zero pending cases (`compatibility_claim=true`, clean commit
+  `45a37a8584225be3cb224abeebfb21223b34bc75`). Every fixture report contains
+  exact Linux `seconds`, `maxrss_kb`, and `maxrss_approximate=false` fields.
+- HPC process lesson: concurrent Cargo jobs in one source worktree contend on
+  the shared target lock even when the SLURM jobs are otherwise independent;
+  **3646057** waited behind **3646056**. Give every simultaneous job a distinct
+  `CARGO_TARGET_DIR` (as **3646082** did) rather than treating a shared target
+  cache as harmless. Next migrate GlobalKGB twisted commutation to compact
+  table operations, then keep moving the remaining internal
+  `record.weyl_element()` consumers behind explicit materialization boundaries.
+
 ## Checkpoint - 2026-08-28b (compact-primary involution records)
 
 - Commit `bf7bb57` moves the fixed `WeylElt` into `InvolutionRecord` as its
