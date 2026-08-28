@@ -178,7 +178,8 @@ impl BlockGraph {
         crate::dual::longest_action(dual_inner_class, weyl_budget)?;
 
         // The dual form's packets, keyed by compact involution id.
-        let mut dual_position = vec![None; dual_table.involution_count()];
+        let mut dual_position: Vec<Option<usize>> = try_capacity(dual_table.involution_count())?;
+        dual_position.resize(dual_table.involution_count(), None);
         for position in 0..dual_graph.packet_count() {
             let id = dual_graph.packet_involution(position).ok_or(
                 StructureError::BlockInvariantViolation {

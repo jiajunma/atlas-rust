@@ -841,10 +841,10 @@ impl InvolutionTable {
                     index: generator,
                     upper_bound: dual_twist.len(),
                 })?;
-            if twisted >= dual_twist.len() {
+            if twisted >= self.twist.len() {
                 return Err(StructureError::IndexOutOfRange {
                     index: twisted,
-                    upper_bound: dual_twist.len(),
+                    upper_bound: self.twist.len(),
                 });
             }
             self.compact_weyl.inner_mult(&mut current, twisted);
