@@ -817,7 +817,7 @@ impl GlobalKgb {
                         upper_bound: total_involutions,
                     })?;
                     let source_weyl_length = record.weyl_length();
-                    let has_descent = record.weyl_element().has_left_descent(system, generator)?;
+                    let has_descent = table.weyl_has_left_descent(tw_id, generator)?;
 
                     let cross_target = table.cross(generator, tw_id)?;
                     let new_number = involution_location[cross_target.0];

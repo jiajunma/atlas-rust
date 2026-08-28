@@ -25,9 +25,8 @@ use crate::grading::try_capacity;
 use crate::tits_element::apply_matrix_mod_two;
 use crate::{
     CartanClassification, CartanId, InnerClass, InvolutionId, InvolutionTable, LatticeInvolution,
-    ModTwoVector, ParabolicPieces, RationalCoweight, RealFormSeed, RootKind,
-    StrongRealClassification, StructureError, TitsCoset, TitsElement, WeakRealFormId, WeylElement,
-    WeylInterface,
+    ModTwoVector, RationalCoweight, RealFormSeed, RootKind, StrongRealClassification,
+    StructureError, TitsCoset, TitsElement, WeakRealFormId, WeylElement,
 };
 
 /// Stable identifier of one KGB element in one graph's numbering.
@@ -150,7 +149,9 @@ impl KgbGraph {
         let mut index: TitsIndex = HashMap::default();
         index
             .try_reserve(expected)
-            .map_err(|_| StructureError::AllocationFailed { requested: expected })?;
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: expected,
+            })?;
         let mut statuses: Vec<Option<KgbStatus>> = try_capacity(expected * rank)?;
         let mut cross_raw: Vec<Option<usize>> = try_capacity(expected * rank)?;
         let mut cayley_raw: Vec<Option<usize>> = try_capacity(expected * rank)?;
@@ -314,16 +315,18 @@ impl KgbGraph {
                 involutions.push(InvolutionId(start.0 + offset));
             }
         }
-        let interface = WeylInterface::new(inner_class.datum().cartan_matrix())?;
-        let pieces = ParabolicPieces::build(table.root_system(), &interface)?;
-        let mut keyed: Vec<(usize, usize, Vec<usize>, usize)> = involutions
+        let mut keyed: Vec<(usize, usize, [u8; 8], usize)> = involutions
             .par_iter()
             .map(|&id| {
                 let record = table.record(id).expect("sorted involutions exist");
                 Ok((
                     record.involution_length(),
                     record.weyl_length(),
-                    pieces.key(table.root_system(), &interface, record.weyl_element())?,
+                    table
+                        .compact_key(id)
+                        .ok_or(StructureError::KgbInvariantViolation {
+                            invariant: "involution compact key",
+                        })?,
                     id.0,
                 ))
             })
@@ -439,7 +442,7 @@ impl KgbGraph {
                         Some((_, Some(_))) => {
                             return Err(StructureError::KgbInvariantViolation {
                                 invariant: "inverse Cayley pair",
-                            })
+                            });
                         }
                     }
                 }
@@ -842,28 +845,17 @@ impl KgbGraph {
                 index: id.0,
                 upper_bound: self.elements.len(),
             })?;
-        let record =
+        let _record =
             table
                 .record(element.involution())
                 .ok_or(StructureError::KgbInvariantViolation {
                     invariant: "involution bucket",
                 })?;
-        let system = table.root_system();
-
-        // Weyl_group().translation(a.w(), twist): rename the letters of a
-        // reduced word by the diagram permutation.
-        let word = record.weyl_element().reduced_word(system)?;
-        let mut renamed = WeylElement::identity(system)?;
-        for generator in word {
-            let image = *twist
-                .get(generator)
-                .ok_or(StructureError::IndexOutOfRange {
-                    index: generator,
-                    upper_bound: twist.len(),
-                })?;
-            renamed = renamed.multiply(system, &WeylElement::simple_reflection(system, image)?)?;
-        }
-        let Some(target) = table.lookup(&renamed) else {
+        // Weyl_group().translation(a.w(), twist): rename the letters of the
+        // compact Weyl factor and resolve through the table's compact index.
+        // This avoids rebuilding a legacy root permutation and one
+        // `WeylElement` per generator.
+        let Some(target) = table.weyl_twisted_lookup(element.involution(), twist)? else {
             return Ok(None);
         };
 

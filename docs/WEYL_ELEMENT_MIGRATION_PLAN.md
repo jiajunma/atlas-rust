@@ -1,0 +1,360 @@
+# Weyl Element C++ Transducer Migration Plan
+
+## 1. Goal
+
+Migrate the Atlas-Rust Weyl element implementation toward the upstream Atlas
+C++ design:
+
+- `WeylElt` is a fixed-size, allocation-free piece array;
+- transducers, generator ordering, piece words, and lengths live in shared
+  group context;
+- multiplication, inverse, simple left/right multiplication, longest-element
+  construction, and canonical words use the compact transducer path;
+- root permutations, PyCox-style simple-root images, and lattice matrices are
+  materialized only when required;
+- Atlas-visible numbering, ordering, and output remain unchanged.
+
+The PyCox `coxelm` representation is not the primary group-operation
+representation. It remains a possible derived cache or index representation.
+
+## 2. Current Baseline
+
+The repository already contains two relevant layers:
+
+- `crates/atlas-real-group/src/weyl_transducer.rs` contains `WeylElt = [u8; 8]`,
+  transducer tables, internal/external generator maps, piece words, and compact
+  enumeration;
+- `crates/atlas-real-group/src/weyl_element.rs` stores a Weyl element as a
+  boxed forward root permutation plus its inverse, and performs most operations
+  by allocating and traversing both arrays;
+- `crates/atlas-real-group/src/weyl.rs` stores lattice actions as two matrix
+  values and is the matrix-level representation;
+- `crates/atlas-real-group/src/root_system.rs` caches simple-reflection root
+  permutations.
+
+The key architectural mismatch is that the compact transducer layer is used
+for some enumeration, while the permutation-owning `WeylElement` remains the
+main representation for many real-group and KGB operations.
+
+The upstream C++ implementation instead uses:
+
+```text
+WeylGroup context + fixed-size WeylElt value
+```
+
+The value contains only parabolic-subquotient pieces. Group operations mutate
+that value using shared transducer tables.
+
+## 3. Phase 0: Freeze the Baseline and Behavior Contract
+
+### Work
+
+1. Pin the Rust commit, Rust toolchain, C++ oracle commit, compiler, and
+   machine/partition used for measurements.
+2. Establish Weyl-focused workloads covering:
+   - A2, B2, G2;
+   - A3, D4, F4;
+   - D6 and E6;
+   - E7/E8 KGB or involution workloads on the `fat` partition.
+3. Record for every workload:
+   - Rust/C++ output or event-stream hash;
+   - wall time;
+   - peak RSS;
+   - Weyl-group order;
+   - longest element;
+   - inverse, left-descent, right-descent, and canonical-word results.
+4. Add Weyl-layer property tests for:
+   - `w * identity = w`;
+   - `identity * w = w`;
+   - `w * inverse(w) = identity`;
+   - Coxeter braid relations;
+   - simple left/right multiplication length changes of `+1` or `-1`;
+   - reduced-word reconstruction;
+   - canonical-word agreement with upstream ordering.
+
+### Gate
+
+A baseline report with wall time and RSS must exist on HPC before the primary
+representation is changed. Small local checks do not replace this baseline.
+
+## 4. Phase 1: Complete and Freeze the CompactWeyl API
+
+### Work
+
+Complete the C++-aligned operations in `weyl_transducer.rs`:
+
+- `identity()`;
+- `inner_gen()`;
+- `longest()`;
+- `max_length()`;
+- `order()`;
+- `length(&WeylElt)`;
+- `inner_mult(&mut WeylElt, generator)`;
+- C++-style local `inner_left_mult(&mut WeylElt, generator)`;
+- in-place `multiply(&mut WeylElt, &WeylElt)`;
+- `inverse(&WeylElt)`;
+- `canonical_word(&WeylElt)`;
+- `piece_key(&WeylElt)`.
+
+### Requirements
+
+1. `WeylElt` remains `Copy`, `Eq`, `Hash`, and `Ord`. It must not contain a
+   `Vec`, `Box`, `Arc`, or matrix.
+2. `inner_left_mult` follows upstream `min_neighbor`/`min_star` logic and only
+   updates the affected piece interval. It must not materialize a root
+   permutation.
+3. `mult_by_piece` must not allocate a temporary `Vec` per call. Use a fixed
+   stack buffer or precomputed piece words.
+4. Length changes come from transducer piece lengths or shift direction, not a
+   full root scan.
+5. External/internal generator conversion is owned by `CompactWeyl`; callers do
+   not perform their own reordering.
+6. `longest()` directly selects the maximum valid piece in every transducer,
+   matching upstream `WeylGroup::longest()`.
+
+### Tests
+
+- Unit tests for A2, B2, G2, D4, and F4;
+- randomized word and multiplication tests;
+- C++ oracle captures for order, longest, inverse, canonical word, and piece
+  ordering;
+- `size_of::<WeylElt>()` checks and allocation instrumentation to verify that
+  element values do not allocate.
+
+### HPC Gate
+
+- compact preflight compiles successfully;
+- all Weyl-focused tests pass;
+- compact enumeration equals matrix-enumeration as a set;
+- at least one E6 workload is no slower than the current baseline and remains
+  output-identical.
+
+## 5. Phase 2: Establish Explicit Materialization Boundaries
+
+Add explicit conversions without immediately migrating every caller:
+
+```text
+WeylElt --materialize--> CoxElm/simple-root images
+WeylElt --materialize--> full root permutation
+WeylElt --materialize--> WeylAction/lattice matrix
+```
+
+Recommended responsibilities:
+
+- `CompactWeyl::materialize_coxelm`: produce images of simple roots only;
+- `RootSystem`/`CompactWeyl`: produce a complete root permutation;
+- `WeylAction`: produce the lattice action;
+- materialization functions have explicit names and are not hidden inside
+  ordinary compact operations.
+
+### Compatibility Strategy
+
+Temporarily retain `WeylElement` as a compatibility facade while callers are
+migrated. The old permutation implementation remains an independent oracle for
+conversion tests, not the primary hot-path representation.
+
+Verify that:
+
+- compact-to-permutation equals the current implementation;
+- compact-to-matrix equals `WeylAction` composition;
+- simple-root images agree with the PyCox/rustcox `CoxElm` definition;
+- full permutation inverse and group laws remain correct;
+- rank-zero, reducible groups, and B/C/D internal reversal are covered.
+
+### Tests
+
+- random finite-type elements converted between all three representations;
+- complete E6 compact/materialized set comparison;
+- sampled E7/E8 conversion checks on HPC;
+- explicit tests for datum identity and generator ordering.
+
+### Current Progress
+
+- `CompactWeyl::materialize_action` is now an explicit compact-to-lattice-action
+  boundary. It composes cached simple-reflection actions from the compact piece
+  word and does not alter the compact element.
+- The existing matrix-enumeration test uses this API and passes.
+- B3/C3/D4 exhaustive left-multiplication tests compare compact materialization
+  against matrix multiplication and pass.
+- `materialize_coxelm` and full root-permutation materialization remain to be
+  added before production callers are migrated. The existing permutation-based
+  `WeylElement` remains the oracle for those conversions.
+- HPC preflight job 3634955 did not reach compilation/tests because the dirty
+  snapshot failed the initial full-workspace format check. It is not a Weyl
+  correctness result; the next HPC gate must use a clean snapshot or a focused
+  Weyl-only runner.
+
+## 6. Phase 3: Migrate InvolutionTable and Cartan Classification
+
+These are the first production callers because they already have compact
+enumeration and permutation-level optimizations.
+
+### Work
+
+1. Store the primary Weyl value in involution records as `WeylElt`.
+2. Check twisted involutions using compact inverse and twist operations.
+3. Use the compact piece key for primary indexing and ordering.
+4. Keep root-involution data separate from the compact Weyl value.
+5. Use compact elements for Cartan candidate scans, twisted-conjugacy
+   partitioning, and orbit sweeps.
+6. Materialize root actions only for root involution construction, theta/root
+   image operations, or external output.
+
+### Invariants
+
+- Atlas involution and Cartan numbering is unchanged;
+- piece ordering agrees with the C++ `WeylElt::operator<` behavior;
+- root-level classification is unchanged;
+- cache keys include complete datum identity, not only the Cartan matrix.
+
+### Tests
+
+- existing involution, Cartan, and real-form differential fixtures;
+- full A2/B2/G2/F4/D6/E6 coverage;
+- E7/E8 workloads on `fat`;
+- old/new intermediate record comparison for compact key, length, and root-action
+  hashes.
+
+### Current Progress
+
+- `InvolutionTable` now owns a shared `CompactWeyl` context and a parallel
+  `Vec<WeylElt>` shadow store.
+- The seed is encoded through the checked `encode_element` boundary.
+- Every newly discovered cross-action neighbor is computed through compact
+  `inner_mult` plus C++-style local `inner_left_mult`, then checked against the
+  legacy composed root permutation before insertion.
+- The public `InvolutionRecord` and all downstream matrix/root APIs remain
+  unchanged. This is an intermediate shadow migration, deliberately retaining
+  the legacy element as the behavior oracle until HPC differential results are
+  available.
+- Local `involution_table` tests pass 8/8 after this integration. The next
+  required gate is a focused HPC run containing this exact table integration,
+  followed by differential fixtures before changing the record's primary field.
+
+## 7. Phase 4: Migrate Tits, KGB, and Remaining Real-Group Callers
+
+Migrate in this order:
+
+1. `tits_element.rs`: descents, simple multiplication, and twisted actions;
+2. `kgb_graph.rs` and `global_kgb.rs`: frontier expansion, cross/Cayley edges,
+   and record interning;
+3. `real_weyl.rs`, `inner_class.rs`, and `ext_param.rs`: Weyl words,
+   conjugation, and root images;
+4. `block.rs`, `block_modifier.rs`, and `locator.rs`: Weyl parameters and
+   reduced words;
+5. `domain_builtins.rs`: convert to compatibility output only at the language
+   boundary.
+
+### Migration Rules
+
+- compact operations accept `&CompactWeyl` plus `WeylElt` values;
+- no `from_permutation` in hot loops;
+- no per-edge or per-record inverse permutation construction;
+- root image operations go through explicit materialization/cache paths;
+- shared context may use `Arc`, but `WeylElt` remains a plain value;
+- any retained full action must document why it is required.
+
+Each module is migrated independently. For every module:
+
+1. run focused unit/property tests;
+2. run the relevant Rust/C++ differential fixtures;
+3. record timing and RSS;
+4. only then migrate the next module.
+
+## 8. Phase 5: Remove the Old Primary Representation
+
+Only after Phases 3 and 4 are differential-stable:
+
+- remove forward/inverse ownership from the primary Weyl value;
+- delete `build_data` and `PeelBuffers` if they serve only the old path;
+- make full root permutation an explicit materialization result;
+- evaluate contiguous arenas or caches for materialized permutations;
+- evaluate `u8` transducer tables where the state/output bound permits it;
+- benchmark `mult_by_piece`, local left multiplication, inverse, and canonical
+  word independently.
+
+The old permutation code should remain temporarily in a test-only or diagnostic
+form until all conversion and differential tests are stable.
+
+## 9. Parallelism and HPC
+
+### Single-node parallelism
+
+Parallelize only independent, pure work:
+
+- compact element to root permutation;
+- compact element to `WeylAction`;
+- twisted-involution predicates;
+- Cartan candidate/orbit calculations.
+
+Do not thread a single compact transducer operation. The operation is too small,
+and synchronization would cost more than it saves.
+
+### Multi-node HPC
+
+Use SLURM arrays for independent:
+
+- fixtures;
+- group types;
+- real forms;
+- parameters;
+- old/new implementation comparisons.
+
+Do not initially MPI-parallelize one KGB BFS. If KGB parallelism becomes
+necessary, use:
+
+```text
+frontier level
+  -> thread-local expansion
+  -> deterministic merge/sort/dedup
+  -> sequential canonical intern
+```
+
+This preserves Atlas-visible numbering and makes failures reproducible.
+
+## 10. Acceptance Metrics
+
+Every phase report must include:
+
+- Rust/C++ wall-time ratio;
+- Rust/C++ peak-RSS ratio;
+- allocation count/bytes when instrumentation is available;
+- `size_of::<WeylElt>()`;
+- number of materialized permutations;
+- output/event-stream hash;
+- thread count and parallel efficiency;
+- commit, toolchain, fixture, and HPC job ID.
+
+The target is not a single speedup number. The required outcomes are:
+
+1. compact microbenchmarks are no slower than the current permutation path;
+2. E6 classification and enumeration use substantially less memory;
+3. E7/E8 KGB/involution workloads show a sustained RSS reduction;
+4. Weyl-heavy Rust/C++ ratios improve on repeated HPC runs;
+5. all Atlas differential fixtures remain byte-identical.
+
+## 11. Risks and Rollback
+
+- **Generator-order mismatch:** compare internal/external maps, piece keys, and
+  canonical words against C++ before debugging downstream behavior.
+- **Compact/action mismatch:** keep the old matrix/permutation implementation as
+  a conversion oracle until the migration is complete.
+- **Observable numbering changes:** all parallel or hash-based discovery must
+  use deterministic sort and commit.
+- **Rank greater than 8:** retain an explicit fallback; do not truncate pieces.
+- **Context identity errors:** materialization/cache keys must include complete
+  datum identity.
+- **Performance regression:** keep each phase isolated and accept changes only
+  after HPC benchmark comparison.
+- **Compatibility regression:** roll back the caller migration while retaining
+  the verified compact API.
+
+## 12. Deliverables
+
+1. This plan in `docs/WEYL_ELEMENT_MIGRATION_PLAN.md`;
+2. C++-aligned `CompactWeyl` API and tests;
+3. explicit materialization boundaries and conversion tests;
+4. staged InvolutionTable, Cartan, Tits, KGB, and real-group migration;
+5. per-phase HPC differential and benchmark reports;
+6. updates to `docs/BENCHMARKS.md`, `docs/HANDOFF.md`, and related design
+   documents after each verified phase.

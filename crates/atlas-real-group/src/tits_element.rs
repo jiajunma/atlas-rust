@@ -209,13 +209,11 @@ impl TitsCoset {
         let record = required_record(table, element.involution)?;
         let target_id = table.cross(generator, element.involution)?;
         let target = required_record(table, target_id)?;
-        let system = table.root_system();
-
         let mut bits = element.torus.clone();
         if self.dual_m_alpha[generator].dot(&bits)? {
             bits.xor_assign(&self.m_alpha[generator])?;
         }
-        let left_descent = record.weyl_element().has_left_descent(system, generator)?;
+        let left_descent = table.weyl_has_left_descent(element.involution, generator)?;
         if left_descent {
             bits.xor_assign(&self.m_alpha[generator])?;
         }
@@ -269,7 +267,7 @@ impl TitsCoset {
         element: &TitsElement,
     ) -> Result<Option<TitsElement>, StructureError> {
         self.check_generator(generator)?;
-        let record = required_record(table, element.involution)?;
+        let _record = required_record(table, element.involution)?;
         let Some(target_id) = table.cayley(generator, element.involution)? else {
             return Ok(None);
         };
@@ -278,10 +276,7 @@ impl TitsCoset {
         if self.dual_m_alpha[generator].dot(&bits)? {
             bits.xor_assign(&self.m_alpha[generator])?;
         }
-        if record
-            .weyl_element()
-            .has_left_descent(table.root_system(), generator)?
-        {
+        if table.weyl_has_left_descent(element.involution, generator)? {
             bits.xor_assign(&self.m_alpha[generator])?;
         }
         let reduced = target.mod_space().quotient_representative(bits)?;
@@ -323,10 +318,7 @@ impl TitsCoset {
         if self.dual_m_alpha[generator].dot(&bits)? {
             bits.xor_assign(&self.m_alpha[generator])?;
         }
-        if !source
-            .weyl_element()
-            .has_left_descent(table.root_system(), generator)?
-        {
+        if !table.weyl_has_left_descent(element.involution, generator)? {
             bits.xor_assign(&self.m_alpha[generator])?;
         }
 

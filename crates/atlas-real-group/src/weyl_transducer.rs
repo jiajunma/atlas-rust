@@ -48,17 +48,9 @@ fn coxeter_entry(letter: char, i: usize, j: usize) -> u32 {
             _ => 2,
         }
     } else if a == 0 {
-        if b == 2 {
-            3
-        } else {
-            2
-        }
+        if b == 2 { 3 } else { 2 }
     } else if letter == 'E' && a == 1 {
-        if b == 3 {
-            3
-        } else {
-            2
-        }
+        if b == 3 { 3 } else { 2 }
     } else if b - a == 1 {
         3
     } else {
@@ -67,6 +59,7 @@ fn coxeter_entry(letter: char, i: usize, j: usize) -> u32 {
 }
 
 /// One parabolic subquotient transducer (weyl.cpp:100-288, 289-416).
+#[derive(Clone, Debug)]
 pub(crate) struct Transducer {
     offset: Generator,
     limit: usize,
@@ -215,6 +208,7 @@ impl Transducer {
 
 /// The Weyl group in the compact representation, with the external
 /// (datum) ↔ internal (transducer) generator numbering.
+#[derive(Clone, Debug)]
 pub struct CompactWeyl {
     transducers: Vec<Transducer>,
     /// external -> internal
@@ -264,20 +258,18 @@ impl CompactWeyl {
                 transducers.push(Transducer::new(comp.letter, comp.offset(), i));
             }
         }
-        // d_min_star: for each generator, the first non-commuting or equal
-        // generator with internal index <= it.
+        // `d_min_star` is the first internal generator that does not commute
+        // with `s`, matching upstream `inner_commutes()`. Compute adjacency
+        // after applying the actual internal -> external permutation; using
+        // only the type letter and Bourbaki positions is insufficient for
+        // branch diagrams such as D4.
         let mut min_star = vec![0_usize; rank];
         for s in 0..rank {
             min_star[s] = s;
-            let comp = comps
-                .iter()
-                .find(|c| c.offset() <= s && s < c.offset() + c.position.len())
-                .expect("in-range");
-            let mut t = s;
-            while t > comp.offset() {
-                t -= 1;
-                let cox = coxeter_entry(comp.letter, s - comp.offset(), t - comp.offset());
-                if cox >= 3 {
+            for t in 0..s {
+                let external_s = d_out[s];
+                let external_t = d_out[t];
+                if cartan[external_s][external_t] != 0 {
                     min_star[s] = t;
                     break;
                 }
@@ -343,36 +335,65 @@ impl CompactWeyl {
         self.transduce(w, self.start_gen(s), local)
     }
 
+    /// Return the identity element in the compact representation.
+    pub(crate) fn identity(&self) -> WeylElt {
+        [0_u8; 8]
+    }
+
+    /// Return the longest element by taking the maximal piece in every
+    /// parabolic quotient, exactly as upstream `WeylGroup::longest()` does.
+    pub(crate) fn longest(&self) -> WeylElt {
+        let mut result = self.identity();
+        for (piece, transducer) in result.iter_mut().zip(&self.transducers) {
+            *piece = (transducer.size() - 1) as u8;
+        }
+        result
+    }
+
+    /// Return the Coxeter length without materializing a root action.
+    pub(crate) fn length(&self, w: &WeylElt) -> usize {
+        w.iter()
+            .zip(&self.transducers)
+            .map(|(&piece, transducer)| transducer.lengths[piece as usize] as usize)
+            .sum()
+    }
+
     /// Multiply `w` on the right by the piece `i` of `v`.
     fn mult_by_piece(&self, w: &mut WeylElt, v: &WeylElt, i: usize) -> i32 {
         let tr = &self.transducers[i];
-        let x = v[i] as EltPiece;
+        let piece = v[i];
         let start = self.start_gen(i);
-        let _ = self;
-        let mut result = -(tr.lengths[x as usize] as i32);
-        let mut stack: Vec<usize> = Vec::with_capacity(tr.lengths[x as usize] as usize);
-        let mut cur = x;
-        while cur > 0 {
-            let right = tr.unshift(cur);
-            stack.push(right);
-            cur = tr.shift(cur, right); // x = shift(x, right)
-        }
-        // the unshift chain is rightmost-first; reverse it for left-to-right
-        for &letter in stack.iter().rev() {
+        let mut result = -(tr.lengths[piece as usize] as i32);
+
+        // `piece_words` stores the same reduced word that the upstream
+        // unshift stack reconstructs, but without a per-call heap allocation.
+        for &letter in self.word_of_piece(i, piece) {
             result += i32::from(self.transduce(w, start, letter));
         }
         result
     }
 
-    /// Right multiply `w` by `v` (both internal-numbered pieces).
+    /// Right multiply `w` by `v` (both internal-numbered pieces), in place.
     pub(crate) fn multiply(&self, w: &mut WeylElt, v: &WeylElt) {
         for i in 0..self.transducers.len() {
             self.mult_by_piece(w, v, i);
         }
     }
 
-    fn identity(&self) -> WeylElt {
-        [0_u8; 8]
+    /// Left multiply by an external simple reflection, using the local update
+    /// proved by the upstream transducer implementation. Only pieces from
+    /// `min_star[s]` through `s` can change; no root permutation is built.
+    pub(crate) fn inner_left_mult(&self, w: &mut WeylElt, external_s: usize) -> i8 {
+        let s = self.d_in[external_s];
+        let first = self.min_star[s];
+        let mut sw = self.identity();
+        sw[s] = 1;
+        let mut change = 1_i8;
+        for i in first..=s {
+            change = change.saturating_add(self.mult_by_piece(&mut sw, w, i) as i8);
+        }
+        w[first..=s].copy_from_slice(&sw[first..=s]);
+        change
     }
 
     /// The inverse of `w` (weyl.cpp:751-763): right-multiply by the
@@ -395,6 +416,18 @@ impl CompactWeyl {
     /// Apply the diagram automorphism `twist` (external generator
     /// permutation) to `w`: apply it to the letters of a word for `w`.
     pub(crate) fn apply_twist(&self, w: &WeylElt, twist: &[usize]) -> WeylElt {
+        self.try_apply_twist(w, twist)
+            .expect("diagram twist must use valid generator indices")
+    }
+
+    /// Checked diagram twist used at compatibility boundaries. Validation is
+    /// intentionally lazy: only generators occurring in the element's word
+    /// are read, matching upstream `WeylGroup::translation` error order.
+    pub(crate) fn try_apply_twist(
+        &self,
+        w: &WeylElt,
+        twist: &[usize],
+    ) -> Result<WeylElt, StructureError> {
         let mut result = self.identity();
         for i in 0..self.transducers.len() {
             let word = self.word_of_piece(i, w[i]);
@@ -404,11 +437,21 @@ impl CompactWeyl {
                 // internal numbering, then map to external.
                 let internal = self.transducers[i].offset + local;
                 let external = self.d_out[internal];
-                let twisted_external = twist[external];
+                let twisted_external =
+                    *twist.get(external).ok_or(StructureError::IndexOutOfRange {
+                        index: external,
+                        upper_bound: twist.len(),
+                    })?;
+                if twisted_external >= self.transducers.len() {
+                    return Err(StructureError::IndexOutOfRange {
+                        index: twisted_external,
+                        upper_bound: self.transducers.len(),
+                    });
+                }
                 self.inner_mult(&mut result, twisted_external);
             }
         }
-        result
+        Ok(result)
     }
 
     /// Whether `w` is a twisted involution: `w^{-1} = twist(w)`.
@@ -444,6 +487,17 @@ impl CompactWeyl {
         result
     }
 
+    /// Canonical elected word of an already encoded compact element.
+    pub(crate) fn element_word(&self, element: &WeylElt) -> Vec<usize> {
+        let mut result = Vec::with_capacity(self.length(element));
+        for (i, transducer) in self.transducers.iter().enumerate() {
+            for &local in self.word_of_piece(i, element[i]) {
+                result.push(self.d_out[transducer.offset + local]);
+            }
+        }
+        result
+    }
+
     /// Internal -> external generator numbering.
     pub(crate) fn d_out(&self) -> &[usize] {
         &self.d_out
@@ -453,6 +507,97 @@ impl CompactWeyl {
     /// local letters of `word_of_piece` to global internal numbering).
     pub(crate) fn piece_offset(&self, i: usize) -> usize {
         self.transducers[i].offset
+    }
+
+    /// Encode the legacy root-permutation element into compact pieces and
+    /// verify the conversion by materializing the root action back. This is a
+    /// migration boundary, not a hot-path operation.
+    pub(crate) fn encode_element(
+        &self,
+        datum: &crate::BasedRootDatum,
+        root_system: &crate::RootSystem,
+        reflections: &[crate::weyl::WeylAction],
+        element: &crate::WeylElement,
+    ) -> Result<WeylElt, StructureError> {
+        if root_system.datum() != datum {
+            return Err(StructureError::DatumMismatch);
+        }
+        let mut compact = self.identity();
+        for generator in element.reduced_word(root_system)? {
+            self.inner_mult(&mut compact, generator);
+        }
+        let permutation =
+            self.materialize_root_permutation(datum, root_system, reflections, &compact)?;
+        if permutation != element.image_permutation() {
+            return Err(StructureError::WeylElementInvariantViolation {
+                invariant: "compact encoding",
+            });
+        }
+        Ok(compact)
+    }
+
+    /// Materialize one compact element as a lattice action. This is an
+    /// explicit boundary: compact group operations never build matrices.
+    pub(crate) fn materialize_action(
+        &self,
+        datum: &crate::BasedRootDatum,
+        reflections: &[crate::weyl::WeylAction],
+        element: &WeylElt,
+    ) -> Result<crate::weyl::WeylAction, StructureError> {
+        let rank = self.transducers.len();
+        if datum.semisimple_rank() != rank || reflections.len() != rank {
+            return Err(StructureError::RankMismatch {
+                expected: rank,
+                actual: reflections.len(),
+            });
+        }
+        let mut action = crate::weyl::WeylAction::identity(datum)?;
+        for (piece_index, &piece) in element.iter().take(rank).enumerate() {
+            let word = self.word_of_piece(piece_index, piece);
+            for &local in word {
+                let internal = self.transducers[piece_index].offset + local;
+                let external = self.d_out[internal];
+                action = action.compose_fast(&reflections[external]);
+            }
+        }
+        Ok(action)
+    }
+
+    /// Materialize the action on the enumerated roots. This is deliberately
+    /// separate from compact operations because it allocates one full root
+    /// permutation.
+    pub(crate) fn materialize_root_permutation(
+        &self,
+        datum: &crate::BasedRootDatum,
+        root_system: &crate::RootSystem,
+        reflections: &[crate::weyl::WeylAction],
+        element: &WeylElt,
+    ) -> Result<Vec<crate::RootId>, StructureError> {
+        let action = self.materialize_action(datum, reflections, element)?;
+        root_system.action_permutation(&action)
+    }
+
+    /// Images of the simple roots, the compact PyCox-style `CoxElm` view.
+    /// The returned order is the datum generator order.
+    pub(crate) fn materialize_simple_root_images(
+        &self,
+        datum: &crate::BasedRootDatum,
+        root_system: &crate::RootSystem,
+        reflections: &[crate::weyl::WeylAction],
+        element: &WeylElt,
+    ) -> Result<Vec<crate::RootId>, StructureError> {
+        let permutation =
+            self.materialize_root_permutation(datum, root_system, reflections, element)?;
+        root_system
+            .simple_root_ids()
+            .iter()
+            .map(|&simple| {
+                permutation
+                    .get(simple.0)
+                    .copied()
+                    .ok_or(StructureError::InvalidRootAutomorphism)
+            })
+            .collect()
     }
 
     /// One matrix per (transducer, piece): the product of the simple
@@ -588,8 +733,14 @@ mod tests {
             let mut prod = *w;
             group.multiply(&mut prod, &wi);
             assert_eq!(prod, group.identity(), "w * w^-1 != e for {w:?}");
+            assert_eq!(group.length(w), group.length(&wi));
         }
-        // twisted involutions for the identity twist are the involutions
+
+        let longest = group.longest();
+        assert_eq!(group.length(&longest), 3);
+        assert_eq!(group.inverse(&longest), longest);
+
+        // Twisted involutions for the identity twist are the involutions.
         let twist = [0_usize, 1];
         for w in &elements {
             let is_tw = group.is_twisted_involution(w, &twist);
@@ -597,6 +748,113 @@ mod tests {
             group.multiply(&mut sq, w);
             let is_inv = sq == group.identity();
             assert_eq!(is_tw, is_inv, "mismatch for {w:?}");
+        }
+    }
+
+    #[test]
+    fn compact_left_multiplication_matches_right_word_and_length_change() {
+        let a2: Vec<Vec<i32>> = vec![vec![2, -1], vec![-1, 2]];
+        let group = CompactWeyl::new(&a2).unwrap();
+        let elements = group.enumerate(1 << 10).unwrap();
+        for w in &elements {
+            for external_s in 0..2 {
+                let mut actual = *w;
+                let change = group.inner_left_mult(&mut actual, external_s);
+                let mut expected = group.identity();
+                group.inner_mult(&mut expected, external_s);
+                group.multiply(&mut expected, w);
+                assert_eq!(
+                    actual, expected,
+                    "left multiplication mismatch for {w:?}, s={external_s}"
+                );
+                let expected_change = group.length(&actual) as isize - group.length(w) as isize;
+                assert_eq!(change as isize, expected_change);
+            }
+        }
+    }
+
+    #[test]
+    fn compact_left_multiplication_matches_matrix_path_for_reversed_types() {
+        let cases = [
+            ("B3", vec![vec![2, -1, 0], vec![-1, 2, -2], vec![0, -1, 2]]),
+            ("C3", vec![vec![2, -1, 0], vec![-1, 2, -1], vec![0, -2, 2]]),
+            (
+                "D4",
+                vec![
+                    vec![2, -1, 0, 0],
+                    vec![-1, 2, -1, -1],
+                    vec![0, -1, 2, 0],
+                    vec![0, -1, 0, 2],
+                ],
+            ),
+        ];
+        for (name, cartan) in cases {
+            let group = CompactWeyl::new(&cartan).unwrap();
+            let elements = group.enumerate(1 << 16).unwrap();
+            let rank = cartan.len();
+            for w in &elements {
+                assert_eq!(group.length(w), group.length(&group.inverse(w)));
+                for external_s in 0..rank {
+                    let mut actual = *w;
+                    let change = group.inner_left_mult(&mut actual, external_s);
+                    let mut expected = group.identity();
+                    group.inner_mult(&mut expected, external_s);
+                    group.multiply(&mut expected, w);
+                    assert_eq!(
+                        actual, expected,
+                        "{name}: left multiplication mismatch for {w:?}, s={external_s}"
+                    );
+                    assert_eq!(
+                        change as isize,
+                        group.length(&actual) as isize - group.length(w) as isize,
+                        "{name}: wrong length change for {w:?}, s={external_s}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn compact_left_multiplication_matches_matrix_actions() {
+        use crate::weyl::WeylAction;
+
+        let cases = [
+            vec![vec![2, -1, 0], vec![-1, 2, -2], vec![0, -1, 2]],
+            vec![vec![2, -1, 0], vec![-1, 2, -1], vec![0, -2, 2]],
+            vec![
+                vec![2, -1, 0, 0],
+                vec![-1, 2, -1, -1],
+                vec![0, -1, 2, 0],
+                vec![0, -1, 0, 2],
+            ],
+        ];
+        for cartan in cases {
+            let datum = crate::BasedRootDatum::standard(cartan.clone()).unwrap();
+            let compact = CompactWeyl::new(&cartan).unwrap();
+            let elements = compact.enumerate(1 << 16).unwrap();
+            let reflections: Vec<_> = (0..datum.semisimple_rank())
+                .map(|generator| WeylAction::simple_reflection(&datum, generator).unwrap())
+                .collect();
+            let piece_matrices = compact.piece_matrices(&reflections).unwrap();
+            for element in &elements {
+                let mut action = WeylAction::identity(&datum).unwrap();
+                for piece_index in 0..datum.semisimple_rank() {
+                    action = action
+                        .compose_fast(&piece_matrices[piece_index][element[piece_index] as usize]);
+                }
+                for generator in 0..datum.semisimple_rank() {
+                    let mut compact_product = *element;
+                    compact.inner_left_mult(&mut compact_product, generator);
+                    let mut compact_action = WeylAction::identity(&datum).unwrap();
+                    for piece_index in 0..datum.semisimple_rank() {
+                        compact_action = compact_action.compose_fast(
+                            &piece_matrices[piece_index][compact_product[piece_index] as usize],
+                        );
+                    }
+                    let matrix_product = reflections[generator].compose_fast(&action);
+                    assert_eq!(compact_action, matrix_product);
+                }
+            }
         }
     }
 
@@ -611,13 +869,9 @@ mod tests {
             .map(|g| crate::weyl::WeylAction::simple_reflection(&datum, g).unwrap())
             .collect();
         for elt in &elements {
-            let mut action = crate::weyl::WeylAction::identity(&datum).unwrap();
-            for pi in 0..datum.semisimple_rank() {
-                for &internal in compact.word_of_piece(pi, elt[pi]) {
-                    let external = compact.d_out()[internal];
-                    action = action.compose_fast(&reflections[external]);
-                }
-            }
+            let action = compact
+                .materialize_action(&datum, &reflections, elt)
+                .unwrap();
             // the element as a Weyl group element must have w^2 == e and
             // match the matrix enumeration's action
             let actions = WeylGroup::new(datum.clone())
@@ -650,6 +904,71 @@ mod tests {
             let is_inv = sq == group.identity();
             let is_tw = group.is_twisted_involution(w, &twist);
             assert_eq!(is_tw, is_inv, "twisted/involution mismatch for {w:?}");
+        }
+    }
+
+    #[test]
+    fn materialized_simple_images_are_the_root_permutation_projection() {
+        let cases = [
+            vec![vec![2, -1], vec![-1, 2]],
+            vec![vec![2, 0], vec![0, 2]],
+            vec![vec![2, -1, 0], vec![-1, 2, -2], vec![0, -1, 2]],
+        ];
+        for cartan in cases {
+            let datum = crate::BasedRootDatum::standard(cartan.clone()).unwrap();
+            let root_system = crate::RootSystem::enumerate(&datum, 240).unwrap();
+            let compact = CompactWeyl::new(&cartan).unwrap();
+            let reflections: Vec<_> = (0..datum.semisimple_rank())
+                .map(|generator| {
+                    crate::weyl::WeylAction::simple_reflection(&datum, generator).unwrap()
+                })
+                .collect();
+            for element in compact.enumerate(1 << 16).unwrap() {
+                let permutation = compact
+                    .materialize_root_permutation(&datum, &root_system, &reflections, &element)
+                    .unwrap();
+                let simple_images = compact
+                    .materialize_simple_root_images(&datum, &root_system, &reflections, &element)
+                    .unwrap();
+                let projected: Vec<_> = root_system
+                    .simple_root_ids()
+                    .iter()
+                    .map(|simple| permutation[simple.0])
+                    .collect();
+                assert_eq!(simple_images, projected);
+            }
+        }
+    }
+
+    #[test]
+    fn legacy_elements_round_trip_through_compact_encoding() {
+        let cases = [
+            vec![vec![2, -1], vec![-1, 2]],
+            vec![vec![2, 0], vec![0, 2]],
+            vec![vec![2, -1, 0], vec![-1, 2, -2], vec![0, -1, 2]],
+        ];
+        for cartan in cases {
+            let datum = crate::BasedRootDatum::standard(cartan.clone()).unwrap();
+            let root_system = crate::RootSystem::enumerate(&datum, 240).unwrap();
+            let compact = CompactWeyl::new(&cartan).unwrap();
+            let reflections: Vec<_> = (0..datum.semisimple_rank())
+                .map(|generator| {
+                    crate::weyl::WeylAction::simple_reflection(&datum, generator).unwrap()
+                })
+                .collect();
+            for element in compact.enumerate(1 << 16).unwrap() {
+                let permutation = compact
+                    .materialize_root_permutation(&datum, &root_system, &reflections, &element)
+                    .unwrap();
+                let legacy =
+                    crate::WeylElement::from_permutation(&root_system, permutation).unwrap();
+                assert_eq!(
+                    compact
+                        .encode_element(&datum, &root_system, &reflections, &legacy)
+                        .unwrap(),
+                    element
+                );
+            }
         }
     }
 
@@ -695,15 +1014,12 @@ mod tests {
         let reflections: Vec<_> = (0..6)
             .map(|g| WeylAction::simple_reflection(&datum, g).unwrap())
             .collect();
-        let piece_matrices = compact.piece_matrices(&reflections).unwrap();
         let compact_set: HashSet<Vec<i32>> = elements
             .iter()
             .map(|elt| {
-                let mut action = WeylAction::identity(&datum).unwrap();
-                for pi in 0..datum.semisimple_rank() {
-                    action = action.compose_fast(&piece_matrices[pi][elt[pi] as usize]);
-                }
-                action
+                compact
+                    .materialize_action(&datum, &reflections, elt)
+                    .unwrap()
                     .matrix()
                     .iter()
                     .flatten()

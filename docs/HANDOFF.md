@@ -4,6 +4,110 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-28 (compact KGB lookup boundary)
+
+- `InvolutionTable` now keeps a `WeylElt -> InvolutionId` index alongside the
+  legacy records. `KgbGraph::twisted_with_destination` translates compact
+  pieces directly, avoiding a legacy `WeylElement` and simple-reflection
+  allocation per word letter. The KGB sort already consumes the fixed compact
+  piece key instead of allocating `Vec<usize>` parabolic keys.
+- The checked compact translation preserves upstream's lazy twist validation:
+  only generators present in the reduced word are read, invalid involution
+  ids retain precedence, and compact stores use fallible `try_reserve` under
+  the existing involution budget. Duplicate compact keys are rejected.
+- HPC focused gate **3645935** on `cu016` passed: `cargo check -p
+  atlas-real-group`, Weyl debug/release (`62/62` each), InvolutionTable
+  debug/release (`14/14` each), and KGB graph debug/release tests all passed.
+  The earlier failed gate **3645686** was a real compile regression from a
+  `_record` cleanup in `kgb_graph::torus_factor`; it was repaired and the
+  corrected gate passed.
+- HPC differential **3645698** (fat, dirty snapshot) matched the full
+  `unipotent_representations_exceptional.at` output: Rust `7.934s`, C++
+  `5.914s` (1.342x), Rust peak RSS `3,697,052KB`, C++ `881,292KB` (4.195x).
+  This was effectively unchanged from **3645670** (`7.925s` vs `5.864s`),
+  so compact translated lookup is correct but not the dominant unipotent
+  bottleneck. Do not claim a standalone end-to-end speedup from this change.
+
+## Checkpoint - Weyl transducer Phase 1 (current session)
+
+- Added C++-aligned compact operations in
+  `crates/atlas-real-group/src/weyl_transducer.rs`: allocation-free identity,
+  transducer-based `longest` and `length`, in-place compact multiplication,
+  and local `inner_left_mult`.
+- First implementation of `min_star` inferred non-commuting generators from
+  the Dynkin type letter and local Bourbaki positions. The focused A2 test
+  passed, but the new B3/C3/D4 regression test failed on D4:
+  `inner_left_mult([1,1,1,0,...], s=1)` returned `[1,1,3,0,...]`, while
+  ordinary compact multiplication returned `[0,0,5,0,...]`.
+- Root cause: the local type/position inference does not preserve the actual
+  internal generator adjacency for branch diagrams such as D4. C++ computes
+  `d_min_star` through `inner_commutes()` after the final internal/external
+  generator mapping is established.
+- Repair: compute `min_star` directly from the original Cartan adjacency after
+  applying `d_out` (internal -> external), selecting the first earlier internal
+  generator whose Cartan entry is nonzero. This matches the C++ commutation
+  predicate instead of re-deriving topology from the type letter.
+- Regression result: the B3/C3/D4 local-left-multiplication test now passes;
+  the original A2 compact tests remain green. A stronger follow-up test now
+  materializes every B3/C3/D4 compact element and compares compact local left
+  multiplication against `WeylAction` matrix left multiplication; this also
+  passes. Keep both tests as required regression cases before migrating any
+  production caller.
+- Local follow-up verification: `cargo check -p atlas-real-group` passed;
+  `weyl_element::tests` passed 15/15; `weyl_transducer::tests` passed 10/10 in
+  debug and release profiles. The stronger B3/C3/D4 test materializes every
+  element and compares compact local-left multiplication with matrix-left
+  multiplication.
+- HPC `real_group_preflight.sbatch` job **3634955** ran on `cu016` with the
+  current dirty-tree snapshot and failed in the initial full-workspace
+  `cargo fmt --check` stage. Its stdout contains only pre-existing formatting
+  diffs across unrelated files; it did not reach Clippy or unit tests. This is
+  a verification-infrastructure failure, not evidence against the Weyl change.
+  A future Weyl gate must use a clean committed snapshot or a focused script
+  that formats/tests only the owned files before claiming an HPC pass.
+- Phase 2 materialization boundary is now explicit in
+  `weyl_transducer.rs`: `materialize_action`,
+  `materialize_root_permutation`, and `materialize_simple_root_images`.
+  Compact operations do not implicitly construct matrices or root
+  permutations.
+- Materialization regression coverage passes for every element of A2, A1xA1,
+  and B3: simple-root images equal the corresponding projection of the full
+  root permutation. The E6 full 51,840-element matrix-set comparison now also
+  uses `materialize_action` and passes (about 10.9 seconds locally). The
+  transducer suite is now 11/11 and the old `weyl_element` suite remains 15/15.
+- A focused HPC gate was added at `hpc/weyl_focused.sbatch`. It records a JSON
+  report even on failure and runs only `cargo check -p atlas-real-group` plus
+  the Weyl debug/release tests, avoiding unrelated workspace format/lint noise.
+  The first submission, job **3635001**, failed before producing an artifact
+  because its Slurm stdout and worktree were under `/tmp` and were cleaned up;
+  no Cargo/Weyl result was produced. Retry job **3635005** also failed before
+  running because Slurm could not `cd` into the deleted `/tmp` worktree; its
+  persistent stderr records that exact cause. The worktree was moved under
+  persistent project storage and job **3635008** was submitted with `--chdir`
+  there. Job 3635008 **PASSED** (exit 0, 4m23s, Slurm MaxRSS 669372K): check
+  passed and both debug/release Weyl suites passed 56/56. The persistent JSON is
+  `results/weyl-focused/3635005-retry/report.json`; stage logs and GNU-time
+  files are beside it. This gate predates the later `encode_element` round-trip
+  test, which is locally green and still needs the next focused HPC increment.
+- Added the verified legacy-to-compact migration boundary
+  `CompactWeyl::encode_element`: it encodes the legacy element's reduced word,
+  materializes the root permutation back, and rejects any mismatch. Full A2,
+  A1xA1, and B3 round trips pass; the transducer suite is now 12/12 locally.
+- `InvolutionTable` now owns a shared `CompactWeyl` plus a parallel compact
+  shadow vector. The seed is encoded through `encode_element`; each newly
+  discovered cross neighbor is computed through compact right twist followed
+  by C++-style local left multiplication and checked against the legacy root
+  permutation path before insertion. Public records remain unchanged.
+- Full local `atlas-real-group --lib` regression passes 504/504 after this
+  shadow integration. Focused HPC job **3635039** was submitted from the
+  persistent worktree as the Phase 3 table gate. Job **3635039** failed at
+  `cargo check` because the HPC worktree received `involution_table.rs` but not
+  the newer `weyl_transducer.rs`; the persistent compiler log shows missing
+  `CompactWeyl` derives and `encode_element`. Local compilation was green, so
+  this was a sync failure rather than an algorithm/test failure. The complete
+  source pair was resynchronized and retry job **3635056** was submitted; its
+  report is pending.
+
 ## Checkpoint - 2026-08-23c (overload-resolution hot spot found + first fix; corpus diff snippets)
 
 - Perf root cause for the residual per-script gap (median ~4.6s vs oracle

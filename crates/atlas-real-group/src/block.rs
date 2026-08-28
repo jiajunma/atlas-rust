@@ -205,12 +205,12 @@ impl BlockGraph {
                     invariant: "packet involution",
                 },
             )?;
-            let record = table
+            let _record = table
                 .record(id)
                 .ok_or(StructureError::BlockInvariantViolation {
                     invariant: "packet record",
                 })?;
-            let word = record.weyl_element().reduced_word(table.root_system())?;
+            let word = table.weyl_word(id)?;
             let dual = dual_involution(&word, dual_system, &dual_twist, &dual_longest)?;
             let (_, x_count) =
                 graph

@@ -36,9 +36,11 @@ fn build_data(
     count: usize,
     fill: impl FnOnce(&mut [RootId], &mut [RootId]) -> Result<(), StructureError>,
 ) -> Result<Box<[RootId]>, StructureError> {
-    let mut data = try_capacity(count.checked_add(count).ok_or(
-        StructureError::ArithmeticOverflow,
-    )?)?;
+    let mut data = try_capacity(
+        count
+            .checked_add(count)
+            .ok_or(StructureError::ArithmeticOverflow)?,
+    )?;
     data.resize(2 * count, RootId(0));
     let (permutation, inverse) = data.split_at_mut(count);
     fill(permutation, inverse)?;
@@ -131,18 +133,135 @@ impl WeylElement {
                 *slot = RootId(UNSET);
             }
             for (index, image) in permutation.iter().enumerate() {
-                let slot =
-                    inv_buf
-                        .get_mut(image.0)
-                        .ok_or(StructureError::WeylElementInvariantViolation {
-                            invariant: "permutation range",
-                        })?;
+                let slot = inv_buf.get_mut(image.0).ok_or(
+                    StructureError::WeylElementInvariantViolation {
+                        invariant: "permutation range",
+                    },
+                )?;
                 if slot.0 != UNSET {
                     return Err(StructureError::WeylElementInvariantViolation {
                         invariant: "permutation bijectivity",
                     });
                 }
                 *slot = RootId(index);
+            }
+            Ok(())
+        })?;
+        let length = count_length(system, &data[..count]);
+        Ok(Self {
+            data,
+            count,
+            length,
+        })
+    }
+
+    /// Build `left after middle after right` directly in the element's final
+    /// flat storage. This avoids the intermediate composed permutation used
+    /// by the involution-table cross-edge miss path.
+    pub(crate) fn from_composition(
+        system: &RootSystem,
+        left: &[RootId],
+        middle: &[RootId],
+        right: &[RootId],
+    ) -> Result<Self, StructureError> {
+        let count = system.roots().len();
+        if left.len() != count || middle.len() != count || right.len() != count {
+            return Err(StructureError::WeylElementInvariantViolation {
+                invariant: "provenance",
+            });
+        }
+        const UNSET: usize = usize::MAX;
+        let data = build_data(count, |permutation, inverse| {
+            inverse.fill(RootId(UNSET));
+            for index in 0..count {
+                let right_image = right.get(index).filter(|image| image.0 < count).ok_or(
+                    StructureError::WeylElementInvariantViolation {
+                        invariant: "permutation range",
+                    },
+                )?;
+                let middle_image = middle
+                    .get(right_image.0)
+                    .filter(|image| image.0 < count)
+                    .ok_or(StructureError::WeylElementInvariantViolation {
+                        invariant: "permutation range",
+                    })?;
+                let image = *left
+                    .get(middle_image.0)
+                    .filter(|image| image.0 < count)
+                    .ok_or(StructureError::WeylElementInvariantViolation {
+                        invariant: "permutation range",
+                    })?;
+                permutation[index] = image;
+                let inverse_slot = &mut inverse[image.0];
+                if inverse_slot.0 != UNSET {
+                    return Err(StructureError::WeylElementInvariantViolation {
+                        invariant: "permutation bijectivity",
+                    });
+                }
+                *inverse_slot = RootId(index);
+            }
+            Ok(())
+        })?;
+        let length = count_length(system, &data[..count]);
+        Ok(Self {
+            data,
+            count,
+            length,
+        })
+    }
+
+    /// Build `left after w after right` when only the twisted root action
+    /// `theta = w after delta` is stored. Since `delta` is involutive,
+    /// `w(x) = theta(delta(x))`; composition therefore writes
+    /// `left[theta[delta[right[i]]]]` directly into final storage.
+    pub(crate) fn from_twisted_composition(
+        system: &RootSystem,
+        left: &[RootId],
+        theta: &[RootId],
+        delta: &[RootId],
+        right: &[RootId],
+    ) -> Result<Self, StructureError> {
+        let count = system.roots().len();
+        if left.len() != count
+            || theta.len() != count
+            || delta.len() != count
+            || right.len() != count
+        {
+            return Err(StructureError::WeylElementInvariantViolation {
+                invariant: "provenance",
+            });
+        }
+        const UNSET: usize = usize::MAX;
+        let data = build_data(count, |permutation, inverse| {
+            inverse.fill(RootId(UNSET));
+            for index in 0..count {
+                let right_image = right[index].0;
+                let delta_image = delta
+                    .get(right_image)
+                    .filter(|image| image.0 < count)
+                    .ok_or(StructureError::WeylElementInvariantViolation {
+                        invariant: "permutation range",
+                    })?;
+                let theta_image = theta
+                    .get(delta_image.0)
+                    .filter(|image| image.0 < count)
+                    .ok_or(StructureError::WeylElementInvariantViolation {
+                        invariant: "permutation range",
+                    })?;
+                let image = *left
+                    .get(theta_image.0)
+                    .filter(|image| image.0 < count)
+                    .ok_or(StructureError::WeylElementInvariantViolation {
+                        invariant: "permutation range",
+                    })?;
+                permutation[index] = image;
+                let inverse_slot = &mut inverse[image.0];
+                if inverse_slot.0 != UNSET {
+                    return Err(StructureError::WeylElementInvariantViolation {
+                        invariant: "permutation bijectivity",
+                    });
+                }
+                *inverse_slot = RootId(index);
             }
             Ok(())
         })?;
@@ -741,7 +860,10 @@ impl ParabolicPieces {
             }
             levels.push(index);
         }
-        Ok(Self { levels, reflections })
+        Ok(Self {
+            levels,
+            reflections,
+        })
     }
 
     /// The element's piece list in internal-level order: the unique
@@ -791,6 +913,57 @@ impl ParabolicPieces {
                     invariant: "parabolic piece",
                 },
             )?;
+            tail = tail.multiply(system, &minimal.inverse())?;
+        }
+        if !tail.is_identity() {
+            return Err(StructureError::WeylElementInvariantViolation {
+                invariant: "parabolic factorization",
+            });
+        }
+        Ok(pieces)
+    }
+
+    /// Allocation-free form of [`Self::key`] for Atlas's rank-at-most-eight
+    /// compact Weyl representation. Trailing entries are zero, so ordinary
+    /// array comparison is the same lexicographic order as the rank-sized
+    /// legacy vector within one root datum.
+    pub(crate) fn fixed_key(
+        &self,
+        system: &RootSystem,
+        interface: &WeylInterface,
+        element: &WeylElement,
+    ) -> Result<[u16; 8], StructureError> {
+        element.check_provenance(system)?;
+        let rank = system.simple_root_ids().len();
+        if rank > 8 || interface.outward.len() != rank || self.levels.len() != rank {
+            return Err(StructureError::WeylElementInvariantViolation {
+                invariant: "interface provenance",
+            });
+        }
+        let mut pieces = [0_u16; 8];
+        let mut tail = element.clone();
+        for level in (0..rank).rev() {
+            let mut minimal = tail.clone();
+            loop {
+                let mut descended = false;
+                for internal in 0..level {
+                    let generator = interface.outward[internal];
+                    if minimal.has_left_descent(system, generator)? {
+                        minimal = minimal.left_descend(&self.reflections[generator]);
+                        descended = true;
+                        break;
+                    }
+                }
+                if !descended {
+                    break;
+                }
+            }
+            let piece = *self.levels[level].get(&minimal).ok_or(
+                StructureError::WeylElementInvariantViolation {
+                    invariant: "parabolic piece",
+                },
+            )?;
+            pieces[level] = u16::try_from(piece).map_err(|_| StructureError::ArithmeticOverflow)?;
             tail = tail.multiply(system, &minimal.inverse())?;
         }
         if !tail.is_identity() {
@@ -953,6 +1126,56 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn fused_composition_matches_materialized_composition() {
+        let system = b2();
+        let left = WeylElement::simple_reflection(&system, 0).unwrap();
+        let middle = WeylElement::simple_reflection(&system, 1).unwrap();
+        let right = WeylElement::simple_reflection(&system, 0).unwrap();
+        let expected = left
+            .multiply(&system, &middle)
+            .unwrap()
+            .multiply(&system, &right)
+            .unwrap();
+
+        let actual = WeylElement::from_composition(
+            &system,
+            left.image_permutation(),
+            middle.image_permutation(),
+            right.image_permutation(),
+        )
+        .unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn twisted_factor_composition_matches_explicit_weyl_factor() {
+        let system = b2();
+        let left = WeylElement::simple_reflection(&system, 0).unwrap();
+        let middle = WeylElement::simple_reflection(&system, 1).unwrap();
+        let right = WeylElement::simple_reflection(&system, 0).unwrap();
+        let delta: Vec<RootId> = (0..system.roots().len()).map(RootId).collect();
+        let expected = WeylElement::from_composition(
+            &system,
+            left.image_permutation(),
+            middle.image_permutation(),
+            right.image_permutation(),
+        )
+        .unwrap();
+
+        let actual = WeylElement::from_twisted_composition(
+            &system,
+            left.image_permutation(),
+            middle.image_permutation(),
+            &delta,
+            right.image_permutation(),
+        )
+        .unwrap();
+
+        assert_eq!(actual, expected);
     }
 
     #[test]
@@ -1283,5 +1506,39 @@ mod tests {
                 .unwrap(),
             Vec::<usize>::new()
         );
+    }
+
+    #[test]
+    fn fixed_parabolic_key_preserves_values_and_order() {
+        for system in [a2(), b2()] {
+            let interface = WeylInterface::new(system.datum().cartan_matrix()).unwrap();
+            let pieces = ParabolicPieces::build(&system, &interface).unwrap();
+            let elements = closure(&system);
+            let legacy: Vec<Vec<usize>> = elements
+                .iter()
+                .map(|element| pieces.key(&system, &interface, element).unwrap())
+                .collect();
+            let fixed: Vec<[u16; 8]> = elements
+                .iter()
+                .map(|element| pieces.fixed_key(&system, &interface, element).unwrap())
+                .collect();
+            let rank = system.simple_root_ids().len();
+
+            for index in 0..elements.len() {
+                assert_eq!(
+                    fixed[index][..rank],
+                    legacy[index]
+                        .iter()
+                        .map(|&piece| u16::try_from(piece).unwrap())
+                        .collect::<Vec<_>>()
+                );
+                for other in 0..elements.len() {
+                    assert_eq!(
+                        fixed[index].cmp(&fixed[other]),
+                        legacy[index].cmp(&legacy[other])
+                    );
+                }
+            }
+        }
     }
 }
