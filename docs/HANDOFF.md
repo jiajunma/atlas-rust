@@ -28,6 +28,17 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   This was effectively unchanged from **3645670** (`7.925s` vs `5.864s`),
   so compact translated lookup is correct but not the dominant unipotent
   bottleneck. Do not claim a standalone end-to-end speedup from this change.
+- Exact-commit follow-up **3645946** ran commit `1c34563` from a clean HPC
+  worktree and also matched `unipotent_representations_exceptional.at`: Rust
+  `9.196s`, C++ `5.326s` (1.727x), Rust peak RSS `3,702,888KB`, C++
+  `881,300KB` (4.202x). The difference from the dirty-snapshot timing is run
+  variance, not evidence of a lookup speedup or regression; the structural
+  memory gap is unchanged.
+- Full exact-commit pipeline differential **3645947** passed all 360 fixtures
+  with zero pending cases (`compatibility_claim=true`, clean commit
+  `1c34563b480387b09d292717042091ebe2f5fca5`). Slurm completed both jobs with
+  exit `0:0`; batch MaxRSS was `642288K` for 3645946 and `1027100K` for
+  3645947.
 
 ## Checkpoint - Weyl transducer Phase 1 (current session)
 
