@@ -184,14 +184,13 @@ pub fn minimal_torus_part(
     let mut element = TitsElement::new(table, involution, torus_part.clone())?;
     let interface = WeylInterface::new(datum.cartan_matrix())?;
     loop {
-        let record =
-            table
-                .record(element.involution())
-                .ok_or(StructureError::SeedInvariantViolation {
-                    invariant: "synthetic involution coverage",
-                })?;
-        let weyl = record.weyl_element();
-        if weyl.is_identity() {
+        let current = element.involution();
+        if table
+            .weyl_is_identity(current)
+            .ok_or(StructureError::SeedInvariantViolation {
+                invariant: "synthetic involution coverage",
+            })?
+        {
             break;
         }
         // Upstream `WeylGroup::leftDescent` (weyl.cpp:919-928): the first
@@ -199,17 +198,12 @@ pub fn minimal_torus_part(
         // internal left descent is the same generator: the piece list's
         // first nonzero level is exactly the smallest internal level at
         // which the element has a left descent.
-        let mut generator = None;
-        for &candidate in interface.outward() {
-            if weyl.has_left_descent(system, candidate)? {
-                generator = Some(candidate);
-                break;
-            }
-        }
-        let generator = generator.ok_or(StructureError::SeedInvariantViolation {
-            invariant: "left descent",
-        })?;
-        if table.simple_root_kind(element.involution(), generator) == Some(RootKind::Real) {
+        let generator = table
+            .weyl_first_left_descent(current, interface.outward())?
+            .ok_or(StructureError::SeedInvariantViolation {
+                invariant: "left descent",
+            })?;
+        if table.simple_root_kind(current, generator) == Some(RootKind::Real) {
             element = coset.inverse_cayley(table, generator, &element)?.ok_or(
                 StructureError::SeedInvariantViolation {
                     invariant: "inverse Cayley coverage",

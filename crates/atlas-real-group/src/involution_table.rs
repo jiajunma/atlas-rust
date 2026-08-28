@@ -678,6 +678,34 @@ impl InvolutionTable {
         Ok(self.compact_weyl.inner_left_mult(&mut element, generator) < 0)
     }
 
+    pub(crate) fn weyl_first_left_descent(
+        &self,
+        id: InvolutionId,
+        generators: &[usize],
+    ) -> Result<Option<usize>, StructureError> {
+        let element = self
+            .records
+            .get(id.0)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: id.0,
+                upper_bound: self.records.len(),
+            })?
+            .element;
+        for &generator in generators {
+            if generator >= self.twist.len() {
+                return Err(StructureError::IndexOutOfRange {
+                    index: generator,
+                    upper_bound: self.twist.len(),
+                });
+            }
+            let mut candidate = element;
+            if self.compact_weyl.inner_left_mult(&mut candidate, generator) < 0 {
+                return Ok(Some(generator));
+            }
+        }
+        Ok(None)
+    }
+
     pub(crate) fn weyl_right_length_change(
         &self,
         id: InvolutionId,
@@ -1268,6 +1296,26 @@ mod tests {
                         .has_left_descent(table.root_system(), generator)
                         .unwrap()
                 );
+            }
+        }
+    }
+
+    #[test]
+    fn b2_compact_first_left_descent_respects_generator_order() {
+        let (inner_class, classification) = context(vec![vec![2, -2], vec![-1, 2]], None, 8, 8);
+        let table = filled_table(&inner_class, &classification, 8);
+        let orders = [vec![0_usize, 1], vec![1_usize, 0]];
+
+        for index in 0..table.involution_count() {
+            let id = InvolutionId(index);
+            let legacy = table.record(id).unwrap().weyl_element();
+            for order in &orders {
+                let expected = order.iter().copied().find(|&generator| {
+                    legacy
+                        .has_left_descent(table.root_system(), generator)
+                        .unwrap()
+                });
+                assert_eq!(table.weyl_first_left_descent(id, order).unwrap(), expected);
             }
         }
     }
