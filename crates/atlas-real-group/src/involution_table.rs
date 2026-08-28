@@ -1386,6 +1386,42 @@ mod tests {
     }
 
     #[test]
+    fn compact_dual_lookup_matches_legacy_dual_involution() {
+        let (inner_class, classification) = context(vec![vec![2, -1], vec![-1, 2]], None, 6, 6);
+        let table = filled_table(&inner_class, &classification, 6);
+        let longest = table.compact_weyl.longest();
+        let mut legacy_longest = WeylElement::identity(table.root_system()).unwrap();
+        for generator in table.compact_weyl.element_word(&longest) {
+            legacy_longest = legacy_longest
+                .right_multiply_simple(table.root_system(), generator)
+                .unwrap()
+                .0;
+        }
+
+        for index in 0..table.involution_count() {
+            let id = InvolutionId(index);
+            let word = table.weyl_word(id).unwrap();
+            let expected = dual_involution(&word, table.root_system(), &table.twist, &legacy_longest)
+                .unwrap();
+            let expected_id = table
+                .records
+                .iter()
+                .position(|record| record.weyl_element() == &expected)
+                .map(InvolutionId);
+            assert_eq!(
+                table.weyl_dual_lookup(&word, &table.twist).unwrap(),
+                expected_id
+            );
+        }
+
+        assert!(matches!(
+            table.weyl_dual_lookup(&[table.twist.len()], &table.twist),
+            Err(StructureError::IndexOutOfRange { index, upper_bound })
+                if index == table.twist.len() && upper_bound == table.twist.len()
+        ));
+    }
+
+    #[test]
     fn b2_compact_first_left_descent_respects_generator_order() {
         let (inner_class, classification) = context(vec![vec![2, -2], vec![-1, 2]], None, 8, 8);
         let table = filled_table(&inner_class, &classification, 8);
