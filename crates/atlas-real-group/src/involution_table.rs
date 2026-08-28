@@ -825,6 +825,33 @@ impl InvolutionTable {
         Ok(self.compact_weyl.element_word(element))
     }
 
+    /// Resolve the dual of an involution word without materializing a legacy
+    /// root permutation. The duality starts at the dual longest element and
+    /// replays the external word backwards with the dual distinguished twist.
+    pub(crate) fn weyl_dual_lookup(
+        &self,
+        word: &[usize],
+        dual_twist: &[usize],
+    ) -> Result<Option<InvolutionId>, StructureError> {
+        let mut current = self.compact_weyl.longest();
+        for &generator in word.iter().rev() {
+            let twisted = *dual_twist
+                .get(generator)
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: generator,
+                    upper_bound: dual_twist.len(),
+                })?;
+            if twisted >= dual_twist.len() {
+                return Err(StructureError::IndexOutOfRange {
+                    index: twisted,
+                    upper_bound: dual_twist.len(),
+                });
+            }
+            self.compact_weyl.inner_mult(&mut current, twisted);
+        }
+        Ok(self.compact_index.get(&current).copied())
+    }
+
     /// Translate a stored Weyl factor by an external diagram permutation and
     /// resolve it through the compact table index. This is the hot-path
     /// counterpart of `WeylGroup::translation`: it performs no root
@@ -1144,8 +1171,8 @@ fn push_record(
 #[cfg(test)]
 mod tests {
     use crate::{
-        AdjointFiberBudget, BasedRootDatum, CartanClassificationBudget, Coweight,
-        dual_involution, LatticeInvolution, ModTwoVector,
+        dual_involution, AdjointFiberBudget, BasedRootDatum, CartanClassificationBudget, Coweight,
+        LatticeInvolution, ModTwoVector,
     };
 
     use super::*;
@@ -1401,8 +1428,8 @@ mod tests {
         for index in 0..table.involution_count() {
             let id = InvolutionId(index);
             let word = table.weyl_word(id).unwrap();
-            let expected = dual_involution(&word, table.root_system(), &table.twist, &legacy_longest)
-                .unwrap();
+            let expected =
+                dual_involution(&word, table.root_system(), &table.twist, &legacy_longest).unwrap();
             let expected_id = table
                 .records
                 .iter()

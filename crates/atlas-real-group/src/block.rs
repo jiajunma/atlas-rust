@@ -20,8 +20,6 @@
 //! the dual form's KGB contributes an empty packet, exactly like upstream's
 //! `KGB_base::tauPacket` returning `(0,0)` there (gkmod/kgb.cpp:131-140).
 
-use std::collections::HashMap;
-
 use crate::grading::try_capacity;
 use crate::{
     InnerClass, InvolutionTable, KgbGraph, KgbId, KgbStatus, RootSystem, StructureError,
@@ -172,32 +170,39 @@ impl BlockGraph {
         {
             return Err(StructureError::DatumMismatch);
         }
-        let dual_system = dual_table.root_system();
         // dual_tW: the dual distinguished twist and the dual longest element.
         let dual_twist = dual_inner_class.generator_twist()?;
-        let longest = crate::dual::longest_action(dual_inner_class, weyl_budget)?;
-        let dual_longest = WeylElement::from_action(dual_system, &longest)?;
+        // Keep the explicit longest-action enumeration as the upstream budget
+        // and error gate; compact lookup below reuses its equivalent encoded
+        // value without retaining a root permutation.
+        crate::dual::longest_action(dual_inner_class, weyl_budget)?;
 
-        // The dual form's packets, keyed by their twisted involution.
-        let mut dual_position: HashMap<WeylElement, usize> = HashMap::new();
+        // The dual form's packets, keyed by compact involution id.
+        let mut dual_position = vec![None; dual_table.involution_count()];
         for position in 0..dual_graph.packet_count() {
             let id = dual_graph.packet_involution(position).ok_or(
                 StructureError::BlockInvariantViolation {
                     invariant: "dual packet involution",
                 },
             )?;
-            let record = dual_table
+            dual_table
                 .record(id)
                 .ok_or(StructureError::BlockInvariantViolation {
                     invariant: "dual packet record",
                 })?;
-            dual_position.insert(record.weyl_element().clone(), position);
+            let slot =
+                dual_position
+                    .get_mut(id.0)
+                    .ok_or(StructureError::BlockInvariantViolation {
+                        invariant: "dual packet involution index",
+                    })?;
+            *slot = Some(position);
         }
 
         // The bijection tW -> dual_tW tabulated over the primal packets, and
         // the fibred-product size (blocks.cpp:535-543): a missing dual packet
         // is upstream's empty `tauPacket`, contributing zero pairs.
-        let mut dual_w: Vec<WeylElement> = try_capacity(graph.packet_count())?;
+        let mut dual_w: Vec<Option<crate::InvolutionId>> = try_capacity(graph.packet_count())?;
         let mut size = 0_usize;
         for position in 0..graph.packet_count() {
             let id = graph.packet_involution(position).ok_or(
@@ -205,30 +210,31 @@ impl BlockGraph {
                     invariant: "packet involution",
                 },
             )?;
-            let _record = table
+            table
                 .record(id)
                 .ok_or(StructureError::BlockInvariantViolation {
                     invariant: "packet record",
                 })?;
             let word = table.weyl_word(id)?;
-            let dual = dual_involution(&word, dual_system, &dual_twist, &dual_longest)?;
+            let dual = dual_table.weyl_dual_lookup(&word, &dual_twist)?;
             let (_, x_count) =
                 graph
                     .tau_packet(position)
                     .ok_or(StructureError::BlockInvariantViolation {
                         invariant: "tau packet",
                     })?;
-            let y_count = match dual_position.get(&dual) {
-                Some(&dual_pos) => {
-                    dual_graph
-                        .tau_packet(dual_pos)
-                        .ok_or(StructureError::BlockInvariantViolation {
-                            invariant: "dual tau packet",
-                        })?
-                        .1
-                }
-                None => 0,
-            };
+            let y_count =
+                match dual.and_then(|dual_id| dual_position.get(dual_id.0).copied().flatten()) {
+                    Some(dual_pos) => {
+                        dual_graph
+                            .tau_packet(dual_pos)
+                            .ok_or(StructureError::BlockInvariantViolation {
+                                invariant: "dual tau packet",
+                            })?
+                            .1
+                    }
+                    None => 0,
+                };
             size = size
                 .checked_add(
                     x_count
@@ -246,8 +252,11 @@ impl BlockGraph {
         let mut descent: Vec<BlockDescent> = try_capacity(size * rank.max(1))?;
         let mut lengths: Vec<usize> = try_capacity(size)?;
         for (position, dual) in dual_w.iter().enumerate() {
-            let Some(&dual_pos) = dual_position.get(dual) else {
+            let Some(dual_id) = dual else {
                 continue; // empty dual packet: upstream's (0,0) tauPacket
+            };
+            let Some(&Some(dual_pos)) = dual_position.get(dual_id.0) else {
+                continue; // compact dual absent from this form's packet set
             };
             let (x_start, x_count) =
                 graph
