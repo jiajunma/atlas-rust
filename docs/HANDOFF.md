@@ -4,6 +4,62 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-29b (compact BlockGraph dual-packet pairing)
+
+- Production commit `8e7d94d4` adds
+  `InvolutionTable::weyl_dual_lookup`: start at compact longest, replay the
+  primal word in reverse through the dual twist, and resolve through
+  `compact_index`. `BlockGraph::build` now indexes dual packets with a
+  fallibly allocated `Vec<Option<usize>>` keyed by `InvolutionId`, rather than
+  cloning/hashing one full `WeylElement` per dual packet and retaining another
+  full element per primal packet. The existing `longest_action(...,
+  weyl_budget)` call remains as the budget/error gate.
+- TDD evidence: setup RED job **3647192** exposed a missing test import;
+  corrected RED job **3647195** then failed only because
+  `weyl_dual_lookup` was absent. GREEN focused job **3647203** passed Weyl
+  (`62/62`), InvolutionTable (`20/20`), and KGB (`11/11`) in debug and
+  release; block-filter job **3647204** passed `60/60` in both profiles. An
+  independent code review approved the final change with no actionable
+  findings. Follow-up test commit `9b83d669` adds nontrivial A2 node-swap
+  twist and mapped-generator bounds coverage.
+- Exact production-commit focused job **3647607** passed the same counts from
+  clean commit `8e7d94d4cd908076089ae2c6c8a14afb20bccbd1`; block job
+  **3647608** passed `60/60` in debug and release. Fat corpus job **3647609**
+  matched `unipotent_representations_exceptional.at`: Rust `8.414s`, C++
+  `4.746s` (1.773x); Rust peak RSS `3,706,016KB`, C++ `881,080KB` (4.206x).
+  This is unchanged from the preceding run band; the improvement is removal
+  of transient full-permutation packet keys, not a measurable corpus speedup.
+- Full exact-commit pipeline **3647610** passed all 360 fixtures with zero
+  pending cases, verified clean source state, and complete wall/RSS fields
+  (`compatibility_claim=true`). Next make `ExtParam` ID-primary before
+  removing `InvolutionRecord::legacy_element` and its permutation index.
+
+## Checkpoint - 2026-08-29a (compact GlobalKGB canonical words)
+
+- Commit `186bee52` adds
+  `InvolutionTable::weyl_canonical_involution_expr` and moves GlobalKGB's
+  printed involution-word generation off `record.weyl_element()`. It follows
+  `weyl.cpp:1359-1385`: choose the first external left descent, emit `s` for
+  twisted commutation or `!s` for conjugation, and reduce the record-owned
+  compact `WeylElt` to the distinguished involution. Three independent
+  read-only reviews found no actionable issue.
+- TDD evidence: RED job **3647088** failed only because the compact helper was
+  missing. Dirty GREEN focused job **3647138** passed Weyl (`62/62`),
+  InvolutionTable (`19/19`), and KGB (`11/11`) in debug and release;
+  GlobalKGB job **3647140** passed `4/4`.
+- Exact-commit focused job **3647184** passed the same counts from clean commit
+  `186bee52d39b39d2145a92bac3860a931c07a8f2`; exact GlobalKGB job
+  **3647185** passed `4/4` in debug and release. Fat corpus job **3647186**
+  matched `unipotent_representations_exceptional.at`: Rust `8.461s`, C++
+  `4.738s` (1.786x); Rust peak RSS `3,708,008KB`, C++ `881,300KB` (4.207x).
+  This remains within prior run variance, so it is a migration step rather
+  than a standalone speedup claim.
+- Full exact-commit pipeline **3647187** passed all 360 fixtures with zero
+  pending cases, verified clean source state, and wall/RSS benchmark fields on
+  every fixture (`compatibility_claim=true`). GlobalKGB now has no production
+  `record.weyl_element()` consumer. The next measured slice is BlockGraph
+  dual-packet pairing, which still cloned and hashed full Weyl permutations.
+
 ## Checkpoint - 2026-08-28d (compact GlobalKGB twisted commutation)
 
 - Commit `0f4bc42` adds compact

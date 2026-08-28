@@ -240,9 +240,24 @@ enumeration and permutation-level optimizations.
   focused job 3646940 passed Weyl 62/62, InvolutionTable 18/18, and KGB 11/11
   in debug and release; unipotent differential 3646938 matched at 1.748x wall
   time and 4.204x RSS; full pipeline differential 3647072 passed 360/360.
-- The next internal GlobalKGB consumer is printed canonical involution-word
-  generation. External APIs keep explicit materialization boundaries until
-  their remaining consumers are migrated.
+- GlobalKGB printed canonical involution words now reduce the compact record
+  directly. Exact focused job 3647184 passed Weyl 62/62, InvolutionTable
+  19/19, and KGB 11/11 in debug and release; GlobalKGB job 3647185 passed 4/4
+  in both profiles; unipotent differential 3647186 matched at 1.786x wall
+  time and 4.207x RSS; full pipeline 3647187 passed 360/360.
+- The next production consumer is BlockGraph dual-packet pairing. Keep its
+  `longest_action` budget/error gate, but replace full-permutation packet keys
+  with compact table IDs. External APIs keep explicit materialization
+  boundaries until their remaining consumers are migrated.
+- BlockGraph dual-packet pairing now resolves compact dual IDs and stores only
+  packet positions. Exact focused job 3647607 passed Weyl 62/62,
+  InvolutionTable 20/20, and KGB 11/11 in debug and release; block job 3647608
+  passed 60/60 in both profiles; unipotent differential 3647609 matched at
+  1.773x wall time and 4.206x RSS; full pipeline 3647610 passed 360/360.
+- The next migration target is `ExtParam`: make its involution ID primary and
+  materialize a legacy permutation only at explicit compatibility boundaries.
+  Removing `InvolutionRecord::legacy_element` follows after those callers are
+  migrated.
 
 ## 7. Phase 4: Migrate Tits, KGB, and Remaining Real-Group Callers
 
