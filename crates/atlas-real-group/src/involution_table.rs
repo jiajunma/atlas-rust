@@ -852,6 +852,34 @@ impl InvolutionTable {
         Ok(self.compact_index.get(&current).copied())
     }
 
+    /// Left-multiply a stored compact Weyl factor by an external word and
+    /// resolve only the final product through the involution-table index.
+    /// Intermediate products need not themselves be twisted involutions.
+    pub(crate) fn weyl_left_word_lookup(
+        &self,
+        id: InvolutionId,
+        word: &[usize],
+    ) -> Result<Option<InvolutionId>, StructureError> {
+        let mut current = self
+            .records
+            .get(id.0)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: id.0,
+                upper_bound: self.records.len(),
+            })?
+            .element;
+        for &generator in word.iter().rev() {
+            if generator >= self.twist.len() {
+                return Err(StructureError::IndexOutOfRange {
+                    index: generator,
+                    upper_bound: self.twist.len(),
+                });
+            }
+            self.compact_weyl.inner_left_mult(&mut current, generator);
+        }
+        Ok(self.compact_index.get(&current).copied())
+    }
+
     /// Translate a stored Weyl factor by an external diagram permutation and
     /// resolve it through the compact table index. This is the hot-path
     /// counterpart of `WeylGroup::translation`: it performs no root
