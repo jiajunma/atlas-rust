@@ -711,7 +711,7 @@ impl InvolutionTable {
         id: InvolutionId,
         generator: usize,
     ) -> Result<bool, StructureError> {
-        let mut element = self
+        let element = self
             .records
             .get(id.0)
             .ok_or(StructureError::IndexOutOfRange {
@@ -719,6 +719,14 @@ impl InvolutionTable {
                 upper_bound: self.records.len(),
             })?
             .element;
+        self.compact_has_twisted_commutation(element, generator)
+    }
+
+    fn compact_has_twisted_commutation(
+        &self,
+        mut element: WeylElt,
+        generator: usize,
+    ) -> Result<bool, StructureError> {
         let twisted_generator =
             *self
                 .twist
@@ -738,6 +746,49 @@ impl InvolutionTable {
             .inner_mult(&mut element, twisted_generator);
         let has_left_descent = self.compact_weyl.inner_left_mult(&mut element, generator) < 0;
         Ok((change > 0) == has_left_descent)
+    }
+
+    /// Compact counterpart of upstream
+    /// `TwistedWeylGroup::canonical_involution_expr` (weyl.cpp:1359-1385).
+    pub(crate) fn weyl_canonical_involution_expr(
+        &self,
+        id: InvolutionId,
+    ) -> Result<Vec<i32>, StructureError> {
+        let mut current = self
+            .records
+            .get(id.0)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: id.0,
+                upper_bound: self.records.len(),
+            })?
+            .element;
+        let mut result = try_capacity(self.compact_weyl.length(&current))?;
+        while current != self.compact_weyl.identity() {
+            let mut descent = None;
+            for generator in 0..self.twist.len() {
+                let mut reduced = current;
+                if self.compact_weyl.inner_left_mult(&mut reduced, generator) < 0 {
+                    descent = Some((generator, reduced));
+                    break;
+                }
+            }
+            let (generator, reduced) =
+                descent.ok_or(StructureError::InvolutionTableInvariantViolation {
+                    invariant: "canonical involution left descent",
+                })?;
+            let signed =
+                i32::try_from(generator).map_err(|_| StructureError::ArithmeticOverflow)?;
+            if self.compact_has_twisted_commutation(current, generator)? {
+                result.push(signed);
+                current = reduced;
+            } else {
+                result.push(!signed);
+                current = reduced;
+                self.compact_weyl
+                    .inner_mult(&mut current, self.twist[generator]);
+            }
+        }
+        Ok(result)
     }
 
     pub(crate) fn weyl_right_length_change(
@@ -1389,6 +1440,37 @@ mod tests {
             Err(StructureError::IndexOutOfRange { index, upper_bound })
                 if index == usize::MAX && upper_bound == table.involution_count()
         ));
+    }
+
+    #[test]
+    fn compact_canonical_involution_expr_matches_legacy_words() {
+        let cases = [
+            (vec![vec![2, -2], vec![-1, 2]], None, 8, 8),
+            (
+                vec![vec![2, -1], vec![-1, 2]],
+                Some(vec![vec![0, 1], vec![1, 0]]),
+                6,
+                6,
+            ),
+        ];
+
+        for (cartan, distinguished, roots, weyl) in cases {
+            let (inner_class, classification) = context(cartan, distinguished, roots, weyl);
+            let table = filled_table(&inner_class, &classification, weyl);
+            for index in 0..table.involution_count() {
+                let id = InvolutionId(index);
+                let expected = inner_class
+                    .canonical_involution_expr(table.record(id).unwrap().weyl_element())
+                    .unwrap();
+                assert_eq!(table.weyl_canonical_involution_expr(id).unwrap(), expected);
+            }
+
+            assert!(matches!(
+                table.weyl_canonical_involution_expr(InvolutionId(usize::MAX)),
+                Err(StructureError::IndexOutOfRange { index, upper_bound })
+                    if index == usize::MAX && upper_bound == table.involution_count()
+            ));
+        }
     }
 
     #[test]

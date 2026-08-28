@@ -723,7 +723,7 @@ impl GlobalKgb {
                     .0,
             );
             involution_words.push(format_involution_word(
-                &inner_class.canonical_involution_expr(record.weyl_element())?,
+                &table.weyl_canonical_involution_expr(id)?,
             ));
         }
 
