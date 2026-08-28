@@ -1145,7 +1145,7 @@ fn push_record(
 mod tests {
     use crate::{
         AdjointFiberBudget, BasedRootDatum, CartanClassificationBudget, Coweight,
-        LatticeInvolution, ModTwoVector,
+        dual_involution, LatticeInvolution, ModTwoVector,
     };
 
     use super::*;
