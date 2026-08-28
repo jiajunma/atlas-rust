@@ -4,6 +4,42 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-28d (compact GlobalKGB twisted commutation)
+
+- Commit `0f4bc42` adds compact
+  `InvolutionTable::weyl_has_twisted_commutation` and moves GlobalKGB's
+  involution-generation decision off `record.weyl_element()`. The helper is
+  the direct `WeylElt` port of `weyl.cpp:1306-1312`: copy `w`, right-multiply
+  by `delta(s)`, test `s` as a left descent of the result, and compare signs.
+  Identity lookup and printed involution words remain explicit compatibility
+  boundaries for the next slice.
+- TDD evidence: dirty RED job **3646807** failed only because the compact
+  helper did not exist. Dirty GREEN focused job **3646831** passed Weyl
+  (`62/62`), InvolutionTable (`18/18`), and KGB (`11/11`) in debug and
+  release; GlobalKGB job **3646876** passed `4/4`. Two read-only reviews found
+  no actionable issue. The new A2 node-swap test compares every involution and
+  generator with the legacy decision and pins invalid-ID precedence.
+- Exact-commit focused job **3646940** passed the same counts from clean commit
+  `0f4bc427288e6575c52d8286f0790187c1e60393`. Exact fat corpus job
+  **3646938** matched `unipotent_representations_exceptional.at`: Rust
+  `8.383s`, C++ `4.797s` (1.748x); Rust peak RSS `3,705,124KB`, C++
+  `881,296KB` (4.204x). This is unchanged from the preceding compact-primary
+  runs, so it is a correctness/migration step rather than a claimed speedup.
+- Full exact-commit pipeline differential **3647072** passed all 360 fixtures
+  with zero pending cases and benchmark fields on all 360
+  (`compatibility_claim=true`, exact clean commit `0f4bc42`). Initial job
+  **3646939** correctly rejected the submit tree before running fixtures:
+  concurrent focused job **3646940** had placed its custom `target-focused/`
+  inside the source worktree, outside the repository's `/target` ignore rule,
+  changing detected state to dirty while the fat job waited in queue.
+  Prevention: source-state-verified jobs get an exclusive clean worktree, and
+  every custom `CARGO_TARGET_DIR` must be outside that worktree (or use the
+  already ignored root `target/`). Retry **3647072** used a new detached clean
+  worktree and passed.
+- Next remove GlobalKGB's remaining production `record.weyl_element()` by
+  generating `canonical_involution_expr` directly from the record-owned
+  compact value, then prioritize consumers by measured end-to-end benefit.
+
 ## Checkpoint - 2026-08-28c (compact minimal-torus reduction)
 
 - Commit `45a37a8` adds `InvolutionTable::weyl_first_left_descent` and moves

@@ -236,9 +236,13 @@ enumeration and permutation-level optimizations.
   job 3646081 passed Weyl 62/62, InvolutionTable 17/17, and KGB 11/11 in both
   debug and release; minimal-torus job 3646082 passed 4/4; full pipeline
   differential 3646083 passed 360/360 fixtures with zero pending cases.
-- The next internal consumer is GlobalKGB twisted commutation. External
-  formatting and APIs keep an explicit materialization boundary until the
-  remaining consumers are migrated.
+- GlobalKGB twisted commutation now runs on the compact record value. Exact
+  focused job 3646940 passed Weyl 62/62, InvolutionTable 18/18, and KGB 11/11
+  in debug and release; unipotent differential 3646938 matched at 1.748x wall
+  time and 4.204x RSS; full pipeline differential 3647072 passed 360/360.
+- The next internal GlobalKGB consumer is printed canonical involution-word
+  generation. External APIs keep explicit materialization boundaries until
+  their remaining consumers are migrated.
 
 ## 7. Phase 4: Migrate Tits, KGB, and Remaining Real-Group Callers
 
