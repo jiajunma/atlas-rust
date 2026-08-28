@@ -59,7 +59,8 @@ impl InvolutionTableBudget {
 /// path-transported `(1-theta)X^*` image-basis pair and dedup subspace.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InvolutionRecord {
-    element: WeylElement,
+    element: WeylElt,
+    legacy_element: WeylElement,
     involution: TwistedInvolution,
     mod_space: ModTwoSubspace,
     theta_plus_one_rho: Weight,
@@ -70,7 +71,11 @@ pub struct InvolutionRecord {
 
 impl InvolutionRecord {
     pub fn weyl_element(&self) -> &WeylElement {
-        &self.element
+        &self.legacy_element
+    }
+
+    pub(crate) fn compact_weyl_element(&self) -> WeylElt {
+        self.element
     }
 
     pub fn twisted_involution(&self) -> &TwistedInvolution {
@@ -202,6 +207,53 @@ fn compose_permutation(
     Ok(composed)
 }
 
+/// Compare the compact and compatibility representations without allocating
+/// a word or a full root permutation. A Weyl element is determined by its
+/// simple-root images; applying the elected word to one root runs in reverse
+/// word order because the word is accumulated by right multiplication.
+fn compact_matches_legacy(
+    compact_weyl: &CompactWeyl,
+    reflections: &[WeylElement],
+    root_system: &RootSystem,
+    compact: &WeylElt,
+    legacy: &WeylElement,
+) -> Result<bool, StructureError> {
+    let simple_roots = root_system.simple_root_ids();
+    if reflections.len() != simple_roots.len() || compact_weyl.d_out().len() != simple_roots.len() {
+        return Err(StructureError::RankMismatch {
+            expected: simple_roots.len(),
+            actual: reflections.len(),
+        });
+    }
+    if compact_weyl.length(compact) != legacy.length() {
+        return Ok(false);
+    }
+    for &simple_root in simple_roots {
+        let mut image = simple_root;
+        for piece_index in (0..simple_roots.len()).rev() {
+            for &local in compact_weyl
+                .word_of_piece(piece_index, compact[piece_index])
+                .iter()
+                .rev()
+            {
+                let internal = compact_weyl.piece_offset(piece_index) + local;
+                let external = *compact_weyl
+                    .d_out()
+                    .get(internal)
+                    .ok_or(StructureError::InvalidRootAutomorphism)?;
+                image = reflections
+                    .get(external)
+                    .and_then(|reflection| reflection.image(image))
+                    .ok_or(StructureError::InvalidRootAutomorphism)?;
+            }
+        }
+        if legacy.image(simple_root) != Some(image) {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
 /// The involution table: per-Cartan contiguous orbit slices of twisted
 /// involutions, shared across the real forms of one inner class.
 #[derive(Clone, Debug)]
@@ -210,7 +262,6 @@ pub struct InvolutionTable {
     budget: InvolutionTableBudget,
     twist: Vec<usize>,
     compact_weyl: CompactWeyl,
-    compact_elements: Vec<WeylElt>,
     compact_index: HashMap<WeylElt, InvolutionId, PermutationHasherBuilder>,
     reflections: Vec<WeylElement>,
     reflection_actions: Vec<WeylAction>,
@@ -299,7 +350,6 @@ impl InvolutionTable {
             budget,
             twist,
             compact_weyl,
-            compact_elements: Vec::new(),
             compact_index: HashMap::default(),
             reflections,
             reflection_actions,
@@ -354,11 +404,6 @@ impl InvolutionTable {
             .map_err(|_| StructureError::AllocationFailed {
                 requested: expected,
             })?;
-        self.compact_elements.try_reserve(expected).map_err(|_| {
-            StructureError::AllocationFailed {
-                requested: expected,
-            }
-        })?;
         self.compact_index
             .try_reserve(expected)
             .map_err(|_| StructureError::AllocationFailed {
@@ -376,7 +421,7 @@ impl InvolutionTable {
             &self.reflection_actions,
             &seed_element,
         )?;
-        let seed_w_length = seed_element.length();
+        let seed_w_length = self.compact_weyl.length(&seed_compact);
         let decomposition = CayleyCrossDecomposition::build(
             &self.inner_class,
             representative,
@@ -397,15 +442,18 @@ impl InvolutionTable {
             &self.inner_class,
             &self.budget,
             &self.two_rho,
+            &self.compact_weyl,
+            &self.reflections,
             &mut self.records,
             &mut self.index,
+            seed_compact,
             seed_element,
+            seed_w_length,
             representative.weyl_action().clone(),
             length_sum / 2,
             None,
             None,
         )?;
-        self.compact_elements.push(seed_compact);
         if let Some(existing) = self.compact_index.insert(seed_compact, InvolutionId(start)) {
             if existing != InvolutionId(start) {
                 return Err(StructureError::InvolutionTableInvariantViolation {
@@ -432,7 +480,7 @@ impl InvolutionTable {
                 // The composed neighbor `s * w * twist(s)`, as permutations:
                 // `composed[i] = left[current[right[i]]]`.
                 let (left, current, right) = {
-                    let current = self.records[cursor].element.image_permutation();
+                    let current = self.records[cursor].legacy_element.image_permutation();
                     let left = self.reflections[generator].image_permutation();
                     let right = self.reflections[self.twist[generator]].image_permutation();
                     (left, current, right)
@@ -458,7 +506,7 @@ impl InvolutionTable {
                 // The compact transition is the hot-path result. Re-encoding
                 // the materialized permutation is retained as a debug/test
                 // invariant, but must not tax release KGB construction.
-                let mut compact_neighbor = self.compact_elements[cursor];
+                let mut compact_neighbor = self.records[cursor].element;
                 self.compact_weyl
                     .inner_mult(&mut compact_neighbor, self.twist[generator]);
                 self.compact_weyl
@@ -494,10 +542,11 @@ impl InvolutionTable {
                         });
                     }
                 }
+                let neighbor_w_length = self.compact_weyl.length(&compact_neighbor);
                 let new_length = stepped_length(
                     self.records[cursor].involution_length,
-                    self.records[cursor].element.length(),
-                    neighbor.length(),
+                    self.records[cursor].weyl_length,
+                    neighbor_w_length,
                 )?;
                 // The same product `s_g * w * s_{twist(g)}` at the matrix
                 // level, by reflection sparsity (rank^2 per compose instead
@@ -525,15 +574,18 @@ impl InvolutionTable {
                     &self.inner_class,
                     &self.budget,
                     &self.two_rho,
+                    &self.compact_weyl,
+                    &self.reflections,
                     &mut self.records,
                     &mut self.index,
+                    compact_neighbor,
                     neighbor,
+                    neighbor_w_length,
                     new_action,
                     new_length,
                     Some(transported),
                     Some(transported_space),
                 )?;
-                self.compact_elements.push(compact_neighbor);
                 if let Some(existing) = self.compact_index.insert(compact_neighbor, id) {
                     if existing != id {
                         return Err(StructureError::InvolutionTableInvariantViolation {
@@ -576,7 +628,9 @@ impl InvolutionTable {
     /// C++ `WeylElt::pieces` key stored alongside each involution record.
     /// This is the upstream tie-break representation used by KGB sorting.
     pub(crate) fn compact_key(&self, id: InvolutionId) -> Option<[u8; 8]> {
-        self.compact_elements.get(id.0).copied()
+        self.records
+            .get(id.0)
+            .map(InvolutionRecord::compact_weyl_element)
     }
 
     /// Recover the Weyl factor from `theta = w after delta` without
@@ -597,9 +651,9 @@ impl InvolutionTable {
     }
 
     pub(crate) fn weyl_is_identity(&self, id: InvolutionId) -> Option<bool> {
-        self.compact_elements
+        self.records
             .get(id.0)
-            .map(|element| *element == self.compact_weyl.identity())
+            .map(|record| record.element == self.compact_weyl.identity())
     }
 
     pub(crate) fn weyl_has_left_descent(
@@ -613,14 +667,14 @@ impl InvolutionTable {
                 upper_bound: self.twist.len(),
             });
         }
-        let mut element =
-            *self
-                .compact_elements
-                .get(id.0)
-                .ok_or(StructureError::IndexOutOfRange {
-                    index: id.0,
-                    upper_bound: self.compact_elements.len(),
-                })?;
+        let mut element = self
+            .records
+            .get(id.0)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: id.0,
+                upper_bound: self.records.len(),
+            })?
+            .element;
         Ok(self.compact_weyl.inner_left_mult(&mut element, generator) < 0)
     }
 
@@ -635,25 +689,26 @@ impl InvolutionTable {
                 upper_bound: self.twist.len(),
             });
         }
-        let mut element =
-            *self
-                .compact_elements
-                .get(id.0)
-                .ok_or(StructureError::IndexOutOfRange {
-                    index: id.0,
-                    upper_bound: self.compact_elements.len(),
-                })?;
+        let mut element = self
+            .records
+            .get(id.0)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: id.0,
+                upper_bound: self.records.len(),
+            })?
+            .element;
         Ok(self.compact_weyl.inner_mult(&mut element, generator))
     }
 
     pub(crate) fn weyl_word(&self, id: InvolutionId) -> Result<Vec<usize>, StructureError> {
-        let element = self
-            .compact_elements
+        let element = &self
+            .records
             .get(id.0)
             .ok_or(StructureError::IndexOutOfRange {
                 index: id.0,
-                upper_bound: self.compact_elements.len(),
-            })?;
+                upper_bound: self.records.len(),
+            })?
+            .element;
         Ok(self.compact_weyl.element_word(element))
     }
 
@@ -667,13 +722,14 @@ impl InvolutionTable {
         id: InvolutionId,
         twist: &[usize],
     ) -> Result<Option<InvolutionId>, StructureError> {
-        let element = self
-            .compact_elements
+        let element = &self
+            .records
             .get(id.0)
             .ok_or(StructureError::IndexOutOfRange {
                 index: id.0,
-                upper_bound: self.compact_elements.len(),
-            })?;
+                upper_bound: self.records.len(),
+            })?
+            .element;
         let translated = self.compact_weyl.try_apply_twist(element, twist)?;
         Ok(self.compact_index.get(&translated).copied())
     }
@@ -727,7 +783,7 @@ impl InvolutionTable {
                     index: generator,
                     upper_bound: self.reflections.len(),
                 })?;
-        let current = record.element.image_permutation();
+        let current = record.legacy_element.image_permutation();
         let left = reflection.image_permutation();
         if self.index.packed {
             let probe = DedupKey::Packed(self.index.pack(|simple| {
@@ -736,7 +792,8 @@ impl InvolutionTable {
             }));
             return Ok(self.index.get(&probe));
         }
-        let product = reflection.multiply(self.inner_class.root_system(), &record.element)?;
+        let product =
+            reflection.multiply(self.inner_class.root_system(), &record.legacy_element)?;
         Ok(self
             .index
             .get(&self.index.key_of(product.image_permutation())))
@@ -877,9 +934,13 @@ fn push_record(
     inner_class: &InnerClass,
     budget: &InvolutionTableBudget,
     two_rho: &Weight,
+    compact_weyl: &CompactWeyl,
+    reflections: &[WeylElement],
     records: &mut Vec<InvolutionRecord>,
     index: &mut DedupIndex,
-    element: WeylElement,
+    element: WeylElt,
+    legacy_element: WeylElement,
+    weyl_length: usize,
     action: WeylAction,
     involution_length: usize,
     transported_projection: Option<RealProjection>,
@@ -895,7 +956,19 @@ fn push_record(
     // permutation level: `w_perm[delta_perm[r]]` equals the composed matrix
     // action, so classification needs no per-root matrix work.
     let delta_images = inner_class.distinguished_involution().image_permutation();
-    let w_images = element.image_permutation();
+    if !compact_matches_legacy(
+        compact_weyl,
+        reflections,
+        inner_class.root_system(),
+        &element,
+        &legacy_element,
+    )? || legacy_element.length() != weyl_length
+    {
+        return Err(StructureError::InvolutionTableInvariantViolation {
+            invariant: "compact Weyl element",
+        });
+    }
+    let w_images = legacy_element.image_permutation();
     let mut root_images = try_capacity(delta_images.len())?;
     for delta_image in delta_images {
         root_images.push(w_images[delta_image.0]);
@@ -939,12 +1012,12 @@ fn push_record(
         }
         None => RealProjection::build(theta)?,
     };
-    let weyl_length = element.length();
     let id = InvolutionId(records.len());
-    let key = index.key_of(element.image_permutation());
+    let key = index.key_of(legacy_element.image_permutation());
     index.insert(key, id);
     records.push(InvolutionRecord {
         element,
+        legacy_element,
         involution,
         mod_space,
         theta_plus_one_rho: Weight::new(coordinates),
@@ -1091,10 +1164,12 @@ mod tests {
         for index in 0..table.involution_count() {
             let id = InvolutionId(index);
             let record = table.record(id).unwrap();
+            let compact = record.compact_weyl_element();
             let legacy = pieces
                 .key(table.root_system(), &interface, record.weyl_element())
                 .unwrap();
-            let compact = table.compact_key(id).unwrap();
+            assert_eq!(table.compact_key(id), Some(compact));
+            assert_eq!(table.compact_index.get(&compact), Some(&id));
             assert_eq!(
                 &compact[..legacy.len()],
                 legacy
@@ -1103,6 +1178,53 @@ mod tests {
                     .collect::<Vec<_>>()
             );
         }
+        assert_eq!(table.compact_index.len(), table.involution_count());
+    }
+
+    #[test]
+    fn compact_legacy_gate_rejects_different_elements_of_the_same_length() {
+        let (inner_class, _) = context(vec![vec![2, -2], vec![-1, 2]], None, 8, 8);
+        let table = InvolutionTable::new(&inner_class, table_budget(8)).unwrap();
+        let mut compact = table.compact_weyl.identity();
+        table.compact_weyl.inner_mult(&mut compact, 0);
+        let legacy = WeylElement::simple_reflection(table.root_system(), 1).unwrap();
+
+        assert_eq!(table.compact_weyl.length(&compact), legacy.length());
+        assert!(!compact_matches_legacy(
+            &table.compact_weyl,
+            &table.reflections,
+            table.root_system(),
+            &compact,
+            &legacy,
+        )
+        .unwrap());
+    }
+
+    #[test]
+    fn b3_record_compact_values_match_legacy_and_survive_clone() {
+        let (inner_class, classification) = context(
+            vec![vec![2, -1, 0], vec![-1, 2, -2], vec![0, -1, 2]],
+            None,
+            18,
+            48,
+        );
+        let table = filled_table(&inner_class, &classification, 48);
+
+        for index in 0..table.involution_count() {
+            let id = InvolutionId(index);
+            let record = table.record(id).unwrap();
+            assert!(compact_matches_legacy(
+                &table.compact_weyl,
+                &table.reflections,
+                table.root_system(),
+                &record.compact_weyl_element(),
+                record.weyl_element(),
+            )
+            .unwrap());
+            assert_eq!(table.compact_index.get(&record.element), Some(&id));
+            assert_eq!(&record.clone(), record);
+        }
+        assert_eq!(table.compact_index.len(), table.involution_count());
     }
 
     #[test]
@@ -1224,13 +1346,11 @@ mod tests {
         let mut table = InvolutionTable::new(&inner_class, table_budget(8)).unwrap();
         let (fundamental, size) = table.add_cartan(&classification, CartanId(0)).unwrap();
         assert_eq!(size, 1);
-        assert!(
-            table
-                .record(fundamental)
-                .unwrap()
-                .weyl_element()
-                .is_identity()
-        );
+        assert!(table
+            .record(fundamental)
+            .unwrap()
+            .weyl_element()
+            .is_identity());
         assert_eq!(table.cayley(0, fundamental).unwrap(), None);
 
         for id in 1..classification.cartan_classes().len() {
