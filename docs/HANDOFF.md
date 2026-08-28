@@ -17,7 +17,8 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   the existing involution budget. Duplicate compact keys are rejected.
 - HPC focused gate **3645935** on `cu016` passed: `cargo check -p
   atlas-real-group`, Weyl debug/release (`62/62` each), InvolutionTable
-  debug/release (`14/14` each), and KGB graph debug/release tests all passed.
+  debug/release (`14/14` each), and KGB graph debug/release (`11/11` each)
+  all passed (batch MaxRSS `724064KB`).
   The earlier failed gate **3645686** was a real compile regression from a
   `_record` cleanup in `kgb_graph::torus_factor`; it was repaired and the
   corrected gate passed.
