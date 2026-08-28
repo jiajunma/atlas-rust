@@ -706,6 +706,40 @@ impl InvolutionTable {
         Ok(None)
     }
 
+    pub(crate) fn weyl_has_twisted_commutation(
+        &self,
+        id: InvolutionId,
+        generator: usize,
+    ) -> Result<bool, StructureError> {
+        let mut element = self
+            .records
+            .get(id.0)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: id.0,
+                upper_bound: self.records.len(),
+            })?
+            .element;
+        let twisted_generator =
+            *self
+                .twist
+                .get(generator)
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: generator,
+                    upper_bound: self.twist.len(),
+                })?;
+        if twisted_generator >= self.twist.len() {
+            return Err(StructureError::IndexOutOfRange {
+                index: twisted_generator,
+                upper_bound: self.twist.len(),
+            });
+        }
+        let change = self
+            .compact_weyl
+            .inner_mult(&mut element, twisted_generator);
+        let has_left_descent = self.compact_weyl.inner_left_mult(&mut element, generator) < 0;
+        Ok((change > 0) == has_left_descent)
+    }
+
     pub(crate) fn weyl_right_length_change(
         &self,
         id: InvolutionId,
@@ -1318,6 +1352,43 @@ mod tests {
                 assert_eq!(table.weyl_first_left_descent(id, order).unwrap(), expected);
             }
         }
+    }
+
+    #[test]
+    fn a2_compact_twisted_commutation_matches_legacy_decisions() {
+        let (inner_class, classification) = context(
+            vec![vec![2, -1], vec![-1, 2]],
+            Some(vec![vec![0, 1], vec![1, 0]]),
+            6,
+            6,
+        );
+        let table = filled_table(&inner_class, &classification, 6);
+        let twist = inner_class.generator_twist().unwrap();
+
+        for index in 0..table.involution_count() {
+            let id = InvolutionId(index);
+            let legacy = table.record(id).unwrap().weyl_element();
+            for generator in 0..twist.len() {
+                let (transported, change) = legacy
+                    .right_multiply_simple(table.root_system(), twist[generator])
+                    .unwrap();
+                let expected = (change > 0)
+                    == transported
+                        .has_left_descent(table.root_system(), generator)
+                        .unwrap();
+                assert_eq!(
+                    table.weyl_has_twisted_commutation(id, generator).unwrap(),
+                    expected,
+                    "involution {index}, generator {generator}"
+                );
+            }
+        }
+
+        assert!(matches!(
+            table.weyl_has_twisted_commutation(InvolutionId(usize::MAX), usize::MAX),
+            Err(StructureError::IndexOutOfRange { index, upper_bound })
+                if index == usize::MAX && upper_bound == table.involution_count()
+        ));
     }
 
     #[test]

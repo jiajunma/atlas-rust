@@ -661,7 +661,6 @@ impl GlobalKgb {
         // generate_involutions (kgb.cpp:331-366): the identity twisted
         // involution seeds index 0; children are `s * w` on twisted
         // commutation and `s * w * delta(s)` otherwise.
-        let twist = inner_class.generator_twist()?;
         let identity = WeylElement::identity(system)?;
         let identity_id = table
             .lookup(&identity)
@@ -680,19 +679,9 @@ impl GlobalKgb {
             for generator in 0..semisimple_rank {
                 for index in start_length..end_length {
                     let parent = involutions[index];
-                    let element = table
-                        .record(parent)
-                        .ok_or(StructureError::IndexOutOfRange {
-                            index: parent.0,
-                            upper_bound: total_involutions,
-                        })?
-                        .weyl_element();
                     // hasTwistedCommutation (weyl.cpp:1296-1312), the same
-                    // port as inner_class.rs:522-531.
-                    let (transported, change) =
-                        element.right_multiply_simple(system, twist[generator])?;
-                    let commutes =
-                        (change > 0) == transported.has_left_descent(system, generator)?;
+                    // compact operation as the upstream `WeylElt` path.
+                    let commutes = table.weyl_has_twisted_commutation(parent, generator)?;
                     let child = if commutes {
                         table.cayley(generator, parent)?.ok_or(
                             StructureError::KgbInvariantViolation {
