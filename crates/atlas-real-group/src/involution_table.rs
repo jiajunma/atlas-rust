@@ -1460,6 +1460,49 @@ mod tests {
     }
 
     #[test]
+    fn b2_compact_left_word_lookup_matches_legacy_products() {
+        let (inner_class, classification) = context(vec![vec![2, -2], vec![-1, 2]], None, 8, 8);
+        let table = filled_table(&inner_class, &classification, 8);
+        let words = [
+            vec![],
+            vec![0],
+            vec![1],
+            vec![0, 1, 0],
+            vec![1, 0, 1],
+            vec![0, 1, 0, 1],
+            vec![1, 0, 1, 0],
+        ];
+
+        for index in 0..table.involution_count() {
+            let id = InvolutionId(index);
+            for word in &words {
+                let mut expected = table.record(id).unwrap().weyl_element().clone();
+                for &generator in word.iter().rev() {
+                    let reflection =
+                        WeylElement::simple_reflection(table.root_system(), generator).unwrap();
+                    expected = reflection.multiply(table.root_system(), &expected).unwrap();
+                }
+                assert_eq!(
+                    table.weyl_left_word_lookup(id, word).unwrap(),
+                    table.lookup(&expected),
+                    "id={id:?}, word={word:?}"
+                );
+            }
+        }
+
+        assert!(matches!(
+            table.weyl_left_word_lookup(InvolutionId(usize::MAX), &[table.twist.len()]),
+            Err(StructureError::IndexOutOfRange { index, upper_bound })
+                if index == usize::MAX && upper_bound == table.involution_count()
+        ));
+        assert!(matches!(
+            table.weyl_left_word_lookup(InvolutionId(0), &[table.twist.len()]),
+            Err(StructureError::IndexOutOfRange { index, upper_bound })
+                if index == table.twist.len() && upper_bound == table.twist.len()
+        ));
+    }
+
+    #[test]
     fn b2_compact_first_left_descent_respects_generator_order() {
         let (inner_class, classification) = context(vec![vec![2, -2], vec![-1, 2]], None, 8, 8);
         let table = filled_table(&inner_class, &classification, 8);
