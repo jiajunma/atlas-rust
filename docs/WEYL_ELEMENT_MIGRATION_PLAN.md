@@ -265,6 +265,18 @@ enumeration and permutation-level optimizations.
   arbitrary reflection words in `ExtParam`; use `cross` for simple twisted
   conjugations.
 
+## Current Frontier: ExtParam and Cayley
+
+- ExtParam is now ID-primary on ab21ff5 (fixture repair commits through
+  28ec875): its production methods no longer own or mutate a WeylElement.
+  Exact jobs 3650615 and 3650630 passed the focused debug/release gates, and
+  full pipeline job 3650652 passed 360/360 with complete source-state checks.
+- The current migration slice is InvolutionTable::cayley. Its compact
+  implementation is isolated at ea2f23c; it preserves source-before-generator
+  validation and partial-table None, while removing legacy_element from the
+  Cayley hot path. Jobs 3651599/3651600 are the exact-commit focused and
+  full-pipeline gates.
+
 ## 7. Phase 4: Migrate Tits, KGB, and Remaining Real-Group Callers
 
 Migrate in this order:

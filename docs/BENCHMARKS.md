@@ -79,6 +79,22 @@ all byte-identical. HPC wall times there include shared-node contention
 and whole-fixture multi-row scripts, so they overstate the per-parameter
 cost measured here; RSS is meaningful: kgb_hasse (E7) peaks at ~12GB.
 
+## ID-primary ExtParam and compact Cayley gates (2026-08-30)
+
+| job | commit | workload | result |
+|---|---|---|---|
+| 3650615 | 503f81f | atlas-real-group ext_param debug/release | 11/11 passed in each profile |
+| 3650630 | 503f81f | focused Weyl/InvolutionTable/KGB debug/release | 62/62, 21/21, 11/11 in each profile |
+| 3650652 | 503f81f | full registered differential pipeline | 360/360 PASS, zero pending |
+| 3651598 | ea2f23c | fat single-script unipotent corpus benchmark | pending |
+| 3651599 | ea2f23c | focused Weyl/InvolutionTable/KGB debug/release | running |
+| 3651600 | ea2f23c | full registered differential pipeline | running |
+
+Jobs 3650651 and 3650652 both ran the full registered pipeline; the attempted
+positional fixture argument is ignored by pipeline_swap_diff.sbatch, so 3650651
+is not a valid unipotent benchmark. No Rust/C++ speedup claim is made for the
+compact Cayley slice until job 3651598 reports both wall time and peak RSS.
+
 ## Script-corpus ledger (HPC cpu partition, 240 atlas-scripts, both binaries per script)
 
 Every corpus run records wall time and peak RSS per script for the Rust CLI

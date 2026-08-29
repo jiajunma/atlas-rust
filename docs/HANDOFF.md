@@ -4,6 +4,31 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-30a (ID-primary ExtParam and compact Cayley)
+
+- ExtParam ID-primary production commit ab21ff5 (with fixture repairs through
+  28ec875) replaces its owned WeylElement with a table-scoped InvolutionId.
+  Theta, KGB, star, complex-cross, shifted matrices, and final-only reflection
+  words now consume the stored ID; simple twisted conjugations replay
+  InvolutionTable::cross.
+- Exact ExtParam focused job 3650615 passed 11/11 debug and 11/11 release
+  tests. Exact focused real-group job 3650630 passed Weyl 62/62,
+  InvolutionTable 21/21, and KGB 11/11 in both profiles, with
+  cargo check -p atlas-real-group passing and source_tree_state=false.
+- Exact full pipeline job 3650652 passed all 360 fixtures with zero pending
+  cases and compatibility_claim=true; duplicate job 3650651 also passed
+  360/360. Those jobs were full pipeline runs, not the intended unipotent
+  single-script benchmark, because pipeline_swap_diff.sbatch ignores
+  positional fixture arguments. The corrected fat single-script benchmark is
+  job 3651598 and remains pending at this checkpoint.
+- The compact Cayley slice is specified by the new design/plan documents and
+  implemented on isolated commit ea2f23c. cayley now copies the record-owned
+  compact WeylElt, applies inner_left_mult, and probes compact_index; invalid
+  source IDs, generator bounds, and partial-table None behavior are preserved.
+  Spec and code-quality reviews both approved with zero findings. Exact
+  focused job 3651599 and exact full pipeline job 3651600 are running from
+  this commit.
+
 ## Checkpoint - 2026-08-29c (compact left-word lookup prerequisite)
 
 - Commits `4dad22ae` (RED test) and `e1848cdc` (implementation) add
