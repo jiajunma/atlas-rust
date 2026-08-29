@@ -3175,6 +3175,34 @@ mod tests {
     // (reference capture job 3538977, oracle rev 4d3e944).
 
     #[test]
+    fn default_extensions_expose_their_source_involution_ids() {
+        let fixtures: Vec<(ContextFixture, fn(&RepContext) -> LatticeInvolution)> = vec![
+            (a1_fixture(), identity_delta),
+            (a2_split_fixture(), swap_delta),
+            (b2_fixture(), identity_delta),
+        ];
+
+        for (fixture, delta) in fixtures {
+            let rc = fixture.rc();
+            let ctx = ExtRepContext::new(&rc, delta(&rc)).unwrap();
+            for x in 0..rc.graph().len() {
+                let id = rc.involution_of(KgbId(x)).unwrap();
+                let extension =
+                    default_extend_srm(&ctx, KgbId(x), rc.build_srm(KgbId(x), rc.rho()).unwrap())
+                        .unwrap();
+
+                assert_eq!(extension.involution_id(), id);
+                assert_eq!(extension.theta_id(&ctx).unwrap(), id);
+                assert_eq!(
+                    extension.theta(&ctx).unwrap(),
+                    rc.table().record(id).unwrap().theta()
+                );
+                assert_eq!(rc.involution_of(extension.x(&ctx).unwrap()).unwrap(), id);
+            }
+        }
+    }
+
+    #[test]
     fn scaled_a1_compact_cartan_is_unchanged() {
         // scale_extended(pa,[[1]],2/1) = (pa,false), pa = (x=0,[0],[0]/1).
         let fixture = a1_fixture();
