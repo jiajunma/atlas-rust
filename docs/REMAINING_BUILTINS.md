@@ -1,5 +1,23 @@
 # Remaining builtin coverage (post-language-gate)
 
+## Compact involution-table fallback (2026-08-30)
+
+The compact Cayley path and the ID-primary `ExtParam` slice are complete, but
+`InvolutionRecord::legacy_element` is still an intentional compatibility
+field. The involution-table BFS previously read it only in the `DedupKey::Full`
+fallback; that branch is unreachable for currently constructible finite data
+because `CompactWeyl` rejects rank above 8 and finite rank-8 systems have at
+most E8's 240 roots. Commit `798838e` nevertheless removes the read: the BFS
+computes `s*w*delta(s)` as a compact value first, probes `compact_index` in the
+full-key mode, and materializes a legacy permutation only for a new record.
+The forced-full B2 regression is `forced_full_key_bfs_uses_compact_cross_neighbor`.
+
+The public permutation `lookup` remains because synthetic `KGB_elt` inputs and
+compatibility printing still require an explicit materialization boundary.
+The next safe migration targets are compact identity lookups, then the
+`block_fiber_check` dual comparison; removing the legacy field must wait until
+the remaining `push_record` and `atlas-core` output consumers are migrated.
+
 ## Generic operator casts implemented and verified (2026-08-22)
 
 `op@type` now falls through to the upstream-controlled generic special
