@@ -4,6 +4,25 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-29c (compact left-word lookup prerequisite)
+
+- Commits `4dad22ae` (RED test) and `e1848cdc` (implementation) add
+  `InvolutionTable::weyl_left_word_lookup`. It copies the record-owned compact
+  element, applies an external left-multiplication word in reverse iterator
+  order, and probes `compact_index` only after the final product. Intermediate
+  products need not be twisted involutions or table entries.
+- RED job **3647621** failed only because the helper was absent. GREEN focused
+  job **3647624** passed Weyl (`62/62`), InvolutionTable (`21/21`), and KGB
+  (`11/11`) in debug and release from clean commit `e1848cd`. The B2 test
+  compares every stored source against legacy full-permutation products for
+  empty, single, noncommuting braid, and longer words; it also pins invalid
+  source-before-word precedence and generator bounds. Independent review found
+  no actionable issue.
+- This helper has no production caller yet, so no corpus performance claim is
+  attached to it. It is the prerequisite for removing `WeylElement` from
+  `ExtParam`: simple twisted conjugations will use table `cross`, while
+  arbitrary reflection words will use this final-only lookup.
+
 ## Checkpoint - 2026-08-29b (compact BlockGraph dual-packet pairing)
 
 - Production commit `8e7d94d4` adds

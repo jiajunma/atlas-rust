@@ -258,6 +258,12 @@ enumeration and permutation-level optimizations.
   materialize a legacy permutation only at explicit compatibility boundaries.
   Removing `InvolutionRecord::legacy_element` follows after those callers are
   migrated.
+- The compact final-only left-word prerequisite landed in `e1848cd`: focused
+  job 3647624 passed Weyl 62/62, InvolutionTable 21/21, and KGB 11/11 in both
+  profiles. Unlike repeated table `cross`, it permits non-table intermediate
+  products and resolves only the final reflected involution. Use it for the
+  arbitrary reflection words in `ExtParam`; use `cross` for simple twisted
+  conjugations.
 
 ## 7. Phase 4: Migrate Tits, KGB, and Remaining Real-Group Callers
 
