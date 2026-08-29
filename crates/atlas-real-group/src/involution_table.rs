@@ -1430,6 +1430,15 @@ mod tests {
     }
 
     #[test]
+    fn compact_identity_lookup_matches_legacy_lookup() {
+        let (inner_class, classification) = context(vec![vec![2, -2], vec![-1, 2]], None, 8, 8);
+        let table = filled_table(&inner_class, &classification, 8);
+        let identity = WeylElement::identity(table.root_system()).unwrap();
+        assert_eq!(table.identity_id(), table.lookup(&identity));
+        assert_eq!(table.identity_id(), Some(InvolutionId(0)));
+    }
+
+    #[test]
     fn compact_dual_lookup_matches_legacy_dual_involution() {
         for distinguished in [None, Some(vec![vec![0, 1], vec![1, 0]])] {
             let (inner_class, classification) =
