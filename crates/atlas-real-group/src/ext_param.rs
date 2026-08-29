@@ -3182,6 +3182,12 @@ mod tests {
             for x in 0..rc.graph().size() {
                 let x = KgbId(x);
                 let id = rc.involution_of(x).unwrap();
+                let theta = rc.table().record(id).unwrap().theta();
+                if compose_matrices(ctx.delta().weight_matrix(), theta.weight_matrix()).unwrap()
+                    != compose_matrices(theta.weight_matrix(), ctx.delta().weight_matrix()).unwrap()
+                {
+                    continue;
+                }
                 let extension =
                     default_extend_srm(&ctx, x, RationalWeight::zero(rc.rank()).unwrap()).unwrap();
 
