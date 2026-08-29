@@ -281,6 +281,10 @@ enumeration and permutation-level optimizations.
   only materializes a legacy permutation on a compact-index miss. HPC target
   job 3651646 is the final focused test; no compatibility or performance claim
   is made until that result is collected.
+- Compact identity resolution is staged in `97789af`/`2358259`: the table now
+  exposes an internal `identity_id` lookup, and GlobalKgb, KgbGraph, and both
+  RealFormSeed builders use it instead of constructing an identity
+  `WeylElement`. HPC focused verification is still pending.
 
 ## 7. Phase 4: Migrate Tits, KGB, and Remaining Real-Group Callers
 

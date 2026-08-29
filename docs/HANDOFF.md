@@ -53,6 +53,12 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   `push_record`, `domain_builtins` printing/support paths, and arbitrary
   permutation `lookup` callers. Migrate compact identity and dual/block
   comparisons before attempting to remove the field or `DedupIndex`.
+- The next compact slice is prepared but not yet HPC-verified: test-first
+  identity equivalence is `97789af`, and `2358259` adds
+  `InvolutionTable::identity_id` plus replacements in `GlobalKgb`, `KgbGraph`,
+  and both `RealFormSeed` builders. These callers now resolve the identity
+  through `compact_index`; the old `lookup(WeylElement::identity)` API remains
+  for synthetic and compatibility boundaries.
 
 ## Checkpoint - 2026-08-29c (compact left-word lookup prerequisite)
 
