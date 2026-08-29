@@ -3185,8 +3185,8 @@ mod tests {
                 let standard = rc
                     .sr(
                         x,
-                        &Weight::zero(rc.rank()),
-                        &RationalWeight::zero(rc.rank()),
+                        &Weight::new(vec![0; rc.rank()]),
+                        &RationalWeight::new(vec![0; rc.rank()], 1).unwrap(),
                     )
                     .unwrap();
                 let (x, gamma_lambda) = rc.mod_reduce(&standard).unwrap();
