@@ -16,7 +16,7 @@ use crate::weak_real_form::walk_mask_orbits;
 use crate::{
     pair, BasedRootDatum, CartanClassification, CartanId, InnerClass, InvolutionTable,
     ModTwoVector, RationalCoweight, StrongRealClassification, StructureError, TitsElement,
-    WeakRealFormId, WeylAction, WeylElement,
+    WeakRealFormId, WeylAction,
 };
 use malachite::base::num::arithmetic::traits::DivisibleBy;
 use malachite::Integer;
@@ -464,10 +464,9 @@ impl RealFormSeed {
 
         // The seed element, located by lookup — never assumed InvolutionId(0)
         // — and reduced at the fundamental record's mod space.
-        let identity = WeylElement::identity(system)?;
         let fundamental_involution =
             table
-                .lookup(&identity)
+                .identity_id()
                 .ok_or(StructureError::SeedInvariantViolation {
                     invariant: "fundamental involution",
                 })?;
@@ -593,10 +592,9 @@ impl RealFormSeed {
 
         // The seed element, located by lookup and reduced at the
         // fundamental record's mod space, exactly as in `build`.
-        let identity = WeylElement::identity(system)?;
         let fundamental_involution =
             table
-                .lookup(&identity)
+                .identity_id()
                 .ok_or(StructureError::SeedInvariantViolation {
                     invariant: "fundamental involution",
                 })?;

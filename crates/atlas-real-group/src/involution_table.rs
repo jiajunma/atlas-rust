@@ -647,6 +647,13 @@ impl InvolutionTable {
             .map(|record| record.element == self.compact_weyl.identity())
     }
 
+    /// Resolve the table entry whose compact Weyl factor is the identity.
+    pub(crate) fn identity_id(&self) -> Option<InvolutionId> {
+        self.compact_index
+            .get(&self.compact_weyl.identity())
+            .copied()
+    }
+
     pub(crate) fn weyl_has_left_descent(
         &self,
         id: InvolutionId,

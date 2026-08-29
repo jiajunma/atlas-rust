@@ -114,8 +114,7 @@ impl KgbGraph {
         }
         // Seed-table binding: the seed is definitionally at THIS table's
         // fundamental involution, with reduced bits.
-        let identity = WeylElement::identity(table.root_system())?;
-        if table.lookup(&identity) != Some(seed.element().involution()) {
+        if table.identity_id() != Some(seed.element().involution()) {
             return Err(StructureError::KgbInvariantViolation {
                 invariant: "seed element",
             });

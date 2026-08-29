@@ -28,7 +28,7 @@ use crate::integer_lattice::{
 use crate::mod_two::{ModTwoSubquotient, ModTwoSubspace, ModTwoVector};
 use crate::{
     BasedRootDatum, CartanClassification, CartanId, InnerClass, InvolutionId, InvolutionTable,
-    KgbStatus, LatticeInvolution, RationalWeight, StructureError, WeylElement,
+    KgbStatus, LatticeInvolution, RationalWeight, StructureError,
 };
 
 /// Upstream `ioutils::digits(n, 10)` (io/ioutils.cpp): `digits(0)` is 1.
@@ -661,9 +661,8 @@ impl GlobalKgb {
         // generate_involutions (kgb.cpp:331-366): the identity twisted
         // involution seeds index 0; children are `s * w` on twisted
         // commutation and `s * w * delta(s)` otherwise.
-        let identity = WeylElement::identity(system)?;
         let identity_id = table
-            .lookup(&identity)
+            .identity_id()
             .ok_or(StructureError::KgbInvariantViolation {
                 invariant: "fundamental involution",
             })?;
