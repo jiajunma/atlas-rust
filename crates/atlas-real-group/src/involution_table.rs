@@ -929,9 +929,9 @@ impl InvolutionTable {
     /// Cartan set first, after which `None` is the caller's invariant
     /// violation.
     ///
-    /// The packed probe answers from the simple-root images of `s * w`
-    /// alone — an injective key — so the hot path never materializes the
-    /// product element.
+    /// The compact probe applies the simple reflection directly to the
+    /// record-owned `WeylElt`, so the hot path never materializes a root
+    /// permutation.
     pub fn cayley(
         &self,
         generator: usize,
@@ -1531,6 +1531,21 @@ mod tests {
     #[test]
     fn b2_compact_cayley_matches_legacy_for_all_records() {
         let (inner_class, classification) = context(vec![vec![2, -2], vec![-1, 2]], None, 8, 8);
+        let mut partial = InvolutionTable::new(&inner_class, table_budget(8)).unwrap();
+        partial.add_cartan(&classification, CartanId(0)).unwrap();
+        let partial_id = InvolutionId(0);
+        let partial_product = partial.reflections[0]
+            .multiply(
+                partial.root_system(),
+                partial.record(partial_id).unwrap().weyl_element(),
+            )
+            .unwrap();
+        assert_eq!(
+            partial.compact_cayley_lookup(0, partial_id).unwrap(),
+            partial.lookup(&partial_product),
+            "unadded Cayley targets must remain None"
+        );
+
         let table = filled_table(&inner_class, &classification, 8);
 
         for index in 0..table.involution_count() {
