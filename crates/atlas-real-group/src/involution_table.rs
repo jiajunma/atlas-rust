@@ -1604,6 +1604,10 @@ mod tests {
                     .unwrap();
                 let expected_id = table.lookup(&expected);
                 assert_eq!(table.compact_index.get(&neighbor).copied(), expected_id);
+                assert_eq!(
+                    table.cross(generator, InvolutionId(index)).unwrap(),
+                    expected_id
+                );
             }
         }
     }
