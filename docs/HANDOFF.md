@@ -29,6 +29,31 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   focused job 3651599 and exact full pipeline job 3651600 are running from
   this commit.
 
+## Checkpoint - 2026-08-30b (compact full-key BFS fallback)
+
+- The forced-full regression `forced_full_key_bfs_uses_compact_cross_neighbor`
+  landed in `e2ab3dc`, with direct stored-link assertions in `38426d1`.
+  Production commit `798838e` computes `s*w*delta(s)` with the compact
+  `WeylElt` first and probes `compact_index` before any legacy materialization
+  when `DedupKey::Full` is selected. New records still use
+  `WeylElement::from_twisted_composition` at the explicit compatibility
+  boundary. The old `compose_permutation` helper and the BFS read of
+  `records[cursor].legacy_element` are gone.
+- The full-key branch is unreachable for currently constructible finite Atlas
+  tables (`CompactWeyl` rejects rank above 8 and finite rank-8 systems have at
+  most 240 roots), but the synthetic forced-full test protects the fallback
+  against future rank-limit changes. `lookup(&WeylElement)` remains because
+  synthetic KGB constructors and compatibility output still require that
+  materialization boundary.
+- The first RED preflight, job 3651624, was invalid as a RED artifact because
+  the repository's existing format drift failed before compilation. The direct
+  HPC compile job 3651644 then failed with the expected missing-helper error;
+  GREEN job 3651646 is pending final collection at this checkpoint.
+- The remaining production `legacy_element` consumers are concentrated in
+  `push_record`, `domain_builtins` printing/support paths, and arbitrary
+  permutation `lookup` callers. Migrate compact identity and dual/block
+  comparisons before attempting to remove the field or `DedupIndex`.
+
 ## Checkpoint - 2026-08-29c (compact left-word lookup prerequisite)
 
 - Commits `4dad22ae` (RED test) and `e1848cdc` (implementation) add
