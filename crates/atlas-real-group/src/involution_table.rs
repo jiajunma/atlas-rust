@@ -937,6 +937,16 @@ impl InvolutionTable {
         generator: usize,
         id: InvolutionId,
     ) -> Result<Option<InvolutionId>, StructureError> {
+        self.compact_cayley_lookup(generator, id)
+    }
+
+    /// Resolve the Cayley neighbor from the record-owned compact Weyl value.
+    /// This keeps the hot path independent of the compatibility permutation.
+    pub(crate) fn compact_cayley_lookup(
+        &self,
+        generator: usize,
+        id: InvolutionId,
+    ) -> Result<Option<InvolutionId>, StructureError> {
         let record = self
             .records
             .get(id.0)
@@ -944,27 +954,15 @@ impl InvolutionTable {
                 index: id.0,
                 upper_bound: self.records.len(),
             })?;
-        let reflection =
-            self.reflections
-                .get(generator)
-                .ok_or(StructureError::IndexOutOfRange {
-                    index: generator,
-                    upper_bound: self.reflections.len(),
-                })?;
-        let current = record.legacy_element.image_permutation();
-        let left = reflection.image_permutation();
-        if self.index.packed {
-            let probe = DedupKey::Packed(self.index.pack(|simple| {
-                let position = self.index.simple_positions[simple];
-                left[current[position].0]
-            }));
-            return Ok(self.index.get(&probe));
+        if generator >= self.twist.len() {
+            return Err(StructureError::IndexOutOfRange {
+                index: generator,
+                upper_bound: self.twist.len(),
+            });
         }
-        let product =
-            reflection.multiply(self.inner_class.root_system(), &record.legacy_element)?;
-        Ok(self
-            .index
-            .get(&self.index.key_of(product.image_permutation())))
+        let mut product = record.element;
+        self.compact_weyl.inner_left_mult(&mut product, generator);
+        Ok(self.compact_index.get(&product).copied())
     }
 
     /// One accessor covering upstream's three `is_*_simple` tests.
