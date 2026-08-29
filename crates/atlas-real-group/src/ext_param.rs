@@ -3180,10 +3180,17 @@ mod tests {
             let rc = fixture.rc();
             let ctx = ExtRepContext::new(&rc, delta(&rc)).unwrap();
             for x in 0..rc.graph().size() {
-                let id = rc.involution_of(KgbId(x)).unwrap();
-                let extension =
-                    default_extend_srm(&ctx, KgbId(x), rc.build_srm(KgbId(x), rc.rho()).unwrap())
-                        .unwrap();
+                let x = KgbId(x);
+                let id = rc.involution_of(x).unwrap();
+                let standard = rc
+                    .sr(
+                        x,
+                        &Weight::zero(rc.rank()),
+                        &RationalWeight::zero(rc.rank()),
+                    )
+                    .unwrap();
+                let (x, gamma_lambda) = rc.mod_reduce(&standard).unwrap();
+                let extension = default_extend_srm(&ctx, x, gamma_lambda).unwrap();
 
                 assert_eq!(extension.involution_id(), id);
                 assert_eq!(extension.theta_id(&ctx).unwrap(), id);
