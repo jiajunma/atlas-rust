@@ -1579,6 +1579,48 @@ mod tests {
     }
 
     #[test]
+    fn forced_full_key_bfs_uses_compact_cross_neighbor() {
+        let (inner_class, classification) =
+            context(vec![vec![2, -2], vec![-1, 2]], None, 8, 8);
+        let mut table = InvolutionTable::new(&inner_class, table_budget(8)).unwrap();
+        table.index.packed = false;
+        for cartan in 0..classification.cartan_classes().len() {
+            table
+                .add_cartan(&classification, CartanId(cartan))
+                .unwrap();
+        }
+
+        assert!(table
+            .index
+            .map
+            .keys()
+            .all(|key| matches!(key, DedupKey::Full(_))));
+
+        for index in 0..table.involution_count() {
+            let record = table.record(InvolutionId(index)).unwrap();
+            for generator in 0..table.twist.len() {
+                let neighbor = compact_cross_neighbor(
+                    &table.compact_weyl,
+                    record.element,
+                    generator,
+                    table.twist[generator],
+                );
+                let expected = table.reflections[generator]
+                    .multiply(table.root_system(), record.weyl_element())
+                    .and_then(|left| {
+                        left.multiply(
+                            table.root_system(),
+                            &table.reflections[table.twist[generator]],
+                        )
+                    })
+                    .unwrap();
+                let expected_id = table.lookup(&expected);
+                assert_eq!(table.compact_index.get(&neighbor).copied(), expected_id);
+            }
+        }
+    }
+
+    #[test]
     fn b2_compact_first_left_descent_respects_generator_order() {
         let (inner_class, classification) = context(vec![vec![2, -2], vec![-1, 2]], None, 8, 8);
         let table = filled_table(&inner_class, &classification, 8);
