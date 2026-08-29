@@ -47,8 +47,10 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   materialization boundary.
 - The first RED preflight, job 3651624, was invalid as a RED artifact because
   the repository's existing format drift failed before compilation. The direct
-  HPC compile job 3651644 then failed with the expected missing-helper error;
-  GREEN job 3651646 is pending final collection at this checkpoint.
+  HPC compile job 3651644 then failed with exit code 101, but its compiler log
+  could not be collected before the SSH connection became unavailable; the
+  RED cause is therefore not yet confirmed. GREEN job 3651646 is pending final
+  collection at this checkpoint.
 - The remaining production `legacy_element` consumers are concentrated in
   `push_record`, `domain_builtins` printing/support paths, and arbitrary
   permutation `lookup` callers. Migrate compact identity and dual/block
