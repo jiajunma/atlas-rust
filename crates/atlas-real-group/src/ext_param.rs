@@ -3182,15 +3182,8 @@ mod tests {
             for x in 0..rc.graph().size() {
                 let x = KgbId(x);
                 let id = rc.involution_of(x).unwrap();
-                let standard = rc
-                    .sr(
-                        x,
-                        &Weight::new(vec![0; rc.rank()]),
-                        &RationalWeight::new(vec![0; rc.rank()], 1).unwrap(),
-                    )
-                    .unwrap();
-                let (x, gamma_lambda) = rc.mod_reduce(&standard).unwrap();
-                let extension = default_extend_srm(&ctx, x, gamma_lambda).unwrap();
+                let extension =
+                    default_extend_srm(&ctx, x, RationalWeight::zero(rc.rank()).unwrap()).unwrap();
 
                 assert_eq!(extension.involution_id(), id);
                 assert_eq!(extension.theta_id(&ctx).unwrap(), id);
