@@ -2974,6 +2974,20 @@ mod tests {
         StrongRealClassification, WeakRealFormId,
     };
 
+    fn matrices_commute(left: &[Vec<i32>], right: &[Vec<i32>]) -> bool {
+        let rank = left.len();
+        (0..rank).all(|row| {
+            (0..rank).all(|column| {
+                let product = |a: &[Vec<i32>], b: &[Vec<i32>]| {
+                    (0..rank).fold(0_i32, |sum, middle| {
+                        sum.wrapping_add(a[row][middle].wrapping_mul(b[middle][column]))
+                    })
+                };
+                product(left, right) == product(right, left)
+            })
+        })
+    }
+
     fn class_budget(weyl: usize) -> CartanClassificationBudget {
         CartanClassificationBudget::new(
             IntegerLatticeBudget::new(64, 100_000, 100_000, 128),
@@ -3183,9 +3197,7 @@ mod tests {
                 let x = KgbId(x);
                 let id = rc.involution_of(x).unwrap();
                 let theta = rc.table().record(id).unwrap().theta();
-                if compose_matrices(ctx.delta().weight_matrix(), theta.weight_matrix()).unwrap()
-                    != compose_matrices(theta.weight_matrix(), ctx.delta().weight_matrix()).unwrap()
-                {
+                if !matrices_commute(ctx.delta().weight_matrix(), theta.weight_matrix()) {
                     continue;
                 }
                 let extension =
