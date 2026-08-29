@@ -1439,6 +1439,8 @@ mod tests {
     #[test]
     fn compact_identity_lookup_matches_legacy_lookup() {
         let (inner_class, classification) = context(vec![vec![2, -2], vec![-1, 2]], None, 8, 8);
+        let empty = InvolutionTable::new(&inner_class, table_budget(8)).unwrap();
+        assert_eq!(empty.identity_id(), None);
         let table = filled_table(&inner_class, &classification, 8);
         let identity = WeylElement::identity(table.root_system()).unwrap();
         assert_eq!(table.identity_id(), table.lookup(&identity));
