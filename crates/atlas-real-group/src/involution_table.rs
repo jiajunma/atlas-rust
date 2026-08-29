@@ -190,21 +190,16 @@ impl DedupIndex {
     }
 }
 
-/// `left after middle after right` as permutations: `left[middle[right[i]]]`.
-/// The single composed buffer replaces the two temporary `WeylElement`
-/// products (four heap buffers and a discarded inverse pass) the cross-edge
-/// loop used to pay per edge.
-fn compose_permutation(
-    left: &[RootId],
-    middle: &[RootId],
-    right: &[RootId],
-    count: usize,
-) -> Result<Vec<RootId>, StructureError> {
-    let mut composed = try_capacity(count)?;
-    for index in 0..count {
-        composed.push(left[middle[right[index].0].0]);
-    }
-    Ok(composed)
+/// Compute the compact Weyl value for the cross action `s*w*twist(s)`.
+fn compact_cross_neighbor(
+    compact_weyl: &CompactWeyl,
+    mut current: WeylElt,
+    generator: usize,
+    twisted_generator: usize,
+) -> WeylElt {
+    compact_weyl.inner_mult(&mut current, twisted_generator);
+    compact_weyl.inner_left_mult(&mut current, generator);
+    current
 }
 
 /// Compare the compact and compatibility representations without allocating
@@ -472,18 +467,17 @@ impl InvolutionTable {
         // profile of upstream's add_cross (involutions.cpp:228-258), which
         // pays one fixed-size twistedConjugate per edge.
         let semisimple_rank = self.twist.len();
-        let root_count = self.inner_class.root_system().roots().len();
         let mut cursor = start;
         while cursor < self.records.len() {
             let mut links = try_capacity(semisimple_rank)?;
             for generator in 0..semisimple_rank {
-                // The composed neighbor `s * w * twist(s)`, as permutations:
-                // `composed[i] = left[current[right[i]]]`.
-                let (left, current, right) = {
-                    let current = self.records[cursor].legacy_element.image_permutation();
+                // Keep the reflection permutations only for the explicit
+                // materialization boundary below; the compact neighbor is
+                // computed first for both dedup modes.
+                let (left, right) = {
                     let left = self.reflections[generator].image_permutation();
                     let right = self.reflections[self.twist[generator]].image_permutation();
-                    (left, current, right)
+                    (left, right)
                 };
                 let theta = self.records[cursor]
                     .twisted_involution()
@@ -493,6 +487,18 @@ impl InvolutionTable {
                     .inner_class
                     .distinguished_involution()
                     .image_permutation();
+                let compact_neighbor = compact_cross_neighbor(
+                    &self.compact_weyl,
+                    self.records[cursor].element,
+                    generator,
+                    self.twist[generator],
+                );
+                if !self.index.packed {
+                    if let Some(existing) = self.compact_index.get(&compact_neighbor) {
+                        links.push(*existing);
+                        continue;
+                    }
+                }
                 if self.index.packed {
                     let probe = DedupKey::Packed(self.index.pack(|simple| {
                         let position = self.index.simple_positions[simple];
@@ -506,28 +512,13 @@ impl InvolutionTable {
                 // The compact transition is the hot-path result. Re-encoding
                 // the materialized permutation is retained as a debug/test
                 // invariant, but must not tax release KGB construction.
-                let mut compact_neighbor = self.records[cursor].element;
-                self.compact_weyl
-                    .inner_mult(&mut compact_neighbor, self.twist[generator]);
-                self.compact_weyl
-                    .inner_left_mult(&mut compact_neighbor, generator);
-                let neighbor = if self.index.packed {
-                    WeylElement::from_twisted_composition(
-                        self.inner_class.root_system(),
-                        left,
-                        theta,
-                        delta,
-                        right,
-                    )?
-                } else {
-                    let composed = compose_permutation(left, current, right, root_count)?;
-                    let probe = DedupKey::Full(composed.as_slice().into());
-                    if let Some(existing) = self.index.get(&probe) {
-                        links.push(existing);
-                        continue;
-                    }
-                    WeylElement::from_permutation(self.inner_class.root_system(), composed)?
-                };
+                let neighbor = WeylElement::from_twisted_composition(
+                    self.inner_class.root_system(),
+                    left,
+                    theta,
+                    delta,
+                    right,
+                )?;
                 #[cfg(debug_assertions)]
                 {
                     let encoded_neighbor = self.compact_weyl.encode_element(
@@ -1580,14 +1571,11 @@ mod tests {
 
     #[test]
     fn forced_full_key_bfs_uses_compact_cross_neighbor() {
-        let (inner_class, classification) =
-            context(vec![vec![2, -2], vec![-1, 2]], None, 8, 8);
+        let (inner_class, classification) = context(vec![vec![2, -2], vec![-1, 2]], None, 8, 8);
         let mut table = InvolutionTable::new(&inner_class, table_budget(8)).unwrap();
         table.index.packed = false;
         for cartan in 0..classification.cartan_classes().len() {
-            table
-                .add_cartan(&classification, CartanId(cartan))
-                .unwrap();
+            table.add_cartan(&classification, CartanId(cartan)).unwrap();
         }
 
         assert!(table
