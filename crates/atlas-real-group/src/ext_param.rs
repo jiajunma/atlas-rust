@@ -42,7 +42,7 @@ use crate::twisted_involution::compose_matrices;
 use crate::{
     BlockGraph, Coweight, InvolutionId, InvolutionTable, KType, KgbId, LatticeInvolution,
     ModTwoVector, PartialBlock, RepContext, RootId, RootKind, RootSystem, StandardRepr,
-    StructureError, Weight, WeylElement,
+    StructureError, Weight,
 };
 
 // ---------------------------------------------------------------------------
@@ -290,28 +290,33 @@ fn sum_is_root(system: &RootSystem, alpha: RootId, beta: RootId) -> bool {
 /// Upstream `TwistedWeylGroup::prod(WeylWord, TwistedInvolution)`
 /// (weyl.h:329-331 `left_multiply(w, ww)`): the product
 /// `s_{w[0]} * ... * s_{w[k]} * tw`.
-fn word_product(
-    system: &RootSystem,
+fn left_word_lookup(
+    table: &InvolutionTable,
+    involution: InvolutionId,
     word: &[usize],
-    tw: &WeylElement,
-) -> Result<WeylElement, StructureError> {
-    let mut result = tw.clone();
-    for &generator in word.iter().rev() {
-        let reflection = WeylElement::simple_reflection(system, generator)?;
-        result = reflection.multiply(system, &result)?;
-    }
-    Ok(result)
-}
-
-/// The involution-table number of a twisted involution, or an invariant
-/// error when its Cartan class has not been generated (for full blocks
-/// upstream relies on presence).
-fn table_lookup(table: &InvolutionTable, tw: &WeylElement) -> Result<InvolutionId, StructureError> {
+) -> Result<InvolutionId, StructureError> {
     table
-        .lookup(tw)
+        .weyl_left_word_lookup(involution, word)?
         .ok_or(StructureError::RepInvariantViolation {
             invariant: "extended parameter Cartan lookup",
         })
+}
+
+fn reflected_involution(
+    table: &InvolutionTable,
+    involution: InvolutionId,
+    words: &[Vec<usize>],
+) -> Result<InvolutionId, StructureError> {
+    let total_len = words.iter().map(Vec::len).sum();
+    let mut word = Vec::new();
+    word.try_reserve_exact(total_len)
+        .map_err(|_| StructureError::AllocationFailed {
+            requested: total_len,
+        })?;
+    for part in words {
+        word.extend_from_slice(part);
+    }
+    left_word_lookup(table, involution, &word)
 }
 
 // ---------------------------------------------------------------------------
@@ -452,18 +457,6 @@ impl<'a> ExtRepContext<'a> {
         debug_assert!(count.is_multiple_of(2)); // pos_to_neg sets are delta-stable
         Ok(!count.is_multiple_of(4))
     }
-
-    /// The inner class's own simple twist (the distinguished involution's
-    /// diagram action), driving `TwistedWeylGroup::twistedConjugate`.
-    pub(crate) fn inner_twist(&self) -> Result<Vec<usize>, StructureError> {
-        self.rc.inner_class().based_involution_twist(
-            self.rc
-                .inner_class()
-                .distinguished_involution()
-                .involution()
-                .clone(),
-        )
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -481,7 +474,7 @@ impl<'a> ExtRepContext<'a> {
 /// [`ExtRepContext`] explicitly (the crate's borrow discipline).
 #[derive(Clone, Debug)]
 pub struct ExtParam {
-    tw: WeylElement,
+    involution: InvolutionId,
     l: Coweight,
     gamma_lambda: RationalWeight,
     tau: Weight,
@@ -495,7 +488,7 @@ impl ExtParam {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         ctx: &ExtRepContext,
-        tw: WeylElement,
+        involution: InvolutionId,
         gamma_lambda: RationalWeight,
         tau: Weight,
         l: Coweight,
@@ -503,7 +496,7 @@ impl ExtParam {
         flipped: bool,
     ) -> Self {
         let result = Self {
-            tw,
+            involution,
             l,
             gamma_lambda,
             tau,
@@ -533,7 +526,6 @@ impl ExtParam {
                 index: involution.0,
                 upper_bound: rc.table().involution_count(),
             })?;
-        let tw = record.weyl_element().clone();
         let theta = record.theta();
 
         // l = ell(kgb, x): g_rho_check - torus_factor(x), integral.
@@ -593,7 +585,7 @@ impl ExtParam {
 
         Ok(Self::new(
             ctx,
-            tw,
+            involution,
             gamma_lambda,
             Weight::new(tau),
             l,
@@ -602,8 +594,8 @@ impl ExtParam {
         ))
     }
 
-    pub fn tw(&self) -> &WeylElement {
-        &self.tw
+    pub fn involution_id(&self) -> InvolutionId {
+        self.involution
     }
 
     /// The lattice involution `theta` defined by `tw` (upstream
@@ -612,7 +604,7 @@ impl ExtParam {
         &self,
         ctx: &ExtRepContext<'a>,
     ) -> Result<&'a LatticeInvolution, StructureError> {
-        let id = table_lookup(ctx.rc().table(), &self.tw)?;
+        let id = self.involution;
         Ok(ctx
             .rc()
             .table()
@@ -626,7 +618,14 @@ impl ExtParam {
 
     /// The involution-table number of `tw`.
     pub fn theta_id(&self, ctx: &ExtRepContext) -> Result<InvolutionId, StructureError> {
-        table_lookup(ctx.rc().table(), &self.tw)
+        ctx.rc()
+            .table()
+            .record(self.involution)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: self.involution.0,
+                upper_bound: ctx.rc().table().involution_count(),
+            })?;
+        Ok(self.involution)
     }
 
     pub fn l(&self) -> &Coweight {
@@ -658,7 +657,7 @@ impl ExtParam {
     /// KGB element from `(tw, l mod 2)`.
     pub fn x(&self, ctx: &ExtRepContext) -> Result<KgbId, StructureError> {
         let rc = ctx.rc();
-        let involution = table_lookup(rc.table(), &self.tw)?;
+        let involution = self.theta_id(ctx)?;
         let ones = self
             .l
             .as_slice()
@@ -750,7 +749,7 @@ pub fn same_standard_reps(
     e: &ExtParam,
     f: &ExtParam,
 ) -> Result<bool, StructureError> {
-    if e.tw != f.tw {
+    if e.involution != f.involution {
         return Ok(false);
     }
     let theta = e.theta(ctx)?;
@@ -981,8 +980,7 @@ pub fn complex_cross(
     let rc = ctx.rc();
     let system = rc.root_system();
     let table = rc.table();
-    let theta = table_lookup(table, &e.tw)?;
-    let inner_twist = ctx.inner_twist()?;
+    let theta = e.involution;
 
     // rho_r_shift = 2rho of the positive real roots at theta;
     // dual_rho_im_shift = 2rho_check of the positive imaginary roots.
@@ -1012,7 +1010,7 @@ pub fn complex_cross(
     let g_rho_check = rc.g_rho_check().clone();
     for &beta in &kappa {
         for &generator in &reflection_word(rc, beta)? {
-            e.tw = e.tw.twisted_conjugate(system, generator, &inner_twist)?;
+            e.involution = table.cross(generator, e.involution)?;
         }
         e.gamma_lambda = reflect_rational(system, beta, &e.gamma_lambda)?;
         reflect_coords(system, beta, &mut rho_r_shift)?;
@@ -1035,7 +1033,7 @@ pub fn complex_cross(
         }
     }
 
-    let new_theta = table_lookup(table, &e.tw)?;
+    let new_theta = e.involution;
     let new_positive_real: Vec<RootId> = rc
         .root_involution_data(new_theta)?
         .roots_of_kind(RootKind::Real)
@@ -1131,11 +1129,10 @@ fn rw_sub(rw: &RationalWeight, w: &[i32]) -> Result<RationalWeight, StructureErr
 /// `i_tab.matrix(tw) +/- 1` and its `.transposed()` variants).
 fn shifted_involution_matrix(
     table: &InvolutionTable,
-    tw: &WeylElement,
+    id: InvolutionId,
     coweight: bool,
     diagonal: i32,
 ) -> Result<IntMatrix, StructureError> {
-    let id = table_lookup(table, tw)?;
     let record = table.record(id).ok_or(StructureError::IndexOutOfRange {
         index: id.0,
         upper_bound: table.involution_count(),
@@ -1222,7 +1219,7 @@ pub fn star(
     let simple_ids: Vec<RootId> = system.simple_root_ids().to_vec();
     let mut e0 = e.clone();
     let n_alpha = RootId::from_usize(n_alpha);
-    let theta = table_lookup(table, &e.tw)?;
+    let theta = e.involution;
     let theta_alpha =
         rc.root_involution_data(theta)?
             .image(n_alpha)
@@ -1246,14 +1243,15 @@ pub fn star(
                     return Ok((DescValue::OneImaginaryCompact, links));
                 }
                 // Noncompact case.
-                let new_tw = word_product(system, &reflection_word(rc, n_alpha)?, &e.tw)?;
-                let th_1 = shifted_involution_matrix(table, &new_tw, false, -1)?;
+                let new_involution =
+                    left_word_lookup(table, e.involution, &reflection_word(rc, n_alpha)?)?;
+                let th_1 = shifted_involution_matrix(table, new_involution, false, -1)?;
                 let mut tau_coef = vec_dot(&alpha_v, e.tau.as_slice());
 
                 // Try to make alpha simple by conjugating by W^delta.
                 let mut alpha_simple = n_alpha;
                 let ww = fixed_conjugate_simple(ctx, &mut alpha_simple)?;
-                let theta_p = table_lookup(table, &new_tw)?;
+                let theta_p = new_involution;
                 let s = pos_to_neg(system, &ww)?;
                 let rho_r_shift = ctx.to_simple_shift(theta, theta_p, &s)?;
                 let flipped = ctx.shift_flip(theta, theta_p, &s)?;
@@ -1279,7 +1277,7 @@ pub fn star(
                     vec_add_scaled(&mut l, &alpha_v, tf_alpha / 2);
                     let mut f = ExtParam::new(
                         ctx,
-                        new_tw,
+                        new_involution,
                         rw_sub(&e.gamma_lambda, rho_r_shift.as_slice())?,
                         Weight::new(tau),
                         Coweight::new(l),
@@ -1327,7 +1325,7 @@ pub fn star(
                     let l = Coweight::new(l);
                     let mut f0 = ExtParam::new(
                         ctx,
-                        new_tw.clone(),
+                        new_involution,
                         rw_sub(&new_gam_lam, rho_r_shift.as_slice())?,
                         Weight::new({
                             let mut tau = new_tau;
@@ -1340,7 +1338,7 @@ pub fn star(
                     );
                     let mut f1 = ExtParam::new(
                         ctx,
-                        new_tw,
+                        new_involution,
                         rw_sub(f0.gamma_lambda(), &alpha)?,
                         f0.tau.clone(),
                         l,
@@ -1361,8 +1359,9 @@ pub fn star(
                 // Length 1 real case.
                 let mut alpha_simple = n_alpha;
                 let ww = fixed_conjugate_simple(ctx, &mut alpha_simple)?;
-                let new_tw = word_product(system, &reflection_word(rc, n_alpha)?, &e.tw)?;
-                let theta_p = table_lookup(table, &new_tw)?;
+                let new_involution =
+                    left_word_lookup(table, e.involution, &reflection_word(rc, n_alpha)?)?;
+                let theta_p = new_involution;
                 let s = pos_to_neg(system, &ww)?;
                 let mut rho_r_shift = ctx.to_simple_shift(theta, theta_p, &s)?;
                 let mut flipped = ctx.shift_flip(theta, theta_p, &s)?;
@@ -1373,7 +1372,7 @@ pub fn star(
                 );
 
                 let t_alpha = vec_dot(e.t.as_slice(), &alpha);
-                let theta_1 = shifted_involution_matrix(table, &e.tw, false, -1)?;
+                let theta_1 = shifted_involution_matrix(table, e.involution, false, -1)?;
                 if has_solution(&theta_1, &alpha) {
                     // Length 1 type 1 real case.
                     debug_assert!(simple_ids.contains(&alpha_simple));
@@ -1398,7 +1397,7 @@ pub fn star(
                     debug_assert!(same_sign(ctx, e, &e0));
                     let mut f0 = ExtParam::new(
                         ctx,
-                        new_tw.clone(),
+                        new_involution,
                         new_gam_lam.clone(),
                         e.tau.clone(),
                         e.l.clone(),
@@ -1407,7 +1406,7 @@ pub fn star(
                     );
                     let mut f1 = ExtParam::new(
                         ctx,
-                        new_tw,
+                        new_involution,
                         new_gam_lam,
                         e.tau.clone(),
                         Coweight::new(vec_add(e.l.as_slice(), &alpha_v)),
@@ -1458,7 +1457,7 @@ pub fn star(
                     )?;
                     debug_assert_eq!(rat_dot(&new_gam_lam, &alpha_v), 0);
                     let diff = find_solution(
-                        &shifted_involution_matrix(table, &new_tw, true, 1)?,
+                        &shifted_involution_matrix(table, new_involution, true, 1)?,
                         &alpha_v,
                     )
                     .ok_or(StructureError::RepInvariantViolation {
@@ -1475,7 +1474,7 @@ pub fn star(
                     debug_assert!(!same_standard_reps(ctx, &e0, &e1)?);
                     let mut f = ExtParam::new(
                         ctx,
-                        new_tw,
+                        new_involution,
                         new_gam_lam,
                         Weight::new(new_tau),
                         e.l.clone(),
@@ -1516,14 +1515,14 @@ pub fn star(
                     return Ok((DescValue::TwoImaginaryCompact, links));
                 }
                 // Noncompact case.
-                let new_tw = word_product(
-                    system,
-                    &reflection_word(rc, n_beta)?,
-                    &word_product(system, &reflection_word(rc, n_alpha)?, &e.tw)?,
+                let new_involution = reflected_involution(
+                    table,
+                    e.involution,
+                    &[reflection_word(rc, n_beta)?, reflection_word(rc, n_alpha)?],
                 )?;
                 let mut alpha_simple = n_alpha;
                 let ww = fixed_conjugate_simple(ctx, &mut alpha_simple)?;
-                let theta_p = table_lookup(table, &new_tw)?;
+                let theta_p = new_involution;
                 let s = pos_to_neg(system, &ww)?;
                 let rho_r_shift = ctx.to_simple_shift(theta, theta_p, &s)?;
                 let mut flipped = ctx.shift_flip(theta, theta_p, &s)?;
@@ -1538,7 +1537,7 @@ pub fn star(
 
                 let at = vec_dot(&alpha_v, e.tau.as_slice());
                 let bt = vec_dot(&beta_v, e.tau.as_slice());
-                let th_1 = shifted_involution_matrix(table, &new_tw, false, -1)?;
+                let th_1 = shifted_involution_matrix(table, new_involution, false, -1)?;
 
                 let mut new_l = e.l.as_slice().to_vec();
                 vec_add_scaled(&mut new_l, &alpha_v, tf_alpha / 2);
@@ -1557,7 +1556,7 @@ pub fn star(
                     })?;
                     let mut f = ExtParam::new(
                         ctx,
-                        new_tw,
+                        new_involution,
                         rw_sub(&e.gamma_lambda, rho_r_shift.as_slice())?,
                         Weight::new(vec_add(e.tau.as_slice(), &sigma)),
                         new_l,
@@ -1591,7 +1590,7 @@ pub fn star(
                     // F0 is the Cayley link that does not need sigma.
                     let mut f0 = ExtParam::new(
                         ctx,
-                        new_tw.clone(),
+                        new_involution,
                         rw_sub(
                             &rw_sub(&e.gamma_lambda, rho_r_shift.as_slice())?,
                             &vec_scaled(&alpha, m),
@@ -1603,7 +1602,7 @@ pub fn star(
                     );
                     let mut f1 = ExtParam::new(
                         ctx,
-                        new_tw,
+                        new_involution,
                         rw_sub(
                             &rw_sub(&e.gamma_lambda, rho_r_shift.as_slice())?,
                             &vec_scaled(&alpha, mm),
@@ -1631,7 +1630,7 @@ pub fn star(
                     vec_add_scaled(&mut tau1, &beta, -((bt + m) / 2));
                     let mut f0 = ExtParam::new(
                         ctx,
-                        new_tw.clone(),
+                        new_involution,
                         rw_sub(
                             &rw_sub(&e.gamma_lambda, rho_r_shift.as_slice())?,
                             &vec_scaled(&alpha, m),
@@ -1643,7 +1642,7 @@ pub fn star(
                     );
                     let mut f1 = ExtParam::new(
                         ctx,
-                        new_tw,
+                        new_involution,
                         rw_sub(
                             &rw_sub(
                                 &rw_sub(&e.gamma_lambda, rho_r_shift.as_slice())?,
@@ -1668,12 +1667,12 @@ pub fn star(
                 let mut alpha_simple = n_alpha;
                 let ww = fixed_conjugate_simple(ctx, &mut alpha_simple)?;
                 debug_assert!(simple_ids.contains(&alpha_simple));
-                let new_tw = word_product(
-                    system,
-                    &reflection_word(rc, n_beta)?,
-                    &word_product(system, &reflection_word(rc, n_alpha)?, &e.tw)?,
+                let new_involution = reflected_involution(
+                    table,
+                    e.involution,
+                    &[reflection_word(rc, n_beta)?, reflection_word(rc, n_alpha)?],
                 )?;
-                let theta_p = table_lookup(table, &new_tw)?;
+                let theta_p = new_involution;
                 let s = pos_to_neg(system, &ww)?;
                 let rho_r_shift = ctx.to_simple_shift(theta, theta_p, &s)?;
                 let mut flipped = ctx.shift_flip(theta, theta_p, &s)?;
@@ -1692,7 +1691,7 @@ pub fn star(
                 let b_level = level_a(ctx, e, &rho_r_shift, n_beta)?;
                 debug_assert_eq!(b_level % 2, 0);
 
-                let theta_1 = shifted_involution_matrix(table, &e.tw, false, -1)?;
+                let theta_1 = shifted_involution_matrix(table, e.involution, false, -1)?;
                 let new_gam_lam = rw_sub(
                     &rw_sub(
                         &rw_add(&e.gamma_lambda, rho_r_shift.as_slice())?,
@@ -1728,7 +1727,7 @@ pub fn star(
                     debug_assert!(same_sign(ctx, e, &e1));
                     let mut f0 = ExtParam::new(
                         ctx,
-                        new_tw.clone(),
+                        new_involution,
                         new_gam_lam.clone(),
                         e.tau.clone(),
                         Coweight::new({
@@ -1741,7 +1740,7 @@ pub fn star(
                     );
                     let mut f1 = ExtParam::new(
                         ctx,
-                        new_tw,
+                        new_involution,
                         new_gam_lam,
                         e.tau.clone(),
                         Coweight::new({
@@ -1767,7 +1766,7 @@ pub fn star(
                     let mm = 1 - m;
                     // One t needs the downstairs solution for an odd-odd pair.
                     let s = find_solution(
-                        &shifted_involution_matrix(table, &new_tw, true, 1)?,
+                        &shifted_involution_matrix(table, new_involution, true, 1)?,
                         &vec_add(
                             &vec_scaled(&alpha_v, ta + mm),
                             &vec_scaled(&beta_v, tb - mm),
@@ -1792,7 +1791,7 @@ pub fn star(
                     debug_assert_eq!(vec_dot(e1.t.as_slice(), &beta), mm);
                     let mut f0 = ExtParam::new(
                         ctx,
-                        new_tw.clone(),
+                        new_involution,
                         new_gam_lam.clone(),
                         e.tau.clone(),
                         Coweight::new({
@@ -1805,7 +1804,7 @@ pub fn star(
                     );
                     let mut f1 = ExtParam::new(
                         ctx,
-                        new_tw,
+                        new_involution,
                         new_gam_lam,
                         e.tau.clone(),
                         Coweight::new({
@@ -1824,7 +1823,7 @@ pub fn star(
                     // Case 2r22.
                     result = DescValue::TwoRealSingleSingle;
                     let s = find_solution(
-                        &shifted_involution_matrix(table, &new_tw, true, 1)?,
+                        &shifted_involution_matrix(table, new_involution, true, 1)?,
                         &vec_add(&vec_scaled(&alpha_v, ta), &vec_scaled(&beta_v, tb)),
                     )
                     .ok_or(StructureError::RepInvariantViolation {
@@ -1839,7 +1838,7 @@ pub fn star(
                     debug_assert!(!same_standard_reps(ctx, &e0, &e1)?);
                     let mut f = ExtParam::new(
                         ctx,
-                        new_tw,
+                        new_involution,
                         new_gam_lam,
                         e.tau.clone(),
                         e.l.clone(),
@@ -1871,15 +1870,14 @@ pub fn star(
                 } else if ascent {
                     // Twisted commutation: 2Ci.
                     result = DescValue::TwoSemiImaginary;
-                    let mut new_tw = e.tw.clone();
-                    let inner_twist = ctx.inner_twist()?;
+                    let mut new_involution = e.involution;
                     for &generator in &reflection_word(rc, n_alpha)? {
-                        new_tw = new_tw.twisted_conjugate(system, generator, &inner_twist)?;
+                        new_involution = table.cross(generator, new_involution)?;
                     }
                     let mut alpha_simple = n_alpha;
                     let ww = fixed_conjugate_simple(ctx, &mut alpha_simple)?;
                     debug_assert!(simple_ids.contains(&alpha_simple));
-                    let theta_p = table_lookup(table, &new_tw)?;
+                    let theta_p = new_involution;
                     let s = pos_to_neg(system, &ww)?;
                     let rho_r_shift = ctx.to_simple_shift(theta, theta_p, &s)?;
                     let flipped = ctx.shift_flip(theta, theta_p, &s)?;
@@ -1915,7 +1913,7 @@ pub fn star(
                     });
                     let mut fp = ExtParam::new(
                         ctx,
-                        new_tw,
+                        new_involution,
                         new_gam_lam,
                         Weight::new(new_tau),
                         new_l,
@@ -1930,15 +1928,14 @@ pub fn star(
                 } else {
                     // Twisted commutation, not ascent: 2Cr.
                     result = DescValue::TwoSemiReal;
-                    let mut new_tw = e.tw.clone();
-                    let inner_twist = ctx.inner_twist()?;
+                    let mut new_involution = e.involution;
                     for &generator in &reflection_word(rc, n_alpha)? {
-                        new_tw = new_tw.twisted_conjugate(system, generator, &inner_twist)?;
+                        new_involution = table.cross(generator, new_involution)?;
                     }
                     let mut alpha_simple = n_alpha;
                     let ww = fixed_conjugate_simple(ctx, &mut alpha_simple)?;
                     debug_assert!(simple_ids.contains(&alpha_simple));
-                    let theta_p = table_lookup(table, &new_tw)?;
+                    let theta_p = new_involution;
                     let s = pos_to_neg(system, &ww)?;
                     let rho_r_shift = ctx.to_simple_shift(theta, theta_p, &s)?;
                     let flipped = ctx.shift_flip(theta, theta_p, &s)?;
@@ -1969,7 +1966,7 @@ pub fn star(
                     });
                     let mut fp = ExtParam::new(
                         ctx,
-                        new_tw,
+                        new_involution,
                         new_gam_lam,
                         Weight::new(new_tau),
                         new_l,
@@ -2001,7 +1998,7 @@ pub fn star(
             debug_assert_eq!(kappa_v, vec_add(&alpha_v, &beta_v));
             let s_kappa = reflection_word(rc, n_kappa)?;
             let beta_alpha = vec_sub(&beta, &alpha);
-            let new_tw = word_product(system, &s_kappa, &e.tw)?; // when applicable
+            let new_involution = left_word_lookup(table, e.involution, &s_kappa)?; // when applicable
 
             if theta_alpha == n_alpha {
                 // Length 3 imaginary case.
@@ -2017,7 +2014,7 @@ pub fn star(
                 result = DescValue::ThreeImaginarySemi;
                 let mut alpha_simple = n_alpha;
                 let ww = fixed_conjugate_simple(ctx, &mut alpha_simple)?;
-                let theta_p = table_lookup(table, &new_tw)?; // upstairs
+                let theta_p = new_involution; // upstairs
                 let s = pos_to_neg(system, &ww)?;
                 let rho_r_shift = ctx.to_simple_shift(theta, theta_p, &s)?;
                 let mut flipped = ctx.shift_flip(theta, theta_p, &s)?;
@@ -2050,7 +2047,7 @@ pub fn star(
                 }
                 let mut f = ExtParam::new(
                     ctx,
-                    new_tw,
+                    new_involution,
                     rw_sub(&e0.gamma_lambda, rho_r_shift.as_slice())?,
                     e0.tau.clone(),
                     e0.l.clone(),
@@ -2066,7 +2063,7 @@ pub fn star(
                 let mut alpha_simple = n_alpha;
                 let ww = fixed_conjugate_simple(ctx, &mut alpha_simple)?;
                 debug_assert!(simple_ids.contains(&alpha_simple));
-                let theta_p = table_lookup(table, &new_tw)?;
+                let theta_p = new_involution;
                 let s = pos_to_neg(system, &ww)?;
                 let rho_r_shift = ctx.to_simple_shift(theta, theta_p, &s)?;
                 let mut flipped = ctx.shift_flip(theta, theta_p, &s)?;
@@ -2115,7 +2112,7 @@ pub fn star(
                 flipped = !flipped;
                 let mut f = ExtParam::new(
                     ctx,
-                    new_tw,
+                    new_involution,
                     new_gam_lam,
                     e0.tau.clone(),
                     e0.l.clone(),
@@ -2145,7 +2142,7 @@ pub fn star(
                     let mut alpha_simple = n_alpha;
                     let ww = fixed_conjugate_simple(ctx, &mut alpha_simple)?;
                     debug_assert!(simple_ids.contains(&alpha_simple));
-                    let theta_p = table_lookup(table, &new_tw)?;
+                    let theta_p = new_involution;
                     let s = pos_to_neg(system, &ww)?;
                     let simple_shift = ctx.to_simple_shift(theta, theta_p, &s)?;
                     let rho_r_shift = if ascent {
@@ -2193,7 +2190,7 @@ pub fn star(
                         debug_assert_eq!(vec_dot(e0.t.as_slice(), &kappa), 0);
                         let mut f = ExtParam::new(
                             ctx,
-                            new_tw,
+                            new_involution,
                             new_gam_lam,
                             e0.tau.clone(),
                             e0.l.clone(),
@@ -2230,7 +2227,7 @@ pub fn star(
                         }
                         let mut f = ExtParam::new(
                             ctx,
-                            new_tw,
+                            new_involution,
                             new_gam_lam,
                             e0.tau.clone(),
                             e0.l.clone(),
@@ -2539,12 +2536,12 @@ fn kappa_reflect(
     ctx: &ExtRepContext,
     e: &mut ExtParam,
     kappa: &[usize],
-    inner_twist: &[usize],
 ) -> Result<(), StructureError> {
     let rc = ctx.rc();
     let system = rc.root_system();
+    let table = rc.table();
     for &generator in kappa.iter().rev() {
-        e.tw = e.tw.twisted_conjugate(system, generator, inner_twist)?;
+        e.involution = table.cross(generator, e.involution)?;
     }
     e.gamma_lambda = act_word_rational(system, kappa, &e.gamma_lambda)?;
     let mut tau = e.tau.as_slice().to_vec();
@@ -2674,7 +2671,6 @@ pub fn extended_restrict_to_k(
     let mut result: Vec<(KType, (i32, i32))> = Vec::new();
     let mut to_do: VecDeque<(ExtParam, Weight)> = VecDeque::new();
     to_do.push_back((e0, gamma2_start));
-    let inner_twist = ctx.inner_twist()?;
     while let Some((mut e, mut gamma2)) = to_do.pop_front() {
         let mut i_theta = e.theta_id(ctx)?;
         let mut dropped = false;
@@ -2692,7 +2688,7 @@ pub fn extended_restrict_to_k(
                             let mut coordinates = gamma2.as_slice().to_vec();
                             act_word_weight(system, &kappa, &mut coordinates)?;
                             gamma2 = Weight::new(coordinates);
-                            kappa_reflect(ctx, &mut e, &kappa, &inner_twist)?;
+                            kappa_reflect(ctx, &mut e, &kappa)?;
                             i_theta = e.theta_id(ctx)?;
                             continue 'restart;
                         } else if eval == 0 && simple_complex_is_descent(rc, i_theta, s)? {
@@ -2799,7 +2795,6 @@ pub fn extended_finalise(
     let mut result: Vec<(StandardRepr, bool)> = Vec::new();
     let mut to_do: VecDeque<(ExtParam, RationalWeight)> = VecDeque::new();
     to_do.push_back((e0, sr.gamma().clone()));
-    let inner_twist = ctx.inner_twist()?;
     while let Some((mut e, mut gamma)) = to_do.pop_front() {
         let mut i_theta = e.theta_id(ctx)?;
         let mut dropped = false;
@@ -2814,7 +2809,7 @@ pub fn extended_finalise(
                             // Complex reflections: anti-dominant to dominant.
                             let kappa = kappa_word(orbit);
                             gamma = act_word_rational(system, &kappa, &gamma)?;
-                            kappa_reflect(ctx, &mut e, &kappa, &inner_twist)?;
+                            kappa_reflect(ctx, &mut e, &kappa)?;
                             i_theta = e.theta_id(ctx)?;
                             continue 'restart;
                         } else if eval == 0 && simple_complex_is_descent(rc, i_theta, s)? {
@@ -2937,7 +2932,6 @@ pub fn scaled_extended_finalise(
 
     // Only complex coroots need treatment (both for dominance and for
     // finality); upstream's `restart:` label re-scans all orbits on change.
-    let inner_twist = ctx.inner_twist()?;
     let mut i_theta = e.theta_id(ctx)?;
     'restart: loop {
         for orbit in &orbits {
@@ -2950,7 +2944,7 @@ pub fn scaled_extended_finalise(
                 // Complex reflections: anti-dominant to dominant.
                 let kappa = kappa_word(orbit);
                 gamma = act_word_rational(system, &kappa, &gamma)?;
-                kappa_reflect(ctx, &mut e, &kappa, &inner_twist)?;
+                kappa_reflect(ctx, &mut e, &kappa)?;
                 i_theta = e.theta_id(ctx)?;
                 continue 'restart;
             } else if eval == 0 && simple_complex_is_descent(rc, i_theta, s)? {
@@ -3185,7 +3179,7 @@ mod tests {
         for (fixture, delta) in fixtures {
             let rc = fixture.rc();
             let ctx = ExtRepContext::new(&rc, delta(&rc)).unwrap();
-            for x in 0..rc.graph().len() {
+            for x in 0..rc.graph().size() {
                 let id = rc.involution_of(KgbId(x)).unwrap();
                 let extension =
                     default_extend_srm(&ctx, KgbId(x), rc.build_srm(KgbId(x), rc.rho()).unwrap())
