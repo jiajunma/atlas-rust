@@ -276,6 +276,11 @@ enumeration and permutation-level optimizations.
   validation and partial-table None, while removing legacy_element from the
   Cayley hot path. Jobs 3651599/3651600 are the exact-commit focused and
   full-pipeline gates.
+- The follow-up full-key BFS fallback is implemented at 798838e, with forced
+  Full-key coverage in 38426d1. It computes the cross neighbor compactly and
+  only materializes a legacy permutation on a compact-index miss. HPC target
+  job 3651646 is the final focused test; no compatibility or performance claim
+  is made until that result is collected.
 
 ## 7. Phase 4: Migrate Tits, KGB, and Remaining Real-Group Callers
 
