@@ -1531,6 +1531,41 @@ mod tests {
     }
 
     #[test]
+    fn b2_compact_cayley_matches_legacy_for_all_records() {
+        let (inner_class, classification) = context(vec![vec![2, -2], vec![-1, 2]], None, 8, 8);
+        let table = filled_table(&inner_class, &classification, 8);
+
+        for index in 0..table.involution_count() {
+            let id = InvolutionId(index);
+            for generator in 0..table.twist.len() {
+                let reflection = &table.reflections[generator];
+                let product = reflection
+                    .multiply(
+                        table.root_system(),
+                        table.record(id).unwrap().weyl_element(),
+                    )
+                    .unwrap();
+                assert_eq!(
+                    table.compact_cayley_lookup(generator, id).unwrap(),
+                    table.lookup(&product),
+                    "id={id:?}, generator={generator}"
+                );
+            }
+        }
+
+        assert!(matches!(
+            table.compact_cayley_lookup(InvolutionId(usize::MAX).0, InvolutionId(usize::MAX)),
+            Err(StructureError::IndexOutOfRange { index, upper_bound })
+                if index == usize::MAX && upper_bound == table.involution_count()
+        ));
+        assert!(matches!(
+            table.compact_cayley_lookup(table.twist.len(), InvolutionId(0)),
+            Err(StructureError::IndexOutOfRange { index, upper_bound })
+                if index == table.twist.len() && upper_bound == table.twist.len()
+        ));
+    }
+
+    #[test]
     fn b2_compact_first_left_descent_respects_generator_order() {
         let (inner_class, classification) = context(vec![vec![2, -2], vec![-1, 2]], None, 8, 8);
         let table = filled_table(&inner_class, &classification, 8);
