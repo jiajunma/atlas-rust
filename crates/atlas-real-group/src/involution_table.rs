@@ -1495,6 +1495,74 @@ mod tests {
     }
 
     #[test]
+    fn dual_involution_ids_match_legacy_lookup_in_the_target_table() {
+        fn assert_all_source_records(
+            label: &str,
+            source: &InvolutionTable,
+            target: &InvolutionTable,
+        ) {
+            let longest = target.compact_weyl.longest();
+            let mut legacy_longest = WeylElement::identity(target.root_system()).unwrap();
+            for generator in target.compact_weyl.element_word(&longest) {
+                legacy_longest = legacy_longest
+                    .right_multiply_simple(target.root_system(), generator)
+                    .unwrap()
+                    .0;
+            }
+
+            for index in 0..source.involution_count() {
+                let source_id = InvolutionId(index);
+                let source_word = source
+                    .record(source_id)
+                    .unwrap()
+                    .weyl_element()
+                    .reduced_word(source.root_system())
+                    .unwrap();
+                let expected = dual_involution(
+                    &source_word,
+                    target.root_system(),
+                    &target.twist,
+                    &legacy_longest,
+                )
+                .unwrap();
+                let expected_id = target
+                    .lookup(&expected)
+                    .expect("a full target table contains every dual involution");
+                assert_eq!(
+                    source.dual_involution_id(source_id, target).unwrap(),
+                    Some(expected_id),
+                    "{label}: source_id={source_id:?}"
+                );
+            }
+        }
+
+        let (a2_inner_class, a2_classification) = context(
+            vec![vec![2, -1], vec![-1, 2]],
+            Some(vec![vec![0, 1], vec![1, 0]]),
+            6,
+            6,
+        );
+        let a2_source = filled_table(&a2_inner_class, &a2_classification, 6);
+        let a2_target = filled_table(&a2_inner_class, &a2_classification, 6);
+        assert_all_source_records("A2 node swap", &a2_source, &a2_target);
+
+        let (b2_inner_class, b2_classification) =
+            context(vec![vec![2, -2], vec![-1, 2]], None, 8, 8);
+        let b2_source = filled_table(&b2_inner_class, &b2_classification, 8);
+        let b2_target = filled_table(&b2_inner_class, &b2_classification, 8);
+        assert_all_source_records("B2 identity twist", &b2_source, &b2_target);
+
+        let (a1_inner_class, a1_classification) = context(vec![vec![2]], None, 2, 2);
+        let incompatible_target = filled_table(&a1_inner_class, &a1_classification, 2);
+        let invalid_source_id = InvolutionId(a2_source.involution_count());
+        assert!(matches!(
+            a2_source.dual_involution_id(invalid_source_id, &incompatible_target),
+            Err(StructureError::IndexOutOfRange { index, upper_bound })
+                if index == invalid_source_id.0 && upper_bound == a2_source.involution_count()
+        ));
+    }
+
+    #[test]
     fn b2_compact_left_word_lookup_matches_legacy_products() {
         let (inner_class, classification) = context(vec![vec![2, -2], vec![-1, 2]], None, 8, 8);
         let table = filled_table(&inner_class, &classification, 8);
