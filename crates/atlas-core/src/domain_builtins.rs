@@ -36,9 +36,9 @@ use atlas_real_group::{
     bourbaki_permutation, bruhat_below, bruhat_hasse as block_bruhat_hasse, build_presentations,
     central_fiber, checked_inner_class_letters, classify_involution as domain_classify_involution,
     common_deformation_terms, denominator_exceeds_alcove_bound, dual_cartan_correspondence,
-    dual_inner_class, dual_involution as block_dual_involution, elected_square_root, fiber_rank,
+    dual_inner_class, elected_square_root, fiber_rank,
     filter_relation_units as domain_filter_relation_units, inner_class_with_twisted_involution,
-    integral_block_scope, layout_involution, longest_action, minimal_torus_part,
+    integral_block_scope, layout_involution, minimal_torus_part,
     on_basis as lattice_on_basis, pair, quotient_relation_basis as domain_quotient_relation_basis,
     replace_relation_generators as domain_replace_relation_generators,
     twisted_deformation_terms, twisted_deformation_with_cancel, twisted_kl_column_at_s,
@@ -7607,29 +7607,19 @@ fn block_fiber_check(
     let x_involution = rf_bundle
         .graph
         .involution_of(x)
-        .and_then(|involution| rf_bundle.table.record(involution))
+        .filter(|&involution| rf_bundle.table.record(involution).is_some())
         .ok_or_else(mismatch)?;
-    let word = x_involution
-        .weyl_element()
-        .reduced_word(rf_bundle.table.root_system())
-        .map_err(|error| runtime(span, error.to_string()))?;
-    let dual_class = &block.dual_rf.parent.inner_class;
-    let dual_twist = dual_class
-        .generator_twist()
-        .map_err(|error| runtime(span, error.to_string()))?;
-    let longest = longest_action(dual_class, WEYL_BUDGET)
-        .map_err(|error| runtime(span, error.to_string()))?;
-    let dual_longest = WeylElement::from_action(dual_class.root_system(), &longest)
-        .map_err(|error| runtime(span, error.to_string()))?;
-    let dual_w = block_dual_involution(&word, dual_class.root_system(), &dual_twist, &dual_longest)
-        .map_err(|error| runtime(span, error.to_string()))?;
     let df_bundle = block.dual_rf.kgb(span)?;
     let y_involution = df_bundle
         .graph
         .involution_of(y)
-        .and_then(|involution| df_bundle.table.record(involution))
+        .filter(|&involution| df_bundle.table.record(involution).is_some())
         .ok_or_else(mismatch)?;
-    if dual_w != *y_involution.weyl_element() {
+    let dual_involution = df_bundle
+        .table
+        .dual_involution_id(&rf_bundle.table, x_involution)
+        .map_err(|error| runtime(span, error.to_string()))?;
+    if dual_involution != Some(y_involution) {
         return Err(mismatch());
     }
     Ok(())

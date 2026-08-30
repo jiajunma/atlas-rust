@@ -26,7 +26,7 @@ use crate::tits_element::apply_matrix_mod_two;
 use crate::{
     CartanClassification, CartanId, InnerClass, InvolutionId, InvolutionTable, LatticeInvolution,
     ModTwoVector, RationalCoweight, RealFormSeed, RootKind, StrongRealClassification,
-    StructureError, TitsCoset, TitsElement, WeakRealFormId, WeylElement,
+    StructureError, TitsCoset, TitsElement, WeakRealFormId,
 };
 
 /// Stable identifier of one KGB element in one graph's numbering.
@@ -945,7 +945,7 @@ fn intern(
 mod tests {
     use crate::{
         AdjointFiberBudget, BasedRootDatum, CartanClassificationBudget, Coweight,
-        IntegerLatticeBudget, InvolutionTableBudget, LatticeInvolution, Weight,
+        IntegerLatticeBudget, InvolutionTableBudget, LatticeInvolution, Weight, WeylElement,
     };
 
     use super::*;
