@@ -612,6 +612,7 @@ FIXTURE_PLANS = (
     # (4167249), with the upstream gate order and renumbered descent status.
     FixturePlan(name="domain/block_basic"),
     FixturePlan(name="domain/block_basic_rejected"),
+    FixturePlan(name="domain/block_fiber_mismatch"),
     # Primitive involution constructors (152f4b8): layout tables per Lie
     # letter with the 's'/'u' collapse rules, and the based on_basis
     # transport with the integrality gate.
