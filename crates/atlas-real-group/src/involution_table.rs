@@ -1207,8 +1207,8 @@ fn push_record(
 #[cfg(test)]
 mod tests {
     use crate::{
-        dual_involution, AdjointFiberBudget, BasedRootDatum, CartanClassificationBudget, Coweight,
-        LatticeInvolution, ModTwoVector,
+        dual_inner_class, dual_involution, AdjointFiberBudget, BasedRootDatum,
+        CartanClassificationBudget, Coweight, LatticeInvolution, ModTwoVector,
     };
 
     use super::*;
@@ -1258,18 +1258,6 @@ mod tests {
     ) -> InvolutionTable {
         let mut table = InvolutionTable::new(inner_class, table_budget(max_involutions)).unwrap();
         for id in 0..classification.cartan_classes().len() {
-            table.add_cartan(classification, CartanId(id)).unwrap();
-        }
-        table
-    }
-
-    fn reverse_filled_table(
-        inner_class: &InnerClass,
-        classification: &CartanClassification,
-        max_involutions: usize,
-    ) -> InvolutionTable {
-        let mut table = InvolutionTable::new(inner_class, table_budget(max_involutions)).unwrap();
-        for id in (0..classification.cartan_classes().len()).rev() {
             table.add_cartan(classification, CartanId(id)).unwrap();
         }
         table
@@ -1573,13 +1561,19 @@ mod tests {
             6,
         );
         let a2_source = filled_table(&a2_inner_class, &a2_classification, 6);
-        let a2_target = reverse_filled_table(&a2_inner_class, &a2_classification, 6);
+        let a2_dual = dual_inner_class(&a2_inner_class, 6, 6).unwrap();
+        let a2_dual_classification =
+            CartanClassification::build(&a2_dual, &class_budget(6)).unwrap();
+        let a2_target = filled_table(&a2_dual, &a2_dual_classification, 6);
         assert_all_source_records("A2 node swap", &a2_source, &a2_target);
 
         let (b2_inner_class, b2_classification) =
             context(vec![vec![2, -2], vec![-1, 2]], None, 8, 8);
         let b2_source = filled_table(&b2_inner_class, &b2_classification, 8);
-        let b2_target = reverse_filled_table(&b2_inner_class, &b2_classification, 8);
+        let b2_dual = dual_inner_class(&b2_inner_class, 8, 8).unwrap();
+        let b2_dual_classification =
+            CartanClassification::build(&b2_dual, &class_budget(8)).unwrap();
+        let b2_target = filled_table(&b2_dual, &b2_dual_classification, 8);
         assert_all_source_records("B2 identity twist", &b2_source, &b2_target);
 
         let (a1_inner_class, a1_classification) = context(vec![vec![2]], None, 2, 2);
