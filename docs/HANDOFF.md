@@ -5816,7 +5816,8 @@ Remaining levers (supersedes the 2026-08-24j list):
   the test's `target.lookup(...).expect(...)` before exercising the helper.
   `d99e5a0` rebuilds A2/B2 targets from `dual_inner_class` with their own
   classifications and tables.
-- Verification on exact commit `d99e5a0`: helper test `3652749` passed 1/1;
+- Verification on the exact HPC snapshot `3822f6f` (the equivalent local
+  cherry-pick is `d99e5a0`): helper test `3652749` passed 1/1;
   focused gate `3652750` passed Weyl 62/62, InvolutionTable 25/25, and KGB
   11/11 in both debug and release; targeted typed differential `3652816`
   passed `domain/block_fiber_mismatch` with all six checks true (stdout,

@@ -290,7 +290,7 @@ enumeration and permutation-level optimizations.
   primary at `4702f1e`: the target table resolves the source compact word
   through its own dual twist and returns a target `InvolutionId`. The first
   cross-table GREEN fixture incorrectly reused the source inner class;
-  `d99e5a0` repairs it with actual A2/B2 dual inner classes. Focused jobs
+  local equivalent `d99e5a0` (HPC snapshot `3822f6f`) repairs it with actual A2/B2 dual inner classes. Focused jobs
   `3652749`/`3652750` and targeted differential `3652816` pass.
   Full 361-fixture job `3652761` remains the pending whole-suite gate.
 - After the full gate, the next low-risk language-boundary slice is the four
