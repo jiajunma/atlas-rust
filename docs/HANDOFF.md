@@ -5802,6 +5802,44 @@ Remaining levers (supersedes the 2026-08-24j list):
 4. Shared InvolutionTable per inner class stays DEFERRED (orbit-slice
    order hazard, see 2026-08-24j).
 
+## Checkpoint - 2026-08-30 (compact block fiber gate repaired)
+
+- `4702f1e` migrates `domain_builtins.rs:block_fiber_check` from legacy
+  root-permutation comparison to target-table compact `InvolutionId`
+  comparison via `InvolutionTable::dual_involution_id`. The helper reads
+  the source table's compact external word, replays it against the target
+  table's own distinguished twist, and preserves invalid-ID errors and the
+  existing `Fiber mismatch KGB and dual KGB elements` diagnostic gate.
+- The first RED test `3652368` was valid. Its initial target fixture was not:
+  reverse-filling a second table for the same inner class does not construct
+  the dual twisted Weyl group. Focused job `3652386` therefore failed in
+  the test's `target.lookup(...).expect(...)` before exercising the helper.
+  `d99e5a0` rebuilds A2/B2 targets from `dual_inner_class` with their own
+  classifications and tables.
+- Verification on exact commit `d99e5a0`: helper test `3652749` passed 1/1;
+  focused gate `3652750` passed Weyl 62/62, InvolutionTable 25/25, and KGB
+  11/11 in both debug and release; targeted typed differential `3652816`
+  passed `domain/block_fiber_mismatch` with all six checks true (stdout,
+  stderr diagnostic category/message, exit status, timeout, and parsing).
+  Rust measured 0.013 s / 7,684 KB peak RSS; the oracle measured 0.013 s /
+  4,268 KB. The fixture meta is now `verified_hpc` with report SHA and
+  benchmark fields.
+- Clean full 361-fixture fat differential `3652761` was submitted from a
+  separate detached HPC worktree and remains PENDING due to fat-partition
+  priority. Jobs `3652389` and `3652751` are earlier invalidated/cancelled
+  pipeline attempts; they must not be cited as compatibility results.
+- Worktree hygiene: focused jobs write reports into their submit directory;
+  those artifacts make a shared checkout dirty. Always use a distinct clean
+  detached worktree for the full pipeline. Never stage the whole dirty
+  `domain_builtins.rs` file; user changes in that file are unrelated and
+  must remain uncommitted.
+- Next migration candidate after the full gate: the four KGB/block printer
+  consumers of `canonical_involution_expr(record.weyl_element())` in
+  `domain_builtins.rs`. The table already exposes
+  `weyl_canonical_involution_expr(InvolutionId)`; `print_block`'s elected
+  Weyl word and `print_blocku` support calculation still require separate
+  compact-word/materialization review.
+
 ## Current frontier (2026-08-24, post-corpus-3624108)
 
 State: full corpus 3624108 @ 83dd11a — 238/238 MATCH + 2 SKIPPED_LARGE,

@@ -2,6 +2,31 @@
 
 ## Compact involution-table fallback (2026-08-30)
 
+The next planned compact consumer, `block_fiber_check`, is now closed.
+Commit `4702f1e` compares the primal/dual packet involutions as target-table
+`InvolutionId` values through `InvolutionTable::dual_involution_id` and
+removes the legacy reduced-word, longest-action, and full root-permutation
+materializations from that language gate. The original RED test was valid at
+job `3652368`, but its first GREEN target construction was not: reversing
+the Cartan insertion order in the same inner class does not create the dual
+twisted Weyl group, and job `3652386` failed inside the test's own
+`target.lookup(...).expect(...)` before reaching the helper assertion.
+Commit `d99e5a0` rebuilds A2/B2 targets from the actual dual inner class.
+HPC job `3652749` passed the focused helper test; job `3652750` passed
+Weyl 62/62, involution-table 25/25, and KGB 11/11 in debug and release; targeted
+differential `3652816` matched `domain/block_fiber_mismatch` exactly,
+including exit 1 and the runtime diagnostic, at Rust 0.013 s / 7,684 KB versus
+the oracle's 0.013 s / 4,268 KB. The clean 361-fixture fat pipeline is job
+`3652761`; until it finishes, these jobs prove the repaired slice and its
+focused regressions, not a fresh whole-suite claim.
+
+Verified repair rule: a dual-lookup test must build its target from
+`dual_inner_class` (and its own classification/table). A second table of
+the source inner class, even with a different fill order, is not a semantic
+dual target. Keep focused reports and full-pipeline jobs in separate HPC
+worktrees, because focused report artifacts make the submit checkout dirty and
+invalidate the pipeline source-state gate.
+
 The compact Cayley path and the ID-primary `ExtParam` slice are complete, but
 `InvolutionRecord::legacy_element` is still an intentional compatibility
 field. The involution-table BFS previously read it only in the `DedupKey::Full`

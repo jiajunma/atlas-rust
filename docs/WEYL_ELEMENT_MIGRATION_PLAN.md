@@ -285,6 +285,21 @@ enumeration and permutation-level optimizations.
   exposes an internal `identity_id` lookup, and GlobalKgb, KgbGraph, and both
   RealFormSeed builders use it instead of constructing an identity
   `WeylElement`. HPC focused verification is still pending.
+- The identity and full-key fallback follow-ups are now focused-green
+  (`3652360` and `3652361`). `block_fiber_check` is also compact-ID
+  primary at `4702f1e`: the target table resolves the source compact word
+  through its own dual twist and returns a target `InvolutionId`. The first
+  cross-table GREEN fixture incorrectly reused the source inner class;
+  `d99e5a0` repairs it with actual A2/B2 dual inner classes. Focused jobs
+  `3652749`/`3652750` and targeted differential `3652816` pass.
+  Full 361-fixture job `3652761` remains the pending whole-suite gate.
+- After the full gate, the next low-risk language-boundary slice is the four
+  `canonical_involution_expr(record.weyl_element())` printer consumers in
+  `domain_builtins.rs`. They already have the table-level compact counterpart
+  `weyl_canonical_involution_expr(InvolutionId)` and are exercised by the
+  KGB/block printer fixtures. The separate `print_block` elected Weyl-word
+  path and `print_blocku` support-set path still need a compact-word API or
+  an explicitly documented materialization boundary.
 
 ## 7. Phase 4: Migrate Tits, KGB, and Remaining Real-Group Callers
 
