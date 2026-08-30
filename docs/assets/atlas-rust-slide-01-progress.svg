@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Atlas-Rust 项目产出、可验证进展与 Codex 投入</title>
+  <desc id="desc">面向非技术听众展示35天项目产出、五项验证结果，以及近期可审计的Codex token和模型响应数量。</desc>
+  <defs>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#2563EB"/>
+      <stop offset="1" stop-color="#06B6D4"/>
+    </linearGradient>
+    <linearGradient id="codexPanel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#EFF6FF"/>
+      <stop offset="1" stop-color="#ECFEFF"/>
+    </linearGradient>
+    <filter id="shadow" x="-12%" y="-12%" width="124%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="15" flood-color="#0F172A" flood-opacity="0.08"/>
+    </filter>
+    <style>
+      text { font-family: Inter, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif; }
+      .ink { fill: #0F172A; }
+      .muted { fill: #64748B; }
+      .panel-title { font-size: 24px; font-weight: 760; fill: #0F172A; }
+      .progress-label { font-size: 21px; font-weight: 650; fill: #1E293B; }
+      .progress-value { font-size: 21px; font-weight: 760; fill: #059669; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="900" fill="#FFFFFF"/>
+  <rect x="0" y="0" width="18" height="900" fill="url(#accent)"/>
+  <text x="80" y="66" font-size="20" font-weight="720" letter-spacing="2.2" fill="#2563EB">ATLAS-RUST · 2026-08-30</text>
+  <text x="80" y="128" font-size="44" font-weight="800" class="ink">Atlas-Rust：35 天完成核心功能闭环，进入性能与发布收尾</text>
+  <text x="80" y="174" font-size="24" class="muted">从零搭建 Rust 版本，并用原版 Atlas 持续做自动对照</text>
+
+  <!-- three output metrics -->
+  <g filter="url(#shadow)">
+    <rect x="80" y="214" width="450" height="150" rx="24" fill="#F8FAFC" stroke="#E2E8F0"/>
+    <rect x="575" y="214" width="450" height="150" rx="24" fill="#F8FAFC" stroke="#E2E8F0"/>
+    <rect x="1070" y="214" width="450" height="150" rx="24" fill="#F8FAFC" stroke="#E2E8F0"/>
+  </g>
+  <circle cx="125" cy="260" r="18" fill="#DBEAFE"/>
+  <path d="M116 252 L107 260 L116 268 M134 252 L143 260 L134 268" fill="none" stroke="#2563EB" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="155" y="270" font-size="22" font-weight="700" class="muted">项目代码</text>
+  <text x="120" y="330" font-size="49" font-weight="820" class="ink">约 11.8 万行代码</text>
+
+  <circle cx="620" cy="260" r="18" fill="#D1FAE5"/>
+  <path d="M611 260 L617 266 L630 252" fill="none" stroke="#059669" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="650" y="270" font-size="22" font-weight="700" class="muted">质量保障</text>
+  <text x="615" y="330" font-size="49" font-weight="820" class="ink">891 项测试</text>
+
+  <circle cx="1115" cy="260" r="18" fill="#FEF3C7"/>
+  <path d="M1107 260 H1123 M1115 252 V268" stroke="#D97706" stroke-width="3.5" stroke-linecap="round"/>
+  <text x="1145" y="270" font-size="22" font-weight="700" class="muted">开发迭代</text>
+  <text x="1110" y="330" font-size="49" font-weight="820" class="ink">1,620 次代码提交</text>
+
+  <text x="80" y="397" font-size="18" class="muted">补充规模：3 个主要代码模块 · 84 个 Rust 文件</text>
+
+  <!-- verified progress -->
+  <g filter="url(#shadow)">
+    <rect x="80" y="426" width="880" height="354" rx="26" fill="#FFFFFF" stroke="#E2E8F0"/>
+  </g>
+  <text x="120" y="477" class="panel-title">可验证进展</text>
+  <text x="920" y="477" text-anchor="end" font-size="18" class="muted">均有自动对照或外部读取验证</text>
+
+  <g transform="translate(120 520)">
+    <text y="0" class="progress-label">核心语言功能</text>
+    <text x="800" y="0" text-anchor="end" class="progress-value">13 / 13</text>
+    <rect y="14" width="800" height="11" rx="5.5" fill="#E2E8F0"/>
+    <rect y="14" width="800" height="11" rx="5.5" fill="#10B981"/>
+  </g>
+  <g transform="translate(120 577)">
+    <text y="0" class="progress-label">功能接口与类型转换</text>
+    <text x="800" y="0" text-anchor="end" class="progress-value">469 项 + 29 项，全部覆盖</text>
+    <rect y="14" width="800" height="11" rx="5.5" fill="#E2E8F0"/>
+    <rect y="14" width="800" height="11" rx="5.5" fill="#10B981"/>
+  </g>
+  <g transform="translate(120 634)">
+    <text y="0" class="progress-label">自动对照测试</text>
+    <text x="800" y="0" text-anchor="end" class="progress-value">360 / 360 通过</text>
+    <rect y="14" width="800" height="11" rx="5.5" fill="#E2E8F0"/>
+    <rect y="14" width="800" height="11" rx="5.5" fill="#10B981"/>
+  </g>
+  <g transform="translate(120 691)">
+    <text y="0" class="progress-label">真实使用脚本</text>
+    <text x="800" y="0" text-anchor="end" class="progress-value">240 / 240 结果一致</text>
+    <rect y="14" width="800" height="11" rx="5.5" fill="#E2E8F0"/>
+    <rect y="14" width="800" height="11" rx="5.5" fill="#10B981"/>
+  </g>
+  <g transform="translate(120 748)">
+    <text y="0" class="progress-label">数据文件互通</text>
+    <text x="800" y="0" text-anchor="end" class="progress-value">183 / 183 结果一致</text>
+    <rect y="14" width="800" height="11" rx="5.5" fill="#E2E8F0"/>
+    <rect y="14" width="800" height="11" rx="5.5" fill="#10B981"/>
+  </g>
+
+  <!-- Codex usage -->
+  <g filter="url(#shadow)">
+    <rect x="990" y="426" width="530" height="354" rx="26" fill="url(#codexPanel)" stroke="#BFDBFE"/>
+  </g>
+  <text x="1032" y="477" class="panel-title">Codex 辅助投入（近期可审计）</text>
+
+  <text x="1032" y="560" font-size="54" font-weight="830" fill="#2563EB">6.67 亿 token</text>
+  <text x="1034" y="595" font-size="19" class="muted">记录的模型输入与输出总量</text>
+
+  <line x1="1032" y1="622" x2="1478" y2="622" stroke="#BFDBFE"/>
+  <text x="1032" y="665" font-size="32" font-weight="790" class="ink">4,079</text>
+  <text x="1135" y="665" font-size="20" class="muted">次模型响应</text>
+  <text x="1320" y="665" font-size="32" font-weight="790" class="ink">93.3%</text>
+  <text x="1320" y="691" font-size="17" class="muted">输入内容由缓存复用</text>
+
+  <g aria-label="统计窗口：2026-08-22 15:17—08-30 14:07；包含开发、审查和本次进展分析，并非整个项目生命周期。">
+    <text x="1032" y="725" font-size="15.5" fill="#475569">统计窗口：2026-08-22 15:17—08-30 14:07；包含开发、审查</text>
+    <text x="1032" y="748" font-size="15.5" fill="#475569">和本次进展分析，并非整个项目生命周期。</text>
+  </g>
+
+  <!-- current status -->
+  <rect x="80" y="806" width="1440" height="58" rx="18" fill="#FFF7ED" stroke="#FED7AA"/>
+  <circle cx="112" cy="835" r="8" fill="#10B981"/>
+  <text x="130" y="842" font-size="19" font-weight="720" fill="#047857">已完成：核心功能与固定版本验证</text>
+  <circle cx="735" cy="835" r="8" fill="#F59E0B"/>
+  <text x="753" y="842" font-size="19" font-weight="720" fill="#9A3412">进行中：最新新增测试、内存优化、交互体验与正式发布</text>
+</svg>
