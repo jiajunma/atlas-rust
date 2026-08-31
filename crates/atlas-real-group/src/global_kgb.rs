@@ -381,28 +381,38 @@ impl FingerprintProjector {
 
 /// Reusable per-involution fingerprint projectors used while generating KGB.
 #[derive(Clone, Debug)]
-struct FingerprintCache {
+struct FingerprintCache<'a> {
     projectors: Vec<Option<FingerprintProjector>>,
+    table: &'a InvolutionTable,
+    budget: IntegerLatticeBudget,
 }
 
-impl FingerprintCache {
-    fn new(involution_count: usize) -> Result<Self, StructureError> {
+impl<'a> FingerprintCache<'a> {
+    fn new(
+        table: &'a InvolutionTable,
+        budget: &IntegerLatticeBudget,
+    ) -> Result<Self, StructureError> {
+        let involution_count = table.involution_count();
         let mut projectors = try_capacity(involution_count)?;
         projectors.resize(involution_count, None);
-        Ok(Self { projectors })
+        Ok(Self {
+            projectors,
+            table,
+            budget: budget.clone(),
+        })
     }
 
     fn fingerprint(
         &mut self,
         id: InvolutionId,
-        theta: &LatticeInvolution,
         torus: &GlobalTorusElement,
-        budget: &IntegerLatticeBudget,
     ) -> Result<RationalWeight, StructureError> {
         // Keep the uncached fingerprint's error precedence: torus log
         // validation occurs before adapted-basis construction.
         let log = torus.log_2pi()?;
         let upper_bound = self.projectors.len();
+        let table = self.table;
+        let budget = &self.budget;
         let slot = self
             .projectors
             .get_mut(id.0)
@@ -413,6 +423,13 @@ impl FingerprintCache {
         if let Some(projector) = slot.as_ref() {
             return projector.apply_log(&log);
         }
+        let theta = table
+            .record(id)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: id.0,
+                upper_bound,
+            })?
+            .theta();
         let projector = FingerprintProjector::new(theta, budget)?;
         let fingerprint = projector.apply_log(&log)?;
         *slot = Some(projector);
@@ -887,18 +904,11 @@ impl GlobalKgb {
         // KGB_elt_entry's `tw` and `fingerprint` fields (kgb.h:217-237,
         // kgb.cpp:73-84).
         let mut dedup: HashMap<(usize, RationalWeight), usize> = HashMap::new();
-        let mut fingerprint_cache = FingerprintCache::new(total_involutions)?;
+        let mut fingerprint_cache = FingerprintCache::new(table, budget)?;
         for (index, torus) in store.elements.iter().enumerate() {
-            let theta = table
-                .record(identity_id)
-                .ok_or(StructureError::IndexOutOfRange {
-                    index: identity_id.0,
-                    upper_bound: total_involutions,
-                })?
-                .theta();
             let key = (
                 identity_id.0,
-                fingerprint_cache.fingerprint(identity_id, theta, torus, budget)?,
+                fingerprint_cache.fingerprint(identity_id, torus)?,
             );
             if dedup.insert(key, index).is_some() {
                 return Err(StructureError::KgbInvariantViolation {
@@ -960,16 +970,9 @@ impl GlobalKgb {
                                 datum.simple_coroots()[generator].as_slice(),
                             )?;
                         }
-                        let theta = table
-                            .record(cross_target)
-                            .ok_or(StructureError::IndexOutOfRange {
-                                index: cross_target.0,
-                                upper_bound: total_involutions,
-                            })?
-                            .theta();
                         let key = (
                             cross_target.0,
-                            fingerprint_cache.fingerprint(cross_target, theta, &child, budget)?,
+                            fingerprint_cache.fingerprint(cross_target, &child)?,
                         );
                         let k = match dedup.get(&key) {
                             Some(&existing) => existing,
@@ -1032,21 +1035,9 @@ impl GlobalKgb {
                                 == Some(KgbStatus::ImaginaryNoncompact)
                             {
                                 let child = store.elements[x].clone();
-                                let theta = table
-                                    .record(cayley_target)
-                                    .ok_or(StructureError::IndexOutOfRange {
-                                        index: cayley_target.0,
-                                        upper_bound: total_involutions,
-                                    })?
-                                    .theta();
                                 let key = (
                                     cayley_target.0,
-                                    fingerprint_cache.fingerprint(
-                                        cayley_target,
-                                        theta,
-                                        &child,
-                                        budget,
-                                    )?,
+                                    fingerprint_cache.fingerprint(cayley_target, &child)?,
                                 );
                                 let k = match dedup.get(&key) {
                                     Some(&existing) => existing,
@@ -1413,48 +1404,30 @@ mod tests {
         .unwrap();
         let kgb =
             GlobalKgb::build(&inner_class, &classification, &mut table, &lattice_budget()).unwrap();
-        let mut cache = FingerprintCache::new(kgb.packet_count()).unwrap();
+        let budget = lattice_budget();
+        let mut cache = FingerprintCache::new(&table, &budget).unwrap();
         for element in 0..kgb.size() {
             let packet = kgb.element_packet[element];
             let id = kgb.involutions[packet];
             let theta = table.record(id).unwrap().theta();
-            let direct = fingerprint(theta, &kgb.elements[element], &lattice_budget()).unwrap();
-            let cached = cache
-                .fingerprint(id, theta, &kgb.elements[element], &lattice_budget())
-                .unwrap();
+            let direct = fingerprint(theta, &kgb.elements[element], &budget).unwrap();
+            let cached = cache.fingerprint(id, &kgb.elements[element]).unwrap();
             assert_eq!(cached, direct, "element {element}");
             for generator in 0..kgb.semisimple_rank() {
                 let target = kgb.cross(generator, element).unwrap();
                 let target_packet = kgb.element_packet[target];
                 let target_id = kgb.involutions[target_packet];
                 let target_theta = table.record(target_id).unwrap().theta();
-                let direct =
-                    fingerprint(target_theta, &kgb.elements[target], &lattice_budget()).unwrap();
-                let cached = cache
-                    .fingerprint(
-                        target_id,
-                        target_theta,
-                        &kgb.elements[target],
-                        &lattice_budget(),
-                    )
-                    .unwrap();
+                let direct = fingerprint(target_theta, &kgb.elements[target], &budget).unwrap();
+                let cached = cache.fingerprint(target_id, &kgb.elements[target]).unwrap();
                 assert_eq!(cached, direct, "edge {element}->{target} via {generator}");
 
                 if let Some(target) = kgb.cayley(generator, element) {
                     let target_packet = kgb.element_packet[target];
                     let target_id = kgb.involutions[target_packet];
                     let target_theta = table.record(target_id).unwrap().theta();
-                    let direct =
-                        fingerprint(target_theta, &kgb.elements[target], &lattice_budget())
-                            .unwrap();
-                    let cached = cache
-                        .fingerprint(
-                            target_id,
-                            target_theta,
-                            &kgb.elements[target],
-                            &lattice_budget(),
-                        )
-                        .unwrap();
+                    let direct = fingerprint(target_theta, &kgb.elements[target], &budget).unwrap();
+                    let cached = cache.fingerprint(target_id, &kgb.elements[target]).unwrap();
                     assert_eq!(
                         cached, direct,
                         "Cayley edge {element}->{target} via {generator}"
@@ -1476,21 +1449,22 @@ mod tests {
     #[test]
     fn fingerprint_cache_rejects_out_of_range_id() {
         let datum = simply_connected_a1();
-        let theta = LatticeInvolution::identity(&datum).unwrap();
+        let distinguished = LatticeInvolution::identity(&datum).unwrap();
+        let inner_class = InnerClass::new(datum, distinguished, 2).unwrap();
+        let table = InvolutionTable::new(
+            &inner_class,
+            InvolutionTableBudget::new(64, lattice_budget()),
+        )
+        .unwrap();
         let torus = GlobalTorusElement::exp_pi(vec![0], 1);
-        let involution_count = 1;
-        let mut cache = FingerprintCache::new(involution_count).unwrap();
-        let result = cache.fingerprint(
-            InvolutionId(involution_count),
-            &theta,
-            &torus,
-            &lattice_budget(),
-        );
+        let budget = lattice_budget();
+        let mut cache = FingerprintCache::new(&table, &budget).unwrap();
+        let result = cache.fingerprint(InvolutionId(0), &torus);
         assert_eq!(
             result,
             Err(StructureError::IndexOutOfRange {
-                index: involution_count,
-                upper_bound: involution_count,
+                index: 0,
+                upper_bound: 0,
             })
         );
     }
@@ -1498,16 +1472,55 @@ mod tests {
     #[test]
     fn fingerprint_cache_preserves_torus_log_error_precedence() {
         let datum = simply_connected_a1();
-        let theta = LatticeInvolution::identity(&datum).unwrap();
+        let distinguished = LatticeInvolution::identity(&datum).unwrap();
+        let inner_class = InnerClass::new(datum, distinguished, 2).unwrap();
+        let classification = CartanClassification::build(&inner_class, &class_budget(2)).unwrap();
+        let mut table = InvolutionTable::new(
+            &inner_class,
+            InvolutionTableBudget::new(64, lattice_budget()),
+        )
+        .unwrap();
+        table.add_cartan(&classification, CartanId(0)).unwrap();
+        let id = table.identity_id().unwrap();
         let torus = GlobalTorusElement {
             numerator: vec![0],
             denominator: i64::MAX,
         };
         let restrictive_budget = IntegerLatticeBudget::new(0, 0, 0, 0);
-        let mut cache = FingerprintCache::new(1).unwrap();
+        let mut cache = FingerprintCache::new(&table, &restrictive_budget).unwrap();
         assert_eq!(
-            cache.fingerprint(InvolutionId(0), &theta, &torus, &restrictive_budget),
+            cache.fingerprint(id, &torus),
             Err(StructureError::ArithmeticOverflow)
+        );
+    }
+
+    #[test]
+    fn fingerprint_cache_binds_budget_at_construction() {
+        let datum = simply_connected_a1();
+        let distinguished = LatticeInvolution::identity(&datum).unwrap();
+        let inner_class = InnerClass::new(datum, distinguished, 2).unwrap();
+        let classification = CartanClassification::build(&inner_class, &class_budget(2)).unwrap();
+        let mut table = InvolutionTable::new(
+            &inner_class,
+            InvolutionTableBudget::new(64, lattice_budget()),
+        )
+        .unwrap();
+        table.add_cartan(&classification, CartanId(0)).unwrap();
+
+        let torus = GlobalTorusElement::exp_pi(vec![0], 1);
+        let id = table.identity_id().unwrap();
+        let permissive_budget = lattice_budget();
+        let restrictive_budget = IntegerLatticeBudget::new(0, 0, 0, 0);
+        let mut permissive_cache = FingerprintCache::new(&table, &permissive_budget).unwrap();
+        let mut restrictive_cache = FingerprintCache::new(&table, &restrictive_budget).unwrap();
+
+        permissive_cache.fingerprint(id, &torus).unwrap();
+        assert_eq!(
+            restrictive_cache.fingerprint(id, &torus),
+            Err(StructureError::IntegerLatticeResourceLimit {
+                resource: "rank",
+                limit: 0,
+            })
         );
     }
 
