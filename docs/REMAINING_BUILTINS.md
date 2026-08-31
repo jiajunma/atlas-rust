@@ -16,9 +16,11 @@ HPC job `3652749` passed the focused helper test; job `3652750` passed
 Weyl 62/62, involution-table 25/25, and KGB 11/11 in debug and release; targeted
 differential `3652816` matched `domain/block_fiber_mismatch` exactly,
 including exit 1 and the runtime diagnostic, at Rust 0.013 s / 7,684 KB versus
-the oracle's 0.013 s / 4,268 KB. The clean 361-fixture fat pipeline is job
-`3652761`; until it finishes, these jobs prove the repaired slice and its
-focused regressions, not a fresh whole-suite claim.
+the oracle's 0.013 s / 4,268 KB. The clean 361-fixture fat pipeline job
+`3652761` subsequently passed 361/361 with zero pending cases and
+`compatibility_claim=true` on exact snapshot `3822f6f`; its report SHA-256 is
+`993de39b14e845027a1a35460f47eb2f0918252202ac29bb9001e9081ef1bd2a`.
+The fixture measured 0.004 s / 6,592 KB in that full run.
 
 Verified repair rule: a dual-lookup test must build its target from
 `dual_inner_class` (and its own classification/table). A second table of

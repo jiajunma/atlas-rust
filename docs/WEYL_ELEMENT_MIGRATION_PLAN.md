@@ -292,7 +292,9 @@ enumeration and permutation-level optimizations.
   cross-table GREEN fixture incorrectly reused the source inner class;
   local equivalent `d99e5a0` (HPC snapshot `3822f6f`) repairs it with actual A2/B2 dual inner classes. Focused jobs
   `3652749`/`3652750` and targeted differential `3652816` pass.
-  Full 361-fixture job `3652761` remains the pending whole-suite gate.
+  Full 361-fixture job `3652761` passed 361/361 with zero pending cases and
+  `compatibility_claim=true` on exact clean snapshot `3822f6f`; report SHA-256
+  `993de39b14e845027a1a35460f47eb2f0918252202ac29bb9001e9081ef1bd2a`.
 - After the full gate, the next low-risk language-boundary slice is the four
   `canonical_involution_expr(record.weyl_element())` printer consumers in
   `domain_builtins.rs`. They already have the table-level compact counterpart

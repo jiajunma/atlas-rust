@@ -5825,10 +5825,13 @@ Remaining levers (supersedes the 2026-08-24j list):
   Rust measured 0.013 s / 7,684 KB peak RSS; the oracle measured 0.013 s /
   4,268 KB. The fixture meta is now `verified_hpc` with report SHA and
   benchmark fields.
-- Clean full 361-fixture fat differential `3652761` was submitted from a
-  separate detached HPC worktree and remains PENDING due to fat-partition
-  priority. Jobs `3652389` and `3652751` are earlier invalidated/cancelled
-  pipeline attempts; they must not be cited as compatibility results.
+- Clean full 361-fixture fat differential `3652761` completed on exact clean
+  snapshot `3822f6f` with 361/361 PASS, zero pending cases, and
+  `compatibility_claim=true`. The report SHA-256 is
+  `993de39b14e845027a1a35460f47eb2f0918252202ac29bb9001e9081ef1bd2a`;
+  `domain/block_fiber_mismatch` measured 0.004 s / 6,592 KB peak RSS.
+  Jobs `3652389` and `3652751` are earlier invalidated/cancelled pipeline
+  attempts; they must not be cited as compatibility results.
 - Worktree hygiene: focused jobs write reports into their submit directory;
   those artifacts make a shared checkout dirty. Always use a distinct clean
   detached worktree for the full pipeline. Never stage the whole dirty
