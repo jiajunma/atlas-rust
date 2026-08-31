@@ -1496,6 +1496,22 @@ mod tests {
     }
 
     #[test]
+    fn fingerprint_cache_preserves_torus_log_error_precedence() {
+        let datum = simply_connected_a1();
+        let theta = LatticeInvolution::identity(&datum).unwrap();
+        let torus = GlobalTorusElement {
+            numerator: vec![0],
+            denominator: i64::MAX,
+        };
+        let restrictive_budget = IntegerLatticeBudget::new(0, 0, 0, 0);
+        let mut cache = FingerprintCache::new(1).unwrap();
+        assert_eq!(
+            cache.fingerprint(InvolutionId(0), &theta, &torus, &restrictive_budget),
+            Err(StructureError::ArithmeticOverflow)
+        );
+    }
+
+    #[test]
     fn fingerprint_cache_matches_direct_projection_a1() {
         assert_cached_fingerprints_match(simply_connected_a1(), 2, 2);
     }
