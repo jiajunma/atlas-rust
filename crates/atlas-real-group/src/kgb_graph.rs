@@ -1170,12 +1170,7 @@ mod tests {
         };
         let involution_word = |id: usize| {
             let involution = graph.involution_of(KgbId(id)).unwrap();
-            pipeline
-                .table
-                .record(involution)
-                .unwrap()
-                .weyl_element()
-                .clone()
+            pipeline.table.materialize_weyl_element(involution).unwrap()
         };
         // Packet order: identity (0..4), s_0 (4,5), s_1 (6), s_0 s_1 s_0
         // (7), s_1 s_0 s_1 (8,9), longest (10).
