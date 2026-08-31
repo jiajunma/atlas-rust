@@ -4,6 +4,25 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Current frontier - 2026-08-31
+
+- `legacy_integration`: owns the isolated integration worktree and the
+  `involution_table.rs`, `tits_element.rs`, `kgb_graph.rs`, and narrowly scoped
+  `domain_builtins.rs` caller migration needed to remove persistent legacy
+  Weyl permutations. It does not edit documentation or the shared checkout.
+- `hpc_weyl_gate`: owns read-only collection of existing SLURM jobs and new
+  focused/differential/benchmark submissions from its own HPC worktrees. It
+  does not edit local source.
+- `weyl_kgb_hotspot_audit`: owns a read-only audit of post-materialization
+  Weyl/KGB allocation and algorithmic hotspots. It does not edit files.
+- `global_kgb_u32`: owns `/private/tmp/atlas-global-kgb-u32` and only
+  `crates/atlas-real-group/src/global_kgb.rs`; it packs GlobalKGB cross and
+  Cayley targets behind the existing public `usize` API. It does not edit
+  documentation or the shared checkout.
+- Parent owns shared-checkout integration, documentation, final review, and
+  benchmark interpretation. Parallel workers must not reset or switch the
+  shared local or HPC checkout.
+
 ## Checkpoint - 2026-08-31 (compact language-boundary involution printers)
 
 - Commit `e030699` (HPC-equivalent implementation commit `4f579f4`) moves the
