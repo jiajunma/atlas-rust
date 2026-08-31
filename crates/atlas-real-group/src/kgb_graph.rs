@@ -58,6 +58,96 @@ pub enum KgbStatus {
     ImaginaryNoncompact,
 }
 
+const PACKED_KGB_UNDEFINED: u32 = u32::MAX;
+
+/// A graph edge target stored without the platform-sized `usize` payload.
+/// `u32::MAX` is reserved for an absent link, matching [`KgbId::UNDEFINED`].
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct PackedKgbId(u32);
+
+impl PackedKgbId {
+    const UNDEFINED: Self = Self(PACKED_KGB_UNDEFINED);
+
+    fn from_index(index: usize) -> Result<Self, StructureError> {
+        let packed = u32::try_from(index)
+            .map_err(|_| StructureError::AllocationFailed { requested: index })?;
+        if packed == PACKED_KGB_UNDEFINED {
+            return Err(StructureError::AllocationFailed { requested: index });
+        }
+        Ok(Self(packed))
+    }
+
+    fn from_optional(id: Option<KgbId>) -> Result<Self, StructureError> {
+        id.map_or(Ok(Self::UNDEFINED), |id| Self::from_index(id.0))
+    }
+
+    fn to_index(self) -> Option<usize> {
+        if self.0 == PACKED_KGB_UNDEFINED {
+            None
+        } else {
+            usize::try_from(self.0).ok()
+        }
+    }
+
+    fn to_public(self) -> Option<KgbId> {
+        self.to_index().map(KgbId)
+    }
+}
+
+/// Two packed source IDs for one inverse-Cayley slot. The all-undefined pair
+/// represents the public `None` value; a defined first ID with an undefined
+/// second ID is the public type-II `(first, None)` shape.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct PackedInverseCayley {
+    first: u32,
+    second: u32,
+}
+
+impl PackedInverseCayley {
+    const UNDEFINED: Self = Self {
+        first: PACKED_KGB_UNDEFINED,
+        second: PACKED_KGB_UNDEFINED,
+    };
+
+    fn from_public(first: Option<KgbId>, second: Option<KgbId>) -> Result<Self, StructureError> {
+        let Some(first) = first else {
+            return if second.is_none() {
+                Ok(Self::UNDEFINED)
+            } else {
+                Err(StructureError::KgbInvariantViolation {
+                    invariant: "inverse Cayley pair",
+                })
+            };
+        };
+        Ok(Self {
+            first: PackedKgbId::from_index(first.0)?.0,
+            second: PackedKgbId::from_optional(second)?.0,
+        })
+    }
+
+    fn to_public(self) -> Option<(KgbId, Option<KgbId>)> {
+        PackedKgbId(self.first)
+            .to_public()
+            .map(|first| (first, PackedKgbId(self.second).to_public()))
+    }
+
+    fn insert_source(&mut self, source: usize) -> Result<(), StructureError> {
+        let source = PackedKgbId::from_index(source)?.0;
+        match self.first {
+            PACKED_KGB_UNDEFINED => self.first = source,
+            _ if self.second == PACKED_KGB_UNDEFINED => self.second = source,
+            _ => {
+                return Err(StructureError::KgbInvariantViolation {
+                    invariant: "inverse Cayley pair",
+                });
+            }
+        }
+        Ok(())
+    }
+}
+
 /// One weak real form's KGB graph.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct KgbGraph {
@@ -73,9 +163,12 @@ pub struct KgbGraph {
     element_position: Vec<usize>,
     /// Flat `x * rank + s`.
     statuses: Vec<KgbStatus>,
-    cross: Vec<KgbId>,
-    cayley: Vec<Option<KgbId>>,
-    inverse_cayley: Vec<Option<(KgbId, Option<KgbId>)>>,
+    /// Flat `x * rank + s`, four-byte target IDs with the max-value sentinel.
+    cross: Vec<PackedKgbId>,
+    /// Flat `x * rank + s`, four-byte target IDs with the max-value sentinel.
+    cayley: Vec<PackedKgbId>,
+    /// Flat `x * rank + s`, two four-byte source IDs with max-value sentinels.
+    inverse_cayley: Vec<PackedInverseCayley>,
     /// Per sorted involution position: (id, involution length, Cartan).
     positions: Vec<(InvolutionId, usize, CartanId)>,
     /// Cumulative counts; length `positions.len() + 1`.
@@ -101,6 +194,14 @@ impl KgbGraph {
                 index: form.0,
                 upper_bound: strong.strong_real_data(CartanId(0)).map_or(0, |_| form.0),
             })?;
+        // Edge targets are packed into `u32`; reserve its maximum value as
+        // the absent-link sentinel, so a graph with more than `u32::MAX`
+        // elements cannot be represented safely.
+        if expected > u32::MAX as usize {
+            return Err(StructureError::AllocationFailed {
+                requested: expected,
+            });
+        }
         let cartan_set =
             classification
                 .cartan_set(form)
@@ -421,30 +522,29 @@ impl KgbGraph {
                 invariant: "status write-once",
             },
         )?;
-        let cross = new_cross.into_iter().collect::<Option<Vec<_>>>().ok_or(
-            StructureError::KgbInvariantViolation {
+        let cross = new_cross
+            .into_iter()
+            .collect::<Option<Vec<_>>>()
+            .ok_or(StructureError::KgbInvariantViolation {
                 invariant: "kgb size",
-            },
-        )?;
-        let cayley = new_cayley;
+            })?
+            .into_iter()
+            .map(|target| PackedKgbId::from_index(target.0))
+            .collect::<Result<Vec<_>, _>>()?;
+        let cayley = new_cayley
+            .into_iter()
+            .map(PackedKgbId::from_optional)
+            .collect::<Result<Vec<_>, _>>()?;
 
         // Inverse-Cayley installation, ascending over the sorted numbering.
-        let mut inverse_cayley: Vec<Option<(KgbId, Option<KgbId>)>> = try_capacity(size * rank)?;
-        inverse_cayley.resize(size * rank, None);
+        let mut inverse_cayley: Vec<PackedInverseCayley> = try_capacity(size * rank)?;
+        inverse_cayley.resize(size * rank, PackedInverseCayley::UNDEFINED);
         for source in 0..size {
             for generator in 0..rank {
-                if let Some(target) = cayley[source * rank + generator] {
-                    let slot = &mut inverse_cayley[target.0 * rank + generator];
-                    match slot {
-                        None => *slot = Some((KgbId(source), None)),
-                        Some((_, second @ None)) => *second = Some(KgbId(source)),
-                        Some((_, Some(_))) => {
-                            return Err(StructureError::KgbInvariantViolation {
-                                invariant: "inverse Cayley pair",
-                            });
-                        }
-                    }
-                }
+                let Some(target) = cayley[source * rank + generator].to_index() else {
+                    continue;
+                };
+                inverse_cayley[target * rank + generator].insert_source(source)?;
             }
         }
 
@@ -631,14 +731,16 @@ impl KgbGraph {
         if id.0 >= self.elements.len() || generator >= self.rank {
             return None;
         }
-        self.cross.get(id.0 * self.rank + generator).copied()
+        self.cross
+            .get(id.0 * self.rank + generator)
+            .and_then(|target| target.to_public())
     }
 
     /// `Ok(None)` = the generator is not noncompact imaginary at this
     /// element (no Cayley link).
     pub fn cayley(&self, id: KgbId, generator: usize) -> Result<Option<KgbId>, StructureError> {
         self.check_indices(id, generator)?;
-        Ok(self.cayley[id.0 * self.rank + generator])
+        Ok(self.cayley[id.0 * self.rank + generator].to_public())
     }
 
     /// `Ok(None)` = the generator is not real at this element; otherwise
@@ -650,7 +752,7 @@ impl KgbGraph {
         generator: usize,
     ) -> Result<Option<(KgbId, Option<KgbId>)>, StructureError> {
         self.check_indices(id, generator)?;
-        Ok(self.inverse_cayley[id.0 * self.rank + generator])
+        Ok(self.inverse_cayley[id.0 * self.rank + generator].to_public())
     }
 
     pub fn packet_count(&self) -> usize {
@@ -1383,6 +1485,7 @@ mod tests {
                 requested: u32::MAX as usize
             })
         );
+        assert_eq!(std::mem::size_of::<PackedKgbId>(), 4);
         assert_eq!(std::mem::size_of::<PackedInverseCayley>(), 8);
     }
 
@@ -1394,6 +1497,12 @@ mod tests {
         let type_two = PackedInverseCayley::from_public(Some(KgbId(7)), None).unwrap();
         assert_eq!(type_two.to_public(), Some((KgbId(7), None)));
         assert_eq!(PackedInverseCayley::UNDEFINED.to_public(), None);
+        assert!(matches!(
+            PackedInverseCayley::from_public(None, Some(KgbId(9))),
+            Err(StructureError::KgbInvariantViolation {
+                invariant: "inverse Cayley pair"
+            })
+        ));
     }
 
     #[test]
@@ -1407,14 +1516,17 @@ mod tests {
         for id in 0..graph.size() {
             for generator in 0..graph.rank {
                 let slot = id * graph.rank + generator;
-                assert_eq!(graph.cross(KgbId(id), generator), graph.cross_packed(slot));
+                assert_eq!(
+                    graph.cross(KgbId(id), generator),
+                    graph.cross[slot].to_public()
+                );
                 assert_eq!(
                     graph.cayley(KgbId(id), generator).unwrap(),
-                    graph.cayley_packed(slot)
+                    graph.cayley[slot].to_public()
                 );
                 assert_eq!(
                     graph.inverse_cayley(KgbId(id), generator).unwrap(),
-                    graph.inverse_cayley_packed(slot)
+                    graph.inverse_cayley[slot].to_public()
                 );
             }
         }
