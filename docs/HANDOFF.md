@@ -6,6 +6,28 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
 ## Current frontier - 2026-08-31
 
+- Shared commits `4124cbc`, `c0494c1`, `f45479a`, and `a7b1108` close the
+  fingerprint-cache provenance review and pack both the final `KgbGraph`
+  links and its BFS/reordering link buffers. `FingerprintCache<'a>` is bound
+  to one `InvolutionTable` and one lattice-budget snapshot; callers can no
+  longer reuse a projector with a mismatched theta or budget. KGB cross and
+  Cayley slots are four-byte ids with `u32::MAX` sentinels, and inverse-Cayley
+  slots are fixed eight-byte pairs; the public `KgbId`/`usize` APIs are
+  unchanged. Static review approved the complete packed-link series, but no
+  Cargo command has run locally and this slice remains NOT HPC verified.
+- The isolated verification tree is
+  `/private/tmp/atlas-weyl-kgb-integration` at `c9abdc9`. It combines legacy
+  Weyl materialization removal, the bound fingerprint cache, final packed KGB
+  links, and packed build-time link buffers. Submit Weyl focused, KGB
+  differential, fat unipotent, and full pipeline gates from this clean tree
+  when HPC connectivity returns. Direct SSH to `10.26.14.64` still timed out
+  on 2026-09-01 and local SOCKS port `127.0.0.1:7897` was not listening.
+- Until those jobs report new measurements, the latest reliable heavy anchor
+  remains job `3647609`: Rust `8.414s / 3,706,016KB`, upstream Atlas
+  `4.746s / 881,080KB` (`1.773x` wall, `4.206x` peak RSS). The older full
+  comparable corpus remains approximately `3.29x` median wall and `12.15x`
+  median peak RSS. Do not attribute an improvement to the new cache or packed
+  links before the required reports exist.
 - Shared branch commits `42dce9b..46ec748` add a per-involution GlobalKGB
   fingerprint projector cache, index it by dense `InvolutionId`, retain only
   the used adapted-basis columns as column-major `i64`, and pin the legacy
