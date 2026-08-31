@@ -1,5 +1,26 @@
 # Remaining builtin coverage (post-language-gate)
 
+## Compact involution printer boundary (2026-08-31)
+
+Commit `e030699` closes the four language-boundary consumers of
+`canonical_involution_expr(record.weyl_element())`. They now pass the graph's
+`InvolutionId` to the record-owned compact reducer exposed as
+`InvolutionTable::weyl_canonical_involution_expr`. The separate elected
+`print_block` Weyl word, `print_blocku` support word, and `print_KGB` Cartan
+representative `#` materialization were deliberately preserved.
+
+RED job `3660417` failed only on the private API. GREEN jobs `3660426` and
+`3660427` passed the API test and the debug/release Weyl (`62/62`),
+InvolutionTable (`25/25`), and KGB (`11/11`) gates. Exact clean fat pipeline
+`3660449` passed all `361/361` fixtures with zero pending cases and complete
+wall/RSS fields; report SHA-256 is
+`be3557da568738c6d0c168471445fe39628357c25609c2af31e7e9cc10cab083`.
+
+The next three compact slices are ordered: (1) elected/support words for
+`print_block` and `print_blocku`, (2) canonical Cartan IDs for the `print_KGB`
+`#` marker, and (3) removal of retained `InvolutionRecord::legacy_element`
+buffers while keeping explicit on-demand compatibility materialization.
+
 ## Compact involution-table fallback (2026-08-30)
 
 The next planned compact consumer, `block_fiber_check`, is now closed.

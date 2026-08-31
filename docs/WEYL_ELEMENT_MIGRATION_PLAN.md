@@ -302,6 +302,17 @@ enumeration and permutation-level optimizations.
   KGB/block printer fixtures. The separate `print_block` elected Weyl-word
   path and `print_blocku` support-set path still need a compact-word API or
   an explicitly documented materialization boundary.
+- The four canonical-expression consumers are now compact on `e030699`
+  (HPC implementation snapshot `4f579f4`). RED `3660417`, API GREEN
+  `3660426`, focused GREEN `3660427`, and exact clean fat differential
+  `3660449` establish the gate; the differential passed `361/361` with zero
+  pending cases and report SHA-256
+  `be3557da568738c6d0c168471445fe39628357c25609c2af31e7e9cc10cab083`.
+  The active follow-up is the existing compact elected word for both
+  `print_block` output and `print_blocku` support. After that, migrate the KGB
+  `#` comparison to the Cartan orbit's canonical ID, then remove the retained
+  per-record legacy permutation behind an explicit on-demand materialization
+  boundary.
 
 ## 7. Phase 4: Migrate Tits, KGB, and Remaining Real-Group Callers
 

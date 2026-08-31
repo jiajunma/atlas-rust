@@ -95,6 +95,22 @@ positional fixture argument is ignored by pipeline_swap_diff.sbatch, so 3650651
 is not a valid unipotent benchmark. No Rust/C++ speedup claim is made for the
 compact Cayley slice until job 3651598 reports both wall time and peak RSS.
 
+## Compact involution printer gate (2026-08-31)
+
+| job | commit | workload | result |
+|---|---|---|---|
+| 3660426 | 4f579f4 | atlas-core compact printer API | 1/1 passed |
+| 3660427 | 4f579f4 | focused Weyl/InvolutionTable/KGB debug/release | 62/62, 25/25, 11/11 in each profile |
+| 3660449 | 4f579f4 | full registered differential pipeline | 361/361 PASS, zero pending, complete wall/RSS fields |
+
+The language-boundary migration removes legacy record reads from four
+canonical-involution printers but retains the per-record legacy permutation,
+so no standalone speedup or RSS reduction is claimed. In job `3660449`,
+`block_print` measured `0.004s / 6684KB`, `print_block_words`
+`0.008s / 7432KB`, and both full-KGB B2/C2 probes measured
+`0.005s / 6660KB`. Report SHA-256:
+`be3557da568738c6d0c168471445fe39628357c25609c2af31e7e9cc10cab083`.
+
 ## Script-corpus ledger (HPC cpu partition, 240 atlas-scripts, both binaries per script)
 
 Every corpus run records wall time and peak RSS per script for the Rust CLI

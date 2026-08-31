@@ -4,6 +4,33 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Checkpoint - 2026-08-31 (compact language-boundary involution printers)
+
+- Commit `e030699` (HPC-equivalent implementation commit `4f579f4`) moves the
+  four canonical-involution-expression consumers in `domain_builtins.rs` to
+  `InvolutionTable::weyl_canonical_involution_expr(InvolutionId)`. The helper
+  now forms the public atlas-real-group/atlas-core boundary. Its implementation
+  and invalid-ID precedence are unchanged.
+- Protected materialization paths remain intact: `print_block` still computes
+  its elected ordinary Weyl word from the legacy record, `print_blocku` still
+  materializes a reduced word for support, and `print_KGB` still materializes
+  the Cartan representative for its `#` flag.
+- TDD RED job `3660417` failed at the intended `E0624` private-method error.
+  API GREEN job `3660426` passed `1/1`. Focused job `3660427` passed Weyl
+  `62/62`, InvolutionTable `25/25`, and KGB `11/11` in debug and release.
+- Exact clean fat differential `3660449` passed `361/361`, with zero pending
+  cases, `compatibility_claim=true`, exact source-state checks, and complete
+  wall/RSS fields. Report SHA-256:
+  `be3557da568738c6d0c168471445fe39628357c25609c2af31e7e9cc10cab083`.
+  `block_print` measured `0.004s / 6684KB`, `print_block_words`
+  `0.008s / 7432KB`, and the B2/C2 full-KGB probes each `0.005s / 6660KB`.
+- Next order: migrate the elected `print_block` word and `print_blocku` support
+  to the existing record-owned compact word, then replace the per-row
+  `print_KGB` Cartan-representative materialization with the orbit's canonical
+  `InvolutionId`. Once those consumers are closed, remove the retained
+  `InvolutionRecord::legacy_element`; that is the first follow-up expected to
+  reduce the roughly `3.7GB` E8 KGB peak RSS materially.
+
 ## Checkpoint - 2026-08-30a (ID-primary ExtParam and compact Cayley)
 
 - ExtParam ID-primary production commit ab21ff5 (with fixture repairs through
