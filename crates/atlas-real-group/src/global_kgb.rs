@@ -1405,8 +1405,30 @@ mod tests {
                     )
                     .unwrap();
                 assert_eq!(cached, direct, "edge {element}->{target} via {generator}");
+
+                if let Some(target) = kgb.cayley(generator, element) {
+                    let target_packet = kgb.element_packet[target];
+                    let target_id = kgb.involutions[target_packet];
+                    let target_theta = table.record(target_id).unwrap().theta();
+                    let direct =
+                        fingerprint(target_theta, &kgb.elements[target], &lattice_budget())
+                            .unwrap();
+                    let cached = cache
+                        .fingerprint(
+                            target_id,
+                            target_theta,
+                            &kgb.elements[target],
+                            &lattice_budget(),
+                        )
+                        .unwrap();
+                    assert_eq!(
+                        cached, direct,
+                        "Cayley edge {element}->{target} via {generator}"
+                    );
+                }
             }
         }
+        assert_eq!(cache.projectors.len(), kgb.packet_count());
     }
 
     #[test]
