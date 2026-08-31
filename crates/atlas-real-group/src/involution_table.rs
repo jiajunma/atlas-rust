@@ -1206,6 +1206,8 @@ fn push_record(
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use crate::{
         dual_inner_class, dual_involution, AdjointFiberBudget, BasedRootDatum,
         CartanClassificationBudget, Coweight, LatticeInvolution, ModTwoVector,
@@ -1307,6 +1309,33 @@ mod tests {
             table.simple_root_kind(InvolutionId(1), 0),
             Some(RootKind::Real)
         );
+    }
+
+    #[test]
+    fn records_share_the_weyl_action_datum_arc_within_each_orbit() {
+        let (inner_class, classification) = context(vec![vec![2, -1], vec![-1, 2]], None, 6, 6);
+        let mut table = InvolutionTable::new(
+            &inner_class,
+            table_budget(classification.twisted_involution_count()),
+        )
+        .unwrap();
+
+        for cartan in classification.cartan_ids() {
+            let (start, size) = table.add_cartan(&classification, cartan).unwrap();
+            let datum_arc = table
+                .record(start)
+                .unwrap()
+                .twisted_involution()
+                .weyl_action()
+                .datum_arc()
+                .clone();
+            for offset in 0..size {
+                let id = InvolutionId(start.0 + offset);
+                let record = table.record(id).unwrap();
+                assert!(Arc::ptr_eq(&datum_arc, record.theta().datum_arc()));
+                assert_eq!(record.theta().datum(), inner_class.datum());
+            }
+        }
     }
 
     #[test]

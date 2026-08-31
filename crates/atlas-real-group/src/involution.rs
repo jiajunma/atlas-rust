@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{BasedRootDatum, Coweight, StructureError, Weight};
 
 /// A pairing-preserving involution of a root datum's dual lattices.
@@ -10,7 +12,7 @@ use crate::{BasedRootDatum, Coweight, StructureError, Weight};
 /// coroots — against an enumerated root system.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LatticeInvolution {
-    datum: BasedRootDatum,
+    datum: Arc<BasedRootDatum>,
     weight_action: Vec<Vec<i32>>,
     coweight_action: Vec<Vec<i32>>,
 }
@@ -34,7 +36,7 @@ impl LatticeInvolution {
             return Err(StructureError::InvalidRootAutomorphism);
         }
         Ok(Self {
-            datum: datum.clone(),
+            datum: Arc::new(datum.clone()),
             weight_action,
             coweight_action,
         })
@@ -43,7 +45,7 @@ impl LatticeInvolution {
     pub fn identity(datum: &BasedRootDatum) -> Result<Self, StructureError> {
         let rank = datum.lattice_rank();
         Ok(Self {
-            datum: datum.clone(),
+            datum: Arc::new(datum.clone()),
             weight_action: identity_matrix(rank)?,
             coweight_action: identity_matrix(rank)?,
         })
@@ -68,7 +70,25 @@ impl LatticeInvolution {
             return Err(StructureError::InvalidInvolution);
         }
         Ok(Self {
-            datum: datum.clone(),
+            datum: Arc::new(datum.clone()),
+            weight_action,
+            coweight_action,
+        })
+    }
+
+    /// Assemble from matrices whose invariants have already been established,
+    /// retaining a caller-owned datum allocation for bulk table construction.
+    pub(crate) fn new_trusted_with_datum_arc(
+        datum: Arc<BasedRootDatum>,
+        weight_action: Vec<Vec<i32>>,
+        coweight_action: Vec<Vec<i32>>,
+    ) -> Result<Self, StructureError> {
+        let rank = datum.lattice_rank();
+        if !is_square_of_rank(&weight_action, rank) || !is_square_of_rank(&coweight_action, rank) {
+            return Err(StructureError::InvalidInvolution);
+        }
+        Ok(Self {
+            datum,
             weight_action,
             coweight_action,
         })
@@ -79,6 +99,12 @@ impl LatticeInvolution {
     }
 
     pub fn datum(&self) -> &BasedRootDatum {
+        &self.datum
+    }
+
+    /// The owned datum handle for trusted constructors that share immutable
+    /// storage with a Weyl action.
+    pub(crate) fn datum_arc(&self) -> &Arc<BasedRootDatum> {
         &self.datum
     }
 
@@ -218,8 +244,10 @@ fn apply_matrix_into(
             return Err(StructureError::InvalidInvolution);
         }
         out.push(
-            i32::try_from(checked_sum(row.iter().copied().zip(coordinates.iter().copied()))?)
-                .map_err(|_| StructureError::ArithmeticOverflow)?,
+            i32::try_from(checked_sum(
+                row.iter().copied().zip(coordinates.iter().copied()),
+            )?)
+            .map_err(|_| StructureError::ArithmeticOverflow)?,
         );
     }
     Ok(())
@@ -237,6 +265,8 @@ fn checked_sum(mut pairs: impl Iterator<Item = (i32, i32)>) -> Result<i128, Stru
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use super::*;
     use crate::pair;
 
@@ -278,5 +308,15 @@ mod tests {
             LatticeInvolution::new(&datum, vec![vec![2]], vec![vec![0]]),
             Err(StructureError::InvalidInvolution)
         );
+    }
+
+    #[test]
+    fn datum_arc_backing_preserves_value_equality() {
+        let datum = BasedRootDatum::standard(vec![vec![2]]).unwrap();
+        let left = LatticeInvolution::identity(&datum).unwrap();
+        let right = LatticeInvolution::identity(&datum.clone()).unwrap();
+
+        assert_eq!(left, right);
+        assert!(!Arc::ptr_eq(left.datum_arc(), right.datum_arc()));
     }
 }

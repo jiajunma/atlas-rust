@@ -105,15 +105,16 @@ impl TwistedInvolution {
                 actual: weyl_action.rank(),
             });
         }
-        let involution = LatticeInvolution::new_trusted(
-            datum,
+        let involution = LatticeInvolution::new_trusted_with_datum_arc(
+            weyl_action.datum_arc().clone(),
             compose_matrices(weyl_action.matrix(), distinguished.weight_matrix())?,
             compose_matrices(
                 weyl_action.coweight_matrix(),
                 distinguished.coweight_matrix(),
             )?,
         )?;
-        let root_involution = RootInvolutionData::from_images(root_system, involution, root_images)?;
+        let root_involution =
+            RootInvolutionData::from_images(root_system, involution, root_images)?;
         Ok(Self {
             weyl_action,
             root_involution,
