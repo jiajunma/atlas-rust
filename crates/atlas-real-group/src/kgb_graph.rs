@@ -1370,6 +1370,57 @@ mod tests {
     }
 
     #[test]
+    fn packed_kgb_edge_ids_round_trip_and_reserve_the_undefined_sentinel() {
+        let max_valid = u32::MAX as usize - 1;
+        for index in [0, 1, max_valid] {
+            let packed = PackedKgbId::from_index(index).unwrap();
+            assert_eq!(packed.to_index(), Some(index));
+        }
+        assert_eq!(PackedKgbId::UNDEFINED.to_index(), None);
+        assert_eq!(
+            PackedKgbId::from_index(u32::MAX as usize),
+            Err(StructureError::AllocationFailed {
+                requested: u32::MAX as usize
+            })
+        );
+        assert_eq!(std::mem::size_of::<PackedInverseCayley>(), 8);
+    }
+
+    #[test]
+    fn packed_inverse_cayley_round_trip_preserves_public_pair_shape() {
+        let pair = PackedInverseCayley::from_public(Some(KgbId(7)), Some(KgbId(9))).unwrap();
+        assert_eq!(pair.to_public(), Some((KgbId(7), Some(KgbId(9)))));
+
+        let type_two = PackedInverseCayley::from_public(Some(KgbId(7)), None).unwrap();
+        assert_eq!(type_two.to_public(), Some((KgbId(7), None)));
+        assert_eq!(PackedInverseCayley::UNDEFINED.to_public(), None);
+    }
+
+    #[test]
+    fn packed_edge_accessors_match_public_cross_cayley_and_inverse_apis() {
+        let mut pipeline = pipeline(sl2_datum(), None, 2, 2);
+        pipeline
+            .table
+            .add_cartan(&pipeline.classification, CartanId(0))
+            .unwrap();
+        let graph = build_graph(&mut pipeline, 0);
+        for id in 0..graph.size() {
+            for generator in 0..graph.rank {
+                let slot = id * graph.rank + generator;
+                assert_eq!(graph.cross(KgbId(id), generator), graph.cross_packed(slot));
+                assert_eq!(
+                    graph.cayley(KgbId(id), generator).unwrap(),
+                    graph.cayley_packed(slot)
+                );
+                assert_eq!(
+                    graph.inverse_cayley(KgbId(id), generator).unwrap(),
+                    graph.inverse_cayley_packed(slot)
+                );
+            }
+        }
+    }
+
+    #[test]
     fn seed_x0_lookup_and_torus_part_match_the_frozen_a1_anchors() {
         // The fixture's split SL(2,R) scenarios (g_rho_check = [0]).
         let mut pipeline = pipeline(sl2_datum(), None, 2, 2);
