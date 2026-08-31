@@ -734,6 +734,96 @@ fn format_involution_word(expression: &[i32]) -> String {
     output
 }
 
+const PACKED_GLOBAL_KGB_UNDEFINED: u32 = u32::MAX;
+
+/// A GlobalKGB edge target stored without the platform-sized `usize` payload.
+/// `u32::MAX` is reserved for an absent link and cannot be a valid element
+/// index, matching the upstream 32-bit KGB numbering.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct PackedGlobalKgbId(u32);
+
+impl PackedGlobalKgbId {
+    const UNDEFINED: Self = Self(PACKED_GLOBAL_KGB_UNDEFINED);
+
+    fn from_index(index: usize) -> Result<Self, StructureError> {
+        let packed = u32::try_from(index).map_err(|_| StructureError::ArithmeticOverflow)?;
+        if packed == PACKED_GLOBAL_KGB_UNDEFINED {
+            return Err(StructureError::ArithmeticOverflow);
+        }
+        Ok(Self(packed))
+    }
+
+    fn from_optional(index: Option<usize>) -> Result<Self, StructureError> {
+        index.map_or(Ok(Self::UNDEFINED), Self::from_index)
+    }
+
+    fn to_index(self) -> Option<usize> {
+        if self.0 == PACKED_GLOBAL_KGB_UNDEFINED {
+            None
+        } else {
+            usize::try_from(self.0).ok()
+        }
+    }
+
+    fn to_public(self) -> Option<usize> {
+        self.to_index()
+    }
+}
+
+/// Two packed source IDs for one inverse-Cayley slot. The all-undefined pair
+/// represents public `None`; a defined first ID with an undefined second ID
+/// is the public `(first, None)` shape.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct PackedGlobalInverseCayley {
+    first: u32,
+    second: u32,
+}
+
+impl PackedGlobalInverseCayley {
+    const UNDEFINED: Self = Self {
+        first: PACKED_GLOBAL_KGB_UNDEFINED,
+        second: PACKED_GLOBAL_KGB_UNDEFINED,
+    };
+
+    fn from_public(first: Option<usize>, second: Option<usize>) -> Result<Self, StructureError> {
+        let Some(first) = first else {
+            return if second.is_none() {
+                Ok(Self::UNDEFINED)
+            } else {
+                Err(StructureError::KgbInvariantViolation {
+                    invariant: "inverse Cayley pair",
+                })
+            };
+        };
+        Ok(Self {
+            first: PackedGlobalKgbId::from_index(first)?.0,
+            second: PackedGlobalKgbId::from_optional(second)?.0,
+        })
+    }
+
+    fn to_public(self) -> Option<(usize, Option<usize>)> {
+        PackedGlobalKgbId(self.first)
+            .to_public()
+            .map(|first| (first, PackedGlobalKgbId(self.second).to_public()))
+    }
+
+    fn insert_source(&mut self, source: usize) -> Result<(), StructureError> {
+        let source = PackedGlobalKgbId::from_index(source)?.0;
+        match self.first {
+            PACKED_GLOBAL_KGB_UNDEFINED => self.first = source,
+            _ if self.second == PACKED_GLOBAL_KGB_UNDEFINED => self.second = source,
+            _ => {
+                return Err(StructureError::KgbInvariantViolation {
+                    invariant: "inverse Cayley pair",
+                });
+            }
+        }
+        Ok(())
+    }
+}
+
 /// The inner-class-wide KGB graph: upstream `kgb::global_KGB`.
 ///
 /// Storage is flat with index `x * semisimple_rank + generator`, matching
@@ -749,9 +839,9 @@ pub struct GlobalKgb {
     involutions: Vec<InvolutionId>,
     first_of_tau: Vec<usize>,
     statuses: Vec<Option<KgbStatus>>,
-    cross: Vec<usize>,
-    cayley: Vec<Option<usize>>,
-    inverse_cayley: Vec<Option<(usize, Option<usize>)>>,
+    cross: Vec<PackedGlobalKgbId>,
+    cayley: Vec<PackedGlobalKgbId>,
+    inverse_cayley: Vec<PackedGlobalInverseCayley>,
     involution_lengths: Vec<usize>,
     involution_cartans: Vec<usize>,
     involution_words: Vec<String>,
@@ -993,7 +1083,8 @@ impl GlobalKgb {
                                 created
                             }
                         };
-                        store.cross[x * semisimple_rank + generator] = k;
+                        store.cross[x * semisimple_rank + generator] =
+                            PackedGlobalKgbId::from_index(k)?;
                         if d != 0 {
                             store.statuses[x * semisimple_rank + generator] =
                                 Some(KgbStatus::Complex);
@@ -1048,13 +1139,11 @@ impl GlobalKgb {
                                         created
                                     }
                                 };
-                                store.cayley[x * semisimple_rank + generator] = Some(k);
+                                store.cayley[x * semisimple_rank + generator] =
+                                    PackedGlobalKgbId::from_index(k)?;
                                 let slot =
                                     &mut store.inverse_cayley[k * semisimple_rank + generator];
-                                *slot = match slot {
-                                    None => Some((x, None)),
-                                    Some((first, _)) => Some((*first, Some(x))),
-                                };
+                                slot.insert_source(x)?;
                             }
                         }
                     }
@@ -1146,15 +1235,14 @@ impl GlobalKgb {
     pub fn cross(&self, generator: usize, element: usize) -> Option<usize> {
         self.cross
             .get(element * self.semisimple_rank + generator)
-            .copied()
+            .and_then(|target| target.to_public())
     }
 
     /// `KGB_base::cayley(s, x)`; `None` is upstream's `UndefKGB` (`*`).
     pub fn cayley(&self, generator: usize, element: usize) -> Option<usize> {
         self.cayley
             .get(element * self.semisimple_rank + generator)
-            .copied()
-            .flatten()
+            .and_then(|target| target.to_public())
     }
 
     /// `KGB_base::inverseCayley(s, x)`: the first and, when the Cayley
@@ -1166,8 +1254,7 @@ impl GlobalKgb {
     ) -> Option<(usize, Option<usize>)> {
         self.inverse_cayley
             .get(element * self.semisimple_rank + generator)
-            .copied()
-            .flatten()
+            .and_then(|pair| pair.to_public())
     }
 
     /// The involution length of the element's involution
@@ -1249,9 +1336,9 @@ struct ElementStore {
     elements: Vec<GlobalTorusElement>,
     element_packet: Vec<usize>,
     statuses: Vec<Option<KgbStatus>>,
-    cross: Vec<usize>,
-    cayley: Vec<Option<usize>>,
-    inverse_cayley: Vec<Option<(usize, Option<usize>)>>,
+    cross: Vec<PackedGlobalKgbId>,
+    cayley: Vec<PackedGlobalKgbId>,
+    inverse_cayley: Vec<PackedGlobalInverseCayley>,
 }
 
 impl ElementStore {
@@ -1273,6 +1360,9 @@ impl ElementStore {
 
     /// Push one element with its per-generator slot placeholders.
     fn push(&mut self, torus: GlobalTorusElement, packet: usize) -> Result<(), StructureError> {
+        // Element IDs are exposed as the upstream language's 32-bit KGB
+        // numbering. Reserve the max value for undefined links.
+        PackedGlobalKgbId::from_index(self.elements.len())?;
         self.elements.push(torus);
         self.element_packet.push(packet);
         self.statuses
@@ -1297,9 +1387,10 @@ impl ElementStore {
             })?;
         for _ in 0..self.semisimple_rank {
             self.statuses.push(None);
-            self.cross.push(usize::MAX);
-            self.cayley.push(None);
-            self.inverse_cayley.push(None);
+            self.cross.push(PackedGlobalKgbId::UNDEFINED);
+            self.cayley.push(PackedGlobalKgbId::UNDEFINED);
+            self.inverse_cayley
+                .push(PackedGlobalInverseCayley::UNDEFINED);
         }
         Ok(())
     }
@@ -1547,7 +1638,10 @@ mod tests {
         let target = PackedGlobalKgbId::from_index(17).unwrap();
         assert_eq!(target.to_public(), Some(17));
         assert_eq!(PackedGlobalKgbId::UNDEFINED.to_public(), None);
-        assert_eq!(PackedGlobalKgbId::from_optional(None).unwrap().to_public(), None);
+        assert_eq!(
+            PackedGlobalKgbId::from_optional(None).unwrap().to_public(),
+            None
+        );
         assert_eq!(
             PackedGlobalKgbId::from_optional(Some(17))
                 .unwrap()
@@ -1567,8 +1661,7 @@ mod tests {
     fn packed_global_kgb_link_rejects_unrepresentable_and_malformed_values() {
         assert!(matches!(
             PackedGlobalKgbId::from_index(u32::MAX as usize),
-            Err(StructureError::AllocationFailed { requested })
-                if requested == u32::MAX as usize
+            Err(StructureError::ArithmeticOverflow)
         ));
         assert!(matches!(
             PackedGlobalInverseCayley::from_public(None, Some(9)),
@@ -1576,6 +1669,22 @@ mod tests {
                 invariant: "inverse Cayley pair"
             })
         ));
+    }
+
+    #[test]
+    fn global_kgb_packed_links_round_trip_through_public_accessors() {
+        let kgb = build_global_kgb(simply_connected_a1(), 2, 2);
+        for element in 0..kgb.size() {
+            for generator in 0..kgb.semisimple_rank() {
+                let slot = element * kgb.semisimple_rank() + generator;
+                assert_eq!(kgb.cross(generator, element), kgb.cross[slot].to_public());
+                assert_eq!(kgb.cayley(generator, element), kgb.cayley[slot].to_public());
+                assert_eq!(
+                    kgb.inverse_cayley(generator, element),
+                    kgb.inverse_cayley[slot].to_public()
+                );
+            }
+        }
     }
 
     /// The exact `print_X` bytes of the HPC-verified reference
