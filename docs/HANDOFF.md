@@ -6,6 +6,22 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
 ## Current frontier - 2026-08-31
 
+- Shared branch commits `42dce9b..46ec748` add a per-involution GlobalKGB
+  fingerprint projector cache, index it by dense `InvolutionId`, retain only
+  the used adapted-basis columns as column-major `i64`, and pin the legacy
+  torus-log-before-lattice error precedence. The cache equivalence tests cover
+  A1/A2/B2 elements plus cross and Cayley edges. This slice is NOT HPC
+  verified: repeated direct SSH probes to `10.26.14.64` timed out and the
+  configured local SOCKS port `127.0.0.1:7897` was not listening. Do not enter
+  a speed or RSS improvement in `BENCHMARKS.md` until focused, KGB
+  differential, fat unipotent, and full pipeline jobs pass.
+- Read-only storage audit found that GlobalKGB's `usize`/`Option<usize>` edge
+  arrays can save roughly 100 MB at the 320,206-element rank-8 anchor when
+  represented as upstream-compatible `u32` ids with `u32::MAX` sentinels, but
+  GlobalKGB is not the main source of the verified 3.7 GB unipotent peak. The
+  corresponding `KgbGraph` edge arrays and removal of the retained legacy
+  involution permutations remain the higher-value workload targets.
+
 - `legacy_integration`: owns the isolated integration worktree and the
   `involution_table.rs`, `tits_element.rs`, `kgb_graph.rs`, and narrowly scoped
   `domain_builtins.rs` caller migration needed to remove persistent legacy
