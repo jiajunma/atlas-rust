@@ -1539,6 +1539,45 @@ mod tests {
         assert_cached_fingerprints_match(simply_connected_b2(), 8, 8);
     }
 
+    #[test]
+    fn packed_global_kgb_link_layout_and_round_trip() {
+        assert_eq!(std::mem::size_of::<PackedGlobalKgbId>(), 4);
+        assert_eq!(std::mem::size_of::<PackedGlobalInverseCayley>(), 8);
+
+        let target = PackedGlobalKgbId::from_index(17).unwrap();
+        assert_eq!(target.to_public(), Some(17));
+        assert_eq!(PackedGlobalKgbId::UNDEFINED.to_public(), None);
+        assert_eq!(PackedGlobalKgbId::from_optional(None).unwrap().to_public(), None);
+        assert_eq!(
+            PackedGlobalKgbId::from_optional(Some(17))
+                .unwrap()
+                .to_public(),
+            Some(17)
+        );
+
+        let undefined = PackedGlobalInverseCayley::UNDEFINED;
+        assert_eq!(undefined.to_public(), None);
+        let type_one = PackedGlobalInverseCayley::from_public(Some(7), Some(11)).unwrap();
+        assert_eq!(type_one.to_public(), Some((7, Some(11))));
+        let type_two = PackedGlobalInverseCayley::from_public(Some(7), None).unwrap();
+        assert_eq!(type_two.to_public(), Some((7, None)));
+    }
+
+    #[test]
+    fn packed_global_kgb_link_rejects_unrepresentable_and_malformed_values() {
+        assert!(matches!(
+            PackedGlobalKgbId::from_index(u32::MAX as usize),
+            Err(StructureError::AllocationFailed { requested })
+                if requested == u32::MAX as usize
+        ));
+        assert!(matches!(
+            PackedGlobalInverseCayley::from_public(None, Some(9)),
+            Err(StructureError::KgbInvariantViolation {
+                invariant: "inverse Cayley pair"
+            })
+        ));
+    }
+
     /// The exact `print_X` bytes of the HPC-verified reference
     /// (tests/reference/domain/print_x.events.json, first print_X block).
     #[test]
