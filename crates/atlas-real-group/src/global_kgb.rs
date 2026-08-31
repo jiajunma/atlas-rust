@@ -312,7 +312,12 @@ fn fingerprint(
 /// Cached adapted-basis projection for one twisted involution.
 #[derive(Clone, Debug)]
 struct FingerprintProjector {
-    basis: crate::integer_lattice::IntegerMatrix,
+    /// The saturation basis columns used by x_pack, in column-major order.
+    /// The lattice reducer's inverse and diagonal are intentionally dropped
+    /// once these columns have been validated and copied to fixed-width
+    /// entries.
+    basis: Vec<i64>,
+    rows: usize,
     components: usize,
 }
 
@@ -331,21 +336,37 @@ impl FingerprintProjector {
             theta_plus_one.push(shifted);
         }
         let adapted = adapted_basis(&theta_plus_one, budget)?;
+        let rows = adapted.basis.rows;
+        let components = adapted.diagonal.len();
+        let entry_count = rows
+            .checked_mul(components)
+            .ok_or(StructureError::ArithmeticOverflow)?;
+        let mut basis = try_capacity(entry_count)?;
+        for column in 0..components {
+            for row in 0..rows {
+                basis.push(
+                    i64::try_from(adapted.basis.entry(row, column))
+                        .map_err(|_| StructureError::ArithmeticOverflow)?,
+                );
+            }
+        }
         Ok(Self {
-            components: adapted.diagonal.len(),
-            basis: adapted.basis,
+            basis,
+            rows,
+            components,
         })
     }
 
-    fn apply(&self, torus: &GlobalTorusElement) -> Result<RationalWeight, StructureError> {
-        let log = torus.log_2pi()?;
+    fn apply_log(&self, log: &RationalWeight) -> Result<RationalWeight, StructureError> {
         let mut projected = try_capacity(self.components)?;
         for column in 0..self.components {
             // Column `column` of the adapted basis, dotted with the numerator.
             let mut accumulator = 0_i128;
-            for row in 0..self.basis.rows {
-                let entry = i64::try_from(self.basis.entry(row, column))
-                    .map_err(|_| StructureError::ArithmeticOverflow)?;
+            let column_start = column
+                .checked_mul(self.rows)
+                .ok_or(StructureError::ArithmeticOverflow)?;
+            for row in 0..self.rows {
+                let entry = self.basis[column_start + row];
                 accumulator += i128::from(entry) * i128::from(log.numerator()[row]);
             }
             let modulus = i128::from(log.denominator());
@@ -378,6 +399,9 @@ impl FingerprintCache {
         torus: &GlobalTorusElement,
         budget: &IntegerLatticeBudget,
     ) -> Result<RationalWeight, StructureError> {
+        // Keep the uncached fingerprint's error precedence: torus log
+        // validation occurs before adapted-basis construction.
+        let log = torus.log_2pi()?;
         let upper_bound = self.projectors.len();
         let slot = self
             .projectors
@@ -387,10 +411,10 @@ impl FingerprintCache {
                 upper_bound,
             })?;
         if let Some(projector) = slot.as_ref() {
-            return projector.apply(torus);
+            return projector.apply_log(&log);
         }
         let projector = FingerprintProjector::new(theta, budget)?;
-        let fingerprint = projector.apply(torus)?;
+        let fingerprint = projector.apply_log(&log)?;
         *slot = Some(projector);
         Ok(fingerprint)
     }
