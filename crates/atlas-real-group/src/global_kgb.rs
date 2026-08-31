@@ -359,14 +359,16 @@ impl FingerprintProjector {
 }
 
 /// Reusable per-involution fingerprint projectors used while generating KGB.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 struct FingerprintCache {
-    projectors: HashMap<InvolutionId, FingerprintProjector>,
+    projectors: Vec<Option<FingerprintProjector>>,
 }
 
 impl FingerprintCache {
-    fn new() -> Self {
-        Self::default()
+    fn new(involution_count: usize) -> Result<Self, StructureError> {
+        let mut projectors = try_capacity(involution_count)?;
+        projectors.resize(involution_count, None);
+        Ok(Self { projectors })
     }
 
     fn fingerprint(
@@ -376,12 +378,20 @@ impl FingerprintCache {
         torus: &GlobalTorusElement,
         budget: &IntegerLatticeBudget,
     ) -> Result<RationalWeight, StructureError> {
-        if let Some(projector) = self.projectors.get(&id) {
+        let upper_bound = self.projectors.len();
+        let slot = self
+            .projectors
+            .get_mut(id.0)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: id.0,
+                upper_bound,
+            })?;
+        if let Some(projector) = slot.as_ref() {
             return projector.apply(torus);
         }
         let projector = FingerprintProjector::new(theta, budget)?;
         let fingerprint = projector.apply(torus)?;
-        self.projectors.insert(id, projector);
+        *slot = Some(projector);
         Ok(fingerprint)
     }
 }
@@ -853,7 +863,7 @@ impl GlobalKgb {
         // KGB_elt_entry's `tw` and `fingerprint` fields (kgb.h:217-237,
         // kgb.cpp:73-84).
         let mut dedup: HashMap<(usize, RationalWeight), usize> = HashMap::new();
-        let mut fingerprint_cache = FingerprintCache::new();
+        let mut fingerprint_cache = FingerprintCache::new(total_involutions)?;
         for (index, torus) in store.elements.iter().enumerate() {
             let theta = table
                 .record(identity_id)
@@ -1379,7 +1389,7 @@ mod tests {
         .unwrap();
         let kgb =
             GlobalKgb::build(&inner_class, &classification, &mut table, &lattice_budget()).unwrap();
-        let mut cache = FingerprintCache::new();
+        let mut cache = FingerprintCache::new(kgb.packet_count()).unwrap();
         for element in 0..kgb.size() {
             let packet = kgb.element_packet[element];
             let id = kgb.involutions[packet];
@@ -1429,6 +1439,36 @@ mod tests {
             }
         }
         assert_eq!(cache.projectors.len(), kgb.packet_count());
+        assert_eq!(
+            cache
+                .projectors
+                .iter()
+                .filter(|projector| projector.is_some())
+                .count(),
+            kgb.packet_count()
+        );
+    }
+
+    #[test]
+    fn fingerprint_cache_rejects_out_of_range_id() {
+        let datum = simply_connected_a1();
+        let theta = LatticeInvolution::identity(&datum).unwrap();
+        let torus = GlobalTorusElement::exp_pi(vec![0], 1);
+        let involution_count = 1;
+        let mut cache = FingerprintCache::new(involution_count).unwrap();
+        let result = cache.fingerprint(
+            InvolutionId(involution_count),
+            &theta,
+            &torus,
+            &lattice_budget(),
+        );
+        assert_eq!(
+            result,
+            Err(StructureError::IndexOutOfRange {
+                index: involution_count,
+                upper_bound: involution_count,
+            })
+        );
     }
 
     #[test]
