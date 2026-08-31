@@ -10218,15 +10218,11 @@ struct CommonBlockRow {
 /// printInvolution of the KGB involution at `x` (prettyprint.cpp:219-232):
 /// one-based generator digits, '^' for crosses, 'x' for conjugations, `e`
 /// closing. `bundle` is the form's already-forced KGB pipeline.
-fn involution_expression(context: &RealFormContext, bundle: &KgbBundle, x: KgbId) -> String {
-    let record = bundle
+fn involution_expression(_context: &RealFormContext, bundle: &KgbBundle, x: KgbId) -> String {
+    let involution = bundle.graph.involution_of(x).expect("in-range");
+    let word = bundle
         .table
-        .record(bundle.graph.involution_of(x).expect("in-range"))
-        .expect("in-range");
-    let word = context
-        .parent
-        .inner_class
-        .canonical_involution_expr(record.weyl_element())
+        .weyl_canonical_involution_expr(involution)
         .expect("a KGB involution is a twisted involution of the class");
     let mut text = String::new();
     for entry in word {
@@ -11002,14 +10998,12 @@ pub(crate) fn print_text(
                 text.push_str(&" ".repeat(2));
                 // Weyl word (prettyprint::printWeylElt, basic_io.cpp:100-118):
                 // one-based generators comma-separated, `e` for the identity.
-                let record = primal_bundle
-                    .table
-                    .record(primal.involution_of(id).expect("in-range"))
-                    .expect("in-range");
+                let involution = primal.involution_of(id).expect("in-range");
                 if name == "print_block" {
                     // Weyl word (prettyprint::printWeylElt over
                     // WeylGroup::word's elected expression): one-based
                     // generators comma-separated, `e` for the identity.
+                    let record = primal_bundle.table.record(involution).expect("in-range");
                     let word = compact_weyl
                         .as_ref()
                         .expect("print_block built the transducer group")
@@ -11030,11 +11024,9 @@ pub(crate) fn print_text(
                     // printInvolution (prettyprint.cpp:219-232): one-based
                     // generator digits, '^' for crosses, 'x' for
                     // conjugations, `e` closing.
-                    let word = block
-                        .rf
-                        .parent
-                        .inner_class
-                        .canonical_involution_expr(record.weyl_element())
+                    let word = primal_bundle
+                        .table
+                        .weyl_canonical_involution_expr(involution)
                         .expect("a KGB involution is a twisted involution of the class");
                     for entry in word {
                         if entry >= 0 {
@@ -11292,15 +11284,10 @@ pub(crate) fn print_text(
                 text.push_str(&" ".repeat(pad));
                 text.push_str(&block_descent_set(graph, z, rank, &support));
                 text.push_str(&" ".repeat(pad));
-                let record = primal_bundle
+                let involution = primal.involution_of(id).expect("in-range");
+                let word = primal_bundle
                     .table
-                    .record(primal.involution_of(id).expect("in-range"))
-                    .expect("in-range");
-                let word = block
-                    .rf
-                    .parent
-                    .inner_class
-                    .canonical_involution_expr(record.weyl_element())
+                    .weyl_canonical_involution_expr(involution)
                     .expect("in-range");
                 for entry in word {
                     if entry >= 0 {
@@ -11632,6 +11619,7 @@ fn print_kgb(
     for id in ids {
         let length = graph.length(id).expect("in-range element");
         let cartan = graph.cartan_of(id).expect("in-range element");
+        let involution = graph.involution_of(id).expect("in-range element");
         let number = cartan_number(parent, cartan).expect("the graph's Cartans are in range");
         // The '#' flag (kgb_io.cpp:109-112): the element's involution IS
         // its Cartan class's canonical representative.
@@ -11646,15 +11634,11 @@ fn print_kgb(
                 representative.weyl_action(),
             )
             .expect("the Cartan representative realizes in the root system");
-            bundle.table.lookup(&canonical) == graph.involution_of(id)
+            bundle.table.lookup(&canonical) == Some(involution)
         };
-        let record = bundle
+        let word = bundle
             .table
-            .record(graph.involution_of(id).expect("in-range element"))
-            .expect("the graph's involutions are table records");
-        let word = parent
-            .inner_class
-            .canonical_involution_expr(record.weyl_element())
+            .weyl_canonical_involution_expr(involution)
             .expect("a KGB involution is a twisted involution of the class");
 
         write!(text, "{:>width$}:  ", id.index()).expect("string write");

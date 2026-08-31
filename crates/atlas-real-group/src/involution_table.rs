@@ -748,7 +748,7 @@ impl InvolutionTable {
 
     /// Compact counterpart of upstream
     /// `TwistedWeylGroup::canonical_involution_expr` (weyl.cpp:1359-1385).
-    pub(crate) fn weyl_canonical_involution_expr(
+    pub fn weyl_canonical_involution_expr(
         &self,
         id: InvolutionId,
     ) -> Result<Vec<i32>, StructureError> {
