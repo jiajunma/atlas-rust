@@ -309,6 +309,83 @@ fn fingerprint(
     RationalWeight::new(projected, log.denominator())
 }
 
+/// Cached adapted-basis projection for one twisted involution.
+#[derive(Clone, Debug)]
+struct FingerprintProjector {
+    basis: crate::integer_lattice::IntegerMatrix,
+    components: usize,
+}
+
+impl FingerprintProjector {
+    fn new(
+        theta: &LatticeInvolution,
+        budget: &IntegerLatticeBudget,
+    ) -> Result<Self, StructureError> {
+        let rank = theta.lattice_rank();
+        let mut theta_plus_one = try_capacity(rank)?;
+        for (row_index, row) in theta.weight_matrix().iter().enumerate() {
+            let mut shifted = row.clone();
+            shifted[row_index] = shifted[row_index]
+                .checked_add(1)
+                .ok_or(StructureError::ArithmeticOverflow)?;
+            theta_plus_one.push(shifted);
+        }
+        let adapted = adapted_basis(&theta_plus_one, budget)?;
+        Ok(Self {
+            components: adapted.diagonal.len(),
+            basis: adapted.basis,
+        })
+    }
+
+    fn apply(&self, torus: &GlobalTorusElement) -> Result<RationalWeight, StructureError> {
+        let log = torus.log_2pi()?;
+        let mut projected = try_capacity(self.components)?;
+        for column in 0..self.components {
+            // Column `column` of the adapted basis, dotted with the numerator.
+            let mut accumulator = 0_i128;
+            for row in 0..self.basis.rows {
+                let entry = i64::try_from(self.basis.entry(row, column))
+                    .map_err(|_| StructureError::ArithmeticOverflow)?;
+                accumulator += i128::from(entry) * i128::from(log.numerator()[row]);
+            }
+            let modulus = i128::from(log.denominator());
+            projected.push(
+                i64::try_from(accumulator.rem_euclid(modulus))
+                    .map_err(|_| StructureError::ArithmeticOverflow)?,
+            );
+        }
+        RationalWeight::new(projected, log.denominator())
+    }
+}
+
+/// Reusable per-involution fingerprint projectors used while generating KGB.
+#[derive(Clone, Debug, Default)]
+struct FingerprintCache {
+    projectors: HashMap<InvolutionId, FingerprintProjector>,
+}
+
+impl FingerprintCache {
+    fn new() -> Self {
+        Self::default()
+    }
+
+    fn fingerprint(
+        &mut self,
+        id: InvolutionId,
+        theta: &LatticeInvolution,
+        torus: &GlobalTorusElement,
+        budget: &IntegerLatticeBudget,
+    ) -> Result<RationalWeight, StructureError> {
+        if let Some(projector) = self.projectors.get(&id) {
+            return projector.apply(torus);
+        }
+        let projector = FingerprintProjector::new(theta, budget)?;
+        let fingerprint = projector.apply(torus)?;
+        self.projectors.insert(id, projector);
+        Ok(fingerprint)
+    }
+}
+
 /// The fundamental fiber group `dualPi0(-delta^t)` (tori.cpp:163-175 via
 /// cartanclass.cpp:209-212), recomputed with the same formula as
 /// `CartanFiber::build_owned` (cartan_fiber.rs:69-87) so the basis order
@@ -776,6 +853,7 @@ impl GlobalKgb {
         // KGB_elt_entry's `tw` and `fingerprint` fields (kgb.h:217-237,
         // kgb.cpp:73-84).
         let mut dedup: HashMap<(usize, RationalWeight), usize> = HashMap::new();
+        let mut fingerprint_cache = FingerprintCache::new();
         for (index, torus) in store.elements.iter().enumerate() {
             let theta = table
                 .record(identity_id)
@@ -784,7 +862,10 @@ impl GlobalKgb {
                     upper_bound: total_involutions,
                 })?
                 .theta();
-            let key = (identity_id.0, fingerprint(theta, torus, budget)?);
+            let key = (
+                identity_id.0,
+                fingerprint_cache.fingerprint(identity_id, theta, torus, budget)?,
+            );
             if dedup.insert(key, index).is_some() {
                 return Err(StructureError::KgbInvariantViolation {
                     invariant: "fundamental fiber distinctness",
@@ -852,7 +933,10 @@ impl GlobalKgb {
                                 upper_bound: total_involutions,
                             })?
                             .theta();
-                        let key = (cross_target.0, fingerprint(theta, &child, budget)?);
+                        let key = (
+                            cross_target.0,
+                            fingerprint_cache.fingerprint(cross_target, theta, &child, budget)?,
+                        );
                         let k = match dedup.get(&key) {
                             Some(&existing) => existing,
                             None => {
@@ -921,7 +1005,15 @@ impl GlobalKgb {
                                         upper_bound: total_involutions,
                                     })?
                                     .theta();
-                                let key = (cayley_target.0, fingerprint(theta, &child, budget)?);
+                                let key = (
+                                    cayley_target.0,
+                                    fingerprint_cache.fingerprint(
+                                        cayley_target,
+                                        theta,
+                                        &child,
+                                        budget,
+                                    )?,
+                                );
                                 let k = match dedup.get(&key) {
                                     Some(&existing) => existing,
                                     None => {
@@ -1275,11 +1367,7 @@ mod tests {
         .unwrap()
     }
 
-    fn assert_cached_fingerprints_match(
-        datum: BasedRootDatum,
-        roots: usize,
-        weyl: usize,
-    ) {
+    fn assert_cached_fingerprints_match(datum: BasedRootDatum, roots: usize, weyl: usize) {
         let distinguished = LatticeInvolution::identity(&datum).unwrap();
         let inner_class = InnerClass::new(datum, distinguished, roots).unwrap();
         let classification =
@@ -1289,8 +1377,8 @@ mod tests {
             InvolutionTableBudget::new(64, lattice_budget()),
         )
         .unwrap();
-        let kgb = GlobalKgb::build(&inner_class, &classification, &mut table, &lattice_budget())
-            .unwrap();
+        let kgb =
+            GlobalKgb::build(&inner_class, &classification, &mut table, &lattice_budget()).unwrap();
         let mut cache = FingerprintCache::new();
         for element in 0..kgb.size() {
             let packet = kgb.element_packet[element];
