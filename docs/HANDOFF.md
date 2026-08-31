@@ -6,7 +6,8 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
 ## Current frontier - 2026-08-31
 
-- Shared commits `4124cbc`, `c0494c1`, `f45479a`, and `a7b1108` close the
+- Shared commits `4124cbc`, `c0494c1`, `f45479a`, `a7b1108`, `1ecf417`, and
+  `873c962` close the
   fingerprint-cache provenance review and pack both the final `KgbGraph`
   links and its BFS/reordering link buffers. `FingerprintCache<'a>` is bound
   to one `InvolutionTable` and one lattice-budget snapshot; callers can no
