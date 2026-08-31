@@ -253,8 +253,8 @@ impl KgbGraph {
                 requested: expected,
             })?;
         let mut statuses: Vec<Option<KgbStatus>> = try_capacity(expected * rank)?;
-        let mut cross_raw: Vec<Option<usize>> = try_capacity(expected * rank)?;
-        let mut cayley_raw: Vec<Option<usize>> = try_capacity(expected * rank)?;
+        let mut cross_raw: Vec<PackedKgbId> = try_capacity(expected * rank)?;
+        let mut cayley_raw: Vec<PackedKgbId> = try_capacity(expected * rank)?;
         intern(
             seed.element().clone(),
             expected,
@@ -359,7 +359,7 @@ impl KgbGraph {
                         &mut cross_raw,
                         &mut cayley_raw,
                     )?;
-                    cross_raw[slot] = Some(cross_target);
+                    cross_raw[slot] = PackedKgbId::from_index(cross_target)?;
                     if status == KgbStatus::ImaginaryNoncompact {
                         let cayleyed = cayleyed.expect("cayleyed set for noncompact");
                         let target_length = table
@@ -383,7 +383,7 @@ impl KgbGraph {
                             &mut cross_raw,
                             &mut cayley_raw,
                         )?;
-                        cayley_raw[slot] = Some(cayley_target);
+                        cayley_raw[slot] = PackedKgbId::from_index(cayley_target)?;
                     }
                 }
             }
@@ -496,10 +496,10 @@ impl KgbGraph {
         element_position.resize(size, 0);
         let mut new_statuses: Vec<Option<KgbStatus>> = try_capacity(size * rank)?;
         new_statuses.resize(size * rank, None);
-        let mut new_cross: Vec<Option<KgbId>> = try_capacity(size * rank)?;
-        new_cross.resize(size * rank, None);
-        let mut new_cayley: Vec<Option<KgbId>> = try_capacity(size * rank)?;
-        new_cayley.resize(size * rank, None);
+        let mut new_cross: Vec<PackedKgbId> = try_capacity(size * rank)?;
+        new_cross.resize(size * rank, PackedKgbId::UNDEFINED);
+        let mut new_cayley: Vec<PackedKgbId> = try_capacity(size * rank)?;
+        new_cayley.resize(size * rank, PackedKgbId::UNDEFINED);
         for (old, element) in elements.into_iter().enumerate() {
             let new = forward[old];
             new_elements[new] = Some(element);
@@ -508,8 +508,15 @@ impl KgbGraph {
                 let old_slot = old * rank + generator;
                 let new_slot = new * rank + generator;
                 new_statuses[new_slot] = statuses[old_slot];
-                new_cross[new_slot] = cross_raw[old_slot].map(|target| KgbId(forward[target]));
-                new_cayley[new_slot] = cayley_raw[old_slot].map(|target| KgbId(forward[target]));
+                let cross_target = cross_raw[old_slot].to_index().ok_or(
+                    StructureError::KgbInvariantViolation {
+                        invariant: "kgb size",
+                    },
+                )?;
+                new_cross[new_slot] = PackedKgbId::from_index(forward[cross_target])?;
+                if let Some(cayley_target) = cayley_raw[old_slot].to_index() {
+                    new_cayley[new_slot] = PackedKgbId::from_index(forward[cayley_target])?;
+                }
             }
         }
         let elements = new_elements.into_iter().collect::<Option<Vec<_>>>().ok_or(
@@ -522,19 +529,8 @@ impl KgbGraph {
                 invariant: "status write-once",
             },
         )?;
-        let cross = new_cross
-            .into_iter()
-            .collect::<Option<Vec<_>>>()
-            .ok_or(StructureError::KgbInvariantViolation {
-                invariant: "kgb size",
-            })?
-            .into_iter()
-            .map(|target| PackedKgbId::from_index(target.0))
-            .collect::<Result<Vec<_>, _>>()?;
-        let cayley = new_cayley
-            .into_iter()
-            .map(PackedKgbId::from_optional)
-            .collect::<Result<Vec<_>, _>>()?;
+        let cross = new_cross;
+        let cayley = new_cayley;
 
         // Inverse-Cayley installation, ascending over the sorted numbering.
         let mut inverse_cayley: Vec<PackedInverseCayley> = try_capacity(size * rank)?;
@@ -1021,8 +1017,8 @@ fn intern(
     elements: &mut Vec<TitsElement>,
     index: &mut TitsIndex,
     statuses: &mut Vec<Option<KgbStatus>>,
-    cross_raw: &mut Vec<Option<usize>>,
-    cayley_raw: &mut Vec<Option<usize>>,
+    cross_raw: &mut Vec<PackedKgbId>,
+    cayley_raw: &mut Vec<PackedKgbId>,
 ) -> Result<usize, StructureError> {
     if let Some(&existing) = index.get(&element) {
         return Ok(existing);
@@ -1037,8 +1033,8 @@ fn intern(
     elements.push(element);
     for _ in 0..rank {
         statuses.push(None);
-        cross_raw.push(None);
-        cayley_raw.push(None);
+        cross_raw.push(PackedKgbId::UNDEFINED);
+        cayley_raw.push(PackedKgbId::UNDEFINED);
     }
     Ok(id)
 }
