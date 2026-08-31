@@ -6,6 +6,25 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
 ## Current frontier - 2026-08-31
 
+- Dirty integrated snapshot `dirty-root-negatives-final2-20260901` removes the
+  per-record `RootInvolutionData::kind_by_root` array and changes
+  `RootSystem::negatives` to shared immutable `Arc<[RootId]>` storage. Public
+  `image_permutation()`, `kind()`, and `roots_of_kind()` APIs are unchanged;
+  classification is derived from the image permutation plus the shared
+  negation table. Focused HPC job **3660844** passed Weyl 65/65,
+  InvolutionTable 29/29, and KGB 14/14 in debug and release. Fat benchmark
+  **3660848** matched the oracle: Rust `7.387s / 1,936,520KB`, C++
+  `4.734s / 881,300KB` (`1.560x` wall, `2.197x` RSS); report SHA-256 is
+  `fa45354d624c186683d07cf9f3a1f3da045c624ecbd1705323d54934e8b57e1a`.
+  Against preceding integrated job 3660836, peak RSS fell by about 69MB while
+  wall time stayed within run variance. This is a dirty-snapshot result, not
+  an exact single-commit measurement.
+- The next bounded storage target is `RealProjection`: each involution record
+  still owns nested `Vec<Vec<i64>>` `lift_mat`/`m_real` buffers. Flattening
+  those matrices row-major should remove roughly 50-100MB and millions of
+  small allocations on a full E8 table, but needs focused regression coverage
+  for transported basis ordering and `y_lift` consumers before promotion.
+
 - Shared commits `4124cbc`, `c0494c1`, `f45479a`, `a7b1108`, `1ecf417`, and
   `873c962` close the
   fingerprint-cache provenance review and pack both the final `KgbGraph`

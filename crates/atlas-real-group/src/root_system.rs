@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, VecDeque};
+use std::sync::Arc;
 
 use crate::lattice::{pair_coordinates, try_copy_coordinates};
 use crate::{pair, BasedRootDatum, Coweight, StructureError, Weight, WeylAction};
@@ -167,7 +168,7 @@ pub struct RootSystem {
     min_roots: Vec<RootSet>,
     min_coroots: Vec<RootSet>,
     /// Negation table: `negatives[r]` is the id of `-r`.
-    negatives: Vec<RootId>,
+    negatives: Arc<[RootId]>,
     /// Root permutation of each simple reflection, in generator order.
     /// Recomputing one per `WeylElement::simple_reflection` call (two
     /// rank×rank matrices, then a matvec plus binary search per root —
@@ -316,7 +317,7 @@ impl RootSystem {
             simple_ids,
             min_roots,
             min_coroots,
-            negatives,
+            negatives: Arc::from(negatives.into_boxed_slice()),
             simple_reflections: Vec::new(),
         };
         // One-time fill through the matrix path, so the cached table is by
@@ -429,6 +430,11 @@ impl RootSystem {
 
     /// The negation table: `negatives()[r]` is the id of `-r`.
     pub(crate) fn negatives(&self) -> &[RootId] {
+        &self.negatives
+    }
+
+    /// Shared immutable negation storage for bulk involution records.
+    pub(crate) fn negatives_arc(&self) -> &Arc<[RootId]> {
         &self.negatives
     }
 
@@ -1132,6 +1138,15 @@ mod tests {
                 .unwrap(),
             RootSystem::enumerate(&datum, 6).unwrap()
         );
+    }
+
+    #[test]
+    fn cloned_root_systems_share_the_negation_table() {
+        let roots = RootSystem::enumerate(&a2(), 6).unwrap();
+        let clone = roots.clone();
+
+        assert!(Arc::ptr_eq(&roots.negatives, &clone.negatives));
+        assert_eq!(roots.negatives(), clone.negatives());
     }
 
     #[test]

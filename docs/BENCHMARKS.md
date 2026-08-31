@@ -111,6 +111,20 @@ so no standalone speedup or RSS reduction is claimed. In job `3660449`,
 `0.005s / 6660KB`. Report SHA-256:
 `be3557da568738c6d0c168471445fe39628357c25609c2af31e7e9cc10cab083`.
 
+## Shared root classifications (dirty integrated snapshot, 2026-09-01)
+
+| job | snapshot | workload | result |
+|---|---|---|---|
+| 3660844 | dirty-root-negatives-final | focused Weyl/InvolutionTable/KGB | 65/65, 29/29, 14/14 in debug/release |
+| 3660848 | dirty-root-negatives-final2 | `unipotent_representations_exceptional.at` | MATCH; Rust 7.387s / 1,936,520KB; C++ 4.734s / 881,300KB; 1.560x wall / 2.197x RSS |
+
+The change removes `RootInvolutionData::kind_by_root` and shares
+`RootSystem::negatives` through `Arc<[RootId]>` while preserving the public
+classification APIs. Compared with integrated baseline job 3660836, peak RSS
+fell by about 69MB; wall time is within run variance, so no standalone speed
+claim is made. Report SHA-256:
+`fa45354d624c186683d07cf9f3a1f3da045c624ecbd1705323d54934e8b57e1a`.
+
 ## Script-corpus ledger (HPC cpu partition, 240 atlas-scripts, both binaries per script)
 
 Every corpus run records wall time and peak RSS per script for the Rust CLI

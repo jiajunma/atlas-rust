@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{LatticeInvolution, RootId, RootSystem, StructureError};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -18,7 +20,7 @@ pub enum RootKind {
 pub struct RootInvolutionData {
     involution: LatticeInvolution,
     image_by_root: Vec<RootId>,
-    kind_by_root: Vec<RootKind>,
+    negatives: Arc<[RootId]>,
     imaginary_simple_roots: Vec<RootId>,
     real_simple_roots: Vec<RootId>,
 }
@@ -40,7 +42,6 @@ impl RootInvolutionData {
         validate_simple_root_images(root_system, &involution)?;
         let root_count = root_system.roots().len();
         let mut image_by_root = Vec::with_capacity(root_count);
-        let mut kind_by_root = Vec::with_capacity(root_count);
         // Scratch buffers: one matrix application per root (and per coroot
         // transport check) without a fresh vector per root.
         let mut image_buf = Vec::with_capacity(involution.lattice_rank());
@@ -61,37 +62,17 @@ impl RootInvolutionData {
             if coroot_buf.as_slice() != image_coroot.as_slice() {
                 return Err(StructureError::InvalidRootDatumAutomorphism);
             }
-            let kind = if image_buf.as_slice() == root.as_slice() {
-                RootKind::Imaginary
-            } else {
-                let mut is_negative = true;
-                for (&image_coordinate, &coordinate) in
-                    image_buf.iter().zip(root.as_slice().iter())
-                {
-                    let negated = coordinate
-                        .checked_neg()
-                        .ok_or(StructureError::ArithmeticOverflow)?;
-                    if image_coordinate != negated {
-                        is_negative = false;
-                        break;
-                    }
-                }
-                if is_negative {
-                    RootKind::Real
-                } else {
-                    RootKind::Complex
-                }
-            };
             image_by_root.push(image_id);
-            kind_by_root.push(kind);
         }
+        let negatives = Arc::clone(root_system.negatives_arc());
         let imaginary_simple_roots =
-            subsystem_simple_roots(root_system, &kind_by_root, RootKind::Imaginary)?;
-        let real_simple_roots = subsystem_simple_roots(root_system, &kind_by_root, RootKind::Real)?;
+            subsystem_simple_roots(root_system, &image_by_root, &negatives, RootKind::Imaginary)?;
+        let real_simple_roots =
+            subsystem_simple_roots(root_system, &image_by_root, &negatives, RootKind::Real)?;
         Ok(Self {
             involution,
             image_by_root,
-            kind_by_root,
+            negatives,
             imaginary_simple_roots,
             real_simple_roots,
         })
@@ -129,24 +110,15 @@ impl RootInvolutionData {
                 invariant: "involution root action",
             });
         }
-        let negatives = root_system.negatives();
-        let mut kind_by_root = Vec::with_capacity(image_by_root.len());
-        for (index, &image) in image_by_root.iter().enumerate() {
-            kind_by_root.push(if image.0 == index {
-                RootKind::Imaginary
-            } else if image == negatives[index] {
-                RootKind::Real
-            } else {
-                RootKind::Complex
-            });
-        }
+        let negatives = Arc::clone(root_system.negatives_arc());
         let imaginary_simple_roots =
-            subsystem_simple_roots(root_system, &kind_by_root, RootKind::Imaginary)?;
-        let real_simple_roots = subsystem_simple_roots(root_system, &kind_by_root, RootKind::Real)?;
+            subsystem_simple_roots(root_system, &image_by_root, &negatives, RootKind::Imaginary)?;
+        let real_simple_roots =
+            subsystem_simple_roots(root_system, &image_by_root, &negatives, RootKind::Real)?;
         Ok(Self {
             involution,
             image_by_root,
-            kind_by_root,
+            negatives,
             imaginary_simple_roots,
             real_simple_roots,
         })
@@ -161,14 +133,20 @@ impl RootInvolutionData {
     }
 
     pub fn kind(&self, root: RootId) -> Option<RootKind> {
-        self.kind_by_root.get(root.0).copied()
+        let image = self.image_by_root.get(root.0).copied()?;
+        let negative = self.negatives.get(root.0).copied()?;
+        Some(classify_root(root.0, image, negative))
     }
 
     pub fn roots_of_kind(&self, kind: RootKind) -> impl Iterator<Item = RootId> + '_ {
-        self.kind_by_root
+        self.image_by_root
             .iter()
+            .copied()
+            .zip(self.negatives.iter().copied())
             .enumerate()
-            .filter_map(move |(index, candidate)| (*candidate == kind).then_some(RootId(index)))
+            .filter_map(move |(index, (image, negative))| {
+                (classify_root(index, image, negative) == kind).then_some(RootId(index))
+            })
     }
 
     /// Simple roots of the imaginary-root subsystem in the inherited positive system.
@@ -179,6 +157,17 @@ impl RootInvolutionData {
     /// Simple roots of the real-root subsystem in the inherited positive system.
     pub fn real_simple_roots(&self) -> &[RootId] {
         &self.real_simple_roots
+    }
+}
+
+#[inline]
+fn classify_root(index: usize, image: RootId, negative: RootId) -> RootKind {
+    if image.0 == index {
+        RootKind::Imaginary
+    } else if image == negative {
+        RootKind::Real
+    } else {
+        RootKind::Complex
     }
 }
 
@@ -215,13 +204,19 @@ fn validate_simple_root_images(
 
 fn subsystem_simple_roots(
     root_system: &RootSystem,
-    kinds: &[RootKind],
+    image_by_root: &[RootId],
+    negatives: &[RootId],
     kind: RootKind,
 ) -> Result<Vec<RootId>, StructureError> {
-    let positive = kinds
+    debug_assert_eq!(image_by_root.len(), negatives.len());
+    let positive = image_by_root
         .iter()
+        .copied()
+        .zip(negatives.iter().copied())
         .enumerate()
-        .filter_map(|(index, candidate_kind)| (*candidate_kind == kind).then_some(RootId(index)))
+        .filter_map(|(index, (image, negative))| {
+            (classify_root(index, image, negative) == kind).then_some(RootId(index))
+        })
         .filter(|&root| {
             root_system
                 .simple_coordinates(root)
@@ -245,8 +240,10 @@ fn subsystem_simple_roots(
                 })
         })
         .collect::<Result<Vec<_>, _>>()?;
-    let mut members: std::collections::HashSet<&[i32], crate::inner_class::PermutationHasherBuilder> =
-        std::collections::HashSet::default();
+    let mut members: std::collections::HashSet<
+        &[i32],
+        crate::inner_class::PermutationHasherBuilder,
+    > = std::collections::HashSet::default();
     members
         .try_reserve(positive_coordinates.len())
         .map_err(|_| StructureError::AllocationFailed {
@@ -313,6 +310,62 @@ mod tests {
             data.real_simple_roots(),
             &[roots.id_of(&Weight::new(vec![1, 1])).unwrap()]
         );
+    }
+
+    #[test]
+    fn derives_each_a2_kind_from_the_image_and_shared_negation_table() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let roots = RootSystem::enumerate(&datum, 6).unwrap();
+        let data = RootInvolutionData::new(
+            &roots,
+            LatticeInvolution::new(
+                &datum,
+                vec![vec![0, -1], vec![-1, 0]],
+                vec![vec![0, -1], vec![-1, 0]],
+            )
+            .unwrap(),
+        )
+        .unwrap();
+
+        let mut expected = [Vec::new(), Vec::new(), Vec::new()];
+        for (root, _, _) in roots.entries() {
+            let image = data.image(root).unwrap();
+            let (kind, bucket) = if image == root {
+                (RootKind::Imaginary, 0)
+            } else if image == roots.negatives()[root.0] {
+                (RootKind::Real, 1)
+            } else {
+                (RootKind::Complex, 2)
+            };
+            assert_eq!(data.kind(root), Some(kind));
+            expected[bucket].push(root);
+        }
+        assert_eq!(
+            data.roots_of_kind(RootKind::Imaginary).collect::<Vec<_>>(),
+            expected[0]
+        );
+        assert_eq!(
+            data.roots_of_kind(RootKind::Real).collect::<Vec<_>>(),
+            expected[1]
+        );
+        assert_eq!(
+            data.roots_of_kind(RootKind::Complex).collect::<Vec<_>>(),
+            expected[2]
+        );
+        assert_eq!(data.kind(RootId(roots.roots().len())), None);
+    }
+
+    #[test]
+    fn cloned_root_involutions_share_negatives_and_remain_value_equal() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let roots = RootSystem::enumerate(&datum, 6).unwrap();
+        let data =
+            RootInvolutionData::new(&roots, LatticeInvolution::identity(&datum).unwrap()).unwrap();
+        let clone = data.clone();
+
+        assert_eq!(data, clone);
+        assert!(Arc::ptr_eq(&data.negatives, &clone.negatives));
+        assert!(Arc::ptr_eq(&data.negatives, roots.negatives_arc()));
     }
 
     #[test]
@@ -424,5 +477,15 @@ mod tests {
                 roots.id_of(&Weight::new(vec![1, 0])).unwrap(),
             ]
         );
+    }
+
+    #[test]
+    fn shares_root_system_negatives_storage() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let roots = RootSystem::enumerate(&datum, 6).unwrap();
+        let data =
+            RootInvolutionData::new(&roots, LatticeInvolution::identity(&datum).unwrap()).unwrap();
+
+        assert!(Arc::ptr_eq(&data.negatives, roots.negatives_arc()));
     }
 }
