@@ -1264,6 +1264,78 @@ mod tests {
         .unwrap()
     }
 
+    /// Simply connected A2 with the simple coroots as the coordinate basis.
+    fn simply_connected_a2() -> BasedRootDatum {
+        BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2, -1], vec![-1, 2]],
+            vec![Weight::new(vec![2, -1]), Weight::new(vec![-1, 2])],
+            vec![Coweight::new(vec![1, 0]), Coweight::new(vec![0, 1])],
+        )
+        .unwrap()
+    }
+
+    fn assert_cached_fingerprints_match(
+        datum: BasedRootDatum,
+        roots: usize,
+        weyl: usize,
+    ) {
+        let distinguished = LatticeInvolution::identity(&datum).unwrap();
+        let inner_class = InnerClass::new(datum, distinguished, roots).unwrap();
+        let classification =
+            CartanClassification::build(&inner_class, &class_budget(weyl)).unwrap();
+        let mut table = InvolutionTable::new(
+            &inner_class,
+            InvolutionTableBudget::new(64, lattice_budget()),
+        )
+        .unwrap();
+        let kgb = GlobalKgb::build(&inner_class, &classification, &mut table, &lattice_budget())
+            .unwrap();
+        let mut cache = FingerprintCache::new();
+        for element in 0..kgb.size() {
+            let packet = kgb.element_packet[element];
+            let id = kgb.involutions[packet];
+            let theta = table.record(id).unwrap().theta();
+            let direct = fingerprint(theta, &kgb.elements[element], &lattice_budget()).unwrap();
+            let cached = cache
+                .fingerprint(id, theta, &kgb.elements[element], &lattice_budget())
+                .unwrap();
+            assert_eq!(cached, direct, "element {element}");
+            for generator in 0..kgb.semisimple_rank() {
+                let target = kgb.cross(generator, element).unwrap();
+                let target_packet = kgb.element_packet[target];
+                let target_id = kgb.involutions[target_packet];
+                let target_theta = table.record(target_id).unwrap().theta();
+                let direct =
+                    fingerprint(target_theta, &kgb.elements[target], &lattice_budget()).unwrap();
+                let cached = cache
+                    .fingerprint(
+                        target_id,
+                        target_theta,
+                        &kgb.elements[target],
+                        &lattice_budget(),
+                    )
+                    .unwrap();
+                assert_eq!(cached, direct, "edge {element}->{target} via {generator}");
+            }
+        }
+    }
+
+    #[test]
+    fn fingerprint_cache_matches_direct_projection_a1() {
+        assert_cached_fingerprints_match(simply_connected_a1(), 2, 2);
+    }
+
+    #[test]
+    fn fingerprint_cache_matches_direct_projection_a2() {
+        assert_cached_fingerprints_match(simply_connected_a2(), 6, 6);
+    }
+
+    #[test]
+    fn fingerprint_cache_matches_direct_projection_b2() {
+        assert_cached_fingerprints_match(simply_connected_b2(), 8, 8);
+    }
+
     /// The exact `print_X` bytes of the HPC-verified reference
     /// (tests/reference/domain/print_x.events.json, first print_X block).
     #[test]
