@@ -2476,8 +2476,8 @@ mod tests {
             (i64::MAX, 1, 1, -4),
         ];
         for &(lf, lv, rf, rv) in cases {
-            let expected = Integer::from(lf) * Integer::from(lv)
-                + Integer::from(rf) * Integer::from(rv);
+            let expected =
+                Integer::from(lf) * Integer::from(lv) + Integer::from(rf) * Integer::from(rv);
             assert_eq!(
                 bounded_linear_combination(
                     &Integer::from(lf),

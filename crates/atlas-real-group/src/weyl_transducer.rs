@@ -48,9 +48,17 @@ fn coxeter_entry(letter: char, i: usize, j: usize) -> u32 {
             _ => 2,
         }
     } else if a == 0 {
-        if b == 2 { 3 } else { 2 }
+        if b == 2 {
+            3
+        } else {
+            2
+        }
     } else if letter == 'E' && a == 1 {
-        if b == 3 { 3 } else { 2 }
+        if b == 3 {
+            3
+        } else {
+            2
+        }
     } else if b - a == 1 {
         3
     } else {

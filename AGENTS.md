@@ -6,13 +6,13 @@ not a source-level C++ translation.
 
 ## Hard rules
 
-1. **Use local execution for small checks; use HPC for heavy work.** Small,
-   bounded local checks such as `cargo check -p <crate>`, focused unit tests,
-   formatting, and static analysis are allowed. Do not run long builds,
-   full-workspace or large test suites, Atlas/CWEB differential jobs,
-   benchmarks, or other resource-heavy work locally; submit those to XMU HPC.
-   The original Atlas executable remains an HPC oracle. GitHub Actions is
-   allowed only when its workflow is the requested verification environment.
+1. **Compile and test only on HPC.** Submit every compilation and test command,
+   including `cargo check`, focused unit tests, full-workspace test suites,
+   Atlas/CWEB differential jobs, and benchmarks, to XMU HPC. Do not compile or
+   run tests locally. Local formatting, source inspection, and static analysis
+   that does not compile code are allowed. The original Atlas executable
+   remains an HPC oracle. GitHub Actions is allowed only when its workflow is
+   the requested verification environment.
 2. **The original Atlas executable is the language oracle.** The upstream
    repository and its generated CWEB output define reference behavior. Do not
    infer undocumented semantics from what is convenient to implement.
@@ -51,9 +51,11 @@ not a source-level C++ translation.
 ## Working conventions (user directives, 2026-08-04)
 
 1. **Submit, do not wait.** Once an HPC job is submitted (`sbatch`), move on
-   to the next task immediately. Never block the local loop on a pending job;
-   results are collected later in batches (a periodic poll is fine, but the
-   default is to keep producing work).
+   immediately: continue inspecting, analyzing, reviewing, and optimizing code
+   while the job runs. Never block the local loop on a pending job, and never
+   replace HPC compilation or testing with a local run; collect results later
+   in batches (a periodic poll is fine, but the default is to keep producing
+   work).
 2. **Heavy fixtures run on HPC with a generous timeout.** E7 and similar
    Weyl-heavy work go to the `fat` partition with a large `--timeout`
    (e.g. `TIMEOUT=1200`); the `cpu` partition's per-task 8G limit OOMs on

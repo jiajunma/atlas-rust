@@ -469,7 +469,8 @@ impl<P: FileProvider, S: FileSink> SessionFrame<P, S> {
                 } => {
                     if !is_void_type {
                         let mut rendered = self.context.render_value(&value);
-                        if compact_matrix_display && matches!(value, crate::value::Value::Matrix(_)) {
+                        if compact_matrix_display && matches!(value, crate::value::Value::Matrix(_))
+                        {
                             rendered.pop();
                         }
                         events.push(SessionEvent::Output {

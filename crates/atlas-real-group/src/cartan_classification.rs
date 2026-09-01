@@ -597,7 +597,9 @@ pub(crate) fn upstream_positive_key(
 
 #[cfg(test)]
 mod tests {
-    use crate::{BasedRootDatum, Coweight, LatticeInvolution, TwistedInvolution, Weight, WeylAction};
+    use crate::{
+        BasedRootDatum, Coweight, LatticeInvolution, TwistedInvolution, Weight, WeylAction,
+    };
 
     use super::*;
 

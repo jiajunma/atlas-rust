@@ -604,7 +604,7 @@ mod tests {
     fn fundamental_id(table: &InvolutionTable) -> InvolutionId {
         (0..table.involution_count())
             .map(InvolutionId)
-            .find(|&id| table.record(id).unwrap().weyl_element().is_identity())
+            .find(|&id| table.weyl_is_identity(id).unwrap())
             .unwrap()
     }
 
@@ -912,7 +912,7 @@ mod tests {
         assert_eq!(table.involution_count(), 6);
         for index in 0..table.involution_count() {
             let id = InvolutionId(index);
-            let source_element = table.record(id).unwrap().weyl_element().clone();
+            let source_element = table.materialize_weyl_element(id).unwrap();
             for pattern in [vec![], vec![0], vec![1], vec![0, 1]] {
                 let element = TitsElement::new(&table, id, bits(2, pattern)).unwrap();
                 for generator in 0..2 {
@@ -1096,7 +1096,7 @@ mod tests {
         // Public reduce: normalizes raw bits and is idempotent.
         let split = (0..sl2_table.involution_count())
             .map(InvolutionId)
-            .find(|&id| !sl2_table.record(id).unwrap().weyl_element().is_identity())
+            .find(|&id| !sl2_table.weyl_is_identity(id).unwrap())
             .unwrap();
         let raw = TitsElement::new(&sl2_table, split, bits(1, vec![0])).unwrap();
         let reduced = sl2_coset.reduce(&sl2_table, &raw).unwrap();

@@ -2960,7 +2960,11 @@ fn expr_print(expression: &Expr, operator_prefix: bool) -> String {
             ..
         } => match arguments.as_slice() {
             [operand] if operator_prefix => {
-                format!("{}({})", operator.symbol, expr_print(operand, operator_prefix))
+                format!(
+                    "{}({})",
+                    operator.symbol,
+                    expr_print(operand, operator_prefix)
+                )
             }
             [lhs, rhs] if operator_prefix => format!(
                 "{}({},{})",
@@ -2968,14 +2972,22 @@ fn expr_print(expression: &Expr, operator_prefix: bool) -> String {
                 expr_print(lhs, operator_prefix),
                 expr_print(rhs, operator_prefix)
             ),
-            [operand] => format!("{}{}", operator.symbol, expr_print(operand, operator_prefix)),
+            [operand] => format!(
+                "{}{}",
+                operator.symbol,
+                expr_print(operand, operator_prefix)
+            ),
             [lhs, rhs] => format!(
                 "{}{}{}",
                 expr_print(lhs, operator_prefix),
                 operator.symbol,
                 expr_print(rhs, operator_prefix)
             ),
-            _ => format!("{}({})", operator.symbol, expr_print_many(arguments, operator_prefix)),
+            _ => format!(
+                "{}({})",
+                operator.symbol,
+                expr_print_many(arguments, operator_prefix)
+            ),
         },
         Expr::Call {
             callee, arguments, ..
@@ -3025,7 +3037,11 @@ fn expr_print(expression: &Expr, operator_prefix: bool) -> String {
             expr_print(else_branch, operator_prefix)
         ),
         Expr::Cast { target, body, .. } => {
-            format!("{}: {}", compact_type(target), expr_print(body, operator_prefix))
+            format!(
+                "{}: {}",
+                compact_type(target),
+                expr_print(body, operator_prefix)
+            )
         }
         Expr::OpCast { name, arg_type, .. } => format!("{}@{}", name.value, compact_type(arg_type)),
         Expr::Sequence { first, second, .. } => {
@@ -3036,9 +3052,7 @@ fn expr_print(expression: &Expr, operator_prefix: bool) -> String {
             )
         }
         Expr::While {
-            body,
-            out_reversed,
-            ..
+            body, out_reversed, ..
         } => {
             // Upstream prints the reversal tilde fused to `od` (`~od`,
             // axis.w:5387).
@@ -3092,7 +3106,10 @@ fn expr_print(expression: &Expr, operator_prefix: bool) -> String {
                         .as_ref()
                         .map(compact_case_pattern)
                         .unwrap_or_default();
-                    format!("{tag}{pattern}: {}", expr_print(&branch.body, operator_prefix))
+                    format!(
+                        "{tag}{pattern}: {}",
+                        expr_print(&branch.body, operator_prefix)
+                    )
                 })
                 .collect::<Vec<_>>()
                 .join(" | ");

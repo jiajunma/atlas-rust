@@ -789,11 +789,7 @@ fn typed_expression_print(expression: &TypedExpr) -> String {
                 if matches!(closure.body.as_ref(), TypedExpr::TupleProject { .. }) {
                     if let Some(trace) = name {
                         let field = trace.split('@').next().unwrap_or(trace);
-                        return format!(
-                            "{}.{}",
-                            typed_expression_print(argument),
-                            field
-                        );
+                        return format!("{}.{}", typed_expression_print(argument), field);
                     }
                 }
             }
@@ -902,7 +898,11 @@ struct MergedVariant {
 /// `forget`, with user variants inserted at the position the upstream
 /// single-table ordering gives them. Cached on the overload state; the
 /// `add_user`/`remove` mutations invalidate the entry for their name.
-fn merged_variants(name: &str, overloads: &OverloadState, types: &TypeTable) -> Rc<Vec<MergedVariant>> {
+fn merged_variants(
+    name: &str,
+    overloads: &OverloadState,
+    types: &TypeTable,
+) -> Rc<Vec<MergedVariant>> {
     if let Some(cached) = overloads.merged_cache.borrow().get(name) {
         return Rc::clone(cached);
     }
@@ -914,7 +914,11 @@ fn merged_variants(name: &str, overloads: &OverloadState, types: &TypeTable) -> 
     merged
 }
 
-fn build_merged_variants(name: &str, overloads: &OverloadState, types: &TypeTable) -> Vec<MergedVariant> {
+fn build_merged_variants(
+    name: &str,
+    overloads: &OverloadState,
+    types: &TypeTable,
+) -> Vec<MergedVariant> {
     let mut merged: Vec<MergedVariant> = overload_variants(name)
         .iter()
         .copied()
@@ -1485,7 +1489,13 @@ impl TypedContext {
                 }
                 events.push(TypedCommandEvent::Value {
                     compact_matrix_display: matches!(typed, TypedExpr::GlobalAssignment { .. })
-                        || matches!(typed, TypedExpr::Slice { column_lower: None, .. }),
+                        || matches!(
+                            typed,
+                            TypedExpr::Slice {
+                                column_lower: None,
+                                ..
+                            }
+                        ),
                     value,
                     type_,
                     span: expression.span(),
@@ -2057,13 +2067,13 @@ impl TypedContext {
             // merges into the earlier number, so functions written against
             // the first include still match.
             for target in targets.iter_mut() {
-                let Type::Tabled(number) = target else { continue };
-                let canonical = (0..number.0)
-                    .map(TypeNumber)
-                    .find(|candidate| {
-                        self.types.binding(*candidate).merged_into.is_none()
-                            && self.types.equivalent(*number, *candidate)
-                    });
+                let Type::Tabled(number) = target else {
+                    continue;
+                };
+                let canonical = (0..number.0).map(TypeNumber).find(|candidate| {
+                    self.types.binding(*candidate).merged_into.is_none()
+                        && self.types.equivalent(*number, *candidate)
+                });
                 if let Some(canonical) = canonical {
                     let fields = self.types.binding(*number).fields.clone();
                     self.types.merge_into(*number, canonical, fields);
@@ -2104,11 +2114,9 @@ impl TypedContext {
             }
         }
         let mut events = Vec::with_capacity(definitions.len());
-        for ((definition, target), redefine) in
-            definitions.iter().zip(&targets).zip(&redefinitions)
+        for ((definition, target), redefine) in definitions.iter().zip(&targets).zip(&redefinitions)
         {
-            let text =
-                self.define_type_members(definition, target, tabled, *redefine, span)?;
+            let text = self.define_type_members(definition, target, tabled, *redefine, span)?;
             events.push(TypedCommandEvent::ReportLine { text, span });
         }
         Ok(events)
@@ -2256,7 +2264,7 @@ impl TypedContext {
                                         other.display_in_set_type(&self.types)
                                     ),
                                     span,
-                                }])
+                                }]);
                             }
                         };
                         format!("Defined type: ( {body} )\n")
@@ -3284,10 +3292,9 @@ pub fn convert_expr(
                     let type_ = type_.borrow();
                     match &*type_ {
                         Type::Function(_) => true,
-                        Type::Tabled(number) => matches!(
-                            analysis.types.expansion(*number),
-                            Type::Function(_)
-                        ),
+                        Type::Tabled(number) => {
+                            matches!(analysis.types.expansion(*number), Type::Function(_))
+                        }
                         _ => false,
                     }
                 });
@@ -3990,11 +3997,10 @@ fn convert_op_cast(
         // was stored with the structural (RootDatum,[int]).
         let value = match variant.origin {
             OverloadOrigin::Builtin(index) => builtin_function_value(index, analysis.types),
-            OverloadOrigin::User(user_index) => {
-                analysis.overloads.user_variants(&name.value)[user_index]
-                    .value
-                    .clone()
-            }
+            OverloadOrigin::User(user_index) => analysis.overloads.user_variants(&name.value)
+                [user_index]
+                .value
+                .clone(),
         };
         let deduced = Type::function(cast_type.clone(), variant.result_type.clone());
         return conform_types(
@@ -4005,8 +4011,7 @@ fn convert_op_cast(
             analysis,
         );
     }
-    if let Some((index, result_type)) = hidden_special_cast_variant(&name.value, &cast_type)
-    {
+    if let Some((index, result_type)) = hidden_special_cast_variant(&name.value, &cast_type) {
         return conform_types(
             &Type::function(cast_type.clone(), result_type),
             required,
@@ -4079,14 +4084,12 @@ fn convert_for_loop(
         Type::Primitive(Prim::Vec) => (int_type(), int_type()),
         Type::Primitive(Prim::RatVec) => (int_type(), rat_type()),
         Type::Primitive(Prim::Mat) => (int_type(), primitive_type(Prim::Vec)),
-        Type::Primitive(Prim::KTypePol) => (
-            primitive_type(Prim::KType),
-            primitive_type(Prim::Split),
-        ),
-        Type::Primitive(Prim::ParamPol) => (
-            primitive_type(Prim::Param),
-            primitive_type(Prim::Split),
-        ),
+        Type::Primitive(Prim::KTypePol) => {
+            (primitive_type(Prim::KType), primitive_type(Prim::Split))
+        }
+        Type::Primitive(Prim::ParamPol) => {
+            (primitive_type(Prim::Param), primitive_type(Prim::Split))
+        }
         _ => {
             return Err(type_error(
                 format!(
@@ -4521,14 +4524,10 @@ fn component_type_for_assignment(
         // Term-coefficient assignment `P[t]:=s` (axis.w:3962-3969 term
         // kinds are assignable; atlas-types.w:5650-5659, 7766-7782
         // `assign_coef`).
-        Type::Primitive(Prim::KTypePol)
-            if matches!(index_type, Type::Primitive(Prim::KType)) =>
-        {
+        Type::Primitive(Prim::KTypePol) if matches!(index_type, Type::Primitive(Prim::KType)) => {
             return Ok(Type::Primitive(Prim::Split))
         }
-        Type::Primitive(Prim::ParamPol)
-            if matches!(index_type, Type::Primitive(Prim::Param)) =>
-        {
+        Type::Primitive(Prim::ParamPol) if matches!(index_type, Type::Primitive(Prim::Param)) => {
             return Ok(Type::Primitive(Prim::Split))
         }
         _ => {}
@@ -4806,7 +4805,13 @@ fn convert_component_transform(
             span: transform.span,
         },
     };
-    conform_types(&component_type, required, converted, transform.span, analysis)
+    conform_types(
+        &component_type,
+        required,
+        converted,
+        transform.span,
+        analysis,
+    )
 }
 
 /// `p.f := v` (parser.y:266, axis.w:8194-8239 `field_ass_stat`).
@@ -4902,7 +4907,13 @@ fn convert_field_transform(
             span: transform.span,
         },
     };
-    conform_types(&component_type, required, converted, transform.span, analysis)
+    conform_types(
+        &component_type,
+        required,
+        converted,
+        transform.span,
+        analysis,
+    )
 }
 
 /// Rebuild exactly the simple-assignment cases selected by upstream's
@@ -11611,9 +11622,10 @@ fn hidden_special_cast_variant(name: &str, cast_type: &Type) -> Option<(usize, T
                 if let Type::Row(component) = &components[0] {
                     if component.as_ref() == &components[1] {
                         return Some((
-                            hidden_builtin_by_pattern("#", |arg| {
-                                matches!(arg, Type::Tuple(parts) if matches!(parts.first(), Some(Type::Row(_))))
-                            })?,
+                            hidden_builtin_by_pattern(
+                                "#",
+                                |arg| matches!(arg, Type::Tuple(parts) if matches!(parts.first(), Some(Type::Row(_)))),
+                            )?,
                             components[0].clone(),
                         ));
                     }
@@ -11621,9 +11633,10 @@ fn hidden_special_cast_variant(name: &str, cast_type: &Type) -> Option<(usize, T
                 if let Type::Row(component) = &components[1] {
                     if component.as_ref() == &components[0] {
                         return Some((
-                            hidden_builtin_by_pattern("#", |arg| {
-                                matches!(arg, Type::Tuple(parts) if matches!(parts.get(1), Some(Type::Row(_))))
-                            })?,
+                            hidden_builtin_by_pattern(
+                                "#",
+                                |arg| matches!(arg, Type::Tuple(parts) if matches!(parts.get(1), Some(Type::Row(_)))),
+                            )?,
                             components[1].clone(),
                         ));
                     }
@@ -11634,20 +11647,25 @@ fn hidden_special_cast_variant(name: &str, cast_type: &Type) -> Option<(usize, T
         },
         "##" => match cast_type {
             Type::Row(component) if matches!(component.as_ref(), Type::Row(_)) => Some((
-                hidden_builtin_by_pattern("##", |arg| {
-                    matches!(arg, Type::Row(inner) if matches!(inner.as_ref(), Type::Row(_)))
-                })?,
+                hidden_builtin_by_pattern(
+                    "##",
+                    |arg| matches!(arg, Type::Row(inner) if matches!(inner.as_ref(), Type::Row(_))),
+                )?,
                 component.as_ref().clone(),
             )),
             Type::Tuple(components)
                 if components.len() == 2
                     && matches!(&components[0], Type::Row(_))
-                    && components[0] == components[1] => Some((
-                hidden_builtin_by_pattern("##", |arg| {
-                    matches!(arg, Type::Tuple(parts) if parts.iter().all(|part| matches!(part, Type::Row(_))))
-                })?,
-                components[0].clone(),
-            )),
+                    && components[0] == components[1] =>
+            {
+                Some((
+                    hidden_builtin_by_pattern(
+                        "##",
+                        |arg| matches!(arg, Type::Tuple(parts) if parts.iter().all(|part| matches!(part, Type::Row(_)))),
+                    )?,
+                    components[0].clone(),
+                ))
+            }
             _ => None,
         },
         _ => None,
@@ -11808,8 +11826,7 @@ impl TypedExpr {
                     }
                     Value::Matrix(mut matrix) => match index {
                         Value::Tuple(pair) if pair.len() == 2 => {
-                            let row =
-                                expect_integer(pair[0].clone(), *span, "assignment index")?;
+                            let row = expect_integer(pair[0].clone(), *span, "assignment index")?;
                             let column =
                                 expect_integer(pair[1].clone(), *span, "assignment index")?;
                             let row = checked_index_word(
@@ -11877,9 +11894,8 @@ impl TypedExpr {
                         else {
                             panic!("analysis let a non-KType index into a KTypePol assignment: {index}")
                         };
-                        let Value::Domain(crate::domain_builtins::DomainValue::Split(
-                            coefficient,
-                        )) = &value
+                        let Value::Domain(crate::domain_builtins::DomainValue::Split(coefficient)) =
+                            &value
                         else {
                             panic!("analysis let a non-Split coefficient through: {value}")
                         };
@@ -11907,9 +11923,8 @@ impl TypedExpr {
                         else {
                             panic!("analysis let a non-Param index into a ParamPol assignment: {index}")
                         };
-                        let Value::Domain(crate::domain_builtins::DomainValue::Split(
-                            coefficient,
-                        )) = &value
+                        let Value::Domain(crate::domain_builtins::DomainValue::Split(coefficient)) =
+                            &value
                         else {
                             panic!("analysis let a non-Split coefficient through: {value}")
                         };
@@ -11989,8 +12004,7 @@ impl TypedExpr {
                     Value::Matrix(mut matrix) => match index {
                         Value::Tuple(pair) if pair.len() == 2 => {
                             let row = expect_integer(pair[0].clone(), *span, "transform index")?;
-                            let column =
-                                expect_integer(pair[1].clone(), *span, "transform index")?;
+                            let column = expect_integer(pair[1].clone(), *span, "transform index")?;
                             let row = checked_index_word(
                                 "initial index",
                                 &row,
@@ -12160,8 +12174,7 @@ impl TypedExpr {
                         // (oracle: (mat:[[1,2],[3,4]])[0,1] = 3). The
                         // reversed form counts BOTH indices from the end.
                         Value::Tuple(pair) if pair.len() == 2 => {
-                            let row =
-                                expect_integer(pair[0].clone(), *span, "subscription index")?;
+                            let row = expect_integer(pair[0].clone(), *span, "subscription index")?;
                             let column =
                                 expect_integer(pair[1].clone(), *span, "subscription index")?;
                             let row = checked_index_word(
@@ -12202,9 +12215,7 @@ impl TypedExpr {
                     // (atlas-types.w:5631-5643, 7744-7759): the mismatch
                     // and finality checks run at every level, only the
                     // push is gated.
-                    Value::Domain(crate::domain_builtins::DomainValue::KTypePol(
-                        polynomial,
-                    )) => {
+                    Value::Domain(crate::domain_builtins::DomainValue::KTypePol(polynomial)) => {
                         let Value::Domain(crate::domain_builtins::DomainValue::KType(ktype)) =
                             index
                         else {
@@ -12299,9 +12310,8 @@ impl TypedExpr {
                         Ok(at_level(level, || Value::List(sliced.clone())))
                     }
                     Value::String(value) => {
-                        let sliced = evaluate_string_slice(
-                            value, lower, upper, *flags, source, *span,
-                        )?;
+                        let sliced =
+                            evaluate_string_slice(value, lower, upper, *flags, source, *span)?;
                         Ok(at_level(level, || Value::String(sliced.clone())))
                     }
                     Value::Vector(vector) => {
@@ -13567,15 +13577,7 @@ fn evaluate_string_slice(
     source: &str,
     span: SourceSpan,
 ) -> Result<String, Control> {
-    let Some((lower, upper)) = slice_bounds(
-        lower,
-        upper,
-        value.len(),
-        flags,
-        source,
-        span,
-    )?
-    else {
+    let Some((lower, upper)) = slice_bounds(lower, upper, value.len(), flags, source, span)? else {
         return Ok(String::new());
     };
     let bytes = value.as_bytes();
@@ -13586,7 +13588,10 @@ fn evaluate_string_slice(
     };
     let selected = &bytes[selected_lower..selected_upper];
     if flags.reverse_output {
-        Ok(String::from_utf8_lossy(&selected.iter().rev().copied().collect::<Vec<_>>()).into_owned())
+        Ok(
+            String::from_utf8_lossy(&selected.iter().rev().copied().collect::<Vec<_>>())
+                .into_owned(),
+        )
     } else {
         Ok(String::from_utf8_lossy(selected).into_owned())
     }

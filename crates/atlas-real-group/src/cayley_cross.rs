@@ -103,12 +103,12 @@ impl CayleyCrossDecomposition {
             for (generator, &simple_id) in simple_ids.iter().enumerate() {
                 let theta_image = usize::from(current[simple_id.0]);
                 let image = usize::from(distinguished_permutation[theta_image]);
-                let coordinates = root_system.simple_coordinates(RootId::from_usize(image)).ok_or(
-                    StructureError::IndexOutOfRange {
+                let coordinates = root_system
+                    .simple_coordinates(RootId::from_usize(image))
+                    .ok_or(StructureError::IndexOutOfRange {
                         index: image,
                         upper_bound: root_system.roots().len(),
-                    },
-                )?;
+                    })?;
                 if coordinates.iter().all(|&coordinate| coordinate <= 0) {
                     descent = Some(generator);
                     break;

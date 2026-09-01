@@ -516,9 +516,9 @@ mod tests {
             Type::Undetermined,
         ];
         let naive = |from: &Type, to: &Type| {
-            coercion_table()
-                .iter()
-                .find(|coercion| same(&coercion.from, from, &table) && same(&coercion.to, to, &table))
+            coercion_table().iter().find(|coercion| {
+                same(&coercion.from, from, &table) && same(&coercion.to, to, &table)
+            })
         };
         for from in &queries {
             for to in &queries {
@@ -539,20 +539,52 @@ mod tests {
         // Row-to-row entries derive from component coercions.
         assert_eq!(is_close(&Type::row(int()), &Type::row(rat()), &table), 0x5);
         assert_eq!(is_close(&Type::row(rat()), &Type::row(int()), &table), 0x6);
-        assert_eq!(is_close(&Type::row(vec_t.clone()), &Type::row(Type::row(int())), &table), 0x7);
-        assert_eq!(is_close(&Type::row(Type::row(int())), &Type::row(ratvec.clone()), &table), 0x5);
+        assert_eq!(
+            is_close(
+                &Type::row(vec_t.clone()),
+                &Type::row(Type::row(int())),
+                &table
+            ),
+            0x7
+        );
+        assert_eq!(
+            is_close(
+                &Type::row(Type::row(int())),
+                &Type::row(ratvec.clone()),
+                &table
+            ),
+            0x5
+        );
         // The tuple-into-primitive entry still applies from a tuple side.
         assert_eq!(
-            is_close(&Type::tuple(vec![int(), int()]), &Type::Primitive(Prim::Split), &table),
+            is_close(
+                &Type::tuple(vec![int(), int()]),
+                &Type::Primitive(Prim::Split),
+                &table
+            ),
             0x5
         );
         // Aggregates with no tabled path are simply not close.
-        assert_eq!(is_close(&Type::row(int()), &Type::tuple(vec![int(), int()]), &table), 0);
         assert_eq!(
-            is_close(&Type::function(int(), int()), &Type::function(int(), rat()), &table),
+            is_close(&Type::row(int()), &Type::tuple(vec![int(), int()]), &table),
             0
         );
-        assert_eq!(is_close(&Type::union_of(vec![int(), rat()]), &Type::union_of(vec![rat(), int()]), &table), 0);
+        assert_eq!(
+            is_close(
+                &Type::function(int(), int()),
+                &Type::function(int(), rat()),
+                &table
+            ),
+            0
+        );
+        assert_eq!(
+            is_close(
+                &Type::union_of(vec![int(), rat()]),
+                &Type::union_of(vec![rat(), int()]),
+                &table
+            ),
+            0
+        );
     }
 
     #[test]

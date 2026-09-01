@@ -642,10 +642,7 @@ impl InnerClass {
     /// provenance, full [`RootInvolutionData`] validation) is rebuilt only
     /// for freshly discovered class representatives, so the E8 construction
     /// pays the matrix cost once per CLASS instead of once per Cayley edge.
-    fn involution_orbits(
-        &self,
-        weyl_budget: usize,
-    ) -> Result<Vec<ClassOrbit>, StructureError> {
+    fn involution_orbits(&self, weyl_budget: usize) -> Result<Vec<ClassOrbit>, StructureError> {
         let delta = self.distinguished_involution.involution();
         let rank = self.datum.semisimple_rank();
         let identity = TwistedInvolution::new(
@@ -680,12 +677,13 @@ impl InnerClass {
                     continue;
                 }
                 let root = RootId(index);
-                let coordinates = self.roots.simple_coordinates(root).ok_or(
-                    StructureError::IndexOutOfRange {
-                        index,
-                        upper_bound: self.roots.roots().len(),
-                    },
-                )?;
+                let coordinates =
+                    self.roots
+                        .simple_coordinates(root)
+                        .ok_or(StructureError::IndexOutOfRange {
+                            index,
+                            upper_bound: self.roots.roots().len(),
+                        })?;
                 if coordinates.iter().all(|&coordinate| coordinate >= 0) {
                     imaginary.push((
                         crate::cartan_classification::upstream_positive_key(coordinates)?,
@@ -735,9 +733,8 @@ impl InnerClass {
         let mut next: Vec<u8> = Vec::new();
         let packed = orbit_machine.simple_positions.len() <= 16;
         let stride = self.roots.roots().len();
-        for (representative, representative_permutation) in representatives
-            .into_iter()
-            .zip(representative_permutations)
+        for (representative, representative_permutation) in
+            representatives.into_iter().zip(representative_permutations)
         {
             let orbit = Self::orbit_cross_closure(
                 &orbit_machine,
@@ -792,12 +789,10 @@ impl InnerClass {
                     let mut key = 0_u128;
                     {
                         let current = &permutations[cursor * stride..(cursor + 1) * stride];
-                        for (shift, &position) in
-                            orbit_machine.simple_positions.iter().enumerate()
+                        for (shift, &position) in orbit_machine.simple_positions.iter().enumerate()
                         {
                             let image = reflection
-                                [current[usize::from(reflection[usize::from(position)])]
-                                as usize];
+                                [current[usize::from(reflection[usize::from(position)])] as usize];
                             key |= u128::from(image) << (8 * shift);
                         }
                     }
@@ -806,10 +801,11 @@ impl InnerClass {
                     }
                 }
                 next.clear();
-                next.try_reserve(reflection.len())
-                    .map_err(|_| StructureError::AllocationFailed {
+                next.try_reserve(reflection.len()).map_err(|_| {
+                    StructureError::AllocationFailed {
                         requested: reflection.len(),
-                    })?;
+                    }
+                })?;
                 {
                     let current = &permutations[cursor * stride..(cursor + 1) * stride];
                     for &image in reflection.iter() {
@@ -851,15 +847,14 @@ impl InnerClass {
         for &generator in word {
             action = self.twisted_conjugate_action(&action, generator, twist)?;
         }
-        TwistedInvolution::new(&self.datum, &self.roots, delta, action).map_err(|error| {
-            match error {
-                StructureError::InvalidInvolution => {
-                    StructureError::CartanClassificationInvariantViolation {
-                        invariant: "Cayley successor",
-                    }
+        TwistedInvolution::new(&self.datum, &self.roots, delta, action).map_err(|error| match error
+        {
+            StructureError::InvalidInvolution => {
+                StructureError::CartanClassificationInvariantViolation {
+                    invariant: "Cayley successor",
                 }
-                other => other,
             }
+            other => other,
         })
     }
 }
@@ -1008,8 +1003,7 @@ impl<'a> PermutationOrbits<'a> {
         for generator in 0..datum.semisimple_rank() {
             let action = WeylAction::simple_reflection(datum, generator)?;
             let permutation = roots.action_permutation(&action)?;
-            simple_reflections
-                .push(permutation.into_iter().map(|id| id.0 as u8).collect());
+            simple_reflections.push(permutation.into_iter().map(|id| id.0 as u8).collect());
         }
         let mut reflection_cache = try_capacity(count)?;
         reflection_cache.resize_with(count, || None);
@@ -1151,10 +1145,12 @@ impl<'a> PermutationOrbits<'a> {
                         upper_bound: roots.simple_root_ids().len(),
                     },
                 )?;
-                let image = *permutation.get(simple.0).ok_or(StructureError::IndexOutOfRange {
-                    index: simple.0,
-                    upper_bound: permutation.len(),
-                })?;
+                let image = *permutation
+                    .get(simple.0)
+                    .ok_or(StructureError::IndexOutOfRange {
+                        index: simple.0,
+                        upper_bound: permutation.len(),
+                    })?;
                 let is_positive = roots
                     .is_positive(RootId(usize::from(image)))
                     .ok_or(StructureError::InvalidRootAutomorphism)?;
@@ -1283,8 +1279,7 @@ impl ClassOrbit {
             Box::new(std::iter::repeat_n(empty, self.member_count()))
                 as Box<dyn Iterator<Item = &[u8]>>
         } else {
-            Box::new(self.permutations.chunks_exact(self.stride))
-                as Box<dyn Iterator<Item = &[u8]>>
+            Box::new(self.permutations.chunks_exact(self.stride)) as Box<dyn Iterator<Item = &[u8]>>
         }
     }
 

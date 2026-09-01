@@ -38,20 +38,20 @@ use atlas_real_group::{
     common_deformation_terms, denominator_exceeds_alcove_bound, dual_cartan_correspondence,
     dual_inner_class, elected_square_root, fiber_rank,
     filter_relation_units as domain_filter_relation_units, inner_class_with_twisted_involution,
-    integral_block_scope, layout_involution, minimal_torus_part,
-    on_basis as lattice_on_basis, pair, quotient_relation_basis as domain_quotient_relation_basis,
-    replace_relation_generators as domain_replace_relation_generators,
-    twisted_deformation_terms, twisted_deformation_with_cancel, twisted_kl_column_at_s,
-    twisted_kl_sum, AdjointFiberBudget, BareBlock, BasedRootDatum, BlockDescent, BlockGraph,
-    BlockModifier, BlockTopology, CartanClassification, CartanClassificationBudget, CartanId,
-    CommonContext, Coweight, DeformParent, ExternalFormOrder, GlobalKgb, InnerClass,
-    InnerClassLayout, IntegerLatticeBudget, IntegralBlockScope, IntegralSubsystem, InvolutionId,
-    InvolutionTable, InvolutionTableBudget, KType, KgbGraph, KgbId, KgbStatus, KlPol, KlSumParent,
-    KlTable, LatticeInvolution, LocatedBlock, ModTwoVector, PartialBlock, RankFlags,
-    RationalWeight, RealFormPresentation, RealFormSeed, RelationBasis, RelationError,
-    RelationGenerator, RelationMatrix, RepContext, RepTableOwner, RootId, RootInvolutionData,
-    RootKind, RootSystem, SplitInteger, StandardRepr, StandardReprMod, StrongRealClassification,
-    StructureError, WeakRealFormId, Weight, WeylAction, WeylElement, WeylInterface,
+    integral_block_scope, layout_involution, minimal_torus_part, on_basis as lattice_on_basis,
+    pair, quotient_relation_basis as domain_quotient_relation_basis,
+    replace_relation_generators as domain_replace_relation_generators, twisted_deformation_terms,
+    twisted_deformation_with_cancel, twisted_kl_column_at_s, twisted_kl_sum, AdjointFiberBudget,
+    BareBlock, BasedRootDatum, BlockDescent, BlockGraph, BlockModifier, BlockTopology,
+    CartanClassification, CartanClassificationBudget, CartanId, CommonContext, Coweight,
+    DeformParent, ExternalFormOrder, GlobalKgb, InnerClass, InnerClassLayout, IntegerLatticeBudget,
+    IntegralBlockScope, IntegralSubsystem, InvolutionId, InvolutionTable, InvolutionTableBudget,
+    KType, KgbGraph, KgbId, KgbStatus, KlPol, KlSumParent, KlTable, LatticeInvolution,
+    LocatedBlock, ModTwoVector, PartialBlock, RankFlags, RationalWeight, RealFormPresentation,
+    RealFormSeed, RelationBasis, RelationError, RelationGenerator, RelationMatrix, RepContext,
+    RepTableOwner, RootId, RootInvolutionData, RootKind, RootSystem, SplitInteger, StandardRepr,
+    StandardReprMod, StrongRealClassification, StructureError, WeakRealFormId, Weight, WeylAction,
+    WeylElement, WeylInterface,
 };
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
@@ -1672,9 +1672,7 @@ fn build_explicit_datum(
     if simple_roots.iter().any(|row| row.len() != semisimple_rank)
         || simple_coroots.len() != lattice_rank
         || coroot_columns != semisimple_rank
-        || simple_coroots
-            .iter()
-            .any(|row| row.len() != coroot_columns)
+        || simple_coroots.iter().any(|row| row.len() != coroot_columns)
     {
         let root_shape = format!("{},{}", lattice_rank, semisimple_rank);
         let coroot_shape = format!("{},{}", simple_coroots.len(), coroot_columns);
@@ -1732,18 +1730,18 @@ fn build_explicit_datum(
         cartan.push(row);
     }
     let lie_type = infer_lie_type(&cartan, lattice_rank, span)?;
-    let datum = BasedRootDatum::from_simple_data(lattice_rank, cartan, roots, coroots)
-        .map_err(|error| match error {
+    let datum = BasedRootDatum::from_simple_data(lattice_rank, cartan, roots, coroots).map_err(
+        |error| match error {
             // Upstream funnels every Cartan-level failure through
             // test_Cartan_matrix's catch (atlas-types.w:1255-1258).
             StructureError::NonSquareCartan
             | StructureError::InvalidCartanMatrix
-            | StructureError::RootPairingMismatch { .. } => runtime(
-                span,
-                "Matrices of (co)roots give invalid Cartan matrix",
-            ),
+            | StructureError::RootPairingMismatch { .. } => {
+                runtime(span, "Matrices of (co)roots give invalid Cartan matrix")
+            }
             other => runtime(span, other.to_string()),
-        })?;
+        },
+    )?;
     Ok(RootDatumHandle {
         isogeny: classify_isogeny(&datum),
         datum: Arc::new(datum),
@@ -2090,8 +2088,7 @@ fn build_inner_class_context(
     // results feed the same content-keyed cache either way, and the primal
     // error keeps its sequential precedence.
     let (classification, dual_classification) = std::thread::scope(|scope| {
-        let dual =
-            scope.spawn(|| classification_cached(&dual_inner, &class_budget, span));
+        let dual = scope.spawn(|| classification_cached(&dual_inner, &class_budget, span));
         let primal = classification_cached(&inner_class, &class_budget, span);
         (
             primal,
@@ -4717,7 +4714,8 @@ fn integrality_simples_roots(
     gamma: &RatVec,
     span: SourceSpan,
 ) -> Result<Vec<RootId>, Diagnostic> {
-    let root_system = weyl_datum_shared(&handle.datum).map(|shared| shared.0)
+    let root_system = weyl_datum_shared(&handle.datum)
+        .map(|shared| shared.0)
         .map_err(|error| runtime(span, error.to_string()))?;
     let denominator = gamma.denominator() as i64;
     let mut integral = Vec::new();
@@ -7306,14 +7304,17 @@ pub fn param_pol_coefficient(
     test_standard(parameter, "In subscription of ParamPol value", span)?;
     let rc_owner = rep_context(&polynomial.rf, span)?;
     let rc = rc_owner.context();
-    let dominant = parameter.repr.made_dominant(&rc).map_err(|error| match error {
-        // Unreachable after `test_standard`, but keep the oracle's prose
-        // (repr.cpp:577) should the invariant key ever surface.
-        StructureError::RepInvariantViolation {
-            invariant: "standard parameter in make_dominant",
-        } => runtime(span, "Non standard parameter in make_dominant"),
-        other => structure_diagnostic(other, span),
-    })?;
+    let dominant = parameter
+        .repr
+        .made_dominant(&rc)
+        .map_err(|error| match error {
+            // Unreachable after `test_standard`, but keep the oracle's prose
+            // (repr.cpp:577) should the invariant key ever surface.
+            StructureError::RepInvariantViolation {
+                invariant: "standard parameter in make_dominant",
+            } => runtime(span, "Non standard parameter in make_dominant"),
+            other => structure_diagnostic(other, span),
+        })?;
     Ok(polynomial
         .terms
         .iter()
@@ -7357,7 +7358,11 @@ pub fn param_pol_assign_coef(
     coefficient: SplitValue,
     span: SourceSpan,
 ) -> Result<(), Diagnostic> {
-    test_final(parameter, "In coefficient assignment for ParamPol value", span)?;
+    test_final(
+        parameter,
+        "In coefficient assignment for ParamPol value",
+        span,
+    )?;
     match polynomial
         .terms
         .iter()
@@ -7378,7 +7383,8 @@ pub fn param_pol_assign_coef(
 /// Insert or merge one polynomial term (upstream
 /// `K_type_pol::add_term` / `SR_poly::add_term`): like terms sum their
 /// Split coefficients and a zero coefficient removes the term.
-fn merge_pol_term<T: Clone + PartialEq>(    terms: &mut Vec<(SplitValue, T)>,
+fn merge_pol_term<T: Clone + PartialEq>(
+    terms: &mut Vec<(SplitValue, T)>,
     coefficient: SplitValue,
     term: T,
 ) {
@@ -9314,7 +9320,8 @@ fn signed_roots(
     handle: &RootDatumHandle,
     span: SourceSpan,
 ) -> Result<(Arc<RootSystem>, RootNumbering), Diagnostic> {
-    let system = weyl_datum_shared(&handle.datum).map(|shared| shared.0)
+    let system = weyl_datum_shared(&handle.datum)
+        .map(|shared| shared.0)
         .map_err(|error| runtime(span, error.to_string()))?;
     let numbering = RootNumbering::new(&system, handle.prefers_coroots());
     Ok((system, numbering))
@@ -9408,10 +9415,11 @@ fn weyl_datum_shared(
     }
     let system = Arc::new(RootSystem::enumerate(datum, ROOT_BUDGET)?);
     let interface = Arc::new(WeylInterface::new(datum.cartan_matrix())?);
-    cache
-        .lock()
-        .expect("Weyl datum cache poisoned")
-        .push((datum.clone(), Arc::clone(&system), Arc::clone(&interface)));
+    cache.lock().expect("Weyl datum cache poisoned").push((
+        datum.clone(),
+        Arc::clone(&system),
+        Arc::clone(&interface),
+    ));
     Ok((system, interface))
 }
 
@@ -9422,8 +9430,8 @@ fn build_weyl_context(
     handle: &RootDatumHandle,
     span: SourceSpan,
 ) -> Result<Arc<WeylEltContext>, Diagnostic> {
-    let (system, interface) = weyl_datum_shared(&handle.datum)
-        .map_err(|error| runtime(span, error.to_string()))?;
+    let (system, interface) =
+        weyl_datum_shared(&handle.datum).map_err(|error| runtime(span, error.to_string()))?;
     Ok(Arc::new(WeylEltContext {
         handle: handle.clone(),
         system,
@@ -10905,26 +10913,6 @@ pub(crate) fn print_text(
             let lwidth = digits(last_length);
             let pad = 2;
             let rank = graph.rank();
-            // The word column reproduces WeylGroup::word's ELECTED canonical
-            // expression (weyl.cpp:944-958), not an arbitrary reduced word
-            // (greedy smallest-descent diverges, e.g. w0 of B2); build the
-            // transducer group once per print.
-            let compact_weyl = if name == "print_block" {
-                Some(
-                    CompactWeyl::new(
-                        block
-                            .rf
-                            .parent
-                            .inner_class
-                            .root_system()
-                            .datum()
-                            .cartan_matrix(),
-                    )
-                    .map_err(|error| structure_diagnostic(error, span))?,
-                )
-            } else {
-                None
-            };
             let mut text = String::new();
             for z in 0..size {
                 let x = graph.x(z).expect("in-range").index();
@@ -11003,14 +10991,10 @@ pub(crate) fn print_text(
                     // Weyl word (prettyprint::printWeylElt over
                     // WeylGroup::word's elected expression): one-based
                     // generators comma-separated, `e` for the identity.
-                    let record = primal_bundle.table.record(involution).expect("in-range");
-                    let word = compact_weyl
-                        .as_ref()
-                        .expect("print_block built the transducer group")
-                        .canonical_word(&weyl_reduced_word(
-                            &block.rf.parent.inner_class,
-                            record.weyl_element(),
-                        ));
+                    let word = primal_bundle
+                        .table
+                        .weyl_word(involution)
+                        .expect("in-range");
                     if word.is_empty() {
                         text.push('e');
                     } else {
@@ -11245,12 +11229,11 @@ pub(crate) fn print_text(
             for z in 0..size {
                 let support = {
                     let id = graph.x(z).expect("in-range");
-                    let record = primal_bundle
+                    let involution = primal.involution_of(id).expect("in-range");
+                    let word = primal_bundle
                         .table
-                        .record(primal.involution_of(id).expect("in-range"))
+                        .weyl_word(involution)
                         .expect("in-range");
-                    let word =
-                        weyl_reduced_word(&block.rf.parent.inner_class, record.weyl_element());
                     let mut flags = vec![false; rank];
                     for generator in word {
                         if generator < rank {
@@ -11623,19 +11606,7 @@ fn print_kgb(
         let number = cartan_number(parent, cartan).expect("the graph's Cartans are in range");
         // The '#' flag (kgb_io.cpp:109-112): the element's involution IS
         // its Cartan class's canonical representative.
-        let flag = {
-            let representative = parent
-                .classification
-                .cartan_class(cartan)
-                .expect("the graph's Cartans are in range")
-                .representative();
-            let canonical = WeylElement::from_action(
-                parent.inner_class.root_system(),
-                representative.weyl_action(),
-            )
-            .expect("the Cartan representative realizes in the root system");
-            bundle.table.lookup(&canonical) == Some(involution)
-        };
+        let flag = bundle.table.cartan_representative_id(cartan) == Some(involution);
         let word = bundle
             .table
             .weyl_canonical_involution_expr(involution)
@@ -12751,7 +12722,11 @@ pub(crate) fn call_with_printed(
             // C^{-1} is the solution of C^T y = e_i.
             let cartan = handle.datum.cartan_matrix();
             let transposed: Vec<Vec<i32>> = (0..cartan.len())
-                .map(|row| (0..cartan.len()).map(|column| cartan[column][row]).collect())
+                .map(|row| {
+                    (0..cartan.len())
+                        .map(|column| cartan[column][row])
+                        .collect()
+                })
                 .collect();
             let mut rhs = vec![0_i32; transposed.len()];
             rhs[index] = 1;
@@ -12851,7 +12826,8 @@ pub(crate) fn call_with_printed(
                     ),
                 ));
             }
-            let root_system = weyl_datum_shared(&handle.datum).map(|shared| shared.0)
+            let root_system = weyl_datum_shared(&handle.datum)
+                .map(|shared| shared.0)
                 .map_err(|error| runtime(span, error.to_string()))?;
             let numbering = RootNumbering::new(&root_system, handle.prefers_coroots());
             let (walls, integrals) = wall_set(&root_system, &numbering, gamma);
@@ -12880,7 +12856,8 @@ pub(crate) fn call_with_printed(
             let Value::List(wall_entries) = &arguments[1] else {
                 return Err(type_error(span, "expected a row of integers"));
             };
-            let root_system = weyl_datum_shared(&handle.datum).map(|shared| shared.0)
+            let root_system = weyl_datum_shared(&handle.datum)
+                .map(|shared| shared.0)
                 .map_err(|error| runtime(span, error.to_string()))?;
             let numbering = RootNumbering::new(&root_system, handle.prefers_coroots());
             let num_roots = root_system.roots().len();
@@ -13145,7 +13122,8 @@ pub(crate) fn call_with_printed(
                     ),
                 ));
             }
-            let root_system = weyl_datum_shared(&handle.datum).map(|shared| shared.0)
+            let root_system = weyl_datum_shared(&handle.datum)
+                .map(|shared| shared.0)
                 .map_err(|error| runtime(span, error.to_string()))?;
             let numbering = RootNumbering::new(&root_system, handle.prefers_coroots());
             let (walls, _integrals) = wall_set(&root_system, &numbering, gamma);
@@ -13196,7 +13174,8 @@ pub(crate) fn call_with_printed(
                     ),
                 ));
             }
-            let root_system = weyl_datum_shared(&handle.datum).map(|shared| shared.0)
+            let root_system = weyl_datum_shared(&handle.datum)
+                .map(|shared| shared.0)
                 .map_err(|error| runtime(span, error.to_string()))?;
             let numbering = RootNumbering::new(&root_system, handle.prefers_coroots());
             let semisimple = handle.datum.semisimple_rank();
@@ -13424,7 +13403,8 @@ pub(crate) fn call_with_printed(
             let Value::RatVector(gamma) = &arguments[1] else {
                 return Err(type_error(span, "expected a rational vector"));
             };
-            let root_system = weyl_datum_shared(&handle.datum).map(|shared| shared.0)
+            let root_system = weyl_datum_shared(&handle.datum)
+                .map(|shared| shared.0)
                 .map_err(|error| runtime(span, error.to_string()))?;
             let simple = integrality_simples_roots(handle, gamma, span)?;
             for &root in &simple {
@@ -13454,7 +13434,8 @@ pub(crate) fn call_with_printed(
                     ),
                 ));
             }
-            let root_system = weyl_datum_shared(&handle.datum).map(|shared| shared.0)
+            let root_system = weyl_datum_shared(&handle.datum)
+                .map(|shared| shared.0)
                 .map_err(|error| runtime(span, error.to_string()))?;
             let denominator = gamma.denominator();
             let mut products: std::collections::BTreeSet<i64> = std::collections::BTreeSet::new();
@@ -13492,7 +13473,8 @@ pub(crate) fn call_with_printed(
                 return Err(type_error(span, "expected a rational vector"));
             };
             let simple = integrality_simples_roots(handle, gamma, span)?;
-            let root_system = weyl_datum_shared(&handle.datum).map(|shared| shared.0)
+            let root_system = weyl_datum_shared(&handle.datum)
+                .map(|shared| shared.0)
                 .map_err(|error| runtime(span, error.to_string()))?;
             // Order the simple roots by their first nonzero datum-simple
             // coordinate (the oracle's simpleBasis RootNbr order), so the
@@ -13561,7 +13543,8 @@ pub(crate) fn call_with_printed(
             let Value::Domain(DomainValue::RootDatum(handle)) = &arguments[0] else {
                 return Err(type_error(span, "expected a RootDatum"));
             };
-            let root_system = weyl_datum_shared(&handle.datum).map(|shared| shared.0)
+            let root_system = weyl_datum_shared(&handle.datum)
+                .map(|shared| shared.0)
                 .map_err(|error| runtime(span, error.to_string()))?;
             let positive: Vec<RootId> = (0..root_system.roots().len())
                 .filter(|&index| {
@@ -15443,8 +15426,7 @@ pub(crate) fn call_with_printed(
                                 continue;
                             }
                             let sign_even = block.length(x).is_some_and(|lx| {
-                                (lx as i64 - block.length(f).unwrap_or(0) as i64).rem_euclid(2)
-                                    == 0
+                                (lx as i64 - block.length(f).unwrap_or(0) as i64).rem_euclid(2) == 0
                             });
                             // Only survivors `y >= x` contribute
                             // (atlas-types.w:6923-6926 `start` skip).

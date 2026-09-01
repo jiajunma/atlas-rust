@@ -234,8 +234,7 @@ impl Type {
                 own.0.equals(&another.0, table) && own.1.equals(&another.1, table)
             }
             (Type::Row(own), Type::Row(another)) => own.equals(another, table),
-            (Type::Tuple(own), Type::Tuple(another))
-            | (Type::Union(own), Type::Union(another)) => {
+            (Type::Tuple(own), Type::Tuple(another)) | (Type::Union(own), Type::Union(another)) => {
                 own.len() == another.len()
                     && own
                         .iter()
@@ -344,8 +343,7 @@ impl TypeTable {
                 }
                 (Type::Row(x), Type::Row(y)) => go(table, x, y, memo),
                 (Type::Tuple(x), Type::Tuple(y)) | (Type::Union(x), Type::Union(y)) => {
-                    x.len() == y.len()
-                        && x.iter().zip(y).all(|(s, t)| go(table, s, t, memo))
+                    x.len() == y.len() && x.iter().zip(y).all(|(s, t)| go(table, s, t, memo))
                 }
                 _ => false,
             }
@@ -652,8 +650,7 @@ mod tests {
     #[test]
     fn set_type_echo_parenthesises_tuple_and_union_arrow_sides() {
         let table = TypeTable::new();
-        let show_set_type =
-            |type_: &Type| type_.display_in_set_type(&table).to_string();
+        let show_set_type = |type_: &Type| type_.display_in_set_type(&table).to_string();
         let int = Type::Primitive(Prim::Int);
         let int_pair = Type::tuple(vec![int.clone(), int.clone()]);
         // Oracle probes (HPC, upstream atlas): the bracketed form echoes

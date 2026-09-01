@@ -344,8 +344,8 @@ fn reflection_left(
     let mut result = zero_matrix(rank)?;
     for (row, target_row) in result.iter_mut().enumerate() {
         for (column, entry) in target_row.iter_mut().enumerate() {
-            *entry = (i64::from(matrix[row][column])
-                - i64::from(alpha[row]) * pairing_row[column]) as i32;
+            *entry = (i64::from(matrix[row][column]) - i64::from(alpha[row]) * pairing_row[column])
+                as i32;
         }
     }
     Ok(result)
@@ -508,10 +508,12 @@ mod tests {
 
     #[test]
     fn sparse_simple_composes_equal_the_full_compose_path() {
-        let datum =
-            BasedRootDatum::standard(vec![vec![2, -2], vec![-1, 2]]).expect("B2 datum");
+        let datum = BasedRootDatum::standard(vec![vec![2, -2], vec![-1, 2]]).expect("B2 datum");
         let group = WeylGroup::new(datum);
-        let generators = [group.simple_reflection(0).unwrap(), group.simple_reflection(1).unwrap()];
+        let generators = [
+            group.simple_reflection(0).unwrap(),
+            group.simple_reflection(1).unwrap(),
+        ];
         let element = generators[0]
             .compose(&generators[1])
             .unwrap()
