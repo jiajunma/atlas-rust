@@ -6478,3 +6478,31 @@ time tail on groups/test.at is CartanClassification::build CPU (orbit
 closure edge work), unchanged by these levers; (d) lever 3 (lazy E6/E7/E8
 inner-class builds) deliberately NOT taken — it lives in domain_builtins.rs
 (parent lane) and changes cache semantics.
+
+## Incident 2026-09-01b: merge-semver breakage of main tip (0b30337)
+
+The agent-cartan-baseline merge (0b30337) removed
+`InvolutionRecord::weyl_element()` (legacy `&WeylElement` accessor) while
+main-side call sites still used it: `print_block`'s word column and block
+generator support in `domain_builtins.rs`, plus a `kgb_graph.rs` test. The
+branch-side verifications (quick_check 3662053, corpus 3662054) were all run
+at the BRANCH tip (0b48c5a), so the merged tip was never compiled until full
+corpus 3662139 failed in 35s on E0599.
+
+Fix 80f81ac: routed the three sites through the table's
+`weyl_word(involution)` / `materialize_weyl_element(involution)` (already on
+main tip). The elected word is byte-identical to rebuilding via a
+same-Cartan CompactWeyl `canonical_word` (same d_out piece mapping), and
+generator support is word-independent, so output is unchanged.
+
+**Rule (parent): after EVERY merge to codex/continue-atlas-port, submit a
+quick_check at the MERGE commit before declaring the baseline green — a
+green branch pre-merge proves nothing about the merged tree (textual merge
+clean != semantic merge clean).**
+
+Also: HPC cannot reach GitHub (`git@github.com` publickey denied). Sync
+locally-pushed commits to HPC via the `hpc` remote from the Mac:
+`git push hpc <sha>:refs/heads/sync-<name>`, then `git worktree add` on HPC.
+Verification jobs for main-tip state run from a dedicated worktree
+(`/public/home/majj/atlas-rust-main-check`), never the shared checkout
+(currently owned by agent-124 on agent-legacy-element).
