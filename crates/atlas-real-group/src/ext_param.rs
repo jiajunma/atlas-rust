@@ -1137,15 +1137,16 @@ fn shifted_involution_matrix(
         index: id.0,
         upper_bound: table.involution_count(),
     })?;
-    let matrix = if coweight {
-        record.theta().coweight_matrix()
-    } else {
-        record.theta().weight_matrix()
-    };
-    let rank = matrix.len();
+    let theta = record.theta();
+    let rank = theta.lattice_rank();
     let mut data = Vec::with_capacity(rank * rank);
-    for (i, row) in matrix.iter().enumerate() {
-        for (j, &entry) in row.iter().enumerate() {
+    for i in 0..rank {
+        for j in 0..rank {
+            let entry = if coweight {
+                theta.coweight_matrix().at(i, j)
+            } else {
+                theta.weight_matrix()[i][j]
+            };
             data.push(entry.wrapping_add(if i == j { diagonal } else { 0 }));
         }
     }

@@ -1088,7 +1088,7 @@ impl InvolutionTable {
             != stored.weight_matrix()
             || compose_matrices(
                 twisted.weyl_action().coweight_matrix(),
-                delta.coweight_matrix(),
+                &delta.coweight_matrix().to_vec(),
             )? != stored.coweight_matrix()
         {
             return Err(StructureError::DistinguishedInvolutionMismatch);
@@ -1213,8 +1213,10 @@ fn push_record(
     let mod_space = match transported_mod_space {
         Some(space) => space,
         None => {
-            let eigenlattice =
-                negative_coweight_eigenspace(theta.coweight_matrix(), &budget.integer_lattice)?;
+            let eigenlattice = negative_coweight_eigenspace(
+                &theta.coweight_matrix().to_vec(),
+                &budget.integer_lattice,
+            )?;
             reduce_basis_mod_two(&eigenlattice)?
         }
     };
@@ -2234,7 +2236,8 @@ mod tests {
         for index in 0..table.involution_count() {
             let record = table.record(InvolutionId(index)).unwrap();
             let eigenlattice =
-                negative_coweight_eigenspace(record.theta().coweight_matrix(), &budget).unwrap();
+                negative_coweight_eigenspace(&record.theta().coweight_matrix().to_vec(), &budget)
+                    .unwrap();
             let fresh = reduce_basis_mod_two(&eigenlattice).unwrap();
             assert_eq!(
                 record.mod_space(),

@@ -75,7 +75,7 @@ impl TwistedInvolution {
             compose_matrices(weyl_action.matrix(), distinguished.weight_matrix())?,
             compose_matrices(
                 weyl_action.coweight_matrix(),
-                distinguished.coweight_matrix(),
+                &distinguished.coweight_matrix().to_vec(),
             )?,
         )?;
         let root_involution = RootInvolutionData::new(root_system, involution)?;

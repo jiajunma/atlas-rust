@@ -136,7 +136,7 @@ impl TwistedConjugacyPartition {
             != stored.weight_matrix()
             || compose_matrices(
                 twisted.weyl_action().coweight_matrix(),
-                delta.coweight_matrix(),
+                &delta.coweight_matrix().to_vec(),
             )? != stored.coweight_matrix()
         {
             return Err(StructureError::DistinguishedInvolutionMismatch);

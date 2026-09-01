@@ -150,8 +150,8 @@ impl WeylAction {
             datum: theta.datum_arc().clone(),
             weight_matrix: compose_matrices(theta.weight_matrix(), distinguished.weight_matrix())?,
             coweight_matrix: compose_matrices(
-                theta.coweight_matrix(),
-                distinguished.coweight_matrix(),
+                &theta.coweight_matrix().to_vec(),
+                &distinguished.coweight_matrix().to_vec(),
             )?,
         })
     }

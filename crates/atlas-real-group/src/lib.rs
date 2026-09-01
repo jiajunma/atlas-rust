@@ -114,7 +114,7 @@ pub use integer_lattice::{
     replace_relation_generators, IntegerLatticeBudget, RelationBasis, RelationError,
     RelationGenerator, RelationMatrix,
 };
-pub use involution::LatticeInvolution;
+pub use involution::{CoweightMatrixView, CoweightRowView, LatticeInvolution};
 pub use involution_classification::{classify_involution, fiber_rank, InvolutionClassification};
 pub use involution_table::{
     InvolutionId, InvolutionRecord, InvolutionTable, InvolutionTableBudget,

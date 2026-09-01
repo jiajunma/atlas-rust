@@ -476,13 +476,14 @@ pub(crate) fn parity_vector(coordinates: &[i32]) -> Result<ModTwoVector, Structu
     ModTwoVector::from_ones(coordinates.len(), ones)
 }
 
-/// Apply an integer matrix mod 2: output bit `i` is the parity of
-/// `matrix[i][j]` over the set bits `j` of the input. This is the
-/// production carrier for `pull_across` as matrix transport
-/// (`ModTwoLinearMap` is deliberately test-only), shared with the KGB
-/// twist (kgb_graph.rs).
+/// Apply an involution's cocharacter action mod 2: output bit `i` is the
+/// parity of `matrix[i][j]` over the set bits `j` of the input. The matrix
+/// arrives as the transposed view of the retained character action
+/// ([`crate::CoweightMatrixView`]). This is the production carrier for
+/// `pull_across` as matrix transport (`ModTwoLinearMap` is deliberately
+/// test-only), shared with the KGB twist (kgb_graph.rs).
 pub(crate) fn apply_matrix_mod_two(
-    matrix: &[Vec<i32>],
+    matrix: crate::CoweightMatrixView<'_>,
     vector: &ModTwoVector,
 ) -> Result<ModTwoVector, StructureError> {
     let dimension = matrix.len();
