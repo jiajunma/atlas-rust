@@ -677,8 +677,12 @@ impl InnerClass {
         }
         let membership = if packed {
             // Keys are unique (the packing is injective), so ordering by the
-            // composite entry orders by key alone.
+            // composite entry orders by key alone. The partition is retained
+            // in the classification cache for the session's lifetime, so
+            // drop the sequential driver's growth-doubling slack (the
+            // parallel driver already reserve_exacts).
             entries.sort_unstable();
+            entries.shrink_to_fit();
             ClassMembership::Packed { entries }
         } else {
             ClassMembership::Full(fallback)
@@ -955,10 +959,12 @@ impl InnerClass {
                             .lock()
                             .expect("orbit result lock poisoned") = Some(orbit);
                     }
-                    // Sort in the worker (parallel); the replay merges the
-                    // two sorted buffers in O(n), and the caller's final
-                    // sort_unstable then sees a nearly-sorted vector.
+                    // Sort in the worker (parallel) and drop the
+                    // growth-doubling slack before the replay concatenation,
+                    // so the peak no longer holds a third exact-size buffer
+                    // next to both per-worker buffers.
                     local_entries.sort_unstable();
+                    local_entries.shrink_to_fit();
                     local_entries
                 }));
             }
@@ -990,26 +996,23 @@ impl InnerClass {
                 orbit_member_count,
             ));
         }
-        for local in thread_entries {
-            if entries.is_empty() {
-                entries.extend(local);
-                continue;
-            }
-            // Both buffers are sorted; merge instead of re-sorting.
-            let mut merged = try_capacity(entries.len() + local.len())?;
-            let (mut left, mut right) = (0_usize, 0_usize);
-            while left < entries.len() && right < local.len() {
-                if entries[left] <= local[right] {
-                    merged.push(entries[left]);
-                    left += 1;
-                } else {
-                    merged.push(local[right]);
-                    right += 1;
-                }
-            }
-            merged.extend_from_slice(&entries[left..]);
-            merged.extend_from_slice(&local[right..]);
-            *entries = merged;
+        // Concatenate the (individually sorted, exactly sized) worker
+        // buffers with one exact reserve instead of merging into a third
+        // allocation; each worker buffer is dropped as soon as it drains.
+        // The caller's final sort_unstable cost is unchanged — it was
+        // already pdqsort over the merged vector, not a merge pass.
+        let entry_total = thread_entries.iter().try_fold(0_usize, |sum, local| {
+            sum.checked_add(local.len())
+                .ok_or(StructureError::ArithmeticOverflow)
+        })?;
+        entries
+            .try_reserve_exact(entry_total)
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: entry_total,
+            })?;
+        for mut local in thread_entries {
+            entries.append(&mut local);
+            drop(local);
         }
         Ok(())
     }
@@ -1037,9 +1040,18 @@ impl InnerClass {
         next: &mut Vec<u8>,
         emit: &mut dyn FnMut(usize, &[u8]) -> Result<(), StructureError>,
     ) -> Result<ClassOrbit, StructureError> {
-        /// Members per chunk: ~1MB at the E8 stride of 240 bytes.
-        const CHUNK_MEMBERS: usize = 4096;
-        let chunk_bytes = CHUNK_MEMBERS
+        // Chunk target ~256KB of member bytes: the resident footprint is the
+        // BFS frontier width plus up to two chunks, so smaller chunks halve
+        // the granularity overshoot (E8 stride 240: 262KB vs the historic
+        // 1MB chunk pair at peak). Small strides keep the historic 4096
+        // members (their chunks are already far below 256KB); the floor
+        // bounds alloc churn for huge strides.
+        let chunk_members = if stride == 0 {
+            4096
+        } else {
+            (262_144 / stride).clamp(64, 4096)
+        };
+        let chunk_bytes = chunk_members
             .checked_mul(stride)
             .ok_or(StructureError::ArithmeticOverflow)?;
 
@@ -1049,7 +1061,7 @@ impl InnerClass {
         first.extend_from_slice(&representative_permutation);
         chunks.push_back(first);
         // `base` = the number of members in already-released chunks; member
-        // `i` lives in `chunks[(i - base) / CHUNK_MEMBERS]`.
+        // `i` lives in `chunks[(i - base) / chunk_members]`.
         let mut base = 0_usize;
         let mut parents: Vec<(u32, u8)> = vec![(u32::MAX, 0)];
         let mut member_count = 1_usize;
@@ -1114,15 +1126,15 @@ impl InnerClass {
         let mut cursor = 0_usize;
         while cursor < member_count {
             // Release chunks the sequential cursor has fully read.
-            while cursor - base >= CHUNK_MEMBERS {
+            while cursor - base >= chunk_members {
                 chunks.pop_front();
-                base += CHUNK_MEMBERS;
+                base += chunk_members;
             }
             let mut current_key = T::ZERO;
             let mut parent_generator = usize::MAX;
             if padded {
-                let chunk = &chunks[(cursor - base) / CHUNK_MEMBERS];
-                let offset = (cursor - base) % CHUNK_MEMBERS * stride;
+                let chunk = &chunks[(cursor - base) / chunk_members];
+                let offset = (cursor - base) % chunk_members * stride;
                 current_buf[..stride].copy_from_slice(&chunk[offset..offset + stride]);
                 for (shift, &position) in orbit_machine.simple_positions.iter().enumerate() {
                     current_key = current_key.or_byte(current_buf[usize::from(position)], shift);
@@ -1187,8 +1199,8 @@ impl InnerClass {
                 if packed {
                     let mut key = 0_u128;
                     {
-                        let chunk = &chunks[(cursor - base) / CHUNK_MEMBERS];
-                        let offset = (cursor - base) % CHUNK_MEMBERS * stride;
+                        let chunk = &chunks[(cursor - base) / chunk_members];
+                        let offset = (cursor - base) % chunk_members * stride;
                         let current = &chunk[offset..offset + stride];
                         for (shift, &position) in
                             orbit_machine.simple_positions.iter().enumerate()
@@ -1209,8 +1221,8 @@ impl InnerClass {
                         requested: reflection.len(),
                     })?;
                 {
-                    let chunk = &chunks[(cursor - base) / CHUNK_MEMBERS];
-                    let offset = (cursor - base) % CHUNK_MEMBERS * stride;
+                    let chunk = &chunks[(cursor - base) / chunk_members];
+                    let offset = (cursor - base) % chunk_members * stride;
                     let current = &chunk[offset..offset + stride];
                     for &image in reflection.iter() {
                         next.push(reflection[current[usize::from(image)] as usize]);
@@ -1238,6 +1250,9 @@ impl InnerClass {
             }
             cursor += 1;
         }
+        // The parallel driver retains every ClassOrbit until replay, so drop
+        // the growth-doubling slack before handing the orbit back.
+        parents.shrink_to_fit();
         Ok(ClassOrbit {
             representative,
             parents,
