@@ -6,4 +6,5 @@ license.workspace = true
 
 [dependencies]
 rayon = "1.10"
+mimalloc = "0.1"
 atlas-core.workspace = true

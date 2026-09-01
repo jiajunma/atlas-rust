@@ -19,6 +19,12 @@ use std::process::ExitCode;
 use atlas_core::session::SessionEvent;
 use atlas_core::session_frame::{FileProvider, FileSink, SessionFrame};
 
+// The evaluator allocates heavily (one Rc per intermediate value, BigInt
+// limbs); mimalloc's arena allocator measurably beats the system malloc on
+// the script corpus. CLI-only: atlas-core stays allocator-agnostic.
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 struct FsProvider;
 
 impl FileProvider for FsProvider {
