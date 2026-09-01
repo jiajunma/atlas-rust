@@ -221,6 +221,22 @@ impl EvaluationContext {
             None => false,
         }
     }
+
+    /// Run `update` against the local slot at `(depth, offset)` under one
+    /// short borrow; `update` must not evaluate (a nested access to the same
+    /// frame would double-borrow). Returns `None` when the address is bad.
+    /// Used by component/field assignment to mutate a uniquely held
+    /// aggregate in place (typed.rs `mutate_aggregate`).
+    pub fn update_local_slot<R>(
+        &self,
+        depth: usize,
+        offset: usize,
+        update: impl FnOnce(&mut Option<SharedValue>) -> R,
+    ) -> Option<R> {
+        let frame = self.frame_at(depth)?;
+        let mut slots = frame.slots.borrow_mut();
+        slots.get_mut(offset).map(update)
+    }
 }
 
 /// A global's storage cell. Every `set`-style definition allocates a FRESH
