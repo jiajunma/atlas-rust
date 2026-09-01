@@ -23,10 +23,29 @@ use crate::{LatticeInvolution, StructureError};
 /// `i32`, matching upstream's `int_Matrix` (the echelon machinery works in
 /// `i64` and converts with a checked narrowing at the boundary); this halves
 /// the retained per-record payloads of the involution table.
+///
+/// Both matrices are stored as ONE flat row-major buffer each. The
+/// involution table retains ~270k of these pairs on the unipotent
+/// workload, and the retired per-row `Vec<i32>` layout cost a 24B header
+/// plus a minimum-size malloc chunk per row — massif attributed ~112MB of
+/// the unipotent heap peak to that overhead.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct RealProjection {
-    pub(crate) lift_mat: Vec<Vec<i32>>,
-    pub(crate) m_real: Vec<Vec<i32>>,
+    /// `lift_mat` entries, row-major: `rank` rows of `image_rank` columns.
+    lift_mat: Vec<i32>,
+    /// `m_real` entries, row-major: `image_rank` rows of `rank` columns.
+    m_real: Vec<i32>,
+    /// Ambient lattice rank `n` (`lift_mat` rows, `m_real` columns).
+    rank: u32,
+    /// Image rank `r` (`lift_mat` columns, `m_real` rows).
+    image_rank: u32,
+}
+
+/// Row views of a flat row-major buffer. A zero stride iterates zero rows
+/// (the rank-0 datum), where `chunks_exact(0)` would panic.
+fn rows(flat: &[i32], stride: usize, count: usize) -> impl Iterator<Item = &[i32]> {
+    debug_assert_eq!(flat.len(), stride * count);
+    (0..count).map(move |row| &flat[row * stride..(row + 1) * stride])
 }
 
 /// Checked narrowing of an echelon-computed `i64` matrix into the stored
@@ -56,6 +75,75 @@ fn narrow_matrix(matrix: &[Vec<i64>]) -> Result<Vec<Vec<i32>>, StructureError> {
 }
 
 impl RealProjection {
+    /// Flattening constructor: validates the nested shape (`lift_mat` is
+    /// `n x r`, `m_real` is `r x n`) and packs both matrices row-major.
+    pub(crate) fn from_nested(
+        lift_mat: Vec<Vec<i32>>,
+        m_real: Vec<Vec<i32>>,
+    ) -> Result<Self, StructureError> {
+        let rank = lift_mat.len();
+        let image_rank = m_real.len();
+        if lift_mat.iter().any(|row| row.len() != image_rank)
+            || m_real.iter().any(|row| row.len() != rank)
+        {
+            return Err(StructureError::InvalidIntegerMatrixShape);
+        }
+        let mut flat_lift = Vec::new();
+        flat_lift
+            .try_reserve_exact(rank * image_rank)
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: rank * image_rank,
+            })?;
+        for row in &lift_mat {
+            flat_lift.extend_from_slice(row);
+        }
+        let mut flat_real = Vec::new();
+        flat_real
+            .try_reserve_exact(image_rank * rank)
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: image_rank * rank,
+            })?;
+        for row in &m_real {
+            flat_real.extend_from_slice(row);
+        }
+        Ok(Self {
+            lift_mat: flat_lift,
+            m_real: flat_real,
+            rank: u32::try_from(rank).map_err(|_| StructureError::ArithmeticOverflow)?,
+            image_rank: u32::try_from(image_rank)
+                .map_err(|_| StructureError::ArithmeticOverflow)?,
+        })
+    }
+
+    /// The ambient lattice rank `n`.
+    pub(crate) fn rank(&self) -> usize {
+        self.rank as usize
+    }
+
+    /// `lift_mat[row][column]` of the flat row-major storage.
+    pub(crate) fn lift_entry(&self, row: usize, column: usize) -> i32 {
+        self.lift_mat[row * self.image_rank() + column]
+    }
+
+    /// `m_real` rows, each of length `rank`.
+    pub(crate) fn m_real_rows(&self) -> impl Iterator<Item = &[i32]> {
+        rows(&self.m_real, self.rank(), self.image_rank())
+    }
+
+    /// Nested `lift_mat` view for value assertions in tests.
+    #[cfg(test)]
+    pub(crate) fn lift_mat_nested(&self) -> Vec<Vec<i32>> {
+        rows(&self.lift_mat, self.image_rank(), self.rank())
+            .map(|row| row.to_vec())
+            .collect()
+    }
+
+    /// Nested `m_real` view for value assertions in tests.
+    #[cfg(test)]
+    pub(crate) fn m_real_nested(&self) -> Vec<Vec<i32>> {
+        self.m_real_rows().map(|row| row.to_vec()).collect()
+    }
+
     /// Port of `matreduc::column_echelon` (matreduc.h:129-161) applied to
     /// `1-theta`, tracking the column-operation matrix and its inverse
     /// incrementally; upstream's `InvolutionTable::add_involution`
@@ -129,10 +217,10 @@ impl RealProjection {
         // (involutions.cpp:203): the integer inverse of the (unimodular)
         // column-operation matrix, computed by Euclidean row reduction.
         let col_inverse = invert_integer_matrix(&col)?;
-        let projection = Self {
-            lift_mat: narrow_matrix(&a)?,
-            m_real: narrow_matrix(&col_inverse[..image_rank])?,
-        };
+        let projection = Self::from_nested(
+            narrow_matrix(&a)?,
+            narrow_matrix(&col_inverse[..image_rank])?,
+        )?;
         projection.check_against(theta)?;
         Ok(projection)
     }
@@ -149,73 +237,68 @@ impl RealProjection {
     /// `(s*L)*(M*s) == s*(1-theta)*s == 1-theta'`.
     pub(crate) fn transported(&self, reflection: &[Vec<i32>]) -> Result<Self, StructureError> {
         let rank = reflection.len();
-        if reflection.iter().any(|row| row.len() != rank) {
+        if rank != self.rank() || reflection.iter().any(|row| row.len() != rank) {
             return Err(StructureError::InvalidIntegerMatrixShape);
         }
+        let image_rank = self.image_rank();
         // lift_mat' = reflection * lift_mat (n x n times n x r).
         let mut lift_mat = Vec::new();
         lift_mat
-            .try_reserve_exact(self.lift_mat.len())
+            .try_reserve_exact(rank * image_rank)
             .map_err(|_| StructureError::AllocationFailed {
-                requested: self.lift_mat.len(),
+                requested: rank * image_rank,
             })?;
         for row in 0..rank {
-            let mut reflected = vec![0_i64; self.image_rank()];
-            for (k, column) in self.lift_mat.iter().enumerate() {
-                let weight = i64::from(reflection[row][k]);
-                if weight == 0 {
-                    continue;
-                }
-                for (j, &entry) in column.iter().enumerate() {
-                    let product = weight
-                        .checked_mul(i64::from(entry))
+            for column in 0..image_rank {
+                let mut entry = 0_i64;
+                for (k, &weight) in reflection[row].iter().enumerate() {
+                    if weight == 0 {
+                        continue;
+                    }
+                    let product = i64::from(weight)
+                        .checked_mul(i64::from(self.lift_entry(k, column)))
                         .ok_or(StructureError::ArithmeticOverflow)?;
-                    reflected[j] = reflected[j]
+                    entry = entry
                         .checked_add(product)
                         .ok_or(StructureError::ArithmeticOverflow)?;
                 }
+                lift_mat.push(
+                    i32::try_from(entry).map_err(|_| StructureError::ArithmeticOverflow)?,
+                );
             }
-            lift_mat.push(
-                reflected
-                    .iter()
-                    .map(|&entry| {
-                        i32::try_from(entry).map_err(|_| StructureError::ArithmeticOverflow)
-                    })
-                    .collect::<Result<Vec<i32>, _>>()?,
-            );
         }
         // m_real' = m_real * reflection (r x n times n x n).
         let mut m_real = Vec::new();
-        m_real.try_reserve_exact(self.image_rank()).map_err(|_| {
-            StructureError::AllocationFailed {
-                requested: self.image_rank(),
-            }
-        })?;
-        for row in &self.m_real {
-            let mut reflected = vec![0_i64; rank];
-            for (k, &entry) in row.iter().enumerate() {
-                if entry == 0 {
-                    continue;
-                }
-                for (j, target) in reflected.iter_mut().enumerate() {
-                    let product = i64::from(entry)
-                        .checked_mul(i64::from(reflection[k][j]))
+        m_real
+            .try_reserve_exact(image_rank * rank)
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: image_rank * rank,
+            })?;
+        for row in self.m_real_rows() {
+            for target in 0..rank {
+                let mut entry = 0_i64;
+                for (k, &coefficient) in row.iter().enumerate() {
+                    if coefficient == 0 {
+                        continue;
+                    }
+                    let product = i64::from(coefficient)
+                        .checked_mul(i64::from(reflection[k][target]))
                         .ok_or(StructureError::ArithmeticOverflow)?;
-                    *target = target
+                    entry = entry
                         .checked_add(product)
                         .ok_or(StructureError::ArithmeticOverflow)?;
                 }
+                m_real.push(
+                    i32::try_from(entry).map_err(|_| StructureError::ArithmeticOverflow)?,
+                );
             }
-            m_real.push(
-                reflected
-                    .iter()
-                    .map(|&entry| {
-                        i32::try_from(entry).map_err(|_| StructureError::ArithmeticOverflow)
-                    })
-                    .collect::<Result<Vec<i32>, _>>()?,
-            );
         }
-        Ok(Self { lift_mat, m_real })
+        Ok(Self {
+            lift_mat,
+            m_real,
+            rank: self.rank,
+            image_rank: self.image_rank,
+        })
     }
 
     /// `lift_mat * m_real == 1 - theta` (involutions.h:105).
@@ -224,11 +307,13 @@ impl RealProjection {
         for (row_index, row) in matrix.iter().enumerate() {
             for (column_index, &entry) in row.iter().enumerate() {
                 let mut product = 0_i64;
-                for (basis_index, basis_row) in self.m_real.iter().enumerate() {
+                for basis_index in 0..self.image_rank() {
                     product = product
                         .checked_add(
-                            i64::from(self.lift_mat[row_index][basis_index])
-                                .checked_mul(i64::from(basis_row[column_index]))
+                            i64::from(self.lift_entry(row_index, basis_index))
+                                .checked_mul(i64::from(
+                                    self.m_real[basis_index * self.rank() + column_index],
+                                ))
                                 .ok_or(StructureError::ArithmeticOverflow)?,
                         )
                         .ok_or(StructureError::ArithmeticOverflow)?;
@@ -246,19 +331,19 @@ impl RealProjection {
 
     /// The image rank `r`: the number of `(1-theta)X^*` basis columns.
     pub(crate) fn image_rank(&self) -> usize {
-        self.m_real.len()
+        self.image_rank as usize
     }
 
     /// `(1-theta)*v` in image-basis coordinates: `M_real * v`
     /// (involutions.h:211).
     pub(crate) fn coordinates(&self, weight: &crate::Weight) -> Result<Vec<i64>, StructureError> {
         let mut result = Vec::new();
-        result.try_reserve_exact(self.m_real.len()).map_err(|_| {
-            StructureError::AllocationFailed {
-                requested: self.m_real.len(),
-            }
-        })?;
-        for row in &self.m_real {
+        result
+            .try_reserve_exact(self.image_rank())
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: self.image_rank(),
+            })?;
+        for row in self.m_real_rows() {
             let mut entry = 0_i64;
             for (&coefficient, &coordinate) in row.iter().zip(weight.as_slice()) {
                 let product = i64::from(coefficient)
@@ -275,10 +360,10 @@ impl RealProjection {
 
     /// `lift_mat * coordinates` back in `X^*` (involutions.cpp:346-356).
     pub(crate) fn lift(&self, coordinates: &[i64]) -> Result<Vec<i64>, StructureError> {
-        let mut result = vec![0_i64; self.lift_mat.len()];
+        let mut result = vec![0_i64; self.rank()];
         for (basis_index, &coordinate) in coordinates.iter().enumerate() {
             for (row, entry) in result.iter_mut().enumerate() {
-                let product = i64::from(self.lift_mat[row][basis_index])
+                let product = i64::from(self.lift_entry(row, basis_index))
                     .checked_mul(coordinate)
                     .ok_or(StructureError::ArithmeticOverflow)?;
                 *entry = entry

@@ -2215,12 +2215,12 @@ mod tests {
             .map(|id| table.record(id).unwrap())
             .find(|record| record.theta().weight_matrix() == target.as_slice())
             .expect("B2 table holds theta=[[-1,0],[2,1]]");
-        assert_eq!(record.projection().lift_mat, vec![vec![2], vec![-2]]);
-        assert_eq!(record.projection().m_real, vec![vec![1, 0]]);
+        assert_eq!(record.projection().lift_mat_nested(), vec![vec![2], vec![-2]]);
+        assert_eq!(record.projection().m_real_nested(), vec![vec![1, 0]]);
         // The fresh echelon build lands on the opposite sign — the value
         // the parameter layer used to compute on the spot.
         let recomputed = RealProjection::build(record.theta()).unwrap();
-        assert_eq!(recomputed.lift_mat, vec![vec![-2], vec![2]]);
+        assert_eq!(recomputed.lift_mat_nested(), vec![vec![-2], vec![2]]);
         assert_ne!(recomputed, *record.projection());
     }
 

@@ -84,18 +84,9 @@ impl IntegralCodec {
         projection: &RealProjection,
         coroots: &IntMatrix,
     ) -> Result<Self, StructureError> {
-        let ambient_rank = projection.lift_mat.len();
+        let ambient_rank = projection.rank();
         let image_rank = projection.image_rank();
-        if coroots.n_columns() != ambient_rank
-            || projection
-                .lift_mat
-                .iter()
-                .any(|row| row.len() != image_rank)
-            || projection
-                .m_real
-                .iter()
-                .any(|row| row.len() != ambient_rank)
-        {
+        if coroots.n_columns() != ambient_rank {
             return Err(StructureError::InvalidIntegerMatrixShape);
         }
 
@@ -107,7 +98,7 @@ impl IntegralCodec {
                 let mut value = 0_i128;
                 for index in 0..ambient_rank {
                     let term = i128::from(coroots.get(row, index))
-                        .checked_mul(i128::from(projection.lift_mat[index][column]))
+                        .checked_mul(i128::from(projection.lift_entry(index, column)))
                         .ok_or(StructureError::ArithmeticOverflow)?;
                     value = value
                         .checked_add(term)
@@ -146,7 +137,7 @@ impl IntegralCodec {
             for column in 0..diagonal.len() {
                 let mut value = 0_i128;
                 for index in 0..image_rank {
-                    let term = i128::from(projection.lift_mat[row][index])
+                    let term = i128::from(projection.lift_entry(row, index))
                         .checked_mul(i128::from(columns.get(index, column)))
                         .ok_or(StructureError::ArithmeticOverflow)?;
                     value = value
@@ -1716,7 +1707,7 @@ mod tests {
             lift_mat[index][index] = i32::try_from(entry).unwrap();
             m_real[index][index] = 1;
         }
-        RealProjection { lift_mat, m_real }
+        RealProjection::from_nested(lift_mat, m_real).unwrap()
     }
 
     fn diagonal_matrix(entries: &[i32]) -> IntMatrix {
