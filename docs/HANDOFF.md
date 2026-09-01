@@ -6300,3 +6300,28 @@ lane (plan only). Old agents 117/120/121 died to a quota outage; their
 lanes are superseded (121's lever 2 = 75d3128 new_trusted, landed by the
 other session; 120's massif data analyzed by parent above; 117's lane
 re-dispatched as 122).
+
+## Massif 3661887 @ adb4051 — unipotent peak decomposition (post-compact-migration)
+
+No-valgrind baseline in the same job: 7.92s wall, 2,937,144KB maxrss (fat
+node). Peak snapshot 169: total 2.93GB, useful 2.78GB. Local copy of the
+ms_print: target/tmp/massif-adb4051.txt (HPC: /public/home/majj/atlas-rust/
+massif.3661887.txt). Top of the peak tree:
+
+- 34.55% (1.01GB) WeylElement::from_twisted_composition via add_cartan —
+  the STORED legacy per-record WeylElement permutation buffers. Dropping
+  InvolutionRecord.legacy_element (the wip/phase5-handover stash's
+  materialize_weyl_element WIP) removes exactly this.
+- 17.28% (506MB) push_record direct payload allocations (per-record
+  RootInvolutionData vectors).
+- 4.77% + 3.64% (246MB) weyl::zero_matrix x2; 4.23% (124MB)
+  twisted_involution::compose_matrices — per-record matrix materialization.
+- 3.03% (89MB) transport_mod_space; 2x2.26% (132MB)
+  RealProjection::transported; 5.80% add_cartan internals; 2.83%
+  hashbrown; 4.85% iterator shunt.
+
+Bottom line: legacy WeylElement storage + push_record payloads = ~52%
+(1.5GB) of peak; plus ~0.37GB of per-record matrices. Removing all three
+classes lands the peak near ~1.0-1.1GB vs cpp 881MB. The stashed WIP
+targets the largest third; push_record payload packing (RootId u32 /
+kind u8) and matrix-free composition are the follow-ups.
