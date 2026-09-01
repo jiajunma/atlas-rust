@@ -18,7 +18,7 @@ use crate::coercions::{coercion_between, row_coercion};
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
 use crate::domain_builtins;
 use crate::formula::FormulaOperator;
-use crate::frames::{EvaluationContext, Frame, GlobalCell};
+use crate::frames::{EvaluationContext, Frame, GlobalCell, SharedValue};
 use crate::linear_values::{Matrix, RatVec, Vec32};
 use crate::matreduc;
 use crate::syntax::{
@@ -42,7 +42,7 @@ use std::time::Instant;
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Control {
     Break(usize),
-    Return(Value),
+    Return(SharedValue),
     Runtime(Diagnostic),
 }
 
@@ -1405,7 +1405,7 @@ impl TypedContext {
     /// previous value (the upstream `set_back_trace` no-ops on empty).
     fn evaluate_with_trace(&mut self, typed: &TypedExpr) -> Result<Value, Diagnostic> {
         match evaluate_command_expr(typed, &mut self.evaluation) {
-            Ok(value) => Ok(value),
+            Ok(value) => Ok(unwrap_shared(value)),
             Err(diagnostic) => {
                 if diagnostic.kind == ErrorKind::Runtime && !diagnostic.back_trace.is_empty() {
                     // Upstream writes through a raw pointer captured at
@@ -2288,7 +2288,7 @@ impl TypedContext {
 fn evaluate_command_expr(
     expression: &TypedExpr,
     context: &mut EvaluationContext,
-) -> Result<Value, Diagnostic> {
+) -> Result<SharedValue, Diagnostic> {
     expression
         .evaluate(context, Level::SingleValue)
         .map_err(|control| match control {
@@ -11679,11 +11679,18 @@ fn join_iffor_body(
 
 impl TypedExpr {
     /// Evaluate at the demanded level. `NoValue` returns `None`.
+    ///
+    /// Results are shared (`Rc<Value>`): identifier reads hand the slot's
+    /// own reference to the consumer instead of deep-copying the aggregate,
+    /// and consumers that need ownership go through [`unwrap_shared`], which
+    /// moves when the value is uniquely held and copies only when it is
+    /// genuinely shared (copy-on-write; Atlas assignment semantics copy, so
+    /// a shared aggregate is never mutated behind an alias's back).
     pub fn evaluate(
         &self,
         context: &mut EvaluationContext,
         level: Level,
-    ) -> Result<Option<Value>, Control> {
+    ) -> Result<Option<SharedValue>, Control> {
         let _ = context;
         match self {
             Self::Denotation(value) => Ok(at_level(level, || value.clone())),
@@ -11691,21 +11698,21 @@ impl TypedExpr {
             Self::TupleDisplay(elements) => {
                 let values = elements
                     .iter()
-                    .map(|element| force(element, context))
+                    .map(|element| force(element, context).map(unwrap_shared))
                     .collect::<Result<Vec<_>, _>>()?;
-                Ok(at_level(level, || Value::Tuple(values.clone())))
+                Ok(at_level(level, move || Value::Tuple(values)))
             }
             Self::ListDisplay(elements) => {
                 let values = elements
                     .iter()
-                    .map(|element| force(element, context))
+                    .map(|element| force(element, context).map(unwrap_shared))
                     .collect::<Result<Vec<_>, _>>()?;
-                Ok(at_level(level, || Value::List(values.clone())))
+                Ok(at_level(level, move || Value::List(values)))
             }
             Self::Conversion { tag, inner, span } => {
                 let value = force(inner, context)?;
-                let converted = apply_conversion(tag, value, *span)?;
-                Ok(at_level(level, || converted.clone()))
+                let converted = apply_conversion(tag, unwrap_shared(value), *span)?;
+                Ok(at_level(level, move || converted))
             }
             Self::Void(inner) => {
                 inner.evaluate(context, Level::NoValue)?;
@@ -11714,7 +11721,7 @@ impl TypedExpr {
             Self::GlobalIdent { name, cell, span } => {
                 let value = cell.borrow().clone();
                 match value {
-                    Some(value) => Ok(at_level(level, || value.as_ref().clone())),
+                    Some(value) => Ok(at_shared(level, &value)),
                     None => Err(runtime(
                         format!("Taking value of uninitialized variable '{name}'"),
                         *span,
@@ -11727,7 +11734,7 @@ impl TypedExpr {
                 offset,
                 span,
             } => match context.local(*depth, *offset) {
-                Some(value) => Ok(at_level(level, || value.as_ref().clone())),
+                Some(value) => Ok(at_shared(level, &value)),
                 None => Err(runtime(
                     format!("Taking value of uninitialized variable '{name}'"),
                     *span,
@@ -11735,8 +11742,8 @@ impl TypedExpr {
             },
             Self::GlobalAssignment { cell, value } => {
                 let value = force(value, context)?;
-                *cell.borrow_mut() = Some(std::rc::Rc::new(value.clone()));
-                Ok(at_level(level, || value.clone()))
+                *cell.borrow_mut() = Some(Rc::clone(&value));
+                Ok(at_shared(level, &value))
             }
             Self::LocalAssignment {
                 depth,
@@ -11744,12 +11751,12 @@ impl TypedExpr {
                 value,
             } => {
                 let value = force(value, context)?;
-                let updated = context.set_local(*depth, *offset, std::rc::Rc::new(value.clone()));
+                let updated = context.set_local(*depth, *offset, Rc::clone(&value));
                 assert!(
                     updated,
                     "analysis emitted an invalid local assignment address"
                 );
-                Ok(at_level(level, || value.clone()))
+                Ok(at_shared(level, &value))
             }
             Self::MultiAssignment { plan, value } => {
                 // No destination is touched until the complete RHS has been
@@ -11757,7 +11764,7 @@ impl TypedExpr {
                 // after the static shape check.
                 let value = force(value, context)?;
                 execute_multi_assignment(plan, &value, context);
-                Ok(at_level(level, || value.clone()))
+                Ok(at_shared(level, &value))
             }
             Self::ComponentAssignment {
                 target,
@@ -11774,165 +11781,178 @@ impl TypedExpr {
                     read_assign_target(target, name, context, *span, "Assigning to", "component")?;
                 let value = force(value, context)?;
                 let index = force(index, context)?;
-                match aggregate {
-                    Value::List(mut values) => {
-                        let index = expect_integer(index, *span, "assignment index")?;
-                        let position = checked_index_in(
-                            &index,
-                            values.len(),
-                            *reversed,
-                            "component assignment",
-                            source,
-                            *span,
-                        )?;
-                        values[position] = value.clone();
-                        write_aggregate(target, Value::List(values), context);
-                        Ok(at_level(level, || value.clone()))
-                    }
-                    Value::Vector(Vec32(mut entries)) => {
-                        let index = expect_integer(index, *span, "assignment index")?;
-                        let position = checked_index_in(
-                            &index,
-                            entries.len(),
-                            *reversed,
-                            "component assignment",
-                            source,
-                            *span,
-                        )?;
-                        let Value::Integer(component) = &value else {
-                            panic!("analysis let a non-integer vec component through: {value}")
-                        };
-                        entries[position] = narrow_i32(component, *span)?;
-                        write_aggregate(target, Value::Vector(Vec32(entries)), context);
-                        Ok(at_level(level, || value.clone()))
-                    }
-                    Value::Matrix(mut matrix) => match index {
-                        Value::Tuple(pair) if pair.len() == 2 => {
-                            let row =
-                                expect_integer(pair[0].clone(), *span, "assignment index")?;
-                            let column =
-                                expect_integer(pair[1].clone(), *span, "assignment index")?;
-                            let row = checked_index_word(
-                                "initial index",
-                                &row,
-                                matrix.rows(),
-                                *reversed,
-                                "matrix entry assignment",
-                                source,
-                                *span,
-                            )?;
-                            let column = checked_index_word(
-                                "final index",
-                                &column,
-                                matrix.cols(),
-                                *reversed,
-                                "matrix entry assignment",
-                                source,
-                                *span,
-                            )?;
-                            let Value::Integer(component) = &value else {
-                                panic!("analysis let a non-integer mat entry through: {value}")
-                            };
-                            matrix.set_entry(row, column, narrow_i32(component, *span)?);
-                            write_aggregate(target, Value::Matrix(matrix), context);
-                            Ok(at_level(level, || value.clone()))
-                        }
-                        index => {
-                            let index = expect_integer(index, *span, "assignment index")?;
+                mutate_aggregate(target, aggregate, context, |aggregate| {
+                    match aggregate {
+                        Value::List(values) => {
+                            let index =
+                                expect_integer(unwrap_shared(index), *span, "assignment index")?;
                             let position = checked_index_in(
                                 &index,
-                                matrix.cols(),
+                                values.len(),
                                 *reversed,
-                                "matrix column assignment",
+                                "component assignment",
                                 source,
                                 *span,
                             )?;
-                            let Value::Vector(column) = &value else {
-                                panic!("analysis let a non-vec mat column through: {value}")
-                            };
-                            if column.0.len() != matrix.rows() {
-                                return Err(runtime(
-                                    format!(
-                                        "Cannot replace column of size {} by one of size {}",
-                                        matrix.rows(),
-                                        column.0.len()
-                                    ),
-                                    *span,
-                                ));
-                            }
-                            matrix.set_column(position, column.clone());
-                            write_aggregate(target, Value::Matrix(matrix), context);
-                            Ok(at_level(level, || value.clone()))
+                            values[position] = value.as_ref().clone();
+                            Ok(())
                         }
-                    },
-                    // Term-coefficient assignment `P[t]:=s`
-                    // (atlas-types.w:5650-5659, 7766-7782 `assign_coef`):
-                    // finality is tested on the term, then a zero
-                    // coefficient clears it and a nonzero one sets it.
-                    Value::Domain(crate::domain_builtins::DomainValue::KTypePol(
-                        mut polynomial,
-                    )) => {
-                        let Value::Domain(crate::domain_builtins::DomainValue::KType(ktype)) =
-                            index
-                        else {
-                            panic!("analysis let a non-KType index into a KTypePol assignment: {index}")
-                        };
-                        let Value::Domain(crate::domain_builtins::DomainValue::Split(
-                            coefficient,
-                        )) = &value
-                        else {
-                            panic!("analysis let a non-Split coefficient through: {value}")
-                        };
-                        crate::domain_builtins::ktype_pol_assign_coef(
-                            &mut polynomial,
-                            &ktype,
-                            *coefficient,
-                            *span,
-                        )
-                        .map_err(Control::Runtime)?;
-                        write_aggregate(
-                            target,
-                            Value::Domain(crate::domain_builtins::DomainValue::KTypePol(
+                        Value::Vector(Vec32(entries)) => {
+                            let index =
+                                expect_integer(unwrap_shared(index), *span, "assignment index")?;
+                            let position = checked_index_in(
+                                &index,
+                                entries.len(),
+                                *reversed,
+                                "component assignment",
+                                source,
+                                *span,
+                            )?;
+                            let Value::Integer(component) = value.as_ref() else {
+                                panic!(
+                                    "analysis let a non-integer vec component through: {}",
+                                    value.as_ref()
+                                )
+                            };
+                            entries[position] = narrow_i32(component, *span)?;
+                            Ok(())
+                        }
+                        Value::Matrix(matrix) => match index.as_ref() {
+                            Value::Tuple(pair) if pair.len() == 2 => {
+                                let row =
+                                    expect_integer(pair[0].clone(), *span, "assignment index")?;
+                                let column =
+                                    expect_integer(pair[1].clone(), *span, "assignment index")?;
+                                let row = checked_index_word(
+                                    "initial index",
+                                    &row,
+                                    matrix.rows(),
+                                    *reversed,
+                                    "matrix entry assignment",
+                                    source,
+                                    *span,
+                                )?;
+                                let column = checked_index_word(
+                                    "final index",
+                                    &column,
+                                    matrix.cols(),
+                                    *reversed,
+                                    "matrix entry assignment",
+                                    source,
+                                    *span,
+                                )?;
+                                let Value::Integer(component) = value.as_ref() else {
+                                    panic!(
+                                        "analysis let a non-integer mat entry through: {}",
+                                        value.as_ref()
+                                    )
+                                };
+                                matrix.set_entry(row, column, narrow_i32(component, *span)?);
+                                Ok(())
+                            }
+                            _ => {
+                                let index = expect_integer(
+                                    unwrap_shared(index),
+                                    *span,
+                                    "assignment index",
+                                )?;
+                                let position = checked_index_in(
+                                    &index,
+                                    matrix.cols(),
+                                    *reversed,
+                                    "matrix column assignment",
+                                    source,
+                                    *span,
+                                )?;
+                                let Value::Vector(column) = value.as_ref() else {
+                                    panic!(
+                                        "analysis let a non-vec mat column through: {}",
+                                        value.as_ref()
+                                    )
+                                };
+                                if column.0.len() != matrix.rows() {
+                                    return Err(runtime(
+                                        format!(
+                                            "Cannot replace column of size {} by one of size {}",
+                                            matrix.rows(),
+                                            column.0.len()
+                                        ),
+                                        *span,
+                                    ));
+                                }
+                                matrix.set_column(position, column.clone());
+                                Ok(())
+                            }
+                        },
+                        // Term-coefficient assignment `P[t]:=s`
+                        // (atlas-types.w:5650-5659, 7766-7782 `assign_coef`):
+                        // finality is tested on the term, then a zero
+                        // coefficient clears it and a nonzero one sets it.
+                        Value::Domain(crate::domain_builtins::DomainValue::KTypePol(
+                            polynomial,
+                        )) => {
+                            let Value::Domain(crate::domain_builtins::DomainValue::KType(ktype)) =
+                                index.as_ref()
+                            else {
+                                panic!(
+                                    "analysis let a non-KType index into a KTypePol assignment: {}",
+                                    index.as_ref()
+                                )
+                            };
+                            let Value::Domain(crate::domain_builtins::DomainValue::Split(
+                                coefficient,
+                            )) = value.as_ref()
+                            else {
+                                panic!(
+                                    "analysis let a non-Split coefficient through: {}",
+                                    value.as_ref()
+                                )
+                            };
+                            crate::domain_builtins::ktype_pol_assign_coef(
                                 polynomial,
-                            )),
-                            context,
-                        );
-                        Ok(at_level(level, || value.clone()))
-                    }
-                    Value::Domain(crate::domain_builtins::DomainValue::ParamPol(
-                        mut polynomial,
-                    )) => {
-                        let Value::Domain(crate::domain_builtins::DomainValue::Param(parameter)) =
-                            index
-                        else {
-                            panic!("analysis let a non-Param index into a ParamPol assignment: {index}")
-                        };
-                        let Value::Domain(crate::domain_builtins::DomainValue::Split(
-                            coefficient,
-                        )) = &value
-                        else {
-                            panic!("analysis let a non-Split coefficient through: {value}")
-                        };
-                        crate::domain_builtins::param_pol_assign_coef(
-                            &mut polynomial,
-                            &parameter,
-                            *coefficient,
-                            *span,
-                        )
-                        .map_err(Control::Runtime)?;
-                        write_aggregate(
-                            target,
-                            Value::Domain(crate::domain_builtins::DomainValue::ParamPol(
+                                ktype,
+                                *coefficient,
+                                *span,
+                            )
+                            .map_err(Control::Runtime)
+                        }
+                        Value::Domain(crate::domain_builtins::DomainValue::ParamPol(
+                            polynomial,
+                        )) => {
+                            let Value::Domain(crate::domain_builtins::DomainValue::Param(
+                                parameter,
+                            )) = index.as_ref()
+                            else {
+                                panic!(
+                                    "analysis let a non-Param index into a ParamPol assignment: {}",
+                                    index.as_ref()
+                                )
+                            };
+                            let Value::Domain(crate::domain_builtins::DomainValue::Split(
+                                coefficient,
+                            )) = value.as_ref()
+                            else {
+                                panic!(
+                                    "analysis let a non-Split coefficient through: {}",
+                                    value.as_ref()
+                                )
+                            };
+                            crate::domain_builtins::param_pol_assign_coef(
                                 polynomial,
-                            )),
-                            context,
-                        );
-                        Ok(at_level(level, || value.clone()))
+                                parameter,
+                                *coefficient,
+                                *span,
+                            )
+                            .map_err(Control::Runtime)
+                        }
+                        other => {
+                            panic!(
+                                "analysis let a non-aggregate component assignment through: {other}"
+                            )
+                        }
                     }
-                    other => {
-                        panic!("analysis let a non-aggregate component assignment through: {other}")
-                    }
-                }
+                })?;
+                Ok(at_shared(level, &value))
             }
             Self::ComponentTransform {
                 target,
@@ -11952,9 +11972,13 @@ impl TypedExpr {
                     read_assign_target(target, name, context, *span, "Transforming", "component")?;
                 let operand = force(rhs, context)?;
                 let index = force(index, context)?;
-                match aggregate {
-                    Value::List(mut values) => {
-                        let index = expect_integer(index, *span, "transform index")?;
+                // Phase 1 locates the component and reads its old value out
+                // of the read aggregate; the transform itself evaluates
+                // after, outside any slot borrow; phase 3 writes the result
+                // through the deferred plan (in place when unaliased).
+                let (old, write) = match aggregate.as_ref() {
+                    Value::List(values) => {
+                        let index = expect_integer(unwrap_shared(index), *span, "transform index")?;
                         let position = checked_index_in(
                             &index,
                             values.len(),
@@ -11963,30 +11987,20 @@ impl TypedExpr {
                             source,
                             *span,
                         )?;
-                        let old = values[position].clone();
-                        let result =
-                            apply_transform(operation, old, operand, *conversion, *span, context)?;
-                        values[position] = result.clone();
-                        write_aggregate(target, Value::List(values), context);
-                        Ok(at_level(level, || result.clone()))
+                        (values[position].clone(), ComponentWrite::List(position))
                     }
-                    Value::Vector(Vec32(mut entries)) => {
+                    Value::Vector(Vec32(entries)) => {
                         // The vec range check fires on the synthetic READ, so
                         // the oracle quotes the selection ("in subscription").
-                        let index = expect_integer(index, *span, "transform index")?;
+                        let index = expect_integer(unwrap_shared(index), *span, "transform index")?;
                         let position =
                             checked_index(&index, entries.len(), *reversed, selection, *span)?;
-                        let old = Value::Integer(BigInt::from(entries[position]));
-                        let result =
-                            apply_transform(operation, old, operand, *conversion, *span, context)?;
-                        let Value::Integer(component) = &result else {
-                            panic!("analysis let a non-integer vec component through: {result}")
-                        };
-                        entries[position] = narrow_i32(component, *span)?;
-                        write_aggregate(target, Value::Vector(Vec32(entries)), context);
-                        Ok(at_level(level, || result.clone()))
+                        (
+                            Value::Integer(BigInt::from(entries[position])),
+                            ComponentWrite::VectorEntry(position),
+                        )
                     }
-                    Value::Matrix(mut matrix) => match index {
+                    Value::Matrix(matrix) => match index.as_ref() {
                         Value::Tuple(pair) if pair.len() == 2 => {
                             let row = expect_integer(pair[0].clone(), *span, "transform index")?;
                             let column =
@@ -12014,23 +12028,11 @@ impl TypedExpr {
                                     .entry(row, column)
                                     .expect("range-checked matrix entry is in bounds"),
                             ));
-                            let result = apply_transform(
-                                operation,
-                                old,
-                                operand,
-                                *conversion,
-                                *span,
-                                context,
-                            )?;
-                            let Value::Integer(component) = &result else {
-                                panic!("analysis let a non-integer mat entry through: {result}")
-                            };
-                            matrix.set_entry(row, column, narrow_i32(component, *span)?);
-                            write_aggregate(target, Value::Matrix(matrix), context);
-                            Ok(at_level(level, || result.clone()))
+                            (old, ComponentWrite::MatrixEntry(row, column))
                         }
-                        index => {
-                            let index = expect_integer(index, *span, "transform index")?;
+                        _ => {
+                            let index =
+                                expect_integer(unwrap_shared(index), *span, "transform index")?;
                             let position = checked_index_in(
                                 &index,
                                 matrix.cols(),
@@ -12039,17 +12041,56 @@ impl TypedExpr {
                                 selection,
                                 *span,
                             )?;
-                            let old = Value::Vector(matrix.column(position));
-                            let result = apply_transform(
-                                operation,
-                                old,
-                                operand,
-                                *conversion,
-                                *span,
-                                context,
-                            )?;
-                            let Value::Vector(column) = &result else {
-                                panic!("analysis let a non-vec mat column through: {result}")
+                            (
+                                Value::Vector(matrix.column(position)),
+                                ComponentWrite::MatrixColumn(position),
+                            )
+                        }
+                    },
+                    other => {
+                        panic!("analysis let a non-aggregate component transform through: {other}")
+                    }
+                };
+                let result = Rc::new(apply_transform(
+                    operation,
+                    old,
+                    unwrap_shared(operand),
+                    *conversion,
+                    *span,
+                    context,
+                )?);
+                mutate_aggregate(target, aggregate, context, |aggregate| {
+                    match (aggregate, &write) {
+                        (Value::List(values), ComponentWrite::List(position)) => {
+                            values[*position] = result.as_ref().clone();
+                            Ok(())
+                        }
+                        (Value::Vector(Vec32(entries)), ComponentWrite::VectorEntry(position)) => {
+                            let Value::Integer(component) = result.as_ref() else {
+                                panic!(
+                                    "analysis let a non-integer vec component through: {}",
+                                    result.as_ref()
+                                )
+                            };
+                            entries[*position] = narrow_i32(component, *span)?;
+                            Ok(())
+                        }
+                        (Value::Matrix(matrix), ComponentWrite::MatrixEntry(row, column)) => {
+                            let Value::Integer(component) = result.as_ref() else {
+                                panic!(
+                                    "analysis let a non-integer mat entry through: {}",
+                                    result.as_ref()
+                                )
+                            };
+                            matrix.set_entry(*row, *column, narrow_i32(component, *span)?);
+                            Ok(())
+                        }
+                        (Value::Matrix(matrix), ComponentWrite::MatrixColumn(position)) => {
+                            let Value::Vector(column) = result.as_ref() else {
+                                panic!(
+                                    "analysis let a non-vec mat column through: {}",
+                                    result.as_ref()
+                                )
                             };
                             if column.0.len() != matrix.rows() {
                                 return Err(runtime(
@@ -12061,15 +12102,13 @@ impl TypedExpr {
                                     *span,
                                 ));
                             }
-                            matrix.set_column(position, column.clone());
-                            write_aggregate(target, Value::Matrix(matrix), context);
-                            Ok(at_level(level, || result.clone()))
+                            matrix.set_column(*position, column.clone());
+                            Ok(())
                         }
-                    },
-                    other => {
-                        panic!("analysis let a non-aggregate component transform through: {other}")
+                        _ => unreachable!("the write plan matches the read aggregate's shape"),
                     }
-                }
+                })?;
+                Ok(at_shared(level, &result))
             }
             Self::FieldAssignment {
                 target,
@@ -12078,11 +12117,20 @@ impl TypedExpr {
                 value,
                 span,
             } => {
-                let mut components = read_tuple(target, name, context, *span, "Assigning to")?;
+                let aggregate =
+                    read_assign_target(target, name, context, *span, "Assigning to", "field")?;
                 let value = force(value, context)?;
-                components[*position] = value.clone();
-                write_aggregate(target, Value::Tuple(components), context);
-                Ok(at_level(level, || value.clone()))
+                mutate_aggregate(target, aggregate, context, |aggregate| {
+                    let Value::Tuple(components) = aggregate else {
+                        panic!(
+                            "analysis let a non-tuple field assignment through: {}",
+                            &*aggregate
+                        )
+                    };
+                    components[*position] = value.as_ref().clone();
+                    Ok(())
+                })?;
+                Ok(at_shared(level, &value))
             }
             Self::FieldTransform {
                 target,
@@ -12093,13 +12141,37 @@ impl TypedExpr {
                 conversion,
                 span,
             } => {
-                let mut components = read_tuple(target, name, context, *span, "Transforming")?;
+                let aggregate =
+                    read_assign_target(target, name, context, *span, "Transforming", "field")?;
                 let operand = force(rhs, context)?;
-                let old = components[*position].clone();
-                let result = apply_transform(operation, old, operand, *conversion, *span, context)?;
-                components[*position] = result.clone();
-                write_aggregate(target, Value::Tuple(components), context);
-                Ok(at_level(level, || result.clone()))
+                let old = {
+                    let Value::Tuple(components) = aggregate.as_ref() else {
+                        panic!(
+                            "analysis let a non-tuple field assignment through: {}",
+                            aggregate.as_ref()
+                        )
+                    };
+                    components[*position].clone()
+                };
+                let result = Rc::new(apply_transform(
+                    operation,
+                    old,
+                    unwrap_shared(operand),
+                    *conversion,
+                    *span,
+                    context,
+                )?);
+                mutate_aggregate(target, aggregate, context, |aggregate| {
+                    let Value::Tuple(components) = aggregate else {
+                        panic!(
+                            "analysis let a non-tuple field assignment through: {}",
+                            &*aggregate
+                        )
+                    };
+                    components[*position] = result.as_ref().clone();
+                    Ok(())
+                })?;
+                Ok(at_shared(level, &result))
             }
             Self::Subscription {
                 array,
@@ -12109,9 +12181,11 @@ impl TypedExpr {
                 span,
             } => {
                 let index = force(index, context)?;
-                match force(array, context)? {
+                let array = force(array, context)?;
+                match array.as_ref() {
                     Value::List(values) => {
-                        let index = expect_integer(index, *span, "subscription index")?;
+                        let index =
+                            expect_integer(unwrap_shared(index), *span, "subscription index")?;
                         let position =
                             checked_index(&index, values.len(), *reversed, source, *span)?;
                         Ok(at_level(level, || values[position].clone()))
@@ -12119,7 +12193,8 @@ impl TypedExpr {
                     // Upstream `string_subscription` (axis.w:4229-4239): the
                     // result is the one-character string at the position.
                     Value::String(text) => {
-                        let index = expect_integer(index, *span, "subscription index")?;
+                        let index =
+                            expect_integer(unwrap_shared(index), *span, "subscription index")?;
                         let bytes = text.as_bytes();
                         let position =
                             checked_index(&index, bytes.len(), *reversed, source, *span)?;
@@ -12131,7 +12206,8 @@ impl TypedExpr {
                         }))
                     }
                     Value::Vector(Vec32(entries)) => {
-                        let index = expect_integer(index, *span, "subscription index")?;
+                        let index =
+                            expect_integer(unwrap_shared(index), *span, "subscription index")?;
                         let position =
                             checked_index(&index, entries.len(), *reversed, source, *span)?;
                         Ok(at_level(level, || {
@@ -12139,7 +12215,8 @@ impl TypedExpr {
                         }))
                     }
                     Value::RatVector(ratvec) => {
-                        let index = expect_integer(index, *span, "subscription index")?;
+                        let index =
+                            expect_integer(unwrap_shared(index), *span, "subscription index")?;
                         let position = checked_index(
                             &index,
                             ratvec.numerators().len(),
@@ -12154,7 +12231,7 @@ impl TypedExpr {
                             ))
                         }))
                     }
-                    Value::Matrix(matrix) => match index {
+                    Value::Matrix(matrix) => match index.as_ref() {
                         // Two-index entry selection (parser.y:585-598): the
                         // first index is the ROW, the second the COLUMN
                         // (oracle: (mat:[[1,2],[3,4]])[0,1] = 3). The
@@ -12185,8 +12262,12 @@ impl TypedExpr {
                             let entry = matrix.entry(row, column).expect("checked indices");
                             Ok(at_level(level, || Value::Integer(BigInt::from(entry))))
                         }
-                        index => {
-                            let index = expect_integer(index, *span, "subscription index")?;
+                        _ => {
+                            let index = expect_integer(
+                                unwrap_shared(index),
+                                *span,
+                                "subscription index",
+                            )?;
                             let position = checked_index_in(
                                 &index,
                                 matrix.cols(),
@@ -12206,14 +12287,15 @@ impl TypedExpr {
                         polynomial,
                     )) => {
                         let Value::Domain(crate::domain_builtins::DomainValue::KType(ktype)) =
-                            index
+                            index.as_ref()
                         else {
-                            panic!("analysis let a non-KType index into a KTypePol: {index}")
+                            panic!(
+                                "analysis let a non-KType index into a KTypePol: {}",
+                                index.as_ref()
+                            )
                         };
                         let coefficient = crate::domain_builtins::ktype_pol_coefficient(
-                            &polynomial,
-                            &ktype,
-                            *span,
+                            polynomial, ktype, *span,
                         )
                         .map_err(Control::Runtime)?;
                         Ok(at_level(level, || {
@@ -12222,14 +12304,15 @@ impl TypedExpr {
                     }
                     Value::Domain(crate::domain_builtins::DomainValue::ParamPol(polynomial)) => {
                         let Value::Domain(crate::domain_builtins::DomainValue::Param(parameter)) =
-                            index
+                            index.as_ref()
                         else {
-                            panic!("analysis let a non-Param index into a ParamPol: {index}")
+                            panic!(
+                                "analysis let a non-Param index into a ParamPol: {}",
+                                index.as_ref()
+                            )
                         };
                         let coefficient = crate::domain_builtins::param_pol_coefficient(
-                            &polynomial,
-                            &parameter,
-                            *span,
+                            polynomial, parameter, *span,
                         )
                         .map_err(Control::Runtime)?;
                         Ok(at_level(level, || {
@@ -12254,21 +12337,30 @@ impl TypedExpr {
                     // narrowing, which then runs in the upstream pop order
                     // l, j, k, i (global.w:4719-4723); the range check fires
                     // at every level (only the push is gated upstream).
-                    let matrix = match force(array, context)? {
-                        Value::Matrix(matrix) => matrix,
-                        other => panic!("analysis let a non-matrix slice base through: {other}"),
+                    let array = force(array, context)?;
+                    let Value::Matrix(matrix) = array.as_ref() else {
+                        panic!(
+                            "analysis let a non-matrix slice base through: {}",
+                            array.as_ref()
+                        )
                     };
-                    let row_lower =
-                        expect_integer(force(lower, context)?, *span, "slice lower bound")?;
-                    let row_upper =
-                        expect_integer(force(upper, context)?, *span, "slice upper bound")?;
+                    let row_lower = expect_integer(
+                        unwrap_shared(force(lower, context)?),
+                        *span,
+                        "slice lower bound",
+                    )?;
+                    let row_upper = expect_integer(
+                        unwrap_shared(force(upper, context)?),
+                        *span,
+                        "slice upper bound",
+                    )?;
                     let column_lower = expect_integer(
-                        force(column_lower, context)?,
+                        unwrap_shared(force(column_lower, context)?),
                         *span,
                         "slice column lower bound",
                     )?;
                     let column_upper = expect_integer(
-                        force(column_upper, context)?,
+                        unwrap_shared(force(column_upper, context)?),
                         *span,
                         "slice column upper bound",
                     )?;
@@ -12282,7 +12374,7 @@ impl TypedExpr {
                         | (u8::from(flags.column_upper_from_end) * 0x20);
                     let sliced = matreduc::swiss_matrix_knife(
                         packed,
-                        &matreduc::PidMatrix::from_matrix(&matrix),
+                        &matreduc::PidMatrix::from_matrix(matrix),
                         i,
                         k,
                         j,
@@ -12291,33 +12383,42 @@ impl TypedExpr {
                     .map_err(|message| runtime(message, *span))?;
                     return Ok(at_level(level, || Value::Matrix(sliced.to_matrix())));
                 }
-                let upper = expect_integer(force(upper, context)?, *span, "slice upper bound")?;
-                let lower = expect_integer(force(lower, context)?, *span, "slice lower bound")?;
-                match force(array, context)? {
+                let upper = expect_integer(
+                    unwrap_shared(force(upper, context)?),
+                    *span,
+                    "slice upper bound",
+                )?;
+                let lower = expect_integer(
+                    unwrap_shared(force(lower, context)?),
+                    *span,
+                    "slice lower bound",
+                )?;
+                let array = force(array, context)?;
+                match array.as_ref() {
                     Value::List(values) => {
                         let sliced = evaluate_slice(values, lower, upper, *flags, source, *span)?;
-                        Ok(at_level(level, || Value::List(sliced.clone())))
+                        Ok(at_level(level, move || Value::List(sliced)))
                     }
                     Value::String(value) => {
                         let sliced = evaluate_string_slice(
                             value, lower, upper, *flags, source, *span,
                         )?;
-                        Ok(at_level(level, || Value::String(sliced.clone())))
+                        Ok(at_level(level, move || Value::String(sliced)))
                     }
                     Value::Vector(vector) => {
                         let sliced =
                             evaluate_vec_slice(vector, lower, upper, *flags, source, *span)?;
-                        Ok(at_level(level, || Value::Vector(sliced.clone())))
+                        Ok(at_level(level, move || Value::Vector(sliced)))
                     }
                     Value::RatVector(value) => {
                         let sliced =
                             evaluate_ratvec_slice(value, lower, upper, *flags, source, *span)?;
-                        Ok(at_level(level, || Value::RatVector(sliced.clone())))
+                        Ok(at_level(level, move || Value::RatVector(sliced)))
                     }
                     Value::Matrix(matrix) => {
                         let sliced =
                             evaluate_matrix_slice(matrix, lower, upper, *flags, source, *span)?;
-                        Ok(at_level(level, || Value::Matrix(sliced.clone())))
+                        Ok(at_level(level, move || Value::Matrix(sliced)))
                     }
                     other => panic!("analysis let a non-slice value through: {other}"),
                 }
@@ -12333,7 +12434,7 @@ impl TypedExpr {
                 for row in rows {
                     let values = row
                         .iter()
-                        .map(|entry| force(entry, context))
+                        .map(|entry| force(entry, context).map(unwrap_shared))
                         .collect::<Result<Vec<_>, _>>()?;
                     evaluated.push(list_to_vec32(values, *span)?);
                 }
@@ -12351,9 +12452,9 @@ impl TypedExpr {
                         data.push(row.0[column]);
                     }
                 }
-                Ok(at_level(level, || {
+                Ok(at_level(level, move || {
                     Value::Matrix(
-                        crate::linear_values::Matrix::from_columns(height, width, data.clone())
+                        crate::linear_values::Matrix::from_columns(height, width, data)
                             .expect("commabarlist rows are rectangular"),
                     )
                 }))
@@ -12366,7 +12467,7 @@ impl TypedExpr {
                 let mut slots = Vec::new();
                 for (shape, initializer) in initializers {
                     let value = force(initializer, context)?;
-                    distribute(value, shape, &mut slots);
+                    distribute(unwrap_shared(value), shape, &mut slots);
                 }
                 // A group of pure discards claims no frame (empty-layer
                 // rule), exactly as analysis counted no layer for it.
@@ -12380,7 +12481,7 @@ impl TypedExpr {
                 condition,
                 then_branch,
                 else_branch,
-            } => match force(condition, context)? {
+            } => match force(condition, context)?.as_ref() {
                 Value::Boolean(true) => then_branch.evaluate(context, level),
                 Value::Boolean(false) => else_branch.evaluate(context, level),
                 other => panic!("analysis let a non-boolean condition through: {other}"),
@@ -12393,7 +12494,7 @@ impl TypedExpr {
             } => {
                 let mut values = arguments
                     .iter()
-                    .map(|argument| force(argument, context))
+                    .map(|argument| force(argument, context).map(unwrap_shared))
                     .collect::<Result<Vec<_>, _>>()?;
                 if values.len() == 1
                     && matches!(builtin_registry()[*builtin].arg_type, Type::Tuple(_))
@@ -12415,7 +12516,7 @@ impl TypedExpr {
                         ));
                         Err(Control::Runtime(diagnostic))
                     }
-                    other => other,
+                    other => other.map(|value| value.map(Rc::new)),
                 }
             }
             Self::HungryBuiltinCall {
@@ -12438,7 +12539,7 @@ impl TypedExpr {
                     let value = if index == *pilfer_index {
                         take_pilfered(pilfer, context)?
                     } else {
-                        force(&arguments[index], context)?
+                        unwrap_shared(force(&arguments[index], context)?)
                     };
                     values[index] = Some(value);
                 }
@@ -12463,7 +12564,7 @@ impl TypedExpr {
                         ));
                         Err(Control::Runtime(diagnostic))
                     }
-                    other => other,
+                    other => other.map(|value| value.map(Rc::new)),
                 }
             }
             Self::Closure {
@@ -12499,9 +12600,9 @@ impl TypedExpr {
                 // region (axis.w:2184-2189): only errors from the call
                 // itself earn the call line.
                 let argument = force(argument, context)?;
-                match callee {
+                match callee.as_ref() {
                     Value::Closure(closure) => {
-                        match apply_closure(&closure, argument, context, level) {
+                        match apply_closure(closure, unwrap_shared(argument), context, level) {
                             Err(Control::Runtime(mut diagnostic)) => {
                                 // A dynamically computed callee prints its function
                                 // expression (call_expression::function_name,
@@ -12524,8 +12625,8 @@ impl TypedExpr {
                     // BuiltinCall: a tuple argument against a tuple
                     // parameter unpacks before the run.
                     Value::BuiltinFunction { builtin, name } => {
-                        let mut values = vec![argument];
-                        if matches!(builtin_registry()[builtin].arg_type, Type::Tuple(_))
+                        let mut values = vec![unwrap_shared(argument)];
+                        if matches!(builtin_registry()[*builtin].arg_type, Type::Tuple(_))
                             && matches!(values.first(), Some(Value::Tuple(_)))
                         {
                             let Value::Tuple(components) = values.pop().expect("one argument")
@@ -12534,7 +12635,7 @@ impl TypedExpr {
                             };
                             values = components;
                         }
-                        match builtin_registry()[builtin].run(values, *span, level, context) {
+                        match builtin_registry()[*builtin].run(values, *span, level, context) {
                             Err(Control::Runtime(mut diagnostic)) => {
                                 diagnostic.trace(format!(
                                     "In call of {name} {}, built-in.",
@@ -12542,7 +12643,7 @@ impl TypedExpr {
                                 ));
                                 Err(Control::Runtime(diagnostic))
                             }
-                            other => other,
+                            other => other.map(|value| value.map(Rc::new)),
                         }
                     }
                     other => panic!("analysis let a non-function callee through: {other}"),
@@ -12577,7 +12678,13 @@ impl TypedExpr {
                             }
                             iterations += 1;
                             match value {
-                                Some(value) => collected.push(value),
+                                // Collect only when the caller demands the
+                                // row value.
+                                Some(value) => {
+                                    if level == Level::SingleValue {
+                                        collected.push(value);
+                                    }
+                                }
                                 None if *yields_count || matches!(body_level, Level::NoValue) => {}
                                 None => {
                                     unreachable!("single-value loop body yields a value")
@@ -12599,7 +12706,9 @@ impl TypedExpr {
                 if *out_reversed {
                     collected.reverse();
                 }
-                Ok(at_level(level, || Value::List(collected.clone())))
+                Ok(at_level(level, move || {
+                    Value::List(collected.into_iter().map(unwrap_shared).collect())
+                }))
             }
             Self::Do { condition, body } => {
                 // axis.w:5564-5576: on a false guard, clear the flag and
@@ -12607,8 +12716,8 @@ impl TypedExpr {
                 // guard, evaluate the body and only THEN set the flag, so
                 // a nested loop's flag writes cannot clobber it.
                 let guard = match condition {
-                    Some(condition) => match force(condition, context)? {
-                        Value::Boolean(guard) => guard,
+                    Some(condition) => match force(condition, context)?.as_ref() {
+                        Value::Boolean(guard) => *guard,
                         other => {
                             panic!("analysis let a non-boolean do condition through: {other}")
                         }
@@ -12656,16 +12765,19 @@ impl TypedExpr {
                 payload,
             } => {
                 let value = force(payload, context)?;
-                Ok(at_level(level, || Value::Union {
+                Ok(at_level(level, move || Value::Union {
                     tag: *tag,
                     injector_name: injector_name.clone(),
-                    value: Box::new(value.clone()),
+                    value: Box::new(unwrap_shared(value)),
                 }))
             }
             Self::TupleProject { index, inner } => {
                 let value = force(inner, context)?;
-                let Value::Tuple(components) = value else {
-                    panic!("analysis let a non-tuple projection through: {value}")
+                let Value::Tuple(components) = value.as_ref() else {
+                    panic!(
+                        "analysis let a non-tuple projection through: {}",
+                        value.as_ref()
+                    )
                 };
                 Ok(at_level(level, || components[*index].clone()))
             }
@@ -12676,11 +12788,14 @@ impl TypedExpr {
                 span,
             } => {
                 let subject = force(subject, context)?;
-                let Value::Union { tag, value, .. } = subject else {
-                    panic!("analysis let a non-union discrimination subject through: {subject}")
+                let Value::Union { tag, value, .. } = subject.as_ref() else {
+                    panic!(
+                        "analysis let a non-union discrimination subject through: {}",
+                        subject.as_ref()
+                    )
                 };
                 for (branch_tag, shape, body) in branches {
-                    if *branch_tag != tag {
+                    if branch_tag != tag {
                         continue;
                     }
                     let mut slots = Vec::new();
@@ -12715,7 +12830,11 @@ impl TypedExpr {
                 else_branch,
                 span,
             } => {
-                let selector = expect_integer(force(condition, context)?, *span, "case selector")?;
+                let selector = expect_integer(
+                    unwrap_shared(force(condition, context)?),
+                    *span,
+                    "case selector",
+                )?;
                 let negative = selector < 0;
                 let in_range = (!negative)
                     .then(|| usize::try_from(&selector).ok())
@@ -12746,16 +12865,22 @@ impl TypedExpr {
                 span: _,
             } => {
                 let subject = force(subject, context)?;
-                let Value::Union { tag, value, .. } = subject else {
-                    panic!("analysis let a non-union union-case subject through: {subject}")
+                let Value::Union { tag, value, .. } = subject.as_ref() else {
+                    panic!(
+                        "analysis let a non-union union-case subject through: {}",
+                        subject.as_ref()
+                    )
                 };
                 // The positional branch evaluates to a function, applied
                 // to the payload (axis.w:5041-5049).
-                let function = force(&branches[usize::from(tag)], context)?;
-                let Value::Closure(closure) = function else {
-                    panic!("analysis let a non-function union-case branch through: {function}")
+                let function = force(&branches[usize::from(*tag)], context)?;
+                let Value::Closure(closure) = function.as_ref() else {
+                    panic!(
+                        "analysis let a non-function union-case branch through: {}",
+                        function.as_ref()
+                    )
                 };
-                apply_closure(&closure, value.as_ref().clone(), context, level)
+                apply_closure(closure, value.as_ref().clone(), context, level)
             }
             Self::CountedFor {
                 name,
@@ -12767,11 +12892,19 @@ impl TypedExpr {
                 body,
                 span,
             } => {
-                let count = expect_integer(force(count, context)?, *span, "loop count")?;
+                let count = expect_integer(
+                    unwrap_shared(force(count, context)?),
+                    *span,
+                    "loop count",
+                )?;
                 // A negative count yields an empty row (axis.w:6521).
                 let count = if count < 0 { BigInt::from(0) } else { count };
                 let lower = match bound {
-                    Some(bound) => expect_integer(force(bound, context)?, *span, "loop bound")?,
+                    Some(bound) => expect_integer(
+                        unwrap_shared(force(bound, context)?),
+                        *span,
+                        "loop bound",
+                    )?,
                     None => BigInt::from(0),
                 };
                 // Increasing takes `count` steps from the bound;
@@ -12804,7 +12937,12 @@ impl TypedExpr {
                         body.evaluate(context, Level::SingleValue)
                     };
                     match result {
-                        Ok(Some(value)) => collected.push(value),
+                        // Collect only when the caller demands the row value.
+                        Ok(Some(value)) => {
+                            if level == Level::SingleValue {
+                                collected.push(value);
+                            }
+                        }
                         Ok(None) => unreachable!("single-value loop body yields a value"),
                         // The breaking iteration contributes no value.
                         Err(Control::Break(0)) => break,
@@ -12843,20 +12981,40 @@ impl TypedExpr {
                 if *out_reversed {
                     collected.reverse();
                 }
-                Ok(at_level(level, || Value::List(collected.clone())))
+                Ok(at_level(level, move || {
+                    Value::List(collected.into_iter().map(unwrap_shared).collect())
+                }))
             }
         }
     }
 }
 
-fn at_level(level: Level, value: impl Fn() -> Value) -> Option<Value> {
+/// Gate a freshly computed value on the demanded level, sharing it.
+fn at_level(level: Level, value: impl FnOnce() -> Value) -> Option<SharedValue> {
     match level {
         Level::NoValue => None,
-        Level::SingleValue => Some(value()),
+        Level::SingleValue => Some(Rc::new(value())),
     }
 }
 
-fn force(expression: &TypedExpr, context: &mut EvaluationContext) -> Result<Value, Control> {
+/// Gate an already shared value on the demanded level (identifier reads and
+/// assignments hand out the slot's own reference — no copy).
+fn at_shared(level: Level, value: &SharedValue) -> Option<SharedValue> {
+    match level {
+        Level::NoValue => None,
+        Level::SingleValue => Some(Rc::clone(value)),
+    }
+}
+
+/// Take ownership of a shared value: move when uniquely held, copy when it
+/// is genuinely shared (the copy-on-write half of the shared evaluator —
+/// Atlas copy-on-assignment semantics mean a shared aggregate is never
+/// mutated in place behind an alias).
+fn unwrap_shared(value: SharedValue) -> Value {
+    Rc::try_unwrap(value).unwrap_or_else(|shared| shared.as_ref().clone())
+}
+
+fn force(expression: &TypedExpr, context: &mut EvaluationContext) -> Result<SharedValue, Control> {
     expression
         .evaluate(context, Level::SingleValue)
         .map(|value| value.expect("single-value evaluation yields a value"))
@@ -12894,7 +13052,7 @@ fn apply_closure(
     argument: Value,
     context: &mut EvaluationContext,
     level: Level,
-) -> Result<Option<Value>, Control> {
+) -> Result<Option<SharedValue>, Control> {
     // The argument is one value: several parameters split it as a tuple,
     // a single parameter takes it whole. A parameterless call pushes no
     // frame (empty-layer rule).
@@ -12947,7 +13105,7 @@ fn apply_closure(
         match result {
             // An explicit `return` ends the call and supplies its value
             // (upstream function_return caught in apply, axis.w:3569-3571).
-            Err(Control::Return(value)) => Ok(at_level(level, move || value.clone())),
+            Err(Control::Return(value)) => Ok(at_shared(level, &value)),
             // A runtime error unwinding through a call with named slots
             // earns the local-variable trace line (axis.w:3525-3533);
             // parameterless closures push no frame and no line.
@@ -12998,16 +13156,18 @@ fn eval_for_loop(
     out_reversed: bool,
     level: Level,
     context: &mut EvaluationContext,
-) -> Result<Option<Value>, Control> {
-    // The traversal list pairs the `@` index value with the component.
-    // Ordinary aggregates index by position (int); the polynomial types
+) -> Result<Option<SharedValue>, Control> {
+    // The traversal list pairs the `@` index value with the component —
+    // the index value is built only when the pattern names one. Ordinary
+    // aggregates index by position (int); the polynomial types
     // index by the term itself (axis.w:5926-5936: KTypePol by KType,
     // ParamPol by Param), the component being the Split coefficient.
-    let values: Vec<(Value, Value)> = match force(iterable, context)? {
+    let position_index = |position: usize| index.then(|| Value::Integer(BigInt::from(position)));
+    let values: Vec<(Option<Value>, Value)> = match unwrap_shared(force(iterable, context)?) {
         Value::List(values) => values
             .into_iter()
             .enumerate()
-            .map(|(position, element)| (Value::Integer(BigInt::from(position)), element))
+            .map(|(position, element)| (position_index(position), element))
             .collect(),
         // A string iterates its one-character strings, a vec its
         // int entries, a ratvec its rat entries, a mat its
@@ -13019,7 +13179,7 @@ fn eval_for_loop(
             .enumerate()
             .map(|(position, byte)| {
                 (
-                    Value::Integer(BigInt::from(position)),
+                    position_index(position),
                     Value::String(String::from_utf8_lossy(&[*byte]).into_owned()),
                 )
             })
@@ -13028,10 +13188,7 @@ fn eval_for_loop(
             .iter()
             .enumerate()
             .map(|(position, entry)| {
-                (
-                    Value::Integer(BigInt::from(position)),
-                    Value::Integer(BigInt::from(*entry)),
-                )
+                (position_index(position), Value::Integer(BigInt::from(*entry)))
             })
             .collect(),
         Value::RatVector(ratvec) => ratvec
@@ -13040,7 +13197,7 @@ fn eval_for_loop(
             .enumerate()
             .map(|(position, numerator)| {
                 (
-                    Value::Integer(BigInt::from(position)),
+                    position_index(position),
                     Value::Rational(BigRational::from_integers(
                         BigInt::from(*numerator),
                         BigInt::from(ratvec.denominator()),
@@ -13050,21 +13207,22 @@ fn eval_for_loop(
             .collect(),
         Value::Matrix(matrix) => (0..matrix.cols())
             .map(|column| {
-                (
-                    Value::Integer(BigInt::from(column)),
-                    Value::Vector(matrix.column(column)),
-                )
+                (position_index(column), Value::Vector(matrix.column(column)))
             })
             .collect(),
         Value::Domain(crate::domain_builtins::DomainValue::KTypePol(polynomial)) => polynomial
             .iteration_terms()
             .into_iter()
-            .map(|(index, coefficient)| (Value::Domain(index), Value::Domain(coefficient)))
+            .map(|(term, coefficient)| {
+                (index.then(|| Value::Domain(term)), Value::Domain(coefficient))
+            })
             .collect(),
         Value::Domain(crate::domain_builtins::DomainValue::ParamPol(polynomial)) => polynomial
             .iteration_terms()
             .into_iter()
-            .map(|(index, coefficient)| (Value::Domain(index), Value::Domain(coefficient)))
+            .map(|(term, coefficient)| {
+                (index.then(|| Value::Domain(term)), Value::Domain(coefficient))
+            })
             .collect(),
         other => panic!("analysis let a non-iterable value through: {other}"),
     };
@@ -13083,7 +13241,7 @@ fn eval_for_loop(
         // The index slot precedes the pattern slots, matching
         // the analysis-time layout (upstream pair wrap).
         let mut slots = Vec::new();
-        if index {
+        if let Some(index_value) = index_value {
             slots.push(Rc::new(index_value));
         }
         distribute(element, shape, &mut slots);
@@ -13097,7 +13255,12 @@ fn eval_for_loop(
             (result, Some(frame))
         };
         match result {
-            Ok(Some(value)) => collected.push(value),
+            // Collect only when the caller demands the row value.
+            Ok(Some(value)) => {
+                if level == Level::SingleValue {
+                    collected.push(value);
+                }
+            }
             Ok(None) => unreachable!("single-value loop body yields a value"),
             Err(Control::Break(0)) => break,
             Err(Control::Break(levels)) => {
@@ -13122,7 +13285,9 @@ fn eval_for_loop(
     if out_reversed {
         collected.reverse();
     }
-    Ok(at_level(level, || Value::List(collected.clone())))
+    Ok(at_level(level, move || {
+        Value::List(collected.into_iter().map(unwrap_shared).collect())
+    }))
 }
 
 /// The traced frame of one let group (let_expression::evaluate catch,
@@ -13137,7 +13302,7 @@ fn evaluate_let_frame(
     body: &TypedExpr,
     context: &mut EvaluationContext,
     level: Level,
-) -> Result<Option<Value>, Control> {
+) -> Result<Option<SharedValue>, Control> {
     let (result, frame) = context.with_frame_traced(slots, |context| body.evaluate(context, level));
     match result {
         Err(Control::Runtime(mut diagnostic)) => {
@@ -13415,6 +13580,9 @@ fn checked_index_word(
 
 /// The current value of a component/field assignment target, or the
 /// uninitialized diagnostic of the assignment family (axis.w:7746-7785).
+/// Returns the slot's own shared reference; [`mutate_aggregate`] uses
+/// pointer identity against it to mutate the slot in place when nothing
+/// aliased or reassigned the value in between.
 fn read_assign_target(
     target: &AssignTarget,
     name: &str,
@@ -13422,13 +13590,13 @@ fn read_assign_target(
     span: SourceSpan,
     verb: &str,
     noun: &str,
-) -> Result<Value, Control> {
+) -> Result<SharedValue, Control> {
     let value = match target {
         AssignTarget::Local { depth, offset } => context.local(*depth, *offset),
         AssignTarget::Global(cell) => cell.borrow().clone(),
     };
     match value {
-        Some(value) => Ok(value.as_ref().clone()),
+        Some(value) => Ok(value),
         None => Err(runtime(
             format!("{verb} {noun} of uninitialized variable {name}"),
             span,
@@ -13436,33 +13604,60 @@ fn read_assign_target(
     }
 }
 
-/// The tuple components of a field-assignment target.
-fn read_tuple(
-    target: &AssignTarget,
-    name: &str,
-    context: &EvaluationContext,
-    span: SourceSpan,
-    verb: &str,
-) -> Result<Vec<Value>, Control> {
-    match read_assign_target(target, name, context, span, verb, "field")? {
-        Value::Tuple(components) => Ok(components),
-        other => panic!("analysis let a non-tuple field assignment through: {other}"),
-    }
+/// The deferred component write of a transform assignment: phase 1 locates
+/// the component and reads its old value, the transform itself evaluates
+/// outside any slot borrow, then phase 3 writes the result back through
+/// this plan.
+enum ComponentWrite {
+    List(usize),
+    VectorEntry(usize),
+    MatrixEntry(usize, usize),
+    MatrixColumn(usize),
 }
 
-/// Write the modified aggregate back to the assignment target.
-fn write_aggregate(target: &AssignTarget, value: Value, context: &mut EvaluationContext) {
+/// Mutate the aggregate of a component/field assignment target. When the
+/// slot still holds exactly the value `read` saw, the mutation happens in
+/// place through `Rc::make_mut` (copying only when a genuine alias shares
+/// the value — Atlas copy-on-assignment semantics); otherwise the RHS
+/// evaluations reassigned or pilfered the variable, and a mutated copy of
+/// the read value replaces the slot, the same clobber the old
+/// copy-read/write-back implementation produced.
+///
+/// `mutate` runs under a short slot borrow, so it must not evaluate
+/// anything nested (a same-frame access would double-borrow), and it must
+/// run every fallible check BEFORE touching the aggregate: an in-place
+/// mutation that failed halfway would stay visible in the slot.
+fn mutate_aggregate(
+    target: &AssignTarget,
+    read: SharedValue,
+    context: &mut EvaluationContext,
+    mutate: impl FnOnce(&mut Value) -> Result<(), Control>,
+) -> Result<(), Control> {
+    fn apply(
+        slot: &mut Option<SharedValue>,
+        read: SharedValue,
+        mutate: impl FnOnce(&mut Value) -> Result<(), Control>,
+    ) -> Result<(), Control> {
+        match slot.as_mut() {
+            Some(current) if Rc::ptr_eq(current, &read) => {
+                // The slot kept the read value: drop our handle so a solely
+                // slot-held aggregate mutates in place.
+                drop(read);
+                mutate(Rc::make_mut(current))
+            }
+            _ => {
+                let mut work = unwrap_shared(read);
+                mutate(&mut work)?;
+                *slot = Some(Rc::new(work));
+                Ok(())
+            }
+        }
+    }
     match target {
-        AssignTarget::Local { depth, offset } => {
-            let updated = context.set_local(*depth, *offset, Rc::new(value));
-            assert!(
-                updated,
-                "analysis emitted an invalid local assignment address"
-            );
-        }
-        AssignTarget::Global(cell) => {
-            *cell.borrow_mut() = Some(Rc::new(value));
-        }
+        AssignTarget::Global(cell) => apply(&mut cell.borrow_mut(), read, mutate),
+        AssignTarget::Local { depth, offset } => context
+            .update_local_slot(*depth, *offset, |slot| apply(slot, read, mutate))
+            .expect("analysis emitted an invalid local assignment address"),
     }
 }
 
@@ -13481,13 +13676,15 @@ fn apply_transform(
         TransformOperation::Builtin(builtin) => builtin_registry()[*builtin]
             .run(vec![old, operand], span, Level::SingleValue, context)?
             .expect("a transform builtin call yields a single value"),
-        TransformOperation::Closure(closure) => apply_closure(
-            closure,
-            Value::Tuple(vec![old, operand]),
-            context,
-            Level::SingleValue,
-        )?
-        .expect("a transform closure call yields a single value"),
+        TransformOperation::Closure(closure) => unwrap_shared(
+            apply_closure(
+                closure,
+                Value::Tuple(vec![old, operand]),
+                context,
+                Level::SingleValue,
+            )?
+            .expect("a transform closure call yields a single value"),
+        ),
     };
     match conversion {
         Some(tag) => apply_conversion(tag, result, span),
@@ -13496,7 +13693,7 @@ fn apply_transform(
 }
 
 fn evaluate_slice(
-    values: Vec<Value>,
+    values: &[Value],
     lower: BigInt,
     upper: BigInt,
     flags: crate::syntax::SliceFlags,
@@ -13560,7 +13757,7 @@ fn evaluate_slice(
 }
 
 fn evaluate_string_slice(
-    value: String,
+    value: &str,
     lower: BigInt,
     upper: BigInt,
     flags: crate::syntax::SliceFlags,
@@ -13595,7 +13792,7 @@ fn evaluate_string_slice(
 /// `vector_slice` (axis.w:4322-4342): the reversed form takes the range from
 /// the reversed storage, i.e. slices then reverses.
 fn evaluate_vec_slice(
-    vector: Vec32,
+    vector: &Vec32,
     lower: BigInt,
     upper: BigInt,
     flags: crate::syntax::SliceFlags,
@@ -13622,7 +13819,7 @@ fn evaluate_vec_slice(
 /// `ratvec_slice` (axis.w:4348-4368): slice the numerators and keep the
 /// common denominator; the constructor re-normalises.
 fn evaluate_ratvec_slice(
-    value: RatVec,
+    value: &RatVec,
     lower: BigInt,
     upper: BigInt,
     flags: crate::syntax::SliceFlags,
@@ -13650,7 +13847,7 @@ fn evaluate_ratvec_slice(
 /// `matrix_slice` (axis.w:4407-4427): one-dimensional matrix slices select
 /// COLUMNS; the reversed form walks the columns from the end.
 fn evaluate_matrix_slice(
-    matrix: Matrix,
+    matrix: &Matrix,
     lower: BigInt,
     upper: BigInt,
     flags: crate::syntax::SliceFlags,
@@ -14094,7 +14291,7 @@ mod tests {
                 other => panic!("unexpected control flow {other:?}"),
             })?
             .expect("single value");
-        Ok((required, value))
+        Ok((required, unwrap_shared(value)))
     }
 
     fn convert_and_run(source: &str) -> Result<(Type, Value), Diagnostic> {
