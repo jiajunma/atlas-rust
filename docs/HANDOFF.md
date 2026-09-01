@@ -6609,3 +6609,63 @@ does no brace expansion, and the braces never reach a shell (job 3662173:
 args at all** (the driver defaults to `<atlas_bin_dir>/atlas-scripts/*.at`):
 `sbatch --export=ALL,TIMEOUT=60 hpc/script_corpus.sbatch`. For a subset,
 pass separate plain globs as separate args (no braces).
+
+## Perf work 2026-09-01d (agent-127: print_kgb '#' flag + from_twisted_composition cleanup, VERIFIED)
+
+Branch `agent-printkgb-rep` (250733d + 368001a on 479e663; pushed to origin
+and to hpc as `sync-printkgb-rep`; HPC worktrees
+/public/home/majj/atlas-rust-printkgb @ 368001a and
+/public/home/majj/atlas-rust-printkgb-base @ 479e663 for the baseline).
+Picks up the two follow-ups flagged in 2026-09-01b.
+
+What landed:
+
+- print_kgb '#' flag (domain_builtins.rs, the flag site only): replaced the
+  per-row `WeylElement::from_action(representative.weyl_action())` +
+  `table.lookup` materialization with the stored id:
+  `flag = table.cartan_representative_id(cartan) == Some(involution)`.
+  Byte-identity argument: the orbit slice is seeded from the classification
+  representative before cross-action closure, so its first id IS upstream's
+  `involution_of_Cartan`; the pinned test
+  `b2_c2_cartan_representative_ids_are_canonical_orbit_starts` already
+  asserts `lookup(from_action(...)) == Some(start) ==
+  cartan_representative_id(cartan)` per Cartan. Upstream semantics double-
+  checked against the oracle: kgb_io.cpp:109-112 prints '#' iff
+  `kgb.involution(j) == G->involution_of_Cartan(kgb.Cartan_class(j))` —
+  i.e. the flag is about the element's INVOLUTION being the canonical
+  representative involution of its Cartan class fiber, not about the KGB
+  element itself being minimal in any other sense. Subtlety: BOTH the
+  full-table and selection variants compute the flag (the `G != nullptr`
+  guard upstream is satisfied at both our call sites).
+- `WeylElement::from_twisted_composition` (weyl_element.rs) gated
+  `#[cfg(test)]`: production cross-edge transport writes the fused index
+  order directly in `InvolutionTable::push_record`; the helper was only
+  exercised by its own unit test
+  (`twisted_factor_composition_matches_explicit_weyl_factor`, kept).
+
+Verification (all HPC, worktree atlas-rust-printkgb @ 368001a):
+
+- quick_check 3662272: CHECK_DONE status=0, TEST_DONE status=0
+  (cargo check + full cargo test --workspace).
+- Focused corpus 3662273 (groups.at, test.at): 2/2 MATCH.
+- Full corpus 3662274 (no args): 240/240 MATCH.
+
+Before/after (like-for-like focused corpus, rust seconds / maxrss KB;
+base = job 3662302 @ 479e663, mine = 3662273 @ 368001a):
+
+- groups.at: 0.312s / 37,632 -> 0.335s / 36,688 (3662274 full-corpus run of
+  the same binary: 0.311s / 36,344) — within run-to-run noise.
+- test.at: 0.313s / 36,632 -> 0.327s / 38,176 (3662274: 0.316s / 37,832) —
+  noise.
+
+Interpretation: the win is structural, not measurable at corpus scale — the
+corpus's KGB tables are small, so eliminating one WeylElement
+materialization per printed row does not move wall/RSS there; it removes
+O(#KGB) representative allocations + root-action re-encodes per print_kgb
+call, which matters only for large-group prints. No dedicated massif run
+was done for this change (the per-row materialization never appeared in
+the 3662095 unipotent profile).
+
+Gotcha for future agents: `results/<sha>/<jobid>/` is created under the
+sbatch SUBMIT directory's worktree, not the main checkout — read report
+JSONs from the submitting worktree.
