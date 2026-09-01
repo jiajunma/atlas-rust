@@ -7088,3 +7088,14 @@ u16 by agent-132).
 - Lane: slim InnerClass storage (capacity pre-sizing to kill grow doubling,
   narrower element types) + evaluate capping rayon threads for small groups.
   File-isolated from agent-134's involution.rs/real_projection.rs lane.
+
+## Measurement 2026-09-01j — rust startup is NOT the small-script gap
+- Trivial script (`set a:=1`): rust 0.00s / 4.7MB RSS warm — interpreter
+  startup cost is negligible. groups.at costs rust 0.19-0.20s / 38-43MB
+  (login-node probe, consistent with corpus 3664793). So the small-script
+  median gap (wall 2.45x / rss 4.75x) is real InnerClass/group-construction
+  work, not process startup: agent-135's inner_class.rs lane addresses BOTH
+  the rss and the wall medians. No separate startup lane needed.
+- (Note: oracle CLI file-arg invocation differs from atlas-cli; my direct
+  `atlas --path=... groups.at` ran the REPL on empty stdin. Use the corpus
+  harness numbers for oracle timings.)
