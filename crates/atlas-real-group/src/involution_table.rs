@@ -97,11 +97,11 @@ impl InvolutionRecord {
     }
 
     pub fn involution_length(&self) -> usize {
-        usize::from(self.involution_length)
+        self.involution_length as usize
     }
 
     pub fn weyl_length(&self) -> usize {
-        usize::from(self.weyl_length)
+        self.weyl_length as usize
     }
 
     pub fn theta_plus_one_rho(&self) -> &Weight {
@@ -553,8 +553,8 @@ impl InvolutionTable {
                 }
                 let neighbor_w_length = self.compact_weyl.length(&compact_neighbor);
                 let new_length = stepped_length(
-                    usize::from(self.records[cursor].involution_length),
-                    usize::from(self.records[cursor].weyl_length),
+                    self.records[cursor].involution_length as usize,
+                    self.records[cursor].weyl_length as usize,
                     neighbor_w_length,
                 )?;
                 // Transport theta's MATRICES across the cross edge instead
