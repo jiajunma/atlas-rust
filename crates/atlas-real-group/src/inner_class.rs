@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, VecDeque};
 use std::rc::Rc;
 
 use crate::cartan_class::ClassMembership;
@@ -548,7 +548,7 @@ impl InnerClass {
         weyl_budget: usize,
     ) -> Result<Vec<TwistedInvolution>, StructureError> {
         let mut involutions = Vec::new();
-        self.involution_orbits(weyl_budget, &mut |orbit| {
+        self.involution_orbits(weyl_budget, &mut |_, _| Ok(()), &mut |orbit| {
             involutions
                 .try_reserve(orbit.member_count())
                 .map_err(|_| StructureError::AllocationFailed {
@@ -591,49 +591,44 @@ impl InnerClass {
             .map(|id| id.0 as u8)
             .collect();
         let packed = simple_positions.len() <= 16;
-        // Streamed assembly: each class's members are indexed as its orbit
-        // closes, so the per-class flat permutation buffers are released one
-        // class at a time instead of all coexisting until end-of-build (the
-        // E8 transient was ~48MB of buffers plus Vec-doubling overshoot).
-        // Packed ranks collect (key, owner) pairs and sort once at the end,
-        // so the retained index is a flat sorted key vector — 20 bytes per
-        // member instead of ~69 bytes of hash-table entry overhead.
+        // Streamed assembly: each member is indexed as the orbit closure
+        // discovers it, so no per-class flat permutation buffer is retained
+        // (the E8 transient was ~48MB of buffers plus Vec-doubling
+        // overshoot). Packed ranks collect (key, owner) pairs and sort once
+        // at the end, so the retained index is a flat sorted key vector —
+        // 20 bytes per member instead of ~69 bytes of hash-table entry
+        // overhead.
         let mut classes = Vec::new();
         let mut pending: Vec<(u128, u32)> = Vec::new();
         let mut fallback = PermutationKeyMap::default();
-        self.involution_orbits(weyl_budget, &mut |orbit| {
-            let class_index = classes.len();
-            let orbit_member_count = orbit.member_count();
-            if packed {
-                let owner = u32::try_from(class_index)
-                    .map_err(|_| StructureError::ArithmeticOverflow)?;
-                pending
-                    .try_reserve(orbit_member_count)
-                    .map_err(|_| StructureError::AllocationFailed {
-                        requested: orbit_member_count,
-                    })?;
-                for permutation in orbit.members() {
+        {
+            let mut emit = |class_index: usize,
+                            permutation: &[u8]|
+             -> Result<(), StructureError> {
+                if packed {
+                    let owner = u32::try_from(class_index)
+                        .map_err(|_| StructureError::ArithmeticOverflow)?;
+                    pending
+                        .try_reserve(1)
+                        .map_err(|_| StructureError::AllocationFailed { requested: 1 })?;
                     pending.push((pack_simple_images(permutation, &simple_positions), owner));
-                }
-            } else {
-                fallback
-                    .try_reserve(orbit_member_count)
-                    .map_err(|_| StructureError::AllocationFailed {
-                        requested: orbit_member_count,
-                    })?;
-                for permutation in orbit.members() {
+                } else {
                     fallback.insert(
                         PermutationKey::pack(permutation, &simple_positions),
                         class_index,
                     );
                 }
-            }
-            classes.push(TwistedConjugacyClass::new(
-                orbit.representative,
-                orbit_member_count,
-            ));
-            Ok(())
-        })?;
+                Ok(())
+            };
+            let mut consume = |orbit: ClassOrbit| -> Result<(), StructureError> {
+                classes.push(TwistedConjugacyClass::new(
+                    orbit.representative,
+                    orbit.member_count(),
+                ));
+                Ok(())
+            };
+            self.involution_orbits(weyl_budget, &mut emit, &mut consume)?;
+        }
         let membership = if packed {
             pending.sort_unstable_by_key(|&(key, _)| key);
             let mut keys = try_capacity(pending.len())?;
@@ -682,14 +677,17 @@ impl InnerClass {
     /// for freshly discovered class representatives, so the E8 construction
     /// pays the matrix cost once per CLASS instead of once per Cayley edge.
     ///
-    /// Each phase-two orbit is handed to `consume` as soon as its cross
-    /// closure finishes, and the per-class flat member buffer is released
-    /// with it. Only one class's buffer is alive at a time — accumulating
-    /// every [`ClassOrbit`] to end-of-build pinned ~48MB of E8 transients
+    /// Each phase-two orbit is streamed: every member's permutation is handed
+    /// to `emit` (with the orbit's index, which equals its class index) in
+    /// BFS discovery order as it is found, and the completed orbit is handed
+    /// to `consume` as soon as its cross closure finishes. No per-class flat
+    /// member buffer survives its own closure — accumulating every
+    /// [`ClassOrbit`] buffer to end-of-build pinned ~48MB of E8 transients
     /// (plus Vec-doubling overshoot) against the process peak.
     fn involution_orbits(
         &self,
         weyl_budget: usize,
+        emit: &mut dyn FnMut(usize, &[u8]) -> Result<(), StructureError>,
         consume: &mut dyn FnMut(ClassOrbit) -> Result<(), StructureError>,
     ) -> Result<(), StructureError> {
         let delta = self.distinguished_involution.involution();
@@ -772,20 +770,22 @@ impl InnerClass {
         // against delta), a plain conjugation by the simple root reflection.
         // Materializing a TwistedInvolution per BFS EDGE would dominate the
         // runtime (E8: ~1.6M edges against 199,952 members), so members are
-        // stored as root-image permutations plus parent links; matrices are
-        // rebuilt only on demand (ClassOrbit::materialize, for the test-only
-        // twisted_involutions listing).
+        // streamed to `emit` as root-image permutations plus retained parent
+        // links; matrices are rebuilt only on demand (ClassOrbit::materialize,
+        // for the test-only twisted_involutions listing).
         let mut total = 0_usize;
         let mut seen = PermutationKeySet::default();
         let mut next: Vec<u8> = Vec::new();
         let packed = orbit_machine.simple_positions.len() <= 16;
         let stride = self.roots.roots().len();
-        for (representative, representative_permutation) in representatives
+        for (orbit_index, (representative, representative_permutation)) in representatives
             .into_iter()
             .zip(representative_permutations)
+            .enumerate()
         {
             let orbit = Self::orbit_cross_closure(
                 &orbit_machine,
+                orbit_index,
                 representative,
                 representative_permutation,
                 rank,
@@ -793,6 +793,7 @@ impl InnerClass {
                 packed,
                 &mut seen,
                 &mut next,
+                emit,
             )?;
             total = total
                 .checked_add(orbit.member_count())
@@ -806,9 +807,18 @@ impl InnerClass {
     }
 
     /// Profiling-visible extraction of the phase-two per-class BFS.
+    ///
+    /// Member permutations live in fixed-size chunks; a chunk is released as
+    /// soon as the sequential BFS cursor advances past it, so the resident
+    /// footprint is the frontier width rather than the class size (the E8
+    /// 113,400-member class otherwise held a 27MB flat buffer to end-of-build
+    /// and spiked to ~47MB at its final doubling). Every member is handed to
+    /// `emit` in BFS discovery order (representative first) as it is found.
     #[inline(never)]
+    #[allow(clippy::too_many_arguments)]
     fn orbit_cross_closure(
         orbit_machine: &PermutationOrbits,
+        orbit_index: usize,
         representative: TwistedInvolution,
         representative_permutation: Vec<u8>,
         rank: usize,
@@ -816,17 +826,37 @@ impl InnerClass {
         packed: bool,
         seen: &mut PermutationKeySet,
         next: &mut Vec<u8>,
+        emit: &mut dyn FnMut(usize, &[u8]) -> Result<(), StructureError>,
     ) -> Result<ClassOrbit, StructureError> {
-        // The representative's permutation seeds the flat member buffer.
-        let mut permutations = representative_permutation;
+        /// Members per chunk: ~1MB at the E8 stride of 240 bytes.
+        const CHUNK_MEMBERS: usize = 4096;
+        let chunk_bytes = CHUNK_MEMBERS
+            .checked_mul(stride)
+            .ok_or(StructureError::ArithmeticOverflow)?;
+
+        // The representative's permutation seeds the first chunk.
+        let mut chunks: VecDeque<Vec<u8>> = VecDeque::new();
+        let mut first = try_capacity(chunk_bytes)?;
+        first.extend_from_slice(&representative_permutation);
+        chunks.push_back(first);
+        // `base` = the number of members in already-released chunks; member
+        // `i` lives in `chunks[(i - base) / CHUNK_MEMBERS]`.
+        let mut base = 0_usize;
         let mut parents: Vec<(u32, u8)> = vec![(u32::MAX, 0)];
+        let mut member_count = 1_usize;
         seen.clear();
         seen.insert(PermutationKey::pack(
-            &permutations,
+            &representative_permutation,
             orbit_machine.simple_positions(),
         ));
+        emit(orbit_index, &representative_permutation)?;
         let mut cursor = 0_usize;
-        while cursor < parents.len() {
+        while cursor < member_count {
+            // Release chunks the sequential cursor has fully read.
+            while cursor - base >= CHUNK_MEMBERS {
+                chunks.pop_front();
+                base += CHUNK_MEMBERS;
+            }
             for generator in 0..rank {
                 let reflection = &orbit_machine.simple_reflections[generator];
                 // next = reflection after current after reflection. Probe
@@ -836,7 +866,9 @@ impl InnerClass {
                 if packed {
                     let mut key = 0_u128;
                     {
-                        let current = &permutations[cursor * stride..(cursor + 1) * stride];
+                        let chunk = &chunks[(cursor - base) / CHUNK_MEMBERS];
+                        let offset = (cursor - base) % CHUNK_MEMBERS * stride;
+                        let current = &chunk[offset..offset + stride];
                         for (shift, &position) in
                             orbit_machine.simple_positions.iter().enumerate()
                         {
@@ -856,22 +888,37 @@ impl InnerClass {
                         requested: reflection.len(),
                     })?;
                 {
-                    let current = &permutations[cursor * stride..(cursor + 1) * stride];
+                    let chunk = &chunks[(cursor - base) / CHUNK_MEMBERS];
+                    let offset = (cursor - base) % CHUNK_MEMBERS * stride;
+                    let current = &chunk[offset..offset + stride];
                     for &image in reflection.iter() {
                         next.push(reflection[current[usize::from(image)] as usize]);
                     }
                 }
                 if packed || seen.insert(PermutationKey::Full(next.clone())) {
-                    permutations.extend_from_slice(&next);
+                    let open = chunks.back_mut().ok_or(
+                        StructureError::CartanClassificationInvariantViolation {
+                            invariant: "orbit chunk",
+                        },
+                    )?;
+                    if open.len() == chunk_bytes {
+                        chunks.push_back(try_capacity(chunk_bytes)?);
+                    }
+                    let open = chunks.back_mut().ok_or(
+                        StructureError::CartanClassificationInvariantViolation {
+                            invariant: "orbit chunk",
+                        },
+                    )?;
+                    open.extend_from_slice(&next);
                     parents.push((cursor as u32, generator as u8));
+                    member_count += 1;
+                    emit(orbit_index, &next)?;
                 }
             }
             cursor += 1;
         }
         Ok(ClassOrbit {
             representative,
-            permutations,
-            stride,
             parents,
         })
     }
@@ -1304,19 +1351,13 @@ impl<'a> PermutationOrbits<'a> {
 }
 
 /// One twisted-conjugacy class as generated by
-/// [`InnerClass::involution_orbits`]: the canonical representative, the
-/// root-image permutation of every member (BFS discovery order, member 0 is
-/// the representative), and per-member parent links `(parent_index,
-/// generator)` so member matrices can be replayed on demand instead of
-/// being stored during the closure.
+/// [`InnerClass::involution_orbits`]: the canonical representative plus
+/// per-member parent links `(parent_index, generator)` (BFS discovery order,
+/// member 0 is the representative) so member matrices can be replayed on
+/// demand. The member permutations themselves are streamed to the caller
+/// during the closure (see the `emit` callback) and are not retained.
 struct ClassOrbit {
     representative: TwistedInvolution,
-    /// Member permutations packed flat: member `i` occupies
-    /// `permutations[i * stride .. (i + 1) * stride]`. One contiguous
-    /// allocation replaces one 240-byte heap Vec per member (E8: 199,952
-    /// allocations per inner class), which was a top malloc/memcmp source.
-    permutations: Vec<u8>,
-    stride: usize,
     parents: Vec<(u32, u8)>,
 }
 
@@ -1324,20 +1365,6 @@ impl ClassOrbit {
     /// The number of class members (member 0 is the representative).
     fn member_count(&self) -> usize {
         self.parents.len()
-    }
-
-    /// Every member's root-image permutation, in BFS discovery order.
-    fn members(&self) -> impl Iterator<Item = &[u8]> {
-        if self.stride == 0 {
-            // A rank-zero orbit still has one empty permutation member. Avoid
-            // `chunks_exact(0)`, which panics before the class can be indexed.
-            let empty: &[u8] = &[];
-            Box::new(std::iter::repeat_n(empty, self.member_count()))
-                as Box<dyn Iterator<Item = &[u8]>>
-        } else {
-            Box::new(self.permutations.chunks_exact(self.stride))
-                as Box<dyn Iterator<Item = &[u8]>>
-        }
     }
 
     /// Rebuild every member's `TwistedInvolution` from the parent links:
