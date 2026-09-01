@@ -60,7 +60,6 @@ impl InvolutionTableBudget {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InvolutionRecord {
     element: WeylElt,
-    legacy_element: WeylElement,
     involution: TwistedInvolution,
     mod_space: ModTwoSubspace,
     theta_plus_one_rho: Weight,
@@ -70,10 +69,6 @@ pub struct InvolutionRecord {
 }
 
 impl InvolutionRecord {
-    pub fn weyl_element(&self) -> &WeylElement {
-        &self.legacy_element
-    }
-
     pub(crate) fn compact_weyl_element(&self) -> WeylElt {
         self.element
     }
@@ -616,6 +611,32 @@ impl InvolutionTable {
         self.records.get(id.0)
     }
 
+    /// Materialize one record's compact Weyl factor as a full root action.
+    ///
+    /// This is an explicit compatibility boundary: records retain only the
+    /// allocation-free compact value, while callers that need the legacy
+    /// permutation representation opt into its allocation at the call site.
+    /// Invalid IDs are rejected before any action materialization.
+    pub fn materialize_weyl_element(
+        &self,
+        id: InvolutionId,
+    ) -> Result<WeylElement, StructureError> {
+        let element = self
+            .records
+            .get(id.0)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: id.0,
+                upper_bound: self.records.len(),
+            })?
+            .element;
+        let action = self.compact_weyl.materialize_action(
+            self.inner_class.datum(),
+            &self.reflection_actions,
+            &element,
+        )?;
+        WeylElement::from_action(self.root_system(), &action)
+    }
+
     /// C++ `WeylElt::pieces` key stored alongside each involution record.
     /// This is the upstream tie-break representation used by KGB sorting.
     pub(crate) fn compact_key(&self, id: InvolutionId) -> Option<[u8; 8]> {
@@ -811,7 +832,7 @@ impl InvolutionTable {
         Ok(self.compact_weyl.inner_mult(&mut element, generator))
     }
 
-    pub(crate) fn weyl_word(&self, id: InvolutionId) -> Result<Vec<usize>, StructureError> {
+    pub fn weyl_word(&self, id: InvolutionId) -> Result<Vec<usize>, StructureError> {
         let element = &self
             .records
             .get(id.0)
@@ -996,6 +1017,15 @@ impl InvolutionTable {
 
     pub fn involution_count(&self) -> usize {
         self.records.len()
+    }
+
+    /// The canonical representative of an added Cartan class.
+    ///
+    /// Each orbit is seeded from the classification representative before
+    /// its cross-action closure is generated, so the slice's first id is the
+    /// canonical representative used by upstream Cartan numbering.
+    pub fn cartan_representative_id(&self, cartan: CartanId) -> Option<InvolutionId> {
+        self.orbit_slice(cartan).map(|(start, _)| start)
     }
 
     /// The contiguous orbit slice of an added Cartan class, with its typed
@@ -1193,7 +1223,6 @@ fn push_record(
     index.insert(key, id);
     records.push(InvolutionRecord {
         element,
-        legacy_element,
         involution,
         mod_space,
         theta_plus_one_rho: Weight::new(coordinates),
@@ -1206,8 +1235,6 @@ fn push_record(
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use crate::{
         dual_inner_class, dual_involution, AdjointFiberBudget, BasedRootDatum,
         CartanClassificationBudget, Coweight, LatticeInvolution, ModTwoVector,
@@ -1234,6 +1261,33 @@ mod tests {
             64,
             64,
         )
+    }
+
+    #[test]
+    fn records_share_the_weyl_action_datum_arc_within_each_orbit() {
+        let (inner_class, classification) = context(vec![vec![2, -1], vec![-1, 2]], None, 6, 6);
+        let mut table = InvolutionTable::new(
+            &inner_class,
+            table_budget(classification.twisted_involution_count()),
+        )
+        .unwrap();
+
+        for cartan in classification.cartan_ids() {
+            let (start, size) = table.add_cartan(&classification, cartan).unwrap();
+            let datum_arc = table
+                .record(start)
+                .unwrap()
+                .twisted_involution()
+                .weyl_action()
+                .datum_arc()
+                .clone();
+            for offset in 0..size {
+                let id = InvolutionId(start.0 + offset);
+                let record = table.record(id).unwrap();
+                assert!(Arc::ptr_eq(&datum_arc, record.theta().datum_arc()));
+                assert_eq!(record.theta().datum(), inner_class.datum());
+            }
+        }
     }
 
     fn context(
@@ -1282,8 +1336,12 @@ mod tests {
         for id in [InvolutionId(0), InvolutionId(1)] {
             assert_eq!(table.cross(0, id).unwrap(), id);
         }
-        let fundamental = table.record(InvolutionId(0)).unwrap();
-        assert!(fundamental.weyl_element().is_identity());
+        let fundamental_id = InvolutionId(0);
+        let fundamental = table.record(fundamental_id).unwrap();
+        assert!(table
+            .materialize_weyl_element(fundamental_id)
+            .unwrap()
+            .is_identity());
         assert_eq!(fundamental.involution_length(), 0);
         assert_eq!(fundamental.theta_plus_one_rho(), &Weight::new(vec![1]));
         assert_eq!(fundamental.mod_space().rank(), 0);
@@ -1309,33 +1367,6 @@ mod tests {
             table.simple_root_kind(InvolutionId(1), 0),
             Some(RootKind::Real)
         );
-    }
-
-    #[test]
-    fn records_share_the_weyl_action_datum_arc_within_each_orbit() {
-        let (inner_class, classification) = context(vec![vec![2, -1], vec![-1, 2]], None, 6, 6);
-        let mut table = InvolutionTable::new(
-            &inner_class,
-            table_budget(classification.twisted_involution_count()),
-        )
-        .unwrap();
-
-        for cartan in classification.cartan_ids() {
-            let (start, size) = table.add_cartan(&classification, cartan).unwrap();
-            let datum_arc = table
-                .record(start)
-                .unwrap()
-                .twisted_involution()
-                .weyl_action()
-                .datum_arc()
-                .clone();
-            for offset in 0..size {
-                let id = InvolutionId(start.0 + offset);
-                let record = table.record(id).unwrap();
-                assert!(Arc::ptr_eq(&datum_arc, record.theta().datum_arc()));
-                assert_eq!(record.theta().datum(), inner_class.datum());
-            }
-        }
     }
 
     #[test]
@@ -1370,8 +1401,9 @@ mod tests {
             let id = InvolutionId(index);
             let record = table.record(id).unwrap();
             let compact = record.compact_weyl_element();
+            let materialized = table.materialize_weyl_element(id).unwrap();
             let legacy = pieces
-                .key(table.root_system(), &interface, record.weyl_element())
+                .key(table.root_system(), &interface, &materialized)
                 .unwrap();
             assert_eq!(table.compact_key(id), Some(compact));
             assert_eq!(table.compact_index.get(&compact), Some(&id));
@@ -1423,7 +1455,7 @@ mod tests {
                 &table.reflections,
                 table.root_system(),
                 &record.compact_weyl_element(),
-                record.weyl_element(),
+                &table.materialize_weyl_element(id).unwrap(),
             )
             .unwrap());
             assert_eq!(table.compact_index.get(&record.element), Some(&id));
@@ -1433,16 +1465,73 @@ mod tests {
     }
 
     #[test]
+    fn materialize_weyl_element_matches_compact_records_for_a2_b2_d4() {
+        let cases = [
+            (vec![vec![2, -1], vec![-1, 2]], 6, 6),
+            (vec![vec![2, -2], vec![-1, 2]], 8, 8),
+            (
+                vec![
+                    vec![2, -1, 0, 0],
+                    vec![-1, 2, -1, -1],
+                    vec![0, -1, 2, 0],
+                    vec![0, -1, 0, 2],
+                ],
+                24,
+                192,
+            ),
+        ];
+
+        for (cartan, root_count, weyl_order) in cases {
+            let (inner_class, classification) = context(cartan, None, root_count, weyl_order);
+            let table = filled_table(
+                &inner_class,
+                &classification,
+                classification.twisted_involution_count(),
+            );
+            for index in 0..table.involution_count() {
+                let id = InvolutionId(index);
+                let materialized = table.materialize_weyl_element(id).unwrap();
+                let record = table.record(id).unwrap();
+                assert_eq!(materialized.length(), record.weyl_length());
+                assert!(compact_matches_legacy(
+                    &table.compact_weyl,
+                    &table.reflections,
+                    table.root_system(),
+                    &record.compact_weyl_element(),
+                    &materialized,
+                )
+                .unwrap());
+            }
+        }
+    }
+
+    #[test]
+    fn materialize_weyl_element_rejects_unknown_ids_before_materialization() {
+        let (inner_class, classification) = context(vec![vec![2, -1], vec![-1, 2]], None, 6, 6);
+        let table = filled_table(&inner_class, &classification, 6);
+        assert!(matches!(
+            table.materialize_weyl_element(InvolutionId(usize::MAX)),
+            Err(StructureError::IndexOutOfRange {
+                index: usize::MAX,
+                upper_bound
+            }) if upper_bound == table.involution_count()
+        ));
+    }
+
+    #[test]
     fn b2_twisted_root_images_recover_stored_weyl_factor() {
         let (inner_class, classification) = context(vec![vec![2, -2], vec![-1, 2]], None, 8, 8);
         let table = filled_table(&inner_class, &classification, 8);
         for index in 0..table.involution_count() {
             let id = InvolutionId(index);
-            let record = table.record(id).unwrap();
+            let _record = table.record(id).unwrap();
             for root in 0..table.root_system().roots().len() {
                 assert_eq!(
                     table.weyl_image(id, RootId(root)),
-                    record.weyl_element().image(RootId(root))
+                    table
+                        .materialize_weyl_element(id)
+                        .unwrap()
+                        .image(RootId(root))
                 );
             }
         }
@@ -1454,7 +1543,7 @@ mod tests {
         let table = filled_table(&inner_class, &classification, 8);
         for index in 0..table.involution_count() {
             let id = InvolutionId(index);
-            let legacy = table.record(id).unwrap().weyl_element();
+            let legacy = table.materialize_weyl_element(id).unwrap();
             assert_eq!(table.weyl_is_identity(id), Some(legacy.is_identity()));
             let word = table.weyl_word(id).unwrap();
             assert_eq!(word.len(), legacy.length());
@@ -1465,7 +1554,7 @@ mod tests {
                     .unwrap()
                     .0;
             }
-            assert_eq!(&rebuilt, legacy);
+            assert_eq!(rebuilt, legacy);
             for generator in 0..table.root_system().simple_root_ids().len() {
                 assert_eq!(
                     table.weyl_has_left_descent(id, generator).unwrap(),
@@ -1489,6 +1578,48 @@ mod tests {
     }
 
     #[test]
+    fn b2_c2_cartan_representative_ids_are_canonical_orbit_starts() {
+        for cartan_matrix in [
+            vec![vec![2, -2], vec![-1, 2]],
+            vec![vec![2, -1], vec![-2, 2]],
+        ] {
+            let (inner_class, classification) = context(cartan_matrix, None, 8, 8);
+            let mut table = InvolutionTable::new(&inner_class, table_budget(8)).unwrap();
+            let invalid = CartanId(classification.cartan_classes().len());
+
+            assert_eq!(table.cartan_representative_id(invalid), None);
+            for cartan in classification.cartan_ids() {
+                assert_eq!(table.cartan_representative_id(cartan), None);
+
+                let (start, size) = table.add_cartan(&classification, cartan).unwrap();
+                assert!(size > 0);
+                assert_eq!(table.cartan_representative_id(cartan), Some(start));
+                assert_eq!(
+                    table
+                        .orbit_slice(cartan)
+                        .map(|(orbit_start, _)| orbit_start),
+                    Some(start)
+                );
+
+                let representative = classification
+                    .cartan_class(cartan)
+                    .unwrap()
+                    .representative();
+                let legacy =
+                    WeylElement::from_action(table.root_system(), representative.weyl_action())
+                        .unwrap();
+                assert_eq!(table.lookup(&legacy), Some(start));
+            }
+
+            assert_eq!(
+                table.cartan_representative_id(CartanId(0)),
+                table.identity_id()
+            );
+            assert_eq!(table.cartan_representative_id(invalid), None);
+        }
+    }
+
+    #[test]
     fn compact_dual_lookup_matches_legacy_dual_involution() {
         for distinguished in [None, Some(vec![vec![0, 1], vec![1, 0]])] {
             let (inner_class, classification) =
@@ -1509,11 +1640,12 @@ mod tests {
                 let expected =
                     dual_involution(&word, table.root_system(), &table.twist, &legacy_longest)
                         .unwrap();
-                let expected_id = table
-                    .records
-                    .iter()
-                    .position(|record| record.weyl_element() == &expected)
-                    .map(InvolutionId);
+                let expected_id =
+                    (0..table.involution_count())
+                        .map(InvolutionId)
+                        .find(|&candidate| {
+                            table.materialize_weyl_element(candidate).unwrap() == expected
+                        });
                 assert_eq!(
                     table.weyl_dual_lookup(&word, &table.twist).unwrap(),
                     expected_id
@@ -1554,12 +1686,8 @@ mod tests {
             let mut target_numbering_differs = false;
             for index in 0..source.involution_count() {
                 let source_id = InvolutionId(index);
-                let source_word = source
-                    .record(source_id)
-                    .unwrap()
-                    .weyl_element()
-                    .reduced_word(source.root_system())
-                    .unwrap();
+                let source_element = source.materialize_weyl_element(source_id).unwrap();
+                let source_word = source_element.reduced_word(source.root_system()).unwrap();
                 let expected = dual_involution(
                     &source_word,
                     target.root_system(),
@@ -1632,7 +1760,7 @@ mod tests {
         for index in 0..table.involution_count() {
             let id = InvolutionId(index);
             for word in &words {
-                let mut expected = table.record(id).unwrap().weyl_element().clone();
+                let mut expected = table.materialize_weyl_element(id).unwrap();
                 for &generator in word.iter().rev() {
                     let reflection =
                         WeylElement::simple_reflection(table.root_system(), generator).unwrap();
@@ -1664,11 +1792,9 @@ mod tests {
         let mut partial = InvolutionTable::new(&inner_class, table_budget(8)).unwrap();
         partial.add_cartan(&classification, CartanId(0)).unwrap();
         let partial_id = InvolutionId(0);
+        let partial_element = partial.materialize_weyl_element(partial_id).unwrap();
         let partial_product = partial.reflections[0]
-            .multiply(
-                partial.root_system(),
-                partial.record(partial_id).unwrap().weyl_element(),
-            )
+            .multiply(partial.root_system(), &partial_element)
             .unwrap();
         assert_eq!(
             partial.compact_cayley_lookup(0, partial_id).unwrap(),
@@ -1682,11 +1808,9 @@ mod tests {
             let id = InvolutionId(index);
             for generator in 0..table.twist.len() {
                 let reflection = &table.reflections[generator];
+                let record_element = table.materialize_weyl_element(id).unwrap();
                 let product = reflection
-                    .multiply(
-                        table.root_system(),
-                        table.record(id).unwrap().weyl_element(),
-                    )
+                    .multiply(table.root_system(), &record_element)
                     .unwrap();
                 assert_eq!(
                     table.compact_cayley_lookup(generator, id).unwrap(),
@@ -1732,8 +1856,9 @@ mod tests {
                     generator,
                     table.twist[generator],
                 );
+                let record_element = table.materialize_weyl_element(InvolutionId(index)).unwrap();
                 let expected = table.reflections[generator]
-                    .multiply(table.root_system(), record.weyl_element())
+                    .multiply(table.root_system(), &record_element)
                     .and_then(|left| {
                         left.multiply(
                             table.root_system(),
@@ -1759,7 +1884,7 @@ mod tests {
 
         for index in 0..table.involution_count() {
             let id = InvolutionId(index);
-            let legacy = table.record(id).unwrap().weyl_element();
+            let legacy = table.materialize_weyl_element(id).unwrap();
             for order in &orders {
                 let expected = order.iter().copied().find(|&generator| {
                     legacy
@@ -1784,7 +1909,7 @@ mod tests {
 
         for index in 0..table.involution_count() {
             let id = InvolutionId(index);
-            let legacy = table.record(id).unwrap().weyl_element();
+            let legacy = table.materialize_weyl_element(id).unwrap();
             for generator in 0..twist.len() {
                 let (transported, change) = legacy
                     .right_multiply_simple(table.root_system(), twist[generator])
@@ -1825,8 +1950,9 @@ mod tests {
             let table = filled_table(&inner_class, &classification, weyl);
             for index in 0..table.involution_count() {
                 let id = InvolutionId(index);
+                let materialized = table.materialize_weyl_element(id).unwrap();
                 let expected = inner_class
-                    .canonical_involution_expr(table.record(id).unwrap().weyl_element())
+                    .canonical_involution_expr(&materialized)
                     .unwrap();
                 assert_eq!(table.weyl_canonical_involution_expr(id).unwrap(), expected);
             }
@@ -1866,13 +1992,15 @@ mod tests {
         let table = filled_table(&inner_class, &classification, 8);
         let delta_data = inner_class.distinguished_involution();
         for index in 0..table.involution_count() {
-            let record = table.record(InvolutionId(index)).unwrap();
-            assert_eq!(record.weyl_length(), record.weyl_element().length());
+            let id = InvolutionId(index);
+            let record = table.record(id).unwrap();
+            let materialized = table.materialize_weyl_element(id).unwrap();
+            assert_eq!(record.weyl_length(), materialized.length());
             for (root, _, _) in inner_class.root_system().entries() {
                 let delta_image = delta_data.image(root).unwrap();
                 assert_eq!(
                     record.twisted_involution().root_involution().image(root),
-                    record.weyl_element().image(delta_image)
+                    materialized.image(delta_image)
                 );
             }
             let decomposition = CayleyCrossDecomposition::build(
@@ -1914,9 +2042,8 @@ mod tests {
         let (fundamental, size) = table.add_cartan(&classification, CartanId(0)).unwrap();
         assert_eq!(size, 1);
         assert!(table
-            .record(fundamental)
+            .materialize_weyl_element(fundamental)
             .unwrap()
-            .weyl_element()
             .is_identity());
         assert_eq!(table.cayley(0, fundamental).unwrap(), None);
 
