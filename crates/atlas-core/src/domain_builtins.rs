@@ -11599,20 +11599,11 @@ fn print_kgb(
         let involution = graph.involution_of(id).expect("in-range element");
         let number = cartan_number(parent, cartan).expect("the graph's Cartans are in range");
         // The '#' flag (kgb_io.cpp:109-112): the element's involution IS
-        // its Cartan class's canonical representative.
-        let flag = {
-            let representative = parent
-                .classification
-                .cartan_class(cartan)
-                .expect("the graph's Cartans are in range")
-                .representative();
-            let canonical = WeylElement::from_action(
-                parent.inner_class.root_system(),
-                representative.weyl_action(),
-            )
-            .expect("the Cartan representative realizes in the root system");
-            bundle.table.lookup(&canonical) == Some(involution)
-        };
+        // its Cartan class's canonical representative. The orbit slice is
+        // seeded from the classification representative before closure, so
+        // its first id is exactly the stored `involution_of_Cartan` — read
+        // it instead of materializing the representative's WeylElement.
+        let flag = bundle.table.cartan_representative_id(cartan) == Some(involution);
         let word = bundle
             .table
             .weyl_canonical_involution_expr(involution)
