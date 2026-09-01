@@ -849,6 +849,32 @@ impl InnerClass {
             orbit_machine.simple_positions(),
         ));
         emit(orbit_index, &representative_permutation)?;
+
+        // Padded fast path (packed keys and a root count that fits the u8
+        // encoding — every rank <= 16 case in practice): the per-member
+        // permutation and the simple-reflection tables are staged in
+        // fixed-size [u8; 256] buffers, so every gather inside the probe and
+        // the successor compose indexes a 256-entry array with a u8 and the
+        // compiler emits NO bounds checks. Two further probe-level cuts:
+        // the member's slice is located once per member (not per edge), and
+        // edges whose conjugated key equals the member's own key are skipped
+        // before the hash probe — `r_s c r_s == c` iff the simple images
+        // agree (the packing is injective), and every member's key is
+        // already in `seen` at discovery time, so the skipped `insert` was
+        // a guaranteed no-op duplicate probe.
+        let padded = packed && stride <= 256;
+        let mut padded_reflections: Vec<[u8; 256]> = Vec::new();
+        if padded {
+            padded_reflections = try_capacity(rank)?;
+            for reflection in &orbit_machine.simple_reflections {
+                let mut table = [0_u8; 256];
+                table[..reflection.len()].copy_from_slice(reflection);
+                padded_reflections.push(table);
+            }
+        }
+        let mut current_buf = [0_u8; 256];
+        let mut next_buf = [0_u8; 256];
+
         let mut cursor = 0_usize;
         while cursor < member_count {
             // Release chunks the sequential cursor has fully read.
@@ -856,12 +882,63 @@ impl InnerClass {
                 chunks.pop_front();
                 base += CHUNK_MEMBERS;
             }
+            let mut current_key = 0_u128;
+            if padded {
+                let chunk = &chunks[(cursor - base) / CHUNK_MEMBERS];
+                let offset = (cursor - base) % CHUNK_MEMBERS * stride;
+                current_buf[..stride].copy_from_slice(&chunk[offset..offset + stride]);
+                for (shift, &position) in
+                    orbit_machine.simple_positions.iter().enumerate()
+                {
+                    current_key |= u128::from(current_buf[usize::from(position)]) << (8 * shift);
+                }
+            }
             for generator in 0..rank {
-                let reflection = &orbit_machine.simple_reflections[generator];
                 // next = reflection after current after reflection. Probe
                 // on the simple-root images alone (an injective key), so
                 // the full successor permutation is computed only for
                 // genuine new members — about one edge in eight for E8.
+                if padded {
+                    let reflection = &padded_reflections[generator];
+                    let mut key = 0_u128;
+                    for (shift, &position) in
+                        orbit_machine.simple_positions.iter().enumerate()
+                    {
+                        let image = reflection[usize::from(
+                            current_buf[usize::from(reflection[usize::from(position)])],
+                        )];
+                        key |= u128::from(image) << (8 * shift);
+                    }
+                    // Self-loop (`r_s c r_s == c`) or an already-seen member:
+                    // both are no-op inserts, skipped without touching `seen`
+                    // in the self-loop case.
+                    if key == current_key || !seen.insert(PermutationKey::Packed(key)) {
+                        continue;
+                    }
+                    for slot in 0..stride {
+                        next_buf[slot] = reflection
+                            [usize::from(current_buf[usize::from(reflection[slot])])];
+                    }
+                    let open = chunks.back_mut().ok_or(
+                        StructureError::CartanClassificationInvariantViolation {
+                            invariant: "orbit chunk",
+                        },
+                    )?;
+                    if open.len() == chunk_bytes {
+                        chunks.push_back(try_capacity(chunk_bytes)?);
+                    }
+                    let open = chunks.back_mut().ok_or(
+                        StructureError::CartanClassificationInvariantViolation {
+                            invariant: "orbit chunk",
+                        },
+                    )?;
+                    open.extend_from_slice(&next_buf[..stride]);
+                    parents.push((cursor as u32, generator as u8));
+                    member_count += 1;
+                    emit(orbit_index, &next_buf[..stride])?;
+                    continue;
+                }
+                let reflection = &orbit_machine.simple_reflections[generator];
                 if packed {
                     let mut key = 0_u128;
                     {
