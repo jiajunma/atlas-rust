@@ -6359,3 +6359,22 @@ Interim verified numbers (agent-122 branch ce218f4, quick corpus 3662022,
 5/5 MATCH; massif 3662023): fixed maxrss ~42-50MB (groups.at 42MB, was
 133.6MB at adb4051; class_tables 46MB; test 42MB; GKfast 50MB; example 74MB),
 wall within variance. quick_check 3662021 green (7 suites ok).
+
+## Cross-contamination: agent-legacy-element carries stale streaming-orbit code (2026-09-01)
+
+Root cause: the phase-5 handover stash (wip/phase5-handover) carried not only
+the legacy_element removal half-work but ALSO agent-122's pre-commit
+streaming-orbit edit of `inner_class.rs` (the buggy hunk: `orbit.representative`
+moved, then `orbit.member_count()` borrowed — E0382). agent-124 picked it up
+with the stash, so its branch fails every HPC build at
+`inner_class.rs:625-626` (jobs 3662030/32/33, 3662057/58/59).
+
+Fix (owner: agent-124 or parent at merge): revert `inner_class.rs` on
+agent-legacy-element to the adb4051 version — the streaming-orbit change is
+agent-122's lane (fixed version = ce218f4 "read orbit member count before
+moving the representative"). Until then, merging agent-cartan-baseline into
+agent-legacy-element CONFLICTS on inner_class.rs (merge-tree verified);
+resolve by taking 122's hunk.
+
+Lesson: handover stashes must be filtered file-by-file against the incoming
+agent's ownership list before application, not applied wholesale.
