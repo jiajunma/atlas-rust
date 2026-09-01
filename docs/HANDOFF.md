@@ -25,9 +25,12 @@ either landed in the migration or was archived; see
   build`) dominates corpus-wide wall/RSS, not per-script compute. Real
   workload gaps: only `unipotent` (3.95s, 2.9GB) and the two E8 cell scripts
   (`cells.E8.repsonly` / `E8_big_block_cell_parameter_numbers`: ~490MB vs cpp
-  113MB at sub-second runtime — a mid-scale allocation target after 124
-  lands). Conclusion: agent-122's fixed-cost lever is the #1 global win;
-  re-measure the E8 cell scripts after agent-124.
+  113MB at sub-second runtime — both are single-line files embedding giant
+  precomputed int-vector literals (~10^5-10^6 ints), so their RSS is
+  dominated by Value row representation per int, i.e. agent-125's
+  Value-layout lane, NOT involution storage). Conclusion: agent-122's
+  fixed-cost lever is the #1 global win; E8 cell scripts go to whoever takes
+  125's Value-representation lever.
 - Massif **3661887** @ `adb4051` peak decomposition (unipotent, 2.93GB):
   34.5% (1.01GB) = `WeylElement::from_twisted_composition` legacy per-record
   storage; 17.3% (506MB) = `push_record` payload; 8.4% `zero_matrix` x2 +
