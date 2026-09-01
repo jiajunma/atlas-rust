@@ -7072,3 +7072,6 @@ slimming, broad); RealProjection lift_mat/m_real ~112MB (flat-matrix
 candidate, contained in real_projection.rs); hashbrown dedup ~104MB;
 transport_mod_space ~89MB; image_by_root 126.5MB (already narrowed to
 u16 by agent-132).
+
+## Active agents (2026-09-01 post-2f63a80)
+- agent-134 (branch agent-134, worktrees /private/tmp/atlas-addcartan + HPC atlas-rust-addcartan): add_cartan records backing array ~151MB + RealProjection lift_mat/m_real flat-matrix ~112MB. Real-group lane; evaluator lane CLOSED (all levers disproven or landed).
