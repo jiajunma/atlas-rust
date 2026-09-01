@@ -66,7 +66,7 @@ impl RealFormLabels {
         )? != stored.weight_matrix()
             || compose_matrices(
                 twisted.weyl_action().coweight_matrix(),
-                delta_data.involution().coweight_matrix(),
+                &delta_data.involution().coweight_matrix().to_vec(),
             )? != stored.coweight_matrix()
         {
             return Err(StructureError::DistinguishedInvolutionMismatch);

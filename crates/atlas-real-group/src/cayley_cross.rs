@@ -61,7 +61,7 @@ impl CayleyCrossDecomposition {
                 return Err(StructureError::DatumMismatch);
             }
             if compose_matrices(action.matrix(), delta.weight_matrix())? != stored.weight_matrix()
-                || compose_matrices(action.coweight_matrix(), delta.coweight_matrix())?
+                || compose_matrices(action.coweight_matrix(), &delta.coweight_matrix().to_vec())?
                     != stored.coweight_matrix()
             {
                 return Err(StructureError::DistinguishedInvolutionMismatch);

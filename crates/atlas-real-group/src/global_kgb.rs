@@ -445,7 +445,8 @@ fn fundamental_fiber(
     delta: &LatticeInvolution,
     budget: &IntegerLatticeBudget,
 ) -> Result<ModTwoSubquotient, StructureError> {
-    let negative_eigenspace = negative_coweight_eigenspace(delta.coweight_matrix(), budget)?;
+    let negative_eigenspace =
+        negative_coweight_eigenspace(&delta.coweight_matrix().to_vec(), budget)?;
     let denominator = reduce_basis_mod_two(&negative_eigenspace)?;
     let rank = delta.lattice_rank();
     let mut equations = ModTwoSubspace::new(rank)?;

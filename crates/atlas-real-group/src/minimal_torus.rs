@@ -83,8 +83,9 @@ pub fn elected_square_root(
     let delta = inner_class
         .distinguished_involution()
         .involution()
-        .coweight_matrix();
-    let after_delta = apply_integer_matrix(delta, factor)?;
+        .coweight_matrix()
+        .to_vec();
+    let after_delta = apply_integer_matrix(&delta, factor)?;
     let after_w = apply_integer_matrix(action.coweight_matrix(), &after_delta)?;
     // stable_log sees the square through log_2pi, halving the exp_pi
     // representation; the port's own mod-1 reduction handles the rest.

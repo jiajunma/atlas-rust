@@ -506,8 +506,10 @@ pub(crate) fn reduce_basis_mod_two(
 
 /// Compute `ker_Z(I + theta_Y)` from the cocharacter action itself.
 ///
-/// `LatticeInvolution::coweight_matrix()` already stores the dual action on
-/// cocharacters, so this function intentionally does not transpose it again.
+/// `LatticeInvolution::coweight_matrix()` already serves the dual action on
+/// cocharacters (as the transposed view of the retained character action),
+/// so this function intentionally does not transpose it again. Callers on
+/// the cold per-class/per-orbit-seed paths materialize the view once.
 pub(crate) fn negative_coweight_eigenspace(
     coweight_action: &[Vec<i32>],
     budget: &IntegerLatticeBudget,

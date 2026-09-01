@@ -73,7 +73,7 @@ impl CartanFiber {
         // Compute the integral denominator first, so its caller-owned resource
         // budget is enforced before allocating the finite-field numerator.
         let negative_eigenspace =
-            negative_coweight_eigenspace(involution.coweight_matrix(), budget)?;
+            negative_coweight_eigenspace(&involution.coweight_matrix().to_vec(), budget)?;
         let denominator = reduce_basis_mod_two(&negative_eigenspace)?;
         let numerator = mod_two_i_plus_coweight_kernel(&involution)?;
         let quotient = ModTwoSubquotient::new(numerator, denominator)?;

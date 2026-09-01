@@ -7014,3 +7014,61 @@ Remaining decomposition (peak 1.15GB vs oracle 881MB), biggest first:
 Trap (local): `cargo fmt --all` on this repo rewrites 12+ unrelated
 files — the tip is NOT rustfmt-clean under the local toolchain. Do not
 run it on a working branch; format by hand and keep diffs semantic.
+
+## 2026-09-01h — theta single-matrix retention + transposed coweight view (agent-133, agent-theta-mat)
+
+Lane: eliminate the duplicated per-record theta matrix (agent-132's
+deferred 246MB block, item 1 of its remaining decomposition). Base
+47f06fe; branch agent-theta-mat, commits b930ab1 (perf change) +
+9322946 (one-line test fix).
+
+What landed: `LatticeInvolution` (crates/atlas-real-group/src/
+involution.rs) now retains ONE `weight_action` matrix per record,
+matching upstream `involutions.h` which stores a single
+`WeightInvolution theta` and serves the coweight direction off the same
+storage via right products (`ratvec::symmetrise` uses
+`M.right_prod(v)`); for a pairing-preserving involution the coweight
+matrix IS the transpose, C = (W^T)^-1 = W^T. The constructor keeps its
+two-arg signature and full validation (error behavior unchanged) but
+drops the coweight copy. `coweight_matrix()` returns a zero-copy
+`CoweightMatrixView<'a>` (entry (r,c) = storage[c][r]) with row views,
+named iterators, ExactSizeIterator, Index, to_vec, PartialEq against
+views/Vec<Vec<i32>>/arrays, Debug; re-exported from lib.rs.
+`act_on_coweight(_into)` uses per-output i128 dot products via a new
+`apply_matrix_transposed(_into)` — deliberately NOT a row-sweep
+accumulate, which would force partial sums into i32 and change overflow
+behavior. `conjugate_simple` computes only the weight side (cocharacter
+conjugate = transpose of result). Call sites: ~9 cold compose_matrices
+validation sites wrap the view in `.to_vec()`; 4 cold
+negative_coweight_eigenspace callers pass `&...coweight_matrix().to_vec()`
+(that helper kept its `&[Vec<i32>]` signature because global_kgb.rs:503
+passes an owned negated matrix); `apply_matrix_mod_two` takes the view
+by value; ext_param.rs:1140 uses `.at(i, j)` directly. Hot KGB-edge
+reads (kgb_graph.rs) needed NO edits — the view API is shape-compatible,
+so there is no transpose-on-demand wall cost.
+
+Verification (all HPC, worktree atlas-rust-thetamat):
+- quick_check 3664707 @9322946: TEST_DONE status=0 (all suites green,
+  incl. 548 real-group tests). First attempt 3664680 @b930ab1 failed
+  E0308 on one missed test site (involution.rs:537), fixed by 9322946.
+- Unipotent same-node fat001 before/after: 3664585 @47f06fe rust
+  5.855s / 1,156,772KB vs cpp 4.797s / 881,288KB (1.22x / 1.31x)
+  MATCH -> 3664724 @9322946 rust 5.353s / 985,568KB vs cpp 4.807s /
+  881,296KB (1.11x / 1.12x) MATCH. RSS -171MB; wall IMPROVED
+  (allocator churn reduction), so the close-on-wall-regression escape
+  clause did not apply.
+- Massif same-node: 3664586 peak 1,146,283,552B (snap 193) -> 3664725
+  peak 988,279,672B (snap 173, -158MB, -13.8%). The theta
+  zero_matrix x2 block (106,415,328 + 139,599,888 = 246,015,216B,
+  confirming agent-132's 246MB) halved to 123,007,608B; the
+  coweight-side conjugate_simple call site is gone from the tree and
+  extra-heap metadata also dropped 100.8 -> 77.1MB.
+- Full corpus 3664726 @9322946: 240/240 MATCH, median wall 2.458x,
+  median maxrss 4.768x, over_5x = 0, worst groups.at 3.278x.
+
+Remaining decomposition (peak 988MB vs oracle 881MB, 1.12x), biggest
+first: add_cartan records backing array ~151MB (InvolutionRecord field
+slimming, broad); RealProjection lift_mat/m_real ~112MB (flat-matrix
+candidate, contained in real_projection.rs); hashbrown dedup ~104MB;
+transport_mod_space ~89MB; image_by_root 126.5MB (already narrowed to
+u16 by agent-132).

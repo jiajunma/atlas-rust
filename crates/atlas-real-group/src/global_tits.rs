@@ -167,7 +167,7 @@ fn validate_context(
     let distinguished = inner_class.distinguished_involution().involution();
     let stored = twisted.root_involution().involution();
     if compose_matrices(action.matrix(), distinguished.weight_matrix())? != stored.weight_matrix()
-        || compose_matrices(action.coweight_matrix(), distinguished.coweight_matrix())?
+        || compose_matrices(action.coweight_matrix(), &distinguished.coweight_matrix().to_vec())?
             != stored.coweight_matrix()
     {
         return Err(StructureError::DistinguishedInvolutionMismatch);
