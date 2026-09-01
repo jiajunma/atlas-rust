@@ -7075,3 +7075,16 @@ u16 by agent-132).
 
 ## Active agents (2026-09-01 post-2f63a80)
 - agent-134 (branch agent-134, worktrees /private/tmp/atlas-addcartan + HPC atlas-rust-addcartan): add_cartan records backing array ~151MB + RealProjection lift_mat/m_real flat-matrix ~112MB. Real-group lane; evaluator lane CLOSED (all levers disproven or landed).
+
+## Measurement 2026-09-01i — small-script fixed baseline decomposition (massif 3665704, groups.at @2f63a80)
+- Baseline: rust maxrss 42.6MB / 0.36s vs oracle ~6-12MB. Peak HEAP only
+  21.46MB (snap 95); ~21MB is non-heap (thread stacks, glibc arenas,
+  binary+libs) — rayon pool spawn touches per-thread stack/arena pages
+  regardless of group size.
+- Heap is ~85% InnerClass construction (atlas-real-group/inner_class.rs):
+  involution_orbits_parallel closures 4.19MB (19.5%),
+  twisted_conjugacy_partition 3.53MB (16.4%) + 3.2MB reserve,
+  orbit_cross_closure 1.97MB + PackedKeySet::insert 3.15MB under it (23.8%).
+- Lane: slim InnerClass storage (capacity pre-sizing to kill grow doubling,
+  narrower element types) + evaluate capping rayon threads for small groups.
+  File-isolated from agent-134's involution.rs/real_projection.rs lane.
