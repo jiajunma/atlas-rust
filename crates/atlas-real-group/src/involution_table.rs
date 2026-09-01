@@ -29,9 +29,9 @@ use crate::integer_lattice::{negative_coweight_eigenspace, reduce_basis_mod_two}
 use crate::real_projection::RealProjection;
 use crate::weyl_transducer::{CompactWeyl, WeylElt};
 use crate::{
-    CartanClassification, CartanId, CayleyCrossDecomposition, InnerClass, IntegerLatticeBudget,
-    LatticeInvolution, ModTwoSubspace, ModTwoVector, RootId, RootKind, RootSystem, StructureError,
-    TwistedInvolution, Weight, WeylAction, WeylElement,
+    CartanClassification, CartanId, CayleyCrossDecomposition, ImagePermutation, InnerClass,
+    IntegerLatticeBudget, LatticeInvolution, ModTwoSubspace, ModTwoVector, RootId, RootKind,
+    RootSystem, StructureError, TwistedInvolution, Weight, WeylAction, WeylElement,
 };
 
 /// Stable identifier of one twisted involution in one table's numbering.
@@ -181,16 +181,20 @@ impl DedupIndex {
     /// involutive, so the packed value is bit-identical to
     /// `key_of(w.image_permutation())` (record numbering/BFS order unchanged)
     /// and the Full fallback stores the same reconstructed permutation.
-    fn key_of_theta_images(&self, root_images: &[RootId], delta: &[RootId]) -> DedupKey {
+    fn key_of_theta_images(
+        &self,
+        root_images: ImagePermutation<'_>,
+        delta: ImagePermutation<'_>,
+    ) -> DedupKey {
         if self.packed && root_images.len() == self.root_count {
             DedupKey::Packed(self.pack(|simple| {
                 let position = self.simple_positions[simple];
-                root_images[delta[position].0]
+                root_images.at(delta.at(position).0)
             }))
         } else {
             let w_images: Box<[RootId]> = delta
                 .iter()
-                .map(|delta_image| root_images[delta_image.0])
+                .map(|delta_image| root_images.at(delta_image.0))
                 .collect();
             DedupKey::Full(w_images)
         }
@@ -518,7 +522,7 @@ impl InvolutionTable {
                 if self.index.packed {
                     let probe = DedupKey::Packed(self.index.pack(|simple| {
                         let position = self.index.simple_positions[simple];
-                        left[theta[delta[right[position].0].0].0]
+                        left[theta.at(delta.at(right[position].0).0).0]
                     }));
                     if let Some(existing) = self.index.get(&probe) {
                         links.push(existing);
@@ -533,7 +537,7 @@ impl InvolutionTable {
                 // (pinned by cross_edge_theta_transport_reproduces_* tests).
                 let mut neighbor_images = try_capacity(theta.len())?;
                 for root in 0..theta.len() {
-                    neighbor_images.push(left[theta[delta[right[delta[root].0].0].0].0]);
+                    neighbor_images.push(left[theta.at(delta.at(right[delta.at(root).0].0).0).0]);
                 }
                 let neighbor_w_length = self.compact_weyl.length(&compact_neighbor);
                 let new_length = stepped_length(
@@ -664,8 +668,7 @@ impl InvolutionTable {
             .inner_class
             .distinguished_involution()
             .image_permutation()
-            .get(root.0)
-            .copied()?;
+            .get(root.0)?;
         record
             .twisted_involution()
             .root_involution()
@@ -1605,7 +1608,7 @@ mod tests {
                     let left = table.reflections[generator].image_permutation();
                     let right = table.reflections[table.twist[generator]].image_permutation();
                     let transported: Vec<RootId> = (0..theta.len())
-                        .map(|root| left[theta[delta[right[delta[root].0].0].0].0])
+                        .map(|root| left[theta.at(delta.at(right[delta.at(root).0].0).0).0])
                         .collect();
                     let cross_id = table.cross(generator, id).unwrap();
                     let stored = table
@@ -1614,10 +1617,10 @@ mod tests {
                         .twisted_involution()
                         .root_involution()
                         .image_permutation();
-                    assert_eq!(transported, stored);
+                    assert_eq!(transported, stored.to_vec());
                     let materialized = table.materialize_weyl_element(cross_id).unwrap();
                     for (root, &image) in transported.iter().enumerate() {
-                        assert_eq!(materialized.image(delta[root]), Some(image));
+                        assert_eq!(materialized.image(delta.at(root)), Some(image));
                     }
                 }
             }
