@@ -6263,3 +6263,40 @@ cartan_classification.rs/inner_class.rs lane.
   (HANDOFF 2026-08-24o lever 2) — both mechanical but broad; verify with
   massif before committing. perf record is BLOCKED on this cluster
   (perf_event_paranoid=2, no samples); use gdb sampling or massif.
+
+## Handover + re-baseline (2026-09-01, parent)
+
+Session transition: the Codex session that ran the 98-commit compact
+migration (e9dc415..adb4051) was handed over mid-flight. Preservation:
+its uncommitted local tree (16 modified + 1 deleted + 2 new RED test
+files) is in git stash branch `wip/phase5-handover` (pushed to origin);
+the HPC main checkout's DIFFERENT dirty state (29 files incl. fixture
+deletions) is archived at /public/home/majj/wip-archive/
+wip-hpc-main-20260901.patch (+ untracked-job-log tgz). HPC main checkout
+was then reset to origin/codex/continue-atlas-port = adb4051 (parent).
+
+Re-baseline (other session's final full corpus 3661806 @ 8649686):
+240/240 MATCH; median time ratio 3.32x; over_5x = 7 (groups 5.9x, test
+5.6x, partitions 5.5x, elliptic 5.3x, combinatorics 5.2x — all small
+fixed-cost); unipotent 7.32s/1.54x with maxrss 1.93GB vs 881MB (2.2x;
+down from 3.72GB pre-compact-migration); fixed baseline ~141-145MB
+unchanged (median maxrss ratio 12.22x).
+
+Massif 3624915 peak decomposition (3.67GB @ 57da89a, pre-migration but
+structurally confirmed by the 3627509/3627510 sampling): 27.6% (1.01GB)
+WeylElement::from_permutation buffers in add_cartan; 13.8% (506MB)
+push_record payloads; 5.4% grading::try_capacity; 3.9% iterator shunt;
+6.7% Vec::clone x2; 2.1% hashbrown tables; 3.6% RealProjection::
+transported; 1.7% RootInvolutionData::from_images; BasedRootDatum clone
+only 1.46% — the "Arc the datum" lever is SMALL (later partially done
+anyway as 98d9ddb/adb4051).
+
+ACTIVE AGENTS (2026-09-01, do not double-dispatch): agent-122 owns the
+~142MB fixed baseline + small-script tail via CartanClassification::build
+streaming/compact-map levers (cartan_classification.rs + inner_class.rs,
+worktree atlas-rust-cartan2). agent-123 is READ-ONLY: maps remaining
+O(#roots) per-record legacy storage for the unipotent 1.93GB -> 881MB
+lane (plan only). Old agents 117/120/121 died to a quota outage; their
+lanes are superseded (121's lever 2 = 75d3128 new_trusted, landed by the
+other session; 120's massif data analyzed by parent above; 117's lane
+re-dispatched as 122).
