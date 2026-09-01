@@ -460,7 +460,7 @@ impl InvolutionTable {
                 .image_permutation()
                 .to_vec(),
             seed_w_length,
-            representative.weyl_action().clone(),
+            representative.root_involution().involution().clone(),
             length_sum / 2,
             None,
             None,
@@ -541,14 +541,17 @@ impl InvolutionTable {
                     self.records[cursor].weyl_length,
                     neighbor_w_length,
                 )?;
-                // The same product `s_g * w * s_{twist(g)}` at the matrix
-                // level, by reflection sparsity (rank^2 per compose instead
-                // of rank^3; exact integer equality with the compose path).
-                let new_action = self.records[cursor]
+                // Transport theta's MATRICES across the cross edge instead
+                // of the Weyl factor's: `w |-> s_g w s_{twist(g)}` induces
+                // `theta |-> s_g theta s_g` (plain conjugation — the twist
+                // cancels against delta, the same identity the permutation
+                // transport above relies on), at rank^2 per lattice per side.
+                // Records therefore never retain the WeylAction pair.
+                let new_theta = self.records[cursor]
                     .involution
-                    .weyl_action()
-                    .left_compose_simple(generator)?
-                    .right_compose_simple(self.twist[generator])?;
+                    .root_involution()
+                    .involution()
+                    .conjugate_simple(generator)?;
                 // Transport the image basis across the cross edge
                 // (involutions.cpp:242-243): the PLAIN generator s, not
                 // twist(s) — delta is already incorporated in theta.
@@ -574,7 +577,7 @@ impl InvolutionTable {
                     compact_neighbor,
                     neighbor_images,
                     neighbor_w_length,
-                    new_action,
+                    new_theta,
                     new_length,
                     Some(transported),
                     Some(transported_space),
@@ -1154,7 +1157,7 @@ fn push_record(
     element: WeylElt,
     root_images: Vec<RootId>,
     weyl_length: usize,
-    action: WeylAction,
+    theta: LatticeInvolution,
     involution_length: usize,
     transported_projection: Option<RealProjection>,
     transported_mod_space: Option<ModTwoSubspace>,
@@ -1188,13 +1191,8 @@ fn push_record(
             invariant: "compact Weyl element",
         });
     }
-    let involution = TwistedInvolution::new_from_root_images(
-        inner_class.datum(),
-        inner_class.root_system(),
-        inner_class.distinguished_involution().involution(),
-        action,
-        root_images,
-    )?;
+    let involution =
+        TwistedInvolution::record_from_theta(inner_class.root_system(), theta, root_images)?;
     let theta = involution.root_involution().involution();
     let mod_space = match transported_mod_space {
         Some(space) => space,
@@ -1279,7 +1277,7 @@ mod tests {
     }
 
     #[test]
-    fn records_share_the_weyl_action_datum_arc_within_each_orbit() {
+    fn records_share_the_theta_datum_arc_within_each_orbit() {
         let (inner_class, classification) = context(vec![vec![2, -1], vec![-1, 2]], None, 6, 6);
         let mut table = InvolutionTable::new(
             &inner_class,
@@ -1289,13 +1287,7 @@ mod tests {
 
         for cartan in classification.cartan_ids() {
             let (start, size) = table.add_cartan(&classification, cartan).unwrap();
-            let datum_arc = table
-                .record(start)
-                .unwrap()
-                .twisted_involution()
-                .weyl_action()
-                .datum_arc()
-                .clone();
+            let datum_arc = table.record(start).unwrap().theta().datum_arc().clone();
             for offset in 0..size {
                 let id = InvolutionId(start.0 + offset);
                 let record = table.record(id).unwrap();

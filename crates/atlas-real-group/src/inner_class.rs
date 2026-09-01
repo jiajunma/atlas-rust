@@ -254,7 +254,15 @@ impl InnerClass {
             involution.root_involution(),
             RootKind::Imaginary,
         )?;
-        let mut action = involution.weyl_action().clone();
+        let mut action = match involution.retained_weyl_action() {
+            Some(action) => action.clone(),
+            // A table record's dropped Weyl factor: w = theta after delta
+            // (delta is an involution), recovered exactly on both lattices.
+            None => WeylAction::from_theta_factor(
+                involution.root_involution().involution(),
+                self.distinguished_involution.involution(),
+            )?,
+        };
         let positive_root_count = self.roots.roots().len() / 2;
         // Phase one decreases a lexicographic pair whose coordinates each
         // lie in 0..=positive_root_count. Phase three decreases involution
@@ -453,21 +461,25 @@ impl InnerClass {
         &self,
         involution: &TwistedInvolution,
     ) -> Result<(), StructureError> {
-        if involution.weyl_action().datum() != &self.datum
-            || involution.root_involution().involution().datum() != &self.datum
-        {
+        if involution.root_involution().involution().datum() != &self.datum {
+            return Err(StructureError::DatumMismatch);
+        }
+        // Table records drop the Weyl factor's matrices; their construction
+        // gate is push_record's compact-element/theta consistency check.
+        // Everything else still carries the action and gets the full
+        // recomposition check.
+        let Some(action) = involution.retained_weyl_action() else {
+            return Ok(());
+        };
+        if action.datum() != &self.datum {
             return Err(StructureError::DatumMismatch);
         }
         let distinguished = self.distinguished_involution.involution();
         let stored = involution.root_involution().involution();
-        if compose_matrices(
-            involution.weyl_action().matrix(),
-            distinguished.weight_matrix(),
-        )? != stored.weight_matrix()
-            || compose_matrices(
-                involution.weyl_action().coweight_matrix(),
-                distinguished.coweight_matrix(),
-            )? != stored.coweight_matrix()
+        if compose_matrices(action.matrix(), distinguished.weight_matrix())?
+            != stored.weight_matrix()
+            || compose_matrices(action.coweight_matrix(), distinguished.coweight_matrix())?
+                != stored.coweight_matrix()
         {
             return Err(StructureError::DistinguishedInvolutionMismatch);
         }

@@ -126,11 +126,45 @@ impl WeylAction {
         }
     }
 
+    /// Recover the Weyl factor `w` of a twisted involution from its composed
+    /// involution `theta = w after delta` and the distinguished involution:
+    /// `w = theta * delta` (delta is an involution), on each lattice in the
+    /// stored compose order. Table records drop `w`'s matrices; callers that
+    /// still need the action (canonicalization word threading) rehydrate it
+    /// here — one rank^3 compose per lattice, only away from the BFS.
+    pub(crate) fn from_theta_factor(
+        theta: &crate::LatticeInvolution,
+        distinguished: &crate::LatticeInvolution,
+    ) -> Result<Self, StructureError> {
+        if theta.datum() != distinguished.datum() {
+            return Err(StructureError::DatumMismatch);
+        }
+        let rank = theta.lattice_rank();
+        if distinguished.lattice_rank() != rank {
+            return Err(StructureError::RankMismatch {
+                expected: rank,
+                actual: distinguished.lattice_rank(),
+            });
+        }
+        Ok(Self {
+            datum: theta.datum_arc().clone(),
+            weight_matrix: compose_matrices(theta.weight_matrix(), distinguished.weight_matrix())?,
+            coweight_matrix: compose_matrices(
+                theta.coweight_matrix(),
+                distinguished.coweight_matrix(),
+            )?,
+        })
+    }
+
     /// `s_generator after self` (matrix `s * M`), by reflection sparsity:
     /// `s = I - alpha*beta^T` gives `(s*M)[i][j] = M[i][j] - alpha_i *
     /// (beta^T M)[j]`, rank^2 instead of rank^3 per lattice. Exact integer
     /// equality with
     /// `WeylAction::simple_reflection(datum, generator)?.compose(self)`.
+    /// Production moved to [`crate::LatticeInvolution::conjugate_simple`]
+    /// (theta transport without the Weyl factor); retained for the pinning
+    /// test against the full compose path.
+    #[cfg(test)]
     pub(crate) fn left_compose_simple(&self, generator: usize) -> Result<Self, StructureError> {
         let rank = self.rank();
         let datum = &*self.datum;
@@ -160,7 +194,9 @@ impl WeylAction {
     /// `self after s_generator` (matrix `M * s`), by reflection sparsity:
     /// `(M*s)[i][j] = M[i][j] - (M*alpha)[i] * beta_j`. Exact integer
     /// equality with `self.compose(&WeylAction::simple_reflection(datum,
-    /// generator)?)` (see [`Self::left_compose_simple`]).
+    /// generator)?)` (see [`Self::left_compose_simple`]). Test-only, like
+    /// [`Self::left_compose_simple`].
+    #[cfg(test)]
     pub(crate) fn right_compose_simple(&self, generator: usize) -> Result<Self, StructureError> {
         let rank = self.rank();
         let datum = &*self.datum;
@@ -317,7 +353,7 @@ fn compose_matrices_fast(left: &[Vec<i32>], right: &[Vec<i32>]) -> Vec<Vec<i32>>
 /// `(s * M)` for the reflection `s = I - alpha*beta^T`, rank^2 via the
 /// shared row vector `beta^T M`. Same small-entry i64 accumulation
 /// discipline as [`compose_matrices`].
-fn reflection_left(
+pub(crate) fn reflection_left(
     alpha: &[i32],
     beta: &[i32],
     matrix: &[Vec<i32>],
@@ -353,7 +389,7 @@ fn reflection_left(
 
 /// `(M * s)` for the reflection `s = I - alpha*beta^T`, rank^2 via the
 /// shared column vector `M * alpha` (see [`reflection_left`]).
-fn reflection_right(
+pub(crate) fn reflection_right(
     alpha: &[i32],
     beta: &[i32],
     matrix: &[Vec<i32>],

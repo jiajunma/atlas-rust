@@ -153,21 +153,22 @@ fn validate_context(
     inner_class: &InnerClass,
     twisted: &TwistedInvolution,
 ) -> Result<(), StructureError> {
-    if twisted.weyl_action().datum() != inner_class.datum()
-        || twisted.root_involution().involution().datum() != inner_class.datum()
-    {
+    if twisted.root_involution().involution().datum() != inner_class.datum() {
+        return Err(StructureError::DatumMismatch);
+    }
+    // Table records drop the Weyl factor's matrices; the recomposition
+    // check applies to the (always retained) actions of GlobalTits values.
+    let Some(action) = twisted.retained_weyl_action() else {
+        return Ok(());
+    };
+    if action.datum() != inner_class.datum() {
         return Err(StructureError::DatumMismatch);
     }
     let distinguished = inner_class.distinguished_involution().involution();
     let stored = twisted.root_involution().involution();
-    if compose_matrices(
-        twisted.weyl_action().matrix(),
-        distinguished.weight_matrix(),
-    )? != stored.weight_matrix()
-        || compose_matrices(
-            twisted.weyl_action().coweight_matrix(),
-            distinguished.coweight_matrix(),
-        )? != stored.coweight_matrix()
+    if compose_matrices(action.matrix(), distinguished.weight_matrix())? != stored.weight_matrix()
+        || compose_matrices(action.coweight_matrix(), distinguished.coweight_matrix())?
+            != stored.coweight_matrix()
     {
         return Err(StructureError::DistinguishedInvolutionMismatch);
     }
