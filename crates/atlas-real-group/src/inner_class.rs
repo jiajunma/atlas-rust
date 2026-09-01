@@ -546,11 +546,16 @@ impl InnerClass {
         &self,
         weyl_budget: usize,
     ) -> Result<Vec<TwistedInvolution>, StructureError> {
-        let orbits = self.involution_orbits(weyl_budget)?;
-        let mut involutions = try_capacity(orbits.iter().map(|orbit| orbit.member_count()).sum())?;
-        for orbit in orbits {
+        let mut involutions = Vec::new();
+        self.involution_orbits(weyl_budget, &mut |orbit| {
+            involutions
+                .try_reserve(orbit.member_count())
+                .map_err(|_| StructureError::AllocationFailed {
+                    requested: orbit.member_count(),
+                })?;
             involutions.extend(orbit.materialize(self)?);
-        }
+            Ok(())
+        })?;
         Ok(involutions)
     }
 
@@ -578,24 +583,26 @@ impl InnerClass {
         &self,
         weyl_budget: usize,
     ) -> Result<TwistedConjugacyPartition, StructureError> {
-        let orbits = self.involution_orbits(weyl_budget)?;
         let simple_positions: Vec<u8> = self
             .roots
             .simple_root_ids()
             .iter()
             .map(|id| id.0 as u8)
             .collect();
-        let member_count: usize = orbits.iter().map(|orbit| orbit.member_count()).sum();
-        let mut classes = try_capacity(orbits.len())?;
+        // Streamed assembly: each class's members are indexed as its orbit
+        // closes, so the per-class flat permutation buffers are released one
+        // class at a time instead of all coexisting until end-of-build (the
+        // E8 transient was ~48MB of buffers plus Vec-doubling overshoot).
+        let mut classes = Vec::new();
         let mut class_by_key = PermutationKeyMap::default();
-        class_by_key
-            .try_reserve(member_count)
-            .map_err(|_| StructureError::AllocationFailed {
-                requested: member_count,
-            })?;
-        for orbit in orbits {
+        self.involution_orbits(weyl_budget, &mut |orbit| {
             let class_index = classes.len();
             let orbit_member_count = orbit.member_count();
+            class_by_key
+                .try_reserve(orbit_member_count)
+                .map_err(|_| StructureError::AllocationFailed {
+                    requested: orbit_member_count,
+                })?;
             for permutation in orbit.members() {
                 class_by_key.insert(
                     PermutationKey::pack(permutation, &simple_positions),
@@ -606,7 +613,8 @@ impl InnerClass {
                 orbit.representative,
                 orbit_member_count,
             ));
-        }
+            Ok(())
+        })?;
         Ok(TwistedConjugacyPartition::new(
             self.datum.clone(),
             self.distinguished_involution.clone(),
@@ -642,10 +650,17 @@ impl InnerClass {
     /// provenance, full [`RootInvolutionData`] validation) is rebuilt only
     /// for freshly discovered class representatives, so the E8 construction
     /// pays the matrix cost once per CLASS instead of once per Cayley edge.
+    ///
+    /// Each phase-two orbit is handed to `consume` as soon as its cross
+    /// closure finishes, and the per-class flat member buffer is released
+    /// with it. Only one class's buffer is alive at a time — accumulating
+    /// every [`ClassOrbit`] to end-of-build pinned ~48MB of E8 transients
+    /// (plus Vec-doubling overshoot) against the process peak.
     fn involution_orbits(
         &self,
         weyl_budget: usize,
-    ) -> Result<Vec<ClassOrbit>, StructureError> {
+        consume: &mut dyn FnMut(ClassOrbit) -> Result<(), StructureError>,
+    ) -> Result<(), StructureError> {
         let delta = self.distinguished_involution.involution();
         let rank = self.datum.semisimple_rank();
         let identity = TwistedInvolution::new(
@@ -729,7 +744,6 @@ impl InnerClass {
         // stored as root-image permutations plus parent links; matrices are
         // rebuilt only on demand (ClassOrbit::materialize, for the test-only
         // twisted_involutions listing).
-        let mut orbits = try_capacity(representatives.len())?;
         let mut total = 0_usize;
         let mut seen = PermutationKeySet::default();
         let mut next: Vec<u8> = Vec::new();
@@ -755,9 +769,9 @@ impl InnerClass {
             if total > weyl_budget {
                 return Err(StructureError::ResourceLimitExceeded { limit: weyl_budget });
             }
-            orbits.push(orbit);
+            consume(orbit)?;
         }
-        Ok(orbits)
+        Ok(())
     }
 
     /// Profiling-visible extraction of the phase-two per-class BFS.
