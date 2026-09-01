@@ -843,9 +843,9 @@ impl InnerClass {
     /// the same order as the sequential loop, the first error in orbit
     /// order wins (as sequential timing guarantees), and the packed
     /// membership entries are order-free because
-    /// [`crate::TwistedConjugacyPartition`] sorts them. Keys from different
-    /// classes are disjoint (cross action preserves the class), so a
-    /// worker's `PackedKeySet` is never cleared between orbits.
+    /// [`crate::TwistedConjugacyPartition`] sorts them. Each worker keeps its
+    /// own scratch (`PackedKeySet`, chunk buffers), cleared per orbit exactly
+    /// as the sequential driver does.
     fn involution_orbits_parallel(
         &self,
         weyl_budget: usize,
