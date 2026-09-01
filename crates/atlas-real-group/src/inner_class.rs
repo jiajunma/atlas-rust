@@ -621,9 +621,10 @@ impl InnerClass {
                 Ok(())
             };
             let mut consume = |orbit: ClassOrbit| -> Result<(), StructureError> {
+                let orbit_member_count = orbit.member_count();
                 classes.push(TwistedConjugacyClass::new(
                     orbit.representative,
-                    orbit.member_count(),
+                    orbit_member_count,
                 ));
                 Ok(())
             };
