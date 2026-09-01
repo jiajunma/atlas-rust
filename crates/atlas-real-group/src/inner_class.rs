@@ -922,6 +922,10 @@ impl InnerClass {
                             .lock()
                             .expect("orbit result lock poisoned") = Some(orbit);
                     }
+                    // Sort in the worker (parallel); the replay merges the
+                    // two sorted buffers in O(n), and the caller's final
+                    // sort_unstable then sees a nearly-sorted vector.
+                    local_entries.sort_unstable();
                     local_entries
                 }));
             }
@@ -954,7 +958,25 @@ impl InnerClass {
             ));
         }
         for local in thread_entries {
-            entries.extend(local);
+            if entries.is_empty() {
+                entries.extend(local);
+                continue;
+            }
+            // Both buffers are sorted; merge instead of re-sorting.
+            let mut merged = try_capacity(entries.len() + local.len())?;
+            let (mut left, mut right) = (0_usize, 0_usize);
+            while left < entries.len() && right < local.len() {
+                if entries[left] <= local[right] {
+                    merged.push(entries[left]);
+                    left += 1;
+                } else {
+                    merged.push(local[right]);
+                    right += 1;
+                }
+            }
+            merged.extend_from_slice(&entries[left..]);
+            merged.extend_from_slice(&local[right..]);
+            *entries = merged;
         }
         Ok(())
     }
