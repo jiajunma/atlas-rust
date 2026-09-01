@@ -4,79 +4,49 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
-## Current frontier - 2026-08-31
+## Current frontier - 2026-09-01 (post-handover, supersedes 2026-08-31)
 
-- Dirty integrated snapshot `dirty-root-negatives-final2-20260901` removes the
-  per-record `RootInvolutionData::kind_by_root` array and changes
-  `RootSystem::negatives` to shared immutable `Arc<[RootId]>` storage. Public
-  `image_permutation()`, `kind()`, and `roots_of_kind()` APIs are unchanged;
-  classification is derived from the image permutation plus the shared
-  negation table. Focused HPC job **3660844** passed Weyl 65/65,
-  InvolutionTable 29/29, and KGB 14/14 in debug and release. Fat benchmark
-  **3660848** matched the oracle: Rust `7.387s / 1,936,520KB`, C++
-  `4.734s / 881,300KB` (`1.560x` wall, `2.197x` RSS); report SHA-256 is
-  `fa45354d624c186683d07cf9f3a1f3da045c624ecbd1705323d54934e8b57e1a`.
-  Against preceding integrated job 3660836, peak RSS fell by about 69MB while
-  wall time stayed within run variance. This is a dirty-snapshot result, not
-  an exact single-commit measurement.
-- The next bounded storage target is `RealProjection`: each involution record
-  still owns nested `Vec<Vec<i64>>` `lift_mat`/`m_real` buffers. Flattening
-  those matrices row-major should remove roughly 50-100MB and millions of
-  small allocations on a full E8 table, but needs focused regression coverage
-  for transported basis ordering and `y_lift` consumers before promotion.
+The 98-commit compact involution/Weyl-id migration is fully merged and pushed;
+HEAD is `adb4051` (+ parent docs commits through `c56ce19`). The stale
+2026-08-31 frontier items below (unverified dirty snapshots, SSH outages,
+isolated `/private/tmp` trees) are all superseded — everything they tracked
+either landed in the migration or was archived; see
+"Handover + re-baseline (2026-09-01, parent)" at the end of this file.
 
-- Shared commits `4124cbc`, `c0494c1`, `f45479a`, `a7b1108`, `1ecf417`, and
-  `873c962` close the
-  fingerprint-cache provenance review and pack both the final `KgbGraph`
-  links and its BFS/reordering link buffers. `FingerprintCache<'a>` is bound
-  to one `InvolutionTable` and one lattice-budget snapshot; callers can no
-  longer reuse a projector with a mismatched theta or budget. KGB cross and
-  Cayley slots are four-byte ids with `u32::MAX` sentinels, and inverse-Cayley
-  slots are fixed eight-byte pairs; the public `KgbId`/`usize` APIs are
-  unchanged. Static review approved the complete packed-link series, but no
-  Cargo command has run locally and this slice remains NOT HPC verified.
-- The isolated verification tree is
-  `/private/tmp/atlas-weyl-kgb-integration` at `c9abdc9`. It combines legacy
-  Weyl materialization removal, the bound fingerprint cache, final packed KGB
-  links, and packed build-time link buffers. Submit Weyl focused, KGB
-  differential, fat unipotent, and full pipeline gates from this clean tree
-  when HPC connectivity returns. Direct SSH to `10.26.14.64` still timed out
-  on 2026-09-01 and local SOCKS port `127.0.0.1:7897` was not listening.
-- Until those jobs report new measurements, the latest reliable heavy anchor
-  remains job `3647609`: Rust `8.414s / 3,706,016KB`, upstream Atlas
-  `4.746s / 881,080KB` (`1.773x` wall, `4.206x` peak RSS). The older full
-  comparable corpus remains approximately `3.29x` median wall and `12.15x`
-  median peak RSS. Do not attribute an improvement to the new cache or packed
-  links before the required reports exist.
-- Shared branch commits `42dce9b..46ec748` add a per-involution GlobalKGB
-  fingerprint projector cache, index it by dense `InvolutionId`, retain only
-  the used adapted-basis columns as column-major `i64`, and pin the legacy
-  torus-log-before-lattice error precedence. The cache equivalence tests cover
-  A1/A2/B2 elements plus cross and Cayley edges. This slice is NOT HPC
-  verified: repeated direct SSH probes to `10.26.14.64` timed out and the
-  configured local SOCKS port `127.0.0.1:7897` was not listening. Do not enter
-  a speed or RSS improvement in `BENCHMARKS.md` until focused, KGB
-  differential, fat unipotent, and full pipeline jobs pass.
-- Read-only storage audit found that GlobalKGB's `usize`/`Option<usize>` edge
-  arrays can save roughly 100 MB at the 320,206-element rank-8 anchor when
-  represented as upstream-compatible `u32` ids with `u32::MAX` sentinels, but
-  GlobalKGB is not the main source of the verified 3.7 GB unipotent peak. The
-  corresponding `KgbGraph` edge arrays and removal of the retained legacy
-  involution permutations remain the higher-value workload targets.
-
-- `legacy_integration`: owns the isolated integration worktree and the
-  `involution_table.rs`, `tits_element.rs`, `kgb_graph.rs`, and narrowly scoped
-  `domain_builtins.rs` caller migration needed to remove persistent legacy
-  Weyl permutations. It does not edit documentation or the shared checkout.
-- `hpc_weyl_gate`: owns read-only collection of existing SLURM jobs and new
-  focused/differential/benchmark submissions from its own HPC worktrees. It
-  does not edit local source.
-- `weyl_kgb_hotspot_audit`: owns a read-only audit of post-materialization
-  Weyl/KGB allocation and algorithmic hotspots. It does not edit files.
-- `global_kgb_u32`: owns `/private/tmp/atlas-global-kgb-u32` and only
-  `crates/atlas-real-group/src/global_kgb.rs`; it packs GlobalKGB cross and
-  Cayley targets behind the existing public `usize` API. It does not edit
-  documentation or the shared checkout.
+- Verified baseline (full 240-script corpus, job **3661865** @ `adb4051`):
+  **240/240 MATCH**, median wall **3.44x**, `over_5x`=8 (all tiny ~0.3s
+  scripts dominated by the `CartanClassification::build` fixed cost pulled in
+  via `groups.at`); `unipotent` 10.36s / 1.62x / maxrss 2.94GB vs cpp 881MB
+  (cpu node; oracle same node 6.41s). Median maxrss ratio 12.2x, fixed
+  baseline ~133-145MB vs cpp 6-12MB.
+- Massif **3661887** @ `adb4051` peak decomposition (unipotent, 2.93GB):
+  34.5% (1.01GB) = `WeylElement::from_twisted_composition` legacy per-record
+  storage; 17.3% (506MB) = `push_record` payload; 8.4% `zero_matrix` x2 +
+  4.2% `compose_matrices`; datum clone only 1.5% (hypothesis disproven).
+- Active agents (2026-09-01):
+  - `agent-122` (worktree `/public/home/majj/atlas-rust-cartan2`, branch
+    `agent-cartan-baseline`): attack the ~142MB fixed baseline. Landed
+    `fb041f1` (streaming orbit consumption) + `4554d08` (sorted-u128 index
+    replacing hash map; injectivity argued by involution linearity + simple
+    roots as Z-basis, rank<=16 packed, else fallback). Quick corpus 5/5 MATCH
+    (3661906). KNOWN ISSUES it must fix: lib test still references
+    `materialize_weyl_element` from the stash (quick_check compile fail), and
+    massif jobs 3661907/3661909 ran empty (4476KB/0s/exit 2) — script path
+    must be absolute or cd into the atlas-scripts dir.
+  - `agent-124`: remove `legacy_element` per-record storage (step 0+1 from
+    agent-123's field-level plan; stop rule: re-measure after step 1 before
+    deciding step 2 `image_by_root` / step 3 `WeylAction` matrices). Works
+    from the stash (`wip/phase5-handover` branch, pushed) plus
+    `materialize_weyl_element`, pub `weyl_word`, `cartan_representative_id`;
+    migrates the two printer consumers at `domain_builtins.rs:11012/11253`;
+    theta-transport builds `root_images`; DedupIndex key must stay bit-exact
+    (BFS order/numbering unchanged — order hazard 2026-08-24j).
+  - agent-123's field report (folded into 124's brief): after step 1,
+    unipotent should drop to ~0.85-1.15GB ~= cpp.
+- After both land: parent merges into `codex/continue-atlas-port`, syncs the
+  HPC main checkout (rsync .git, then reset --hard origin tip — parent only),
+  reruns full corpus (`sbatch --export=ALL,TIMEOUT=300
+  hpc/script_corpus.sbatch`), appends `docs/BENCHMARKS.md` ledger rows.
 - Parent owns shared-checkout integration, documentation, final review, and
   benchmark interpretation. Parallel workers must not reset or switch the
   shared local or HPC checkout.
