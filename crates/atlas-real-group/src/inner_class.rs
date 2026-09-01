@@ -774,6 +774,7 @@ impl InnerClass {
         // for the test-only twisted_involutions listing).
         let mut total = 0_usize;
         let mut seen = PermutationKeySet::default();
+        let mut packed_seen = PackedKeySet::new();
         let mut next: Vec<u8> = Vec::new();
         let packed = orbit_machine.simple_positions.len() <= 16;
         let stride = self.roots.roots().len();
@@ -791,6 +792,7 @@ impl InnerClass {
                 stride,
                 packed,
                 &mut seen,
+                &mut packed_seen,
                 &mut next,
                 emit,
             )?;
@@ -824,6 +826,7 @@ impl InnerClass {
         stride: usize,
         packed: bool,
         seen: &mut PermutationKeySet,
+        packed_seen: &mut PackedKeySet,
         next: &mut Vec<u8>,
         emit: &mut dyn FnMut(usize, &[u8]) -> Result<(), StructureError>,
     ) -> Result<ClassOrbit, StructureError> {
@@ -843,26 +846,38 @@ impl InnerClass {
         let mut base = 0_usize;
         let mut parents: Vec<(u32, u8)> = vec![(u32::MAX, 0)];
         let mut member_count = 1_usize;
-        seen.clear();
-        seen.insert(PermutationKey::pack(
-            &representative_permutation,
-            orbit_machine.simple_positions(),
-        ));
-        emit(orbit_index, &representative_permutation)?;
-
         // Padded fast path (packed keys and a root count that fits the u8
         // encoding — every rank <= 16 case in practice): the per-member
         // permutation and the simple-reflection tables are staged in
         // fixed-size [u8; 256] buffers, so every gather inside the probe and
         // the successor compose indexes a 256-entry array with a u8 and the
-        // compiler emits NO bounds checks. Two further probe-level cuts:
-        // the member's slice is located once per member (not per edge), and
-        // edges whose conjugated key equals the member's own key are skipped
-        // before the hash probe — `r_s c r_s == c` iff the simple images
-        // agree (the packing is injective), and every member's key is
-        // already in `seen` at discovery time, so the skipped `insert` was
-        // a guaranteed no-op duplicate probe.
+        // compiler emits NO bounds checks, and membership probes go to a
+        // lean open-addressing u128 table instead of the general hash set.
+        // Three further probe-level cuts: the member's slice is located
+        // once per member (not per edge); edges whose conjugated key equals
+        // the member's own key are skipped before the membership probe —
+        // `r_s c r_s == c` iff the simple images agree (the packing is
+        // injective), and every member's key is already in the set at
+        // discovery time, so the skipped `insert` was a guaranteed no-op
+        // duplicate probe; and the edge back to a member's BFS parent is
+        // skipped outright, because the cross action by one generator is an
+        // involution, so probing the child with the parent's generator
+        // reproduces the parent — another guaranteed no-op probe.
         let padded = packed && stride <= 256;
+        if padded {
+            packed_seen.clear();
+            packed_seen.insert(pack_simple_images(
+                &representative_permutation,
+                orbit_machine.simple_positions(),
+            ));
+        } else {
+            seen.clear();
+            seen.insert(PermutationKey::pack(
+                &representative_permutation,
+                orbit_machine.simple_positions(),
+            ));
+        }
+        emit(orbit_index, &representative_permutation)?;
         let mut padded_reflections: Vec<[u8; 256]> = Vec::new();
         if padded {
             padded_reflections = try_capacity(rank)?;
@@ -883,6 +898,7 @@ impl InnerClass {
                 base += CHUNK_MEMBERS;
             }
             let mut current_key = 0_u128;
+            let mut parent_generator = usize::MAX;
             if padded {
                 let chunk = &chunks[(cursor - base) / CHUNK_MEMBERS];
                 let offset = (cursor - base) % CHUNK_MEMBERS * stride;
@@ -892,6 +908,10 @@ impl InnerClass {
                 {
                     current_key |= u128::from(current_buf[usize::from(position)]) << (8 * shift);
                 }
+                let (parent_member, generator) = parents[cursor];
+                if parent_member != u32::MAX {
+                    parent_generator = usize::from(generator);
+                }
             }
             for generator in 0..rank {
                 // next = reflection after current after reflection. Probe
@@ -899,6 +919,12 @@ impl InnerClass {
                 // the full successor permutation is computed only for
                 // genuine new members — about one edge in eight for E8.
                 if padded {
+                    if generator == parent_generator {
+                        // Cross action by one generator is an involution:
+                        // this edge lands back on the BFS parent, already in
+                        // the set, so the probe would be a no-op duplicate.
+                        continue;
+                    }
                     let reflection = &padded_reflections[generator];
                     let mut key = 0_u128;
                     for (shift, &position) in
@@ -910,9 +936,9 @@ impl InnerClass {
                         key |= u128::from(image) << (8 * shift);
                     }
                     // Self-loop (`r_s c r_s == c`) or an already-seen member:
-                    // both are no-op inserts, skipped without touching `seen`
-                    // in the self-loop case.
-                    if key == current_key || !seen.insert(PermutationKey::Packed(key)) {
+                    // both are no-op inserts, skipped without touching the
+                    // membership set in the self-loop case.
+                    if key == current_key || !packed_seen.insert(key) {
                         continue;
                     }
                     for slot in 0..stride {
@@ -1123,6 +1149,90 @@ pub(crate) type PermutationKeySet =
     std::collections::HashSet<PermutationKey, PermutationHasherBuilder>;
 pub(crate) type PermutationKeyMap<V> =
     std::collections::HashMap<PermutationKey, V, PermutationHasherBuilder>;
+
+/// Open-addressing membership set for packed u128 permutation keys.
+///
+/// The phase-two cross closure probes membership once per (member,
+/// generator) edge — ~1.6M probes for E8 — and even with the FxHash-style
+/// [`PermutationHasher`], hashbrown's group probing was about a quarter of
+/// the closure's sampled stacks. This table stores one 16-byte key per
+/// slot with linear probing and a multiplicative hash, and reallocates
+/// only on growth (capacity is kept across orbits; `clear` is a fill).
+///
+/// `u128::MAX` is the empty sentinel: a valid packed key can never equal
+/// it, because that would need every simple-root image byte to be 0xFF,
+/// while a permutation's images are distinct (and rank >= 2 has at least
+/// two simple roots; rank 1 keys carry zero bytes above the first).
+#[derive(Clone, Debug)]
+pub(crate) struct PackedKeySet {
+    slots: Vec<u128>,
+    len: usize,
+    /// `64 - log2(capacity)`: probe indices come from the hash's top bits.
+    shift: u32,
+}
+
+impl PackedKeySet {
+    const EMPTY: u128 = u128::MAX;
+    const SEED: u64 = 0x9E37_79B9_7F4A_7C15;
+
+    pub(crate) fn new() -> Self {
+        Self {
+            slots: vec![Self::EMPTY; 64],
+            len: 0,
+            shift: 58,
+        }
+    }
+
+    fn hash(key: u128) -> u64 {
+        let lo = key as u64;
+        let hi = (key >> 64) as u64;
+        (lo ^ hi.rotate_left(32)).wrapping_mul(Self::SEED)
+    }
+
+    pub(crate) fn clear(&mut self) {
+        self.slots.fill(Self::EMPTY);
+        self.len = 0;
+    }
+
+    /// Insert `key`; returns false when it was already present.
+    pub(crate) fn insert(&mut self, key: u128) -> bool {
+        debug_assert_ne!(key, Self::EMPTY, "sentinel collision");
+        if (self.len + 1) * 4 > self.slots.len() * 3 {
+            self.grow();
+        }
+        let mask = self.slots.len() - 1;
+        let mut slot = (Self::hash(key) >> self.shift) as usize;
+        loop {
+            let stored = self.slots[slot];
+            if stored == Self::EMPTY {
+                self.slots[slot] = key;
+                self.len += 1;
+                return true;
+            }
+            if stored == key {
+                return false;
+            }
+            slot = (slot + 1) & mask;
+        }
+    }
+
+    fn grow(&mut self) {
+        let old = std::mem::take(&mut self.slots);
+        self.slots = vec![Self::EMPTY; old.len() * 2];
+        self.shift -= 1;
+        let mask = self.slots.len() - 1;
+        for key in old {
+            if key == Self::EMPTY {
+                continue;
+            }
+            let mut slot = (Self::hash(key) >> self.shift) as usize;
+            while self.slots[slot] != Self::EMPTY {
+                slot = (slot + 1) & mask;
+            }
+            self.slots[slot] = key;
+        }
+    }
+}
 
 /// Permutation-level twisted-involution orbit machinery.
 ///
@@ -1680,6 +1790,22 @@ mod tests {
     use crate::{BasedRootDatum, LatticeInvolution, RootKind, StructureError};
 
     use super::*;
+
+    #[test]
+    fn packed_key_set_dedups_across_growth() {
+        let mut set = PackedKeySet::new();
+        // 10,000 distinct keys force several doublings from capacity 64.
+        for key in 0..10_000_u128 {
+            assert!(set.insert(key * 0x1_0001 + 7));
+        }
+        for key in 0..10_000_u128 {
+            assert!(!set.insert(key * 0x1_0001 + 7));
+        }
+        assert!(set.insert(u128::from(u64::MAX)));
+        assert!(!set.insert(u128::from(u64::MAX)));
+        set.clear();
+        assert!(set.insert(42));
+    }
 
     fn compact_a2_inner_class() -> InnerClass {
         let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
