@@ -57,14 +57,19 @@ impl InvolutionTableBudget {
 
 /// One twisted involution's record: canonical-from-theta data plus the
 /// path-transported `(1-theta)X^*` image-basis pair and dedup subspace.
+///
+/// The two lengths are stored as `u32` (Weyl length is bounded by the
+/// positive-root count, which the root-system width contract caps at
+/// 2^16) and widened to `usize` at the accessors: at ~270k records on the
+/// unipotent workload every inline byte is retained heap.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InvolutionRecord {
     element: WeylElt,
     involution: TwistedInvolution,
     mod_space: ModTwoSubspace,
     theta_plus_one_rho: Weight,
-    involution_length: usize,
-    weyl_length: usize,
+    involution_length: u32,
+    weyl_length: u32,
     projection: RealProjection,
 }
 
@@ -92,11 +97,11 @@ impl InvolutionRecord {
     }
 
     pub fn involution_length(&self) -> usize {
-        self.involution_length
+        usize::from(self.involution_length)
     }
 
     pub fn weyl_length(&self) -> usize {
-        self.weyl_length
+        usize::from(self.weyl_length)
     }
 
     pub fn theta_plus_one_rho(&self) -> &Weight {
@@ -548,8 +553,8 @@ impl InvolutionTable {
                 }
                 let neighbor_w_length = self.compact_weyl.length(&compact_neighbor);
                 let new_length = stepped_length(
-                    self.records[cursor].involution_length,
-                    self.records[cursor].weyl_length,
+                    usize::from(self.records[cursor].involution_length),
+                    usize::from(self.records[cursor].weyl_length),
                     neighbor_w_length,
                 )?;
                 // Transport theta's MATRICES across the cross edge instead
@@ -1257,8 +1262,10 @@ fn push_record(
         involution,
         mod_space,
         theta_plus_one_rho: Weight::new(coordinates),
-        involution_length,
-        weyl_length,
+        involution_length: u32::try_from(involution_length)
+            .map_err(|_| StructureError::ArithmeticOverflow)?,
+        weyl_length: u32::try_from(weyl_length)
+            .map_err(|_| StructureError::ArithmeticOverflow)?,
         projection,
     });
     Ok(id)
