@@ -286,7 +286,11 @@ pub struct InvolutionTable {
     two_rho: Weight,
     records: Vec<InvolutionRecord>,
     index: DedupIndex,
-    cross_links: Vec<Vec<InvolutionId>>,
+    /// The stored cross-action links, one record-major row of
+    /// `twist.len()` generators per record, flattened into a single
+    /// allocation: per-record `Vec` headers and per-row malloc rounding
+    /// were ~100B of retained overhead per record (E8 unipotent: ~28MB).
+    cross_links: Vec<InvolutionId>,
     orbits: Vec<(CartanId, usize, usize)>,
 }
 
@@ -405,10 +409,13 @@ impl InvolutionTable {
             .map_err(|_| StructureError::AllocationFailed {
                 requested: expected,
             })?;
+        let expected_links = expected
+            .checked_mul(self.twist.len())
+            .ok_or(StructureError::ArithmeticOverflow)?;
         self.cross_links
-            .try_reserve(expected)
+            .try_reserve(expected_links)
             .map_err(|_| StructureError::AllocationFailed {
-                requested: expected,
+                requested: expected_links,
             })?;
         self.index
             .map
@@ -595,7 +602,8 @@ impl InvolutionTable {
                 }
                 links.push(id);
             }
-            self.cross_links.push(links);
+            debug_assert_eq!(links.len(), semisimple_rank);
+            self.cross_links.extend_from_slice(&links);
             cursor = cursor
                 .checked_add(1)
                 .ok_or(StructureError::ArithmeticOverflow)?;
@@ -952,20 +960,25 @@ impl InvolutionTable {
         generator: usize,
         id: InvolutionId,
     ) -> Result<InvolutionId, StructureError> {
-        let links = self
-            .cross_links
-            .get(id.0)
-            .ok_or(StructureError::IndexOutOfRange {
+        let rank = self.twist.len();
+        let record_count = if rank == 0 {
+            0
+        } else {
+            self.cross_links.len() / rank
+        };
+        if id.0 >= record_count {
+            return Err(StructureError::IndexOutOfRange {
                 index: id.0,
-                upper_bound: self.cross_links.len(),
-            })?;
-        links
-            .get(generator)
-            .copied()
-            .ok_or(StructureError::IndexOutOfRange {
+                upper_bound: record_count,
+            });
+        }
+        if generator >= rank {
+            return Err(StructureError::IndexOutOfRange {
                 index: generator,
-                upper_bound: links.len(),
-            })
+                upper_bound: rank,
+            });
+        }
+        Ok(self.cross_links[id.0 * rank + generator])
     }
 
     /// The Cayley neighbor `s * w`, or `None` while its Cartan class has not
