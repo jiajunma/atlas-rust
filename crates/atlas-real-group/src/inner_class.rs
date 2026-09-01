@@ -590,16 +590,17 @@ impl InnerClass {
             .iter()
             .map(|id| id.0 as u8)
             .collect();
-        let packed = simple_positions.len() <= 16;
-        // Streamed assembly: each member is indexed as the orbit closure
-        // discovers it, so no per-class flat permutation buffer is retained
-        // (the E8 transient was ~48MB of buffers plus Vec-doubling
-        // overshoot). Packed ranks collect (key, owner) pairs and sort once
-        // at the end, so the retained index is a flat sorted key vector —
-        // 20 bytes per member instead of ~69 bytes of hash-table entry
-        // overhead.
+        // Rank <= 12: the simple-root-image key needs at most 96 bits, so the
+        // owning class index packs into the low 32 bits of the same u128 and
+        // the membership index is a single flat sorted vector — 16 bytes per
+        // member (E8: 199,952 members per side) instead of ~69 bytes of
+        // hash-table entry overhead. Streamed assembly: each member is
+        // indexed as the orbit closure discovers it, so no per-class flat
+        // permutation buffer is retained (the E8 transient was ~48MB of
+        // buffers plus Vec-doubling overshoot).
+        let packed = simple_positions.len() <= 12;
         let mut classes = Vec::new();
-        let mut pending: Vec<(u128, u32)> = Vec::new();
+        let mut entries: Vec<u128> = Vec::new();
         let mut fallback = PermutationKeyMap::default();
         {
             let mut emit = |class_index: usize,
@@ -608,10 +609,11 @@ impl InnerClass {
                 if packed {
                     let owner = u32::try_from(class_index)
                         .map_err(|_| StructureError::ArithmeticOverflow)?;
-                    pending
+                    entries
                         .try_reserve(1)
                         .map_err(|_| StructureError::AllocationFailed { requested: 1 })?;
-                    pending.push((pack_simple_images(permutation, &simple_positions), owner));
+                    let key = pack_simple_images(permutation, &simple_positions);
+                    entries.push((key << 32) | u128::from(owner));
                 } else {
                     fallback.insert(
                         PermutationKey::pack(permutation, &simple_positions),
@@ -631,14 +633,10 @@ impl InnerClass {
             self.involution_orbits(weyl_budget, &mut emit, &mut consume)?;
         }
         let membership = if packed {
-            pending.sort_unstable_by_key(|&(key, _)| key);
-            let mut keys = try_capacity(pending.len())?;
-            let mut owners = try_capacity(pending.len())?;
-            for (key, owner) in pending {
-                keys.push(key);
-                owners.push(owner);
-            }
-            ClassMembership::Packed { keys, owners }
+            // Keys are unique (the packing is injective), so ordering by the
+            // composite entry orders by key alone.
+            entries.sort_unstable();
+            ClassMembership::Packed { entries }
         } else {
             ClassMembership::Full(fallback)
         };
