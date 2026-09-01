@@ -879,12 +879,24 @@ impl InnerClass {
         }
         emit(orbit_index, &representative_permutation)?;
         let mut padded_reflections: Vec<[u8; 256]> = Vec::new();
+        // `inner_images[g][p] = r_g(alpha_p)`: the inner gather of the probe
+        // key hoisted out of the edge loop, so probing one edge costs two
+        // gathers per simple position instead of three.
+        let mut inner_images: Vec<[u8; 16]> = Vec::new();
         if padded {
             padded_reflections = try_capacity(rank)?;
             for reflection in &orbit_machine.simple_reflections {
                 let mut table = [0_u8; 256];
                 table[..reflection.len()].copy_from_slice(reflection);
                 padded_reflections.push(table);
+            }
+            inner_images = try_capacity(rank)?;
+            for reflection in &padded_reflections {
+                let mut inner = [0_u8; 16];
+                for (slot, &position) in orbit_machine.simple_positions.iter().enumerate() {
+                    inner[slot] = reflection[usize::from(position)];
+                }
+                inner_images.push(inner);
             }
         }
         let mut current_buf = [0_u8; 256];
@@ -926,13 +938,15 @@ impl InnerClass {
                         continue;
                     }
                     let reflection = &padded_reflections[generator];
+                    let inner = &inner_images[generator];
                     let mut key = 0_u128;
-                    for (shift, &position) in
-                        orbit_machine.simple_positions.iter().enumerate()
+                    for (shift, &first) in inner
+                        [..orbit_machine.simple_positions.len()]
+                        .iter()
+                        .enumerate()
                     {
-                        let image = reflection[usize::from(
-                            current_buf[usize::from(reflection[usize::from(position)])],
-                        )];
+                        let image =
+                            reflection[usize::from(current_buf[usize::from(first)])];
                         key |= u128::from(image) << (8 * shift);
                     }
                     // Self-loop (`r_s c r_s == c`) or an already-seen member:
@@ -1272,29 +1286,24 @@ impl<'a> PermutationOrbits<'a> {
             .iter()
             .map(|id| id.0 as u8)
             .collect();
-        let mut minus = try_capacity(count)?;
-        for (_, root, _) in roots.entries() {
-            let mut negated = try_capacity(root.as_slice().len())?;
-            for &coordinate in root.as_slice() {
-                negated.push(
-                    coordinate
-                        .checked_neg()
-                        .ok_or(StructureError::ArithmeticOverflow)?,
-                );
-            }
-            minus.push(
-                roots
-                    .id_of(&Weight::new(negated))
-                    .ok_or(StructureError::InvalidRootAutomorphism)?
-                    .0 as u8,
-            );
-        }
+        // The root system already caches the negation table and the simple
+        // reflection permutations at construction; reuse them instead of
+        // rebuilding through WeylAction matrices (an action_permutation is
+        // one big-int matrix apply per root).
+        let minus = roots
+            .negatives()
+            .iter()
+            .map(|id| id.0 as u8)
+            .collect();
         let mut simple_reflections = try_capacity(datum.semisimple_rank())?;
         for generator in 0..datum.semisimple_rank() {
-            let action = WeylAction::simple_reflection(datum, generator)?;
-            let permutation = roots.action_permutation(&action)?;
-            simple_reflections
-                .push(permutation.into_iter().map(|id| id.0 as u8).collect());
+            let permutation = roots.simple_reflection_permutation(generator).ok_or(
+                StructureError::IndexOutOfRange {
+                    index: generator,
+                    upper_bound: datum.semisimple_rank(),
+                },
+            )?;
+            simple_reflections.push(permutation.iter().map(|id| id.0 as u8).collect());
         }
         let mut reflection_cache = try_capacity(count)?;
         reflection_cache.resize_with(count, || None);
@@ -1315,22 +1324,97 @@ impl<'a> PermutationOrbits<'a> {
 
     /// The root permutation of the reflection in `root`, cached per root.
     fn reflection_permutation(&mut self, root: RootId) -> Result<&[u8], StructureError> {
-        if self.reflection_cache[root.0].is_none() {
-            let roots = self.inner_class.root_system();
-            let action = WeylAction::root_reflection(self.inner_class.datum(), roots, root)?;
-            let permutation: Vec<u8> = roots
-                .action_permutation(&action)?
-                .into_iter()
-                .map(|id| id.0 as u8)
-                .collect();
-            self.reflection_cache[root.0] = Some(Rc::from(permutation.into_boxed_slice()));
-        }
+        self.reflection_rc(root)?;
         match &self.reflection_cache[root.0] {
             Some(permutation) => Ok(permutation),
             None => Err(StructureError::CartanClassificationInvariantViolation {
                 invariant: "reflection permutation cache",
             }),
         }
+    }
+
+    /// [`Self::reflection_permutation`]'s worker, returning a shared handle
+    /// so the recursion does not fight the cache borrow.
+    ///
+    /// The permutation is built COMBINATORIALLY, never through the
+    /// reflection's lattice matrix (an `action_permutation` is one big-int
+    /// matrix apply per root, and the Cayley-link loops reflect hundreds of
+    /// distinct roots per inner class): reflections in a root and its
+    /// negative coincide, simple roots reuse the cached simple-reflection
+    /// table, and any other positive root has a simple descent — a
+    /// generator with `s(alpha)` of lower height — giving
+    /// `r_{s(gamma)} = s r_gamma s` as a permutation conjugation. The map
+    /// on roots is exactly the matrix reflection's, so cached values are
+    /// unchanged.
+    fn reflection_rc(&mut self, root: RootId) -> Result<Rc<[u8]>, StructureError> {
+        if let Some(cached) = &self.reflection_cache[root.0] {
+            return Ok(Rc::clone(cached));
+        }
+        let roots = self.inner_class.root_system();
+        let stride = roots.roots().len();
+        let positive = match roots.is_positive(root) {
+            Some(true) => root,
+            Some(false) => RootId(usize::from(self.minus[root.0])),
+            None => {
+                return Err(StructureError::IndexOutOfRange {
+                    index: root.0,
+                    upper_bound: stride,
+                })
+            }
+        };
+        if positive != root {
+            let permutation = self.reflection_rc(positive)?;
+            self.reflection_cache[root.0] = Some(Rc::clone(&permutation));
+            return Ok(permutation);
+        }
+        if let Some(generator) = self
+            .simple_positions
+            .iter()
+            .position(|&id| usize::from(id) == positive.0)
+        {
+            let permutation: Rc<[u8]> =
+                Rc::from(self.simple_reflections[generator].clone().into_boxed_slice());
+            self.reflection_cache[root.0] = Some(Rc::clone(&permutation));
+            return Ok(permutation);
+        }
+        let height: i32 = roots
+            .simple_coordinates(positive)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: positive.0,
+                upper_bound: stride,
+            })?
+            .iter()
+            .sum();
+        let mut descent = None;
+        for (generator, simple) in self.simple_reflections.iter().enumerate() {
+            let image = RootId(usize::from(simple[positive.0]));
+            let image_height: i32 = roots
+                .simple_coordinates(image)
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: image.0,
+                    upper_bound: stride,
+                })?
+                .iter()
+                .sum();
+            if image_height < height {
+                descent = Some((generator, image));
+                break;
+            }
+        }
+        let (generator, lower) = descent.ok_or(
+            StructureError::CartanClassificationInvariantViolation {
+                invariant: "reflection descent",
+            },
+        )?;
+        let inner = self.reflection_rc(lower)?;
+        let simple = &self.simple_reflections[generator];
+        // r_{s(gamma)} = s r_gamma s, as permutation arrays.
+        let permutation: Vec<u8> = (0..stride)
+            .map(|index| simple[usize::from(inner[usize::from(simple[index])])])
+            .collect();
+        let permutation: Rc<[u8]> = Rc::from(permutation.into_boxed_slice());
+        self.reflection_cache[root.0] = Some(Rc::clone(&permutation));
+        Ok(permutation)
     }
 
     /// The Cayley successor `r_root after theta` at the permutation level.
