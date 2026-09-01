@@ -6669,3 +6669,22 @@ the 3662095 unipotent profile).
 Gotcha for future agents: `results/<sha>/<jobid>/` is created under the
 sbatch SUBMIT directory's worktree, not the main checkout — read report
 JSONs from the submitting worktree.
+
+## Decision 2026-09-01d: agent-cow-eval merged WITHOUT mimalloc
+
+Merged `aa2d137` (SharedValue COW evaluator: Rc<Value> end-to-end, O(1)
+ident reads/assignments, `mutate_aggregate` in-place component writes —
+matrix-write probe n=1000 diagonal 0.42s -> 0.01s, ~40x, oracle scale),
+`3efc91e` (COW aliasing contract tests), `12854f0` (defer global cell borrow
+until mutation checks pass — fixes a RefCell-panic-on-error-path regression).
+
+**Dropped** `cbfe2a5`+`131ff2c` (mimalloc global allocator): it bought
+~15-25% wall on mid scripts (GKfast 0.63->0.512s, example 1.11->0.826s) but
+cost 2-2.7x peak RSS on short runs (groups.at 36->93MB), which undoes the
+agent-122 fixed-baseline kill (median corpus rss ratio 12.2x -> 4.17x).
+`MIMALLOC_PURGE_DELAY=0` recovers only a third (groups 95->59MB). The
+project ledger weights the rss ratio heavily; wall gains were modest.
+SharedValue alone is RSS-neutral (isolation job 3662380). If wall time
+becomes the priority metric later, revisiting mimalloc-with-purge-tuning is
+a one-commit revert of this decision. Branch `agent-cow-eval` keeps the
+mimalloc commits on origin for reference.
