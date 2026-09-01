@@ -14493,6 +14493,60 @@ mod tests {
     }
 
     #[test]
+    fn component_assignment_copies_on_write_through_aliases() {
+        // Two names bound to one aggregate: mutating through one must not
+        // disturb the other (Atlas copy-on-assignment), even though the
+        // evaluator now writes uniquely held aggregates in place.
+        let (_, value) = convert_and_run(
+            "let x = [1,2,3] in let y = x in begin x[0] := 9; (x, y) end",
+        )
+        .expect("aliased row component write");
+        assert_eq!(value.to_string(), "([9,2,3],[1,2,3])");
+
+        let (_, value) = convert_and_run(
+            "let v = vec: [1,2,3] in let w = v in begin v[1] := 7; (v, w) end",
+        )
+        .expect("aliased vec component write");
+        assert_eq!(
+            value,
+            Value::Tuple(vec![
+                Value::Vector(Vec32(vec![1, 7, 3])),
+                Value::Vector(Vec32(vec![1, 2, 3])),
+            ])
+        );
+
+        let (_, value) = convert_and_run(
+            "let M = null(2,2) in let N = M in begin M[1,1] := 2; (M[1,1], N[1,1]) end",
+        )
+        .expect("aliased matrix entry write");
+        assert_eq!(
+            value,
+            Value::Tuple(vec![Value::Integer(2.into()), Value::Integer(0.into())])
+        );
+
+        // A transform on an aliased aggregate also copies on write.
+        let (_, value) = convert_and_run(
+            "let x = [1,2,3] in let y = x in begin x[1] +:= 10; (x, y) end",
+        )
+        .expect("aliased transform");
+        assert_eq!(value.to_string(), "([1,12,3],[1,2,3])");
+
+        // The index expression may read the very aggregate being assigned:
+        // the slot stays populated until the write phase.
+        let (_, value) = convert_and_run("let x = [1,2,3] in begin x[x[0]] := 9; x end")
+            .expect("self-reading index");
+        assert_eq!(value.to_string(), "[1,9,3]");
+
+        // An RHS that reassigns the target gets clobbered by the modified
+        // read value — the legacy copy-read/write-back behavior, kept
+        // verbatim by mutate_aggregate's replace branch.
+        let (_, value) =
+            convert_and_run("let x = [1,2,3] in begin x[0] := (x := [7,8]; 1); x end")
+                .expect("reassigning rhs");
+        assert_eq!(value.to_string(), "[1,2,3]");
+    }
+
+    #[test]
     fn vector_and_matrix_subscriptions_read_and_write_components() {
         let vector_cell = crate::frames::global_with(Rc::new(Value::Vector(Vec32(vec![1, 2, 3]))));
         let ratvec_cell = crate::frames::global_with(Rc::new(Value::RatVector(
