@@ -1375,7 +1375,7 @@ pub(crate) type PermutationKeyMap<V> =
 /// can never equal it, because that would need every simple-root image byte
 /// to be 0xFF, while a permutation's images are distinct (and rank >= 2 has
 /// at least two simple roots; rank 1 keys carry zero bytes above the first).
-pub(crate) trait PackedSlot: Copy + Eq {
+pub(crate) trait PackedSlot: Copy + Eq + std::fmt::Debug {
     const EMPTY: Self;
     const ZERO: Self;
     /// `self | (image << 8*shift)` — one packed simple-root image byte.
