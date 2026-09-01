@@ -19,6 +19,15 @@ either landed in the migration or was archived; see
   via `groups.at`); `unipotent` 10.36s / 1.62x / maxrss 2.94GB vs cpp 881MB
   (cpu node; oracle same node 6.41s). Median maxrss ratio 12.2x, fixed
   baseline ~133-145MB vs cpp 6-12MB.
+- Corpus gap structure (3661865 analysis): nearly every mid script shows the
+  SAME ~0.4s / ~140MB absolute gap (ratio 3.2-4.4x) — i.e. per-process fixed
+  cost (interpreter init + `groups.at` closure incl. `CartanClassification::
+  build`) dominates corpus-wide wall/RSS, not per-script compute. Real
+  workload gaps: only `unipotent` (3.95s, 2.9GB) and the two E8 cell scripts
+  (`cells.E8.repsonly` / `E8_big_block_cell_parameter_numbers`: ~490MB vs cpp
+  113MB at sub-second runtime — a mid-scale allocation target after 124
+  lands). Conclusion: agent-122's fixed-cost lever is the #1 global win;
+  re-measure the E8 cell scripts after agent-124.
 - Massif **3661887** @ `adb4051` peak decomposition (unipotent, 2.93GB):
   34.5% (1.01GB) = `WeylElement::from_twisted_composition` legacy per-record
   storage; 17.3% (506MB) = `push_record` payload; 8.4% `zero_matrix` x2 +
