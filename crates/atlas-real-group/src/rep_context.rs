@@ -1019,7 +1019,7 @@ impl<'a> RepContext<'a> {
             for (column, &entry) in row.iter().enumerate() {
                 total = total
                     .checked_add(
-                        entry
+                        i64::from(entry)
                             .checked_mul(y.numerator().get(column).copied().unwrap_or(0))
                             .ok_or(StructureError::ArithmeticOverflow)?,
                     )

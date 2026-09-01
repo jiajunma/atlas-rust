@@ -229,9 +229,21 @@ impl TitsCoset {
                 .ok_or(StructureError::ArithmeticOverflow)?
         };
         if target.weyl_length() > s_w_length {
-            let pulled = apply_matrix_mod_two(
-                target.twisted_involution().weyl_action().coweight_matrix(),
+            // Table records drop the Weyl factor's matrices; recover the
+            // pull from `theta = w after delta`, i.e. `w(v) =
+            // theta(delta(v))` on the coweight lattice (mod 2).
+            let distinguished = table.inner_class().distinguished_involution().involution();
+            let staged = apply_matrix_mod_two(
+                distinguished.coweight_matrix(),
                 &self.m_alpha[self.twist[generator]],
+            )?;
+            let pulled = apply_matrix_mod_two(
+                target
+                    .twisted_involution()
+                    .root_involution()
+                    .involution()
+                    .coweight_matrix(),
+                &staged,
             )?;
             bits.xor_assign(&pulled)?;
         }
@@ -944,12 +956,21 @@ mod tests {
                     };
                     let target_record = table.record(target_id).unwrap();
                     if target_record.weyl_length() > s_w_length {
+                        // Mirror of cross_pregated: records drop the Weyl
+                        // factor; `w(v) = theta(delta(v))` mod 2.
+                        let distinguished = inner_class.distinguished_involution().involution();
+                        let staged = apply_matrix_mod_two(
+                            distinguished.coweight_matrix(),
+                            &coset.m_alpha[coset.twist[generator]],
+                        )
+                        .unwrap();
                         let pulled = apply_matrix_mod_two(
                             target_record
                                 .twisted_involution()
-                                .weyl_action()
+                                .root_involution()
+                                .involution()
                                 .coweight_matrix(),
-                            &coset.m_alpha[coset.twist[generator]],
+                            &staged,
                         )
                         .unwrap();
                         closed.xor_assign(&pulled).unwrap();

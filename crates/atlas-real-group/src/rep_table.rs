@@ -1710,10 +1710,10 @@ mod tests {
 
     fn projection(lift_entries: &[i64]) -> RealProjection {
         let rank = lift_entries.len();
-        let mut lift_mat = vec![vec![0_i64; rank]; rank];
-        let mut m_real = vec![vec![0_i64; rank]; rank];
+        let mut lift_mat = vec![vec![0_i32; rank]; rank];
+        let mut m_real = vec![vec![0_i32; rank]; rank];
         for (index, &entry) in lift_entries.iter().enumerate() {
-            lift_mat[index][index] = entry;
+            lift_mat[index][index] = i32::try_from(entry).unwrap();
             m_real[index][index] = 1;
         }
         RealProjection { lift_mat, m_real }

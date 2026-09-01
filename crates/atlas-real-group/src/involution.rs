@@ -51,51 +51,47 @@ impl LatticeInvolution {
         })
     }
 
-    /// Assemble from matrices whose involution/pairing invariants the caller
-    /// has ALREADY established through an independent channel. The
-    /// involution-table BFS composes `w after delta` from validated Weyl and
-    /// distinguished factors, so re-running the full O(rank^3) squared-equals
-    /// and pairing checks on every one of the ~1e5 pushed records is pure
-    /// defensive overhead (upstream `add_cross` never re-validates either).
-    /// Shape checks remain: a mismatch here is a genuine bug and still fails
-    /// fast, exactly as `RootInvolutionData::from_images` already does for the
-    /// per-root classification half of the same construction.
-    pub(crate) fn new_trusted(
-        datum: &BasedRootDatum,
-        weight_action: Vec<Vec<i32>>,
-        coweight_action: Vec<Vec<i32>>,
-    ) -> Result<Self, StructureError> {
-        let rank = datum.lattice_rank();
-        if !is_square_of_rank(&weight_action, rank) || !is_square_of_rank(&coweight_action, rank) {
-            return Err(StructureError::InvalidInvolution);
-        }
-        Ok(Self {
-            datum: Arc::new(datum.clone()),
-            weight_action,
-            coweight_action,
-        })
-    }
-
-    /// Assemble from matrices whose invariants have already been established,
-    /// retaining a caller-owned datum allocation for bulk table construction.
-    pub(crate) fn new_trusted_with_datum_arc(
-        datum: Arc<BasedRootDatum>,
-        weight_action: Vec<Vec<i32>>,
-        coweight_action: Vec<Vec<i32>>,
-    ) -> Result<Self, StructureError> {
-        let rank = datum.lattice_rank();
-        if !is_square_of_rank(&weight_action, rank) || !is_square_of_rank(&coweight_action, rank) {
-            return Err(StructureError::InvalidInvolution);
-        }
-        Ok(Self {
-            datum,
-            weight_action,
-            coweight_action,
-        })
-    }
-
     pub fn lattice_rank(&self) -> usize {
         self.weight_action.len()
+    }
+
+    /// `s_generator * theta * s_generator` on both lattices, by reflection
+    /// sparsity (rank^2 per side per lattice, the [`crate::WeylAction`]
+    /// simple-compose discipline).
+    ///
+    /// The involution table's cross edge `w |-> s w twist(s)` induces
+    /// `theta |-> s theta s` — a PLAIN conjugation by the same generator,
+    /// because `s_twist(s) * delta == delta * s` (the distinguished
+    /// involution's simple-root permutation is itself an involution; see
+    /// the phase-two comment in `InnerClass::involution_orbits`). Table
+    /// records therefore transport theta across cross edges without
+    /// materializing the Weyl factor's matrices at all.
+    pub(crate) fn conjugate_simple(&self, generator: usize) -> Result<Self, StructureError> {
+        let datum = &*self.datum;
+        let rank = self.lattice_rank();
+        if generator >= datum.semisimple_rank() {
+            return Err(StructureError::IndexOutOfRange {
+                index: generator,
+                upper_bound: datum.semisimple_rank(),
+            });
+        }
+        let root = datum.simple_roots()[generator].as_slice();
+        let coroot = datum.simple_coroots()[generator].as_slice();
+        Ok(Self {
+            datum: Arc::clone(&self.datum),
+            weight_action: crate::weyl::reflection_right(
+                root,
+                coroot,
+                &crate::weyl::reflection_left(root, coroot, &self.weight_action, rank)?,
+                rank,
+            )?,
+            coweight_action: crate::weyl::reflection_right(
+                coroot,
+                root,
+                &crate::weyl::reflection_left(coroot, root, &self.coweight_action, rank)?,
+                rank,
+            )?,
+        })
     }
 
     pub fn datum(&self) -> &BasedRootDatum {
@@ -269,6 +265,59 @@ mod tests {
 
     use super::*;
     use crate::pair;
+
+    #[test]
+    fn conjugate_simple_equals_full_reflection_compose() {
+        // B2 theta with a nontrivial Weyl factor: theta = s0*s1*s0 after -1
+        // (the split distinguished involution), conjugated by each simple
+        // reflection — the involution table's cross-edge transport — must
+        // equal the dense compose s * theta * s on both lattices.
+        let datum = BasedRootDatum::standard(vec![vec![2, -2], vec![-1, 2]]).unwrap();
+        let group = crate::WeylGroup::new(datum.clone());
+        let w = group
+            .simple_reflection(0)
+            .unwrap()
+            .compose(&group.simple_reflection(1).unwrap())
+            .unwrap()
+            .compose(&group.simple_reflection(0).unwrap())
+            .unwrap();
+        let minus_one = vec![vec![-1, 0], vec![0, -1]];
+        let delta = LatticeInvolution::new(&datum, minus_one.clone(), minus_one).unwrap();
+        let theta = LatticeInvolution::new(
+            &datum,
+            crate::twisted_involution::compose_matrices(w.matrix(), delta.weight_matrix()).unwrap(),
+            crate::twisted_involution::compose_matrices(
+                w.coweight_matrix(),
+                delta.coweight_matrix(),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        for generator in 0..2 {
+            let reflection = group.simple_reflection(generator).unwrap();
+            let expected_weight = crate::twisted_involution::compose_matrices(
+                &crate::twisted_involution::compose_matrices(
+                    reflection.matrix(),
+                    theta.weight_matrix(),
+                )
+                .unwrap(),
+                reflection.matrix(),
+            )
+            .unwrap();
+            let expected_coweight = crate::twisted_involution::compose_matrices(
+                &crate::twisted_involution::compose_matrices(
+                    reflection.coweight_matrix(),
+                    theta.coweight_matrix(),
+                )
+                .unwrap(),
+                reflection.coweight_matrix(),
+            )
+            .unwrap();
+            let transported = theta.conjugate_simple(generator).unwrap();
+            assert_eq!(transported.weight_matrix(), &expected_weight);
+            assert_eq!(transported.coweight_matrix(), &expected_coweight);
+        }
+    }
 
     #[test]
     fn dual_actions_preserve_pairing() {

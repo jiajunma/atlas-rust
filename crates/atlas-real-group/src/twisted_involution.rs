@@ -12,11 +12,30 @@ use crate::{
 /// [`crate::CayleyCrossDecomposition`], and Atlas canonicalization lives in
 /// [`crate::InnerClass::canonicalize`], which [`crate::CartanClassification`]
 /// applies when numbering Cartan classes.
-#[derive(Clone, Debug, Eq, PartialEq)]
+///
+/// The Weyl factor's matrices are provenance, not value: `theta = w after
+/// delta` determines `w` (delta is a fixed invertible automorphism of the
+/// inner class), so involution-TABLE records drop them
+/// ([`Self::record_from_theta`]) and rehydrate on demand
+/// ([`crate::WeylAction::from_theta_factor`]) — massif attributes ~246MB of
+/// the unipotent heap peak to the retained per-record pair. Value equality
+/// is therefore the composed root involution alone.
+#[derive(Clone, Debug)]
 pub struct TwistedInvolution {
-    weyl_action: WeylAction,
+    weyl_action: Option<WeylAction>,
     root_involution: RootInvolutionData,
 }
+
+impl PartialEq for TwistedInvolution {
+    /// The composed involution is the value: two twisted involutions of one
+    /// inner class with equal `root_involution` have the same Weyl factor
+    /// (`w = theta after delta`), whether or not its matrices are retained.
+    fn eq(&self, other: &Self) -> bool {
+        self.root_involution == other.root_involution
+    }
+}
+
+impl Eq for TwistedInvolution {}
 
 impl TwistedInvolution {
     /// Construct `w after theta` and verify that it is a root involution.
@@ -61,68 +80,56 @@ impl TwistedInvolution {
         )?;
         let root_involution = RootInvolutionData::new(root_system, involution)?;
         Ok(Self {
-            weyl_action,
+            weyl_action: Some(weyl_action),
             root_involution,
         })
     }
 
-    /// [`Self::new`] with the root action supplied as a permutation: the
-    /// involution table's records compose `w after delta` at the
-    /// permutation level (`w_perm[delta_perm[r]]`, equal to the composed
-    /// matrix action), so the per-root matrix classification of
-    /// [`RootInvolutionData::new`] collapses to array reads. Same datum and
-    /// shape gates, same matrix-level validation of the composed
-    /// involution; `root_images` must be that matrix action on this system.
-    pub(crate) fn new_from_root_images(
-        datum: &BasedRootDatum,
+    /// The involution-table record constructor: the composed involution and
+    /// its root action arrive already transported across the cross edge
+    /// ([`LatticeInvolution::conjugate_simple`] and the permutation-level
+    /// transport in `InvolutionTable::add_cartan`), and the Weyl factor's
+    /// matrices are NOT retained — the compact Weyl element on the record
+    /// plus `theta` determine them
+    /// ([`crate::WeylAction::from_theta_factor`]). The per-root matrix
+    /// classification of [`RootInvolutionData::new`] collapses to the
+    /// supplied `root_images`, which must be `theta`'s root action on this
+    /// system.
+    pub(crate) fn record_from_theta(
         root_system: &RootSystem,
-        distinguished: &LatticeInvolution,
-        weyl_action: WeylAction,
+        theta: LatticeInvolution,
         root_images: Vec<crate::RootId>,
     ) -> Result<Self, StructureError> {
-        if root_system.datum() != datum
-            || distinguished.datum() != datum
-            || weyl_action.datum() != datum
-        {
+        if theta.datum() != root_system.datum() {
             return Err(StructureError::DatumMismatch);
         }
-        let rank = datum.lattice_rank();
-        if root_system.lattice_rank() != rank {
+        if theta.lattice_rank() != root_system.lattice_rank() {
             return Err(StructureError::RankMismatch {
-                expected: rank,
-                actual: root_system.lattice_rank(),
+                expected: root_system.lattice_rank(),
+                actual: theta.lattice_rank(),
             });
         }
-        if distinguished.lattice_rank() != rank {
-            return Err(StructureError::RankMismatch {
-                expected: rank,
-                actual: distinguished.lattice_rank(),
-            });
-        }
-        if weyl_action.rank() != rank {
-            return Err(StructureError::RankMismatch {
-                expected: rank,
-                actual: weyl_action.rank(),
-            });
-        }
-        let involution = LatticeInvolution::new_trusted_with_datum_arc(
-            weyl_action.datum_arc().clone(),
-            compose_matrices(weyl_action.matrix(), distinguished.weight_matrix())?,
-            compose_matrices(
-                weyl_action.coweight_matrix(),
-                distinguished.coweight_matrix(),
-            )?,
-        )?;
-        let root_involution =
-            RootInvolutionData::from_images(root_system, involution, root_images)?;
+        let root_involution = RootInvolutionData::from_images(root_system, theta, root_images)?;
         Ok(Self {
-            weyl_action,
+            weyl_action: None,
             root_involution,
         })
     }
 
+    /// The Weyl factor's lattice action. Panics if this value is an
+    /// involution-table record, which drops the matrices — rehydrate through
+    /// [`crate::WeylAction::from_theta_factor`] instead. Every non-record
+    /// construction (class representatives, synthetic inputs, canonicalized
+    /// results) retains the action.
     pub fn weyl_action(&self) -> &WeylAction {
-        &self.weyl_action
+        self.weyl_action
+            .as_ref()
+            .expect("involution-table records drop the Weyl action matrices")
+    }
+
+    /// The retained Weyl-factor action, when this value carries one.
+    pub(crate) fn retained_weyl_action(&self) -> Option<&WeylAction> {
+        self.weyl_action.as_ref()
     }
 
     pub fn root_involution(&self) -> &RootInvolutionData {

@@ -6875,3 +6875,73 @@ untracked). The sbatch differs from agent-129's: it cd's into
 atlas-scripts so `<basic.at` includes resolve (a bare script name run
 from the worktree fails with input-file errors), tolerates a nonzero CLI
 exit, and exits 0 (no SIGPIPE FAILED state).
+## 2026-09-01b — involution-table record slimming (agent-131, agent-unip-rss)
+
+Lane: real-group memory. Base 900f295 (agent-128 merge). Tip 7f80eff:
+three perf commits + three gate-driven fixes, all confined to
+crates/atlas-real-group (atlas-core's pub signatures — image_permutation,
+weyl_action, root_involution — are frozen by agent-130 call sites).
+
+- 6d83527 RealProjection lift_mat/m_real i64 -> i32 (oracle int_Matrix
+  width; echelon internals stay i64, checked narrowing at the boundary).
+- 8c65fed PackedKeySet generic over a new PackedSlot trait: u64 slots for
+  semisimple rank <= 8 (E7/E8 included), u128 above; the orbit drivers
+  dispatch on rank. Halves the per-worker E8 membership table.
+- 8183b72 theta transport across the involution-table BFS: records carry
+  only theta (LatticeInvolution); the cross edge w -> s_g w s_twist(g)
+  induces theta -> s_g theta s_g (plain conjugation, since
+  delta*s_twist(g)*delta = s_g), applied by the new rank^2
+  LatticeInvolution::conjugate_simple instead of rank^3 compose_matrices.
+  TwistedInvolution.weyl_action became Option (None on records);
+  canonicalize_with_generators rehydrates via WeylAction::from_theta_factor
+  (w = theta*delta per lattice) only when the word threading needs it.
+- Gate-driven fixes (each found by an HPC run, not by audit):
+  e440dca PackedSlot needs Debug (debug_assert_ne on the EMPTY sentinel);
+  a4cf71c TitsCoset::cross_pregated read weyl_action().coweight_matrix()
+  on the TARGET record (the KGB cross hot path) — recovered in two mod-2
+  stages w(v) = theta(delta(v)); 7f80eff CayleyCrossDecomposition::build
+  gate now accepts records (its peeling body is permutation-level anyway;
+  recomposition check kept for action-carrying values).
+
+Numbers (same-node pairs):
+- unipotent_representations_exceptional.at, fat001: 3662671 @900f295
+  7.098s / 1,911,544KB -> 3663665 @a4cf71c 6.125s / 1,536,096KB
+  (wall -14%, RSS -375MB/-19.7%; oracle 4.757s / 881,080KB => wall 1.29x
+  was 1.48x, RSS 1.74x was 2.17x). MATCH.
+- groups.at, cu052: 3662672 @900f295 0.191s / 45,228KB -> 3663703 @tip
+  0.184s / 39,192KB (wall flat, RSS -6.0MB — most of agent-128's
+  two-thread +9..11MB recovered). test.at 0.192/47,772 ->
+  0.185/41,768KB. example.at 0.872/86,428 -> 0.894/89,912KB (within
+  node noise; cu023 measured 84,884KB).
+- quick_check: 3663680 @7f80eff TEST_DONE status=0 (546 real-group +
+  368 core). Full corpus 3663702 @tip: 240/240 MATCH, median wall 2.44x
+  (was 2.58x @aab1d98), over_5x = 0, worst 3.24x, median maxrss 4.78x
+  (was 5.19x).
+
+Massif peak-snapshot attribution (unipotent; 3662670 snap 130 ->
+3663666 snap 115; retained per-record blocks under build_kgb/add_cartan):
+- per-record WeylAction w-matrices (right_compose_simple): 246MB -> 0.
+- theta via push_record compose_matrices: 232MB -> 0; theta is now built
+  by conjugate_simple/reflection_right (246MB retained — the theta
+  matrices themselves still exist, two rank x rank i32 per record).
+- RealProjection::transported: 211MB -> 142MB (i32 lift_mat/m_real).
+- unchanged: image_by_root root-image permutations 516MB (frozen
+  pub API), misc finish_grow<-add_cartan 155MB, transport_mod_space
+  88.7MB, hashbrown dedup ~104MB.
+- peak heap 1,879.0MB -> 1,524.3MB (-18.9%); no-valgrind maxrss
+  1,528,112KB matches the corpus number.
+
+Remaining RSS gap (1.74x vs oracle) decomposition, biggest first:
+image_by_root 516MB (needs the frozen image_permutation() API widened —
+coordinate with agent-130), theta matrices 246MB (upstream keeps only ONE
+matrix per record plus i32 M_real/lift_mat), misc add_cartan 155MB
+(cross_links Vec<Vec> flattening candidate), RealProjection 142MB,
+transport_mod_space 89MB, hashbrown 104MB.
+
+Harness traps hit: script_corpus.sbatch subset args must be ABSOLUTE
+paths (python glob from the submit dir; bare names match nothing and
+report "corpus: 0 scripts" with a green-looking header); srun's `env`
+resolves to a non-executable ~/.local/bin/env on compute nodes — use
+srun --export=ALL,VAR=val instead; massif_profile.sbatch and
+script_corpus.sbatch reuse the worktree's target dir, so same-binary
+reruns skip the 2m12s build.

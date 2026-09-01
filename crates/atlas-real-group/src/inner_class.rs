@@ -254,7 +254,15 @@ impl InnerClass {
             involution.root_involution(),
             RootKind::Imaginary,
         )?;
-        let mut action = involution.weyl_action().clone();
+        let mut action = match involution.retained_weyl_action() {
+            Some(action) => action.clone(),
+            // A table record's dropped Weyl factor: w = theta after delta
+            // (delta is an involution), recovered exactly on both lattices.
+            None => WeylAction::from_theta_factor(
+                involution.root_involution().involution(),
+                self.distinguished_involution.involution(),
+            )?,
+        };
         let positive_root_count = self.roots.roots().len() / 2;
         // Phase one decreases a lexicographic pair whose coordinates each
         // lie in 0..=positive_root_count. Phase three decreases involution
@@ -453,21 +461,25 @@ impl InnerClass {
         &self,
         involution: &TwistedInvolution,
     ) -> Result<(), StructureError> {
-        if involution.weyl_action().datum() != &self.datum
-            || involution.root_involution().involution().datum() != &self.datum
-        {
+        if involution.root_involution().involution().datum() != &self.datum {
+            return Err(StructureError::DatumMismatch);
+        }
+        // Table records drop the Weyl factor's matrices; their construction
+        // gate is push_record's compact-element/theta consistency check.
+        // Everything else still carries the action and gets the full
+        // recomposition check.
+        let Some(action) = involution.retained_weyl_action() else {
+            return Ok(());
+        };
+        if action.datum() != &self.datum {
             return Err(StructureError::DatumMismatch);
         }
         let distinguished = self.distinguished_involution.involution();
         let stored = involution.root_involution().involution();
-        if compose_matrices(
-            involution.weyl_action().matrix(),
-            distinguished.weight_matrix(),
-        )? != stored.weight_matrix()
-            || compose_matrices(
-                involution.weyl_action().coweight_matrix(),
-                distinguished.coweight_matrix(),
-            )? != stored.coweight_matrix()
+        if compose_matrices(action.matrix(), distinguished.weight_matrix())?
+            != stored.weight_matrix()
+            || compose_matrices(action.coweight_matrix(), distinguished.coweight_matrix())?
+                != stored.coweight_matrix()
         {
             return Err(StructureError::DistinguishedInvolutionMismatch);
         }
@@ -548,7 +560,7 @@ impl InnerClass {
         weyl_budget: usize,
     ) -> Result<Vec<TwistedInvolution>, StructureError> {
         let mut involutions = Vec::new();
-        self.involution_orbits(weyl_budget, &mut |_, _| Ok(()), &mut |orbit| {
+        let mut consume = |orbit: ClassOrbit| -> Result<(), StructureError> {
             involutions
                 .try_reserve(orbit.member_count())
                 .map_err(|_| StructureError::AllocationFailed {
@@ -556,7 +568,13 @@ impl InnerClass {
                 })?;
             involutions.extend(orbit.materialize(self)?);
             Ok(())
-        })?;
+        };
+        let mut emit = |_: usize, _: &[u8]| -> Result<(), StructureError> { Ok(()) };
+        if self.datum.semisimple_rank() <= 8 {
+            self.involution_orbits::<u64>(weyl_budget, &mut emit, &mut consume)?;
+        } else {
+            self.involution_orbits::<u128>(weyl_budget, &mut emit, &mut consume)?;
+        }
         Ok(involutions)
     }
 
@@ -604,14 +622,25 @@ impl InnerClass {
         let mut fallback = PermutationKeyMap::default();
         // Heavy packed inner classes (E7: 126 roots, E8: 240) run phase two
         // on two worker threads; everything else keeps the sequential
-        // driver (thread setup is not worth it below ~100 roots).
+        // driver (thread setup is not worth it below ~100 roots). Keys fit
+        // a u64 slot at semisimple rank <= 8 (E7/E8 included), halving the
+        // per-worker membership table.
         if packed && self.roots.roots().len() >= 100 {
-            self.involution_orbits_parallel(
-                weyl_budget,
-                &simple_positions,
-                &mut entries,
-                &mut classes,
-            )?;
+            if simple_positions.len() <= 8 {
+                self.involution_orbits_parallel::<u64>(
+                    weyl_budget,
+                    &simple_positions,
+                    &mut entries,
+                    &mut classes,
+                )?;
+            } else {
+                self.involution_orbits_parallel::<u128>(
+                    weyl_budget,
+                    &simple_positions,
+                    &mut entries,
+                    &mut classes,
+                )?;
+            }
         } else {
             let mut emit = |class_index: usize,
                             permutation: &[u8]|
@@ -640,7 +669,11 @@ impl InnerClass {
                 ));
                 Ok(())
             };
-            self.involution_orbits(weyl_budget, &mut emit, &mut consume)?;
+            if simple_positions.len() <= 8 {
+                self.involution_orbits::<u64>(weyl_budget, &mut emit, &mut consume)?;
+            } else {
+                self.involution_orbits::<u128>(weyl_budget, &mut emit, &mut consume)?;
+            }
         }
         let membership = if packed {
             // Keys are unique (the packing is injective), so ordering by the
@@ -693,7 +726,7 @@ impl InnerClass {
     /// member buffer survives its own closure — accumulating every
     /// [`ClassOrbit`] buffer to end-of-build pinned ~48MB of E8 transients
     /// (plus Vec-doubling overshoot) against the process peak.
-    fn involution_orbits(
+    fn involution_orbits<T: PackedSlot>(
         &self,
         weyl_budget: usize,
         emit: &mut dyn FnMut(usize, &[u8]) -> Result<(), StructureError>,
@@ -715,7 +748,7 @@ impl InnerClass {
         // for the test-only twisted_involutions listing).
         let mut total = 0_usize;
         let mut seen = PermutationKeySet::default();
-        let mut packed_seen = PackedKeySet::new();
+        let mut packed_seen = PackedKeySet::<T>::new();
         let mut next: Vec<u8> = Vec::new();
         let packed = orbit_machine.simple_positions.len() <= 16;
         let stride = self.roots.roots().len();
@@ -846,7 +879,7 @@ impl InnerClass {
     /// [`crate::TwistedConjugacyPartition`] sorts them. Each worker keeps its
     /// own scratch (`PackedKeySet`, chunk buffers), cleared per orbit exactly
     /// as the sequential driver does.
-    fn involution_orbits_parallel(
+    fn involution_orbits_parallel<T: PackedSlot>(
         &self,
         weyl_budget: usize,
         simple_positions: &[u8],
@@ -881,7 +914,7 @@ impl InnerClass {
                 let next_orbit = &next_orbit;
                 handles.push(scope.spawn(move || {
                     let mut seen = PermutationKeySet::default();
-                    let mut packed_seen = PackedKeySet::new();
+                    let mut packed_seen = PackedKeySet::<T>::new();
                     let mut next: Vec<u8> = Vec::new();
                     let mut local_entries: Vec<u128> = Vec::new();
                     loop {
@@ -991,7 +1024,7 @@ impl InnerClass {
     /// `emit` in BFS discovery order (representative first) as it is found.
     #[inline(never)]
     #[allow(clippy::too_many_arguments)]
-    fn orbit_cross_closure(
+    fn orbit_cross_closure<T: PackedSlot>(
         orbit_machine: &PermutationOrbits,
         orbit_index: usize,
         representative: TwistedInvolution,
@@ -1000,7 +1033,7 @@ impl InnerClass {
         stride: usize,
         packed: bool,
         seen: &mut PermutationKeySet,
-        packed_seen: &mut PackedKeySet,
+        packed_seen: &mut PackedKeySet<T>,
         next: &mut Vec<u8>,
         emit: &mut dyn FnMut(usize, &[u8]) -> Result<(), StructureError>,
     ) -> Result<ClassOrbit, StructureError> {
@@ -1040,10 +1073,12 @@ impl InnerClass {
         let padded = packed && stride <= 256;
         if padded {
             packed_seen.clear();
-            packed_seen.insert(pack_simple_images(
-                &representative_permutation,
-                orbit_machine.simple_positions(),
-            ));
+            let mut seed_key = T::ZERO;
+            for (shift, &position) in orbit_machine.simple_positions.iter().enumerate() {
+                seed_key =
+                    seed_key.or_byte(representative_permutation[usize::from(position)], shift);
+            }
+            packed_seen.insert(seed_key);
         } else {
             seen.clear();
             seen.insert(PermutationKey::pack(
@@ -1083,16 +1118,14 @@ impl InnerClass {
                 chunks.pop_front();
                 base += CHUNK_MEMBERS;
             }
-            let mut current_key = 0_u128;
+            let mut current_key = T::ZERO;
             let mut parent_generator = usize::MAX;
             if padded {
                 let chunk = &chunks[(cursor - base) / CHUNK_MEMBERS];
                 let offset = (cursor - base) % CHUNK_MEMBERS * stride;
                 current_buf[..stride].copy_from_slice(&chunk[offset..offset + stride]);
-                for (shift, &position) in
-                    orbit_machine.simple_positions.iter().enumerate()
-                {
-                    current_key |= u128::from(current_buf[usize::from(position)]) << (8 * shift);
+                for (shift, &position) in orbit_machine.simple_positions.iter().enumerate() {
+                    current_key = current_key.or_byte(current_buf[usize::from(position)], shift);
                 }
                 let (parent_member, generator) = parents[cursor];
                 if parent_member != u32::MAX {
@@ -1113,15 +1146,13 @@ impl InnerClass {
                     }
                     let reflection = &padded_reflections[generator];
                     let inner = &inner_images[generator];
-                    let mut key = 0_u128;
-                    for (shift, &first) in inner
-                        [..orbit_machine.simple_positions.len()]
+                    let mut key = T::ZERO;
+                    for (shift, &first) in inner[..orbit_machine.simple_positions.len()]
                         .iter()
                         .enumerate()
                     {
-                        let image =
-                            reflection[usize::from(current_buf[usize::from(first)])];
-                        key |= u128::from(image) << (8 * shift);
+                        let image = reflection[usize::from(current_buf[usize::from(first)])];
+                        key = key.or_byte(image, shift);
                     }
                     // Self-loop (`r_s c r_s == c`) or an already-seen member:
                     // both are no-op inserts, skipped without touching the
@@ -1338,61 +1369,96 @@ pub(crate) type PermutationKeySet =
 pub(crate) type PermutationKeyMap<V> =
     std::collections::HashMap<PermutationKey, V, PermutationHasherBuilder>;
 
-/// Open-addressing membership set for packed u128 permutation keys.
+/// Slot element of [`PackedKeySet`]: `u64` when the semisimple rank is at
+/// most 8 (the packed simple-image key is at most 64 bits), `u128`
+/// otherwise. The all-ones value is the empty sentinel: a valid packed key
+/// can never equal it, because that would need every simple-root image byte
+/// to be 0xFF, while a permutation's images are distinct (and rank >= 2 has
+/// at least two simple roots; rank 1 keys carry zero bytes above the first).
+pub(crate) trait PackedSlot: Copy + Eq + std::fmt::Debug {
+    const EMPTY: Self;
+    const ZERO: Self;
+    /// `self | (image << 8*shift)` — one packed simple-root image byte.
+    fn or_byte(self, image: u8, shift: usize) -> Self;
+    fn hash(self) -> u64;
+}
+
+impl PackedSlot for u64 {
+    const EMPTY: Self = u64::MAX;
+    const ZERO: Self = 0;
+
+    #[inline]
+    fn or_byte(self, image: u8, shift: usize) -> Self {
+        self | u64::from(image) << (8 * shift)
+    }
+
+    #[inline]
+    fn hash(self) -> u64 {
+        self.wrapping_mul(PackedKeySet::<Self>::SEED)
+    }
+}
+
+impl PackedSlot for u128 {
+    const EMPTY: Self = u128::MAX;
+    const ZERO: Self = 0;
+
+    #[inline]
+    fn or_byte(self, image: u8, shift: usize) -> Self {
+        self | u128::from(image) << (8 * shift)
+    }
+
+    #[inline]
+    fn hash(self) -> u64 {
+        let lo = self as u64;
+        let hi = (self >> 64) as u64;
+        (lo ^ hi.rotate_left(32)).wrapping_mul(PackedKeySet::<Self>::SEED)
+    }
+}
+
+/// Open-addressing membership set for packed permutation keys.
 ///
 /// The phase-two cross closure probes membership once per (member,
 /// generator) edge — ~1.6M probes for E8 — and even with the FxHash-style
 /// [`PermutationHasher`], hashbrown's group probing was about a quarter of
-/// the closure's sampled stacks. This table stores one 16-byte key per
-/// slot with linear probing and a multiplicative hash, and reallocates
-/// only on growth (capacity is kept across orbits; `clear` is a fill).
-///
-/// `u128::MAX` is the empty sentinel: a valid packed key can never equal
-/// it, because that would need every simple-root image byte to be 0xFF,
-/// while a permutation's images are distinct (and rank >= 2 has at least
-/// two simple roots; rank 1 keys carry zero bytes above the first).
+/// the closure's sampled stacks. This table stores one slot per key with
+/// linear probing and a multiplicative hash, and reallocates only on growth
+/// (capacity is kept across orbits; `clear` is a fill). `u64` slots (rank
+/// <= 8, covering E8) halve the per-worker table of the parallel driver.
 #[derive(Clone, Debug)]
-pub(crate) struct PackedKeySet {
-    slots: Vec<u128>,
+pub(crate) struct PackedKeySet<T: PackedSlot> {
+    slots: Vec<T>,
     len: usize,
     /// `64 - log2(capacity)`: probe indices come from the hash's top bits.
     shift: u32,
 }
 
-impl PackedKeySet {
-    const EMPTY: u128 = u128::MAX;
+impl<T: PackedSlot> PackedKeySet<T> {
     const SEED: u64 = 0x9E37_79B9_7F4A_7C15;
 
     pub(crate) fn new() -> Self {
         Self {
-            slots: vec![Self::EMPTY; 64],
+            slots: vec![T::EMPTY; 64],
             len: 0,
             shift: 58,
         }
     }
 
-    fn hash(key: u128) -> u64 {
-        let lo = key as u64;
-        let hi = (key >> 64) as u64;
-        (lo ^ hi.rotate_left(32)).wrapping_mul(Self::SEED)
-    }
-
     pub(crate) fn clear(&mut self) {
-        self.slots.fill(Self::EMPTY);
+        self.slots.fill(T::EMPTY);
         self.len = 0;
     }
 
     /// Insert `key`; returns false when it was already present.
-    pub(crate) fn insert(&mut self, key: u128) -> bool {
-        debug_assert_ne!(key, Self::EMPTY, "sentinel collision");
+    pub(crate) fn insert(&mut self, key: T) -> bool {
+        debug_assert_ne!(key, T::EMPTY, "sentinel collision");
         if (self.len + 1) * 4 > self.slots.len() * 3 {
             self.grow();
         }
         let mask = self.slots.len() - 1;
-        let mut slot = (Self::hash(key) >> self.shift) as usize;
+        let mut slot = (key.hash() >> self.shift) as usize;
         loop {
             let stored = self.slots[slot];
-            if stored == Self::EMPTY {
+            if stored == T::EMPTY {
                 self.slots[slot] = key;
                 self.len += 1;
                 return true;
@@ -1406,15 +1472,15 @@ impl PackedKeySet {
 
     fn grow(&mut self) {
         let old = std::mem::take(&mut self.slots);
-        self.slots = vec![Self::EMPTY; old.len() * 2];
+        self.slots = vec![T::EMPTY; old.len() * 2];
         self.shift -= 1;
         let mask = self.slots.len() - 1;
         for key in old {
-            if key == Self::EMPTY {
+            if key == T::EMPTY {
                 continue;
             }
-            let mut slot = (Self::hash(key) >> self.shift) as usize;
-            while self.slots[slot] != Self::EMPTY {
+            let mut slot = (key.hash() >> self.shift) as usize;
+            while self.slots[slot] != T::EMPTY {
                 slot = (slot + 1) & mask;
             }
             self.slots[slot] = key;
@@ -2051,18 +2117,28 @@ mod tests {
 
     #[test]
     fn packed_key_set_dedups_across_growth() {
-        let mut set = PackedKeySet::new();
-        // 10,000 distinct keys force several doublings from capacity 64.
+        // 10,000 distinct keys force several doublings from capacity 64,
+        // for both slot widths.
+        let mut wide = PackedKeySet::<u128>::new();
         for key in 0..10_000_u128 {
-            assert!(set.insert(key * 0x1_0001 + 7));
+            assert!(wide.insert(key * 0x1_0001 + 7));
         }
         for key in 0..10_000_u128 {
-            assert!(!set.insert(key * 0x1_0001 + 7));
+            assert!(!wide.insert(key * 0x1_0001 + 7));
         }
-        assert!(set.insert(u128::from(u64::MAX)));
-        assert!(!set.insert(u128::from(u64::MAX)));
-        set.clear();
-        assert!(set.insert(42));
+        assert!(wide.insert(u128::from(u64::MAX)));
+        assert!(!wide.insert(u128::from(u64::MAX)));
+        wide.clear();
+        assert!(wide.insert(42));
+        let mut narrow = PackedKeySet::<u64>::new();
+        for key in 0..10_000_u64 {
+            assert!(narrow.insert(key * 0x1_0001 + 7));
+        }
+        for key in 0..10_000_u64 {
+            assert!(!narrow.insert(key * 0x1_0001 + 7));
+        }
+        narrow.clear();
+        assert!(narrow.insert(42));
     }
 
     fn compact_a2_inner_class() -> InnerClass {

@@ -19,11 +19,40 @@
 use crate::{LatticeInvolution, StructureError};
 
 /// The per-involution `(1-theta)X^*` image data: upstream's
-/// `InvolutionTable::record` pair (involutions.h:104-105).
+/// `InvolutionTable::record` pair (involutions.h:104-105). Entries are
+/// `i32`, matching upstream's `int_Matrix` (the echelon machinery works in
+/// `i64` and converts with a checked narrowing at the boundary); this halves
+/// the retained per-record payloads of the involution table.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct RealProjection {
-    pub(crate) lift_mat: Vec<Vec<i64>>,
-    pub(crate) m_real: Vec<Vec<i64>>,
+    pub(crate) lift_mat: Vec<Vec<i32>>,
+    pub(crate) m_real: Vec<Vec<i32>>,
+}
+
+/// Checked narrowing of an echelon-computed `i64` matrix into the stored
+/// `i32` representation (upstream computes these in `int` throughout).
+fn narrow_matrix(matrix: &[Vec<i64>]) -> Result<Vec<Vec<i32>>, StructureError> {
+    let mut narrowed = Vec::new();
+    narrowed
+        .try_reserve_exact(matrix.len())
+        .map_err(|_| StructureError::AllocationFailed {
+            requested: matrix.len(),
+        })?;
+    for row in matrix {
+        let mut narrowed_row = Vec::new();
+        narrowed_row
+            .try_reserve_exact(row.len())
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: row.len(),
+            })?;
+        for &entry in row {
+            narrowed_row.push(
+                i32::try_from(entry).map_err(|_| StructureError::ArithmeticOverflow)?,
+            );
+        }
+        narrowed.push(narrowed_row);
+    }
+    Ok(narrowed)
 }
 
 impl RealProjection {
@@ -100,10 +129,9 @@ impl RealProjection {
         // (involutions.cpp:203): the integer inverse of the (unimodular)
         // column-operation matrix, computed by Euclidean row reduction.
         let col_inverse = invert_integer_matrix(&col)?;
-        let m_real: Vec<Vec<i64>> = col_inverse[..image_rank].to_vec();
         let projection = Self {
-            lift_mat: a,
-            m_real,
+            lift_mat: narrow_matrix(&a)?,
+            m_real: narrow_matrix(&col_inverse[..image_rank])?,
         };
         projection.check_against(theta)?;
         Ok(projection)
@@ -138,16 +166,23 @@ impl RealProjection {
                 if weight == 0 {
                     continue;
                 }
-                for (j, entry) in reflected.iter_mut().enumerate() {
+                for (j, &entry) in column.iter().enumerate() {
                     let product = weight
-                        .checked_mul(column[j])
+                        .checked_mul(i64::from(entry))
                         .ok_or(StructureError::ArithmeticOverflow)?;
-                    *entry = entry
+                    reflected[j] = reflected[j]
                         .checked_add(product)
                         .ok_or(StructureError::ArithmeticOverflow)?;
                 }
             }
-            lift_mat.push(reflected);
+            lift_mat.push(
+                reflected
+                    .iter()
+                    .map(|&entry| {
+                        i32::try_from(entry).map_err(|_| StructureError::ArithmeticOverflow)
+                    })
+                    .collect::<Result<Vec<i32>, _>>()?,
+            );
         }
         // m_real' = m_real * reflection (r x n times n x n).
         let mut m_real = Vec::new();
@@ -163,7 +198,7 @@ impl RealProjection {
                     continue;
                 }
                 for (j, target) in reflected.iter_mut().enumerate() {
-                    let product = entry
+                    let product = i64::from(entry)
                         .checked_mul(i64::from(reflection[k][j]))
                         .ok_or(StructureError::ArithmeticOverflow)?;
                     *target = target
@@ -171,7 +206,14 @@ impl RealProjection {
                         .ok_or(StructureError::ArithmeticOverflow)?;
                 }
             }
-            m_real.push(reflected);
+            m_real.push(
+                reflected
+                    .iter()
+                    .map(|&entry| {
+                        i32::try_from(entry).map_err(|_| StructureError::ArithmeticOverflow)
+                    })
+                    .collect::<Result<Vec<i32>, _>>()?,
+            );
         }
         Ok(Self { lift_mat, m_real })
     }
@@ -185,8 +227,8 @@ impl RealProjection {
                 for (basis_index, basis_row) in self.m_real.iter().enumerate() {
                     product = product
                         .checked_add(
-                            self.lift_mat[row_index][basis_index]
-                                .checked_mul(basis_row[column_index])
+                            i64::from(self.lift_mat[row_index][basis_index])
+                                .checked_mul(i64::from(basis_row[column_index]))
                                 .ok_or(StructureError::ArithmeticOverflow)?,
                         )
                         .ok_or(StructureError::ArithmeticOverflow)?;
@@ -219,7 +261,7 @@ impl RealProjection {
         for row in &self.m_real {
             let mut entry = 0_i64;
             for (&coefficient, &coordinate) in row.iter().zip(weight.as_slice()) {
-                let product = coefficient
+                let product = i64::from(coefficient)
                     .checked_mul(i64::from(coordinate))
                     .ok_or(StructureError::ArithmeticOverflow)?;
                 entry = entry
@@ -236,7 +278,7 @@ impl RealProjection {
         let mut result = vec![0_i64; self.lift_mat.len()];
         for (basis_index, &coordinate) in coordinates.iter().enumerate() {
             for (row, entry) in result.iter_mut().enumerate() {
-                let product = self.lift_mat[row][basis_index]
+                let product = i64::from(self.lift_mat[row][basis_index])
                     .checked_mul(coordinate)
                     .ok_or(StructureError::ArithmeticOverflow)?;
                 *entry = entry
