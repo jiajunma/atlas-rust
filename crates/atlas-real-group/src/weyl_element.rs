@@ -214,6 +214,10 @@ impl WeylElement {
     /// `theta = w after delta` is stored. Since `delta` is involutive,
     /// `w(x) = theta(delta(x))`; composition therefore writes
     /// `left[theta[delta[right[i]]]]` directly into final storage.
+    ///
+    /// Test-only: production cross-edge transport writes the fused index
+    /// order directly (involution_table.rs `push_record`).
+    #[cfg(test)]
     pub(crate) fn from_twisted_composition(
         system: &RootSystem,
         left: &[RootId],
