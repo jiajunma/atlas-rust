@@ -6506,3 +6506,96 @@ locally-pushed commits to HPC via the `hpc` remote from the Mac:
 Verification jobs for main-tip state run from a dedicated worktree
 (`/public/home/majj/atlas-rust-main-check`), never the shared checkout
 (currently owned by agent-124 on agent-legacy-element).
+## Perf work 2026-09-01b (agent-legacy-element: legacy WeylElement removal, VERIFIED)
+
+Branch `agent-legacy-element` (fa13ed5 + fcc3aee rebased onto 0544aa7;
+pushed to origin and to hpc as `agent-legacy-element-c93`; HPC worktree
+/public/home/majj/atlas-rust-legacy, detached at fcc3aee). Scope per the
+brief: involution_table.rs, tits_element.rs, the two print sites in
+domain_builtins.rs; steps 0+1 only (image_by_root removal NOT done).
+The rebase dropped the polluted base (agent-122's unpushed inner_class.rs
+commits); those parent/agent-122 commits are preserved on the pushed
+branch `parent-scratch-960d0b4`. My branch now touches ONLY
+involution_table.rs + domain_builtins.rs vs origin tip (tits_element.rs
+and the two API test files were already swept into origin by f613419's
+equivalent 0e00788).
+
+What landed:
+
+- Step 0 (consumer migration): `print_block`'s elected word column and
+  `print_blocku`'s support flags now read `table.weyl_word(id)` instead of
+  materializing `record.weyl_element()` per row. Byte-identity argument:
+  the table's CompactWeyl is built from the same Cartan matrix as the
+  retired per-print one, and `element_word` (weyl_transducer.rs:491) and
+  `canonical_word` (weyl_transducer.rs:476) emit the same elected piece
+  words through the same d_out mapping; the elected word depends only on
+  the element. Support flags are generator sets of a reduced word, hence
+  word-independent. The per-print `CompactWeyl::new` in print_text is
+  deleted.
+- Step 1 (miss-path removal): `push_record` now takes theta root images
+  directly — seed = `representative.root_involution().image_permutation()`,
+  cross edge transports the cursor's images as
+  `left[theta[delta[right[delta[r]]]]]` (the exact index order the retired
+  `WeylElement::from_twisted_composition` materialized; pinned by the new
+  test `cross_edge_theta_transport_reproduces_stored_root_images` over
+  A2/twisted-A2/B2/D4 against stored images AND the
+  `materialize_weyl_element` oracle). The BFS miss-path
+  from_twisted_composition + debug re-encode are deleted. DedupIndex keys
+  come from `key_of_theta_images` (w(s_i)=theta(delta(s_i))), bit-identical
+  to the retired `key_of(legacy.image_permutation())`, so record
+  numbering/BFS order are unchanged (the differential runs below compare
+  full stdout incl. KGB/block numbering). The compact-record gate became
+  `compact_matches_images` (closure over theta-derived simple images).
+- Kept boundaries: type WeylElement, `lookup(&WeylElement)` (synthetic
+  KGB), pub `materialize_weyl_element(id)` for tests/synthetic callers.
+
+Verification (all at fcc3aee, HPC):
+
+- quick_check 3662077 (cpu): cargo check + full `cargo test --workspace`
+  green (CHECK_DONE 0, TEST_DONE 0). Includes fixtures block_print.atlas
+  (print_blocku) and print_block_words.atlas.
+- Focused corpus 3662093 (cpu, TIMEOUT=300): GKfast/class_tables/example/
+  new_blocks/test_K — 5/5 MATCH. rust seconds/maxrss KB: GKfast 0.696/
+  145596; class_tables 0.529/144564; example 1.206/143244; new_blocks
+  0.006/7876; test_K 1.139/138060.
+- print_block oracle coverage 3662163 (cpu): basic.at/extended.at/twist.at
+  3/3 MATCH; twist.at:60 calls print_block directly.
+- Unipotent differential 3662094 (fat fat001, TIMEOUT=1200): MATCH,
+  rust 7.163s / 1,936,196 KB vs cpp 4.883s / 881,296 KB.
+- Massif 3662095 (fat fat001): heap peak 1,899,725,936 B; no-valgrind
+  baseline maxrss 1,934,408 KB in 7.24s. `from_twisted_composition` /
+  `weyl_element` appear 0 times in the whole ms_print (54 hits in the old
+  3661887 profile).
+
+Before/after (like-for-like, unipotent_representations_exceptional.at):
+
+- Massif heap peak: 2,928,923,240 B (3661887 @ adb4051) -> 1,899,725,936 B
+  (3662095 @ fcc3aee): -1.03 GB (-35.2%). The removed block measured
+  1,011,985,344 B (34.55%) at peak in 3661887 — removal landed exactly.
+- maxrss: 2,942,780 KB (corpus 3661865 @ adb4051, cpu cu098) and
+  2,937,144 KB (massif baseline 3661887, fat) -> 1,936,196 KB (corpus
+  3662094) / 1,934,408 KB (massif baseline 3662095): -1.0 GB (-34%).
+- CAUTION on baselines: the "1.93 GB before" quoted in the 2026-09-01
+  handover came from 3661806 @ 8649686 (pre-adb4051). At adb4051 the
+  corpus-mode unipotent maxrss was actually 2.94 GB (3661865) — adb4051's
+  root-negation sharing apparently raised retained maxrss by ~1 GB. So
+  the correct before/after pair at this task's base is 2.94 -> 1.93 GB,
+  NOT 1.93 -> 0.92 GB. Remaining gap to the oracle (881 MB) per the
+  3662095 peak tree: add_cartan try_capacity payloads 506 MB,
+  right_compose_simple WeylAction matrices 246 MB, RealProjection
+  ::transported 246 MB, compose_matrices in push_record 232 MB, misc
+  finish_grow 155 MB, transport_mod_space 88 MB.
+
+Process notes / gotchas:
+
+- `WeylElement::from_twisted_composition` (weyl_element.rs:217) is now
+  production-unused (kept for its own unit test; pub(crate), so a
+  dead-code-free cleanup needs #[cfg(test)] or removal — weyl_element.rs
+  was outside this task's ownership).
+- print_kgb's '#' flag (domain_builtins.rs ~11606) still materializes the
+  Cartan representative per row; `InvolutionTable::cartan_representative_id`
+  is pub and tested (cartan_representative_id_api.rs) but NOT wired in
+  (outside this task's two-site ownership). Easy follow-up.
+- rustfmt: involution_table.rs is clean under stable rustfmt 1.9.0;
+  domain_builtins.rs carries 66 pre-existing drift diffs (toolchain skew,
+  untouched).
