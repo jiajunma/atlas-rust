@@ -6945,3 +6945,72 @@ resolves to a non-executable ~/.local/bin/env on compute nodes — use
 srun --export=ALL,VAR=val instead; massif_profile.sbatch and
 script_corpus.sbatch reuse the worktree's target dir, so same-binary
 reruns skip the 2m12s build.
+
+## 2026-09-01g — image_by_root u16 + cross_links flattening (agent-132, agent-imgbyroot)
+
+Lane: real-group memory (the image_by_root 516MB block from agent-131's
+residual list; the image_permutation() API freeze was lifted for this
+lane). Base 8180166. Two commits, crates/atlas-real-group plus the ONE
+atlas-core call site the API change required (ext_gen folding,
+domain_builtins.rs:17741, now `.at()`).
+
+- 7c044b6 `RootInvolutionData.image_by_root`: `Vec<RootId>` (usize) ->
+  `Box<[u16]>` — the width of upstream's `RootNbr` (`unsigned short`,
+  Atlas.h:301). `image_permutation()` now returns a Copy
+  `ImagePermutation<'_>` view (len/at/get/iter/to_vec) that widens
+  u16 -> RootId at the accessor boundary; `at()` keeps the old slice
+  indexing panic semantics. Root systems beyond 2^16 roots are rejected
+  at construction (`RootSystemInvariantViolation`, "involution root
+  action width") instead of truncating. Retention check against the
+  oracle: upstream InvolutionData keeps `Permutation root_perm` =
+  `std::vector<unsigned long>` (8B/entry) per record (involutions.h:49),
+  so the u16 storage is 4x SLIMMER than the oracle retains — the
+  semantic ceiling was never the constraint here.
+- e14e152 `InvolutionTable.cross_links`: `Vec<Vec<InvolutionId>>` -> one
+  record-major flat `Vec<InvolutionId>` strided by semisimple rank.
+  Same O(1) lookup, same IndexOutOfRange contract (id bounds checked
+  first, then generator). Removes the 24B per-record Vec header and the
+  per-row malloc rounding on rank-sized inner allocations.
+
+Numbers (unipotent_representations_exceptional.at, same node fat001):
+- before 3664028 @8180166: 6.138s / 1,535,588KB (oracle 4.745s /
+  881,296KB => 1.29x / 1.74x)
+- u16 only 3664029 @7c044b6: 5.979s / 1,163,952KB (oracle 4.906s /
+  881,280KB => 1.22x / 1.32x) MATCH
+- final 3664118 @e14e152: 5.854s / 1,153,452KB (oracle 4.735s /
+  881,284KB => 1.24x / 1.31x) MATCH
+- RSS -382MB total (-24.9%); wall ratios within the 1.22-1.29x noise
+  band. quick_check 3663953 @7c044b6 and 3664117 @e14e152: TEST_DONE
+  status=0 (9 suites). Full corpus 3664182 @e14e152: 240/240 MATCH,
+  median wall 2.454x, median maxrss 4.783x, over_5x = 0, worst
+  groups.at 3.345x.
+
+Massif attribution (unipotent, fat): baseline 3663806 @8180166 peak
+1,524,262,856B (snap 160) -> after 3664030 @7c044b6 peak 1,150,901,416B
+(snap 166, -373MB, matching the no-valgrind maxrss drop). The old
+33.87% (516.3MB) try_capacity<-add_cartan image_by_root block became
+the push_record direct block, 10.99% (126.5MB) — a 4.08x cut, exactly
+the 8B -> 2B narrowing. New peak decomposition: theta matrices 21.4%
+(246MB, unchanged), add_cartan direct 13.2% (151MB, mostly the
+records: Vec<InvolutionRecord> backing array ~300B struct x ~270k),
+RealProjection::transported ~9.7% (112MB), hashbrown dedup ~9.1%
+(104MB), transport_mod_space 7.7% (88.7MB), image_by_root 11.0%
+(126.5MB), subsystem_simple_roots 1.2% (13.8MB).
+
+Remaining decomposition (peak 1.15GB vs oracle 881MB), biggest first:
+1. theta matrices 246MB — two Vec<Vec<i32>> per record vs upstream's
+   ONE int_Matrix (the coweight action is the transpose for
+   involutions). NOT cheap: ~40 coweight_matrix()/weight_matrix() call
+   sites, incl. hot per-KGB-edge reads (kgb_graph.rs:806/1171), so
+   transpose-on-demand is a wall-time regression and flat storage needs
+   the same broad accessor change. Deferred deliberately.
+2. add_cartan direct ~151MB post-flatten — records array body;
+   shrinking means boxing/slimming InvolutionRecord fields, broad.
+3. RealProjection lift_mat/m_real ~112MB — per-row Vec<i32> overhead;
+   contained in real_projection.rs (pub(crate) fields); flat-matrix
+   candidate, moderate.
+4. hashbrown dedup ~104MB; transport_mod_space 88.7MB.
+
+Trap (local): `cargo fmt --all` on this repo rewrites 12+ unrelated
+files — the tip is NOT rustfmt-clean under the local toolchain. Do not
+run it on a working branch; format by hand and keep diffs semantic.

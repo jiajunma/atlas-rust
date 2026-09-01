@@ -9,6 +9,51 @@ pub enum RootKind {
     Complex,
 }
 
+/// Read-only random-access view of an involution's root action.
+///
+/// Root images are retained as `u16` — the width of upstream's `RootNbr`
+/// (`unsigned short`) — so the involution table's per-record storage is a
+/// quarter of the retired `Vec<RootId>`; this view widens values back to
+/// `RootId` at the accessor boundary.
+#[derive(Clone, Copy, Debug)]
+pub struct ImagePermutation<'a> {
+    images: &'a [u16],
+}
+
+impl<'a> ImagePermutation<'a> {
+    pub fn len(&self) -> usize {
+        self.images.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.images.is_empty()
+    }
+
+    /// Image of the root at `index`, widening the stored `u16`.
+    ///
+    /// Panics on out-of-range indexes, matching the historic slice indexing
+    /// of the retired `&[RootId]` return.
+    pub fn at(&self, index: usize) -> RootId {
+        RootId(usize::from(self.images[index]))
+    }
+
+    pub fn get(&self, index: usize) -> Option<RootId> {
+        self.images
+            .get(index)
+            .map(|&image| RootId(usize::from(image)))
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = RootId> + '_ {
+        self.images.iter().map(|&image| RootId(usize::from(image)))
+    }
+
+    /// The widened permutation as an owned vector, for callers that
+    /// transport the action into new record storage.
+    pub fn to_vec(&self) -> Vec<RootId> {
+        self.iter().collect()
+    }
+}
+
 /// An involution action on a generated ordinary root system.
 ///
 /// Construction validates that the dual-lattice involution truly permutes the
@@ -19,7 +64,7 @@ pub enum RootKind {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RootInvolutionData {
     involution: LatticeInvolution,
-    image_by_root: Vec<RootId>,
+    image_by_root: Box<[u16]>,
     negatives: Arc<[RootId]>,
     imaginary_simple_roots: Vec<RootId>,
     real_simple_roots: Vec<RootId>,
@@ -62,7 +107,7 @@ impl RootInvolutionData {
             if coroot_buf.as_slice() != image_coroot.as_slice() {
                 return Err(StructureError::InvalidRootDatumAutomorphism);
             }
-            image_by_root.push(image_id);
+            image_by_root.push(compact_image(image_id)?);
         }
         let negatives = Arc::clone(root_system.negatives_arc());
         let imaginary_simple_roots =
@@ -71,7 +116,7 @@ impl RootInvolutionData {
             subsystem_simple_roots(root_system, &image_by_root, &negatives, RootKind::Real)?;
         Ok(Self {
             involution,
-            image_by_root,
+            image_by_root: image_by_root.into_boxed_slice(),
             negatives,
             imaginary_simple_roots,
             real_simple_roots,
@@ -110,14 +155,18 @@ impl RootInvolutionData {
                 invariant: "involution root action",
             });
         }
+        let compact: Vec<u16> = image_by_root
+            .iter()
+            .map(|&image| compact_image(image))
+            .collect::<Result<_, _>>()?;
         let negatives = Arc::clone(root_system.negatives_arc());
         let imaginary_simple_roots =
-            subsystem_simple_roots(root_system, &image_by_root, &negatives, RootKind::Imaginary)?;
+            subsystem_simple_roots(root_system, &compact, &negatives, RootKind::Imaginary)?;
         let real_simple_roots =
-            subsystem_simple_roots(root_system, &image_by_root, &negatives, RootKind::Real)?;
+            subsystem_simple_roots(root_system, &compact, &negatives, RootKind::Real)?;
         Ok(Self {
             involution,
-            image_by_root,
+            image_by_root: compact.into_boxed_slice(),
             negatives,
             imaginary_simple_roots,
             real_simple_roots,
@@ -125,23 +174,27 @@ impl RootInvolutionData {
     }
 
     pub fn image(&self, root: RootId) -> Option<RootId> {
-        self.image_by_root.get(root.0).copied()
+        self.image_by_root
+            .get(root.0)
+            .map(|&image| RootId(usize::from(image)))
     }
 
-    pub fn image_permutation(&self) -> &[RootId] {
-        &self.image_by_root
+    pub fn image_permutation(&self) -> ImagePermutation<'_> {
+        ImagePermutation {
+            images: &self.image_by_root,
+        }
     }
 
     pub fn kind(&self, root: RootId) -> Option<RootKind> {
         let image = self.image_by_root.get(root.0).copied()?;
         let negative = self.negatives.get(root.0).copied()?;
-        Some(classify_root(root.0, image, negative))
+        Some(classify_root(root.0, RootId(usize::from(image)), negative))
     }
 
     pub fn roots_of_kind(&self, kind: RootKind) -> impl Iterator<Item = RootId> + '_ {
         self.image_by_root
             .iter()
-            .copied()
+            .map(|&image| RootId(usize::from(image)))
             .zip(self.negatives.iter().copied())
             .enumerate()
             .filter_map(move |(index, (image, negative))| {
@@ -202,16 +255,25 @@ fn validate_simple_root_images(
     Ok(())
 }
 
+/// Narrow one root image into the compact storage width (upstream
+/// `RootNbr` is `unsigned short`); root systems beyond 2^16 roots are
+/// rejected rather than truncated.
+fn compact_image(image: RootId) -> Result<u16, StructureError> {
+    u16::try_from(image.0).map_err(|_| StructureError::RootSystemInvariantViolation {
+        invariant: "involution root action width",
+    })
+}
+
 fn subsystem_simple_roots(
     root_system: &RootSystem,
-    image_by_root: &[RootId],
+    image_by_root: &[u16],
     negatives: &[RootId],
     kind: RootKind,
 ) -> Result<Vec<RootId>, StructureError> {
     debug_assert_eq!(image_by_root.len(), negatives.len());
     let positive = image_by_root
         .iter()
-        .copied()
+        .map(|&image| RootId(usize::from(image)))
         .zip(negatives.iter().copied())
         .enumerate()
         .filter_map(|(index, (image, negative))| {

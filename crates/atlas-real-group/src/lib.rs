@@ -143,7 +143,7 @@ pub use rep_context::{RepContext, StandardRepr};
 pub use rep_table::{LocatedBlock, RepTableOwner};
 pub use restricted_roots::{RestrictedRoot, RestrictedRootSystem, RestrictedWeight};
 pub use root_datum::BasedRootDatum;
-pub use root_involution::{RootInvolutionData, RootKind};
+pub use root_involution::{ImagePermutation, RootInvolutionData, RootKind};
 pub use root_system::{RootId, RootSet, RootSystem, RootSystemBudget};
 pub use strong_real::{
     central_fiber, strong_real_class_prints, SquareClassId, StrongRealClassPrint,

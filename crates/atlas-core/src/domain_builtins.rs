@@ -17737,7 +17737,7 @@ pub(crate) fn call_with_printed(
                     continue;
                 }
                 let alpha_id = simple_ids[s];
-                let image_id = image[alpha_id.index()];
+                let image_id = image.at(alpha_id.index());
                 if image_id == alpha_id {
                     // ext_gen::one: the simple root is fixed by the twist.
                     folded_roots.push(simple_roots[s].clone());
