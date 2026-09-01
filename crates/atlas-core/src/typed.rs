@@ -13627,6 +13627,12 @@ enum ComponentWrite {
 /// anything nested (a same-frame access would double-borrow), and it must
 /// run every fallible check BEFORE touching the aggregate: an in-place
 /// mutation that failed halfway would stay visible in the slot.
+///
+/// Global slots are borrowed with `try_borrow_mut`: when a foreign borrow
+/// is held (only possible from outside the evaluator, e.g. tests), the
+/// mutation runs on a detached copy and the cell is borrowed mutably only
+/// after it succeeded, so failed checks keep producing errors instead of
+/// `RefCell` panics while a successful write keeps the legacy panic.
 fn mutate_aggregate(
     target: &AssignTarget,
     read: SharedValue,
@@ -13654,7 +13660,19 @@ fn mutate_aggregate(
         }
     }
     match target {
-        AssignTarget::Global(cell) => apply(&mut cell.borrow_mut(), read, mutate),
+        AssignTarget::Global(cell) => match cell.try_borrow_mut() {
+            Ok(mut slot) => apply(&mut slot, read, mutate),
+            // A foreign borrow of the cell is held (only possible from a
+            // caller outside the evaluator, e.g. tests): never borrow
+            // mutably until the mutation has fully succeeded, so failed
+            // checks return errors instead of panicking.
+            Err(_) => {
+                let mut work = unwrap_shared(read);
+                mutate(&mut work)?;
+                *cell.borrow_mut() = Some(Rc::new(work));
+                Ok(())
+            }
+        },
         AssignTarget::Local { depth, offset } => context
             .update_local_slot(*depth, *offset, |slot| apply(slot, read, mutate))
             .expect("analysis emitted an invalid local assignment address"),
