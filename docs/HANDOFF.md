@@ -6688,3 +6688,40 @@ SharedValue alone is RSS-neutral (isolation job 3662380). If wall time
 becomes the priority metric later, revisiting mimalloc-with-purge-tuning is
 a one-commit revert of this decision. Branch `agent-cow-eval` keeps the
 mimalloc commits on origin for reference.
+
+## Measurement 2026-09-01e: builtin name-string dispatch is NOT worth tagging (agent-129, negative)
+
+agent-125 audit lever 5 ("Domain builtin dispatch re-matches by string",
+typed.rs Builtin::run -> domain_builtins.rs match name) was measured before
+building, per the campaign rule. Claim CONFIRMED structurally:
+`BuiltinImpl::Domain { name }` / `DomainPrinter { name }` carry
+`&'static str` and all three dispatchers (`validate` domain_builtins.rs:9529,
+`print_text` :10689, `call_with_printed` :12107, ~175 string arms) match on
+the name at every call; only ScalarOp variants dispatch on an enum already.
+
+Perf record (hardware cycles, release + line-tables via
+CARGO_PROFILE_RELEASE_DEBUG=line-tables-only, btag worktree @ b6cb3c5):
+
+- class_tables.at (job 3662515, 845 samples): TypedExpr::evaluate self
+  0.39%; call_with_printed / Builtin::run BELOW the 0.01% floor (0 samples).
+  Script is dominated by inner-class fixed cost (orbit_cross_closure 36.2%).
+- GKfast.at (job 3662531, 961 samples): Builtin::run self 0.12%,
+  TypedExpr::evaluate self 0.34%, call_with_printed again 0 samples.
+- Adversarial synthetic (job 3662558, 544 samples): a 500k-iteration while
+  loop whose body is ONLY `extend(LieType:"","C",3)` (~1us/iter total) —
+  the entire call_with_printed self is 3.74% (string match PLUS the inlined
+  extend-arm prologue), as_lie_type arg conversion alone 2.96%. The pure
+  name-compare share is a fraction of 3.74% even in this worst case.
+
+Verdict: on real call-heavy corpus scripts the dispatch share is <0.2%, an
+order of magnitude under the 2% build gate; per-call cost is already a
+length-switched short memcmp. A 175-arm tag conversion of the three
+dispatchers is NOT justified — lever closed as disproven. Baseline subset
+numbers (job 3662521, same node): GKfast 0.595s, class_tables 0.473s,
+example 1.005s, test 0.338s (4/4 MATCH) for any future re-check.
+
+HPC leftovers: worktree /public/home/majj/atlas-rust-btag (detached
+b6cb3c5) holds btag-perf-{3662515,3662531,3662558}.data,
+btag_perf_record.sbatch, btag_dispatch_stress.at (all untracked); the
+perf script's `head`-pipe under `set -e` SIGPIPEs the job after printing
+the first report section — the .data files stay valid.
