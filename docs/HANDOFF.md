@@ -6799,3 +6799,79 @@ Caveats / remaining tail:
 - Harness traps hit: bash's special array GROUPS ate a script path
   (use another name); atlas-cli needs ABSOLUTE script paths even with
   --path (bare names exit 2 instantly and gdb then samples garbage).
+
+## Measurement 2026-09-01f: call-argument cloning + NoValue collect — last two evaluator levers closed (agent-130, negative)
+
+The two remaining live levers from the agent-125 evaluator audit
+(1: argument-collection cloning; 2: `collect` at NoValue level) were
+measured before building, per the campaign rule. Method: perf record,
+hardware cycles, release + line-tables
+(CARGO_PROFILE_RELEASE_DEBUG=line-tables-only), evalclone worktree @
+286c683; per-sample dwarf call stacks scanned for frame shares (awk over
+`perf script`), which attributes through the heavy inlining better than
+self-time alone.
+
+Real call-heavy corpus scripts (stack-share of samples containing the
+frame):
+
+- class_tables.at (job 3662650, 798 samples): Value::clone 0.00%,
+  unwrap_shared 0.13%, apply_closure 0.13%, distribute 0.00%,
+  eval_for_loop 0.25%; allocator frames (malloc/free/memmove) UNDER a
+  TypedExpr::evaluate frame 0.25%; TypedExpr::evaluate anywhere 0.75%.
+  The script is dominated by orbit_cross_closure 39.9% self — the
+  inner-class fixed cost (agent-122 lane note (c)), not the evaluator.
+- GKfast.at (job 3662651, 887 samples): all evaluator-clone frames
+  <=0.23%; evaluate-anywhere 0.56%; allocator-under-evaluate 0.23%.
+- example.at (job 3662652, 1342 samples): Value::clone 0.89%,
+  unwrap_shared 0.30%, apply_closure 0.30%, distribute 0.15%,
+  eval_for_loop 0.15%, mutate_aggregate 0.00%; allocator-under-evaluate
+  0.22%; evaluate-anywhere 1.42%.
+
+Lever 1 (argument-collection cloning): CONFIRMED structurally — every
+BuiltinCall / HungryBuiltinCall / FunctionCall / operator-cast argument
+passes `unwrap_shared` (typed.rs:12497, 12542, 12605, 12628), which
+deep-clones when the argument Rc is shared (identifier reads hand out
+the slot's own Rc, so `f(x)` on a variable argument always clones).
+Adversarial synthetic (job 3662678, 4147 samples; 2M iterations of
+`s := f(v)` on the same shared 16-entry aggregate, nothing else):
+Value::clone 12.4% self / 18.9% of stacks, unwrap_shared 7.0%,
+malloc+_int_malloc+free ~30%, evaluate-anywhere 23.1% — the clone path
+is real and dominates when a script does nothing but re-pass one shared
+aggregate. But on the real corpus scripts the share is 0-0.9%, an order
+of magnitude under the 2% build gate. Fixing it would require passing
+SharedValue into the builtin ABI (175 domain_builtins.rs arms) or an
+Rc-shared element representation for Tuple/List — a broad refactor for
+<1% on real workloads. NOT built — lever closed as disproven.
+
+Lever 2 (collect at NoValue level): ALREADY LANDED by the COW merge
+9c6df60 — `eval_for_loop` builds the `@` BigInt index only when the
+pattern names one (`position_index`, typed.rs:13165), gates
+`collected.push` on `Level::SingleValue` (:13260) and materializes the
+row only via `at_level` (:13288-13290); the While loop is gated
+identically (:12684, :12709-12711). The residual over-eager part (the
+upfront traversal materialization `Vec<(Option<Value>, Value)>`) is
+bounded by eval_for_loop's measured stack share of 0.11-0.25% on the
+three scripts. NOT built — lever closed as disproven.
+
+Verifications (no code change; docs-only commit): focused corpus
+3662688 (GKfast/class_tables/example/test, separate plain globs):
+4/4 MATCH — rust 0.583s/52348KB, 0.472s/51496KB, 0.991s/76764KB,
+0.317s/34324KB (vs agent-129's 3662521 baseline 0.595/0.473/1.005/0.338
+— unchanged). quick_check 3662689: TEST_DONE status=0.
+
+With this, ALL agent-125 evaluator-audit levers are now resolved: #2
+SharedValue COW (landed, aa2d137), #3 NoValue collect (landed, 9c6df60),
+#4 mimalloc (measured, rejected on RSS — 2026-09-01d), #5 dispatch tag
+(agent-129, disproven), #1 arg cloning (this entry, disproven). The
+remaining corpus gap is NOT in the evaluator: it is the per-process
+inner-class fixed cost (orbit_cross_closure ~40% self on mid scripts;
+agent-122 lane note (c)) plus the real workload lanes (unipotent, E8
+cell literals) already owned elsewhere.
+
+HPC leftovers: worktree /public/home/majj/atlas-rust-evalclone (detached
+286c683) holds evalclone-perf-{3662650,3662651,3662652,3662678}.data,
+evalclone_perf_record.sbatch, evalclone_argclone.at, attr.awk (all
+untracked). The sbatch differs from agent-129's: it cd's into
+atlas-scripts so `<basic.at` includes resolve (a bare script name run
+from the worktree fails with input-file errors), tolerates a nonzero CLI
+exit, and exits 0 (no SIGPIPE FAILED state).
