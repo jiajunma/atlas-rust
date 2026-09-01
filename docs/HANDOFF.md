@@ -6599,3 +6599,13 @@ Process notes / gotchas:
 - rustfmt: involution_table.rs is clean under stable rustfmt 1.9.0;
   domain_builtins.rs carries 66 pre-existing drift diffs (toolchain skew,
   untouched).
+
+## Correction 2026-09-01c: corpus glob form was still wrong
+
+The "correct form" recorded above (braced
+`atlas-scripts/{GKfast,...}.at`) matches **0 scripts** — python `glob.glob`
+does no brace expansion, and the braces never reach a shell (job 3662173:
+"corpus: 0 scripts"). For the FULL 240-script corpus, pass **no positional
+args at all** (the driver defaults to `<atlas_bin_dir>/atlas-scripts/*.at`):
+`sbatch --export=ALL,TIMEOUT=60 hpc/script_corpus.sbatch`. For a subset,
+pass separate plain globs as separate args (no braces).
