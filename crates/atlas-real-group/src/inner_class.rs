@@ -1,6 +1,7 @@
 use std::collections::BTreeSet;
 use std::rc::Rc;
 
+use crate::cartan_class::ClassMembership;
 use crate::grading::try_capacity;
 use crate::twisted_involution::compose_matrices;
 use crate::{
@@ -589,25 +590,43 @@ impl InnerClass {
             .iter()
             .map(|id| id.0 as u8)
             .collect();
+        let packed = simple_positions.len() <= 16;
         // Streamed assembly: each class's members are indexed as its orbit
         // closes, so the per-class flat permutation buffers are released one
         // class at a time instead of all coexisting until end-of-build (the
         // E8 transient was ~48MB of buffers plus Vec-doubling overshoot).
+        // Packed ranks collect (key, owner) pairs and sort once at the end,
+        // so the retained index is a flat sorted key vector — 20 bytes per
+        // member instead of ~69 bytes of hash-table entry overhead.
         let mut classes = Vec::new();
-        let mut class_by_key = PermutationKeyMap::default();
+        let mut pending: Vec<(u128, u32)> = Vec::new();
+        let mut fallback = PermutationKeyMap::default();
         self.involution_orbits(weyl_budget, &mut |orbit| {
             let class_index = classes.len();
             let orbit_member_count = orbit.member_count();
-            class_by_key
-                .try_reserve(orbit_member_count)
-                .map_err(|_| StructureError::AllocationFailed {
-                    requested: orbit_member_count,
-                })?;
-            for permutation in orbit.members() {
-                class_by_key.insert(
-                    PermutationKey::pack(permutation, &simple_positions),
-                    class_index,
-                );
+            if packed {
+                let owner = u32::try_from(class_index)
+                    .map_err(|_| StructureError::ArithmeticOverflow)?;
+                pending
+                    .try_reserve(orbit_member_count)
+                    .map_err(|_| StructureError::AllocationFailed {
+                        requested: orbit_member_count,
+                    })?;
+                for permutation in orbit.members() {
+                    pending.push((pack_simple_images(permutation, &simple_positions), owner));
+                }
+            } else {
+                fallback
+                    .try_reserve(orbit_member_count)
+                    .map_err(|_| StructureError::AllocationFailed {
+                        requested: orbit_member_count,
+                    })?;
+                for permutation in orbit.members() {
+                    fallback.insert(
+                        PermutationKey::pack(permutation, &simple_positions),
+                        class_index,
+                    );
+                }
             }
             classes.push(TwistedConjugacyClass::new(
                 orbit.representative,
@@ -615,12 +634,24 @@ impl InnerClass {
             ));
             Ok(())
         })?;
+        let membership = if packed {
+            pending.sort_unstable_by_key(|&(key, _)| key);
+            let mut keys = try_capacity(pending.len())?;
+            let mut owners = try_capacity(pending.len())?;
+            for (key, owner) in pending {
+                keys.push(key);
+                owners.push(owner);
+            }
+            ClassMembership::Packed { keys, owners }
+        } else {
+            ClassMembership::Full(fallback)
+        };
         Ok(TwistedConjugacyPartition::new(
             self.datum.clone(),
             self.distinguished_involution.clone(),
             classes,
             simple_positions,
-            class_by_key,
+            membership,
         ))
     }
 
@@ -947,15 +978,22 @@ impl PermutationKey {
     /// positions in the permutation (generator order).
     pub(crate) fn pack(permutation: &[u8], simple_positions: &[u8]) -> Self {
         if simple_positions.len() <= 16 {
-            let mut packed = 0_u128;
-            for (shift, &position) in simple_positions.iter().enumerate() {
-                packed |= u128::from(permutation[usize::from(position)]) << (8 * shift);
-            }
-            Self::Packed(packed)
+            Self::Packed(pack_simple_images(permutation, simple_positions))
         } else {
             Self::Full(permutation.to_vec())
         }
     }
+}
+
+/// The u128 packing of a permutation's simple-root images — the
+/// [`PermutationKey::Packed`] payload, for consumers that store the packed
+/// key directly. Caller guarantees `simple_positions.len() <= 16`.
+pub(crate) fn pack_simple_images(permutation: &[u8], simple_positions: &[u8]) -> u128 {
+    let mut packed = 0_u128;
+    for (shift, &position) in simple_positions.iter().enumerate() {
+        packed |= u128::from(permutation[usize::from(position)]) << (8 * shift);
+    }
+    packed
 }
 
 pub(crate) type PermutationKeySet =
