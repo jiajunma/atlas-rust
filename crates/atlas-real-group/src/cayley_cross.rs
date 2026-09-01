@@ -46,21 +46,26 @@ impl CayleyCrossDecomposition {
         let root_system = inner_class.root_system();
         let delta_data = inner_class.distinguished_involution();
         let delta = delta_data.involution();
-        if twisted.weyl_action().datum() != datum {
+        let stored = twisted.root_involution().involution();
+        if stored.datum() != datum {
             return Err(StructureError::DatumMismatch);
         }
-        // Factorization provenance: the stored composed involution must be
+        // Table records drop the Weyl factor's matrices; their construction
+        // gate is push_record's compact-element/theta consistency check.
+        // Everything else still carries the action and gets the full
+        // recomposition check: the stored composed involution must be
         // exactly `w after delta` for THIS delta. This also underwrites the
         // termination argument, since it forces `w^{-1} = delta w delta`.
-        let stored = twisted.root_involution().involution();
-        if compose_matrices(twisted.weyl_action().matrix(), delta.weight_matrix())?
-            != stored.weight_matrix()
-            || compose_matrices(
-                twisted.weyl_action().coweight_matrix(),
-                delta.coweight_matrix(),
-            )? != stored.coweight_matrix()
-        {
-            return Err(StructureError::DistinguishedInvolutionMismatch);
+        if let Some(action) = twisted.retained_weyl_action() {
+            if action.datum() != datum {
+                return Err(StructureError::DatumMismatch);
+            }
+            if compose_matrices(action.matrix(), delta.weight_matrix())? != stored.weight_matrix()
+                || compose_matrices(action.coweight_matrix(), delta.coweight_matrix())?
+                    != stored.coweight_matrix()
+            {
+                return Err(StructureError::DistinguishedInvolutionMismatch);
+            }
         }
 
         let semisimple_rank = datum.semisimple_rank();
