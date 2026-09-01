@@ -29,7 +29,11 @@ either landed in the migration or was archived; see
     `fb041f1` (streaming orbit consumption) + `4554d08` (sorted-u128 index
     replacing hash map; injectivity argued by involution linearity + simple
     roots as Z-basis, rank<=16 packed, else fallback). Quick corpus 5/5 MATCH
-    (3661906). KNOWN ISSUES it must fix: lib test still references
+    (3661906). Interim effect of the two commits (3661906 vs 3661865, maxrss):
+    groups.at 133.6->125.0MB, class_tables 140.6->115.9MB, test 142.4->120.0MB,
+    GKfast 145.7->122.9MB, example 143.0->124.4MB — i.e. ~15-25MB off the fixed
+    baseline, still ~115-125MB vs cpp 7-12MB; more levers needed. KNOWN ISSUES
+    it must fix: lib test still references
     `materialize_weyl_element` from the stash (quick_check compile fail), and
     massif jobs 3661907/3661909 ran empty (4476KB/0s/exit 2) — script path
     must be absolute or cd into the atlas-scripts dir.
