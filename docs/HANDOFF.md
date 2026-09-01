@@ -6378,3 +6378,18 @@ resolve by taking 122's hunk.
 
 Lesson: handover stashes must be filtered file-by-file against the incoming
 agent's ownership list before application, not applied wholesale.
+
+## Harness invocation traps (2026-09-01, hit by both agent-122 and agent-124)
+
+- `hpc/script_corpus_diff.py` positional args are **globs resolved against the
+  job's cwd** (the worktree root), NOT bare script names. Passing `groups.at`
+  matches nothing and yields "corpus: 0 scripts" (job 3662078/3662079).
+  Correct quick-corpus form:
+  `sbatch --export=ALL,TIMEOUT=60 hpc/script_corpus.sbatch '/public/home/majj/atlasofliegroups-4d3e9449/atlas-scripts/{GKfast,class_tables,example,groups,test}.at'`
+- `hpc/massif_profile.sbatch` script args are passed to
+  `atlas-cli --path=$ATLAS_SCRIPTS_DIR`; bare names should resolve, but a CLI
+  exit 2 (script not found) propagates through valgrind and FAILS the job
+  (3661907/3661909, 3662080). Prefer absolute script paths.
+- Neither harness propagates cargo/test failure into the SLURM exit code
+  reliably (`CHECK_DONE status=0` after a compile error) — always read the
+  log, never trust State=COMPLETED.
