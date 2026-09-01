@@ -10988,10 +10988,7 @@ pub(crate) fn print_text(
                     // CompactWeyl's canonical_word: both emit the elected
                     // piece words through the same d_out mapping, and the
                     // elected word depends only on the element.
-                    let word = primal_bundle
-                        .table
-                        .weyl_word(involution)
-                        .expect("in-range");
+                    let word = primal_bundle.table.weyl_word(involution).expect("in-range");
                     if word.is_empty() {
                         text.push('e');
                     } else {
@@ -11230,10 +11227,7 @@ pub(crate) fn print_text(
                     // The generator support of a reduced word is
                     // word-independent, so the table's elected word gives
                     // the same flags as any reduced word of the element.
-                    let word = primal_bundle
-                        .table
-                        .weyl_word(involution)
-                        .expect("in-range");
+                    let word = primal_bundle.table.weyl_word(involution).expect("in-range");
                     let mut flags = vec![false; rank];
                     for generator in word {
                         if generator < rank {

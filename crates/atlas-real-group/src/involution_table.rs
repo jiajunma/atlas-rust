@@ -188,8 +188,10 @@ impl DedupIndex {
                 root_images[delta[position].0]
             }))
         } else {
-            let w_images: Box<[RootId]> =
-                delta.iter().map(|delta_image| root_images[delta_image.0]).collect();
+            let w_images: Box<[RootId]> = delta
+                .iter()
+                .map(|delta_image| root_images[delta_image.0])
+                .collect();
             DedupKey::Full(w_images)
         }
     }
@@ -453,7 +455,10 @@ impl InvolutionTable {
             &mut self.records,
             &mut self.index,
             seed_compact,
-            representative.root_involution().image_permutation().to_vec(),
+            representative
+                .root_involution()
+                .image_permutation()
+                .to_vec(),
             seed_w_length,
             representative.weyl_action().clone(),
             length_sum / 2,
@@ -1246,8 +1251,8 @@ fn push_record(
 #[cfg(test)]
 mod tests {
     use crate::{
-        dual_inner_class, dual_involution, AdjointFiberBudget, BasedRootDatum,
-        CartanClassificationBudget, Coweight, LatticeInvolution, ModTwoVector,
+        AdjointFiberBudget, BasedRootDatum, CartanClassificationBudget, Coweight,
+        LatticeInvolution, ModTwoVector, dual_inner_class, dual_involution,
     };
 
     use super::*;
@@ -1348,10 +1353,12 @@ mod tests {
         }
         let fundamental_id = InvolutionId(0);
         let fundamental = table.record(fundamental_id).unwrap();
-        assert!(table
-            .materialize_weyl_element(fundamental_id)
-            .unwrap()
-            .is_identity());
+        assert!(
+            table
+                .materialize_weyl_element(fundamental_id)
+                .unwrap()
+                .is_identity()
+        );
         assert_eq!(fundamental.involution_length(), 0);
         assert_eq!(fundamental.theta_plus_one_rho(), &Weight::new(vec![1]));
         assert_eq!(fundamental.mod_space().rank(), 0);
@@ -1437,14 +1444,16 @@ mod tests {
         let legacy = WeylElement::simple_reflection(table.root_system(), 1).unwrap();
 
         assert_eq!(table.compact_weyl.length(&compact), legacy.length());
-        assert!(!compact_matches_images(
-            &table.compact_weyl,
-            &table.reflections,
-            table.root_system(),
-            &compact,
-            |root| legacy.image(root),
-        )
-        .unwrap());
+        assert!(
+            !compact_matches_images(
+                &table.compact_weyl,
+                &table.reflections,
+                table.root_system(),
+                &compact,
+                |root| legacy.image(root),
+            )
+            .unwrap()
+        );
     }
 
     #[test]
@@ -1461,14 +1470,16 @@ mod tests {
             let id = InvolutionId(index);
             let record = table.record(id).unwrap();
             let materialized = table.materialize_weyl_element(id).unwrap();
-            assert!(compact_matches_images(
-                &table.compact_weyl,
-                &table.reflections,
-                table.root_system(),
-                &record.compact_weyl_element(),
-                |root| materialized.image(root),
-            )
-            .unwrap());
+            assert!(
+                compact_matches_images(
+                    &table.compact_weyl,
+                    &table.reflections,
+                    table.root_system(),
+                    &record.compact_weyl_element(),
+                    |root| materialized.image(root),
+                )
+                .unwrap()
+            );
             assert_eq!(table.compact_index.get(&record.element), Some(&id));
             assert_eq!(&record.clone(), record);
         }
@@ -1504,14 +1515,16 @@ mod tests {
                 let materialized = table.materialize_weyl_element(id).unwrap();
                 let record = table.record(id).unwrap();
                 assert_eq!(materialized.length(), record.weyl_length());
-                assert!(compact_matches_images(
-                    &table.compact_weyl,
-                    &table.reflections,
-                    table.root_system(),
-                    &record.compact_weyl_element(),
-                    |root| materialized.image(root),
-                )
-                .unwrap());
+                assert!(
+                    compact_matches_images(
+                        &table.compact_weyl,
+                        &table.reflections,
+                        table.root_system(),
+                        &record.compact_weyl_element(),
+                        |root| materialized.image(root),
+                    )
+                    .unwrap()
+                );
             }
         }
     }
@@ -1600,7 +1613,7 @@ mod tests {
                     let left = table.reflections[generator].image_permutation();
                     let right = table.reflections[table.twist[generator]].image_permutation();
                     let transported: Vec<RootId> = (0..theta.len())
-                        .map(|root| left[theta[delta[right[delta[root].0].0].0].0].0])
+                        .map(|root| left[theta[delta[right[delta[root].0].0].0].0])
                         .collect();
                     let cross_id = table.cross(generator, id).unwrap();
                     let stored = table
@@ -1923,11 +1936,13 @@ mod tests {
             table.add_cartan(&classification, CartanId(cartan)).unwrap();
         }
 
-        assert!(table
-            .index
-            .map
-            .keys()
-            .all(|key| matches!(key, DedupKey::Full(_))));
+        assert!(
+            table
+                .index
+                .map
+                .keys()
+                .all(|key| matches!(key, DedupKey::Full(_)))
+        );
 
         for index in 0..table.involution_count() {
             let record = table.record(InvolutionId(index)).unwrap();
@@ -2123,10 +2138,12 @@ mod tests {
         let mut table = InvolutionTable::new(&inner_class, table_budget(8)).unwrap();
         let (fundamental, size) = table.add_cartan(&classification, CartanId(0)).unwrap();
         assert_eq!(size, 1);
-        assert!(table
-            .materialize_weyl_element(fundamental)
-            .unwrap()
-            .is_identity());
+        assert!(
+            table
+                .materialize_weyl_element(fundamental)
+                .unwrap()
+                .is_identity()
+        );
         assert_eq!(table.cayley(0, fundamental).unwrap(), None);
 
         for id in 1..classification.cartan_classes().len() {
