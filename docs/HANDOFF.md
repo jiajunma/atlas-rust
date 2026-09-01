@@ -6311,3 +6311,51 @@ Bottom line: legacy WeylElement storage + push_record payloads = ~52%
 classes lands the peak near ~1.0-1.1GB vs cpp 881MB. The stashed WIP
 targets the largest third; push_record payload packing (RootId u32 /
 kind u8) and matrix-free composition are the follow-ups.
+
+## Evaluator throughput audit (agent-125, 2026-09-01, read-only)
+
+Calibration (local read-only, stale Aug-24 release binary + local oracle):
+empty script ~2-3ms both (no startup gap); `<groups.at`+`1+1` Rust ~180ms vs
+oracle ~20-30ms, jump at `groups.at:244` (E8 inner_class build); scalar 100k
+while-loop 62ms vs 40ms (fine); matrix diagonal writes `M[i,i]:=2` Rust O(n^2)
+(n=1200: 546ms, 258ms user + 268ms sys page-faulting) vs oracle <10ms — every
+component write deep-copies the whole matrix.
+
+Ranked levers:
+1. Eager E6/E7/E8 inner-class builds at groups.at load
+   (`build_inner_class_context`, domain_builtins.rs:2076-2145; primal+dual
+   CartanClassification + StrongRealClassification per inner_class) — ~80-90%
+   of the uniform per-script gap and most of the ~140MB RSS. Owned by
+   agent-122's lane; do NOT duplicate. Lazifying behind OnceCell would change
+   error-timing semantics vs upstream's eager InnerClass constructor.
+2. Copy-on-write/shared-value evaluation — TOP OWNED LEVER, no conflict
+   (typed.rs/value.rs/frames.rs only). Identifier reads deep-clone
+   (typed.rs:11717,11730); assignments clone 2-3x (11738-11752); component
+   assignment reads+copies whole aggregate (13418-13467) = the measured O(n^2);
+   subscription forces whole aggregate (12112); Tuple/ListDisplay double-copy
+   (11696,11703). Fix: thread SharedValue (Rc<Value>) through evaluate, use
+   Rc::make_mut for aggregate writes (pattern exists in take_pilfered,
+   12865-12879). Risks: aliasing semantics, pilfering interplay, domain
+   payloads (StandardRepr clones RationalWeight Vecs, rep_context.rs:255-263).
+3. eval_for_loop waste (typed.rs:13006-13125): builds BigInt index even with
+   no `@`, collects Vec<Value> even at Level::NoValue then clones it. Gate on
+   `index`/`level`, move not clone. Check axis.w do_expr before gating body
+   level; gating only `collected` is safe.
+4. mimalloc as global allocator in atlas-cli (no #[global_allocator] anywhere;
+   LTO+1 CGU already on). ~10-25% on small-alloc churn, zero semantic risk.
+5. Domain builtin dispatch re-matches by string (typed.rs:12388-12407 carries
+   the index but Builtin::run re-dispatches via match name at
+   domain_builtins.rs:12116). Add numeric tag. CONFLICTS with
+   agent-legacy-element's dirty domain_builtins.rs — defer.
+6. Analysis clones locals maps per scope push (analysis-time only, small).
+7. Cross-process prelude caching: NOT recommended (fidelity risk, small win).
+
+Non-findings: overload resolution is analysis-time with per-name cache (fine);
+builtin registry OnceLock fine; completion rebuild dirty-gated; lexer O(n^2)
+already fixed; rayon pool ~1ms negligible. Malachite Natural already inlines
+1-limb ints — a small-int Value variant is NOT worth it.
+
+Interim verified numbers (agent-122 branch ce218f4, quick corpus 3662022,
+5/5 MATCH; massif 3662023): fixed maxrss ~42-50MB (groups.at 42MB, was
+133.6MB at adb4051; class_tables 46MB; test 42MB; GKfast 50MB; example 74MB),
+wall within variance. quick_check 3662021 green (7 suites ok).
