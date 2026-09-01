@@ -534,7 +534,7 @@ mod tests {
             crate::twisted_involution::compose_matrices(w.matrix(), delta.weight_matrix()).unwrap(),
             crate::twisted_involution::compose_matrices(
                 w.coweight_matrix(),
-                delta.coweight_matrix(),
+                &delta.coweight_matrix().to_vec(),
             )
             .unwrap(),
         )
