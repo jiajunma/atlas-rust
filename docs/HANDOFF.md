@@ -6393,3 +6393,88 @@ agent's ownership list before application, not applied wholesale.
 - Neither harness propagates cargo/test failure into the SLURM exit code
   reliably (`CHECK_DONE status=0` after a compile error) — always read the
   log, never trust State=COMPLETED.
+
+## Perf work 2026-09-01a — fixed ~142MB baseline KILLED: groups.at 139.7 -> 36.3MB (agent-122)
+
+Branch `agent-cartan-baseline` (base 6a00462), four commits, all HPC-verified
+from worktree /public/home/majj/atlas-rust-cartan2 (detached at each commit;
+main checkout untouched):
+
+- `fb041f1` lever 1: `InnerClass::involution_orbits` takes a `consume`
+  callback; each phase-two ClassOrbit is consumed as its cross closure
+  finishes instead of accumulating every class's flat member buffer to
+  end-of-build.
+- `fccbd24` lever 1b (the actual kill): `orbit_cross_closure` keeps member
+  permutations in 4096-member chunks, releasing each chunk once the
+  sequential BFS cursor passes it (resident footprint = frontier width, not
+  class size) and streams every member permutation to the consumer via an
+  `emit(orbit_index, &[u8])` callback at discovery time. ClassOrbit now
+  retains only representative + parent links (materialize replay unchanged).
+  E8 "c" class sizes measured via Cartan_info on the login node: 1, 120,
+  3780, 37800, 113400, 3150, 37800, 3780, 120, 1 (total 199,952) — the
+  113,400-member class's 27MB buffer (47MB at its final Vec doubling) is why
+  per-class streaming alone was not enough.
+- `4554d08` + `0b48c5a` lever 2: the retained class-membership index is a
+  single sorted flat `Vec<u128>` of composite entries `key<<32 | owner`
+  (rank <= 12; key = simple-root images, injective by involution linearity).
+  16B/member: E8 ~3.2MB/side vs the ~13.8MB/side hash map. Rank > 12 keeps
+  the PermutationKeyMap fallback. Lookups binary-search; partition contents
+  unchanged.
+- `2fa9b5a` + `ce218f4` repairs: kgb_graph.rs's oracle-numbering test
+  referenced `InvolutionTable::materialize_weyl_element`, which exists only
+  in the handover stash — adb4051's lib tests did not compile at all
+  (quick_check 3661905). Read the element via `record(id).weyl_element()`.
+  ce218f4 fixes an E0382 (member_count read after partial move) that
+  quick_check 3661943 caught.
+
+Before/after (targeted corpus, 5 scripts, all MATCH every round;
+baseline job 3661910 @ c56ce19 = adb4051 behaviorally):
+
+| script | base maxrss | L1 3661908 | L1+2 3661906 | +1b 3662022 | +2b 3662054 |
+|---|---|---|---|---|---|
+| groups.at | 139,732KB | 121,140 | 124,992 | 44,004 | 36,340 |
+| test.at | 145,772 | 124,100 | 120,036 | 43,608 | 36,624 |
+| class_tables.at | 143,028 | 121,088 | 115,928 | 47,584 | 53,552 |
+| GKfast.at | 145,888 | 126,608 | 122,888 | 51,668 | 54,920 |
+| example.at | 146,332 | 122,064 | 124,364 | 76,076 | 78,300 |
+
+Seconds were FLAT throughout (groups.at 0.314 -> 0.313s; time ratio still
+~5.5-5.7x — the residual time tail is CartClassification::build CPU, a
+separate lever, not memory). rss ratios now 5.5x (groups/test), ~4.5x
+(class_tables/GKfast), 4.1x (example) vs 12-21x before.
+
+Heap proof: massif 3662055 @ 0b48c5a — peak heap 24.6MB (snapshot 142),
+final live 16.4MB, no-valgrind baseline 36,656KB/0.31s (vs massif 3624381 @
+7ff10a1: 103.2MB peak heap, 142,492KB maxrss). Peak composition now: 36.6%
+the two parallel sides' entries Vec doubling (2 x ~4.2MB), 17.6% the seen
+PermutationKeySet transient, 12.6% CartanClassification retained fiber data;
+remaining maxrss-over-heap ~12MB is non-heap (thread stacks, binary,
+sources).
+
+Verification: quick_check 3662053 @ 0b48c5a green (full workspace tests,
+incl. the repaired kgb_graph probe). Corpus stays MATCH on the targeted
+subset; FULL 240 corpus run NOT yet done at this tip — parent to dispatch.
+
+Ops lessons:
+- hpc/quick_check.sbatch's `check_status=${PIPESTATUS[0]}` is clobbered by
+  the `|| true` on the grep pipeline, so CHECK_DONE always prints 0;
+  TEST_DONE is the authoritative gate.
+- hpc/massif_profile.sbatch needs ABSOLUTE script paths (3661907/3661909
+  ran empty with bare `groups.at`).
+- atlas-cli `simply_connected` needs basic.at's string overload; standalone
+  probe scripts must `<basic.at` first. `Cartan_info` takes a CartanClass;
+  use `Cartan_classes(ic)` + `print_Cartan_info`.
+- Another agent switched the shared local checkout mid-edit; my 1b commit
+  first landed as 43cc958 on agent-legacy-element and was cherry-picked to
+  agent-cartan-baseline as fccbd24 (identical diff). All further branch
+  work used detached /private/tmp worktrees; the shared checkout was left
+  exactly as found (on agent-legacy-element with the parent's uncommitted
+  domain_builtins.rs/involution_table.rs changes).
+
+Not done / next candidates in this lane: (a) entries-vec doubling could
+shrink with per-orbit try_reserve (saves ~2-4MB more); (b) the seen set
+could be HashSet<u128> when packed (saves ~2MB transient); (c) the ~5.5x
+time tail on groups/test.at is CartanClassification::build CPU (orbit
+closure edge work), unchanged by these levers; (d) lever 3 (lazy E6/E7/E8
+inner-class builds) deliberately NOT taken — it lives in domain_builtins.rs
+(parent lane) and changes cache semantics.

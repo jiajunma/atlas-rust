@@ -1,4 +1,4 @@
-use crate::inner_class::{PermutationKey, PermutationKeyMap};
+use crate::inner_class::{pack_simple_images, PermutationKey, PermutationKeyMap};
 use crate::twisted_involution::compose_matrices;
 use crate::{
     BasedRootDatum, CartanGradingData, CayleyCrossDecomposition, RealFormLabels,
@@ -54,15 +54,34 @@ impl TwistedConjugacyClass {
 /// packed down to its simple-root images (see
 /// [`crate::inner_class::PermutationKey`]), an EXACT injective key — a
 /// root-datum involution is a linear map and the simple roots span the root
-/// lattice — hashed with a fast non-cryptographic hasher, so the E8-class
-/// 199,952-member map stays cheap without any semantic change.
+/// lattice.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TwistedConjugacyPartition {
     datum: BasedRootDatum,
     distinguished: RootInvolutionData,
     classes: Vec<TwistedConjugacyClass>,
     simple_positions: Vec<u8>,
-    class_by_key: PermutationKeyMap<usize>,
+    membership: ClassMembership,
+}
+
+/// The retained per-member membership index of a
+/// [`TwistedConjugacyPartition`]: the map from a member's packed
+/// simple-root-image key to its class index.
+///
+/// The packed arm sorts a single flat vector of composite entries
+/// `key << 32 | owner`: rank <= 12 needs at most 96 key bits, so the owning
+/// class index rides in the low 32 bits and the index costs 16 bytes per
+/// member (E8: 199,952 members per side, so ~3.2MB instead of the ~14MB a
+/// hash table paid per side). Keys are unique (the packing is injective),
+/// so ordering by the composite entry orders by key alone, and lookups
+/// binary-search. The partition is immutable once built, so construction
+/// collects the streamed per-member entries and sorts once at the end.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum ClassMembership {
+    /// Semisimple rank <= 12 (key fits in 96 bits; owner in the low 32).
+    Packed { entries: Vec<u128> },
+    /// Rank > 12: the variable-length fallback keeps the hash map.
+    Full(PermutationKeyMap<usize>),
 }
 
 impl TwistedConjugacyPartition {
@@ -71,14 +90,14 @@ impl TwistedConjugacyPartition {
         distinguished: RootInvolutionData,
         classes: Vec<TwistedConjugacyClass>,
         simple_positions: Vec<u8>,
-        class_by_key: PermutationKeyMap<usize>,
+        membership: ClassMembership,
     ) -> Self {
         Self {
             datum,
             distinguished,
             classes,
             simple_positions,
-            class_by_key,
+            membership,
         }
     }
 
@@ -91,9 +110,19 @@ impl TwistedConjugacyPartition {
     /// [`Self::class_of`] without the provenance gates, for consumers that
     /// derive the permutation from a lattice involution directly.
     pub(crate) fn class_index_of_permutation(&self, permutation: &[u8]) -> Option<usize> {
-        self.class_by_key
-            .get(&PermutationKey::pack(permutation, &self.simple_positions))
-            .copied()
+        match &self.membership {
+            ClassMembership::Packed { entries } => {
+                let key = pack_simple_images(permutation, &self.simple_positions);
+                let slot = entries.partition_point(|&entry| entry < (key << 32));
+                match entries.get(slot) {
+                    Some(&entry) if (entry >> 32) == key => Some(entry as u32 as usize),
+                    _ => None,
+                }
+            }
+            ClassMembership::Full(class_by_key) => class_by_key
+                .get(&PermutationKey::pack(permutation, &self.simple_positions))
+                .copied(),
+        }
     }
 
     /// The index of the class containing this twisted involution.
