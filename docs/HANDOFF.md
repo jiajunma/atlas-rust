@@ -6609,3 +6609,78 @@ does no brace expansion, and the braces never reach a shell (job 3662173:
 args at all** (the driver defaults to `<atlas_bin_dir>/atlas-scripts/*.at`):
 `sbatch --export=ALL,TIMEOUT=60 hpc/script_corpus.sbatch`. For a subset,
 pass separate plain globs as separate args (no braces).
+
+## Perf work 2026-09-01d — CartanClassification::build CPU cut: groups.at 0.327 -> 0.197s, corpus over_5x = 0 (agent-128)
+
+Branch `agent-cartan-cpu` (base ce0fe2b), five perf commits + one doc fix,
+all HPC-verified from worktree /public/home/majj/atlas-rust-cartancpu
+(detached; main checkout untouched). All changes are in
+crates/atlas-real-group/src/inner_class.rs.
+
+Attribution (gdb all-thread sampling, jobs 3662298/3662310/3662342/3662398/
+3662468/3662527; perf record is blocked on this cluster): at ce0fe2b, 145/147
+stacks of a groups.at loop sat under CartanClassification::build, 135 of them
+in the phase-two cross-action closure `orbit_cross_closure` (leaf split: 88
+loop body, 36 hashbrown insert, ~8 memmove). The agent-125 "eager E6/E7/E8
+build" guess was right in location but the cost is the closure, not fiber
+setup.
+
+Levers (per-commit attribution from the same sampling loop):
+
+- e401d1d padded probe loop: member permutation + simple-reflection tables
+  staged in fixed-size [u8; 256] buffers (u8 index into 256-entry array =>
+  zero bounds checks); member slice located once per member, not per edge;
+  self-loop skip (r_s c r_s == c iff packed keys equal; the member's key is
+  already in the set, so the skipped insert was a no-op). 0.327 -> 0.29s.
+- 97eb726 lean membership + parent-edge skip: open-addressing u128
+  `PackedKeySet` (linear probing, multiplicative hash, u128::MAX sentinel —
+  valid keys never equal it because a permutation's images are distinct)
+  replaces hashbrown on the packed path; the edge back to the BFS parent is
+  skipped entirely (cross action by one generator is an involution, so the
+  probe always reproduces the parent). 0.29 -> 0.26s.
+- fd1b25b combinatorial reflection permutations: ~15% of stacks were
+  cayley_successor -> action_permutation -> weyl::apply_matrix (one big-int
+  matrix apply per root per distinct Cayley root, rebuilt per machine).
+  reflection_permutation now conjugates down the root system
+  (r_{-a}=r_a; simple roots reuse the cached table; otherwise
+  r_{s(g)} = s r_g s via a simple descent), and PermutationOrbits::new reuses
+  RootSystem's cached negation + simple-reflection tables. Probe key now two
+  gathers per simple position (inner[g][p] = r_g(alpha_p) hoisted). 0.26 ->
+  0.23s.
+- bb201bf two-thread phase two: phase one factored as
+  cayley_bfs_representatives; for packed inner classes with >= 100 roots
+  (E7/E8) phase two runs on two scoped workers pulling orbit indices from an
+  atomic cursor, with per-orbit result slots replayed in index order (class
+  vector, budget check, and error precedence identical to sequential; packed
+  membership entries are order-free because they are sorted before use).
+  reflection_cache moved Rc -> Arc so PermutationOrbits is Sync. 0.23 ->
+  0.21s.
+- aab1d98 workers sort their own entry buffers; replay merges the two sorted
+  buffers in O(n) (the 200k-entry u128 sort was ~8% after threading).
+
+Verification: quick_check green at fd1b25b (3662467), aab1d98 (3662518:
+546 real-group + 367 core tests incl. a new PackedKeySet growth/dedup unit
+test) and tip 91d665c (3662599). Focused corpus 3662546 (groups/test/
+elliptic/example): 4/4 MATCH. FULL corpus 3662561 @ aab1d98: 240/240 MATCH,
+median rust/cpp 2.58x (was 3.32x at 3661806), over_5x = ZERO (was 6-8 across
+3661806/3661865/3662251), worst = groups.at 3.58x. Per-script (this job vs
+3662251 @ 443af7a): groups.at 0.197 vs 0.327s (cpp 0.055), test.at 0.191 vs
+0.312, elliptic 0.229 vs ~0.33, partitions/combinatorics/similar all <= 3.3x;
+example.at 0.951 vs 0.434 (2.19x, unchanged — different lane).
+
+Caveats / remaining tail:
+- median maxrss ratio ROSE to 5.19x (from 4.17x @ 3662251): threading pays
+  ~+10MB on small scripts (groups.at 36.3 -> 47.9MB — two extra worker
+  chunk frontiers + two PackedKeySet tables + thread stacks). Time lane won;
+  memory lane may want per-worker PackedKeySet pre-sizing or a 1-thread
+  fallback when RSS matters.
+- After the fix the residual small-script fixed cost (~0.14s over the
+  oracle) is attributed to: the remaining closure fundamentals (per-edge
+  probe key build + PackedKeySet random-access probes — u64 keys for
+  rank <= 8 would halve key-build work and table traffic but needs a
+  generic PackedKeySet; NOT done), the serial-per-side phases (phase-one
+  Cayley BFS, per-class fiber chains, RealFormLabels — all small in
+  samples), and startup/eval outside classification.
+- Harness traps hit: bash's special array GROUPS ate a script path
+  (use another name); atlas-cli needs ABSOLUTE script paths even with
+  --path (bare names exit 2 instantly and gdb then samples garbage).
