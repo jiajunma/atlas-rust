@@ -240,21 +240,14 @@ impl RealProjection {
             return Err(StructureError::InvalidIntegerMatrixShape);
         }
         let image_rank = self.image_rank();
-        let size = rank
-            .checked_mul(image_rank)
-            .ok_or(StructureError::ArithmeticOverflow)?;
-
         // lift_mat' = (I - alpha*beta^T) * lift_mat.
         let mut lift_mat = Vec::new();
         lift_mat
-            .try_reserve_exact(size)
-            .map_err(|_| StructureError::AllocationFailed { requested: size })?;
-        lift_mat.resize(size, 0);
-        for row in 0..rank {
-            for column in 0..image_rank {
-                lift_mat[row * image_rank + column] = self.lift_entry(row, column);
-            }
-        }
+            .try_reserve_exact(self.lift_mat.len())
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: self.lift_mat.len(),
+            })?;
+        lift_mat.extend_from_slice(&self.lift_mat);
         for column in 0..image_rank {
             let mut beta_lift = 0_i64;
             for (k, &coefficient) in pairing_vector.iter().enumerate() {
@@ -283,8 +276,10 @@ impl RealProjection {
         // m_real' = m_real * (I - alpha*beta^T).
         let mut m_real = Vec::new();
         m_real
-            .try_reserve_exact(size)
-            .map_err(|_| StructureError::AllocationFailed { requested: size })?;
+            .try_reserve_exact(self.m_real.len())
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: self.m_real.len(),
+            })?;
         m_real.extend_from_slice(&self.m_real);
         for row in 0..image_rank {
             let source = &self.m_real[row * rank..(row + 1) * rank];
