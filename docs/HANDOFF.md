@@ -7073,8 +7073,11 @@ candidate, contained in real_projection.rs); hashbrown dedup ~104MB;
 transport_mod_space ~89MB; image_by_root 126.5MB (already narrowed to
 u16 by agent-132).
 
-## Active agents (2026-09-01 post-2f63a80)
-- agent-134 (branch agent-134, worktrees /private/tmp/atlas-addcartan + HPC atlas-rust-addcartan): add_cartan records backing array ~151MB + RealProjection lift_mat/m_real flat-matrix ~112MB. Real-group lane; evaluator lane CLOSED (all levers disproven or landed).
+## Active agents (2026-09-02, post-bb107cd merges)
+- MERGED: agent-134 (RealProjection flat + record slimming, unipotent 0.976x/0.937x) and agent-135 (InnerClass storage slimming, rss median 4.75x->4.33x) — both landed at bb107cd/b894857.
+- agent-136 (branch agent-136, worktrees /private/tmp/atlas-rootsys + HPC atlas-rust-rootsys): RootSystem::from_closure/enumerate CPU (17.71% of small-script fixed cost, perf 3665987). Owns root_system.rs ONLY.
+- agent-137 (branch agent-137, worktrees /private/tmp/atlas-orbitcpu + HPC atlas-rust-orbitcpu): orbit_cross_closure 30.95% + PackedKeySet::insert 11.60% CPU. Owns inner_class.rs ONLY.
+- evaluator lane CLOSED (all levers disproven or landed).
 
 ## Measurement 2026-09-01i — small-script fixed baseline decomposition (massif 3665704, groups.at @2f63a80)
 - Baseline: rust maxrss 42.6MB / 0.36s vs oracle ~6-12MB. Peak HEAP only
