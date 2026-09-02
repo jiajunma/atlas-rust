@@ -262,7 +262,12 @@ impl<B: BlockTopology> KlTableHandle<B> {
         }
 
         for &x in &extremals {
-            let sx = self.support.block().cross(x, s).expect("cross of extremal");
+            // Upstream only consults `cross(s,x)` in the ComplexDescent and
+            // RealTypeII branches (kl.cpp:406-436), and `KL_pol` maps
+            // `UndefBlock` to the zero polynomial (kl.cpp:123-130), so a
+            // cross image outside a partial block contributes nothing.
+            // Computing `cross` eagerly here would panic on exactly those
+            // partial-block links that upstream never touches.
             let value = self.support.block().descent(x, s).expect("valid generator");
             let pxy = match value {
                 BlockDescent::ImaginaryCompact => {
@@ -271,7 +276,10 @@ impl<B: BlockTopology> KlTableHandle<B> {
                 }
                 BlockDescent::ComplexDescent => {
                     // P_{sx,sy} + q.P_{x,sy}
-                    let first = self.kl_pol_pool(sx, sy)?;
+                    let first = match self.support.block().cross(x, s) {
+                        Some(sx) => self.kl_pol_pool(sx, sy)?,
+                        None => KlPol::zero_ref(), // UndefBlock: outside partial block
+                    };
                     let second = self.kl_pol_pool(x, sy)?;
                     first.add_shifted(second, 1)
                 }
@@ -314,7 +322,10 @@ impl<B: BlockTopology> KlTableHandle<B> {
                     };
                     let first = self.kl_pol_pool(first_image, sy)?;
                     let second = self.kl_pol_pool(x, sy)?;
-                    let third = self.kl_pol_pool(sx, sy)?;
+                    let third = match self.support.block().cross(x, s) {
+                        Some(sx) => self.kl_pol_pool(sx, sy)?,
+                        None => KlPol::zero_ref(), // UndefBlock: outside partial block
+                    };
                     let mut result = first.add_shifted(second, 1);
                     result.sub_assign(third);
                     result
@@ -539,8 +550,14 @@ impl<B: BlockTopology> KlTableHandle<B> {
                 pxy = self.mu_new_formula(x, y, s, &mu_pairs)?;
                 match self.support.block().descent(x, s).expect("valid generator") {
                     BlockDescent::ComplexAscent => {
-                        let cross = self.support.block().cross(x, s).expect("cross");
-                        pxy.sub_shifted_assign(&working[kl_index(cross)], 1, 1);
+                        // Upstream `KL_y(cross(s,x))` (kl.cpp:692); when the
+                        // cross image is `UndefBlock` (outside a partial
+                        // block) `prim_index` lands on the always-zero tail
+                        // slot, i.e. the subtraction term vanishes.
+                        if let Some(sx) = self.support.block().cross(x, s) {
+                            let cross = kl_index(sx);
+                            pxy.sub_shifted_assign(&working[cross], 1, 1);
+                        }
                     }
                     BlockDescent::ImaginaryTypeII => {
                         let pair = self.support.block().cayley(x, s).expect("cayley");
@@ -653,9 +670,12 @@ impl<B: BlockTopology> KlTableHandle<B> {
             let dy_s = self.support.block().descent(y, s)?;
             let dx_s = self.support.block().descent(x, s)?;
             if dy_s == BlockDescent::RealNonparity && dx_s == BlockDescent::ImaginaryTypeI {
-                let sx = self.support.block().cross(x, s)?;
-                let dsx = self.support.block().descent(sx, s)?;
-                let _ = dsx;
+                // kl.cpp:329-332: a cross image outside the partial block
+                // means no `t` can be searched and P_{s.x,y}=0; report
+                // `(s, no t)` rather than abandoning the pair entirely.
+                let Some(sx) = self.support.block().cross(x, s) else {
+                    return Some((s, None));
+                };
                 for t in 0..r {
                     let dy_t = self.support.block().descent(y, t)?;
                     if dy_t != BlockDescent::RealTypeII {
