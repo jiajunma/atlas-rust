@@ -66,9 +66,10 @@ length. Index alignment is a public invariant, not an internal convenience:
 `id_of` binary-searches `roots`, so `roots` must stay ascending in
 lexicographic coordinate order, and `RestrictedRootSystem::build` constructs
 `RootId` values directly from the `roots()` enumeration index. The standard
-library has no three-way `unzip`, so materialization is one explicit loop over
-the closure map in key order, pushing into three `try_reserve_exact`-reserved
-vectors in lockstep; a second pass would silently break alignment. Keeping
+library has no three-way `unzip`, so materialization consumes the closure's
+hash map, sorts its `(root coordinates, record)` pairs lexicographically once,
+then pushes into three `try_reserve_exact`-reserved vectors in lockstep; a
+second pass would silently break alignment. Keeping
 `roots` as a separate vector preserves the existing zero-copy `roots()` API
 used by root involutions and restricted-root code. No `coroots()` slice
 accessor is added; iteration goes through `entries`. The budget is never
@@ -204,19 +205,22 @@ input, by
 ```text
 borrowed caller datum:           r^2 + 2 r n
 owned datum snapshot:            r^2 + 2 r n
-map plus pending queue:          R_eff (4 n + 2 r)
-one in-flight candidate record:  4 n + 2 r
-total:                           2 (r^2 + 2 r n) + (R_eff + 1)(4 n + 2 r).
+map plus pending queue:          R_eff (3 n + r)
+scratch buffers:                 3 n + 2 r
+one in-flight candidate record:  3 n + r
+total:                           2 (r^2 + 2 r n) + (R_eff + 1)(3 n + r) + (3 n + 2 r).
 ```
 
 A map entry retains a root key, coroot, and simple coordinates (`2n + r`); a
-pending record retains the same (`2n + r`); the in-flight term covers the one
-candidate that exists while a reflection is being inserted. At materialization
-the pending queue is empty and the three output vectors take ownership of the
-map's buffers by move, so output entries replace map entries rather than
-adding to them. The entry bound intentionally counts coordinate values rather
-than allocator metadata; `max_roots` separately bounds node and vector-object
-counts, including the infallible `BTreeMap` nodes.
+pending queue entry retains only its root key (`n`). The scratch term covers
+the reusable coroot/simple-coordinate copies plus reflected root, coroot, and
+simple-coordinate buffers. The in-flight term covers the candidate key,
+record, and pending root copied while a new reflection is inserted. At
+materialization the pending queue is empty; sorting moves the map's coordinate
+buffers into the three output vectors, with only tuple metadata retained by
+the temporary sorted vector. The entry bound intentionally counts coordinate
+values rather than allocator metadata; `max_roots` separately bounds hash-map
+slots and vector-object counts.
 
 One reflection step is one `(pending record, simple generator)` visit, that
 is, one dual reflection pair; the seed phase performs `2r` insertions and zero
@@ -250,8 +254,10 @@ Every coordinate vector — the datum snapshot, each reflected root and coroot,
 each simple-coordinate vector, the map key copy, and the three output vectors
 — is built with `Vec::try_reserve_exact` and maps failure to
 `AllocationFailed`. The pending queue calls `VecDeque::try_reserve(1)` before
-each `push_back`. `BTreeMap` node allocation has no fallible form on stable
-Rust and remains infallible, bounded a priori by `max_roots`. The snapshot
+each `push_back`; its entries contain only root coordinates. Hash-map bucket
+allocation is fallible through the map's reserve path and remains bounded a
+priori by `max_roots`; hash metadata is outside the coordinate-entry budget.
+The snapshot
 uses an internal `BasedRootDatum::try_clone` that copies the already-validated
 fields directly instead of re-running `from_simple_data` validation.
 `reflect_coweight` mirrors `reflect_weight`'s signature and errors, and both
@@ -312,13 +318,13 @@ corrections are folded into the sections above.
    materialization in `RootDatum`. It added the explicit Cartan orientation
    statement and the enumeration-order conditions the future adapter must
    absorb.
-2. The Rust resource review corrected the entry bound (borrowed caller datum
-   and one in-flight record were uncharged, and a pure torus needs `R_eff`),
-   fixed the check order and `u128` saturation rule, established that the
+2. The Rust resource review corrected the entry bound (borrowed caller datum,
+   the root-only pending queue, reusable scratch buffers, and a pure torus
+   need explicit accounting), fixed the check order and `u128` saturation rule, established that the
    upfront consistency checks make runtime entry/step meters unreachable,
    named the two new error variants with `usize` limits, replaced the vague
    fallible-allocation clause with the exact per-container statement including
-   the `BTreeMap` carve-out, required `try_clone` instead of re-validation,
+   the hash-map metadata carve-out, required `try_clone` instead of re-validation,
    and rejected storing the budget inside `RootSystem` because derived
    equality would become resource-policy-dependent.
 3. The consumer review inventoried every call site (one production caller of
