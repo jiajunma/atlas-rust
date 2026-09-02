@@ -1568,15 +1568,16 @@ impl<T: PackedSlot> PackedKeySet<T> {
         self.len = 0;
     }
 
-    /// Insert `key`; returns false when it was already present.
-    ///
     /// Inlined into the orbit-closure edge loop: the probe is one multiply,
     /// one masked load, and (for the duplicate majority) one compare, so the
     /// call overhead and spill traffic of an outlined probe were a
-    /// measurable slice of the closure. Kept NON-recursive — LLVM does not
-    /// inline recursive functions, so the post-grow re-probe restarts the
-    /// loop instead of re-calling `insert`.
-    #[inline]
+    /// measurable slice of the closure, and inlining lets the table fields
+    /// (mask, shift, len) stay in registers across a member's whole edge
+    /// loop. Kept NON-recursive — LLVM does not inline recursive functions,
+    /// so the post-grow re-probe restarts the loop instead of re-calling
+    /// `insert`. (`always`: the plain hint still left an outlined copy at
+    /// ~13% of the small-script profile, job 3666648.)
+    #[inline(always)]
     pub(crate) fn insert(&mut self, key: T) -> bool {
         debug_assert_ne!(key, T::EMPTY, "sentinel collision");
         let mut mask = self.slots.len() - 1;
