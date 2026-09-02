@@ -218,17 +218,53 @@ impl RootSystem {
                 negative_coordinates,
             )?;
         }
+        // Scratch buffers reused across all (record, generator) visits: the
+        // reflection candidates are ephemeral — only genuinely new roots are
+        // copied into the closure — so per-visit allocation dominated this
+        // loop (240 roots x 8 generators x ~3 vectors on E8).
+        let semisimple_rank = snapshot.semisimple_rank();
+        let mut reflected_root = Vec::new();
+        let mut reflected_coroot = Vec::new();
+        let mut reflected_coordinates = Vec::new();
         while let Some(record) = closure.pending.pop_front() {
-            for generator in 0..snapshot.semisimple_rank() {
-                let coefficient = pair(&record.root, &snapshot.simple_coroots()[generator])?;
-                let mut reflected_coordinates = try_copy_coordinates(&record.simple_coordinates)?;
+            for generator in 0..semisimple_rank {
+                let simple_root = &snapshot.simple_roots()[generator];
+                let simple_coroot = &snapshot.simple_coroots()[generator];
+                let coefficient = pair(&record.root, simple_coroot)?;
+                let dual_coefficient = pair(simple_root, &record.coroot)?;
+                // A generator orthogonal to the record on both sides reflects
+                // root, coroot, and simple coordinates to themselves, so the
+                // candidate is the already-stored record and no error path is
+                // reachable; skipping it is observationally identical.
+                if coefficient == 0 && dual_coefficient == 0 {
+                    continue;
+                }
+                reflect_coordinates_into(
+                    record.root.as_slice(),
+                    simple_root.as_slice(),
+                    i128::from(coefficient),
+                    &mut reflected_root,
+                )?;
+                reflect_coordinates_into(
+                    record.coroot.as_slice(),
+                    simple_coroot.as_slice(),
+                    i128::from(dual_coefficient),
+                    &mut reflected_coroot,
+                )?;
+                reflected_coordinates.clear();
+                reflected_coordinates
+                    .try_reserve_exact(record.simple_coordinates.len())
+                    .map_err(|_| StructureError::AllocationFailed {
+                        requested: record.simple_coordinates.len(),
+                    })?;
+                reflected_coordinates.extend_from_slice(&record.simple_coordinates);
                 reflected_coordinates[generator] = reflected_coordinates[generator]
                     .checked_sub(coefficient)
                     .ok_or(StructureError::ArithmeticOverflow)?;
-                closure.insert(
-                    snapshot.reflect_weight(generator, &record.root)?,
-                    snapshot.reflect_coweight(generator, &record.coroot)?,
-                    reflected_coordinates,
+                closure.insert_coordinates(
+                    &reflected_root,
+                    &reflected_coroot,
+                    &reflected_coordinates,
                 )?;
             }
         }
@@ -289,8 +325,15 @@ impl RootSystem {
         negatives
             .try_reserve_exact(count)
             .map_err(|_| StructureError::AllocationFailed { requested: count })?;
+        // `negated` is reused across roots: only the binary search reads it.
+        let mut negated = Vec::new();
         for root in &roots {
-            let mut negated = Vec::with_capacity(root.as_slice().len());
+            negated.clear();
+            negated
+                .try_reserve_exact(root.as_slice().len())
+                .map_err(|_| StructureError::AllocationFailed {
+                    requested: root.as_slice().len(),
+                })?;
             for &coordinate in root.as_slice() {
                 negated.push(
                     coordinate
@@ -532,6 +575,34 @@ fn subtract_coordinates(
     Ok(())
 }
 
+/// `out = values - coefficient * direction` entrywise, reusing `out`'s
+/// allocation. The arithmetic mirrors the `i128`-widened checked path of
+/// `BasedRootDatum::reflect_weight`/`reflect_coweight` exactly, including
+/// every overflow error point; only the destination buffer differs.
+fn reflect_coordinates_into(
+    values: &[i32],
+    direction: &[i32],
+    coefficient: i128,
+    out: &mut Vec<i32>,
+) -> Result<(), StructureError> {
+    debug_assert_eq!(values.len(), direction.len());
+    out.clear();
+    out.try_reserve_exact(values.len())
+        .map_err(|_| StructureError::AllocationFailed {
+            requested: values.len(),
+        })?;
+    for (&coordinate, &direction_coordinate) in values.iter().zip(direction) {
+        let correction = coefficient
+            .checked_mul(i128::from(direction_coordinate))
+            .ok_or(StructureError::ArithmeticOverflow)?;
+        let value = i128::from(coordinate)
+            .checked_sub(correction)
+            .ok_or(StructureError::ArithmeticOverflow)?;
+        out.push(i32::try_from(value).map_err(|_| StructureError::ArithmeticOverflow)?);
+    }
+    Ok(())
+}
+
 /// One closure record: a root key with its paired coroot and simple-root
 /// coordinates.
 struct ClosureRecord {
@@ -574,15 +645,25 @@ impl Closure {
         coroot: Coweight,
         simple_coordinates: Vec<i32>,
     ) -> Result<(), StructureError> {
-        if pair_coordinates(root.as_slice(), coroot.as_slice())? != 2 {
+        self.insert_coordinates(root.as_slice(), coroot.as_slice(), &simple_coordinates)
+    }
+
+    /// Slice form of [`Closure::insert`] for enumeration candidates held in
+    /// reused scratch buffers: only genuinely new roots are copied into the
+    /// map and the pending queue.
+    fn insert_coordinates(
+        &mut self,
+        root: &[i32],
+        coroot: &[i32],
+        simple_coordinates: &[i32],
+    ) -> Result<(), StructureError> {
+        if pair_coordinates(root, coroot)? != 2 {
             return Err(StructureError::RootSystemInvariantViolation {
                 invariant: "self pairing",
             });
         }
-        if let Some(existing) = self.seen.get(root.as_slice()) {
-            if existing.coroot != coroot.as_slice()
-                || existing.simple_coordinates != simple_coordinates
-            {
+        if let Some(existing) = self.seen.get(root) {
+            if existing.coroot != coroot || existing.simple_coordinates != simple_coordinates {
                 return Err(StructureError::RootSystemInvariantViolation {
                     invariant: "coroot agreement",
                 });
@@ -595,19 +676,19 @@ impl Closure {
                 limit: self.max_roots,
             });
         }
-        let key = try_copy_coordinates(root.as_slice())?;
+        let key = try_copy_coordinates(root)?;
         let record = ClosureRecord {
-            coroot: try_copy_coordinates(coroot.as_slice())?,
-            simple_coordinates: try_copy_coordinates(&simple_coordinates)?,
+            coroot: try_copy_coordinates(coroot)?,
+            simple_coordinates: try_copy_coordinates(simple_coordinates)?,
         };
         self.seen.insert(key, record);
         self.pending
             .try_reserve(1)
             .map_err(|_| StructureError::AllocationFailed { requested: 1 })?;
         self.pending.push_back(PendingRecord {
-            root,
-            coroot,
-            simple_coordinates,
+            root: Weight::new(try_copy_coordinates(root)?),
+            coroot: Coweight::new(try_copy_coordinates(coroot)?),
+            simple_coordinates: try_copy_coordinates(simple_coordinates)?,
         });
         Ok(())
     }
