@@ -45,11 +45,13 @@
 //!   adjustment (repr.cpp:2576-2584) is unnecessary, since every result is
 //!   computed for the very parameter whose flip is being reported.
 
+use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
+
 use crate::ext_block::ExtBlock;
 use crate::ext_kl::{contributions, ExtKlTable};
 use crate::ext_param::{extended_restrict_to_k, scaled_extended_finalise, ExtRepContext};
 use crate::kl_polynomial::KlPol;
-use crate::kl_table::KlTable;
 use crate::matreduc::{exp_i, inverse_upper_triangular, IntMatrix};
 use crate::partial_block::PartialBlock;
 use crate::rep_context::{RepContext, StandardRepr};
@@ -865,6 +867,11 @@ pub fn twisted_kl_column_at_s(
 /// height bound; the holes only skip work — polynomial values do not
 /// depend on them — so this port fills the whole table
 /// (`repr.cpp:2057` fills everything not plugged).
+///
+/// The filled dual-block table is lazily cached per block identity for the
+/// session (`rep_table::with_dual_kl_table`): upstream rebuilds it per
+/// call, so the cache only skips recomputation and the observable output
+/// is unchanged.
 pub fn block_deformation_to_height(
     rc: &RepContext,
     block: &BlockGraph,
@@ -873,10 +880,42 @@ pub fn block_deformation_to_height(
     height_bound: u32,
     accumulator: &[(StandardRepr, SplitInteger)],
 ) -> Result<(Vec<(StandardRepr, SplitInteger)>, Vec<bool>), StructureError> {
-    let dual_block = block.dual();
-    let mut kl_tab = KlTable::new(&dual_block)?;
-    kl_tab.fill(0)?;
+    crate::rep_table::with_dual_kl_table(block, |kl_tab| {
+        block_deformation_with_dual_kl(
+            rc,
+            block,
+            gamma,
+            lambda_rho,
+            height_bound,
+            accumulator,
+            kl_tab,
+        )
+    })
+}
 
+/// A digest over the `StandardRepr::operator==` fields (repr.cpp:36-40:
+/// `x`, the packed torsion part, `gamma`) for the accumulator buckets of
+/// [`block_deformation_with_dual_kl`]; bucket hits are verified by full
+/// equality, so collisions only cost a short scan.
+fn param_digest(sr: &StandardRepr) -> u64 {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    sr.x().hash(&mut hasher);
+    sr.y_bits().hash(&mut hasher);
+    sr.gamma().hash(&mut hasher);
+    hasher.finish()
+}
+
+/// The body of [`block_deformation_to_height`] with the dual block's
+/// filled KL table in hand (see there for the upstream references).
+fn block_deformation_with_dual_kl(
+    rc: &RepContext,
+    block: &BlockGraph,
+    gamma: &RationalWeight,
+    lambda_rho: &Weight,
+    height_bound: u32,
+    accumulator: &[(StandardRepr, SplitInteger)],
+    kl_tab: &mut crate::KlTableHandle<std::sync::Arc<BlockGraph>>,
+) -> Result<(Vec<(StandardRepr, SplitInteger)>, Vec<bool>), StructureError> {
     // The dual KL pool evaluated at q = -1 (repr.cpp:2059-2066).
     let pool = kl_tab.pool();
     let mut value_at_minus_1: Vec<i32> = Vec::with_capacity(pool.len());
@@ -888,7 +927,18 @@ pub fn block_deformation_to_height(
     }
 
     // Retained elements (height at most the bound), ascending, with their
-    // accumulator coefficients (repr.cpp:2039-2056).
+    // accumulator coefficients (repr.cpp:2039-2056). The digest buckets
+    // index the accumulator so each retained element probes O(bucket)
+    // instead of scanning the whole accumulator; a bucket holds positions
+    // in ascending order, so the first unconsumed equal entry of a bucket
+    // is exactly upstream's `queue.find`.
+    let mut digest_buckets: HashMap<u64, Vec<usize>> = HashMap::new();
+    for (position, (sr, _)) in accumulator.iter().enumerate() {
+        digest_buckets
+            .entry(param_digest(sr))
+            .or_default()
+            .push(position);
+    }
     let mut consumed = vec![false; accumulator.len()];
     let mut entries: Vec<(usize, StandardRepr, SplitInteger)> = Vec::new();
     for z in 0..block.size() {
@@ -896,16 +946,19 @@ pub fn block_deformation_to_height(
         if q.height() > height_bound {
             continue;
         }
-        // `queue.find(q)` + `queue.erase`: only unconsumed terms match.
-        let coef = match accumulator
-            .iter()
-            .enumerate()
-            .find(|(position, (sr, _))| !consumed[*position] && *sr == q)
-        {
-            Some((position, (_, coefficient))) => {
-                consumed[position] = true;
-                *coefficient
-            }
+        // `queue.find(q)` + `queue.erase`: only unconsumed terms match,
+        // and each match consumes exactly one occurrence.
+        let coef = match digest_buckets.get(&param_digest(&q)) {
+            Some(bucket) => match bucket
+                .iter()
+                .find(|&&position| !consumed[position] && accumulator[position].0 == q)
+            {
+                Some(&position) => {
+                    consumed[position] = true;
+                    accumulator[position].1
+                }
+                None => SplitInteger::zero(),
+            },
             None => SplitInteger::zero(),
         };
         entries.push((z, q, coef));
@@ -1801,5 +1854,85 @@ mod tests {
             expected.sort_by(by_x);
             assert_eq!(moved, expected, "bound {bound}");
         }
+    }
+
+    #[test]
+    fn block_deform_consumes_first_occurrence_only() {
+        // Upstream `queue.find(q)` + `queue.erase`: each matching block
+        // element consumes exactly one accumulator occurrence, the FIRST
+        // unconsumed one. With `occurrences` matches in the block and
+        // `occurrences + 1` duplicate terms, every copy but the last is
+        // consumed — in order.
+        let ctx = a2_block();
+        let rc = ctx.primal.rc();
+        let p = param(&rc, 3, &[0, 0], &[1, 1], 1);
+        let p = p.made_dominant(&rc).unwrap();
+        let lambda_rho = rc.lambda_rho(&p).unwrap();
+        let gamma = p.gamma().clone();
+        let term = param(&rc, 2, &[0, 0], &[0, 0], 1);
+
+        let occurrences = (0..ctx.block.size())
+            .map(|z| {
+                rc.sr_gamma(ctx.block.x(z).unwrap(), &lambda_rho, &gamma)
+                    .unwrap()
+            })
+            .filter(|q| *q == term)
+            .count();
+        assert!(occurrences >= 1);
+
+        let accumulator: Vec<(StandardRepr, SplitInteger)> = (1..=(occurrences + 1) as i32)
+            .map(|c| (term.clone(), SplitInteger::new(c, -c)))
+            .collect();
+        let (_, consumed) = block_deformation_to_height(
+            &rc,
+            &ctx.block,
+            &gamma,
+            &lambda_rho,
+            u32::MAX,
+            &accumulator,
+        )
+        .unwrap();
+        let expected: Vec<bool> = (0..=occurrences).map(|i| i < occurrences).collect();
+        assert_eq!(consumed, expected);
+    }
+
+    #[test]
+    fn dual_kl_table_is_cached_per_block_identity() {
+        // Two calls on the same block share the cached table; a different
+        // block gets its own (the a1 block must not see the a2 table).
+        let a2 = a2_block();
+        let first = crate::rep_table::with_dual_kl_table(&a2.block, |kl| {
+            Ok(kl as *mut _ as usize)
+        })
+        .unwrap();
+        let second = crate::rep_table::with_dual_kl_table(&a2.block, |kl| {
+            Ok(kl as *mut _ as usize)
+        })
+        .unwrap();
+        assert_eq!(first, second);
+
+        let a1 = a1_block();
+        let other = crate::rep_table::with_dual_kl_table(&a1.block, |kl| {
+            Ok(kl as *mut _ as usize)
+        })
+        .unwrap();
+        assert_ne!(first, other);
+    }
+
+    #[test]
+    fn dual_kl_table_callback_rejects_same_thread_nesting() {
+        // The ActiveKlCallback contract of with_kl_table applies here too.
+        let ctx = a2_block();
+        let result = crate::rep_table::with_dual_kl_table(&ctx.block, |_| {
+            crate::rep_table::with_dual_kl_table(&ctx.block, |_| Ok(()))
+        });
+        assert_eq!(
+            result,
+            Err(StructureError::RepInvariantViolation {
+                invariant: "representation block KL table nested callback",
+            })
+        );
+        // The guard clears on drop: a sequential call succeeds.
+        assert!(crate::rep_table::with_dual_kl_table(&ctx.block, |_| Ok(())).is_ok());
     }
 }

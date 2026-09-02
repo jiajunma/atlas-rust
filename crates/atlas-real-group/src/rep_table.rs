@@ -14,10 +14,11 @@
 //! and their Smith codec remain private; consumers receive stable block
 //! handles and query-relative representatives.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 #[cfg(test)]
 use std::collections::VecDeque;
 use std::collections::{HashMap, HashSet};
+use std::hash::{Hash, Hasher};
 #[cfg(test)]
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -28,7 +29,7 @@ use crate::matreduc::IntMatrix;
 use crate::real_projection::RealProjection;
 use crate::rep_context::RepContextDerived;
 use crate::{
-    bruhat_below, BlockLocator, BlockModifier, CommonContext, IntegralDatumItem,
+    bruhat_below, BlockGraph, BlockLocator, BlockModifier, CommonContext, IntegralDatumItem,
     IntegralDatumTable, IntegralSubsystem, InvolutionTable, KgbGraph, KgbId, PartialBlock,
     RationalWeight, RepContext, StandardRepr, StandardReprMod, StructureError, Weight,
 };
@@ -340,6 +341,86 @@ impl Drop for ActiveKlCallback {
             debug_assert!(was_active);
         });
     }
+}
+
+/// One cached dual-block KL table for [`with_dual_kl_table`]: the dual of
+/// `primal`, fully filled. The primal block is retained so a fingerprint
+/// hit can be verified by full block equality — a collision costs a
+/// rebuild, never a wrong table.
+struct DualKlRecord {
+    primal: Arc<BlockGraph>,
+    table: crate::KlTableHandle<Arc<BlockGraph>>,
+}
+
+thread_local! {
+    /// Session-lifetime dual-block KL tables, bucketed by a content
+    /// fingerprint of the PRIMAL block. Thread-local like the
+    /// [`ActiveKlCallback`] guard: the evaluator runs a script on one
+    /// thread and entries never cross threads.
+    static DUAL_KL_TABLES: RefCell<HashMap<u64, Vec<DualKlRecord>>> =
+        RefCell::new(HashMap::new());
+}
+
+/// A content fingerprint of `block` for [`DUAL_KL_TABLES`] lookups. Only a
+/// bucket discriminator: hits are verified by full block equality before
+/// the cached table is used.
+fn block_fingerprint(block: &BlockGraph) -> u64 {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    block.size().hash(&mut hasher);
+    block.rank().hash(&mut hasher);
+    for z in 0..block.size() {
+        block.x(z).hash(&mut hasher);
+        block.y(z).hash(&mut hasher);
+        block.length(z).hash(&mut hasher);
+        for generator in 0..block.rank() {
+            block.descent_value(z, generator).hash(&mut hasher);
+            block.cross(z, generator).hash(&mut hasher);
+            block.cayley(z, generator).hash(&mut hasher);
+        }
+    }
+    hasher.finish()
+}
+
+/// Run `operation` with the fully filled KL table of `block`'s dual
+/// (`Bare_block::dual`, blocks.cpp:474-509), lazily cached per block
+/// identity for the session.
+///
+/// Upstream `Rep_table::block_deformation_to_height` rebuilds the dual
+/// block's KL table on every call (repr.cpp:2057), and the language layer
+/// rebuilds the identical full block for repeated `block_deform` calls on
+/// one block; caching the filled dual table (the dual-side analogue of the
+/// per-record primal cache in `LocatedBlock::with_kl_table`) skips that
+/// recomputation. The table is filled with limit 0 on first use, so
+/// callbacks only read it. The [`ActiveKlCallback`] nesting contract of
+/// `with_kl_table` applies here too: a callback must not re-enter either
+/// entry point on the same thread.
+pub(crate) fn with_dual_kl_table<R>(
+    block: &BlockGraph,
+    operation: impl FnOnce(&mut crate::KlTableHandle<Arc<BlockGraph>>) -> Result<R, StructureError>,
+) -> Result<R, StructureError> {
+    let _active = ActiveKlCallback::enter()?;
+    let fingerprint = block_fingerprint(block);
+    DUAL_KL_TABLES.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        let bucket = cache.entry(fingerprint).or_default();
+        let index = match bucket
+            .iter()
+            .position(|record| record.primal.as_ref() == block)
+        {
+            Some(index) => index,
+            None => {
+                let dual = Arc::new(block.dual());
+                let mut table = crate::KlTableHandle::from_handle(Arc::clone(&dual))?;
+                table.fill(0)?;
+                bucket.push(DualKlRecord {
+                    primal: Arc::new(block.clone()),
+                    table,
+                });
+                bucket.len() - 1
+            }
+        };
+        operation(&mut bucket[index].table)
+    })
 }
 
 impl std::fmt::Debug for BlockRecord {
