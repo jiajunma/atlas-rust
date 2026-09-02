@@ -213,6 +213,10 @@ impl KgbGraph {
         for &cartan in cartan_set {
             table.add_cartan(classification, cartan)?;
         }
+        // Memoize the table's Cayley links now that the form's Cartan set
+        // is complete: the BFS below asks `cayley` per (element, generator)
+        // and the answer is record-level data.
+        table.ensure_cayley_links()?;
         // Seed-table binding: the seed is definitionally at THIS table's
         // fundamental involution, with reduced bits.
         if table.identity_id() != Some(seed.element().involution()) {
@@ -241,11 +245,12 @@ impl KgbGraph {
 
         // BFS.
         let mut elements: Vec<TitsElement> = try_capacity(expected)?;
-        // Dedup index: hash map, since ids come from insertion order in
-        // `elements` and the map itself is never iterated (upstream uses a
-        // hash table over Tits elements the same way). The FxHash-style
-        // hasher keeps the per-edge intern probes off SipHash; the map is
-        // never iterated, so the hash choice is unobservable.
+        // Dedup index: hash map over the packed Tits key, since ids come
+        // from insertion order in `elements` and the map itself is never
+        // iterated (upstream uses a hash table over Tits elements the same
+        // way). The avalanche mixing hasher keeps the per-edge intern
+        // probes off SipHash; the map is never iterated, so the hash
+        // choice is unobservable.
         let mut index: TitsIndex = HashMap::default();
         index
             .try_reserve(expected)
@@ -1003,9 +1008,39 @@ impl KgbGraph {
     }
 }
 
-/// The BFS dedup map: Tits element -> insertion id, with the crate's
-/// FxHash-style hasher (dedup-only, never iterated).
-type TitsIndex = HashMap<TitsElement, usize, crate::inner_class::PermutationHasherBuilder>;
+/// The BFS dedup key: the Tits element packed as words. Torus bits above
+/// the dimension are zero by contract, and every KGB torus part has the
+/// inner class's lattice rank as its dimension, so for dimension <= 128
+/// the tuple `(involution, dimension, word0, word1)` is injective —
+/// equality semantics are unchanged. Larger dimensions (outside Atlas's
+/// RANK_MAX) fall back to the element itself. The map is probed and
+/// inserted only — never iterated — so the hash order is unobservable.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+enum TitsKey {
+    Packed(u64, u64, u64, u64),
+    Full(TitsElement),
+}
+
+impl TitsKey {
+    fn of(element: &TitsElement) -> Self {
+        let words = element.torus_bits().words();
+        if words.len() <= 2 {
+            let mut packed = [0_u64; 2];
+            packed[..words.len()].copy_from_slice(words);
+            return Self::Packed(
+                element.involution().0 as u64,
+                element.torus_bits().dimension() as u64,
+                packed[0],
+                packed[1],
+            );
+        }
+        Self::Full(element.clone())
+    }
+}
+
+/// The BFS dedup map: packed Tits key -> insertion id, with the avalanche
+/// mixing hasher (dedup-only, never iterated).
+type TitsIndex = HashMap<TitsKey, usize, crate::involution_table::MixingHasherBuilder>;
 
 /// Insert-or-lookup against the a-priori size bound; new elements extend the
 /// flat per-generator slots.
@@ -1020,23 +1055,27 @@ fn intern(
     cross_raw: &mut Vec<PackedKgbId>,
     cayley_raw: &mut Vec<PackedKgbId>,
 ) -> Result<usize, StructureError> {
-    if let Some(&existing) = index.get(&element) {
-        return Ok(existing);
+    use std::collections::hash_map::Entry;
+    let key = TitsKey::of(&element);
+    match index.entry(key) {
+        Entry::Occupied(slot) => Ok(*slot.get()),
+        Entry::Vacant(slot) => {
+            if elements.len() == expected {
+                return Err(StructureError::KgbInvariantViolation {
+                    invariant: "kgb size",
+                });
+            }
+            let id = elements.len();
+            elements.push(element);
+            slot.insert(id);
+            for _ in 0..rank {
+                statuses.push(None);
+                cross_raw.push(PackedKgbId::UNDEFINED);
+                cayley_raw.push(PackedKgbId::UNDEFINED);
+            }
+            Ok(id)
+        }
     }
-    if elements.len() == expected {
-        return Err(StructureError::KgbInvariantViolation {
-            invariant: "kgb size",
-        });
-    }
-    let id = elements.len();
-    index.insert(element.clone(), id);
-    elements.push(element);
-    for _ in 0..rank {
-        statuses.push(None);
-        cross_raw.push(PackedKgbId::UNDEFINED);
-        cayley_raw.push(PackedKgbId::UNDEFINED);
-    }
-    Ok(id)
 }
 
 #[cfg(test)]

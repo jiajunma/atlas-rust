@@ -26,14 +26,13 @@ use std::sync::Arc;
 use smallvec::SmallVec;
 
 use crate::grading::try_capacity;
-use crate::inner_class::PermutationHasherBuilder;
 use crate::integer_lattice::{negative_coweight_eigenspace, reduce_basis_mod_two};
 use crate::real_projection::RealProjection;
 use crate::weyl_transducer::{CompactWeyl, WeylElt};
 use crate::{
-    CartanClassification, CartanId, CayleyCrossDecomposition, ImagePermutation, InnerClass,
-    IntegerLatticeBudget, LatticeInvolution, ModTwoSubspace, ModTwoVector, RootId, RootKind,
-    RootSystem, StructureError, TwistedInvolution, Weight, WeylAction, WeylElement,
+    CartanClassification, CartanId, CayleyCrossDecomposition, InnerClass, IntegerLatticeBudget,
+    LatticeInvolution, ModTwoSubspace, ModTwoVector, RootId, RootKind, RootSystem, StructureError,
+    TwistedInvolution, Weight, WeylAction, WeylElement,
 };
 
 /// Stable identifier of one twisted involution in one table's numbering.
@@ -49,6 +48,60 @@ pub struct InvolutionTableBudget {
 }
 
 type CrossLinkRow = SmallVec<[InvolutionId; 8]>;
+
+/// FxHash-style hasher with a per-word avalanche (murmur3 fmix64).
+///
+/// `PermutationHasher`'s rotate-xor-multiply rounds only diffuse key
+/// entropy UPWARD within a round, while hashbrown selects buckets on the
+/// hash's LOW bits: keys whose entropy sits in the high bytes (the compact
+/// `WeylElt` pieces — for E8 the variation lives in bytes 3..7, and the
+/// derived `Hash` spends the first round on the constant length prefix)
+/// collapse onto a handful of buckets (measured ~20x probe blowup on the
+/// E8 involution table, lane D profile job 3672155). fmix64 avalanches all
+/// 64 input bits into the low bits after every word. Collision behavior is
+/// irrelevant to semantics: the maps are probed/inserted, never iterated.
+#[derive(Clone, Default)]
+pub(crate) struct MixingHasher(u64);
+
+impl std::hash::Hasher for MixingHasher {
+    fn finish(&self) -> u64 {
+        self.0
+    }
+
+    fn write(&mut self, bytes: &[u8]) {
+        let mut chunks = bytes.chunks_exact(8);
+        for chunk in &mut chunks {
+            self.write_u64(u64::from_le_bytes(chunk.try_into().unwrap_or([0; 8])));
+        }
+        let remainder = chunks.remainder();
+        if !remainder.is_empty() {
+            let mut tail = [0_u8; 8];
+            tail[..remainder.len()].copy_from_slice(remainder);
+            self.write_u64(u64::from_le_bytes(tail));
+        }
+    }
+
+    fn write_u64(&mut self, value: u64) {
+        let mut mixed = self.0 ^ value;
+        mixed ^= mixed >> 33;
+        mixed = mixed.wrapping_mul(0xff51_afd7_ed55_8ccd);
+        mixed ^= mixed >> 33;
+        mixed = mixed.wrapping_mul(0xc4ce_b9fe_1a85_ec53);
+        mixed ^= mixed >> 33;
+        self.0 = mixed;
+    }
+
+    fn write_usize(&mut self, value: usize) {
+        self.write_u64(value as u64);
+    }
+
+    fn write_u128(&mut self, value: u128) {
+        self.write_u64(value as u64);
+        self.write_u64((value >> 64) as u64);
+    }
+}
+
+pub(crate) type MixingHasherBuilder = std::hash::BuildHasherDefault<MixingHasher>;
 
 fn cross_link_row(rank: usize) -> Result<CrossLinkRow, StructureError> {
     let mut links = CrossLinkRow::new();
@@ -130,101 +183,13 @@ impl InvolutionRecord {
     }
 }
 
-/// Dedup/lookup key of a table entry: the images of the SIMPLE roots only.
-///
-/// A Weyl element is fixed by its simple-root images, so the packed key is
-/// injective — equality semantics are unchanged. For semisimple rank <= 16
-/// with <= 256 roots the key packs into a u128 (the layout of
-/// `inner_class::PermutationKey`), which keeps the E8 cross-action BFS's
-/// ~1.6M probes to an integer hash and compare instead of chasing 240-entry
-/// ordered-map keys. Larger tables fall back to the full permutation.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-enum DedupKey {
-    Packed(u128),
-    Full(Box<[RootId]>),
-}
-
-/// The table's dedup index, with its keying discipline. The map is probed
-/// and inserted only — never iterated — so the hash order is unobservable.
-#[derive(Clone, Debug)]
-struct DedupIndex {
-    map: HashMap<DedupKey, InvolutionId, PermutationHasherBuilder>,
-    /// Simple roots' positions in the root enumeration, generator order
-    /// (the packing layout of [`DedupKey::Packed`]).
-    simple_positions: Vec<usize>,
-    root_count: usize,
-    packed: bool,
-}
-
-impl DedupIndex {
-    fn new(root_system: &RootSystem) -> Self {
-        let simple_positions: Vec<usize> = root_system
-            .simple_root_ids()
-            .iter()
-            .map(|id| id.0)
-            .collect();
-        let root_count = root_system.roots().len();
-        let packed = simple_positions.len() <= 16 && root_count <= usize::from(u8::MAX) + 1;
-        Self {
-            map: HashMap::default(),
-            simple_positions,
-            root_count,
-            packed,
-        }
-    }
-
-    /// The packed key of the permutation whose simple-root images are
-    /// `image(0..rank)`: generator order, 8 bits per generator.
-    fn pack(&self, image: impl Fn(usize) -> RootId) -> u128 {
-        let mut key = 0_u128;
-        for shift in 0..self.simple_positions.len() {
-            key |= (image(shift).0 as u128) << (8 * shift);
-        }
-        key
-    }
-
-    fn key_of(&self, permutation: &[RootId]) -> DedupKey {
-        // A foreign-length permutation keys as Full even in packed mode, so
-        // it can never alias a stored Packed key (provenance contract).
-        if self.packed && permutation.len() == self.root_count {
-            DedupKey::Packed(self.pack(|simple| permutation[self.simple_positions[simple]]))
-        } else {
-            DedupKey::Full(permutation.into())
-        }
-    }
-
-    /// The key of the Weyl factor whose `theta = w after delta` root images
-    /// are `root_images`: `w(r) = theta(delta(r))` because delta is
-    /// involutive, so the packed value is bit-identical to
-    /// `key_of(w.image_permutation())` (record numbering/BFS order unchanged)
-    /// and the Full fallback stores the same reconstructed permutation.
-    fn key_of_theta_images(
-        &self,
-        root_images: ImagePermutation<'_>,
-        delta: ImagePermutation<'_>,
-    ) -> DedupKey {
-        if self.packed && root_images.len() == self.root_count {
-            DedupKey::Packed(self.pack(|simple| {
-                let position = self.simple_positions[simple];
-                root_images.at(delta.at(position).0)
-            }))
-        } else {
-            let w_images: Box<[RootId]> = delta
-                .iter()
-                .map(|delta_image| root_images.at(delta_image.0))
-                .collect();
-            DedupKey::Full(w_images)
-        }
-    }
-
-    fn get(&self, key: &DedupKey) -> Option<InvolutionId> {
-        self.map.get(key).copied()
-    }
-
-    fn insert(&mut self, key: DedupKey, id: InvolutionId) {
-        self.map.insert(key, id);
-    }
-}
+/// Dedup discipline: the record's compact Weyl factor alone is the dedup
+/// key. Within one table (fixed distinguished delta) `theta = w after
+/// delta` makes the Weyl factor determine the whole record, so
+/// `compact_index` ([`WeylElt`] = 8 bytes, one integer hash round) is an
+/// injective key; the retired `DedupIndex` re-derived the same key from the
+/// simple-root images at a per-edge packing cost. The map is probed and
+/// inserted only — never iterated — so the hash order is unobservable.
 
 /// Compute the compact Weyl value for the cross action `s*w*twist(s)`.
 fn compact_cross_neighbor(
@@ -291,7 +256,7 @@ pub struct InvolutionTable {
     budget: InvolutionTableBudget,
     twist: Vec<usize>,
     compact_weyl: CompactWeyl,
-    compact_index: HashMap<WeylElt, InvolutionId, PermutationHasherBuilder>,
+    compact_index: HashMap<WeylElt, InvolutionId, MixingHasherBuilder>,
     reflections: Vec<WeylElement>,
     reflection_actions: Vec<WeylAction>,
     /// Mod-2 reductions of the simple roots and coroots, per generator:
@@ -302,7 +267,20 @@ pub struct InvolutionTable {
     coroot_parity: Vec<ModTwoVector>,
     two_rho: Weight,
     records: Vec<InvolutionRecord>,
-    index: DedupIndex,
+    /// Cached left-descent bits per record: bit `g` of `descent_bits[id]`
+    /// is the record's Weyl-factor left descent at generator `g`. A fixed
+    /// property of the record's Weyl factor, computed once at push time
+    /// instead of per KGB edge (the stage-(e) BFS asks it millions of
+    /// times; each answer was a fresh `inner_left_mult`).
+    descent_bits: Vec<u32>,
+    /// Memoized Cayley links `s * w` per (record, generator), flat
+    /// record-major, `u32::MAX` = absent. Valid only while
+    /// `cayley_links_valid_len == records.len()`: a record's Cayley target
+    /// can belong to a Cartan class added after the record, so
+    /// [`Self::ensure_cayley_links`] rebuilds from scratch and any later
+    /// `add_cartan` silently returns the accessors to the compact probe.
+    cayley_links: Vec<u32>,
+    cayley_links_valid_len: usize,
     /// The stored cross-action links, one record-major row of
     /// `twist.len()` generators per record, flattened into a single
     /// allocation: per-record `Vec` headers and per-row malloc rounding
@@ -390,7 +368,9 @@ impl InvolutionTable {
             coroot_parity,
             two_rho: Weight::new(two_rho),
             records: Vec::new(),
-            index: DedupIndex::new(root_system),
+            descent_bits: Vec::new(),
+            cayley_links: Vec::new(),
+            cayley_links_valid_len: 0,
             cross_links: Vec::new(),
             orbits: Vec::new(),
         })
@@ -434,12 +414,6 @@ impl InvolutionTable {
             .map_err(|_| StructureError::AllocationFailed {
                 requested: expected_links,
             })?;
-        self.index
-            .map
-            .try_reserve(expected)
-            .map_err(|_| StructureError::AllocationFailed {
-                requested: expected,
-            })?;
         self.compact_index
             .try_reserve(expected)
             .map_err(|_| StructureError::AllocationFailed {
@@ -481,7 +455,7 @@ impl InvolutionTable {
             &self.compact_weyl,
             &self.reflections,
             &mut self.records,
-            &mut self.index,
+            &mut self.descent_bits,
             seed_compact,
             representative
                 .root_involution()
@@ -503,13 +477,15 @@ impl InvolutionTable {
 
         // External-order BFS. Cross links are filled at each node's visit,
         // so after the orbit closes every (generator, node) edge is an O(1)
-        // stored link. The dedup probe is allocation-free on the hit path
-        // (the majority: rank-1 of every rank edges): the neighbor's packed
-        // simple-image key decides membership, and the neighbor's theta root
-        // images — one buffer, no WeylElement materialization — are built by
-        // transport only for NEW involutions, matching the cost profile of
-        // upstream's add_cross (involutions.cpp:228-258), which pays one
-        // fixed-size twistedConjugate per edge.
+        // stored link. The dedup probe is the compact Weyl factor itself
+        // (8-byte key, one integer hash round): within one table
+        // `theta = w after delta` makes the factor an injective record key,
+        // so the retired simple-root-image packing decided exactly the same
+        // hits. The neighbor's theta root images — one buffer, no
+        // WeylElement materialization — are built by transport only for NEW
+        // involutions, matching the cost profile of upstream's add_cross
+        // (involutions.cpp:228-258), which pays one fixed-size
+        // twistedConjugate per edge.
         let semisimple_rank = self.twist.len();
         let delta = self
             .inner_class
@@ -520,9 +496,8 @@ impl InvolutionTable {
             let mut links = cross_link_row(semisimple_rank)?;
             let current_element = self.records[cursor].element;
             for generator in 0..semisimple_rank {
-                // The cached reflection permutations serve the packed dedup
-                // probe and, on a miss, the theta-image transport below; the
-                // compact neighbor is computed first for both dedup modes.
+                // The cached reflection permutations serve the theta-image
+                // transport on a dedup miss.
                 let (left, right) = {
                     let left = self.reflections[generator].image_permutation();
                     let right = self.reflections[self.twist[generator]].image_permutation();
@@ -538,21 +513,9 @@ impl InvolutionTable {
                     generator,
                     self.twist[generator],
                 );
-                if !self.index.packed {
-                    if let Some(existing) = self.compact_index.get(&compact_neighbor) {
-                        links.push(*existing);
-                        continue;
-                    }
-                }
-                if self.index.packed {
-                    let probe = DedupKey::Packed(self.index.pack(|simple| {
-                        let position = self.index.simple_positions[simple];
-                        left[theta.at(delta.at(right[position].0).0).0]
-                    }));
-                    if let Some(existing) = self.index.get(&probe) {
-                        links.push(existing);
-                        continue;
-                    }
+                if let Some(existing) = self.compact_index.get(&compact_neighbor) {
+                    links.push(*existing);
+                    continue;
                 }
                 // Transport the theta root images across the cross edge
                 // instead of materializing the neighbor's Weyl factor:
@@ -605,7 +568,7 @@ impl InvolutionTable {
                     &self.compact_weyl,
                     &self.reflections,
                     &mut self.records,
-                    &mut self.index,
+                    &mut self.descent_bits,
                     compact_neighbor,
                     neighbor_images,
                     neighbor_w_length,
@@ -641,12 +604,21 @@ impl InvolutionTable {
     }
 
     /// Number of a twisted involution, if its Cartan class has been added.
-    /// Keyed by the forward root permutation, which stage (a) pinned as a
-    /// complete equality key; a same-cardinality foreign system remains the
-    /// caller's contract.
+    /// Resolved through the compact factor: the legacy element is encoded
+    /// into the table's compact numbering (an exact, verified boundary), so
+    /// the hit set is the retired simple-root-image probe's — a Weyl element
+    /// is fixed by its simple-root images, and both keys are injective.
     pub fn lookup(&self, element: &WeylElement) -> Option<InvolutionId> {
-        self.index
-            .get(&self.index.key_of(element.image_permutation()))
+        let compact = self
+            .compact_weyl
+            .encode_element(
+                self.inner_class.datum(),
+                self.inner_class.root_system(),
+                &self.reflection_actions,
+                element,
+            )
+            .ok()?;
+        self.compact_index.get(&compact).copied()
     }
 
     /// Bounded by the involution count.
@@ -728,15 +700,15 @@ impl InvolutionTable {
                 upper_bound: self.twist.len(),
             });
         }
-        let mut element = self
-            .records
-            .get(id.0)
-            .ok_or(StructureError::IndexOutOfRange {
+        // Bounds check mirrors the historic records.get; the answer itself
+        // is the bit cached at push time (same `inner_left_mult` sign).
+        if id.0 >= self.records.len() {
+            return Err(StructureError::IndexOutOfRange {
                 index: id.0,
                 upper_bound: self.records.len(),
-            })?
-            .element;
-        Ok(self.compact_weyl.inner_left_mult(&mut element, generator) < 0)
+            });
+        }
+        Ok(self.descent_bits[id.0] & (1_u32 << generator) != 0)
     }
 
     pub(crate) fn weyl_first_left_descent(
@@ -1020,6 +992,8 @@ impl InvolutionTable {
 
     /// Resolve the Cayley neighbor from the record-owned compact Weyl value.
     /// This keeps the hot path independent of the compatibility permutation.
+    /// When [`Self::ensure_cayley_links`] has run (and no Cartan has been
+    /// added since), the memoized link row answers instead of the probe.
     pub(crate) fn compact_cayley_lookup(
         &self,
         generator: usize,
@@ -1038,9 +1012,49 @@ impl InvolutionTable {
                 upper_bound: self.twist.len(),
             });
         }
+        if self.cayley_links_valid_len == self.records.len()
+            && self.cayley_links.len() == self.records.len() * self.twist.len()
+        {
+            let packed = self.cayley_links[id.0 * self.twist.len() + generator];
+            return Ok((packed != u32::MAX).then_some(InvolutionId(packed as usize)));
+        }
         let mut product = record.element;
         self.compact_weyl.inner_left_mult(&mut product, generator);
         Ok(self.compact_index.get(&product).copied())
+    }
+
+    /// Materialize the memoized Cayley link rows for every record. Called by
+    /// the KGB build after its Cartan-add phase: a record's Cayley target
+    /// can live in a Cartan class absent when the record was created, so the
+    /// rebuild covers ALL records, and the next `add_cartan` invalidates the
+    /// whole memo (the length guard in [`Self::compact_cayley_lookup`]).
+    /// Tables too large for the u32 packing keep the probe path.
+    pub(crate) fn ensure_cayley_links(&mut self) -> Result<(), StructureError> {
+        let rank = self.twist.len();
+        let Some(total) = self.records.len().checked_mul(rank) else {
+            self.cayley_links.clear();
+            self.cayley_links_valid_len = 0;
+            return Ok(());
+        };
+        if self.records.len() >= u32::MAX as usize {
+            self.cayley_links.clear();
+            self.cayley_links_valid_len = 0;
+            return Ok(());
+        }
+        let mut links = try_capacity(total)?;
+        for id in 0..self.records.len() {
+            for generator in 0..rank {
+                let target = self.compact_cayley_lookup(generator, InvolutionId(id))?;
+                links.push(match target {
+                    Some(target) => u32::try_from(target.0)
+                        .map_err(|_| StructureError::ArithmeticOverflow)?,
+                    None => u32::MAX,
+                });
+            }
+        }
+        self.cayley_links = links;
+        self.cayley_links_valid_len = self.records.len();
+        Ok(())
     }
 
     /// One accessor covering upstream's three `is_*_simple` tests.
@@ -1190,7 +1204,7 @@ fn push_record(
     compact_weyl: &CompactWeyl,
     reflections: &[WeylElement],
     records: &mut Vec<InvolutionRecord>,
-    index: &mut DedupIndex,
+    descent_bits: &mut Vec<u32>,
     element: WeylElt,
     root_images: Vec<RootId>,
     weyl_length: usize,
@@ -1253,14 +1267,16 @@ fn push_record(
         None => RealProjection::build(theta)?,
     };
     let id = InvolutionId(records.len());
-    // The dedup key of the Weyl factor from its theta images:
-    // w(s_i) = theta(delta(s_i)) reproduces the retired
-    // `key_of(legacy.image_permutation())` values bit for bit.
-    let key = index.key_of_theta_images(
-        involution.root_involution().image_permutation(),
-        delta_images,
-    );
-    index.insert(key, id);
+    // The record's left-descent bits: a fixed property of the Weyl factor,
+    // paid once here instead of per KGB edge.
+    let mut descents = 0_u32;
+    for generator in 0..compact_weyl.d_out().len() {
+        let mut probe = element;
+        if compact_weyl.inner_left_mult(&mut probe, generator) < 0 {
+            descents |= 1_u32 << generator;
+        }
+    }
+    descent_bits.push(descents);
     records.push(InvolutionRecord {
         element,
         involution,
@@ -1984,21 +2000,12 @@ mod tests {
     }
 
     #[test]
-    fn forced_full_key_bfs_uses_compact_cross_neighbor() {
+    fn bfs_compact_neighbors_match_the_legacy_word_products() {
         let (inner_class, classification) = context(vec![vec![2, -2], vec![-1, 2]], None, 8, 8);
         let mut table = InvolutionTable::new(&inner_class, table_budget(8)).unwrap();
-        table.index.packed = false;
         for cartan in 0..classification.cartan_classes().len() {
             table.add_cartan(&classification, CartanId(cartan)).unwrap();
         }
-
-        assert!(
-            table
-                .index
-                .map
-                .keys()
-                .all(|key| matches!(key, DedupKey::Full(_)))
-        );
 
         for index in 0..table.involution_count() {
             let record = table.record(InvolutionId(index)).unwrap();

@@ -85,6 +85,11 @@ pub struct TitsCoset {
     /// Root permutations of the simple reflections, for the
     /// conjugate-to-simple grading loop.
     reflection_permutations: Vec<Vec<RootId>>,
+    /// Per generator: `delta(m_{twist(g)})` mod 2 — the generator-fixed
+    /// first half of the cross edge's target pull. Precomputed once: the
+    /// KGB BFS issues it per (element, generator), and the distinguished
+    /// matrix never changes.
+    pull_seed: Vec<ModTwoVector>,
 }
 
 impl TitsCoset {
@@ -141,6 +146,14 @@ impl TitsCoset {
             let action = WeylAction::simple_reflection(datum, generator)?;
             reflection_permutations.push(system.action_permutation(&action)?);
         }
+        let distinguished_matrix = delta_data.involution();
+        let mut pull_seed = try_capacity(semisimple_rank)?;
+        for generator in 0..semisimple_rank {
+            pull_seed.push(apply_matrix_mod_two(
+                distinguished_matrix.coweight_matrix(),
+                &m_alpha[twist[generator]],
+            )?);
+        }
         Ok(Self {
             inner_class: inner_class.clone(),
             grading_offset,
@@ -148,6 +161,7 @@ impl TitsCoset {
             m_alpha,
             dual_m_alpha,
             reflection_permutations,
+            pull_seed,
         })
     }
 
@@ -231,20 +245,14 @@ impl TitsCoset {
         if target.weyl_length() > s_w_length {
             // Table records drop the Weyl factor's matrices; recover the
             // pull from `theta = w after delta`, i.e. `w(v) =
-            // theta(delta(v))` on the coweight lattice (mod 2).
-            let distinguished = table.inner_class().distinguished_involution().involution();
-            let staged = apply_matrix_mod_two(
-                distinguished.coweight_matrix(),
-                &self.m_alpha[self.twist[generator]],
-            )?;
-            let pulled = apply_matrix_mod_two(
-                target
-                    .twisted_involution()
-                    .root_involution()
-                    .involution()
-                    .coweight_matrix(),
-                &staged,
-            )?;
+            // theta(delta(v))` on the coweight lattice (mod 2). The delta
+            // half is the precomputed per-generator `pull_seed`; the theta
+            // half reads the target record's cached parity rows — together
+            // bit-identical to two `apply_matrix_mod_two` scans.
+            let pulled = target
+                .twisted_involution()
+                .root_involution()
+                .apply_coweight_mod_two(&self.pull_seed[generator])?;
             bits.xor_assign(&pulled)?;
         }
         if self.grading_offset[generator] {

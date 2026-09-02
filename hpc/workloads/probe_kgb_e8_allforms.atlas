@@ -1,0 +1,11 @@
+<basic.at
+rb : RootDatum
+rb := simply_connected(Lie_type("E8"),true)
+ib : InnerClass
+ib := inner_class(rb,[[1,0,0,0,0,0,0,0],[0,1,0,0,0,0,0,0],[0,0,1,0,0,0,0],[0,0,0,1,0,0,0],[0,0,0,0,1,0,0],[0,0,0,0,0,1,0],[0,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,1]])
+n : int
+n := nr_of_real_forms(ib)
+n
+i : int
+i := 0
+while i < n do prints(i,": ",KGB_size(real_form(ib,i))); i := i+1 od

@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use crate::{LatticeInvolution, RootId, RootSystem, StructureError};
+use smallvec::SmallVec;
+
+use crate::{LatticeInvolution, ModTwoVector, RootId, RootSystem, StructureError};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RootKind {
@@ -54,6 +56,86 @@ impl<'a> ImagePermutation<'a> {
     }
 }
 
+/// Row bitmasks of the involution's cocharacter action mod 2: row `i` has
+/// bit `j` set exactly when the coweight entry `(i, j)` is odd — i.e. when
+/// the retained character matrix's `(j, i)` entry is odd (the cocharacter
+/// action is the transpose). Applying the mod-2 action to a bit vector is
+/// then one AND + popcount per row instead of a strided per-entry scan of
+/// the integer matrix — bit-identical to
+/// [`crate::tits_element::apply_matrix_mod_two`] on the same operands
+/// (`entry % 2 != 0` selects exactly the odd entries, negatives included).
+/// 16 inline words cover every lattice rank <= 16 without a heap touch.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct CoweightParity {
+    dimension: usize,
+    words_per_row: usize,
+    rows: SmallVec<[u64; 16]>,
+}
+
+impl CoweightParity {
+    fn new(weight_action: &[Vec<i32>]) -> Result<Self, StructureError> {
+        let dimension = weight_action.len();
+        let words_per_row = dimension
+            .checked_add(u64::BITS as usize - 1)
+            .ok_or(StructureError::ArithmeticOverflow)?
+            / u64::BITS as usize;
+        let word_total = dimension
+            .checked_mul(words_per_row)
+            .ok_or(StructureError::ArithmeticOverflow)?;
+        let mut rows = SmallVec::new();
+        rows.try_reserve_exact(word_total)
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: word_total,
+            })?;
+        rows.resize(word_total, 0_u64);
+        for (column, stored_row) in weight_action.iter().enumerate() {
+            if stored_row.len() != dimension {
+                return Err(StructureError::RankMismatch {
+                    expected: dimension,
+                    actual: stored_row.len(),
+                });
+            }
+            for (row, &entry) in stored_row.iter().enumerate() {
+                if entry % 2 != 0 {
+                    rows[row * words_per_row + column / u64::BITS as usize] |=
+                        1_u64 << (column % u64::BITS as usize);
+                }
+            }
+        }
+        Ok(Self {
+            dimension,
+            words_per_row,
+            rows,
+        })
+    }
+
+    /// The mod-2 cocharacter action on a bit vector: output bit `i` is the
+    /// parity of row `i` over the set bits of the input.
+    fn apply(&self, vector: &ModTwoVector) -> Result<ModTwoVector, StructureError> {
+        if vector.dimension() != self.dimension {
+            return Err(StructureError::RankMismatch {
+                expected: self.dimension,
+                actual: vector.dimension(),
+            });
+        }
+        let words = vector.words();
+        let mut ones = Vec::new();
+        for row in 0..self.dimension {
+            let base = row * self.words_per_row;
+            let mut parity = 0_u32;
+            for (word_index, &mask) in
+                self.rows[base..base + self.words_per_row].iter().enumerate()
+            {
+                parity ^= (mask & words[word_index]).count_ones() & 1;
+            }
+            if parity == 1 {
+                ones.push(row);
+            }
+        }
+        ModTwoVector::from_ones(self.dimension, ones)
+    }
+}
+
 /// An involution action on a generated ordinary root system.
 ///
 /// Construction validates that the dual-lattice involution truly permutes the
@@ -71,6 +153,9 @@ pub struct RootInvolutionData {
     /// 8B capacity field is pure per-record overhead.
     imaginary_simple_roots: Box<[RootId]>,
     real_simple_roots: Box<[RootId]>,
+    /// Mod-2 row masks of the cocharacter action, derived from the same
+    /// matrix at construction; serves the KGB cross-pull transport.
+    coweight_parity: CoweightParity,
 }
 
 impl RootInvolutionData {
@@ -117,12 +202,14 @@ impl RootInvolutionData {
             subsystem_simple_roots(root_system, &image_by_root, &negatives, RootKind::Imaginary)?;
         let real_simple_roots =
             subsystem_simple_roots(root_system, &image_by_root, &negatives, RootKind::Real)?;
+        let coweight_parity = CoweightParity::new(involution.weight_matrix())?;
         Ok(Self {
             involution,
             image_by_root: image_by_root.into_boxed_slice(),
             negatives,
             imaginary_simple_roots: imaginary_simple_roots.into_boxed_slice(),
             real_simple_roots: real_simple_roots.into_boxed_slice(),
+            coweight_parity,
         })
     }
 
@@ -167,12 +254,14 @@ impl RootInvolutionData {
             subsystem_simple_roots(root_system, &compact, &negatives, RootKind::Imaginary)?;
         let real_simple_roots =
             subsystem_simple_roots(root_system, &compact, &negatives, RootKind::Real)?;
+        let coweight_parity = CoweightParity::new(involution.weight_matrix())?;
         Ok(Self {
             involution,
             image_by_root: compact.into_boxed_slice(),
             negatives,
             imaginary_simple_roots: imaginary_simple_roots.into_boxed_slice(),
             real_simple_roots: real_simple_roots.into_boxed_slice(),
+            coweight_parity,
         })
     }
 
@@ -213,6 +302,16 @@ impl RootInvolutionData {
     /// Simple roots of the real-root subsystem in the inherited positive system.
     pub fn real_simple_roots(&self) -> &[RootId] {
         &self.real_simple_roots
+    }
+
+    /// The mod-2 cocharacter action on a bit vector, served from the cached
+    /// parity rows — bit-identical to
+    /// [`crate::tits_element::apply_matrix_mod_two`] on the integer matrix.
+    pub(crate) fn apply_coweight_mod_two(
+        &self,
+        vector: &ModTwoVector,
+    ) -> Result<ModTwoVector, StructureError> {
+        self.coweight_parity.apply(vector)
     }
 }
 
@@ -267,6 +366,54 @@ fn compact_image(image: RootId) -> Result<u16, StructureError> {
     })
 }
 
+/// Injective packing of a nonnegative simple-coordinate vector: 8 bits per
+/// coordinate, coordinate `i` at bit offset `8i`. Only called when the
+/// caller has checked the vector length is <= 8 and every coordinate fits
+/// in a byte.
+fn pack_coordinates(coordinates: &[i32]) -> u64 {
+    debug_assert!(coordinates.len() <= 8);
+    let mut packed = 0_u64;
+    for (index, &coordinate) in coordinates.iter().enumerate() {
+        debug_assert!((0..=u8::MAX as i32).contains(&coordinate));
+        packed |= (coordinate as u64) << (8 * index);
+    }
+    packed
+}
+
+/// The subsystem-membership probe of [`subsystem_simple_roots`]: one u64
+/// hash round when the coordinates pack, exact slice hashing otherwise.
+/// Both variants decide membership by exact equality, so the classification
+/// result is identical either way.
+enum Membership<'a> {
+    Packed(std::collections::HashSet<u64, crate::involution_table::MixingHasherBuilder>),
+    Slices(std::collections::HashSet<&'a [i32], crate::involution_table::MixingHasherBuilder>),
+}
+
+impl Membership<'_> {
+    fn contains(&self, coordinates: &[i32]) -> bool {
+        match self {
+            // Probed vectors are differences of two packed members that
+            // survived the dominance check, hence nonnegative and bounded
+            // by the member maximum — the pack preconditions still hold.
+            Self::Packed(packed) => packed.contains(&pack_coordinates(coordinates)),
+            Self::Slices(slices) => slices.contains(coordinates),
+        }
+    }
+}
+
+/// Simple roots of one kind's subsystem in the inherited positive system.
+///
+/// The decomposability probe iterates only the already-confirmed SIMPLES,
+/// not every member: for a positive member `c`, some subsystem simple `s`
+/// has `<c, s∨> > 0` (else `<c, c∨> = Σ m_i <c, s_i∨>` could not be 2 with
+/// `m_i >= 0`), the root string then makes `c - s` a root, it is positive
+/// (the simple coordinates stay nonnegative) and closed under the kind
+/// (theta is additive on roots), so `c` is decomposable IFF `c - s` is a
+/// member for an already-confirmed simple `s`. Inherited-simple-coordinate
+/// height is additive over the decomposition, so processing candidates in
+/// increasing height confirms every simple before any candidate that could
+/// decompose over it. The emitted ORDER is the historic enumeration order
+/// of `positive`, so the returned vector is unchanged bit for bit.
 fn subsystem_simple_roots(
     root_system: &RootSystem,
     image_by_root: &[u16],
@@ -274,85 +421,259 @@ fn subsystem_simple_roots(
     kind: RootKind,
 ) -> Result<Vec<RootId>, StructureError> {
     debug_assert_eq!(image_by_root.len(), negatives.len());
-    let positive = image_by_root
-        .iter()
-        .map(|&image| RootId(usize::from(image)))
-        .zip(negatives.iter().copied())
-        .enumerate()
-        .filter_map(|(index, (image, negative))| {
-            (classify_root(index, image, negative) == kind).then_some(RootId(index))
-        })
-        .filter(|&root| {
-            root_system
-                .simple_coordinates(root)
-                .is_some_and(|coordinates| coordinates.iter().all(|&coordinate| coordinate >= 0))
-        })
-        .collect::<Vec<_>>();
-    // Membership by simple coordinates through a hash set of slices: the
-    // decomposability probe below runs once per (candidate, summand) pair,
-    // and the historic ordered-set-of-vectors with a fresh remainder
-    // allocation per probe dominated RootInvolutionData::new (E8 identity
-    // class: ~120 x 120 probes per call). Collisions compare exactly, so
-    // semantics are unchanged.
-    let positive_coordinates = positive
-        .iter()
-        .map(|&root| {
-            root_system
-                .simple_coordinates(root)
-                .ok_or(StructureError::IndexOutOfRange {
-                    index: root.0,
-                    upper_bound: root_system.roots().len(),
-                })
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-    let mut members: std::collections::HashSet<
-        &[i32],
-        crate::inner_class::PermutationHasherBuilder,
-    > = std::collections::HashSet::default();
-    members
-        .try_reserve(positive_coordinates.len())
-        .map_err(|_| StructureError::AllocationFailed {
-            requested: positive_coordinates.len(),
-        })?;
-    for coordinates in &positive_coordinates {
-        members.insert(coordinates);
+    let mut positive = Vec::new();
+    let mut positive_coordinates: Vec<&[i32]> = Vec::new();
+    for (index, (&image, &negative)) in image_by_root.iter().zip(negatives.iter()).enumerate() {
+        if classify_root(index, RootId(usize::from(image)), negative) != kind {
+            continue;
+        }
+        let Some(coordinates) = root_system.simple_coordinates(RootId(index)) else {
+            continue;
+        };
+        if coordinates.iter().all(|&coordinate| coordinate >= 0) {
+            positive.push(RootId(index));
+            positive_coordinates.push(coordinates);
+        }
     }
+    // Membership by simple coordinates. With semisimple rank <= 8 (the
+    // compact-Weyl ceiling of `WeylElt`) every NONNEGATIVE coordinate
+    // vector packs injectively into one u64 (8 bits per coordinate; root
+    // coordinates stay <= 6 in every finite type), so the probe becomes a
+    // single integer hash round instead of one hash round per slice
+    // element; collisions still compare exactly. Larger ranks fall back to
+    // hashing the coordinate slices themselves.
     let rank = root_system.datum().semisimple_rank();
+    let packable = rank <= 8
+        && positive_coordinates
+            .iter()
+            .all(|coordinates| coordinates.iter().all(|&coordinate| coordinate <= u8::MAX as i32));
+    let members: Membership = if packable {
+        let mut packed: std::collections::HashSet<
+            u64,
+            crate::involution_table::MixingHasherBuilder,
+        > = std::collections::HashSet::default();
+        packed
+            .try_reserve(positive_coordinates.len())
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: positive_coordinates.len(),
+            })?;
+        for coordinates in &positive_coordinates {
+            packed.insert(pack_coordinates(coordinates));
+        }
+        Membership::Packed(packed)
+    } else {
+        let mut slices: std::collections::HashSet<
+            &[i32],
+            crate::involution_table::MixingHasherBuilder,
+        > = std::collections::HashSet::default();
+        slices
+            .try_reserve(positive_coordinates.len())
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: positive_coordinates.len(),
+            })?;
+        for coordinates in &positive_coordinates {
+            slices.insert(coordinates);
+        }
+        Membership::Slices(slices)
+    };
     let mut remainder: Vec<i32> = Vec::new();
     remainder
         .try_reserve(rank)
         .map_err(|_| StructureError::AllocationFailed { requested: rank })?;
-    let mut simple_roots = Vec::new();
-    'candidate: for (candidate_index, &candidate) in positive.iter().enumerate() {
+    // Heights order the scan; i64 sums cannot overflow on root coordinates.
+    let heights: Vec<i64> = positive_coordinates
+        .iter()
+        .map(|coordinates| coordinates.iter().map(|&c| i64::from(c)).sum())
+        .collect();
+    let mut scan_order: Vec<usize> = (0..positive.len()).collect();
+    scan_order.sort_by_key(|&index| heights[index]);
+    let mut is_simple = vec![false; positive.len()];
+    let mut confirmed_simples: Vec<usize> = Vec::new();
+    'candidate: for candidate_index in scan_order {
         let candidate_coordinates = positive_coordinates[candidate_index];
-        for (summand_index, summand) in positive_coordinates.iter().enumerate() {
-            if summand_index == candidate_index {
-                continue;
-            }
+        for &simple_index in &confirmed_simples {
             remainder.clear();
-            for (&candidate_coordinate, &summand_coordinate) in
-                candidate_coordinates.iter().zip(*summand)
+            let mut dominated = false;
+            for (&candidate_coordinate, &summand_coordinate) in candidate_coordinates
+                .iter()
+                .zip(positive_coordinates[simple_index])
             {
-                remainder.push(
-                    candidate_coordinate
-                        .checked_sub(summand_coordinate)
-                        .ok_or(StructureError::ArithmeticOverflow)?,
-                );
+                let difference = candidate_coordinate
+                    .checked_sub(summand_coordinate)
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+                if difference < 0 {
+                    // Members all have nonnegative coordinates, so this
+                    // remainder can never be a member; skip the hash probe.
+                    dominated = true;
+                    break;
+                }
+                remainder.push(difference);
             }
-            if members.contains(remainder.as_slice()) {
+            if !dominated && members.contains(&remainder) {
                 continue 'candidate;
             }
         }
-        simple_roots.push(candidate);
+        is_simple[candidate_index] = true;
+        confirmed_simples.push(candidate_index);
+    }
+    let mut simple_roots = Vec::new();
+    for (index, &root) in positive.iter().enumerate() {
+        if is_simple[index] {
+            simple_roots.push(root);
+        }
     }
     Ok(simple_roots)
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{BasedRootDatum, Coweight, LatticeInvolution, RootSystem, Weight};
+    use crate::{BasedRootDatum, Coweight, LatticeInvolution, RootSystem, Weight, WeylAction};
 
     use super::*;
+
+    /// The retired all-pairs decomposability probe, kept as the definitional
+    /// oracle for the height-ordered production algorithm.
+    fn naive_subsystem_simple_roots(
+        root_system: &RootSystem,
+        data: &RootInvolutionData,
+        kind: RootKind,
+    ) -> Vec<RootId> {
+        let positive: Vec<RootId> = data
+            .roots_of_kind(kind)
+            .filter(|&root| {
+                root_system
+                    .simple_coordinates(root)
+                    .is_some_and(|coordinates| {
+                        coordinates.iter().all(|&coordinate| coordinate >= 0)
+                    })
+            })
+            .collect();
+        let coordinates: Vec<&[i32]> = positive
+            .iter()
+            .map(|&root| root_system.simple_coordinates(root).unwrap())
+            .collect();
+        let mut simple_roots = Vec::new();
+        'candidate: for (candidate_index, &candidate) in positive.iter().enumerate() {
+            for (summand_index, summand) in coordinates.iter().enumerate() {
+                if summand_index == candidate_index {
+                    continue;
+                }
+                let remainder: Vec<i32> = coordinates[candidate_index]
+                    .iter()
+                    .zip(*summand)
+                    .map(|(&c, &s)| c - s)
+                    .collect();
+                if remainder.iter().all(|&c| c >= 0)
+                    && coordinates
+                        .iter()
+                        .any(|&member| member == remainder.as_slice())
+                {
+                    continue 'candidate;
+                }
+            }
+            simple_roots.push(candidate);
+        }
+        simple_roots
+    }
+
+    #[test]
+    fn height_ordered_simple_roots_match_the_all_pairs_probe() {
+        let cartans = [
+            vec![vec![2]],
+            vec![vec![2, -1], vec![-1, 2]],
+            vec![vec![2, -2], vec![-1, 2]],
+            vec![vec![2, 0], vec![0, 2]],
+            vec![vec![2, -1, 0], vec![-1, 2, -1], vec![0, -1, 2]],
+            vec![vec![2, -1, 0], vec![-1, 2, -2], vec![0, -1, 2]],
+            vec![
+                vec![2, -1, 0, 0],
+                vec![-1, 2, -1, -1],
+                vec![0, -1, 2, 0],
+                vec![0, -1, 0, 2],
+            ],
+        ];
+        for cartan in &cartans {
+            let datum = BasedRootDatum::standard(cartan.clone()).unwrap();
+            let roots = RootSystem::enumerate(&datum, 1 << 12).unwrap();
+            let rank = datum.semisimple_rank();
+            let minus_identity: Vec<Vec<i32>> = (0..rank)
+                .map(|i| {
+                    (0..rank)
+                        .map(|j| if i == j { -1 } else { 0 })
+                        .collect::<Vec<i32>>()
+                })
+                .collect();
+            let mut involutions = vec![
+                LatticeInvolution::identity(&datum).unwrap(),
+                LatticeInvolution::new(&datum, minus_identity.clone(), minus_identity).unwrap(),
+            ];
+            for generator in 0..rank {
+                let reflection = WeylAction::simple_reflection(&datum, generator).unwrap();
+                involutions.push(
+                    LatticeInvolution::new(
+                        &datum,
+                        reflection.matrix().to_vec(),
+                        reflection.coweight_matrix().to_vec(),
+                    )
+                    .unwrap(),
+                );
+            }
+            for involution in &involutions {
+                let data = RootInvolutionData::new(&roots, involution.clone()).unwrap();
+                for kind in [RootKind::Imaginary, RootKind::Real, RootKind::Complex] {
+                    let expected = naive_subsystem_simple_roots(&roots, &data, kind);
+                    let actual = match kind {
+                        RootKind::Imaginary => data.imaginary_simple_roots(),
+                        RootKind::Real => data.real_simple_roots(),
+                        RootKind::Complex => continue,
+                    };
+                    assert_eq!(actual, expected.as_slice());
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn cached_coweight_parity_matches_the_integer_matrix_scan() {
+        let cartans = [
+            vec![vec![2]],
+            vec![vec![2, -1], vec![-1, 2]],
+            vec![vec![2, -2], vec![-1, 2]],
+            vec![vec![2, -1, 0], vec![-1, 2, -2], vec![0, -1, 2]],
+        ];
+        for cartan in &cartans {
+            let datum = BasedRootDatum::standard(cartan.clone()).unwrap();
+            let roots = RootSystem::enumerate(&datum, 1 << 12).unwrap();
+            let rank = datum.lattice_rank();
+            let mut involutions = vec![LatticeInvolution::identity(&datum).unwrap()];
+            for generator in 0..datum.semisimple_rank() {
+                let reflection = WeylAction::simple_reflection(&datum, generator).unwrap();
+                involutions.push(
+                    LatticeInvolution::new(
+                        &datum,
+                        reflection.matrix().to_vec(),
+                        reflection.coweight_matrix().to_vec(),
+                    )
+                    .unwrap(),
+                );
+            }
+            for involution in &involutions {
+                let data = RootInvolutionData::new(&roots, involution.clone()).unwrap();
+                for pattern in 0..(1_u32 << rank) {
+                    let ones: Vec<usize> = (0..rank)
+                        .filter(|&bit| pattern & (1 << bit) != 0)
+                        .collect();
+                    let vector = ModTwoVector::from_ones(rank, ones).unwrap();
+                    let expected = crate::tits_element::apply_matrix_mod_two(
+                        involution.coweight_matrix(),
+                        &vector,
+                    )
+                    .unwrap();
+                    assert_eq!(data.apply_coweight_mod_two(&vector), Ok(expected));
+                }
+            }
+        }
+    }
 
     #[test]
     fn classifies_real_and_complex_a2_roots() {

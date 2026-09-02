@@ -54,6 +54,12 @@ impl ModTwoVector {
         })
     }
 
+    /// The packed words, for bulk parity arithmetic against precomputed
+    /// masks (the padding bits above `dimension` are zero by contract).
+    pub(crate) fn words(&self) -> &[u64] {
+        &self.words
+    }
+
     pub fn xor_assign(&mut self, right: &Self) -> Result<(), StructureError> {
         if self.dimension != right.dimension {
             return Err(StructureError::RankMismatch {
@@ -183,6 +189,10 @@ impl ModTwoAmbientMap for ModTwoLinearMap {
 pub struct ModTwoSubspace {
     dimension: usize,
     pivots: Vec<Option<ModTwoVector>>,
+    /// Pivot-presence bitmap: bit `p` set exactly when `pivots[p]` is a
+    /// row. Derived from `pivots` at every mutation, so the derived
+    /// `PartialEq` compares the same subspace relation as before.
+    pivot_mask: ModTwoVector,
     rank: usize,
 }
 
@@ -198,6 +208,7 @@ impl ModTwoSubspace {
         Ok(Self {
             dimension,
             pivots,
+            pivot_mask: ModTwoVector::zero(dimension)?,
             rank: 0,
         })
     }
@@ -229,6 +240,8 @@ impl ModTwoSubspace {
             }
         }
         self.pivots[pivot] = Some(reduced);
+        // The probe reduced away every existing pivot, so this bit is 0.
+        self.pivot_mask.toggle(pivot)?;
         self.rank = self
             .rank
             .checked_add(1)
@@ -271,15 +284,28 @@ impl ModTwoSubspace {
                 actual: vector.dimension,
             });
         }
-        // A missing early pivot does not imply that later pivots are absent.
-        // The canonical basis is already reduced at every pivot, so scanning in
-        // increasing order clears every coefficient exactly once, just as
-        // Atlas `normalSpanAdd` does before it adds a new row.
-        for (pivot, basis_vector) in self.pivots.iter().enumerate() {
-            if vector.bit(pivot) == Some(true) {
-                if let Some(basis_vector) = basis_vector {
-                    vector.xor_assign(basis_vector)?;
+        // The canonical basis is already reduced at every pivot, so clearing
+        // pivot bits in increasing order visits each exactly once, just as
+        // Atlas `normalSpanAdd` does before it adds a new row. The pivot mask
+        // restricts the scan to words holding an uncleared pivot bit: a row
+        // has no bits below its own pivot, so an xor never re-sets a pivot
+        // bit below the one being cleared, and the visit order (hence the
+        // reduced result) is bit-identical to scanning every pivot.
+        for (word_index, &mask_word) in self.pivot_mask.words.iter().enumerate() {
+            loop {
+                let masked = vector.words[word_index] & mask_word;
+                if masked == 0 {
+                    break;
                 }
+                let pivot =
+                    word_index * u64::BITS as usize + masked.trailing_zeros() as usize;
+                // Unreachable by construction (the mask tracks populated
+                // rows exactly); an error, not a silent skip, because
+                // skipping would loop forever on the uncleared bit.
+                let basis_vector = self.pivots[pivot].as_ref().ok_or(
+                    StructureError::ModTwoSubquotientInvariantViolation,
+                )?;
+                vector.xor_assign(basis_vector)?;
             }
         }
         Ok(vector)
