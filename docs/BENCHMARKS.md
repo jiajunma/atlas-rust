@@ -320,3 +320,11 @@ Real block_deform workloads now on mainline: `probe_bd_e6_repeat.atlas`
 `cross of extremal` panic fixed in a8b2fd8). The x3-E8 A/B (job 3670321:
 base 4.42s/593,280KB vs a8b2fd8 4.96s/593,688KB, IDENTICAL) is recorded as
 a no-op control, not a deform measurement.
+
+Same trap hits the `probe_unitary_e{6,7,8}.atlas` series (2026-09-02):
+`param(KGB(rf,0),…)` normalises to nu=0 and `is_unitary` deforms a single
+trivial term (E7 probe finishes in 0.61s — "Fully deforming 1 terms"), so
+those rows above measure startup + inner-class build, not the KLV
+recursion. Real unitarity workload: `probe_unitary_e7_heavy.atlas`
+(x=20925, nu=[1,…,1]/1); A/B + oracle triple-compare in job 3671349.
+The perf-sample job 3671090 profiled the no-op probe and is void.
