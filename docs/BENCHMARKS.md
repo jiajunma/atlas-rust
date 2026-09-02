@@ -290,3 +290,17 @@ NOT a builtin — it lives in `deform.at`; probes must `<deform.at` first
 Optimization lanes in flight target the remaining KL-fill allocator traffic
 (agent-138 KlPol in-place) and per-call dual KL table rebuild
 (agent-139 dual-block KL cache + accumulator hash).
+
+## KLV lane merges (2026-09-02, merge point cb4e950)
+
+- Merge point `d48c4b0` (agent-139 dual-block KL cache + deform accumulator
+  hash): full corpus job **3669375** 240/240 MATCH.
+- Merge point `cb4e950` (+ agent-138 in-place KlPol ops): full corpus job
+  **3670016** 240/240 MATCH.
+- KlPol A/B (job 3669311, cu084, E8 single deform): base 4.50s/594,176KB vs
+  branch 4.54s/593,924KB — wall-neutral (within noise, +0.9%), output
+  IDENTICAL both vs base and vs cpp oracle (4.88s/804,800KB). The in-place
+  ops cut allocator traffic without changing single-shot wall time; the win
+  is expected to compound with the dual-KL cache on multi-deform sessions.
+- agent-139 dual-KL cache A/B (job 3669387, repeated deform on same block):
+  pending at ledger time.
