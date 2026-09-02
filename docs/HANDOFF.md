@@ -4,7 +4,57 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
-## Current frontier - 2026-09-01 (post-handover, supersedes 2026-08-31)
+## Current frontier - 2026-09-02 (Weyl/KGB micro-optimizations, supersedes 2026-09-01)
+
+The current tip is `d686744`, with the verified optimization chain
+`f835987`, `f222487`, `b1fb57a`, `5352503`, `6a7f6f3`, and `0b65dcb`.
+These changes cover monotone ladder-membership cursors, ladder subtraction
+error precedence, an explicit `RootId -> u8` width guard, inline `SmallVec`
+ladder bitsets, narrower checked reflection intermediates, explicit GCC 12
+binding for the KGB oracle, and concurrent quick-check worktree pruning.
+The focused and differential gates below were run on implementation commit
+`6a7f6f3`; the later `d686744` change only hardens concurrent quick-check
+worktree cleanup.
+
+- Quick-check **3667072** completed successfully (`TEST_DONE status=0`);
+  stdout artifact SHA-256:
+  `70b8cf297322c74b03b73174f7ffe3eb1a34d0e360c5a69861bdc4985934b342`.
+- Weyl focused **3667073** passed Weyl **64/64**, InvolutionTable **30/30**,
+  and KGB **14/14** in both debug and release; stdout artifact SHA-256:
+  `6538d5d21d987712956d6dff0030c8664c9099a5b3b4686f0e4128a2de86fa24`.
+- KGB differential **3667074** passed **12/12 MATCH** (A1-A4, B2-B4, C3-C4,
+  D4, F4, G2). The earlier failed probes were an oracle `libstdc++`/GCC
+  runtime mismatch, not a Rust behavior regression; the explicit GCC 12
+  binding in `0b65dcb` removes that ambiguity. Report SHA-256:
+  `3b4e28e6aa1b572f607d413604af8c5ceb740f1d502d9b69267b05b9142ddf85`.
+- Full 240-script corpus **3667075** is **240/240 MATCH**. Median wall ratio
+  is **2.3275x** and median RSS ratio **3.757x**; no script exceeds 5x and
+  four are faster in this run. The remaining wall tail is the fixed
+  interpreter/`CartanClassification::build` cost in tiny scripts, not a new
+  Weyl/KGB regression. Report SHA-256:
+  `3afb44f71f5e694cfd1a004c874591a698eab383b9dc3e1eb51fe980c857867d`.
+- Fat `unipotent_representations_exceptional.at` **3667076** is an exact
+  MATCH: Rust **5.087s / 813,608KB**, C++ **4.783s / 881,300KB** (**1.064x**
+  wall, **0.923x** RSS). This is roughly 8% lower peak RSS than C++; the
+  small wall difference is within the established run band, so no individual
+  micro-optimization is credited with an independent speedup. Report
+  SHA-256:
+  `02dd2c7ec42ef4ef4b519d5e1041537aef8ae02ac9c4c959f6a9b7809b356504`.
+
+The corpus result should therefore be read as: heavy KGB/Weyl workloads are
+now close to the C++ wall time and consistently below it in RSS, while the
+full-corpus median remains about 2.33x because many scripts are dominated by
+fixed setup work. Do not infer a stable overall wall improvement from one
+corpus run or attribute it to any one of the seven small changes without a
+same-node A/B measurement.
+
+Next measurement priority remains a phase-level `RootSystem::from_closure`
+ablation (ladder construction, negation/simple-reflection tables, and final
+sort/materialization) followed by targeted `push_record`/`add_cartan`
+instrumentation. The existing root-closure and KGB storage changes must keep
+their ordering and error-precedence contracts.
+
+## Current frontier - 2026-09-01 (post-handover, superseded by 2026-09-02)
 
 The 98-commit compact involution/Weyl-id migration is fully merged and pushed;
 HEAD is `adb4051` (+ parent docs commits through `c56ce19`). The stale

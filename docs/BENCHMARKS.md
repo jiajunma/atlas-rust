@@ -236,3 +236,14 @@ script-corpus ledger above for real per-script timing until then.
 | 3666956 | 86917e5 | 1 targeted | 0 | RootSystem closure-storage candidate `unipotent_representations_exceptional.at`: Rust **5.097s / 809,244KB**, C++ **4.695s / 881,300KB** = **1.086x wall / 0.918x RSS**, exact MATCH. Report SHA-256: `0b863872f933bbf08473e99e11bd26a582f1dc33cef32371dd9f6e794ba8749e`. |
 | 3666958 | 86917e5 | KGB differential | 0 | **12/12 groups MATCH** (A1-A4, B2-B4, C3-C4, D4, F4, G2); report SHA-256: `c601debc86e1df0a99d24f65ee02bba3ee1b33f79dd69bc4a16d6d506982a90b`. |
 | 3666959 | 86917e5 | Weyl/InvolutionTable/KGB focused | 0 | Focused gate passed: Weyl **64/64**, InvolutionTable **30/30**, KGB **14/14**, debug and release; report SHA-256: `d61bcaf008f186542bea67527215ab99c911560d587821bd104999d9eb797546`. |
+| 3667072 | 6a7f6f3 | quick-check | 0 | `TEST_DONE status=0`; largest test group **553 passed**. Stdout artifact SHA-256: `70b8cf297322c74b03b73174f7ffe3eb1a34d0e360c5a69861bdc4985934b342`. |
+| 3667073 | 6a7f6f3 | Weyl/InvolutionTable/KGB focused | 0 | Focused gate passed: Weyl **64/64**, InvolutionTable **30/30**, KGB **14/14**, debug and release. Stdout artifact SHA-256: `6538d5d21d987712956d6dff0030c8664c9099a5b3b4686f0e4128a2de86fa24`. |
+| 3667074 | 6a7f6f3 | KGB differential | 0 | **12/12 groups MATCH** after explicitly binding the GCC 12 oracle runtime; report SHA-256: `3b4e28e6aa1b572f607d413604af8c5ceb740f1d502d9b69267b05b9142ddf85`. |
+| 3667075 | 6a7f6f3 | 240 | 0 | FULL CORPUS GREEN: **240/240 MATCH**, median wall **2.3275x**, median RSS **3.757x**, four rust-faster, zero over 5x. The median remains dominated by fixed setup work in short scripts; the change from earlier runs is within node/run variance, so no standalone micro-optimization speedup is claimed. Report SHA-256: `3afb44f71f5e694cfd1a004c874591a698eab383b9dc3e1eb51fe980c857867d`. |
+| 3667076 | 6a7f6f3 | 1 targeted (fat) | 0 | `unipotent_representations_exceptional.at` MATCH: Rust **5.087s / 813,608KB**, C++ **4.783s / 881,300KB** = **1.064x wall / 0.923x RSS**. Wall remains in the established run band; heavy-workload RSS is reliably about 8% below the oracle. Report SHA-256: `02dd2c7ec42ef4ef4b519d5e1041537aef8ae02ac9c4c959f6a9b7809b356504`. |
+
+The `f835987`/`5352503`/`6a7f6f3` root-system micro-optimizations reduce
+search or storage work, but these end-to-end results do not isolate their
+individual wall-time effects. Treat **1.064x wall / 0.923x RSS** as the current
+heavy KGB/Weyl comparison and **2.3275x wall / 3.757x RSS** as the current
+full-corpus median; the latter is primarily a short-script fixed-cost metric.

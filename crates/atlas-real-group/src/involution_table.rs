@@ -573,7 +573,10 @@ impl InvolutionTable {
                 // twist(s) — delta is already incorporated in theta.
                 let transported = self.records[cursor]
                     .projection()
-                    .transported(self.reflection_actions[generator].matrix())?;
+                    .transported_by_simple_reflection(
+                        self.inner_class.datum().simple_roots()[generator].as_slice(),
+                        self.inner_class.datum().simple_coroots()[generator].as_slice(),
+                    )?;
                 // Transport the dedup subspace across the same edge
                 // (involutions.cpp:256): canonical RREF, so the result equals
                 // the fresh per-record `reduce_basis_mod_two` bit for bit.

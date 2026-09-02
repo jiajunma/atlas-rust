@@ -1,5 +1,38 @@
 # Remaining builtin coverage (post-language-gate)
 
+## Weyl/KGB frontier and maintenance contracts (2026-09-02)
+
+The current Weyl/KGB tip is `d686744`, following `f835987`, `b1fb57a`,
+`f222487`, `5352503`, `6a7f6f3`, and `0b65dcb`. The chain is covered by
+quick-check 3667072, focused Weyl/InvolutionTable/KGB 3667073, KGB
+differential 3667074, full corpus 3667075, and fat `unipotent` 3667076.
+All accepted probes match the oracle. The heavy workload is currently Rust
+5.087s / 813,608KB versus C++ 4.783s / 881,300KB (1.064x wall / 0.923x RSS);
+the full 240-script median is 2.3275x wall / 3.757x RSS. These are end-to-end
+measurements: run/node variance prevents assigning an independent wall-time
+gain to any one of the small root-system changes.
+
+Keep these contracts when extending the ladder or KGB code:
+
+- The ladder-bottom membership scan uses a monotone merge cursor. Root and
+  coroot checked subtractions remain in the upstream beta order so arithmetic
+  errors retain their historical precedence; do not reorder the loops merely
+  to improve locality.
+- `RootId` is represented in an 8-bit permutation boundary. IDs 0 through 255
+  are valid; a root system with more than 256 roots must return the explicit
+  invariant error rather than silently truncating a conversion to `u8`.
+- `RootSet` uses `SmallVec<[u64; 4]>`, keeping E8's four ladder-bitset words
+  inline and spilling only larger sets. Reflection scratch arithmetic uses
+  checked `i64` intermediates with a final checked `i32` narrowing; preserve
+  the overflow diagnostics when changing this path.
+- KGB oracle differential jobs must bind GCC 12's `libstdc++` explicitly. A
+  `libstdc++` mismatch can produce false MISMATCH results before Atlas output
+  is evaluated; classify that as an environment failure, not a semantic
+  regression.
+
+The next performance work should measure `RootSystem::from_closure` phases
+and `push_record`/`add_cartan` separately before changing storage or ordering.
+
 ## Compact involution printer boundary (2026-08-31)
 
 Commit `e030699` closes the four language-boundary consumers of

@@ -225,6 +225,101 @@ impl RealProjection {
         Ok(projection)
     }
 
+    /// Transport the image-basis pair across one simple reflection using
+    /// its rank-one formula `s = I - alpha * beta^T`. This is equivalent to
+    /// [`Self::transported`] for a matrix produced by
+    /// `WeylAction::simple_reflection`, but avoids the `rank^2` matrix walk
+    /// for each of the two products.
+    pub(crate) fn transported_by_simple_reflection(
+        &self,
+        reflected_vector: &[i32],
+        pairing_vector: &[i32],
+    ) -> Result<Self, StructureError> {
+        let rank = self.rank();
+        if reflected_vector.len() != rank || pairing_vector.len() != rank {
+            return Err(StructureError::InvalidIntegerMatrixShape);
+        }
+        let image_rank = self.image_rank();
+        let size = rank
+            .checked_mul(image_rank)
+            .ok_or(StructureError::ArithmeticOverflow)?;
+
+        // lift_mat' = (I - alpha*beta^T) * lift_mat.
+        let mut lift_mat = Vec::new();
+        lift_mat
+            .try_reserve_exact(size)
+            .map_err(|_| StructureError::AllocationFailed { requested: size })?;
+        lift_mat.resize(size, 0);
+        for row in 0..rank {
+            for column in 0..image_rank {
+                lift_mat[row * image_rank + column] = self.lift_entry(row, column);
+            }
+        }
+        for column in 0..image_rank {
+            let mut beta_lift = 0_i64;
+            for (k, &coefficient) in pairing_vector.iter().enumerate() {
+                if coefficient == 0 {
+                    continue;
+                }
+                let product = i64::from(coefficient)
+                    .checked_mul(i64::from(self.lift_entry(k, column)))
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+                beta_lift = beta_lift
+                    .checked_add(product)
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+            }
+            for row in 0..rank {
+                let correction = i64::from(reflected_vector[row])
+                    .checked_mul(beta_lift)
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+                let entry = i64::from(lift_mat[row * image_rank + column])
+                    .checked_sub(correction)
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+                lift_mat[row * image_rank + column] =
+                    i32::try_from(entry).map_err(|_| StructureError::ArithmeticOverflow)?;
+            }
+        }
+
+        // m_real' = m_real * (I - alpha*beta^T).
+        let mut m_real = Vec::new();
+        m_real
+            .try_reserve_exact(size)
+            .map_err(|_| StructureError::AllocationFailed { requested: size })?;
+        m_real.extend_from_slice(&self.m_real);
+        for row in 0..image_rank {
+            let source = &self.m_real[row * rank..(row + 1) * rank];
+            let mut row_alpha = 0_i64;
+            for (k, &coefficient) in source.iter().enumerate() {
+                if coefficient == 0 {
+                    continue;
+                }
+                let product = i64::from(coefficient)
+                    .checked_mul(i64::from(reflected_vector[k]))
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+                row_alpha = row_alpha
+                    .checked_add(product)
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+            }
+            for target in 0..rank {
+                let correction = row_alpha
+                    .checked_mul(i64::from(pairing_vector[target]))
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+                let entry = i64::from(m_real[row * rank + target])
+                    .checked_sub(correction)
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+                m_real[row * rank + target] =
+                    i32::try_from(entry).map_err(|_| StructureError::ArithmeticOverflow)?;
+            }
+        }
+
+        Ok(Self {
+            lift_mat,
+            m_real,
+            rank: self.rank,
+            image_rank: self.image_rank,
+        })
+    }
+
     /// The transported pair across one cross edge by a simple reflection
     /// (upstream `InvolutionTable::add_cross`, involutions.cpp:242-243):
     /// `m_real := m_real * s` ("apply s before M_real") and
@@ -615,4 +710,31 @@ fn invert_integer_matrix(matrix: &[Vec<i64>]) -> Result<Vec<Vec<i64>>, Structure
         }
     }
     Ok(inverse)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn simple_reflection_transport_matches_dense_matrix_transport() {
+        let projection = RealProjection::from_nested(
+            vec![vec![2, -1], vec![1, 3], vec![-2, 0]],
+            vec![vec![1, 0, -1], vec![2, 1, 3]],
+        )
+        .unwrap();
+        let alpha = [1, -1, 0];
+        let beta = [0, 1, -1];
+        let reflection = vec![
+            vec![1, -1, 1],
+            vec![0, 2, -1],
+            vec![0, 0, 1],
+        ];
+
+        let expected = projection.transported(&reflection).unwrap();
+        let actual = projection
+            .transported_by_simple_reflection(&alpha, &beta)
+            .unwrap();
+        assert_eq!(actual, expected);
+    }
 }
