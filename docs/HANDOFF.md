@@ -7736,3 +7736,13 @@ showed a phantom +3.8% branch regression (job 3671496, one slow node);
 alternating-order rerun on another node showed parity — always alternate
 side order or pin rep counts before claiming a regression. (3)
 `springer_table_E8.at` is data-only, ~0.8s, useless as a deform workload.
+
+## Ops note (2026-09-02, parent)
+
+agent-141 (lane D, kgbopt) switched the shared local checkout to its
+`agent-kgbopt` branch mid-work, and a parent docs commit (decisive A/B
+record) briefly landed there as 6587760; it lives on mainline as 4ab8d03
+(cherry-pick). Mainline local operations now run in the dedicated worktree
+`/Users/hoxide/mycodes/atlas-rust-main` (branch codex/continue-atlas-port).
+At lane-D merge time: drop/ignore the duplicate 6587760 docs commit on
+agent-kgbopt (same content as 4ab8d03).
