@@ -7176,3 +7176,53 @@ records array 110.8MB (residual: mod_space 40B + theta_plus_one_rho
 Weight 24B inline headers per record); transport_mod_space 88.7MB;
 RealProjection payload 66.3MB (irreducible at i32; i16 narrowing is
 value-range-unsafe for transported bases); hashbrown dedup ~55MB.
+
+## 2026-09-02a — RootSystem enumeration CPU: scratch buffers, direct reflection table (agent-136)
+
+Lane: `crates/atlas-real-group/src/root_system.rs` only. Two commits on
+branch `agent-136` off 94901ac: `7f3324c` (BFS scratch buffers) and
+`f199832` (direct simple-reflection table + flattened coroot map).
+
+What changed (all inside root_system.rs):
+- BFS closure loop (`enumerate_with_budget`): skip generators orthogonal
+  to the record on both pairings (identity reflection = duplicate insert,
+  observationally identical); survivors reflect into reused scratch
+  buffers with the same i128-checked arithmetic as
+  `BasedRootDatum::reflect_*`; `Closure::insert_coordinates` takes slices
+  and copies only genuinely new roots (E8: ~240 copy sets instead of
+  ~1920 candidate Vec allocations).
+- Negation table: one reused `negated` buffer across roots.
+- `simple_reflections` table: filled directly from the reflection formula
+  (`w - <w, coroot> * root`, entrywise identical to the reflection-matrix
+  action) into a reused buffer + `id_of_slice`, replacing the old path of
+  one `Arc::new(datum.clone())` + two rank×rank matrices + one allocating
+  matvec per root per generator. `InvalidRootAutomorphism` on a missing
+  image preserved.
+- `build_ladder_bottoms`: coroot membership now binary-searches a sorted
+  index Vec (one contiguous allocation) instead of a node-based
+  `BTreeMap<&[i32], usize>`.
+
+Numbers (all HPC):
+- Retired instructions, groups.at x100 via stdin, interleaved n=5 on
+  cu052 (benchins job 3666649): patched 29.55G vs baseline-94901ac
+  32.61G => **-9.4% instructions**. Instruction counts are stable to
+  ±0.1%; wall-clock A/B on 0.19s runs is layout/contention noise
+  (±3-4%, bench jobs 3666443/3666598 showed parity).
+- perf record (groups.at x100, cu052): `from_closure` self 63.2%
+  @7f3324c (job 3666516, report on 3666542's debuginfo build) -> 69.6%
+  share @f199832 (job 3666677) of the shrunken total — i.e. from_closure
+  absolute cost ≈ unchanged (~20.6G instr); the 3.05G cut came from the
+  eliminated helpers (weyl::apply_matrix, compose_matrices, allocator
+  traffic, WeylAction construction).
+- Gates: quick_check 3666595 TEST_DONE status=0; subset corpus 3666597
+  4/4 MATCH (cu052); full corpus 3666599 @f199832 **240/240 MATCH**.
+
+Remaining ideas in this lane (not done — from_closure self is the blob,
+needs phase ablation to split): ladder-bottoms O(R^2) binary searches
+(consider unflagging via root-string enumeration instead), BTreeMap
+`seen` in the BFS (hash map + final sort would preserve the lexicographic
+order contract), RootSet per-alpha allocations (480 small Vecs on E8),
+per-new-root double copies in `Closure` (map + pending queue).
+Tooling note: perf `--sort=srcline`/`annotate` are useless here —
+lto=fat + codegen-units=1 collapses line info to `cgu-0:0`; use
+call-graph report + instruction counting instead.
