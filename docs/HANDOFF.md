@@ -7703,3 +7703,36 @@ Branch sync-deformopt-v3 (c9c74a3) has two commits: setup-only E8 probes
   block_deformation_to_height results for any ≥3 mixed-parity survivors.
   Expect corpus/heavy A/B to MISMATCH/DIFF; if they don't, re-examine
   before merging anything. DO NOT merge the deform.rs hunk as-is.
+
+## agent-deformopt findings (2026-09-02, lane C, c9c74a3)
+
+**The E8 deform/KLV/unitarity probes do NOT exercise the deform path.** Phase
+split (job 3671095, new probes `hpc/workloads/probe_klv_e8_setuponly.atlas` /
+`probe_unitary_e8_setuponly.atlas` that stop before the deform call):
+`deform(p)` costs ~0.02s of the 4.5s probe; `is_unitary(p)` ~0.17s of 5.0s.
+perf (frame-pointer builds, `target-prof*` with
+`CARGO_PROFILE_RELEASE_LTO=off` for symbol visibility — under the default
+lto=fat+cgu=1 the whole deform path inlines away and perf srcline/annotate
+is useless, as the klpol lane already noted): ~50% of cycles sit under
+`RealFormContext::build_kgb` / `InvolutionTable::add_cartan`; flat top is
+`tits_element::apply_matrix_mod_two` 10-11%, `root_involution::
+subsystem_simple_roots` 10%, hashbrown `HashMap::insert` ~10%,
+`weyl_transducer::CompactWeyl::inner_left_mult` 8%, `involution_table::
+push_record` 6%; unitary adds `twisted_involution::record_from_theta` ~16%
+children. **All outside deform.rs/matreduc.rs** — route these to the
+KGB/involution-table lane before spending more on deform internals.
+
+In-boundary work landed anyway (wall-neutral here, matters at large-n):
+coefficient pass uses per-column sparse entry lists (no per-position O(n)
+scratch allocation, empty q_mat columns skipped), inversion uses row slices.
+Bit-identical: all arithmetic is wrapping i32, reassociation safe; A/B
+stdout byte-identical vs base and oracle (job 3671496), wall parity
+(job 3671531).
+
+Gotchas: (1) `perf script` sample headers embed the binary PATH — grepping
+stacks for "deform" matches the worktree path `atlas-rust-deformopt`, parse
+frame lines only. (2) Same-node back-to-back A/B without order alternation
+showed a phantom +3.8% branch regression (job 3671496, one slow node);
+alternating-order rerun on another node showed parity — always alternate
+side order or pin rep counts before claiming a regression. (3)
+`springer_table_E8.at` is data-only, ~0.8s, useless as a deform workload.

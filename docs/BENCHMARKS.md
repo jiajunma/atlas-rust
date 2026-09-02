@@ -328,3 +328,44 @@ those rows above measure startup + inner-class build, not the KLV
 recursion. Real unitarity workload: `probe_unitary_e7_heavy.atlas`
 (x=20925, nu=[1,…,1]/1); A/B + oracle triple-compare in job 3671349.
 The perf-sample job 3671090 profiled the no-op probe and is void.
+- agent-139 dual-KL cache A/B (job 3669387, repeated deform on same block):
+  pending at ledger time.
+
+## agent-deformopt deform coefficient pass (2026-09-02, c9c74a3, jobs 3671496/3671531)
+
+Profile first (perf record, prof build with frame pointers): on
+`probe_klv_e8.atlas` and `probe_unitary_e8.atlas` the deform/KLV/unitarity
+path proper (deform.rs, matreduc.rs, kl fill) is **<0.5% of cycles** — the
+probes are dominated by inner-class/KGB/involution-table construction
+(tits_element::apply_matrix_mod_two ~10-11%, root_involution::
+subsystem_simple_roots ~10%, HashMap insert ~10%, weyl_transducer::
+inner_left_mult ~8%, involution_table::push_record ~6%). Phase split
+(setup-only probes, job 3671095): `deform(p)` = 4.52s - 4.50s ≈ 0.02s;
+`is_unitary(p)` = 5.01s - 4.84s ≈ 0.17s.
+
+Change (wall-neutral at this scale, targets large-n blocks): deform.rs
+parity/orientation coefficient pass now precomputes per-column nonzero
+opposite-parity q_mat entries and computes coef_j directly (no per-position
+O(n) scratch vec, empty columns and zero-sum rows skipped, bit-identical
+reassociation of wrapping arithmetic); matreduc::inverse_upper_triangular
+uses contiguous row slices and skips zero entries.
+
+A/B on one node, byte-identical stdout vs base AND vs C++ oracle on both
+probes (job 3671496); alternating-order 6-rep A/B (job 3671531, cu026):
+- probe_klv_e8: base median 4.56s / ~594MB vs branch 4.57s / ~594MB (parity)
+- probe_unitary_e8: base median 5.02s / ~622MB vs branch 5.03s / ~621MB
+  (parity); oracle 5.13-5.23s / ~811MB
+
+Gates: quick_check 3671394 (CHECK_DONE/TEST_DONE status=0, 565 real-group
+tests incl. new wrapping-exactness test); corpus job below.
+
+**Parent correction (2026-09-02):** the deform.rs half of this change was
+NOT merged. Its byte-identical A/Bs used the x=0 E8 probes whose deform
+path is a no-op (see the phase split above), so they never exercised the
+changed coefficient pass. The same-parity skip in the update loop diverges
+from upstream repr.cpp:2109-2120 (which applies coef[j] for ALL j<pos):
+coef = Q^{-1} v mixes parities under back substitution, so same-parity
+coef entries are generically nonzero (hand counterexample at n=3,
+randomized check finds them immediately). See the "Lane C review" entry in
+docs/HANDOFF.md. Only the matreduc.rs half landed (8e340b6, corpus 3671533
+MATCH 240). Decisive A/B with-real-deform-workload: job 3671577.
