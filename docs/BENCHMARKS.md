@@ -369,3 +369,21 @@ coef entries are generically nonzero (hand counterexample at n=3,
 randomized check finds them immediately). See the "Lane C review" entry in
 docs/HANDOFF.md. Only the matreduc.rs half landed (8e340b6, corpus 3671533
 MATCH 240). Decisive A/B with-real-deform-workload: job 3671577.
+
+## Decisive deform A/B + matreduc merge A/B (2026-09-02, jobs 3671577/3671543)
+
+- 3671577 (cu-partition, c9c74a3 WITH the deform.rs parity skip vs 8e340b6
+  mainline without it): `probe_bd_e6_repeat` (x=1790, bound -1 x3) **DIFF**,
+  10,575 differing lines, coefficients wrong from the first deform print
+  (e.g. `(16-16s)*parameter(x=1765,...)` vs correct `(4-4s)*...`); the skip
+  branch ran 19.73s vs 60.88s because it drops real terms.
+  `probe_bd_e6_x10_h0` (bound 0) IDENTICAL 0.54s/0.56s (bound 0 exits
+  before the coefficient pass matters). The mathematical rejection of the
+  parity skip (see "Lane C review" in docs/HANDOFF.md) is now empirically
+  confirmed; corpus 240/240 did NOT catch this — the corpus simply never
+  prints a block_deformation_to_height result with a nonzero same-parity
+  coef term. Coverage gap recorded.
+- 3671543 (matreduc-only merge 8e340b6 vs 7dacfe2, probe_bd_e6_repeat):
+  stdout IDENTICAL; wall 59.34s -> 61.18s (+3.1%, single non-alternating
+  pair — within the phantom-regression range documented by lane C;
+  alternating-rep confirmation pending).
