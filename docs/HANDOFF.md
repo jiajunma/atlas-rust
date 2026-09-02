@@ -7147,7 +7147,8 @@ Numbers (unipotent_representations_exceptional.at, same node fat001):
   the >2%-wall drop clause never came into play. The unipotent workload
   is now FASTER and SMALLER than the C++ oracle.
 - quick_check 3665721 @ac67bd3: TEST_DONE status=0 (9 suites).
-- Full corpus 3665734 @ac67bd3: see results/<sha>/3665734/.
+- Full corpus 3665734 @ac67bd3: 240/240 MATCH, over_5x = 0, worst
+  elliptic.at 3.29x (small fixed-cost tail, unchanged).
 
 Massif (fat001, unipotent): baseline 3664725 peak 988,279,672B (snap
 173) -> 3665723 peak 843,739,560B (snap 113), -144.5MB (-14.6%);
