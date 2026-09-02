@@ -12,10 +12,34 @@
 //! `P_{x,y}` is stored at `prim_index(x, desc(y))` in column `y`
 //! (kl.cpp:124-148).
 
-use std::collections::BTreeMap;
+use std::collections::HashMap;
+use std::hash::{BuildHasherDefault, Hasher};
 
 use crate::block::BlockDescent;
 use crate::{BlockTopology, StructureError};
+
+/// Multiplicative hasher for the descent-set mask keys of the
+/// primitive-index table. The keys are single `u32`s and the table is
+/// consulted on every `kl_pol` call, where SipHash's rounds are pure
+/// overhead.
+#[derive(Default)]
+struct MaskHasher(u64);
+
+impl Hasher for MaskHasher {
+    fn finish(&self) -> u64 {
+        self.0
+    }
+
+    fn write(&mut self, bytes: &[u8]) {
+        for &byte in bytes {
+            self.0 = (self.0 ^ u64::from(byte)).wrapping_mul(0x9E37_79B9_7F4A_7C15);
+        }
+    }
+
+    fn write_u32(&mut self, value: u32) {
+        self.0 = u64::from(value).wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    }
+}
 
 /// A bitset over the simple generators, matching the `RankFlags` semantics
 /// used by the KL algorithm (upstream `RankFlags`). The rank is ≤32.
@@ -73,7 +97,7 @@ pub struct KlSupport<B: BlockTopology> {
     good_ascents: Vec<RankFlags>,
     length_stop: Vec<usize>,
     /// Maps a descent-set mask to the primitive-index record.
-    prim_index: BTreeMap<u32, PrimIndexRecord>,
+    prim_index: HashMap<u32, PrimIndexRecord, BuildHasherDefault<MaskHasher>>,
 }
 
 /// The primitive-index record for one descent set (klsupport.h
@@ -135,7 +159,7 @@ impl<B: BlockTopology> KlSupport<B> {
             descents,
             good_ascents,
             length_stop,
-            prim_index: BTreeMap::new(),
+            prim_index: HashMap::default(),
         })
     }
 
