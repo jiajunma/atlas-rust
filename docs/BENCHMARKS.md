@@ -455,3 +455,13 @@ redundancy of the allocation/sort kind; further E6 gains would need
 algorithmic changes, and the probe already beats the oracle 3.7x.
 Gotcha: sbatch `#SBATCH --output=` lands in the SUBMISSION cwd — cd to the
 worktree before sbatch or the .out goes to $HOME (3672168 did).
+
+## Mask-hasher prim_index A/B (2026-09-02, job 3672384 @ 0fe6955)
+
+`KlSupport::prim_index` BTreeMap<u32,_> -> HashMap with a single-multiply
+mask hasher (the table is consulted on every `kl_pol`). Gates: quick_check
+3672382 TEST_DONE status=0, corpus 3672383 MATCH: 240. A/B vs the f9202e7
+binary (probe_bd_e6_repeat, 4 interleaved reps, all IDENTICAL): old
+4.38/3.94/4.46/4.52 vs new 3.92/3.88/4.41/4.48 — new faster in every pair,
+median 4.42 -> 4.16s (~-6% at this scale; expect a larger share on
+KL-denser large-group runs).
