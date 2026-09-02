@@ -562,10 +562,32 @@ impl RootSystem {
 
 /// Precompute both ladder-bottom tables: `min_roots[alpha]` flags `beta`
 /// when `roots[beta] - roots[alpha]` is not a root, and `min_coroots`
-/// likewise on coroot coordinates. Root membership binary-searches the
-/// sorted `roots`; coroots are unsorted (they follow the root order), so
-/// membership goes through a sorted index table: one contiguous allocation
-/// instead of a node-based map, binary-searched per pair.
+/// likewise on coroot coordinates. Both membership passes use a monotone
+/// merge cursor: for fixed `alpha`, subtracting its coordinates preserves the
+/// lexicographic order of the sorted candidate sequence. Coroot candidates
+/// therefore run in `coroot_order`, while their original root IDs are inserted
+/// into the result bitset.
+#[inline]
+fn merge_root_cursor_contains(roots: &[Weight], difference: &[i32], cursor: &mut usize) -> bool {
+    while *cursor < roots.len() && roots[*cursor].as_slice() < difference {
+        *cursor += 1;
+    }
+    *cursor < roots.len() && roots[*cursor].as_slice() == difference
+}
+
+#[inline]
+fn merge_coroot_cursor_contains(
+    coroot_order: &[usize],
+    coroots: &[Coweight],
+    difference: &[i32],
+    cursor: &mut usize,
+) -> bool {
+    while *cursor < coroot_order.len() && coroots[coroot_order[*cursor]].as_slice() < difference {
+        *cursor += 1;
+    }
+    *cursor < coroot_order.len() && coroots[coroot_order[*cursor]].as_slice() == difference
+}
+
 fn build_ladder_bottoms(
     roots: &[Weight],
     coroots: &[Coweight],
@@ -589,27 +611,30 @@ fn build_ladder_bottoms(
     for alpha in 0..count {
         let mut root_bottoms = RootSet::with_capacity(count)?;
         let mut coroot_bottoms = RootSet::with_capacity(count)?;
+        let mut root_cursor = 0;
         for beta in 0..count {
             subtract_coordinates(
                 roots[beta].as_slice(),
                 roots[alpha].as_slice(),
                 &mut difference,
             )?;
-            if roots
-                .binary_search_by(|candidate| candidate.as_slice().cmp(difference.as_slice()))
-                .is_err()
-            {
+            if !merge_root_cursor_contains(&roots, &difference, &mut root_cursor) {
                 root_bottoms.insert(RootId(beta));
             }
+        }
+        let mut coroot_cursor = 0;
+        for &beta in &coroot_order {
             subtract_coordinates(
                 coroots[beta].as_slice(),
                 coroots[alpha].as_slice(),
                 &mut difference,
             )?;
-            if coroot_order
-                .binary_search_by(|&index| coroots[index].as_slice().cmp(difference.as_slice()))
-                .is_err()
-            {
+            if !merge_coroot_cursor_contains(
+                &coroot_order,
+                coroots,
+                &difference,
+                &mut coroot_cursor,
+            ) {
                 coroot_bottoms.insert(RootId(beta));
             }
         }
@@ -1255,6 +1280,109 @@ mod tests {
             .map(|(coordinates, _)| coordinates.clone())
             .collect();
         assert_eq!(roots, vec![vec![-1, 0], vec![0, 1], vec![1, 0]]);
+    }
+
+    #[test]
+    fn monotone_cursor_membership_matches_binary_search() {
+        let ordered = [
+            Weight::new(vec![-2, 0]),
+            Weight::new(vec![-1, 0]),
+            Weight::new(vec![0, 0]),
+            Weight::new(vec![1, 0]),
+        ];
+        let differences = [vec![-3, 0], vec![-1, 0], vec![-1, 0], vec![2, 0]];
+        let mut cursor = 0;
+        for difference in &differences {
+            let expected = ordered
+                .binary_search_by(|candidate| candidate.as_slice().cmp(difference))
+                .is_ok();
+            assert_eq!(
+                merge_root_cursor_contains(&ordered, difference, &mut cursor),
+                expected
+            );
+        }
+
+        let coroots = [
+            Coweight::new(vec![0, 0]),
+            Coweight::new(vec![1, 0]),
+            Coweight::new(vec![1, 0]),
+            Coweight::new(vec![2, 0]),
+        ];
+        let coroot_order = [0, 1, 2, 3];
+        let mut coroot_cursor = 0;
+        for difference in [vec![0, 0], vec![1, 0], vec![1, 0], vec![3, 0]] {
+            let expected = coroot_order
+                .binary_search_by(|&index| coroots[index].as_slice().cmp(&difference))
+                .is_ok();
+            assert_eq!(
+                merge_coroot_cursor_contains(
+                    &coroot_order,
+                    &coroots,
+                    &difference,
+                    &mut coroot_cursor,
+                ),
+                expected
+            );
+        }
+    }
+
+    fn binary_search_ladder_bottoms_reference(
+        roots: &[Weight],
+        coroots: &[Coweight],
+    ) -> Result<(Vec<RootSet>, Vec<RootSet>), StructureError> {
+        let count = roots.len();
+        let mut coroot_order: Vec<usize> = (0..count).collect();
+        coroot_order
+            .sort_by(|&left, &right| coroots[left].as_slice().cmp(coroots[right].as_slice()));
+        let mut min_roots = Vec::with_capacity(count);
+        let mut min_coroots = Vec::with_capacity(count);
+        let mut difference = Vec::new();
+        for alpha in 0..count {
+            let mut root_bottoms = RootSet::with_capacity(count)?;
+            let mut coroot_bottoms = RootSet::with_capacity(count)?;
+            for beta in 0..count {
+                subtract_coordinates(
+                    roots[beta].as_slice(),
+                    roots[alpha].as_slice(),
+                    &mut difference,
+                )?;
+                if roots
+                    .binary_search_by(|candidate| candidate.as_slice().cmp(difference.as_slice()))
+                    .is_err()
+                {
+                    root_bottoms.insert(RootId(beta));
+                }
+                subtract_coordinates(
+                    coroots[beta].as_slice(),
+                    coroots[alpha].as_slice(),
+                    &mut difference,
+                )?;
+                if coroot_order
+                    .binary_search_by(|&index| coroots[index].as_slice().cmp(difference.as_slice()))
+                    .is_err()
+                {
+                    coroot_bottoms.insert(RootId(beta));
+                }
+            }
+            min_roots.push(root_bottoms);
+            min_coroots.push(coroot_bottoms);
+        }
+        Ok((min_roots, min_coroots))
+    }
+
+    #[test]
+    fn ladder_bottom_merge_matches_binary_search_reference() {
+        for datum in [
+            a2(),
+            BasedRootDatum::standard(vec![vec![2, -2], vec![-1, 2]]).unwrap(),
+            BasedRootDatum::standard(vec![vec![2, -1], vec![-3, 2]]).unwrap(),
+        ] {
+            let roots = RootSystem::enumerate(&datum, 12).unwrap();
+            let expected =
+                binary_search_ladder_bottoms_reference(roots.roots(), &roots.coroots).unwrap();
+            let actual = build_ladder_bottoms(roots.roots(), &roots.coroots).unwrap();
+            assert_eq!(actual, expected);
+        }
     }
 
     #[test]
