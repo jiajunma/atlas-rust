@@ -17,6 +17,7 @@
 //! image basis.
 
 use crate::{LatticeInvolution, StructureError};
+use smallvec::SmallVec;
 
 /// The per-involution `(1-theta)X^*` image data: upstream's
 /// `InvolutionTable::record` pair (involutions.h:104-105). Entries are
@@ -235,6 +236,21 @@ impl RealProjection {
         reflected_vector: &[i32],
         pairing_vector: &[i32],
     ) -> Result<Self, StructureError> {
+        let (lift_mat, m_real) =
+            self.transported_simple_reflection_buffers(reflected_vector, pairing_vector)?;
+        Ok(Self {
+            lift_mat,
+            m_real,
+            rank: self.rank,
+            image_rank: self.image_rank,
+        })
+    }
+
+    fn transported_simple_reflection_buffers(
+        &self,
+        reflected_vector: &[i32],
+        pairing_vector: &[i32],
+    ) -> Result<(Vec<i32>, Vec<i32>), StructureError> {
         let rank = self.rank();
         if reflected_vector.len() != rank || pairing_vector.len() != rank {
             return Err(StructureError::InvalidIntegerMatrixShape);
@@ -247,7 +263,13 @@ impl RealProjection {
             .map_err(|_| StructureError::AllocationFailed {
                 requested: self.lift_mat.len(),
             })?;
-        lift_mat.extend_from_slice(&self.lift_mat);
+
+        let mut beta_lifts: SmallVec<[i64; 8]> = SmallVec::new();
+        beta_lifts
+            .try_reserve_exact(image_rank)
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: image_rank,
+            })?;
         for column in 0..image_rank {
             let mut beta_lift = 0_i64;
             for (k, &coefficient) in pairing_vector.iter().enumerate() {
@@ -261,15 +283,19 @@ impl RealProjection {
                     .checked_add(product)
                     .ok_or(StructureError::ArithmeticOverflow)?;
             }
-            for row in 0..rank {
+            beta_lifts.push(beta_lift);
+        }
+        for row in 0..rank {
+            for column in 0..image_rank {
                 let correction = i64::from(reflected_vector[row])
-                    .checked_mul(beta_lift)
+                    .checked_mul(beta_lifts[column])
                     .ok_or(StructureError::ArithmeticOverflow)?;
-                let entry = i64::from(lift_mat[row * image_rank + column])
+                let entry = i64::from(self.lift_entry(row, column))
                     .checked_sub(correction)
                     .ok_or(StructureError::ArithmeticOverflow)?;
-                lift_mat[row * image_rank + column] =
-                    i32::try_from(entry).map_err(|_| StructureError::ArithmeticOverflow)?;
+                lift_mat.push(
+                    i32::try_from(entry).map_err(|_| StructureError::ArithmeticOverflow)?,
+                );
             }
         }
 
@@ -280,7 +306,6 @@ impl RealProjection {
             .map_err(|_| StructureError::AllocationFailed {
                 requested: self.m_real.len(),
             })?;
-        m_real.extend_from_slice(&self.m_real);
         for row in 0..image_rank {
             let source = &self.m_real[row * rank..(row + 1) * rank];
             let mut row_alpha = 0_i64;
@@ -299,20 +324,16 @@ impl RealProjection {
                 let correction = row_alpha
                     .checked_mul(i64::from(pairing_vector[target]))
                     .ok_or(StructureError::ArithmeticOverflow)?;
-                let entry = i64::from(m_real[row * rank + target])
+                let entry = i64::from(self.m_real[row * rank + target])
                     .checked_sub(correction)
                     .ok_or(StructureError::ArithmeticOverflow)?;
-                m_real[row * rank + target] =
-                    i32::try_from(entry).map_err(|_| StructureError::ArithmeticOverflow)?;
+                m_real.push(
+                    i32::try_from(entry).map_err(|_| StructureError::ArithmeticOverflow)?,
+                );
             }
         }
 
-        Ok(Self {
-            lift_mat,
-            m_real,
-            rank: self.rank,
-            image_rank: self.image_rank,
-        })
+        Ok((lift_mat, m_real))
     }
 
     /// The transported pair across one cross edge by a simple reflection
@@ -731,5 +752,29 @@ mod tests {
             .transported_by_simple_reflection(&alpha, &beta)
             .unwrap();
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn simple_reflection_transport_direct_buffers_keep_row_major_layout() {
+        let projection = RealProjection::from_nested(
+            vec![vec![2, -1], vec![1, 3], vec![-2, 0]],
+            vec![vec![1, 0, -1], vec![2, 1, 3]],
+        )
+        .unwrap();
+        let alpha = [1, -1, 0];
+        let beta = [0, 1, -1];
+
+        let (lift_mat, m_real) = projection
+            .transported_simple_reflection_buffers(&alpha, &beta)
+            .unwrap();
+        let expected = projection
+            .transported(&vec![
+                vec![1, -1, 1],
+                vec![0, 2, -1],
+                vec![0, 0, 1],
+            ])
+            .unwrap();
+        assert_eq!(lift_mat, expected.lift_mat);
+        assert_eq!(m_real, expected.m_real);
     }
 }
