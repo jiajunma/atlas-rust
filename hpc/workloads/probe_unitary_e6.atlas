@@ -1,4 +1,3 @@
-<basic.at
 <deform.at
 rb : RootDatum
 rb := simply_connected(Lie_type("E6"),true)
