@@ -7342,3 +7342,32 @@ per-new-root double copies in `Closure` (map + pending queue).
 Tooling note: perf `--sort=srcline`/`annotate` are useless here —
 lto=fat + codegen-units=1 collapses line info to `cgu-0:0`; use
 call-graph report + instruction counting instead.
+
+## Perf 2026-09-02d — orbit-closure CPU pass merged and reverified
+
+The six `inner_class.rs`-only commits from agent-137 were integrated on
+`codex/continue-atlas-port` as `dc58b14` through `1f49e2f`. The pass defers
+PackedKeySet growth checks to genuine inserts, keeps the probe non-recursive
+and always inline, reuses successor packed keys, rounds chunk lookup to a
+power-of-two shift/mask, monomorphizes the emit callback, and merges the two
+parallel sorted entry runs without a second full sort. Independent review
+found no correctness or ordering regression.
+
+Exact candidate verification at `c641acc`:
+
+- quick-check job **3666727**: `cargo check --workspace --all-targets`
+  passed; all test groups passed, including **548** real-group/core tests;
+- full corpus job **3666725**: **240/240 MATCH**, median wall 2.491x and
+  median RSS 3.770x (no standalone speedup claim because the merge-tip
+  comparison is run/node noisy); report SHA-256 is
+  `c7b56c2690e416f50cfa0607490551106d2018bc82c8895fec48babab2dc0f21`;
+- fat `unipotent` job **3666726**: Rust 5.129s / 807,780KB versus C++
+  4.701s / 881,300KB (1.091x wall, 0.917x RSS), exact MATCH; report
+  SHA-256 is `60a58925da8cac810e457e8edbe8bf2bb6d9888e6b77a1bcfcb85a0021409610`.
+
+The commits are now pushed and merged at `1f49e2f`. The next unresolved
+hotspot is `RootSystem::from_closure` self cost; candidates remain the
+`seen` map representation, RootSet allocations, and duplicate coordinate
+copies. The pre-existing `u8` root-id width assumption for systems with more
+than 255 roots needs a separate correctness lane and is not changed by this
+pass.
