@@ -7074,10 +7074,9 @@ transport_mod_space ~89MB; image_by_root 126.5MB (already narrowed to
 u16 by agent-132).
 
 ## Active agents (2026-09-02, post-bb107cd merges)
-- MERGED: agent-134 (RealProjection flat + record slimming, unipotent 0.976x/0.937x) and agent-135 (InnerClass storage slimming, rss median 4.75x->4.33x) — both landed at bb107cd/b894857.
-- agent-136 (branch agent-136, worktrees /private/tmp/atlas-rootsys + HPC atlas-rust-rootsys): RootSystem::from_closure/enumerate CPU (17.71% of small-script fixed cost, perf 3665987). Owns root_system.rs ONLY.
-- agent-137 (branch agent-137, worktrees /private/tmp/atlas-orbitcpu + HPC atlas-rust-orbitcpu): orbit_cross_closure 30.95% + PackedKeySet::insert 11.60% CPU. Owns inner_class.rs ONLY.
+- MERGED: agent-134 (RealProjection flat + record slimming), agent-135 (InnerClass storage slimming), agent-136 (RootSystem reflection/enumeration CPU), agent-137 (InnerClass orbit-closure CPU), and the root-closure lane (`86917e5`, HashMap/root-only pending storage). Their exact focused/full HPC gates are recorded in the dated sections below.
 - evaluator lane CLOSED (all levers disproven or landed).
+- No active coding lane is currently unverified. The next work should start from the remaining `RootSystem::from_closure` self cost or the separate >255-root `u8` representation audit.
 
 ## Measurement 2026-09-01i — small-script fixed baseline decomposition (massif 3665704, groups.at @2f63a80)
 - Baseline: rust maxrss 42.6MB / 0.36s vs oracle ~6-12MB. Peak HEAP only
