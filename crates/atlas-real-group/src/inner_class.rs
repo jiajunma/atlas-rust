@@ -604,6 +604,7 @@ impl InnerClass {
         &self,
         weyl_budget: usize,
     ) -> Result<TwistedConjugacyPartition, StructureError> {
+        ensure_permutation_width(self.roots.roots().len())?;
         let simple_positions: Vec<u8> = self
             .roots
             .simple_root_ids()
@@ -1416,7 +1417,7 @@ pub(crate) type PermutationHasherBuilder = std::hash::BuildHasherDefault<Permuta
 /// This is an injective key, not a digest: equality semantics are unchanged.
 /// For semisimple rank <= 16 the key packs into a u128, which keeps the E8
 /// cross-action closure's ~1.6M probes to an integer hash and compare
-/// instead of a 240-byte key chase. Rank > 16 with <= 255 roots (the u8
+/// instead of a 240-byte key chase. Rank > 16 with <= 256 roots (the u8
 /// encoding's own ceiling) needs at least 17 disjoint A1 factors; that case
 /// falls back to the full permutation.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -1452,6 +1453,16 @@ pub(crate) type PermutationKeySet =
     std::collections::HashSet<PermutationKey, PermutationHasherBuilder>;
 pub(crate) type PermutationKeyMap<V> =
     std::collections::HashMap<PermutationKey, V, PermutationHasherBuilder>;
+
+#[inline]
+fn ensure_permutation_width(root_count: usize) -> Result<(), StructureError> {
+    if root_count > usize::from(u8::MAX) + 1 {
+        return Err(StructureError::RootSystemInvariantViolation {
+            invariant: "permutation root action width",
+        });
+    }
+    Ok(())
+}
 
 /// Push with a 1.5x exact-growth policy instead of `Vec::push`'s amortized
 /// doubling.
@@ -1661,6 +1672,12 @@ impl<'a> PermutationOrbits<'a> {
         let roots = inner_class.root_system();
         let datum = inner_class.datum();
         let count = roots.roots().len();
+        // The permutation shadow deliberately stores root images as bytes;
+        // reject larger systems before any narrowing can alias IDs (for
+        // example, B12 has 288 roots and would wrap IDs 256..287).  All
+        // compact Weyl/KGB paths remain unchanged: their finite rank limit
+        // keeps production tables below this width.
+        ensure_permutation_width(count)?;
         let twist = inner_class.generator_twist()?;
         let simple_positions = roots
             .simple_root_ids()
@@ -2280,6 +2297,74 @@ mod tests {
         }
         narrow.clear();
         assert!(narrow.insert(42));
+    }
+
+    fn b12_cartan() -> Vec<Vec<i32>> {
+        let rank = 12;
+        let mut cartan = vec![vec![0_i32; rank]; rank];
+        for index in 0..rank {
+            cartan[index][index] = 2;
+            if index + 1 == rank {
+                continue;
+            }
+            let (forward, backward) = if index + 2 == rank {
+                (-2, -1)
+            } else {
+                (-1, -1)
+            };
+            cartan[index][index + 1] = forward;
+            cartan[index + 1][index] = backward;
+        }
+        cartan
+    }
+
+    fn d12_cartan() -> Vec<Vec<i32>> {
+        let rank = 12;
+        let mut cartan = vec![vec![0_i32; rank]; rank];
+        for index in 0..rank {
+            cartan[index][index] = 2;
+            if index + 1 < rank - 2 {
+                cartan[index][index + 1] = -1;
+                cartan[index + 1][index] = -1;
+            }
+        }
+        let branch = rank - 3;
+        for leaf in [rank - 2, rank - 1] {
+            cartan[branch][leaf] = -1;
+            cartan[leaf][branch] = -1;
+        }
+        cartan
+    }
+
+    #[test]
+    fn rejects_permutation_shadow_when_root_ids_exceed_u8_width() {
+        for (cartan, expected_roots) in [(b12_cartan(), 288), (d12_cartan(), 264)] {
+            let datum = BasedRootDatum::standard(cartan).unwrap();
+            let inner_class = InnerClass::new(
+                datum.clone(),
+                LatticeInvolution::identity(&datum).unwrap(),
+                expected_roots,
+            )
+            .unwrap();
+            assert_eq!(inner_class.root_system().roots().len(), expected_roots);
+
+            assert!(matches!(
+                inner_class.twisted_conjugacy_partition(expected_roots),
+                Err(StructureError::RootSystemInvariantViolation {
+                    invariant: "permutation root action width"
+                })
+            ));
+            match inner_class.twisted_involutions(expected_roots) {
+                Err(StructureError::RootSystemInvariantViolation { invariant }) => {
+                    assert_eq!(invariant, "permutation root action width");
+                }
+                Ok(_) => panic!(
+                    "root-image permutation must not truncate root IDs to u8 ({} roots)",
+                    expected_roots
+                ),
+                Err(other) => panic!("unexpected error: {other:?}"),
+            }
+        }
     }
 
     fn compact_a2_inner_class() -> InnerClass {
