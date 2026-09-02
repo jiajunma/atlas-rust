@@ -7667,3 +7667,16 @@ Pitfalls found (probe design + pre-existing bug):
 Uncommitted helper probes live only in the HPC worktrees (lane kept hpc/
 untouched in git): probe_bd_e6_repeat.atlas, probe_bd_e6_x10_h0.atlas,
 probe_bd_e7_single.atlas, probe_blockdeform_repeat_{e6,f4}.atlas.
+
+## UndefBlock cross fix verified (2026-09-02, parent)
+
+`a8b2fd8` (tolerate UndefBlock cross links in KL recursion over partial
+blocks; three sites aligned with upstream kl.cpp semantics — lazy cross in
+`recursion_column`, vanishing subtraction in `new_recursion_column`
+ComplexAscent, `first_endgame_pair` returning `(s, no t)` per kl.cpp:329-332).
+Gates at a8b2fd8 (HPC worktree atlas-rust-gate-klundef): quick_check
+3670450 `CHECK_DONE/TEST_DONE status=0`, full corpus 3670451 `MATCH: 240`.
+E7 large-scale probe comparison (3670256 rust vs 3670294 cpp oracle,
+`hpc/workloads/probe_bd_e7_single.atlas`) in flight at entry time — the
+pre-fix build panicked at 13.45s (3670150), the fixed build ran past it.
+Regression probe committed: `hpc/workloads/probe_bd_e7_single.atlas`.
