@@ -607,6 +607,22 @@ fn build_ladder_bottoms(
     min_coroots
         .try_reserve_exact(count)
         .map_err(|_| StructureError::AllocationFailed { requested: count })?;
+    // Keep root and coroot subtraction interleaved as in the historical loop
+    // so checked-arithmetic errors retain their original precedence. Coroot
+    // membership is scanned later in `coroot_order`, using these validated
+    // differences as a flat beta-indexed scratch buffer.
+    let ambient_rank = roots.first().map_or(0, Weight::rank);
+    debug_assert!(coroots.iter().all(|coroot| coroot.rank() == ambient_rank));
+    let scratch_entries = count
+        .checked_mul(ambient_rank)
+        .ok_or(StructureError::ArithmeticOverflow)?;
+    let mut coroot_differences = Vec::new();
+    coroot_differences
+        .try_reserve_exact(scratch_entries)
+        .map_err(|_| StructureError::AllocationFailed {
+            requested: scratch_entries,
+        })?;
+    coroot_differences.resize(scratch_entries, 0);
     let mut difference = Vec::new();
     for alpha in 0..count {
         let mut root_bottoms = RootSet::with_capacity(count)?;
@@ -621,18 +637,31 @@ fn build_ladder_bottoms(
             if !merge_root_cursor_contains(&roots, &difference, &mut root_cursor) {
                 root_bottoms.insert(RootId(beta));
             }
-        }
-        let mut coroot_cursor = 0;
-        for &beta in &coroot_order {
             subtract_coordinates(
                 coroots[beta].as_slice(),
                 coroots[alpha].as_slice(),
                 &mut difference,
             )?;
+            let start = beta
+                .checked_mul(ambient_rank)
+                .ok_or(StructureError::ArithmeticOverflow)?;
+            let end = start
+                .checked_add(ambient_rank)
+                .ok_or(StructureError::ArithmeticOverflow)?;
+            coroot_differences[start..end].copy_from_slice(difference.as_slice());
+        }
+        let mut coroot_cursor = 0;
+        for &beta in &coroot_order {
+            let start = beta
+                .checked_mul(ambient_rank)
+                .ok_or(StructureError::ArithmeticOverflow)?;
+            let end = start
+                .checked_add(ambient_rank)
+                .ok_or(StructureError::ArithmeticOverflow)?;
             if !merge_coroot_cursor_contains(
                 &coroot_order,
                 coroots,
-                &difference,
+                &coroot_differences[start..end],
                 &mut coroot_cursor,
             ) {
                 coroot_bottoms.insert(RootId(beta));
