@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use crate::lattice::{pair_coordinates, try_copy_coordinates};
 use crate::{pair, BasedRootDatum, Coweight, StructureError, Weight, WeylAction};
+use smallvec::SmallVec;
 
 /// Stable identifier for one ordinary root in a deterministically ordered root
 /// system. One ID indexes the root, its coroot, and its simple-root
@@ -78,7 +79,7 @@ impl RootSystemBudget {
 /// shared by reference, so the set itself stays a read-only value.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct RootSet {
-    blocks: Vec<u64>,
+    blocks: SmallVec<[u64; 4]>,
     len: usize,
 }
 
@@ -86,7 +87,7 @@ impl RootSet {
     /// An empty set over a universe of `count` root IDs.
     fn with_capacity(count: usize) -> Result<Self, StructureError> {
         let block_count = count.div_ceil(64);
-        let mut blocks = Vec::new();
+        let mut blocks = SmallVec::new();
         blocks
             .try_reserve_exact(block_count)
             .map_err(|_| StructureError::AllocationFailed {
@@ -1226,6 +1227,13 @@ mod tests {
         let datum = BasedRootDatum::from_simple_data(3, vec![], vec![], vec![]).unwrap();
         let roots = RootSystem::enumerate(&datum, 0).unwrap();
         assert_eq!(roots.min_roots_for(RootId(0)), None);
+    }
+
+    #[test]
+    fn root_set_keeps_e8_ladder_bitset_inline() {
+        let roots = RootSet::with_capacity(240).unwrap();
+        assert!(!roots.blocks.spilled());
+        assert!(RootSet::with_capacity(257).unwrap().blocks.spilled());
     }
 
     #[test]
