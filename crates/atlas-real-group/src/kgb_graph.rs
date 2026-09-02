@@ -213,6 +213,10 @@ impl KgbGraph {
         for &cartan in cartan_set {
             table.add_cartan(classification, cartan)?;
         }
+        // Memoize the table's Cayley links now that the form's Cartan set
+        // is complete: the BFS below asks `cayley` per (element, generator)
+        // and the answer is record-level data.
+        table.ensure_cayley_links()?;
         // Seed-table binding: the seed is definitionally at THIS table's
         // fundamental involution, with reduced bits.
         if table.identity_id() != Some(seed.element().involution()) {

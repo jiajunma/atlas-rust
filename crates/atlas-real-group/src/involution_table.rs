@@ -214,6 +214,20 @@ pub struct InvolutionTable {
     coroot_parity: Vec<ModTwoVector>,
     two_rho: Weight,
     records: Vec<InvolutionRecord>,
+    /// Cached left-descent bits per record: bit `g` of `descent_bits[id]`
+    /// is the record's Weyl-factor left descent at generator `g`. A fixed
+    /// property of the record's Weyl factor, computed once at push time
+    /// instead of per KGB edge (the stage-(e) BFS asks it millions of
+    /// times; each answer was a fresh `inner_left_mult`).
+    descent_bits: Vec<u32>,
+    /// Memoized Cayley links `s * w` per (record, generator), flat
+    /// record-major, `u32::MAX` = absent. Valid only while
+    /// `cayley_links_valid_len == records.len()`: a record's Cayley target
+    /// can belong to a Cartan class added after the record, so
+    /// [`Self::ensure_cayley_links`] rebuilds from scratch and any later
+    /// `add_cartan` silently returns the accessors to the compact probe.
+    cayley_links: Vec<u32>,
+    cayley_links_valid_len: usize,
     /// The stored cross-action links, one record-major row of
     /// `twist.len()` generators per record, flattened into a single
     /// allocation: per-record `Vec` headers and per-row malloc rounding
@@ -301,6 +315,9 @@ impl InvolutionTable {
             coroot_parity,
             two_rho: Weight::new(two_rho),
             records: Vec::new(),
+            descent_bits: Vec::new(),
+            cayley_links: Vec::new(),
+            cayley_links_valid_len: 0,
             cross_links: Vec::new(),
             orbits: Vec::new(),
         })
@@ -385,6 +402,7 @@ impl InvolutionTable {
             &self.compact_weyl,
             &self.reflections,
             &mut self.records,
+            &mut self.descent_bits,
             seed_compact,
             representative
                 .root_involution()
@@ -497,6 +515,7 @@ impl InvolutionTable {
                     &self.compact_weyl,
                     &self.reflections,
                     &mut self.records,
+                    &mut self.descent_bits,
                     compact_neighbor,
                     neighbor_images,
                     neighbor_w_length,
@@ -628,15 +647,15 @@ impl InvolutionTable {
                 upper_bound: self.twist.len(),
             });
         }
-        let mut element = self
-            .records
-            .get(id.0)
-            .ok_or(StructureError::IndexOutOfRange {
+        // Bounds check mirrors the historic records.get; the answer itself
+        // is the bit cached at push time (same `inner_left_mult` sign).
+        if id.0 >= self.records.len() {
+            return Err(StructureError::IndexOutOfRange {
                 index: id.0,
                 upper_bound: self.records.len(),
-            })?
-            .element;
-        Ok(self.compact_weyl.inner_left_mult(&mut element, generator) < 0)
+            });
+        }
+        Ok(self.descent_bits[id.0] & (1_u32 << generator) != 0)
     }
 
     pub(crate) fn weyl_first_left_descent(
@@ -920,6 +939,8 @@ impl InvolutionTable {
 
     /// Resolve the Cayley neighbor from the record-owned compact Weyl value.
     /// This keeps the hot path independent of the compatibility permutation.
+    /// When [`Self::ensure_cayley_links`] has run (and no Cartan has been
+    /// added since), the memoized link row answers instead of the probe.
     pub(crate) fn compact_cayley_lookup(
         &self,
         generator: usize,
@@ -938,9 +959,49 @@ impl InvolutionTable {
                 upper_bound: self.twist.len(),
             });
         }
+        if self.cayley_links_valid_len == self.records.len()
+            && self.cayley_links.len() == self.records.len() * self.twist.len()
+        {
+            let packed = self.cayley_links[id.0 * self.twist.len() + generator];
+            return Ok((packed != u32::MAX).then_some(InvolutionId(packed as usize)));
+        }
         let mut product = record.element;
         self.compact_weyl.inner_left_mult(&mut product, generator);
         Ok(self.compact_index.get(&product).copied())
+    }
+
+    /// Materialize the memoized Cayley link rows for every record. Called by
+    /// the KGB build after its Cartan-add phase: a record's Cayley target
+    /// can live in a Cartan class absent when the record was created, so the
+    /// rebuild covers ALL records, and the next `add_cartan` invalidates the
+    /// whole memo (the length guard in [`Self::compact_cayley_lookup`]).
+    /// Tables too large for the u32 packing keep the probe path.
+    pub(crate) fn ensure_cayley_links(&mut self) -> Result<(), StructureError> {
+        let rank = self.twist.len();
+        let Some(total) = self.records.len().checked_mul(rank) else {
+            self.cayley_links.clear();
+            self.cayley_links_valid_len = 0;
+            return Ok(());
+        };
+        if self.records.len() >= u32::MAX as usize {
+            self.cayley_links.clear();
+            self.cayley_links_valid_len = 0;
+            return Ok(());
+        }
+        let mut links = try_capacity(total)?;
+        for id in 0..self.records.len() {
+            for generator in 0..rank {
+                let target = self.compact_cayley_lookup(generator, InvolutionId(id))?;
+                links.push(match target {
+                    Some(target) => u32::try_from(target.0)
+                        .map_err(|_| StructureError::ArithmeticOverflow)?,
+                    None => u32::MAX,
+                });
+            }
+        }
+        self.cayley_links = links;
+        self.cayley_links_valid_len = self.records.len();
+        Ok(())
     }
 
     /// One accessor covering upstream's three `is_*_simple` tests.
@@ -1090,6 +1151,7 @@ fn push_record(
     compact_weyl: &CompactWeyl,
     reflections: &[WeylElement],
     records: &mut Vec<InvolutionRecord>,
+    descent_bits: &mut Vec<u32>,
     element: WeylElt,
     root_images: Vec<RootId>,
     weyl_length: usize,
@@ -1152,8 +1214,16 @@ fn push_record(
         None => RealProjection::build(theta)?,
     };
     let id = InvolutionId(records.len());
-    // Dedup is the caller's compact_index insert (the compact Weyl factor is
-    // the injective record key); nothing per record remains to index here.
+    // The record's left-descent bits: a fixed property of the Weyl factor,
+    // paid once here instead of per KGB edge.
+    let mut descents = 0_u32;
+    for generator in 0..compact_weyl.d_out().len() {
+        let mut probe = element;
+        if compact_weyl.inner_left_mult(&mut probe, generator) < 0 {
+            descents |= 1_u32 << generator;
+        }
+    }
+    descent_bits.push(descents);
     records.push(InvolutionRecord {
         element,
         involution,
