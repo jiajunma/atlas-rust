@@ -7680,3 +7680,26 @@ E7 large-scale probe comparison (3670256 rust vs 3670294 cpp oracle,
 `hpc/workloads/probe_bd_e7_single.atlas`) in flight at entry time — the
 pre-fix build panicked at 13.45s (3670150), the fixed build ran past it.
 Regression probe committed: `hpc/workloads/probe_bd_e7_single.atlas`.
+
+## Lane C (agent-140, deformopt) review — REJECT deform.rs, KEEP matreduc.rs (2026-09-02, parent)
+
+Branch sync-deformopt-v3 (c9c74a3) has two commits: setup-only E8 probes
+(f897391, fine) and a combined perf commit touching deform.rs + matreduc.rs.
+
+- matreduc.rs `inverse_upper_triangular`: row-slice direct access, zero-skip,
+  ascending-k wrapping accumulation. Wrapping i32 add is associative and
+  commutative, so bit-identical to upstream's descending order
+  (matrix.cpp:432-438); includes a randomized naive-back-substitution
+  comparison test. SOUND — cherry-pick this.
+- deform.rs coefficient pass: WRONG. It adds
+  `if odd_length[j] == odd_length[position] { continue; }` to the UPDATE
+  loop (upstream repr.cpp:2109-2120 applies `coef[j]` to the result for
+  ALL j<pos, no parity filter). The claim "same-parity j only ever added a
+  zero term" is false: coef = Q_mat^{-1}·v with v supported on
+  opposite-parity rows has generically nonzero same-parity entries
+  (back substitution mixes parities: coef[0] = -Q(0,1)·Q(1,2) already at
+  n=3; randomized Python check found counterexamples immediately, e.g.
+  parity=[0,0,1,0,...], pos=3, coef[0]=1). Dropping those terms changes
+  block_deformation_to_height results for any ≥3 mixed-parity survivors.
+  Expect corpus/heavy A/B to MISMATCH/DIFF; if they don't, re-examine
+  before merging anything. DO NOT merge the deform.rs hunk as-is.
