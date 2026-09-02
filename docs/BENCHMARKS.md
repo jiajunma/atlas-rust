@@ -387,3 +387,18 @@ MATCH 240). Decisive A/B with-real-deform-workload: job 3671577.
   stdout IDENTICAL; wall 59.34s -> 61.18s (+3.1%, single non-alternating
   pair — within the phantom-regression range documented by lane C;
   alternating-rep confirmation pending).
+
+## Alternating-rep matreduc A/B + oracle reference (2026-09-02, jobs 3671613/3671638)
+
+- 3671613 (4 alternating reps, probe_bd_e6_repeat, 8e340b6 vs 7dacfe2):
+  all IDENTICAL; old walls 59.00/62.75/59.16/58.70 (median ~59.1s), new
+  61.20/61.06/61.05/60.50 (median ~61.0s) — a CONSISTENT +3.3%, so the
+  lane C row-slice+zero-skip inversion rewrite is a small real regression
+  on dense matrices (the zero-skip branch never fires). Superseded by the
+  loop interchange in 8a77b38.
+- 3671638 (CPP oracle, probe_bd_e6_repeat): 15.41s/15.12s, 38.6MB —
+  **the oracle is ~4x faster than our 60s** on real bound -1 E6 deform.
+  Output content matches ours (line-order permutations only). With
+  inverse_upper_triangular at ~19.5s/call x3 dominating our side, the
+  inversion's column-strided cache behavior is the main suspect; the
+  loop interchange in 8a77b38 targets exactly that.
