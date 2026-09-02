@@ -1081,12 +1081,17 @@ impl InnerClass {
         // the granularity overshoot (E8 stride 240: 262KB vs the historic
         // 1MB chunk pair at peak). Small strides keep the historic 4096
         // members (their chunks are already far below 256KB); the floor
-        // bounds alloc churn for huge strides.
+        // bounds alloc churn for huge strides. The member count is rounded
+        // DOWN to a power of two, so the per-member chunk locate is a
+        // shift/mask instead of an integer division.
         let chunk_members = if stride == 0 {
             4096
         } else {
-            (262_144 / stride).clamp(64, 4096)
+            let target = (262_144 / stride).clamp(64, 4096);
+            1_usize << (usize::BITS - 1 - target.leading_zeros())
         };
+        let chunk_shift = chunk_members.trailing_zeros();
+        let chunk_mask = chunk_members - 1;
         let chunk_bytes = chunk_members
             .checked_mul(stride)
             .ok_or(StructureError::ArithmeticOverflow)?;
@@ -1175,34 +1180,38 @@ impl InnerClass {
                 chunks.pop_front();
                 base += chunk_members;
             }
-            let mut current_key = T::ZERO;
-            let mut parent_generator = usize::MAX;
             if padded {
-                let chunk = &chunks[(cursor - base) / chunk_members];
-                let offset = (cursor - base) % chunk_members * stride;
+                let chunk = &chunks[(cursor - base) >> chunk_shift];
+                let offset = ((cursor - base) & chunk_mask) * stride;
                 current_buf[..stride].copy_from_slice(&chunk[offset..offset + stride]);
+                let mut current_key = T::ZERO;
                 for (shift, &position) in orbit_machine.simple_positions.iter().enumerate() {
                     current_key = current_key.or_byte(current_buf[usize::from(position)], shift);
                 }
-                let (parent_member, generator) = parents[cursor];
-                if parent_member != u32::MAX {
-                    parent_generator = usize::from(generator);
-                }
-            }
-            for generator in 0..rank {
+                let (parent_member, parent_gen) = parents[cursor];
+                let parent_generator = if parent_member == u32::MAX {
+                    usize::MAX
+                } else {
+                    usize::from(parent_gen)
+                };
                 // next = reflection after current after reflection. Probe
                 // on the simple-root images alone (an injective key), so
                 // the full successor permutation is computed only for
                 // genuine new members — about one edge in eight for E8.
-                if padded {
+                // The zip walks both per-generator tables without bounds
+                // checks; the enumerate index doubles as the parent-edge
+                // skip key.
+                for (generator, (reflection, inner)) in padded_reflections
+                    .iter()
+                    .zip(inner_images.iter())
+                    .enumerate()
+                {
                     if generator == parent_generator {
                         // Cross action by one generator is an involution:
                         // this edge lands back on the BFS parent, already in
                         // the set, so the probe would be a no-op duplicate.
                         continue;
                     }
-                    let reflection = &padded_reflections[generator];
-                    let inner = &inner_images[generator];
                     let mut key = T::ZERO;
                     for (shift, &first) in inner[..simple_count].iter().enumerate() {
                         let image = reflection[usize::from(current_buf[usize::from(first)])];
@@ -1238,61 +1247,67 @@ impl InnerClass {
                     // key (`next_buf[p] = r(c(r(p)))` byte-for-byte), so the
                     // membership indexer reuses it instead of re-gathering.
                     emit(orbit_index, &next_buf[..stride], Some(key.to_u128()))?;
-                    continue;
                 }
-                let reflection = &orbit_machine.simple_reflections[generator];
-                let mut packed_key = None;
-                if packed {
-                    let mut key = 0_u128;
-                    {
-                        let chunk = &chunks[(cursor - base) / chunk_members];
-                        let offset = (cursor - base) % chunk_members * stride;
-                        let current = &chunk[offset..offset + stride];
-                        for (shift, &position) in
-                            orbit_machine.simple_positions.iter().enumerate()
+            } else {
+                for generator in 0..rank {
+                    // next = reflection after current after reflection. Probe
+                    // on the simple-root images alone (an injective key), so
+                    // the full successor permutation is computed only for
+                    // genuine new members.
+                    let reflection = &orbit_machine.simple_reflections[generator];
+                    let mut packed_key = None;
+                    if packed {
+                        let mut key = 0_u128;
                         {
-                            let image = reflection
-                                [current[usize::from(reflection[usize::from(position)])]
-                                as usize];
-                            key |= u128::from(image) << (8 * shift);
+                            let chunk = &chunks[(cursor - base) >> chunk_shift];
+                            let offset = ((cursor - base) & chunk_mask) * stride;
+                            let current = &chunk[offset..offset + stride];
+                            for (shift, &position) in
+                                orbit_machine.simple_positions.iter().enumerate()
+                            {
+                                let image = reflection
+                                    [current[usize::from(reflection[usize::from(position)])]
+                                    as usize];
+                                key |= u128::from(image) << (8 * shift);
+                            }
+                        }
+                        if !seen.insert(PermutationKey::Packed(key)) {
+                            continue;
+                        }
+                        packed_key = Some(key);
+                    }
+                    next.clear();
+                    next.try_reserve(reflection.len())
+                        .map_err(|_| StructureError::AllocationFailed {
+                            requested: reflection.len(),
+                        })?;
+                    {
+                        let chunk = &chunks[(cursor - base) >> chunk_shift];
+                        let offset = ((cursor - base) & chunk_mask) * stride;
+                        let current = &chunk[offset..offset + stride];
+                        for &image in reflection.iter() {
+                            next.push(reflection[current[usize::from(image)] as usize]);
                         }
                     }
-                    if !seen.insert(PermutationKey::Packed(key)) {
-                        continue;
+                    if packed || seen.insert(PermutationKey::Full(next.clone())) {
+                        let open = chunks.back_mut().ok_or(
+                            StructureError::CartanClassificationInvariantViolation {
+                                invariant: "orbit chunk",
+                            },
+                        )?;
+                        if open.len() == chunk_bytes {
+                            chunks.push_back(try_capacity(chunk_bytes)?);
+                        }
+                        let open = chunks.back_mut().ok_or(
+                            StructureError::CartanClassificationInvariantViolation {
+                                invariant: "orbit chunk",
+                            },
+                        )?;
+                        open.extend_from_slice(&next);
+                        push_slim(&mut parents, (cursor as u32, generator as u8))?;
+                        member_count += 1;
+                        emit(orbit_index, &next, packed_key)?;
                     }
-                    packed_key = Some(key);
-                }
-                next.clear();
-                next.try_reserve(reflection.len())
-                    .map_err(|_| StructureError::AllocationFailed {
-                        requested: reflection.len(),
-                    })?;
-                {
-                    let chunk = &chunks[(cursor - base) / chunk_members];
-                    let offset = (cursor - base) % chunk_members * stride;
-                    let current = &chunk[offset..offset + stride];
-                    for &image in reflection.iter() {
-                        next.push(reflection[current[usize::from(image)] as usize]);
-                    }
-                }
-                if packed || seen.insert(PermutationKey::Full(next.clone())) {
-                    let open = chunks.back_mut().ok_or(
-                        StructureError::CartanClassificationInvariantViolation {
-                            invariant: "orbit chunk",
-                        },
-                    )?;
-                    if open.len() == chunk_bytes {
-                        chunks.push_back(try_capacity(chunk_bytes)?);
-                    }
-                    let open = chunks.back_mut().ok_or(
-                        StructureError::CartanClassificationInvariantViolation {
-                            invariant: "orbit chunk",
-                        },
-                    )?;
-                    open.extend_from_slice(&next);
-                    push_slim(&mut parents, (cursor as u32, generator as u8))?;
-                    member_count += 1;
-                    emit(orbit_index, &next, packed_key)?;
                 }
             }
             cursor += 1;
@@ -1547,6 +1562,12 @@ impl<T: PackedSlot> PackedKeySet<T> {
     }
 
     /// Insert `key`; returns false when it was already present.
+    ///
+    /// Inlined into the orbit-closure edge loop: the probe is one multiply,
+    /// one masked load, and (for the duplicate majority) one compare, so the
+    /// call overhead and spill traffic of an outlined probe were a
+    /// measurable slice of the closure.
+    #[inline]
     pub(crate) fn insert(&mut self, key: T) -> bool {
         debug_assert_ne!(key, T::EMPTY, "sentinel collision");
         let mask = self.slots.len() - 1;
