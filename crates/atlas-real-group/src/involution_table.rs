@@ -26,7 +26,6 @@ use std::sync::Arc;
 use smallvec::SmallVec;
 
 use crate::grading::try_capacity;
-use crate::inner_class::PermutationHasherBuilder;
 use crate::integer_lattice::{negative_coweight_eigenspace, reduce_basis_mod_two};
 use crate::real_projection::RealProjection;
 use crate::weyl_transducer::{CompactWeyl, WeylElt};
@@ -49,6 +48,60 @@ pub struct InvolutionTableBudget {
 }
 
 type CrossLinkRow = SmallVec<[InvolutionId; 8]>;
+
+/// FxHash-style hasher with a per-word avalanche (murmur3 fmix64).
+///
+/// `PermutationHasher`'s rotate-xor-multiply rounds only diffuse key
+/// entropy UPWARD within a round, while hashbrown selects buckets on the
+/// hash's LOW bits: keys whose entropy sits in the high bytes (the compact
+/// `WeylElt` pieces — for E8 the variation lives in bytes 3..7, and the
+/// derived `Hash` spends the first round on the constant length prefix)
+/// collapse onto a handful of buckets (measured ~20x probe blowup on the
+/// E8 involution table, lane D profile job 3672155). fmix64 avalanches all
+/// 64 input bits into the low bits after every word. Collision behavior is
+/// irrelevant to semantics: the maps are probed/inserted, never iterated.
+#[derive(Clone, Default)]
+pub(crate) struct MixingHasher(u64);
+
+impl std::hash::Hasher for MixingHasher {
+    fn finish(&self) -> u64 {
+        self.0
+    }
+
+    fn write(&mut self, bytes: &[u8]) {
+        let mut chunks = bytes.chunks_exact(8);
+        for chunk in &mut chunks {
+            self.write_u64(u64::from_le_bytes(chunk.try_into().unwrap_or([0; 8])));
+        }
+        let remainder = chunks.remainder();
+        if !remainder.is_empty() {
+            let mut tail = [0_u8; 8];
+            tail[..remainder.len()].copy_from_slice(remainder);
+            self.write_u64(u64::from_le_bytes(tail));
+        }
+    }
+
+    fn write_u64(&mut self, value: u64) {
+        let mut mixed = self.0 ^ value;
+        mixed ^= mixed >> 33;
+        mixed = mixed.wrapping_mul(0xff51_afd7_ed55_8ccd);
+        mixed ^= mixed >> 33;
+        mixed = mixed.wrapping_mul(0xc4ce_b9fe_1a85_ec53);
+        mixed ^= mixed >> 33;
+        self.0 = mixed;
+    }
+
+    fn write_usize(&mut self, value: usize) {
+        self.write_u64(value as u64);
+    }
+
+    fn write_u128(&mut self, value: u128) {
+        self.write_u64(value as u64);
+        self.write_u64((value >> 64) as u64);
+    }
+}
+
+pub(crate) type MixingHasherBuilder = std::hash::BuildHasherDefault<MixingHasher>;
 
 fn cross_link_row(rank: usize) -> Result<CrossLinkRow, StructureError> {
     let mut links = CrossLinkRow::new();
@@ -203,7 +256,7 @@ pub struct InvolutionTable {
     budget: InvolutionTableBudget,
     twist: Vec<usize>,
     compact_weyl: CompactWeyl,
-    compact_index: HashMap<WeylElt, InvolutionId, PermutationHasherBuilder>,
+    compact_index: HashMap<WeylElt, InvolutionId, MixingHasherBuilder>,
     reflections: Vec<WeylElement>,
     reflection_actions: Vec<WeylAction>,
     /// Mod-2 reductions of the simple roots and coroots, per generator:

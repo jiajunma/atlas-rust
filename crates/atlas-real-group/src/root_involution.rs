@@ -402,10 +402,8 @@ fn subsystem_simple_roots(
     }
     // Membership by simple coordinates through a hash set of slices:
     // collisions compare exactly, so semantics are unchanged.
-    let mut members: std::collections::HashSet<
-        &[i32],
-        crate::inner_class::PermutationHasherBuilder,
-    > = std::collections::HashSet::default();
+    let mut members: std::collections::HashSet<&[i32], crate::involution_table::MixingHasherBuilder> =
+        std::collections::HashSet::default();
     members
         .try_reserve(positive_coordinates.len())
         .map_err(|_| StructureError::AllocationFailed {

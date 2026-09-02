@@ -248,9 +248,9 @@ impl KgbGraph {
         // Dedup index: hash map over the packed Tits key, since ids come
         // from insertion order in `elements` and the map itself is never
         // iterated (upstream uses a hash table over Tits elements the same
-        // way). The FxHash-style hasher keeps the per-edge intern probes
-        // off SipHash; the map is never iterated, so the hash choice is
-        // unobservable.
+        // way). The avalanche mixing hasher keeps the per-edge intern
+        // probes off SipHash; the map is never iterated, so the hash
+        // choice is unobservable.
         let mut index: TitsIndex = HashMap::default();
         index
             .try_reserve(expected)
@@ -1038,9 +1038,9 @@ impl TitsKey {
     }
 }
 
-/// The BFS dedup map: packed Tits key -> insertion id, with the crate's
-/// FxHash-style hasher (dedup-only, never iterated).
-type TitsIndex = HashMap<TitsKey, usize, crate::inner_class::PermutationHasherBuilder>;
+/// The BFS dedup map: packed Tits key -> insertion id, with the avalanche
+/// mixing hasher (dedup-only, never iterated).
+type TitsIndex = HashMap<TitsKey, usize, crate::involution_table::MixingHasherBuilder>;
 
 /// Insert-or-lookup against the a-priori size bound; new elements extend the
 /// flat per-generator slots.
