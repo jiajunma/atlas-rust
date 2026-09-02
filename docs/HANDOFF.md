@@ -7176,3 +7176,98 @@ records array 110.8MB (residual: mod_space 40B + theta_plus_one_rho
 Weight 24B inline headers per record); transport_mod_space 88.7MB;
 RealProjection payload 66.3MB (irreducible at i32; i16 narrowing is
 value-range-unsafe for transported bases); hashbrown dedup ~55MB.
+
+## Perf work 2026-09-01j — InnerClass orbit-build storage slimming (agent-135)
+
+Branch `agent-135` (base ce05576), worktrees /private/tmp/atlas-innerclass +
+HPC /public/home/majj/atlas-rust-innerclass. Two commits, both confined to
+crates/atlas-real-group/src/inner_class.rs:
+
+- `006e053` — (1) orbit_cross_closure chunks sized to ~256KB of member bytes
+  (`(262144/stride).clamp(64, 4096)` members, stride 0 keeps 4096) instead of
+  a flat 4096 members: the frontier-plus-two-chunks footprint drops from ~2MB
+  to ~0.5MB for E7/E8, small strides unchanged. (2) parents link vector
+  shrink_to_fit before the ClassOrbit is retained (parallel driver holds every
+  orbit until replay). (3) involution_orbits_parallel workers shrink_to_fit
+  their sorted entry buffers; the replay now does ONE exact
+  try_reserve_exact(total) + Vec::append + drop instead of merging into a
+  third exact-size buffer while both worker buffers are live. (4) the packed
+  membership entries retained in the classification cache get a final
+  shrink_to_fit (no-op for the parallel driver's now-exact vector).
+- `1095930` — push_slim: exact 1.5x growth for the two large STREAMED buffers
+  (worker membership-entry vectors, per-orbit parent links). The peak-heap
+  snapshot lands mid-closure, before any end-of-build shrink can run, so
+  doubling's up-to-100% slack was live at peak (4.19MB capacity for ~2.1MB of
+  E8 worker entries). 1.5x caps transient slack at 50% for ~1.5n extra
+  element copies. PackedKeySet NOT touched: its slot count must stay a power
+  of two (mask/shift probing) and raising the 75% load factor costs probe
+  cache misses on the ~1.6M-edge E8 closure.
+
+Why safe: no algorithmic change — same emit order, same replay order, same
+final sort_unstable (it was already pdqsort over the merged vector, not a
+merge pass, so concatenation does not change its cost class); only
+capacities/allocation timing changed. The exact-size reserve matches the
+previous merge's try_capacity semantics.
+
+Measurements (massif_profile.sbatch, groups.at + test.at in one process,
+cpu partition):
+
+| sha | job | maxrss | wall | peak heap (massif) |
+|---|---|---|---|---|
+| 2f63a80 (groups.at only) | 3665704 | 42.6MB | 0.36s | 21.46MB (snap 95) |
+| ce05576 | 3665711 | 39,452KB | 0.28s | 24.54MB (snap 117) |
+| 006e053 | 3665726 | 34,156KB | 0.24s | 23.88MB total / 21.34MB useful (snap 101) |
+| 1095930 | 3665731 | 34,720KB | 0.24s | 21.67MB total / 20.53MB useful (snap 71) |
+
+Single-shot maxrss is noisy (the 3665711 baseline run landed 3-5MB below
+the 3665704/3665943 numbers for the same code), so bench_compare_135.sbatch
+(job 3665877, untracked scratch) A/B'd ce05576 vs 1095930, 7 runs each,
+same node, same job:
+
+- groups.at: old median 39,344KB (38,352-44,412) -> new median 34,940KB
+  (34,336-36,836): -4.4MB (-11%). Wall flat (0.17-0.18s both).
+- test.at: old median 39,956KB (38,484-43,056) -> new median 35,088KB
+  (34,464-35,748): -4.9MB (-12%). Wall flat.
+
+push_slim's effect is visible in the heap attribution even though the
+one-shot maxrss of 3665731 reads flat vs 3665726: worker entry buffer at
+peak 4.19MB -> 3.32MB (exactly the 1.5x cap over ~2.2MB live), peak total
+heap 23.88 -> 21.67MB, extra-heap 2.54 -> 1.15MB.
+
+Diagnostics (job 3665710, hpc/diag_threads_135.sbatch, untracked scratch):
+- EMPTY-run maxrss is 4,500KB and trivial script 4,808KB — the fixed floor
+  (10.2MB binary, 9.2MB text; libs; interpreter init; the 4-thread rayon
+  global pool, nproc=4 under SLURM affinity 32-35) is only ~4.5MB. The
+  rayon pool spawn costs ~nothing when idle.
+- groups.at spawns 19 clones total (4 rayon + ~15 scoped classification/
+  orbit/rep-table threads); trivial script spawns 4 (the pool). So the
+  ~15MB of run-time non-heap above the floor is glibc per-thread ARENA
+  slack from the scoped worker threads' large frees (dynamic mmap
+  threshold adapts upward, later MB-size frees land in arenas and stick),
+  NOT fixed thread-stack cost.
+- CONSEQUENCE for target 2 (rayon thread cap): REJECTED on measurement —
+  capping or lazily starting the pool cannot shrink the baseline (idle
+  pool ≈ 0 RSS), and agent-128 already showed fewer threads hurt the
+  heavy unipotent build. The arena slack shrinks only by making worker
+  allocations smaller/fewer — exactly what the heap slims do.
+
+Gates: quick_check 3665725 @006e053 TEST_DONE status=0 (548 lib tests);
+quick_check 3665730 @1095930 TEST_DONE status=0. Full corpus 3665943
+@1095930 (TIMEOUT=60, all 240, report in
+results/1095930122c3419a5499778c32b5bce808a21248/3665943/): MATCH 240;
+median rust wall 0.3890 -> 0.3855s (-0.9%, vs baseline corpus 3664793
+@2f63a80 — inside the +/-2% gate; the groups.at/test.at single-sample
++5-7% wall wobble is corpus-node noise, refuted by the 7-run A/B above);
+median rust maxrss 50,568 -> 46,732KB (-7.6%); median rss_ratio 4.751 ->
+4.329; groups.at 42,576 -> 35,016KB (6.39x -> 5.25x); test.at 40,948 ->
+36,992KB (6.09x -> 5.50x); unipotent_representations_exceptional 7.44 ->
+6.64s, 983,560 -> 982,160KB (heavy script unharmed).
+
+Not fixed (left for the next lane): the ~15MB run-time non-heap is glibc
+arena slack from scoped worker threads — the remaining levers live outside
+my file boundary: MALLOC_MMAP_THRESHOLD_/MALLOC_TRIM_THRESHOLD_ or mallopt
+tuning (atlas-cli main or the sbatch wrappers), or migrating the scoped
+classification/orbit threads onto a bounded persistent pool so arena slack
+concentrates and recycles (domain_builtins.rs build_inner_class_context +
+rep_table.rs threads). Empty-run floor 4.5MB says binary size is not the
+problem.
