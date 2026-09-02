@@ -422,3 +422,26 @@ unchanged (~46MB). Oracle reference remains 15.4s (3671638), so a ~3.4x
 gap is still open; perf record job 3671836 (frame-pointer build) targets
 the residual. Gates at 8a77b38: quick_check 3671672 TEST_DONE status=0,
 corpus 3671673 MATCH: 240.
+
+## Orientation-order cache + hoist A/B (2026-09-02, job 3672106 @ f9202e7)
+
+perf record 3671836 (frame-pointer build, E6 probe) attributed the residual
+gap: `block_deformation_to_height` 83.6% children, of which
+`RepContext::orientation_number` 73.7% -> `driftsort_main`/`sort_by_key`
+64.6% with an alloc/free storm (`try_allocate_in` 12.8% flat, `_int_free`
+14.1% flat) — every call re-sorted the positive roots by coroot coordinates
+with an allocating key, and the coefficient pass called it once per
+(position, j) survivor pair.
+
+Fix f9202e7: the coroot-coordinate order of positive roots (+ inverse
+position table) is precomputed once in `RepContextDerived`; the coefficient
+pass computes each survivor's orientation number once (O(n) calls, was
+O(n^2)). Gates: quick_check 3672055 TEST_DONE status=0, corpus 3672056
+MATCH: 240.
+
+A/B 3672106 (probe_bd_e6_repeat, old=8a77b38, interleaved reps, both
+IDENTICAL): old 57.30/52.34s -> new **4.43/4.06s (~-92%, 12.9x)**, RSS
+unchanged (~46MB). **Versus the oracle's 15.4s (3671638) the Rust build is
+now ~3.7x FASTER on this E6 workload** — the block_deform E6 gap is closed
+and inverted. E7 large-scale probe on this binary submitted as 3672161
+(fat, 6h) to check the big-group scaling against the oracle's 1:39:27.
