@@ -11,6 +11,11 @@
 //! Only the operations the recursion and μ-correction need are provided:
 //! `add`/`sub`, `shift` (multiply by `1+q`), scaling by a monomial
 //! `q^d`, and evaluation at `q = -1` (kl.cpp deformation_terms loop).
+//!
+//! Each allocating operation has an in-place `*_assign` twin mirroring
+//! upstream's `SafePoly::safeAdd`/`safeSubtract` (polynomials.h), which
+//! mutate the receiver; the KLV fill loops use those to reuse the
+//! accumulator buffers across the μ-correction iterations.
 
 use crate::StructureError;
 
@@ -23,6 +28,12 @@ impl KlPol {
     /// The zero polynomial (kl.cpp:79, `const KLPol Zero`).
     pub fn zero() -> Self {
         Self(Vec::new())
+    }
+
+    /// A shared zero polynomial, for borrow-based pool-lookup fallbacks.
+    pub fn zero_ref() -> &'static Self {
+        static ZERO: KlPol = KlPol(Vec::new());
+        &ZERO
     }
 
     /// The polynomial `q^d` (kl.cpp:83 `One` is `q^0`).
@@ -49,57 +60,102 @@ impl KlPol {
 
     /// `self + other` (polynomials.h `Polynomial::add`).
     pub fn add(&self, other: &Self) -> Self {
-        let length = self.0.len().max(other.0.len());
-        let mut result = Vec::with_capacity(length);
-        for index in 0..length {
-            result.push(self.coefficient(index) + other.coefficient(index));
+        let mut result = self.clone();
+        result.add_assign(other);
+        result
+    }
+
+    /// `self += other`, reusing the receiver's buffer
+    /// (polynomials.h `Polynomial::safeAdd`).
+    pub fn add_assign(&mut self, other: &Self) {
+        if self.0.len() < other.0.len() {
+            self.0.resize(other.0.len(), 0);
         }
-        Self::trim(result)
+        for (target, &coefficient) in self.0.iter_mut().zip(other.0.iter()) {
+            *target += coefficient;
+        }
+        self.trim_in_place();
     }
 
     /// `self - other` (polynomials.h `Polynomial::subtract`).
     pub fn sub(&self, other: &Self) -> Self {
-        let length = self.0.len().max(other.0.len());
-        let mut result = Vec::with_capacity(length);
-        for index in 0..length {
-            result.push(self.coefficient(index) - other.coefficient(index));
+        let mut result = self.clone();
+        result.sub_assign(other);
+        result
+    }
+
+    /// `self -= other`, reusing the receiver's buffer
+    /// (polynomials.h `Polynomial::safeSubtract`).
+    pub fn sub_assign(&mut self, other: &Self) {
+        if self.0.len() < other.0.len() {
+            self.0.resize(other.0.len(), 0);
         }
-        Self::trim(result)
+        for (target, &coefficient) in self.0.iter_mut().zip(other.0.iter()) {
+            *target -= coefficient;
+        }
+        self.trim_in_place();
     }
 
     /// `self - q^d * other` — the μ-correction term (kl.cpp:504-512
     /// `safeSubtract(pol, d, mu)`).
     pub fn sub_shifted(&self, other: &Self, d: usize, multiplier: i32) -> Self {
-        let mut result = self.0.clone();
-        result.resize(result.len().max(other.0.len() + d), 0);
-        for (index, &coefficient) in other.0.iter().enumerate() {
-            let target = index + d;
-            result[target] -= coefficient * multiplier;
+        let mut result = self.clone();
+        result.sub_shifted_assign(other, d, multiplier);
+        result
+    }
+
+    /// `self -= q^d * multiplier * other`, in place (kl.cpp:504-512
+    /// `safeSubtract(pol, d, mu)`).
+    pub fn sub_shifted_assign(&mut self, other: &Self, d: usize, multiplier: i32) {
+        let needed = other.0.len() + d;
+        if self.0.len() < needed {
+            self.0.resize(needed, 0);
         }
-        Self::trim(result)
+        for (index, &coefficient) in other.0.iter().enumerate() {
+            self.0[index + d] -= coefficient * multiplier;
+        }
+        self.trim_in_place();
     }
 
     /// Multiply by `1 + q` (kl.cpp:409 `Pxy.safeAdd(Pxy,1)`,
     /// polynomials.h `Polynomial::safeAdd` with shift 1): the result is
     /// `P + q*P`.
     pub fn shift(&self) -> Self {
-        let mut result = self.0.clone();
-        result.resize(result.len() + 1, 0);
-        for (index, &coefficient) in self.0.iter().enumerate() {
-            result[index + 1] += coefficient;
+        let mut result = self.clone();
+        result.shift_assign();
+        result
+    }
+
+    /// `self *= 1 + q`, in place: the top-down pass keeps the
+    /// not-yet-shifted coefficients intact.
+    pub fn shift_assign(&mut self) {
+        let len = self.0.len();
+        self.0.resize(len + 1, 0);
+        for index in (0..len).rev() {
+            let coefficient = self.0[index];
+            self.0[index + 1] += coefficient;
         }
-        Self::trim(result)
+        self.trim_in_place();
     }
 
     /// `self + q^d * other` — the complex-descent recursion term
     /// `P_{sx,sy} + q.P_{x,sy}` (kl.cpp:416 `safeAdd(KL_pol(x,sy),1)`).
     pub fn add_shifted(&self, other: &Self, d: usize) -> Self {
-        let mut result = self.0.clone();
-        result.resize(result.len().max(other.0.len() + d), 0);
-        for (index, &coefficient) in other.0.iter().enumerate() {
-            result[index + d] += coefficient;
+        let mut result = self.clone();
+        result.add_shifted_assign(other, d);
+        result
+    }
+
+    /// `self += q^d * other`, in place (polynomials.h `safeAdd(pol, d)`).
+    pub fn add_shifted_assign(&mut self, other: &Self, d: usize) {
+        let needed = other.0.len() + d;
+        if self.0.len() < needed {
+            self.0.resize(needed, 0);
         }
-        Self::trim(result)
+        for (index, &coefficient) in other.0.iter().enumerate() {
+            self.0[index + d] += coefficient;
+        }
+        self.trim_in_place();
     }
 
     /// Evaluate at `q = -1`: the alternating sum of coefficients
@@ -114,31 +170,62 @@ impl KlPol {
 
     /// A scalar multiple of this polynomial.
     pub fn scaled(&self, factor: i32) -> Self {
+        let mut result = self.clone();
+        result.scale_assign(factor);
+        result
+    }
+
+    /// `self *= factor`, in place.
+    pub fn scale_assign(&mut self, factor: i32) {
         if factor == 1 {
-            return self.clone();
+            return;
         }
-        Self::trim(self.0.iter().map(|&c| c * factor).collect())
+        for coefficient in &mut self.0 {
+            *coefficient *= factor;
+        }
+        self.trim_in_place();
     }
 
     /// `self + q^d * multiplier * other` — the μ-sum contribution
     /// (kl.cpp:834-836 `safeAdd(Pxz, d, mu)`).
     pub fn add_shifted_scaled(&self, other: &Self, d: usize, multiplier: i32) -> Self {
-        let mut result = self.0.clone();
-        result.resize(result.len().max(other.0.len() + d), 0);
-        for (index, &coefficient) in other.0.iter().enumerate() {
-            result[index + d] += coefficient * multiplier;
+        let mut result = self.clone();
+        result.add_shifted_scaled_assign(other, d, multiplier);
+        result
+    }
+
+    /// `self += q^d * multiplier * other`, in place (kl.cpp:834-836
+    /// `safeAdd(Pxz, d, mu)`).
+    pub fn add_shifted_scaled_assign(&mut self, other: &Self, d: usize, multiplier: i32) {
+        let needed = other.0.len() + d;
+        if self.0.len() < needed {
+            self.0.resize(needed, 0);
         }
-        Self::trim(result)
+        for (index, &coefficient) in other.0.iter().enumerate() {
+            self.0[index + d] += coefficient * multiplier;
+        }
+        self.trim_in_place();
     }
 
     /// Divide by 2, exact in the KLV context (kl.cpp:702 `safeDivide(2)`).
     pub fn divide_by_2(&self) -> Result<Self, StructureError> {
+        let mut result = self.clone();
+        result.divide_by_2_assign()?;
+        Ok(result)
+    }
+
+    /// `self /= 2`, in place (kl.cpp:702 `safeDivide(2)`).
+    pub fn divide_by_2_assign(&mut self) -> Result<(), StructureError> {
         if self.0.iter().any(|&c| c % 2 != 0) {
             return Err(StructureError::RepInvariantViolation {
                 invariant: "KL polynomial parity",
             });
         }
-        Ok(Self::trim(self.0.iter().map(|&c| c / 2).collect()))
+        for coefficient in &mut self.0 {
+            *coefficient /= 2;
+        }
+        self.trim_in_place();
+        Ok(())
     }
 
     /// Divide by `1 + q` (kl.cpp:711 `safe_quotient_by_1_plus_q`). The
@@ -173,6 +260,13 @@ impl KlPol {
             coefficients.pop();
         }
         Self(coefficients)
+    }
+
+    /// In-place counterpart of [`Self::trim`].
+    fn trim_in_place(&mut self) {
+        while self.0.last() == Some(&0) {
+            self.0.pop();
+        }
     }
 
     /// Constructor from coefficients, trimming trailing zeros (the empty
@@ -266,5 +360,62 @@ mod tests {
         // (1 + q) - q^1 * (1) = 1 + q - q = 1
         let p = KlPol::from_coefficients(vec![1, 1]);
         assert_eq!(p.sub_shifted(&KlPol::monomial(0), 1, 1).as_slice(), &[1]);
+    }
+
+    #[test]
+    fn in_place_ops_match_the_allocating_variants() {
+        let samples = [
+            KlPol::zero(),
+            KlPol::monomial(0),
+            KlPol::monomial(3),
+            KlPol::from_coefficients(vec![1, 1]),
+            KlPol::from_coefficients(vec![3, -2, 0, 5]),
+            KlPol::from_coefficients(vec![2, 4, 6]),
+        ];
+        for a in &samples {
+            for b in &samples {
+                let mut actual = a.clone();
+                actual.add_assign(b);
+                assert_eq!(actual, a.add(b), "{a:?} += {b:?}");
+                let mut actual = a.clone();
+                actual.sub_assign(b);
+                assert_eq!(actual, a.sub(b), "{a:?} -= {b:?}");
+                for &d in &[0_usize, 1, 3] {
+                    let mut actual = a.clone();
+                    actual.add_shifted_assign(b, d);
+                    assert_eq!(actual, a.add_shifted(b, d), "{a:?} += q^{d}*{b:?}");
+                    for &m in &[1, -2] {
+                        let mut actual = a.clone();
+                        actual.sub_shifted_assign(b, d, m);
+                        assert_eq!(actual, a.sub_shifted(b, d, m), "{a:?} -= {m}q^{d}*{b:?}");
+                        let mut actual = a.clone();
+                        actual.add_shifted_scaled_assign(b, d, m);
+                        assert_eq!(
+                            actual,
+                            a.add_shifted_scaled(b, d, m),
+                            "{a:?} += {m}q^{d}*{b:?}"
+                        );
+                    }
+                }
+            }
+            let mut actual = a.clone();
+            actual.shift_assign();
+            assert_eq!(actual, a.shift(), "{a:?} *= 1+q");
+            for &factor in &[0, 1, -3] {
+                let mut actual = a.clone();
+                actual.scale_assign(factor);
+                assert_eq!(actual, a.scaled(factor), "{a:?} *= {factor}");
+            }
+        }
+    }
+
+    #[test]
+    fn divide_by_2_assign_matches_the_allocating_variant() {
+        let p = KlPol::from_coefficients(vec![2, 4, 6]);
+        let mut actual = p.clone();
+        actual.divide_by_2_assign().unwrap();
+        assert_eq!(actual, p.divide_by_2().unwrap());
+        let mut odd = KlPol::from_coefficients(vec![1, 2]);
+        assert!(odd.divide_by_2_assign().is_err());
     }
 }

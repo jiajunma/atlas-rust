@@ -267,14 +267,13 @@ impl<B: BlockTopology> KlTableHandle<B> {
             let pxy = match value {
                 BlockDescent::ImaginaryCompact => {
                     // (q+1)P_{x,sy}
-                    let base = self.kl_pol_pool(x, sy)?;
-                    base.shift()
+                    self.kl_pol_pool(x, sy)?.shift()
                 }
                 BlockDescent::ComplexDescent => {
                     // P_{sx,sy} + q.P_{x,sy}
                     let first = self.kl_pol_pool(sx, sy)?;
                     let second = self.kl_pol_pool(x, sy)?;
-                    first.add_shifted(&second, 1)
+                    first.add_shifted(second, 1)
                 }
                 BlockDescent::RealTypeI => {
                     // P_{sx.first,sy} + P_{sx.second,sy} + (q-1)P_{x,sy}
@@ -288,15 +287,14 @@ impl<B: BlockTopology> KlTableHandle<B> {
                             invariant: "real type I inverse Cayley first slot",
                         });
                     };
-                    let first = self.kl_pol_pool(first_image, sy)?;
-                    let mut result = first;
+                    let mut result = self.kl_pol_pool(first_image, sy)?.clone();
                     if let Some(second) = pair.1 {
                         let second_pol = self.kl_pol_pool(second, sy)?;
-                        result = result.add(&second_pol);
+                        result.add_assign(second_pol);
                     }
                     let xsypol = self.kl_pol_pool(x, sy)?;
-                    result = result.add_shifted(&xsypol, 1);
-                    result = result.sub(&xsypol);
+                    result.add_shifted_assign(xsypol, 1);
+                    result.sub_assign(xsypol);
                     result
                 }
                 BlockDescent::RealTypeII => {
@@ -317,7 +315,9 @@ impl<B: BlockTopology> KlTableHandle<B> {
                     let first = self.kl_pol_pool(first_image, sy)?;
                     let second = self.kl_pol_pool(x, sy)?;
                     let third = self.kl_pol_pool(sx, sy)?;
-                    first.add_shifted(&second, 1).sub(&third)
+                    let mut result = first.add_shifted(second, 1);
+                    result.sub_assign(third);
+                    result
                 }
                 _ => {
                     return Err(StructureError::RepInvariantViolation {
@@ -356,14 +356,13 @@ impl<B: BlockTopology> KlTableHandle<B> {
                     break;
                 }
                 let pol = self.kl_pol_pool(x, z)?;
-                let scaled = working[position].sub_shifted(&pol, d, mu);
-                working[position] = scaled;
+                working[position].sub_shifted_assign(pol, d, mu);
             }
             // The final term x == z (when extremal for y).
             if self.support.is_extremal(z, desc_y) {
                 if let Some(position) = extremals.iter().position(|&x| x == z) {
                     let term = KlPol::monomial(d).scaled(mu);
-                    working[position] = working[position].sub(&term);
+                    working[position].sub_assign(&term);
                 }
             }
         }
@@ -415,10 +414,12 @@ impl<B: BlockTopology> KlTableHandle<B> {
                 )?;
                 let mut pxy = KlPol::zero();
                 if let Some((Some(first_image), second)) = self.support.block().cayley(x, s) {
-                    pxy = self.current_column_pol(&column, &desc_y, first_image, y);
+                    pxy = self
+                        .current_column_pol(&column, &desc_y, first_image, y)
+                        .clone();
                     if let Some(second_image) = second {
                         let second_pol = self.current_column_pol(&column, &desc_y, second_image, y);
-                        pxy = pxy.add(&second_pol);
+                        pxy.add_assign(second_pol);
                     }
                 }
                 column[position] = self.pool.match_pol(&pxy);
@@ -501,10 +502,9 @@ impl<B: BlockTopology> KlTableHandle<B> {
         working.resize(height + 1, KlPol::zero());
         working[self.support.self_index(y)] = KlPol::monomial(0); // P_{y,y} = 1
 
-        // The lambda accessor: KL_y(x) = working[prim_index(x)].
-        let kl_y = |working: &[KlPol], x: BlockElt| -> KlPol {
-            working[self.support.prim_index(x, &desc_y)].clone()
-        };
+        // The lambda accessor: prim_index(x) locates KL_y(x) in `working`;
+        // the loops below borrow the slot instead of cloning it.
+        let kl_index = |x: BlockElt| self.support.prim_index(x, &desc_y);
 
         let mut mu_pairs: Vec<MuPair> = self
             .down_set(y)?
@@ -523,10 +523,9 @@ impl<B: BlockTopology> KlTableHandle<B> {
                 // Cayley image (outside the block) contributes zero, like
                 // KL_pol's UndefBlock handling (kl.cpp:127).
                 if let Some((Some(first_image), second)) = self.support.block().cayley(x, s) {
-                    pxy = kl_y(working, first_image);
+                    pxy = working[kl_index(first_image)].clone();
                     if let Some(second_image) = second {
-                        let second_pol = kl_y(working, second_image);
-                        pxy = pxy.add(&second_pol);
+                        pxy.add_assign(&working[kl_index(second_image)]);
                     }
                 }
                 working[prim_pos] = pxy;
@@ -540,17 +539,16 @@ impl<B: BlockTopology> KlTableHandle<B> {
                 pxy = self.mu_new_formula(x, y, s, &mu_pairs)?;
                 match self.support.block().descent(x, s).expect("valid generator") {
                     BlockDescent::ComplexAscent => {
-                        let cross_pol =
-                            kl_y(working, self.support.block().cross(x, s).expect("cross"));
-                        pxy = pxy.sub_shifted(&cross_pol, 1, 1);
+                        let cross = self.support.block().cross(x, s).expect("cross");
+                        pxy.sub_shifted_assign(&working[kl_index(cross)], 1, 1);
                     }
                     BlockDescent::ImaginaryTypeII => {
                         let pair = self.support.block().cayley(x, s).expect("cayley");
-                        let sum = kl_y(working, pair.0.expect("first image"))
-                            .add(&kl_y(working, pair.1.expect("second image")));
-                        pxy = pxy.add(&sum);
-                        pxy = pxy.sub_shifted(&sum, 1, 1);
-                        pxy = pxy.divide_by_2()?;
+                        let mut sum = working[kl_index(pair.0.expect("first image"))].clone();
+                        sum.add_assign(&working[kl_index(pair.1.expect("second image"))]);
+                        pxy.add_assign(&sum);
+                        pxy.sub_shifted_assign(&sum, 1, 1);
+                        pxy.divide_by_2_assign()?;
                     }
                     BlockDescent::ImaginaryCompact => {
                         pxy = pxy.quotient_by_1_plus_q(l_y - l_x)?;
@@ -573,17 +571,19 @@ impl<B: BlockTopology> KlTableHandle<B> {
                 if let Some((s, t)) = st {
                     pxy = self.mu_new_formula(x, y, s, &mu_pairs)?;
                     let pair = self.support.block().cayley(x, s).expect("endgame cayley");
-                    let p_xprime = kl_y(working, pair.0.expect("first image"));
-                    pxy = pxy.add(&p_xprime);
-                    pxy = pxy.sub_shifted(&p_xprime, 1, 1);
+                    let p_xprime = kl_index(pair.0.expect("first image"));
+                    pxy.add_assign(&working[p_xprime]);
+                    pxy.sub_shifted_assign(&working[p_xprime], 1, 1);
                     if let Some(t) = t {
                         let sx = self.support.block().cross(x, s).expect("endgame cross");
                         let up = self.support.block().cayley(sx, t).expect("endgame up");
                         if let Some(first) = up.0 {
-                            pxy = pxy.sub(&kl_y(working, first));
+                            let first = kl_index(first);
+                            pxy.sub_assign(&working[first]);
                         }
                         if let Some(second) = up.1 {
-                            pxy = pxy.sub(&kl_y(working, second));
+                            let second = kl_index(second);
+                            pxy.sub_assign(&working[second]);
                         }
                     }
                     if !pxy.is_zero() && l_y == l_x + 2 * pxy.degree() + 1 {
@@ -640,7 +640,7 @@ impl<B: BlockTopology> KlTableHandle<B> {
             }
             let d = (ly - lz).div_ceil(2);
             let p_xz = self.kl_pol_pool(x, z)?;
-            pol = pol.add_shifted_scaled(&p_xz, d, mu);
+            pol.add_shifted_scaled_assign(p_xz, d, mu);
         }
         Ok(pol)
     }
@@ -678,9 +678,12 @@ impl<B: BlockTopology> KlTableHandle<B> {
     /// `KL_pol` for a pool lookup during recursion — the primitive index
     /// of `x` for the descent set of `y`, reading the already-filled
     /// column (kl.cpp:124-132 with the kl.cpp:129-131 out-of-range case).
-    fn kl_pol_pool(&self, x: BlockElt, y: BlockElt) -> Result<KlPol, StructureError> {
-        let desc_y = self.support.descent_set(y).clone();
-        let prim = self.support.prim_index(x, &desc_y);
+    /// Returns a borrow into the pool; the recursion loops combine the
+    /// polynomials with the in-place `KlPol` operations, so no
+    /// coefficient vector is cloned per lookup.
+    fn kl_pol_pool(&self, x: BlockElt, y: BlockElt) -> Result<&KlPol, StructureError> {
+        let desc_y = self.support.descent_set(y);
+        let prim = self.support.prim_index(x, desc_y);
         let column = self.columns.get(y).ok_or(StructureError::IndexOutOfRange {
             index: y,
             upper_bound: self.columns.len(),
@@ -694,7 +697,10 @@ impl<B: BlockTopology> KlTableHandle<B> {
         } else {
             column[prim]
         };
-        Ok(self.pool.get(index).cloned().unwrap_or_else(KlPol::zero))
+        match self.pool.get(index) {
+            Some(polynomial) => Ok(polynomial),
+            None => Ok(KlPol::zero_ref()),
+        }
     }
 
     /// `KL_pol(x, y)` against the column being written by
@@ -708,7 +714,7 @@ impl<B: BlockTopology> KlTableHandle<B> {
         desc_y: &RankFlags,
         x: BlockElt,
         y: BlockElt,
-    ) -> KlPol {
+    ) -> &KlPol {
         let prim = self.support.prim_index(x, desc_y);
         let index = if prim >= column.len() {
             if prim == self.support.self_index(y) {
@@ -719,7 +725,10 @@ impl<B: BlockTopology> KlTableHandle<B> {
         } else {
             column[prim]
         };
-        self.pool.get(index).cloned().unwrap_or_else(KlPol::zero)
+        match self.pool.get(index) {
+            Some(polynomial) => polynomial,
+            None => KlPol::zero_ref(),
+        }
     }
 }
 #[cfg(test)]
