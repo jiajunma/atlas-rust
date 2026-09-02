@@ -80,6 +80,12 @@ not a source-level C++ translation.
    local checkout switched to it (parent merges after HPC verification).
    Active-agent ownership is listed in `docs/HANDOFF.md` "Current frontier";
    check it before dispatching new work to avoid double-dispatch.
+7. **Optimization targets large-scale computation (2026-09-02).** Speed work
+   is judged on heavy workloads (E7/E8 blocks, full-height block_deform,
+   unipotent scale), not on small-script fixed costs. A change that
+   regresses small-group cases but wins on large groups should be taken —
+   the small-case regression alone is not grounds for rejection (the generic
+   >2% revert gate applies to comparable-scale probes only).
 
 ## Verified repair guard
 
