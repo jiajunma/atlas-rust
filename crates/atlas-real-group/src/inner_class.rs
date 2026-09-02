@@ -573,9 +573,9 @@ impl InnerClass {
             Ok(())
         };
         if self.datum.semisimple_rank() <= 8 {
-            self.involution_orbits::<u64>(weyl_budget, &mut emit, &mut consume)?;
+            self.involution_orbits::<u64, _>(weyl_budget, &mut emit, &mut consume)?;
         } else {
-            self.involution_orbits::<u128>(weyl_budget, &mut emit, &mut consume)?;
+            self.involution_orbits::<u128, _>(weyl_budget, &mut emit, &mut consume)?;
         }
         Ok(involutions)
     }
@@ -685,9 +685,9 @@ impl InnerClass {
                 Ok(())
             };
             if simple_positions.len() <= 8 {
-                self.involution_orbits::<u64>(weyl_budget, &mut emit, &mut consume)?;
+                self.involution_orbits::<u64, _>(weyl_budget, &mut emit, &mut consume)?;
             } else {
-                self.involution_orbits::<u128>(weyl_budget, &mut emit, &mut consume)?;
+                self.involution_orbits::<u128, _>(weyl_budget, &mut emit, &mut consume)?;
             }
         }
         let membership = if packed {
