@@ -6,6 +6,26 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
 ## Current frontier - 2026-09-02 (Weyl/KGB micro-optimizations, supersedes 2026-09-01)
 
+The verified tip is now `1763362`, following `08c3af7`, `3448a3a`, and
+`3322f54`. The latest completed 08c3af7 fat comparison (job **3667273**) is an
+exact MATCH: Rust **4.983s / 813,548KB**, C++ **4.753s / 881,088KB**
+(**1.048x wall / 0.923x RSS**). This confirms the established heavy-workload
+memory advantage, while the wall result remains within run variance. Focused
+job **3667272** also passed; its report SHA-256 is
+`869ad7ba2914a52a5b2b788e6153e6e42f821e6cc33513d14adb294010e713ff` and the
+fat report SHA-256 is
+`31facfe927109d2ad5a3e5e14a2803912bbca32adad0d9b998a0310705f64108`.
+
+Commit `1763362` changes only `RootSet::iter`: sparse bitset iteration uses
+trailing-zero extraction and clears the lowest set bit, preserving the old
+ascending order without allocating. Local verification is 559/559
+real-group tests. HPC jobs **3667444** (quick-check), **3667445** (focused),
+**3667446** (KGB differential), and **3667447** (fat corpus) are submitted;
+collect their reports before making any end-to-end speed claim. The next
+larger work item remains phase-level profiling of `RootSystem::from_closure`
+and `add_cartan`, because static inspection does not justify another storage
+redesign.
+
 The current tip is `d686744`, with the verified optimization chain
 `f835987`, `f222487`, `b1fb57a`, `5352503`, `6a7f6f3`, and `0b65dcb`.
 These changes cover monotone ladder-membership cursors, ladder subtraction

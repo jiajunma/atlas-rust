@@ -41,6 +41,21 @@ rows. Both preserve the focused Weyl/InvolutionTable/KGB gates and exact fat
 established advantage, but require interleaved same-node A/B runs before
 attributing any small wall-time change to these commits.
 
+Commit `08c3af7` then fused theta action and `(1 + theta)rho / 2` coordinate
+materialization into one output buffer. Focused job 3667272 passed, and fat
+job 3667273 matched exactly at Rust 4.983s / 813,548KB versus C++ 4.753s /
+881,088KB (1.048x wall / 0.923x RSS). The memory advantage is retained; the
+wall result is still run-band noise rather than an isolated speed claim.
+
+The current low-risk candidate is commit `1763362`: `RootSet::iter` now emits
+set bits using `trailing_zeros` and `bits &= bits - 1`, preserving ascending
+root IDs while skipping zero bits. The new sparse cross-block ordering test
+and all 559 real-group unit tests pass locally. HPC jobs 3667444 (quick-check),
+3667445 (focused), 3667446 (KGB differential), and 3667447 (fat full corpus)
+are submitted and pending collection. If its end-to-end effect is below the
+2% A/B gate, keep the correctness change but do not credit it as a measurable
+performance win.
+
 ## Compact involution printer boundary (2026-08-31)
 
 Commit `e030699` closes the four language-boundary consumers of

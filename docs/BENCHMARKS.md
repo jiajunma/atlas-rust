@@ -246,6 +246,19 @@ script-corpus ledger above for real per-script timing until then.
 | 3667224 | 3322f54 | 1 targeted (fat) | 0 | `unipotent_representations_exceptional.at` MATCH: Rust **4.938s / 813,044KB**, C++ **4.729s / 881,300KB** = **1.044x wall / 0.923x RSS**. This remains within the prior run band; no standalone speed claim for direct projection buffers. Report SHA-256: `d93d5fff65671c31ea29c78a9c0755da099e485dd332ea7a208ae19b949c2830`. |
 | 3667241 | 3448a3a | Weyl/InvolutionTable/KGB focused | 0 | Focused gate passed: Weyl **64/64**, InvolutionTable **31/31**, KGB **14/14**, debug and release. Report SHA-256: `18ba134b5dac9ec6d2d0f8a0c656e2fcad77783f9909696d1e6eb02760e31363`. |
 | 3667242 | 3448a3a | 1 targeted (fat) | 0 | `unipotent_representations_exceptional.at` MATCH: Rust **4.889s / 811,464KB**, C++ **4.747s / 881,288KB** = **1.030x wall / 0.921x RSS**. The SmallVec cross-link row and direct projection buffer changes preserve the established heavy-workload memory advantage; timing remains run-band noise. Report SHA-256: `a180d8d464a38107d9333a67cb6e12a0f4eb1cc812a055c2a38b3b676d89c1c2`. |
+| 3667272 | 08c3af7 | Weyl/InvolutionTable/KGB focused | 0 | Focused gate passed in debug and release; report SHA-256: `869ad7ba2914a52a5b2b788e6153e6e42f821e6cc33513d14adb294010e713ff`. |
+| 3667273 | 08c3af7 | 1 targeted (fat) | 0 | `unipotent_representations_exceptional.at` MATCH: Rust **4.983s / 813,548KB**, C++ **4.753s / 881,088KB** = **1.048x wall / 0.923x RSS**. This remains within the established heavy-workload wall-time band while retaining the ~7.7% RSS advantage. Report SHA-256: `31facfe927109d2ad5a3e5e14a2803912bbca32adad0d9b998a0310705f64108`. |
+
+The `08c3af7` theta-plus-rho fusion is output-identical and passed the focused
+gate. Its single-target fat run does not isolate a wall-time gain: 4.983s is
+slower than the immediately preceding 3448a3a sample, but still inside the
+same-node run band. The stable result is memory: Rust used 813,548KB versus
+881,088KB for the oracle (0.923x RSS).
+
+The next candidate, `1763362`, changes only `RootSet::iter` to enumerate set
+bits with trailing-zero extraction instead of scanning all 64 positions in
+each bitmap block. HPC jobs 3667444-3667447 are submitted; no performance
+claim is made until their reports are collected.
 
 The `f835987`/`5352503`/`6a7f6f3` root-system micro-optimizations reduce
 search or storage work, but these end-to-end results do not isolate their
