@@ -366,6 +366,41 @@ fn compact_image(image: RootId) -> Result<u16, StructureError> {
     })
 }
 
+/// Injective packing of a nonnegative simple-coordinate vector: 8 bits per
+/// coordinate, coordinate `i` at bit offset `8i`. Only called when the
+/// caller has checked the vector length is <= 8 and every coordinate fits
+/// in a byte.
+fn pack_coordinates(coordinates: &[i32]) -> u64 {
+    debug_assert!(coordinates.len() <= 8);
+    let mut packed = 0_u64;
+    for (index, &coordinate) in coordinates.iter().enumerate() {
+        debug_assert!((0..=u8::MAX as i32).contains(&coordinate));
+        packed |= (coordinate as u64) << (8 * index);
+    }
+    packed
+}
+
+/// The subsystem-membership probe of [`subsystem_simple_roots`]: one u64
+/// hash round when the coordinates pack, exact slice hashing otherwise.
+/// Both variants decide membership by exact equality, so the classification
+/// result is identical either way.
+enum Membership<'a> {
+    Packed(std::collections::HashSet<u64, crate::involution_table::MixingHasherBuilder>),
+    Slices(std::collections::HashSet<&'a [i32], crate::involution_table::MixingHasherBuilder>),
+}
+
+impl Membership<'_> {
+    fn contains(&self, coordinates: &[i32]) -> bool {
+        match self {
+            // Probed vectors are differences of two packed members that
+            // survived the dominance check, hence nonnegative and bounded
+            // by the member maximum — the pack preconditions still hold.
+            Self::Packed(packed) => packed.contains(&pack_coordinates(coordinates)),
+            Self::Slices(slices) => slices.contains(coordinates),
+        }
+    }
+}
+
 /// Simple roots of one kind's subsystem in the inherited positive system.
 ///
 /// The decomposability probe iterates only the already-confirmed SIMPLES,
@@ -400,19 +435,47 @@ fn subsystem_simple_roots(
             positive_coordinates.push(coordinates);
         }
     }
-    // Membership by simple coordinates through a hash set of slices:
-    // collisions compare exactly, so semantics are unchanged.
-    let mut members: std::collections::HashSet<&[i32], crate::involution_table::MixingHasherBuilder> =
-        std::collections::HashSet::default();
-    members
-        .try_reserve(positive_coordinates.len())
-        .map_err(|_| StructureError::AllocationFailed {
-            requested: positive_coordinates.len(),
-        })?;
-    for coordinates in &positive_coordinates {
-        members.insert(coordinates);
-    }
+    // Membership by simple coordinates. With semisimple rank <= 8 (the
+    // compact-Weyl ceiling of `WeylElt`) every NONNEGATIVE coordinate
+    // vector packs injectively into one u64 (8 bits per coordinate; root
+    // coordinates stay <= 6 in every finite type), so the probe becomes a
+    // single integer hash round instead of one hash round per slice
+    // element; collisions still compare exactly. Larger ranks fall back to
+    // hashing the coordinate slices themselves.
     let rank = root_system.datum().semisimple_rank();
+    let packable = rank <= 8
+        && positive_coordinates
+            .iter()
+            .all(|coordinates| coordinates.iter().all(|&coordinate| coordinate <= u8::MAX as i32));
+    let members: Membership = if packable {
+        let mut packed: std::collections::HashSet<
+            u64,
+            crate::involution_table::MixingHasherBuilder,
+        > = std::collections::HashSet::default();
+        packed
+            .try_reserve(positive_coordinates.len())
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: positive_coordinates.len(),
+            })?;
+        for coordinates in &positive_coordinates {
+            packed.insert(pack_coordinates(coordinates));
+        }
+        Membership::Packed(packed)
+    } else {
+        let mut slices: std::collections::HashSet<
+            &[i32],
+            crate::involution_table::MixingHasherBuilder,
+        > = std::collections::HashSet::default();
+        slices
+            .try_reserve(positive_coordinates.len())
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: positive_coordinates.len(),
+            })?;
+        for coordinates in &positive_coordinates {
+            slices.insert(coordinates);
+        }
+        Membership::Slices(slices)
+    };
     let mut remainder: Vec<i32> = Vec::new();
     remainder
         .try_reserve(rank)
@@ -446,7 +509,7 @@ fn subsystem_simple_roots(
                 }
                 remainder.push(difference);
             }
-            if !dominated && members.contains(remainder.as_slice()) {
+            if !dominated && members.contains(&remainder) {
                 continue 'candidate;
             }
         }
