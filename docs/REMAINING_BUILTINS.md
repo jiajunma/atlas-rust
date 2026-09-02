@@ -33,6 +33,14 @@ Keep these contracts when extending the ladder or KGB code:
 The next performance work should measure `RootSystem::from_closure` phases
 and `push_record`/`add_cartan` separately before changing storage or ordering.
 
+The two subsequent micro-optimizations are HPC-verified at commits `3322f54`
+and `3448a3a`: direct row-major projection buffers and inline rank-8 cross-link
+rows. Both preserve the focused Weyl/InvolutionTable/KGB gates and exact fat
+`unipotent` output. The latest fat run is Rust 4.889s / 811,464KB versus C++
+4.747s / 881,288KB (1.030x wall / 0.921x RSS). Keep the memory result as an
+established advantage, but require interleaved same-node A/B runs before
+attributing any small wall-time change to these commits.
+
 ## Compact involution printer boundary (2026-08-31)
 
 Commit `e030699` closes the four language-boundary consumers of

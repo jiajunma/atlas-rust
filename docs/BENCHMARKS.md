@@ -241,9 +241,15 @@ script-corpus ledger above for real per-script timing until then.
 | 3667074 | 6a7f6f3 | KGB differential | 0 | **12/12 groups MATCH** after explicitly binding the GCC 12 oracle runtime; report SHA-256: `3b4e28e6aa1b572f607d413604af8c5ceb740f1d502d9b69267b05b9142ddf85`. |
 | 3667075 | 6a7f6f3 | 240 | 0 | FULL CORPUS GREEN: **240/240 MATCH**, median wall **2.3275x**, median RSS **3.757x**, four rust-faster, zero over 5x. The median remains dominated by fixed setup work in short scripts; the change from earlier runs is within node/run variance, so no standalone micro-optimization speedup is claimed. Report SHA-256: `3afb44f71f5e694cfd1a004c874591a698eab383b9dc3e1eb51fe980c857867d`. |
 | 3667076 | 6a7f6f3 | 1 targeted (fat) | 0 | `unipotent_representations_exceptional.at` MATCH: Rust **5.087s / 813,608KB**, C++ **4.783s / 881,300KB** = **1.064x wall / 0.923x RSS**. Wall remains in the established run band; heavy-workload RSS is reliably about 8% below the oracle. Report SHA-256: `02dd2c7ec42ef4ef4b519d5e1041537aef8ae02ac9c4c959f6a9b7809b356504`. |
+| 3667222 | 3322f54 | Weyl/InvolutionTable/KGB focused | 0 | Focused gate passed: Weyl **64/64**, InvolutionTable **30/30**, KGB **14/14**, debug and release. Report SHA-256: `cf3704c4cad0a8fbd9777765b29a3e6acca84c78c710b7dd646822a8e7e09537`. |
+| 3667223 | 3322f54 | KGB differential | 0 | **12/12 groups MATCH**. Rust is about 5–8ms/group versus C++ 25–30ms/group in this probe. Report SHA-256: `c86f2582dd93f8895279470ef0107077d87398b19adba2372e305a5474d97a86`. |
+| 3667224 | 3322f54 | 1 targeted (fat) | 0 | `unipotent_representations_exceptional.at` MATCH: Rust **4.938s / 813,044KB**, C++ **4.729s / 881,300KB** = **1.044x wall / 0.923x RSS**. This remains within the prior run band; no standalone speed claim for direct projection buffers. Report SHA-256: `d93d5fff65671c31ea29c78a9c0755da099e485dd332ea7a208ae19b949c2830`. |
+| 3667241 | 3448a3a | Weyl/InvolutionTable/KGB focused | 0 | Focused gate passed: Weyl **64/64**, InvolutionTable **31/31**, KGB **14/14**, debug and release. Report SHA-256: `18ba134b5dac9ec6d2d0f8a0c656e2fcad77783f9909696d1e6eb02760e31363`. |
+| 3667242 | 3448a3a | 1 targeted (fat) | 0 | `unipotent_representations_exceptional.at` MATCH: Rust **4.889s / 811,464KB**, C++ **4.747s / 881,288KB** = **1.030x wall / 0.921x RSS**. The SmallVec cross-link row and direct projection buffer changes preserve the established heavy-workload memory advantage; timing remains run-band noise. Report SHA-256: `a180d8d464a38107d9333a67cb6e12a0f4eb1cc812a055c2a38b3b676d89c1c2`. |
 
 The `f835987`/`5352503`/`6a7f6f3` root-system micro-optimizations reduce
 search or storage work, but these end-to-end results do not isolate their
-individual wall-time effects. Treat **1.064x wall / 0.923x RSS** as the current
-heavy KGB/Weyl comparison and **2.3275x wall / 3.757x RSS** as the current
+individual wall-time effects. Treat the newer same-node run at `3448a3a`,
+**1.030x wall / 0.921x RSS**, as the current heavy KGB/Weyl comparison, while
+retaining **2.3275x wall / 3.757x RSS** as the current
 full-corpus median; the latter is primarily a short-script fixed-cost metric.

@@ -41,6 +41,19 @@ worktree cleanup.
   SHA-256:
   `02dd2c7ec42ef4ef4b519d5e1041537aef8ae02ac9c4c959f6a9b7809b356504`.
 
+- Direct projection-buffer follow-up `3322f54` passed focused job **3667222**
+  (Weyl 64/64, InvolutionTable 30/30, KGB 14/14), KGB differential **3667223**
+  (12/12 MATCH), and fat `unipotent` **3667224** (Rust 4.938s / 813,044KB,
+  C++ 4.729s / 881,300KB, 1.044x wall / 0.923x RSS). The wall result remains
+  in the existing run band.
+- Combined tip `3448a3a` additionally replaces each `add_cartan` BFS row's
+  temporary links vector with `SmallVec<[InvolutionId; 8]>`. Focused job
+  **3667241** passed Weyl 64/64, InvolutionTable 31/31, KGB 14/14, and fat
+  `unipotent` **3667242** is an exact MATCH: Rust 4.889s / 811,464KB versus
+  C++ 4.747s / 881,288KB (1.030x wall / 0.921x RSS). This confirms the
+  established ~8% heavy-workload RSS advantage, but does not isolate a
+  standalone wall-time gain for either micro-optimization.
+
 The corpus result should therefore be read as: heavy KGB/Weyl workloads are
 now close to the C++ wall time and consistently below it in RSS, while the
 full-corpus median remains about 2.33x because many scripts are dominated by
