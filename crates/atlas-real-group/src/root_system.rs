@@ -235,7 +235,7 @@ impl RootSystem {
         let mut record_simple_coordinates = Vec::new();
         while let Some(root) = closure.pending.pop_front() {
             {
-                let record = closure.seen.get(root.as_slice()).ok_or(
+                let record = closure.seen.get(root.as_ref()).ok_or(
                     StructureError::RootSystemInvariantViolation {
                         invariant: "pending root membership",
                     },
@@ -258,7 +258,7 @@ impl RootSystem {
             for generator in 0..semisimple_rank {
                 let simple_root = &snapshot.simple_roots()[generator];
                 let simple_coroot = &snapshot.simple_coroots()[generator];
-                let coefficient = pair_coordinates(root.as_slice(), simple_coroot.as_slice())?;
+                let coefficient = pair_coordinates(root.as_ref(), simple_coroot.as_slice())?;
                 let dual_coefficient =
                     pair_coordinates(simple_root.as_slice(), record_coroot.as_slice())?;
                 // A generator orthogonal to the record on both sides reflects
@@ -269,7 +269,7 @@ impl RootSystem {
                     continue;
                 }
                 reflect_coordinates_into(
-                    root.as_slice(),
+                    root.as_ref(),
                     simple_root.as_slice(),
                     coefficient,
                     &mut reflected_root,
@@ -754,8 +754,8 @@ type RootCoordinateHasherBuilder = BuildHasherDefault<RootCoordinateHasher>;
 /// tests, which inject candidate records directly.
 struct Closure {
     max_roots: usize,
-    seen: HashMap<Vec<i32>, ClosureRecord, RootCoordinateHasherBuilder>,
-    pending: VecDeque<Weight>,
+    seen: HashMap<Arc<[i32]>, ClosureRecord, RootCoordinateHasherBuilder>,
+    pending: VecDeque<Arc<[i32]>>,
 }
 
 impl Closure {
@@ -810,17 +810,19 @@ impl Closure {
                 limit: self.max_roots,
             });
         }
-        let key = try_copy_coordinates(root)?;
+        // Keep one owned coordinate allocation for both the dedup key and the
+        // pending work item. The queue only needs a shared handle while the
+        // map retains the paired coroot/simple-coordinate record.
+        let key: Arc<[i32]> = Arc::from(try_copy_coordinates(root)?);
         let record = ClosureRecord {
             coroot: try_copy_coordinates(coroot)?,
             simple_coordinates: try_copy_coordinates(simple_coordinates)?,
         };
-        self.seen.insert(key, record);
+        self.seen.insert(Arc::clone(&key), record);
         self.pending
             .try_reserve(1)
             .map_err(|_| StructureError::AllocationFailed { requested: 1 })?;
-        self.pending
-            .push_back(Weight::new(try_copy_coordinates(root)?));
+        self.pending.push_back(key);
         Ok(())
     }
 
@@ -833,7 +835,11 @@ impl Closure {
         records
             .try_reserve_exact(count)
             .map_err(|_| StructureError::AllocationFailed { requested: count })?;
-        records.extend(self.seen);
+        records.extend(
+            self.seen
+                .into_iter()
+                .map(|(coordinates, record)| (coordinates.to_vec(), record)),
+        );
         records.sort_unstable_by(|(left, _), (right, _)| left.cmp(right));
         Ok(records)
     }
@@ -1288,6 +1294,17 @@ mod tests {
                 invariant: "coroot agreement",
             })
         );
+    }
+
+    #[test]
+    fn pending_roots_share_coordinate_storage_with_seen_keys() {
+        let mut closure = Closure::new(4);
+        closure
+            .insert(Weight::new(vec![1, 0]), Coweight::new(vec![2, 0]), vec![1])
+            .unwrap();
+        let pending = closure.pending.front().unwrap();
+        let key = closure.seen.keys().next().unwrap();
+        assert_eq!(Arc::as_ptr(pending), Arc::as_ptr(key));
     }
 
     #[test]
