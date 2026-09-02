@@ -302,5 +302,21 @@ Optimization lanes in flight target the remaining KL-fill allocator traffic
   IDENTICAL both vs base and vs cpp oracle (4.88s/804,800KB). The in-place
   ops cut allocator traffic without changing single-shot wall time; the win
   is expected to compound with the dual-KL cache on multi-deform sessions.
-- agent-139 dual-KL cache A/B (job 3669387, repeated deform on same block):
-  pending at ledger time.
+- agent-139 dual-KL cache A/B (repeated deform on the same E6 1881-element
+  block, same node cu023): bound −1 ×3 base 59.45–59.68s vs branch
+  58.63–60.98s (run variance — at bound −1 the O(survivors³)
+  `inverse_upper_triangular` dominates at ~19.5s/call vs ~0.06s KL fill);
+  bound 0 ×10 base 1.14s vs branch **0.56s (2.0×)**; all stdout
+  byte-identical. Jobs 3670244/3670254/3670278/3670322.
+
+## block_deform probe-design correction (2026-09-02, from agent-139)
+
+`param(KGB(rf,0),…)` normalizes to nu=0, so `block_deform`'s nu≠0 gate
+silently no-ops — this includes `probe_klv_e8.atlas`, whose 0.920x baseline
+above therefore measures block construction, NOT `block_deformation_to_height`.
+Real block_deform workloads now on mainline: `probe_bd_e6_repeat.atlas`
+(x=1790, bound −1 ×3), `probe_bd_e6_x10_h0.atlas` (bound 0 ×10),
+`probe_bd_e7_single.atlas` (x=20925, bound −1; reproduces the pre-merge
+`cross of extremal` panic fixed in a8b2fd8). The x3-E8 A/B (job 3670321:
+base 4.42s/593,280KB vs a8b2fd8 4.96s/593,688KB, IDENTICAL) is recorded as
+a no-op control, not a deform measurement.
