@@ -7371,3 +7371,9 @@ hotspot is `RootSystem::from_closure` self cost; candidates remain the
 copies. The pre-existing `u8` root-id width assumption for systems with more
 than 255 roots needs a separate correctness lane and is not changed by this
 pass.
+
+The final merge-tip gate is complete: quick-check **3666901** passed with 548
+tests, full corpus **3666902** passed 240/240, and fat `unipotent`
+**3666900** matched at 1.082x wall and 0.918x RSS. These are the authoritative
+post-merge measurements for `1f49e2f`; the earlier `c641acc` candidate numbers
+remain useful only as an independent pre-merge confirmation.
