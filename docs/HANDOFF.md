@@ -7537,3 +7537,24 @@ Probe result (job 3667606 @ 527d3c5): probe_klv_e8.atlas rust 4.463s /
 594704KB vs cpp 4.849s / 804804KB (0.92x wall, 0.74x RSS) — E8 single deform
 already at parity; probe_partial_kl_d5.atlas trivial (0.01s). Sizing probes
 for E6/E7 partial_KL + E6 is_unitary submitted as job 3668680 @ 8b21ff7.
+
+## KLV lanes landed (2026-09-02, parent harvest)
+
+- agent-139 (`agent-dualkl`, `10ca56c`): dual-block KL table cache
+  (`rep_table::with_dual_kl_table`, thread-local, content fingerprint +
+  full block equality verify, ActiveKlCallback nesting contract) +
+  deform accumulator digest buckets. Gates: quick_check 3669249 green,
+  full corpus 3669275 MATCH: 240.
+- agent-138 (`agent-klpol`, `054a8ef`): KlPol in-place `*_assign` ops +
+  borrow-based pool lookups (`zero_ref` static). Gates: quick_check
+  3669263 green, full corpus 3669302 MATCH: 240, A/B 3669311 wall-neutral
+  (4.54s vs 4.50s base on E8 deform, IDENTICAL output).
+- Merge points: `d48c4b0` (corpus 3669375 MATCH: 240), `cb4e950` (corpus
+  3670016 MATCH: 240). Mainline now at `073a800` (+ benchmarks ledger).
+- HPC housekeeping: the `atlas-rust-merge133` worktree lost its gitdir
+  metadata once (job 3669366 ran on a stale tree and was scancelled);
+  rebuilt at d48c4b0, corpus rerun as 3669375. Lesson: after recreating
+  an HPC worktree always verify `git rev-parse HEAD` before sbatch.
+- Still open: agent-139's repeated-deform A/B (job 3669387) and both
+  agents' final reports; lane-4 lever (O(n^2) triangular inverse in
+  deform.rs) not yet dispatched.
