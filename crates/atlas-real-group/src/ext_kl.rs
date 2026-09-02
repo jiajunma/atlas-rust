@@ -567,7 +567,7 @@ impl<'a> ExtKlTable<'a> {
         self.aux.block.add_neighbours(&mut neighbours, s, x);
         let mut result = pol_mul_spol(&self.aux.block.t_coef(s, x, x), &self.p(x, sy));
         for sx in neighbours {
-            result = result.add(&pol_mul_spol(
+            result.add_assign(&pol_mul_spol(
                 &self.aux.block.t_coef(s, x, sx),
                 &self.p(sx, sy),
             ));
@@ -708,7 +708,8 @@ impl<'a> ExtKlTable<'a> {
                 }
             }
             debug_assert!(q.degree() >= m_deg);
-            *q = q.sub_shifted(&m, q.degree() - m_deg, 1);
+            let shift = q.degree() - m_deg;
+            q.sub_shifted_assign(&m, shift, 1);
             return m;
         }
 
@@ -721,7 +722,8 @@ impl<'a> ExtKlTable<'a> {
                 .scaled(top)
                 .add(&KlPol::monomial(0).scaled(top)); // symmetrise
             debug_assert!(q.degree() >= m_deg);
-            *q = q.sub_shifted(&m, q.degree() - m_deg, 1);
+            let shift = q.degree() - m_deg;
+            q.sub_shifted_assign(&m, shift, 1);
             debug_assert!(q.as_slice().len() <= d / 2 + 1);
         }
         let (quotient, c) = factor_by_1_plus_q(q, d / 2);
@@ -785,7 +787,7 @@ impl<'a> ExtKlTable<'a> {
                 if self.aux.is_descent(s, x) {
                     // Subtract `q^d * M_u * P_{x,u}` (ext_kl.cpp:559).
                     let term = pol_mul(&self.p(x, u), &ms[u]);
-                    cy[x] = cy[x].sub_shifted(&term, d, 1);
+                    cy[x].sub_shifted_assign(&term, d, 1);
                 }
             }
         }
@@ -812,11 +814,11 @@ impl<'a> ExtKlTable<'a> {
                 }
                 if let Some(second) = second {
                     let p2 = self.p_in(second, y, &column);
-                    q = if self.aux.block.epsilon(s, x, second) > 0 {
-                        q.add(&p2)
+                    if self.aux.block.epsilon(s, x, second) > 0 {
+                        q.add_assign(&p2);
                     } else {
-                        q.sub(&p2)
-                    };
+                        q.sub_assign(&p2);
+                    }
                 }
                 column[slot] = self.pool.match_pol(&q);
             }
@@ -871,11 +873,11 @@ impl<'a> ExtKlTable<'a> {
                         }
                         if let Some(second) = second {
                             let p2 = self.p_in(second, y, column);
-                            pxy = if self.aux.block.epsilon(s, x, second) > 0 {
-                                pxy.add(&p2)
+                            if self.aux.block.epsilon(s, x, second) > 0 {
+                                pxy.add_assign(&p2);
                             } else {
-                                pxy.sub(&p2)
-                            };
+                                pxy.sub_assign(&p2);
+                            }
                         }
                     }
                     slot -= 1;
@@ -916,7 +918,8 @@ impl<'a> ExtKlTable<'a> {
                         for u in (last_u..floor_y).rev() {
                             if self.descent_type(s, u).is_descent() && !m_vec[u].is_zero() {
                                 let shift = (self.aux.block.l(y, u) + k - m_vec[u].degree()) / 2;
-                                q = q.add_shifted(&pol_mul(&self.p(x, u), &m_vec[u]), shift);
+                                let term = pol_mul(&self.p(x, u), &m_vec[u]);
+                                q.add_shifted_assign(&term, shift);
                             }
                         }
 
@@ -946,7 +949,7 @@ impl<'a> ExtKlTable<'a> {
                             .coefficient(self.aux.block.l(y, x) / 2)
                             * self.aux.block.epsilon(*s, x, sx);
                         let d = usize::from(m_vec[sx].degree() == 2);
-                        m_vec[sx] = m_vec[sx].add(&KlPol::monomial(d).scaled(mu));
+                        m_vec[sx].add_assign(&KlPol::monomial(d).scaled(mu));
                     }
                 }
             }
@@ -986,7 +989,7 @@ impl<'a> ExtKlTable<'a> {
                 if let Some(sx) = block.cross(s, x) {
                     if sx < floor_y {
                         let coef = block.t_coef(s, x, sx);
-                        *q = q.sub(&pol_mul_spol(&coef, &self.p_in(sx, y, column)));
+                        q.sub_assign(&pol_mul_spol(&coef, &self.p_in(sx, y, column)));
                     }
                 }
                 // Implicit division by `T_coef(s,x,x) == 1`.
@@ -997,7 +1000,7 @@ impl<'a> ExtKlTable<'a> {
                 if let Some(sx) = block.cayley(s, x) {
                     if sx < floor_y {
                         let coef = block.t_coef(s, x, sx);
-                        *q = q.sub(&pol_mul_spol(&coef, &self.p_in(sx, y, column)));
+                        q.sub_assign(&pol_mul_spol(&coef, &self.p_in(sx, y, column)));
                     }
                 }
                 let (quotient, _remainder) =
@@ -1011,7 +1014,7 @@ impl<'a> ExtKlTable<'a> {
                 for sx in [first, second].into_iter().flatten() {
                     if sx < floor_y {
                         let coef = block.t_coef(s, x, sx);
-                        *q = q.sub(&pol_mul_spol(&coef, &self.p_in(sx, y, column)));
+                        q.sub_assign(&pol_mul_spol(&coef, &self.p_in(sx, y, column)));
                     }
                 }
                 *q = q.divide_by_2()?;
@@ -1022,7 +1025,7 @@ impl<'a> ExtKlTable<'a> {
                 if let Some(x_prime) = block.cayley(s, x) {
                     if x_prime < floor_y {
                         let coef = block.t_coef(s, x, x_prime);
-                        *q = q.sub(&pol_mul_spol(&coef, &self.p_in(x_prime, y, column)));
+                        q.sub_assign(&pol_mul_spol(&coef, &self.p_in(x_prime, y, column)));
                     }
                 }
                 // Implicit division by `T_coef(s,x,x) == 1`; then subtract
@@ -1041,13 +1044,13 @@ impl<'a> ExtKlTable<'a> {
                     for sx in [first, second].into_iter().flatten() {
                         if sx < floor_y {
                             let sign = eps_s * block.epsilon(t, s_cross_x, sx);
-                            *q = q.sub(&self.p_in(sx, y, column).scaled(sign));
+                            q.sub_assign(&self.p_in(sx, y, column).scaled(sign));
                         }
                     }
                 } else if let Some(sx) = block.cayley(t, s_cross_x) {
                     if sx < floor_y {
                         let sign = eps_s * block.epsilon(t, s_cross_x, sx);
-                        *q = q.sub(&self.p_in(sx, y, column).scaled(sign));
+                        q.sub_assign(&self.p_in(sx, y, column).scaled(sign));
                     }
                 }
             }
@@ -1058,7 +1061,7 @@ impl<'a> ExtKlTable<'a> {
                 for sx in [first, second].into_iter().flatten() {
                     if sx < floor_y {
                         let coef = block.t_coef(s, x, sx);
-                        *q = q.sub(&pol_mul_spol(&coef, &self.p_in(sx, y, column)));
+                        q.sub_assign(&pol_mul_spol(&coef, &self.p_in(sx, y, column)));
                     }
                 }
                 *q = q.divide_by_2()?;
@@ -1126,7 +1129,7 @@ fn row_operation(m: &mut [Vec<KlPol>], target: usize, source: usize, c: i32) {
     };
     for (entry, contribution) in target_row.iter_mut().zip(source_row.iter()) {
         if !contribution.is_zero() {
-            *entry = entry.add(&contribution.scaled(c));
+            entry.add_assign(&contribution.scaled(c));
         }
     }
 }
