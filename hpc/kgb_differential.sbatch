@@ -16,8 +16,17 @@
 # The upstream binary was built with a newer gcc than the node baseline;
 # profile/module setup runs before strict mode (set -u breaks profile.d).
 source /etc/profile >/dev/null 2>&1 || true
-module load misc/gcc/12.1 >/dev/null 2>&1 || true
-gcc_lib="$(dirname "$(gcc -print-file-name=libstdc++.so.6)")"
+gcc_root="${ATLAS_GCC_ROOT:-/public/software/gcc/gcc-12.1}"
+gcc_bin="$gcc_root/bin/gcc"
+if [[ ! -x "$gcc_bin" ]]; then
+  echo "required GCC executable is absent or not executable: $gcc_bin" >&2
+  exit 2
+fi
+gcc_lib="$(dirname "$($gcc_bin -print-file-name=libstdc++.so.6)")"
+if ! strings "$gcc_lib/libstdc++.so.6" | grep -q '^GLIBCXX_3\.4\.29$'; then
+  echo "required GLIBCXX_3.4.29 is absent from $gcc_lib/libstdc++.so.6" >&2
+  exit 2
+fi
 export LD_LIBRARY_PATH="$gcc_lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
 set -euo pipefail
