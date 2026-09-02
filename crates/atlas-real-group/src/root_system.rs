@@ -1,4 +1,5 @@
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::{HashMap, VecDeque};
+use std::hash::{BuildHasherDefault, Hasher};
 use std::sync::Arc;
 
 use crate::lattice::{pair_coordinates, try_copy_coordinates};
@@ -229,12 +230,36 @@ impl RootSystem {
         let mut reflected_root = Vec::new();
         let mut reflected_coroot = Vec::new();
         let mut reflected_coordinates = Vec::new();
-        while let Some(record) = closure.pending.pop_front() {
+        let mut record_coroot = Vec::new();
+        let mut record_simple_coordinates = Vec::new();
+        while let Some(root) = closure.pending.pop_front() {
+            {
+                let record = closure.seen.get(root.as_slice()).ok_or(
+                    StructureError::RootSystemInvariantViolation {
+                        invariant: "pending root membership",
+                    },
+                )?;
+                record_coroot.clear();
+                record_coroot
+                    .try_reserve_exact(record.coroot.len())
+                    .map_err(|_| StructureError::AllocationFailed {
+                        requested: record.coroot.len(),
+                    })?;
+                record_coroot.extend_from_slice(&record.coroot);
+                record_simple_coordinates.clear();
+                record_simple_coordinates
+                    .try_reserve_exact(record.simple_coordinates.len())
+                    .map_err(|_| StructureError::AllocationFailed {
+                        requested: record.simple_coordinates.len(),
+                    })?;
+                record_simple_coordinates.extend_from_slice(&record.simple_coordinates);
+            }
             for generator in 0..semisimple_rank {
                 let simple_root = &snapshot.simple_roots()[generator];
                 let simple_coroot = &snapshot.simple_coroots()[generator];
-                let coefficient = pair(&record.root, simple_coroot)?;
-                let dual_coefficient = pair(simple_root, &record.coroot)?;
+                let coefficient = pair_coordinates(root.as_slice(), simple_coroot.as_slice())?;
+                let dual_coefficient =
+                    pair_coordinates(simple_root.as_slice(), record_coroot.as_slice())?;
                 // A generator orthogonal to the record on both sides reflects
                 // root, coroot, and simple coordinates to themselves, so the
                 // candidate is the already-stored record and no error path is
@@ -243,24 +268,24 @@ impl RootSystem {
                     continue;
                 }
                 reflect_coordinates_into(
-                    record.root.as_slice(),
+                    root.as_slice(),
                     simple_root.as_slice(),
                     i128::from(coefficient),
                     &mut reflected_root,
                 )?;
                 reflect_coordinates_into(
-                    record.coroot.as_slice(),
+                    record_coroot.as_slice(),
                     simple_coroot.as_slice(),
                     i128::from(dual_coefficient),
                     &mut reflected_coroot,
                 )?;
                 reflected_coordinates.clear();
                 reflected_coordinates
-                    .try_reserve_exact(record.simple_coordinates.len())
+                    .try_reserve_exact(record_simple_coordinates.len())
                     .map_err(|_| StructureError::AllocationFailed {
-                        requested: record.simple_coordinates.len(),
+                        requested: record_simple_coordinates.len(),
                     })?;
-                reflected_coordinates.extend_from_slice(&record.simple_coordinates);
+                reflected_coordinates.extend_from_slice(&record_simple_coordinates);
                 reflected_coordinates[generator] = reflected_coordinates[generator]
                     .checked_sub(coefficient)
                     .ok_or(StructureError::ArithmeticOverflow)?;
@@ -289,7 +314,7 @@ impl RootSystem {
         simple_coordinates
             .try_reserve_exact(count)
             .map_err(|_| StructureError::AllocationFailed { requested: count })?;
-        for (coordinates, record) in closure.seen {
+        for (coordinates, record) in closure.into_sorted_records()? {
             roots.push(Weight::new(coordinates));
             coroots.push(Coweight::new(record.coroot));
             simple_coordinates.push(record.simple_coordinates);
@@ -647,25 +672,51 @@ struct ClosureRecord {
     simple_coordinates: Vec<i32>,
 }
 
-struct PendingRecord {
-    root: Weight,
-    coroot: Coweight,
-    simple_coordinates: Vec<i32>,
+/// Fast deterministic hasher for short fixed-width root-coordinate keys.
+/// Closure lookup is dedup-only, so a compact non-cryptographic hash avoids
+/// the per-probe cost of `HashMap`'s randomized default while equality still
+/// compares the complete coordinate vector.
+#[derive(Clone, Default)]
+struct RootCoordinateHasher(u64);
+
+impl Hasher for RootCoordinateHasher {
+    fn finish(&self) -> u64 {
+        self.0
+    }
+
+    fn write(&mut self, bytes: &[u8]) {
+        const SEED: u64 = 0x51_7c_c1_b7_27_22_0a_95;
+        let mut chunks = bytes.chunks_exact(8);
+        for chunk in &mut chunks {
+            let value = u64::from_le_bytes(chunk.try_into().unwrap_or([0; 8]));
+            self.0 = (self.0.rotate_left(5) ^ value).wrapping_mul(SEED);
+        }
+        let remainder = chunks.remainder();
+        if !remainder.is_empty() {
+            let mut tail = 0_u64;
+            for &byte in remainder {
+                tail = (tail << 8) | u64::from(byte);
+            }
+            self.0 = (self.0.rotate_left(5) ^ tail).wrapping_mul(SEED);
+        }
+    }
 }
+
+type RootCoordinateHasherBuilder = BuildHasherDefault<RootCoordinateHasher>;
 
 /// Private closure state shared by production enumeration and the invariant
 /// tests, which inject candidate records directly.
 struct Closure {
     max_roots: usize,
-    seen: BTreeMap<Vec<i32>, ClosureRecord>,
-    pending: VecDeque<PendingRecord>,
+    seen: HashMap<Vec<i32>, ClosureRecord, RootCoordinateHasherBuilder>,
+    pending: VecDeque<Weight>,
 }
 
 impl Closure {
     fn new(max_roots: usize) -> Self {
         Self {
             max_roots,
-            seen: BTreeMap::new(),
+            seen: HashMap::with_hasher(RootCoordinateHasherBuilder::default()),
             pending: VecDeque::new(),
         }
     }
@@ -722,12 +773,23 @@ impl Closure {
         self.pending
             .try_reserve(1)
             .map_err(|_| StructureError::AllocationFailed { requested: 1 })?;
-        self.pending.push_back(PendingRecord {
-            root: Weight::new(try_copy_coordinates(root)?),
-            coroot: Coweight::new(try_copy_coordinates(coroot)?),
-            simple_coordinates: try_copy_coordinates(simple_coordinates)?,
-        });
+        self.pending
+            .push_back(Weight::new(try_copy_coordinates(root)?));
         Ok(())
+    }
+
+    /// Consume the deduplication map in the deterministic root order exposed
+    /// by [`RootSystem::roots`]. Hashing keeps insertion and lookup cheap;
+    /// sorting once at the boundary preserves the historical B-tree order.
+    fn into_sorted_records(self) -> Result<Vec<(Vec<i32>, ClosureRecord)>, StructureError> {
+        let count = self.seen.len();
+        let mut records = Vec::new();
+        records
+            .try_reserve_exact(count)
+            .map_err(|_| StructureError::AllocationFailed { requested: count })?;
+        records.extend(self.seen);
+        records.sort_unstable_by(|(left, _), (right, _)| left.cmp(right));
+        Ok(records)
     }
 }
 
@@ -1173,6 +1235,26 @@ mod tests {
                 invariant: "coroot agreement",
             })
         );
+    }
+
+    #[test]
+    fn closure_records_are_sorted_by_root_coordinates() {
+        let mut closure = Closure::new(4);
+        for coordinate in [[1, 0], [0, 1], [-1, 0]] {
+            closure
+                .insert(
+                    Weight::new(coordinate.to_vec()),
+                    Coweight::new(coordinate.iter().map(|&value| 2 * value).collect()),
+                    coordinate.to_vec(),
+                )
+                .unwrap();
+        }
+        let records = closure.into_sorted_records().unwrap();
+        let roots: Vec<Vec<i32>> = records
+            .iter()
+            .map(|(coordinates, _)| coordinates.clone())
+            .collect();
+        assert_eq!(roots, vec![vec![-1, 0], vec![0, 1], vec![1, 0]]);
     }
 
     #[test]
