@@ -388,6 +388,7 @@ MATCH 240). Decisive A/B with-real-deform-workload: job 3671577.
   pair — within the phantom-regression range documented by lane C;
   alternating-rep confirmation pending).
 
+<<<<<<< HEAD
 ## Alternating-rep matreduc A/B + oracle reference (2026-09-02, jobs 3671613/3671638)
 
 - 3671613 (4 alternating reps, probe_bd_e6_repeat, 8e340b6 vs 7dacfe2):
@@ -402,3 +403,15 @@ MATCH 240). Decisive A/B with-real-deform-workload: job 3671577.
   inverse_upper_triangular at ~19.5s/call x3 dominating our side, the
   inversion's column-strided cache behavior is the main suspect; the
   loop interchange in 8a77b38 targets exactly that.
+
+## E7 block_deform large-scale reference (2026-09-02, job 3670294)
+
+CPP oracle on `probe_bd_e7_single.atlas` (E7 x=20925, nu=[1,..,1], bound
+-1, real deform workload): **1:39:27 wall, 5.18GB RSS**. The fixed Rust
+build (a8b2fd8) ran past its pre-fix panic point and is still going at
+1h46m+ (job 3670256, 2h limit; probe-only 6h rerun staged as
+`probe_bd_e7_rust.sbatch` in atlas-rust-klundef if it times out).
+Heavy E7 unitary A/B (3671409, probe_unitary_e7_heavy): rust 7dacfe2
+20:03.5 vs a8b2fd8 20:25.0 (~+1.8% from the ext_kl in-place change, single
+run each), RSS ~449MB both; CPP leg still running.
+>>>>>>> 762b472 (docs: E7 oracle block_deform reference (1:39:27/5.2GB) + heavy unitary interim numbers)
