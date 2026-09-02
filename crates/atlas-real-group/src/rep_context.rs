@@ -333,6 +333,12 @@ pub(crate) struct RepContextDerived {
     two_rho: Weight,
     dual_two_rho: Coweight,
     rho: RationalWeight,
+    /// Positive root indices in the upstream `rt_abs` order (coroot
+    /// coordinates, ascending), shared by every `orientation_number` call.
+    positive_coroot_order: Vec<usize>,
+    /// Inverse of `positive_coroot_order`: each root's position in that
+    /// order, `None` for non-positive roots.
+    coroot_order_position: Vec<Option<usize>>,
 }
 
 impl RepContextDerived {
@@ -369,11 +375,33 @@ impl RepContextDerived {
             two_rho.as_slice().iter().map(|&c| i64::from(c)).collect(),
             2,
         )?;
+        let root_count = system.roots().len();
+        let mut positive_coroot_order: Vec<usize> = (0..root_count)
+            .filter(|&index| {
+                system
+                    .is_positive(RootId::from_usize(index))
+                    .unwrap_or(false)
+            })
+            .collect();
+        positive_coroot_order.sort_by(|&a, &b| {
+            let key = |index: usize| {
+                system
+                    .coroot(RootId::from_usize(index))
+                    .map(|coroot| coroot.as_slice())
+            };
+            key(a).cmp(&key(b))
+        });
+        let mut coroot_order_position = vec![None; root_count];
+        for (position, &index) in positive_coroot_order.iter().enumerate() {
+            coroot_order_position[index] = Some(position);
+        }
         Ok(Self {
             inner_class,
             two_rho,
             dual_two_rho: Coweight::new(dual_two_rho),
             rho,
+            positive_coroot_order,
+            coroot_order_position,
         })
     }
 }
@@ -1103,20 +1131,9 @@ impl<'a> RepContext<'a> {
         let numerator = z.gamma().numerator();
         let denominator = z.gamma().denominator();
         // Positive roots in the upstream `rt_abs` order: coroot coordinates,
-        // ascending.
-        let mut positive_indices: Vec<usize> = (0..root_count)
-            .filter(|&index| {
-                system
-                    .is_positive(RootId::from_usize(index))
-                    .unwrap_or(false)
-            })
-            .collect();
-        positive_indices.sort_by_key(|&index| {
-            system
-                .coroot(RootId::from_usize(index))
-                .map(|coroot| coroot.as_slice().to_vec())
-                .unwrap_or_default()
-        });
+        // ascending. The order depends only on the root system, so it is
+        // derived once in `RepContextDerived` instead of sorted per call.
+        let positive_indices = &self.derived.positive_coroot_order;
         let mut count = 0_u32;
         for (alpha_order, &alpha_index) in positive_indices.iter().enumerate() {
             let alpha = RootId::from_usize(alpha_index);
@@ -1168,7 +1185,12 @@ impl<'a> RepContext<'a> {
                     .map(|(&c, &n)| i64::from(c) * n)
                     .sum();
                 // consider only the first of the two conjugate coroot pairs
-                let beta_order = positive_indices.iter().position(|&r| r == beta.0);
+                let beta_order = self
+                    .derived
+                    .coroot_order_position
+                    .get(beta.0)
+                    .copied()
+                    .flatten();
                 if let Some(beta_order) = beta_order {
                     if alpha_order < beta_order && (num > 0) != (beta_pair > 0) {
                         count += 1;

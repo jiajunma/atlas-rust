@@ -1004,6 +1004,14 @@ fn block_deformation_with_dual_kl(
     // The parity/orientation coefficient pass (repr.cpp:2096-2121),
     // indexed by ASCENDING survivor position; upstream walks the reversed
     // result list, which is the same order.
+    //
+    // Each survivor's orientation number is queried once per (position, j)
+    // pair upstream; it depends only on the survivor, so compute all of
+    // them once up front.
+    let orientations: Vec<u32> = survivors
+        .iter()
+        .map(|(_, sr, _)| rc.orientation_number(sr))
+        .collect::<Result<_, _>>()?;
     let mut coefs: Vec<SplitInteger> = survivors.iter().map(|(_, _, coef)| *coef).collect();
     for position in (0..n).rev() {
         let c_cur = coefs[position];
@@ -1022,10 +1030,10 @@ fn block_deformation_with_dual_kl(
                 coef[i] = coef[i].add_int(contribution);
             }
         }
-        let our_orient = rc.orientation_number(&survivors[position].1)?;
+        let our_orient = orientations[position] as i32;
         for j in (0..position).rev() {
             let mut cj = coef[j] * c_cur;
-            let diff = our_orient as i32 - rc.orientation_number(&survivors[j].1)? as i32;
+            let diff = our_orient - orientations[j] as i32;
             debug_assert_eq!(diff % 2, 0);
             cj = cj.times_1_s();
             if diff % 4 != 0 {
