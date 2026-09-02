@@ -7522,3 +7522,68 @@ Levers identified by code reading (verify by perf on the heavy workloads):
    matching entry per occurrence).
 4. deform.rs:936-945 O(n^2) triangular inverse on survivors — probably
    subdominant to the KL fill.
+
+## Dual-block KL cache + block_deform accumulator index - 2026-09-02 (agent-dualkl)
+
+Branch `agent-dualkl`, verified code commit `10ca56c` (base `8b21ff7`);
+owned files crates/atlas-real-group/src/{deform.rs,rep_table.rs} only
+(this entry is a docs-only follow-up commit on top).
+
+Changes:
+- rep_table.rs: `with_dual_kl_table` — session-lifetime thread-local cache
+  of the FULLY FILLED dual-block KL table, one per block identity, beside
+  the primal `with_kl_table`. Key = content fingerprint of the PRIMAL block
+  (the language layer rebuilds the identical BlockGraph per block_deform
+  call, so pointer identity is useless); bucket hits are verified by full
+  derived block equality, so a collision costs a rebuild, never a wrong
+  table. Shares the ActiveKlCallback same-thread nesting guard.
+- deform.rs: `block_deformation_to_height` routes through the cache (body
+  extracted unchanged to `block_deformation_with_dual_kl`); the accumulator
+  queue.find/erase scan is hash-indexed by a digest of the
+  StandardRepr::operator== fields (x, y_bits, gamma); buckets keep positions
+  ascending so first-unconsumed-match semantics are preserved exactly (new
+  test `block_deform_consumes_first_occurrence_only`); cache reuse is pinned
+  by `dual_kl_table_is_cached_per_block_identity` (same table address across
+  calls) and the nesting contract by
+  `dual_kl_table_callback_rejects_same_thread_nesting`.
+
+Gates (HPC worktree /public/home/majj/atlas-rust-dualkl):
+- quick-check 3669249: TEST_DONE status=0 (only warning: pre-existing unused
+  `do_span` in generated grammar.rs).
+- full corpus 3669275: MATCH: 240.
+- probe_klv_e8 A/B on cu080: base 3669250 rust 4.515s/595944KB vs branch
+  3669264 4.512s/595752KB (-0.1% wall, -0.03% RSS), MATCH both sides;
+  cpp 4.853s/804796KB. No regression on the single-shot path.
+- repeated block_deform on the same block (E6 quasisplit form #2, block
+  size 1881, p=param(KGB(rf,1790),[0]*6,[1]*6/1), same node cu023):
+  - bound -1 x3 (srun 3670244/3670254/3670278): base 59.45-59.68s vs branch
+    58.63-60.98s, stdout byte-identical — within run variance: at bound -1
+    the O(survivors^3) `inverse_upper_triangular` dominates (~19.5s/call on
+    1881 survivors); the KL fill is only ~0.06s/call there.
+  - bound 0 x10 (srun 3670322): base 1.14s vs branch 0.56s (2.0x), stdout
+    byte-identical — the fill-dominated shape is where the cache pays off.
+
+Pitfalls found (probe design + pre-existing bug):
+- `param(KGB(rf,0),...)` normalizes to nu=0 for every form tried (x=0
+  absorbs nu into lambda); block_deform's nu!=0 gate then silently skips
+  ALL work (this includes probe_klv_e8's param). Use the LAST KGB element
+  (fixture pattern: block_deform.atlas uses x=3 on su(2,1)).
+- E6/F4/D5 blocks vs the dual quasisplit are <=1881 elements; E7 split has
+  24678 but see the next bullet.
+- PRE-EXISTING BUG at base 8b21ff7 (job 3670230, NOT from this change):
+  deform() panics at kl_table.rs:265 "cross of extremal" via
+  common_deformation_terms for E7 params on forms 2 (x=8945) and 3
+  (x=20925); backtrace fill_kl_column <- fill <- common_deformation_terms.
+  Reproducer: hpc/workloads/probe_bd_e7_single.atlas in the HPC dualkl
+  worktrees. KL-lane owner should pick this up.
+- The C++ oracle needs >20min for ONE bound--1 block_deform on the E7
+  24678-element block (job 3670161 timed out in the cpp phase): the O(n^3)
+  integer inverse dominates both sides at full height. Benchmark
+  block_deform with small height bounds, or fix the inverse first.
+- Lever #4 of the 2026-09-02c prep ("triangular inverse probably
+  subdominant to the KL fill") is DISPROVEN once the fill is cached: the
+  inverse is the residual bottleneck at bound -1.
+
+Uncommitted helper probes live only in the HPC worktrees (lane kept hpc/
+untouched in git): probe_bd_e6_repeat.atlas, probe_bd_e6_x10_h0.atlas,
+probe_bd_e7_single.atlas, probe_blockdeform_repeat_{e6,f4}.atlas.
