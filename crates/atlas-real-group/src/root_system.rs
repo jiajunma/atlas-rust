@@ -173,7 +173,10 @@ pub struct RootSystem {
     /// Recomputing one per `WeylElement::simple_reflection` call (two
     /// rank×rank matrices, then a matvec plus binary search per root —
     /// 240 matvecs per W-word letter on E8) dominated word-heavy scripts,
-    /// so the table is built once alongside the negation table.
+    /// so the table is built once alongside the negation table, directly
+    /// from the closure's reflection formula (the reflection matrix acts
+    /// entrywise as `w - <w, coroot> * root`, so the permutations are the
+    /// same ones `action_permutation` derives).
     simple_reflections: Vec<Vec<RootId>>,
 }
 
@@ -218,17 +221,53 @@ impl RootSystem {
                 negative_coordinates,
             )?;
         }
+        // Scratch buffers reused across all (record, generator) visits: the
+        // reflection candidates are ephemeral — only genuinely new roots are
+        // copied into the closure — so per-visit allocation dominated this
+        // loop (240 roots x 8 generators x ~3 vectors on E8).
+        let semisimple_rank = snapshot.semisimple_rank();
+        let mut reflected_root = Vec::new();
+        let mut reflected_coroot = Vec::new();
+        let mut reflected_coordinates = Vec::new();
         while let Some(record) = closure.pending.pop_front() {
-            for generator in 0..snapshot.semisimple_rank() {
-                let coefficient = pair(&record.root, &snapshot.simple_coroots()[generator])?;
-                let mut reflected_coordinates = try_copy_coordinates(&record.simple_coordinates)?;
+            for generator in 0..semisimple_rank {
+                let simple_root = &snapshot.simple_roots()[generator];
+                let simple_coroot = &snapshot.simple_coroots()[generator];
+                let coefficient = pair(&record.root, simple_coroot)?;
+                let dual_coefficient = pair(simple_root, &record.coroot)?;
+                // A generator orthogonal to the record on both sides reflects
+                // root, coroot, and simple coordinates to themselves, so the
+                // candidate is the already-stored record and no error path is
+                // reachable; skipping it is observationally identical.
+                if coefficient == 0 && dual_coefficient == 0 {
+                    continue;
+                }
+                reflect_coordinates_into(
+                    record.root.as_slice(),
+                    simple_root.as_slice(),
+                    i128::from(coefficient),
+                    &mut reflected_root,
+                )?;
+                reflect_coordinates_into(
+                    record.coroot.as_slice(),
+                    simple_coroot.as_slice(),
+                    i128::from(dual_coefficient),
+                    &mut reflected_coroot,
+                )?;
+                reflected_coordinates.clear();
+                reflected_coordinates
+                    .try_reserve_exact(record.simple_coordinates.len())
+                    .map_err(|_| StructureError::AllocationFailed {
+                        requested: record.simple_coordinates.len(),
+                    })?;
+                reflected_coordinates.extend_from_slice(&record.simple_coordinates);
                 reflected_coordinates[generator] = reflected_coordinates[generator]
                     .checked_sub(coefficient)
                     .ok_or(StructureError::ArithmeticOverflow)?;
-                closure.insert(
-                    snapshot.reflect_weight(generator, &record.root)?,
-                    snapshot.reflect_coweight(generator, &record.coroot)?,
-                    reflected_coordinates,
+                closure.insert_coordinates(
+                    &reflected_root,
+                    &reflected_coroot,
+                    &reflected_coordinates,
                 )?;
             }
         }
@@ -289,8 +328,15 @@ impl RootSystem {
         negatives
             .try_reserve_exact(count)
             .map_err(|_| StructureError::AllocationFailed { requested: count })?;
+        // `negated` is reused across roots: only the binary search reads it.
+        let mut negated = Vec::new();
         for root in &roots {
-            let mut negated = Vec::with_capacity(root.as_slice().len());
+            negated.clear();
+            negated
+                .try_reserve_exact(root.as_slice().len())
+                .map_err(|_| StructureError::AllocationFailed {
+                    requested: root.as_slice().len(),
+                })?;
             for &coordinate in root.as_slice() {
                 negated.push(
                     coordinate
@@ -320,14 +366,42 @@ impl RootSystem {
             negatives: Arc::from(negatives.into_boxed_slice()),
             simple_reflections: Vec::new(),
         };
-        // One-time fill through the matrix path, so the cached table is by
-        // construction the same permutations `action_permutation` derives.
-        system.simple_reflections = (0..semisimple_rank)
-            .map(|generator| {
-                WeylAction::simple_reflection(&system.datum, generator)
-                    .and_then(|action| system.action_permutation(&action))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
+        // One-time fill straight from the reflection formula. The previous
+        // matrix path (a datum clone and two rank×rank matrices per
+        // generator, then one allocating matvec per root) cost more than
+        // the enumeration itself on small data; `image` is reused across
+        // all (generator, root) pairs.
+        let mut simple_reflections = Vec::new();
+        simple_reflections
+            .try_reserve_exact(semisimple_rank)
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: semisimple_rank,
+            })?;
+        let mut image = Vec::new();
+        for generator in 0..semisimple_rank {
+            let simple_root = system.datum.simple_roots()[generator].as_slice();
+            let simple_coroot = system.datum.simple_coroots()[generator].as_slice();
+            let mut permutation = Vec::new();
+            permutation
+                .try_reserve_exact(count)
+                .map_err(|_| StructureError::AllocationFailed { requested: count })?;
+            for root in &system.roots {
+                let coefficient = pair_coordinates(root.as_slice(), simple_coroot)?;
+                reflect_coordinates_into(
+                    root.as_slice(),
+                    simple_root,
+                    i128::from(coefficient),
+                    &mut image,
+                )?;
+                permutation.push(
+                    system
+                        .id_of_slice(&image)
+                        .ok_or(StructureError::InvalidRootAutomorphism)?,
+                );
+            }
+            simple_reflections.push(permutation);
+        }
+        system.simple_reflections = simple_reflections;
         Ok(system)
     }
 
@@ -464,17 +538,20 @@ impl RootSystem {
 /// Precompute both ladder-bottom tables: `min_roots[alpha]` flags `beta`
 /// when `roots[beta] - roots[alpha]` is not a root, and `min_coroots`
 /// likewise on coroot coordinates. Root membership binary-searches the
-/// sorted `roots`; coroots are unsorted (they follow the root order), so a
-/// coordinate map is built once.
+/// sorted `roots`; coroots are unsorted (they follow the root order), so
+/// membership goes through a sorted index table: one contiguous allocation
+/// instead of a node-based map, binary-searched per pair.
 fn build_ladder_bottoms(
     roots: &[Weight],
     coroots: &[Coweight],
 ) -> Result<(Vec<RootSet>, Vec<RootSet>), StructureError> {
     let count = roots.len();
-    let mut coroot_ids: BTreeMap<&[i32], usize> = BTreeMap::new();
-    for (index, coroot) in coroots.iter().enumerate() {
-        coroot_ids.insert(coroot.as_slice(), index);
-    }
+    let mut coroot_order = Vec::new();
+    coroot_order
+        .try_reserve_exact(count)
+        .map_err(|_| StructureError::AllocationFailed { requested: count })?;
+    coroot_order.extend(0..count);
+    coroot_order.sort_by(|&left, &right| coroots[left].as_slice().cmp(coroots[right].as_slice()));
     let mut min_roots = Vec::new();
     min_roots
         .try_reserve_exact(count)
@@ -504,7 +581,10 @@ fn build_ladder_bottoms(
                 coroots[alpha].as_slice(),
                 &mut difference,
             )?;
-            if !coroot_ids.contains_key(difference.as_slice()) {
+            if coroot_order
+                .binary_search_by(|&index| coroots[index].as_slice().cmp(difference.as_slice()))
+                .is_err()
+            {
                 coroot_bottoms.insert(RootId(beta));
             }
         }
@@ -528,6 +608,34 @@ fn subtract_coordinates(
         })?;
     for (&a, &b) in left.iter().zip(right) {
         out.push(a.checked_sub(b).ok_or(StructureError::ArithmeticOverflow)?);
+    }
+    Ok(())
+}
+
+/// `out = values - coefficient * direction` entrywise, reusing `out`'s
+/// allocation. The arithmetic mirrors the `i128`-widened checked path of
+/// `BasedRootDatum::reflect_weight`/`reflect_coweight` exactly, including
+/// every overflow error point; only the destination buffer differs.
+fn reflect_coordinates_into(
+    values: &[i32],
+    direction: &[i32],
+    coefficient: i128,
+    out: &mut Vec<i32>,
+) -> Result<(), StructureError> {
+    debug_assert_eq!(values.len(), direction.len());
+    out.clear();
+    out.try_reserve_exact(values.len())
+        .map_err(|_| StructureError::AllocationFailed {
+            requested: values.len(),
+        })?;
+    for (&coordinate, &direction_coordinate) in values.iter().zip(direction) {
+        let correction = coefficient
+            .checked_mul(i128::from(direction_coordinate))
+            .ok_or(StructureError::ArithmeticOverflow)?;
+        let value = i128::from(coordinate)
+            .checked_sub(correction)
+            .ok_or(StructureError::ArithmeticOverflow)?;
+        out.push(i32::try_from(value).map_err(|_| StructureError::ArithmeticOverflow)?);
     }
     Ok(())
 }
@@ -574,15 +682,25 @@ impl Closure {
         coroot: Coweight,
         simple_coordinates: Vec<i32>,
     ) -> Result<(), StructureError> {
-        if pair_coordinates(root.as_slice(), coroot.as_slice())? != 2 {
+        self.insert_coordinates(root.as_slice(), coroot.as_slice(), &simple_coordinates)
+    }
+
+    /// Slice form of [`Closure::insert`] for enumeration candidates held in
+    /// reused scratch buffers: only genuinely new roots are copied into the
+    /// map and the pending queue.
+    fn insert_coordinates(
+        &mut self,
+        root: &[i32],
+        coroot: &[i32],
+        simple_coordinates: &[i32],
+    ) -> Result<(), StructureError> {
+        if pair_coordinates(root, coroot)? != 2 {
             return Err(StructureError::RootSystemInvariantViolation {
                 invariant: "self pairing",
             });
         }
-        if let Some(existing) = self.seen.get(root.as_slice()) {
-            if existing.coroot != coroot.as_slice()
-                || existing.simple_coordinates != simple_coordinates
-            {
+        if let Some(existing) = self.seen.get(root) {
+            if existing.coroot != coroot || existing.simple_coordinates != simple_coordinates {
                 return Err(StructureError::RootSystemInvariantViolation {
                     invariant: "coroot agreement",
                 });
@@ -595,19 +713,19 @@ impl Closure {
                 limit: self.max_roots,
             });
         }
-        let key = try_copy_coordinates(root.as_slice())?;
+        let key = try_copy_coordinates(root)?;
         let record = ClosureRecord {
-            coroot: try_copy_coordinates(coroot.as_slice())?,
-            simple_coordinates: try_copy_coordinates(&simple_coordinates)?,
+            coroot: try_copy_coordinates(coroot)?,
+            simple_coordinates: try_copy_coordinates(simple_coordinates)?,
         };
         self.seen.insert(key, record);
         self.pending
             .try_reserve(1)
             .map_err(|_| StructureError::AllocationFailed { requested: 1 })?;
         self.pending.push_back(PendingRecord {
-            root,
-            coroot,
-            simple_coordinates,
+            root: Weight::new(try_copy_coordinates(root)?),
+            coroot: Coweight::new(try_copy_coordinates(coroot)?),
+            simple_coordinates: try_copy_coordinates(simple_coordinates)?,
         });
         Ok(())
     }
