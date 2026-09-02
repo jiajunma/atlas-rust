@@ -266,3 +266,4 @@ individual wall-time effects. Treat the newer same-node run at `3448a3a`,
 **1.030x wall / 0.921x RSS**, as the current heavy KGB/Weyl comparison, while
 retaining **2.3275x wall / 3.757x RSS** as the current
 full-corpus median; the latter is primarily a short-script fixed-cost metric.
+| 3666702 | 95d87ac | 240 | 0 | FULL CORPUS GREEN with agent-136 RootSystem enumeration merged (240/240 MATCH; quick_check 3666701 green): median wall 2.571x (node noise; interleaved A/B showed parity), median maxrss **4.33x -> 3.76x** (mallopt threshold pinning landed), over_5x 0, within_2x 54. Decisive metric is retired instructions (noise-free): groups.atx100 32.61G -> **29.55G, -9.4%** (job 3666649, interleaved n=5, cu052). Attribution: eliminated weyl::apply_matrix/compose_matrices helper calls + allocator traffic in enumerate BFS + direct simple-reflection table build. Tooling note: perf srcline/annotate useless under lto=fat (cgu-0:0); use call-graph + instruction counting |
