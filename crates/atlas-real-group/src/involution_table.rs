@@ -1240,19 +1240,7 @@ fn push_record(
             reduce_basis_mod_two(&eigenlattice)?
         }
     };
-    let theta_two_rho = theta.act_on_weight(two_rho)?;
-    let mut coordinates = try_capacity(two_rho.as_slice().len())?;
-    for (&plain, &reflected) in two_rho.as_slice().iter().zip(theta_two_rho.as_slice()) {
-        let sum = plain
-            .checked_add(reflected)
-            .ok_or(StructureError::ArithmeticOverflow)?;
-        if sum % 2 != 0 {
-            return Err(StructureError::InvolutionTableInvariantViolation {
-                invariant: "theta rho parity",
-            });
-        }
-        coordinates.push(sum / 2);
-    }
+    let coordinates = theta_plus_one_rho_coordinates(theta, two_rho)?;
     let projection = match transported_projection {
         Some(projection) => {
             // The transport preserves lift_mat*m_real == 1-theta
@@ -1284,6 +1272,26 @@ fn push_record(
         projection,
     });
     Ok(id)
+}
+
+fn theta_plus_one_rho_coordinates(
+    theta: &LatticeInvolution,
+    two_rho: &Weight,
+) -> Result<Vec<i32>, StructureError> {
+    let mut coordinates = try_capacity(two_rho.as_slice().len())?;
+    theta.act_on_weight_into(two_rho.as_slice(), &mut coordinates)?;
+    for (plain, reflected) in two_rho.as_slice().iter().zip(coordinates.iter_mut()) {
+        let sum = plain
+            .checked_add(*reflected)
+            .ok_or(StructureError::ArithmeticOverflow)?;
+        if sum % 2 != 0 {
+            return Err(StructureError::InvolutionTableInvariantViolation {
+                invariant: "theta rho parity",
+            });
+        }
+        *reflected = sum / 2;
+    }
+    Ok(coordinates)
 }
 
 #[cfg(test)]
@@ -1321,6 +1329,14 @@ mod tests {
         let links = cross_link_row(8).unwrap();
         assert_eq!(links.len(), 0);
         assert_eq!(links.capacity(), 8);
+    }
+
+    #[test]
+    fn theta_rho_coordinates_are_materialized_without_a_weight_temporary() {
+        let datum = BasedRootDatum::standard(vec![vec![2]]).unwrap();
+        let theta = LatticeInvolution::identity(&datum).unwrap();
+        let coordinates = theta_plus_one_rho_coordinates(&theta, &Weight::new(vec![1])).unwrap();
+        assert_eq!(coordinates, vec![1]);
     }
 
     #[test]
