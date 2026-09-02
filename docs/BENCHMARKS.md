@@ -413,3 +413,12 @@ build (a8b2fd8) ran past its pre-fix panic point and is still going at
 Heavy E7 unitary A/B (3671409, probe_unitary_e7_heavy): rust 7dacfe2
 20:03.5 vs a8b2fd8 20:25.0 (~+1.8% from the ext_kl in-place change, single
 run each), RSS ~449MB both; CPP leg still running.
+
+## Loop-interchanged inversion A/B (2026-09-02, job 3671682 @ 8a77b38)
+
+probe_bd_e6_repeat (bound -1 x3, E6), old=8e340b6 vs new=8a77b38, 2 reps,
+both IDENTICAL: old 60.77/61.36s -> new **53.04/53.33s (-13%)**, RSS
+unchanged (~46MB). Oracle reference remains 15.4s (3671638), so a ~3.4x
+gap is still open; perf record job 3671836 (frame-pointer build) targets
+the residual. Gates at 8a77b38: quick_check 3671672 TEST_DONE status=0,
+corpus 3671673 MATCH: 240.
