@@ -697,7 +697,10 @@ impl<B: BlockTopology> KlTableHandle<B> {
         } else {
             column[prim]
         };
-        Ok(self.pool.get(index).unwrap_or_else(KlPol::zero_ref))
+        match self.pool.get(index) {
+            Some(polynomial) => Ok(polynomial),
+            None => Ok(KlPol::zero_ref()),
+        }
     }
 
     /// `KL_pol(x, y)` against the column being written by
@@ -722,7 +725,10 @@ impl<B: BlockTopology> KlTableHandle<B> {
         } else {
             column[prim]
         };
-        self.pool.get(index).unwrap_or_else(KlPol::zero_ref)
+        match self.pool.get(index) {
+            Some(polynomial) => polynomial,
+            None => KlPol::zero_ref(),
+        }
     }
 }
 #[cfg(test)]
