@@ -7271,3 +7271,22 @@ classification/orbit threads onto a bounded persistent pool so arena slack
 concentrates and recycles (domain_builtins.rs build_inner_class_context +
 rep_table.rs threads). Empty-run floor 4.5MB says binary size is not the
 problem.
+
+## Probe 2026-09-02a — glibc arena thresholds recover only ~3.4MB of the non-heap slack
+
+Job 3666095 (arena_probe.sbatch, cpu node, 7 reps median, @ bb107cd):
+groups.at default 34.6MB -> 31.3MB with MALLOC_MMAP_THRESHOLD_=131072 or
+MALLOC_TRIM_THRESHOLD_=131072 (both together no better); test.at 34.9 ->
+31.2MB. Low variance (<1MB). So arena thresholds are a real but SMALL lever
+(-10%); the rest of the ~15MB runtime non-heap above the 4.5MB floor is NOT
+threshold-reclaimable (per-thread arena working set + stacks). If taken,
+deployment = mallopt in atlas-cli main (env vars are read by glibc before
+main, so wrapper env only helps the harness) — needs a justified libc FFI
+call in crates/atlas-cli (allowed: outside core, isolated).
+
+## Perf attribution 2026-09-02b — small-script fixed wall (perf 3665987, dwarf, 100x test.at @ bb107cd)
+
+- orbit_cross_closure 30.95% (inner_class.rs) — top wall lever
+- RootSystem::from_closure/enumerate 17.71% (root_system.rs) — agent-136's lane
+- PackedKeySet::insert 11.60% (inner_class.rs)
+- quicksort 5.90% (final entries sort_unstable), memmove 4.54% (buffer concat)
