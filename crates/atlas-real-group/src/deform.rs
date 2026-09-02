@@ -56,7 +56,7 @@ use crate::matreduc::{exp_i, inverse_upper_triangular, IntMatrix};
 use crate::partial_block::PartialBlock;
 use crate::rep_context::{RepContext, StandardRepr};
 use crate::{
-    BlockDescent, BlockGraph, BlockModifier, BlockTopology, CommonContext, KType, RankFlags,
+    BlockDescent, BlockGraph, BlockTopology, CommonContext, KType, RankFlags,
     RationalWeight, StructureError, Weight,
 };
 
@@ -353,13 +353,21 @@ fn block_length(block: &BlockGraph, z: usize) -> Result<usize, StructureError> {
 /// `RepContext::deformation_terms` helper, this follows the upstream
 /// `contributions(block, block.singular(bm,gamma), y)` path and reconstructs
 /// every output row through its stored `StandardReprMod` and lookup modifier.
+///
+/// The KL accumulation reads the record's cached shared KL table through
+/// [`LocatedBlock::with_kl_table`] (upstream `Rep_table::deformation_terms`
+/// likewise keeps one KL table per block, repr.cpp:1994-1998 `kl_tab`),
+/// extending it monotonically with `fill(y + 1)` instead of rebuilding and
+/// refilling a throwaway table for every final of the same block.
 pub fn common_deformation_terms(
     rc: &RepContext,
-    block: &PartialBlock,
-    modifier: &BlockModifier,
-    y: usize,
+    located: &crate::rep_table::LocatedBlock,
     gamma: &RationalWeight,
 ) -> Result<Vec<(StandardRepr, i32)>, StructureError> {
+    let block = located.block();
+    let block: &PartialBlock = &block;
+    let modifier = located.block_modifier();
+    let y = located.raw_row();
     let y_len = block
         .length(y)
         .ok_or(StructureError::BlockInvariantViolation {
@@ -452,8 +460,6 @@ pub fn common_deformation_terms(
         });
     }
 
-    let mut kl = crate::KlTable::from_handle(block)?;
-    kl.fill(y + 1)?;
     let mut index = vec![usize::MAX; y + 1];
     for (position, &z) in finals.iter().enumerate() {
         index[z] = position;
@@ -462,40 +468,46 @@ pub fn common_deformation_terms(
     let mut remainder = vec![0_i32; finals.len()];
     remainder[0] = 1;
     let y_parity = y_len % 2;
-    for (position, &z) in finals.iter().enumerate() {
-        let current = remainder[position];
-        if current == 0 {
-            continue;
-        }
-        let contribute = block.length(z).unwrap_or(0) % 2 != y_parity;
-        for x in (0..=z).rev() {
-            let pol = kl
-                .pool()
-                .get(kl.kl_pol(x, z)?)
-                .cloned()
-                .unwrap_or_else(KlPol::zero);
-            let mut value = pol.evaluate_at_minus_one();
-            if value == 0 {
+    located.with_kl_table(|kl| {
+        kl.fill(y + 1)?;
+        for (position, &z) in finals.iter().enumerate() {
+            let current = remainder[position];
+            if current == 0 {
                 continue;
             }
-            if !(block.length(z).unwrap_or(0) - block.length(x).unwrap_or(0)).is_multiple_of(2) {
-                value = value.wrapping_neg();
-            }
-            for &(element, coefficient) in &contribution[x] {
-                let target = index[element];
-                if target == usize::MAX {
-                    return Err(StructureError::RepInvariantViolation {
-                        invariant: "common deformation contribution target",
-                    });
+            let contribute = block.length(z).unwrap_or(0) % 2 != y_parity;
+            for x in (0..=z).rev() {
+                let pol = kl
+                    .pool()
+                    .get(kl.kl_pol(x, z)?)
+                    .cloned()
+                    .unwrap_or_else(KlPol::zero);
+                let mut value = pol.evaluate_at_minus_one();
+                if value == 0 {
+                    continue;
                 }
-                let c = current.wrapping_mul(value).wrapping_mul(coefficient);
-                remainder[target] = remainder[target].wrapping_sub(c);
-                if contribute {
-                    acc[target] = acc[target].wrapping_add(c);
+                if !(block.length(z).unwrap_or(0) - block.length(x).unwrap_or(0))
+                    .is_multiple_of(2)
+                {
+                    value = value.wrapping_neg();
+                }
+                for &(element, coefficient) in &contribution[x] {
+                    let target = index[element];
+                    if target == usize::MAX {
+                        return Err(StructureError::RepInvariantViolation {
+                            invariant: "common deformation contribution target",
+                        });
+                    }
+                    let c = current.wrapping_mul(value).wrapping_mul(coefficient);
+                    remainder[target] = remainder[target].wrapping_sub(c);
+                    if contribute {
+                        acc[target] = acc[target].wrapping_add(c);
+                    }
                 }
             }
         }
-    }
+        Ok(())
+    })?;
 
     let sr_y = rc.sr_with_modifier(seed, modifier, gamma)?;
     let orientation_y = rc.orientation_number(&sr_y)? as i32;

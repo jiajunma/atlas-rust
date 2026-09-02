@@ -2624,15 +2624,8 @@ fn full_deformation_terms(
             .rep
             .lookup(&zi)
             .map_err(|error| structure_diagnostic(error, span))?;
-        let block = located.block();
-        let terms = common_deformation_terms(
-            rc,
-            &block,
-            located.block_modifier(),
-            located.raw_row(),
-            zi.gamma(),
-        )
-        .map_err(|error| structure_diagnostic(error, span))?;
+        let terms = common_deformation_terms(rc, &located, zi.gamma())
+            .map_err(|error| structure_diagnostic(error, span))?;
         if deadline_expired(deadline) {
             return Ok(None);
         }
@@ -17096,15 +17089,8 @@ pub(crate) fn call_with_printed(
                     .rep
                     .lookup(&final_sr)
                     .map_err(|error| structure_diagnostic(error, span))?;
-                let block = located.block();
-                let dterms = common_deformation_terms(
-                    &rc,
-                    &block,
-                    located.block_modifier(),
-                    located.raw_row(),
-                    final_sr.gamma(),
-                )
-                .map_err(|error| structure_diagnostic(error, span))?;
+                let dterms = common_deformation_terms(&rc, &located, final_sr.gamma())
+                    .map_err(|error| structure_diagnostic(error, span))?;
                 for (term_sr, coefficient) in dterms {
                     // Split_integer(c, -c) * it->second (atlas-types.w:8103).
                     let scaled = SplitValue::new(
