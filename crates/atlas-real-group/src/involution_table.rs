@@ -31,9 +31,9 @@ use crate::integer_lattice::{negative_coweight_eigenspace, reduce_basis_mod_two}
 use crate::real_projection::RealProjection;
 use crate::weyl_transducer::{CompactWeyl, WeylElt};
 use crate::{
-    CartanClassification, CartanId, CayleyCrossDecomposition, ImagePermutation, InnerClass,
-    IntegerLatticeBudget, LatticeInvolution, ModTwoSubspace, ModTwoVector, RootId, RootKind,
-    RootSystem, StructureError, TwistedInvolution, Weight, WeylAction, WeylElement,
+    CartanClassification, CartanId, CayleyCrossDecomposition, InnerClass, IntegerLatticeBudget,
+    LatticeInvolution, ModTwoSubspace, ModTwoVector, RootId, RootKind, RootSystem, StructureError,
+    TwistedInvolution, Weight, WeylAction, WeylElement,
 };
 
 /// Stable identifier of one twisted involution in one table's numbering.
@@ -130,101 +130,13 @@ impl InvolutionRecord {
     }
 }
 
-/// Dedup/lookup key of a table entry: the images of the SIMPLE roots only.
-///
-/// A Weyl element is fixed by its simple-root images, so the packed key is
-/// injective — equality semantics are unchanged. For semisimple rank <= 16
-/// with <= 256 roots the key packs into a u128 (the layout of
-/// `inner_class::PermutationKey`), which keeps the E8 cross-action BFS's
-/// ~1.6M probes to an integer hash and compare instead of chasing 240-entry
-/// ordered-map keys. Larger tables fall back to the full permutation.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-enum DedupKey {
-    Packed(u128),
-    Full(Box<[RootId]>),
-}
-
-/// The table's dedup index, with its keying discipline. The map is probed
-/// and inserted only — never iterated — so the hash order is unobservable.
-#[derive(Clone, Debug)]
-struct DedupIndex {
-    map: HashMap<DedupKey, InvolutionId, PermutationHasherBuilder>,
-    /// Simple roots' positions in the root enumeration, generator order
-    /// (the packing layout of [`DedupKey::Packed`]).
-    simple_positions: Vec<usize>,
-    root_count: usize,
-    packed: bool,
-}
-
-impl DedupIndex {
-    fn new(root_system: &RootSystem) -> Self {
-        let simple_positions: Vec<usize> = root_system
-            .simple_root_ids()
-            .iter()
-            .map(|id| id.0)
-            .collect();
-        let root_count = root_system.roots().len();
-        let packed = simple_positions.len() <= 16 && root_count <= usize::from(u8::MAX) + 1;
-        Self {
-            map: HashMap::default(),
-            simple_positions,
-            root_count,
-            packed,
-        }
-    }
-
-    /// The packed key of the permutation whose simple-root images are
-    /// `image(0..rank)`: generator order, 8 bits per generator.
-    fn pack(&self, image: impl Fn(usize) -> RootId) -> u128 {
-        let mut key = 0_u128;
-        for shift in 0..self.simple_positions.len() {
-            key |= (image(shift).0 as u128) << (8 * shift);
-        }
-        key
-    }
-
-    fn key_of(&self, permutation: &[RootId]) -> DedupKey {
-        // A foreign-length permutation keys as Full even in packed mode, so
-        // it can never alias a stored Packed key (provenance contract).
-        if self.packed && permutation.len() == self.root_count {
-            DedupKey::Packed(self.pack(|simple| permutation[self.simple_positions[simple]]))
-        } else {
-            DedupKey::Full(permutation.into())
-        }
-    }
-
-    /// The key of the Weyl factor whose `theta = w after delta` root images
-    /// are `root_images`: `w(r) = theta(delta(r))` because delta is
-    /// involutive, so the packed value is bit-identical to
-    /// `key_of(w.image_permutation())` (record numbering/BFS order unchanged)
-    /// and the Full fallback stores the same reconstructed permutation.
-    fn key_of_theta_images(
-        &self,
-        root_images: ImagePermutation<'_>,
-        delta: ImagePermutation<'_>,
-    ) -> DedupKey {
-        if self.packed && root_images.len() == self.root_count {
-            DedupKey::Packed(self.pack(|simple| {
-                let position = self.simple_positions[simple];
-                root_images.at(delta.at(position).0)
-            }))
-        } else {
-            let w_images: Box<[RootId]> = delta
-                .iter()
-                .map(|delta_image| root_images.at(delta_image.0))
-                .collect();
-            DedupKey::Full(w_images)
-        }
-    }
-
-    fn get(&self, key: &DedupKey) -> Option<InvolutionId> {
-        self.map.get(key).copied()
-    }
-
-    fn insert(&mut self, key: DedupKey, id: InvolutionId) {
-        self.map.insert(key, id);
-    }
-}
+/// Dedup discipline: the record's compact Weyl factor alone is the dedup
+/// key. Within one table (fixed distinguished delta) `theta = w after
+/// delta` makes the Weyl factor determine the whole record, so
+/// `compact_index` ([`WeylElt`] = 8 bytes, one integer hash round) is an
+/// injective key; the retired `DedupIndex` re-derived the same key from the
+/// simple-root images at a per-edge packing cost. The map is probed and
+/// inserted only — never iterated — so the hash order is unobservable.
 
 /// Compute the compact Weyl value for the cross action `s*w*twist(s)`.
 fn compact_cross_neighbor(
@@ -302,7 +214,6 @@ pub struct InvolutionTable {
     coroot_parity: Vec<ModTwoVector>,
     two_rho: Weight,
     records: Vec<InvolutionRecord>,
-    index: DedupIndex,
     /// The stored cross-action links, one record-major row of
     /// `twist.len()` generators per record, flattened into a single
     /// allocation: per-record `Vec` headers and per-row malloc rounding
@@ -390,7 +301,6 @@ impl InvolutionTable {
             coroot_parity,
             two_rho: Weight::new(two_rho),
             records: Vec::new(),
-            index: DedupIndex::new(root_system),
             cross_links: Vec::new(),
             orbits: Vec::new(),
         })
@@ -434,12 +344,6 @@ impl InvolutionTable {
             .map_err(|_| StructureError::AllocationFailed {
                 requested: expected_links,
             })?;
-        self.index
-            .map
-            .try_reserve(expected)
-            .map_err(|_| StructureError::AllocationFailed {
-                requested: expected,
-            })?;
         self.compact_index
             .try_reserve(expected)
             .map_err(|_| StructureError::AllocationFailed {
@@ -481,7 +385,6 @@ impl InvolutionTable {
             &self.compact_weyl,
             &self.reflections,
             &mut self.records,
-            &mut self.index,
             seed_compact,
             representative
                 .root_involution()
@@ -503,13 +406,15 @@ impl InvolutionTable {
 
         // External-order BFS. Cross links are filled at each node's visit,
         // so after the orbit closes every (generator, node) edge is an O(1)
-        // stored link. The dedup probe is allocation-free on the hit path
-        // (the majority: rank-1 of every rank edges): the neighbor's packed
-        // simple-image key decides membership, and the neighbor's theta root
-        // images — one buffer, no WeylElement materialization — are built by
-        // transport only for NEW involutions, matching the cost profile of
-        // upstream's add_cross (involutions.cpp:228-258), which pays one
-        // fixed-size twistedConjugate per edge.
+        // stored link. The dedup probe is the compact Weyl factor itself
+        // (8-byte key, one integer hash round): within one table
+        // `theta = w after delta` makes the factor an injective record key,
+        // so the retired simple-root-image packing decided exactly the same
+        // hits. The neighbor's theta root images — one buffer, no
+        // WeylElement materialization — are built by transport only for NEW
+        // involutions, matching the cost profile of upstream's add_cross
+        // (involutions.cpp:228-258), which pays one fixed-size
+        // twistedConjugate per edge.
         let semisimple_rank = self.twist.len();
         let delta = self
             .inner_class
@@ -520,9 +425,8 @@ impl InvolutionTable {
             let mut links = cross_link_row(semisimple_rank)?;
             let current_element = self.records[cursor].element;
             for generator in 0..semisimple_rank {
-                // The cached reflection permutations serve the packed dedup
-                // probe and, on a miss, the theta-image transport below; the
-                // compact neighbor is computed first for both dedup modes.
+                // The cached reflection permutations serve the theta-image
+                // transport on a dedup miss.
                 let (left, right) = {
                     let left = self.reflections[generator].image_permutation();
                     let right = self.reflections[self.twist[generator]].image_permutation();
@@ -538,21 +442,9 @@ impl InvolutionTable {
                     generator,
                     self.twist[generator],
                 );
-                if !self.index.packed {
-                    if let Some(existing) = self.compact_index.get(&compact_neighbor) {
-                        links.push(*existing);
-                        continue;
-                    }
-                }
-                if self.index.packed {
-                    let probe = DedupKey::Packed(self.index.pack(|simple| {
-                        let position = self.index.simple_positions[simple];
-                        left[theta.at(delta.at(right[position].0).0).0]
-                    }));
-                    if let Some(existing) = self.index.get(&probe) {
-                        links.push(existing);
-                        continue;
-                    }
+                if let Some(existing) = self.compact_index.get(&compact_neighbor) {
+                    links.push(*existing);
+                    continue;
                 }
                 // Transport the theta root images across the cross edge
                 // instead of materializing the neighbor's Weyl factor:
@@ -605,7 +497,6 @@ impl InvolutionTable {
                     &self.compact_weyl,
                     &self.reflections,
                     &mut self.records,
-                    &mut self.index,
                     compact_neighbor,
                     neighbor_images,
                     neighbor_w_length,
@@ -641,12 +532,21 @@ impl InvolutionTable {
     }
 
     /// Number of a twisted involution, if its Cartan class has been added.
-    /// Keyed by the forward root permutation, which stage (a) pinned as a
-    /// complete equality key; a same-cardinality foreign system remains the
-    /// caller's contract.
+    /// Resolved through the compact factor: the legacy element is encoded
+    /// into the table's compact numbering (an exact, verified boundary), so
+    /// the hit set is the retired simple-root-image probe's — a Weyl element
+    /// is fixed by its simple-root images, and both keys are injective.
     pub fn lookup(&self, element: &WeylElement) -> Option<InvolutionId> {
-        self.index
-            .get(&self.index.key_of(element.image_permutation()))
+        let compact = self
+            .compact_weyl
+            .encode_element(
+                self.inner_class.datum(),
+                self.inner_class.root_system(),
+                &self.reflection_actions,
+                element,
+            )
+            .ok()?;
+        self.compact_index.get(&compact).copied()
     }
 
     /// Bounded by the involution count.
@@ -1190,7 +1090,6 @@ fn push_record(
     compact_weyl: &CompactWeyl,
     reflections: &[WeylElement],
     records: &mut Vec<InvolutionRecord>,
-    index: &mut DedupIndex,
     element: WeylElt,
     root_images: Vec<RootId>,
     weyl_length: usize,
@@ -1253,14 +1152,8 @@ fn push_record(
         None => RealProjection::build(theta)?,
     };
     let id = InvolutionId(records.len());
-    // The dedup key of the Weyl factor from its theta images:
-    // w(s_i) = theta(delta(s_i)) reproduces the retired
-    // `key_of(legacy.image_permutation())` values bit for bit.
-    let key = index.key_of_theta_images(
-        involution.root_involution().image_permutation(),
-        delta_images,
-    );
-    index.insert(key, id);
+    // Dedup is the caller's compact_index insert (the compact Weyl factor is
+    // the injective record key); nothing per record remains to index here.
     records.push(InvolutionRecord {
         element,
         involution,
@@ -1984,21 +1877,12 @@ mod tests {
     }
 
     #[test]
-    fn forced_full_key_bfs_uses_compact_cross_neighbor() {
+    fn bfs_compact_neighbors_match_the_legacy_word_products() {
         let (inner_class, classification) = context(vec![vec![2, -2], vec![-1, 2]], None, 8, 8);
         let mut table = InvolutionTable::new(&inner_class, table_budget(8)).unwrap();
-        table.index.packed = false;
         for cartan in 0..classification.cartan_classes().len() {
             table.add_cartan(&classification, CartanId(cartan)).unwrap();
         }
-
-        assert!(
-            table
-                .index
-                .map
-                .keys()
-                .all(|key| matches!(key, DedupKey::Full(_)))
-        );
 
         for index in 0..table.involution_count() {
             let record = table.record(InvolutionId(index)).unwrap();

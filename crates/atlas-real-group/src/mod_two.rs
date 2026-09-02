@@ -54,6 +54,12 @@ impl ModTwoVector {
         })
     }
 
+    /// The packed words, for bulk parity arithmetic against precomputed
+    /// masks (the padding bits above `dimension` are zero by contract).
+    pub(crate) fn words(&self) -> &[u64] {
+        &self.words
+    }
+
     pub fn xor_assign(&mut self, right: &Self) -> Result<(), StructureError> {
         if self.dimension != right.dimension {
             return Err(StructureError::RankMismatch {
