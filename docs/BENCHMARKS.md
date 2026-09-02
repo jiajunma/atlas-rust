@@ -445,3 +445,13 @@ unchanged (~46MB). **Versus the oracle's 15.4s (3671638) the Rust build is
 now ~3.7x FASTER on this E6 workload** — the block_deform E6 gap is closed
 and inverted. E7 large-scale probe on this binary submitted as 3672161
 (fat, 6h) to check the big-group scaling against the oracle's 1:39:27.
+
+Post-fix profile (job 3672168, frame-pointer build @ f9202e7, same probe):
+`block_deformation_with_dual_kl` is now 86% SELF time (inlined
+SplitInteger/matrix arithmetic in the coefficient pass — the algorithm's
+real work), with inverse_upper_triangular down to 3.6% and
+`KlSupport::prim_index`'s BTreeMap lookups at 1.7%. No remaining
+redundancy of the allocation/sort kind; further E6 gains would need
+algorithmic changes, and the probe already beats the oracle 3.7x.
+Gotcha: sbatch `#SBATCH --output=` lands in the SUBMISSION cwd — cd to the
+worktree before sbatch or the .out goes to $HOME (3672168 did).
