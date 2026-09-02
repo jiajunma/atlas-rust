@@ -78,6 +78,17 @@ fn print_events(frame: &SessionFrame<FsProvider, FsSink>, events: &[SessionEvent
 }
 
 fn main() -> ExitCode {
+    // glibc: pin the mmap/trim thresholds to their 128KiB defaults to
+    // disable dynamic upward adaptation — scoped classification workers
+    // otherwise retain MB-size freed chunks in per-thread arenas (probe
+    // 3666095: -3.4MB RSS on small scripts). FFI is isolated to this
+    // block; mallopt is process-global malloc tuning with no memory-safety
+    // invariants, marked unsafe in libc only because it is a C symbol.
+    #[cfg(all(target_os = "linux", target_env = "gnu"))]
+    unsafe {
+        libc::mallopt(libc::M_MMAP_THRESHOLD, 128 * 1024);
+        libc::mallopt(libc::M_TRIM_THRESHOLD, 128 * 1024);
+    }
     // The parallel passes (Weyl enumeration, orbit conjugation, KGB BFS)
     // are iterative, so a modest rayon worker stack keeps RSS down
     // (default 8MiB per worker vs ~1-2MiB actually used).

@@ -6,4 +6,5 @@ license.workspace = true
 
 [dependencies]
 rayon = "1.10"
+libc = "0.2"
 atlas-core.workspace = true
