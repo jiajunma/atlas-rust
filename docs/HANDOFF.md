@@ -7377,3 +7377,31 @@ tests, full corpus **3666902** passed 240/240, and fat `unipotent`
 **3666900** matched at 1.082x wall and 0.918x RSS. These are the authoritative
 post-merge measurements for `1f49e2f`; the earlier `c641acc` candidate numbers
 remain useful only as an independent pre-merge confirmation.
+
+## Perf 2026-09-02e — RootSystem closure storage pass merged
+
+Commit `86917e5` is now integrated as `1a49a30`. It replaces the closure's
+ordered `BTreeMap` with a deterministic lightweight `HashMap` plus one final
+lexicographic sort, stores only root keys in the pending queue, and copies the
+paired coroot/simple coordinates once per popped root into reusable scratch
+buffers. This removes repeated coordinate payloads while preserving the
+historical root ordering contract. Review found no correctness or ordering
+issues; the previous intermediate `26dbd64` was superseded before merge.
+
+Exact HPC gates for `86917e5`:
+
+- quick-check **3666955**: `cargo check --workspace --all-targets` and all
+  test groups passed, including **549** tests;
+- Weyl focused **3666959**: Weyl 64/64, InvolutionTable 30/30, KGB 14/14 in
+  debug and release;
+- KGB differential **3666958**: 12/12 groups MATCH;
+- full corpus **3666957**: 240/240 MATCH, median wall 2.591x and median RSS
+  3.768x; report SHA-256 `75cc91d56fd4393e28bf799ee0fe5b461fcd73f08dd92fe48f91a6f8ee404282`;
+- fat `unipotent` **3666956**: Rust 5.097s / 809,244KB versus C++ 4.695s /
+  881,300KB (1.086x wall, 0.918x RSS), exact MATCH.
+
+The full-corpus and heavy-workload changes remain within run variance, so no
+standalone speedup claim is made. The next hotspot is still the
+`RootSystem::from_closure` self body and its remaining RootSet/ladder-bottom
+work; the pre-existing >255-root `u8` RootId boundary remains a separate
+correctness lane.
