@@ -38,4 +38,11 @@ if [[ "$check_status" -eq 0 ]]; then
   echo "TEST_DONE status=$test_status log=$test_log"
 fi
 cd "$submit_dir"
-git worktree remove --force "$check_dir"
+# A concurrent quick-check may prune this worktree's metadata while the test
+# process is still running. In that case the directory is no longer a known
+# worktree, but it is still safe to remove this job-owned checkout directly.
+if git worktree list --porcelain | grep -Fqx "worktree $check_dir"; then
+  git worktree remove --force "$check_dir"
+else
+  rm -rf "$check_dir"
+fi
