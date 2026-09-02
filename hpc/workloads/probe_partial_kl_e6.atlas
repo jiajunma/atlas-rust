@@ -1,0 +1,12 @@
+rb : RootDatum
+rb := simply_connected(Lie_type("E6"),true)
+ib : InnerClass
+ib := inner_class(rb,[[1,0,0,0,0,0],[0,1,0,0,0,0],[0,0,1,0,0,0],[0,0,0,1,0,0],[0,0,0,0,1,0],[0,0,0,0,0,1]])
+n : int
+n := nr_of_real_forms(ib)
+rfb : RealForm
+rfb := real_form(ib,n-1)
+p : Param
+p := param(KGB(rfb,0),[1,1,1,1,1,1],[1,1,1,0,0,0]/2)
+v : ([Param],mat,[vec])
+v := partial_KL_block(p)
