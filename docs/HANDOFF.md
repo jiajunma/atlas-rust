@@ -4,6 +4,38 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Current frontier - 2026-09-03 (lane D merged locally; HPC ssh outage)
+
+Mainline `codex/continue-atlas-port` tip (LOCAL, unpushed): **12a39a1**,
+the merge of lane D `agent-kgbopt` @ `83fb43b` (KGB/involution-table
+construction optimizations) into `0fe6955`. The merge commit message carries
+the full review summary; docs conflicts were append-only unions. Push and
+the post-merge gates are queued behind an HPC ssh outage (10.26.14.64
+unreachable since ~2026-09-03 00:45 local).
+
+Verified state before the outage:
+- `f9202e7` (orientation cache + hoist): gates 3672055/3672056 green, E6
+  bound-1 A/B 3672106 IDENTICAL, **52-57s -> 4.06-4.43s (12.9x)** — Rust
+  now beats the oracle's 15.4s by ~3.7x on that workload.
+- `0fe6955` (mask-hasher prim_index): gates 3672382/3672383 green, A/B
+  3672384 4x IDENTICAL, median 4.42 -> 4.16s.
+- Post-fix E6 profile (3672168): `block_deformation_with_dual_kl` is 86%
+  SELF time — real coefficient-pass arithmetic, no residual redundancy.
+- Lane D @ `83fb43b`: branch gates green (3672843/3672844), E8 setup A/B
+  3672407 IDENTICAL with unitary_e8 4.12 -> 3.59s, klv_e8 3.74 -> 3.22s;
+  its heavy leg + v9 incremental A/B (3672941/3672942) were in flight.
+
+In flight at outage (collect on recovery): E7 block_deform probes
+3671969 (a8b2fd8) / 3672161 (f9202e7) / 3672980 (0fe6955) vs oracle
+1:39:27/5.18GB (3670294); heavy unitary CPP leg 3671409; lane D v9 chain
+3672941-3672944. Sorted-content comparator staged at
+`/public/home/majj/atlas-rust-orient/compare_e7.sh` (term order differs by
+design).
+
+Watcher lesson (cost one stale exit): an ssh failure makes remote probes
+return EMPTY — monitor loops must retry on empty output, never treat it as
+"job gone" (the 3672980 watcher false-exited GONE this way).
+
 ## Current frontier - 2026-09-02 late (block_deform performance campaign)
 
 Mainline branch `codex/continue-atlas-port` (worktree
