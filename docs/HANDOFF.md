@@ -7522,3 +7522,83 @@ Levers identified by code reading (verify by perf on the heavy workloads):
    matching entry per occurrence).
 4. deform.rs:936-945 O(n^2) triangular inverse on survivors — probably
    subdominant to the KL fill.
+
+## Active agents (2026-09-02, parent dispatch — do not double-dispatch)
+
+- agent-138 owns `crates/atlas-real-group/src/kl_polynomial.rs` +
+  `kl_table.rs` (KlPol in-place ops, branch `agent-klpol`, HPC worktree
+  atlas-rust-klpol, sync ref `sync-klpol`).
+- agent-139 owns `crates/atlas-real-group/src/deform.rs` + `rep_table.rs`
+  (dual-block KL cache + accumulator hash, branch `agent-dualkl`, HPC
+  worktree atlas-rust-dualkl, sync ref `sync-dualkl`).
+- Both base on `8b21ff7`. Parent owns integration via /tmp/atlas-merge133.
+
+Probe result (job 3667606 @ 527d3c5): probe_klv_e8.atlas rust 4.463s /
+594704KB vs cpp 4.849s / 804804KB (0.92x wall, 0.74x RSS) — E8 single deform
+already at parity; probe_partial_kl_d5.atlas trivial (0.01s). Sizing probes
+for E6/E7 partial_KL + E6 is_unitary submitted as job 3668680 @ 8b21ff7.
+
+## KLV lanes landed (2026-09-02, parent harvest)
+
+- agent-139 (`agent-dualkl`, `10ca56c`): dual-block KL table cache
+  (`rep_table::with_dual_kl_table`, thread-local, content fingerprint +
+  full block equality verify, ActiveKlCallback nesting contract) +
+  deform accumulator digest buckets. Gates: quick_check 3669249 green,
+  full corpus 3669275 MATCH: 240.
+- agent-138 (`agent-klpol`, `054a8ef`): KlPol in-place `*_assign` ops +
+  borrow-based pool lookups (`zero_ref` static). Gates: quick_check
+  3669263 green, full corpus 3669302 MATCH: 240, A/B 3669311 wall-neutral
+  (4.54s vs 4.50s base on E8 deform, IDENTICAL output).
+- Merge points: `d48c4b0` (corpus 3669375 MATCH: 240), `cb4e950` (corpus
+  3670016 MATCH: 240). Mainline now at `073a800` (+ benchmarks ledger).
+- HPC housekeeping: the `atlas-rust-merge133` worktree lost its gitdir
+  metadata once (job 3669366 ran on a stale tree and was scancelled);
+  rebuilt at d48c4b0, corpus rerun as 3669375. Lesson: after recreating
+  an HPC worktree always verify `git rev-parse HEAD` before sbatch.
+- Still open: agent-139's repeated-deform A/B (job 3669387) and both
+  agents' final reports; lane-4 lever (O(n^2) triangular inverse in
+  deform.rs) not yet dispatched.
+
+## agent-klpol (agent-138): KlPol in-place ops — DONE 2026-09-02 (landed)
+
+- Branch `agent-klpol` (sync ref `sync-klpol`): `f5fb42c` (perf: in-place
+  KlPol ops) + `054a8ef` (fix: lifetime coercion in borrow-based pool
+  lookups); both already merged into mainline by the parent.
+- `kl_polynomial.rs`: every hot op gained an in-place twin
+  (`add_assign`, `sub_assign`, `shift_assign`, `add_shifted_assign`,
+  `sub_shifted_assign`, `add_shifted_scaled_assign`, `scale_assign`,
+  `divide_by_2_assign`); the allocating variants are now clone+assign
+  wrappers, so the public API is unchanged and ext_kl.rs/deform.rs
+  compile untouched.
+- `kl_table.rs`: `kl_pol_pool`/`current_column_pol` now borrow the pooled
+  polynomial (`KlPol::zero_ref()` static zero fallback) instead of
+  cloning per lookup; `recursion_column`, `mu_correction`,
+  `complete_primitives`, `new_recursion_column`, `mu_new_formula`
+  combine in place; the `new_recursion_column` clone-per-access `kl_y`
+  closure became index-based borrows of the working row.
+- Gates (run at 054a8ef): quick_check job 3669263 `CHECK_DONE status=0`
+  + `TEST_DONE status=0`; full corpus job 3669302 `MATCH: 240`; A/B
+  probe_klv_e8 on one node (job 3669311, hpc/probe_klpol_ab.sbatch,
+  uncommitted in the HPC worktree /public/home/majj/atlas-rust-klpol):
+  base 8b21ff7 4.50s/594176KB vs branch 4.54s/593924KB (+0.9% wall =
+  run variance, -0.04% RSS), cpp oracle 4.88s/804800KB; stdout/stderr
+  byte-identical base-vs-branch and branch-vs-cpp. E6 (3670225) and E7
+  (3669386) partial_KL sizing probes are trivial (~0.01-0.13s),
+  identical outputs, no signal.
+- Honest perf note: wall is unchanged within noise — KlPol allocation
+  is NOT the E8 deform probe's bottleneck (KGB/block construction and
+  the deform loop dominate). The in-place ops still cut per-iteration
+  Vec allocations in the mu-correction O(n^2) loop, which may matter on
+  bigger blocks; no regression observed anywhere.
+- Follow-up: a8b2fd8 (parent) fixed an eager-`cross` panic in
+  recursion_column on partial blocks — pre-existing, unrelated to the
+  in-place conversion.
+- Pitfalls for the next agent: (1) `Option<&KlPol>::unwrap_or_else(KlPol::zero_ref)`
+  fails E0521 — the fn-item return unifies the Option's lifetime against
+  'static; use a `match` with per-arm coercion. (2) `git push hpc` to a
+  branch checked out in an HPC worktree is rejected; detach the
+  worktree's HEAD first. (3) Concurrent worktree-creating jobs must use
+  `git worktree add --detach` or the second job dies on "already checked
+  out" (killed E6 A/B 3669385 once). (4) /private/tmp worktrees on the
+  mac get reaped mid-session — the branch on origin/hpc is the durable
+  copy.
