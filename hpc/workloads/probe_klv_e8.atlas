@@ -8,4 +8,3 @@ p : Param
 p := param(KGB(rfb,0),[1,1,1,1,1,1,1,1],[1,1,1,1,0,0,0,0]/2)
 q : ParamPol
 q := deform(p)
-prints("deform_terms",nr_of_terms(q))
