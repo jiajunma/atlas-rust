@@ -614,7 +614,8 @@ mod tests {
         }
     }
 
-
+    #[test]
+    fn classifies_real_and_complex_a2_roots() {
         let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
         let roots = RootSystem::enumerate(&datum, 6).unwrap();
         let data = RootInvolutionData::new(
