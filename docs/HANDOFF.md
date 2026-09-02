@@ -7487,3 +7487,30 @@ standalone speedup claim is made. The next hotspot is still the
 `RootSystem::from_closure` self body and its remaining RootSet/ladder-bottom
 work; the pre-existing >255-root `u8` RootId boundary remains a separate
 correctness lane.
+
+## Lane prep 2026-09-02c — KLV/unitarity optimization targets (parent, pre-dispatch)
+
+Baseline gap: corpus KLV/unitarity scripts are all small (test_unitarity
+0.439s/2.52x, unitary_induction 0.4s/2.58x, KL_polynomial_matrices 0.257s/2.99x)
+— the corpus shows only the fixed-cost floor, so heavy workloads are needed
+to see the algorithmic gap. Sizing probes: hpc/workloads/probe_klv_e8.atlas
+(E8 split-ish form, one deform call) + probe_partial_kl_d5.atlas (D5, one
+partial_KL_block); first submission 3667589 CPP_FAILed on probe-script
+syntax (identical error both sides — good differential signal), fixed at
+527d3c5 (dropped prints), resubmission pending HPC link.
+
+Levers identified by code reading (verify by perf on the heavy workloads):
+1. KlPol (kl_polynomial.rs): every op (add/sub/shift/add_shifted/
+   sub_shifted/scaled) allocates a fresh Vec; upstream SafePoly mutates in
+   place (safeAdd/safeSubtract). In-place ops with a reused accumulator in
+   the recursion loops = big allocator-traffic cut. kl_table.rs
+   recursion_column/complete_primitives are the call sites.
+2. deform.rs block_deformation_to_height: fills the FULL dual KL table per
+   call (kl_tab.fill(0)) — per-block KL table caching across deform calls
+   on the same block is an algorithmic win if results stay byte-identical
+   (upstream also rebuilds per call, so parity = output equality only).
+3. deform.rs:900 accumulator linear scan is O(n^2) per call — hash-index
+   by StandardRepr (careful: queue.find+erase semantics = consume one
+   matching entry per occurrence).
+4. deform.rs:936-945 O(n^2) triangular inverse on survivors — probably
+   subdominant to the KL fill.
