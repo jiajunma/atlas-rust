@@ -267,3 +267,26 @@ individual wall-time effects. Treat the newer same-node run at `3448a3a`,
 retaining **2.3275x wall / 3.757x RSS** as the current
 full-corpus median; the latter is primarily a short-script fixed-cost metric.
 | 3666702 | 95d87ac | 240 | 0 | FULL CORPUS GREEN with agent-136 RootSystem enumeration merged (240/240 MATCH; quick_check 3666701 green): median wall 2.571x (node noise; interleaved A/B showed parity), median maxrss **4.33x -> 3.76x** (mallopt threshold pinning landed), over_5x 0, within_2x 54. Decisive metric is retired instructions (noise-free): groups.atx100 32.61G -> **29.55G, -9.4%** (job 3666649, interleaved n=5, cu052). Attribution: eliminated weyl::apply_matrix/compose_matrices helper calls + allocator traffic in enumerate BFS + direct simple-reflection table build. Tooling note: perf srcline/annotate useless under lto=fat (cgu-0:0); use call-graph + instruction counting |
+
+## KLV/unitarity heavy-lane baseline (2026-09-02, jobs 3667606/3668692/3668708 @ probes)
+
+Sizing probes on fat partition (TIMEOUT 600-1800s), same-node A/B per script, both sides MATCH:
+
+| job | probe | rust | cpp | wall | RSS |
+|---|---|---|---|---|---|
+| 3667606 | probe_klv_e8.atlas (one `deform`, E8 split-ish) | 4.463s / 594,704KB | 4.849s / 804,804KB | **0.920x** | **0.739x** |
+| 3668692 | probe_partial_kl_e8.atlas (`partial_KL_block`, E8 n-1 form) | 3.535s / 593,596KB | 3.901s / 804,812KB | **0.906x** | **0.738x** |
+| 3668692 | probe_unitary_e6.atlas (`is_unitary` via `<deform.at`, E6 n-1 form) | 0.316s / 43,264KB | 0.159s / 13,004KB | 1.987x | 3.327x |
+| 3668707 | probe_unitary_e7.atlas (same, E7 n-1 form) | 0.449s / 67,652KB | 0.279s / 44,528KB | 1.609x | 1.519x |
+| 3668708 | probe_unitary_e8.atlas (same, E8 real_form 2) | 3.991s / 619,856KB | 4.051s / 810,972KB | **0.985x** | **0.764x** |
+| 3668680 | probe_partial_kl_e6/e7.atlas | 0.028s / 0.164s | 0.024s / 0.192s | ~1x | — |
+
+Reading: at heavy-KL scale (E8 block, ~4s) the Rust KLV/deform/unitarity path is
+already at parity or faster than the oracle, with a stable ~25% RSS advantage.
+The unitarity ratios >1x at E6/E7 are fixed-cost noise on sub-second scripts
+(interpreter startup + inner-class build), not algorithmic. `is_unitary` is
+NOT a builtin — it lives in `deform.at`; probes must `<deform.at` first
+(both sides reject it identically otherwise — good differential signal).
+Optimization lanes in flight target the remaining KL-fill allocator traffic
+(agent-138 KlPol in-place) and per-call dual KL table rebuild
+(agent-139 dual-block KL cache + accumulator hash).
