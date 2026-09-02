@@ -83,6 +83,31 @@ pub struct RootSet {
     len: usize,
 }
 
+struct RootSetIter<'a> {
+    blocks: &'a [u64],
+    next_block: usize,
+    block_index: usize,
+    pending: u64,
+}
+
+impl Iterator for RootSetIter<'_> {
+    type Item = RootId;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            if self.pending != 0 {
+                let bit = self.pending.trailing_zeros() as usize;
+                self.pending &= self.pending - 1;
+                return Some(RootId(self.block_index * 64 + bit));
+            }
+            let block_index = self.next_block;
+            self.pending = *self.blocks.get(block_index)?;
+            self.next_block += 1;
+            self.block_index = block_index;
+        }
+    }
+}
+
 impl RootSet {
     /// An empty set over a universe of `count` root IDs.
     fn with_capacity(count: usize) -> Result<Self, StructureError> {
@@ -125,18 +150,16 @@ impl RootSet {
 
     /// Members in ascending stable root order.
     pub fn iter(&self) -> impl Iterator<Item = RootId> + '_ {
-        self.blocks
-            .iter()
-            .enumerate()
-            .flat_map(|(block_index, &block)| {
-                (0..64).filter_map(move |bit| {
-                    if block & (1u64 << bit) != 0 {
-                        Some(RootId(block_index * 64 + bit))
-                    } else {
-                        None
-                    }
-                })
-            })
+        self.iter_nonzero_bits()
+    }
+
+    fn iter_nonzero_bits(&self) -> RootSetIter<'_> {
+        RootSetIter {
+            blocks: &self.blocks,
+            next_block: 0,
+            block_index: 0,
+            pending: 0,
+        }
     }
 }
 
@@ -1235,6 +1258,18 @@ mod tests {
         let roots = RootSet::with_capacity(240).unwrap();
         assert!(!roots.blocks.spilled());
         assert!(RootSet::with_capacity(257).unwrap().blocks.spilled());
+    }
+
+    #[test]
+    fn root_set_sparse_iteration_preserves_stable_order_across_blocks() {
+        let mut roots = RootSet::with_capacity(257).unwrap();
+        for id in [RootId(256), RootId(64), RootId(0), RootId(129), RootId(63)] {
+            roots.insert(id);
+        }
+        assert_eq!(
+            roots.iter().collect::<Vec<_>>(),
+            vec![RootId(0), RootId(63), RootId(64), RootId(129), RootId(256)]
+        );
     }
 
     #[test]
