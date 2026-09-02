@@ -1004,27 +1004,53 @@ fn block_deformation_with_dual_kl(
     // The parity/orientation coefficient pass (repr.cpp:2096-2121),
     // indexed by ASCENDING survivor position; upstream walks the reversed
     // result list, which is the same order.
+    //
+    // Only opposite-parity, nonzero entries of `q_mat` ever contribute, so
+    // they are collected once per column; upstream's `coef` scratch vector
+    // is then redundant: `coef[j]` is row `j` of `signed_P` against those
+    // recorded column entries. All arithmetic is wrapping, hence
+    // associative, so the reassociated accumulation is bit-identical to
+    // upstream — same-parity and zero-sum `j` only ever added a zero term
+    // and are skipped (including their orientation lookups).
+    let mut column_entries: Vec<Vec<(usize, i32)>> = vec![Vec::new(); n];
+    for (position, entries) in column_entries.iter_mut().enumerate().skip(1) {
+        for j in 0..position {
+            if odd_length[j] == odd_length[position] {
+                continue;
+            }
+            let entry = q_mat.get(j, position);
+            if entry != 0 {
+                entries.push((j, entry));
+            }
+        }
+    }
     let mut coefs: Vec<SplitInteger> = survivors.iter().map(|(_, _, coef)| *coef).collect();
     for position in (0..n).rev() {
         let c_cur = coefs[position];
         if c_cur.is_zero() {
             continue;
         }
+        let entries = &column_entries[position];
+        if entries.is_empty() {
+            continue;
+        }
         // The product of the opposite-parity columns of `signed_P` with
         // column `position` of `q_mat` (repr.cpp:2100-2108).
-        let mut coef = vec![SplitInteger::zero(); n];
-        for j in 0..position {
+        let our_orient = rc.orientation_number(&survivors[position].1)?;
+        for j in (0..position).rev() {
             if odd_length[j] == odd_length[position] {
                 continue;
             }
-            for i in 0..=j {
-                let contribution = signed_p.get(i, j).wrapping_mul(q_mat.get(j, position));
-                coef[i] = coef[i].add_int(contribution);
+            let mut acc = 0_i32;
+            for &(jp, entry) in entries {
+                if jp >= j {
+                    acc = acc.wrapping_add(signed_p.get(j, jp).wrapping_mul(entry));
+                }
             }
-        }
-        let our_orient = rc.orientation_number(&survivors[position].1)?;
-        for j in (0..position).rev() {
-            let mut cj = coef[j] * c_cur;
+            if acc == 0 {
+                continue;
+            }
+            let mut cj = SplitInteger::new(acc, 0) * c_cur;
             let diff = our_orient as i32 - rc.orientation_number(&survivors[j].1)? as i32;
             debug_assert_eq!(diff % 2, 0);
             cj = cj.times_1_s();

@@ -480,19 +480,26 @@ pub(crate) fn inverse_upper_triangular(m: &IntMatrix) -> Result<IntMatrix, Struc
         });
     }
     let mut result = IntMatrix::new(n, n);
+    // Row-major slices instead of `get`: the row of `m` is contiguous and
+    // wrapping addition is associative, so the ascending-k accumulation is
+    // bit-identical to upstream's descending one (matrix.cpp:432-438).
     for j in 0..n {
         if m.get(j, j) != 1 {
             return Err(StructureError::RepInvariantViolation {
                 invariant: "invert triangular: not unitriangular",
             });
         }
-        result.set(j, j, 1);
+        result.data[j * n + j] = 1;
         for i in (0..j).rev() {
+            let row = &m.data[i * n + (i + 1)..i * n + (j + 1)];
             let mut sum = 0_i32;
-            for k in ((i + 1)..=j).rev() {
-                sum = sum.wrapping_add(m.get(i, k).wrapping_mul(result.get(k, j)));
+            for (offset, &entry) in row.iter().enumerate() {
+                if entry != 0 {
+                    let k = i + 1 + offset;
+                    sum = sum.wrapping_add(entry.wrapping_mul(result.data[k * n + j]));
+                }
             }
-            result.set(i, j, sum.wrapping_neg());
+            result.data[i * n + j] = sum.wrapping_neg();
         }
     }
     Ok(result)
@@ -742,6 +749,48 @@ mod tests {
         // Non-square and non-unitriangular inputs are rejected.
         assert!(inverse_upper_triangular(&IntMatrix::new(2, 3)).is_err());
         assert!(inverse_upper_triangular(&matrix(2, 2, &[2, 1, 0, 1])).is_err());
+    }
+
+    #[test]
+    fn inverse_upper_triangular_matches_naive_back_substitution() {
+        // Pseudo-random unit upper-triangular matrices with entries large
+        // enough to exercise wrapping i32 arithmetic; compare against a
+        // straightforward descending-k back substitution.
+        fn naive(m: &IntMatrix) -> IntMatrix {
+            let n = m.n_columns();
+            let mut result = IntMatrix::new(n, n);
+            for j in 0..n {
+                result.set(j, j, 1);
+                for i in (0..j).rev() {
+                    let mut sum = 0_i32;
+                    for k in ((i + 1)..=j).rev() {
+                        sum = sum.wrapping_add(m.get(i, k).wrapping_mul(result.get(k, j)));
+                    }
+                    result.set(i, j, sum.wrapping_neg());
+                }
+            }
+            result
+        }
+        let mut state = 0x243F6A88_85A308D3_u64;
+        let mut next = move || {
+            state = state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            (state >> 33) as u32
+        };
+        for &n in &[1_usize, 2, 5, 17, 33] {
+            let mut m = IntMatrix::new(n, n);
+            for i in 0..n {
+                m.set(i, i, 1);
+                for j in (i + 1)..n {
+                    // Mix small values with near-overflow magnitudes.
+                    let value = match next() % 3 {
+                        0 => (next() % 7) as i32 - 3,
+                        _ => (next() as i32) >> (next() % 5),
+                    };
+                    m.set(i, j, value);
+                }
+            }
+            assert_eq!(inverse_upper_triangular(&m).unwrap(), naive(&m), "n={n}");
+        }
     }
 
     #[test]
