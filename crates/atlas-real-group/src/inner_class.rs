@@ -935,12 +935,8 @@ impl InnerClass {
                          -> Result<(), StructureError> {
                             let owner = u32::try_from(orbit_index)
                                 .map_err(|_| StructureError::ArithmeticOverflow)?;
-                            local_entries.try_reserve(1).map_err(|_| {
-                                StructureError::AllocationFailed { requested: 1 }
-                            })?;
                             let key = pack_simple_images(permutation, simple_positions);
-                            local_entries.push((key << 32) | u128::from(owner));
-                            Ok(())
+                            push_slim(&mut local_entries, (key << 32) | u128::from(owner))
                         };
                         let orbit = Self::orbit_cross_closure(
                             orbit_machine,
@@ -1190,7 +1186,7 @@ impl InnerClass {
                         },
                     )?;
                     open.extend_from_slice(&next_buf[..stride]);
-                    parents.push((cursor as u32, generator as u8));
+                    push_slim(&mut parents, (cursor as u32, generator as u8))?;
                     member_count += 1;
                     emit(orbit_index, &next_buf[..stride])?;
                     continue;
@@ -1243,7 +1239,7 @@ impl InnerClass {
                         },
                     )?;
                     open.extend_from_slice(&next);
-                    parents.push((cursor as u32, generator as u8));
+                    push_slim(&mut parents, (cursor as u32, generator as u8))?;
                     member_count += 1;
                     emit(orbit_index, &next)?;
                 }
@@ -1383,6 +1379,28 @@ pub(crate) type PermutationKeySet =
     std::collections::HashSet<PermutationKey, PermutationHasherBuilder>;
 pub(crate) type PermutationKeyMap<V> =
     std::collections::HashMap<PermutationKey, V, PermutationHasherBuilder>;
+
+/// Push with a 1.5x exact-growth policy instead of `Vec::push`'s amortized
+/// doubling.
+///
+/// The orbit-build buffers grow to a size that is unknowable during the
+/// streamed BFS (E8: ~2MB of membership entries and ~1MB of parent links
+/// per closure worker), so doubling's up-to-100% capacity slack sits
+/// directly on the process peak — the peak snapshot lands mid-closure,
+/// before any end-of-build shrink_to_fit can run. Exact 1.5x steps cap the
+/// transient slack at 50% and cost O(n/(r-1)) = 3n element copies against
+/// doubling's 2n, negligible next to the closure work. Buffers that know
+/// their size up front still use exact pre-sizing; buffers that are small
+/// or short-lived still use plain push.
+fn push_slim<T>(vec: &mut Vec<T>, value: T) -> Result<(), StructureError> {
+    if vec.len() == vec.capacity() {
+        let grow = vec.len() / 2 + 1;
+        vec.try_reserve_exact(grow)
+            .map_err(|_| StructureError::AllocationFailed { requested: grow })?;
+    }
+    vec.push(value);
+    Ok(())
+}
 
 /// Slot element of [`PackedKeySet`]: `u64` when the semisimple rank is at
 /// most 8 (the packed simple-image key is at most 64 bits), `u128`
