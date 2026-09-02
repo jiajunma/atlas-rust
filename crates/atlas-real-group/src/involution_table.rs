@@ -511,9 +511,14 @@ impl InvolutionTable {
         // upstream's add_cross (involutions.cpp:228-258), which pays one
         // fixed-size twistedConjugate per edge.
         let semisimple_rank = self.twist.len();
+        let delta = self
+            .inner_class
+            .distinguished_involution()
+            .image_permutation();
         let mut cursor = start;
         while cursor < self.records.len() {
             let mut links = cross_link_row(semisimple_rank)?;
+            let current_element = self.records[cursor].element;
             for generator in 0..semisimple_rank {
                 // The cached reflection permutations serve the packed dedup
                 // probe and, on a miss, the theta-image transport below; the
@@ -527,13 +532,9 @@ impl InvolutionTable {
                     .twisted_involution()
                     .root_involution()
                     .image_permutation();
-                let delta = self
-                    .inner_class
-                    .distinguished_involution()
-                    .image_permutation();
                 let compact_neighbor = compact_cross_neighbor(
                     &self.compact_weyl,
-                    self.records[cursor].element,
+                    current_element,
                     generator,
                     self.twist[generator],
                 );
