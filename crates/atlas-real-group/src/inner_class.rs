@@ -1573,11 +1573,13 @@ impl<T: PackedSlot> PackedKeySet<T> {
     /// Inlined into the orbit-closure edge loop: the probe is one multiply,
     /// one masked load, and (for the duplicate majority) one compare, so the
     /// call overhead and spill traffic of an outlined probe were a
-    /// measurable slice of the closure.
+    /// measurable slice of the closure. Kept NON-recursive — LLVM does not
+    /// inline recursive functions, so the post-grow re-probe restarts the
+    /// loop instead of re-calling `insert`.
     #[inline]
     pub(crate) fn insert(&mut self, key: T) -> bool {
         debug_assert_ne!(key, T::EMPTY, "sentinel collision");
-        let mask = self.slots.len() - 1;
+        let mut mask = self.slots.len() - 1;
         let mut slot = (key.hash() >> self.shift) as usize;
         loop {
             let stored = self.slots[slot];
@@ -1587,11 +1589,15 @@ impl<T: PackedSlot> PackedKeySet<T> {
                 // (~7 of 8 cross-action edges) and need no growth
                 // arithmetic. Growing here instead of at entry cannot skip a
                 // needed doubling — a fresh key still triggers `grow` before
-                // the 75% load factor is exceeded — and it never grows on a
-                // no-op duplicate the way the entry-time check could.
+                // the 75% load factor is exceeded, and doubling the capacity
+                // always puts the grown table back under 50% — and it never
+                // grows on a no-op duplicate the way the entry-time check
+                // could.
                 if (self.len + 1) * 4 > self.slots.len() * 3 {
                     self.grow();
-                    return self.insert(key);
+                    mask = self.slots.len() - 1;
+                    slot = (key.hash() >> self.shift) as usize;
+                    continue;
                 }
                 self.slots[slot] = key;
                 self.len += 1;
