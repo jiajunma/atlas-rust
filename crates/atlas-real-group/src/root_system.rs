@@ -813,7 +813,11 @@ impl Closure {
         // Keep one owned coordinate allocation for both the dedup key and the
         // pending work item. The queue only needs a shared handle while the
         // map retains the paired coroot/simple-coordinate record.
-        let key: Arc<[i32]> = Arc::from(try_copy_coordinates(root)?);
+        let key: Arc<[i32]> = Arc::try_from(try_copy_coordinates(root)?).map_err(|_| {
+            StructureError::AllocationFailed {
+                requested: root.len(),
+            }
+        })?;
         let record = ClosureRecord {
             coroot: try_copy_coordinates(coroot)?,
             simple_coordinates: try_copy_coordinates(simple_coordinates)?,
