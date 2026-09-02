@@ -7522,3 +7522,18 @@ Levers identified by code reading (verify by perf on the heavy workloads):
    matching entry per occurrence).
 4. deform.rs:936-945 O(n^2) triangular inverse on survivors — probably
    subdominant to the KL fill.
+
+## Active agents (2026-09-02, parent dispatch — do not double-dispatch)
+
+- agent-138 owns `crates/atlas-real-group/src/kl_polynomial.rs` +
+  `kl_table.rs` (KlPol in-place ops, branch `agent-klpol`, HPC worktree
+  atlas-rust-klpol, sync ref `sync-klpol`).
+- agent-139 owns `crates/atlas-real-group/src/deform.rs` + `rep_table.rs`
+  (dual-block KL cache + accumulator hash, branch `agent-dualkl`, HPC
+  worktree atlas-rust-dualkl, sync ref `sync-dualkl`).
+- Both base on `8b21ff7`. Parent owns integration via /tmp/atlas-merge133.
+
+Probe result (job 3667606 @ 527d3c5): probe_klv_e8.atlas rust 4.463s /
+594704KB vs cpp 4.849s / 804804KB (0.92x wall, 0.74x RSS) — E8 single deform
+already at parity; probe_partial_kl_d5.atlas trivial (0.01s). Sizing probes
+for E6/E7 partial_KL + E6 is_unitary submitted as job 3668680 @ 8b21ff7.
