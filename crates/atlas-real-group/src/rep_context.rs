@@ -649,9 +649,9 @@ impl<'a> RepContext<'a> {
         y_bits: &ModTwoVector,
     ) -> Result<Weight, StructureError> {
         let projection = self.projection(involution)?;
-        if y_bits.dimension() != projection.m_real.len() {
+        if y_bits.dimension() != projection.image_rank() {
             return Err(StructureError::RankMismatch {
-                expected: projection.m_real.len(),
+                expected: projection.image_rank(),
                 actual: y_bits.dimension(),
             });
         }
@@ -978,7 +978,7 @@ impl<'a> RepContext<'a> {
         let involution = self.involution_of(x)?;
         let projection = self.projection(involution)?;
         let mut ones = Vec::new();
-        for (row_index, row) in projection.m_real.iter().enumerate() {
+        for (row_index, row) in projection.m_real_rows().enumerate() {
             let mut parity = 0_i64;
             for (column, &entry) in row.iter().enumerate() {
                 if entry % 2 != 0 && kgb_torus.bit(column) == Some(true) {
@@ -989,7 +989,7 @@ impl<'a> RepContext<'a> {
                 ones.push(row_index);
             }
         }
-        ModTwoVector::from_ones(projection.m_real.len(), ones)
+        ModTwoVector::from_ones(projection.image_rank(), ones)
     }
 
     /// `InvolutionTable::real_unique` (involutions.cpp:334-342): the
@@ -1009,12 +1009,12 @@ impl<'a> RepContext<'a> {
             .checked_mul(denominator)
             .ok_or(StructureError::ArithmeticOverflow)?;
         let mut v = Vec::new();
-        v.try_reserve_exact(projection.m_real.len()).map_err(|_| {
+        v.try_reserve_exact(projection.image_rank()).map_err(|_| {
             StructureError::AllocationFailed {
-                requested: projection.m_real.len(),
+                requested: projection.image_rank(),
             }
         })?;
-        for row in &projection.m_real {
+        for row in projection.m_real_rows() {
             let mut total = 0_i64;
             for (column, &entry) in row.iter().enumerate() {
                 total = total

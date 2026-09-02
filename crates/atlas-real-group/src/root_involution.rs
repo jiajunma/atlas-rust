@@ -66,8 +66,11 @@ pub struct RootInvolutionData {
     involution: LatticeInvolution,
     image_by_root: Box<[u16]>,
     negatives: Arc<[RootId]>,
-    imaginary_simple_roots: Vec<RootId>,
-    real_simple_roots: Vec<RootId>,
+    /// Boxed, not `Vec`: these are immutable after construction and the
+    /// involution table retains one record per twisted involution, so the
+    /// 8B capacity field is pure per-record overhead.
+    imaginary_simple_roots: Box<[RootId]>,
+    real_simple_roots: Box<[RootId]>,
 }
 
 impl RootInvolutionData {
@@ -118,8 +121,8 @@ impl RootInvolutionData {
             involution,
             image_by_root: image_by_root.into_boxed_slice(),
             negatives,
-            imaginary_simple_roots,
-            real_simple_roots,
+            imaginary_simple_roots: imaginary_simple_roots.into_boxed_slice(),
+            real_simple_roots: real_simple_roots.into_boxed_slice(),
         })
     }
 
@@ -168,8 +171,8 @@ impl RootInvolutionData {
             involution,
             image_by_root: compact.into_boxed_slice(),
             negatives,
-            imaginary_simple_roots,
-            real_simple_roots,
+            imaginary_simple_roots: imaginary_simple_roots.into_boxed_slice(),
+            real_simple_roots: real_simple_roots.into_boxed_slice(),
         })
     }
 

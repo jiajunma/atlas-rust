@@ -7099,3 +7099,79 @@ u16 by agent-132).
 - (Note: oracle CLI file-arg invocation differs from atlas-cli; my direct
   `atlas --path=... groups.at` ran the REPL on empty stdin. Use the corpus
   harness numbers for oracle timings.)
+
+## 2026-09-01i — RealProjection flat-matrix + InvolutionRecord slimming (agent-134)
+
+Lane: real-group memory — the two residual blocks of agent-133's
+decomposition: the add_cartan records backing array (~151MB) and
+RealProjection lift_mat/m_real per-row overhead (~112MB). Base 81719aa;
+branch agent-134; local worktree /private/tmp/atlas-addcartan, HPC
+verification worktree /public/home/majj/atlas-rust-addcartan (detached,
+shared checkout untouched). All changes confined to
+crates/atlas-real-group (real_projection.rs, involution_table.rs,
+twisted_involution.rs, root_involution.rs, rep_table.rs, rep_context.rs).
+
+- 0987721 `RealProjection`: `lift_mat`/`m_real` `Vec<Vec<i32>>` -> ONE
+  flat row-major `Vec<i32>` each, with `u32` rank/image_rank strides.
+  Kills the 24B Vec header + minimum-size malloc chunk per row (~12 rows
+  per record, ~270k records). Access via `rank()`, `image_rank()`,
+  `lift_entry(r,c)`, `m_real_rows()`; a `rows()` helper iterates row
+  slices and handles the rank-0 datum (where `chunks_exact(0)` panics).
+  Summation order and checked-arithmetic points in `transported`,
+  `check_against`, `coordinates`, `lift` are unchanged; the
+  `IntegralCodec` row-shape checks became structural invariants of the
+  flat layout and were dropped; `transported` now rejects a
+  rank-mismatched reflection with `InvalidIntegerMatrixShape` instead of
+  panicking. Fields are private now; tests compare via cfg(test)
+  `lift_mat_nested()`/`m_real_nested()` views.
+- 407e355 record slimming (layout-only, semantics preserved):
+  `TwistedInvolution.weyl_action` `Option<WeylAction>` ->
+  `Option<Box<WeylAction>>` (records always hold `None`; the inline
+  Option still cost 56B/record);
+  `RootInvolutionData.imaginary_simple_roots`/`real_simple_roots`
+  `Vec<RootId>` -> `Box<[RootId]>` (immutable after construction;
+  accessors already returned `&[RootId]`, zero caller churn);
+  `InvolutionRecord.involution_length`/`weyl_length` `usize` -> `u32`
+  (Weyl length <= positive-root count <= 2^16 by the root-system width
+  contract; accessors still return `usize`). Net record body ~304B ->
+  ~240B (-21%).
+- ac67bd3 gate-driven fix: `usize::from(u32)` is not std (only u8/u16);
+  widened with `as usize` casts. Caught by the first HPC build (jobs
+  3665716/3665717) — no local cargo per hard rule.
+
+Numbers (unipotent_representations_exceptional.at, same node fat001):
+- before 3664724 @9322946 (= 81719aa code): rust 5.353s / 985,568KB vs
+  cpp 4.807s / 881,296KB => 1.11x / 1.12x, MATCH.
+- after 3665722 @ac67bd3: rust 5.114s / 825,976KB vs cpp 5.238s /
+  881,080KB => 0.976x / 0.937x, MATCH. RSS -160MB; wall IMPROVED, so
+  the >2%-wall drop clause never came into play. The unipotent workload
+  is now FASTER and SMALLER than the C++ oracle.
+- quick_check 3665721 @ac67bd3: TEST_DONE status=0 (9 suites).
+- Full corpus 3665734 @ac67bd3: see results/<sha>/3665734/.
+
+Massif (fat001, unipotent): baseline 3664725 peak 988,279,672B (snap
+173) -> 3665723 peak 843,739,560B (snap 113), -144.5MB (-14.6%);
+no-valgrind maxrss in the same job 833,408KB/5.59s. Block attribution:
+- records backing array (finish_grow<-add_cartan): 140,357,104B ->
+  110,808,240B (-21%, exactly the struct shrink); cross_links block
+  28,947,200B unchanged.
+- RealProjection::transported: 53,207,664 + 25,246,536 = 78.5MB (plus
+  ~34MB of per-row payload chunks elsewhere in the tree; agent-132's
+  total ~112MB) -> 2 x 33,136,800B = 66.3MB flat payload, i.e. the
+  remaining block is now pure i32 matrix data.
+- extra-heap (malloc metadata): 77.1MB -> 53.7MB — the per-row chunk
+  headers are gone.
+- unchanged, as expected: transport_mod_space 88,679,440B; theta
+  matrices (weyl::zero_matrix x2) 69,902,136 + 53,300,496 = 123.2MB;
+  image_by_root (into_boxed_slice<-push_record) 126,521,424B.
+
+Remaining decomposition (peak 844MB vs oracle 881MB maxrss — the rust
+heap peak is now BELOW the oracle's total RSS), biggest first:
+image_by_root u16 126.5MB (already 4x slimmer than the oracle's retained
+root_perm; further narrowing needs u8 + a >256-root fallback);
+theta matrices 123MB (single-copy since agent-133; flat-matrix or i16
+narrowing would need the broad accessor change deferred by agent-132);
+records array 110.8MB (residual: mod_space 40B + theta_plus_one_rho
+Weight 24B inline headers per record); transport_mod_space 88.7MB;
+RealProjection payload 66.3MB (irreducible at i32; i16 narrowing is
+value-range-unsafe for transported bases); hashbrown dedup ~55MB.

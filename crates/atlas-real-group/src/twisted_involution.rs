@@ -20,9 +20,14 @@ use crate::{
 /// ([`crate::WeylAction::from_theta_factor`]) — massif attributes ~246MB of
 /// the unipotent heap peak to the retained per-record pair. Value equality
 /// is therefore the composed root involution alone.
+///
+/// `weyl_action` is boxed: involution-table records (the populous case,
+/// ~270k on the unipotent workload) always hold `None` here, and an
+/// inline `Option<WeylAction>` would still cost every record the full
+/// 56B of the `Some` payload.
 #[derive(Clone, Debug)]
 pub struct TwistedInvolution {
-    weyl_action: Option<WeylAction>,
+    weyl_action: Option<Box<WeylAction>>,
     root_involution: RootInvolutionData,
 }
 
@@ -80,7 +85,7 @@ impl TwistedInvolution {
         )?;
         let root_involution = RootInvolutionData::new(root_system, involution)?;
         Ok(Self {
-            weyl_action: Some(weyl_action),
+            weyl_action: Some(Box::new(weyl_action)),
             root_involution,
         })
     }
@@ -123,13 +128,13 @@ impl TwistedInvolution {
     /// results) retains the action.
     pub fn weyl_action(&self) -> &WeylAction {
         self.weyl_action
-            .as_ref()
+            .as_deref()
             .expect("involution-table records drop the Weyl action matrices")
     }
 
     /// The retained Weyl-factor action, when this value carries one.
     pub(crate) fn retained_weyl_action(&self) -> Option<&WeylAction> {
-        self.weyl_action.as_ref()
+        self.weyl_action.as_deref()
     }
 
     pub fn root_involution(&self) -> &RootInvolutionData {
