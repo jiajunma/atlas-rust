@@ -569,7 +569,9 @@ impl InnerClass {
             involutions.extend(orbit.materialize(self)?);
             Ok(())
         };
-        let mut emit = |_: usize, _: &[u8]| -> Result<(), StructureError> { Ok(()) };
+        let mut emit = |_: usize, _: &[u8], _: Option<u128>| -> Result<(), StructureError> {
+            Ok(())
+        };
         if self.datum.semisimple_rank() <= 8 {
             self.involution_orbits::<u64>(weyl_budget, &mut emit, &mut consume)?;
         } else {
@@ -620,6 +622,10 @@ impl InnerClass {
         let mut classes = Vec::new();
         let mut entries: Vec<u128> = Vec::new();
         let mut fallback = PermutationKeyMap::default();
+        // Set when the parallel driver left `entries` fully sorted (it merges
+        // the workers' individually sorted runs), so the final sort is a
+        // redundant no-op pass to skip.
+        let mut entries_sorted = false;
         // Heavy packed inner classes (E7: 126 roots, E8: 240) run phase two
         // on two worker threads; everything else keeps the sequential
         // driver (thread setup is not worth it below ~100 roots). Keys fit
@@ -641,9 +647,14 @@ impl InnerClass {
                     &mut classes,
                 )?;
             }
+            entries_sorted = true;
         } else {
+            // The closure hands back each member's packed simple-image key
+            // (computed for the membership probe anyway), so indexing a
+            // member here is a shift/or and a push — no re-gather.
             let mut emit = |class_index: usize,
-                            permutation: &[u8]|
+                            permutation: &[u8],
+                            key: Option<u128>|
              -> Result<(), StructureError> {
                 if packed {
                     let owner = u32::try_from(class_index)
@@ -651,11 +662,15 @@ impl InnerClass {
                     entries
                         .try_reserve(1)
                         .map_err(|_| StructureError::AllocationFailed { requested: 1 })?;
-                    let key = pack_simple_images(permutation, &simple_positions);
+                    let key = key
+                        .unwrap_or_else(|| pack_simple_images(permutation, &simple_positions));
                     entries.push((key << 32) | u128::from(owner));
                 } else {
                     fallback.insert(
-                        PermutationKey::pack(permutation, &simple_positions),
+                        match key {
+                            Some(key) => PermutationKey::Packed(key),
+                            None => PermutationKey::pack(permutation, &simple_positions),
+                        },
                         class_index,
                     );
                 }
@@ -681,7 +696,9 @@ impl InnerClass {
             // in the classification cache for the session's lifetime, so
             // drop the sequential driver's growth-doubling slack (the
             // parallel driver already reserve_exacts).
-            entries.sort_unstable();
+            if !entries_sorted {
+                entries.sort_unstable();
+            }
             entries.shrink_to_fit();
             ClassMembership::Packed { entries }
         } else {
@@ -733,7 +750,7 @@ impl InnerClass {
     fn involution_orbits<T: PackedSlot>(
         &self,
         weyl_budget: usize,
-        emit: &mut dyn FnMut(usize, &[u8]) -> Result<(), StructureError>,
+        emit: &mut dyn FnMut(usize, &[u8], Option<u128>) -> Result<(), StructureError>,
         consume: &mut dyn FnMut(ClassOrbit) -> Result<(), StructureError>,
     ) -> Result<(), StructureError> {
         let mut orbit_machine = PermutationOrbits::new(self)?;
@@ -931,11 +948,14 @@ impl InnerClass {
                             .take()
                             .expect("orbit work item taken twice");
                         let mut emit = |orbit_index: usize,
-                                        permutation: &[u8]|
+                                        permutation: &[u8],
+                                        key: Option<u128>|
                          -> Result<(), StructureError> {
                             let owner = u32::try_from(orbit_index)
                                 .map_err(|_| StructureError::ArithmeticOverflow)?;
-                            let key = pack_simple_images(permutation, simple_positions);
+                            let key = key.unwrap_or_else(|| {
+                                pack_simple_images(permutation, simple_positions)
+                            });
                             push_slim(&mut local_entries, (key << 32) | u128::from(owner))
                         };
                         let orbit = Self::orbit_cross_closure(
@@ -992,11 +1012,11 @@ impl InnerClass {
                 orbit_member_count,
             ));
         }
-        // Concatenate the (individually sorted, exactly sized) worker
-        // buffers with one exact reserve instead of merging into a third
-        // allocation; each worker buffer is dropped as soon as it drains.
-        // The caller's final sort_unstable cost is unchanged — it was
-        // already pdqsort over the merged vector, not a merge pass.
+        // Merge the two (individually sorted, exactly sized) worker buffers
+        // into one sorted vector with a single O(n) two-way pass: keys are
+        // unique (the packing is injective), so the merged order equals the
+        // sorted concatenation exactly, and the caller skips its final
+        // sort_unstable. Each worker buffer is dropped as soon as it drains.
         let entry_total = thread_entries.iter().try_fold(0_usize, |sum, local| {
             sum.checked_add(local.len())
                 .ok_or(StructureError::ArithmeticOverflow)
@@ -1006,9 +1026,25 @@ impl InnerClass {
             .map_err(|_| StructureError::AllocationFailed {
                 requested: entry_total,
             })?;
-        for mut local in thread_entries {
-            entries.append(&mut local);
-            drop(local);
+        let mut locals = thread_entries.into_iter();
+        match (locals.next(), locals.next()) {
+            (Some(left), Some(right)) => {
+                let (mut i, mut j) = (0_usize, 0_usize);
+                // Within the exact reserve, pushes never reallocate.
+                while i < left.len() && j < right.len() {
+                    if left[i] <= right[j] {
+                        entries.push(left[i]);
+                        i += 1;
+                    } else {
+                        entries.push(right[j]);
+                        j += 1;
+                    }
+                }
+                entries.extend_from_slice(&left[i..]);
+                entries.extend_from_slice(&right[j..]);
+            }
+            (Some(mut local), None) => entries.append(&mut local),
+            (None, _) => {}
         }
         Ok(())
     }
@@ -1020,7 +1056,11 @@ impl InnerClass {
     /// footprint is the frontier width rather than the class size (the E8
     /// 113,400-member class otherwise held a 27MB flat buffer to end-of-build
     /// and spiked to ~47MB at its final doubling). Every member is handed to
-    /// `emit` in BFS discovery order (representative first) as it is found.
+    /// `emit` in BFS discovery order (representative first) as it is found,
+    /// together with its packed simple-image key when one exists (semisimple
+    /// rank <= 16): the probe key of a successor IS that successor's own
+    /// packed key (`next[p] = r(c(r(p)))` byte-for-byte), so the membership
+    /// indexer reuses it instead of re-gathering from the permutation.
     #[inline(never)]
     #[allow(clippy::too_many_arguments)]
     fn orbit_cross_closure<T: PackedSlot>(
@@ -1034,7 +1074,7 @@ impl InnerClass {
         seen: &mut PermutationKeySet,
         packed_seen: &mut PackedKeySet<T>,
         next: &mut Vec<u8>,
-        emit: &mut dyn FnMut(usize, &[u8]) -> Result<(), StructureError>,
+        emit: &mut dyn FnMut(usize, &[u8], Option<u128>) -> Result<(), StructureError>,
     ) -> Result<ClassOrbit, StructureError> {
         // Chunk target ~256KB of member bytes: the resident footprint is the
         // BFS frontier width plus up to two chunks, so smaller chunks halve
@@ -1079,22 +1119,30 @@ impl InnerClass {
         // involution, so probing the child with the parent's generator
         // reproduces the parent — another guaranteed no-op probe.
         let padded = packed && stride <= 256;
+        // `seed_key` is the representative's packed simple-image key, handed
+        // to `emit` so the membership indexer does not re-gather it.
+        let seed_key: Option<u128>;
         if padded {
             packed_seen.clear();
-            let mut seed_key = T::ZERO;
+            let mut key = T::ZERO;
             for (shift, &position) in orbit_machine.simple_positions.iter().enumerate() {
-                seed_key =
-                    seed_key.or_byte(representative_permutation[usize::from(position)], shift);
+                key = key.or_byte(representative_permutation[usize::from(position)], shift);
             }
-            packed_seen.insert(seed_key);
+            packed_seen.insert(key);
+            seed_key = Some(key.to_u128());
         } else {
             seen.clear();
-            seen.insert(PermutationKey::pack(
+            let seed = PermutationKey::pack(
                 &representative_permutation,
                 orbit_machine.simple_positions(),
-            ));
+            );
+            seed_key = match &seed {
+                PermutationKey::Packed(key) => Some(*key),
+                PermutationKey::Full(_) => None,
+            };
+            seen.insert(seed);
         }
-        emit(orbit_index, &representative_permutation)?;
+        emit(orbit_index, &representative_permutation, seed_key)?;
         let mut padded_reflections: Vec<[u8; 256]> = Vec::new();
         // `inner_images[g][p] = r_g(alpha_p)`: the inner gather of the probe
         // key hoisted out of the edge loop, so probing one edge costs two
@@ -1118,6 +1166,7 @@ impl InnerClass {
         }
         let mut current_buf = [0_u8; 256];
         let mut next_buf = [0_u8; 256];
+        let simple_count = orbit_machine.simple_positions.len();
 
         let mut cursor = 0_usize;
         while cursor < member_count {
@@ -1155,10 +1204,7 @@ impl InnerClass {
                     let reflection = &padded_reflections[generator];
                     let inner = &inner_images[generator];
                     let mut key = T::ZERO;
-                    for (shift, &first) in inner[..orbit_machine.simple_positions.len()]
-                        .iter()
-                        .enumerate()
-                    {
+                    for (shift, &first) in inner[..simple_count].iter().enumerate() {
                         let image = reflection[usize::from(current_buf[usize::from(first)])];
                         key = key.or_byte(image, shift);
                     }
@@ -1188,10 +1234,14 @@ impl InnerClass {
                     open.extend_from_slice(&next_buf[..stride]);
                     push_slim(&mut parents, (cursor as u32, generator as u8))?;
                     member_count += 1;
-                    emit(orbit_index, &next_buf[..stride])?;
+                    // The probe key IS the successor's packed simple-image
+                    // key (`next_buf[p] = r(c(r(p)))` byte-for-byte), so the
+                    // membership indexer reuses it instead of re-gathering.
+                    emit(orbit_index, &next_buf[..stride], Some(key.to_u128()))?;
                     continue;
                 }
                 let reflection = &orbit_machine.simple_reflections[generator];
+                let mut packed_key = None;
                 if packed {
                     let mut key = 0_u128;
                     {
@@ -1210,6 +1260,7 @@ impl InnerClass {
                     if !seen.insert(PermutationKey::Packed(key)) {
                         continue;
                     }
+                    packed_key = Some(key);
                 }
                 next.clear();
                 next.try_reserve(reflection.len())
@@ -1241,7 +1292,7 @@ impl InnerClass {
                     open.extend_from_slice(&next);
                     push_slim(&mut parents, (cursor as u32, generator as u8))?;
                     member_count += 1;
-                    emit(orbit_index, &next)?;
+                    emit(orbit_index, &next, packed_key)?;
                 }
             }
             cursor += 1;
@@ -1414,6 +1465,10 @@ pub(crate) trait PackedSlot: Copy + Eq + std::fmt::Debug {
     /// `self | (image << 8*shift)` — one packed simple-root image byte.
     fn or_byte(self, image: u8, shift: usize) -> Self;
     fn hash(self) -> u64;
+    /// The same packed key as a `u128` (zero-extended for narrow slots), for
+    /// consumers like the membership index that store one width for all
+    /// ranks.
+    fn to_u128(self) -> u128;
 }
 
 impl PackedSlot for u64 {
@@ -1428,6 +1483,11 @@ impl PackedSlot for u64 {
     #[inline]
     fn hash(self) -> u64 {
         self.wrapping_mul(PackedKeySet::<Self>::SEED)
+    }
+
+    #[inline]
+    fn to_u128(self) -> u128 {
+        u128::from(self)
     }
 }
 
@@ -1445,6 +1505,11 @@ impl PackedSlot for u128 {
         let lo = self as u64;
         let hi = (self >> 64) as u64;
         (lo ^ hi.rotate_left(32)).wrapping_mul(PackedKeySet::<Self>::SEED)
+    }
+
+    #[inline]
+    fn to_u128(self) -> u128 {
+        self
     }
 }
 
@@ -1484,14 +1549,22 @@ impl<T: PackedSlot> PackedKeySet<T> {
     /// Insert `key`; returns false when it was already present.
     pub(crate) fn insert(&mut self, key: T) -> bool {
         debug_assert_ne!(key, T::EMPTY, "sentinel collision");
-        if (self.len + 1) * 4 > self.slots.len() * 3 {
-            self.grow();
-        }
         let mask = self.slots.len() - 1;
         let mut slot = (key.hash() >> self.shift) as usize;
         loop {
             let stored = self.slots[slot];
             if stored == T::EMPTY {
+                // The load-factor check lives on the genuine-insertion path
+                // only: duplicate probes are the large majority of calls
+                // (~7 of 8 cross-action edges) and need no growth
+                // arithmetic. Growing here instead of at entry cannot skip a
+                // needed doubling — a fresh key still triggers `grow` before
+                // the 75% load factor is exceeded — and it never grows on a
+                // no-op duplicate the way the entry-time check could.
+                if (self.len + 1) * 4 > self.slots.len() * 3 {
+                    self.grow();
+                    return self.insert(key);
+                }
                 self.slots[slot] = key;
                 self.len += 1;
                 return true;
