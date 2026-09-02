@@ -4,6 +4,47 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Current frontier - 2026-09-02 late (block_deform performance campaign)
+
+Mainline branch `codex/continue-atlas-port` (worktree
+`/Users/hoxide/mycodes/atlas-rust-main`; the shared checkout
+`/Users/hoxide/mycodes/atlas-rust` belongs to agent-141's `agent-kgbopt`
+lane — never commit there). Verified tip chain: `a8b2fd8` (UndefBlock cross
+fix) → `7dacfe2` (ext_kl in-place) → `8a77b38` (loop-interchanged
+`inverse_upper_triangular`, gates green 3671672/3671673, E6 bound-1 A/B
+3671682 IDENTICAL, 61s → **53.0-53.3s**) → `f9202e7` (orientation_number
+order cached in `RepContextDerived` + hoisted out of the O(n²) coefficient
+pass; E6 perf 3671836 had 64.6% of block_deformation under that per-call
+sort). Gates 3672055/3672056 and A/B 3672106 in flight from HPC worktree
+`/public/home/majj/atlas-rust-orient`.
+
+Reference points: oracle E6 `probe_bd_e6_repeat` = **15.4s / 38.6MB**
+(3671638); oracle E7 `block_deform(x=20925, bound -1)` = **1:39:27 /
+5.18GB** (3670294). Rust E7 probe (a8b2fd8 binary) rerunning as **3671969**
+(6h fat) after 3670256 hit its 2h limit; heavy unitary A/B 3671409 has both
+Rust legs (20:03 new / 20:24 old) with the CPP leg still running.
+
+Lessons pinned this session:
+- Lane C's deform.rs parity-skip is a **proved bug, permanently rejected**
+  (decisive A/B 3671577 DIFF, 10,575 wrong lines; corpus 240/240 does not
+  cover it — coverage blind spot). Only its matreduc.rs half merged
+  (8e340b6).
+- A/B must interleave old/new per rep (±3.8% phantom otherwise).
+- Probes must use non-zero KGB x (`param(KGB(rf,0),…)` normalises to nu=0
+  and makes block_deform/is_unitary no-ops): E6 x=1790, E7 x=20925.
+- perf profiling needs the frame-pointer build (default lto=fat+cgu=1
+  inlines the whole deform path away).
+- sbatch scripts that run cargo need `export PATH="$HOME/.cargo/bin:$PATH"`
+  after `source /etc/profile` — a plain `source /etc/profile` alone left
+  `cargo: command not found` (job 3672057 burnt).
+- cpu partition caps at 4G mem/job; heavy probes go `--partition=fat`.
+
+Next suspected hot spot (unconfirmed, profile first):
+`common_deformation_terms` (deform.rs:455) rebuilds and refills the primal
+KL table per call instead of reusing `LocatedBlock::with_kl_table`
+(rep_table.rs:707); heavy-unitary gdb samples showed
+`KlTableHandle::from_handle`/`prepare_prim_index` hot.
+
 ## Current frontier - 2026-09-02 (Weyl/KGB micro-optimizations, supersedes 2026-09-01)
 
 The verified tip is now `1763362`, following `08c3af7`, `3448a3a`, and
