@@ -271,13 +271,13 @@ impl RootSystem {
                 reflect_coordinates_into(
                     root.as_slice(),
                     simple_root.as_slice(),
-                    i128::from(coefficient),
+                    coefficient,
                     &mut reflected_root,
                 )?;
                 reflect_coordinates_into(
                     record_coroot.as_slice(),
                     simple_coroot.as_slice(),
-                    i128::from(dual_coefficient),
+                    dual_coefficient,
                     &mut reflected_coroot,
                 )?;
                 reflected_coordinates.clear();
@@ -413,12 +413,7 @@ impl RootSystem {
                 .map_err(|_| StructureError::AllocationFailed { requested: count })?;
             for root in &system.roots {
                 let coefficient = pair_coordinates(root.as_slice(), simple_coroot)?;
-                reflect_coordinates_into(
-                    root.as_slice(),
-                    simple_root,
-                    i128::from(coefficient),
-                    &mut image,
-                )?;
+                reflect_coordinates_into(root.as_slice(), simple_root, coefficient, &mut image)?;
                 permutation.push(
                     system
                         .id_of_slice(&image)
@@ -693,13 +688,13 @@ fn subtract_coordinates(
 }
 
 /// `out = values - coefficient * direction` entrywise, reusing `out`'s
-/// allocation. The arithmetic mirrors the `i128`-widened checked path of
-/// `BasedRootDatum::reflect_weight`/`reflect_coweight` exactly, including
-/// every overflow error point; only the destination buffer differs.
+/// allocation. The inputs are all `i32`; an `i64` intermediate therefore
+/// covers the full product and subtraction range while retaining the same
+/// `i32` conversion errors as the wider datum reflection path.
 fn reflect_coordinates_into(
     values: &[i32],
     direction: &[i32],
-    coefficient: i128,
+    coefficient: i32,
     out: &mut Vec<i32>,
 ) -> Result<(), StructureError> {
     debug_assert_eq!(values.len(), direction.len());
@@ -709,12 +704,8 @@ fn reflect_coordinates_into(
             requested: values.len(),
         })?;
     for (&coordinate, &direction_coordinate) in values.iter().zip(direction) {
-        let correction = coefficient
-            .checked_mul(i128::from(direction_coordinate))
-            .ok_or(StructureError::ArithmeticOverflow)?;
-        let value = i128::from(coordinate)
-            .checked_sub(correction)
-            .ok_or(StructureError::ArithmeticOverflow)?;
+        let correction = i64::from(coefficient) * i64::from(direction_coordinate);
+        let value = i64::from(coordinate) - correction;
         out.push(i32::try_from(value).map_err(|_| StructureError::ArithmeticOverflow)?);
     }
     Ok(())
