@@ -173,7 +173,10 @@ pub struct RootSystem {
     /// Recomputing one per `WeylElement::simple_reflection` call (two
     /// rank×rank matrices, then a matvec plus binary search per root —
     /// 240 matvecs per W-word letter on E8) dominated word-heavy scripts,
-    /// so the table is built once alongside the negation table.
+    /// so the table is built once alongside the negation table, directly
+    /// from the closure's reflection formula (the reflection matrix acts
+    /// entrywise as `w - <w, coroot> * root`, so the permutations are the
+    /// same ones `action_permutation` derives).
     simple_reflections: Vec<Vec<RootId>>,
 }
 
@@ -363,14 +366,42 @@ impl RootSystem {
             negatives: Arc::from(negatives.into_boxed_slice()),
             simple_reflections: Vec::new(),
         };
-        // One-time fill through the matrix path, so the cached table is by
-        // construction the same permutations `action_permutation` derives.
-        system.simple_reflections = (0..semisimple_rank)
-            .map(|generator| {
-                WeylAction::simple_reflection(&system.datum, generator)
-                    .and_then(|action| system.action_permutation(&action))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
+        // One-time fill straight from the reflection formula. The previous
+        // matrix path (a datum clone and two rank×rank matrices per
+        // generator, then one allocating matvec per root) cost more than
+        // the enumeration itself on small data; `image` is reused across
+        // all (generator, root) pairs.
+        let mut simple_reflections = Vec::new();
+        simple_reflections
+            .try_reserve_exact(semisimple_rank)
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: semisimple_rank,
+            })?;
+        let mut image = Vec::new();
+        for generator in 0..semisimple_rank {
+            let simple_root = system.datum.simple_roots()[generator].as_slice();
+            let simple_coroot = system.datum.simple_coroots()[generator].as_slice();
+            let mut permutation = Vec::new();
+            permutation
+                .try_reserve_exact(count)
+                .map_err(|_| StructureError::AllocationFailed { requested: count })?;
+            for root in &system.roots {
+                let coefficient = pair_coordinates(root.as_slice(), simple_coroot)?;
+                reflect_coordinates_into(
+                    root.as_slice(),
+                    simple_root,
+                    i128::from(coefficient),
+                    &mut image,
+                )?;
+                permutation.push(
+                    system
+                        .id_of_slice(&image)
+                        .ok_or(StructureError::InvalidRootAutomorphism)?,
+                );
+            }
+            simple_reflections.push(permutation);
+        }
+        system.simple_reflections = simple_reflections;
         Ok(system)
     }
 
@@ -507,17 +538,20 @@ impl RootSystem {
 /// Precompute both ladder-bottom tables: `min_roots[alpha]` flags `beta`
 /// when `roots[beta] - roots[alpha]` is not a root, and `min_coroots`
 /// likewise on coroot coordinates. Root membership binary-searches the
-/// sorted `roots`; coroots are unsorted (they follow the root order), so a
-/// coordinate map is built once.
+/// sorted `roots`; coroots are unsorted (they follow the root order), so
+/// membership goes through a sorted index table: one contiguous allocation
+/// instead of a node-based map, binary-searched per pair.
 fn build_ladder_bottoms(
     roots: &[Weight],
     coroots: &[Coweight],
 ) -> Result<(Vec<RootSet>, Vec<RootSet>), StructureError> {
     let count = roots.len();
-    let mut coroot_ids: BTreeMap<&[i32], usize> = BTreeMap::new();
-    for (index, coroot) in coroots.iter().enumerate() {
-        coroot_ids.insert(coroot.as_slice(), index);
-    }
+    let mut coroot_order = Vec::new();
+    coroot_order
+        .try_reserve_exact(count)
+        .map_err(|_| StructureError::AllocationFailed { requested: count })?;
+    coroot_order.extend(0..count);
+    coroot_order.sort_by(|&left, &right| coroots[left].as_slice().cmp(coroots[right].as_slice()));
     let mut min_roots = Vec::new();
     min_roots
         .try_reserve_exact(count)
@@ -547,7 +581,10 @@ fn build_ladder_bottoms(
                 coroots[alpha].as_slice(),
                 &mut difference,
             )?;
-            if !coroot_ids.contains_key(difference.as_slice()) {
+            if coroot_order
+                .binary_search_by(|&index| coroots[index].as_slice().cmp(difference.as_slice()))
+                .is_err()
+            {
                 coroot_bottoms.insert(RootId(beta));
             }
         }
