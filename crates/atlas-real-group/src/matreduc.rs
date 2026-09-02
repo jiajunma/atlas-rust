@@ -480,9 +480,6 @@ pub(crate) fn inverse_upper_triangular(m: &IntMatrix) -> Result<IntMatrix, Struc
         });
     }
     let mut result = IntMatrix::new(n, n);
-    // Row-major slices instead of `get`: the row of `m` is contiguous and
-    // wrapping addition is associative, so the ascending-k accumulation is
-    // bit-identical to upstream's descending one (matrix.cpp:432-438).
     for j in 0..n {
         if m.get(j, j) != 1 {
             return Err(StructureError::RepInvariantViolation {
@@ -490,16 +487,32 @@ pub(crate) fn inverse_upper_triangular(m: &IntMatrix) -> Result<IntMatrix, Struc
             });
         }
         result.data[j * n + j] = 1;
-        for i in (0..j).rev() {
-            let row = &m.data[i * n + (i + 1)..i * n + (j + 1)];
-            let mut sum = 0_i32;
-            for (offset, &entry) in row.iter().enumerate() {
-                if entry != 0 {
-                    let k = i + 1 + offset;
-                    sum = sum.wrapping_add(entry.wrapping_mul(result.data[k * n + j]));
-                }
+    }
+    // Loop interchange of upstream's per-(i,j) back substitution
+    // (matrix.cpp:432-438): row i needs acc[j] = sum_{k=i+1..=j}
+    // m(i,k)*result(k,j); accumulating over k with j inner walks result
+    // ROW k contiguously instead of striding down COLUMN j (one cache
+    // miss per element at n~2000). Wrapping i32 arithmetic is associative
+    // and commutative, so the reordered accumulation is bit-identical;
+    // result(k,j) = 0 for j < k bounds the inner loop.
+    let mut acc = vec![0_i32; n];
+    for i in (0..n.saturating_sub(1)).rev() {
+        for slot in acc[i + 1..n].iter_mut() {
+            *slot = 0;
+        }
+        let row_i = &m.data[i * n..(i + 1) * n];
+        for k in (i + 1)..n {
+            let entry = row_i[k];
+            if entry == 0 {
+                continue;
             }
-            result.data[i * n + j] = sum.wrapping_neg();
+            let res_row_k = &result.data[k * n..(k + 1) * n];
+            for j in k..n {
+                acc[j] = acc[j].wrapping_add(entry.wrapping_mul(res_row_k[j]));
+            }
+        }
+        for j in (i + 1)..n {
+            result.data[i * n + j] = acc[j].wrapping_neg();
         }
     }
     Ok(result)
