@@ -747,12 +747,16 @@ impl InnerClass {
     /// member buffer survives its own closure — accumulating every
     /// [`ClassOrbit`] buffer to end-of-build pinned ~48MB of E8 transients
     /// (plus Vec-doubling overshoot) against the process peak.
-    fn involution_orbits<T: PackedSlot>(
+    fn involution_orbits<T, E>(
         &self,
         weyl_budget: usize,
-        emit: &mut dyn FnMut(usize, &[u8], Option<u128>) -> Result<(), StructureError>,
+        emit: &mut E,
         consume: &mut dyn FnMut(ClassOrbit) -> Result<(), StructureError>,
-    ) -> Result<(), StructureError> {
+    ) -> Result<(), StructureError>
+    where
+        T: PackedSlot,
+        E: FnMut(usize, &[u8], Option<u128>) -> Result<(), StructureError>,
+    {
         let mut orbit_machine = PermutationOrbits::new(self)?;
         let (representatives, representative_permutations) =
             self.cayley_bfs_representatives(&mut orbit_machine)?;
@@ -1061,9 +1065,12 @@ impl InnerClass {
     /// rank <= 16): the probe key of a successor IS that successor's own
     /// packed key (`next[p] = r(c(r(p)))` byte-for-byte), so the membership
     /// indexer reuses it instead of re-gathering from the permutation.
+    /// `emit` is generic (not `dyn`) so the membership indexer inlines into
+    /// the BFS loop: for E8 that is ~200k indirect calls plus a key
+    /// re-gather that now disappear into the edge pipeline.
     #[inline(never)]
     #[allow(clippy::too_many_arguments)]
-    fn orbit_cross_closure<T: PackedSlot>(
+    fn orbit_cross_closure<T: PackedSlot, E: FnMut(usize, &[u8], Option<u128>) -> Result<(), StructureError>>(
         orbit_machine: &PermutationOrbits,
         orbit_index: usize,
         representative: TwistedInvolution,
@@ -1074,7 +1081,7 @@ impl InnerClass {
         seen: &mut PermutationKeySet,
         packed_seen: &mut PackedKeySet<T>,
         next: &mut Vec<u8>,
-        emit: &mut dyn FnMut(usize, &[u8], Option<u128>) -> Result<(), StructureError>,
+        emit: &mut E,
     ) -> Result<ClassOrbit, StructureError> {
         // Chunk target ~256KB of member bytes: the resident footprint is the
         // BFS frontier width plus up to two chunks, so smaller chunks halve
