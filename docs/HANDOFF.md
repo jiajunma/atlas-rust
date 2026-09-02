@@ -7509,6 +7509,14 @@ Levers identified by code reading (verify by perf on the heavy workloads):
    call (kl_tab.fill(0)) — per-block KL table caching across deform calls
    on the same block is an algorithmic win if results stay byte-identical
    (upstream also rebuilds per call, so parity = output equality only).
+   REFINEMENT: rep_table.rs already has the caching pattern to copy —
+   `with_kl_table` (rep_table.rs:626-647) lazily caches a SharedKlTable per
+   record behind a mutex with a same-thread nesting guard
+   (ActiveKlCallback). deform.rs:877 bypasses it by building a fresh
+   KlTable on block.dual() every call. The lane: add a dual-block KL cache
+   next to the primal one (keyed by the dual block's identity) and route
+   block_deformation_to_height through it; keep the ActiveKlCallback
+   nesting contract.
 3. deform.rs:900 accumulator linear scan is O(n^2) per call — hash-index
    by StandardRepr (careful: queue.find+erase semantics = consume one
    matching entry per occurrence).
