@@ -23,6 +23,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use smallvec::SmallVec;
+
 use crate::grading::try_capacity;
 use crate::inner_class::PermutationHasherBuilder;
 use crate::integer_lattice::{negative_coweight_eigenspace, reduce_basis_mod_two};
@@ -44,6 +46,16 @@ pub struct InvolutionId(pub(crate) usize);
 pub struct InvolutionTableBudget {
     max_involutions: usize,
     integer_lattice: IntegerLatticeBudget,
+}
+
+type CrossLinkRow = SmallVec<[InvolutionId; 8]>;
+
+fn cross_link_row(rank: usize) -> Result<CrossLinkRow, StructureError> {
+    let mut links = CrossLinkRow::new();
+    links
+        .try_reserve_exact(rank)
+        .map_err(|_| StructureError::AllocationFailed { requested: rank })?;
+    Ok(links)
 }
 
 impl InvolutionTableBudget {
@@ -501,7 +513,7 @@ impl InvolutionTable {
         let semisimple_rank = self.twist.len();
         let mut cursor = start;
         while cursor < self.records.len() {
-            let mut links = try_capacity(semisimple_rank)?;
+            let mut links = cross_link_row(semisimple_rank)?;
             for generator in 0..semisimple_rank {
                 // The cached reflection permutations serve the packed dedup
                 // probe and, on a miss, the theta-image transport below; the
@@ -1302,6 +1314,13 @@ mod tests {
             64,
             64,
         )
+    }
+
+    #[test]
+    fn rank_eight_cross_link_rows_stay_inline() {
+        let links = cross_link_row(8).unwrap();
+        assert_eq!(links.len(), 0);
+        assert_eq!(links.capacity(), 8);
     }
 
     #[test]
