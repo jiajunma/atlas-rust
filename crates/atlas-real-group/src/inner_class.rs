@@ -677,8 +677,12 @@ impl InnerClass {
         }
         let membership = if packed {
             // Keys are unique (the packing is injective), so ordering by the
-            // composite entry orders by key alone.
+            // composite entry orders by key alone. The partition is retained
+            // in the classification cache for the session's lifetime, so
+            // drop the sequential driver's growth-doubling slack (the
+            // parallel driver already reserve_exacts).
             entries.sort_unstable();
+            entries.shrink_to_fit();
             ClassMembership::Packed { entries }
         } else {
             ClassMembership::Full(fallback)
@@ -931,12 +935,8 @@ impl InnerClass {
                          -> Result<(), StructureError> {
                             let owner = u32::try_from(orbit_index)
                                 .map_err(|_| StructureError::ArithmeticOverflow)?;
-                            local_entries.try_reserve(1).map_err(|_| {
-                                StructureError::AllocationFailed { requested: 1 }
-                            })?;
                             let key = pack_simple_images(permutation, simple_positions);
-                            local_entries.push((key << 32) | u128::from(owner));
-                            Ok(())
+                            push_slim(&mut local_entries, (key << 32) | u128::from(owner))
                         };
                         let orbit = Self::orbit_cross_closure(
                             orbit_machine,
@@ -955,10 +955,12 @@ impl InnerClass {
                             .lock()
                             .expect("orbit result lock poisoned") = Some(orbit);
                     }
-                    // Sort in the worker (parallel); the replay merges the
-                    // two sorted buffers in O(n), and the caller's final
-                    // sort_unstable then sees a nearly-sorted vector.
+                    // Sort in the worker (parallel) and drop the
+                    // growth-doubling slack before the replay concatenation,
+                    // so the peak no longer holds a third exact-size buffer
+                    // next to both per-worker buffers.
                     local_entries.sort_unstable();
+                    local_entries.shrink_to_fit();
                     local_entries
                 }));
             }
@@ -990,26 +992,23 @@ impl InnerClass {
                 orbit_member_count,
             ));
         }
-        for local in thread_entries {
-            if entries.is_empty() {
-                entries.extend(local);
-                continue;
-            }
-            // Both buffers are sorted; merge instead of re-sorting.
-            let mut merged = try_capacity(entries.len() + local.len())?;
-            let (mut left, mut right) = (0_usize, 0_usize);
-            while left < entries.len() && right < local.len() {
-                if entries[left] <= local[right] {
-                    merged.push(entries[left]);
-                    left += 1;
-                } else {
-                    merged.push(local[right]);
-                    right += 1;
-                }
-            }
-            merged.extend_from_slice(&entries[left..]);
-            merged.extend_from_slice(&local[right..]);
-            *entries = merged;
+        // Concatenate the (individually sorted, exactly sized) worker
+        // buffers with one exact reserve instead of merging into a third
+        // allocation; each worker buffer is dropped as soon as it drains.
+        // The caller's final sort_unstable cost is unchanged — it was
+        // already pdqsort over the merged vector, not a merge pass.
+        let entry_total = thread_entries.iter().try_fold(0_usize, |sum, local| {
+            sum.checked_add(local.len())
+                .ok_or(StructureError::ArithmeticOverflow)
+        })?;
+        entries
+            .try_reserve_exact(entry_total)
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: entry_total,
+            })?;
+        for mut local in thread_entries {
+            entries.append(&mut local);
+            drop(local);
         }
         Ok(())
     }
@@ -1037,9 +1036,18 @@ impl InnerClass {
         next: &mut Vec<u8>,
         emit: &mut dyn FnMut(usize, &[u8]) -> Result<(), StructureError>,
     ) -> Result<ClassOrbit, StructureError> {
-        /// Members per chunk: ~1MB at the E8 stride of 240 bytes.
-        const CHUNK_MEMBERS: usize = 4096;
-        let chunk_bytes = CHUNK_MEMBERS
+        // Chunk target ~256KB of member bytes: the resident footprint is the
+        // BFS frontier width plus up to two chunks, so smaller chunks halve
+        // the granularity overshoot (E8 stride 240: 262KB vs the historic
+        // 1MB chunk pair at peak). Small strides keep the historic 4096
+        // members (their chunks are already far below 256KB); the floor
+        // bounds alloc churn for huge strides.
+        let chunk_members = if stride == 0 {
+            4096
+        } else {
+            (262_144 / stride).clamp(64, 4096)
+        };
+        let chunk_bytes = chunk_members
             .checked_mul(stride)
             .ok_or(StructureError::ArithmeticOverflow)?;
 
@@ -1049,7 +1057,7 @@ impl InnerClass {
         first.extend_from_slice(&representative_permutation);
         chunks.push_back(first);
         // `base` = the number of members in already-released chunks; member
-        // `i` lives in `chunks[(i - base) / CHUNK_MEMBERS]`.
+        // `i` lives in `chunks[(i - base) / chunk_members]`.
         let mut base = 0_usize;
         let mut parents: Vec<(u32, u8)> = vec![(u32::MAX, 0)];
         let mut member_count = 1_usize;
@@ -1114,15 +1122,15 @@ impl InnerClass {
         let mut cursor = 0_usize;
         while cursor < member_count {
             // Release chunks the sequential cursor has fully read.
-            while cursor - base >= CHUNK_MEMBERS {
+            while cursor - base >= chunk_members {
                 chunks.pop_front();
-                base += CHUNK_MEMBERS;
+                base += chunk_members;
             }
             let mut current_key = T::ZERO;
             let mut parent_generator = usize::MAX;
             if padded {
-                let chunk = &chunks[(cursor - base) / CHUNK_MEMBERS];
-                let offset = (cursor - base) % CHUNK_MEMBERS * stride;
+                let chunk = &chunks[(cursor - base) / chunk_members];
+                let offset = (cursor - base) % chunk_members * stride;
                 current_buf[..stride].copy_from_slice(&chunk[offset..offset + stride]);
                 for (shift, &position) in orbit_machine.simple_positions.iter().enumerate() {
                     current_key = current_key.or_byte(current_buf[usize::from(position)], shift);
@@ -1178,7 +1186,7 @@ impl InnerClass {
                         },
                     )?;
                     open.extend_from_slice(&next_buf[..stride]);
-                    parents.push((cursor as u32, generator as u8));
+                    push_slim(&mut parents, (cursor as u32, generator as u8))?;
                     member_count += 1;
                     emit(orbit_index, &next_buf[..stride])?;
                     continue;
@@ -1187,8 +1195,8 @@ impl InnerClass {
                 if packed {
                     let mut key = 0_u128;
                     {
-                        let chunk = &chunks[(cursor - base) / CHUNK_MEMBERS];
-                        let offset = (cursor - base) % CHUNK_MEMBERS * stride;
+                        let chunk = &chunks[(cursor - base) / chunk_members];
+                        let offset = (cursor - base) % chunk_members * stride;
                         let current = &chunk[offset..offset + stride];
                         for (shift, &position) in
                             orbit_machine.simple_positions.iter().enumerate()
@@ -1209,8 +1217,8 @@ impl InnerClass {
                         requested: reflection.len(),
                     })?;
                 {
-                    let chunk = &chunks[(cursor - base) / CHUNK_MEMBERS];
-                    let offset = (cursor - base) % CHUNK_MEMBERS * stride;
+                    let chunk = &chunks[(cursor - base) / chunk_members];
+                    let offset = (cursor - base) % chunk_members * stride;
                     let current = &chunk[offset..offset + stride];
                     for &image in reflection.iter() {
                         next.push(reflection[current[usize::from(image)] as usize]);
@@ -1231,13 +1239,16 @@ impl InnerClass {
                         },
                     )?;
                     open.extend_from_slice(&next);
-                    parents.push((cursor as u32, generator as u8));
+                    push_slim(&mut parents, (cursor as u32, generator as u8))?;
                     member_count += 1;
                     emit(orbit_index, &next)?;
                 }
             }
             cursor += 1;
         }
+        // The parallel driver retains every ClassOrbit until replay, so drop
+        // the growth-doubling slack before handing the orbit back.
+        parents.shrink_to_fit();
         Ok(ClassOrbit {
             representative,
             parents,
@@ -1368,6 +1379,28 @@ pub(crate) type PermutationKeySet =
     std::collections::HashSet<PermutationKey, PermutationHasherBuilder>;
 pub(crate) type PermutationKeyMap<V> =
     std::collections::HashMap<PermutationKey, V, PermutationHasherBuilder>;
+
+/// Push with a 1.5x exact-growth policy instead of `Vec::push`'s amortized
+/// doubling.
+///
+/// The orbit-build buffers grow to a size that is unknowable during the
+/// streamed BFS (E8: ~2MB of membership entries and ~1MB of parent links
+/// per closure worker), so doubling's up-to-100% capacity slack sits
+/// directly on the process peak — the peak snapshot lands mid-closure,
+/// before any end-of-build shrink_to_fit can run. Exact 1.5x steps cap the
+/// transient slack at 50% and cost O(n/(r-1)) = 3n element copies against
+/// doubling's 2n, negligible next to the closure work. Buffers that know
+/// their size up front still use exact pre-sizing; buffers that are small
+/// or short-lived still use plain push.
+fn push_slim<T>(vec: &mut Vec<T>, value: T) -> Result<(), StructureError> {
+    if vec.len() == vec.capacity() {
+        let grow = vec.len() / 2 + 1;
+        vec.try_reserve_exact(grow)
+            .map_err(|_| StructureError::AllocationFailed { requested: grow })?;
+    }
+    vec.push(value);
+    Ok(())
+}
 
 /// Slot element of [`PackedKeySet`]: `u64` when the semisimple rank is at
 /// most 8 (the packed simple-image key is at most 64 bits), `u128`
