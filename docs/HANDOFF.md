@@ -7819,3 +7819,40 @@ record) briefly landed there as 6587760; it lives on mainline as 4ab8d03
 `/Users/hoxide/mycodes/atlas-rust-main` (branch codex/continue-atlas-port).
 At lane-D merge time: drop/ignore the duplicate 6587760 docs commit on
 agent-kgbopt (same content as 4ab8d03).
+
+## 2026-09-03a — deform KL table routed through record cache (83a78bf, PENDING HPC verification)
+
+`common_deformation_terms` (deform.rs) rebuilt and refilled a throwaway
+`KlTable` per final; upstream `Rep_table::deformation_terms` keeps one KL
+table per block (repr.cpp:1994-1998). Now takes `&LocatedBlock` and runs the
+KL accumulation inside `LocatedBlock::with_kl_table` (monotonic `fill(y+1)`,
+holes-skip makes extension cheap). Callers: `deform` builtin and the
+K_type_formula reducibility recursion (domain_builtins.rs, 2 sites).
+Signature changed: `(rc, located, gamma)`. No test callers existed.
+NOT locally compiled (user rule: compile/verify on HPC only). On HPC
+return: quick_check + corpus gate at tip, then A/B tip vs b7ed9e5 on
+deform-heavy fixtures to isolate the effect (lane-D merge A/B is separate).
+Memory note: KL tables are now retained per pooled block record — matches
+upstream; watch maxrss on E7/E8 deform workloads in the A/B.
+
+## 2026-09-03b — unitarity hot-path analysis (deform.at script level)
+
+`is_unitary(p)` (atlas-scripts/deform.at:300) = `hermitian_form_irreducible
+(p).is_pure`; non-equal-rank goes through `twisted_c_form_irreducible` →
+`map(twisted_full_deform, fixed_terms)` over the fixed terms of
+`twisted_c_form_irreducible_contributions` (one `KL_sum_at_s` + one
+`twisted_KL_sum_at_s` call). So a heavy `is_unitary` runs thousands of
+distinct `twisted_full_deform(q)` (builtin, per-context memo cache exists
+at domain_builtins `twisted_full_deform_cache`, keyed by repr — but each
+fixed term is a distinct q, so no hits). Each one recurses
+`twisted_deformation_with_cancel` over reducibility points, and each level
+calls `twisted_deformation_terms` which builds a FRESH
+`ExtKlTable::new(eblock)` + `fill_columns(y+1)` (deform.rs:580, likewise
+:780, :832). Upstream repr.cpp:2441 does the same rebuild, so this is
+parity, not a gap — but a per-(parent,eblock) ExtKl cache (fingerprinted
+like `DUAL_KL_TABLES`) would collapse O(sum y) refill to O(N). DECISION
+DEFERRED: no heavy-unitary profile exists yet (E8 probes don't exercise it:
+lane-C phase split), heavy A/B already shows rust 20min vs oracle >2h, and
+caching ExtKl tables risks big RSS on E7. First measure on HPC return:
+frame-pointer perf of `probe_unitary_e7_heavy.atlas` (or a shortened
+variant) to see if ExtKlTable fill actually dominates before building this.
