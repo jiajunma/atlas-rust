@@ -56,8 +56,10 @@ class SlurmMemoryDefaultsTest(unittest.TestCase):
             "memory.max",
             "memory.current",
             "memory.limit_in_bytes",
+            "memory.soft_limit_in_bytes",
             "memory.usage_in_bytes",
             "memory.oom_control",
+            "/etc/slurm/cgroup.conf",
             "SNAPSHOT_SLEEP_SECONDS",
         ):
             with self.subTest(marker=marker):

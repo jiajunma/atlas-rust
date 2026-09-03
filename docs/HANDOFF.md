@@ -64,9 +64,14 @@ Submit `hpc/memory_snapshot.sbatch` after each cluster-policy change to archive
 the cgroup-v1 equivalents). The snapshot is deliberately a 1-CPU/1G CPU job
 and does not perturb benchmark allocations. The first live run on `cu026`
 confirmed cgroup v1 and `ConstrainRAMSpace=yes`; the task cgroup exposed the
-v1 unlimited sentinel, so the script now prints the parent chain as well.
-Its cgroup fields are the authoritative answer for enforcement; do not
-substitute a login-node `free` reading.
+v1 unlimited sentinel, while the job/step parent imposed the actual hard
+limit. Job 3676960 requested 1G and received `966365184` bytes; job 3676961
+requested 8G with two CPUs and received `7730937856` bytes. Both are about
+90% of the nominal request. The controller reports `AllowedRAMSpace=100%`, so
+the snapshot now also records the compute node's `/etc/slurm/cgroup.conf` and
+the v1 soft limit to identify the remaining configuration discrepancy. Its
+cgroup fields are the authoritative answer for enforcement; do not substitute
+a login-node `free` reading.
 
 ## Current frontier - 2026-09-03 (positive-root index, E7 unitarity pending)
 

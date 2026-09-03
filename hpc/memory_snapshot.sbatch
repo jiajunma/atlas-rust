@@ -32,6 +32,12 @@ sinfo -Nel -n "${SLURMD_NODENAME:?SLURMD_NODENAME is required}"
 
 printf '\n== slurm config ==\n'
 scontrol show config | grep -E '^(DefMemPerNode|MaxMemPerNode|SelectTypeParameters|TaskPlugin|TaskPluginParam|ProctrackType|ConstrainRAMSpace|ConstrainSwapSpace|JobAcctGatherType|JobAcctGatherFrequency)'
+printf 'compute_node_cgroup_conf:\n'
+if [[ -r /etc/slurm/cgroup.conf ]]; then
+  grep -Ev '^[[:space:]]*(#|$)' /etc/slurm/cgroup.conf
+else
+  printf 'not readable\n'
+fi
 
 printf '\n== qos and association ==\n'
 sacctmgr show qos normal,long -P -o Name,Flags,MaxWall,MaxTRES,MaxTRESPerNode,MaxTRESPU,MaxJobsPU,MaxSubmitPU
@@ -75,7 +81,8 @@ while IFS=: read -r hierarchy controllers relative; do
       if [[ -d "$cgroup_dir" ]]; then
         while [[ "$cgroup_dir" == "$mount"* ]]; do
           printf '[v1] %s\n' "$cgroup_dir"
-          for name in memory.limit_in_bytes memory.usage_in_bytes \
+          for name in memory.limit_in_bytes memory.soft_limit_in_bytes \
+              memory.usage_in_bytes \
               memory.max_usage_in_bytes memory.failcnt memory.oom_control \
               memory.memsw.limit_in_bytes memory.memsw.usage_in_bytes; do
             path="$cgroup_dir/$name"
