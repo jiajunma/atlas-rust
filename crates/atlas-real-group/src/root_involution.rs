@@ -423,17 +423,29 @@ fn subsystem_simple_roots(
     debug_assert_eq!(image_by_root.len(), negatives.len());
     let mut positive = Vec::new();
     let mut positive_coordinates: Vec<&[i32]> = Vec::new();
-    for (index, (&image, &negative)) in image_by_root.iter().zip(negatives.iter()).enumerate() {
+    let positive_root_ids = root_system.positive_root_ids();
+    let positive_root_heights = root_system.positive_root_heights();
+    debug_assert_eq!(positive_root_ids.len(), positive_root_heights.len());
+    let mut heights = Vec::new();
+    heights
+        .try_reserve(positive_root_ids.len())
+        .map_err(|_| StructureError::AllocationFailed {
+            requested: positive_root_ids.len(),
+        })?;
+    for (positive_index, &root) in positive_root_ids.iter().enumerate() {
+        let index = root.0;
+        let image = image_by_root[index];
+        let negative = negatives[index];
         if classify_root(index, RootId(usize::from(image)), negative) != kind {
             continue;
         }
-        let Some(coordinates) = root_system.simple_coordinates(RootId(index)) else {
+        let Some(coordinates) = root_system.simple_coordinates(root) else {
             continue;
         };
-        if coordinates.iter().all(|&coordinate| coordinate >= 0) {
-            positive.push(RootId(index));
-            positive_coordinates.push(coordinates);
-        }
+        debug_assert!(coordinates.iter().all(|&coordinate| coordinate >= 0));
+        positive.push(root);
+        positive_coordinates.push(coordinates);
+        heights.push(positive_root_heights[positive_index]);
     }
     // Membership by simple coordinates. With semisimple rank <= 8 (the
     // compact-Weyl ceiling of `WeylElt`) every NONNEGATIVE coordinate
@@ -480,11 +492,7 @@ fn subsystem_simple_roots(
     remainder
         .try_reserve(rank)
         .map_err(|_| StructureError::AllocationFailed { requested: rank })?;
-    // Heights order the scan; i64 sums cannot overflow on root coordinates.
-    let heights: Vec<i64> = positive_coordinates
-        .iter()
-        .map(|coordinates| coordinates.iter().map(|&c| i64::from(c)).sum())
-        .collect();
+    // Heights order the scan; values were checked and cached by RootSystem.
     let mut scan_order: Vec<usize> = (0..positive.len()).collect();
     scan_order.sort_by_key(|&index| heights[index]);
     let mut is_simple = vec![false; positive.len()];

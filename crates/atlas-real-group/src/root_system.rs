@@ -182,6 +182,11 @@ pub struct RootSystem {
     /// coordinates: positivity lives in the simple-coordinate basis, so no
     /// half-split shortcut exists.
     positive: Vec<bool>,
+    /// Stable IDs of positive roots in ambient root order. Consumers that
+    /// only classify positive roots can skip the negative half of the system.
+    positive_root_ids: Box<[RootId]>,
+    /// Simple-coordinate heights aligned with `positive_root_ids`.
+    positive_root_heights: Box<[i64]>,
     /// Stable IDs of the simple roots in generator order, so descent
     /// queries need no per-call binary search.
     simple_ids: Vec<RootId>,
@@ -349,8 +354,29 @@ impl RootSystem {
         positive
             .try_reserve_exact(count)
             .map_err(|_| StructureError::AllocationFailed { requested: count })?;
-        for coordinates in &simple_coordinates {
-            positive.push(coordinates.iter().any(|&value| value > 0));
+        let mut positive_root_ids = Vec::new();
+        positive_root_ids
+            .try_reserve_exact(count / 2)
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: count / 2,
+            })?;
+        let mut positive_root_heights = Vec::new();
+        positive_root_heights
+            .try_reserve_exact(count / 2)
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: count / 2,
+            })?;
+        for (index, coordinates) in simple_coordinates.iter().enumerate() {
+            let is_positive = coordinates.iter().any(|&value| value > 0);
+            positive.push(is_positive);
+            if is_positive {
+                positive_root_ids.push(RootId(index));
+                let height = coordinates.iter().try_fold(0_i64, |sum, &value| {
+                    sum.checked_add(i64::from(value))
+                        .ok_or(StructureError::ArithmeticOverflow)
+                })?;
+                positive_root_heights.push(height);
+            }
         }
         let semisimple_rank = datum.semisimple_rank();
         let mut simple_ids = Vec::new();
@@ -409,6 +435,8 @@ impl RootSystem {
             coroots,
             simple_coordinates,
             positive,
+            positive_root_ids: positive_root_ids.into_boxed_slice(),
+            positive_root_heights: positive_root_heights.into_boxed_slice(),
             simple_ids,
             min_roots,
             min_coroots,
@@ -521,6 +549,16 @@ impl RootSystem {
     /// Positivity per root, index-aligned under [`RootId`].
     pub(crate) fn positivity(&self) -> &[bool] {
         &self.positive
+    }
+
+    /// Stable IDs of positive roots in ambient root order.
+    pub(crate) fn positive_root_ids(&self) -> &[RootId] {
+        &self.positive_root_ids
+    }
+
+    /// Simple-coordinate heights aligned with [`Self::positive_root_ids`].
+    pub(crate) fn positive_root_heights(&self) -> &[i64] {
+        &self.positive_root_heights
     }
 
     /// Whether a root is positive in the simple-root basis.
@@ -1063,6 +1101,13 @@ mod tests {
                 Some(coordinates.iter().any(|&value| value > 0))
             );
         }
+    }
+
+    #[test]
+    fn positive_root_index_preserves_ambient_order_and_heights() {
+        let roots = RootSystem::enumerate(&a2(), 6).unwrap();
+        assert_eq!(roots.positive_root_ids(), &[RootId(3), RootId(4), RootId(5)]);
+        assert_eq!(roots.positive_root_heights(), &[1, 1, 2]);
     }
 
     #[test]
