@@ -58,6 +58,7 @@ class SlurmMemoryDefaultsTest(unittest.TestCase):
             "memory.limit_in_bytes",
             "memory.usage_in_bytes",
             "memory.oom_control",
+            "SNAPSHOT_SLEEP_SECONDS",
         ):
             with self.subTest(marker=marker):
                 self.assertIn(marker, script)

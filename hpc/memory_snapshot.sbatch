@@ -52,13 +52,19 @@ printf 'memory_files:\n'
 while IFS=: read -r hierarchy controllers relative; do
   if [[ "$hierarchy" == 0 && -z "$controllers" ]]; then
     cgroup_dir="/sys/fs/cgroup${relative}"
-    for name in memory.max memory.current memory.events memory.swap.max; do
-      path="$cgroup_dir/$name"
-      if [[ -r "$path" ]]; then
-        printf '%s=' "$path"
-        tr -d '\n' < "$path"
-        printf '\n'
-      fi
+    while [[ "$cgroup_dir" == /sys/fs/cgroup* ]]; do
+      printf '[v2] %s\n' "$cgroup_dir"
+      for name in memory.max memory.current memory.events memory.swap.max; do
+        path="$cgroup_dir/$name"
+        if [[ -r "$path" ]]; then
+          printf '%s=' "$path"
+          tr -d '\n' < "$path"
+          printf '\n'
+        fi
+      done
+      [[ "$cgroup_dir" == /sys/fs/cgroup ]] && break
+      cgroup_dir="${cgroup_dir%/*}"
+      [[ -n "$cgroup_dir" ]] || break
     done
   elif [[ "$controllers" == *memory* ]]; then
     # XMU currently mounts the Slurm memory controller as cgroup v1. Locate
@@ -67,18 +73,30 @@ while IFS=: read -r hierarchy controllers relative; do
     for mount in /sys/fs/cgroup/memory /sys/fs/cgroup; do
       cgroup_dir="$mount${relative}"
       if [[ -d "$cgroup_dir" ]]; then
-        for name in memory.limit_in_bytes memory.usage_in_bytes \
-            memory.max_usage_in_bytes memory.failcnt memory.oom_control \
-            memory.memsw.limit_in_bytes memory.memsw.usage_in_bytes; do
-          path="$cgroup_dir/$name"
-          if [[ -r "$path" ]]; then
-            printf '%s=' "$path"
-            tr -d '\n' < "$path"
-            printf '\n'
-          fi
+        while [[ "$cgroup_dir" == "$mount"* ]]; do
+          printf '[v1] %s\n' "$cgroup_dir"
+          for name in memory.limit_in_bytes memory.usage_in_bytes \
+              memory.max_usage_in_bytes memory.failcnt memory.oom_control \
+              memory.memsw.limit_in_bytes memory.memsw.usage_in_bytes; do
+            path="$cgroup_dir/$name"
+            if [[ -r "$path" ]]; then
+              printf '%s=' "$path"
+              tr -d '\n' < "$path"
+              printf '\n'
+            fi
+          done
+          [[ "$cgroup_dir" == "$mount" ]] && break
+          cgroup_dir="${cgroup_dir%/*}"
+          [[ -n "$cgroup_dir" ]] || break
         done
         break
       fi
     done
   fi
 done < /proc/self/cgroup
+
+snapshot_sleep="${SNAPSHOT_SLEEP_SECONDS:-0}"
+if [[ "$snapshot_sleep" =~ ^[0-9]+$ && "$snapshot_sleep" -gt 0 ]]; then
+  printf '\n== hold ==\nseconds=%s\n' "$snapshot_sleep"
+  sleep "$snapshot_sleep"
+fi

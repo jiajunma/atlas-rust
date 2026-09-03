@@ -25,9 +25,9 @@ The controller confirms `SelectType=select/cons_tres` with
 `CR_CORE_MEMORY`, `TaskPlugin=task/cgroup`, `ProctrackType=proctrack/cgroup`,
 `ConstrainRAMSpace=yes`, and `ConstrainSwapSpace=no`. The account association
 allows `normal,long`; the normal/long QOS wall limits are 2/4 days and the
-visible QOS rows impose no additional memory field. The node `RealMemory`,
-the allocation's cgroup `memory.max`, and job-level accounting still need to
-be captured by `hpc/memory_snapshot.sbatch` on a running compute node.
+visible QOS rows impose no additional memory field. The node `RealMemory` is
+confirmed by `sinfo` and `/proc/meminfo`; the running-step cgroup hierarchy and
+job-level accounting are captured by `hpc/memory_snapshot.sbatch`.
 
 The checked-in resource policy now has three separate layers:
 
@@ -60,10 +60,13 @@ orbit-storage changes, not by choosing a larger CPU allocation.
 
 Submit `hpc/memory_snapshot.sbatch` after each cluster-policy change to archive
 `scontrol show partition`, `sinfo -Nel`, `/proc/meminfo`, and the running step's
-`memory.max`, `memory.current`, `memory.events`, and `memory.swap.max`. The
-snapshot is deliberately a 1-CPU/1G CPU job and does not perturb benchmark
-allocations. Its cgroup fields are the authoritative answer for enforcement;
-do not substitute a login-node `free` reading.
+`memory.max`, `memory.current`, `memory.events`, and `memory.swap.max` (plus
+the cgroup-v1 equivalents). The snapshot is deliberately a 1-CPU/1G CPU job
+and does not perturb benchmark allocations. The first live run on `cu026`
+confirmed cgroup v1 and `ConstrainRAMSpace=yes`; the task cgroup exposed the
+v1 unlimited sentinel, so the script now prints the parent chain as well.
+Its cgroup fields are the authoritative answer for enforcement; do not
+substitute a login-node `free` reading.
 
 ## Current frontier - 2026-09-03 (positive-root index, E7 unitarity pending)
 
