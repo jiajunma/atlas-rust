@@ -4,6 +4,55 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Memory policy audit - 2026-09-03
+
+The observed Slurm rejection is authoritative for the current account/policy:
+`requested 8.0GB memory/node exceeds the allowed 4.0GB for partition 'cpu'`.
+This proves a per-job request/QOS (or partition) ceiling of 4 GB on `cpu`; it
+does **not** prove that a CPU node has only 4 GB of physical RAM. `--mem=4G`
+is a memory allocation for the job on one node, and is not a global machine
+memory setting. A job cannot safely rely on unallocated node memory even when
+`free` reports it, because Slurm may enforce the allocation through a cgroup.
+The actual node `RealMemory`, `memory.max`, and account/QOS fields remain to be
+collected after the SSH outage clears.
+
+The checked-in resource policy now has three separate layers:
+
+1. Every `cpu` sbatch entry requests at most 4G (the two raw-capture jobs use
+   2G). Heavy E7/E8, real `block_deform`, unitarity, massif, and worker
+   profiling jobs must override the script with `--partition=fat` and a
+   measured request such as `--mem=32G`.
+2. `script_corpus_diff.py` defaults each sequential child to
+   `RLIMIT_AS=4 GiB`, matching the CPU allocation. This is a per-process
+   **virtual address-space** ceiling, not an RSS ceiling and not a job-wide
+   budget. Fat corpus runs must opt in explicitly, for example
+   `MEM_CAP_GB=24`; an explicit value must never be used with a 4G CPU job.
+3. GNU `time -v` records each interpreter's peak process RSS in KiB, while
+   Slurm `MaxRSS` is job/step accounting. They are related but not identical:
+   RSS excludes untouched virtual mappings, and allocator arenas, thread
+   stacks, shared libraries, and cgroup accounting can make the numbers
+   differ. A performance claim therefore needs both Rust/C++ process metrics
+   and the job's Slurm accounting, plus the OOM/timeout status.
+
+Current measured memory facts are workload-specific, not language constants:
+the E8 `unipotent` run is about 811 MB Rust versus 881 MB C++ (exact output,
+roughly 8% lower Rust RSS); the E8 KLV sizing probe is about 595 MB versus
+805 MB; and the old E7 block-deform run reached roughly 5.3 GB Rust and
+5.18 GB C++ but still has an unresolved coefficient correctness issue, so it
+must not be used as a final optimization result. The remaining Rust memory
+work is to attribute live heap blocks and retained arenas before changing
+representations; the historical 3.7 GB E8 peak was reduced by record and
+orbit-storage changes, not by choosing a larger CPU allocation.
+
+When HPC access returns, collect and archive one snapshot with:
+`scontrol show partition cpu fat`, `sinfo -Nel`,
+`sacctmgr show qos normal format=Name,MaxTRES,MaxTRESPU,MaxTRESPN`,
+`sacctmgr show assoc user=$USER format=Account,Partition,QOS,MaxTRES`,
+`scontrol show job $SLURM_JOB_ID`, `/proc/meminfo`, and the job cgroup's
+`memory.max`, `memory.current`, and `memory.events`. Until those fields are
+captured, state physical-node capacity and cgroup enforcement as pending,
+not as inferred facts.
+
 ## Current frontier - 2026-09-03 (positive-root index, E7 unitarity pending)
 
 The positive-root index is integrated locally on commit `c3cfedc` on top of

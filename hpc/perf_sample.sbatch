@@ -1,6 +1,13 @@
 #!/bin/bash
 #SBATCH --job-name=atlas-perf-sample
 #SBATCH --output=perf-sample-%j.out
+#SBATCH --partition=cpu
+#SBATCH --account=yushilingroup
+#SBATCH --qos=normal
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=4G
 #SBATCH --time=00:30:00
 # Sample the rust atlas-cli running a slow corpus script with gdb to find
 # the remaining per-script hot spot (post orbit-construction fix).

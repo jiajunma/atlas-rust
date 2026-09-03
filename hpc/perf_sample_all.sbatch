@@ -1,6 +1,13 @@
 #!/bin/bash
 #SBATCH --job-name=atlas-perf-sample-all
 #SBATCH --output=perf-sample-all-%j.out
+#SBATCH --partition=cpu
+#SBATCH --account=yushilingroup
+#SBATCH --qos=normal
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=4G
 #SBATCH --time=00:30:00
 # perf_sample.sbatch variant that samples EVERY thread (the KGB BFS's rayon
 # workers are invisible to main-thread-only sampling; post-2026-08-24j the

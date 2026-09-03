@@ -17,7 +17,8 @@ The report includes a histogram of first-error messages on the Rust side —
 the corpus-driven priority list for the next language features.
 
 Usage: script_corpus_diff.py <atlas-binary> <atlas-cli-binary> [globs...]
-Env: REPORT (output json), SIZE_CAP bytes (default 4 MiB), TIMEOUT seconds.
+Env: REPORT (output json), SIZE_CAP bytes (default 4 MiB), TIMEOUT seconds,
+MEM_CAP_GB (address-space cap per child, default 4 GiB; fat jobs may raise it).
 """
 
 import glob
@@ -35,6 +36,7 @@ import time
 
 TIME_BIN = shutil.which("time")
 USE_GNU_TIME = bool(TIME_BIN and sys.platform != "darwin")
+DEFAULT_MEM_CAP_GB = 4
 
 
 def parse_time_metrics(path):
@@ -63,7 +65,7 @@ def measure_command(argv, *, cwd, timeout, input_text=None):
     def limit_memory():
         # Contain runaway allocations (e.g. a diverging lazy list) so one
         # script cannot OOM-kill the whole SLURM job.
-        cap = int(os.environ.get("MEM_CAP_GB", "6")) * 1024**3
+        cap = int(os.environ.get("MEM_CAP_GB", str(DEFAULT_MEM_CAP_GB))) * 1024**3
         resource.setrlimit(resource.RLIMIT_AS, (cap, cap))
 
     try:

@@ -41,7 +41,17 @@ sbatch --partition=fat --mem=32G --time=06:00:00 hpc/probe_diff.sbatch
 ```
 
 An explicit `--mem` supplied to `sbatch` overrides the script default; it does
-not change the partition's accounting or QOS limits.
+not change the partition's accounting or QOS limits. In particular, do not
+interpret `--mem=4G` as the physical size of a CPU node or as a limit shared by
+all users on that node. It is the allocation for this job; cgroup enforcement
+and the node's actual `RealMemory` must be checked separately.
+
+The corpus driver adds another, independent guard: each Rust/C++ child gets a
+`RLIMIT_AS` virtual-address-space cap (`MEM_CAP_GB`, default 4). This prevents
+one runaway script from killing the batch job, but it is not a measurement of
+RSS. Keep it at or below the Slurm allocation for CPU jobs; raise it explicitly
+only together with a fat-partition request, for example
+`--export=ALL,MEM_CAP_GB=24` with `--mem=32G`.
 
 Never put tokens, credentials, or large generated outputs in Git.
 
