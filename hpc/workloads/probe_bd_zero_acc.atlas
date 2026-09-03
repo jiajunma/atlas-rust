@@ -1,0 +1,15 @@
+{ E6 x=1790 block_deform with ZERO accumulator: separates the block
+  deformation computation from the accumulator consumption/matching. }
+rb : RootDatum
+rb := simply_connected(Lie_type("E6"),true)
+ib : InnerClass
+ib := inner_class(rb,[[1,0,0,0,0,0],[0,1,0,0,0,0],[0,0,1,0,0,0],[0,0,0,1,0,0],[0,0,0,0,1,0],[0,0,0,0,0,1]])
+rfb : RealForm
+rfb := real_form(ib,2)
+p : Param
+p := param(KGB(rfb,1790),[0,0,0,0,0,0],[1,1,1,1,1,1]/1)
+d : ParamPol
+d := deform(p)
+z : ParamPol
+z := d-d
+block_deform(p,z,-1)
