@@ -1,0 +1,49 @@
+{ deform/block_deform divergence bisect ladder: B4, D5, E6(x=0), E6(x=1790).
+  Prints deform(p) and block_deform(p,d,-1) for each case so the rust/oracle
+  sorted diff localises the first diverging scale. }
+rb : RootDatum
+rb := simply_connected(Lie_type("B4"),true)
+ib : InnerClass
+ib := inner_class(rb,[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
+nb : int
+nb := nr_of_real_forms(ib)
+rfb : RealForm
+rfb := real_form(ib,nb-1)
+pb : Param
+pb := param(KGB(rfb,0),[0,0,0,0],[1,1,1,1]/1)
+db : ParamPol
+db := deform(pb)
+db
+block_deform(pb,db,-1)
+rd : RootDatum
+rd := simply_connected(Lie_type("D5"),true)
+id5 : InnerClass
+id5 := inner_class(rd,[[1,0,0,0,0],[0,1,0,0,0],[0,0,1,0,0],[0,0,0,1,0],[0,0,0,0,1]])
+nd : int
+nd := nr_of_real_forms(id5)
+rfd : RealForm
+rfd := real_form(id5,nd-1)
+pd : Param
+pd := param(KGB(rfd,0),[0,0,0,0,0],[1,1,1,1,1]/1)
+dd : ParamPol
+dd := deform(pd)
+dd
+block_deform(pd,dd,-1)
+re : RootDatum
+re := simply_connected(Lie_type("E6"),true)
+ie : InnerClass
+ie := inner_class(re,[[1,0,0,0,0,0],[0,1,0,0,0,0],[0,0,1,0,0,0],[0,0,0,1,0,0],[0,0,0,0,1,0],[0,0,0,0,0,1]])
+rfe : RealForm
+rfe := real_form(ie,2)
+p0 : Param
+p0 := param(KGB(rfe,0),[0,0,0,0,0,0],[1,1,1,1,1,1]/1)
+d0 : ParamPol
+d0 := deform(p0)
+d0
+block_deform(p0,d0,-1)
+p1 : Param
+p1 := param(KGB(rfe,1790),[0,0,0,0,0,0],[1,1,1,1,1,1]/1)
+d1 : ParamPol
+d1 := deform(p1)
+d1
+block_deform(p1,d1,-1)
