@@ -1,5 +1,37 @@
 # Remaining builtin coverage (post-language-gate)
 
+## Unitarity and associated-cycle queue (2026-09-03)
+
+The positive-root index candidate is locally integrated as `c3cfedc` and has
+passed the isolated HPC quick-check, focused Weyl/InvolutionTable/KGB gate,
+and full corpus (`3674970`-`3674972`, 240/240 MATCH). Its real E7 unitarity
+benchmark (`3674973`) is still pending, so no speedup is credited yet. Keep
+the correctness contract: positive IDs follow ambient root order, cached
+heights align one-for-one with those IDs, and subsystem-simple-root output
+keeps the previous stable order. The next candidates are repeated
+`RootInvolutionData` reuse, cached subsystem membership, and fewer
+`CoweightParity`/classification allocations; each requires an exact fixture
+and interleaved same-node A/B measurement.
+
+Associated-cycle is not yet a Rust implementation surface. The Atlas oracle
+has `GKfast`, `associated_variety_ann_res`, `K_NilpotentData`, and
+`av_from_av_ann`; Rust has no corresponding nilpotent, character, Springer,
+or associated-variety domain types. Work must begin with oracle captures and
+small accepted/rejected fixtures, then a minimal exact Rust boundary. After
+that correctness gate, record measurements for these optimization hypotheses:
+
+- degree-index ambient Weyl irreps before associated-variety scans;
+- cache character restrictions, Springer inverses, and integrality-derived
+  combinations;
+- generate `rho_shifts` by incremental subset sums;
+- index `theta_orbit_reps` markings and K-type bases;
+- cache repeated `Phi`, formula, twist, and induction computations;
+- factor or sparsify integer `T`/`Q` matrices;
+- avoid materializing a complete diagonal projector in `av_from_av_ann`.
+
+These are a measurement backlog, not permission to change Atlas semantics
+before a differential fixture exists.
+
 ## Weyl/KGB frontier and maintenance contracts (2026-09-02)
 
 The current Weyl/KGB tip is `d686744`, following `f835987`, `b1fb57a`,

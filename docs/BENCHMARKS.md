@@ -1,5 +1,17 @@
 # Benchmark — Rust vs the real Atlas C++ (fair, same machine)
 
+## Positive-root index (2026-09-03)
+
+Commit `5207c154` passed HPC quick-check `3674970`, focused
+Weyl/InvolutionTable/KGB gate `3674971`, and the full 240-script corpus
+`3674972` (**240/240 MATCH**). The corpus summary was 57 scripts within 2x,
+0 over 5x, and 5 Rust-faster. The integrated local commit is `c3cfedc`, with
+the lane-D KGB optimizations preserved; the full local real-group suite is
+568/568. The real E7 unitarity workload `3674973` is still running, so wall
+time and RSS for this optimization remain uncredited until the Rust/C++
+comparison completes. Use an interleaved same-node A/B before attributing a
+small timing difference to the index.
+
 Method (2026-08-04): identical `.atlas` scripts, one machine (macOS,
 Apple Silicon), `target/release/atlas-cli` (cargo release) vs the locally
 built Atlas C++ (`-Wall -O3 -DNDEBUG`, `/Users/hoxide/mycodes/atlasofliegroups/atlas`).

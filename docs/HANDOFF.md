@@ -4,6 +4,51 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Current frontier - 2026-09-03 (positive-root index, E7 unitarity pending)
+
+The positive-root index is integrated locally on commit `c3cfedc` on top of
+the lane-D KGB baseline. `RootSystem` now stores positive root IDs and their
+simple-coordinate heights once during enumeration. `RootInvolutionData` uses
+those aligned slices for subsystem-simple-root classification, so each scan
+avoids visiting the negative half of the root system and avoids recomputing
+heights. Ambient root order, stable height ties, and the all-pairs reference
+algorithm remain unchanged.
+
+Fresh verification on the integrated tree: `cargo test -p atlas-real-group
+--lib` passed **568/568**, the focused positive-index and height-order tests
+passed, and `git diff --check` is clean. Review of the original isolated
+commit `5207c15` found no correctness issues; the larger non-A2 systems remain
+covered by the existing all-pairs equivalence tests.
+
+HPC verification for the isolated commit `5207c154` is green for quick-check
+`3674970`, focused Weyl/InvolutionTable/KGB `3674971`, and the full corpus
+`3674972` (**240/240 MATCH**; 57 within 2x, 0 over 5x). The fat real E7
+unitarity workload `3674973` is still running; do not credit a wall/RSS gain
+or promote the commit to the pushed mainline until its Rust/C++ output and
+benchmark fields are collected.
+
+The next unitarity measurement must be an interleaved same-node A/B on
+`hpc/workloads/probe_unitary_e7_heavy.atlas` (`x=20925`, nonzero `nu`). If the
+index is exact and materially reduces the `record_from_theta` samples, the
+next candidates are (a) reuse of repeated `RootInvolutionData` derivations,
+(b) cached subsystem membership/index data, and (c) reducing repeated
+`CoweightParity` and root-classification allocations. Each candidate needs a
+separate correctness fixture and an A/B report.
+
+Associated-cycle work is a separate port gap. Rust currently has no
+`ComplexNilpotent`, `CharacterTable`, `SpringerTable`, `KNilpotentData`,
+`associated_variety`, or `av_from_av_ann` boundary. The implementation order
+is: freeze oracle fixtures for `GKfast` and
+`associated_variety_ann_res`; add the smallest Rust domain boundary and exact
+fixtures; then port `KNilpotentData`/associated-cycle matrix construction.
+Only after those outputs match should the following optimization candidates
+be measured: degree-indexed ambient Weyl irreps, cached character
+restrictions and Springer/integrality combinations, incremental `rho_shifts`
+subset sums, indexed `theta_orbit_reps` and K-type bases, cached `Phi`/formula/
+twist/induction results, sparse/factored integer `T`/`Q` matrices, and avoiding
+materialization of a full diagonal projector in `av_from_av_ann`. These are
+recorded as hypotheses, not implemented behavior.
+
 ## Current frontier - 2026-09-03 (lane D merged locally; HPC ssh outage)
 
 Mainline `codex/continue-atlas-port` tip (LOCAL, unpushed): **12a39a1**,
