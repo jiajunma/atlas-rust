@@ -50,6 +50,18 @@ class SlurmMemoryDefaultsTest(unittest.TestCase):
         # one GiB for the Python driver and process/runtime overhead.
         self.assertLess(DEFAULT_MEM_CAP_GB, 4)
 
+    def test_memory_snapshot_reads_both_cgroup_generations(self) -> None:
+        script = (HPC_DIR / "memory_snapshot.sbatch").read_text(encoding="utf-8")
+        for marker in (
+            "memory.max",
+            "memory.current",
+            "memory.limit_in_bytes",
+            "memory.usage_in_bytes",
+            "memory.oom_control",
+        ):
+            with self.subTest(marker=marker):
+                self.assertIn(marker, script)
+
 
 if __name__ == "__main__":
     unittest.main()

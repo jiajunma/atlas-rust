@@ -60,5 +60,25 @@ while IFS=: read -r hierarchy controllers relative; do
         printf '\n'
       fi
     done
+  elif [[ "$controllers" == *memory* ]]; then
+    # XMU currently mounts the Slurm memory controller as cgroup v1. Locate
+    # the controller mount by its conventional path, then append the exact
+    # relative group from /proc/self/cgroup; never walk sibling groups.
+    for mount in /sys/fs/cgroup/memory /sys/fs/cgroup; do
+      cgroup_dir="$mount${relative}"
+      if [[ -d "$cgroup_dir" ]]; then
+        for name in memory.limit_in_bytes memory.usage_in_bytes \
+            memory.max_usage_in_bytes memory.failcnt memory.oom_control \
+            memory.memsw.limit_in_bytes memory.memsw.usage_in_bytes; do
+          path="$cgroup_dir/$name"
+          if [[ -r "$path" ]]; then
+            printf '%s=' "$path"
+            tr -d '\n' < "$path"
+            printf '\n'
+          fi
+        done
+        break
+      fi
+    done
   fi
 done < /proc/self/cgroup
