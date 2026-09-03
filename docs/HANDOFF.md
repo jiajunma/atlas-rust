@@ -7887,3 +7887,41 @@ e8e1d32, outputs land there):
   print only, rust vs oracle
 - Driver: hpc/probe_diff.sbatch (env PROBE/RUSTBIN/TAG; cpu partition
   needs --mem=4G override, the file's 8G default is rejected there)
+
+## 2026-09-03d — block_deform root cause FOUND and fixed (0ce1401, pending HPC verify)
+
+Triage chain (all jobs on atlas-rust-merged, driver hpc/probe_diff.sbatch):
+bisect ladder 3674359 (B4/D5 trivial; **E6 x=1790 SORTED_DIFF 2905 lines**
+— the earlier "E6 matches oracle" belief was never actually verified,
+only rust-vs-rust A/B) → section split: **deform(p) print CLEAN,
+block_deform tuple DIVERGES** → zero-accumulator probe 3674413
+SORTED_MATCH (computation/KL/inversion side correct) → remainder
+analysis: all 62 unconsumed d-terms have nontrivial lambda (0/62 trivial;
+39 distinct x). ROOT CAUSE: `block_deformation_with_dual_kl` rebuilt
+block rows as `sr_gamma(x(z), lambda_rho(p), gamma)` — p's lambda_rho for
+EVERY row. Upstream repr.cpp:2123 uses `sr(block.representative(z), bm,
+gamma)`: each row's OWN stored StandardReprMod (z_pool) through the block
+modifier. Rows whose own lambda differs from p's produced y_bits that
+never matched the accumulator; the missed seeds (coef=0) then corrupted
+the whole triangular coefficient pass below them.
+
+FIX 0ce1401: `block_deformation_to_height` loses `lambda_rho`, gains
+`row_sr: &dyn Fn(usize) -> Result<StandardRepr, StructureError>`; the
+block_deform arm builds it from `RepTable::lookup_full_block(&p)`
+(PartialBlock row representatives + modifier, `sr_with_modifier`), with a
+per-row x-alignment guard against the dual-KL BlockGraph (loud
+RepInvariantViolation if the two full-block constructions ever disagree
+on numbering). A2 tests keep the old reconstruction explicitly (oracle
+job 3536583 was captured under it; identical on that block). NOT locally
+compiled (rule); verification chain auto-submits on HPC recovery
+(background watcher bash-2twc87cr): push sync-merged → checkout
+atlas-rust-merged → quick_check + corpus → (afterok corpus)
+bisect-ladder rerun + full E7 bd probe with the FIXED binary.
+
+HPC flapped: up ~09:17-10:0x local, down again after. Old E7 deform-only
+job 3674360 (orient binary) still queued on fat — its result now only
+adds deform-only E7 timing. NOTE: agent-kgbopt's worktree
+(/public/home/majj/atlas-rust-kgbopt) submitted jobs 3674409-3674412
+(quick_check/corpus/ab/prof) right when HPC returned — something is still
+alive on that lane; do not double-dispatch lane-D work, and check with
+the user before touching it.
