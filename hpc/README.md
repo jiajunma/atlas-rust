@@ -23,6 +23,26 @@ jobs. Every job records the commit, dirty-tree state, Rust toolchain, reference
 Atlas revision, CWEB version, SLURM job/node, fixture manifest, exit status,
 and report checksums.
 
+## Memory requests and partitions
+
+The current XMU policy caps a single `cpu`-partition job at 4 GB. The checked-in
+CPU jobs therefore request at most 4 GB by default (the capture jobs use 2 GB).
+An 8 GB request was rejected by Slurm with `requested 8.0GB memory/node
+exceeds the allowed 4.0GB for partition 'cpu'`. This is a per-job scheduling
+limit, not evidence that a CPU node has only 4 GB of physical RAM. Query
+`scontrol show partition`, `sinfo`, and the account/QOS association when the
+cluster policy changes.
+
+Large workloads such as E7/E8 deformation, unitarity, massif, or profiling
+must explicitly select `fat` and request the measured memory, for example:
+
+```bash
+sbatch --partition=fat --mem=32G --time=06:00:00 hpc/probe_diff.sbatch
+```
+
+An explicit `--mem` supplied to `sbatch` overrides the script default; it does
+not change the partition's accounting or QOS limits.
+
 Never put tokens, credentials, or large generated outputs in Git.
 
 Typical workflow:

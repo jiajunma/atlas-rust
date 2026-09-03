@@ -183,13 +183,13 @@ impl InvolutionRecord {
     }
 }
 
-/// Dedup discipline: the record's compact Weyl factor alone is the dedup
-/// key. Within one table (fixed distinguished delta) `theta = w after
-/// delta` makes the Weyl factor determine the whole record, so
-/// `compact_index` ([`WeylElt`] = 8 bytes, one integer hash round) is an
-/// injective key; the retired `DedupIndex` re-derived the same key from the
-/// simple-root images at a per-edge packing cost. The map is probed and
-/// inserted only — never iterated — so the hash order is unobservable.
+// Dedup discipline: the record's compact Weyl factor alone is the dedup
+// key. Within one table (fixed distinguished delta) `theta = w after
+// delta` makes the Weyl factor determine the whole record, so
+// `compact_index` ([`WeylElt`] = 8 bytes, one integer hash round) is an
+// injective key; the retired `DedupIndex` re-derived the same key from the
+// simple-root images at a per-edge packing cost. The map is probed and
+// inserted only - never iterated - so the hash order is unobservable.
 
 /// Compute the compact Weyl value for the cross action `s*w*twist(s)`.
 fn compact_cross_neighbor(
@@ -957,7 +957,7 @@ impl InvolutionTable {
         let record_count = if rank == 0 {
             0
         } else {
-            self.cross_links.len() / rank
+            self.cross_links.len().checked_div(rank).unwrap_or(0)
         };
         if id.0 >= record_count {
             return Err(StructureError::IndexOutOfRange {

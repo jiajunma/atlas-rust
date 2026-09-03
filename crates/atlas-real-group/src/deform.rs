@@ -942,6 +942,7 @@ fn param_digest(sr: &StandardRepr) -> u64 {
 
 /// The body of [`block_deformation_to_height`] with the dual block's
 /// filled KL table in hand (see there for the upstream references).
+#[allow(clippy::too_many_arguments)]
 fn block_deformation_with_dual_kl<B, D>(
     rc: &RepContext,
     block: &B,

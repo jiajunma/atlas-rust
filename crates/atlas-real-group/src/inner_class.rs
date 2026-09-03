@@ -1092,12 +1092,11 @@ impl InnerClass {
         // bounds alloc churn for huge strides. The member count is rounded
         // DOWN to a power of two, so the per-member chunk locate is a
         // shift/mask instead of an integer division.
-        let chunk_members = if stride == 0 {
-            4096
-        } else {
-            let target = (262_144 / stride).clamp(64, 4096);
-            1_usize << (usize::BITS - 1 - target.leading_zeros())
-        };
+        let target = 262_144usize
+            .checked_div(stride)
+            .unwrap_or(4096)
+            .clamp(64, 4096);
+        let chunk_members = 1_usize << (usize::BITS - 1 - target.leading_zeros());
         let chunk_shift = chunk_members.trailing_zeros();
         let chunk_mask = chunk_members - 1;
         let chunk_bytes = chunk_members
@@ -1311,10 +1310,10 @@ impl InnerClass {
                                 invariant: "orbit chunk",
                             },
                         )?;
-                        open.extend_from_slice(&next);
+                        open.extend_from_slice(next);
                         push_slim(&mut parents, (cursor as u32, generator as u8))?;
                         member_count += 1;
-                        emit(orbit_index, &next, packed_key)?;
+                        emit(orbit_index, next, packed_key)?;
                     }
                 }
             }
@@ -1950,9 +1949,9 @@ impl<'a> PermutationOrbits<'a> {
     /// Replace `p` by `s p s`, the permutation shadow of
     /// [`InnerClass::twisted_conjugate_action`]: `s_g w s_{twist(g)} delta =
     /// s_g theta s_g` because `s_{twist(g)} delta = delta s_g`.
-    pub(crate) fn conjugate(&self, permutation: &mut Vec<u8>, generator: usize) {
+    pub(crate) fn conjugate(&self, permutation: &mut [u8], generator: usize) {
         let reflection = &self.simple_reflections[generator];
-        let previous = permutation.clone();
+        let previous = permutation.to_owned();
         for (slot, &reflected) in permutation.iter_mut().zip(reflection.iter()) {
             *slot = reflection[usize::from(previous[usize::from(reflected)])];
         }

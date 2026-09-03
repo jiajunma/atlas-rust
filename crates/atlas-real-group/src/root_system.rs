@@ -691,7 +691,7 @@ fn build_ladder_bottoms(
                 roots[alpha].as_slice(),
                 &mut difference,
             )?;
-            if !merge_root_cursor_contains(&roots, &difference, &mut root_cursor) {
+            if !merge_root_cursor_contains(roots, &difference, &mut root_cursor) {
                 root_bottoms.insert(RootId(beta));
             }
             subtract_coordinates(
@@ -874,11 +874,7 @@ impl Closure {
         // Keep one owned coordinate allocation for both the dedup key and the
         // pending work item. The queue only needs a shared handle while the
         // map retains the paired coroot/simple-coordinate record.
-        let key: Arc<[i32]> = Arc::try_from(try_copy_coordinates(root)?).map_err(|_| {
-            StructureError::AllocationFailed {
-                requested: root.len(),
-            }
-        })?;
+        let key: Arc<[i32]> = try_copy_coordinates(root)?.into();
         let record = ClosureRecord {
             coroot: try_copy_coordinates(coroot)?,
             simple_coordinates: try_copy_coordinates(simple_coordinates)?,

@@ -4,7 +4,7 @@
 #SBATCH --partition=cpu
 #SBATCH --account=yushilingroup
 #SBATCH --qos=normal
-#SBATCH --mem=8G
+#SBATCH --mem=4G
 #SBATCH --time=01:00:00
 # Generic rust-vs-oracle probe differential with benchmark capture.
 # Both legs run regardless of failure; outputs land in the submit dir.

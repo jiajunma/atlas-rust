@@ -7,7 +7,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=8G
+#SBATCH --mem=4G
 #SBATCH --time=00:40:00
 # Sample ALL threads (incl. rayon KGB BFS workers) of the rust atlas-cli
 # running a slow corpus script. Main-thread sampling (perf_sample.sbatch)
