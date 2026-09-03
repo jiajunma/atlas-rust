@@ -18,7 +18,7 @@ the corpus-driven priority list for the next language features.
 
 Usage: script_corpus_diff.py <atlas-binary> <atlas-cli-binary> [globs...]
 Env: REPORT (output json), SIZE_CAP bytes (default 4 MiB), TIMEOUT seconds,
-MEM_CAP_GB (address-space cap per child, default 4 GiB; fat jobs may raise it).
+MEM_CAP_GB (address-space cap per child, default 3 GiB; fat jobs may raise it).
 """
 
 import glob
@@ -36,7 +36,10 @@ import time
 
 TIME_BIN = shutil.which("time")
 USE_GNU_TIME = bool(TIME_BIN and sys.platform != "darwin")
-DEFAULT_MEM_CAP_GB = 4
+# The CPU corpus job reserves 4 GiB in total. Leave room for this Python
+# driver, the parent process, and thread/runtime mappings instead of allowing
+# one child to consume the entire cgroup allocation through virtual mappings.
+DEFAULT_MEM_CAP_GB = 3
 
 
 def parse_time_metrics(path):

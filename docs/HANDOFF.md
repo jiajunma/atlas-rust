@@ -6,24 +6,38 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
 ## Memory policy audit - 2026-09-03
 
-The observed Slurm rejection is authoritative for the current account/policy:
-`requested 8.0GB memory/node exceeds the allowed 4.0GB for partition 'cpu'`.
-This proves a per-job request/QOS (or partition) ceiling of 4 GB on `cpu`; it
-does **not** prove that a CPU node has only 4 GB of physical RAM. `--mem=4G`
-is a memory allocation for the job on one node, and is not a global machine
-memory setting. A job cannot safely rely on unallocated node memory even when
-`free` reports it, because Slurm may enforce the allocation through a cgroup.
-The actual node `RealMemory`, `memory.max`, and account/QOS fields remain to be
-collected after the SSH outage clears.
+The live XMU configuration is now confirmed, rather than inferred from the
+earlier rejection. `sinfo -Nel` reports CPU nodes `cu[001-389]` as 64 CPUs and
+`256768 MB` each; fat nodes `fat[001-002]` have 64 CPUs and `2063300 MB` each.
+`scontrol show partition -o` reports `DefMemPerCPU=MaxMemPerCPU=4012` on
+`cpu` and `32238` on `fat` (the controller's MB display). `sbatch
+--test-only` accepted an exact 4G/4096M boundary for one CPU, 8G with
+`--cpus-per-task=2` and 16G with `=4`, but rejected 4097M with `=1`; the
+effective CPU job ceiling is approximately 4GiB times allocated CPUs, not
+4GB per job. Keep the exact accepted boundary under test because the display
+unit and the `G`/`M` submit conversion differ by a small rounding margin.
+The original error (`requested 8.0GB memory/node exceeds ... 4.0GB`) therefore
+describes the one-CPU request, not node physical capacity. `--mem` is a job
+allocation on one node, and a job cannot safely rely on unallocated memory
+because Slurm enforces RAM through cgroups.
+
+The controller confirms `SelectType=select/cons_tres` with
+`CR_CORE_MEMORY`, `TaskPlugin=task/cgroup`, `ProctrackType=proctrack/cgroup`,
+`ConstrainRAMSpace=yes`, and `ConstrainSwapSpace=no`. The account association
+allows `normal,long`; the normal/long QOS wall limits are 2/4 days and the
+visible QOS rows impose no additional memory field. The node `RealMemory`,
+the allocation's cgroup `memory.max`, and job-level accounting still need to
+be captured by `hpc/memory_snapshot.sbatch` on a running compute node.
 
 The checked-in resource policy now has three separate layers:
 
-1. Every `cpu` sbatch entry requests at most 4G (the two raw-capture jobs use
-   2G). Heavy E7/E8, real `block_deform`, unitarity, massif, and worker
-   profiling jobs must override the script with `--partition=fat` and a
-   measured request such as `--mem=32G`.
+1. Every `cpu` sbatch entry requests a total within the 4012MB-per-CPU
+   partition policy (the two raw-capture jobs use 2G). Heavy E7/E8, real
+   `block_deform`, unitarity, massif, and worker profiling jobs must override
+   the script with `--partition=fat` and a measured request such as
+   `--mem=32G`.
 2. `script_corpus_diff.py` defaults each sequential child to
-   `RLIMIT_AS=4 GiB`, matching the CPU allocation. This is a per-process
+   `RLIMIT_AS=3 GiB`, below the 4G one-task corpus allocation. This is a per-process
    **virtual address-space** ceiling, not an RSS ceiling and not a job-wide
    budget. Fat corpus runs must opt in explicitly, for example
    `MEM_CAP_GB=24`; an explicit value must never be used with a 4G CPU job.
@@ -44,14 +58,12 @@ work is to attribute live heap blocks and retained arenas before changing
 representations; the historical 3.7 GB E8 peak was reduced by record and
 orbit-storage changes, not by choosing a larger CPU allocation.
 
-When HPC access returns, collect and archive one snapshot with:
-`scontrol show partition cpu fat`, `sinfo -Nel`,
-`sacctmgr show qos normal format=Name,MaxTRES,MaxTRESPU,MaxTRESPN`,
-`sacctmgr show assoc user=$USER format=Account,Partition,QOS,MaxTRES`,
-`scontrol show job $SLURM_JOB_ID`, `/proc/meminfo`, and the job cgroup's
-`memory.max`, `memory.current`, and `memory.events`. Until those fields are
-captured, state physical-node capacity and cgroup enforcement as pending,
-not as inferred facts.
+Submit `hpc/memory_snapshot.sbatch` after each cluster-policy change to archive
+`scontrol show partition`, `sinfo -Nel`, `/proc/meminfo`, and the running step's
+`memory.max`, `memory.current`, `memory.events`, and `memory.swap.max`. The
+snapshot is deliberately a 1-CPU/1G CPU job and does not perturb benchmark
+allocations. Its cgroup fields are the authoritative answer for enforcement;
+do not substitute a login-node `free` reading.
 
 ## Current frontier - 2026-09-03 (positive-root index, E7 unitarity pending)
 
@@ -163,7 +175,8 @@ Lessons pinned this session:
 - sbatch scripts that run cargo need `export PATH="$HOME/.cargo/bin:$PATH"`
   after `source /etc/profile` — a plain `source /etc/profile` alone left
   `cargo: command not found` (job 3672057 burnt).
-- cpu partition caps at 4G mem/job; heavy probes go `--partition=fat`.
+- cpu partition supplies about 4GiB per allocated CPU; heavy probes go
+  `--partition=fat`.
 
 Next suspected hot spot (unconfirmed, profile first):
 `common_deformation_terms` (deform.rs:455) rebuilds and refills the primal

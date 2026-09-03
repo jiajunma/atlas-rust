@@ -25,13 +25,14 @@ and report checksums.
 
 ## Memory requests and partitions
 
-The current XMU policy caps a single `cpu`-partition job at 4 GB. The checked-in
-CPU jobs therefore request at most 4 GB by default (the capture jobs use 2 GB).
-An 8 GB request was rejected by Slurm with `requested 8.0GB memory/node
-exceeds the allowed 4.0GB for partition 'cpu'`. This is a per-job scheduling
-limit, not evidence that a CPU node has only 4 GB of physical RAM. Query
-`scontrol show partition`, `sinfo`, and the account/QOS association when the
-cluster policy changes.
+The current XMU policy reports `DefMemPerCPU=MaxMemPerCPU=4012` on `cpu`.
+An 8 GB request with one CPU was rejected by Slurm with `requested 8.0GB
+memory/node exceeds the allowed 4.0GB for partition 'cpu'`; the same 8 GB
+request is accepted with two CPUs, and 16 GB with four CPUs. The effective
+job ceiling is therefore approximately `4012 MB * allocated CPUs`, subject to
+the account/QOS and node limits. This is not evidence that a CPU node has only
+4 GB of physical RAM. Query `scontrol show partition`, `sinfo`, and the
+account/QOS association when the cluster policy changes.
 
 Large workloads such as E7/E8 deformation, unitarity, massif, or profiling
 must explicitly select `fat` and request the measured memory, for example:
@@ -44,14 +45,21 @@ An explicit `--mem` supplied to `sbatch` overrides the script default; it does
 not change the partition's accounting or QOS limits. In particular, do not
 interpret `--mem=4G` as the physical size of a CPU node or as a limit shared by
 all users on that node. It is the allocation for this job; cgroup enforcement
-and the node's actual `RealMemory` must be checked separately.
+and the node's actual `RealMemory` must be checked separately. The checked-in
+jobs intentionally request conservative totals (usually 4G with 2-4 CPUs),
+so increasing `--cpus-per-task` does not automatically increase `--mem`.
 
 The corpus driver adds another, independent guard: each Rust/C++ child gets a
-`RLIMIT_AS` virtual-address-space cap (`MEM_CAP_GB`, default 4). This prevents
-one runaway script from killing the batch job, but it is not a measurement of
-RSS. Keep it at or below the Slurm allocation for CPU jobs; raise it explicitly
-only together with a fat-partition request, for example
+`RLIMIT_AS` virtual-address-space cap (`MEM_CAP_GB`, default 3). This prevents
+one runaway script from killing the batch job while leaving headroom for the
+Python driver and runtime mappings; it is not a measurement of RSS. Keep it
+below the Slurm allocation for CPU jobs; raise it explicitly only together
+with a fat-partition request, for example
 `--export=ALL,MEM_CAP_GB=24` with `--mem=32G`.
+
+Run `hpc/memory_snapshot.sbatch` to capture the live controller, node,
+allocation, and cgroup values after a cluster-policy change. The checked-in
+snapshot uses one CPU and 1G, so it is safe to submit as a diagnostic job.
 
 Never put tokens, credentials, or large generated outputs in Git.
 
