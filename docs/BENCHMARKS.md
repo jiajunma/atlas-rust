@@ -465,3 +465,51 @@ binary (probe_bd_e6_repeat, 4 interleaved reps, all IDENTICAL): old
 4.38/3.94/4.46/4.52 vs new 3.92/3.88/4.41/4.48 — new faster in every pair,
 median 4.42 -> 4.16s (~-6% at this scale; expect a larger share on
 KL-denser large-group runs).
+
+## E7 block_deform large-scale probe harvest (2026-09-03, jobs 3671969/3672161/3672980)
+
+probe_bd_e7_single (split E7, x=20925; deform(p) + block_deform(p,d,-1)),
+fat partition. Oracle reference: **1:39:27 / 5.18GB** (job 3670294).
+
+| build | wall | max RSS | job |
+|---|---|---|---|
+| a8b2fd8 (pre-orientation-cache) | 3:15:54 | 5.33GB | 3671969 |
+| f9202e7 (orientation cache) | **1:07:04** | 5.33GB | 3672161 |
+| 0fe6955 (+ maskhash) | 1:07:04 | 5.33GB | 3672980 |
+
+The orientation-order cache scales to E7: 3:15:54 -> 1:07:04 (-66%),
+**1.48x faster than the oracle**. maskhash is wall-neutral on this
+workload (its E6 -6% came from KL-dense prim_index lookups; the E7
+block_deform profile is dominated by coefficient arithmetic). All three
+rust outputs are byte-identical.
+
+**CORRECTNESS CAVEAT (under investigation, top priority):** the sorted
+diff against the oracle output is NOT clean at E7 scale — ~43k differing
+lines out of ~46k. Same (x, nu, height) terms carry different Split
+coefficients (e.g. x=12492 nu=[133,-95,-38,0,304,-209,-57]/42 [271]:
+oracle (196-196s) vs rust (-10000+10000s); x=4010 nu=[18,21,...]/8 [370]:
+oracle (1000-1000s) vs rust (63832-63832s)); 626 x-values appear only in
+the rust output, none only in the oracle. The divergence predates
+f9202e7/0fe6955 (a8b2fd8 output identical). Corpus MATCH: 240 passes and
+the E6 probe matched the oracle, so this manifests between E6 and E7
+scale. Triage: ladder probe 3674359 (B4/D5/E6 rust-vs-oracle), E7
+deform-only probe 3674360. Until resolved, the E7 wall comparison above
+must be read as "same script, possibly different arithmetic".
+
+## Lane D tip increments v9 A/B (2026-09-03, jobs 3672941/3672942 @ 83fb43b)
+
+Fast leg (3672941, interleaved reps, IDENTICAL): unitary_e8 4.06 -> 3.55s
+(-12.6%), klv_e8 3.69 -> 3.08s (-16.6%), kgb_e7_allforms parity. Heavy leg
+(3672942, probe_unitary_e7_heavy, stdout IDENTICAL 190937B, all legs
+EXITED 1 = probe's own exit quirk): base 19:45.7/19:56.8 vs branch
+20:02.2/19:35.8 — parity within noise; RSS ~450MB. Combined with the v7
+numbers (3672407) the whole lane-D chain is validated; merged as 12a39a1.
+
+## Heavy unitary A/B final state (job 3671409, atlas-rust-extkl)
+
+Rust legs done before the outage: 7dacfe2 20:03.5, a8b2fd8 20:24.9,
+outputs identical (190937B). The oracle leg never completed: job
+cancelled 2026-09-03T06:10:37 (SLURM time limit) while the C++ binary was
+still running. Bound: oracle >> rust ~20min on probe_unitary_e7_heavy
+(exact oracle number unobtainable within a 6h fat job; rerun with a longer
+limit only if the number is needed).

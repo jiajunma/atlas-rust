@@ -7856,3 +7856,34 @@ lane-C phase split), heavy A/B already shows rust 20min vs oracle >2h, and
 caching ExtKl tables risks big RSS on E7. First measure on HPC return:
 frame-pointer perf of `probe_unitary_e7_heavy.atlas` (or a shortened
 variant) to see if ExtKlTable fill actually dominates before building this.
+
+## 2026-09-03c — E7 block_deform rust-vs-oracle DIVERGENCE (top priority, under triage)
+
+HPC came back ~09:17 local. Harvest: E7 probe f9202e7 **1:07:04/5.33GB
+(1.48x faster than oracle 1:39:27)**, maskhash E7-neutral, lane-D v9
+IDENTICAL + fast-leg gains — BUT the first-ever completed E7 sorted diff
+vs oracle (compare_e7.sh, klundef/probe_bd_e7_single.cpp.out) shows a
+MASSIVE term-level divergence: ~43k/46k diff lines; same
+(x,nu,[height]) terms with different Split coefficients (x=12492 nu/42:
+oracle (196-196s) vs rust (-10000+10000s); x=4010 nu/8: oracle
+(1000-1000s) vs rust (63832-63832s)); 626 x-values only in rust, 0 only
+in oracle. All three rust probe builds (a8b2fd8/f9202e7/0fe6955) are
+byte-identical, so it predates the orientation cache. Corpus 240 and the
+E6 probe were believed clean — VERIFY, don't trust (bisect job checks
+E6). wrap-around order effects are EXCLUDED as sole cause (wrapping i32
+add/mul are order-independent; oracle-vs-rust coefficient pairs are not
+wrap-equivalent, e.g. 196 vs -10000). Probe anatomy: block_deform(p,d,-1)
+returns a TUPLE (deformed terms, unconsumed remainder of d), so the
+divergence may live in deform(p) (d is input) or in
+block_deformation_to_height — the deform-only E7 job separates them.
+
+Jobs in flight (submitted from /public/home/majj/atlas-rust-merged @
+e8e1d32, outputs land there):
+- 3674356 quick_check (tip gate), 3674357 corpus TIMEOUT=60
+- 3674359 probe_diff bisect ladder (B4/D5/E6x0/E6x1790, orient f9202e7
+  binary vs oracle) — finds the smallest diverging scale and whether the
+  deform print or the block_deform tuple diverges first
+- 3674360 probe_diff probe_deform_e7_only (fat 4h) — E7 x=20925 deform(p)
+  print only, rust vs oracle
+- Driver: hpc/probe_diff.sbatch (env PROBE/RUSTBIN/TAG; cpu partition
+  needs --mem=4G override, the file's 8G default is rejected there)
