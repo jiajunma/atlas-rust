@@ -1,0 +1,83 @@
+{
+  "schema": "atlas-eval-events-v0",
+  "fixture": "domain/block_deform_integral_singular",
+  "status": "verified_hpc_reference",
+  "events": [
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rd': RootDatum\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "simply connected root datum of Lie type 'A2'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'ic': InnerClass\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "Complex reductive group of type A2, with involution defining\ninner class of type 's', with 1 real form and 2 dual real forms"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'rf': RealForm\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "connected split real group with Lie algebra 'sl(3,R)'"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'p': Param\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "final parameter(x=3,lambda=[1,1]/1,nu=[1,0]/2)"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "final parameter(x=3,lambda=[1,1]/1,nu=[1,0]/2)"
+      }
+    },
+    {
+      "kind": "ReportLine",
+      "text": "Declaring identifier 'd': ParamPol\n"
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "\n1*parameter(x=3,lambda=[1,1]/1,nu=[1,0]/2) [0]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "\n1*parameter(x=3,lambda=[1,1]/1,nu=[1,0]/2) [0]"
+      }
+    },
+    {
+      "kind": "Value",
+      "value": {
+        "type": "display",
+        "display": "(\n1*parameter(x=3,lambda=[1,1]/1,nu=[0,0]/1) [0],Empty sum of standard modules)"
+      }
+    }
+  ]
+}

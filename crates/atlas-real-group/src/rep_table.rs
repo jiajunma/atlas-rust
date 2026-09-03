@@ -310,6 +310,7 @@ struct BlockRecord {
     /// (`Reduced_param::co_reduce`, repr.cpp:127-142).
     locator: BlockLocator,
     kl_table: Mutex<Option<crate::SharedKlTable>>,
+    dual_kl_table: Mutex<Option<crate::KlTableHandle<Arc<crate::BareBlock>>>>,
 }
 
 thread_local! {
@@ -432,6 +433,7 @@ impl std::fmt::Debug for BlockRecord {
             .field("full", &self.full)
             .field("locator", &self.locator)
             .field("kl_table", &"<lazy>")
+            .field("dual_kl_table", &"<lazy>")
             .finish()
     }
 }
@@ -483,6 +485,7 @@ impl State {
             full,
             locator,
             kl_table: Mutex::new(None),
+            dual_kl_table: Mutex::new(None),
         });
         self.slots.push(BlockSlot::Active(Arc::clone(&record)));
         record
@@ -725,6 +728,66 @@ impl LocatedBlock {
                 invariant: "representation block KL table initialized",
             })?;
         operation(table)
+    }
+
+    /// Run `operation` with the fully filled dual KL table for this located
+    /// block. The table is cached beside the primal table on the same record,
+    /// so dual indices and transported row representatives share one source
+    /// of truth.
+    pub fn with_dual_kl_table<R>(
+        &self,
+        operation: impl FnOnce(
+            &mut crate::KlTableHandle<Arc<crate::BareBlock>>,
+        ) -> Result<R, StructureError>,
+    ) -> Result<R, StructureError> {
+        let _active = ActiveKlCallback::enter()?;
+        let mut cached = self.record.dual_kl_table.lock().map_err(|_| {
+            StructureError::RepInvariantViolation {
+                invariant: "representation block dual KL table mutex",
+            }
+        })?;
+        if cached.is_none() {
+            let dual = Arc::new(self.record.block.dual());
+            let mut table = crate::KlTableHandle::from_handle(dual)?;
+            table.fill(0)?;
+            *cached = Some(table);
+        }
+        let table = cached
+            .as_mut()
+            .ok_or(StructureError::RepInvariantViolation {
+                invariant: "representation block dual KL table initialized",
+            })?;
+        operation(table)
+    }
+
+    /// `common_block::singular(bm, gamma)` (blocks.cpp:701-721), in the
+    /// stored block's generator order. The lookup modifier maps each stored
+    /// generator through `simple_pi` to the corresponding integral root.
+    pub fn singular_flags(&self, rc: &RepContext<'_>) -> Result<Vec<bool>, StructureError> {
+        let system = rc.root_system();
+        let gamma = self.prepared_query.gamma();
+        let simp_int = self.modifier.simp_int();
+        let mut flags = Vec::with_capacity(simp_int.len());
+        for &generator_image in self.modifier.simple_pi() {
+            let root = *simp_int
+                .get(generator_image)
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: generator_image,
+                    upper_bound: simp_int.len(),
+                })?;
+            let coroot = system.coroot(root).ok_or(StructureError::IndexOutOfRange {
+                index: root.index(),
+                upper_bound: system.roots().len(),
+            })?;
+            let pairing = coroot
+                .as_slice()
+                .iter()
+                .zip(gamma.numerator().iter())
+                .map(|(&c, &g)| i64::from(c) * g)
+                .sum::<i64>();
+            flags.push(pairing == 0);
+        }
+        Ok(flags)
     }
 }
 
@@ -2134,6 +2197,42 @@ mod tests {
 
         assert_eq!(first_address, second_address);
         assert_eq!(second_map, marker_map);
+    }
+
+    #[test]
+    fn located_blocks_for_one_record_share_dual_kl_table() {
+        let fixture = a1_fixture();
+        let owner = owner(&fixture);
+        let rc = owner.context();
+        let first = owner.lookup_full_block(&a1_query(&rc, 1)).unwrap();
+        let second = owner.lookup_full_block(&a1_query(&rc, 2)).unwrap();
+        assert_eq!(first.block_id(), second.block_id());
+
+        let first_address = first
+            .with_dual_kl_table(|kl| Ok(kl as *mut _ as usize))
+            .unwrap();
+        let second_address = second
+            .with_dual_kl_table(|kl| Ok(kl as *mut _ as usize))
+            .unwrap();
+        assert_eq!(first_address, second_address);
+    }
+
+    #[test]
+    fn nested_dual_kl_callback_returns_nested_callback_error() {
+        let fixture = a1_fixture();
+        let owner = owner(&fixture);
+        let rc = owner.context();
+        let located = owner.lookup_full_block(&a1_query(&rc, 1)).unwrap();
+        let nested = located.clone();
+        let result =
+            located.with_dual_kl_table(|_| nested.with_dual_kl_table(|_| Ok(())));
+        assert_eq!(
+            result,
+            Err(StructureError::RepInvariantViolation {
+                invariant: "representation block KL table nested callback",
+            })
+        );
+        assert!(located.with_dual_kl_table(|_| Ok(())).is_ok());
     }
 
     #[test]

@@ -1407,3 +1407,54 @@ took 0.012/0.008s and 4368/4288 KiB; report SHA256 is
   the `source` field via `typed_expression_print` for the single-index and
   slice bound positions (pair-index subscripts still use the parse-tree
   compact for its `M[5,0]` tuple shape).
+## Correctness and performance queue — 2026-09-03
+
+Correctness gate before further optimization:
+
+- `block_deform` still differs from the oracle after 0ce1401 on E6 x=1790
+  (job 3674543: 3,043 sorted diff lines), although quick-check 3674541 and
+  corpus 3674542 pass, E7 `deform(p)` alone matches (3674360), and the E6
+  zero-accumulator shape matches (3674413). Test the remaining semantic
+  difference between ambient `simple_singular_flags` and upstream
+  `block.singular(bm,gamma)` first. Also prove complete row/topology alignment
+  between the separately built `BlockGraph` and located full `PartialBlock`.
+- The small RED fixture is `domain/block_deform_integral_singular`; it must
+  receive a pinned HPC reference before the singular-flag implementation
+  changes. The execution plan is
+  `docs/superpowers/plans/2026-09-03-block-deform-modifier-correctness.md`.
+- Never restore the coefficient-pass same-parity skip. Job 3671577 proved it
+  wrong with 10,575 differing lines; upstream updates every `j < pos`.
+
+Optimization queue after the correctness gate:
+
+- Heavy unitarity: profile `probe_unitary_e7_heavy.atlas` with frame pointers.
+  Primary candidate is reuse of `ExtKlTable::new`/`fill_columns` across
+  recursive twisted deformation levels, keyed by complete parent/extended
+  block identity and bounded to avoid retaining excessive E7 memory. Secondary
+  candidate is indexed K-type merging. Do not optimize from the x=0 E8 probes;
+  they normalize to `nu=0` and mostly measure setup/KGB construction.
+- Associated variety annihilator: cache Weyl-character restrictions and
+  Springer/integrality table combinations, and index ambient irreps by degree.
+- K-nilpotent associated cycle: replace `rho_shifts` recomputation with
+  incremental subset sums, replace `theta_orbit_reps` delete/find scans with
+  indexed marking, index K-types, cache repeated `Phi`/formula/twist/induction
+  results, factor or sparsify repeated integer `T/Q` operations, and avoid the
+  full diagonal projector in `av_from_av_ann`.
+- Before any associated-cycle implementation, identify the actual Rust/domain
+  boundary: current evidence only locates work in Atlas scripts and there is no
+  dedicated `KNilpotentData` Rust builtin. Add a large oracle-backed workload
+  and profile that path before choosing which item above to implement.
+
+RED update: capture 3674818 pins `domain/block_deform_integral_singular`;
+bf0c43f differential 3674819 fails at the x-only row-alignment guard before
+singular filtering. Therefore the first fix is to use the located full
+`PartialBlock` as the single topology/representative source. Only then verify
+and pass `block.singular(bm,gamma)` flags; do not retain the separately built
+`BlockGraph` behind stronger assertions.
+
+Implementation pending HPC verification: the language wrapper now uses a
+single `LocatedBlock` for transported rows, modifier-aware singular flags,
+common-block topology, and a record-local cached dual `BareBlock` KL table.
+This also stops the retired `full_block_of` construction from duplicating a
+large full block. Required next gates remain the A2 fixture, E6 x=1790, and
+full E7 sorted differentials before resuming unitarity profiling.

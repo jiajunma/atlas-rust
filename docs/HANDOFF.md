@@ -7970,3 +7970,71 @@ adds deform-only E7 timing. NOTE: agent-kgbopt's worktree
 (quick_check/corpus/ab/prof) right when HPC returned — something is still
 alive on that lane; do not double-dispatch lane-D work, and check with
 the user before touching it.
+## 2026-09-03e — correctness-first continuation after 0ce1401
+
+Fresh evidence supersedes the claim that 0ce1401 fully fixes
+`block_deform`: quick-check 3674541 passed (567-test group), corpus 3674542
+matched 240/240, and E7 `deform(p)` alone matched the oracle in 3674360
+(46,118 sorted lines; Rust 17.60s/378,944KB, oracle 7.77s/203,900KB), but
+the E6 x=1790 rerun 3674543 still produced `SORTED_DIFF` with 3,043 lines.
+The zero-accumulator E6 control 3674413 remains `SORTED_MATCH` (1,700 lines),
+so the residual is still in accumulator-row/survivor/coefficient propagation,
+not standalone `deform(p)` or the zero seed computation. Full E7 fixed job
+3674544 was still running at this checkpoint.
+
+Next single hypothesis: survivor filtering still calls
+`simple_singular_flags(rc,gamma)`, while upstream repr.cpp:2070 calls
+`block.singular(bm,gamma)`. The existing `located_singular_flags` helper is
+the already-ported modifier-aware implementation. The new RED fixture
+`domain/block_deform_integral_singular` uses A2 gamma `[1,0]/2`, where the
+proper A1 integral generator is singular but ambient simple generator zero is
+not; capture and differential must precede the code change. Independently
+verify every topology field between `full_block_of(parameter).graph` and the
+located full `PartialBlock`; checking only row x is insufficient when x values
+repeat. Plan: `docs/superpowers/plans/2026-09-03-block-deform-modifier-correctness.md`.
+
+Performance work remains frozen until E6 and E7 match. Once correctness is
+closed, profile the real E7 heavy-unitarity workload before implementing an
+`ExtKlTable` cache. Candidate key is full extended-block/parent content scoped
+to one command or representation context; retained tables may increase E7 RSS,
+so wall improvement and peak memory are joint gates. K-type accumulation
+(`deform.rs::add_ktype_term`, `domain_builtins.rs::merge_pol_term`) is still a
+linear scan and may merit indexed merging only if the profile attributes
+material time to it. Existing deformation caches are expected to have low hit
+rates across thousands of distinct fixed terms, and a fused native
+`is_unitary` builtin is not justified without evaluator-overhead evidence.
+
+Associated variety/cycle has no exact `associate_cycle` builtin boundary yet.
+Two script families must be measured separately: `associated_variety_annihilator.at`
+repeatedly scans/restricts ambient Weyl characters, while `K_Nilpotent.at`
+contains exponential `rho_shifts`, quadratic delete/find orbit selection,
+repeated K-type/change-basis scans, and dense integer `T/Q` work. Candidate
+optimizations are restriction/Springer-table caches, degree-indexed irreps,
+incremental subset sums, indexed orbit marking, K-type maps, cached/factored
+integer matrices, and avoiding a materialized diagonal projector. None should
+be implemented before a representative large workload identifies the actual
+Rust boundary and hotspot.
+
+Correction after RED capture: A2 oracle capture 3674818 passed provenance
+(0.011s/4,420KB). Differential 3674819 at bf0c43f is RED before singular
+filtering: Rust exits 1 at the `full-block row alignment` guard, while the
+oracle consumes the explicit final accumulator term and returns its nu=0
+scale. This proves the independent `full_block_of(parameter).graph` and
+`lookup_full_block` common block do not share row numbering even in A2. The
+next implementation must remove that split source of truth and run dual KL,
+row reconstruction, and survival over the located full `PartialBlock`.
+Modifier-aware singular flags remain necessary after that boundary is fixed,
+but they are not the first observed failure of this fixture.
+
+Implementation pending HPC gate: `block_deform` now passes the
+`lookup_full_block` `LocatedBlock` directly into the deformation kernel.
+`BlockRecord` owns a lazy, fully filled dual KL table over
+`Arc<BareBlock>` beside its primal table; row representatives, modifier,
+singular flags, topology, lengths, and KL indices therefore all come from
+one record. The old independently constructed `full_block_of` language path
+and x-only alignment assertion are gone. Local evidence: `cargo check` for
+`atlas-real-group`/`atlas-core`, deform tests 16/16, rep-table tests 50/50,
+the captured A2 high-level regression, and pipeline-driver tests 11/11 pass.
+The driver test itself had a stale file-argument mock after the production
+driver moved to stdin plus capture-time `quit`; the mock now validates the
+real protocol. Do not claim parity until A2/E6/E7 HPC differentials pass.

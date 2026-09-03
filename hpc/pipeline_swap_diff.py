@@ -904,6 +904,14 @@ FIXTURE_PLANS = (
         silent_lines=(1, 3, 5, 7, 9),
     ),
     FixturePlan(name="domain/block_deform_rejected"),
+    # Proper-integral-subsystem regression: one explicit final accumulator
+    # term forces the located full-block row/topology path. Reference capture
+    # 3674818; bf0c43f is RED at its cross-construction row-alignment guard.
+    FixturePlan(
+        name="domain/block_deform_integral_singular",
+        runnable_lines=(2, 4, 6, 8, 9, 11, 12, 13),
+        silent_lines=(1, 3, 5, 7, 10),
+    ),
     # dual_block(±): dual(Block->Block) + dual(RealForm->InnerClass)
     # coverage-gap closure. 32 lines/32 events; ascriptions silent.
     FixturePlan(

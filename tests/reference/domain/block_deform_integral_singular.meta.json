@@ -1,0 +1,28 @@
+{
+  "fixture": "domain/block_deform_integral_singular.atlas",
+  "fixture_sha256": "6e67832493dfba146b092c3040e58b791c3444f44931c3a9227d83e877ba195c",
+  "oracle": "atlas",
+  "stage": "typed-pipeline-swap",
+  "reference_status": "verified_hpc_reference",
+  "rust_status": "pending_hpc_differential",
+  "reference_atlas_revision": "4d3e9449062a07c1c85f4e6df215eb6ccc0eeae9",
+  "expected_reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_binary_sha256": "66f5d7d47d560e616363392b38205166d1579985dc7337cc95ba4cae50be65c9",
+  "reference_job": "3674818",
+  "reference_commit": "dbd932ed1662e1921e6f361b659c9a9593e0913f",
+  "reference_report_sha256": "77bf8bae1cd135d55b39dc94be794c3ba02ba2474d31e8ca7af58815f6619d04",
+  "source_archive_sha256": "11b9ed8a5d4f494900fe584e5f835d299ac45c22f2f9dfb1727bb1413104d7a0",
+  "oracle_exit_status": 0,
+  "oracle_seconds": 0.011,
+  "oracle_maxrss_kb": 4420,
+  "oracle_maxrss_approximate": false,
+  "notes": "RED fixture for block_deform on a proper A1 integral subsystem of A2. A one-term accumulator forces the survivor/coefficient path even though deform(p) is empty. Pinned oracle capture 3674818 returns the scaled nu=0 term and consumes the accumulator. Current Rust bf0c43f fails first at the full-block row-alignment invariant (probe 3674819), proving that the independently built BlockGraph and located common block do not share row numbering; modifier-aware singular filtering remains a required downstream check.",
+  "hpc_capture": {
+    "fresh_process_required": true,
+    "timeout_seconds": 30,
+    "estimated_seconds": 5,
+    "estimated_memory_mb": 128
+  },
+  "red_differential_job": "3674819",
+  "red_differential_commit": "bf0c43fbc61ac84e66df015267bded9ed612c276"
+}

@@ -90,8 +90,8 @@ pub use cartan_classification::{CartanClassification, CartanClassificationBudget
 pub use cartan_fiber::{CartanFiber, CartanFiberElement};
 pub use cayley_cross::CayleyCrossDecomposition;
 pub use deform::{
-    block_deformation_to_height, common_deformation_terms, integral_block_scope,
-    singular_orbits_at, twisted_deformation, twisted_deformation_terms,
+    block_deformation_to_height, block_deformation_to_height_located, common_deformation_terms,
+    integral_block_scope, singular_orbits_at, twisted_deformation, twisted_deformation_terms,
     twisted_deformation_with_cancel, twisted_kl_column_at_s, twisted_kl_sum, DeformParent,
     IntegralBlockScope, KlSumParent, SplitInteger,
 };

@@ -32,7 +32,7 @@ use atlas_real_group::ext_param::{
 use atlas_real_group::CompactWeyl;
 use atlas_real_group::{
     adapted_basis, adapted_relation_basis, alcove_center as domain_alcove_center,
-    annihilator_modulo as relation_annihilator_modulo, block_deformation_to_height,
+    annihilator_modulo as relation_annihilator_modulo, block_deformation_to_height_located,
     bourbaki_permutation, bruhat_below, bruhat_hasse as block_bruhat_hasse, build_presentations,
     central_fiber, checked_inner_class_letters, classify_involution as domain_classify_involution,
     common_deformation_terms, denominator_exceeds_alcove_bound, dual_cartan_correspondence,
@@ -3183,27 +3183,7 @@ fn located_singular_flags(
 ) -> Result<Vec<bool>, StructureError> {
     let rc_owner = rep_context_structure(context)?;
     let rc = rc_owner.context();
-    let system = rc.root_system();
-    let gamma = located.prepared_query().gamma();
-    let modifier = located.block_modifier();
-    let simp_int = modifier.simp_int();
-    let simple_pi = modifier.simple_pi();
-    let mut flags = Vec::with_capacity(simp_int.len());
-    for &generator_image in simple_pi {
-        let root = simp_int[generator_image];
-        let coroot = system.coroot(root).ok_or(StructureError::IndexOutOfRange {
-            index: root.index(),
-            upper_bound: system.roots().len(),
-        })?;
-        let pairing: i64 = coroot
-            .as_slice()
-            .iter()
-            .zip(gamma.numerator().iter())
-            .map(|(&c, &g)| i64::from(c) * g)
-            .sum();
-        flags.push(pairing == 0);
-    }
-    Ok(flags)
+    located.singular_flags(&rc)
 }
 
 /// Merge two ascending-by-row contribution lists, summing the
@@ -8508,16 +8488,6 @@ fn external_twisted_kl_sum_gates(
         return Err(runtime(span, "Parameter not fixed by given involution"));
     }
     Ok((delta, twist))
-}
-
-/// The parameter's full block against the dual quasisplit form — the
-/// `lookup_full_block` shape shared by the deform arms (matching the
-/// verified `deform` arm).
-fn full_block_of(parameter: &ParamValue, span: SourceSpan) -> Result<BlockValue, Diagnostic> {
-    let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
-    let dual_quasisplit = dual_parent.order.quasisplit_external();
-    let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
-    build_block(&parameter.context, &dual_rf, span)
 }
 
 /// The `rt.lookup(zi, index, bm)` + `block.extended_block(bm, ...)` step
@@ -17378,35 +17348,11 @@ pub(crate) fn call_with_printed(
                     .repr
                     .made_dominant(&rc)
                     .map_err(|error| structure_diagnostic(error, span))?;
-                let gamma = p.gamma().clone();
-                let block = full_block_of(parameter, span)?;
-                // Rows are reconstructed from their OWN stored
-                // representatives through the lookup's block modifier
-                // (repr.cpp:2123 `sr(block.representative(z),bm,gamma)`);
-                // rebuilding them from p's `lambda_rho` instead loses the
-                // rows whose own lambda differs from p's and silently
-                // zeroes their accumulator seeds (E6 x=1790 divergence).
                 let bundle = parameter.context.kgb(span)?;
                 let located = bundle
                     .rep
                     .lookup_full_block(&p)
                     .map_err(|error| structure_diagnostic(error, span))?;
-                let reps = located.block();
-                let modifier = located.block_modifier().clone();
-                let row_sr = |z: usize| -> Result<StandardRepr, StructureError> {
-                    let srm = reps.element(z).ok_or(
-                        StructureError::BlockInvariantViolation {
-                            invariant: "block deformation row representative",
-                        },
-                    )?;
-                    let sr = rc.sr_with_modifier(srm, &modifier, &gamma)?;
-                    if block.graph.x(z) != Some(sr.x()) {
-                        return Err(StructureError::RepInvariantViolation {
-                            invariant: "block deformation full-block row alignment",
-                        });
-                    }
-                    Ok(sr)
-                };
                 let accumulator_terms: Vec<(StandardRepr, SplitInteger)> = accumulator
                     .terms
                     .iter()
@@ -17417,13 +17363,11 @@ pub(crate) fn call_with_printed(
                         )
                     })
                     .collect();
-                let (raw, consumed) = block_deformation_to_height(
+                let (raw, consumed) = block_deformation_to_height_located(
                     &rc,
-                    &block.graph,
-                    &gamma,
+                    &located,
                     height_bound,
                     &accumulator_terms,
-                    &row_sr,
                 )
                 .map_err(|error| structure_diagnostic(error, span))?;
                 for (sr, coefficient) in raw {
@@ -20854,6 +20798,32 @@ mod tests {
         assert_eq!(
             again.to_string(),
             format!("({d_text},Empty sum of standard modules)")
+        );
+    }
+
+    #[test]
+    fn block_deform_uses_the_located_full_block_topology() {
+        // Oracle fixture domain/block_deform_integral_singular, capture
+        // 3674818. This proper A1 integral block is numbered differently
+        // from the independently constructed BlockGraph; block_deform must
+        // use lookup_full_block's topology and row representatives together.
+        let real = sl3r_split_form();
+        let p = sl3r_param(&real, 3, &[1, 0], 2);
+        let zero = call("null_module", std::slice::from_ref(&real), span())
+            .expect("zero ParamPol");
+        let coefficient = Value::Domain(DomainValue::Split(SplitValue::new(1, 0)));
+        let d = call(
+            "+",
+            &[zero, Value::Tuple(vec![coefficient, p.clone()])],
+            span(),
+        )
+        .expect("one-term ParamPol");
+
+        assert_eq!(
+            call("block_deform", &[p, d, int(-1)], span())
+                .expect("modifier-aware block_deform")
+                .to_string(),
+            "(\n1*parameter(x=3,lambda=[1,1]/1,nu=[0,0]/1) [0],Empty sum of standard modules)"
         );
     }
 

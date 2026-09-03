@@ -163,13 +163,12 @@ class PipelineSwapDiffTest(unittest.TestCase):
                 REPOSITORY
                 / "tests/fixtures/eval/pipeline_swap_constructors.atlas"
             ).read_text(encoding="utf-8")
+            expected_stdin = expected_source + "quit\n"
             cli.write_text(
                 "#!/usr/bin/env python3\n"
-                "import pathlib\n"
                 "import sys\n"
-                f"EXPECTED_SOURCE = {expected_source!r}\n"
-                "if len(sys.argv) != 2 or "
-                "pathlib.Path(sys.argv[1]).read_text() != EXPECTED_SOURCE:\n"
+                f"EXPECTED_STDIN = {expected_stdin!r}\n"
+                "if len(sys.argv) != 1 or sys.stdin.read() != EXPECTED_STDIN:\n"
                 "    print('unexpected fixture input', file=sys.stderr)\n"
                 "    raise SystemExit(9)\n"
                 "print(\"Value: Lie type 'A1'\")\n"

@@ -8,24 +8,15 @@
 //! Simplifications, in the shape of the frozen `domain/deform` contract
 //! that [`RepContext::deformation_terms`] already documents:
 //!
-//! - The full block (upstream `lookup_full_block`) carries the trivial
-//!   block modifier; `lambda_rho` is supplied once by the
-//!   caller instead of per block element from the upstream
-//!   `StandardReprMod` pool (`common_block::sr`, blocks.cpp:1260-1264).
-//!   Per-element `lambda_rho` genuinely varies across a full block (the
-//!   SL(2,R) block at `gamma = 2*rho` has `[1]` on the compact-Cartan
-//!   element and `[0]` on the split ones), so callers must pass parameters
-//!   whose deformation terms all share the supplied value — the language
-//!   layer uses `rc.lambda_rho(p)` of the looked-up parameter, exactly like
-//!   the verified `deform` arm. On a PROPER integral subsystem the parent
-//!   is a [`PartialBlock`] (the `common_block` of `common_context`,
-//!   repr.cpp:2666-2670) and each row's reconstruction uses its own stored
-//!   `gamma_lambda` plus the lookup's block modifier
-//!   (`RepContext::sr_with_modifier`, repr.cpp:815-823) exactly as
-//!   upstream's `common_block::sr` does; see
-//!   [`KlSumParent`]. The `twisted_KL_sum_at_s` drivers and
-//!   [`twisted_deformation_terms`] accept both parent kinds (slices 3-4 of
-//!   docs/slices/twisted_ext_proper_workorder.md).
+//! - Language-level common/full-block paths use the [`LocatedBlock`]
+//!   returned by `RepTable::lookup` or `lookup_full_block`. Each row is
+//!   reconstructed from its own stored `gamma_lambda` through the lookup's
+//!   block modifier (`RepContext::sr_with_modifier`, repr.cpp:815-823), and
+//!   topology/KL indices come from that same record. The classic
+//!   [`BlockGraph`] entry points remain for low-level callers with an
+//!   explicit row reconstructor. The `twisted_KL_sum_at_s` drivers and
+//!   [`twisted_deformation_terms`] accept both full and partial parent kinds
+//!   (slices 3-4 of docs/slices/twisted_ext_proper_workorder.md).
 //! - The rank-0 integral subsystem is detected by [`IntegralBlockScope`]:
 //!   the common block is the singleton `{p}` of length 0, and the language
 //!   layer takes that fast path.
@@ -56,7 +47,7 @@ use crate::matreduc::{exp_i, inverse_upper_triangular, IntMatrix};
 use crate::partial_block::PartialBlock;
 use crate::rep_context::{RepContext, StandardRepr};
 use crate::{
-    BlockDescent, BlockGraph, BlockTopology, CommonContext, KType, RankFlags,
+    BlockDescent, BlockGraph, BlockTopology, CommonContext, KType, LocatedBlock, RankFlags,
     RationalWeight, StructureError, Weight,
 };
 
@@ -337,15 +328,6 @@ fn block_x(block: &BlockGraph, z: usize) -> Result<crate::KgbId, StructureError>
     block.x(z).ok_or(StructureError::BlockInvariantViolation {
         invariant: "block element x coordinate",
     })
-}
-
-/// The parent-block length of `z`, or an invariant error.
-fn block_length(block: &BlockGraph, z: usize) -> Result<usize, StructureError> {
-    block
-        .length(z)
-        .ok_or(StructureError::BlockInvariantViolation {
-            invariant: "block element length",
-        })
 }
 
 /// Common-block deformation terms for a partial block returned by
@@ -860,8 +842,9 @@ pub fn twisted_kl_column_at_s(
 // Block deformation to a height bound.
 // ---------------------------------------------------------------------------
 
-/// `Rep_table::block_deformation_to_height` (repr.cpp:2027-2124) with
-/// trivial block modifier: deform the terms of `p`'s full block whose
+/// Low-level `Rep_table::block_deformation_to_height` kernel
+/// (repr.cpp:2027-2124) for classic `BlockGraph` callers: deform the terms
+/// of `p`'s full block whose
 /// height does not exceed `height_bound` (the caller passes `u32::MAX` for
 /// upstream's negative-bound "maximal level"). `block` is the full block
 /// (`lookup_full_block`; the caller makes `p` dominant first),
@@ -890,9 +873,8 @@ pub fn twisted_kl_column_at_s(
 /// (`repr.cpp:2057` fills everything not plugged).
 ///
 /// The filled dual-block table is lazily cached per block identity for the
-/// session (`rep_table::with_dual_kl_table`): upstream rebuilds it per
-/// call, so the cache only skips recomputation and the observable output
-/// is unchanged.
+/// session (`rep_table::with_dual_kl_table`). The language layer uses the
+/// located-block entry point below instead.
 pub fn block_deformation_to_height(
     rc: &RepContext,
     block: &BlockGraph,
@@ -910,6 +892,38 @@ pub fn block_deformation_to_height(
             accumulator,
             kl_tab,
             row_sr,
+            None,
+        )
+    })
+}
+
+/// Located-block variant used by the language wrapper. The block, row
+/// representatives, modifier-aware singular flags, and dual KL table all
+/// come from one `LocatedBlock` record.
+pub fn block_deformation_to_height_located(
+    rc: &RepContext,
+    located: &LocatedBlock,
+    height_bound: u32,
+    accumulator: &[(StandardRepr, SplitInteger)],
+) -> Result<(Vec<(StandardRepr, SplitInteger)>, Vec<bool>), StructureError> {
+    let block = located.block();
+    let gamma = located.prepared_query().gamma().clone();
+    let singular = located.singular_flags(rc)?;
+    located.with_dual_kl_table(|kl_tab| {
+        block_deformation_with_dual_kl(
+            rc,
+            block.as_ref(),
+            &gamma,
+            height_bound,
+            accumulator,
+            kl_tab,
+            &|z| {
+                let srm = block.element(z).ok_or(StructureError::BlockInvariantViolation {
+                    invariant: "block deformation row representative",
+                })?;
+                rc.sr_with_modifier(srm, located.block_modifier(), &gamma)
+            },
+            Some(&singular),
         )
     })
 }
@@ -928,15 +942,20 @@ fn param_digest(sr: &StandardRepr) -> u64 {
 
 /// The body of [`block_deformation_to_height`] with the dual block's
 /// filled KL table in hand (see there for the upstream references).
-fn block_deformation_with_dual_kl(
+fn block_deformation_with_dual_kl<B, D>(
     rc: &RepContext,
-    block: &BlockGraph,
+    block: &B,
     gamma: &RationalWeight,
     height_bound: u32,
     accumulator: &[(StandardRepr, SplitInteger)],
-    kl_tab: &mut crate::KlTableHandle<std::sync::Arc<BlockGraph>>,
+    kl_tab: &mut crate::KlTableHandle<D>,
     row_sr: &dyn Fn(usize) -> Result<StandardRepr, StructureError>,
-) -> Result<(Vec<(StandardRepr, SplitInteger)>, Vec<bool>), StructureError> {
+    singular_flags: Option<&[bool]>,
+) -> Result<(Vec<(StandardRepr, SplitInteger)>, Vec<bool>), StructureError>
+where
+    B: BlockTopology + ?Sized,
+    D: BlockTopology,
+{
     // The dual KL pool evaluated at q = -1 (repr.cpp:2059-2066).
     let pool = kl_tab.pool();
     let mut value_at_minus_1: Vec<i32> = Vec::with_capacity(pool.len());
@@ -987,11 +1006,22 @@ fn block_deformation_with_dual_kl(
 
     // Drop the elements killed by the translation functor
     // (`block.survives`, repr.cpp:2068-2077).
-    let singular = simple_singular_flags(rc, gamma)?;
+    let computed_singular;
+    let singular = match singular_flags {
+        Some(flags) => flags,
+        None => {
+            let flags = simple_singular_flags(rc, gamma)?;
+            computed_singular = (0..block.rank())
+                .map(|s| flags.is_set(s))
+                .collect::<Vec<_>>();
+            computed_singular.as_slice()
+        }
+    };
     let mut survivors: Vec<(usize, StandardRepr, SplitInteger)> = Vec::new();
     for (z, q, coef) in entries {
         let killed = (0..block.rank()).any(|s| {
-            singular.is_set(s) && block.descent_value(z, s).is_some_and(|d| d.is_descent())
+            singular.get(s).copied().unwrap_or(false)
+                && block.descent(z, s).is_some_and(|d| d.is_descent())
         });
         if killed {
             if !coef.is_zero() {
@@ -1019,7 +1049,15 @@ fn block_deformation_with_dual_kl(
     let signed_p = inverse_upper_triangular(&q_mat)?;
     let mut odd_length: Vec<bool> = Vec::with_capacity(n);
     for (z, _, _) in &survivors {
-        odd_length.push(block_length(block, *z)? % 2 != 0);
+        odd_length.push(
+            block
+                .length(*z)
+                .ok_or(StructureError::BlockInvariantViolation {
+                    invariant: "block element length",
+                })?
+                % 2
+                != 0,
+        );
     }
 
     // The parity/orientation coefficient pass (repr.cpp:2096-2121),
