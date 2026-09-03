@@ -865,8 +865,17 @@ pub fn twisted_kl_column_at_s(
 /// height does not exceed `height_bound` (the caller passes `u32::MAX` for
 /// upstream's negative-bound "maximal level"). `block` is the full block
 /// (`lookup_full_block`; the caller makes `p` dominant first),
-/// `gamma`/`lambda_rho` are `p`'s data, and `accumulator` holds the
+/// `gamma` is `p`'s infinitesimal character, and `accumulator` holds the
 /// `ParamPol` terms the block's coefficients are drawn from.
+///
+/// `row_sr` reconstructs each block row's standard parameter at `gamma`.
+/// It MUST follow repr.cpp:2123 `sr(block.representative(z),bm,gamma)` —
+/// the row's OWN stored representative transported through the block
+/// modifier — not a rebuild from `p`'s `lambda_rho`: rows whose own
+/// lambda differs from `p`'s then fail to match the accumulator (oracle
+/// divergence seen at E6 x=1790 and E7 x=20925, where 62/~1700 terms
+/// with nontrivial lambda went unmatched and the triangular propagation
+/// corrupted every coefficient below them).
 ///
 /// Returns the deformed `(StandardRepr, SplitInteger)` terms in downward
 /// (reversed) block order — the language layer then slides each down its
@@ -888,19 +897,19 @@ pub fn block_deformation_to_height(
     rc: &RepContext,
     block: &BlockGraph,
     gamma: &RationalWeight,
-    lambda_rho: &Weight,
     height_bound: u32,
     accumulator: &[(StandardRepr, SplitInteger)],
+    row_sr: &dyn Fn(usize) -> Result<StandardRepr, StructureError>,
 ) -> Result<(Vec<(StandardRepr, SplitInteger)>, Vec<bool>), StructureError> {
     crate::rep_table::with_dual_kl_table(block, |kl_tab| {
         block_deformation_with_dual_kl(
             rc,
             block,
             gamma,
-            lambda_rho,
             height_bound,
             accumulator,
             kl_tab,
+            row_sr,
         )
     })
 }
@@ -923,10 +932,10 @@ fn block_deformation_with_dual_kl(
     rc: &RepContext,
     block: &BlockGraph,
     gamma: &RationalWeight,
-    lambda_rho: &Weight,
     height_bound: u32,
     accumulator: &[(StandardRepr, SplitInteger)],
     kl_tab: &mut crate::KlTableHandle<std::sync::Arc<BlockGraph>>,
+    row_sr: &dyn Fn(usize) -> Result<StandardRepr, StructureError>,
 ) -> Result<(Vec<(StandardRepr, SplitInteger)>, Vec<bool>), StructureError> {
     // The dual KL pool evaluated at q = -1 (repr.cpp:2059-2066).
     let pool = kl_tab.pool();
@@ -954,7 +963,7 @@ fn block_deformation_with_dual_kl(
     let mut consumed = vec![false; accumulator.len()];
     let mut entries: Vec<(usize, StandardRepr, SplitInteger)> = Vec::new();
     for z in 0..block.size() {
-        let q = rc.sr_gamma(block_x(block, z)?, lambda_rho, gamma)?;
+        let q = row_sr(z)?;
         if q.height() > height_bound {
             continue;
         }
@@ -1830,6 +1839,9 @@ mod tests {
         assert_eq!(lambda_rho, weight(&[0, 0]));
         let gamma = p.gamma().clone();
         assert_eq!(gamma, rational(&[1, 1], 1)); // rho, regular
+        // For this A2 block every row's own representative coincides with the
+        // lambda_rho rebuild (oracle job 3536583 was captured under it).
+        let row_sr = |z: usize| rc.sr_gamma(ctx.block.x(z).unwrap(), &lambda_rho, &gamma);
 
         let accumulator = block_deform_accumulator(&rc);
         for (sr, _) in &accumulator {
@@ -1841,9 +1853,9 @@ mod tests {
                 &rc,
                 &ctx.block,
                 &gamma,
-                &lambda_rho,
                 bound,
                 &accumulator,
+                &row_sr,
             )
             .unwrap();
             assert_eq!(consumed, vec![false, false], "bound {bound}");
@@ -1858,9 +1870,9 @@ mod tests {
                 &rc,
                 &ctx.block,
                 &gamma,
-                &lambda_rho,
                 bound,
                 &accumulator,
+                &row_sr,
             )
             .unwrap();
             assert_eq!(consumed, vec![true, true], "bound {bound}");
@@ -1903,13 +1915,14 @@ mod tests {
         let accumulator: Vec<(StandardRepr, SplitInteger)> = (1..=(occurrences + 1) as i32)
             .map(|c| (term.clone(), SplitInteger::new(c, -c)))
             .collect();
+        let row_sr = |z: usize| rc.sr_gamma(ctx.block.x(z).unwrap(), &lambda_rho, &gamma);
         let (_, consumed) = block_deformation_to_height(
             &rc,
             &ctx.block,
             &gamma,
-            &lambda_rho,
             u32::MAX,
             &accumulator,
+            &row_sr,
         )
         .unwrap();
         let expected: Vec<bool> = (0..=occurrences).map(|i| i < occurrences).collect();

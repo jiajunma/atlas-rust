@@ -17379,10 +17379,34 @@ pub(crate) fn call_with_printed(
                     .made_dominant(&rc)
                     .map_err(|error| structure_diagnostic(error, span))?;
                 let gamma = p.gamma().clone();
-                let lambda_rho = rc
-                    .lambda_rho(&p)
-                    .map_err(|error| structure_diagnostic(error, span))?;
                 let block = full_block_of(parameter, span)?;
+                // Rows are reconstructed from their OWN stored
+                // representatives through the lookup's block modifier
+                // (repr.cpp:2123 `sr(block.representative(z),bm,gamma)`);
+                // rebuilding them from p's `lambda_rho` instead loses the
+                // rows whose own lambda differs from p's and silently
+                // zeroes their accumulator seeds (E6 x=1790 divergence).
+                let bundle = parameter.context.kgb(span)?;
+                let located = bundle
+                    .rep
+                    .lookup_full_block(&p)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                let reps = located.block();
+                let modifier = located.block_modifier().clone();
+                let row_sr = |z: usize| -> Result<StandardRepr, StructureError> {
+                    let srm = reps.element(z).ok_or(
+                        StructureError::BlockInvariantViolation {
+                            invariant: "block deformation row representative",
+                        },
+                    )?;
+                    let sr = rc.sr_with_modifier(srm, &modifier, &gamma)?;
+                    if block.graph.x(z) != Some(sr.x()) {
+                        return Err(StructureError::RepInvariantViolation {
+                            invariant: "block deformation full-block row alignment",
+                        });
+                    }
+                    Ok(sr)
+                };
                 let accumulator_terms: Vec<(StandardRepr, SplitInteger)> = accumulator
                     .terms
                     .iter()
@@ -17397,9 +17421,9 @@ pub(crate) fn call_with_printed(
                     &rc,
                     &block.graph,
                     &gamma,
-                    &lambda_rho,
                     height_bound,
                     &accumulator_terms,
+                    &row_sr,
                 )
                 .map_err(|error| structure_diagnostic(error, span))?;
                 for (sr, coefficient) in raw {
