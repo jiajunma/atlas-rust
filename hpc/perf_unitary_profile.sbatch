@@ -38,4 +38,12 @@ data="$submit_dir/perf-unitary-${SLURM_JOB_ID}.data"
 timeout "${seconds}s" perf record -F "$freq" -g -o "$data" -- "$bin" < "$probe" > "$submit_dir/perf-unitary-${SLURM_JOB_ID}.stdout" 2>&1 || true
 echo "=== flat top 40 (overhead, command-shared-object-symbol) ==="
 perf report -i "$data" --stdio --no-children 2>/dev/null | grep -E '^\s*[0-9]+\.[0-9]+%' | head -40 || true
+# Caller attribution for known hot leaf functions: print the inverted
+# call-graph section of each so the next optimization round knows which
+# call sites feed them (flat self% alone cannot say).
+for sym in id_of_slice prim_slot kl_pol sub_shifted_assign match_pol; do
+  echo "=== callers of $sym (inverted call graph) ==="
+  perf report -i "$data" --stdio --no-children --invert 2>/dev/null \
+    | grep -F -A18 "$sym" | head -40 || true
+done
 echo "PERF_UNITARY_DONE data=$data"
