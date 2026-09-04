@@ -398,7 +398,18 @@ fn simple_basis(
 /// simple root itself maps out) and toggle the simple root's membership.
 fn pos_to_neg(system: &RootSystem, word: &[usize]) -> Result<Vec<RootId>, StructureError> {
     let datum = system.datum();
-    let mut current: BTreeSet<RootId> = system
+    // The working set is a sorted `Vec` rather than a `BTreeSet`.
+    // `entries` enumerates in increasing `RootId` order, so the initial
+    // positive-root list is sorted; each letter's `next` is re-sorted
+    // below.  The BTreeSet's dedup can never fire here: reflection by a
+    // simple root is a bijection on roots that maps the positive roots
+    // other than the simple root onto the positive roots other than the
+    // simple root, so distinct inputs give distinct images, and the
+    // conditionally re-added simple root is never among them (an image
+    // equal to `simple` would require the input `-simple`, which is not
+    // positive).  Hence the sorted Vec holds exactly the BTreeSet's
+    // contents, in the same ascending order the old `into_iter` produced.
+    let mut current: Vec<RootId> = system
         .entries()
         .filter(|(id, _, _)| system.is_positive(*id) == Some(true))
         .map(|(id, _, _)| id)
@@ -413,7 +424,7 @@ fn pos_to_neg(system: &RootSystem, word: &[usize]) -> Result<Vec<RootId>, Struct
                     index: s,
                     upper_bound: datum.semisimple_rank(),
                 })?;
-        let mut next = BTreeSet::new();
+        let mut next: Vec<RootId> = Vec::with_capacity(current.len());
         for &beta in &current {
             if beta == simple {
                 continue; // maps to its negative, out of the positive set
@@ -425,7 +436,7 @@ fn pos_to_neg(system: &RootSystem, word: &[usize]) -> Result<Vec<RootId>, Struct
                     upper_bound: system.roots().len(),
                 })?,
             )?;
-            next.insert(system.id_of(&image).ok_or(
+            next.push(system.id_of(&image).ok_or(
                 StructureError::RootSystemInvariantViolation {
                     invariant: "reflected root is a root",
                 },
@@ -433,12 +444,13 @@ fn pos_to_neg(system: &RootSystem, word: &[usize]) -> Result<Vec<RootId>, Struct
         }
         // the upstream `tmp.flip(s)`: add the simple root unless it was
         // just removed by the reflection
-        if !current.contains(&simple) {
-            next.insert(simple);
+        if current.binary_search(&simple).is_err() {
+            next.push(simple);
         }
+        next.sort_unstable();
         current = next;
     }
-    Ok(current.into_iter().collect())
+    Ok(current)
 }
 
 /// `root_sum` (rootdata.cpp:1647): the sum of the given root vectors.
@@ -799,10 +811,13 @@ struct BruhatGenerator<'c, 'r, 'a> {
 
 impl<'c, 'r, 'a> BruhatGenerator<'c, 'r, 'a> {
     /// `Bruhat_generator::block_below` (repr.cpp:1476-1563): insert `srm`
-    /// and the whole Bruhat interval below it into the pool.
-    fn block_below(&mut self, srm: &StandardReprMod) -> Result<(), StructureError> {
-        if self.index.contains_key(srm) {
-            return Ok(()); // seen earlier: nothing new
+    /// and the whole Bruhat interval below it into the pool; returns the
+    /// pool index of `srm` (its earlier index when already present), which
+    /// callers would otherwise re-derive through a `self.index[&sz]` hash
+    /// lookup on the just-visited srm.
+    fn block_below(&mut self, srm: &StandardReprMod) -> Result<usize, StructureError> {
+        if let Some(&seen) = self.index.get(srm) {
+            return Ok(seen); // seen earlier: nothing new
         }
         let rank = self.ctxt.rank();
         let mut pred: Vec<usize> = Vec::new();
@@ -815,18 +830,15 @@ impl<'c, 'r, 'a> BruhatGenerator<'c, 'r, 'a> {
             }
             if stat == KgbStatus::Complex {
                 let sz = self.ctxt.cross(s, srm)?;
-                self.block_below(&sz)?;
-                pred.push(self.index[&sz]);
+                pred.push(self.block_below(&sz)?);
                 descent = Some(s);
                 break; // s-ascents of predecessors of |sz| are added below
             } else if stat == KgbStatus::Real && self.ctxt.is_parity(s, srm)? {
                 // z has a type 1 real descent at s
                 let sz0 = self.ctxt.down_cayley(s, srm)?;
                 let sz1 = self.ctxt.cross(s, &sz0)?;
-                self.block_below(&sz0)?;
-                self.block_below(&sz1)?;
-                pred.push(self.index[&sz0]);
-                pred.push(self.index[&sz1]);
+                pred.push(self.block_below(&sz0)?);
+                pred.push(self.block_below(&sz1)?);
                 descent = Some(s);
                 break;
             }
@@ -839,16 +851,23 @@ impl<'c, 'r, 'a> BruhatGenerator<'c, 'r, 'a> {
                     let (stat, _) = self.ctxt.status(s, srm.x())?;
                     if stat == KgbStatus::Real && self.ctxt.is_parity(s, srm)? {
                         let sz = self.ctxt.down_cayley(s, srm)?;
-                        self.block_below(&sz)?;
-                        pred.push(self.index[&sz]);
+                        pred.push(self.block_below(&sz)?);
                     }
                 }
             }
             Some(s) => {
                 // add s-ascents for the elements covered by the descent
                 // image (repr.cpp:1523-1558)
-                let pred_sz = self.predecessors[pred[0]].clone();
-                for p in pred_sz {
+                //
+                // Take the descent image's predecessor list out of the
+                // table instead of cloning it: the recursion below only
+                // ever appends at the back of `predecessors` (new pool
+                // entries), so slot pred[0] is left untouched and the list
+                // is restored after the scan.  Iterating the taken Vec
+                // visits the same indices in the same order as iterating
+                // the old clone.
+                let pred_sz = std::mem::take(&mut self.predecessors[pred[0]]);
+                for &p in &pred_sz {
                     let zp = self.pool[p].clone();
                     let (stat, flag) = self.ctxt.status(s, zp.x())?;
                     match stat {
@@ -857,23 +876,21 @@ impl<'c, 'r, 'a> BruhatGenerator<'c, 'r, 'a> {
                             if !flag {
                                 // complex ascent
                                 let szp = self.ctxt.cross(s, &zp)?;
-                                self.block_below(&szp)?;
-                                pred.push(self.index[&szp]);
+                                pred.push(self.block_below(&szp)?);
                             }
                         }
                         KgbStatus::ImaginaryNoncompact => {
                             let szp = self.ctxt.up_cayley(s, &zp)?;
-                            self.block_below(&szp)?;
-                            pred.push(self.index[&szp]);
+                            pred.push(self.block_below(&szp)?);
                             if !flag {
                                 // nci type 2
                                 let szp1 = self.ctxt.cross(s, &szp)?;
-                                self.block_below(&szp1)?;
-                                pred.push(self.index[&szp1]);
+                                pred.push(self.block_below(&szp1)?);
                             }
                         }
                     }
                 }
+                self.predecessors[pred[0]] = pred_sz;
             }
         }
         let h = self.pool.len();
@@ -883,7 +900,7 @@ impl<'c, 'r, 'a> BruhatGenerator<'c, 'r, 'a> {
         self.index.insert(srm.clone(), h);
         self.pool.push(srm.clone());
         self.predecessors.push(pred);
-        Ok(())
+        Ok(h)
     }
 }
 
@@ -1371,7 +1388,7 @@ impl PartialBlock {
         seed: &StandardReprMod,
     ) -> Result<(Self, usize), StructureError> {
         if ctxt.rank() == 0 {
-            let block = Self::build(ctxt, std::slice::from_ref(seed))?;
+            let block = Self::build(ctxt, vec![seed.clone()])?;
             return Ok((block, 0));
         }
 
@@ -1427,11 +1444,12 @@ impl PartialBlock {
     }
 
     /// The partial block constructor (blocks.cpp:1086-1248). `interval`
-    /// is the srm list produced by [`bruhat_below`]; it is consumed in
+    /// is the srm list produced by [`bruhat_below`], consumed by value so
+    /// the stored element vector needs no second copy; it is reordered in
     /// `x`-sorted order so that descents precede when lengths are set.
     pub fn build(
         ctxt: &CommonContext<'_, '_>,
-        interval: &[StandardReprMod],
+        interval: Vec<StandardReprMod>,
     ) -> Result<Self, StructureError> {
         let rc = ctxt.rep_context();
         let rank = ctxt.rank();
@@ -1442,7 +1460,7 @@ impl PartialBlock {
         // (blocks.cpp:1106-1131).
         let mut y_lists: BTreeMap<crate::InvolutionId, Vec<RationalWeight>> = BTreeMap::new();
         let mut highest_x = 0_usize;
-        for srm in interval {
+        for srm in &interval {
             highest_x = highest_x.max(srm.x().index());
             let involution = rc.involution_of(srm.x())?;
             let list = y_lists.entry(involution).or_default();
@@ -1461,7 +1479,7 @@ impl PartialBlock {
 
         // pre-sort by x (stable, like upstream's list merge sort) so
         // descents precede when setting lengths (blocks.cpp:1133-1135)
-        let mut sorted: Vec<StandardReprMod> = interval.to_vec();
+        let mut sorted: Vec<StandardReprMod> = interval;
         sorted.sort_by_key(StandardReprMod::x);
 
         let mut xs = Vec::new();
@@ -1622,7 +1640,18 @@ impl PartialBlock {
         let old_xs = std::mem::take(&mut self.xs);
         self.xs = order.iter().map(|&i| old_xs[i]).collect();
         let old_elements = std::mem::take(&mut self.elements);
-        self.elements = order.iter().map(|&i| old_elements[i].clone()).collect();
+        // `order` is a permutation of 0..size, so each slot is taken
+        // exactly once; moving beats cloning every StandardReprMod.
+        let mut old_elements: Vec<Option<StandardReprMod>> =
+            old_elements.into_iter().map(Some).collect();
+        self.elements = order
+            .iter()
+            .map(|&i| {
+                old_elements[i]
+                    .take()
+                    .expect("the sort permutation visits each index once")
+            })
+            .collect();
         let old_descents = std::mem::take(&mut self.descents);
         let rank = self.rank;
         let mut descents = Vec::with_capacity(old_descents.len());
@@ -2095,7 +2124,7 @@ mod tests {
         let interval = bruhat_below(&ctxt, &seed).unwrap();
         assert_eq!(interval.len(), 1);
         assert_eq!(interval[0], seed, "the seed alone is the interval");
-        let block = PartialBlock::build(&ctxt, &interval).unwrap();
+        let block = PartialBlock::build(&ctxt, interval).unwrap();
         assert_eq!(block.size(), 1);
         assert_eq!(block.rank(), 0);
         assert_eq!(block.x(0), Some(KgbId(2)));
@@ -2348,7 +2377,7 @@ mod tests {
         assert_eq!(interval_xs(&ctxt, &seed), vec![0, 1, 2]);
         let interval = bruhat_below(&ctxt, &seed).unwrap();
         assert_eq!(interval.last(), Some(&seed), "the seed generates last");
-        let block = PartialBlock::build(&ctxt, &interval).unwrap();
+        let block = PartialBlock::build(&ctxt, interval).unwrap();
         assert_eq!(block.size(), 3);
         for z in 0..3 {
             assert_eq!(block.x(z), Some(KgbId(z)), "rows are x=0,1,2");
@@ -2389,7 +2418,7 @@ mod tests {
         assert_eq!(ctxt.rank(), 2, "the full rank-2 integral system");
         assert_eq!(interval_xs(&ctxt, &seed), vec![0]);
         let interval = bruhat_below(&ctxt, &seed).unwrap();
-        let block = PartialBlock::build(&ctxt, &interval).unwrap();
+        let block = PartialBlock::build(&ctxt, interval).unwrap();
         assert_eq!(block.size(), 1);
         assert_eq!(block.rank(), 2);
         assert_eq!(block.descent(0, 0), Some(BlockDescent::ImaginaryTypeI));
@@ -2416,7 +2445,7 @@ mod tests {
         assert_eq!(interval_xs(&ctxt, &seed), vec![2, 3, 5]);
         let interval = bruhat_below(&ctxt, &seed).unwrap();
         assert_eq!(interval.last(), Some(&seed), "the seed generates last");
-        let block = PartialBlock::build(&ctxt, &interval).unwrap();
+        let block = PartialBlock::build(&ctxt, interval).unwrap();
         assert_eq!(block.size(), 3);
         assert_eq!(block.x(0), Some(KgbId(2)));
         assert_eq!(block.x(1), Some(KgbId(3)));
@@ -2463,7 +2492,7 @@ mod tests {
         let gamma = rw(&[2, 2], 1);
         let (seed, ctxt) = seed_and_context(&rc, 5, &[1, 1], &gamma);
         let interval = bruhat_below(&ctxt, &seed).unwrap();
-        let block = std::sync::Arc::new(PartialBlock::build(&ctxt, &interval).unwrap());
+        let block = std::sync::Arc::new(PartialBlock::build(&ctxt, interval).unwrap());
 
         let mut kl = crate::KlTable::from_handle(std::sync::Arc::clone(&block)).unwrap();
         drop(block);
@@ -2773,7 +2802,7 @@ mod tests {
         let gamma = rw(&[2, 2], 1);
         let (seed, ctxt) = seed_and_context(&rc, 5, &[1, 1], &gamma);
         let interval = bruhat_below(&ctxt, &seed).unwrap();
-        let block = PartialBlock::build(&ctxt, &interval).unwrap();
+        let block = PartialBlock::build(&ctxt, interval).unwrap();
         let size = block.size();
         let rank = block.rank();
         assert_eq!((size, rank), (3, 2));

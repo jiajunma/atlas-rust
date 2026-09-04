@@ -1005,7 +1005,7 @@ impl RepTable {
             // Union rebuild (repr.cpp:1610-1618): a fresh block on the whole
             // pool; the constructor re-derives the canonical
             // `(length, x, y)` row order and the links on the union set.
-            let block = Arc::new(PartialBlock::build(&context, &pool)?);
+            let block = Arc::new(PartialBlock::build(&context, pool)?);
             let exact_seed_row =
                 block
                     .lookup(&seed)

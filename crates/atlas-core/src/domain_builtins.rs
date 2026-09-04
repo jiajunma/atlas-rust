@@ -10705,7 +10705,7 @@ fn partial_block_rows(
         .map_err(|error| structure_diagnostic(error, span))?;
     let interval = bruhat_below(&ctxt, &seed).map_err(|error| structure_diagnostic(error, span))?;
     let block =
-        PartialBlock::build(&ctxt, &interval).map_err(|error| structure_diagnostic(error, span))?;
+        PartialBlock::build(&ctxt, interval).map_err(|error| structure_diagnostic(error, span))?;
     let singular = ctxt
         .singular_flags(gamma)
         .map_err(|error| structure_diagnostic(error, span))?;
