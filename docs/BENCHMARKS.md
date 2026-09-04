@@ -580,3 +580,19 @@ Gates: quick_check 3679927 PASS (573 real-group tests); probe-diff
 - deform-only E7 (probe_deform_e7_only, cpu, A/B 3679960): base median
   20.55s vs tip median 20.42s — neutral as predicted (additive_closure is
   not hot there); RSS identical.
+
+## Prim-slot hoist (368707a): verified interleaved A/B vs aa148b4
+
+KL primitive-index records moved behind a mask->slot map; hot column loops
+resolve the slot once (Copy) instead of a HashMap probe per access.
+Gates: quick_check 3680023 PASS; probe-diff 3680036-38 SORTED_MATCH.
+Attribution is pure: the benchmarked binary predates the 1caa620 lane merge.
+
+- deform-only E7 (cpu, A/B 3680039): base median 20.62s -> tip median
+  18.95s = **1.088x** (base 20.53/20.66/20.62, tip 18.95/18.89/19.04).
+- heavy unitary E7 (fat, A/B 3680040): base median 37.03s -> tip median
+  35.53s = **1.042x** (base 37.03/36.98/37.08, tip 35.58/35.48/35.53).
+
+Cumulative avopt-lane heavy unitary E7: 78.7s -> 35.5s = **2.21x**.
+deform-only E7 remains ~1.9x slower than the oracle (18.95s vs 10.01s);
+next recorded levers: allocation ~20% spread, id_of_slice in KL paths (3.1%).
