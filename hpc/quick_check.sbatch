@@ -46,3 +46,7 @@ if git worktree list --porcelain | grep -Fqx "worktree $check_dir"; then
 else
   rm -rf "$check_dir"
 fi
+# Propagate failure: gate-chain legs depend on this job with afterok, so a
+# red check/test MUST fail the SLURM job (job 3680800 showed tests failing
+# while the chain's build+probes happily ran on uncompilable test code).
+exit "${test_status:-$check_status}"
