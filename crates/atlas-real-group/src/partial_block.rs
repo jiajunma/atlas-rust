@@ -858,8 +858,16 @@ impl<'c, 'r, 'a> BruhatGenerator<'c, 'r, 'a> {
             Some(s) => {
                 // add s-ascents for the elements covered by the descent
                 // image (repr.cpp:1523-1558)
-                let pred_sz = self.predecessors[pred[0]].clone();
-                for p in pred_sz {
+                //
+                // Take the descent image's predecessor list out of the
+                // table instead of cloning it: the recursion below only
+                // ever appends at the back of `predecessors` (new pool
+                // entries), so slot pred[0] is left untouched and the list
+                // is restored after the scan.  Iterating the taken Vec
+                // visits the same indices in the same order as iterating
+                // the old clone.
+                let pred_sz = std::mem::take(&mut self.predecessors[pred[0]]);
+                for &p in &pred_sz {
                     let zp = self.pool[p].clone();
                     let (stat, flag) = self.ctxt.status(s, zp.x())?;
                     match stat {
@@ -882,6 +890,7 @@ impl<'c, 'r, 'a> BruhatGenerator<'c, 'r, 'a> {
                         }
                     }
                 }
+                self.predecessors[pred[0]] = pred_sz;
             }
         }
         let h = self.pool.len();
