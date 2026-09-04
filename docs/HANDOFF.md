@@ -4,6 +4,44 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Current frontier - 2026-09-05b (avopt: E6 stack LANDED 2.55x; E7 AV interpreted WORKS)
+
+- Merged and pushed (codex tip 83d264d): agent-ratfast + agent-fastdiv +
+  agent-rtcache (ac440c6), agent-mimalloc (489eb15), agent-orbitopt
+  (neutral AB, kept for many-builds workloads).
+- Session totals: gkfast_e6 2.63s -> 1.03s = 2.55x (oracle 0.59s, gap now
+  1.75x); deform-E7 19.03s -> 11.38s = 1.67x (oracle ~10s, gap ~1.14x).
+  All gates: quick_check green + 5 probes SORTED_MATCH each round.
+- ratfast lessons (correctness bugs caught ONLY by unit tests, probes were
+  blind): (1) malachite Rational stores sign separately from a non-negative
+  numerator — small_parts must reattach it; (2) |i64::MIN| = 2^63 overflows
+  a signed i64 conversion — convert magnitude via u64/i128. Tests must allow
+  None when the generic result leaves the i64 window (i64::MIN - 1).
+- DISPROVEN hypothesis (recorded so it is not retried): "thousands of
+  classification builds per session". ATLAS_PROBE_CLASSIFICATION=1 on
+  probe_gkfast_e6 (job 3680679) shows only 28 builds, ALL distinct misses,
+  including one rank-8/240-roots E8-scale build — the orbit_cross_closure
+  10% comes from a few LARGE builds, not many small ones. Per-orbit
+  overhead hoisting (orbitopt) is therefore ~neutral here.
+- E7 interpreted AV probes PASS on cpu/4G (3680467/468): gkfast_e7 rust
+  19.9s (RSS 1.16GB) vs oracle 14.1s; av_ann_e7 rust 21.6s vs oracle 14.1s.
+  Both SORTED_MATCH. The fat 32G duplicates were cancelled as redundant.
+- cpu partition hard limit is 4G/node (NOT 8G) — sbatch rejects more.
+- mimalloc pinned to the HPC cargo cache (crates.io unreachable from compute
+  nodes): mimalloc 0.1.52, libmimalloc-sys 0.1.49, cc 1.4.4 (NOT 1.4.5),
+  shlex 2.0.1, find-msvc-tools 0.1.11. RSS roughly doubles (acceptable).
+- Parallel-coder protocol (learned the hard way): ONE coder at a time in the
+  shared local worktree; the PARENT creates+checks out the branch and does
+  all git branch operations; the coder only edits+commits its owned files.
+  Two coders checking out branches concurrently race the shared HEAD.
+- Subagent tooling can serve stale file snapshots after branch switches;
+  coders must verify via bash (`git show HEAD:path`, md5sum) when in doubt.
+- In flight: agent-rscache (434d141, RootSystem enumeration shared per
+  datum across InnerClass constructions; gate 3680684-691), caller-attributed
+  E6 profile 3680692 (next target: Value::clone+memmove ~16%).
+- Fat queue still blocked by other users: 3680165 (unitary A/B), 3680270
+  (8h heavy unitary oracle reference) pending.
+
 ## Current frontier - 2026-09-04g (avopt: klfill LANDED 1.235x; finals bug root-caused, fix in flight)
 
 - agent-klfill (da5ccf2) merged into agent-avopt (2a54201) and pushed to
