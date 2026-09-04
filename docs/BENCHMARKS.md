@@ -821,3 +821,19 @@ RootSystem, BTreeSet->sorted-Vec in block build.
   element; swapping sorted-vec->hash buys nothing without the WeylElt-keyed
   BFS-dedup redesign (Variant B = transducer + membership as one change) —
   shelved, matches the agent-transduce postmortem prediction.
+
+## agent-rootkey (merged; 467be26+48a63cf)
+
+- id_of_slice: rank <= 8 root coordinates pack into one u64 (8-bit lanes,
+  +128 bias) — the block-construction probes hash/compare one integer
+  instead of a boxed slice; rank guard keeps the packed map exact (the
+  -128 bias aliases shorter keys by construction, so len != rank misses
+  the packed map and goes to the boxed-slice fallback; rank > 8 uses the
+  fallback outright).
+- Gates: probes 3680802-806/808 SORTED_MATCH (on 467be26); quick_check
+  3680813 green on 48a63cf (delta = derive(Clone,Debug) only).
+  FIRST gate after quick_check.sbatch learned to propagate failures —
+  pre-fix, job 3680800's test-compile error did NOT stop the chain.
+- AB 3680807 gkfast_e6 vs 12f115e: base 0.81/0.81/0.80 tip 0.79/0.78/0.80,
+  median 0.81s -> 0.79s = **1.025x**. E7 3680808: gkfast_e7 14.18s
+  (oracle 13.91).
