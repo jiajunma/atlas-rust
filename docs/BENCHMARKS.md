@@ -711,3 +711,38 @@ RootSystem, BTreeSet->sorted-Vec in block build.
 - Session totals: gkfast_e6 2.63s -> 1.03s = **2.55x** (oracle 0.59s; gap
   4.4x -> 1.75x). deform-E7 19.03s -> 11.38s = 1.67x (oracle ~10s; gap
   ~1.14x).
+
+## agent-orbitopt (merged 83d264d) / agent-rscache (merged 282146d) / agent-callargs (merged 723585b)
+
+- orbitopt AB 3680678 (gkfast_e6 vs b1319c1): 1.02s -> 1.03s, neutral
+  (kept: helps many-small-build workloads; the E6 probe is a FEW-BIG-BUILDS
+  regime — classification probe 3680679: only 28 builds, all distinct, one
+  E8-scale rank-8/240-roots build dominates orbit_cross_closure's 12%).
+- rscache AB 3680691 (gkfast_e6 vs orbitopt tip): 1.03s -> 1.03s, neutral
+  on this probe; removes per-InnerClass-construction RootSystem
+  re-enumeration (matters for repeated-datum sessions).
+- callargs (a0a596e: for-loop iterable borrow, closure args SharedValue,
+  denotation Rc) gates: quick_check 3680701 green, 5 probes SORTED_MATCH;
+  AB 3680708 gkfast_e6: base 1.05/1.08/1.05 -> tip 0.97/0.94/0.96, median
+  1.05s -> 0.96s = **1.094x**. E7 interpreted reads (3680709/710):
+  gkfast_e7 19.85 -> 17.72s, av_ann_e7 21.55 -> 19.53s (oracle 14.05/14.24).
+- Session totals now: gkfast_e6 2.63 -> 0.96s = **2.74x** (oracle 0.59s,
+  gap 1.63x); gkfast_e7 17.72s vs oracle 14.05s (gap 1.26x).
+
+## Upstream involution-orbit machinery (explore report, for the next slice)
+
+- Upstream never enumerates involution orbits in the InnerClass constructor
+  (laziness: closure runs only on KGB/global-KGB build, kgb.cpp:197/247/512);
+  we build twisted_conjugacy_partition twice (primal+dual) eagerly per
+  inner-class value (domain_builtins.rs:2342-2368). gkfast_e6 DOES build
+  KGB, so laziness only defers; the representation is the lever.
+- Upstream element = weyl::WeylElt = 32-byte transducer array (vs our
+  240-byte root permutation for E8); one global open-addressing hash+pool
+  per inner class serves dedup+numbering+membership (Cartan_orbit /
+  InvolutionTable::add_cross, structure/involutions.cpp:222-251,362-379);
+  per edge = two transducer multiplies (~a few table lookups on 32 bytes).
+- Our weyl_transducer.rs already has CompactWeyl/WeylElt=[u8;8],
+  inner_mult/inner_left_mult/apply_twist/materialize_root_permutation —
+  Option B = port Cartan_orbit/add_cross onto it inside
+  orbit_cross_closure, keeping phase-one class order/representatives and
+  discovery-order edge enumeration for byte-identical output.
