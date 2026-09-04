@@ -1424,7 +1424,7 @@ impl TypedContext {
                             diagnostic
                                 .back_trace
                                 .iter()
-                                .map(|line| Value::String(line.clone()))
+                                .map(|line| Rc::new(Value::String(line.clone())))
                                 .collect(),
                         )));
                     }
@@ -6160,7 +6160,7 @@ impl Builtin {
                             .completion_candidates()
                             .iter()
                             .filter(|name| name.starts_with(prefix.as_str()))
-                            .map(|name| Value::String(name.clone()))
+                            .map(|name| Rc::new(Value::String(name.clone())))
                             .collect(),
                     )
                 }))
@@ -6180,7 +6180,7 @@ impl Builtin {
                 let value = if arguments.len() == 1 {
                     unwrap_shared(arguments.into_iter().next().expect("one argument"))
                 } else {
-                    Value::Tuple(own_all(arguments))
+                    Value::Tuple(arguments)
                 };
                 let text = value_string(context, &value);
                 context.print_text(format!("{text}\n"));
@@ -6644,9 +6644,10 @@ fn run_scalar(
                 match operation {
                     ScalarOp::IntQuotient => Value::Integer(quotient),
                     ScalarOp::IntModulo => Value::Integer(remainder),
-                    ScalarOp::IntDivMod => {
-                        Value::Tuple(vec![Value::Integer(quotient), Value::Integer(remainder)])
-                    }
+                    ScalarOp::IntDivMod => Value::Tuple(vec![
+                        Rc::new(Value::Integer(quotient)),
+                        Rc::new(Value::Integer(remainder)),
+                    ]),
                     _ => unreachable!(),
                 }
             }))
@@ -6712,8 +6713,8 @@ fn run_scalar(
                 let (numerator, denominator) = value.clone().into_numerator_and_denominator();
                 let numerator = BigInt::from(numerator);
                 Value::Tuple(vec![
-                    Value::Integer(if negative { -numerator } else { numerator }),
-                    Value::Integer(BigInt::from(denominator)),
+                    Rc::new(Value::Integer(if negative { -numerator } else { numerator })),
+                    Rc::new(Value::Integer(BigInt::from(denominator))),
                 ])
             })),
             other => panic!("rational unfraction saw {other:?}"),
@@ -7078,7 +7079,7 @@ fn run_scalar(
             Value::List(values) => Ok(at_builtin_level(level, || {
                 let mut joined = String::new();
                 for value in values {
-                    match value {
+                    match value.as_ref() {
                         Value::String(text) => joined.push_str(text),
                         other => panic!("string list concatenation saw {other:?}"),
                     }
@@ -7136,8 +7137,8 @@ fn run_scalar(
         ScalarOp::MatrixShape => match expect_unary(&arguments) {
             Value::Matrix(matrix) => Ok(at_builtin_level(level, || {
                 Value::Tuple(vec![
-                    Value::Integer(BigInt::from(matrix.rows())),
-                    Value::Integer(BigInt::from(matrix.cols())),
+                    Rc::new(Value::Integer(BigInt::from(matrix.rows()))),
+                    Rc::new(Value::Integer(BigInt::from(matrix.cols()))),
                 ])
             })),
             other => panic!("matrix shape saw {other:?}"),
@@ -7181,11 +7182,11 @@ fn run_scalar(
                 Value::List(
                     (0..count)
                         .map(|index| {
-                            Value::Vector(match operation {
+                            Rc::new(Value::Vector(match operation {
                                 ScalarOp::MatrixRows => matrix.row(index),
                                 ScalarOp::MatrixColumns => matrix.column(index),
                                 _ => unreachable!(),
-                            })
+                            }))
                         })
                         .collect(),
                 )
@@ -7286,7 +7287,7 @@ fn run_scalar(
             Value::List(parts) => Ok(at_builtin_level(level, || {
                 let mut joined = Vec::new();
                 for part in parts {
-                    match part {
+                    match part.as_ref() {
                         Value::Vector(vector) => joined.extend_from_slice(&vector.0),
                         other => panic!("vector row join saw {other:?}"),
                     }
@@ -7313,9 +7314,9 @@ fn run_scalar(
             };
             Ok(at_builtin_level(level, || {
                 if at_back {
-                    entries.push(element);
+                    entries.push(Rc::new(element));
                 } else {
-                    entries.insert(0, element);
+                    entries.insert(0, Rc::new(element));
                 }
                 Value::List(entries)
             }))
@@ -7331,7 +7332,7 @@ fn run_scalar(
             Value::List(rows) => Ok(at_builtin_level(level, || {
                 let mut joined = Vec::new();
                 for row in rows {
-                    match row {
+                    match unwrap_shared(row) {
                         Value::List(entries) => joined.extend(entries),
                         other => panic!("row-of-rows join saw {other:?}"),
                     }
@@ -7443,10 +7444,10 @@ fn run_scalar(
         ScalarOp::RatvecUnfraction => match expect_unary(&arguments) {
             Value::RatVector(ratvec) => Ok(at_builtin_level(level, || {
                 Value::Tuple(vec![
-                    Value::Vector(Vec32(
+                    Rc::new(Value::Vector(Vec32(
                         ratvec.numerators().iter().map(|&n| n as i32).collect(),
-                    )),
-                    Value::Integer(BigInt::from(ratvec.denominator())),
+                    ))),
+                    Rc::new(Value::Integer(BigInt::from(ratvec.denominator()))),
                 ])
             })),
             other => panic!("ratvec unfraction saw {other:?}"),
@@ -7859,7 +7860,7 @@ fn run_scalar(
                 let mut vectors = Vec::with_capacity(rows.len());
                 let mut width = 0usize;
                 for row in rows {
-                    match row {
+                    match unwrap_shared(row) {
                         Value::Vector(vector) => {
                             width = width.max(vector.0.len());
                             vectors.push(vector);
@@ -7918,7 +7919,7 @@ fn run_scalar(
                     }
                     let mut vectors = Vec::with_capacity(parts.len());
                     for (index, part) in parts.into_iter().enumerate() {
-                        match part {
+                        match unwrap_shared(part) {
                             Value::Vector(vector) => {
                                 if vector.0.len() as u64 != size {
                                     let kind = match operation {
@@ -7989,8 +7990,8 @@ fn run_scalar(
                 let mut flip = false;
                 let (d, recorder) = matreduc::gcd_recorder(vector.0.clone(), &mut flip, 0);
                 Value::Tuple(vec![
-                    Value::Integer(BigInt::from(d)),
-                    Value::Matrix(recorder.to_matrix()),
+                    Rc::new(Value::Integer(BigInt::from(d))),
+                    Rc::new(Value::Matrix(recorder.to_matrix())),
                 ])
             })),
             other => panic!("Bezout saw {other:?}"),
@@ -8003,15 +8004,15 @@ fn run_scalar(
                 let mut reduced = matreduc::PidMatrix::from_matrix(matrix);
                 let (recorder, pivots, flip) = matreduc::column_echelon(&mut reduced);
                 Value::Tuple(vec![
-                    Value::Matrix(reduced.to_matrix()),
-                    Value::Matrix(recorder.to_matrix()),
-                    Value::List(
+                    Rc::new(Value::Matrix(reduced.to_matrix())),
+                    Rc::new(Value::Matrix(recorder.to_matrix())),
+                    Rc::new(Value::List(
                         pivots
                             .into_iter()
-                            .map(|pivot| Value::Integer(BigInt::from(pivot)))
+                            .map(|pivot| Rc::new(Value::Integer(BigInt::from(pivot))))
                             .collect(),
-                    ),
-                    Value::Integer(BigInt::from(if flip { -1 } else { 1 })),
+                    )),
+                    Rc::new(Value::Integer(BigInt::from(if flip { -1 } else { 1 }))),
                 ])
             })),
             other => panic!("echelon saw {other:?}"),
@@ -8059,8 +8060,8 @@ fn run_scalar(
                 let (basis, factors) =
                     matreduc::smith_basis(&matreduc::PidMatrix::from_matrix(matrix));
                 Value::Tuple(vec![
-                    Value::Matrix(basis.to_matrix()),
-                    Value::Vector(Vec32(factors)),
+                    Rc::new(Value::Matrix(basis.to_matrix())),
+                    Rc::new(Value::Vector(Vec32(factors))),
                 ])
             })),
             other => panic!("Smith saw {other:?}"),
@@ -8073,8 +8074,8 @@ fn run_scalar(
                 let (basis, diagonal) =
                     matreduc::adapted_basis(&matreduc::PidMatrix::from_matrix(matrix));
                 Value::Tuple(vec![
-                    Value::Matrix(basis.to_matrix()),
-                    Value::Vector(Vec32(diagonal)),
+                    Rc::new(Value::Matrix(basis.to_matrix())),
+                    Rc::new(Value::Vector(Vec32(diagonal))),
                 ])
             })),
             other => panic!("adapted_basis saw {other:?}"),
@@ -8087,9 +8088,9 @@ fn run_scalar(
                 let (row, column, diagonal) =
                     matreduc::diagonalise(&matreduc::PidMatrix::from_matrix(matrix));
                 Value::Tuple(vec![
-                    Value::Vector(Vec32(diagonal)),
-                    Value::Matrix(row.to_matrix()),
-                    Value::Matrix(column.to_matrix()),
+                    Rc::new(Value::Vector(Vec32(diagonal))),
+                    Rc::new(Value::Matrix(row.to_matrix())),
+                    Rc::new(Value::Matrix(column.to_matrix())),
                 ])
             })),
             other => panic!("diagonalize saw {other:?}"),
@@ -8113,8 +8114,8 @@ fn run_scalar(
                     matreduc::inverse(&matreduc::PidMatrix::from_matrix(matrix))
                         .map_err(|message| runtime(message, span))?;
                 Ok(Some(Value::Tuple(vec![
-                    Value::Matrix(numerator.to_matrix()),
-                    Value::Integer(denominator),
+                    Rc::new(Value::Matrix(numerator.to_matrix())),
+                    Rc::new(Value::Integer(denominator)),
                 ])))
             }
             other => panic!("invert saw {other:?}"),
@@ -8156,9 +8157,9 @@ fn run_scalar(
                         tag: 1,
                         injector_name: "affine_subspace".into(),
                         value: Box::new(Value::Tuple(vec![
-                            Value::Vector(Vec32(solution)),
-                            Value::Integer(factor),
-                            Value::Matrix(kernel.to_matrix()),
+                            Rc::new(Value::Vector(Vec32(solution))),
+                            Rc::new(Value::Integer(factor)),
+                            Rc::new(Value::Matrix(kernel.to_matrix())),
                         ])),
                     },
                 }))
@@ -8254,15 +8255,15 @@ fn run_scalar(
                 let (basis, combination, relations, pivots) =
                     matreduc::subspace_normal(&matreduc::PidMatrix::from_matrix(matrix));
                 Ok(Some(Value::Tuple(vec![
-                    Value::Matrix(basis.to_matrix()),
-                    Value::Matrix(combination.to_matrix()),
-                    Value::Matrix(relations.to_matrix()),
-                    Value::List(
+                    Rc::new(Value::Matrix(basis.to_matrix())),
+                    Rc::new(Value::Matrix(combination.to_matrix())),
+                    Rc::new(Value::Matrix(relations.to_matrix())),
+                    Rc::new(Value::List(
                         pivots
                             .into_iter()
-                            .map(|pivot| Value::Integer(BigInt::from(pivot)))
+                            .map(|pivot| Rc::new(Value::Integer(BigInt::from(pivot))))
                             .collect(),
-                    ),
+                    )),
                 ])))
             }
             other => panic!("subspace_normal saw {other:?}"),
@@ -11777,14 +11778,14 @@ impl TypedExpr {
             Self::TupleDisplay(elements) => {
                 let values = elements
                     .iter()
-                    .map(|element| force(element, context).map(unwrap_shared))
+                    .map(|element| force(element, context))
                     .collect::<Result<Vec<_>, _>>()?;
                 Ok(at_level(level, move || Value::Tuple(values)))
             }
             Self::ListDisplay(elements) => {
                 let values = elements
                     .iter()
-                    .map(|element| force(element, context).map(unwrap_shared))
+                    .map(|element| force(element, context))
                     .collect::<Result<Vec<_>, _>>()?;
                 Ok(at_level(level, move || Value::List(values)))
             }
@@ -11873,7 +11874,7 @@ impl TypedExpr {
                                 source,
                                 *span,
                             )?;
-                            values[position] = value.as_ref().clone();
+                            values[position] = Rc::clone(&value);
                             Ok(())
                         }
                         Value::Vector(Vec32(entries)) => {
@@ -12075,7 +12076,7 @@ impl TypedExpr {
                         let position =
                             checked_index(&index, entries.len(), *reversed, selection, *span)?;
                         (
-                            Value::Integer(BigInt::from(entries[position])),
+                            Rc::new(Value::Integer(BigInt::from(entries[position]))),
                             ComponentWrite::VectorEntry(position),
                         )
                     }
@@ -12102,11 +12103,11 @@ impl TypedExpr {
                                 selection,
                                 *span,
                             )?;
-                            let old = Value::Integer(BigInt::from(
+                            let old = Rc::new(Value::Integer(BigInt::from(
                                 matrix
                                     .entry(row, column)
                                     .expect("range-checked matrix entry is in bounds"),
-                            ));
+                            )));
                             (old, ComponentWrite::MatrixEntry(row, column))
                         }
                         _ => {
@@ -12121,7 +12122,7 @@ impl TypedExpr {
                                 *span,
                             )?;
                             (
-                                Value::Vector(matrix.column(position)),
+                                Rc::new(Value::Vector(matrix.column(position))),
                                 ComponentWrite::MatrixColumn(position),
                             )
                         }
@@ -12133,7 +12134,7 @@ impl TypedExpr {
                 let result = Rc::new(apply_transform(
                     operation,
                     old,
-                    unwrap_shared(operand),
+                    operand,
                     *conversion,
                     *span,
                     context,
@@ -12141,7 +12142,7 @@ impl TypedExpr {
                 mutate_aggregate(target, aggregate, context, |aggregate| {
                     match (aggregate, &write) {
                         (Value::List(values), ComponentWrite::List(position)) => {
-                            values[*position] = result.as_ref().clone();
+                            values[*position] = Rc::clone(&result);
                             Ok(())
                         }
                         (Value::Vector(Vec32(entries)), ComponentWrite::VectorEntry(position)) => {
@@ -12206,7 +12207,7 @@ impl TypedExpr {
                             &*aggregate
                         )
                     };
-                    components[*position] = value.as_ref().clone();
+                    components[*position] = Rc::clone(&value);
                     Ok(())
                 })?;
                 Ok(at_shared(level, &value))
@@ -12235,7 +12236,7 @@ impl TypedExpr {
                 let result = Rc::new(apply_transform(
                     operation,
                     old,
-                    unwrap_shared(operand),
+                    operand,
                     *conversion,
                     *span,
                     context,
@@ -12247,7 +12248,7 @@ impl TypedExpr {
                             &*aggregate
                         )
                     };
-                    components[*position] = result.as_ref().clone();
+                    components[*position] = Rc::clone(&result);
                     Ok(())
                 })?;
                 Ok(at_shared(level, &result))
@@ -12267,7 +12268,7 @@ impl TypedExpr {
                             expect_integer(unwrap_shared(index), *span, "subscription index")?;
                         let position =
                             checked_index(&index, values.len(), *reversed, source, *span)?;
-                        Ok(at_level(level, || values[position].clone()))
+                        Ok(at_shared(level, &values[position]))
                     }
                     // Upstream `string_subscription` (axis.w:4229-4239): the
                     // result is the one-character string at the position.
@@ -12513,7 +12514,7 @@ impl TypedExpr {
                 for row in rows {
                     let values = row
                         .iter()
-                        .map(|entry| force(entry, context).map(unwrap_shared))
+                        .map(|entry| force(entry, context))
                         .collect::<Result<Vec<_>, _>>()?;
                     evaluated.push(list_to_vec32(values, *span)?);
                 }
@@ -12587,7 +12588,7 @@ impl TypedExpr {
                     else {
                         unreachable!("tuple shape checked above")
                     };
-                    values = components.into_iter().map(Rc::new).collect();
+                    values = components;
                 }
                 match builtin_registry()[*builtin].run(values, *span, level, context) {
                     // Arguments evaluate OUTSIDE the traced region
@@ -12643,7 +12644,7 @@ impl TypedExpr {
                     else {
                         unreachable!("tuple shape checked above")
                     };
-                    values = components.into_iter().map(Rc::new).collect();
+                    values = components;
                 }
                 match builtin_registry()[*builtin].run(values, *span, level, context) {
                     Err(Control::Runtime(mut diagnostic)) => {
@@ -12726,7 +12727,7 @@ impl TypedExpr {
                             else {
                                 unreachable!("tuple shape checked above")
                             };
-                            values = components.into_iter().map(Rc::new).collect();
+                            values = components;
                         }
                         match builtin_registry()[*builtin].run(values, *span, level, context) {
                             Err(Control::Runtime(mut diagnostic)) => {
@@ -12799,9 +12800,7 @@ impl TypedExpr {
                 if *out_reversed {
                     collected.reverse();
                 }
-                Ok(at_level(level, move || {
-                    Value::List(collected.into_iter().map(unwrap_shared).collect())
-                }))
+                Ok(at_level(level, move || Value::List(collected)))
             }
             Self::Do { condition, body } => {
                 // axis.w:5564-5576: on a false guard, clear the flag and
@@ -12872,7 +12871,7 @@ impl TypedExpr {
                         value.as_ref()
                     )
                 };
-                Ok(at_level(level, || components[*index].clone()))
+                Ok(at_shared(level, &components[*index]))
             }
             Self::Case {
                 subject,
@@ -13074,9 +13073,7 @@ impl TypedExpr {
                 if *out_reversed {
                     collected.reverse();
                 }
-                Ok(at_level(level, move || {
-                    Value::List(collected.into_iter().map(unwrap_shared).collect())
-                }))
+                Ok(at_level(level, move || Value::List(collected)))
             }
         }
     }
@@ -13168,7 +13165,7 @@ fn apply_closure(
                 );
                 let mut slots = Vec::new();
                 for (value, shape) in values.into_iter().zip(closure.shapes.iter()) {
-                    distribute(Rc::new(value), shape, &mut slots);
+                    distribute(value, shape, &mut slots);
                 }
                 Some(slots)
             }
@@ -13263,7 +13260,9 @@ fn eval_for_loop(
         // A uniquely held iterable (a fresh display or call result): move
         // the components out without copying anything.
         Ok(owned) => {
-            let values: Vec<(Option<Value>, Value)> = match owned {
+            let values: Vec<(Option<Value>, SharedValue)> = match owned {
+                // List elements are already shared handles: they pass
+                // straight through with no copy at all.
                 Value::List(values) => values
                     .into_iter()
                     .enumerate()
@@ -13280,7 +13279,9 @@ fn eval_for_loop(
                     .map(|(position, byte)| {
                         (
                             position_index(position),
-                            Value::String(String::from_utf8_lossy(&[*byte]).into_owned()),
+                            Rc::new(Value::String(
+                                String::from_utf8_lossy(&[*byte]).into_owned(),
+                            )),
                         )
                     })
                     .collect(),
@@ -13288,7 +13289,10 @@ fn eval_for_loop(
                     .iter()
                     .enumerate()
                     .map(|(position, entry)| {
-                        (position_index(position), Value::Integer(BigInt::from(*entry)))
+                        (
+                            position_index(position),
+                            Rc::new(Value::Integer(BigInt::from(*entry))),
+                        )
                     })
                     .collect(),
                 Value::RatVector(ratvec) => ratvec
@@ -13298,16 +13302,19 @@ fn eval_for_loop(
                     .map(|(position, numerator)| {
                         (
                             position_index(position),
-                            Value::Rational(BigRational::from_integers(
+                            Rc::new(Value::Rational(BigRational::from_integers(
                                 BigInt::from(*numerator),
                                 BigInt::from(ratvec.denominator()),
-                            )),
+                            ))),
                         )
                     })
                     .collect(),
                 Value::Matrix(matrix) => (0..matrix.cols())
                     .map(|column| {
-                        (position_index(column), Value::Vector(matrix.column(column)))
+                        (
+                            position_index(column),
+                            Rc::new(Value::Vector(matrix.column(column))),
+                        )
                     })
                     .collect(),
                 Value::Domain(crate::domain_builtins::DomainValue::KTypePol(polynomial)) => {
@@ -13315,7 +13322,10 @@ fn eval_for_loop(
                         .iteration_terms()
                         .into_iter()
                         .map(|(term, coefficient)| {
-                            (index.then(|| Value::Domain(term)), Value::Domain(coefficient))
+                            (
+                                index.then(|| Value::Domain(term)),
+                                Rc::new(Value::Domain(coefficient)),
+                            )
                         })
                         .collect()
                 }
@@ -13324,7 +13334,10 @@ fn eval_for_loop(
                         .iteration_terms()
                         .into_iter()
                         .map(|(term, coefficient)| {
-                            (index.then(|| Value::Domain(term)), Value::Domain(coefficient))
+                            (
+                                index.then(|| Value::Domain(term)),
+                                Rc::new(Value::Domain(coefficient)),
+                            )
                         })
                         .collect()
                 }
@@ -13368,9 +13381,7 @@ fn eval_for_loop(
     if out_reversed {
         collected.reverse();
     }
-    Ok(at_level(level, move || {
-        Value::List(collected.into_iter().map(unwrap_shared).collect())
-    }))
+    Ok(at_level(level, move || Value::List(collected)))
 }
 
 /// The per-iteration half of a for loop, shared by the owned and borrowed
@@ -13384,7 +13395,7 @@ fn for_loop_iterations(
     in_reversed: bool,
     level: Level,
     context: &mut EvaluationContext,
-    iterations: impl IntoIterator<Item = (Option<Value>, Value)>,
+    iterations: impl IntoIterator<Item = (Option<Value>, SharedValue)>,
 ) -> Result<Vec<SharedValue>, Control> {
     let mut collected = Vec::new();
     // The trace reports the traversal-order iteration counter
@@ -13397,7 +13408,7 @@ fn for_loop_iterations(
         if let Some(index_value) = index_value {
             slots.push(Rc::new(index_value));
         }
-        distribute(Rc::new(element), shape, &mut slots);
+        distribute(element, shape, &mut slots);
         let (result, frame) = if slots.is_empty() {
             // A pure-discard layer pushes no frame, matching the
             // analysis-time empty-layer rule.
@@ -13441,7 +13452,7 @@ fn for_loop_iterations(
 /// put and one component value is built per step (see `eval_for_loop` for
 /// the copy-on-write argument that keeps this a snapshot traversal).
 enum IterableView<'a> {
-    List(&'a [Value]),
+    List(&'a [SharedValue]),
     String(&'a [u8]),
     Vector(&'a [i32]),
     RatVector(&'a RatVec),
@@ -13482,31 +13493,38 @@ impl<'a> IterableView<'a> {
 
     /// The `(index, component)` pair of one position: ordinary aggregates
     /// index by position (int), polynomials by the term (axis.w:5926-5936).
-    fn component(&self, position: usize, index: bool) -> (Option<Value>, Value) {
+    /// A list component is the element's own shared handle (an `Rc` bump);
+    /// the other aggregates build a fresh component value per step.
+    fn component(&self, position: usize, index: bool) -> (Option<Value>, SharedValue) {
         let position_index = || index.then(|| Value::Integer(BigInt::from(position)));
         match self {
-            Self::List(values) => (position_index(), values[position].clone()),
+            Self::List(values) => (position_index(), Rc::clone(&values[position])),
             Self::String(bytes) => (
                 position_index(),
-                Value::String(String::from_utf8_lossy(&[bytes[position]]).into_owned()),
+                Rc::new(Value::String(
+                    String::from_utf8_lossy(&[bytes[position]]).into_owned(),
+                )),
             ),
             Self::Vector(entries) => (
                 position_index(),
-                Value::Integer(BigInt::from(entries[position])),
+                Rc::new(Value::Integer(BigInt::from(entries[position]))),
             ),
             Self::RatVector(ratvec) => (
                 position_index(),
-                Value::Rational(BigRational::from_integers(
+                Rc::new(Value::Rational(BigRational::from_integers(
                     BigInt::from(ratvec.numerators()[position]),
                     BigInt::from(ratvec.denominator()),
-                )),
+                ))),
             ),
-            Self::Matrix(matrix) => (position_index(), Value::Vector(matrix.column(position))),
+            Self::Matrix(matrix) => (
+                position_index(),
+                Rc::new(Value::Vector(matrix.column(position))),
+            ),
             Self::Terms(terms) => {
                 let (term, coefficient) = &terms[position];
                 (
                     index.then(|| Value::Domain(term.clone())),
-                    Value::Domain(coefficient.clone()),
+                    Rc::new(Value::Domain(coefficient.clone())),
                 )
             }
         }
@@ -13657,9 +13675,9 @@ fn closure_trace_string(context: &EvaluationContext, closure: &Closure) -> Strin
 
 /// Bind one value against a slot shape, pushing leaves left-to-right
 /// (upstream `bind_pattern` at evaluation time). A plain leaf moves the
-/// shared handle straight into its slot; only tuple destructuring unwraps
-/// the container (copy-on-write: a genuinely shared tuple is cloned once
-/// here and its components re-shared individually).
+/// shared handle straight into its slot; tuple destructuring unpacks the
+/// container (copy-on-write: a genuinely shared tuple spine is cloned once
+/// here) and the components — already shared handles — pass straight down.
 fn distribute(value: SharedValue, shape: &SlotShape, slots: &mut Vec<Rc<Value>>) {
     match shape {
         SlotShape::Leaf => slots.push(value),
@@ -13678,7 +13696,7 @@ fn distribute(value: SharedValue, shape: &SlotShape, slots: &mut Vec<Rc<Value>>)
                 "analysis let a tuple arity mismatch through"
             );
             for (value, element) in values.into_iter().zip(elements) {
-                distribute(Rc::new(value), element, slots);
+                distribute(value, element, slots);
             }
         }
     }
@@ -13686,25 +13704,28 @@ fn distribute(value: SharedValue, shape: &SlotShape, slots: &mut Vec<Rc<Value>>)
 
 /// Send RHS components to resolved destinations in the exact post-order used
 /// by upstream: tuple children left-to-right, then the optional whole target.
+/// Destinations bind the RHS's own shared handles (tuple components included);
+/// Atlas copy-on-assignment semantics are preserved by the copy-on-write
+/// mutation paths (`mutate_aggregate`).
 fn execute_multi_assignment(
     plan: &MultiAssignmentPlan,
-    value: &Value,
+    value: &SharedValue,
     context: &EvaluationContext,
 ) {
     match plan {
         MultiAssignmentPlan::Omitted => {}
         MultiAssignmentPlan::Destination(MultiAssignmentDestination::Global(cell)) => {
-            *cell.borrow_mut() = Some(Rc::new(value.clone()));
+            *cell.borrow_mut() = Some(Rc::clone(value));
         }
         MultiAssignmentPlan::Destination(MultiAssignmentDestination::Local { depth, offset }) => {
-            let updated = context.set_local(*depth, *offset, Rc::new(value.clone()));
+            let updated = context.set_local(*depth, *offset, Rc::clone(value));
             assert!(
                 updated,
                 "analysis emitted an invalid local multi-assignment address"
             );
         }
         MultiAssignmentPlan::Tuple { elements, whole } => {
-            let Value::Tuple(values) = value else {
+            let Value::Tuple(values) = value.as_ref() else {
                 panic!("analysis let a non-tuple value reach a tuple multi-assignment: {value}")
             };
             assert_eq!(
@@ -13735,16 +13756,23 @@ fn narrow_i64(value: &BigInt, span: SourceSpan) -> Result<i64, Control> {
     i64::try_from(value).map_err(|_| runtime("Integer value to big for conversion", span))
 }
 
-fn expect_list(value: Value) -> Vec<Value> {
+fn expect_list(value: Value) -> Vec<SharedValue> {
     match value {
         Value::List(values) => values,
         other => panic!("conversion applied to non-list value {other}"),
     }
 }
 
-fn expect_integer(value: Value, span: SourceSpan, operation: &str) -> Result<BigInt, Control> {
-    match value {
-        Value::Integer(value) => Ok(value),
+/// The shared integer-index gate. Takes the index by any borrow — an owned
+/// `Value`, a `SharedValue`, or a tuple pair's element handle — and copies
+/// the (small) machine-range payload out.
+fn expect_integer(
+    value: impl std::borrow::Borrow<Value>,
+    span: SourceSpan,
+    operation: &str,
+) -> Result<BigInt, Control> {
+    match value.borrow() {
+        Value::Integer(value) => Ok(value.clone()),
         _ => Err(Control::Runtime(Diagnostic::new(
             ErrorKind::Type,
             format!("{operation} must be an integer"),
@@ -13908,23 +13936,20 @@ fn mutate_aggregate(
 
 /// Apply the resolved operation of a transform assignment to the old
 /// component value and the evaluated right operand (axis.w:8014-8035),
-/// then apply the result coercion the call conversion recorded.
+/// then apply the result coercion the call conversion recorded. Both
+/// operands arrive shared: a builtin call hands the handles straight to the
+/// registry, and a closure call shares them through the argument tuple.
 fn apply_transform(
     operation: &TransformOperation,
-    old: Value,
-    operand: Value,
+    old: SharedValue,
+    operand: SharedValue,
     conversion: Option<&'static str>,
     span: SourceSpan,
     context: &mut EvaluationContext,
 ) -> Result<Value, Control> {
     let result = match operation {
         TransformOperation::Builtin(builtin) => builtin_registry()[*builtin]
-            .run(
-                vec![Rc::new(old), Rc::new(operand)],
-                span,
-                Level::SingleValue,
-                context,
-            )?
+            .run(vec![old, operand], span, Level::SingleValue, context)?
             .expect("a transform builtin call yields a single value"),
         TransformOperation::Closure(closure) => unwrap_shared(
             apply_closure(
@@ -13943,13 +13968,13 @@ fn apply_transform(
 }
 
 fn evaluate_slice(
-    values: &[Value],
+    values: &[SharedValue],
     lower: BigInt,
     upper: BigInt,
     flags: crate::syntax::SliceFlags,
     source: &str,
     span: SourceSpan,
-) -> Result<Vec<Value>, Control> {
+) -> Result<Vec<SharedValue>, Control> {
     let length = BigInt::from(values.len());
     let lower = if flags.lower_from_end {
         &length - lower
@@ -14167,24 +14192,24 @@ fn slice_bounds(
     Ok(Some((lower_index, upper_index)))
 }
 
-fn list_to_vec32(values: Vec<Value>, span: SourceSpan) -> Result<Vec32, Control> {
+fn list_to_vec32(values: Vec<SharedValue>, span: SourceSpan) -> Result<Vec32, Control> {
     let entries = values
-        .into_iter()
-        .map(|value| match value {
-            Value::Integer(value) => narrow_i32(&value, span),
+        .iter()
+        .map(|value| match value.as_ref() {
+            Value::Integer(value) => narrow_i32(value, span),
             other => panic!("vec conversion saw non-integer {other}"),
         })
         .collect::<Result<Vec<_>, _>>()?;
     Ok(Vec32(entries))
 }
 
-fn rationals_to_ratvec(values: Vec<Value>, span: SourceSpan) -> Result<RatVec, Control> {
+fn rationals_to_ratvec(values: Vec<SharedValue>, span: SourceSpan) -> Result<RatVec, Control> {
     // Bring all entries over a common denominator, then normalise.
     let rationals: Vec<BigRational> = values
-        .into_iter()
-        .map(|value| match value {
-            Value::Rational(value) => value,
-            Value::Integer(value) => BigRational::from(value),
+        .iter()
+        .map(|value| match value.as_ref() {
+            Value::Rational(value) => value.clone(),
+            Value::Integer(value) => BigRational::from(value.clone()),
             other => panic!("ratvec conversion saw non-rational {other}"),
         })
         .collect();
@@ -14266,7 +14291,7 @@ fn matrix_to_vectors(matrix: Matrix) -> Value {
     Value::List(
         matrix_columns(matrix)
             .into_iter()
-            .map(|column| Value::Vector(Vec32(column)))
+            .map(|column| Rc::new(Value::Vector(Vec32(column))))
             .collect(),
     )
 }
@@ -14276,12 +14301,12 @@ fn matrix_to_integer_rows(matrix: Matrix) -> Value {
         matrix_columns(matrix)
             .into_iter()
             .map(|column| {
-                Value::List(
+                Rc::new(Value::List(
                     column
                         .into_iter()
-                        .map(|entry| Value::Integer(BigInt::from(entry)))
+                        .map(|entry| Rc::new(Value::Integer(BigInt::from(entry))))
                         .collect(),
-                )
+                ))
             })
             .collect(),
     )
@@ -14292,10 +14317,10 @@ fn matrix_to_ratvectors(matrix: Matrix) -> Value {
         matrix_columns(matrix)
             .into_iter()
             .map(|column| {
-                Value::RatVector(
+                Rc::new(Value::RatVector(
                     RatVec::new(column.into_iter().map(i64::from).collect(), 1)
                         .expect("unit denominator is nonzero"),
-                )
+                ))
             })
             .collect(),
     )
@@ -14306,12 +14331,12 @@ fn matrix_to_rational_rows(matrix: Matrix) -> Value {
         matrix_columns(matrix)
             .into_iter()
             .map(|column| {
-                Value::List(
+                Rc::new(Value::List(
                     column
                         .into_iter()
-                        .map(|entry| rational_value(entry, 1))
+                        .map(|entry| Rc::new(rational_value(entry, 1)))
                         .collect(),
-                )
+                ))
             })
             .collect(),
     )
@@ -14321,11 +14346,11 @@ fn vectors_to_ratvectors(value: Value) -> Value {
     Value::List(
         expect_list(value)
             .into_iter()
-            .map(|entry| match entry {
-                Value::Vector(vector) => Value::RatVector(
+            .map(|entry| match unwrap_shared(entry) {
+                Value::Vector(vector) => Rc::new(Value::RatVector(
                     RatVec::new(vector.0.into_iter().map(i64::from).collect(), 1)
                         .expect("unit denominator is nonzero"),
-                ),
+                )),
                 other => panic!("[Qv][V] conversion saw {other}"),
             })
             .collect(),
@@ -14336,14 +14361,14 @@ fn vectors_to_rational_rows(value: Value) -> Value {
     Value::List(
         expect_list(value)
             .into_iter()
-            .map(|entry| match entry {
-                Value::Vector(vector) => Value::List(
+            .map(|entry| match unwrap_shared(entry) {
+                Value::Vector(vector) => Rc::new(Value::List(
                     vector
                         .0
                         .into_iter()
-                        .map(|item| rational_value(item, 1))
+                        .map(|item| Rc::new(rational_value(item, 1)))
                         .collect(),
-                ),
+                )),
                 other => panic!("[[Q]][V] conversion saw {other}"),
             })
             .collect(),
@@ -14377,7 +14402,9 @@ fn apply_conversion(tag: &str, value: Value, span: SourceSpan) -> Result<Value, 
                 vector
                     .numerators()
                     .iter()
-                    .map(|&numerator| rational_value(numerator, BigInt::from(vector.denominator())))
+                    .map(|&numerator| {
+                        Rc::new(rational_value(numerator, BigInt::from(vector.denominator())))
+                    })
                     .collect(),
             )),
             other => panic!("[Q]Qv conversion saw {other}"),
@@ -14387,7 +14414,7 @@ fn apply_conversion(tag: &str, value: Value, span: SourceSpan) -> Result<Value, 
                 vector
                     .0
                     .into_iter()
-                    .map(|entry| rational_value(entry, 1))
+                    .map(|entry| Rc::new(rational_value(entry, 1)))
                     .collect(),
             )),
             other => panic!("[Q]V conversion saw {other}"),
@@ -14395,7 +14422,7 @@ fn apply_conversion(tag: &str, value: Value, span: SourceSpan) -> Result<Value, 
         "M[V]" => {
             let columns = expect_list(value)
                 .into_iter()
-                .map(|column| match column {
+                .map(|column| match unwrap_shared(column) {
                     Value::Vector(vector) => vector,
                     other => panic!("M[V] conversion saw column {other}"),
                 })
@@ -14410,7 +14437,7 @@ fn apply_conversion(tag: &str, value: Value, span: SourceSpan) -> Result<Value, 
         "M[[I]]" => {
             let columns = expect_list(value)
                 .into_iter()
-                .map(|column| list_to_vec32(expect_list(column), span))
+                .map(|column| list_to_vec32(expect_list(unwrap_shared(column)), span))
                 .collect::<Result<Vec<_>, _>>()?;
             Ok(Value::Matrix(columns_to_matrix(
                 columns,
@@ -14438,20 +14465,25 @@ fn apply_conversion(tag: &str, value: Value, span: SourceSpan) -> Result<Value, 
         "[V][[I]]" => Ok(Value::List(
             expect_list(value)
                 .into_iter()
-                .map(|entry| Ok(Value::Vector(list_to_vec32(expect_list(entry), span)?)))
+                .map(|entry| {
+                    Ok(Rc::new(Value::Vector(list_to_vec32(
+                        expect_list(unwrap_shared(entry)),
+                        span,
+                    )?)))
+                })
                 .collect::<Result<Vec<_>, _>>()?,
         )),
         "[[I]][V]" => Ok(Value::List(
             expect_list(value)
                 .into_iter()
-                .map(|entry| match entry {
-                    Value::Vector(vector) => Ok(Value::List(
+                .map(|entry| match unwrap_shared(entry) {
+                    Value::Vector(vector) => Ok(Rc::new(Value::List(
                         vector
                             .0
                             .into_iter()
-                            .map(|item| Value::Integer(BigInt::from(item)))
+                            .map(|item| Rc::new(Value::Integer(BigInt::from(item))))
                             .collect(),
-                    )),
+                    ))),
                     other => panic!("[[I]][V] conversion saw {other}"),
                 })
                 .collect::<Result<Vec<_>, Control>>()?,
@@ -14461,7 +14493,7 @@ fn apply_conversion(tag: &str, value: Value, span: SourceSpan) -> Result<Value, 
                 vector
                     .0
                     .into_iter()
-                    .map(|entry| Value::Integer(BigInt::from(entry)))
+                    .map(|entry| Rc::new(Value::Integer(BigInt::from(entry))))
                     .collect(),
             )),
             other => panic!("[I]V conversion saw {other}"),
@@ -14469,8 +14501,8 @@ fn apply_conversion(tag: &str, value: Value, span: SourceSpan) -> Result<Value, 
         "[Q][I]" => Ok(Value::List(
             expect_list(value)
                 .into_iter()
-                .map(|entry| match entry {
-                    Value::Integer(value) => Value::Rational(BigRational::from(value)),
+                .map(|entry| match unwrap_shared(entry) {
+                    Value::Integer(value) => Rc::new(Value::Rational(BigRational::from(value))),
                     other => panic!("[Q][I] conversion saw {other}"),
                 })
                 .collect(),
@@ -14481,11 +14513,11 @@ fn apply_conversion(tag: &str, value: Value, span: SourceSpan) -> Result<Value, 
             expect_list(value)
                 .into_iter()
                 .map(|entry| {
-                    let vector = list_to_vec32(expect_list(entry), span)?;
-                    Ok(Value::RatVector(
+                    let vector = list_to_vec32(expect_list(unwrap_shared(entry)), span)?;
+                    Ok(Rc::new(Value::RatVector(
                         RatVec::new(vector.0.into_iter().map(i64::from).collect(), 1)
                             .expect("unit denominator is nonzero"),
-                    ))
+                    )))
                 })
                 .collect::<Result<Vec<_>, Control>>()?,
         )),
@@ -14493,13 +14525,13 @@ fn apply_conversion(tag: &str, value: Value, span: SourceSpan) -> Result<Value, 
             expect_list(value)
                 .into_iter()
                 .map(|entry| {
-                    Ok(Value::List(
-                        list_to_vec32(expect_list(entry), span)?
+                    Ok(Rc::new(Value::List(
+                        list_to_vec32(expect_list(unwrap_shared(entry)), span)?
                             .0
                             .into_iter()
-                            .map(|item| rational_value(item, 1))
+                            .map(|item| Rc::new(rational_value(item, 1)))
                             .collect(),
-                    ))
+                    )))
                 })
                 .collect::<Result<Vec<_>, Control>>()?,
         )),
@@ -14660,9 +14692,9 @@ mod tests {
     #[test]
     fn component_assignment_updates_row_components() {
         let cell = crate::frames::global_with(Rc::new(Value::List(vec![
-            Value::Integer(1.into()),
-            Value::Integer(2.into()),
-            Value::Integer(3.into()),
+            Rc::new(Value::Integer(1.into())),
+            Rc::new(Value::Integer(2.into())),
+            Rc::new(Value::Integer(3.into())),
         ])));
         let mut globals = IdTable::new();
         globals.define("a", Type::row(Type::Primitive(Prim::Int)), cell.clone());
@@ -14760,8 +14792,8 @@ mod tests {
         assert_eq!(
             value,
             Value::Tuple(vec![
-                Value::Vector(Vec32(vec![1, 7, 3])),
-                Value::Vector(Vec32(vec![1, 2, 3])),
+                Rc::new(Value::Vector(Vec32(vec![1, 7, 3]))),
+                Rc::new(Value::Vector(Vec32(vec![1, 2, 3]))),
             ])
         );
 
@@ -14771,7 +14803,10 @@ mod tests {
         .expect("aliased matrix entry write");
         assert_eq!(
             value,
-            Value::Tuple(vec![Value::Integer(2.into()), Value::Integer(0.into())])
+            Value::Tuple(vec![
+                Rc::new(Value::Integer(2.into())),
+                Rc::new(Value::Integer(0.into()))
+            ])
         );
 
         // A transform on an aliased aggregate also copies on write.
@@ -15132,8 +15167,8 @@ mod tests {
     fn multi_assignment_updates_mixed_destinations_in_postorder_and_returns_rhs() {
         let global_a = crate::frames::global_with(Rc::new(Value::Integer(0.into())));
         let global_pair = crate::frames::global_with(Rc::new(Value::Tuple(vec![
-            Value::Integer(0.into()),
-            Value::Integer(0.into()),
+            Rc::new(Value::Integer(0.into())),
+            Rc::new(Value::Integer(0.into())),
         ])));
         let mut globals = IdTable::new();
         globals.define("a", Type::Primitive(Prim::Int), global_a.clone());
@@ -15152,7 +15187,10 @@ mod tests {
         );
         assert_eq!(
             value,
-            Value::Tuple(vec![Value::Integer(20.into()), Value::Integer(22.into())])
+            Value::Tuple(vec![
+                Rc::new(Value::Integer(20.into())),
+                Rc::new(Value::Integer(22.into()))
+            ])
         );
         assert_eq!(
             global_a.borrow().as_deref(),
@@ -15183,9 +15221,9 @@ mod tests {
         assert_eq!(
             value,
             Value::Tuple(vec![
-                Value::Integer(1.into()),
-                Value::String("ignored".into()),
-                Value::Integer(3.into()),
+                Rc::new(Value::Integer(1.into())),
+                Rc::new(Value::String("ignored".into())),
+                Rc::new(Value::Integer(3.into())),
             ])
         );
         assert_eq!(left.borrow().as_deref(), Some(&Value::Integer(1.into())));
@@ -15206,7 +15244,10 @@ mod tests {
         );
         assert_eq!(
             value,
-            Value::Tuple(vec![Value::Integer(1.into()), Value::Tuple(Vec::new())])
+            Value::Tuple(vec![
+                Rc::new(Value::Integer(1.into())),
+                Rc::new(Value::Tuple(Vec::new()))
+            ])
         );
     }
 
@@ -15235,7 +15276,10 @@ mod tests {
                 .expect("successful RHS runs once before distribution");
         assert_eq!(
             value,
-            Value::Tuple(vec![Value::Integer(1.into()), Value::Integer(1.into())])
+            Value::Tuple(vec![
+                Rc::new(Value::Integer(1.into())),
+                Rc::new(Value::Integer(1.into()))
+            ])
         );
         assert_eq!(counter.borrow().as_deref(), Some(&Value::Integer(1.into())));
         assert_eq!(x.borrow().as_deref(), Some(&Value::Integer(1.into())));
@@ -15265,8 +15309,8 @@ mod tests {
         assert_eq!(
             aliased.borrow().as_deref(),
             Some(&Value::Tuple(vec![
-                Value::Integer(1.into()),
-                Value::Integer(2.into()),
+                Rc::new(Value::Integer(1.into())),
+                Rc::new(Value::Integer(2.into())),
             ]))
         );
     }
@@ -15302,15 +15346,15 @@ mod tests {
         assert_eq!(
             value,
             Value::Tuple(vec![
-                Value::List(vec![Value::String("x".into())]),
-                Value::Integer(0.into()),
+                Rc::new(Value::List(vec![Rc::new(Value::String("x".into()))])),
+                Rc::new(Value::Integer(0.into())),
             ])
         );
         let (row_type, _) = globals.lookup("row").expect("row remains defined");
         assert_eq!(*row_type.borrow(), Type::row(Type::Primitive(Prim::Int)));
         assert_eq!(
             row.borrow().as_deref(),
-            Some(&Value::List(vec![Value::String("x".into())]))
+            Some(&Value::List(vec![Rc::new(Value::String("x".into()))]))
         );
     }
 
@@ -15319,8 +15363,8 @@ mod tests {
         let x = crate::frames::global_with(Rc::new(Value::Integer(0.into())));
         let constant = crate::frames::global_with(Rc::new(Value::Integer(0.into())));
         let pair = crate::frames::global_with(Rc::new(Value::Tuple(vec![
-            Value::Integer(0.into()),
-            Value::Integer(0.into()),
+            Rc::new(Value::Integer(0.into())),
+            Rc::new(Value::Integer(0.into())),
         ])));
         let scalar = crate::frames::global_with(Rc::new(Value::String("old".into())));
         let mut globals = IdTable::new();
@@ -15383,36 +15427,45 @@ mod tests {
         let (_, value) = convert_and_run("[10,20,30,40][1:3]").expect("forward slice");
         assert_eq!(
             value,
-            Value::List(vec![Value::Integer(20.into()), Value::Integer(30.into())])
+            Value::List(vec![
+                Rc::new(Value::Integer(20.into())),
+                Rc::new(Value::Integer(30.into()))
+            ])
         );
 
         let (_, value) = convert_and_run("[10,20,30,40][2:]").expect("open upper slice");
         assert_eq!(
             value,
-            Value::List(vec![Value::Integer(30.into()), Value::Integer(40.into())])
+            Value::List(vec![
+                Rc::new(Value::Integer(30.into())),
+                Rc::new(Value::Integer(40.into()))
+            ])
         );
 
         let (_, value) = convert_and_run("[10,20,30,40]~[1:3]").expect("reverse subject");
         assert_eq!(
             value,
-            Value::List(vec![Value::Integer(30.into()), Value::Integer(20.into())])
+            Value::List(vec![
+                Rc::new(Value::Integer(30.into())),
+                Rc::new(Value::Integer(20.into()))
+            ])
         );
         let (_, value) = convert_and_run("[10,20,30,40][3~:4]").expect("reverse lower");
         assert_eq!(
             value,
             Value::List(vec![
-                Value::Integer(20.into()),
-                Value::Integer(30.into()),
-                Value::Integer(40.into())
+                Rc::new(Value::Integer(20.into())),
+                Rc::new(Value::Integer(30.into())),
+                Rc::new(Value::Integer(40.into()))
             ])
         );
         let (_, value) = convert_and_run("[10,20,30,40][0:1~]").expect("reverse upper");
         assert_eq!(
             value,
             Value::List(vec![
-                Value::Integer(10.into()),
-                Value::Integer(20.into()),
-                Value::Integer(30.into())
+                Rc::new(Value::Integer(10.into())),
+                Rc::new(Value::Integer(20.into())),
+                Rc::new(Value::Integer(30.into()))
             ])
         );
 
@@ -15476,9 +15529,9 @@ mod tests {
         );
 
         let cell = crate::frames::global_with(Rc::new(Value::List(vec![
-            Value::Integer(1.into()),
-            Value::Integer(2.into()),
-            Value::Integer(3.into()),
+            Rc::new(Value::Integer(1.into())),
+            Rc::new(Value::Integer(2.into())),
+            Rc::new(Value::Integer(3.into())),
         ])));
         let mut globals = IdTable::new();
         globals.define("a", Type::row(Type::Primitive(Prim::Int)), cell);
@@ -17957,8 +18010,8 @@ mod tests {
     fn matrix_conversion_size_diagnostics_follow_the_source_route() {
         let span = SourceText::new("").span(0, 0);
         let vector_columns = Value::List(vec![
-            Value::Vector(Vec32(vec![1, 0])),
-            Value::Vector(Vec32(vec![0])),
+            Rc::new(Value::Vector(Vec32(vec![1, 0]))),
+            Rc::new(Value::Vector(Vec32(vec![0]))),
         ]);
         let error = apply_conversion("M[V]", vector_columns, span)
             .expect_err("vector columns have unequal sizes");
@@ -17969,8 +18022,11 @@ mod tests {
         ));
 
         let integer_columns = Value::List(vec![
-            Value::List(vec![Value::Integer(1.into()), Value::Integer(0.into())]),
-            Value::List(vec![Value::Integer(0.into())]),
+            Rc::new(Value::List(vec![
+                Rc::new(Value::Integer(1.into())),
+                Rc::new(Value::Integer(0.into())),
+            ])),
+            Rc::new(Value::List(vec![Rc::new(Value::Integer(0.into()))])),
         ]);
         let error = apply_conversion("M[[I]]", integer_columns, span)
             .expect_err("integer lists have unequal sizes");
@@ -18311,7 +18367,10 @@ mod tests {
         let (_, value) = convert_and_run("let (a, b): t = (20, 22) in t").expect("whole binding");
         assert_eq!(
             value,
-            Value::Tuple(vec![Value::Integer(20.into()), Value::Integer(22.into())])
+            Value::Tuple(vec![
+                Rc::new(Value::Integer(20.into())),
+                Rc::new(Value::Integer(22.into()))
+            ])
         );
     }
 
@@ -18655,7 +18714,7 @@ mod tests {
                 ..
             }] => names
                 .iter()
-                .map(|name| match name {
+                .map(|name| match name.as_ref() {
                     Value::String(name) => name.clone(),
                     other => panic!("non-string completion {other:?}"),
                 })
@@ -18741,7 +18800,7 @@ mod tests {
                 ..
             }] => items
                 .iter()
-                .map(|item| match item {
+                .map(|item| match item.as_ref() {
                     Value::String(line) => line.clone(),
                     other => panic!("non-string trace line {other:?}"),
                 })

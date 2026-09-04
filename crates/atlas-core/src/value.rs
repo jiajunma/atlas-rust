@@ -6,7 +6,7 @@ use std::rc::Rc;
 use malachite::{Integer as BigInt, Rational as BigRational};
 
 use crate::diagnostic::SourceSpan;
-use crate::frames::Frame;
+use crate::frames::{Frame, SharedValue};
 use crate::typed::TypedExpr;
 
 pub use crate::domain_builtins::DomainValue;
@@ -22,8 +22,14 @@ pub enum Value {
     Rational(BigRational),
     Boolean(bool),
     String(String),
-    Tuple(Vec<Value>),
-    List(Vec<Value>),
+    /// Elements are shared handles, so extraction (subscription,
+    /// projection, for-loop traversal, destructuring) is an `Rc` bump
+    /// instead of a deep clone; mutation paths copy on write at the
+    /// container (`Rc::make_mut` in typed.rs `mutate_aggregate`) and REPLACE
+    /// elements, never mutating through a shared element handle.
+    Tuple(Vec<SharedValue>),
+    /// Same shared-element representation as `Tuple`.
+    List(Vec<SharedValue>),
     /// An Atlas `vec`: machine 32-bit entries, printed right-aligned.
     Vector(Vec32),
     /// An Atlas `mat`: column-major machine-int entries.
@@ -208,11 +214,19 @@ mod tests {
     #[test]
     fn displays_tuple_and_list_values_like_source_literals() {
         assert_eq!(
-            Value::Tuple(vec![Value::Integer(1.into()), Value::Boolean(true)]).to_string(),
+            Value::Tuple(vec![
+                Rc::new(Value::Integer(1.into())),
+                Rc::new(Value::Boolean(true)),
+            ])
+            .to_string(),
             "(1,true)"
         );
         assert_eq!(
-            Value::List(vec![Value::Integer(1.into()), Value::Integer(2.into())]).to_string(),
+            Value::List(vec![
+                Rc::new(Value::Integer(1.into())),
+                Rc::new(Value::Integer(2.into())),
+            ])
+            .to_string(),
             "[1,2]"
         );
     }
