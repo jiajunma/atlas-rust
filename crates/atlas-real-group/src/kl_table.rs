@@ -101,7 +101,13 @@ impl<B: BlockTopology> KlTableHandle<B> {
     /// primitivise `x` for the descent set of `y`, then read the column.
     pub fn kl_pol(&self, x: BlockElt, y: BlockElt) -> Result<KlIndex, StructureError> {
         let desc_y = self.support.descent_set(y);
-        let prim = self.primitive_index_of(x, desc_y)?;
+        let slot = self.support.prim_slot(desc_y);
+        // UndefBlock: index is the range sentinel.
+        let prim = if x == self.support.size() {
+            self.support.nr_of_primitives(desc_y)
+        } else {
+            self.support.prim_index_at(slot, x)
+        };
         let column = self.columns.get(y).ok_or(StructureError::IndexOutOfRange {
             index: y,
             upper_bound: self.columns.len(),
@@ -111,7 +117,7 @@ impl<B: BlockTopology> KlTableHandle<B> {
         // is the identity P_{y,y}=1 when `x` primitivises to `y` itself,
         // else the zero polynomial.
         if prim >= column.len() {
-            return Ok(if prim == self.support.self_index(y) {
+            return Ok(if prim == self.support.prim_index_at(slot, y) {
                 1
             } else {
                 0
@@ -140,16 +146,6 @@ impl<B: BlockTopology> KlTableHandle<B> {
             .get(y)
             .map(|column| column.iter().map(|&index| index != 0).collect::<Vec<_>>())
             .unwrap_or_default()
-    }
-
-    /// The primitive-index position of `x` for the descent set of `y`
-    /// (klsupport.h `prim_index`), preparing the table if needed.
-    fn primitive_index_of(&self, x: BlockElt, desc_y: &RankFlags) -> Result<usize, StructureError> {
-        if x == self.support.size() {
-            // UndefBlock: index is the range sentinel.
-            return Ok(self.support.nr_of_primitives(desc_y));
-        }
-        Ok(self.support.prim_index(x, desc_y))
     }
 
     /// `KL_table::fill(limit)` (kl.cpp:188-221): compute columns up to
@@ -252,6 +248,10 @@ impl<B: BlockTopology> KlTableHandle<B> {
                 .expect("real type I has first image"),
         };
 
+        // Every lookup below reads column sy, whose descent set is fixed:
+        // resolve its primitive-index slot once.
+        let sy_slot = self.support.prim_slot(self.support.descent_set(sy));
+
         // Increasing list of all extremal elements shorter than y.
         let floor = self.support.length_floor(y);
         let mut extremals = Vec::new();
@@ -272,15 +272,15 @@ impl<B: BlockTopology> KlTableHandle<B> {
             let pxy = match value {
                 BlockDescent::ImaginaryCompact => {
                     // (q+1)P_{x,sy}
-                    self.kl_pol_pool(x, sy)?.shift()
+                    self.kl_pol_pool_at(sy_slot, x, sy)?.shift()
                 }
                 BlockDescent::ComplexDescent => {
                     // P_{sx,sy} + q.P_{x,sy}
                     let first = match self.support.block().cross(x, s) {
-                        Some(sx) => self.kl_pol_pool(sx, sy)?,
+                        Some(sx) => self.kl_pol_pool_at(sy_slot, sx, sy)?,
                         None => KlPol::zero_ref(), // UndefBlock: outside partial block
                     };
-                    let second = self.kl_pol_pool(x, sy)?;
+                    let second = self.kl_pol_pool_at(sy_slot, x, sy)?;
                     first.add_shifted(second, 1)
                 }
                 BlockDescent::RealTypeI => {
@@ -295,12 +295,12 @@ impl<B: BlockTopology> KlTableHandle<B> {
                             invariant: "real type I inverse Cayley first slot",
                         });
                     };
-                    let mut result = self.kl_pol_pool(first_image, sy)?.clone();
+                    let mut result = self.kl_pol_pool_at(sy_slot, first_image, sy)?.clone();
                     if let Some(second) = pair.1 {
-                        let second_pol = self.kl_pol_pool(second, sy)?;
+                        let second_pol = self.kl_pol_pool_at(sy_slot, second, sy)?;
                         result.add_assign(second_pol);
                     }
-                    let xsypol = self.kl_pol_pool(x, sy)?;
+                    let xsypol = self.kl_pol_pool_at(sy_slot, x, sy)?;
                     result.add_shifted_assign(xsypol, 1);
                     result.sub_assign(xsypol);
                     result
@@ -320,10 +320,10 @@ impl<B: BlockTopology> KlTableHandle<B> {
                             invariant: "real type II inverse Cayley first slot",
                         });
                     };
-                    let first = self.kl_pol_pool(first_image, sy)?;
-                    let second = self.kl_pol_pool(x, sy)?;
+                    let first = self.kl_pol_pool_at(sy_slot, first_image, sy)?;
+                    let second = self.kl_pol_pool_at(sy_slot, x, sy)?;
                     let third = match self.support.block().cross(x, s) {
-                        Some(sx) => self.kl_pol_pool(sx, sy)?,
+                        Some(sx) => self.kl_pol_pool_at(sy_slot, sx, sy)?,
                         None => KlPol::zero_ref(), // UndefBlock: outside partial block
                     };
                     let mut result = first.add_shifted(second, 1);
@@ -362,11 +362,13 @@ impl<B: BlockTopology> KlTableHandle<B> {
             }
             let lz = self.support.length(z);
             let d = (ly - lz) / 2;
+            // Column z is fixed for the whole inner loop over extremals.
+            let z_slot = self.support.prim_slot(self.support.descent_set(z));
             for (position, &x) in extremals.iter().enumerate() {
                 if self.support.length(x) >= lz {
                     break;
                 }
-                let pol = self.kl_pol_pool(x, z)?;
+                let pol = self.kl_pol_pool_at(z_slot, x, z)?;
                 working[position].sub_shifted_assign(pol, d, mu);
             }
             // The final term x == z (when extremal for y).
@@ -389,6 +391,7 @@ impl<B: BlockTopology> KlTableHandle<B> {
         y: BlockElt,
     ) -> Result<(), StructureError> {
         let desc_y = self.support.descent_set(y).clone();
+        let prim_slot = self.support.prim_slot(&desc_y);
         let ly = self.support.length(y);
         // Write each slot at its primitive index (kl.cpp:547 KL.resize +
         // the backward write): the primitive non-extremal case reads the
@@ -401,7 +404,7 @@ impl<B: BlockTopology> KlTableHandle<B> {
         let mut x = self.support.length_floor(y);
         let mut work_index = working.len(); // we read `working` backwards
         while self.support.prim_back_up(&mut x, &desc_y) {
-            let position = self.support.prim_index(x, &desc_y);
+            let position = self.support.prim_index_at(prim_slot, x);
             if self.support.is_extremal(x, &desc_y) {
                 work_index -= 1;
                 let pxy = &working[work_index];
@@ -426,10 +429,10 @@ impl<B: BlockTopology> KlTableHandle<B> {
                 let mut pxy = KlPol::zero();
                 if let Some((Some(first_image), second)) = self.support.block().cayley(x, s) {
                     pxy = self
-                        .current_column_pol(&column, &desc_y, first_image, y)
+                        .current_column_pol(&column, prim_slot, first_image, y)
                         .clone();
                     if let Some(second_image) = second {
-                        let second_pol = self.current_column_pol(&column, &desc_y, second_image, y);
+                        let second_pol = self.current_column_pol(&column, prim_slot, second_image, y);
                         pxy.add_assign(second_pol);
                     }
                 }
@@ -504,6 +507,9 @@ impl<B: BlockTopology> KlTableHandle<B> {
     ) -> Result<(), StructureError> {
         let l_y = self.support.length(y);
         let desc_y = self.support.descent_set(y).clone();
+        // The descent set is fixed for the whole column fill: resolve its
+        // primitive-index slot once, then index `working` without hashing.
+        let prim_slot = self.support.prim_slot(&desc_y);
         // The column holds one slot per primitive element (klsupport.h
         // `nr_of_primitives`), indexed by `prim_index`; `col_size` counts
         // only primitives of strictly smaller length, which is too small
@@ -511,11 +517,11 @@ impl<B: BlockTopology> KlTableHandle<B> {
         let height = self.support.nr_of_primitives(&desc_y);
         working.clear();
         working.resize(height + 1, KlPol::zero());
-        working[self.support.self_index(y)] = KlPol::monomial(0); // P_{y,y} = 1
+        working[self.support.prim_index_at(prim_slot, y)] = KlPol::monomial(0); // P_{y,y} = 1
 
-        // The lambda accessor: prim_index(x) locates KL_y(x) in `working`;
-        // the loops below borrow the slot instead of cloning it.
-        let kl_index = |x: BlockElt| self.support.prim_index(x, &desc_y);
+        // The lambda accessor: prim_index_at(prim_slot, x) locates KL_y(x)
+        // in `working`; the loops below borrow the slot instead of cloning.
+        let kl_index = |x: BlockElt| self.support.prim_index_at(prim_slot, x);
 
         let mut mu_pairs: Vec<MuPair> = self
             .down_set(y)?
@@ -527,7 +533,7 @@ impl<B: BlockTopology> KlTableHandle<B> {
         // Reverse loop through primitive elements.
         let mut x = self.support.length_less(l_y);
         while self.support.prim_back_up(&mut x, &desc_y) {
-            let prim_pos = self.support.prim_index(x, &desc_y);
+            let prim_pos = self.support.prim_index_at(prim_slot, x);
             let mut pxy = KlPol::zero();
             if let Some(s) = self.support.ascent_descent(x, y) {
                 // Primitive but not extremal (kl.cpp:665-673). A missing
@@ -656,7 +662,8 @@ impl<B: BlockTopology> KlTableHandle<B> {
                 continue;
             }
             let d = (ly - lz).div_ceil(2);
-            let p_xz = self.kl_pol_pool(x, z)?;
+            let z_slot = self.support.prim_slot(self.support.descent_set(z));
+            let p_xz = self.kl_pol_pool_at(z_slot, x, z)?;
             pol.add_shifted_scaled_assign(p_xz, d, mu);
         }
         Ok(pol)
@@ -702,14 +709,21 @@ impl<B: BlockTopology> KlTableHandle<B> {
     /// polynomials with the in-place `KlPol` operations, so no
     /// coefficient vector is cloned per lookup.
     fn kl_pol_pool(&self, x: BlockElt, y: BlockElt) -> Result<&KlPol, StructureError> {
-        let desc_y = self.support.descent_set(y);
-        let prim = self.support.prim_index(x, desc_y);
+        let slot = self.support.prim_slot(self.support.descent_set(y));
+        self.kl_pol_pool_at(slot, x, y)
+    }
+
+    /// `kl_pol_pool` with the primitive-index slot of `descent_set(y)`
+    /// already resolved, so a loop over a fixed column pays one mask
+    /// lookup per column instead of one per access.
+    fn kl_pol_pool_at(&self, slot: u32, x: BlockElt, y: BlockElt) -> Result<&KlPol, StructureError> {
+        let prim = self.support.prim_index_at(slot, x);
         let column = self.columns.get(y).ok_or(StructureError::IndexOutOfRange {
             index: y,
             upper_bound: self.columns.len(),
         })?;
         let index = if prim >= column.len() {
-            if prim == self.support.self_index(y) {
+            if prim == self.support.prim_index_at(slot, y) {
                 1 // P_{y,y} = 1
             } else {
                 0 // zero polynomial
@@ -727,17 +741,18 @@ impl<B: BlockTopology> KlTableHandle<B> {
     /// `complete_primitives` (kl.cpp:566-570 reads the in-progress
     /// `d_KL[y]`): slots above the backward traversal point are final,
     /// and the out-of-range cases are the identity at `y` and zero —
-    /// exactly the kl.cpp:129-131 logic over the partial column.
+    /// exactly the kl.cpp:129-131 logic over the partial column. `slot`
+    /// must be the primitive-index slot of `descent_set(y)`.
     fn current_column_pol(
         &self,
         column: &[KlIndex],
-        desc_y: &RankFlags,
+        slot: u32,
         x: BlockElt,
         y: BlockElt,
     ) -> &KlPol {
-        let prim = self.support.prim_index(x, desc_y);
+        let prim = self.support.prim_index_at(slot, x);
         let index = if prim >= column.len() {
-            if prim == self.support.self_index(y) {
+            if prim == self.support.prim_index_at(slot, y) {
                 1 // P_{y,y} = 1
             } else {
                 0 // zero polynomial

@@ -96,8 +96,12 @@ pub struct KlSupport<B: BlockTopology> {
     descents: Vec<RankFlags>,
     good_ascents: Vec<RankFlags>,
     length_stop: Vec<usize>,
-    /// Maps a descent-set mask to the primitive-index record.
-    prim_index: HashMap<u32, PrimIndexRecord, BuildHasherDefault<MaskHasher>>,
+    /// Maps a descent-set mask to its slot in `prim_index`, so the hot
+    /// recursion loops can resolve the record once per column fill.
+    prim_slots: HashMap<u32, u32, BuildHasherDefault<MaskHasher>>,
+    /// The primitive-index records, one per prepared descent set; slot
+    /// numbers are stable for the life of the support.
+    prim_index: Vec<PrimIndexRecord>,
 }
 
 /// The primitive-index record for one descent set (klsupport.h
@@ -159,7 +163,8 @@ impl<B: BlockTopology> KlSupport<B> {
             descents,
             good_ascents,
             length_stop,
-            prim_index: HashMap::default(),
+            prim_slots: HashMap::default(),
+            prim_index: Vec::new(),
         })
     }
 
@@ -256,19 +261,35 @@ impl<B: BlockTopology> KlSupport<B> {
         }
     }
 
+    /// The slot of the primitive-index record for `desc_y`. Resolving it
+    /// once per column fill lets the recursion loops use `prim_index_at`
+    /// without repeating the mask lookup. `prepare_prim_index` must be
+    /// called for the descent set first.
+    pub fn prim_slot(&self, desc_y: &RankFlags) -> u32 {
+        *self
+            .prim_slots
+            .get(&desc_y.bits)
+            .expect("prepared primitive index")
+    }
+
+    /// `prim_index` through an already-resolved slot: two `Vec` indexes,
+    /// no hashing (klsupport.h `prim_index` on a prepared descent set).
+    pub fn prim_index_at(&self, slot: u32, x: usize) -> usize {
+        self.prim_index[slot as usize].index[x]
+    }
+
     /// The position of `x`'s primitivisation among the primitive elements
     /// for `desc_y`, or `range` when `x` has no primitive element for it
     /// (klsupport.h `prim_index`). `prepare_prim_index` must be called for
     /// the descent set first.
     pub fn prim_index(&self, x: usize, desc_y: &RankFlags) -> usize {
-        let record = &self.prim_index[&desc_y.bits];
-        record.index[x]
+        self.prim_index_at(self.prim_slot(desc_y), x)
     }
 
     /// The number of primitive elements for `desc_y` (klsupport.h
     /// `nr_of_primitives`).
     pub fn nr_of_primitives(&self, desc_y: &RankFlags) -> usize {
-        self.prim_index[&desc_y.bits].range
+        self.prim_index[self.prim_slot(desc_y) as usize].range
     }
 
     /// The position of `y` in its own primitive row (klsupport.h
@@ -280,7 +301,7 @@ impl<B: BlockTopology> KlSupport<B> {
     /// Prepare the primitive-index table for a descent set, if not already
     /// present (klsupport.cpp:109-144).
     pub fn prepare_prim_index(&mut self, desc_y: &RankFlags) {
-        if self.prim_index.contains_key(&desc_y.bits) {
+        if self.prim_slots.contains_key(&desc_y.bits) {
             return;
         }
         let size = self.size();
@@ -316,8 +337,9 @@ impl<B: BlockTopology> KlSupport<B> {
                 *slot = range - 1 - *slot; // reverse indices
             }
         }
-        self.prim_index
-            .insert(desc_y.bits, PrimIndexRecord { index, range });
+        let slot = self.prim_index.len() as u32;
+        self.prim_index.push(PrimIndexRecord { index, range });
+        self.prim_slots.insert(desc_y.bits, slot);
     }
 }
 
@@ -487,5 +509,112 @@ mod tests {
                 invariant: "KL topology link target is outside the block"
             })
         ));
+    }
+
+    /// A four-element chain: generator 0 is a complex ascent chaining
+    /// 0 -> 1 -> 2 -> 3 and an imaginary compact descent at 3; generator
+    /// 1 is a complex descent everywhere. Element 3 is primitive for
+    /// every descent set.
+    struct ChainTopology;
+
+    impl crate::block_access::sealed::Sealed for ChainTopology {}
+
+    impl crate::BlockTopology for ChainTopology {
+        fn size(&self) -> usize {
+            4
+        }
+
+        fn rank(&self) -> usize {
+            2
+        }
+
+        fn length(&self, element: usize) -> Option<usize> {
+            [0, 1, 1, 2].get(element).copied()
+        }
+
+        fn descent(&self, element: usize, generator: usize) -> Option<BlockDescent> {
+            if element >= self.size() || generator >= self.rank() {
+                return None;
+            }
+            Some(match generator {
+                0 if element == 3 => BlockDescent::ImaginaryCompact,
+                0 => BlockDescent::ComplexAscent,
+                _ => BlockDescent::ComplexDescent,
+            })
+        }
+
+        fn cross(&self, element: usize, generator: usize) -> Option<usize> {
+            if element >= self.size() || generator >= self.rank() {
+                return None;
+            }
+            Some(if generator == 0 && element < 3 {
+                element + 1
+            } else {
+                0
+            })
+        }
+
+        fn cayley(
+            &self,
+            element: usize,
+            generator: usize,
+        ) -> Option<(Option<usize>, Option<usize>)> {
+            (element < self.size() && generator < self.rank()).then_some((None, None))
+        }
+
+        fn inverse_cayley(
+            &self,
+            element: usize,
+            generator: usize,
+        ) -> Option<(Option<usize>, Option<usize>)> {
+            (element < self.size() && generator < self.rank()).then_some((None, None))
+        }
+    }
+
+    #[test]
+    fn prim_slot_accessors_match_prim_index() {
+        let mut support = KlSupport::new(ChainTopology).unwrap();
+        let mut only_zero = RankFlags::empty();
+        only_zero.set(0);
+        let mut only_one = RankFlags::empty();
+        only_one.set(1);
+        let sets = [RankFlags::empty(), only_zero, only_one];
+        for set in &sets {
+            support.prepare_prim_index(set);
+        }
+
+        // Each descent set gets its own slot, and a repeated prepare is
+        // idempotent (same slot, no duplicate record).
+        let mut slots: Vec<u32> = sets.iter().map(|set| support.prim_slot(set)).collect();
+        slots.sort_unstable();
+        slots.dedup();
+        assert_eq!(slots.len(), sets.len(), "each descent set gets a slot");
+        for set in &sets {
+            let slot = support.prim_slot(set);
+            support.prepare_prim_index(set);
+            assert_eq!(support.prim_slot(set), slot, "idempotent prepare");
+        }
+
+        // The slot accessors agree with the by-mask accessor everywhere.
+        for set in &sets {
+            let slot = support.prim_slot(set);
+            for x in 0..support.size() {
+                assert_eq!(support.prim_index_at(slot, x), support.prim_index(x, set));
+            }
+        }
+
+        // Generator 1 is a descent of every element, so all four elements
+        // are primitive for {1} and the index is the identity; for {0}
+        // only element 3 is primitive and every x primitivises to it.
+        let one_slot = support.prim_slot(&sets[2]);
+        for x in 0..support.size() {
+            assert_eq!(support.prim_index_at(one_slot, x), x);
+        }
+        assert_eq!(support.nr_of_primitives(&sets[2]), 4);
+        assert_eq!(support.nr_of_primitives(&sets[1]), 1);
+        let zero_slot = support.prim_slot(&sets[1]);
+        for x in 0..support.size() {
+            assert_eq!(support.prim_index_at(zero_slot, x), 0);
+        }
     }
 }
