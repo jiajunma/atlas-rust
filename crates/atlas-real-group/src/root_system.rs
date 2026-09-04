@@ -166,16 +166,19 @@ impl RootSet {
 /// The finite ordinary root system generated from a based root datum.
 ///
 /// Roots, coroots, and simple-root coordinates are index-aligned under
-/// [`RootId`], and `roots` stays ascending in lexicographic coordinate order
-/// because [`RootSystem::id_of`] binary-searches it. Enumeration is an
-/// explicit, caller-budgeted operation: the compatibility wrapper derives
+/// [`RootId`], and `roots` stays ascending in lexicographic coordinate
+/// order (the constructor's simple-root and negation lookups
+/// binary-search it, and [`RootSystem::id_of_slice`] used to).
+/// Enumeration is an explicit, caller-budgeted operation: the
+/// compatibility wrapper derives
 /// only non-cardinality limits, so the caller's root cardinality stays
 /// authoritative, and no process-wide limit exists. The budget that produced
 /// a system is deliberately not stored in it.
 ///
-/// `PartialEq`/`Eq` are manual because `root_sums` is a `OnceLock` cache:
-/// its content is a deterministic function of `roots`, so equality compares
-/// only the data fields and ignores whether the cache has been built yet.
+/// `PartialEq`/`Eq` are manual because `root_sums` and `root_index` are
+/// `OnceLock` caches: their content is a deterministic function of
+/// `roots`, so equality compares only the data fields and ignores whether
+/// the caches have been built yet.
 #[derive(Clone, Debug)]
 pub struct RootSystem {
     datum: BasedRootDatum,
@@ -219,6 +222,11 @@ pub struct RootSystem {
     /// `None` marks systems (oversized, or an abandoned build) that keep
     /// computing sums per call. Pure cache: equality ignores it.
     root_sums: OnceLock<Option<Box<[u16]>>>,
+    /// Lazy coordinate→id map for `id_of_slice`, built once on first use
+    /// from `roots`. Unlike `root_sums` it scales linearly with the root
+    /// count, so it serves every size (E8 has 240 roots) and carries no
+    /// cap. Pure cache: equality ignores it.
+    root_index: OnceLock<HashMap<Box<[i32]>, RootId, RootCoordinateHasherBuilder>>,
 }
 
 impl PartialEq for RootSystem {
@@ -473,6 +481,7 @@ impl RootSystem {
             negatives: Arc::from(negatives.into_boxed_slice()),
             simple_reflections: Vec::new(),
             root_sums: OnceLock::new(),
+            root_index: OnceLock::new(),
         };
         // One-time fill straight from the reflection formula. The previous
         // matrix path (a datum clone and two rank×rank matrices per
@@ -608,11 +617,33 @@ impl RootSystem {
 
     /// `id_of` on bare coordinates, for bulk classification loops that hold
     /// the image in a reusable buffer instead of a fresh `Weight`.
+    ///
+    /// Answers come from the lazily built `root_index` map; the result is
+    /// identical to the binary search over the lexicographically sorted
+    /// `roots` for every input, including `None` for non-root coordinates
+    /// (equal coordinate vectors hash and compare equal, and the map holds
+    /// exactly the enumerated roots). Block construction hot loops
+    /// (`pos_to_neg`, `block_below`, `cross`) made the binary search a
+    /// top profile entry (job 3680172).
     pub(crate) fn id_of_slice(&self, root: &[i32]) -> Option<RootId> {
-        self.roots
-            .binary_search_by(|candidate| candidate.as_slice().cmp(root))
-            .ok()
-            .map(RootId)
+        self.root_index
+            .get_or_init(|| self.build_root_index())
+            .get(root)
+            .copied()
+    }
+
+    /// Build the coordinate→id map from `roots`. The binary searches in
+    /// the constructor (simple-root membership, negation closure) remain
+    /// the source of truth for the ordering this map records.
+    fn build_root_index(&self) -> HashMap<Box<[i32]>, RootId, RootCoordinateHasherBuilder> {
+        let mut map = HashMap::with_capacity_and_hasher(
+            self.roots.len(),
+            RootCoordinateHasherBuilder::default(),
+        );
+        for (index, root) in self.roots.iter().enumerate() {
+            map.insert(root.as_slice().into(), RootId(index));
+        }
+        map
     }
 
     /// The negation table: `negatives()[r]` is the id of `-r`.
@@ -637,8 +668,8 @@ impl RootSystem {
     /// Any failure — an oversized system, a failed reservation, or a
     /// checked-add overflow on coordinates — returns `None` so callers fall
     /// back to the per-call coordinate path with its original errors.
-    /// Every stored sum is classified with the same `id_of_slice` binary
-    /// search the per-call path uses, reusing one coordinate buffer.
+    /// Every stored sum is classified with the same `id_of_slice` lookup
+    /// the per-call path uses, reusing one coordinate buffer.
     fn build_root_sum_table(&self) -> Option<Box<[u16]>> {
         let count = self.roots.len();
         if count > ROOT_SUM_TABLE_MAX_ROOTS {
