@@ -127,28 +127,57 @@ impl<B: BlockTopology> KlTableHandle<B> {
         x: BlockElt,
         y: BlockElt,
     ) -> Result<KlIndex, StructureError> {
+        let column = self.column(y)?;
+        Ok(self.kl_pol_at_row(
+            self.support.prim_index_row(slot),
+            self.support.nr_of_primitives_at(slot),
+            column,
+            x,
+            y,
+        ))
+    }
+
+    /// Borrow column `y`, for per-column loops that also borrow the
+    /// primitive row once via `KlSupport::prim_index_row` and then call
+    /// [`Self::kl_pol_at_row`]. The error is the one `kl_pol_at_slot`
+    /// reports for an out-of-range `y`.
+    pub fn column(&self, y: BlockElt) -> Result<&[KlIndex], StructureError> {
+        self.columns
+            .get(y)
+            .map(Vec::as_slice)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: y,
+                upper_bound: self.columns.len(),
+            })
+    }
+
+    /// `kl_pol_at_slot` with both the primitive-index row (and its range)
+    /// and the column already borrowed, so a per-column inner loop pays
+    /// two flat slice indexings per access instead of re-resolving the
+    /// record and the column per query. Semantics are exactly
+    /// `kl_pol_at_slot`'s (kl.cpp:124-148).
+    pub fn kl_pol_at_row(
+        &self,
+        prim_row: &[usize],
+        range: usize,
+        column: &[KlIndex],
+        x: BlockElt,
+        y: BlockElt,
+    ) -> KlIndex {
         // UndefBlock: index is the range sentinel.
         let prim = if x == self.support.size() {
-            self.support.nr_of_primitives_at(slot)
+            range
         } else {
-            self.support.prim_index_at(slot, x)
+            prim_row[x]
         };
-        let column = self.columns.get(y).ok_or(StructureError::IndexOutOfRange {
-            index: y,
-            upper_bound: self.columns.len(),
-        })?;
         // kl.cpp:129-131: when `prim` is at or past the column end
         // (l(x) >= l(y), including a failed primitivisation), the answer
         // is the identity P_{y,y}=1 when `x` primitivises to `y` itself,
         // else the zero polynomial.
         if prim >= column.len() {
-            return Ok(if prim == self.support.prim_index_at(slot, y) {
-                1
-            } else {
-                0
-            });
+            return if prim == prim_row[y] { 1 } else { 0 };
         }
-        Ok(column[prim])
+        column[prim]
     }
 
     /// The μ-coefficient μ(x,y) (kl.cpp:150-161).

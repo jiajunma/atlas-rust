@@ -467,14 +467,19 @@ pub fn common_deformation_terms(
             }
             let contribute = block.length(z).unwrap_or(0) % 2 != y_parity;
             // Column z is fixed for the whole inner loop: resolve its
-            // primitive-index slot once instead of hashing per x.
+            // primitive-index slot once instead of hashing per x, and
+            // borrow the row and the column once instead of re-resolving
+            // both per (x, z) query.
             let z_slot = kl.support().prim_slot(kl.support().descent_set(z));
+            let prim_row = kl.support().prim_index_row(z_slot);
+            let range = kl.support().nr_of_primitives_at(z_slot);
+            let column = kl.column(z)?;
             for x in (0..=z).rev() {
                 // Evaluate the pooled polynomial in place; cloning it
                 // first would allocate once per (x, z) pair.
                 let mut value = kl
                     .pool()
-                    .get(kl.kl_pol_at_slot(z_slot, x, z)?)
+                    .get(kl.kl_pol_at_row(prim_row, range, column, x, z))
                     .map_or(0, KlPol::evaluate_at_minus_one);
                 if value == 0 {
                     continue;

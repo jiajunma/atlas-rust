@@ -278,6 +278,13 @@ impl<B: BlockTopology> KlSupport<B> {
         self.prim_index[slot as usize].index[x]
     }
 
+    /// The whole primitive-index row for an already-resolved slot, for
+    /// per-column loops that borrow the row once instead of re-resolving
+    /// the record per query.
+    pub fn prim_index_row(&self, slot: u32) -> &[usize] {
+        &self.prim_index[slot as usize].index
+    }
+
     /// The position of `x`'s primitivisation among the primitive elements
     /// for `desc_y`, or `range` when `x` has no primitive element for it
     /// (klsupport.h `prim_index`). `prepare_prim_index` must be called for
