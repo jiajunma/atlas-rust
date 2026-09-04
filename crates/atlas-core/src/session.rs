@@ -149,6 +149,7 @@ fn session_event(event: TypedCommandEvent) -> SessionEvent {
 mod tests {
     use super::*;
     use crate::{diagnostic::ErrorKind, source::SourceText, value::Value};
+    use std::rc::Rc;
 
     #[test]
     fn kgb_pipeline_is_scriptable_end_to_end() {
@@ -561,12 +562,12 @@ mod tests {
         assert!(matches!(
             events[1],
             SessionEvent::Value { value: Value::List(ref values), .. }
-                if values == &vec![Value::List(vec![Value::Rational(malachite::Rational::from(1))])]
+                if values == &vec![Rc::new(Value::List(vec![Rc::new(Value::Rational(malachite::Rational::from(1)))]))]
         ));
         assert!(matches!(
             events[2],
             SessionEvent::Value { value: Value::List(ref values), .. }
-                if values == &vec![Value::List(vec![Value::Rational(malachite::Rational::from(1))])]
+                if values == &vec![Rc::new(Value::List(vec![Rc::new(Value::Rational(malachite::Rational::from(1)))]))]
         ));
         assert!(matches!(
             events[3],
@@ -575,18 +576,18 @@ mod tests {
         assert!(matches!(
             events[4],
             SessionEvent::Value { value: Value::List(ref values), .. }
-                if values == &vec![Value::Tuple(vec![
-                    Value::Integer(malachite::Integer::from(2)),
-                    Value::Rational(malachite::Rational::from(3)),
-                ])]
+                if values == &vec![Rc::new(Value::Tuple(vec![
+                    Rc::new(Value::Integer(malachite::Integer::from(2))),
+                    Rc::new(Value::Rational(malachite::Rational::from(3))),
+                ]))]
         ));
         assert!(matches!(
             events[5],
             SessionEvent::Value { value: Value::List(ref values), .. }
-                if values == &vec![Value::Tuple(vec![
-                    Value::Integer(malachite::Integer::from(2)),
-                    Value::Rational(malachite::Rational::from(3)),
-                ])]
+                if values == &vec![Rc::new(Value::Tuple(vec![
+                    Rc::new(Value::Integer(malachite::Integer::from(2))),
+                    Rc::new(Value::Rational(malachite::Rational::from(3))),
+                ]))]
         ));
     }
 

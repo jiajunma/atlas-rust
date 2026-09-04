@@ -18,6 +18,7 @@ use std::collections::{BTreeSet, HashMap};
 use std::fmt;
 use std::fmt::Write as _;
 use std::num::{NonZeroI32, NonZeroU64};
+use std::rc::Rc;
 use std::sync::{Arc, Mutex, Weak};
 use std::time::{Duration, Instant};
 
@@ -55,6 +56,7 @@ use atlas_real_group::{
 };
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
+use crate::frames::SharedValue;
 use crate::ratfast;
 use crate::value::{Matrix, RatVec, Value, Vec32};
 
@@ -1401,8 +1403,8 @@ fn replace_relation_generators_adapter(
 fn smith_value(lie_type: &LieTypeValue, span: SourceSpan) -> Result<Value, Diagnostic> {
     let (basis, factors) = smith_cartan(lie_type, span)?;
     Ok(Value::Tuple(vec![
-        relation_value(&basis, span)?,
-        Value::Vector(Vec32(factors)),
+        Rc::new(relation_value(&basis, span)?),
+        Rc::new(Value::Vector(Vec32(factors))),
     ]))
 }
 
@@ -1412,7 +1414,7 @@ fn relation_pair<'a>(
     span: SourceSpan,
 ) -> Result<(&'a Matrix, &'a [i32]), Diagnostic> {
     let (first, second) = match arguments {
-        [Value::Tuple(pair)] if pair.len() == 2 => (&pair[0], &pair[1]),
+        [Value::Tuple(pair)] if pair.len() == 2 => (pair[0].as_ref(), pair[1].as_ref()),
         [first, second] => (first, second),
         _ => return Err(runtime(span, format!("{name} expects 2 argument(s)"))),
     };
@@ -1424,18 +1426,18 @@ fn relation_pair<'a>(
 
 fn quotient_relation_basis_adapter(
     lie_type: &LieTypeValue,
-    generators: &[Value],
+    generators: &[SharedValue],
     span: SourceSpan,
 ) -> Result<Value, Diagnostic> {
     for generator in generators {
-        let Value::RatVector(_) = generator else {
+        let Value::RatVector(_) = generator.as_ref() else {
             return Err(type_error(span, "quotient_basis expects a row of ratvec"));
         };
     }
     let relation_generators = RelationGenerator::try_collect(
         lie_type.total_rank(),
         generators.iter().map(|generator| {
-            let Value::RatVector(generator) = generator else {
+            let Value::RatVector(generator) = generator.as_ref() else {
                 unreachable!("generator types were checked before budgeted collection")
             };
             let denominator = NonZeroU64::new(generator.denominator())
@@ -2490,12 +2492,21 @@ pub(crate) fn coerce(tag: &str, value: Value, span: SourceSpan) -> Result<Value,
         // pair_to_split_coercion (atlas-types.w:5119-5125): (e, f) order.
         "Sp(I,I)" => match value {
             Value::Tuple(components) => match components.as_slice() {
-                [Value::Integer(e), Value::Integer(f)] => {
-                    Ok(Value::Domain(DomainValue::Split(SplitValue::new(
-                        narrow_split_component(e, span)?,
-                        narrow_split_component(f, span)?,
-                    ))))
-                }
+                [e, f] => match (e.as_ref(), f.as_ref()) {
+                    (Value::Integer(e), Value::Integer(f)) => {
+                        Ok(Value::Domain(DomainValue::Split(SplitValue::new(
+                            narrow_split_component(e, span)?,
+                            narrow_split_component(f, span)?,
+                        ))))
+                    }
+                    _ => Err(type_error(
+                        span,
+                        format!(
+                            "expected an (int,int) pair, found {}",
+                            Value::Tuple(components)
+                        ),
+                    )),
+                },
                 _ => Err(type_error(
                     span,
                     format!(
@@ -2747,13 +2758,13 @@ fn as_matrix_rows(value: &Value, span: SourceSpan) -> Result<Vec<Vec<i32>>, Diag
         Value::List(rows) => rows,
         _ => return Err(type_error(span, "expected a mat")),
     };
-    let column_count = rows.first().map_or(0, |row| match row {
+    let column_count = rows.first().map_or(0, |row| match row.as_ref() {
         Value::List(entries) => entries.len(),
         _ => 0,
     });
     let mut converted = Vec::with_capacity(rows.len());
     for row in rows {
-        let Value::List(entries) = row else {
+        let Value::List(entries) = row.as_ref() else {
             return Err(type_error(span, "expected a mat"));
         };
         if entries.len() != column_count {
@@ -2762,7 +2773,7 @@ fn as_matrix_rows(value: &Value, span: SourceSpan) -> Result<Vec<Vec<i32>>, Diag
         converted.push(
             entries
                 .iter()
-                .map(|entry| match entry {
+                .map(|entry| match entry.as_ref() {
                     Value::Integer(value) => i32::try_from(value)
                         .map_err(|_| type_error(span, "matrix entry out of range")),
                     _ => Err(type_error(span, "expected integer matrix entries")),
@@ -3266,23 +3277,23 @@ fn w_graph_vertex_value(
     descent_sets: &[BTreeSet<usize>],
 ) -> Value {
     Value::Tuple(vec![
-        Value::List(
+        Rc::new(Value::List(
             descent_sets[element]
                 .iter()
-                .map(|&generator| Value::Integer(BigInt::from(generator)))
+                .map(|&generator| Rc::new(Value::Integer(BigInt::from(generator))))
                 .collect(),
-        ),
-        Value::List(
+        )),
+        Rc::new(Value::List(
             targets
                 .iter()
                 .map(|&(target, coefficient)| {
-                    Value::Tuple(vec![
-                        Value::Integer(BigInt::from(target)),
-                        Value::Integer(BigInt::from(coefficient)),
-                    ])
+                    Rc::new(Value::Tuple(vec![
+                        Rc::new(Value::Integer(BigInt::from(target))),
+                        Rc::new(Value::Integer(BigInt::from(coefficient))),
+                    ]))
                 })
                 .collect(),
-        ),
+        )),
     ])
 }
 
@@ -3297,7 +3308,9 @@ fn block_w_graph_value(
             edges
                 .iter()
                 .enumerate()
-                .map(|(element, targets)| w_graph_vertex_value(element, targets, &descent_sets))
+                .map(|(element, targets)| {
+                    Rc::new(w_graph_vertex_value(element, targets, &descent_sets))
+                })
                 .collect(),
         ));
     }
@@ -3336,18 +3349,18 @@ fn block_w_graph_value(
                             .filter(|&(target, _)| member_set.contains(&target))
                             .map(|(target, coefficient)| (relative[target], coefficient))
                             .collect();
-                        w_graph_vertex_value(member, &targets, &descent_sets)
+                        Rc::new(w_graph_vertex_value(member, &targets, &descent_sets))
                     })
                     .collect();
-                Value::Tuple(vec![
-                    Value::List(
+                Rc::new(Value::Tuple(vec![
+                    Rc::new(Value::List(
                         members
                             .iter()
-                            .map(|&member| Value::Integer(BigInt::from(member)))
+                            .map(|&member| Rc::new(Value::Integer(BigInt::from(member))))
                             .collect(),
-                    ),
-                    Value::List(vertices),
-                ])
+                    )),
+                    Rc::new(Value::List(vertices)),
+                ]))
             })
             .collect(),
     ))
@@ -4551,9 +4564,9 @@ fn extended_block_partial(
     let mut links1 = vec![vec![0_i32; eb.rank()]; size];
     for n in 0..size {
         let z = eb.z(n);
-        params.push(partial_block_param(
+        params.push(Rc::new(partial_block_param(
             parameter, &block, &gamma_rho, gamma, z, span,
-        )?);
+        )?));
         for s in 0..eb.rank() {
             let kind = eb.descent_type(s, n);
             types[n][s] = kind as usize as i32;
@@ -4582,10 +4595,10 @@ fn extended_block_partial(
         }
     }
     Ok(Value::Tuple(vec![
-        Value::List(params),
-        matrix_value(&types, span)?,
-        matrix_value(&links0, span)?,
-        matrix_value(&links1, span)?,
+        Rc::new(Value::List(params)),
+        Rc::new(matrix_value(&types, span)?),
+        Rc::new(matrix_value(&links0, span)?),
+        Rc::new(matrix_value(&links1, span)?),
     ]))
 }
 
@@ -4667,14 +4680,14 @@ fn raw_ext_kl_partial(
         *stop = eb.length_first(i) as i32;
     }
     Ok(Value::Tuple(vec![
-        matrix_value(&matrix, span)?,
-        Value::List(
+        Rc::new(matrix_value(&matrix, span)?),
+        Rc::new(Value::List(
             polys
                 .iter()
-                .map(|pol| Value::Vector(Vec32(pol.as_slice().to_vec())))
+                .map(|pol| Rc::new(Value::Vector(Vec32(pol.as_slice().to_vec()))))
                 .collect(),
-        ),
-        Value::Vector(Vec32(stops)),
+        )),
+        Rc::new(Value::Vector(Vec32(stops))),
     ]))
 }
 
@@ -4732,32 +4745,32 @@ fn partial_extended_kl_block_partial(
         .map_err(|error| structure_diagnostic(error, span))?;
     let mut params = Vec::with_capacity(n);
     for &survivor in &result.survivors {
-        params.push(partial_block_param(
+        params.push(Rc::new(partial_block_param(
             parameter,
             &block,
             &gamma_rho,
             gamma,
             eb.z(survivor),
             span,
-        )?);
+        )?));
     }
     Ok(Value::Tuple(vec![
-        Value::List(params),
-        matrix_value(&index_matrix, span)?,
-        Value::List(
+        Rc::new(Value::List(params)),
+        Rc::new(matrix_value(&index_matrix, span)?),
+        Rc::new(Value::List(
             (0..result.pool.len())
                 .map(|index| {
-                    Value::Vector(Vec32(
+                    Rc::new(Value::Vector(Vec32(
                         result
                             .pool
                             .get(index)
                             .expect("in-range pool index")
                             .as_slice()
                             .to_vec(),
-                    ))
+                    )))
                 })
                 .collect(),
-        ),
+        )),
     ]))
 }
 
@@ -6760,7 +6773,7 @@ fn weyl_word_values(
                 .map_err(|error| runtime(span, error.to_string()))?;
             element = next;
         }
-        result.push(weyl_elt_value(Arc::clone(&context), element, span)?);
+        result.push(Rc::new(weyl_elt_value(Arc::clone(&context), element, span)?));
     }
     Ok(Value::List(result))
 }
@@ -8216,7 +8229,7 @@ fn checked_involution_matrix(
 /// permutation of `0..size`. Entries are read through the upstream unsigned
 /// accessor, so a negative entry wraps to a huge value before the
 /// too-big/repeated diagnostics.
-fn checked_permutation(entries: &[Value], span: SourceSpan) -> Result<Vec<usize>, Diagnostic> {
+fn checked_permutation(entries: &[SharedValue], span: SourceSpan) -> Result<Vec<usize>, Diagnostic> {
     let size = entries.len();
     let mut seen = vec![false; size];
     let mut result = Vec::with_capacity(size);
@@ -8259,7 +8272,7 @@ fn as_inner_class_symbols(value: &Value, span: SourceSpan) -> Result<&str, Diagn
 /// checks, in upstream's gate order.
 fn basic_primitive_involution(
     lie_type: &LieTypeValue,
-    entries: &[Value],
+    entries: &[SharedValue],
     symbols: &str,
     span: SourceSpan,
 ) -> Result<Value, Diagnostic> {
@@ -10442,13 +10455,12 @@ pub(crate) fn validate(
             [Value::Domain(DomainValue::KTypePol(accumulator)), Value::Tuple(term)]
                 if matches!(
                     term.as_slice(),
-                    [
-                        Value::Domain(DomainValue::Split(_)),
-                        Value::Domain(DomainValue::KType(_))
-                    ]
+                    [first, second]
+                        if matches!(first.as_ref(), Value::Domain(DomainValue::Split(_)))
+                            && matches!(second.as_ref(), Value::Domain(DomainValue::KType(_)))
                 ) =>
             {
-                let Value::Domain(DomainValue::KType(ktype)) = &term[1] else {
+                let Value::Domain(DomainValue::KType(ktype)) = term[1].as_ref() else {
                     unreachable!()
                 };
                 require_same_form_owner(
@@ -10487,13 +10499,12 @@ pub(crate) fn validate(
             [Value::Domain(DomainValue::ParamPol(accumulator)), Value::Tuple(term)]
                 if matches!(
                     term.as_slice(),
-                    [
-                        Value::Domain(DomainValue::Split(_)),
-                        Value::Domain(DomainValue::Param(_))
-                    ]
+                    [first, second]
+                        if matches!(first.as_ref(), Value::Domain(DomainValue::Split(_)))
+                            && matches!(second.as_ref(), Value::Domain(DomainValue::Param(_)))
                 ) =>
             {
-                let Value::Domain(DomainValue::Param(parameter)) = &term[1] else {
+                let Value::Domain(DomainValue::Param(parameter)) = term[1].as_ref() else {
                     unreachable!()
                 };
                 require_same_form_owner(
@@ -12497,8 +12508,8 @@ pub(crate) fn call_with_printed(
             let (basis, factors) = relation_pair(name, arguments, span)?;
             let (basis, factors) = filter_relation_units_adapter(basis, factors, span)?;
             Ok(Value::Tuple(vec![
-                relation_value(&basis, span)?,
-                Value::Vector(Vec32(factors)),
+                Rc::new(relation_value(&basis, span)?),
+                Rc::new(Value::Vector(Vec32(factors))),
             ]))
         }
         "ann_mod" => {
@@ -12831,7 +12842,7 @@ pub(crate) fn call_with_printed(
             nbrs.sort_unstable();
             Ok(Value::List(
                 nbrs.into_iter()
-                    .map(|nbr| Value::Integer(BigInt::from(numbering.signed(nbr))))
+                    .map(|nbr| Rc::new(Value::Integer(BigInt::from(numbering.signed(nbr)))))
                     .collect(),
             ))
         }
@@ -12881,9 +12892,9 @@ pub(crate) fn call_with_printed(
             )?;
             let (compact, complex, split) = classification.as_tuple();
             Ok(Value::Tuple(vec![
-                Value::Integer(BigInt::from(compact)),
-                Value::Integer(BigInt::from(complex)),
-                Value::Integer(BigInt::from(split)),
+                Rc::new(Value::Integer(BigInt::from(compact))),
+                Rc::new(Value::Integer(BigInt::from(complex))),
+                Rc::new(Value::Integer(BigInt::from(split))),
             ]))
         }
         "twisted_involution" => {
@@ -12893,8 +12904,8 @@ pub(crate) fn call_with_printed(
             let weyl_context = build_weyl_context(handle, span)?;
             let factor = weyl_elt_value(weyl_context, factor, span)?;
             Ok(Value::Tuple(vec![
-                factor,
-                Value::Domain(DomainValue::InnerClass(inner_class)),
+                Rc::new(factor),
+                Rc::new(Value::Domain(DomainValue::InnerClass(inner_class))),
             ]))
         }
         "distinguished_involution" => {
@@ -12934,7 +12945,7 @@ pub(crate) fn call_with_printed(
                 context
                     .forms
                     .iter()
-                    .map(|form| Value::String(form.name.clone()))
+                    .map(|form| Rc::new(Value::String(form.name.clone())))
                     .collect(),
             ))
         }
@@ -12947,7 +12958,7 @@ pub(crate) fn call_with_printed(
             Ok(Value::List(
                 dual.forms
                     .iter()
-                    .map(|form| Value::String(form.name.clone()))
+                    .map(|form| Rc::new(Value::String(form.name.clone())))
                     .collect(),
             ))
         }
@@ -13105,10 +13116,10 @@ pub(crate) fn call_with_printed(
                 .into_iter()
                 .filter(|&(letter, _)| letter != 'T')
                 .map(|(letter, rank)| {
-                    Value::Tuple(vec![
-                        Value::String(letter.to_string()),
-                        Value::Integer(rank.into()),
-                    ])
+                    Rc::new(Value::Tuple(vec![
+                        Rc::new(Value::String(letter.to_string())),
+                        Rc::new(Value::Integer(rank.into())),
+                    ]))
                 })
                 .collect();
             Ok(Value::List(factors))
@@ -13121,13 +13132,13 @@ pub(crate) fn call_with_printed(
             // cm(pi[i],pi[j]) == Cartan_entry_of_type(i,j), not the identity.
             let (lie_type, permutation) = dynkin_classify(&matrix, span)?;
             Ok(Value::Tuple(vec![
-                Value::Domain(DomainValue::LieType(lie_type)),
-                Value::List(
+                Rc::new(Value::Domain(DomainValue::LieType(lie_type))),
+                Rc::new(Value::List(
                     permutation
                         .into_iter()
-                        .map(|index| Value::Integer(index.into()))
+                        .map(|index| Rc::new(Value::Integer(index.into())))
                         .collect(),
-                ),
+                )),
             ]))
         }
         // walls_wrapper (atlas-types.w:1912-1943): the size check runs
@@ -13162,12 +13173,12 @@ pub(crate) fn call_with_printed(
                 .filter(|&alpha| integrals.contains(alpha))
                 .chain(sorted.iter().filter(|&alpha| !integrals.contains(alpha)));
             Ok(Value::Tuple(vec![
-                Value::List(
+                Rc::new(Value::List(
                     ordered
-                        .map(|&alpha| Value::Integer(BigInt::from(numbering.signed(alpha))))
+                        .map(|&alpha| Rc::new(Value::Integer(BigInt::from(numbering.signed(alpha)))))
                         .collect(),
-                ),
-                Value::Integer(BigInt::from(integrals.len())),
+                )),
+                Rc::new(Value::Integer(BigInt::from(integrals.len()))),
             ]))
         }
         // walls_attitude_wrapper (atlas-types.w:1960-1989): the acute-angle
@@ -13305,7 +13316,7 @@ pub(crate) fn call_with_printed(
                             .map_err(|error| runtime(span, error.to_string()))?;
                         element = next;
                     }
-                    result.push(weyl_elt_value(Arc::clone(&context), element, span)?);
+                    result.push(Rc::new(weyl_elt_value(Arc::clone(&context), element, span)?));
                 }
                 Ok(Value::List(result))
             }
@@ -13544,13 +13555,13 @@ pub(crate) fn call_with_printed(
                     let mut image = numer.clone();
                     word_act_weight(&handle.datum, word, &mut image);
                     for shift in shifts {
-                        result.push(Value::Vector(Vec32(
+                        result.push(Rc::new(Value::Vector(Vec32(
                             image
                                 .iter()
                                 .zip(shift)
                                 .map(|(&base, &step)| base + step * denominator as i32)
                                 .collect(),
-                        )));
+                        ))));
                     }
                 }
                 Ok(Value::List(result))
@@ -13570,11 +13581,14 @@ pub(crate) fn call_with_printed(
                         element = next;
                     }
                     let weyl_value = weyl_elt_value(Arc::clone(&context), element, span)?;
-                    let shift_values: Vec<Value> = shifts
+                    let shift_values: Vec<SharedValue> = shifts
                         .iter()
-                        .map(|shift| Value::Vector(Vec32(shift.clone())))
+                        .map(|shift| Rc::new(Value::Vector(Vec32(shift.clone()))))
                         .collect();
-                    result.push(Value::Tuple(vec![weyl_value, Value::List(shift_values)]));
+                    result.push(Rc::new(Value::Tuple(vec![
+                        Rc::new(weyl_value),
+                        Rc::new(Value::List(shift_values)),
+                    ])));
                 }
                 Ok(Value::List(result))
             }
@@ -13705,7 +13719,7 @@ pub(crate) fn call_with_printed(
                 )
                 .expect("derived projector is rectangular"),
             );
-            Ok(Value::Tuple(vec![derived_value, matrix_value]))
+            Ok(Value::Tuple(vec![Rc::new(derived_value), Rc::new(matrix_value)]))
         }
         "integrality_rank" => {
             arity(name, arguments, 2, span)?;
@@ -13780,7 +13794,7 @@ pub(crate) fn call_with_printed(
                     s += denominator as i64;
                 }
             }
-            let values = fracs.into_iter().map(Value::Rational).collect();
+            let values = fracs.into_iter().map(|frac| Rc::new(Value::Rational(frac))).collect();
             Ok(Value::List(values))
         }
         "integrality_datum" => {
@@ -13917,11 +13931,13 @@ pub(crate) fn call_with_printed(
                 {
                     IntegralBlockScope::Singleton => {
                         return Ok(Value::Tuple(vec![
-                            Value::List(vec![Value::Domain(DomainValue::Param(ParamValue {
-                                context: parameter.context.clone(),
-                                repr: dominant,
-                            }))]),
-                            Value::Integer(BigInt::from(0)),
+                            Rc::new(Value::List(vec![Rc::new(Value::Domain(
+                                DomainValue::Param(ParamValue {
+                                    context: parameter.context.clone(),
+                                    repr: dominant,
+                                }),
+                            ))])),
+                            Rc::new(Value::Integer(BigInt::from(0))),
                         ]));
                     }
                     IntegralBlockScope::ProperSubsystem | IntegralBlockScope::Full => {}
@@ -13934,7 +13950,7 @@ pub(crate) fn call_with_printed(
                 let block = located.block();
                 let singular_flags = located_singular_flags(&parameter.context, &located)
                     .map_err(|error| structure_diagnostic(error, span))?;
-                let mut params: Vec<Value> = Vec::new();
+                let mut params: Vec<SharedValue> = Vec::new();
                 let mut start_pos: i64 = -1;
                 for z in 0..block.size() {
                     if block.survives(z, &singular_flags) {
@@ -13943,15 +13959,15 @@ pub(crate) fn call_with_printed(
                         }
                         let repr = located_row_parameter(&parameter.context, &located, z)
                             .map_err(|error| structure_diagnostic(error, span))?;
-                        params.push(Value::Domain(DomainValue::Param(ParamValue {
+                        params.push(Rc::new(Value::Domain(DomainValue::Param(ParamValue {
                             context: parameter.context.clone(),
                             repr,
-                        })));
+                        }))));
                     }
                 }
                 return Ok(Value::Tuple(vec![
-                    Value::List(params),
-                    Value::Integer(BigInt::from(start_pos)),
+                    Rc::new(Value::List(params)),
+                    Rc::new(Value::Integer(BigInt::from(start_pos))),
                 ]));
             }
             arity(name, arguments, 2, span)?;
@@ -13991,7 +14007,7 @@ pub(crate) fn call_with_printed(
             };
             let mut graph: Vec<Vec<usize>> = Vec::with_capacity(rows.len());
             for entry in rows {
-                let Value::List(edges) = entry else {
+                let Value::List(edges) = entry.as_ref() else {
                     return Err(type_error(span, "strong_components expects a row of rows"));
                 };
                 let mut targets = Vec::with_capacity(edges.len());
@@ -14015,12 +14031,12 @@ pub(crate) fn call_with_printed(
                 partition
                     .iter()
                     .map(|class| {
-                        Value::List(
+                        Rc::new(Value::List(
                             class
                                 .iter()
-                                .map(|&v| Value::Integer(BigInt::from(v)))
+                                .map(|&v| Rc::new(Value::Integer(BigInt::from(v))))
                                 .collect(),
-                        )
+                        ))
                     })
                     .collect(),
             );
@@ -14028,16 +14044,19 @@ pub(crate) fn call_with_printed(
                 induced
                     .iter()
                     .map(|class| {
-                        Value::List(
+                        Rc::new(Value::List(
                             class
                                 .iter()
-                                .map(|&v| Value::Integer(BigInt::from(v)))
+                                .map(|&v| Rc::new(Value::Integer(BigInt::from(v))))
                                 .collect(),
-                        )
+                        ))
                     })
                     .collect(),
             );
-            Ok(Value::Tuple(vec![partition_value, induced_value]))
+            Ok(Value::Tuple(vec![
+                Rc::new(partition_value),
+                Rc::new(induced_value),
+            ]))
         }
         "dual_quasisplit_form" => {
             arity(name, arguments, 1, span)?;
@@ -14198,9 +14217,9 @@ pub(crate) fn call_with_printed(
                     .expect("a real form's internal number is in range")
                     .contains(&id)
                 {
-                    forms.push(Value::Domain(DomainValue::RealForm(build_real_form(
+                    forms.push(Rc::new(Value::Domain(DomainValue::RealForm(build_real_form(
                         context, external, span,
-                    )?)));
+                    )?))));
                 }
             }
             Ok(Value::List(forms))
@@ -14229,9 +14248,9 @@ pub(crate) fn call_with_printed(
                     .expect("a real form's internal number is in range")
                     .contains(dual_id)
                 {
-                    forms.push(Value::Domain(DomainValue::RealForm(build_real_form(
+                    forms.push(Rc::new(Value::Domain(DomainValue::RealForm(build_real_form(
                         &dual, external, span,
-                    )?)));
+                    )?))));
                 }
             }
             Ok(Value::List(forms))
@@ -14267,9 +14286,9 @@ pub(crate) fn call_with_printed(
                         .order
                         .external(internal)
                         .expect("real-form labels land in a global form");
-                    orbits.push(Value::Integer(BigInt::from(external)));
+                    orbits.push(Rc::new(Value::Integer(BigInt::from(external))));
                 }
-                classes.push(Value::List(orbits));
+                classes.push(Rc::new(Value::List(orbits)));
             }
             Ok(Value::List(classes))
         }
@@ -14300,7 +14319,7 @@ pub(crate) fn call_with_printed(
                     .class_of_mask(mask)
                     .map_err(|error| runtime(span, error.to_string()))?;
                 if cartan.labels().label(local) == Some(form.internal) {
-                    members.push(Value::Integer(BigInt::from(mask)));
+                    members.push(Rc::new(Value::Integer(BigInt::from(mask))));
                 }
             }
             Ok(Value::List(members))
@@ -14492,7 +14511,7 @@ pub(crate) fn call_with_printed(
                         part.bit(index).expect("indices stay below the dimension"),
                     ));
                 }
-                rows.push(Value::Vector(Vec32(entries)));
+                rows.push(Rc::new(Value::Vector(Vec32(entries))));
             }
             Ok(Value::List(rows))
         }
@@ -14540,8 +14559,11 @@ pub(crate) fn call_with_printed(
             let x = block.graph.x(index).expect("an in-range block element");
             let y = block.graph.y(index).expect("an in-range block element");
             Ok(Value::Tuple(vec![
-                Value::Domain(DomainValue::KgbElement(Arc::clone(&block.rf), x)),
-                Value::Domain(DomainValue::KgbElement(Arc::clone(&block.dual_rf), y)),
+                Rc::new(Value::Domain(DomainValue::KgbElement(Arc::clone(&block.rf), x))),
+                Rc::new(Value::Domain(DomainValue::KgbElement(
+                    Arc::clone(&block.dual_rf),
+                    y,
+                ))),
             ]))
         }
         // block_index_wrapper (atlas-types.w:4857-4876): the inverse
@@ -14888,7 +14910,9 @@ pub(crate) fn call_with_printed(
                 points
                     .iter()
                     .map(|&(numerator, denominator)| {
-                        Value::Rational(BigRational::from_signeds(numerator, denominator))
+                        Rc::new(Value::Rational(BigRational::from_signeds(
+                            numerator, denominator,
+                        )))
                     })
                     .collect(),
             ))
@@ -15141,7 +15165,7 @@ pub(crate) fn call_with_printed(
                         coefficients.push(polynomial.coefficient(degree));
                     }
                 }
-                polys.push(Value::Vector(Vec32(coefficients)));
+                polys.push(Rc::new(Value::Vector(Vec32(coefficients))));
             }
             let polys_value = Value::List(polys);
             // Length stops: [0, length_first(1), ..., length_first(max), size].
@@ -15155,7 +15179,11 @@ pub(crate) fn call_with_printed(
                 *stop = block_length_first(&block.graph, index) as i32;
             }
             let stops_value = Value::Vector(Vec32(stops));
-            Ok(Value::Tuple(vec![matrix, polys_value, stops_value]))
+            Ok(Value::Tuple(vec![
+                Rc::new(matrix),
+                Rc::new(polys_value),
+                Rc::new(stops_value),
+            ]))
         }
         // KL_column (atlas-types.w:6882-6905, repr.cpp:2060-2075): the
         // Kazhdan-Lusztig column of a final standard parameter, restricted
@@ -15183,14 +15211,14 @@ pub(crate) fn call_with_printed(
                 .map_err(|error| structure_diagnostic(error, span))?
             {
                 IntegralBlockScope::Singleton => {
-                    return Ok(Value::List(vec![Value::Tuple(vec![
-                        Value::Integer(BigInt::from(0)),
-                        Value::Domain(DomainValue::Param(ParamValue {
+                    return Ok(Value::List(vec![Rc::new(Value::Tuple(vec![
+                        Rc::new(Value::Integer(BigInt::from(0))),
+                        Rc::new(Value::Domain(DomainValue::Param(ParamValue {
                             context: parameter.context.clone(),
                             repr: normalised,
-                        })),
-                        Value::Vector(Vec32(vec![1])),
-                    ])]));
+                        }))),
+                        Rc::new(Value::Vector(Vec32(vec![1]))),
+                    ]))]));
                 }
                 IntegralBlockScope::ProperSubsystem | IntegralBlockScope::Full => {}
             }
@@ -15224,14 +15252,14 @@ pub(crate) fn call_with_printed(
                 entries
                     .into_iter()
                     .map(|(raw_x, repr, coefficients)| {
-                        Value::Tuple(vec![
-                            Value::Integer(BigInt::from(raw_x)),
-                            Value::Domain(DomainValue::Param(ParamValue {
+                        Rc::new(Value::Tuple(vec![
+                            Rc::new(Value::Integer(BigInt::from(raw_x))),
+                            Rc::new(Value::Domain(DomainValue::Param(ParamValue {
                                 context: parameter.context.clone(),
                                 repr,
-                            })),
-                            Value::Vector(Vec32(coefficients)),
-                        ])
+                            }))),
+                            Rc::new(Value::Vector(Vec32(coefficients))),
+                        ]))
                     })
                     .collect(),
             ))
@@ -15262,16 +15290,18 @@ pub(crate) fn call_with_printed(
             {
                 IntegralBlockScope::Singleton => {
                     return Ok(Value::Tuple(vec![
-                        Value::List(vec![Value::Domain(DomainValue::Param(ParamValue {
-                            context: parameter.context.clone(),
-                            repr: dominant,
-                        }))]),
-                        Value::Integer(BigInt::from(0)),
-                        matrix_value(&[vec![1]], span)?,
-                        Value::List(vec![
-                            Value::Vector(Vec32(Vec::new())),
-                            Value::Vector(Vec32(vec![1])),
-                        ]),
+                        Rc::new(Value::List(vec![Rc::new(Value::Domain(
+                            DomainValue::Param(ParamValue {
+                                context: parameter.context.clone(),
+                                repr: dominant,
+                            }),
+                        ))])),
+                        Rc::new(Value::Integer(BigInt::from(0))),
+                        Rc::new(matrix_value(&[vec![1]], span)?),
+                        Rc::new(Value::List(vec![
+                            Rc::new(Value::Vector(Vec32(Vec::new()))),
+                            Rc::new(Value::Vector(Vec32(vec![1]))),
+                        ])),
                     ]));
                 }
                 IntegralBlockScope::ProperSubsystem | IntegralBlockScope::Full => {}
@@ -15364,10 +15394,10 @@ pub(crate) fn call_with_printed(
             for &raw in &survivors {
                 let repr = located_row_parameter(&parameter.context, &located, raw)
                     .map_err(|error| structure_diagnostic(error, span))?;
-                params.push(Value::Domain(DomainValue::Param(ParamValue {
+                params.push(Rc::new(Value::Domain(DomainValue::Param(ParamValue {
                     context: parameter.context.clone(),
                     repr,
-                })));
+                }))));
             }
             let rows: Vec<Vec<i32>> = index_matrix
                 .iter()
@@ -15377,7 +15407,7 @@ pub(crate) fn call_with_printed(
             let polys_value = Value::List(
                 polys
                     .iter()
-                    .map(|pol| Value::Vector(Vec32(pol.as_slice().to_vec())))
+                    .map(|pol| Rc::new(Value::Vector(Vec32(pol.as_slice().to_vec()))))
                     .collect(),
             );
             let start_value = Value::Integer(BigInt::from(if loc[raw_start] == usize::MAX {
@@ -15386,10 +15416,10 @@ pub(crate) fn call_with_printed(
                 loc[raw_start] as i64
             }));
             Ok(Value::Tuple(vec![
-                Value::List(params),
-                start_value,
-                matrix_value,
-                polys_value,
+                Rc::new(Value::List(params)),
+                Rc::new(start_value),
+                Rc::new(matrix_value),
+                Rc::new(polys_value),
             ]))
         }
         // dual_KL_block (atlas-types.w:7053-7133, blocks.cpp:474-509
@@ -15474,10 +15504,10 @@ pub(crate) fn call_with_printed(
             for &raw in &survivors {
                 let repr = located_row_parameter(&parameter.context, &located, raw)
                     .map_err(|error| structure_diagnostic(error, span))?;
-                params.push(Value::Domain(DomainValue::Param(ParamValue {
+                params.push(Rc::new(Value::Domain(DomainValue::Param(ParamValue {
                     context: parameter.context.clone(),
                     repr,
-                })));
+                }))));
             }
             let rows: Vec<Vec<i32>> = index_matrix
                 .iter()
@@ -15487,7 +15517,7 @@ pub(crate) fn call_with_printed(
             let polys_value = Value::List(
                 polys
                     .iter()
-                    .map(|pol| Value::Vector(Vec32(pol.as_slice().to_vec())))
+                    .map(|pol| Rc::new(Value::Vector(Vec32(pol.as_slice().to_vec()))))
                     .collect(),
             );
             let start_value = Value::Integer(BigInt::from(if loc[raw_start] == usize::MAX {
@@ -15496,10 +15526,10 @@ pub(crate) fn call_with_printed(
                 loc[raw_start] as i64
             }));
             Ok(Value::Tuple(vec![
-                Value::List(params),
-                start_value,
-                matrix_value,
-                polys_value,
+                Rc::new(Value::List(params)),
+                Rc::new(start_value),
+                Rc::new(matrix_value),
+                Rc::new(polys_value),
             ]))
         }
         // partial_block (atlas-types.w:6786-6820, repr.cpp:1796-1824):
@@ -15543,10 +15573,10 @@ pub(crate) fn call_with_printed(
                 if in_downset && block.survives(z, &singular_flags) {
                     let repr = located_row_parameter(&parameter.context, &located, z)
                         .map_err(|error| structure_diagnostic(error, span))?;
-                    params.push(Value::Domain(DomainValue::Param(ParamValue {
+                    params.push(Rc::new(Value::Domain(DomainValue::Param(ParamValue {
                         context: parameter.context.clone(),
                         repr,
-                    })));
+                    }))));
                 }
             }
             Ok(Value::List(params))
@@ -15796,10 +15826,10 @@ pub(crate) fn call_with_printed(
             for &z in &survivors {
                 let sr = located_row_parameter(&parameter.context, &located, z)
                     .map_err(|error| structure_diagnostic(error, span))?;
-                params.push(Value::Domain(DomainValue::Param(ParamValue {
+                params.push(Rc::new(Value::Domain(DomainValue::Param(ParamValue {
                     context: parameter.context.clone(),
                     repr: sr,
-                })));
+                }))));
             }
             let rows: Vec<Vec<i32>> = index_matrix
                 .iter()
@@ -15809,13 +15839,13 @@ pub(crate) fn call_with_printed(
             let polys_value = Value::List(
                 polys
                     .iter()
-                    .map(|pol| Value::Vector(Vec32(pol.as_slice().to_vec())))
+                    .map(|pol| Rc::new(Value::Vector(Vec32(pol.as_slice().to_vec()))))
                     .collect(),
             );
             Ok(Value::Tuple(vec![
-                Value::List(params),
-                matrix_value,
-                polys_value,
+                Rc::new(Value::List(params)),
+                Rc::new(matrix_value),
+                Rc::new(polys_value),
             ]))
         }
         // W_graph / W_cells (atlas-types.w:7147-7170, 7210-7245): the
@@ -15896,33 +15926,33 @@ pub(crate) fn call_with_printed(
                         .into_iter()
                         .collect::<BTreeSet<_>>()
                         .into_iter()
-                        .map(|generator| Value::Integer(BigInt::from(generator)))
+                        .map(|generator| Rc::new(Value::Integer(BigInt::from(generator))))
                         .collect(),
                 );
                 let out_edges = Value::List(
                     targets
                         .iter()
                         .map(|&(target, coef)| {
-                            Value::Tuple(vec![
-                                Value::Integer(BigInt::from(target)),
-                                Value::Integer(BigInt::from(coef)),
-                            ])
+                            Rc::new(Value::Tuple(vec![
+                                Rc::new(Value::Integer(BigInt::from(target))),
+                                Rc::new(Value::Integer(BigInt::from(coef))),
+                            ]))
                         })
                         .collect(),
                 );
-                Value::Tuple(vec![descents, out_edges])
+                Value::Tuple(vec![Rc::new(descents), Rc::new(out_edges)])
             };
             if name == "W_graph" {
                 let vertices = Value::List(
                     edges
                         .iter()
                         .enumerate()
-                        .map(|(element, targets)| vertex(element, targets))
+                        .map(|(element, targets)| Rc::new(vertex(element, targets)))
                         .collect(),
                 );
                 Ok(Value::Tuple(vec![
-                    Value::Integer(BigInt::from(start)),
-                    vertices,
+                    Rc::new(Value::Integer(BigInt::from(start))),
+                    Rc::new(vertices),
                 ]))
             } else {
                 // DecomposedWGraph (wgraph.cpp:58-116): the oriented graph's
@@ -15960,23 +15990,23 @@ pub(crate) fn call_with_printed(
                                     .filter(|&(target, _)| cell_members.contains(&target))
                                     .map(|(target, coef)| (relno[target], coef))
                                     .collect();
-                                vertex(member, &cell_edges)
+                                Rc::new(vertex(member, &cell_edges))
                             })
                             .collect(),
                     );
-                    cells.push(Value::Tuple(vec![
-                        Value::List(
+                    cells.push(Rc::new(Value::Tuple(vec![
+                        Rc::new(Value::List(
                             members
                                 .iter()
-                                .map(|&member| Value::Integer(BigInt::from(member)))
+                                .map(|&member| Rc::new(Value::Integer(BigInt::from(member))))
                                 .collect(),
-                        ),
-                        vertices_list,
-                    ]));
+                        )),
+                        Rc::new(vertices_list),
+                    ])));
                 }
                 Ok(Value::Tuple(vec![
-                    Value::Integer(BigInt::from(start)),
-                    Value::List(cells),
+                    Rc::new(Value::Integer(BigInt::from(start))),
+                    Rc::new(Value::List(cells)),
                 ]))
             }
         }
@@ -16003,10 +16033,10 @@ pub(crate) fn call_with_printed(
             for z in 0..n {
                 let repr = located_row_parameter(&parameter.context, &located, z)
                     .map_err(|error| structure_diagnostic(error, span))?;
-                param_list.push(Value::Domain(DomainValue::Param(ParamValue {
+                param_list.push(Rc::new(Value::Domain(DomainValue::Param(ParamValue {
                     context: Arc::clone(&parameter.context),
                     repr,
-                })));
+                }))));
             }
             let hasse = block_bruhat_hasse(block.as_ref());
             let mut columns = vec![vec![0_i32; n]; n];
@@ -16016,8 +16046,8 @@ pub(crate) fn call_with_printed(
                 }
             }
             Ok(Value::Tuple(vec![
-                Value::List(param_list),
-                columns_matrix_value(&columns, n, span)?,
+                Rc::new(Value::List(param_list)),
+                Rc::new(columns_matrix_value(&columns, n, span)?),
             ]))
         }
         // shift_flip (atlas-types.w:7341-7362): whether the default
@@ -16094,9 +16124,9 @@ pub(crate) fn call_with_printed(
                         // Block not globally stable: empty values
                         // (atlas-types.w:8697-8702).
                         return Ok(Value::Tuple(vec![
-                            matrix_value(&[], span)?,
-                            Value::List(Vec::new()),
-                            Value::Vector(Vec32(Vec::new())),
+                            Rc::new(matrix_value(&[], span)?),
+                            Rc::new(Value::List(Vec::new())),
+                            Rc::new(Value::Vector(Vec32(Vec::new()))),
                         ]));
                     }
                     _ => {
@@ -16187,7 +16217,7 @@ pub(crate) fn call_with_printed(
                     let mut links0 = vec![vec![0_i32; eb.rank()]; size];
                     let mut links1 = vec![vec![0_i32; eb.rank()]; size];
                     for (new_n, &n) in fiber.iter().enumerate() {
-                        params.push(fiber_param(eb.z(n), &gamma_lambdas)?);
+                        params.push(Rc::new(fiber_param(eb.z(n), &gamma_lambdas)?));
                         for s in 0..eb.rank() {
                             let kind = eb.descent_type(s, n);
                             types[new_n][s] = kind as usize as i32;
@@ -16216,10 +16246,10 @@ pub(crate) fn call_with_printed(
                         }
                     }
                     Ok(Value::Tuple(vec![
-                        Value::List(params),
-                        matrix_value(&types, span)?,
-                        matrix_value(&links0, span)?,
-                        matrix_value(&links1, span)?,
+                        Rc::new(Value::List(params)),
+                        Rc::new(matrix_value(&types, span)?),
+                        Rc::new(matrix_value(&links0, span)?),
+                        Rc::new(matrix_value(&links1, span)?),
                     ]))
                 }
                 "raw_ext_KL" => {
@@ -16296,14 +16326,14 @@ pub(crate) fn call_with_printed(
                             .map_or(size as i32, |position| position as i32);
                     }
                     Ok(Value::Tuple(vec![
-                        matrix_value(&matrix, span)?,
-                        Value::List(
+                        Rc::new(matrix_value(&matrix, span)?),
+                        Rc::new(Value::List(
                             polys
                                 .iter()
-                                .map(|pol| Value::Vector(Vec32(pol.as_slice().to_vec())))
+                                .map(|pol| Rc::new(Value::Vector(Vec32(pol.as_slice().to_vec()))))
                                 .collect(),
-                        ),
-                        Value::Vector(Vec32(stops)),
+                        )),
+                        Rc::new(Value::Vector(Vec32(stops))),
                     ]))
                 }
                 _ => {
@@ -16453,17 +16483,17 @@ pub(crate) fn call_with_printed(
                     }
                     let mut params = Vec::with_capacity(n);
                     for &survivor in &survivors {
-                        params.push(fiber_param(eb.z(survivor), &gamma_lambdas)?);
+                        params.push(Rc::new(fiber_param(eb.z(survivor), &gamma_lambdas)?));
                     }
                     Ok(Value::Tuple(vec![
-                        Value::List(params),
-                        matrix_value(&index_matrix, span)?,
-                        Value::List(
+                        Rc::new(Value::List(params)),
+                        Rc::new(matrix_value(&index_matrix, span)?),
+                        Rc::new(Value::List(
                             polys
                                 .iter()
-                                .map(|pol| Value::Vector(Vec32(pol.as_slice().to_vec())))
+                                .map(|pol| Rc::new(Value::Vector(Vec32(pol.as_slice().to_vec()))))
                                 .collect(),
-                        ),
+                        )),
                     ]))
                 }
             }
@@ -16502,11 +16532,11 @@ pub(crate) fn call_with_printed(
                 scaled_extended_finalise(&context, &parameter.repr, factor_num, factor_den)
                     .map_err(|error| structure_diagnostic(error, span))?;
             Ok(Value::Tuple(vec![
-                Value::Domain(DomainValue::Param(ParamValue {
+                Rc::new(Value::Domain(DomainValue::Param(ParamValue {
                     context: Arc::clone(&parameter.context),
                     repr,
-                })),
-                Value::Boolean(flip),
+                }))),
+                Rc::new(Value::Boolean(flip)),
             ]))
         }
         // K_type_pol_extended_wrapper (atlas-types.w:8487-8500): restrict
@@ -16629,21 +16659,21 @@ pub(crate) fn call_with_printed(
             let complex = make_simple_complex(&context.inner_class, root_involution)
                 .map_err(|error| structure_diagnostic(error, span))?;
             Ok(Value::Tuple(vec![
-                Value::Tuple(vec![
-                    Value::Integer(BigInt::from(compact)),
-                    Value::Integer(BigInt::from(_complex_torus)),
-                    Value::Integer(BigInt::from(split)),
-                ]),
-                word_value,
-                Value::Tuple(vec![
-                    Value::Integer(BigInt::from(orbit_size)),
-                    Value::Integer(BigInt::from(fiber_size)),
-                ]),
-                Value::Tuple(vec![
-                    subsystem_type_value(&context.inner_class, imaginary, span)?,
-                    subsystem_type_value(&context.inner_class, real, span)?,
-                    subsystem_type_value(&context.inner_class, &complex, span)?,
-                ]),
+                Rc::new(Value::Tuple(vec![
+                    Rc::new(Value::Integer(BigInt::from(compact))),
+                    Rc::new(Value::Integer(BigInt::from(_complex_torus))),
+                    Rc::new(Value::Integer(BigInt::from(split))),
+                ])),
+                Rc::new(word_value),
+                Rc::new(Value::Tuple(vec![
+                    Rc::new(Value::Integer(BigInt::from(orbit_size))),
+                    Rc::new(Value::Integer(BigInt::from(fiber_size))),
+                ])),
+                Rc::new(Value::Tuple(vec![
+                    Rc::new(subsystem_type_value(&context.inner_class, imaginary, span)?),
+                    Rc::new(subsystem_type_value(&context.inner_class, real, span)?),
+                    Rc::new(subsystem_type_value(&context.inner_class, &complex, span)?),
+                ])),
             ]))
         }
         "torus_factor" => {
@@ -16865,10 +16895,10 @@ pub(crate) fn call_with_printed(
             let t = find_solution(&theta_transpose_plus, &b_t)
                 .map_err(|message| runtime(span, message))?;
             Ok(Value::Tuple(vec![
-                Value::Vector(Vec32(lambda.iter().map(|&e| e as i32).collect())),
-                Value::Vector(Vec32(tau.iter().map(|&e| e as i32).collect())),
-                Value::Vector(Vec32(l.iter().map(|&e| e as i32).collect())),
-                Value::Vector(Vec32(t.iter().map(|&e| e as i32).collect())),
+                Rc::new(Value::Vector(Vec32(lambda.iter().map(|&e| e as i32).collect()))),
+                Rc::new(Value::Vector(Vec32(tau.iter().map(|&e| e as i32).collect()))),
+                Rc::new(Value::Vector(Vec32(l.iter().map(|&e| e as i32).collect()))),
+                Rc::new(Value::Vector(Vec32(t.iter().map(|&e| e as i32).collect()))),
             ]))
         }
         // base_grading_vector_wrapper (atlas-types.w:3689): the form's
@@ -17187,11 +17217,11 @@ pub(crate) fn call_with_printed(
                         return Err(runtime(span, empty));
                     };
                     Ok(Value::Tuple(vec![
-                        Value::Domain(DomainValue::Split(*coefficient)),
-                        Value::Domain(DomainValue::KType(KTypeValue {
+                        Rc::new(Value::Domain(DomainValue::Split(*coefficient))),
+                        Rc::new(Value::Domain(DomainValue::KType(KTypeValue {
                             context: Arc::clone(&pol.rf),
                             ktype: ktype.clone(),
-                        })),
+                        }))),
                     ]))
                 }
                 Value::Domain(DomainValue::ParamPol(pol)) => {
@@ -17208,11 +17238,11 @@ pub(crate) fn call_with_printed(
                         return Err(runtime(span, empty));
                     };
                     Ok(Value::Tuple(vec![
-                        Value::Domain(DomainValue::Split(*coefficient)),
-                        Value::Domain(DomainValue::Param(ParamValue {
+                        Rc::new(Value::Domain(DomainValue::Split(*coefficient))),
+                        Rc::new(Value::Domain(DomainValue::Param(ParamValue {
                             context: Arc::clone(&pol.rf),
                             repr: repr.clone(),
-                        })),
+                        }))),
                     ]))
                 }
                 other => Err(type_error(
@@ -17286,13 +17316,15 @@ pub(crate) fn call_with_printed(
                         .length(term.x())
                         .expect("KGP terms are KGB elements of the same graph");
                     let difference = length as i64 - term_length as i64;
-                    Value::Tuple(vec![
-                        Value::Integer(BigInt::from(if difference % 2 == 0 { 1 } else { -1 })),
-                        Value::Domain(DomainValue::KType(KTypeValue {
+                    Rc::new(Value::Tuple(vec![
+                        Rc::new(Value::Integer(BigInt::from(
+                            if difference % 2 == 0 { 1 } else { -1 },
+                        ))),
+                        Rc::new(Value::Domain(DomainValue::KType(KTypeValue {
                             context: Arc::clone(&ktype.context),
                             ktype: term,
-                        })),
-                    ])
+                        }))),
+                    ]))
                 })
                 .collect();
             Ok(Value::List(row))
@@ -17767,14 +17799,14 @@ pub(crate) fn call_with_printed(
             }
             sort_parampol_terms(&mut deformed_terms);
             Ok(Value::Tuple(vec![
-                Value::Domain(DomainValue::ParamPol(ParamPolValue {
+                Rc::new(Value::Domain(DomainValue::ParamPol(ParamPolValue {
                     rf: Arc::clone(&parameter.context),
                     terms: deformed_terms,
-                })),
-                Value::Domain(DomainValue::ParamPol(ParamPolValue {
+                }))),
+                Rc::new(Value::Domain(DomainValue::ParamPol(ParamPolValue {
                     rf: Arc::clone(&accumulator.rf),
                     terms: remainder_terms,
-                })),
+                }))),
             ]))
         }
         // truncate_K_type_poly_above_wrapper /
@@ -17815,25 +17847,25 @@ pub(crate) fn call_with_printed(
             arity(name, arguments, 1, span)?;
             match &arguments[0] {
                 Value::Domain(DomainValue::KgbElement(context, id)) => Ok(Value::Tuple(vec![
-                    Value::Domain(DomainValue::RealForm(Arc::clone(context))),
-                    Value::Integer(BigInt::from(id.index())),
+                    Rc::new(Value::Domain(DomainValue::RealForm(Arc::clone(context)))),
+                    Rc::new(Value::Integer(BigInt::from(id.index()))),
                 ])),
                 Value::Domain(DomainValue::Block(block)) => Ok(Value::Tuple(vec![
-                    Value::Domain(DomainValue::RealForm(Arc::clone(&block.rf))),
-                    Value::Domain(DomainValue::RealForm(Arc::clone(&block.dual_rf))),
+                    Rc::new(Value::Domain(DomainValue::RealForm(Arc::clone(&block.rf)))),
+                    Rc::new(Value::Domain(DomainValue::RealForm(Arc::clone(&block.dual_rf)))),
                 ])),
                 Value::Domain(DomainValue::Split(value)) => Ok(Value::Tuple(vec![
-                    Value::Integer(BigInt::from(value.e())),
-                    Value::Integer(BigInt::from(value.f())),
+                    Rc::new(Value::Integer(BigInt::from(value.e()))),
+                    Rc::new(Value::Integer(BigInt::from(value.f()))),
                 ])),
                 // unwrap_K_type_wrapper (atlas-types.w:5266-5277): the
                 // owning KGB element and the ELECTED lambda-rho.
                 Value::Domain(DomainValue::KType(ktype)) => Ok(Value::Tuple(vec![
-                    Value::Domain(DomainValue::KgbElement(
+                    Rc::new(Value::Domain(DomainValue::KgbElement(
                         Arc::clone(&ktype.context),
                         ktype.ktype.x(),
-                    )),
-                    Value::Vector(Vec32(ktype.ktype.lambda_rho().as_slice().to_vec())),
+                    ))),
+                    Rc::new(Value::Vector(Vec32(ktype.ktype.lambda_rho().as_slice().to_vec()))),
                 ])),
                 // unwrap_parameter_wrapper (atlas-types.w:6252-6267): the
                 // KGB element, lambda-rho, and the info character gamma —
@@ -17852,12 +17884,12 @@ pub(crate) fn call_with_printed(
                         )
                     };
                     Ok(Value::Tuple(vec![
-                        Value::Domain(DomainValue::KgbElement(
+                        Rc::new(Value::Domain(DomainValue::KgbElement(
                             Arc::clone(&parameter.context),
                             parameter.repr.x(),
-                        )),
-                        Value::Vector(Vec32(lam_rho.as_slice().to_vec())),
-                        Value::RatVector(ratvec_from_rational_weight(&gamma, span)?),
+                        ))),
+                        Rc::new(Value::Vector(Vec32(lam_rho.as_slice().to_vec()))),
+                        Rc::new(Value::RatVector(ratvec_from_rational_weight(&gamma, span)?)),
                     ]))
                 }
                 other => Err(type_error(
@@ -18008,9 +18040,9 @@ pub(crate) fn call_with_printed(
             let weyl = weyl_elt_value(context, element, span)?;
             let vec = Value::Vector(Vec32(current.as_slice().to_vec()));
             if decompose {
-                Ok(Value::Tuple(vec![weyl, vec]))
+                Ok(Value::Tuple(vec![Rc::new(weyl), Rc::new(vec)]))
             } else {
-                Ok(Value::Tuple(vec![vec, weyl]))
+                Ok(Value::Tuple(vec![Rc::new(vec), Rc::new(weyl)]))
             }
         }
         "cofolded" => {
@@ -18168,7 +18200,7 @@ pub(crate) fn call_with_printed(
                 value
                     .word
                     .iter()
-                    .map(|&generator| Value::Integer(BigInt::from(generator)))
+                    .map(|&generator| Rc::new(Value::Integer(BigInt::from(generator))))
                     .collect(),
             ))
         }
@@ -18244,18 +18276,14 @@ pub(crate) fn call_with_printed(
             // add_K_type_term_wrapper (atlas-types.w:5701-5722): a term
             // with an explicit Split coefficient.
             [Value::Domain(DomainValue::KTypePol(accumulator)), Value::Tuple(term)]
-                if matches!(
-                    term.as_slice(),
-                    [
-                        Value::Domain(DomainValue::Split(_)),
-                        Value::Domain(DomainValue::KType(_))
-                    ]
-                ) =>
+                if term.len() == 2
+                    && matches!(term[0].as_ref(), Value::Domain(DomainValue::Split(_)))
+                    && matches!(term[1].as_ref(), Value::Domain(DomainValue::KType(_))) =>
             {
-                let Value::Domain(DomainValue::Split(coefficient)) = &term[0] else {
+                let Value::Domain(DomainValue::Split(coefficient)) = term[0].as_ref() else {
                     unreachable!()
                 };
-                let Value::Domain(DomainValue::KType(ktype)) = &term[1] else {
+                let Value::Domain(DomainValue::KType(ktype)) = term[1].as_ref() else {
                     unreachable!()
                 };
                 require_same_form_owner(
@@ -18284,12 +18312,17 @@ pub(crate) fn call_with_printed(
                 let rc = rc_owner.context();
                 let mut terms = accumulator.terms.clone();
                 for term in term_list {
-                    let Value::Tuple(term) = term else {
+                    let Value::Tuple(term) = term.as_ref() else {
                         return Err(type_error(span, "expected a (Split,KType) term"));
                     };
-                    let [Value::Domain(DomainValue::Split(coefficient)), Value::Domain(DomainValue::KType(ktype))] =
-                        term.as_slice()
+                    let [coefficient, ktype] = term.as_slice() else {
+                        return Err(type_error(span, "expected a (Split,KType) term"));
+                    };
+                    let Value::Domain(DomainValue::Split(coefficient)) = coefficient.as_ref()
                     else {
+                        return Err(type_error(span, "expected a (Split,KType) term"));
+                    };
+                    let Value::Domain(DomainValue::KType(ktype)) = ktype.as_ref() else {
                         return Err(type_error(span, "expected a (Split,KType) term"));
                     };
                     require_same_form_owner(
@@ -18355,18 +18388,14 @@ pub(crate) fn call_with_printed(
             // (atlas-types.w:7818-7862): expand parameters to final terms
             // and scale them by the supplied Split coefficient.
             [Value::Domain(DomainValue::ParamPol(accumulator)), Value::Tuple(term)]
-                if matches!(
-                    term.as_slice(),
-                    [
-                        Value::Domain(DomainValue::Split(_)),
-                        Value::Domain(DomainValue::Param(_))
-                    ]
-                ) =>
+                if term.len() == 2
+                    && matches!(term[0].as_ref(), Value::Domain(DomainValue::Split(_)))
+                    && matches!(term[1].as_ref(), Value::Domain(DomainValue::Param(_))) =>
             {
-                let Value::Domain(DomainValue::Split(coefficient)) = &term[0] else {
+                let Value::Domain(DomainValue::Split(coefficient)) = term[0].as_ref() else {
                     unreachable!()
                 };
-                let Value::Domain(DomainValue::Param(parameter)) = &term[1] else {
+                let Value::Domain(DomainValue::Param(parameter)) = term[1].as_ref() else {
                     unreachable!()
                 };
                 require_same_form_owner(
@@ -18392,12 +18421,17 @@ pub(crate) fn call_with_printed(
                 let rc = rc_owner.context();
                 let mut terms = accumulator.terms.clone();
                 for term in term_list {
-                    let Value::Tuple(term) = term else {
+                    let Value::Tuple(term) = term.as_ref() else {
                         return Err(type_error(span, "expected a (Split,Param) term"));
                     };
-                    let [Value::Domain(DomainValue::Split(coefficient)), Value::Domain(DomainValue::Param(parameter))] =
-                        term.as_slice()
+                    let [coefficient, parameter] = term.as_slice() else {
+                        return Err(type_error(span, "expected a (Split,Param) term"));
+                    };
+                    let Value::Domain(DomainValue::Split(coefficient)) = coefficient.as_ref()
                     else {
+                        return Err(type_error(span, "expected a (Split,Param) term"));
+                    };
+                    let Value::Domain(DomainValue::Param(parameter)) = parameter.as_ref() else {
                         return Err(type_error(span, "expected a (Split,Param) term"));
                     };
                     require_same_form_owner(
@@ -18858,7 +18892,7 @@ mod tests {
         .unwrap();
         let weyl = call(
             "W_elt",
-            &[datum, Value::List(vec![Value::Integer(BigInt::from(0))])],
+            &[datum, Value::List(vec![Rc::new(Value::Integer(BigInt::from(0)))])],
             span(),
         )
         .unwrap();
@@ -18901,10 +18935,10 @@ mod tests {
             vec![vec![1, 2], vec![3, 4]]
         );
         let error = as_matrix(
-            &Value::List(vec![Value::List(vec![
-                Value::Integer(1.into()),
-                Value::Integer(0.into()),
-            ])]),
+            &Value::List(vec![Rc::new(Value::List(vec![
+                Rc::new(Value::Integer(1.into())),
+                Rc::new(Value::Integer(0.into())),
+            ]))]),
             span(),
         )
         .expect_err("rectangular legacy list");
@@ -18948,11 +18982,11 @@ mod tests {
         let rows = cartan
             .iter()
             .map(|row| {
-                Value::List(
+                Rc::new(Value::List(
                     row.iter()
-                        .map(|&entry| Value::Integer(entry.into()))
+                        .map(|&entry| Rc::new(Value::Integer(entry.into())))
                         .collect(),
-                )
+                ))
             })
             .collect();
         assert_eq!(
@@ -19218,8 +19252,8 @@ mod tests {
         };
         let rendered: Vec<String> = factors
             .iter()
-            .map(|factor| match factor {
-                Value::Tuple(pair) => match (&pair[0], &pair[1]) {
+            .map(|factor| match factor.as_ref() {
+                Value::Tuple(pair) => match (pair[0].as_ref(), pair[1].as_ref()) {
                     (Value::String(letter), Value::Integer(rank)) => {
                         format!("{letter}{rank}")
                     }
@@ -19483,8 +19517,8 @@ mod tests {
             panic!("decompose must return a tuple")
         };
         assert_eq!(parts.len(), 2);
-        assert!(matches!(parts[0], Value::Domain(DomainValue::RealForm(_))));
-        assert_eq!(parts[1], Value::Integer(BigInt::from(0)));
+        assert!(matches!(parts[0].as_ref(), Value::Domain(DomainValue::RealForm(_))));
+        assert_eq!(*parts[1], Value::Integer(BigInt::from(0)));
         assert_eq!(
             decomposed.to_string(),
             "(connected split real group with Lie algebra 'sl(2,R)',0)"
@@ -19678,11 +19712,17 @@ mod tests {
         else {
             panic!("KL_column must return a list")
         };
-        let [Value::Tuple(entry)] = entries.as_slice() else {
+        let [entry] = entries.as_slice() else {
             panic!("A1 fixture must have one nonzero KL entry")
         };
-        let [Value::Integer(raw_row), _, _] = entry.as_slice() else {
+        let Value::Tuple(entry) = entry.as_ref() else {
+            panic!("KL column entry must be a tuple")
+        };
+        let [raw_row, _, _] = entry.as_slice() else {
             panic!("KL column entry must be (raw row, Param, polynomial)")
+        };
+        let Value::Integer(raw_row) = raw_row.as_ref() else {
+            panic!("KL column entry must start with the raw row")
         };
         i64::try_from(raw_row).expect("A1 raw row fits i64")
     }
@@ -21440,7 +21480,7 @@ mod tests {
         let coefficient = Value::Domain(DomainValue::Split(SplitValue::new(1, 0)));
         let d = call(
             "+",
-            &[zero, Value::Tuple(vec![coefficient, p.clone()])],
+            &[zero, Value::Tuple(vec![Rc::new(coefficient), Rc::new(p.clone())])],
             span(),
         )
         .expect("one-term ParamPol");
@@ -21491,9 +21531,9 @@ mod tests {
             assert_eq!(
                 call("classify_involution", &[involution], span()),
                 Ok(Value::Tuple(vec![
-                    int(expected.0),
-                    int(expected.1),
-                    int(expected.2),
+                    Rc::new(int(expected.0)),
+                    Rc::new(int(expected.1)),
+                    Rc::new(int(expected.2)),
                 ]))
             );
         }
@@ -21521,7 +21561,7 @@ mod tests {
         assert_eq!(
             call(
                 "distinguished_involution",
-                std::slice::from_ref(&parts[1]),
+                std::slice::from_ref(parts[1].as_ref()),
                 span(),
             )
             .expect("distinguished involution")
@@ -21904,7 +21944,7 @@ mod tests {
     }
 
     fn row(entries: &[i64]) -> Value {
-        Value::List(entries.iter().map(|&entry| int(entry)).collect())
+        Value::List(entries.iter().map(|&entry| Rc::new(int(entry))).collect())
     }
 
     #[test]
@@ -22081,7 +22121,7 @@ mod tests {
                 .expect_err("no-value performs the same int narrowing");
             assert_eq!(validation.message, error.message);
         }
-        let huge_word = Value::List(vec![huge]);
+        let huge_word = Value::List(vec![Rc::new(huge)]);
         let error = call("##", &[invalid_word[0].clone(), huge_word.clone()], span())
             .expect_err("word entries must narrow to unsigned long");
         assert_eq!(error.message, "Integer value to big for conversion");
@@ -22194,7 +22234,7 @@ mod tests {
         let coefficient = Value::Domain(DomainValue::Split(SplitValue::new(1, 0)));
         let tuple_arguments = [
             zero_param.clone(),
-            Value::Tuple(vec![coefficient.clone(), parameter.clone()]),
+            Value::Tuple(vec![Rc::new(coefficient.clone()), Rc::new(parameter.clone())]),
         ];
         for error in [
             validate("+", &tuple_arguments, span()).expect_err("tuple no-value checks owner"),
@@ -22209,7 +22249,10 @@ mod tests {
             "+",
             &[
                 zero_param,
-                Value::List(vec![Value::Tuple(vec![coefficient.clone(), parameter])]),
+                Value::List(vec![Rc::new(Value::Tuple(vec![
+                    Rc::new(coefficient.clone()),
+                    Rc::new(parameter),
+                ]))]),
             ],
             span(),
         )
@@ -22234,7 +22277,10 @@ mod tests {
             "+",
             &[
                 zero_ktype,
-                Value::List(vec![Value::Tuple(vec![coefficient, ktype])]),
+                Value::List(vec![Rc::new(Value::Tuple(vec![
+                    Rc::new(coefficient),
+                    Rc::new(ktype),
+                ]))]),
             ],
             span(),
         )
@@ -22265,8 +22311,8 @@ mod tests {
             &[
                 zero,
                 Value::Tuple(vec![
-                    Value::Domain(DomainValue::Split(SplitValue::new(1, 0))),
-                    canonical_param,
+                    Rc::new(Value::Domain(DomainValue::Split(SplitValue::new(1, 0)))),
+                    Rc::new(canonical_param),
                 ]),
             ],
             span(),
@@ -22558,14 +22604,14 @@ mod tests {
             Ok(Value::Boolean(false))
         );
         let k_terms = Value::List(vec![
-            Value::Tuple(vec![
-                Value::Domain(DomainValue::Split(SplitValue::new(1, 0))),
-                ktype.clone(),
-            ]),
-            Value::Tuple(vec![
-                Value::Domain(DomainValue::Split(SplitValue::new(2, 0))),
-                ktype,
-            ]),
+            Rc::new(Value::Tuple(vec![
+                Rc::new(Value::Domain(DomainValue::Split(SplitValue::new(1, 0)))),
+                Rc::new(ktype.clone()),
+            ])),
+            Rc::new(Value::Tuple(vec![
+                Rc::new(Value::Domain(DomainValue::Split(SplitValue::new(2, 0)))),
+                Rc::new(ktype),
+            ])),
         ]);
         let k_pol = call("+", &[zero_k, k_terms], span()).expect("KType term list");
         assert_eq!(
@@ -22599,18 +22645,18 @@ mod tests {
             "+",
             &[
                 zero_p.clone(),
-                Value::Tuple(vec![coefficient.clone(), parameter.clone()]),
+                Value::Tuple(vec![Rc::new(coefficient.clone()), Rc::new(parameter.clone())]),
             ],
             span(),
         )
         .expect("Param tuple term");
         assert!(matches!(singleton, Value::Domain(DomainValue::ParamPol(_))));
         let list = Value::List(vec![
-            Value::Tuple(vec![coefficient, parameter.clone()]),
-            Value::Tuple(vec![
-                Value::Domain(DomainValue::Split(SplitValue::new(2, 0))),
-                parameter,
-            ]),
+            Rc::new(Value::Tuple(vec![Rc::new(coefficient), Rc::new(parameter.clone())])),
+            Rc::new(Value::Tuple(vec![
+                Rc::new(Value::Domain(DomainValue::Split(SplitValue::new(2, 0)))),
+                Rc::new(parameter),
+            ])),
         ]);
         let p_pol = call("+", &[zero_p, list], span()).expect("Param term list");
         assert_eq!(
@@ -22740,7 +22786,7 @@ mod tests {
                     "quotient_basis",
                     &[
                         relation_lie_type("A2"),
-                        Value::List(vec![Value::RatVector(generator)]),
+                        Value::List(vec![Rc::new(Value::RatVector(generator))]),
                     ],
                     span(),
                 )
@@ -22769,9 +22815,9 @@ mod tests {
             "quotient_basis",
             &[
                 relation_lie_type("A2"),
-                Value::List(vec![Value::RatVector(
+                Value::List(vec![Rc::new(Value::RatVector(
                     RatVec::new(vec![1], 2).expect("one half"),
-                )]),
+                ))]),
             ],
             span(),
         )
@@ -22785,9 +22831,9 @@ mod tests {
             "quotient_basis",
             &[
                 relation_lie_type("A2"),
-                Value::List(vec![Value::RatVector(
+                Value::List(vec![Rc::new(Value::RatVector(
                     RatVec::new(vec![1, 0], 3).expect("two-entry generator"),
-                )]),
+                ))]),
             ],
             span(),
         )
@@ -22860,8 +22906,10 @@ mod tests {
             &[
                 relation_lie_type("A3"),
                 Value::List(vec![
-                    Value::RatVector(RatVec::new(vec![1], 2).expect("one half")),
-                    Value::RatVector(RatVec::new(vec![1], 4).expect("one quarter")),
+                    Rc::new(Value::RatVector(RatVec::new(vec![1], 2).expect("one half"))),
+                    Rc::new(Value::RatVector(
+                        RatVec::new(vec![1], 4).expect("one quarter"),
+                    )),
                 ]),
             ],
             span(),
@@ -22876,8 +22924,10 @@ mod tests {
     #[test]
     fn relation_lattice_extended_diagnostics_and_safe_zero_divergence() {
         let identity = Value::Tuple(vec![
-            Value::Matrix(Matrix::from_columns(2, 2, vec![1, 0, 0, 1]).expect("identity")),
-            Value::Vector(Vec32(vec![2, 2])),
+            Rc::new(Value::Matrix(
+                Matrix::from_columns(2, 2, vec![1, 0, 0, 1]).expect("identity"),
+            )),
+            Rc::new(Value::Vector(Vec32(vec![2, 2]))),
         ]);
         let one_replacement =
             Value::Matrix(Matrix::from_columns(2, 1, vec![1, 0]).expect("one replacement column"));
@@ -22913,7 +22963,7 @@ mod tests {
 
         let generators = Value::List(
             (0..65)
-                .map(|_| Value::RatVector(RatVec::new(vec![0], 1).expect("zero generator")))
+                .map(|_| Rc::new(Value::RatVector(RatVec::new(vec![0], 1).expect("zero generator"))))
                 .collect(),
         );
         let error = call(

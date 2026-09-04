@@ -6,6 +6,7 @@
 //! without retaining the removed dynamic evaluator as a second implementation.
 
 use malachite::{Integer as BigInt, Rational as BigRational};
+use std::rc::Rc;
 
 use crate::{
     diagnostic::ErrorKind,
@@ -148,22 +149,22 @@ fn container_fixture_preserves_nested_row_coercions() {
         include_str!("../../../tests/fixtures/eval/containers.atlas"),
         vec![
             Value::Tuple(vec![
-                integer(1),
-                Value::String("a".into()),
-                Value::Boolean(true),
+                Rc::new(integer(1)),
+                Rc::new(Value::String("a".into())),
+                Rc::new(Value::Boolean(true)),
             ]),
-            Value::List(vec![integer(1), integer(2), integer(3)]),
+            Value::List(vec![Rc::new(integer(1)), Rc::new(integer(2)), Rc::new(integer(3))]),
             Value::List(Vec::new()),
-            Value::List(vec![rational(1, 1), rational(1, 2)]),
+            Value::List(vec![Rc::new(rational(1, 1)), Rc::new(rational(1, 2))]),
             Value::List(vec![
-                Value::List(vec![rational(1, 1)]),
-                Value::List(vec![rational(1, 2)]),
+                Rc::new(Value::List(vec![Rc::new(rational(1, 1))])),
+                Rc::new(Value::List(vec![Rc::new(rational(1, 2))])),
             ]),
             Value::List(vec![
-                Value::Tuple(vec![integer(1), rational(2, 1)]),
-                Value::Tuple(vec![integer(3), rational(1, 2)]),
+                Rc::new(Value::Tuple(vec![Rc::new(integer(1)), Rc::new(rational(2, 1))])),
+                Rc::new(Value::Tuple(vec![Rc::new(integer(3)), Rc::new(rational(1, 2))])),
             ]),
-            Value::Tuple(vec![integer(0), integer(1)]),
+            Value::Tuple(vec![Rc::new(integer(0)), Rc::new(integer(1))]),
         ],
     );
 }
@@ -188,10 +189,15 @@ fn slice_fixture_uses_half_open_bounds_and_empty_results() {
     assert_fixture_values(
         include_str!("../../../tests/fixtures/eval/slices.atlas"),
         vec![
-            Value::List(vec![integer(20), integer(30)]),
-            Value::List(vec![integer(10), integer(20)]),
-            Value::List(vec![integer(30), integer(40)]),
-            Value::List(vec![integer(10), integer(20), integer(30), integer(40)]),
+            Value::List(vec![Rc::new(integer(20)), Rc::new(integer(30))]),
+            Value::List(vec![Rc::new(integer(10)), Rc::new(integer(20))]),
+            Value::List(vec![Rc::new(integer(30)), Rc::new(integer(40))]),
+            Value::List(vec![
+                Rc::new(integer(10)),
+                Rc::new(integer(20)),
+                Rc::new(integer(30)),
+                Rc::new(integer(40)),
+            ]),
             Value::List(Vec::new()),
             Value::List(Vec::new()),
             Value::List(Vec::new()),
@@ -207,7 +213,7 @@ fn scalar_overload_fixture_covers_rational_and_symbolic_calls() {
         vec![
             rational(1, 2),
             rational(5, 2),
-            Value::Tuple(vec![integer(5), integer(2)]),
+            Value::Tuple(vec![Rc::new(integer(5)), Rc::new(integer(2))]),
             rational(9, 2),
             rational(1, 2),
             rational(5, 1),
@@ -341,7 +347,7 @@ fn exact_scalar_edges_keep_euclidean_quotients_and_tuple_divmod() {
             integer(2),
             integer(-3),
             integer(-2),
-            Value::Tuple(vec![integer(0), integer(1)]),
+            Value::Tuple(vec![Rc::new(integer(0)), Rc::new(integer(1))]),
         ]
     );
 }
