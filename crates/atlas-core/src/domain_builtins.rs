@@ -1818,6 +1818,271 @@ fn infer_lie_type(
     Ok(LieTypeValue { factors })
 }
 
+/// Lowest set bit of a node bitmask (upstream `RankFlags::firstBit`).
+fn first_bit(set: u64) -> usize {
+    set.trailing_zeros() as usize
+}
+
+/// Bourbaki classification of a Cartan matrix: the semisimple Lie type plus
+/// the permutation `pi` with `cartan[pi[i]][pi[j]]` equal to the standard
+/// Cartan entry `(i,j)` of that type (so `pi[i]` is the input node index of
+/// Bourbaki node `i`).  Literal port of upstream `DynkinDiagram`
+/// (dynkin.cpp:28-52 constructor, 55-90 component formation, 282-289
+/// `perm`); the oracle's output ordering IS this algorithm, so every
+/// tie-break is preserved (`firstBit` = lowest index, in-place
+/// `andnot`/`reset` mutations of the extremity set).  Every upstream
+/// `Cartan_error` maps to the same diagnostic the former `infer_lie_type`
+/// path reported, keeping rejected inputs byte-identical.
+fn dynkin_classify(
+    cartan: &[Vec<i32>],
+    span: SourceSpan,
+) -> Result<(LieTypeValue, Vec<i64>), Diagnostic> {
+    let invalid = || {
+        runtime(
+            span,
+            "Matrices of (co)roots give an unrecognized Cartan matrix",
+        )
+    };
+    let rank = cartan.len();
+    if rank > RANK_MAX {
+        // Upstream throws once classification is done (dynkin.cpp:273-274);
+        // the wrapper reports both paths with the same message.
+        return Err(invalid());
+    }
+    // Constructor (dynkin.cpp:28-52): star adjacency plus directed labelled
+    // down-edges, validating entries exactly as upstream does.
+    let mut star = vec![0_u64; rank];
+    let mut down_edges: Vec<(usize, usize, i32)> = Vec::new();
+    for i in 0..rank {
+        for j in 0..rank {
+            if i == j {
+                if cartan[i][j] != 2 {
+                    return Err(invalid()); // "Diagonal entry unequal to 2"
+                }
+                continue;
+            }
+            let entry = cartan[i][j];
+            if !(-3..=0).contains(&entry) {
+                return Err(invalid()); // "<-3" or "Off-diagonal positive"
+            }
+            if entry != 0 {
+                if cartan[j][i] == 0 {
+                    return Err(invalid()); // "Asymmetric adjacency relation"
+                }
+                star[j] |= 1 << i;
+                if entry < -1 {
+                    down_edges.push((i, j, -entry));
+                }
+            }
+        }
+    }
+    // classify(Cartan) (dynkin.cpp:55-90): node `i` starts a fresh component
+    // when no lower-indexed neighbour exists (the lMask test), otherwise it
+    // joins the first component whose support meets star[i], merging any
+    // later components that also meet it.
+    let mut supports: Vec<u64> = Vec::new();
+    for i in 0..rank {
+        if star[i] & ((1_u64 << i) - 1) == 0 {
+            supports.push(1_u64 << i);
+            continue;
+        }
+        let first = supports
+            .iter()
+            .position(|support| support & star[i] != 0)
+            .expect("a lower neighbour already belongs to some component");
+        supports[first] |= 1 << i;
+        let mut index = first + 1;
+        while index < supports.len() {
+            if supports[index] & star[i] != 0 {
+                supports[first] |= supports[index];
+                supports.remove(index);
+            } else {
+                index += 1;
+            }
+        }
+    }
+    let mut factors = Vec::with_capacity(supports.len());
+    let mut permutation = Vec::with_capacity(rank);
+    for support in supports {
+        let (letter, position) = dynkin_classify_component(cartan, &star, &down_edges, support)
+            .ok_or_else(&invalid)?;
+        factors.push((letter, position.len()));
+        permutation.extend(position.iter().map(|&node| node as i64));
+    }
+    Ok((LieTypeValue { factors }, permutation))
+}
+
+/// Per-component classification (dynkin.cpp:94-220): the type letter and the
+/// `position` list of input nodes in Bourbaki order.  `None` stands for any
+/// upstream `Cartan_error`.
+fn dynkin_classify_component(
+    cartan: &[Vec<i32>],
+    star: &[u64],
+    down_edges: &[(usize, usize, i32)],
+    support: u64,
+) -> Option<(char, Vec<usize>)> {
+    let rank = cartan.len();
+    let comp_rank = support.count_ones() as usize;
+    let mut position: Vec<usize> = Vec::with_capacity(comp_rank);
+    let letter: char;
+    if comp_rank <= 2 {
+        if comp_rank == 1 {
+            letter = 'A';
+            position.push(first_bit(support));
+        } else {
+            let i = first_bit(support);
+            let j = first_bit(support & !(1_u64 << i));
+            position.push(i);
+            position.push(j);
+            let increase = cartan[i][j] == -1;
+            match cartan[i][j] * cartan[j][i] {
+                1 => letter = 'A',
+                // Exceptionally the given order in the diagram decides the
+                // type here (dynkin.cpp:111-112).
+                2 => letter = if increase { 'C' } else { 'B' },
+                3 => {
+                    letter = 'G';
+                    if !increase {
+                        position.swap(0, 1);
+                    }
+                }
+                _ => return None, // "Off-diagonal pair both less than -1"
+            }
+        }
+        return Some((letter, position));
+    }
+    let mut fork = rank; // out-of-bound sentinel, as upstream
+    let mut lower = rank;
+    let mut upper = rank;
+    let mut extremities = 0_u64;
+    let mut nodes = support;
+    while nodes != 0 {
+        let i = first_bit(nodes);
+        nodes &= nodes - 1;
+        let degree = star[i].count_ones();
+        if degree != 2 {
+            if degree < 2 {
+                extremities |= 1 << i;
+            } else if degree == 3 {
+                if fork == rank {
+                    fork = i;
+                } else {
+                    return None; // "Multiple fork nodes in component"
+                }
+            } else {
+                return None; // "Diagram node with degree more than 3"
+            }
+        }
+    }
+    if extremities.count_ones() < 2 {
+        return None; // "Diagram has a loop"
+    }
+    for &(a, b, label) in down_edges {
+        if support & (1 << a) != 0 {
+            if label == 3 {
+                return None; // "Too large type G diagram"
+            }
+            if lower == rank {
+                upper = a;
+                lower = b;
+            } else {
+                return None; // "Multiple labelled edges in component"
+            }
+        }
+    }
+    letter = if upper == rank {
+        // Simply laced component.
+        if fork == rank {
+            'A'
+        } else if (star[fork] & extremities).count_ones() == 1 {
+            'E'
+        } else {
+            'D'
+        }
+    } else if fork == rank {
+        if extremities & (1 << lower) != 0 {
+            'B'
+        } else if extremities & (1 << upper) != 0 {
+            'C'
+        } else {
+            'F'
+        }
+    } else {
+        return None; // "Component with both fork and labelled edge"
+    };
+    let mut start: usize;
+    let mut remain = support;
+    match letter {
+        'A' => start = first_bit(extremities), // choose any end
+        'B' => {
+            extremities &= !(1 << lower);
+            start = first_bit(extremities);
+        }
+        'C' => {
+            extremities &= !(1 << upper);
+            start = first_bit(extremities);
+        }
+        'D' => {
+            if comp_rank == 4 {
+                start = first_bit(extremities); // choose any end
+            } else {
+                extremities &= !star[fork];
+                if extremities.count_ones() > 1 {
+                    return None; // "Fork node without adjacent extremities"
+                }
+                start = first_bit(extremities);
+            }
+        }
+        'E' => {
+            if comp_rank > 8 {
+                return None; // "Too large type E diagram"
+            }
+            let short_arm = extremities & star[fork];
+            extremities &= !short_arm;
+            start = first_bit(extremities); // try a longer arm
+            if star[start] & star[fork] == 0 {
+                // Longest arm; swap for the orthogonal one.
+                extremities &= !(1 << start);
+                start = first_bit(extremities);
+            }
+            if star[start] & star[fork] == 0 {
+                return None; // "Fork node with two too long arms"
+            }
+            position.push(start);
+            remain &= !(1 << start);
+            position.push(first_bit(short_arm));
+            remain &= !short_arm;
+            start = first_bit(star[start] & star[fork]);
+        }
+        'F' => {
+            if comp_rank > 4 {
+                return None; // "Too large type F diagram"
+            }
+            start = first_bit(extremities & !star[lower]);
+        }
+        _ => unreachable!("only types A-F are assigned above"),
+    }
+    // Traverse the remainder of the diagram from |start| (dynkin.cpp:209-218).
+    loop {
+        position.push(start);
+        remain &= !(1 << start);
+        if remain == 0 {
+            break;
+        }
+        let candidates = star[start] & remain;
+        if candidates != 0 {
+            start = first_bit(candidates);
+        } else if letter == 'D' {
+            // Only a short arm remains.
+            start = first_bit(remain);
+        } else {
+            // Upstream assert(false): type E already consumed its short arm.
+            return None;
+        }
+    }
+    Some((letter, position))
+}
+
 /// Cartan matrices are presentation-dependent: Atlas accepts the same root
 /// system after a simultaneous permutation of the simple-root and coroot
 /// indices. Match the invariant matrix up to that relabeling; comparing both
@@ -12756,8 +13021,10 @@ pub(crate) fn call_with_printed(
         "Cartan_matrix_type" => {
             arity(name, arguments, 1, span)?;
             let matrix = as_matrix(&arguments[0], span)?;
-            let lie_type = infer_lie_type(&matrix, matrix.len(), span)?;
-            let permutation: Vec<i64> = (0..matrix.len()).map(|index| index as i64).collect();
+            // dynkin::Lie_type with permutation output (dynkin.cpp:316-343):
+            // the second component is the true Bourbaki relabeling pi with
+            // cm(pi[i],pi[j]) == Cartan_entry_of_type(i,j), not the identity.
+            let (lie_type, permutation) = dynkin_classify(&matrix, span)?;
             Ok(Value::Tuple(vec![
                 Value::Domain(DomainValue::LieType(lie_type)),
                 Value::List(
@@ -18548,6 +18815,239 @@ mod tests {
         .expect_err("rectangular legacy list");
         assert_eq!(error.kind, ErrorKind::Type);
         assert_eq!(error.message, "expected a square mat");
+    }
+
+    fn dynkin_classify_ok(cartan: &[&[i32]]) -> (LieTypeValue, Vec<i64>) {
+        let matrix: Vec<Vec<i32>> = cartan.iter().map(|row| row.to_vec()).collect();
+        dynkin_classify(&matrix, span()).expect("valid Cartan matrix")
+    }
+
+    /// Upstream's debug assertion (dynkin.cpp:335-338): the returned
+    /// permutation reconstructs the standard Cartan matrix of the type.
+    fn assert_reconstructs(cartan: &[&[i32]], pi: &[i64], lie_type: &LieTypeValue) {
+        let expected = block_cartan(lie_type);
+        for (i, &pi_i) in pi.iter().enumerate() {
+            for (j, &pi_j) in pi.iter().enumerate() {
+                assert_eq!(
+                    cartan[pi_i as usize][pi_j as usize],
+                    expected[i][j],
+                    "entry ({i},{j}) via pi={pi:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn cartan_matrix_type_a4_star_matches_pinned_oracle_permutation() {
+        let cartan: &[&[i32]] = &[
+            &[2, -1, -1, 0],
+            &[-1, 2, 0, 0],
+            &[-1, 0, 2, -1],
+            &[0, 0, -1, 2],
+        ];
+        let (lie_type, pi) = dynkin_classify_ok(cartan);
+        assert_eq!(lie_type.render(), "A4");
+        assert_eq!(pi, vec![1, 0, 2, 3]);
+        assert_reconstructs(cartan, &pi, &lie_type);
+        // End-to-end through the builtin: the pinned oracle print.
+        let rows = cartan
+            .iter()
+            .map(|row| {
+                Value::List(
+                    row.iter()
+                        .map(|&entry| Value::Integer(entry.into()))
+                        .collect(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            call("Cartan_matrix_type", &[Value::List(rows)], span())
+                .unwrap()
+                .to_string(),
+            "(Lie type 'A4',[1,0,2,3])"
+        );
+    }
+
+    #[test]
+    fn cartan_matrix_type_permuted_d4_traced_from_upstream() {
+        // D4 drawn with the fork at node 2 and tips 0,1,3 (Bourbaki D4
+        // relabeled by swapping labels 0 and 3; both are fork tips, so the
+        // matrix is invariant but the Bourbaki order is not).  Trace (dynkin.cpp:168-218): extremities {0,1,3}, fork 2,
+        // simply laced with 3 fork-adjacent tips -> 'D'; comp_rank==4 so
+        // start=firstBit(extremities)=0; walk 0 -> 2, then firstBit of the
+        // remaining fork neighbours {1,3} is 1, and the final D-branch takes
+        // the leftover short arm 3: position [0,2,1,3].
+        let cartan: &[&[i32]] = &[
+            &[2, 0, -1, 0],
+            &[0, 2, -1, 0],
+            &[-1, -1, 2, -1],
+            &[0, 0, -1, 2],
+        ];
+        let (lie_type, pi) = dynkin_classify_ok(cartan);
+        assert_eq!(lie_type.render(), "D4");
+        assert_eq!(pi, vec![0, 2, 1, 3]);
+        assert_reconstructs(cartan, &pi, &lie_type);
+    }
+
+    #[test]
+    fn cartan_matrix_type_rank_two_rules_match_upstream() {
+        // dynkin.cpp:107-115: with support i<j, increase = cm(i,j)==-1;
+        // product 2 keeps the position and picks C when increase else B;
+        // product 3 picks G and swaps the position when not increase.
+        let (lie_type, pi) = dynkin_classify_ok(&[&[2, -2], &[-1, 2]]);
+        assert_eq!(lie_type.render(), "B2");
+        assert_eq!(pi, vec![0, 1]);
+        let (lie_type, pi) = dynkin_classify_ok(&[&[2, -1], &[-2, 2]]);
+        assert_eq!(lie_type.render(), "C2");
+        assert_eq!(pi, vec![0, 1]);
+        let (lie_type, pi) = dynkin_classify_ok(&[&[2, -1], &[-3, 2]]);
+        assert_eq!(lie_type.render(), "G2");
+        assert_eq!(pi, vec![0, 1]);
+        let (lie_type, pi) = dynkin_classify_ok(&[&[2, -3], &[-1, 2]]);
+        assert_eq!(lie_type.render(), "G2");
+        assert_eq!(pi, vec![1, 0]);
+    }
+
+    #[test]
+    fn cartan_matrix_type_disconnected_components_concatenate_positions() {
+        // block-diag(A2, A2 with nodes swapped); the swap is invisible in a
+        // simply laced rank-2 block, so the composite map is the identity.
+        let (lie_type, pi) = dynkin_classify_ok(&[
+            &[2, -1, 0, 0],
+            &[-1, 2, 0, 0],
+            &[0, 0, 2, -1],
+            &[0, 0, -1, 2],
+        ]);
+        assert_eq!(lie_type.render(), "A2.A2");
+        assert_eq!(pi, vec![0, 1, 2, 3]);
+        // block-diag(A2, swapped G2): the second block contributes [3,2].
+        let cartan: &[&[i32]] = &[
+            &[2, -1, 0, 0],
+            &[-1, 2, 0, 0],
+            &[0, 0, 2, -3],
+            &[0, 0, -1, 2],
+        ];
+        let (lie_type, pi) = dynkin_classify_ok(cartan);
+        assert_eq!(lie_type.render(), "A2.G2");
+        assert_eq!(pi, vec![0, 1, 3, 2]);
+        assert_reconstructs(cartan, &pi, &lie_type);
+    }
+
+    #[test]
+    fn cartan_matrix_type_reconstructs_standard_cartan_under_permutation() {
+        // Mirrors upstream's debug reconstruction check (dynkin.cpp:335-338)
+        // over relabeled standard matrices m'(i,j) = m(sigma(i),sigma(j)).
+        let cases: &[(&[&[i32]], &[usize], &str)] = &[
+            // A4 star relabeled.
+            (
+                &[
+                    &[2, 0, 0, -1],
+                    &[0, 2, -1, -1],
+                    &[0, -1, 2, 0],
+                    &[-1, -1, 0, 2],
+                ],
+                &[],
+                "A4",
+            ),
+            // Bourbaki D5 with labels 0 and 4 swapped (the probe case):
+            // trace gives start 4 (the unique tip not adjacent to fork 2),
+            // then 1, 2, firstBit{0,3}=0, leftover short arm 3.
+            (
+                &[
+                    &[2, 0, -1, 0, 0],
+                    &[0, 2, -1, 0, -1],
+                    &[-1, -1, 2, -1, 0],
+                    &[0, 0, -1, 2, 0],
+                    &[0, -1, 0, 0, 2],
+                ],
+                &[4, 1, 2, 0, 3],
+                "D5",
+            ),
+            // E6 relabeled by sigma=[5,3,0,4,1,2]: fork lands on node 1.
+            (
+                &[
+                    &[2, 0, 0, -1, 0, 0],
+                    &[0, 2, 0, -1, -1, -1],
+                    &[0, 0, 2, 0, 0, -1],
+                    &[-1, -1, 0, 2, 0, 0],
+                    &[0, -1, 0, 0, 2, 0],
+                    &[0, -1, -1, 0, 0, 2],
+                ],
+                &[0, 4, 3, 1, 5, 2],
+                "E6",
+            ),
+            // Reversed B3 (sigma=[2,1,0]): the double edge keeps it 'B'
+            // (extremities contain lower=0), walked from tip 2.
+            (
+                &[&[2, -1, 0], &[-2, 2, -1], &[0, -1, 2]],
+                &[2, 1, 0],
+                "B3",
+            ),
+            // F4 with ends swapped (sigma=(0 3)): the labelled edge stays
+            // between nodes 1 and 2; neither extremity is lower=2 or
+            // upper=1, so 'F', walked from the tip not adjacent to lower.
+            (
+                &[
+                    &[2, 0, -1, 0],
+                    &[0, 2, -2, -1],
+                    &[-1, -1, 2, 0],
+                    &[0, -1, 0, 2],
+                ],
+                &[3, 1, 2, 0],
+                "F4",
+            ),
+        ];
+        for &(cartan, expected_pi, expected_type) in cases {
+            let (lie_type, pi) = dynkin_classify_ok(cartan);
+            assert_eq!(lie_type.render(), expected_type);
+            if !expected_pi.is_empty() {
+                assert_eq!(
+                    pi,
+                    expected_pi.iter().map(|&node| node as i64).collect::<Vec<_>>()
+                );
+            }
+            assert_reconstructs(cartan, &pi, &lie_type);
+        }
+    }
+
+    #[test]
+    fn cartan_matrix_type_rejects_what_upstream_rejects() {
+        let invalid = "Matrices of (co)roots give an unrecognized Cartan matrix";
+        // Node of degree 4 (the old probe d5): "Diagram node with degree
+        // more than 3" upstream.
+        let degree_four: Vec<Vec<i32>> = [
+            [2, 0, -1, 0, 0],
+            [0, 2, -1, 0, 0],
+            [-1, -1, 2, -1, -1],
+            [0, 0, -1, 2, 0],
+            [0, 0, -1, 0, 2],
+        ]
+        .iter()
+        .map(|row| row.to_vec())
+        .collect();
+        assert_eq!(
+            dynkin_classify(&degree_four, span())
+                .unwrap_err()
+                .message,
+            invalid
+        );
+        // Asymmetric adjacency: cm(0,1) != 0 with cm(1,0) == 0.
+        assert_eq!(
+            dynkin_classify(&[vec![2, -1], vec![0, 2]], span())
+                .unwrap_err()
+                .message,
+            invalid
+        );
+        // A loop: A3 with the ends joined.
+        assert_eq!(
+            dynkin_classify(
+                &[vec![2, -1, -1], vec![-1, 2, -1], vec![-1, -1, 2]],
+                span()
+            )
+            .unwrap_err()
+            .message,
+            invalid
+        );
     }
 
     #[test]
