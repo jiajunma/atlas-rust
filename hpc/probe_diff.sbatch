@@ -38,9 +38,12 @@ rust_status=$?
 cpp_status=$?
 stat_line "rust" "$rust_status" "$submit_dir/$tag.rust.time"
 stat_line "oracle" "$cpp_status" "$submit_dir/$tag.cpp.time"
-if diff <(sort "$submit_dir/$tag.cpp.out") <(sort "$submit_dir/$tag.rust.out") > /dev/null 2>&1; then
+# A printed polynomial's last term carries no trailing comma, so a
+# term-order difference shifts a comma between otherwise identical
+# lines; strip line-final commas before the sorted comparison.
+if diff <(sed 's/,$//' "$submit_dir/$tag.cpp.out" | sort) <(sed 's/,$//' "$submit_dir/$tag.rust.out" | sort) > /dev/null 2>&1; then
   echo "PROBE_DIFF $tag: SORTED_MATCH ($(wc -l < "$submit_dir/$tag.rust.out") lines)"
 else
-  echo "PROBE_DIFF $tag: SORTED_DIFF diff_lines=$(diff <(sort "$submit_dir/$tag.cpp.out") <(sort "$submit_dir/$tag.rust.out") | grep -c '^[<>]')"
+  echo "PROBE_DIFF $tag: SORTED_DIFF diff_lines=$(diff <(sed 's/,$//' "$submit_dir/$tag.cpp.out" | sort) <(sed 's/,$//' "$submit_dir/$tag.rust.out" | sort) | grep -c '^[<>]')"
 fi
 echo "PROBE_DONE $tag"
