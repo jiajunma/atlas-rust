@@ -746,3 +746,17 @@ RootSystem, BTreeSet->sorted-Vec in block build.
   Option B = port Cartan_orbit/add_cross onto it inside
   orbit_cross_closure, keeping phase-one class order/representatives and
   discovery-order edge enumeration for byte-identical output.
+
+## agent-builtinargs (merged here; 14b7e77)
+
+- Builtin::run takes Vec<SharedValue>; ~150 scalar-op arms + relation/
+  printer families borrow through &[SharedValue] (helpers return refs);
+  domain table materializes via own_all (unchanged cost); consuming scalar
+  arms own explicitly. domain_builtins.rs untouched.
+- Gates: quick_check 3680723 green; probes 3680725-729 SORTED_MATCH.
+- AB 3680730 gkfast_e6 vs 723585b: base 0.97/0.96/0.98 -> tip
+  0.90/0.93/0.90, median 0.97s -> 0.90s = **1.078x**.
+- E7 interpreted (3680731/732): gkfast_e7 17.72 -> 16.79s, av_ann_e7
+  19.53 -> 18.38s (oracle 14.05/14.24; gaps 1.20x / 1.29x).
+- Session totals: gkfast_e6 2.63 -> 0.90s = **2.92x** (oracle 0.59s; gap
+  1.53x, was 4.4x).
