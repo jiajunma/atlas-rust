@@ -398,7 +398,18 @@ fn simple_basis(
 /// simple root itself maps out) and toggle the simple root's membership.
 fn pos_to_neg(system: &RootSystem, word: &[usize]) -> Result<Vec<RootId>, StructureError> {
     let datum = system.datum();
-    let mut current: BTreeSet<RootId> = system
+    // The working set is a sorted `Vec` rather than a `BTreeSet`.
+    // `entries` enumerates in increasing `RootId` order, so the initial
+    // positive-root list is sorted; each letter's `next` is re-sorted
+    // below.  The BTreeSet's dedup can never fire here: reflection by a
+    // simple root is a bijection on roots that maps the positive roots
+    // other than the simple root onto the positive roots other than the
+    // simple root, so distinct inputs give distinct images, and the
+    // conditionally re-added simple root is never among them (an image
+    // equal to `simple` would require the input `-simple`, which is not
+    // positive).  Hence the sorted Vec holds exactly the BTreeSet's
+    // contents, in the same ascending order the old `into_iter` produced.
+    let mut current: Vec<RootId> = system
         .entries()
         .filter(|(id, _, _)| system.is_positive(*id) == Some(true))
         .map(|(id, _, _)| id)
@@ -413,7 +424,7 @@ fn pos_to_neg(system: &RootSystem, word: &[usize]) -> Result<Vec<RootId>, Struct
                     index: s,
                     upper_bound: datum.semisimple_rank(),
                 })?;
-        let mut next = BTreeSet::new();
+        let mut next: Vec<RootId> = Vec::with_capacity(current.len());
         for &beta in &current {
             if beta == simple {
                 continue; // maps to its negative, out of the positive set
@@ -425,7 +436,7 @@ fn pos_to_neg(system: &RootSystem, word: &[usize]) -> Result<Vec<RootId>, Struct
                     upper_bound: system.roots().len(),
                 })?,
             )?;
-            next.insert(system.id_of(&image).ok_or(
+            next.push(system.id_of(&image).ok_or(
                 StructureError::RootSystemInvariantViolation {
                     invariant: "reflected root is a root",
                 },
@@ -433,12 +444,13 @@ fn pos_to_neg(system: &RootSystem, word: &[usize]) -> Result<Vec<RootId>, Struct
         }
         // the upstream `tmp.flip(s)`: add the simple root unless it was
         // just removed by the reflection
-        if !current.contains(&simple) {
-            next.insert(simple);
+        if current.binary_search(&simple).is_err() {
+            next.push(simple);
         }
+        next.sort_unstable();
         current = next;
     }
-    Ok(current.into_iter().collect())
+    Ok(current)
 }
 
 /// `root_sum` (rootdata.cpp:1647): the sum of the given root vectors.
