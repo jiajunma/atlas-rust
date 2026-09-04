@@ -4,6 +4,37 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Current frontier - 2026-09-05c (avopt: rrcnt/rcunion/rootkey LANDED; E7 at oracle parity)
+
+- Merged and pushed (codex tip cf2df18): agent-rrcnt (container elements
+  Rc, E6 1.122x), agent-rcunion (Union payload Rc, speed-neutral but the
+  last deep-copy seam; RSS -6%), agent-rootkey (id_of_slice u64 packed
+  coordinate keys, E6 1.025x).
+- Standing numbers: gkfast_e6 0.79s (oracle 0.59s, gap 1.34x; session
+  start 2.63s = 3.3x total); gkfast_e7 14.2-14.4s vs oracle ~14.0s
+  (PARITY); av_ann_e7 15.7s vs 14.2s (1.10x); deform_e7 11.1s vs 11.0s
+  (parity); heavy unitarity E7 rust 47.8s vs oracle >50min (60x+ faster).
+- KEY DIAGNOSIS (probe_setup_e6, 3680795/3680819): the whole remaining E6
+  gap is FIXED SETUP (script parse/interpret + inner-class build): rust
+  0.63-0.65s vs oracle 0.40s. The GKfast query leg itself is at parity
+  (0.17s vs 0.19s). Setup profile 3680820: orbit_cross_closure 21%,
+  memmove 14% (mostly parser), coercions/typecheck ~3%, parser+lexer ~3%.
+- av_ann_e7 profile 3680833 (the largest big-group gap, 1.10x): KL fill
+  dominates — fill_kl_column 15.1%, KlPol::sub_shifted_assign 6.8%,
+  match_pol+MixingHasher 5.9%, allocator ~7%. Next slice agent-klpol
+  (KlPol on SmallVec<[i32;8]>) targets exactly that.
+- Shelved (recorded, do not retry lightly): orbit membership pool-offset
+  redesign pays off ONLY combined with WeylElt-keyed BFS dedup (Variant B =
+  transducer+membership in one change; explore agent-24: ClassMembership is
+  queried O(classes) times per build, never per KGB element).
+- quick_check.sbatch now propagates test failure to the SLURM exit code
+  (previously the gate chain ran on test-broken code: job 3680800).
+  Always still READ atlas-check-*.out: TEST_DONE status= must be 0.
+- HPC channel: ~/atlas-rust-avopt; gate_chain.sh <branch> <bundle>
+  <AB-base> <ab-probe>; only ONE chain at a time (shared checkout).
+- Fat queue still blocked: 3680165 (unitary A/B), 3680270 (8h heavy
+  unitary oracle reference) pending.
+
 ## Current frontier - 2026-09-05b (avopt: E6 stack LANDED 2.55x; E7 AV interpreted WORKS)
 
 - Merged and pushed (codex tip 83d264d): agent-ratfast + agent-fastdiv +
