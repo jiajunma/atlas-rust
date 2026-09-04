@@ -10,6 +10,11 @@
 //! generic malachite operators — so the fast path yields the SAME normalized
 //! value, and any overflow (or a reduced result beyond the i64 window)
 //! yields `None`, sending the caller back to the generic path.
+//!
+//! On x86_64 every u128 `/` or `%` is a software libcall while u64 division
+//! is a single hardware instruction, and the denominators in these workloads
+//! almost always fit a u64 — so the gcd and reduction helpers take a u64
+//! fast path whenever both operands fit, falling back to u128 otherwise.
 
 use std::cmp::Ordering;
 
@@ -31,7 +36,18 @@ pub(crate) fn small_parts(value: &BigRational) -> Option<(i64, i64)> {
     Some((numerator, i64::try_from(value.denominator_ref()).ok()?))
 }
 
+fn gcd_u64(mut a: u64, mut b: u64) -> u64 {
+    while b != 0 {
+        (a, b) = (b, a % b);
+    }
+    a
+}
+
 fn gcd_u128(mut a: u128, mut b: u128) -> u128 {
+    // Hardware u64 division avoids the 128-bit division libcall.
+    if a <= u128::from(u64::MAX) && b <= u128::from(u64::MAX) {
+        return u128::from(gcd_u64(a as u64, b as u64));
+    }
     while b != 0 {
         (a, b) = (b, a % b);
     }
@@ -50,6 +66,15 @@ fn from_i128_parts(num: i128, den: i128) -> Option<BigRational> {
         (num, den)
     };
     // den > 0 here, so the casts are lossless; the gcd divides num.
+    if den <= i128::from(u64::MAX) && num.unsigned_abs() <= u128::from(u64::MAX) {
+        // Hardware u64 division avoids the 128-bit division libcall; the
+        // guard above makes every cast lossless.
+        let divisor = gcd_u64(num.unsigned_abs() as u64, den as u64);
+        let magnitude = i128::from(num.unsigned_abs() as u64 / divisor);
+        let num = i64::try_from(if num < 0 { -magnitude } else { magnitude }).ok()?;
+        let den = i64::try_from(i128::from(den as u64 / divisor)).ok()?;
+        return Some(BigRational::from_signeds(num, den));
+    }
     let divisor = gcd_u128(num.unsigned_abs(), den as u128) as i128;
     let num = i64::try_from(num / divisor).ok()?;
     let den = i64::try_from(den / divisor).ok()?;
@@ -185,9 +210,23 @@ impl FastSum {
         } else {
             (num, den)
         };
-        let divisor = gcd_u128(self.den as u128, den as u128) as i128;
-        let left = self.den / divisor;
-        let right = den / divisor;
+        let (left, right) = if self.den >= 0
+            && den >= 0
+            && self.den <= i128::from(u64::MAX)
+            && den <= i128::from(u64::MAX)
+        {
+            // Hardware u64 division avoids the 128-bit division libcall; the
+            // guard makes the casts lossless and gcd_u64 of two positive
+            // denominators is nonzero.
+            let divisor = gcd_u64(self.den as u64, den as u64);
+            (
+                i128::from(self.den as u64 / divisor),
+                i128::from(den as u64 / divisor),
+            )
+        } else {
+            let divisor = gcd_u128(self.den as u128, den as u128) as i128;
+            (self.den / divisor, den / divisor)
+        };
         let num = self
             .num
             .checked_mul(right)?
@@ -293,5 +332,41 @@ mod tests {
         }
         assert_eq!(sum.finish().as_ref(), Some(&generic));
         assert_eq!(FastSum::zero().finish().as_ref(), Some(&BigRational::from(0u32)));
+    }
+
+    #[test]
+    fn fast_sum_beyond_u64_denominators_falls_back() {
+        // Coprime denominators just below i64::MAX: after the second term
+        // the running denominator p1*p2 exceeds u64::MAX, forcing the u128
+        // fallback paths while the final sum reduces back into the i64
+        // window: 1/p1 + 1/p2 - 1/p1 + 2/p2 = 3/p2 (3 does not divide p2).
+        let p1 = i64::MAX; // 2^63 - 1
+        let p2 = 9223372036854775783; // 2^63 - 25
+        let terms: &[(i64, i64)] = &[(1, p1), (1, p2), (-1, p1), (2, p2)];
+        let mut sum = FastSum::zero();
+        let mut generic = BigRational::from(0u32);
+        for &(num, den) in terms {
+            sum.add_term(i128::from(num), i128::from(den)).unwrap();
+            generic += rational(num, den);
+        }
+        assert_eq!(sum.finish().as_ref(), Some(&generic));
+        assert_eq!(sum.finish().as_ref(), Some(&rational(3, p2)));
+    }
+
+    #[test]
+    fn wide_products_reduce_back_into_the_i64_window() {
+        // The denominator product p1*p2 exceeds u64::MAX, so from_i128_parts
+        // takes its u128 fallback, yet cancellation brings the reduced
+        // result 6/p2 back into the i64 window.
+        let p1 = i64::MAX; // 2^63 - 1
+        let p2 = 9223372036854775783; // 2^63 - 25
+        let a = rational(6, p1);
+        let b = rational(p1, p2);
+        assert_eq!(mul(&a, &b).as_ref(), Some(&(&a * &b)));
+        assert_eq!(mul(&a, &b).as_ref(), Some(&rational(6, p2)));
+        // Same wide reduction reached through div: (6/p1) / (p2/p1).
+        let c = rational(p2, p1);
+        assert_eq!(div(&a, &c).as_ref(), Some(&(&a / &c)));
+        assert_eq!(div(&a, &c).as_ref(), Some(&rational(6, p2)));
     }
 }
