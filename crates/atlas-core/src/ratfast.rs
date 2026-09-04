@@ -20,11 +20,13 @@ use malachite::{Integer as BigInt, Rational as BigRational};
 /// positive and the fraction is in lowest terms. The sign is stored
 /// separately from the (non-negative) numerator — reattach it here.
 pub(crate) fn small_parts(value: &BigRational) -> Option<(i64, i64)> {
-    let magnitude = i64::try_from(value.numerator_ref()).ok()?;
+    // u64, not i64: the magnitude of i64::MIN is 2^63, which overflows i64
+    // but must still take the fast path (negated, it fits again).
+    let magnitude = u64::try_from(value.numerator_ref()).ok()?;
     let numerator = if value < &BigRational::from(0) {
-        magnitude.checked_neg()?
+        i64::try_from(-i128::from(magnitude)).ok()?
     } else {
-        magnitude
+        i64::try_from(magnitude).ok()?
     };
     Some((numerator, i64::try_from(value.denominator_ref()).ok()?))
 }
