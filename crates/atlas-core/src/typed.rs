@@ -8147,7 +8147,7 @@ fn run_scalar(
                     matreduc::LinearSolution::Empty => Value::Union {
                         tag: 0,
                         injector_name: "empty_set".into(),
-                        value: Box::new(Value::Tuple(Vec::new())),
+                        value: Rc::new(Value::Tuple(Vec::new())),
                     },
                     matreduc::LinearSolution::Affine {
                         solution,
@@ -8156,7 +8156,7 @@ fn run_scalar(
                     } => Value::Union {
                         tag: 1,
                         injector_name: "affine_subspace".into(),
-                        value: Box::new(Value::Tuple(vec![
+                        value: Rc::new(Value::Tuple(vec![
                             Rc::new(Value::Vector(Vec32(solution))),
                             Rc::new(Value::Integer(factor)),
                             Rc::new(Value::Matrix(kernel.to_matrix())),
@@ -12860,7 +12860,7 @@ impl TypedExpr {
                 Ok(at_level(level, move || Value::Union {
                     tag: *tag,
                     injector_name: injector_name.clone(),
-                    value: Box::new(unwrap_shared(value)),
+                    value,
                 }))
             }
             Self::TupleProject { index, inner } => {
@@ -12891,7 +12891,7 @@ impl TypedExpr {
                         continue;
                     }
                     let mut slots = Vec::new();
-                    distribute(Rc::new(value.as_ref().clone()), shape, &mut slots);
+                    distribute(Rc::clone(value), shape, &mut slots);
                     // A branch binding no slot claims no frame, exactly as
                     // analysis counted no layer for it (empty-layer rule).
                     return if slots.is_empty() {
@@ -12972,7 +12972,7 @@ impl TypedExpr {
                         function.as_ref()
                     )
                 };
-                apply_closure(closure, Rc::new(value.as_ref().clone()), context, level)
+                apply_closure(closure, Rc::clone(value), context, level)
             }
             Self::CountedFor {
                 name,
@@ -13624,7 +13624,7 @@ fn value_string(context: &EvaluationContext, value: &Value) -> String {
             injector_name,
             value: payload,
             ..
-        } => format!("{}.{}", value_string(context, payload), injector_name),
+        } => format!("{}.{}", value_string(context, payload.as_ref()), injector_name),
         // DomainValue leaves are domain handles (real forms, params, …);
         // they never contain closures, so plain Display suffices.
         Value::Domain(_) => value.to_string(),

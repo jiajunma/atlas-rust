@@ -37,11 +37,13 @@ pub enum Value {
     /// An Atlas `ratvec`: normalised numerators over one denominator.
     RatVector(RatVec),
     /// A union value: the injected component with its variant tag and the
-    /// injector's name (printed as `value.injectorname`).
+    /// injector's name (printed as `value.injectorname`). The payload is a
+    /// shared handle, so case-branch binding is an `Rc` bump instead of a
+    /// deep clone (payloads are immutable; no mutation path touches `Union`).
     Union {
         tag: u16,
         injector_name: String,
-        value: Box<Value>,
+        value: Rc<Value>,
     },
     Domain(DomainValue),
     /// A non-recursive closure: the shared typed body plus the captured
@@ -246,7 +248,7 @@ mod tests {
             Value::Union {
                 tag: 1,
                 injector_name: "solution".into(),
-                value: Box::new(Value::Vector(Vec32(vec![5]))),
+                value: Rc::new(Value::Vector(Vec32(vec![5]))),
             }
             .to_string(),
             "[ 5 ].solution"

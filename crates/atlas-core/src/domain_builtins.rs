@@ -15637,14 +15637,14 @@ pub(crate) fn call_with_printed(
                 return Ok(Value::Union {
                     tag: 1,
                     injector_name: "done".into(),
-                    value: Box::new(make_polynomial(terms)),
+                    value: Rc::new(make_polynomial(terms)),
                 });
             }
             if timer <= 0 {
                 return Ok(Value::Union {
                     tag: 0,
                     injector_name: "timed_out".into(),
-                    value: Box::new(Value::Tuple(Vec::new())),
+                    value: Rc::new(Value::Tuple(Vec::new())),
                 });
             }
             let deadline = Instant::now().checked_add(Duration::from_millis(timer as u64));
@@ -15652,14 +15652,14 @@ pub(crate) fn call_with_printed(
                 return Ok(Value::Union {
                     tag: 0,
                     injector_name: "timed_out".into(),
-                    value: Box::new(Value::Tuple(Vec::new())),
+                    value: Rc::new(Value::Tuple(Vec::new())),
                 });
             };
             if deadline_expired(deadline) {
                 return Ok(Value::Union {
                     tag: 0,
                     injector_name: "timed_out".into(),
-                    value: Box::new(Value::Tuple(Vec::new())),
+                    value: Rc::new(Value::Tuple(Vec::new())),
                 });
             }
             store_deformation(
@@ -15671,7 +15671,7 @@ pub(crate) fn call_with_printed(
             Ok(Value::Union {
                 tag: 1,
                 injector_name: "done".into(),
-                value: Box::new(make_polynomial(terms)),
+                value: Rc::new(make_polynomial(terms)),
             })
         }
         // partial_KL_block (atlas-types.w:6998-7051, repr.cpp:2060-2075):
@@ -17675,7 +17675,7 @@ pub(crate) fn call_with_printed(
                 return Ok(Value::Union {
                     tag: 1,
                     injector_name: "done".into(),
-                    value: Box::new(make_polynomial(terms)),
+                    value: Rc::new(make_polynomial(terms)),
                 });
             }
             let timer = timer.expect("the unary case returned above");
@@ -17683,14 +17683,14 @@ pub(crate) fn call_with_printed(
                 return Ok(Value::Union {
                     tag: 0,
                     injector_name: "timed_out".into(),
-                    value: Box::new(Value::Tuple(Vec::new())),
+                    value: Rc::new(Value::Tuple(Vec::new())),
                 });
             }
             let Some(terms) = compute_twisted_full_deform(parameter, span, Some(timer))? else {
                 return Ok(Value::Union {
                     tag: 0,
                     injector_name: "timed_out".into(),
-                    value: Box::new(Value::Tuple(Vec::new())),
+                    value: Rc::new(Value::Tuple(Vec::new())),
                 });
             };
             store_deformation(
@@ -17702,7 +17702,7 @@ pub(crate) fn call_with_printed(
             Ok(Value::Union {
                 tag: 1,
                 injector_name: "done".into(),
-                value: Box::new(make_polynomial(terms)),
+                value: Rc::new(make_polynomial(terms)),
             })
         }
         // block_deform_wrapper (atlas-types.w:8178-8204): deform the
