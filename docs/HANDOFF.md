@@ -8410,3 +8410,23 @@ speed; large-scale wins beat small-scale regressions.
 All others harvested: 3679415 AB klcache (parity), 3679416 assoc A2 first
 attempt (false pass, missing probe file), 3679427 assoc A2 MATCH,
 3679388/3679419 perf profiles (see BENCHMARKS.md 2026-09-04 entry).
+
+## Perf finding 2026-09-05a (avopt: E6 interpreted-AV profile @77313d4, jobs 3680277/78)
+
+probe_gkfast_e6 / probe_av_ann_e6 frame-pointer profiles: **malachite
+bignum ≈ 20%+ of runtime** (Rational::mul 4.2+3.6%, add_assign 3.6%,
+Natural::mul_assign 2.4-3.1%, Integer::add 2.1-2.6%, gcd 1.8-2.1%,
+Rational::cmp 1.65%) + malloc cluster ~15% (mostly limb churn). Rust-side
+hotspots: domain_builtins::squared_length 2.4-3.4%, RootTable::build
+2.1-2.2% (root_query/length_query REBUILD the whole RootTable per call —
+the AV scripts pay O(npos x rank^2) rational arithmetic repeatedly),
+inner_class::orbit_cross_closure 3.1-5.2% (pure u8 permutation BFS, no
+rationals — inherent). Interpreter overhead modest: TypedExpr::evaluate
+2.4%, Value::clone 2.6%. **E6 is NOT startup-bound; it is rational-
+arithmetic-bound.** Lever: i64/i128 fast paths with malachite fallback
+(precedent 460370e) — agent-ratfast implements (ratfast.rs helpers,
+squared_length/simple_lengths/length_flags, typed.rs Rat* op families).
+Post-fasthash deform-E7 profile 3680276: fill_kl_column 15.1,
+with_kl_table 10.9, sub_shifted_assign 7.6, kl_pol_at_row 4.5,
+match_pol 3.3 (MixingHasher worked), alloc cluster ~9% (was ~20%),
+id_of_slice gone from top-40 (lazy root map worked).
