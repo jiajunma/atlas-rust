@@ -222,11 +222,44 @@ pub struct RootSystem {
     /// `None` marks systems (oversized, or an abandoned build) that keep
     /// computing sums per call. Pure cache: equality ignores it.
     root_sums: OnceLock<Option<Box<[u16]>>>,
-    /// Lazy coordinate→id map for `id_of_slice`, built once on first use
+    /// Lazy coordinate→id index for `id_of_slice`, built once on first use
     /// from `roots`. Unlike `root_sums` it scales linearly with the root
     /// count, so it serves every size (E8 has 240 roots) and carries no
     /// cap. Pure cache: equality ignores it.
-    root_index: OnceLock<HashMap<Box<[i32]>, RootId, RootCoordinateHasherBuilder>>,
+    root_index: OnceLock<RootIndex>,
+}
+
+/// Coordinate→id lookup behind `id_of_slice`. Rank <= 8 systems pack every
+/// query's simple coordinates into one `u64` (8-bit lanes, offset +128), so
+/// the hot block-construction probes hash and compare a single integer
+/// instead of a boxed slice; larger ranks keep the boxed-slice map.
+#[derive(Clone, Debug)]
+struct RootIndex {
+    /// Simple-coordinate length of every stored root; the packed map is
+    /// keyed on exactly this many lanes, so queries of any other length
+    /// must miss it (they go to `full`) — a shorter query would alias a
+    /// longer key whose extra lanes are the -128 bias zero byte.
+    rank: usize,
+    /// `None` when rank > 8 (or, defensively, when some root coordinate
+    /// escaped the packable range): all lookups then go to `full`.
+    packed: Option<HashMap<u64, RootId, RootCoordinateHasherBuilder>>,
+    full: HashMap<Box<[i32]>, RootId, RootCoordinateHasherBuilder>,
+}
+
+/// Pack simple-basis coordinates into 8-bit lanes biased by +128. `None`
+/// when the length exceeds 8 lanes or a coordinate leaves [-128, 127] (a
+/// query that out-of-range is never a root: every enumerated root packs).
+fn pack_root_key(root: &[i32]) -> Option<u64> {
+    if root.len() > 8 {
+        return None;
+    }
+    let mut key = 0_u64;
+    for (shift, &coordinate) in root.iter().enumerate() {
+        let biased = coordinate.checked_add(128)?;
+        let lane = u8::try_from(biased).ok()?;
+        key |= u64::from(lane) << (8 * shift);
+    }
+    Some(key)
 }
 
 impl PartialEq for RootSystem {
@@ -680,24 +713,47 @@ impl RootSystem {
     /// (`pos_to_neg`, `block_below`, `cross`) made the binary search a
     /// top profile entry (job 3680172).
     pub(crate) fn id_of_slice(&self, root: &[i32]) -> Option<RootId> {
-        self.root_index
-            .get_or_init(|| self.build_root_index())
-            .get(root)
-            .copied()
+        let index = self.root_index.get_or_init(|| self.build_root_index());
+        if let Some(packed) = &index.packed {
+            if root.len() == index.rank {
+                return pack_root_key(root).and_then(|key| packed.get(&key).copied());
+            }
+        }
+        index.full.get(root).copied()
     }
 
-    /// Build the coordinate→id map from `roots`. The binary searches in
+    /// Build the coordinate→id index from `roots`. The binary searches in
     /// the constructor (simple-root membership, negation closure) remain
     /// the source of truth for the ordering this map records.
-    fn build_root_index(&self) -> HashMap<Box<[i32]>, RootId, RootCoordinateHasherBuilder> {
-        let mut map = HashMap::with_capacity_and_hasher(
+    fn build_root_index(&self) -> RootIndex {
+        let rank = self.roots.first().map_or(0, |root| root.as_slice().len());
+        let mut full = HashMap::with_capacity_and_hasher(
             self.roots.len(),
             RootCoordinateHasherBuilder::default(),
         );
         for (index, root) in self.roots.iter().enumerate() {
-            map.insert(root.as_slice().into(), RootId(index));
+            full.insert(root.as_slice().into(), RootId(index));
         }
-        map
+        let packed = if rank <= 8
+            && self
+                .roots
+                .iter()
+                .all(|root| pack_root_key(root.as_slice()).is_some())
+        {
+            let mut map = HashMap::with_capacity_and_hasher(
+                self.roots.len(),
+                RootCoordinateHasherBuilder::default(),
+            );
+            for (index, root) in self.roots.iter().enumerate() {
+                let key = pack_root_key(root.as_slice())
+                    .expect("packability established above");
+                map.insert(key, RootId(index));
+            }
+            Some(map)
+        } else {
+            None
+        };
+        RootIndex { rank, packed, full }
     }
 
     /// The negation table: `negatives()[r]` is the id of `-r`.
@@ -1311,6 +1367,26 @@ mod tests {
         let roots = RootSystem::enumerate(&a2(), 6).unwrap();
         assert_eq!(roots.positive_root_ids(), &[RootId(3), RootId(4), RootId(5)]);
         assert_eq!(roots.positive_root_heights(), &[1, 1, 2]);
+    }
+
+    #[test]
+    fn packed_root_key_index_matches_full_lookup() {
+        let roots = RootSystem::enumerate(&a2(), 6).unwrap();
+        let index = roots.build_root_index();
+        assert!(index.packed.is_some());
+        for (id, root, _) in roots.entries() {
+            assert_eq!(roots.id_of_slice(root.as_slice()), Some(id));
+        }
+        // Non-roots, wrong lengths, and out-of-range coordinates all miss.
+        assert_eq!(roots.id_of_slice(&[2, 2]), None);
+        assert_eq!(roots.id_of_slice(&[1]), None);
+        assert_eq!(roots.id_of_slice(&[1, 0, 0]), None);
+        assert_eq!(roots.id_of_slice(&[200, 0]), None);
+        assert_eq!(roots.id_of_slice(&[-200, 0]), None);
+        // [-128, -128] packs to the same u64 as [-128] would; the rank
+        // guard keeps the packed map exact for rank-length queries only.
+        assert_eq!(roots.id_of_slice(&[-128]), None);
+        assert_eq!(roots.id_of_slice(&[-128, -128]), None);
     }
 
     #[test]
