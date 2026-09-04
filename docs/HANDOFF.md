@@ -4,6 +4,51 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Current frontier - 2026-09-04c (avopt lane: unitarity/associated-variety speed)
+
+New goal from the user: continuously optimize unitarity and associated-variety
+computation speed, correctness first, ALL compile+test on HPC (no local cargo).
+
+Lane setup (Linux host /home/hoxide/mycodes, not the macOS paths above):
+- Local worktree `/home/hoxide/mycodes/atlas-rust-avopt`, branch
+  `agent-avopt` (base 0835205). HPC lane `/public/home/majj/atlas-rust-avopt`
+  (clone from git bundle; the shared `/public/home/majj/atlas-rust` checkout is
+  DIRTY with someone else's WIP + a preserved stash — never rsync over it).
+- Sync mechanism: `git bundle create /tmp/x.bundle agent-avopt ^<base>`,
+  scp to `/public/home/majj/`, then on HPC
+  `git fetch <bundle> refs/heads/agent-avopt:refs/remotes/incoming/agent-avopt
+  && git merge --ff-only refs/remotes/incoming/agent-avopt`
+  (plain fetch into the checked-out branch is REFUSED — cost one cancelled
+  9-job submission; use the incoming-ref form).
+
+Baselines @0835205 (probe-diff 3679584-87, all SORTED_MATCH):
+- probe_associated_variety_a2: rust 0.80s/56MB vs oracle 0.23s/14MB (startup-bound)
+- probe_unitary_e6: rust 0.66s vs oracle 0.18s
+- probe_deform_e7_only: rust 18.80s/394MB vs oracle 10.01s/204MB (1.88x slower)
+- probe_unitary_e7 (x=0, light): rust 0.60s vs oracle 0.28s
+
+In flight @85acd90 ("perf: cache root pair sums and streamline additive
+closure" — lazy n×n u16 root-sum table on RootSystem (n≤2048, O(1)
+combine_roots incl. subtract via negatives table), negatives-table
+negate_root, work-queue additive_closure; quick_check 3679927 PASS 573
+real-group tests): build 3679956; gates 3679957-59; interleaved A/B vs
+0835205: 3679960 (probe_deform_e7_only, cpu), 3679961
+(probe_unitary_e7_heavy, fat 8h). AV oracle-freeze probes
+3679972-3679980 (gkfast/av_ann × a3/b3/g2/d4 + av_ann_b2_nonintegral).
+
+Associated-variety port plan (designed this session, not started):
+Step 1 freeze oracle fixtures (the 9 probes above); Step 2 native Weyl
+character tables (`crates/atlas-real-group/src/weyl_character.rs`);
+Step 3 native special-character/GKfast boundary as `GKfast_native` (a script
+`set` SHADOWS a same-signature builtin, typed.rs:592-680 — native names must
+differ); Step 4 `av_ann_native`; Step 5 KNilpotentData port; Step 6 the
+recorded optimization candidates. AV script core: interpreted all-cells
+`graph_action` construction + class-rep trace chains are the hotspots a
+native boundary eliminates first; W_cells/KL core is already native.
+
+Stale: E7 block_deform confirmation 3679371 DIED of time limit
+(cancelled 17:15:41) — needs resubmission if that slice is revisited.
+
 ## Memory policy audit - 2026-09-03
 
 The live XMU configuration is now confirmed, rather than inferred from the
