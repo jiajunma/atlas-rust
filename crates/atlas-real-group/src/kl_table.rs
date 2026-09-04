@@ -554,7 +554,6 @@ impl<B: BlockTopology> KlTableHandle<B> {
                 .map(|&z| MuPair { x: z, coef: 1 })
                 .collect()
         };
-        let downs_len = mu_pairs.len();
 
         // Reverse loop through primitive elements.
         let mut x = self.support.length_less(l_y);
@@ -654,15 +653,17 @@ impl<B: BlockTopology> KlTableHandle<B> {
         }
         self.columns[y] = column;
 
-        // Shuffle mu_pairs: initial part (downs) is increasing, remainder
-        // decreasing; make everything increasing by x.
-        let mut final_pairs: Vec<MuPair> = mu_pairs[downs_len..].to_vec();
-        final_pairs.reverse();
-        let mut downs = mu_pairs[..downs_len].to_vec();
-        downs.extend(final_pairs);
-        downs.sort_by_key(|pair| pair.x);
-        downs.dedup_by_key(|pair| pair.x);
-        self.mu_columns[y] = downs;
+        // Make everything increasing by x (kl.cpp:778-785 shuffles the
+        // decreasing recursion tail before merging). The down-set prefix
+        // is increasing with distinct keys and the recursion pushes are
+        // decreasing with distinct keys, so equal keys occur only as
+        // (down-set, recursion) pairs in that relative order; a stable
+        // sort therefore keeps the μ=1 down-set entry ahead of any
+        // recursion duplicate, and dedup keeps it — exactly the result of
+        // the old reverse-and-merge, without copying either part.
+        mu_pairs.sort_by_key(|pair| pair.x);
+        mu_pairs.dedup_by_key(|pair| pair.x);
+        self.mu_columns[y] = mu_pairs;
         Ok(())
     }
 
