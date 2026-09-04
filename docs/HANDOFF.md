@@ -4,6 +4,45 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Current frontier - 2026-09-04g (avopt: klfill LANDED 1.235x; finals bug root-caused, fix in flight)
+
+- agent-klfill (da5ccf2) merged into agent-avopt (2a54201) and pushed to
+  codex: deform-E7 1.235x (19.03s->15.40s, A/B 3680164), all gates green.
+- PRE-EXISTING BUG found + root-caused + fix in flight: heavy unitary E7
+  (probe_unitary_e7_heavy) failed with "common deformation finals
+  invariant" at ALL of 0835205/6fd186c/c09e5b3/da5ccf2 (bisect 3680187,
+  byte-identical outputs). Root cause: common_deformation_terms computed
+  the singular set from the STORED block coroots, ignoring the lookup
+  block modifier's Weyl permutation bm.w (upstream repr.cpp:1946 calls
+  block.singular(bm,gamma), blocks.cpp:711-721 permutes simply-integral
+  roots by word(bm.w)). Nontrivial bm.w arises when lookup finds a block
+  stored under a different locator attitude — first hit by the 2nd
+  reducibility point of KL_sum term idx=20138 (x=858, nu=[0,3,-3,0,3,-4,2]/2).
+  This was a documented port exclusion (DEFORM_DESIGN.md:91-95).
+- Fix agent-deformfix (7858838 + test b02be4f): new
+  CommonContext::singular_flags_with_modifier (partial_block.rs:762),
+  used when modifier.w() is nonidentity; identity fast path keeps all
+  passing probes byte-identical. Gate chain: quick_check 3680245, build
+  3680246, probes 3680247-50 (deform_e7/partial_kl_e7/finals_x858/
+  klsum_terms), heavy-unitary 8h oracle reference 3680251 (fat), fast
+  repro legs 3680252 (buggy binary, oracle ref) + 3680253 (fixed, afterok
+  build). KNOWN SAME-SHAPE GAPS not fixed yet: twisted paths at
+  domain_builtins.rs:8786/:8879 use modifier-free singular_flags where
+  upstream uses bm-aware variants (different upstream formulas, separate
+  port; see agent-deformfix handoff notes).
+- Probe data points: probe_klsum_e7_terms SORTED_MATCH 44777 lines
+  (3680234) — KL_sum_at_s(E7 x=20925) has ~41000 terms, but
+  oriented_KL_sum drops zero-orientation terms so is_unitary iterates
+  only ~790. probe_finals_e7_x858 (param-constructor reconstruction)
+  MATCHED but is a DIFFERENT parameter (constructor normalises lambda
+  [1]*7->[2,1,3,2,1,3,2] at that nu) — reconstruct repro parameters from
+  KL_sum terms by index, not via param().
+- Oracle leg of probe_unitary_e7_heavy exceeds 1h on cpu (3680162
+  cancelled at limit); rust leg 47.78s. Heavy unitary oracle references
+  need fat/8h.
+- In flight still: A/B unitary 3680165 (fat queue), E7 AV interpreted
+  probes 3680168/69 (fat queue).
+
 ## Current frontier - 2026-09-04f (avopt: E6 AV chain WORKS interpreted; klfill gate in flight)
 
 - Dynkin/Cartan fix `b69a0cf` VERIFIED: quick_check 3680132 green;
