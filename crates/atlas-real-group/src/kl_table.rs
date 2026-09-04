@@ -114,11 +114,22 @@ impl<B: BlockTopology> KlTableHandle<B> {
     /// The pool index of the KLV polynomial `P_{x,y}` (kl.cpp:124-148):
     /// primitivise `x` for the descent set of `y`, then read the column.
     pub fn kl_pol(&self, x: BlockElt, y: BlockElt) -> Result<KlIndex, StructureError> {
-        let desc_y = self.support.descent_set(y);
-        let slot = self.support.prim_slot(desc_y);
+        let slot = self.support.prim_slot(self.support.descent_set(y));
+        self.kl_pol_at_slot(slot, x, y)
+    }
+
+    /// `kl_pol` with the primitive-index slot of `descent_set(y)` already
+    /// resolved, so a loop over a fixed column pays one mask lookup per
+    /// column instead of one per access.
+    pub fn kl_pol_at_slot(
+        &self,
+        slot: u32,
+        x: BlockElt,
+        y: BlockElt,
+    ) -> Result<KlIndex, StructureError> {
         // UndefBlock: index is the range sentinel.
         let prim = if x == self.support.size() {
-            self.support.nr_of_primitives(desc_y)
+            self.support.nr_of_primitives_at(slot)
         } else {
             self.support.prim_index_at(slot, x)
         };

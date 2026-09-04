@@ -289,7 +289,12 @@ impl<B: BlockTopology> KlSupport<B> {
     /// The number of primitive elements for `desc_y` (klsupport.h
     /// `nr_of_primitives`).
     pub fn nr_of_primitives(&self, desc_y: &RankFlags) -> usize {
-        self.prim_index[self.prim_slot(desc_y) as usize].range
+        self.nr_of_primitives_at(self.prim_slot(desc_y))
+    }
+
+    /// `nr_of_primitives` through an already-resolved slot.
+    pub fn nr_of_primitives_at(&self, slot: u32) -> usize {
+        self.prim_index[slot as usize].range
     }
 
     /// The position of `y` in its own primitive row (klsupport.h
