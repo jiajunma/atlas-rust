@@ -811,10 +811,13 @@ struct BruhatGenerator<'c, 'r, 'a> {
 
 impl<'c, 'r, 'a> BruhatGenerator<'c, 'r, 'a> {
     /// `Bruhat_generator::block_below` (repr.cpp:1476-1563): insert `srm`
-    /// and the whole Bruhat interval below it into the pool.
-    fn block_below(&mut self, srm: &StandardReprMod) -> Result<(), StructureError> {
-        if self.index.contains_key(srm) {
-            return Ok(()); // seen earlier: nothing new
+    /// and the whole Bruhat interval below it into the pool; returns the
+    /// pool index of `srm` (its earlier index when already present), which
+    /// callers would otherwise re-derive through a `self.index[&sz]` hash
+    /// lookup on the just-visited srm.
+    fn block_below(&mut self, srm: &StandardReprMod) -> Result<usize, StructureError> {
+        if let Some(&seen) = self.index.get(srm) {
+            return Ok(seen); // seen earlier: nothing new
         }
         let rank = self.ctxt.rank();
         let mut pred: Vec<usize> = Vec::new();
@@ -827,18 +830,15 @@ impl<'c, 'r, 'a> BruhatGenerator<'c, 'r, 'a> {
             }
             if stat == KgbStatus::Complex {
                 let sz = self.ctxt.cross(s, srm)?;
-                self.block_below(&sz)?;
-                pred.push(self.index[&sz]);
+                pred.push(self.block_below(&sz)?);
                 descent = Some(s);
                 break; // s-ascents of predecessors of |sz| are added below
             } else if stat == KgbStatus::Real && self.ctxt.is_parity(s, srm)? {
                 // z has a type 1 real descent at s
                 let sz0 = self.ctxt.down_cayley(s, srm)?;
                 let sz1 = self.ctxt.cross(s, &sz0)?;
-                self.block_below(&sz0)?;
-                self.block_below(&sz1)?;
-                pred.push(self.index[&sz0]);
-                pred.push(self.index[&sz1]);
+                pred.push(self.block_below(&sz0)?);
+                pred.push(self.block_below(&sz1)?);
                 descent = Some(s);
                 break;
             }
@@ -851,8 +851,7 @@ impl<'c, 'r, 'a> BruhatGenerator<'c, 'r, 'a> {
                     let (stat, _) = self.ctxt.status(s, srm.x())?;
                     if stat == KgbStatus::Real && self.ctxt.is_parity(s, srm)? {
                         let sz = self.ctxt.down_cayley(s, srm)?;
-                        self.block_below(&sz)?;
-                        pred.push(self.index[&sz]);
+                        pred.push(self.block_below(&sz)?);
                     }
                 }
             }
@@ -869,19 +868,16 @@ impl<'c, 'r, 'a> BruhatGenerator<'c, 'r, 'a> {
                             if !flag {
                                 // complex ascent
                                 let szp = self.ctxt.cross(s, &zp)?;
-                                self.block_below(&szp)?;
-                                pred.push(self.index[&szp]);
+                                pred.push(self.block_below(&szp)?);
                             }
                         }
                         KgbStatus::ImaginaryNoncompact => {
                             let szp = self.ctxt.up_cayley(s, &zp)?;
-                            self.block_below(&szp)?;
-                            pred.push(self.index[&szp]);
+                            pred.push(self.block_below(&szp)?);
                             if !flag {
                                 // nci type 2
                                 let szp1 = self.ctxt.cross(s, &szp)?;
-                                self.block_below(&szp1)?;
-                                pred.push(self.index[&szp1]);
+                                pred.push(self.block_below(&szp1)?);
                             }
                         }
                     }
@@ -895,7 +891,7 @@ impl<'c, 'r, 'a> BruhatGenerator<'c, 'r, 'a> {
         self.index.insert(srm.clone(), h);
         self.pool.push(srm.clone());
         self.predecessors.push(pred);
-        Ok(())
+        Ok(h)
     }
 }
 
