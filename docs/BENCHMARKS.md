@@ -596,3 +596,15 @@ Attribution is pure: the benchmarked binary predates the 1caa620 lane merge.
 Cumulative avopt-lane heavy unitary E7: 78.7s -> 35.5s = **2.21x**.
 deform-only E7 remains ~1.9x slower than the oracle (18.95s vs 10.01s);
 next recorded levers: allocation ~20% spread, id_of_slice in KL paths (3.1%).
+
+## Profile 3680072 (deform-only E7 @368707a, post-prim-slot, flat self%)
+
+fill_kl_column 10.1, with_kl_table 10.0 (inlined callback body, not wrapper),
+kl_pol 5.2, prim_slot 5.2 (residual per-(x,y)-query hash probes across
+columns), KlPol::sub_shifted_assign 5.2, allocation cluster ~20% (try_allocate
+4.2 + free 4.1 + malloc 3.9 + Vec::clone 3.4 + _int_malloc 2.4 + memmove 1.8 +
+...), id_of_slice 3.4 + SliceOrd compare 2.3 (KL-path binary searches),
+match_pol 2.0, SipHash ~2.7 total. Next lever: allocation reduction in the
+KL column fill (per-column Vec rebuilds, working[] KlPol clones,
+mu_pairs/down_set rebuilds); then cross-column prim_slot caching (Cell would
+break Sync — needs a different design).
