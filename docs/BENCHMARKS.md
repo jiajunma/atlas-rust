@@ -792,3 +792,32 @@ RootSystem, BTreeSet->sorted-Vec in block build.
   oracle parity; E7 RSS also dropped to ~780MB from ~1.17GB).
 - Session totals: gkfast_e6 2.63 -> 0.82s = **3.2x** (oracle 0.59s;
   gap 1.39x, was 4.4x).
+
+## agent-rrcnt follow-up: union payloads through Rc (merged; 28fc1aa)
+
+- `Value::Union.value` Box -> Rc; case/union-case branch binding is now an
+  Rc bump (typed.rs Case/UnionCase), UnionInject shares the forced payload.
+- Gates: quick_check 3680785 green; probes 3680787-791 SORTED_MATCH; E7
+  3680793/794: gkfast_e7 14.32s (oracle 14.09), av_ann_e7 15.68s (oracle
+  14.19), RSS 780MB (oracle 387MB — 2x RSS remains an open item).
+- AB 3680792 gkfast_e6 vs 12f115e: base 0.80/0.87/0.80 tip 0.84/0.80/0.78,
+  medians equal 0.80s — NEUTRAL on speed (Union is cold here), RSS tip
+  ~6% lower. Accepted as a structural clone-cost elimination.
+
+## probe_setup_e6 (3680795): the whole E6 gap is fixed setup
+
+- Setup-only probe (3 script includes + E6 inner class + param, NO GKfast
+  query): rust 0.65s vs oracle 0.40s => fixed gap ~0.25s.
+- gkfast_e6 totals 0.82s vs 0.59s => the GKfast query leg is 0.17s rust vs
+  0.19s oracle — the query itself is AT PARITY (slightly ahead).
+- Conclusion: closing E6 means cutting startup: script parse/interpretation
+  of the prelude and the E6 inner-class build (orbit_cross_closure 13% of
+  the profile is that build). Post-rrcnt profile 3680781: Value clone is
+  gone from the map; remaining flat items are orbit_cross_closure 13.1%,
+  memmove 8.1% (mostly parser), typed::evaluate 6.0%, allocator ~7%,
+  parser+lexer ~4%.
+- Membership redesign assessed (explore agent-24): ClassMembership is
+  queried only O(classes x imaginary roots) times per build, never per KGB
+  element; swapping sorted-vec->hash buys nothing without the WeylElt-keyed
+  BFS-dedup redesign (Variant B = transducer + membership as one change) —
+  shelved, matches the agent-transduce postmortem prediction.
