@@ -32,7 +32,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 
 use crate::{
     BlockDescent, Coweight, KgbId, KgbStatus, RationalWeight, RepContext, RootId, RootSystem,
-    StandardRepr, StructureError, Weight,
+    StandardRepr, StructureError, Weight, WeylElement,
 };
 
 /// Upstream `repr::StandardReprMod`: a standard parameter modulo `X^*` —
@@ -746,6 +746,42 @@ impl<'r, 'a> CommonContext<'r, 'a> {
             })?;
         for s in 0..self.rank() {
             flags.push(pairing_numerator(gamma, self.parent_coroot(s)?)? == 0);
+        }
+        Ok(flags)
+    }
+
+    /// `common_block::singular(bm, gamma)` (blocks.cpp:711-721): like
+    /// [`Self::singular_flags`], but with each simply-integral parent root
+    /// first permuted by the located block's modifier element — upstream
+    /// `simply_ints(bm)` (blocks.cpp:1274-1283) applies
+    /// `permuted_root(Weyl_group().word(bm.w), alpha)`, whose right-to-left
+    /// word-letter application composes to the whole element's action on the
+    /// root, which [`WeylElement::image`] stores directly. The modifier's
+    /// `shift` is integral-orthogonal to the simply-integral coroots
+    /// (repr.cpp:317-329) and does not enter the pairing.
+    pub fn singular_flags_with_modifier(
+        &self,
+        gamma: &RationalWeight,
+        w: &WeylElement,
+    ) -> Result<Vec<bool>, StructureError> {
+        let system = self.rc.root_system();
+        let mut flags = Vec::new();
+        flags
+            .try_reserve_exact(self.rank())
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: self.rank(),
+            })?;
+        for s in 0..self.rank() {
+            let root = self.sub.parent_root[s];
+            let image = w.image(root).ok_or(StructureError::IndexOutOfRange {
+                index: root.index(),
+                upper_bound: system.roots().len(),
+            })?;
+            let coroot = system.coroot(image).ok_or(StructureError::IndexOutOfRange {
+                index: image.index(),
+                upper_bound: system.roots().len(),
+            })?;
+            flags.push(pairing_numerator(gamma, coroot)? == 0);
         }
         Ok(flags)
     }

@@ -614,4 +614,38 @@ mod tests {
         let restored = rc.sr_with_modifier(&srm0, &bm, q.gamma()).unwrap();
         assert!(same_parameter(&restored, &q));
     }
+
+    /// `common_block::singular(bm, gamma)` at a non-identity attitude
+    /// (blocks.cpp:711-721, via `simply_ints`, blocks.cpp:1274-1283): the
+    /// stored block's simply-integral root is permuted by `bm.w` before the
+    /// pairing. On this fixture's rank-one block (simply-integral root
+    /// `alpha1`, coroot `e1 = [1,0]`) with `w = s1`, the permuted root is
+    /// `s1(alpha1) = theta = [1,1]` with coroot `[1,1]`; `gamma = [1,-1]`
+    /// is orthogonal to the latter but not the former, so it is singular
+    /// only through the modifier path. An identity `w` reproduces the plain
+    /// flags (blocks.cpp:701-708).
+    #[test]
+    fn singular_flags_permuted_by_block_modifier_w() {
+        let fixture = sl3r_fixture();
+        let rc = fixture.rc();
+        let system = rc.root_system().clone();
+        let (srm_p, _) = param_srm(&rc, 3, &rational(&[2, 1], 2));
+        let context = CommonContext::integral(&rc, srm_p.gamma_lambda()).unwrap();
+        assert_eq!(context.rank(), 1);
+
+        let gamma = rational(&[1, -1], 1);
+        assert_eq!(context.singular_flags(&gamma).unwrap(), vec![false]);
+        let w = WeylElement::simple_reflection(&system, 1).unwrap();
+        assert_eq!(
+            context.singular_flags_with_modifier(&gamma, &w).unwrap(),
+            vec![true]
+        );
+        let identity = WeylElement::identity(&system).unwrap();
+        assert_eq!(
+            context
+                .singular_flags_with_modifier(&gamma, &identity)
+                .unwrap(),
+            vec![false]
+        );
+    }
 }
