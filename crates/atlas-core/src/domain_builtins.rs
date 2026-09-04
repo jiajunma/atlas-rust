@@ -8757,9 +8757,14 @@ fn external_twisted_kl_sum_gates(
 
 /// The `rt.lookup(zi, index, bm)` + `block.extended_block(bm, ...)` step
 /// of `Rep_table::twisted_deformation` at a reducibility point with
-/// INTEGRAL gamma (repr.cpp:2617-2633, trivial block modifier): rebuild
-/// `zi`'s interval-below common block, extended block, parent row, and
-/// singular orbits. Upstream uses `Rep_table::lookup` here even when the
+/// INTEGRAL gamma (repr.cpp:2617-2633). The singular flags below are
+/// simp_int-POSITION-indexed, and the query-attitude context's
+/// `parent_root` order equals `modifier.simp_int()` (same roots, same
+/// upstream positive-root order), so the modifier-free
+/// `ctxt.singular_flags` here equals upstream's `bm.simp_int` iteration
+/// for ANY block modifier — do not "fix" it with the stored-attitude
+/// `singular_flags_with_modifier` (that would apply `bm.w` twice).
+/// Upstream uses `Rep_table::lookup` here even when the
 /// integral subsystem is the full root system (repr.cpp:2605); rebuilding
 /// the entire full block retains rows above `zi` and produces spurious
 /// deformation terms.
@@ -8872,9 +8877,13 @@ fn with_integral_block<T>(
                 &twist_data.1,
                 span,
             )?;
-            // common_block::singular(gamma) over the subsystem generators
-            // (blocks.cpp:701-708), folded to extended-block orbits
-            // (repr.cpp:2380-2390 with trivial bm).
+            // Singular flags over the subsystem generators, folded to
+            // extended-block orbits (repr.cpp:2380-2390). The flags are
+            // simp_int-position-indexed: the query-attitude context's
+            // `parent_root` order equals `modifier.simp_int()`, so this
+            // equals upstream's `bm.simp_int` iteration for any bm (see
+            // `twisted_reducibility_lookup`); `orbit.s0` after cofolding
+            // is a simp_int position (ext_block.rs:985-1008).
             let singular = ctxt
                 .singular_flags(prepared.gamma())
                 .map_err(|error| structure_diagnostic(error, span))?;
