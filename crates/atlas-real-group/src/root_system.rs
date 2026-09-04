@@ -233,6 +233,7 @@ pub struct RootSystem {
 /// query's simple coordinates into one `u64` (8-bit lanes, offset +128), so
 /// the hot block-construction probes hash and compare a single integer
 /// instead of a boxed slice; larger ranks keep the boxed-slice map.
+#[derive(Clone, Debug)]
 struct RootIndex {
     /// Simple-coordinate length of every stored root; the packed map is
     /// keyed on exactly this many lanes, so queries of any other length
