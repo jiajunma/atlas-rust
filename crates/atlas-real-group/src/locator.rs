@@ -566,20 +566,32 @@ fn additive_closure(
         negatives.push(negate_root(system, id)?);
     }
     closure.extend(negatives);
-    loop {
-        let members: Vec<RootId> = closure.iter().copied().collect();
-        let mut grew = false;
-        for left in 0..members.len() {
-            for right in (left + 1)..members.len() {
-                if let Some(sum) = combine_roots(system, members[left], members[right], false)? {
-                    grew |= closure.insert(sum);
+    // Work-queue fixpoint over insertion order, replacing full O(members^2)
+    // rescan rounds. When a root is appended, processing it tests its sums
+    // with every current member; pairs among earlier members were tested
+    // when the later of the two was processed, so every unordered pair of
+    // distinct roots is covered at least once and the result equals the
+    // rescan fixpoint.
+    let mut members: Vec<RootId> = closure.iter().copied().collect();
+    let mut next = 0;
+    while next < members.len() {
+        let left = members[next];
+        for other in 0..members.len() {
+            if other == next {
+                continue;
+            }
+            if let Some(sum) = combine_roots(system, left, members[other], false)? {
+                if closure.insert(sum) {
+                    members
+                        .try_reserve(1)
+                        .map_err(|_| StructureError::AllocationFailed { requested: 1 })?;
+                    members.push(sum);
                 }
             }
         }
-        if !grew {
-            return Ok(closure);
-        }
+        next += 1;
     }
+    Ok(closure)
 }
 
 /// `RootSystem::pos_simples` (rootdata.cpp:655-681): the simple roots of
@@ -620,27 +632,19 @@ fn pos_simples(system: &RootSystem, posroots: &[RootId]) -> Result<Vec<RootId>, 
     Ok(result)
 }
 
-/// The root id of `-root(id)`.
+/// The root id of `-root(id)`, read from the negation table built at
+/// enumeration (which already proved every root's negative is a root).
 fn negate_root(system: &RootSystem, id: RootId) -> Result<RootId, StructureError> {
-    let root = system.root(id).ok_or(StructureError::IndexOutOfRange {
-        index: id.index(),
-        upper_bound: system.roots().len(),
-    })?;
-    let mut coordinates = Vec::new();
-    coordinates
-        .try_reserve_exact(root.as_slice().len())
-        .map_err(|_| StructureError::AllocationFailed {
-            requested: root.as_slice().len(),
-        })?;
-    for &coordinate in root.as_slice() {
-        coordinates.push(
-            coordinate
-                .checked_neg()
-                .ok_or(StructureError::ArithmeticOverflow)?,
-        );
+    if system.root(id).is_none() {
+        return Err(StructureError::IndexOutOfRange {
+            index: id.index(),
+            upper_bound: system.roots().len(),
+        });
     }
     system
-        .id_of(&Weight::new(coordinates))
+        .negatives()
+        .get(id.index())
+        .copied()
         .ok_or(StructureError::RootSystemInvariantViolation {
             invariant: "root negation",
         })
@@ -696,6 +700,61 @@ mod tests {
     fn b2() -> RootSystem {
         let datum = BasedRootDatum::standard(vec![vec![2, -2], vec![-1, 2]]).unwrap();
         RootSystem::enumerate(&datum, 8).unwrap()
+    }
+
+    fn g2() -> RootSystem {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-3, 2]]).unwrap();
+        RootSystem::enumerate(&datum, 12).unwrap()
+    }
+
+    /// The pre-work-queue `additive_closure`: full O(members^2) rescan
+    /// rounds to a fixpoint. Kept here as the reference for the optimized
+    /// implementation's set equality.
+    fn reference_additive_closure(
+        system: &RootSystem,
+        generators: &BTreeSet<RootId>,
+    ) -> Result<BTreeSet<RootId>, StructureError> {
+        let mut closure = generators.clone();
+        for &id in generators {
+            closure.insert(negate_root(system, id)?);
+        }
+        loop {
+            let members: Vec<RootId> = closure.iter().copied().collect();
+            let mut grew = false;
+            for left in 0..members.len() {
+                for right in (left + 1)..members.len() {
+                    if let Some(sum) = combine_roots(system, members[left], members[right], false)?
+                    {
+                        grew |= closure.insert(sum);
+                    }
+                }
+            }
+            if !grew {
+                return Ok(closure);
+            }
+        }
+    }
+
+    #[test]
+    fn additive_closure_matches_rescan_reference() {
+        for system in [a2(), b2(), g2()] {
+            let all: Vec<RootId> = system.entries().map(|(id, _, _)| id).collect();
+            let subsets: Vec<BTreeSet<RootId>> = vec![
+                BTreeSet::new(),
+                BTreeSet::from([all[0]]),
+                BTreeSet::from([all[all.len() / 2]]),
+                BTreeSet::from([all[1], all[all.len() - 1]]),
+                all[..all.len() / 2].iter().copied().collect(),
+                all.iter().copied().collect(),
+            ];
+            for generators in subsets {
+                assert_eq!(
+                    additive_closure(&system, &generators).unwrap(),
+                    reference_additive_closure(&system, &generators).unwrap(),
+                    "generators={generators:?}"
+                );
+            }
+        }
     }
 
     fn gamma(numerator: &[i64], denominator: i64) -> RationalWeight {

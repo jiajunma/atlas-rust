@@ -1,6 +1,6 @@
 use std::collections::{HashMap, VecDeque};
 use std::hash::{BuildHasherDefault, Hasher};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use crate::lattice::{pair_coordinates, try_copy_coordinates};
 use crate::{pair, BasedRootDatum, Coweight, StructureError, Weight, WeylAction};
@@ -172,7 +172,11 @@ impl RootSet {
 /// only non-cardinality limits, so the caller's root cardinality stays
 /// authoritative, and no process-wide limit exists. The budget that produced
 /// a system is deliberately not stored in it.
-#[derive(Clone, Debug, Eq, PartialEq)]
+///
+/// `PartialEq`/`Eq` are manual because `root_sums` is a `OnceLock` cache:
+/// its content is a deterministic function of `roots`, so equality compares
+/// only the data fields and ignores whether the cache has been built yet.
+#[derive(Clone, Debug)]
 pub struct RootSystem {
     datum: BasedRootDatum,
     roots: Vec<Weight>,
@@ -208,7 +212,33 @@ pub struct RootSystem {
     /// entrywise as `w - <w, coroot> * root`, so the permutations are the
     /// same ones `action_permutation` derives).
     simple_reflections: Vec<Vec<RootId>>,
+    /// Lazy flat pair-sum table: with `n = roots.len()`, entry
+    /// `[a * n + b]` is the id of `roots[a] + roots[b]` as `u16`, or the
+    /// `u16::MAX` sentinel when that vector is not a root. Built on first
+    /// `combine_roots` use for `n <= ROOT_SUM_TABLE_MAX_ROOTS`; the outer
+    /// `None` marks systems (oversized, or an abandoned build) that keep
+    /// computing sums per call. Pure cache: equality ignores it.
+    root_sums: OnceLock<Option<Box<[u16]>>>,
 }
+
+impl PartialEq for RootSystem {
+    fn eq(&self, other: &Self) -> bool {
+        self.datum == other.datum
+            && self.roots == other.roots
+            && self.coroots == other.coroots
+            && self.simple_coordinates == other.simple_coordinates
+            && self.positive == other.positive
+            && self.positive_root_ids == other.positive_root_ids
+            && self.positive_root_heights == other.positive_root_heights
+            && self.simple_ids == other.simple_ids
+            && self.min_roots == other.min_roots
+            && self.min_coroots == other.min_coroots
+            && self.negatives == other.negatives
+            && self.simple_reflections == other.simple_reflections
+    }
+}
+
+impl Eq for RootSystem {}
 
 impl RootSystem {
     /// Compatibility wrapper preserving the historic root-cardinality budget.
@@ -442,6 +472,7 @@ impl RootSystem {
             min_coroots,
             negatives: Arc::from(negatives.into_boxed_slice()),
             simple_reflections: Vec::new(),
+            root_sums: OnceLock::new(),
         };
         // One-time fill straight from the reflection formula. The previous
         // matrix path (a datum clone and two rank×rank matrices per
@@ -592,6 +623,63 @@ impl RootSystem {
     /// Shared immutable negation storage for bulk involution records.
     pub(crate) fn negatives_arc(&self) -> &Arc<[RootId]> {
         &self.negatives
+    }
+
+    /// The lazy pair-sum table (see the `root_sums` field), or `None` when
+    /// this system computes root sums per call.
+    fn root_sum_table(&self) -> Option<&[u16]> {
+        self.root_sums
+            .get_or_init(|| self.build_root_sum_table())
+            .as_deref()
+    }
+
+    /// Build the flat pair-sum table with fallible allocation throughout.
+    /// Any failure — an oversized system, a failed reservation, or a
+    /// checked-add overflow on coordinates — returns `None` so callers fall
+    /// back to the per-call coordinate path with its original errors.
+    /// Every stored sum is classified with the same `id_of_slice` binary
+    /// search the per-call path uses, reusing one coordinate buffer.
+    fn build_root_sum_table(&self) -> Option<Box<[u16]>> {
+        let count = self.roots.len();
+        if count > ROOT_SUM_TABLE_MAX_ROOTS {
+            return None;
+        }
+        let entries = count.checked_mul(count)?;
+        let mut table = Vec::new();
+        table.try_reserve_exact(entries).ok()?;
+        table.resize(entries, u16::MAX);
+        let ambient_rank = self.roots.first().map_or(0, Weight::rank);
+        let mut sum: Vec<i32> = Vec::new();
+        sum.try_reserve_exact(ambient_rank).ok()?;
+        for left in 0..count {
+            for right in 0..count {
+                sum.clear();
+                let mut overflow = false;
+                for (&a, &b) in self.roots[left]
+                    .as_slice()
+                    .iter()
+                    .zip(self.roots[right].as_slice())
+                {
+                    match a.checked_add(b) {
+                        Some(value) => sum.push(value),
+                        None => {
+                            overflow = true;
+                            break;
+                        }
+                    }
+                }
+                if overflow {
+                    return None;
+                }
+                // `count <= ROOT_SUM_TABLE_MAX_ROOTS` keeps every id below
+                // the `u16::MAX` sentinel.
+                table[left * count + right] = match self.id_of_slice(&sum) {
+                    Some(id) => u16::try_from(id.index()).ok()?,
+                    None => u16::MAX,
+                };
+            }
+        }
+        Some(table.into_boxed_slice())
     }
 
     /// Root permutation of simple reflection `generator` (the table built
@@ -984,6 +1072,12 @@ fn saturated_to_usize(value: u128) -> usize {
     usize::try_from(value).unwrap_or(usize::MAX)
 }
 
+/// Memory cap for the lazy pair-sum table: larger systems keep the per-call
+/// coordinate search. Every finite type is far below this (E8 has 240
+/// roots, an 115 KB table); the cap also keeps ids below the `u16::MAX`
+/// sentinel.
+const ROOT_SUM_TABLE_MAX_ROOTS: usize = 2048;
+
 /// The id of `left + right` (or `left - right`), when that vector is a root.
 pub(crate) fn combine_roots(
     root_system: &RootSystem,
@@ -1003,6 +1097,24 @@ pub(crate) fn combine_roots(
             index: right.0,
             upper_bound: root_system.roots().len(),
         })?;
+    if let Some(table) = root_system.root_sum_table() {
+        let count = root_system.roots().len();
+        // Subtraction reads the sum table at the negated right operand
+        // (always a root for an in-range id): construction rejects any
+        // coordinate at `i32::MIN`, so `a + (-b)` and `a - b` agree,
+        // overflow behavior included.
+        let column = if subtract {
+            root_system.negatives[right.0].0
+        } else {
+            right.0
+        };
+        let entry = table[left.0 * count + column];
+        return Ok(if entry == u16::MAX {
+            None
+        } else {
+            Some(RootId(usize::from(entry)))
+        });
+    }
     let mut coordinates = Vec::new();
     coordinates
         .try_reserve_exact(left_weight.as_slice().len())
@@ -1285,6 +1397,61 @@ mod tests {
         let roots = RootSystem::enumerate(&a2(), 6).unwrap();
         assert_eq!(roots.min_roots_for(RootId(6)), None);
         assert_eq!(roots.min_coroots_for(RootId(6)), None);
+    }
+
+    #[test]
+    fn combine_roots_matches_naive_coordinate_search() {
+        for datum in [
+            a2(),
+            BasedRootDatum::standard(vec![vec![2, -2], vec![-1, 2]]).unwrap(),
+            BasedRootDatum::standard(vec![vec![2, -1], vec![-3, 2]]).unwrap(),
+        ] {
+            let roots = RootSystem::enumerate(&datum, 12).unwrap();
+            for (left, _, _) in roots.entries() {
+                for (right, _, _) in roots.entries() {
+                    for subtract in [false, true] {
+                        let naive: Vec<i32> = roots
+                            .root(left)
+                            .unwrap()
+                            .as_slice()
+                            .iter()
+                            .zip(roots.root(right).unwrap().as_slice())
+                            .map(|(&a, &b)| if subtract { a - b } else { a + b })
+                            .collect();
+                        assert_eq!(
+                            combine_roots(&roots, left, right, subtract),
+                            Ok(roots.id_of_slice(&naive)),
+                            "left={left:?} right={right:?} subtract={subtract}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn root_sum_table_builds_lazily_and_keeps_range_errors_first() {
+        let roots = RootSystem::enumerate(&a2(), 6).unwrap();
+        assert!(roots.root_sums.get().is_none());
+        combine_roots(&roots, RootId(0), RootId(1), false).unwrap();
+        let table = roots.root_sum_table().expect("A2 is under the cap");
+        assert_eq!(table.len(), 36);
+        // Out-of-range ids still fail before the table is consulted, left
+        // operand first.
+        assert_eq!(
+            combine_roots(&roots, RootId(6), RootId(0), false),
+            Err(StructureError::IndexOutOfRange {
+                index: 6,
+                upper_bound: 6,
+            })
+        );
+        assert_eq!(
+            combine_roots(&roots, RootId(0), RootId(6), true),
+            Err(StructureError::IndexOutOfRange {
+                index: 6,
+                upper_bound: 6,
+            })
+        );
     }
 
     #[test]
