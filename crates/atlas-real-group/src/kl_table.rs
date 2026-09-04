@@ -390,11 +390,11 @@ impl<B: BlockTopology> KlTableHandle<B> {
                 let pol = self.kl_pol_pool_at(z_slot, x, z)?;
                 working[position].sub_shifted_assign(pol, d, mu);
             }
-            // The final term x == z (when extremal for y).
+            // The final term x == z (when extremal for y): subtract
+            // mu*q^d, i.e. q^d * mu * 1, without a temporary monomial.
             if self.support.is_extremal(z, desc_y) {
                 if let Some(position) = extremals.iter().position(|&x| x == z) {
-                    let term = KlPol::monomial(d).scaled(mu);
-                    working[position].sub_assign(&term);
+                    working[position].sub_shifted_assign(KlPol::one_ref(), d, mu);
                 }
             }
         }

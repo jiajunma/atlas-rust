@@ -36,6 +36,13 @@ impl KlPol {
         &ZERO
     }
 
+    /// A shared `1` polynomial (`q^0`, pool index 1), for shifted scalar
+    /// terms that would otherwise build a temporary monomial.
+    pub fn one_ref() -> &'static Self {
+        static ONE: std::sync::OnceLock<KlPol> = std::sync::OnceLock::new();
+        ONE.get_or_init(|| KlPol::monomial(0))
+    }
+
     /// The polynomial `q^d` (kl.cpp:83 `One` is `q^0`).
     pub fn monomial(d: usize) -> Self {
         let mut coefficients = vec![0_i32; d];
