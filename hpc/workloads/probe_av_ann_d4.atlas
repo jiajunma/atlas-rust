@@ -1,0 +1,17 @@
+<nilpotent_orbits.at
+<associated_variety_annihilator.at
+<GKfast.at
+
+rd : RootDatum
+rd := simply_connected(Lie_type("D4"),true)
+ic : InnerClass
+ic := inner_class(rd,[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
+n : int
+n := nr_of_real_forms(ic)
+rf : RealForm
+rf := real_form(ic,n-1)
+p : Param
+p := param(KGB(rf,0),[1,1,1,1],[1,1,1,1]/1)
+o : ComplexNilpotent
+o := associated_variety_ann(p)
+prints("diagram=",o.diagram," dim=",o.dim_nilpotent,new_line)
