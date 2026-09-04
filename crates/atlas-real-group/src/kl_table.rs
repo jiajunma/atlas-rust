@@ -32,6 +32,20 @@ pub struct MuPair {
     pub coef: MuCoeff,
 }
 
+/// Reusable per-column scratch buffers for the fill loop: a table-wide
+/// fill clears and refills these instead of allocating fresh vectors for
+/// every column.
+#[derive(Default)]
+struct ColumnScratch {
+    /// The row accumulator shared by `recursion_column` and
+    /// `new_recursion_column` (kl.cpp's `row` parameter).
+    working: Vec<KlPol>,
+    /// Extremal elements of the current column (`recursion_column`).
+    extremals: Vec<BlockElt>,
+    /// Down-set element ids of the current column (`down_set` output).
+    downs: Vec<BlockElt>,
+}
+
 /// Storage behind the source-compatible [`KlTable`] alias.
 #[doc(hidden)]
 pub struct KlTableHandle<B: BlockTopology> {
@@ -100,11 +114,22 @@ impl<B: BlockTopology> KlTableHandle<B> {
     /// The pool index of the KLV polynomial `P_{x,y}` (kl.cpp:124-148):
     /// primitivise `x` for the descent set of `y`, then read the column.
     pub fn kl_pol(&self, x: BlockElt, y: BlockElt) -> Result<KlIndex, StructureError> {
-        let desc_y = self.support.descent_set(y);
-        let slot = self.support.prim_slot(desc_y);
+        let slot = self.support.prim_slot(self.support.descent_set(y));
+        self.kl_pol_at_slot(slot, x, y)
+    }
+
+    /// `kl_pol` with the primitive-index slot of `descent_set(y)` already
+    /// resolved, so a loop over a fixed column pays one mask lookup per
+    /// column instead of one per access.
+    pub fn kl_pol_at_slot(
+        &self,
+        slot: u32,
+        x: BlockElt,
+        y: BlockElt,
+    ) -> Result<KlIndex, StructureError> {
         // UndefBlock: index is the range sentinel.
         let prim = if x == self.support.size() {
-            self.support.nr_of_primitives(desc_y)
+            self.support.nr_of_primitives_at(slot)
         } else {
             self.support.prim_index_at(slot, x)
         };
@@ -156,12 +181,15 @@ impl<B: BlockTopology> KlTableHandle<B> {
         } else {
             limit
         };
-        let mut working = Vec::with_capacity(self.support.size());
+        let mut scratch = ColumnScratch {
+            working: Vec::with_capacity(self.support.size()),
+            ..ColumnScratch::default()
+        };
         for y in 0..limit.min(self.support.size()) {
             if !self.holes[y] {
                 continue;
             }
-            self.fill_kl_column(&mut working, y)?;
+            self.fill_kl_column(&mut scratch, y)?;
             self.holes[y] = false;
         }
         Ok(())
@@ -170,7 +198,7 @@ impl<B: BlockTopology> KlTableHandle<B> {
     /// `KL_table::fill_KL_column` (kl.cpp:350-363): compute column `y`.
     fn fill_kl_column(
         &mut self,
-        working: &mut Vec<KlPol>,
+        scratch: &mut ColumnScratch,
         y: BlockElt,
     ) -> Result<(), StructureError> {
         // Prepare the primitive index for y's descent set (kl.cpp:353).
@@ -178,10 +206,10 @@ impl<B: BlockTopology> KlTableHandle<B> {
         self.support.prepare_prim_index(&desc_y);
         let s = self.first_direct_recursion(y);
         if s < self.support.rank() {
-            self.recursion_column(working, y, s)?;
-            self.complete_primitives(working, y)?;
+            self.recursion_column(scratch, y, s)?;
+            self.complete_primitives(scratch, y)?;
         } else {
-            self.new_recursion_column(working, y)?;
+            self.new_recursion_column(scratch, y)?;
         }
         Ok(())
     }
@@ -227,10 +255,11 @@ impl<B: BlockTopology> KlTableHandle<B> {
     /// formula for column `y` with descent `s`, for all extremal `x`.
     fn recursion_column(
         &mut self,
-        working: &mut Vec<KlPol>,
+        scratch: &mut ColumnScratch,
         y: BlockElt,
         s: usize,
     ) -> Result<(), StructureError> {
+        let working = &mut scratch.working;
         working.clear();
         let desc_y = self.support.descent_set(y).clone();
         let sy = match self.support.block().descent(y, s).expect("valid generator") {
@@ -254,14 +283,15 @@ impl<B: BlockTopology> KlTableHandle<B> {
 
         // Increasing list of all extremal elements shorter than y.
         let floor = self.support.length_floor(y);
-        let mut extremals = Vec::new();
+        let extremals = &mut scratch.extremals;
+        extremals.clear();
         for x in 0..floor {
             if self.support.is_extremal(x, &desc_y) {
                 extremals.push(x);
             }
         }
 
-        for &x in &extremals {
+        for &x in extremals.iter() {
             // Upstream only consults `cross(s,x)` in the ComplexDescent and
             // RealTypeII branches (kl.cpp:406-436), and `KL_pol` maps
             // `UndefBlock` to the zero polynomial (kl.cpp:123-130), so a
@@ -339,7 +369,7 @@ impl<B: BlockTopology> KlTableHandle<B> {
             working.push(pxy);
         }
         // μ-correction (kl.cpp:447-448).
-        self.mu_correction(&extremals, &desc_y, sy, s, working)?;
+        self.mu_correction(&scratch.extremals, &desc_y, sy, s, &mut scratch.working)?;
         Ok(())
     }
 
@@ -371,11 +401,11 @@ impl<B: BlockTopology> KlTableHandle<B> {
                 let pol = self.kl_pol_pool_at(z_slot, x, z)?;
                 working[position].sub_shifted_assign(pol, d, mu);
             }
-            // The final term x == z (when extremal for y).
+            // The final term x == z (when extremal for y): subtract
+            // mu*q^d, i.e. q^d * mu * 1, without a temporary monomial.
             if self.support.is_extremal(z, desc_y) {
                 if let Some(position) = extremals.iter().position(|&x| x == z) {
-                    let term = KlPol::monomial(d).scaled(mu);
-                    working[position].sub_assign(&term);
+                    working[position].sub_shifted_assign(KlPol::one_ref(), d, mu);
                 }
             }
         }
@@ -387,9 +417,10 @@ impl<B: BlockTopology> KlTableHandle<B> {
     /// primitive non-extremal elements.
     fn complete_primitives(
         &mut self,
-        working: &[KlPol],
+        scratch: &mut ColumnScratch,
         y: BlockElt,
     ) -> Result<(), StructureError> {
+        let working = &scratch.working;
         let desc_y = self.support.descent_set(y).clone();
         let prim_slot = self.support.prim_slot(&desc_y);
         let ly = self.support.length(y);
@@ -398,7 +429,16 @@ impl<B: BlockTopology> KlTableHandle<B> {
         // Cayley images' slots of THIS column, which the backward pass
         // has already written ("in current row, above", kl.cpp:567).
         let mut column: Vec<KlIndex> = vec![0; self.support.col_size(y)];
-        let mut mu_pairs: Vec<MuPair> = Vec::new();
+        // Start the μ-column with the down-set of y at μ=1
+        // (kl.cpp:578-585); the backward traversal below appends the
+        // recursion μ-pairs after them, so the final stable sort keeps
+        // the μ=1 entry ahead of any duplicate with the same x.
+        self.down_set(y, &mut scratch.downs)?;
+        let mut mu_pairs: Vec<MuPair> = scratch
+            .downs
+            .iter()
+            .map(|&z| MuPair { x: z, coef: 1 })
+            .collect();
 
         // Traverse primitives of y with length < ly backwards.
         let mut x = self.support.length_floor(y);
@@ -426,33 +466,39 @@ impl<B: BlockTopology> KlTableHandle<B> {
                         invariant: "primitive non-extremal ascent",
                     },
                 )?;
-                let mut pxy = KlPol::zero();
-                if let Some((Some(first_image), second)) = self.support.block().cayley(x, s) {
-                    pxy = self
-                        .current_column_pol(&column, prim_slot, first_image, y)
-                        .clone();
-                    if let Some(second_image) = second {
-                        let second_pol = self.current_column_pol(&column, prim_slot, second_image, y);
-                        pxy.add_assign(second_pol);
+                column[position] = match self.support.block().cayley(x, s) {
+                    Some((Some(first_image), None)) => {
+                        // A single Cayley image contributes its polynomial
+                        // unchanged; that polynomial is already pooled, so
+                        // store its index directly without cloning.
+                        self.current_column_index(&column, prim_slot, first_image, y)
                     }
-                }
-                column[position] = self.pool.match_pol(&pxy);
+                    Some((Some(first_image), Some(second_image))) => {
+                        let mut pxy = self
+                            .current_column_pol(&column, prim_slot, first_image, y)
+                            .clone();
+                        let second_pol =
+                            self.current_column_pol(&column, prim_slot, second_image, y);
+                        pxy.add_assign(second_pol);
+                        self.pool.match_pol(&pxy)
+                    }
+                    // A missing Cayley image (outside the block)
+                    // contributes zero (kl.cpp:127), and the zero
+                    // polynomial is always pool index 0 (kl.cpp:100).
+                    _ => 0,
+                };
             }
         }
 
-        // Add the down_set of y with μ=1 (kl.cpp:578-585).
-        let downs: Vec<MuPair> = self
-            .down_set(y)?
-            .into_iter()
-            .map(|z| MuPair { x: z, coef: 1 })
-            .collect();
-        let mut merged = downs;
-        merged.extend(mu_pairs);
-        merged.sort_by_key(|pair| pair.x);
-        merged.dedup_by_key(|pair| pair.x);
+        // The down-set prefix is increasing with distinct keys and the
+        // recursion pushes are decreasing with distinct keys, so a stable
+        // sort by x keeps the μ=1 down-set entry ahead of any recursion
+        // duplicate (same argument as in new_recursion_column).
+        mu_pairs.sort_by_key(|pair| pair.x);
+        mu_pairs.dedup_by_key(|pair| pair.x);
 
         self.columns[y] = column;
-        self.mu_columns[y] = merged;
+        self.mu_columns[y] = mu_pairs;
         Ok(())
     }
 
@@ -461,25 +507,26 @@ impl<B: BlockTopology> KlTableHandle<B> {
     /// the cross image, a real type I the two inverse-Cayley images, a
     /// real type II the first inverse-Cayley image; imaginary compact
     /// contributes nothing. Used for the μ-pairs of length one less than
-    /// `y` (kl.cpp:578-585, 650-653).
-    fn down_set(&self, y: BlockElt) -> Result<Vec<BlockElt>, StructureError> {
+    /// `y` (kl.cpp:578-585, 650-653). Fills `out` (cleared first) so the
+    /// fill loop can reuse the buffer across columns.
+    fn down_set(&self, y: BlockElt, out: &mut Vec<BlockElt>) -> Result<(), StructureError> {
         let block = self.support.block();
-        let mut result = Vec::new();
+        out.clear();
         for s in 0..self.support.rank() {
             match block.descent(y, s).expect("valid generator") {
                 BlockDescent::ComplexDescent => {
                     let z = block.cross(y, s).expect("complex descent cross");
-                    result.push(z);
+                    out.push(z);
                 }
                 BlockDescent::RealTypeI => {
                     let pair = block
                         .inverse_cayley(y, s)
                         .expect("real type I inverse Cayley");
                     if let Some(z) = pair.0 {
-                        result.push(z);
+                        out.push(z);
                     }
                     if let Some(z) = pair.1 {
-                        result.push(z);
+                        out.push(z);
                     }
                 }
                 BlockDescent::RealTypeII => {
@@ -487,24 +534,25 @@ impl<B: BlockTopology> KlTableHandle<B> {
                         .inverse_cayley(y, s)
                         .expect("real type II inverse Cayley");
                     if let Some(z) = pair.0 {
-                        result.push(z);
+                        out.push(z);
                     }
                 }
                 _ => {}
             }
         }
-        result.sort_unstable();
-        result.dedup();
-        Ok(result)
+        out.sort_unstable();
+        out.dedup();
+        Ok(())
     }
 
     /// `KL_table::new_recursion_column` (kl.cpp:637-791): compute column
     /// `y` when no direct recursion exists.
     fn new_recursion_column(
         &mut self,
-        working: &mut Vec<KlPol>,
+        scratch: &mut ColumnScratch,
         y: BlockElt,
     ) -> Result<(), StructureError> {
+        let working = &mut scratch.working;
         let l_y = self.support.length(y);
         let desc_y = self.support.descent_set(y).clone();
         // The descent set is fixed for the whole column fill: resolve its
@@ -523,12 +571,14 @@ impl<B: BlockTopology> KlTableHandle<B> {
         // in `working`; the loops below borrow the slot instead of cloning.
         let kl_index = |x: BlockElt| self.support.prim_index_at(prim_slot, x);
 
-        let mut mu_pairs: Vec<MuPair> = self
-            .down_set(y)?
-            .into_iter()
-            .map(|z| MuPair { x: z, coef: 1 })
-            .collect();
-        let downs_len = mu_pairs.len();
+        let mut mu_pairs: Vec<MuPair> = {
+            self.down_set(y, &mut scratch.downs)?;
+            scratch
+                .downs
+                .iter()
+                .map(|&z| MuPair { x: z, coef: 1 })
+                .collect()
+        };
 
         // Reverse loop through primitive elements.
         let mut x = self.support.length_less(l_y);
@@ -566,11 +616,16 @@ impl<B: BlockTopology> KlTableHandle<B> {
                         }
                     }
                     BlockDescent::ImaginaryTypeII => {
+                        // pxy += (1 - q)(P_first + P_second), applied
+                        // termwise so the Cayley-image sum is never
+                        // materialised.
                         let pair = self.support.block().cayley(x, s).expect("cayley");
-                        let mut sum = working[kl_index(pair.0.expect("first image"))].clone();
-                        sum.add_assign(&working[kl_index(pair.1.expect("second image"))]);
-                        pxy.add_assign(&sum);
-                        pxy.sub_shifted_assign(&sum, 1, 1);
+                        let first = kl_index(pair.0.expect("first image"));
+                        let second = kl_index(pair.1.expect("second image"));
+                        pxy.add_assign(&working[first]);
+                        pxy.add_assign(&working[second]);
+                        pxy.sub_shifted_assign(&working[first], 1, 1);
+                        pxy.sub_shifted_assign(&working[second], 1, 1);
                         pxy.divide_by_2_assign()?;
                     }
                     BlockDescent::ImaginaryCompact => {
@@ -628,15 +683,17 @@ impl<B: BlockTopology> KlTableHandle<B> {
         }
         self.columns[y] = column;
 
-        // Shuffle mu_pairs: initial part (downs) is increasing, remainder
-        // decreasing; make everything increasing by x.
-        let mut final_pairs: Vec<MuPair> = mu_pairs[downs_len..].to_vec();
-        final_pairs.reverse();
-        let mut downs = mu_pairs[..downs_len].to_vec();
-        downs.extend(final_pairs);
-        downs.sort_by_key(|pair| pair.x);
-        downs.dedup_by_key(|pair| pair.x);
-        self.mu_columns[y] = downs;
+        // Make everything increasing by x (kl.cpp:778-785 shuffles the
+        // decreasing recursion tail before merging). The down-set prefix
+        // is increasing with distinct keys and the recursion pushes are
+        // decreasing with distinct keys, so equal keys occur only as
+        // (down-set, recursion) pairs in that relative order; a stable
+        // sort therefore keeps the μ=1 down-set entry ahead of any
+        // recursion duplicate, and dedup keeps it — exactly the result of
+        // the old reverse-and-merge, without copying either part.
+        mu_pairs.sort_by_key(|pair| pair.x);
+        mu_pairs.dedup_by_key(|pair| pair.x);
+        self.mu_columns[y] = mu_pairs;
         Ok(())
     }
 
@@ -737,6 +794,29 @@ impl<B: BlockTopology> KlTableHandle<B> {
         }
     }
 
+    /// The pool index of `KL_pol(x, y)` against the column being written
+    /// by `complete_primitives`: the index counterpart of
+    /// [`Self::current_column_pol`], for callers that only need the index
+    /// of an already-pooled polynomial.
+    fn current_column_index(
+        &self,
+        column: &[KlIndex],
+        slot: u32,
+        x: BlockElt,
+        y: BlockElt,
+    ) -> KlIndex {
+        let prim = self.support.prim_index_at(slot, x);
+        if prim >= column.len() {
+            if prim == self.support.prim_index_at(slot, y) {
+                1 // P_{y,y} = 1
+            } else {
+                0 // zero polynomial
+            }
+        } else {
+            column[prim]
+        }
+    }
+
     /// `KL_pol(x, y)` against the column being written by
     /// `complete_primitives` (kl.cpp:566-570 reads the in-progress
     /// `d_KL[y]`): slots above the backward traversal point are final,
@@ -750,17 +830,7 @@ impl<B: BlockTopology> KlTableHandle<B> {
         x: BlockElt,
         y: BlockElt,
     ) -> &KlPol {
-        let prim = self.support.prim_index_at(slot, x);
-        let index = if prim >= column.len() {
-            if prim == self.support.prim_index_at(slot, y) {
-                1 // P_{y,y} = 1
-            } else {
-                0 // zero polynomial
-            }
-        } else {
-            column[prim]
-        };
-        match self.pool.get(index) {
+        match self.pool.get(self.current_column_index(column, slot, x, y)) {
             Some(polynomial) => polynomial,
             None => KlPol::zero_ref(),
         }
