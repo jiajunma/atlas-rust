@@ -1458,3 +1458,28 @@ common-block topology, and a record-local cached dual `BareBlock` KL table.
 This also stops the retired `full_block_of` construction from duplicating a
 large full block. Required next gates remain the A2 fixture, E6 x=1790, and
 full E7 sorted differentials before resuming unitarity profiling.
+
+## Twisted-path singular flags: verified safe-by-invariant (2026-09-05, analysis only)
+
+The two modifier-free `ctxt.singular_flags(...)` sites in the twisted
+paths (domain_builtins.rs:~8786 twisted_reducibility_lookup, :~8879
+with_integral_block) were audited after the common-block deformfix
+(c37acfb). Verdict: CORRECT as written — their flags are
+simp_int-POSITION-indexed (post-cofold orbit.s0 is a simp_int position,
+ext_block.rs:985-1008), and the query-attitude context's parent_root
+order equals modifier.simp_int() (same set, same upstream_positive_root_order
+sort), so the modifier-free flags equal upstream's bm.simp_int loop for
+ANY bm. Do NOT "fix" them with singular_flags_with_modifier — that would
+apply w twice (the helper expects a stored-attitude context). The
+"trivial block modifier" comments at domain_builtins.rs:8758-8765 and
+:8875-8877 are inaccurate and should be rewritten to state the real
+invariant (pending small docs edit).
+
+OPEN (unrelated to those lines): nontrivial-simple_pi ext-block transport
+is still unverified territory — ext_block.rs:964-967 fold_orbits runs on
+the query subsystem while upstream folds simply_ints(bm) with parent-column
+labeling; if simple_pi does not commute with the subsystem twist the orbit
+grouping may relabel. Needs a discriminating probe (A3 SL(4,R)
+simple_pi=(0->1,1->0) anchor, delta-fixed q via oracle iteration; sketch
+recorded in the 2026-09-05 analysis). Until then, nontrivial-pi twisted
+results stay unclaimed (see locator step-5 item above).
