@@ -21,6 +21,7 @@ use crate::formula::FormulaOperator;
 use crate::frames::{EvaluationContext, Frame, GlobalCell, SharedValue};
 use crate::linear_values::{Matrix, RatVec, Vec32};
 use crate::matreduc;
+use crate::ratfast;
 use crate::syntax::{
     compact_expression, compact_pattern, Command, ComponentAssignmentExpr, ComponentTransformExpr,
     Expr, FieldAssignmentExpr, FieldTransformExpr, ForLoop, LambdaParam, LetBinding,
@@ -6767,6 +6768,19 @@ fn run_scalar(
                 }
             }
             Ok(at_builtin_level(level, || {
+                // Machine-word fast path (ratfast): the same normalized
+                // value, without malachite limb churn; None falls through
+                // to the generic operators below.
+                let fast = match operation {
+                    ScalarOp::RatAddInt => ratfast::add_int(&rational, &integer),
+                    ScalarOp::RatSubtractInt => ratfast::sub_int(&rational, &integer),
+                    ScalarOp::RatMultiplyInt => ratfast::mul_int(&rational, &integer),
+                    ScalarOp::RatDivideInt => ratfast::div_int(&rational, &integer),
+                    _ => None,
+                };
+                if let Some(value) = fast {
+                    return Value::Rational(value);
+                }
                 let integer_as_rational = BigRational::from(integer);
                 match operation {
                     ScalarOp::RatAddInt => Value::Rational(rational + integer_as_rational),
@@ -6798,13 +6812,25 @@ fn run_scalar(
                 }
             }
             Ok(at_builtin_level(level, || {
-                Value::Rational(match operation {
-                    ScalarOp::RatAdd => first + second,
-                    ScalarOp::RatSubtract => first - second,
-                    ScalarOp::RatMultiply => first * second,
-                    ScalarOp::RatDivide => first / second,
-                    ScalarOp::RatModulo => first.mod_op(second),
-                    _ => unreachable!(),
+                // Machine-word fast path (ratfast): the same normalized
+                // value; None falls through to the generic operators.
+                let fast = match operation {
+                    ScalarOp::RatAdd => ratfast::add(&first, &second),
+                    ScalarOp::RatSubtract => ratfast::sub(&first, &second),
+                    ScalarOp::RatMultiply => ratfast::mul(&first, &second),
+                    ScalarOp::RatDivide => ratfast::div(&first, &second),
+                    _ => None,
+                };
+                Value::Rational(match fast {
+                    Some(value) => value,
+                    None => match operation {
+                        ScalarOp::RatAdd => first + second,
+                        ScalarOp::RatSubtract => first - second,
+                        ScalarOp::RatMultiply => first * second,
+                        ScalarOp::RatDivide => first / second,
+                        ScalarOp::RatModulo => first.mod_op(second),
+                        _ => unreachable!(),
+                    },
                 })
             }))
         }
@@ -6943,7 +6969,12 @@ fn run_scalar(
                         relation_matches(relation, first.cmp(&second))
                     }
                     (Value::Rational(first), Value::Rational(second)) => {
-                        relation_matches(relation, first.cmp(&second))
+                        // Cross-multiplied i128 comparison when both are
+                        // machine-sized; identical ordering to the generic
+                        // cmp since denominators are positive.
+                        let ordering = ratfast::cmp(&first, &second)
+                            .unwrap_or_else(|| first.cmp(&second));
+                        relation_matches(relation, ordering)
                     }
                     (Value::Boolean(first), Value::Boolean(second)) => {
                         relation_matches(relation, first.cmp(&second))

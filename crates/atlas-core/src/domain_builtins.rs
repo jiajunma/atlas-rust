@@ -55,6 +55,7 @@ use atlas_real_group::{
 };
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
+use crate::ratfast;
 use crate::value::{Matrix, RatVec, Value, Vec32};
 
 /// Upstream Lie-type letter bounds (atlas-types.w:165-211) and RANK_MAX.
@@ -9358,8 +9359,17 @@ fn simple_lengths(cartan: &[Vec<i32>], components: &[Vec<usize>]) -> Vec<BigRati
                         continue;
                     }
                     assigned[j] = true;
-                    lengths[j] = lengths[i].clone() * BigRational::from(i64::from(cartan[j][i]))
-                        / BigRational::from(i64::from(cartan[i][j]));
+                    // Cartan entries are tiny, so the machine-word fast path
+                    // below essentially always applies.
+                    let scaled = ratfast::scaled(
+                        &lengths[i],
+                        i64::from(cartan[j][i]),
+                        i64::from(cartan[i][j]),
+                    );
+                    lengths[j] = scaled.unwrap_or_else(|| {
+                        lengths[i].clone() * BigRational::from(i64::from(cartan[j][i]))
+                            / BigRational::from(i64::from(cartan[i][j]))
+                    });
                     frontier.push(j);
                 }
             }
@@ -9371,6 +9381,9 @@ fn simple_lengths(cartan: &[Vec<i32>], components: &[Vec<usize>]) -> Vec<BigRati
 /// The invariant form evaluated on simple coordinates: `B(v,v)` with
 /// `B(α_i,α_j) = C[i][j] * lengths[j]`, symmetric by construction.
 fn squared_length(cartan: &[Vec<i32>], lengths: &[BigRational], coords: &[i32]) -> BigRational {
+    if let Some(fast) = squared_length_fast(cartan, lengths, coords) {
+        return fast;
+    }
     let mut total = BigRational::from(0u32);
     for (i, &left) in coords.iter().enumerate() {
         if left == 0 {
@@ -9387,11 +9400,58 @@ fn squared_length(cartan: &[Vec<i32>], lengths: &[BigRational], coords: &[i32]) 
     total
 }
 
+/// The i128 image of `squared_length`: the same sum over the same terms,
+/// accumulated exactly with per-step reduction. `None` when a simple length
+/// is not machine-sized or any intermediate overflows i128, in which case
+/// the caller reruns the generic loop; root coordinates and Cartan entries
+/// are tiny in practice, so the fast path essentially always applies.
+fn squared_length_fast(
+    cartan: &[Vec<i32>],
+    lengths: &[BigRational],
+    coords: &[i32],
+) -> Option<BigRational> {
+    let lengths: Vec<(i64, i64)> = lengths
+        .iter()
+        .map(ratfast::small_parts)
+        .collect::<Option<_>>()?;
+    let mut total = ratfast::FastSum::zero();
+    for (i, &left) in coords.iter().enumerate() {
+        if left == 0 {
+            continue;
+        }
+        for (j, &right) in coords.iter().enumerate() {
+            if right != 0 && cartan[i][j] != 0 {
+                let coefficient = i128::from(left)
+                    .checked_mul(i128::from(right))?
+                    .checked_mul(i128::from(cartan[i][j]))?;
+                let (num, den) = lengths[j];
+                total.add_term(coefficient.checked_mul(i128::from(num))?, i128::from(den))?;
+            }
+        }
+    }
+    total.finish()
+}
+
 /// Per-vector length flags: long exactly when the squared length exceeds
 /// the component minimum (so simply laced components are all-short, the
 /// upstream convention from atlas-types.w:1521-1526).
 fn length_flags(cartan: &[Vec<i32>], components: &[Vec<usize>], vectors: &[Vec<i32>]) -> Vec<bool> {
     let lengths = simple_lengths(cartan, components);
+    // The component minimum depends only on the simple lengths; compute it
+    // once per component instead of once per vector.
+    let minima: Vec<BigRational> = components
+        .iter()
+        .map(|component| {
+            component
+                .iter()
+                .map(|&j| {
+                    ratfast::scaled(&lengths[j], 2, 1)
+                        .unwrap_or_else(|| BigRational::from(2u32) * &lengths[j])
+                })
+                .min()
+                .expect("components are nonempty")
+        })
+        .collect();
     vectors
         .iter()
         .map(|coords| {
@@ -9400,14 +9460,9 @@ fn length_flags(cartan: &[Vec<i32>], components: &[Vec<usize>], vectors: &[Vec<i
             };
             let component = components
                 .iter()
-                .find(|component| component.contains(&support))
+                .position(|component| component.contains(&support))
                 .expect("a root's support lies in one component");
-            let minimum = component
-                .iter()
-                .map(|&j| BigRational::from(2u32) * &lengths[j])
-                .min()
-                .expect("components are nonempty");
-            squared_length(cartan, &lengths, coords) > minimum
+            squared_length(cartan, &lengths, coords) > minima[component]
         })
         .collect()
 }
