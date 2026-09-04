@@ -1388,7 +1388,7 @@ impl PartialBlock {
         seed: &StandardReprMod,
     ) -> Result<(Self, usize), StructureError> {
         if ctxt.rank() == 0 {
-            let block = Self::build(ctxt, std::slice::from_ref(seed))?;
+            let block = Self::build(ctxt, vec![seed.clone()])?;
             return Ok((block, 0));
         }
 
@@ -1444,11 +1444,12 @@ impl PartialBlock {
     }
 
     /// The partial block constructor (blocks.cpp:1086-1248). `interval`
-    /// is the srm list produced by [`bruhat_below`]; it is consumed in
+    /// is the srm list produced by [`bruhat_below`], consumed by value so
+    /// the stored element vector needs no second copy; it is reordered in
     /// `x`-sorted order so that descents precede when lengths are set.
     pub fn build(
         ctxt: &CommonContext<'_, '_>,
-        interval: &[StandardReprMod],
+        interval: Vec<StandardReprMod>,
     ) -> Result<Self, StructureError> {
         let rc = ctxt.rep_context();
         let rank = ctxt.rank();
@@ -1459,7 +1460,7 @@ impl PartialBlock {
         // (blocks.cpp:1106-1131).
         let mut y_lists: BTreeMap<crate::InvolutionId, Vec<RationalWeight>> = BTreeMap::new();
         let mut highest_x = 0_usize;
-        for srm in interval {
+        for srm in &interval {
             highest_x = highest_x.max(srm.x().index());
             let involution = rc.involution_of(srm.x())?;
             let list = y_lists.entry(involution).or_default();
@@ -1478,7 +1479,7 @@ impl PartialBlock {
 
         // pre-sort by x (stable, like upstream's list merge sort) so
         // descents precede when setting lengths (blocks.cpp:1133-1135)
-        let mut sorted: Vec<StandardReprMod> = interval.to_vec();
+        let mut sorted: Vec<StandardReprMod> = interval;
         sorted.sort_by_key(StandardReprMod::x);
 
         let mut xs = Vec::new();
@@ -2123,7 +2124,7 @@ mod tests {
         let interval = bruhat_below(&ctxt, &seed).unwrap();
         assert_eq!(interval.len(), 1);
         assert_eq!(interval[0], seed, "the seed alone is the interval");
-        let block = PartialBlock::build(&ctxt, &interval).unwrap();
+        let block = PartialBlock::build(&ctxt, interval).unwrap();
         assert_eq!(block.size(), 1);
         assert_eq!(block.rank(), 0);
         assert_eq!(block.x(0), Some(KgbId(2)));
@@ -2376,7 +2377,7 @@ mod tests {
         assert_eq!(interval_xs(&ctxt, &seed), vec![0, 1, 2]);
         let interval = bruhat_below(&ctxt, &seed).unwrap();
         assert_eq!(interval.last(), Some(&seed), "the seed generates last");
-        let block = PartialBlock::build(&ctxt, &interval).unwrap();
+        let block = PartialBlock::build(&ctxt, interval).unwrap();
         assert_eq!(block.size(), 3);
         for z in 0..3 {
             assert_eq!(block.x(z), Some(KgbId(z)), "rows are x=0,1,2");
@@ -2417,7 +2418,7 @@ mod tests {
         assert_eq!(ctxt.rank(), 2, "the full rank-2 integral system");
         assert_eq!(interval_xs(&ctxt, &seed), vec![0]);
         let interval = bruhat_below(&ctxt, &seed).unwrap();
-        let block = PartialBlock::build(&ctxt, &interval).unwrap();
+        let block = PartialBlock::build(&ctxt, interval).unwrap();
         assert_eq!(block.size(), 1);
         assert_eq!(block.rank(), 2);
         assert_eq!(block.descent(0, 0), Some(BlockDescent::ImaginaryTypeI));
@@ -2444,7 +2445,7 @@ mod tests {
         assert_eq!(interval_xs(&ctxt, &seed), vec![2, 3, 5]);
         let interval = bruhat_below(&ctxt, &seed).unwrap();
         assert_eq!(interval.last(), Some(&seed), "the seed generates last");
-        let block = PartialBlock::build(&ctxt, &interval).unwrap();
+        let block = PartialBlock::build(&ctxt, interval).unwrap();
         assert_eq!(block.size(), 3);
         assert_eq!(block.x(0), Some(KgbId(2)));
         assert_eq!(block.x(1), Some(KgbId(3)));
@@ -2491,7 +2492,7 @@ mod tests {
         let gamma = rw(&[2, 2], 1);
         let (seed, ctxt) = seed_and_context(&rc, 5, &[1, 1], &gamma);
         let interval = bruhat_below(&ctxt, &seed).unwrap();
-        let block = std::sync::Arc::new(PartialBlock::build(&ctxt, &interval).unwrap());
+        let block = std::sync::Arc::new(PartialBlock::build(&ctxt, interval).unwrap());
 
         let mut kl = crate::KlTable::from_handle(std::sync::Arc::clone(&block)).unwrap();
         drop(block);
@@ -2801,7 +2802,7 @@ mod tests {
         let gamma = rw(&[2, 2], 1);
         let (seed, ctxt) = seed_and_context(&rc, 5, &[1, 1], &gamma);
         let interval = bruhat_below(&ctxt, &seed).unwrap();
-        let block = PartialBlock::build(&ctxt, &interval).unwrap();
+        let block = PartialBlock::build(&ctxt, interval).unwrap();
         let size = block.size();
         let rank = block.rank();
         assert_eq!((size, rank), (3, 2));
