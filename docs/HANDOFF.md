@@ -8129,3 +8129,43 @@ the captured A2 high-level regression, and pipeline-driver tests 11/11 pass.
 The driver test itself had a stale file-argument mock after the production
 driver moved to stdin plus capture-time `quit`; the mock now validates the
 real protocol. Do not claim parity until A2/E6/E7 HPC differentials pass.
+
+## 2026-09-04a — block_deform divergence CLOSED (e9335fc low_mark fix)
+
+Second root cause found after 0ce1401: the port never implemented
+upstream's `low_mark` filter. `block_deformation_to_height`
+(repr.cpp:2120,2134-2136,2160-2172) erases every retained element whose
+height is strictly below the lowest height of any term found in the
+queue; the port kept them, so below-`low_mark` zero-seed elements stayed
+in the survivor set, accumulated deformation contributions, and produced
+ghost terms. Signature evidence at E6 bound 32: one extra
+`(2-2s)*parameter(x=1779,...)` row plus a sign flip on a shared row;
+bounds ≤16 matched because the ghost coefficients stayed zero there.
+Fix e9335fc tracks `low_mark` in the entries pass and drops
+`height < low_mark` alongside the `survives` filter (same zero-coef
+invariant error otherwise).
+
+Verification at tip (jobs on atlas-rust-merged @ e9335fc):
+- quick_check 3679368: CHECK_DONE 0, TEST_DONE 0 (workspace tests green)
+- corpus 3679372: MATCH 240/240
+- bisect-fix2 3679370: SORTED_MATCH 5105 lines (was 3043 diff lines)
+- bd-hladder-fix 3679369: normalized SORTED_MATCH (18,567 lines; the
+  raw 4-line diff was pure trailing-comma placement from term ORDER in
+  one printed polynomial — probe_diff.sbatch now strips line-final
+  commas before the sorted diff, 6160011)
+- E7 bd-e7-fix 3679371 (fat): pending at this writing
+- A2 integral-singular rerun 3679379: pending at this writing
+
+Also landed: dc8397e HPC memory-policy correction (executed plan
+2026-09-03-hpc-memory-policy-audit; 30/30 hpc unit tests green locally;
+cpu partition admits ~4096 MiB per REQUESTED CPU, cgroup enforces 90%).
+
+Performance phase is now UNBLOCKED pending the E7/A2 probes. Agreed
+order (user directive 2026-09-02/03): KLV speed, unitarity speed,
+associate variety; E6 as the tuning scale, E7 for confirmation, no
+proactive E8. Known open perf debt: E7 deform(p)-only leg was Rust
+17.60s/378,944KB vs oracle 7.77s/203,900KB (3674360) — 2.3x SLOWER;
+the heavy unitary path is the opposite (rust 20min vs oracle >2h).
+First measurement per 2026-09-03e: frame-pointer perf of a shortened
+probe_unitary_e7_heavy variant to attribute ExtKlTable fill vs
+evaluator/KGB overhead before building any cache.
