@@ -760,3 +760,21 @@ RootSystem, BTreeSet->sorted-Vec in block build.
   19.53 -> 18.38s (oracle 14.05/14.24; gaps 1.20x / 1.29x).
 - Session totals: gkfast_e6 2.63 -> 0.90s = **2.92x** (oracle 0.59s; gap
   1.53x, was 4.4x).
+
+## agent-transduce (9870711) — REJECTED at the gate, kept unmerged locally
+
+- Transducer-based orbit closure (8-byte WeylElt keys + u64 pool) is
+  CORRECT (quick_check 3680741 green incl. new S6 pin; 5 probes
+  SORTED_MATCH) but SLOWER on the target workload: AB 3680748 gkfast_e6
+  0.90s -> 1.07s = 0.84x; E7 reads also slower (17.54/19.00 vs
+  16.79/18.38). Reverted per the >2% gate.
+- Root cause of the regression: the BFS dedup got cheap, but the
+  membership `entries` index still needs theta's simple-root images per
+  member, and synthesizing those from the compact element (word replay
+  through reflection tables) costs MORE than gathering bytes from the
+  already-materialized 240-byte permutation the old path carried as its
+  BFS state. Upstream avoids this because its membership IS the pool
+  index (Cartan_orbits::locate over orbit offsets) — a membership-index
+  redesign (pool-offset keyed) would be required for the transducer path
+  to pay off, not just the inner loop swap. Recorded so it is not
+  retried in this shape; branch agent-transduce stays local.
