@@ -98,7 +98,9 @@ pub enum TransformOperation {
 /// A typed executable expression.
 #[derive(Clone, Debug, PartialEq)]
 pub enum TypedExpr {
-    Denotation(Value),
+    /// A literal value built once at analysis time and shared per
+    /// evaluation (an `Rc` bump instead of a value copy).
+    Denotation(SharedValue),
     /// `$` captured at analysis time: evaluates to the snapshotted last
     /// value like a denotation, but the verbose trace prints the oracle's
     /// `(type:$)` spelling (axis.w:596-602), not the value itself.
@@ -728,7 +730,7 @@ impl OverloadState {
 /// oracle fidelity for unverified prints.
 fn typed_expression_print(expression: &TypedExpr) -> String {
     match expression {
-        TypedExpr::Denotation(value) => value.to_string(),
+        TypedExpr::Denotation(value) => value.as_ref().to_string(),
         TypedExpr::CapturedLastValue { type_display, .. } => type_display.clone(),
         TypedExpr::GlobalIdent { name, .. } | TypedExpr::LocalIdent { name, .. } => name.clone(),
         TypedExpr::BuiltinCall {
@@ -786,15 +788,17 @@ fn typed_expression_print(expression: &TypedExpr) -> String {
             // with the field name taken from the call-site trace name
             // (so a projector aliased under another `set` name prints
             // that name, like upstream's build_call(name)).
-            if let TypedExpr::Denotation(Value::Closure(closure)) = function.as_ref() {
-                if matches!(closure.body.as_ref(), TypedExpr::TupleProject { .. }) {
-                    if let Some(trace) = name {
-                        let field = trace.split('@').next().unwrap_or(trace);
-                        return format!(
-                            "{}.{}",
-                            typed_expression_print(argument),
-                            field
-                        );
+            if let TypedExpr::Denotation(value) = function.as_ref() {
+                if let Value::Closure(closure) = value.as_ref() {
+                    if matches!(closure.body.as_ref(), TypedExpr::TupleProject { .. }) {
+                        if let Some(trace) = name {
+                            let field = trace.split('@').next().unwrap_or(trace);
+                            return format!(
+                                "{}.{}",
+                                typed_expression_print(argument),
+                                field
+                            );
+                        }
                     }
                 }
             }
@@ -865,7 +869,10 @@ fn typed_expression_print(expression: &TypedExpr) -> String {
 fn special_int_unary_print(name: &str, arguments: &[TypedExpr]) -> Option<String> {
     fn integer_denotation(expression: &TypedExpr) -> Option<&BigInt> {
         match expression {
-            TypedExpr::Denotation(Value::Integer(value)) => Some(value),
+            TypedExpr::Denotation(value) => match value.as_ref() {
+                Value::Integer(value) => Some(value),
+                _ => None,
+            },
             _ => None,
         }
     }
@@ -1977,7 +1984,7 @@ impl TypedContext {
         let mut events = printed;
         for (shape, leaves, value) in evaluated {
             let mut slots = Vec::new();
-            distribute(value, &shape, &mut slots);
+            distribute(Rc::new(value), &shape, &mut slots);
             debug_assert_eq!(slots.len(), leaves.len());
             for ((name, name_span, constant, leaf_type), slot) in leaves.into_iter().zip(slots) {
                 let value = Rc::try_unwrap(slot).unwrap_or_else(|rc| (*rc).clone());
@@ -2602,7 +2609,7 @@ pub fn convert_expr(
             conform_types(
                 &found,
                 required,
-                TypedExpr::Denotation(Value::Integer(value.clone())),
+                TypedExpr::Denotation(Rc::new(Value::Integer(value.clone()))),
                 *span,
                 analysis,
             )
@@ -2610,14 +2617,14 @@ pub fn convert_expr(
         Expr::Boolean { value, span } => conform_types(
             &Type::Primitive(Prim::Bool),
             required,
-            TypedExpr::Denotation(Value::Boolean(*value)),
+            TypedExpr::Denotation(Rc::new(Value::Boolean(*value))),
             *span,
             analysis,
         ),
         Expr::String { value, span } => conform_types(
             &Type::Primitive(Prim::String),
             required,
-            TypedExpr::Denotation(Value::String(value.clone())),
+            TypedExpr::Denotation(Rc::new(Value::String(value.clone()))),
             *span,
             analysis,
         ),
@@ -4001,7 +4008,7 @@ fn convert_op_cast(
         return conform_types(
             &deduced,
             required,
-            TypedExpr::Denotation(value),
+            TypedExpr::Denotation(Rc::new(value)),
             span,
             analysis,
         );
@@ -4011,7 +4018,7 @@ fn convert_op_cast(
         return conform_types(
             &Type::function(cast_type.clone(), result_type),
             required,
-            TypedExpr::Denotation(builtin_function_value(index, analysis.types)),
+            TypedExpr::Denotation(Rc::new(builtin_function_value(index, analysis.types))),
             span,
             analysis,
         );
@@ -5765,7 +5772,7 @@ fn convert_overload_application(
                 &variant.result_type,
                 required,
                 TypedExpr::FunctionCall {
-                    function: Box::new(TypedExpr::Denotation(user.value.clone())),
+                    function: Box::new(TypedExpr::Denotation(Rc::new(user.value.clone()))),
                     argument: Box::new(argument),
                     name: Some(trace_name),
                     span,
@@ -11724,7 +11731,7 @@ impl TypedExpr {
     ) -> Result<Option<SharedValue>, Control> {
         let _ = context;
         match self {
-            Self::Denotation(value) => Ok(at_level(level, || value.clone())),
+            Self::Denotation(value) => Ok(at_shared(level, value)),
             Self::CapturedLastValue { value, .. } => Ok(at_level(level, || value.clone())),
             Self::TupleDisplay(elements) => {
                 let values = elements
@@ -12498,7 +12505,7 @@ impl TypedExpr {
                 let mut slots = Vec::new();
                 for (shape, initializer) in initializers {
                     let value = force(initializer, context)?;
-                    distribute(unwrap_shared(value), shape, &mut slots);
+                    distribute(value, shape, &mut slots);
                 }
                 // A group of pure discards claims no frame (empty-layer
                 // rule), exactly as analysis counted no layer for it.
@@ -12633,7 +12640,7 @@ impl TypedExpr {
                 let argument = force(argument, context)?;
                 match callee.as_ref() {
                     Value::Closure(closure) => {
-                        match apply_closure(closure, unwrap_shared(argument), context, level) {
+                        match apply_closure(closure, argument, context, level) {
                             Err(Control::Runtime(mut diagnostic)) => {
                                 // A dynamically computed callee prints its function
                                 // expression (call_expression::function_name,
@@ -12830,7 +12837,7 @@ impl TypedExpr {
                         continue;
                     }
                     let mut slots = Vec::new();
-                    distribute(value.as_ref().clone(), shape, &mut slots);
+                    distribute(Rc::new(value.as_ref().clone()), shape, &mut slots);
                     // A branch binding no slot claims no frame, exactly as
                     // analysis counted no layer for it (empty-layer rule).
                     return if slots.is_empty() {
@@ -12911,7 +12918,7 @@ impl TypedExpr {
                         function.as_ref()
                     )
                 };
-                apply_closure(closure, value.as_ref().clone(), context, level)
+                apply_closure(closure, Rc::new(value.as_ref().clone()), context, level)
             }
             Self::CountedFor {
                 name,
@@ -13078,9 +13085,12 @@ fn take_pilfered(
 /// axis.w:3222-3571): the argument distributes into the frame slots its
 /// parameter shapes describe, a recursive closure additionally binds
 /// itself at slot 0, and a `return` unwinds to this call boundary.
+///
+/// The argument arrives shared: a single plain parameter binds it with an
+/// `Rc` bump, and only tuple destructuring unpacks it (copy-on-write).
 fn apply_closure(
     closure: &Rc<Closure>,
-    argument: Value,
+    argument: SharedValue,
     context: &mut EvaluationContext,
     level: Level,
 ) -> Result<Option<SharedValue>, Control> {
@@ -13094,7 +13104,7 @@ fn apply_closure(
             distribute(argument, &closure.shapes[0], &mut slots);
             Some(slots)
         }
-        _ => match argument {
+        _ => match unwrap_shared(argument) {
             Value::Tuple(values) => {
                 assert_eq!(
                     values.len(),
@@ -13103,7 +13113,7 @@ fn apply_closure(
                 );
                 let mut slots = Vec::new();
                 for (value, shape) in values.into_iter().zip(closure.shapes.iter()) {
-                    distribute(value, shape, &mut slots);
+                    distribute(Rc::new(value), shape, &mut slots);
                 }
                 Some(slots)
             }
@@ -13188,82 +13198,139 @@ fn eval_for_loop(
     level: Level,
     context: &mut EvaluationContext,
 ) -> Result<Option<SharedValue>, Control> {
-    // The traversal list pairs the `@` index value with the component —
-    // the index value is built only when the pattern names one. Ordinary
+    // The traversal pairs the `@` index value with the component — the
+    // index value is built only when the pattern names one. Ordinary
     // aggregates index by position (int); the polynomial types
     // index by the term itself (axis.w:5926-5936: KTypePol by KType,
     // ParamPol by Param), the component being the Split coefficient.
     let position_index = |position: usize| index.then(|| Value::Integer(BigInt::from(position)));
-    let values: Vec<(Option<Value>, Value)> = match unwrap_shared(force(iterable, context)?) {
-        Value::List(values) => values
-            .into_iter()
-            .enumerate()
-            .map(|(position, element)| (position_index(position), element))
-            .collect(),
-        // A string iterates its one-character strings, a vec its
-        // int entries, a ratvec its rat entries, a mat its
-        // column vecs (the aggregate for-in of parser.y:506-531,
-        // mirroring subscription's component types).
-        Value::String(text) => text
-            .as_bytes()
-            .iter()
-            .enumerate()
-            .map(|(position, byte)| {
-                (
-                    position_index(position),
-                    Value::String(String::from_utf8_lossy(&[*byte]).into_owned()),
-                )
-            })
-            .collect(),
-        Value::Vector(Vec32(entries)) => entries
-            .iter()
-            .enumerate()
-            .map(|(position, entry)| {
-                (position_index(position), Value::Integer(BigInt::from(*entry)))
-            })
-            .collect(),
-        Value::RatVector(ratvec) => ratvec
-            .numerators()
-            .iter()
-            .enumerate()
-            .map(|(position, numerator)| {
-                (
-                    position_index(position),
-                    Value::Rational(BigRational::from_integers(
-                        BigInt::from(*numerator),
-                        BigInt::from(ratvec.denominator()),
-                    )),
-                )
-            })
-            .collect(),
-        Value::Matrix(matrix) => (0..matrix.cols())
-            .map(|column| {
-                (position_index(column), Value::Vector(matrix.column(column)))
-            })
-            .collect(),
-        Value::Domain(crate::domain_builtins::DomainValue::KTypePol(polynomial)) => polynomial
-            .iteration_terms()
-            .into_iter()
-            .map(|(term, coefficient)| {
-                (index.then(|| Value::Domain(term)), Value::Domain(coefficient))
-            })
-            .collect(),
-        Value::Domain(crate::domain_builtins::DomainValue::ParamPol(polynomial)) => polynomial
-            .iteration_terms()
-            .into_iter()
-            .map(|(term, coefficient)| {
-                (index.then(|| Value::Domain(term)), Value::Domain(coefficient))
-            })
-            .collect(),
-        other => panic!("analysis let a non-iterable value through: {other}"),
+    let mut collected = match Rc::try_unwrap(force(iterable, context)?) {
+        // A uniquely held iterable (a fresh display or call result): move
+        // the components out without copying anything.
+        Ok(owned) => {
+            let values: Vec<(Option<Value>, Value)> = match owned {
+                Value::List(values) => values
+                    .into_iter()
+                    .enumerate()
+                    .map(|(position, element)| (position_index(position), element))
+                    .collect(),
+                // A string iterates its one-character strings, a vec its
+                // int entries, a ratvec its rat entries, a mat its
+                // column vecs (the aggregate for-in of parser.y:506-531,
+                // mirroring subscription's component types).
+                Value::String(text) => text
+                    .as_bytes()
+                    .iter()
+                    .enumerate()
+                    .map(|(position, byte)| {
+                        (
+                            position_index(position),
+                            Value::String(String::from_utf8_lossy(&[*byte]).into_owned()),
+                        )
+                    })
+                    .collect(),
+                Value::Vector(Vec32(entries)) => entries
+                    .iter()
+                    .enumerate()
+                    .map(|(position, entry)| {
+                        (position_index(position), Value::Integer(BigInt::from(*entry)))
+                    })
+                    .collect(),
+                Value::RatVector(ratvec) => ratvec
+                    .numerators()
+                    .iter()
+                    .enumerate()
+                    .map(|(position, numerator)| {
+                        (
+                            position_index(position),
+                            Value::Rational(BigRational::from_integers(
+                                BigInt::from(*numerator),
+                                BigInt::from(ratvec.denominator()),
+                            )),
+                        )
+                    })
+                    .collect(),
+                Value::Matrix(matrix) => (0..matrix.cols())
+                    .map(|column| {
+                        (position_index(column), Value::Vector(matrix.column(column)))
+                    })
+                    .collect(),
+                Value::Domain(crate::domain_builtins::DomainValue::KTypePol(polynomial)) => {
+                    polynomial
+                        .iteration_terms()
+                        .into_iter()
+                        .map(|(term, coefficient)| {
+                            (index.then(|| Value::Domain(term)), Value::Domain(coefficient))
+                        })
+                        .collect()
+                }
+                Value::Domain(crate::domain_builtins::DomainValue::ParamPol(polynomial)) => {
+                    polynomial
+                        .iteration_terms()
+                        .into_iter()
+                        .map(|(term, coefficient)| {
+                            (index.then(|| Value::Domain(term)), Value::Domain(coefficient))
+                        })
+                        .collect()
+                }
+                other => panic!("analysis let a non-iterable value through: {other}"),
+            };
+            // The tilde after the in-part traverses the components in
+            // reverse; the `@` index still names the original position,
+            // so it counts down from n-1 (axis.w:6017-6026).
+            let mut iterations = values;
+            if in_reversed {
+                iterations.reverse();
+            }
+            for_loop_iterations(shape, names, body, in_reversed, level, context, iterations)?
+        }
+        // A shared iterable (the common case: a variable read): borrow the
+        // aggregate and build one component per step instead of deep-copying
+        // the whole value up front. Upstream does the same — for_expression
+        // holds its own shared pointer to the evaluated aggregate and
+        // indexes it per iteration (axis.w:5990-6026). Snapshot semantics
+        // are preserved because the pinned handle keeps the Rc count above
+        // one for the whole loop: every write path that could reach the
+        // iterable through another alias copy-on-writes first
+        // (mutate_aggregate's Rc::make_mut, take_pilfered's try_unwrap),
+        // so the traversal always observes the entry-time aggregate,
+        // exactly what the former upfront deep clone guaranteed.
+        Err(shared) => {
+            let view = IterableView::new(shared.as_ref());
+            let length = view.len();
+            let iterations = (0..length).map(|position| {
+                let position = if in_reversed {
+                    length - 1 - position
+                } else {
+                    position
+                };
+                view.component(position, index)
+            });
+            for_loop_iterations(shape, names, body, in_reversed, level, context, iterations)?
+        }
     };
-    // The tilde after the in-part traverses the components in
-    // reverse; the `@` index still names the original position,
-    // so it counts down from n-1 (axis.w:6017-6026).
-    let mut iterations = values;
-    if in_reversed {
-        iterations.reverse();
+    // The tilde before `od` reverse-collects the row.
+    if out_reversed {
+        collected.reverse();
     }
+    Ok(at_level(level, move || {
+        Value::List(collected.into_iter().map(unwrap_shared).collect())
+    }))
+}
+
+/// The per-iteration half of a for loop, shared by the owned and borrowed
+/// traversals: bind the index slot ahead of the pattern slots, run the
+/// body in a traced frame, and collect the row values.
+#[allow(clippy::too_many_arguments)]
+fn for_loop_iterations(
+    shape: &SlotShape,
+    names: &[String],
+    body: &TypedExpr,
+    in_reversed: bool,
+    level: Level,
+    context: &mut EvaluationContext,
+    iterations: impl IntoIterator<Item = (Option<Value>, Value)>,
+) -> Result<Vec<SharedValue>, Control> {
     let mut collected = Vec::new();
     // The trace reports the traversal-order iteration counter
     // (0-based), which differs from the `@` index position
@@ -13275,7 +13342,7 @@ fn eval_for_loop(
         if let Some(index_value) = index_value {
             slots.push(Rc::new(index_value));
         }
-        distribute(element, shape, &mut slots);
+        distribute(Rc::new(element), shape, &mut slots);
         let (result, frame) = if slots.is_empty() {
             // A pure-discard layer pushes no frame, matching the
             // analysis-time empty-layer rule.
@@ -13312,13 +13379,83 @@ fn eval_for_loop(
             Err(control) => return Err(control),
         }
     }
-    // The tilde before `od` reverse-collects the row.
-    if out_reversed {
-        collected.reverse();
+    Ok(collected)
+}
+
+/// Borrowed traversal of a shared for-loop iterable: the aggregate stays
+/// put and one component value is built per step (see `eval_for_loop` for
+/// the copy-on-write argument that keeps this a snapshot traversal).
+enum IterableView<'a> {
+    List(&'a [Value]),
+    String(&'a [u8]),
+    Vector(&'a [i32]),
+    RatVector(&'a RatVec),
+    Matrix(&'a Matrix),
+    /// Polynomials iterate (term, coefficient) pairs built fresh per
+    /// traversal (`iteration_terms`), so the view owns them.
+    Terms(Vec<(domain_builtins::DomainValue, domain_builtins::DomainValue)>),
+}
+
+impl<'a> IterableView<'a> {
+    fn new(value: &'a Value) -> Self {
+        match value {
+            Value::List(values) => Self::List(values),
+            Value::String(text) => Self::String(text.as_bytes()),
+            Value::Vector(Vec32(entries)) => Self::Vector(entries),
+            Value::RatVector(ratvec) => Self::RatVector(ratvec),
+            Value::Matrix(matrix) => Self::Matrix(matrix),
+            Value::Domain(domain_builtins::DomainValue::KTypePol(polynomial)) => {
+                Self::Terms(polynomial.iteration_terms())
+            }
+            Value::Domain(domain_builtins::DomainValue::ParamPol(polynomial)) => {
+                Self::Terms(polynomial.iteration_terms())
+            }
+            other => panic!("analysis let a non-iterable value through: {other}"),
+        }
     }
-    Ok(at_level(level, move || {
-        Value::List(collected.into_iter().map(unwrap_shared).collect())
-    }))
+
+    fn len(&self) -> usize {
+        match self {
+            Self::List(values) => values.len(),
+            Self::String(bytes) => bytes.len(),
+            Self::Vector(entries) => entries.len(),
+            Self::RatVector(ratvec) => ratvec.numerators().len(),
+            Self::Matrix(matrix) => matrix.cols(),
+            Self::Terms(terms) => terms.len(),
+        }
+    }
+
+    /// The `(index, component)` pair of one position: ordinary aggregates
+    /// index by position (int), polynomials by the term (axis.w:5926-5936).
+    fn component(&self, position: usize, index: bool) -> (Option<Value>, Value) {
+        let position_index = || index.then(|| Value::Integer(BigInt::from(position)));
+        match self {
+            Self::List(values) => (position_index(), values[position].clone()),
+            Self::String(bytes) => (
+                position_index(),
+                Value::String(String::from_utf8_lossy(&[bytes[position]]).into_owned()),
+            ),
+            Self::Vector(entries) => (
+                position_index(),
+                Value::Integer(BigInt::from(entries[position])),
+            ),
+            Self::RatVector(ratvec) => (
+                position_index(),
+                Value::Rational(BigRational::from_integers(
+                    BigInt::from(ratvec.numerators()[position]),
+                    BigInt::from(ratvec.denominator()),
+                )),
+            ),
+            Self::Matrix(matrix) => (position_index(), Value::Vector(matrix.column(position))),
+            Self::Terms(terms) => {
+                let (term, coefficient) = &terms[position];
+                (
+                    index.then(|| Value::Domain(term.clone())),
+                    Value::Domain(coefficient.clone()),
+                )
+            }
+        }
+    }
 }
 
 /// The traced frame of one let group (let_expression::evaluate catch,
@@ -13464,17 +13601,21 @@ fn closure_trace_string(context: &EvaluationContext, closure: &Closure) -> Strin
 }
 
 /// Bind one value against a slot shape, pushing leaves left-to-right
-/// (upstream `bind_pattern` at evaluation time).
-fn distribute(value: Value, shape: &SlotShape, slots: &mut Vec<Rc<Value>>) {
+/// (upstream `bind_pattern` at evaluation time). A plain leaf moves the
+/// shared handle straight into its slot; only tuple destructuring unwraps
+/// the container (copy-on-write: a genuinely shared tuple is cloned once
+/// here and its components re-shared individually).
+fn distribute(value: SharedValue, shape: &SlotShape, slots: &mut Vec<Rc<Value>>) {
     match shape {
-        SlotShape::Leaf => slots.push(Rc::new(value)),
+        SlotShape::Leaf => slots.push(value),
         SlotShape::Discard => {}
         SlotShape::Tuple { elements, whole } => {
             if *whole {
-                slots.push(Rc::new(value.clone()));
+                slots.push(Rc::clone(&value));
             }
-            let Value::Tuple(values) = value else {
-                panic!("analysis let a non-tuple value reach a tuple pattern: {value}")
+            let values = match unwrap_shared(value) {
+                Value::Tuple(values) => values,
+                other => panic!("analysis let a non-tuple value reach a tuple pattern: {other}"),
             };
             assert_eq!(
                 values.len(),
@@ -13482,7 +13623,7 @@ fn distribute(value: Value, shape: &SlotShape, slots: &mut Vec<Rc<Value>>) {
                 "analysis let a tuple arity mismatch through"
             );
             for (value, element) in values.into_iter().zip(elements) {
-                distribute(value, element, slots);
+                distribute(Rc::new(value), element, slots);
             }
         }
     }
@@ -13728,7 +13869,7 @@ fn apply_transform(
         TransformOperation::Closure(closure) => unwrap_shared(
             apply_closure(
                 closure,
-                Value::Tuple(vec![old, operand]),
+                Rc::new(Value::Tuple(vec![old, operand])),
                 context,
                 Level::SingleValue,
             )?
@@ -18249,6 +18390,32 @@ mod tests {
         let (_, value) = convert_and_run("for i in [1,2,3] do if i = 3 then break fi; i * 10~ od")
             .expect("break in a reverse-collecting loop");
         assert_eq!(value.to_string(), "[20,10]");
+    }
+
+    #[test]
+    fn for_loop_over_variable_observes_the_entry_snapshot() {
+        // A loop over a variable borrows the aggregate (no upfront copy):
+        // reassignment or a component write through the variable mid-loop
+        // copy-on-writes, so the traversal still sees the entry-time value.
+        for (source, expected) in [
+            ("let v = [1,2,3] in for x in v do v := [9,9]; x od", "[1,2,3]"),
+            ("let v = [1,2,3] in for x in v do v[0] := 9; x od", "[1,2,3]"),
+            // The write itself still lands on the variable for after the
+            // loop (each iteration overwrites, so the last one sticks).
+            (
+                "let v = [1,2,3] in begin for x in v do v[0] := x * 10 od; v end",
+                "[30,2,3]",
+            ),
+            // Reversed traversal over a shared iterable, and the `@` index
+            // counting down.
+            ("let v = [7,8,9] in for x@i in v~ do (i,x) od", "[(2,9),(1,8),(0,7)]"),
+            // An early break clones only the visited components.
+            ("let v = [1,2,3] in for x in v do if x = 2 then break fi; x od", "[1]"),
+        ] {
+            let (_, value) = convert_and_run(source)
+                .unwrap_or_else(|error| panic!("{source} should convert and run: {error:?}"));
+            assert_eq!(value.to_string(), expected, "source: {source}");
+        }
     }
 
     #[test]
