@@ -691,3 +691,23 @@ RootSystem, BTreeSet->sorted-Vec in block build.
 - RSS roughly doubles under mimalloc: gkfast_e6 184MB (was ~90MB),
   deform_e7 436MB, finals 467MB (oracle ~204-209MB). Fine on fat/cpu
   limits; watch E8-scale headroom.
+
+## agent-rtcache (merged ac440c6) + agent-mimalloc (merged 489eb15)
+
+- rtcache probe_gkfast_e6 interleaved A/B vs fastdiv tip (3680445, REPS=3):
+  base 2.35/2.34/2.41 -> tip 1.38/1.36/1.49, median 2.35s -> 1.38s =
+  **1.70x** (RootTable memoized per (BasedRootDatum, prefers_coroots) via a
+  session-wide OnceLock<Mutex<Vec>> mirroring weyl_datum_shared; the 2.2%
+  flat profile share understated its true cost — rebuilds also drove
+  allocator churn). Cumulative ratfast+fastdiv+rtcache on gkfast_e6:
+  2.54s -> 1.38s = 1.84x. Gates: quick_check 3680438 green (test fix
+  120a18d confirmed), probes 3680440-444 all SORTED_MATCH.
+- mimalloc gates: quick_check 3680452 green, probes 3680454-458 all
+  SORTED_MATCH; interleaved A/B vs ac440c6 (REPS=3):
+  deform_e7 (3680459) base 13.40/13.71/13.30 -> tip 11.41/11.38/11.07,
+  median 13.40s -> 11.38s = **1.18x**; gkfast_e6 (3680460) base
+  1.46/1.38/1.33 -> tip 1.03/1.03/1.03, median 1.38s -> 1.03s = **1.34x**.
+  RSS ~2x under mimalloc (E6 172MB vs 90MB; deform-E7 437-449MB vs ~399MB).
+- Session totals: gkfast_e6 2.63s -> 1.03s = **2.55x** (oracle 0.59s; gap
+  4.4x -> 1.75x). deform-E7 19.03s -> 11.38s = 1.67x (oracle ~10s; gap
+  ~1.14x).
