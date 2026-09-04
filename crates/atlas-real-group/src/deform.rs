@@ -459,12 +459,12 @@ pub fn common_deformation_terms(
             }
             let contribute = block.length(z).unwrap_or(0) % 2 != y_parity;
             for x in (0..=z).rev() {
-                let pol = kl
+                // Evaluate the pooled polynomial in place; cloning it
+                // first would allocate once per (x, z) pair.
+                let mut value = kl
                     .pool()
                     .get(kl.kl_pol(x, z)?)
-                    .cloned()
-                    .unwrap_or_else(KlPol::zero);
-                let mut value = pol.evaluate_at_minus_one();
+                    .map_or(0, KlPol::evaluate_at_minus_one);
                 if value == 0 {
                     continue;
                 }
