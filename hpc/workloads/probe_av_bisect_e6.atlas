@@ -1,0 +1,32 @@
+<nilpotent_orbits.at
+<associated_variety_annihilator.at
+<GKfast.at
+
+rd : RootDatum
+rd := simply_connected(Lie_type("E6"),true)
+ic : InnerClass
+ic := inner_class(rd,[[1,0,0,0,0,0],[0,1,0,0,0,0],[0,0,1,0,0,0],[0,0,0,1,0,0],[0,0,0,0,1,0],[0,0,0,0,0,1]])
+n : int
+n := nr_of_real_forms(ic)
+rf : RealForm
+rf := real_form(ic,n-1)
+p : Param
+p := param(KGB(rf,0),[1,1,1,1,1,1],[1,1,1,1,1,1]/1)
+prints("A finalize",new_line)
+q : Param
+q := Finalize(p)
+prints("B cell",new_line)
+cell : WCell
+cell := W_cell_of(q)
+prints("C rootdatum",new_line)
+L : RootDatum
+L := cell.root_datum
+prints("L=",L,new_line)
+prints("D charactertable",new_line)
+ct : CharacterTable
+ct := character_table(L)
+prints("E special",new_line)
+i : int
+i := ct.special_character_inefficient(cell)
+prints("special=",i," degree=",ct.degree(i),new_line)
+prints("gk=",#posroots(rd)-ct.degree(i),new_line)
