@@ -8335,7 +8335,7 @@ fn atlas_root_number(
     image_root: &Weight,
     span: SourceSpan,
 ) -> Result<u32, Diagnostic> {
-    let table = RootTable::build(handle, span)?;
+    let table = root_table_shared(handle, span)?;
     for (position, root) in table.roots.iter().enumerate() {
         let position =
             u32::try_from(position).map_err(|_| runtime(span, "internal root index overflow"))?;
@@ -9501,6 +9501,37 @@ impl RootTable {
     }
 }
 
+/// Session-wide cache of the per-datum positive (co)root presentation
+/// table, the [`weyl_datum_shared`] counterpart for the root-query
+/// builtins: `RootTable::build` is pure in the datum content and the
+/// coroot preference, and scripts issue root/length/index queries in
+/// loops over one datum.
+fn root_table_shared(
+    handle: &RootDatumHandle,
+    span: SourceSpan,
+) -> Result<Arc<RootTable>, Diagnostic> {
+    static CACHE: std::sync::OnceLock<
+        std::sync::Mutex<Vec<(BasedRootDatum, bool, Arc<RootTable>)>>,
+    > = std::sync::OnceLock::new();
+    let cache = CACHE.get_or_init(|| std::sync::Mutex::new(Vec::new()));
+    if let Some(entry) = cache
+        .lock()
+        .expect("root table cache poisoned")
+        .iter()
+        .find(|(datum, prefers_coroots, _)| {
+            datum == &*handle.datum && *prefers_coroots == handle.prefers_coroots
+        })
+    {
+        return Ok(Arc::clone(&entry.2));
+    }
+    let table = Arc::new(RootTable::build(handle, span)?);
+    cache
+        .lock()
+        .expect("root table cache poisoned")
+        .push(((*handle.datum).clone(), handle.prefers_coroots, Arc::clone(&table)));
+    Ok(table)
+}
+
 /// Simple-coordinate vectors expressed against an ambient lattice basis.
 fn express(simple: &[Vec<i32>], basis: &[&[i32]]) -> Vec<Vec<i32>> {
     let lattice_rank = basis.first().map_or(0, |vector| vector.len());
@@ -9559,7 +9590,7 @@ fn root_query(
     coroot: bool,
     span: SourceSpan,
 ) -> Result<Value, Diagnostic> {
-    let table = RootTable::build(handle, span)?;
+    let table = root_table_shared(handle, span)?;
     let (positive, negate) = positive_slot(index, table.roots.len(), coroot, span)?;
     let vector = if coroot {
         &table.coroots[positive]
@@ -9580,7 +9611,7 @@ fn length_query(
     coroot: bool,
     span: SourceSpan,
 ) -> Result<Value, Diagnostic> {
-    let table = RootTable::build(handle, span)?;
+    let table = root_table_shared(handle, span)?;
     let (positive, _) = positive_slot(index, table.roots.len(), coroot, span)?;
     let flag = if coroot {
         table.long_coroots[positive]
@@ -12579,7 +12610,7 @@ pub(crate) fn call_with_printed(
         "nr_of_posroots" => {
             arity(name, arguments, 1, span)?;
             let handle = as_root_datum(&arguments[0], span)?;
-            let table = RootTable::build(handle, span)?;
+            let table = root_table_shared(handle, span)?;
             Ok(Value::Integer(BigInt::from(table.roots.len())))
         }
         // positive_roots_wrapper / positive_coroots_wrapper
@@ -12588,7 +12619,7 @@ pub(crate) fn call_with_printed(
         "posroots" | "poscoroots" => {
             arity(name, arguments, 1, span)?;
             let handle = as_root_datum(&arguments[0], span)?;
-            let table = RootTable::build(handle, span)?;
+            let table = root_table_shared(handle, span)?;
             let columns = if name == "poscoroots" {
                 &table.coroots
             } else {
@@ -12733,7 +12764,7 @@ pub(crate) fn call_with_printed(
             arity(name, arguments, 2, span)?;
             let handle = as_root_datum(&arguments[0], span)?;
             let coordinates = as_weight_coordinates(&arguments[1], span)?;
-            let table = RootTable::build(handle, span)?;
+            let table = root_table_shared(handle, span)?;
             let vectors = if name == "coroot_index" {
                 &table.coroots
             } else {
