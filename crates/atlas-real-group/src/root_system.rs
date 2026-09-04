@@ -1,6 +1,6 @@
 use std::collections::{HashMap, VecDeque};
 use std::hash::{BuildHasherDefault, Hasher};
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 
 use crate::lattice::{pair_coordinates, try_copy_coordinates};
 use crate::{pair, BasedRootDatum, Coweight, StructureError, Weight, WeylAction};
@@ -263,6 +263,60 @@ impl RootSystem {
                 } => StructureError::ResourceLimitExceeded { limit },
                 other => other,
             })
+    }
+
+    /// Enumerate under the compatibility budget, sharing one system per datum
+    /// process-wide.
+    ///
+    /// Inner-class construction re-enumerates the same datum many times per
+    /// session (interpreted libraries build a Levi inner class per call), and
+    /// enumeration is pure in the datum content, so successful results are
+    /// cached against a value-equal datum key and shared through `Arc`.
+    /// Post-construction access is read-only: the only mutation goes through
+    /// the interior `OnceLock` caches, whose content is a deterministic
+    /// function of the enumerated data.
+    ///
+    /// A cache hit still enforces `max_roots`: a fresh [`RootSystem::enumerate`]
+    /// rejects exactly when the complete closure exceeds the budget (the
+    /// budget-consistency pre-check on `2 * semisimple_rank` is subsumed, since
+    /// the closure holds every simple root and its negative), and a cached
+    /// success IS the complete closure, so the hit replays the same
+    /// [`StructureError::ResourceLimitExceeded`] when the stored root count
+    /// exceeds `max_roots`. Failures are never cached.
+    pub(crate) fn enumerate_shared(
+        datum: &BasedRootDatum,
+        max_roots: usize,
+    ) -> Result<Arc<Self>, StructureError> {
+        fn within_budget(
+            system: &Arc<RootSystem>,
+            max_roots: usize,
+        ) -> Result<Arc<RootSystem>, StructureError> {
+            if system.roots.len() > max_roots {
+                Err(StructureError::ResourceLimitExceeded { limit: max_roots })
+            } else {
+                Ok(Arc::clone(system))
+            }
+        }
+        {
+            let cache = shared_root_systems()
+                .lock()
+                .expect("root-system cache poisoned");
+            if let Some((_, system)) = cache.iter().find(|(key, _)| key == datum) {
+                return within_budget(system, max_roots);
+            }
+        }
+        // Build outside the lock; only lookup and insertion hold it.
+        let built = Arc::new(Self::enumerate(datum, max_roots)?);
+        let mut cache = shared_root_systems()
+            .lock()
+            .expect("root-system cache poisoned");
+        if let Some((_, system)) = cache.iter().find(|(key, _)| key == datum) {
+            // A concurrent builder won the race; its content is the same
+            // complete closure, but this caller's budget still applies.
+            return within_budget(system, max_roots);
+        }
+        cache.push((datum.try_clone()?, Arc::clone(&built)));
+        Ok(built)
     }
 
     /// Generate ordinary roots and coroots together under an explicit budget.
@@ -734,6 +788,16 @@ impl RootSystem {
     pub fn min_coroots_for(&self, alpha: RootId) -> Option<&RootSet> {
         self.min_coroots.get(alpha.0)
     }
+}
+
+/// Process-wide cache backing [`RootSystem::enumerate_shared`], keyed by
+/// value-equal datum. A linear scan suffices: a session holds one entry per
+/// distinct Lie type or Levi datum it touches, and `BasedRootDatum` equality
+/// is exact. Mirrors atlas-core's `weyl_datum_shared` idiom; kept crate-local
+/// because atlas-real-group must not depend on atlas-core.
+fn shared_root_systems() -> &'static Mutex<Vec<(BasedRootDatum, Arc<RootSystem>)>> {
+    static CACHE: OnceLock<Mutex<Vec<(BasedRootDatum, Arc<RootSystem>)>>> = OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(Vec::new()))
 }
 
 /// Precompute both ladder-bottom tables: `min_roots[alpha]` flags `beta`

@@ -13,17 +13,18 @@ use crate::{
 /// Shared structural data at the beginning of an Atlas inner-class computation.
 ///
 /// This is intentionally a partial implementation: it owns a validated based
-/// root datum, its finite ordinary root system, and a distinguished root
-/// involution. It can enumerate root-theoretic twisted-conjugacy orbits,
-/// supplies the distinguished-involution context for
-/// [`crate::CayleyCrossDecomposition`], and anchors provenance for
-/// [`crate::RealFormLabels`], but does not yet build Atlas Cartan-class
-/// fibers or own real-form data, nor does it contain the torus data
-/// required to construct a KGB graph.
+/// root datum, shares its finite ordinary root system through the
+/// process-wide [`RootSystem::enumerate_shared`] cache (enumeration is pure
+/// in the datum content), and owns a distinguished root involution. It can
+/// enumerate root-theoretic twisted-conjugacy orbits, supplies the
+/// distinguished-involution context for [`crate::CayleyCrossDecomposition`],
+/// and anchors provenance for [`crate::RealFormLabels`], but does not yet
+/// build Atlas Cartan-class fibers or own real-form data, nor does it contain
+/// the torus data required to construct a KGB graph.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InnerClass {
     datum: BasedRootDatum,
-    roots: RootSystem,
+    roots: Arc<RootSystem>,
     distinguished_involution: RootInvolutionData,
 }
 
@@ -51,7 +52,7 @@ impl InnerClass {
         distinguished_involution: LatticeInvolution,
         root_budget: usize,
     ) -> Result<Self, StructureError> {
-        let roots = RootSystem::enumerate(&datum, root_budget)?;
+        let roots = RootSystem::enumerate_shared(&datum, root_budget)?;
         let distinguished_involution = RootInvolutionData::new(&roots, distinguished_involution)?;
         Self::with_roots(datum, roots, distinguished_involution)
     }
@@ -93,7 +94,7 @@ impl InnerClass {
         involution: LatticeInvolution,
         root_budget: usize,
     ) -> Result<(Self, Vec<usize>), StructureError> {
-        let roots = RootSystem::enumerate(&datum, root_budget)?;
+        let roots = RootSystem::enumerate_shared(&datum, root_budget)?;
         let involution = RootInvolutionData::new(&roots, involution)?;
         let (distinguished, word) = wrt_distinguished_word(&datum, &roots, &involution)?;
         let distinguished = RootInvolutionData::new(&roots, distinguished)?;
@@ -103,7 +104,7 @@ impl InnerClass {
 
     fn with_roots(
         datum: BasedRootDatum,
-        roots: RootSystem,
+        roots: Arc<RootSystem>,
         distinguished_involution: RootInvolutionData,
     ) -> Result<Self, StructureError> {
         if !preserves_simple_system(&datum, &roots, &distinguished_involution)? {
@@ -2333,6 +2334,23 @@ mod tests {
         }
         narrow.clear();
         assert!(narrow.insert(42));
+    }
+
+    #[test]
+    fn repeated_construction_shares_one_cached_root_system() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let involution = LatticeInvolution::identity(&datum).unwrap();
+        let first = InnerClass::new(datum.clone(), involution.clone(), 6).unwrap();
+        let second =
+            InnerClass::from_root_involution(datum.clone(), involution.clone(), 6).unwrap();
+        assert!(Arc::ptr_eq(&first.roots, &second.roots));
+        assert_eq!(first.root_system(), second.root_system());
+        // A cached success still rejects a tighter caller budget exactly as
+        // a fresh enumeration does.
+        assert_eq!(
+            InnerClass::new(datum, involution, 4),
+            Err(StructureError::ResourceLimitExceeded { limit: 4 })
+        );
     }
 
     fn b12_cartan() -> Vec<Vec<i32>> {
