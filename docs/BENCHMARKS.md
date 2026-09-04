@@ -652,3 +652,42 @@ RootSystem, BTreeSet->sorted-Vec in block build.
   4/4 blocks PASS (3680268).
 - Cumulative deform-only E7 this session: 19.03s -> 13.22s = 1.44x;
   vs oracle ~10.0s the gap is now ~1.32x (was 1.9x).
+
+## agent-blockbuild (merged 6e749a8)
+
+- deform-only E7 (cpu, interleaved A/B 3680308, REPS=3): base median
+  13.91s -> tip median 13.39s = **1.039x** (pos_to_neg/bruhat_below:
+  BTree sets/maps -> sorted vecs, clone elision).
+
+## agent-ratfast + agent-fastdiv (i128/u64 rational fast paths; merge pending)
+
+- ratfast (machine-word fast paths for rational scalar ops, root-table
+  length arithmetic, interpreter rat ops) REQUIRED two correctness fixes
+  caught by its own unit tests, invisible to the E6/E7 probes: malachite
+  stores sign separately from a non-negative numerator (small_parts dropped
+  it), and |i64::MIN| = 2^63 overflows a signed conversion (fixed c00faf5,
+  232b85c; tests 120a18d now treat None-vs-out-of-window correctly).
+- probe_gkfast_e6 interleaved A/B vs 6e749a8 (REPS=3):
+  ratfast-only (3680372): 2.607s -> 2.577s = 1.012x (noise-level);
+  ratfast+fastdiv (3680418): base 2.56/2.52/2.54 -> tip 2.37/2.33/2.34,
+  median 2.540s -> 2.347s = **1.082x** cumulative.
+- Profile 3680340 (E6 gkfast, post-ratfast): allocator cluster ~24%,
+  128-bit division libcalls ~10% (__divti3 5.27 + u128_div_rem 3.52 +
+  __umodti3 0.99), FastSum::add_term 5.95, orbit_cross_closure 5.42,
+  squared_length 3.40, Value::clone 2.33, RootTable::build 2.23.
+  fastdiv targets the libcall block via guarded u64 hardware division in
+  gcd_u128 / from_i128_parts / FastSum::add_term.
+
+## mimalloc early reads (00edcff, gate pending; cross-job, indicative only)
+
+- Offline HPC build works: mimalloc 0.1.52 + libmimalloc-sys 0.1.49 +
+  cc 1.4.4 + shlex 2.0.1 + find-msvc-tools 0.1.11 pinned to the HPC cargo
+  cache (compute nodes have no crates.io access); MM build 3680403.
+- All probes SORTED_MATCH: gkfast_e6 3680419, deform_e7 3680421,
+  finals_term20138 3680422.
+- Timing (mm worktree, single runs): gkfast_e6 rust 2.16s (vs ~2.5-2.6s
+  non-mimalloc); **deform_e7 rust 9.56s vs oracle 9.54s — parity**;
+  finals rust 9.31s vs oracle 8.32s.
+- RSS roughly doubles under mimalloc: gkfast_e6 184MB (was ~90MB),
+  deform_e7 436MB, finals 467MB (oracle ~204-209MB). Fine on fat/cpu
+  limits; watch E8-scale headroom.
