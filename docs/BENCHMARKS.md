@@ -608,3 +608,36 @@ match_pol 2.0, SipHash ~2.7 total. Next lever: allocation reduction in the
 KL column fill (per-column Vec rebuilds, working[] KlPol clones,
 mu_pairs/down_set rebuilds); then cross-column prim_slot caching (Cell would
 break Sync — needs a different design).
+
+## agent-klfill (da5ccf2, KL column-fill allocation reduction, merged 2a54201)
+
+- deform-only E7 (cpu, interleaved A/B 3680164, REPS=3): base median
+  19.03s -> tip median 15.40s = **1.235x** (base 19.09/19.03/18.93,
+  tip 15.41/15.38/15.40; RSS neutral ~394MB vs ~398MB).
+- Gates: quick_check 3680159 green; probe_deform_e7_only SORTED_MATCH
+  46118 lines (3680161); probe_partial_kl_e7 SORTED_MATCH (3680163).
+- deform-only E7 vs oracle now 15.40s vs 11.11s = 1.39x slower (was 1.9x).
+
+## Profile 3680172 (deform-only E7 @da5ccf2, post-klfill, flat self% + callers)
+
+fill_kl_column 19.95, with_kl_table 10.35, kl_pol_at_slot 6.10 (5.2 self from
+common_deformation_terms per-(x,z) queries), id_of_slice 4.82 + SliceOrd 2.83
+— callers: PartialBlock::build via pos_to_neg (~1.4%) and bruhat_below /
+BruhatGenerator::block_below recursion (~2.8%), i.e. BLOCK CONSTRUCTION, not
+the KL column loop; match_pol 3.41 (fill_kl_column 2.63) + SipHash/write 2.31
++ hash_one 1.37; allocation cluster down to ~13% (was ~20%); misc:
+reflect_coordinates 1.86, Arc<BlockTopology>::length 1.78, merge_pol_term
+1.67, StandardRepr::eq 1.60, BTreeMap insert ~2.2 (pos_to_neg/bruhat_below),
+lattice::pair 1.09. Next levers: fast hasher for KlHashTable (codebase has a
+MixingHasher precedent in involution_table), id_of_slice -> hash map in
+RootSystem, BTreeSet->sorted-Vec in block build.
+
+## probe_unitary_e7_heavy: oracle is the slow one
+
+- Rust leg (da5ccf2, cpu): 47.78s wall, 430MB RSS — but exits 1 on the
+  pre-existing finals-invariant bug (see HANDOFF 2026-09-04g).
+- Oracle leg (cpu, 3680162): CANCELLED at the 1h limit — interpreted
+  is_unitary at E7 x=20925 takes the oracle >50min. Once the finals fix
+  lands, rust is >60x faster than the oracle on this workload; correctness
+  gating needs the 8h fat reference job (3680251) or the fast term-level
+  repro probe (probe_finals_e7_term20138, oracle leg ~1min).
