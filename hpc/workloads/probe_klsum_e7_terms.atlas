@@ -1,0 +1,11 @@
+<deform.at
+
+rb : RootDatum
+rb := simply_connected(Lie_type("E7"),true)
+ib : InnerClass
+ib := inner_class(rb,[[1,0,0,0,0,0,0],[0,1,0,0,0,0,0],[0,0,1,0,0,0,0],[0,0,0,1,0,0,0],[0,0,0,0,1,0,0],[0,0,0,0,0,1,0],[0,0,0,0,0,0,1]])
+rfb : RealForm
+rfb := real_form(ib,3)
+p : Param
+p := param(KGB(rfb,20925),[0,0,0,0,0,0,0],[1,1,1,1,1,1,1]/1)
+let n=0 in for c@q in KL_sum_at_s(p) do prints("idx=",n," q=",q,new_line); n+:=1 od
