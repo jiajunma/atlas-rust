@@ -17,12 +17,16 @@ use malachite::{Integer as BigInt, Rational as BigRational};
 
 /// The `(numerator, denominator)` of a rational when both fit an i64.
 /// Malachite rationals are stored normalized, so the denominator is always
-/// positive and the fraction is in lowest terms.
+/// positive and the fraction is in lowest terms. The sign is stored
+/// separately from the (non-negative) numerator — reattach it here.
 pub(crate) fn small_parts(value: &BigRational) -> Option<(i64, i64)> {
-    Some((
-        i64::try_from(value.numerator_ref()).ok()?,
-        i64::try_from(value.denominator_ref()).ok()?,
-    ))
+    let magnitude = i64::try_from(value.numerator_ref()).ok()?;
+    let numerator = if value < &BigRational::from(0) {
+        magnitude.checked_neg()?
+    } else {
+        magnitude
+    };
+    Some((numerator, i64::try_from(value.denominator_ref()).ok()?))
 }
 
 fn gcd_u128(mut a: u128, mut b: u128) -> u128 {
