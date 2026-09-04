@@ -1639,7 +1639,18 @@ impl PartialBlock {
         let old_xs = std::mem::take(&mut self.xs);
         self.xs = order.iter().map(|&i| old_xs[i]).collect();
         let old_elements = std::mem::take(&mut self.elements);
-        self.elements = order.iter().map(|&i| old_elements[i].clone()).collect();
+        // `order` is a permutation of 0..size, so each slot is taken
+        // exactly once; moving beats cloning every StandardReprMod.
+        let mut old_elements: Vec<Option<StandardReprMod>> =
+            old_elements.into_iter().map(Some).collect();
+        self.elements = order
+            .iter()
+            .map(|&i| {
+                old_elements[i]
+                    .take()
+                    .expect("the sort permutation visits each index once")
+            })
+            .collect();
         let old_descents = std::mem::take(&mut self.descents);
         let rank = self.rank;
         let mut descents = Vec::with_capacity(old_descents.len());
