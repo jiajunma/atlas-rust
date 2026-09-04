@@ -1,0 +1,10 @@
+m : mat
+m := [[2,-1,-1,0],[-1,2,0,0],[-1,0,2,-1],[0,0,-1,2]]
+t : (LieType,[int])
+t := Cartan_matrix_type(m)
+prints("A4star: ",t,new_line)
+d5 : mat
+d5 := [[2,0,-1,0,0],[0,2,-1,0,0],[-1,-1,2,-1,-1],[0,0,-1,2,0],[0,0,-1,0,2]]
+t2 : (LieType,[int])
+t2 := Cartan_matrix_type(d5)
+prints("D5e6order: ",t2,new_line)
