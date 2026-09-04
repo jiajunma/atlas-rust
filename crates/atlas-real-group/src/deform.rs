@@ -365,7 +365,15 @@ pub fn common_deformation_terms(
             invariant: "common deformation y representative",
         })?;
     let ctxt = CommonContext::integral(rc, seed.gamma_lambda())?;
-    let singular = ctxt.singular_flags(gamma)?;
+    // `block.singular(bm, gamma)` (repr.cpp:1946): at a non-identity
+    // locator attitude the stored simply-integral roots are permuted by
+    // `bm.w` before the pairing (blocks.cpp:711-721); an identity `w`
+    // keeps the plain subsystem-coroot flags (blocks.cpp:701-708).
+    let singular = if modifier.w().is_identity() {
+        ctxt.singular_flags(gamma)?
+    } else {
+        ctxt.singular_flags_with_modifier(gamma, modifier.w())?
+    };
 
     // `repr::contributions` expands each row to the final rows surviving the
     // singular system.  The first singular descent determines the branch.
