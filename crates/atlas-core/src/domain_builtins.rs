@@ -12736,9 +12736,14 @@ pub(crate) fn call_with_printed(
         "simple_factors" => {
             arity(name, arguments, 1, span)?;
             let lie = as_lie_type(&arguments[0], span)?;
+            // Upstream simple_factors_wrapper (atlas-types.w:387-406) skips
+            // torus factors: scripts like order_W (Weylgroup.at:158) map
+            // order_W_simple (which calls adjoint) over this list, and
+            // adjoint rejects torus factors even in the oracle.
             let factors = lie
                 .factors
                 .into_iter()
+                .filter(|&(letter, _)| letter != 'T')
                 .map(|(letter, rank)| {
                     Value::Tuple(vec![
                         Value::String(letter.to_string()),
@@ -18603,6 +18608,32 @@ mod tests {
         assert_eq!(matrix.entry(0, 1), Some(-2));
         assert_eq!(matrix.entry(1, 0), Some(-1));
         assert_eq!(matrix.entry(1, 1), Some(2));
+    }
+
+    #[test]
+    fn simple_factors_skip_torus_factors_like_the_oracle() {
+        // Upstream simple_factors_wrapper (atlas-types.w:396-403) filters
+        // torus factors out of the (code,rank) list; order_W maps adjoint
+        // over it and adjoint rejects tori even in the oracle.
+        let lie_type =
+            call("Lie_type", &[Value::String("A1.T2.B2".into())], span()).expect("Lie type");
+        let factors = call("simple_factors", &[lie_type], span()).expect("simple_factors");
+        let Value::List(factors) = factors else {
+            panic!("simple_factors must return a list")
+        };
+        let rendered: Vec<String> = factors
+            .iter()
+            .map(|factor| match factor {
+                Value::Tuple(pair) => match (&pair[0], &pair[1]) {
+                    (Value::String(letter), Value::Integer(rank)) => {
+                        format!("{letter}{rank}")
+                    }
+                    other => panic!("unexpected factor shape: {other:?}"),
+                },
+                other => panic!("factor tuple expected, found {other}"),
+            })
+            .collect();
+        assert_eq!(rendered, vec!["A1".to_string(), "B2".to_string()]);
     }
 
     #[test]
