@@ -41,7 +41,7 @@ perf report -i "$data" --stdio --no-children 2>/dev/null | grep -E '^\s*[0-9]+\.
 # Caller attribution for known hot leaf functions: print the inverted
 # call-graph section of each so the next optimization round knows which
 # call sites feed them (flat self% alone cannot say).
-for sym in id_of_slice prim_slot kl_pol sub_shifted_assign match_pol; do
+for sym in orbit_cross_closure "Value as core::clone::Clone" __memmove_avx evaluate build_ladder_bottoms; do
   echo "=== callers of $sym (inverted call graph) ==="
   perf report -i "$data" --stdio --no-children --invert 2>/dev/null \
     | grep -F -A18 "$sym" | head -40 || true
