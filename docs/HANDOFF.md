@@ -4,6 +4,32 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Current frontier - 2026-09-04d (avopt: root-sum table LANDED, prim-slot in flight)
+
+- Root-sum table (`85acd90`) VERIFIED and pushed to codex/continue-atlas-port
+  (tip aa148b4): heavy unitary E7 78.7s -> 37.0s = 2.12x (A/B 3679961, 3
+  interleaved reps, RSS neutral); deform-only E7 neutral (A/B 3679960) as
+  predicted; gates quick_check 3679927 + probe-diff 3679957-59 all PASS.
+- Prim-slot refactor (`368707a`, kl_support/kl_table): prim_index storage
+  split into mask->slot map + Vec<PrimIndexRecord>; hot KL column loops
+  resolve the slot ONCE per column (Copy, no borrow across &mut self).
+  Targets the 15.1% prim_index self-time in the deform-only E7 profile
+  (3679982). In flight: quick_check 3680023, build 3680035, gates
+  3680036-38, A/B 3680039 (deform E7) + 3680040 (heavy unitary, fat),
+  BASE=aa148b4.
+- Profile 3679982 (deform-only E7 @85acd90, flat): prim_index 15.1%,
+  fill_kl_column 11.2%, with_kl_table 8.9% (generic-closure inlining, NOT
+  wrapper overhead), allocation ~20% spread, id_of_slice 3.1% (KL paths),
+  SipHash ~3-4% total. Next levers after prim-slot: allocation reduction in
+  the KL fill path; id_of_slice in KL support.
+- AV E6 probes (3679983/84): oracle frozen (E6 gk=36; av_ann
+  diagram=[2,2,2,2,2,2] dim=72) BUT rust exits 1: "Runtime error at
+  basic.at:890:3: Sub-lattice matrix should have size 1x1" — interpreted-path
+  gap at exceptional types (nilpotent orbit enumeration); ALSO the x=0 param
+  normalized nu to 0 (known trap), so a meaningful heavy AV probe needs
+  nonzero x (E6 x=1790). The basic.at:890 gap is a separate language-compat
+  bug to fixture and fix; recorded, not yet investigated.
+
 ## Current frontier - 2026-09-04c (avopt lane: unitarity/associated-variety speed)
 
 New goal from the user: continuously optimize unitarity and associated-variety
