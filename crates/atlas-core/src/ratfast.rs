@@ -213,26 +213,38 @@ mod tests {
         BigRational::from_signeds(numerator, denominator)
     }
 
+    /// The fast path must equal the generic result whenever it returns a
+    /// value; `None` is legitimate only when the reduced result no longer
+    /// fits the i64 window (the caller then takes the generic path).
+    fn check_against_generic(fast: Option<BigRational>, generic: BigRational) {
+        match fast {
+            Some(value) => assert_eq!(value, generic),
+            None => assert!(
+                small_parts(&generic).is_none(),
+                "unexpected fallback: {generic} fits the i64 window"
+            ),
+        }
+    }
+
     #[test]
     fn fast_binops_match_generic_arithmetic() {
-        // Every reduced result below stays inside the i64 window; the
-        // fallback cases are tested separately.
         let pairs: &[((i64, i64), (i64, i64))] = &[
             ((1, 2), (1, 3)),
             ((-5, 6), (7, 4)),
             ((0, 1), (-3, 7)),
             ((i64::MAX, 2), (1, 2)),
+            // i64::MIN itself is in the window; subtracting from it is not.
             ((i64::MIN, 1), (1, 1)),
             ((6, 9), (4, 10)),
         ];
         for &((an, ad), (bn, bd)) in pairs {
             let a = rational(an, ad);
             let b = rational(bn, bd);
-            assert_eq!(add(&a, &b).as_ref(), Some(&(&a + &b)));
-            assert_eq!(sub(&a, &b).as_ref(), Some(&(&a - &b)));
-            assert_eq!(mul(&a, &b).as_ref(), Some(&(&a * &b)));
+            check_against_generic(add(&a, &b), &a + &b);
+            check_against_generic(sub(&a, &b), &a - &b);
+            check_against_generic(mul(&a, &b), &a * &b);
             if b != 0 {
-                assert_eq!(div(&a, &b).as_ref(), Some(&(&a / &b)));
+                check_against_generic(div(&a, &b), &a / &b);
             }
             assert_eq!(cmp(&a, &b), Some(a.cmp(&b)));
         }
@@ -250,11 +262,11 @@ mod tests {
             let a = rational(an, ad);
             let integer = BigInt::from(k);
             let as_rational = BigRational::from(integer.clone());
-            assert_eq!(add_int(&a, &integer).as_ref(), Some(&(&a + &as_rational)));
-            assert_eq!(sub_int(&a, &integer).as_ref(), Some(&(&a - &as_rational)));
-            assert_eq!(mul_int(&a, &integer).as_ref(), Some(&(&a * &as_rational)));
+            check_against_generic(add_int(&a, &integer), &a + &as_rational);
+            check_against_generic(sub_int(&a, &integer), &a - &as_rational);
+            check_against_generic(mul_int(&a, &integer), &a * &as_rational);
             if k != 0 {
-                assert_eq!(div_int(&a, &integer).as_ref(), Some(&(&a / &as_rational)));
+                check_against_generic(div_int(&a, &integer), &a / &as_rational);
             }
         }
     }
