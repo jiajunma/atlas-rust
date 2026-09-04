@@ -1,0 +1,15 @@
+lt : LieType
+lt := Lie_type("T1")
+a1t1 : LieType
+a1t1 := Lie_type("A1.T1")
+rd : RootDatum
+rd := adjoint(lt,false)
+prints("adjointT1=",rd,new_line)
+sc : RootDatum
+sc := simply_connected(a1t1,true)
+prints("sc_A1T1=",sc,new_line)
+ad : RootDatum
+ad := adjoint(a1t1,false)
+prints("adj_A1T1=",ad,new_line)
+prints("adj_roots=",ad.simple_roots,new_line)
+prints("adj_coroots=",ad.simple_coroots,new_line)
