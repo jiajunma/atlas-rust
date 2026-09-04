@@ -8169,3 +8169,90 @@ the heavy unitary path is the opposite (rust 20min vs oracle >2h).
 First measurement per 2026-09-03e: frame-pointer perf of a shortened
 probe_unitary_e7_heavy variant to attribute ExtKlTable fill vs
 evaluator/KGB overhead before building any cache.
+
+## 2026-09-04b — HANDOFF (machine switch; read this first)
+
+### Where things stand
+
+**block_deform correctness: CLOSED at E6/A2, E7 probe still running.**
+Root causes were TWO missing pieces of `block_deformation_to_height`:
+(1) 0ce1401 — rows rebuilt with p's lambda_rho instead of each row's own
+stored representative + block modifier (repr.cpp:2123);
+(2) e9335fc — the `low_mark` filter was never ported: upstream erases
+retained elements with height < the lowest queue term's height
+(repr.cpp:2120,2134-2136,2160-2172). Ghost survivors below low_mark
+accumulated coefficients from bound 32 up (extra `(2-2s)` row at x=1779
+plus a sign flip).
+
+Gates at tip (all on /public/home/majj/atlas-rust-merged):
+quick_check 3679368 green; corpus 3679372 MATCH 240/240; bisect-fix2
+3679370 SORTED_MATCH 5105; bd-hladder-fix 3679369 normalized SORTED_MATCH
+18,567 lines; A2 integral-singular rerun 3679379 SORTED_MATCH (the
+alignment-guard failure from 3674819 is gone). **E7 bd-e7-fix 3679371
+was still RUNNING on fat001 at handoff — harvest it first:**
+`cat /public/home/majj/atlas-rust-merged/probe-diff-3679371.out`.
+Expect ~2.5-3h total (rust leg ~1:10 + oracle ~1:40). If SORTED_MATCH,
+block_deform is verified end-to-end; update this file and close it out.
+
+### Perf profiles in hand — next implementation targets (designed, not started)
+
+Two frame-pointer profiles were captured (driver hpc/perf_unitary_profile.sbatch,
+data in the merged worktree as perf-unitary-3679388.data / -3679419.data):
+
+1. **Heavy unitary E7: `locator::additive_closure` = 61.6% inclusive.**
+   `additive_closure` (locator.rs:554) re-scans ALL member pairs every
+   growth round, and `combine_roots` (root_system.rs:988) allocates two
+   fresh Vecs + binary-search per pair. AGREED DESIGN (was about to be
+   implemented at handoff):
+   a. RootSystem gains a flat n×n sum table (`Option<Box<[u32]>>`,
+      u32::MAX sentinel, built in from_closure only when n ≤ ~2048;
+      subtract via the negatives table). combine_roots keeps its
+      signature and bounds errors but becomes an O(1) lookup.
+   b. additive_closure becomes a work-queue closure (test each newly
+      added member against existing members once) — same result set,
+      no repeated full rounds.
+   Also fix `negate_root` (locator.rs:624) the same way (it allocates +
+   searches per call; the negatives table already exists on RootSystem).
+2. **deform-only E7 (rust 17.6s vs oracle 7.8s):** prim_index 14.7%,
+   fill_kl_column 11.5%, with_kl_table wrapper 9.5% (suspicious — check
+   what the guard/fill check costs per call), allocation ~20%, SipHash
+   ~6-7% (param_digest etc. use DefaultHasher; a hand-rolled FxHash is
+   dependency-free), id_of_slice 3.3%.
+3. Associate variety: A2 baseline green; still needs a REPRESENTATIVE
+   large workload profile before optimizing (HANDOFF 2026-09-03e lists
+   the candidate script families; do not guess).
+
+User priorities (2026-09-02/03): KLV speed, unitarity speed, associate
+variety; tune at E6, confirm at E7, no proactive E8; correctness before
+speed; large-scale wins beat small-scale regressions.
+
+### Ops state
+
+- Mainline: /Users/hoxide/mycodes/atlas-rust-main, branch
+  codex/continue-atlas-port, tip = this commit; pushed to origin AND
+  `hpc` remote (`HEAD:refs/heads/sync-merged`). HPC worktree
+  /public/home/majj/atlas-rust-merged is checked out at aa7db69 (fetch
+  sync-merged + `git checkout --detach FETCH_HEAD` to advance).
+- All compile/verify/benchmark on HPC only (user rule). Local: read
+  source, write probes, run hpc/test_*.py only.
+- probe_diff.sbatch now strips line-final commas before sorted diff
+  (6160011 — term-order comma shifts were false DIFFs) and fails loudly
+  on a missing probe file (aa7db69 — missing file previously produced a
+  false SORTED_MATCH with empty outputs; any historical "MATCH ( lines)"
+  with empty line count is bogus).
+- New drivers this session: hpc/perf_unitary_profile.sbatch (frame-
+  pointer perf of any PROBE; override partition for small probes),
+  hpc/ab_deform_klcache.sbatch (alternating-rep wall A/B vs BASE commit).
+- Untracked local junk: `rust_out` (stray local arm64 binary) — do not
+  commit; harmless to delete.
+- agent-kgbopt's HPC worktree lane may still be alive; do not touch
+  /public/home/majj/atlas-rust-kgbopt.
+- 3-hourly HPC liveness cron is active in the old session only — cron
+  jobs do NOT carry across sessions; recreate one if wanted.
+
+### In-flight HPC jobs at handoff
+
+- 3679371 probe-diff bd-e7-fix (fat001): the last open block_deform gate.
+All others harvested: 3679415 AB klcache (parity), 3679416 assoc A2 first
+attempt (false pass, missing probe file), 3679427 assoc A2 MATCH,
+3679388/3679419 perf profiles (see BENCHMARKS.md 2026-09-04 entry).

@@ -525,3 +525,30 @@ cancelled 2026-09-03T06:10:37 (SLURM time limit) while the C++ binary was
 still running. Bound: oracle >> rust ~20min on probe_unitary_e7_heavy
 (exact oracle number unobtainable within a 6h fat job; rerun with a longer
 limit only if the number is needed).
+
+## deform KL record-cache A/B + perf attribution (2026-09-04, jobs 3679415/3679419/3679388)
+
+83a78bf A/B (3679415, probe_deform_e7_only, alternating 3 reps, E7 x=20925
+deform(p) print): base b7ed9e5 median 19.06s/383MB vs tip median
+18.78s/394MB — wall parity (+1.5%, within noise), RSS +12MB for the
+retained per-block KL tables (matches upstream's one-table-per-block
+residency). The cache is neutral for a single deform; its value is
+multi-final workloads that revisit one block.
+
+Frame-pointer perf (CARGO_PROFILE_RELEASE_LTO=off, -C force-frame-pointers,
+hpc/perf_unitary_profile.sbatch, data files perf-unitary-*.data in the
+merged worktree):
+
+- deform-only E7 (3679419, 17s run): kl_support::prim_index 14.7%,
+  kl_table fill_kl_column 11.5%, LocatedBlock::with_kl_table 9.5%
+  (wrapper! investigate), allocation/free/Vec-clone ~20%, SipHash
+  (DefaultHasher) ~6-7%, root_system::id_of_slice 3.3%.
+- heavy unitary E7 (3679388, 25min sampling): locator::additive_closure
+  61.6% inclusive -> combine_roots 53.9% -> id_of_slice 32.2% flat
+  (23.8%) + slice lexicographic compare 17.2%; combine_roots allocates
+  two fresh vectors per call. Allocation ~12%, BTreeMap ~3.5%.
+
+Associate-variety A2 correctness baseline (3679427,
+probe_associated_variety_a2.atlas): SORTED_MATCH 3606 lines; rust
+0.69s/55.6MB vs oracle 0.26s/14.1MB (A2 is startup-dominated; the large
+AV workload still needs profiling before any optimization there).
