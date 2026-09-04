@@ -778,3 +778,17 @@ RootSystem, BTreeSet->sorted-Vec in block build.
   redesign (pool-offset keyed) would be required for the transducer path
   to pay off, not just the inner loop swap. Recorded so it is not
   retried in this shape; branch agent-transduce stays local.
+
+## agent-rrcnt (merged here; 73ac5e9+12f115e)
+
+- Container Value variants (Row/Tuple/...) hold Rc<[Value]> elements:
+  clones become refcount bumps; per-element Rc allocations from phase 1
+  removed in phase 2 by switching the element store itself to Rc slices.
+- Gates: quick_check 3680767 green; probes 3680769-773 SORTED_MATCH.
+- AB 3680774 gkfast_e6 vs 1626174: base 0.93/0.92/0.92 -> tip
+  0.82/0.82/0.80, median 0.92s -> 0.82s = **1.122x**.
+- E7 interpreted (3680776/777): gkfast_e7 14.39s, av_ann_e7 15.74s
+  (oracle 14.05/14.24; gaps 1.02x / 1.11x — gkfast E7 essentially at
+  oracle parity; E7 RSS also dropped to ~780MB from ~1.17GB).
+- Session totals: gkfast_e6 2.63 -> 0.82s = **3.2x** (oracle 0.59s;
+  gap 1.39x, was 4.4x).
