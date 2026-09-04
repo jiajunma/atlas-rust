@@ -1,0 +1,14 @@
+<deform.at
+d_verbose:=true
+rb : RootDatum
+rb := simply_connected(Lie_type("E7"),true)
+ib : InnerClass
+ib := inner_class(rb,[[1,0,0,0,0,0,0],[0,1,0,0,0,0,0],[0,0,1,0,0,0,0],[0,0,0,1,0,0,0],[0,0,0,0,1,0,0],[0,0,0,0,0,1,0],[0,0,0,0,0,0,1]])
+rfb : RealForm
+rfb := real_form(ib,3)
+p : Param
+p := param(KGB(rfb,20925),[0,0,0,0,0,0,0],[1,1,1,1,1,1,1]/1)
+p
+b : bool
+b := is_unitary(p)
+b
