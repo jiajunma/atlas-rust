@@ -1190,6 +1190,10 @@ impl InnerClass {
         // involution, so probing the child with the parent's generator
         // reproduces the parent — another guaranteed no-op probe.
         let padded = packed && stride <= 256;
+        // Padded path only: member i's packed simple-image key, recorded at
+        // discovery time (the probe already computed it), so the cursor loop
+        // does not re-gather it from the permutation bytes.
+        let mut member_keys: Vec<T> = if padded { try_capacity(64)? } else { Vec::new() };
         // `seed_key` is the representative's packed simple-image key, handed
         // to `emit` so the membership indexer does not re-gather it.
         let seed_key: Option<u128>;
@@ -1200,6 +1204,7 @@ impl InnerClass {
                 key = key.or_byte(representative_permutation[usize::from(position)], shift);
             }
             packed_seen.insert(key);
+            member_keys.push(key);
             seed_key = Some(key.to_u128());
         } else {
             seen.clear();
@@ -1229,10 +1234,7 @@ impl InnerClass {
                 let chunk = &chunks[(cursor - base) >> chunk_shift];
                 let offset = ((cursor - base) & chunk_mask) * stride;
                 current_buf[..stride].copy_from_slice(&chunk[offset..offset + stride]);
-                let mut current_key = T::ZERO;
-                for (shift, &position) in orbit_machine.simple_positions.iter().enumerate() {
-                    current_key = current_key.or_byte(current_buf[usize::from(position)], shift);
-                }
+                let current_key = member_keys[cursor];
                 let (parent_member, parent_gen) = parents[cursor];
                 let parent_generator = if parent_member == u32::MAX {
                     usize::MAX
@@ -1287,6 +1289,7 @@ impl InnerClass {
                     )?;
                     open.extend_from_slice(&next_buf[..stride]);
                     push_slim(&mut parents, (cursor as u32, generator as u8))?;
+                    push_slim(&mut member_keys, key)?;
                     member_count += 1;
                     // The probe key IS the successor's packed simple-image
                     // key (`next_buf[p] = r(c(r(p)))` byte-for-byte), so the
