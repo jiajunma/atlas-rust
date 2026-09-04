@@ -641,3 +641,14 @@ RootSystem, BTreeSet->sorted-Vec in block build.
   lands, rust is >60x faster than the oracle on this workload; correctness
   gating needs the 8h fat reference job (3680251) or the fast term-level
   repro probe (probe_finals_e7_term20138, oracle leg ~1min).
+
+## agent-fasthash (55806e6, merged 77313d4)
+
+- deform-only E7 (cpu, interleaved A/B 3680269, REPS=3): base median
+  14.81s -> tip median 13.22s = **1.120x** (base 14.79/14.87/14.76,
+  tip 13.33/13.18/13.14; RSS neutral ~398MB).
+- Gates: quick_check 3680263 green; probes 3680265-67 SORTED_MATCH
+  (deform_e7 46118 lines, partial_kl_e7, finals_term20138); filekl diff
+  4/4 blocks PASS (3680268).
+- Cumulative deform-only E7 this session: 19.03s -> 13.22s = 1.44x;
+  vs oracle ~10.0s the gap is now ~1.32x (was 1.9x).
