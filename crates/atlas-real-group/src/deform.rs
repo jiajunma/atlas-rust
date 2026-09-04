@@ -968,11 +968,13 @@ where
     }
 
     // Retained elements (height at most the bound), ascending, with their
-    // accumulator coefficients (repr.cpp:2039-2056). The digest buckets
+    // accumulator coefficients (repr.cpp:2118-2141). The digest buckets
     // index the accumulator so each retained element probes O(bucket)
     // instead of scanning the whole accumulator; a bucket holds positions
     // in ascending order, so the first unconsumed equal entry of a bucket
-    // is exactly upstream's `queue.find`.
+    // is exactly upstream's `queue.find`. `low_mark` tracks the lowest
+    // height of any term found in the accumulator (repr.cpp:2120,2134-2136):
+    // upstream later drops every retained element strictly below it.
     let mut digest_buckets: HashMap<u64, Vec<usize>> = HashMap::new();
     for (position, (sr, _)) in accumulator.iter().enumerate() {
         digest_buckets
@@ -981,10 +983,12 @@ where
             .push(position);
     }
     let mut consumed = vec![false; accumulator.len()];
-    let mut entries: Vec<(usize, StandardRepr, SplitInteger)> = Vec::new();
+    let mut low_mark = height_bound.saturating_add(1);
+    let mut entries: Vec<(usize, StandardRepr, u32, SplitInteger)> = Vec::new();
     for z in 0..block.size() {
         let q = row_sr(z)?;
-        if q.height() > height_bound {
+        let height = q.height();
+        if height > height_bound {
             continue;
         }
         // `queue.find(q)` + `queue.erase`: only unconsumed terms match,
@@ -996,17 +1000,22 @@ where
             {
                 Some(&position) => {
                     consumed[position] = true;
+                    if height < low_mark {
+                        low_mark = height;
+                    }
                     accumulator[position].1
                 }
                 None => SplitInteger::zero(),
             },
             None => SplitInteger::zero(),
         };
-        entries.push((z, q, coef));
+        entries.push((z, q, height, coef));
     }
 
-    // Drop the elements killed by the translation functor
-    // (`block.survives`, repr.cpp:2068-2077).
+    // Drop the elements below `low_mark` and the elements killed by the
+    // translation functor (`block.survives`, repr.cpp:2160-2172). The
+    // dropped terms are provably zero (a nonzero term sits in the
+    // accumulator, so its height is at least `low_mark`); upstream asserts.
     let computed_singular;
     let singular = match singular_flags {
         Some(flags) => flags,
@@ -1019,19 +1028,20 @@ where
         }
     };
     let mut survivors: Vec<(usize, StandardRepr, SplitInteger)> = Vec::new();
-    for (z, q, coef) in entries {
-        let killed = (0..block.rank()).any(|s| {
-            singular.get(s).copied().unwrap_or(false)
-                && block.descent(z, s).is_some_and(|d| d.is_descent())
-        });
-        if killed {
-            if !coef.is_zero() {
-                return Err(StructureError::RepInvariantViolation {
-                    invariant: "block deformation: accumulator holds a non-final block term",
-                });
-            }
-        } else {
+    for (z, q, height, coef) in entries {
+        // Upstream keeps a retained term iff `height >= low_mark` AND
+        // `block.survives`; everything else is erased (and must be zero).
+        let kept = height >= low_mark
+            && !(0..block.rank()).any(|s| {
+                singular.get(s).copied().unwrap_or(false)
+                    && block.descent(z, s).is_some_and(|d| d.is_descent())
+            });
+        if kept {
             survivors.push((z, q, coef));
+        } else if !coef.is_zero() {
+            return Err(StructureError::RepInvariantViolation {
+                invariant: "block deformation: accumulator holds a non-final block term",
+            });
         }
     }
 
