@@ -4,6 +4,33 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Current frontier - 2026-09-04f (avopt: E6 AV chain WORKS interpreted; klfill gate in flight)
+
+- Dynkin/Cartan fix `b69a0cf` VERIFIED: quick_check 3680132 green;
+  probe_cartan_type_perm (3680134) prints `(Lie type 'A4',[1,0,2,3])` and
+  `(Lie type 'D5',[4,1,2,0,3])` exactly as the oracle (only 2 trailing
+  blank lines differ — minor display gap, noted). Pushed to codex
+  (`6fd186c..c09e5b3`, 4 commits incl. pin probes + profile doc).
+- E6 interpreted AV chain now runs end-to-end: probe_gkfast_e6 (3680135)
+  and probe_av_ann_e6 (3680136) both SORTED_MATCH (~3600 lines). Timing
+  rust 2.8-4.5s vs oracle 0.6-0.8s — interpreted overhead, small-scale;
+  not the optimization target (AGENTS rule 7).
+- probe_av_bisect_e6 (3680137) diff_lines=24, ALL display-fidelity, not
+  computation: (a) Rust renders some stored lambda bodies as
+  `<expression>` where the oracle reconstructs source-like text
+  (e.g. `(i): labels[i]`, `(val): val[e]`); (b) `Function defined at`
+  source lines are off by one for multi-line definitions in
+  W_classes.at (oracle :491 vs rust :490). Recorded as known display
+  gaps; fixing them is a language-compat polish item, not AV math.
+- In flight: agent-klfill `da5ccf2` (8 commits, KL column-fill allocation
+  reduction: per-column ColumnScratch reuse, zero-alloc mu-correction
+  subtraction, pooled-index reuse for single-image primitives, in-place
+  mu_pairs merge, pooled evaluate-at-(-1) in deform, prim-slot-per-column
+  in deform loop). Gate chain: quick_check 3680159, build 3680160,
+  probes 3680161-63 (deform_e7/unitary_e7_heavy/partial_kl_e7), A/B
+  3680164 (deform E7) + 3680165 (heavy unitary, fat), BASE=c09e5b3.
+  Channel frozen at agent-klfill until the chain finishes.
+
 ## Current frontier - 2026-09-04e (avopt: simple_factors torus fix unblocks E6 AV)
 
 - Root-caused the E6 interpreted-AV failure: `simple_factors` included torus
