@@ -418,7 +418,16 @@ impl<B: BlockTopology> KlTableHandle<B> {
         // Cayley images' slots of THIS column, which the backward pass
         // has already written ("in current row, above", kl.cpp:567).
         let mut column: Vec<KlIndex> = vec![0; self.support.col_size(y)];
-        let mut mu_pairs: Vec<MuPair> = Vec::new();
+        // Start the μ-column with the down-set of y at μ=1
+        // (kl.cpp:578-585); the backward traversal below appends the
+        // recursion μ-pairs after them, so the final stable sort keeps
+        // the μ=1 entry ahead of any duplicate with the same x.
+        self.down_set(y, &mut scratch.downs)?;
+        let mut mu_pairs: Vec<MuPair> = scratch
+            .downs
+            .iter()
+            .map(|&z| MuPair { x: z, coef: 1 })
+            .collect();
 
         // Traverse primitives of y with length < ly backwards.
         let mut x = self.support.length_floor(y);
@@ -460,20 +469,15 @@ impl<B: BlockTopology> KlTableHandle<B> {
             }
         }
 
-        // Add the down_set of y with μ=1 (kl.cpp:578-585).
-        self.down_set(y, &mut scratch.downs)?;
-        let downs: Vec<MuPair> = scratch
-            .downs
-            .iter()
-            .map(|&z| MuPair { x: z, coef: 1 })
-            .collect();
-        let mut merged = downs;
-        merged.extend(mu_pairs);
-        merged.sort_by_key(|pair| pair.x);
-        merged.dedup_by_key(|pair| pair.x);
+        // The down-set prefix is increasing with distinct keys and the
+        // recursion pushes are decreasing with distinct keys, so a stable
+        // sort by x keeps the μ=1 down-set entry ahead of any recursion
+        // duplicate (same argument as in new_recursion_column).
+        mu_pairs.sort_by_key(|pair| pair.x);
+        mu_pairs.dedup_by_key(|pair| pair.x);
 
         self.columns[y] = column;
-        self.mu_columns[y] = merged;
+        self.mu_columns[y] = mu_pairs;
         Ok(())
     }
 
