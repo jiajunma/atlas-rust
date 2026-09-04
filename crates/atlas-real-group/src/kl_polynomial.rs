@@ -17,6 +17,7 @@
 //! mutate the receiver; the KLV fill loops use those to reuse the
 //! accumulator buffers across the μ-correction iterations.
 
+use crate::involution_table::MixingHasherBuilder;
 use crate::StructureError;
 
 /// A polynomial over ℤ in `q`, least-degree first. The zero polynomial is
@@ -290,10 +291,14 @@ impl KlPol {
 ///
 /// `zero` is always index 0 and `one` (the constant 1) index 1, exactly
 /// like the upstream `KLStore{Zero, One}` initialisation (kl.cpp:100).
+/// The index map uses the fast [`MixingHasherBuilder`]: hashing affects
+/// only bucket layout, never interning order (`match_pol` returns the
+/// existing index on a hit and appends on a miss), so pool indices — and
+/// the raw indices `filekl` serializes — are hasher-independent.
 #[derive(Clone, Debug, Default)]
 pub struct KlHashTable {
     pool: Vec<KlPol>,
-    index: std::collections::HashMap<KlPol, usize>,
+    index: std::collections::HashMap<KlPol, usize, MixingHasherBuilder>,
 }
 
 impl KlHashTable {
