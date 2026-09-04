@@ -455,17 +455,27 @@ impl<B: BlockTopology> KlTableHandle<B> {
                         invariant: "primitive non-extremal ascent",
                     },
                 )?;
-                let mut pxy = KlPol::zero();
-                if let Some((Some(first_image), second)) = self.support.block().cayley(x, s) {
-                    pxy = self
-                        .current_column_pol(&column, prim_slot, first_image, y)
-                        .clone();
-                    if let Some(second_image) = second {
-                        let second_pol = self.current_column_pol(&column, prim_slot, second_image, y);
-                        pxy.add_assign(second_pol);
+                column[position] = match self.support.block().cayley(x, s) {
+                    Some((Some(first_image), None)) => {
+                        // A single Cayley image contributes its polynomial
+                        // unchanged; that polynomial is already pooled, so
+                        // store its index directly without cloning.
+                        self.current_column_index(&column, prim_slot, first_image, y)
                     }
-                }
-                column[position] = self.pool.match_pol(&pxy);
+                    Some((Some(first_image), Some(second_image))) => {
+                        let mut pxy = self
+                            .current_column_pol(&column, prim_slot, first_image, y)
+                            .clone();
+                        let second_pol =
+                            self.current_column_pol(&column, prim_slot, second_image, y);
+                        pxy.add_assign(second_pol);
+                        self.pool.match_pol(&pxy)
+                    }
+                    // A missing Cayley image (outside the block)
+                    // contributes zero (kl.cpp:127), and the zero
+                    // polynomial is always pool index 0 (kl.cpp:100).
+                    _ => 0,
+                };
             }
         }
 
@@ -768,6 +778,29 @@ impl<B: BlockTopology> KlTableHandle<B> {
         }
     }
 
+    /// The pool index of `KL_pol(x, y)` against the column being written
+    /// by `complete_primitives`: the index counterpart of
+    /// [`Self::current_column_pol`], for callers that only need the index
+    /// of an already-pooled polynomial.
+    fn current_column_index(
+        &self,
+        column: &[KlIndex],
+        slot: u32,
+        x: BlockElt,
+        y: BlockElt,
+    ) -> KlIndex {
+        let prim = self.support.prim_index_at(slot, x);
+        if prim >= column.len() {
+            if prim == self.support.prim_index_at(slot, y) {
+                1 // P_{y,y} = 1
+            } else {
+                0 // zero polynomial
+            }
+        } else {
+            column[prim]
+        }
+    }
+
     /// `KL_pol(x, y)` against the column being written by
     /// `complete_primitives` (kl.cpp:566-570 reads the in-progress
     /// `d_KL[y]`): slots above the backward traversal point are final,
@@ -781,17 +814,7 @@ impl<B: BlockTopology> KlTableHandle<B> {
         x: BlockElt,
         y: BlockElt,
     ) -> &KlPol {
-        let prim = self.support.prim_index_at(slot, x);
-        let index = if prim >= column.len() {
-            if prim == self.support.prim_index_at(slot, y) {
-                1 // P_{y,y} = 1
-            } else {
-                0 // zero polynomial
-            }
-        } else {
-            column[prim]
-        };
-        match self.pool.get(index) {
+        match self.pool.get(self.current_column_index(column, slot, x, y)) {
             Some(polynomial) => polynomial,
             None => KlPol::zero_ref(),
         }
