@@ -605,11 +605,16 @@ impl<B: BlockTopology> KlTableHandle<B> {
                         }
                     }
                     BlockDescent::ImaginaryTypeII => {
+                        // pxy += (1 - q)(P_first + P_second), applied
+                        // termwise so the Cayley-image sum is never
+                        // materialised.
                         let pair = self.support.block().cayley(x, s).expect("cayley");
-                        let mut sum = working[kl_index(pair.0.expect("first image"))].clone();
-                        sum.add_assign(&working[kl_index(pair.1.expect("second image"))]);
-                        pxy.add_assign(&sum);
-                        pxy.sub_shifted_assign(&sum, 1, 1);
+                        let first = kl_index(pair.0.expect("first image"));
+                        let second = kl_index(pair.1.expect("second image"));
+                        pxy.add_assign(&working[first]);
+                        pxy.add_assign(&working[second]);
+                        pxy.sub_shifted_assign(&working[first], 1, 1);
+                        pxy.sub_shifted_assign(&working[second], 1, 1);
                         pxy.divide_by_2_assign()?;
                     }
                     BlockDescent::ImaginaryCompact => {
