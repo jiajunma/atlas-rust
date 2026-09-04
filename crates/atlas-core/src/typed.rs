@@ -6094,9 +6094,16 @@ enum Relation {
 }
 
 impl Builtin {
+    /// Arguments arrive SHARED: read-only implementations (the scalar
+    /// operators, relations, printers) borrow them through the `Rc`; the
+    /// domain dispatch and the consuming scalar operators take ownership of
+    /// just what they consume via `own_all`/`unwrap_shared`, which moves
+    /// uniquely held values and copies genuinely shared ones (the same
+    /// copy-on-write step the old call-site unwrap performed on every
+    /// argument).
     fn run(
         &self,
-        arguments: Vec<Value>,
+        arguments: Vec<SharedValue>,
         span: SourceSpan,
         level: Level,
         context: &mut EvaluationContext,
@@ -6108,7 +6115,7 @@ impl Builtin {
                     match no_value {
                         DomainNoValue::Skip => return Ok(None),
                         DomainNoValue::Validate => {
-                            domain_builtins::validate(name, &arguments, span)
+                            domain_builtins::validate(name, &own_all(arguments), span)
                                 .map_err(Control::Runtime)?;
                             return Ok(None);
                         }
@@ -6117,7 +6124,7 @@ impl Builtin {
                 }
                 domain_builtins::call_owned_with_printed(
                     name,
-                    arguments,
+                    own_all(arguments),
                     span,
                     context.printed_buffer(),
                 )
@@ -6125,13 +6132,13 @@ impl Builtin {
                 .map_err(Control::Runtime)
             }
             BuiltinImpl::DomainPrinter { name } => {
-                let text = domain_builtins::print_text(name, &arguments, span)
+                let text = domain_builtins::print_text(name, &own_all(arguments), span)
                     .map_err(Control::Runtime)?;
                 context.print_text(text);
                 Ok(at_builtin_level(level, || Value::Tuple(Vec::new())))
             }
             BuiltinImpl::DomainRelation(relation) => {
-                let (first, second) = expect_pair(arguments);
+                let (first, second) = expect_pair(&arguments);
                 let (Value::Domain(first), Value::Domain(second)) = (first, second) else {
                     panic!("domain relation saw non-domain arguments")
                 };
@@ -6144,7 +6151,7 @@ impl Builtin {
                 }))
             }
             BuiltinImpl::Completions => {
-                let Value::String(prefix) = expect_unary(arguments) else {
+                let Value::String(prefix) = expect_unary(&arguments) else {
                     panic!("readline_completions saw a non-string argument")
                 };
                 Ok(at_builtin_level(level, || {
@@ -6171,9 +6178,9 @@ impl Builtin {
                 // their full multi-line form at any depth) at every level,
                 // and is returned unchanged when a value is demanded.
                 let value = if arguments.len() == 1 {
-                    arguments.into_iter().next().expect("one argument")
+                    unwrap_shared(arguments.into_iter().next().expect("one argument"))
                 } else {
-                    Value::Tuple(arguments)
+                    Value::Tuple(own_all(arguments))
                 };
                 let text = value_string(context, &value);
                 context.print_text(format!("{text}\n"));
@@ -6324,7 +6331,7 @@ fn at_builtin_level(level: Level, value: impl FnOnce() -> Value) -> Option<Value
 /// tuple: string components print without quotes, every other value prints
 /// like `print`. No trailing newline — `prints` adds the wrapper's
 /// `std::endl` itself, `to_string` and `error` do not.
-fn stripped_text(context: &EvaluationContext, arguments: &[Value]) -> String {
+fn stripped_text(context: &EvaluationContext, arguments: &[SharedValue]) -> String {
     fn component(context: &EvaluationContext, text: &mut String, value: &Value) {
         match value {
             Value::String(string) => text.push_str(string),
@@ -6339,7 +6346,7 @@ fn stripped_text(context: &EvaluationContext, arguments: &[Value]) -> String {
     // a lone tuple's components print individually; anything else prints as
     // one value.
     if arguments.len() == 1 {
-        match &arguments[0] {
+        match arguments[0].as_ref() {
             Value::Tuple(components) => {
                 for value in components {
                     component(context, &mut text, value);
@@ -6357,44 +6364,60 @@ fn stripped_text(context: &EvaluationContext, arguments: &[Value]) -> String {
 
 /// `prints_wrapper`'s output (axis.w:8850-8853): the stripped text plus one
 /// trailing newline.
-fn prints_text(context: &EvaluationContext, arguments: &[Value]) -> String {
+fn prints_text(context: &EvaluationContext, arguments: &[SharedValue]) -> String {
     format!("{}\n", stripped_text(context, arguments))
 }
 
-fn expect_unary(mut arguments: Vec<Value>) -> Value {
+fn expect_unary(arguments: &[SharedValue]) -> &Value {
+    match arguments {
+        [value] => value.as_ref(),
+        _ => panic!("unary builtin saw {} arguments", arguments.len()),
+    }
+}
+
+fn expect_pair(arguments: &[SharedValue]) -> (&Value, &Value) {
+    match arguments {
+        [first, second] => (first.as_ref(), second.as_ref()),
+        _ => panic!("binary builtin saw {} arguments", arguments.len()),
+    }
+}
+
+fn expect_ints(arguments: &[SharedValue]) -> (&BigInt, &BigInt) {
+    match expect_pair(arguments) {
+        (Value::Integer(first), Value::Integer(second)) => (first, second),
+        other => panic!("int builtin saw {other:?}"),
+    }
+}
+
+fn expect_rationals(arguments: &[SharedValue]) -> (&BigRational, &BigRational) {
+    match expect_pair(arguments) {
+        (Value::Rational(first), Value::Rational(second)) => (first, second),
+        other => panic!("rat builtin saw {other:?}"),
+    }
+}
+
+fn expect_rat_int(arguments: &[SharedValue]) -> (&BigRational, &BigInt) {
+    match expect_pair(arguments) {
+        (Value::Rational(first), Value::Integer(second)) => (first, second),
+        other => panic!("rat-int builtin saw {other:?}"),
+    }
+}
+
+/// Materialize owned arguments for a builtin that consumes its operands:
+/// uniquely held values move (a fresh temporary or a pilfered operand), a
+/// genuinely shared value copies — exactly the per-argument step the old
+/// call-site unwrap performed.
+fn own_all(arguments: Vec<SharedValue>) -> Vec<Value> {
+    arguments.into_iter().map(unwrap_shared).collect()
+}
+
+fn expect_unary_owned(mut arguments: Vec<Value>) -> Value {
     let value = arguments.pop().expect("unary builtin has one argument");
     assert!(arguments.is_empty(), "unary builtin saw extra arguments");
     value
 }
 
-fn expect_ints(mut arguments: Vec<Value>) -> (BigInt, BigInt) {
-    let second = arguments.pop();
-    let first = arguments.pop();
-    match (first, second) {
-        (Some(Value::Integer(first)), Some(Value::Integer(second))) => (first, second),
-        other => panic!("int builtin saw {other:?}"),
-    }
-}
-
-fn expect_rationals(mut arguments: Vec<Value>) -> (BigRational, BigRational) {
-    let second = arguments.pop();
-    let first = arguments.pop();
-    match (first, second) {
-        (Some(Value::Rational(first)), Some(Value::Rational(second))) => (first, second),
-        other => panic!("rat builtin saw {other:?}"),
-    }
-}
-
-fn expect_rat_int(mut arguments: Vec<Value>) -> (BigRational, BigInt) {
-    let second = arguments.pop();
-    let first = arguments.pop();
-    match (first, second) {
-        (Some(Value::Rational(first)), Some(Value::Integer(second))) => (first, second),
-        other => panic!("rat-int builtin saw {other:?}"),
-    }
-}
-
-fn expect_pair(mut arguments: Vec<Value>) -> (Value, Value) {
+fn expect_pair_owned(mut arguments: Vec<Value>) -> (Value, Value) {
     let second = arguments.pop();
     let first = arguments.pop();
     match (first, second) {
@@ -6581,17 +6604,17 @@ fn ratvec_add_sub(left: &RatVec, right: &RatVec, subtract: bool) -> RatVec {
 
 fn run_scalar(
     operation: ScalarOp,
-    arguments: Vec<Value>,
+    arguments: Vec<SharedValue>,
     span: SourceSpan,
     level: Level,
 ) -> Result<Option<Value>, Control> {
     match operation {
-        ScalarOp::IntNegate => match expect_unary(arguments) {
+        ScalarOp::IntNegate => match expect_unary(&arguments) {
             Value::Integer(value) => Ok(at_builtin_level(level, || Value::Integer(-value))),
             other => panic!("integer negation saw {other:?}"),
         },
         ScalarOp::IntAdd | ScalarOp::IntSubtract | ScalarOp::IntMultiply => {
-            let (first, second) = expect_ints(arguments);
+            let (first, second) = expect_ints(&arguments);
             Ok(at_builtin_level(level, || {
                 Value::Integer(match operation {
                     ScalarOp::IntAdd => first + second,
@@ -6601,13 +6624,13 @@ fn run_scalar(
                 })
             }))
         }
-        ScalarOp::IntComplement => match expect_unary(arguments) {
+        ScalarOp::IntComplement => match expect_unary(&arguments) {
             Value::Integer(value) => Ok(at_builtin_level(level, || Value::Integer(!value))),
             other => panic!("integer complement saw {other:?}"),
         },
         ScalarOp::IntQuotient | ScalarOp::IntModulo | ScalarOp::IntDivMod => {
-            let (first, second) = expect_ints(arguments);
-            if second == 0 {
+            let (first, second) = expect_ints(&arguments);
+            if *second == 0 {
                 let message = match operation {
                     ScalarOp::IntQuotient => "Division by zero",
                     ScalarOp::IntModulo => "Modulo zero",
@@ -6617,7 +6640,7 @@ fn run_scalar(
                 return Err(runtime(message, span));
             }
             Ok(at_builtin_level(level, || {
-                let (quotient, remainder) = euclidean_divmod(&first, &second);
+                let (quotient, remainder) = euclidean_divmod(first, second);
                 match operation {
                     ScalarOp::IntQuotient => Value::Integer(quotient),
                     ScalarOp::IntModulo => Value::Integer(remainder),
@@ -6629,57 +6652,64 @@ fn run_scalar(
             }))
         }
         ScalarOp::IntPower => {
-            let (base, exponent) = expect_ints(arguments);
-            let unit_base = base == 1 || base == -1;
-            if !unit_base && exponent < 0 {
+            let (base, exponent) = expect_ints(&arguments);
+            let unit_base = *base == 1 || *base == -1;
+            if !unit_base && *exponent < 0 {
                 return Err(runtime("Negative power of integer", span));
             }
-            if !unit_base && base != 0 && i32::try_from(&exponent).is_err() {
+            if !unit_base && *base != 0 && i32::try_from(exponent).is_err() {
                 return Err(runtime("Exponent too large in power of integer", span));
             }
             Ok(at_builtin_level(level, || {
                 if unit_base {
-                    if &exponent % BigInt::from(2) != 0 {
-                        Value::Integer(base)
+                    if exponent % BigInt::from(2) != 0 {
+                        Value::Integer(base.clone())
                     } else {
                         Value::Integer(BigInt::from(1))
                     }
-                } else if base == 0 {
-                    Value::Integer(if exponent == 0 { BigInt::from(1) } else { base })
+                } else if *base == 0 {
+                    Value::Integer(if *exponent == 0 {
+                        BigInt::from(1)
+                    } else {
+                        base.clone()
+                    })
                 } else {
                     Value::Integer(
                         base.pow(u64::from(
-                            u32::try_from(i32::try_from(&exponent).expect("validated exponent"))
+                            u32::try_from(i32::try_from(exponent).expect("validated exponent"))
                                 .expect("validated exponent is nonnegative"),
                         )),
                     )
                 }
             }))
         }
-        ScalarOp::IntInverse => match expect_unary(arguments) {
+        ScalarOp::IntInverse => match expect_unary(&arguments) {
             Value::Integer(value) => {
-                if value == 0 {
+                if *value == 0 {
                     return Err(runtime("Inverse of zero", span));
                 }
                 Ok(at_builtin_level(level, || {
-                    Value::Rational(BigRational::from_integers(BigInt::from(1), value))
+                    Value::Rational(BigRational::from_integers(BigInt::from(1), value.clone()))
                 }))
             }
             other => panic!("integer inverse saw {other:?}"),
         },
         ScalarOp::IntFraction => {
-            let (numerator, denominator) = expect_ints(arguments);
-            if denominator == 0 {
+            let (numerator, denominator) = expect_ints(&arguments);
+            if *denominator == 0 {
                 return Err(runtime("fraction with zero denominator", span));
             }
             Ok(at_builtin_level(level, || {
-                Value::Rational(BigRational::from_integers(numerator, denominator))
+                Value::Rational(BigRational::from_integers(
+                    numerator.clone(),
+                    denominator.clone(),
+                ))
             }))
         }
-        ScalarOp::RatUnfraction => match expect_unary(arguments) {
+        ScalarOp::RatUnfraction => match expect_unary(&arguments) {
             Value::Rational(value) => Ok(at_builtin_level(level, || {
-                let negative = value < 0;
-                let (numerator, denominator) = value.into_numerator_and_denominator();
+                let negative = *value < 0;
+                let (numerator, denominator) = value.clone().into_numerator_and_denominator();
                 let numerator = BigInt::from(numerator);
                 Value::Tuple(vec![
                     Value::Integer(if negative { -numerator } else { numerator }),
@@ -6688,7 +6718,7 @@ fn run_scalar(
             })),
             other => panic!("rational unfraction saw {other:?}"),
         },
-        ScalarOp::VecAdd => match expect_pair(arguments) {
+        ScalarOp::VecAdd => match expect_pair(&arguments) {
             (Value::Vector(left), Value::Vector(right)) => {
                 if left.0.len() != right.0.len() {
                     return Err(runtime(
@@ -6699,22 +6729,28 @@ fn run_scalar(
                 Ok(at_builtin_level(level, || {
                     Value::Vector(Vec32(
                         left.0
-                            .into_iter()
-                            .zip(right.0)
-                            .map(|(a, b)| a.wrapping_add(b))
+                            .iter()
+                            .zip(&right.0)
+                            .map(|(&a, &b)| a.wrapping_add(b))
                             .collect(),
                     ))
                 }))
             }
             other => panic!("vector addition saw {other:?}"),
         },
-        ScalarOp::VecNegate => match expect_unary(arguments) {
+        ScalarOp::VecNegate => match expect_unary(&arguments) {
             Value::Vector(vector) => Ok(at_builtin_level(level, || {
-                Value::Vector(Vec32(vector.0.into_iter().map(i32::wrapping_neg).collect()))
+                Value::Vector(Vec32(
+                    vector
+                        .0
+                        .iter()
+                        .map(|&entry| i32::wrapping_neg(entry))
+                        .collect(),
+                ))
             })),
             other => panic!("vector negation saw {other:?}"),
         },
-        ScalarOp::VecDivideInt => match expect_pair(arguments) {
+        ScalarOp::VecDivideInt => match expect_pair(&arguments) {
             (Value::Vector(vector), Value::Integer(denominator)) => {
                 // Upstream constructs the rational vector inside its
                 // no_value gate, so the diagnostics fire only when the
@@ -6722,12 +6758,12 @@ fn run_scalar(
                 if level == Level::NoValue {
                     return Ok(None);
                 }
-                if denominator == 0 {
+                if *denominator == 0 {
                     return Err(runtime("Denominator 0 in rational vector", span));
                 }
-                let negative = denominator < 0;
+                let negative = *denominator < 0;
                 let magnitude = if negative {
-                    -&denominator
+                    -denominator
                 } else {
                     denominator.clone()
                 };
@@ -6759,8 +6795,8 @@ fn run_scalar(
         | ScalarOp::RatDivideInt
         | ScalarOp::RatQuotientInt
         | ScalarOp::RatModuloInt => {
-            let (rational, integer) = expect_rat_int(arguments);
-            if integer == 0 {
+            let (rational, integer) = expect_rat_int(&arguments);
+            if *integer == 0 {
                 match operation {
                     ScalarOp::RatQuotientInt => {
                         return Err(runtime("Rational quotient by zero", span));
@@ -6779,16 +6815,16 @@ fn run_scalar(
                 // value, without malachite limb churn; None falls through
                 // to the generic operators below.
                 let fast = match operation {
-                    ScalarOp::RatAddInt => ratfast::add_int(&rational, &integer),
-                    ScalarOp::RatSubtractInt => ratfast::sub_int(&rational, &integer),
-                    ScalarOp::RatMultiplyInt => ratfast::mul_int(&rational, &integer),
-                    ScalarOp::RatDivideInt => ratfast::div_int(&rational, &integer),
+                    ScalarOp::RatAddInt => ratfast::add_int(rational, integer),
+                    ScalarOp::RatSubtractInt => ratfast::sub_int(rational, integer),
+                    ScalarOp::RatMultiplyInt => ratfast::mul_int(rational, integer),
+                    ScalarOp::RatDivideInt => ratfast::div_int(rational, integer),
                     _ => None,
                 };
                 if let Some(value) = fast {
                     return Value::Rational(value);
                 }
-                let integer_as_rational = BigRational::from(integer);
+                let integer_as_rational = BigRational::from(integer.clone());
                 match operation {
                     ScalarOp::RatAddInt => Value::Rational(rational + integer_as_rational),
                     ScalarOp::RatSubtractInt => Value::Rational(rational - integer_as_rational),
@@ -6807,8 +6843,8 @@ fn run_scalar(
         | ScalarOp::RatMultiply
         | ScalarOp::RatDivide
         | ScalarOp::RatModulo => {
-            let (first, second) = expect_rationals(arguments);
-            if second == 0 {
+            let (first, second) = expect_rationals(&arguments);
+            if *second == 0 {
                 let message = match operation {
                     ScalarOp::RatDivide => "Rational division by zero",
                     ScalarOp::RatModulo => "Rational modulo zero",
@@ -6822,10 +6858,10 @@ fn run_scalar(
                 // Machine-word fast path (ratfast): the same normalized
                 // value; None falls through to the generic operators.
                 let fast = match operation {
-                    ScalarOp::RatAdd => ratfast::add(&first, &second),
-                    ScalarOp::RatSubtract => ratfast::sub(&first, &second),
-                    ScalarOp::RatMultiply => ratfast::mul(&first, &second),
-                    ScalarOp::RatDivide => ratfast::div(&first, &second),
+                    ScalarOp::RatAdd => ratfast::add(first, second),
+                    ScalarOp::RatSubtract => ratfast::sub(first, second),
+                    ScalarOp::RatMultiply => ratfast::mul(first, second),
+                    ScalarOp::RatDivide => ratfast::div(first, second),
                     _ => None,
                 };
                 Value::Rational(match fast {
@@ -6841,13 +6877,13 @@ fn run_scalar(
                 })
             }))
         }
-        ScalarOp::RatNegate => match expect_unary(arguments) {
+        ScalarOp::RatNegate => match expect_unary(&arguments) {
             Value::Rational(value) => Ok(at_builtin_level(level, || Value::Rational(-value))),
             other => panic!("rational negation saw {other:?}"),
         },
-        ScalarOp::RatInverse => match expect_unary(arguments) {
+        ScalarOp::RatInverse => match expect_unary(&arguments) {
             Value::Rational(value) => {
-                if value == 0 {
+                if *value == 0 {
                     return Err(runtime("Inverse of zero", span));
                 }
                 Ok(at_builtin_level(level, || {
@@ -6857,12 +6893,12 @@ fn run_scalar(
             other => panic!("rational inverse saw {other:?}"),
         },
         ScalarOp::RatPower => {
-            let (base, exponent) = expect_rat_int(arguments);
-            let unit_base = base == 1 || base == -1;
-            if base == 0 && exponent < 0 {
+            let (base, exponent) = expect_rat_int(&arguments);
+            let unit_base = *base == 1 || *base == -1;
+            if *base == 0 && *exponent < 0 {
                 return Err(runtime("Negative power of rational zero", span));
             }
-            if base != 0 && !unit_base && i32::try_from(&exponent).is_err() {
+            if *base != 0 && !unit_base && i32::try_from(exponent).is_err() {
                 return Err(runtime(
                     "Exponent too large in power of rational number",
                     span,
@@ -6871,34 +6907,34 @@ fn run_scalar(
             if level == Level::NoValue {
                 return Ok(None);
             }
-            if base != 0 && !unit_base && exponent < 0 {
+            if *base != 0 && !unit_base && *exponent < 0 {
                 return Err(runtime("Negative integer where unsigned is required", span));
             }
             Ok(Some({
                 if unit_base {
-                    if &exponent % BigInt::from(2) != 0 {
-                        Value::Rational(base)
+                    if exponent % BigInt::from(2) != 0 {
+                        Value::Rational(base.clone())
                     } else {
                         Value::Rational(BigRational::from(1))
                     }
-                } else if base == 0 {
-                    Value::Rational(if exponent == 0 {
+                } else if *base == 0 {
+                    Value::Rational(if *exponent == 0 {
                         BigRational::from(1)
                     } else {
-                        base
+                        base.clone()
                     })
                 } else {
                     Value::Rational(base.pow(i64::from(
-                        i32::try_from(&exponent).expect("validated exponent"),
+                        i32::try_from(exponent).expect("validated exponent"),
                     )))
                 }
             }))
         }
         ScalarOp::NullMatrix => {
-            let (row_value, column_value) = expect_ints(arguments);
+            let (row_value, column_value) = expect_ints(&arguments);
             // Atlas pops/converts the column count first, then the row count.
-            let columns = unsigned_long(&column_value, span)?;
-            let rows = unsigned_long(&row_value, span)?;
+            let columns = unsigned_long(column_value, span)?;
+            let rows = unsigned_long(row_value, span)?;
             if rows > u64::from(u32::MAX) {
                 return Err(runtime(
                     format!("Number of rows {rows} exceeds implementation limit"),
@@ -6929,12 +6965,12 @@ fn run_scalar(
             )))
         }
         ScalarOp::UnaryRelation(relation) => {
-            let value = expect_unary(arguments);
+            let value = expect_unary(&arguments);
             Ok(at_builtin_level(level, || {
                 // Containers compare against an implicit zero of the same
                 // kind: only =/!=/>=/> are registered for vec and ratvec,
                 // only =/!= for mat (global.w:4405-4420).
-                let result = match &value {
+                let result = match value {
                     Value::Integer(value) => {
                         relation_matches(relation, value.cmp(&BigInt::from(0)))
                     }
@@ -6969,25 +7005,25 @@ fn run_scalar(
             }))
         }
         ScalarOp::BinaryRelation(relation) => {
-            let (first, second) = expect_pair(arguments);
+            let (first, second) = expect_pair(&arguments);
             Ok(at_builtin_level(level, || {
                 let result = match (first, second) {
                     (Value::Integer(first), Value::Integer(second)) => {
-                        relation_matches(relation, first.cmp(&second))
+                        relation_matches(relation, first.cmp(second))
                     }
                     (Value::Rational(first), Value::Rational(second)) => {
                         // Cross-multiplied i128 comparison when both are
                         // machine-sized; identical ordering to the generic
                         // cmp since denominators are positive.
-                        let ordering = ratfast::cmp(&first, &second)
-                            .unwrap_or_else(|| first.cmp(&second));
+                        let ordering =
+                            ratfast::cmp(first, second).unwrap_or_else(|| first.cmp(second));
                         relation_matches(relation, ordering)
                     }
                     (Value::Boolean(first), Value::Boolean(second)) => {
-                        relation_matches(relation, first.cmp(&second))
+                        relation_matches(relation, first.cmp(second))
                     }
                     (Value::String(first), Value::String(second)) => {
-                        relation_matches(relation, first.cmp(&second))
+                        relation_matches(relation, first.cmp(second))
                     }
                     // Only =/!= are registered for containers.
                     (Value::Vector(first), Value::Vector(second)) => {
@@ -7004,14 +7040,14 @@ fn run_scalar(
                 Value::Boolean(result)
             }))
         }
-        ScalarOp::ListCardinality => match expect_unary(arguments) {
+        ScalarOp::ListCardinality => match expect_unary(&arguments) {
             Value::List(values) => Ok(at_builtin_level(level, || {
                 Value::Integer(BigInt::from(values.len()))
             })),
             other => panic!("list cardinality saw {other:?}"),
         },
         ScalarOp::StringConcat => {
-            let (first, second) = expect_pair(arguments);
+            let (first, second) = expect_pair(&arguments);
             match (first, second) {
                 (Value::String(first), Value::String(second)) => {
                     Ok(at_builtin_level(level, || {
@@ -7024,7 +7060,7 @@ fn run_scalar(
         // rat_floor/ceil/frac (global.w:3153-3167): floor division rounding,
         // the fractional part lying in [0,1).
         ScalarOp::RatFloor | ScalarOp::RatCeil | ScalarOp::RatFrac => {
-            match expect_unary(arguments) {
+            match expect_unary(&arguments) {
                 Value::Rational(value) => Ok(at_builtin_level(level, || match operation {
                     ScalarOp::RatFloor => Value::Integer(value.floor()),
                     ScalarOp::RatCeil => Value::Integer(value.ceiling()),
@@ -7038,12 +7074,12 @@ fn run_scalar(
             }
         }
         // concatenate_strings (global.w:3492-3508): fold a row of strings.
-        ScalarOp::StringListConcat => match expect_unary(arguments) {
+        ScalarOp::StringListConcat => match expect_unary(&arguments) {
             Value::List(values) => Ok(at_builtin_level(level, || {
                 let mut joined = String::new();
                 for value in values {
                     match value {
-                        Value::String(text) => joined.push_str(&text),
+                        Value::String(text) => joined.push_str(text),
                         other => panic!("string list concatenation saw {other:?}"),
                     }
                 }
@@ -7053,7 +7089,7 @@ fn run_scalar(
         },
         // string_to_ascii (global.w:3516-3521): first byte unsigned, -1 when
         // the string is empty.
-        ScalarOp::StringToAscii => match expect_unary(arguments) {
+        ScalarOp::StringToAscii => match expect_unary(&arguments) {
             Value::String(value) => Ok(at_builtin_level(level, || {
                 Value::Integer(match value.as_bytes().first() {
                     None => BigInt::from(-1),
@@ -7064,9 +7100,9 @@ fn run_scalar(
         },
         // ascii_char (global.w:3523-3532): int_val narrowing, then the
         // printable-or-newline gate, both before the no-value gate.
-        ScalarOp::AsciiChar => match expect_unary(arguments) {
+        ScalarOp::AsciiChar => match expect_unary(&arguments) {
             Value::Integer(value) => {
-                let code = i32::try_from(&value)
+                let code = i32::try_from(value)
                     .map_err(|_| runtime("Integer value to big for conversion", span))?;
                 if (code < i32::from(b' ') && code != i32::from(b'\n')) || code > i32::from(b'~') {
                     return Err(runtime(
@@ -7085,7 +7121,7 @@ fn run_scalar(
         // sizeof_string/vector/ratvec and matrix_ncols (global.w:3578-3601):
         // byte count, lengths, and the column count respectively.
         ScalarOp::SizeOf => {
-            let size = match expect_unary(arguments) {
+            let size = match expect_unary(&arguments) {
                 Value::String(value) => value.len(),
                 Value::Vector(vector) => vector.0.len(),
                 Value::RatVector(ratvec) => ratvec.numerators().len(),
@@ -7097,7 +7133,7 @@ fn run_scalar(
             }))
         }
         // matrix_shape (global.w:3610-3618): both bounds as an (int,int).
-        ScalarOp::MatrixShape => match expect_unary(arguments) {
+        ScalarOp::MatrixShape => match expect_unary(&arguments) {
             Value::Matrix(matrix) => Ok(at_builtin_level(level, || {
                 Value::Tuple(vec![
                     Value::Integer(BigInt::from(matrix.rows())),
@@ -7109,11 +7145,11 @@ fn run_scalar(
         // matrix_row/column (global.w:3626-3648): the index narrows through
         // ulong_val and bounds-checks before the no-value gate.
         ScalarOp::MatrixRow | ScalarOp::MatrixColumn => {
-            let (matrix, index) = match expect_pair(arguments) {
+            let (matrix, index) = match expect_pair(&arguments) {
                 (Value::Matrix(matrix), Value::Integer(index)) => (matrix, index),
                 other => panic!("matrix row/column saw {other:?}"),
             };
-            let index = unsigned_long(&index, span)?;
+            let index = unsigned_long(index, span)?;
             let (limit, what) = match operation {
                 ScalarOp::MatrixRow => (matrix.rows(), "row"),
                 ScalarOp::MatrixColumn => (matrix.cols(), "column"),
@@ -7135,7 +7171,7 @@ fn run_scalar(
             }))
         }
         // rows/columns (global.w:2432-2449): externalise to a row of vecs.
-        ScalarOp::MatrixRows | ScalarOp::MatrixColumns => match expect_unary(arguments) {
+        ScalarOp::MatrixRows | ScalarOp::MatrixColumns => match expect_unary(&arguments) {
             Value::Matrix(matrix) => Ok(at_builtin_level(level, || {
                 let count = match operation {
                     ScalarOp::MatrixRows => matrix.rows(),
@@ -7158,7 +7194,7 @@ fn run_scalar(
         },
         // succ/pred (global.w:2761-2773): upstream's parse-time rewrite
         // turns x+1/x-1 into these; as builtins they are plain increments.
-        ScalarOp::IntSuccessor | ScalarOp::IntPredecessor => match expect_unary(arguments) {
+        ScalarOp::IntSuccessor | ScalarOp::IntPredecessor => match expect_unary(&arguments) {
             Value::Integer(value) => Ok(at_builtin_level(level, || {
                 Value::Integer(match operation {
                     ScalarOp::IntSuccessor => value + BigInt::from(1),
@@ -7171,7 +7207,7 @@ fn run_scalar(
         // AND/OR/XOR/AND_NOT (global.w:2817-2849): two's-complement bit
         // strings; call syntax only (AND(6,3)), they are not operators.
         ScalarOp::IntAnd | ScalarOp::IntOr | ScalarOp::IntXor | ScalarOp::IntAndNot => {
-            let (first, second) = expect_ints(arguments);
+            let (first, second) = expect_ints(&arguments);
             Ok(at_builtin_level(level, || {
                 Value::Integer(match operation {
                     ScalarOp::IntAnd => first & second,
@@ -7185,40 +7221,40 @@ fn run_scalar(
         // bitwise_subset (global.w:2852-2857): the set bits of the left
         // operand all occur in the right operand.
         ScalarOp::IntBitwiseSubset => {
-            let (first, second) = expect_ints(arguments);
+            let (first, second) = expect_ints(&arguments);
             Ok(at_builtin_level(level, || {
-                Value::Boolean(&first & &second == first)
+                Value::Boolean(first & second == *first)
             }))
         }
         // nth_set_bit (global.w:2859-2870): the index narrows through
         // long_val before the no-value gate; a negative index counts cleared
         // bits of the operand instead.
         ScalarOp::IntNthSetBit => {
-            let (value, index) = expect_ints(arguments);
-            let index = long_int(&index, span)?;
+            let (value, index) = expect_ints(&arguments);
+            let index = long_int(index, span)?;
             Ok(at_builtin_level(level, || {
                 Value::Integer(if index >= 0 {
-                    index_of_set_bit(&value, index as u64)
+                    index_of_set_bit(value, index as u64)
                 } else {
-                    index_of_set_bit(&!&value, index.wrapping_neg().wrapping_sub(1) as u64)
+                    index_of_set_bit(&!value, index.wrapping_neg().wrapping_sub(1) as u64)
                 })
             }))
         }
         // bit_length (global.w:2872-2877): significant bits for n>=0; for
         // n<0 the negated two's-complement size, -(bits(~n)+1).
-        ScalarOp::IntBitLength => match expect_unary(arguments) {
+        ScalarOp::IntBitLength => match expect_unary(&arguments) {
             Value::Integer(value) => Ok(at_builtin_level(level, || {
-                Value::Integer(if value >= 0 {
-                    BigInt::from((&value).significant_bits())
+                Value::Integer(if *value >= 0 {
+                    BigInt::from(value.significant_bits())
                 } else {
-                    -BigInt::from((&!&value).significant_bits() + 1)
+                    -BigInt::from((!value).significant_bits() + 1)
                 })
             })),
             other => panic!("bit_length saw {other:?}"),
         },
         // to_bitset (global.w:2887-2899): the negative-entry scan runs
         // before the no-value gate.
-        ScalarOp::VecToBitset => match expect_unary(arguments) {
+        ScalarOp::VecToBitset => match expect_unary(&arguments) {
             Value::Vector(vector) => {
                 for &entry in &vector.0 {
                     if entry < 0 {
@@ -7237,20 +7273,21 @@ fn run_scalar(
         },
         // join_vectors / join_vector_row (global.w:3675-3706): plain
         // concatenation, pairwise or of a row of vecs.
-        ScalarOp::VecJoin => match expect_pair(arguments) {
+        ScalarOp::VecJoin => match expect_pair(&arguments) {
             (Value::Vector(left), Value::Vector(right)) => Ok(at_builtin_level(level, || {
-                let mut joined = left.0;
-                joined.extend(right.0);
+                let mut joined = Vec::with_capacity(left.0.len() + right.0.len());
+                joined.extend_from_slice(&left.0);
+                joined.extend_from_slice(&right.0);
                 Value::Vector(Vec32(joined))
             })),
             other => panic!("vector join saw {other:?}"),
         },
-        ScalarOp::VecRowJoin => match expect_unary(arguments) {
+        ScalarOp::VecRowJoin => match expect_unary(&arguments) {
             Value::List(parts) => Ok(at_builtin_level(level, || {
                 let mut joined = Vec::new();
                 for part in parts {
                     match part {
-                        Value::Vector(vector) => joined.extend(vector.0),
+                        Value::Vector(vector) => joined.extend_from_slice(&vector.0),
                         other => panic!("vector row join saw {other:?}"),
                     }
                 }
@@ -7262,7 +7299,7 @@ fn run_scalar(
         // row by one element; the joins concatenate two rows or fold a row
         // of rows. Elements keep whatever value shape they carry.
         ScalarOp::RowSuffixElement | ScalarOp::RowPrefixElement => {
-            let (first, second) = expect_pair(arguments);
+            let (first, second) = expect_pair_owned(own_all(arguments));
             let (mut entries, element, at_back) = match operation {
                 ScalarOp::RowSuffixElement => match (first, second) {
                     (Value::List(entries), element) => (entries, element, true),
@@ -7283,14 +7320,14 @@ fn run_scalar(
                 Value::List(entries)
             }))
         }
-        ScalarOp::RowJoinRows => match expect_pair(arguments) {
+        ScalarOp::RowJoinRows => match expect_pair_owned(own_all(arguments)) {
             (Value::List(mut left), Value::List(right)) => Ok(at_builtin_level(level, || {
                 left.extend(right);
                 Value::List(left)
             })),
             (first, second) => panic!("row join saw {first:?} and {second:?}"),
         },
-        ScalarOp::RowJoinRowOfRows => match expect_unary(arguments) {
+        ScalarOp::RowJoinRowOfRows => match expect_unary_owned(own_all(arguments)) {
             Value::List(rows) => Ok(at_builtin_level(level, || {
                 let mut joined = Vec::new();
                 for row in rows {
@@ -7306,7 +7343,7 @@ fn run_scalar(
         // vector suffix/prefix (global.w:3657-3673): the element narrows
         // through int_val before the gate.
         ScalarOp::VecSuffix | ScalarOp::VecPrefix => {
-            let (first, second) = expect_pair(arguments);
+            let (first, second) = expect_pair_owned(own_all(arguments));
             let (vector, element) = match operation {
                 ScalarOp::VecSuffix => match (first, second) {
                     (Value::Vector(vector), Value::Integer(element)) => (vector, element),
@@ -7335,7 +7372,7 @@ fn run_scalar(
         }
         // vec-vec subtraction (global.w:3891-3899); the check_size
         // diagnostic names left:right sizes and fires before the gate.
-        ScalarOp::VecSubtract => match expect_pair(arguments) {
+        ScalarOp::VecSubtract => match expect_pair(&arguments) {
             (Value::Vector(left), Value::Vector(right)) => {
                 if left.0.len() != right.0.len() {
                     return Err(size_mismatch(left.0.len(), right.0.len(), span));
@@ -7343,9 +7380,9 @@ fn run_scalar(
                 Ok(at_builtin_level(level, || {
                     Value::Vector(Vec32(
                         left.0
-                            .into_iter()
-                            .zip(right.0)
-                            .map(|(a, b)| a.wrapping_sub(b))
+                            .iter()
+                            .zip(&right.0)
+                            .map(|(&a, &b)| a.wrapping_sub(b))
                             .collect(),
                     ))
                 }))
@@ -7353,15 +7390,15 @@ fn run_scalar(
             other => panic!("vector subtraction saw {other:?}"),
         },
         // vec*int (global.w:3909-3915): int_val narrowing before the gate.
-        ScalarOp::VecMultiplyInt => match expect_pair(arguments) {
+        ScalarOp::VecMultiplyInt => match expect_pair(&arguments) {
             (Value::Vector(vector), Value::Integer(factor)) => {
-                let factor = plain_int(&factor, span)?;
+                let factor = plain_int(factor, span)?;
                 Ok(at_builtin_level(level, || {
                     Value::Vector(Vec32(
                         vector
                             .0
-                            .into_iter()
-                            .map(|entry| entry.wrapping_mul(factor))
+                            .iter()
+                            .map(|&entry| entry.wrapping_mul(factor))
                             .collect(),
                     ))
                 }))
@@ -7371,9 +7408,9 @@ fn run_scalar(
         // vec\int and vec%int (global.w:3917-3937): narrowing and the zero
         // divisor diagnostic fire before the gate; the remainder is always
         // non-negative (see vec_divmod_entry).
-        ScalarOp::VecQuotientInt | ScalarOp::VecModuloInt => match expect_pair(arguments) {
+        ScalarOp::VecQuotientInt | ScalarOp::VecModuloInt => match expect_pair(&arguments) {
             (Value::Vector(vector), Value::Integer(divisor)) => {
-                let divisor = plain_int(&divisor, span)?;
+                let divisor = plain_int(divisor, span)?;
                 if divisor == 0 {
                     let message = match operation {
                         ScalarOp::VecQuotientInt => "Vector division by 0",
@@ -7386,8 +7423,8 @@ fn run_scalar(
                     Value::Vector(Vec32(
                         vector
                             .0
-                            .into_iter()
-                            .map(|entry| {
+                            .iter()
+                            .map(|&entry| {
                                 let (quotient, remainder) = vec_divmod_entry(entry, divisor);
                                 match operation {
                                     ScalarOp::VecQuotientInt => quotient,
@@ -7403,7 +7440,7 @@ fn run_scalar(
         },
         // ratvec unfraction (global.w:4119-4125): numerators narrow from
         // machine long to int, wrapping as upstream's iterator copy does.
-        ScalarOp::RatvecUnfraction => match expect_unary(arguments) {
+        ScalarOp::RatvecUnfraction => match expect_unary(&arguments) {
             Value::RatVector(ratvec) => Ok(at_builtin_level(level, || {
                 Value::Tuple(vec![
                     Value::Vector(Vec32(
@@ -7416,7 +7453,7 @@ fn run_scalar(
         },
         // ratvec+ratvec/ratvec-ratvec (global.w:4127-4139): check_size
         // fires before the gate.
-        ScalarOp::RatvecAdd | ScalarOp::RatvecSubtract => match expect_pair(arguments) {
+        ScalarOp::RatvecAdd | ScalarOp::RatvecSubtract => match expect_pair(&arguments) {
             (Value::RatVector(left), Value::RatVector(right)) => {
                 if left.numerators().len() != right.numerators().len() {
                     return Err(size_mismatch(
@@ -7427,15 +7464,15 @@ fn run_scalar(
                 }
                 Ok(at_builtin_level(level, || {
                     Value::RatVector(ratvec_add_sub(
-                        &left,
-                        &right,
+                        left,
+                        right,
                         operation == ScalarOp::RatvecSubtract,
                     ))
                 }))
             }
             other => panic!("ratvec addition/subtraction saw {other:?}"),
         },
-        ScalarOp::RatvecNegate => match expect_unary(arguments) {
+        ScalarOp::RatvecNegate => match expect_unary(&arguments) {
             Value::RatVector(ratvec) => Ok(at_builtin_level(level, || {
                 Value::RatVector(
                     RatVec::new(
@@ -7455,9 +7492,9 @@ fn run_scalar(
         // and the zero-divisor diagnostics fire before the gate; every
         // operation re-normalises the result.
         ScalarOp::RatvecMultiplyInt | ScalarOp::RatvecDivideInt | ScalarOp::RatvecModuloInt => {
-            match expect_pair(arguments) {
+            match expect_pair(&arguments) {
                 (Value::RatVector(ratvec), Value::Integer(factor)) => {
-                    let factor = long_int(&factor, span)?;
+                    let factor = long_int(factor, span)?;
                     if factor == 0 {
                         match operation {
                             ScalarOp::RatvecDivideInt => {
@@ -7515,9 +7552,9 @@ fn run_scalar(
         // ratvec *rat and /rat (global.w:4183-4197): the zero-divisor
         // diagnostic fires before the gate, but the computation (including
         // its narrowing) happens inside it, as upstream does.
-        ScalarOp::RatvecMultiplyRat | ScalarOp::RatvecDivideRat => match expect_pair(arguments) {
+        ScalarOp::RatvecMultiplyRat | ScalarOp::RatvecDivideRat => match expect_pair(&arguments) {
             (Value::RatVector(ratvec), Value::Rational(factor)) => {
-                if operation == ScalarOp::RatvecDivideRat && factor == 0 {
+                if operation == ScalarOp::RatvecDivideRat && *factor == 0 {
                     return Err(runtime("Rational vector division by 0", span));
                 }
                 if level == Level::NoValue {
@@ -7525,8 +7562,8 @@ fn run_scalar(
                 }
                 // Malachite splits off the sign; the magnitude narrows
                 // through machine long, as upstream's ratvec arithmetic.
-                let negative = factor < 0;
-                let (magnitude, denominator) = factor.into_numerator_and_denominator();
+                let negative = *factor < 0;
+                let (magnitude, denominator) = factor.clone().into_numerator_and_denominator();
                 let magnitude = i64::try_from(&BigInt::from(magnitude))
                     .map_err(|_| runtime("Integer value to big for conversion", span))?;
                 let denominator = u64::try_from(&BigInt::from(denominator))
@@ -7565,7 +7602,7 @@ fn run_scalar(
         | ScalarOp::MatSubtractInt
         | ScalarOp::IntAddMat
         | ScalarOp::IntSubtractMat => {
-            let (first, second) = expect_pair(arguments);
+            let (first, second) = expect_pair(&arguments);
             let (matrix, value) = match (first, second) {
                 (Value::Matrix(matrix), Value::Integer(value))
                     if matches!(operation, ScalarOp::MatAddInt | ScalarOp::MatSubtractInt) =>
@@ -7581,7 +7618,7 @@ fn run_scalar(
                     panic!("matrix-int addition saw {first:?} and {second:?}")
                 }
             };
-            let value = plain_int(&value, span)?;
+            let value = plain_int(value, span)?;
             Ok(at_builtin_level(level, || {
                 Value::Matrix(match operation {
                     ScalarOp::MatAddInt | ScalarOp::IntAddMat => matrix.added_diagonal(value),
@@ -7593,7 +7630,7 @@ fn run_scalar(
         }
         // vec*vec dot product (global.w:3938-3943): check_size first, then
         // machine-int wrapping accumulation.
-        ScalarOp::VecDot => match expect_pair(arguments) {
+        ScalarOp::VecDot => match expect_pair(&arguments) {
             (Value::Vector(left), Value::Vector(right)) => {
                 if left.0.len() != right.0.len() {
                     return Err(size_mismatch(left.0.len(), right.0.len(), span));
@@ -7608,7 +7645,7 @@ fn run_scalar(
             }
             other => panic!("vector dot product saw {other:?}"),
         },
-        ScalarOp::FlexAdd | ScalarOp::FlexSub => match expect_pair(arguments) {
+        ScalarOp::FlexAdd | ScalarOp::FlexSub => match expect_pair(&arguments) {
             (Value::Vector(left), Value::Vector(right)) => Ok(at_builtin_level(level, || {
                 Value::Vector(Vec32(flex_add_sub(
                     &left.0,
@@ -7618,7 +7655,7 @@ fn run_scalar(
             })),
             other => panic!("flex add/sub saw {other:?}"),
         },
-        ScalarOp::VecConvolve => match expect_pair(arguments) {
+        ScalarOp::VecConvolve => match expect_pair(&arguments) {
             (Value::Vector(left), Value::Vector(right)) => Ok(at_builtin_level(level, || {
                 Value::Vector(Vec32(convolve(&left.0, &right.0)))
             })),
@@ -7626,7 +7663,7 @@ fn run_scalar(
         },
         // mat±mat (global.w:4253-4275): the row check fires before the
         // column check, both before the gate.
-        ScalarOp::MatAdd | ScalarOp::MatSubtract => match expect_pair(arguments) {
+        ScalarOp::MatAdd | ScalarOp::MatSubtract => match expect_pair(&arguments) {
             (Value::Matrix(left), Value::Matrix(right)) => {
                 if left.rows() != right.rows() {
                     return Err(size_mismatch(left.rows(), right.rows(), span));
@@ -7636,8 +7673,8 @@ fn run_scalar(
                 }
                 Ok(at_builtin_level(level, || {
                     Value::Matrix(match operation {
-                        ScalarOp::MatAdd => left.added(&right),
-                        ScalarOp::MatSubtract => left.subtracted(&right),
+                        ScalarOp::MatAdd => left.added(right),
+                        ScalarOp::MatSubtract => left.subtracted(right),
                         _ => unreachable!(),
                     })
                 }))
@@ -7647,18 +7684,18 @@ fn run_scalar(
         // The matrix/vector products (global.w:4284-4342): each dimension
         // diagnostic fires before the gate, with the product's own wording
         // ("Size mismatch <inner left>:<inner right>").
-        ScalarOp::MatMulVec => match expect_pair(arguments) {
+        ScalarOp::MatMulVec => match expect_pair(&arguments) {
             (Value::Matrix(matrix), Value::Vector(vector)) => {
                 if matrix.cols() != vector.0.len() {
                     return Err(size_mismatch(matrix.cols(), vector.0.len(), span));
                 }
                 Ok(at_builtin_level(level, || {
-                    Value::Vector(matrix.multiplied_vec(&vector))
+                    Value::Vector(matrix.multiplied_vec(vector))
                 }))
             }
             other => panic!("matrix-vector product saw {other:?}"),
         },
-        ScalarOp::MatMulRatVec => match expect_pair(arguments) {
+        ScalarOp::MatMulRatVec => match expect_pair(&arguments) {
             (Value::Matrix(matrix), Value::RatVector(vector)) => {
                 if matrix.cols() != vector.numerators().len() {
                     return Err(size_mismatch(
@@ -7668,34 +7705,34 @@ fn run_scalar(
                     ));
                 }
                 Ok(at_builtin_level(level, || {
-                    Value::RatVector(matrix.multiplied_ratvec(&vector))
+                    Value::RatVector(matrix.multiplied_ratvec(vector))
                 }))
             }
             other => panic!("matrix-ratvec product saw {other:?}"),
         },
-        ScalarOp::MatMulMat => match expect_pair(arguments) {
+        ScalarOp::MatMulMat => match expect_pair(&arguments) {
             (Value::Matrix(left), Value::Matrix(right)) => {
                 if left.cols() != right.rows() {
                     return Err(size_mismatch(left.cols(), right.rows(), span));
                 }
                 Ok(at_builtin_level(level, || {
-                    Value::Matrix(left.multiplied(&right))
+                    Value::Matrix(left.multiplied(right))
                 }))
             }
             other => panic!("matrix product saw {other:?}"),
         },
-        ScalarOp::VecMulMat => match expect_pair(arguments) {
+        ScalarOp::VecMulMat => match expect_pair(&arguments) {
             (Value::Vector(vector), Value::Matrix(matrix)) => {
                 if vector.0.len() != matrix.rows() {
                     return Err(size_mismatch(vector.0.len(), matrix.rows(), span));
                 }
                 Ok(at_builtin_level(level, || {
-                    Value::Vector(matrix.left_multiplied_vec(&vector))
+                    Value::Vector(matrix.left_multiplied_vec(vector))
                 }))
             }
             other => panic!("vector-matrix product saw {other:?}"),
         },
-        ScalarOp::RatVecMulMat => match expect_pair(arguments) {
+        ScalarOp::RatVecMulMat => match expect_pair(&arguments) {
             (Value::RatVector(vector), Value::Matrix(matrix)) => {
                 if vector.numerators().len() != matrix.rows() {
                     return Err(size_mismatch(
@@ -7705,16 +7742,16 @@ fn run_scalar(
                     ));
                 }
                 Ok(at_builtin_level(level, || {
-                    Value::RatVector(matrix.left_multiplied_ratvec(&vector))
+                    Value::RatVector(matrix.left_multiplied_ratvec(vector))
                 }))
             }
             other => panic!("ratvec-matrix product saw {other:?}"),
         },
         // null(int->vec) (global.w:4471-4475): ulong_val narrowing, then
         // the gate; the allocation guard mirrors NullMatrix.
-        ScalarOp::NullVector => match expect_unary(arguments) {
+        ScalarOp::NullVector => match expect_unary(&arguments) {
             Value::Integer(value) => {
-                let size = unsigned_long(&value, span)?;
+                let size = unsigned_long(value, span)?;
                 if level == Level::NoValue {
                     return Ok(None);
                 }
@@ -7729,7 +7766,7 @@ fn run_scalar(
         },
         // ^(vec->mat) (global.w:4492-4506): a one-row matrix; the size
         // limit check fires before the gate.
-        ScalarOp::VecTranspose => match expect_unary(arguments) {
+        ScalarOp::VecTranspose => match expect_unary_owned(own_all(arguments)) {
             Value::Vector(vector) => {
                 if vector.0.len() as u64 > u64::from(u32::MAX) {
                     return Err(runtime(
@@ -7750,7 +7787,7 @@ fn run_scalar(
             }
             other => panic!("vector transpose saw {other:?}"),
         },
-        ScalarOp::MatTranspose => match expect_unary(arguments) {
+        ScalarOp::MatTranspose => match expect_unary(&arguments) {
             Value::Matrix(matrix) => Ok(at_builtin_level(level, || {
                 Value::Matrix(matrix.transposed())
             })),
@@ -7758,9 +7795,9 @@ fn run_scalar(
         },
         // id_mat (global.w:4518-4528): ulong_val narrowing and the size
         // limit fire before the gate.
-        ScalarOp::IdMat => match expect_unary(arguments) {
+        ScalarOp::IdMat => match expect_unary(&arguments) {
             Value::Integer(value) => {
-                let size = unsigned_long(&value, span)?;
+                let size = unsigned_long(value, span)?;
                 if size > u64::from(u32::MAX) {
                     return Err(runtime(
                         format!("Size {size} of identity matrix exceeds implementation limit"),
@@ -7789,7 +7826,7 @@ fn run_scalar(
         },
         // diagonal (global.w:4535-4548): the size limit fires before the
         // gate.
-        ScalarOp::Diagonal => match expect_unary(arguments) {
+        ScalarOp::Diagonal => match expect_unary(&arguments) {
             Value::Vector(vector) => {
                 if vector.0.len() as u64 > u64::from(u32::MAX) {
                     return Err(runtime(
@@ -7801,14 +7838,14 @@ fn run_scalar(
                     ));
                 }
                 Ok(at_builtin_level(level, || {
-                    Value::Matrix(Matrix::diagonal(&vector))
+                    Value::Matrix(Matrix::diagonal(vector))
                 }))
             }
             other => panic!("diagonal matrix saw {other:?}"),
         },
         // stack_rows (global.w:4557-4584): a ragged row of vecs becomes a
         // zero-padded matrix; both limit checks fire before the gate.
-        ScalarOp::StackRows => match expect_unary(arguments) {
+        ScalarOp::StackRows => match expect_unary_owned(own_all(arguments)) {
             Value::List(rows) => {
                 if rows.len() as u64 > u64::from(u32::MAX) {
                     return Err(runtime(
@@ -7853,86 +7890,88 @@ fn run_scalar(
         },
         // combine_columns `#` and combine_rows `^` (global.w:4591-4638):
         // narrowing and all size diagnostics fire before the gate.
-        ScalarOp::CombineColumns | ScalarOp::CombineRows => match expect_pair(arguments) {
-            (Value::Integer(size), Value::List(parts)) => {
-                let size = unsigned_long(&size, span)?;
-                let (requested, supplied) = match operation {
-                    ScalarOp::CombineColumns => ("rows", "columns"),
-                    ScalarOp::CombineRows => ("columns", "rows"),
-                    _ => unreachable!(),
-                };
-                if size > u64::from(u32::MAX) {
-                    return Err(runtime(
-                        format!(
+        ScalarOp::CombineColumns | ScalarOp::CombineRows => {
+            match expect_pair_owned(own_all(arguments)) {
+                (Value::Integer(size), Value::List(parts)) => {
+                    let size = unsigned_long(&size, span)?;
+                    let (requested, supplied) = match operation {
+                        ScalarOp::CombineColumns => ("rows", "columns"),
+                        ScalarOp::CombineRows => ("columns", "rows"),
+                        _ => unreachable!(),
+                    };
+                    if size > u64::from(u32::MAX) {
+                        return Err(runtime(
+                            format!(
                             "Number {size} of {requested} requested exceeds implementation limit"
                         ),
-                        span,
-                    ));
-                }
-                if parts.len() as u64 > u64::from(u32::MAX) {
-                    return Err(runtime(
-                        format!(
-                            "Number {} of {supplied} exceeds implementation limit",
-                            parts.len()
-                        ),
-                        span,
-                    ));
-                }
-                let mut vectors = Vec::with_capacity(parts.len());
-                for (index, part) in parts.into_iter().enumerate() {
-                    match part {
-                        Value::Vector(vector) => {
-                            if vector.0.len() as u64 != size {
-                                let kind = match operation {
-                                    ScalarOp::CombineColumns => "Column",
-                                    ScalarOp::CombineRows => "Row",
-                                    _ => unreachable!(),
-                                };
-                                return Err(runtime(
+                            span,
+                        ));
+                    }
+                    if parts.len() as u64 > u64::from(u32::MAX) {
+                        return Err(runtime(
+                            format!(
+                                "Number {} of {supplied} exceeds implementation limit",
+                                parts.len()
+                            ),
+                            span,
+                        ));
+                    }
+                    let mut vectors = Vec::with_capacity(parts.len());
+                    for (index, part) in parts.into_iter().enumerate() {
+                        match part {
+                            Value::Vector(vector) => {
+                                if vector.0.len() as u64 != size {
+                                    let kind = match operation {
+                                        ScalarOp::CombineColumns => "Column",
+                                        ScalarOp::CombineRows => "Row",
+                                        _ => unreachable!(),
+                                    };
+                                    return Err(runtime(
                                     format!(
                                         "{kind} {index} size {} does not match specified size {size}",
                                         vector.0.len()
                                     ),
                                     span,
                                 ));
-                            }
-                            vectors.push(vector);
-                        }
-                        other => panic!("matrix combiner saw non-vector {other:?}"),
-                    }
-                }
-                let size = usize::try_from(size).expect("u32 dimension fits usize");
-                Ok(at_builtin_level(level, || {
-                    Value::Matrix(match operation {
-                        // combine_columns: each vec is a column, so the
-                        // column-major data is just the concatenation.
-                        ScalarOp::CombineColumns => Matrix::from_columns(
-                            size,
-                            vectors.len(),
-                            vectors.into_iter().flat_map(|vector| vector.0).collect(),
-                        )
-                        .expect("column data matches dimensions"),
-                        ScalarOp::CombineRows => {
-                            let count = vectors.len();
-                            let mut data = vec![0i32; count * size];
-                            for (row, vector) in vectors.iter().enumerate() {
-                                for (col, &entry) in vector.0.iter().enumerate() {
-                                    data[col * count + row] = entry;
                                 }
+                                vectors.push(vector);
                             }
-                            Matrix::from_columns(count, size, data)
-                                .expect("row data matches dimensions")
+                            other => panic!("matrix combiner saw non-vector {other:?}"),
                         }
-                        _ => unreachable!(),
-                    })
-                }))
+                    }
+                    let size = usize::try_from(size).expect("u32 dimension fits usize");
+                    Ok(at_builtin_level(level, || {
+                        Value::Matrix(match operation {
+                            // combine_columns: each vec is a column, so the
+                            // column-major data is just the concatenation.
+                            ScalarOp::CombineColumns => Matrix::from_columns(
+                                size,
+                                vectors.len(),
+                                vectors.into_iter().flat_map(|vector| vector.0).collect(),
+                            )
+                            .expect("column data matches dimensions"),
+                            ScalarOp::CombineRows => {
+                                let count = vectors.len();
+                                let mut data = vec![0i32; count * size];
+                                for (row, vector) in vectors.iter().enumerate() {
+                                    for (col, &entry) in vector.0.iter().enumerate() {
+                                        data[col * count + row] = entry;
+                                    }
+                                }
+                                Matrix::from_columns(count, size, data)
+                                    .expect("row data matches dimensions")
+                            }
+                            _ => unreachable!(),
+                        })
+                    }))
+                }
+                other => panic!("matrix combiner saw {other:?}"),
             }
-            other => panic!("matrix combiner saw {other:?}"),
-        },
+        }
         // gcd(vec->int) (global.w:4820-4828): the non-negative gcd of the
         // entries, computed in machine int arithmetic — gcd([-2^31]) prints
         // -2147483648 upstream, so the fold runs in u32 and wraps back.
-        ScalarOp::VectorGcd => match expect_unary(arguments) {
+        ScalarOp::VectorGcd => match expect_unary(&arguments) {
             Value::Vector(vector) => Ok(at_builtin_level(level, || {
                 let mut divisor = 0u64;
                 for &entry in &vector.0 {
@@ -7945,10 +7984,10 @@ fn run_scalar(
         // Bezout(vec->int,mat) (global.w:4830-4841): the gcd plus the
         // unimodular recorder with `v*C == [d,0,...]`; `det(C)` may be -1
         // (the flip is computed upstream but not reported).
-        ScalarOp::VecBezout => match expect_unary(arguments) {
+        ScalarOp::VecBezout => match expect_unary(&arguments) {
             Value::Vector(vector) => Ok(at_builtin_level(level, || {
                 let mut flip = false;
-                let (d, recorder) = matreduc::gcd_recorder(vector.0, &mut flip, 0);
+                let (d, recorder) = matreduc::gcd_recorder(vector.0.clone(), &mut flip, 0);
                 Value::Tuple(vec![
                     Value::Integer(BigInt::from(d)),
                     Value::Matrix(recorder.to_matrix()),
@@ -7959,9 +7998,9 @@ fn run_scalar(
         // echelon(mat->mat,mat,[int],int) (global.w:4848-4865): E has its
         // zero columns REMOVED, the kernel columns are rotated right in C,
         // pivots are ascending, flip = sign det(C).
-        ScalarOp::MatEchelon => match expect_unary(arguments) {
+        ScalarOp::MatEchelon => match expect_unary(&arguments) {
             Value::Matrix(matrix) => Ok(at_builtin_level(level, || {
-                let mut reduced = matreduc::PidMatrix::from_matrix(&matrix);
+                let mut reduced = matreduc::PidMatrix::from_matrix(matrix);
                 let (recorder, pivots, flip) = matreduc::column_echelon(&mut reduced);
                 Value::Tuple(vec![
                     Value::Matrix(reduced.to_matrix()),
@@ -7979,10 +8018,10 @@ fn run_scalar(
         },
         // kernel(mat->mat) (global.w:4975-4979, lattice.cpp:133-140): the
         // m×(m−rank) recorder block spanning ker(M) over the integers.
-        ScalarOp::MatKernel => match expect_unary(arguments) {
+        ScalarOp::MatKernel => match expect_unary(&arguments) {
             Value::Matrix(matrix) => Ok(at_builtin_level(level, || {
                 Value::Matrix(
-                    matreduc::kernel(&matreduc::PidMatrix::from_matrix(&matrix)).to_matrix(),
+                    matreduc::kernel(&matreduc::PidMatrix::from_matrix(matrix)).to_matrix(),
                 )
             })),
             other => panic!("kernel saw {other:?}"),
@@ -7991,12 +8030,12 @@ fn run_scalar(
         // lattice.cpp:142-145): kernel(M−λI); NO square check, the diagonal
         // touch runs up to min(rows,cols); the int narrowing fires BEFORE
         // the no-value gate (upstream pops int_val() first).
-        ScalarOp::MatEigenLattice => match expect_pair(arguments) {
+        ScalarOp::MatEigenLattice => match expect_pair(&arguments) {
             (Value::Matrix(matrix), Value::Integer(lambda)) => {
-                let lambda = plain_int(&lambda, span)?;
+                let lambda = plain_int(lambda, span)?;
                 Ok(at_builtin_level(level, || {
                     Value::Matrix(
-                        matreduc::eigen_lattice(&matreduc::PidMatrix::from_matrix(&matrix), lambda)
+                        matreduc::eigen_lattice(&matreduc::PidMatrix::from_matrix(matrix), lambda)
                             .to_matrix(),
                     )
                 }))
@@ -8005,20 +8044,20 @@ fn run_scalar(
         },
         // row_saturate(mat->mat) (global.w:4989-4993, lattice.cpp:147-160,
         // installed with hunger 3): adapted_basis of the transpose, rows.
-        ScalarOp::MatRowSaturate => match expect_unary(arguments) {
+        ScalarOp::MatRowSaturate => match expect_unary(&arguments) {
             Value::Matrix(matrix) => Ok(at_builtin_level(level, || {
                 Value::Matrix(
-                    matreduc::row_saturate(&matreduc::PidMatrix::from_matrix(&matrix)).to_matrix(),
+                    matreduc::row_saturate(&matreduc::PidMatrix::from_matrix(matrix)).to_matrix(),
                 )
             })),
             other => panic!("row_saturate saw {other:?}"),
         },
         // Smith(mat->mat,vec) (global.w:5000-5010, matreduc.cpp:359-385):
         // (B, inv_factors) with positive divisibility-ordered factors.
-        ScalarOp::MatSmith => match expect_unary(arguments) {
+        ScalarOp::MatSmith => match expect_unary(&arguments) {
             Value::Matrix(matrix) => Ok(at_builtin_level(level, || {
                 let (basis, factors) =
-                    matreduc::smith_basis(&matreduc::PidMatrix::from_matrix(&matrix));
+                    matreduc::smith_basis(&matreduc::PidMatrix::from_matrix(matrix));
                 Value::Tuple(vec![
                     Value::Matrix(basis.to_matrix()),
                     Value::Vector(Vec32(factors)),
@@ -8029,10 +8068,10 @@ fn run_scalar(
         // adapted_basis(mat->mat,vec) (global.w:4949-4959,
         // matreduc.cpp:261-336): image(M) = span{d_i·B.col(i)}; the
         // diagonal is NOT divisibility-ordered.
-        ScalarOp::MatAdaptedBasis => match expect_unary(arguments) {
+        ScalarOp::MatAdaptedBasis => match expect_unary(&arguments) {
             Value::Matrix(matrix) => Ok(at_builtin_level(level, || {
                 let (basis, diagonal) =
-                    matreduc::adapted_basis(&matreduc::PidMatrix::from_matrix(&matrix));
+                    matreduc::adapted_basis(&matreduc::PidMatrix::from_matrix(matrix));
                 Value::Tuple(vec![
                     Value::Matrix(basis.to_matrix()),
                     Value::Vector(Vec32(diagonal)),
@@ -8043,10 +8082,10 @@ fn run_scalar(
         // diagonalize(mat->vec,mat,mat) (global.w:4934-4947,
         // matreduc.cpp:145-226): (diagonal, row, column) — diagonal FIRST,
         // entries positive except possibly the first, det(row)=det(col)=1.
-        ScalarOp::MatDiagonalize => match expect_unary(arguments) {
+        ScalarOp::MatDiagonalize => match expect_unary(&arguments) {
             Value::Matrix(matrix) => Ok(at_builtin_level(level, || {
                 let (row, column, diagonal) =
-                    matreduc::diagonalise(&matreduc::PidMatrix::from_matrix(&matrix));
+                    matreduc::diagonalise(&matreduc::PidMatrix::from_matrix(matrix));
                 Value::Tuple(vec![
                     Value::Vector(Vec32(diagonal)),
                     Value::Matrix(row.to_matrix()),
@@ -8059,7 +8098,7 @@ fn run_scalar(
         // (N, d) with N/d = M⁻¹. The non-square diagnostic fires BEFORE the
         // no-value gate; a singular square matrix returns the zero matrix
         // with d=0 and NO error.
-        ScalarOp::MatInvert => match expect_unary(arguments) {
+        ScalarOp::MatInvert => match expect_unary(&arguments) {
             Value::Matrix(matrix) => {
                 if matrix.rows() != matrix.cols() {
                     return Err(runtime(
@@ -8071,7 +8110,7 @@ fn run_scalar(
                     return Ok(None);
                 }
                 let (numerator, denominator) =
-                    matreduc::inverse(&matreduc::PidMatrix::from_matrix(&matrix))
+                    matreduc::inverse(&matreduc::PidMatrix::from_matrix(matrix))
                         .map_err(|message| runtime(message, span))?;
                 Ok(Some(Value::Tuple(vec![
                     Value::Matrix(numerator.to_matrix()),
@@ -8084,7 +8123,7 @@ fn run_scalar(
         // first union-returning builtin; the size-mismatch diagnostic fires
         // BEFORE the no-value gate, and `echelon_solve` failure is caught
         // into the `empty_set` variant rather than thrown.
-        ScalarOp::LinearSolve => match expect_pair(arguments) {
+        ScalarOp::LinearSolve => match expect_pair(&arguments) {
             (Value::Matrix(matrix), Value::Vector(rhs)) => {
                 if matrix.rows() != rhs.0.len() {
                     return Err(runtime(
@@ -8099,8 +8138,10 @@ fn run_scalar(
                 if level == Level::NoValue {
                     return Ok(None);
                 }
-                let solution =
-                    matreduc::linear_solve(&matreduc::PidMatrix::from_matrix(&matrix), rhs.0);
+                let solution = matreduc::linear_solve(
+                    &matreduc::PidMatrix::from_matrix(matrix),
+                    rhs.0.clone(),
+                );
                 Ok(Some(match solution {
                     matreduc::LinearSolution::Empty => Value::Union {
                         tag: 0,
@@ -8133,7 +8174,7 @@ fn run_scalar(
         // the no-value gate, using the RAW bounds (the from-end bits do not
         // relax the check). Negation (bit 7) is wrapping i32, as C++ int.
         ScalarOp::SwissMatrixKnife => {
-            let mut arguments = arguments;
+            let mut arguments = own_all(arguments);
             let (Some(l), Some(j), Some(k), Some(i), Some(src), Some(flags)) = (
                 arguments.pop(),
                 arguments.pop(),
@@ -8179,9 +8220,9 @@ fn run_scalar(
         // validation and NO no-value gate before the compute (upstream gates
         // only the push); row bits >= 64 are masked on input, reproducing
         // the pinned NDEBUG oracle's silent drop (upstream UB regime).
-        ScalarOp::Mod2Section => match expect_unary(arguments) {
+        ScalarOp::Mod2Section => match expect_unary(&arguments) {
             Value::Matrix(matrix) => {
-                let section = matreduc::mod2_section(&matreduc::PidMatrix::from_matrix(&matrix));
+                let section = matreduc::mod2_section(&matreduc::PidMatrix::from_matrix(matrix));
                 Ok(at_builtin_level(level, || {
                     Value::Matrix(section.to_matrix())
                 }))
@@ -8193,7 +8234,7 @@ fn run_scalar(
         // relation tracking; output columns are PIVOT-ASCENDING via
         // permutations::standardization, NOT loop order. The two size
         // diagnostics fire BEFORE the no-value gate, dim first.
-        ScalarOp::SubspaceNormal => match expect_unary(arguments) {
+        ScalarOp::SubspaceNormal => match expect_unary(&arguments) {
             Value::Matrix(matrix) => {
                 if matrix.rows() > 64 {
                     return Err(runtime(
@@ -8211,7 +8252,7 @@ fn run_scalar(
                     return Ok(None);
                 }
                 let (basis, combination, relations, pivots) =
-                    matreduc::subspace_normal(&matreduc::PidMatrix::from_matrix(&matrix));
+                    matreduc::subspace_normal(&matreduc::PidMatrix::from_matrix(matrix));
                 Ok(Some(Value::Tuple(vec![
                     Value::Matrix(basis.to_matrix()),
                     Value::Matrix(combination.to_matrix()),
@@ -12532,16 +12573,21 @@ impl TypedExpr {
             } => {
                 let mut values = arguments
                     .iter()
-                    .map(|argument| force(argument, context).map(unwrap_shared))
+                    .map(|argument| force(argument, context))
                     .collect::<Result<Vec<_>, _>>()?;
                 if values.len() == 1
                     && matches!(builtin_registry()[*builtin].arg_type, Type::Tuple(_))
-                    && matches!(values.first(), Some(Value::Tuple(_)))
+                    && matches!(
+                        values.first().map(|value| value.as_ref()),
+                        Some(Value::Tuple(_))
+                    )
                 {
-                    let Value::Tuple(components) = values.pop().expect("one tuple argument") else {
+                    let Value::Tuple(components) =
+                        unwrap_shared(values.pop().expect("one tuple argument"))
+                    else {
                         unreachable!("tuple shape checked above")
                     };
-                    values = components;
+                    values = components.into_iter().map(Rc::new).collect();
                 }
                 match builtin_registry()[*builtin].run(values, *span, level, context) {
                     // Arguments evaluate OUTSIDE the traced region
@@ -12575,9 +12621,9 @@ impl TypedExpr {
                 let mut values = vec![None; arguments.len()];
                 for &index in order {
                     let value = if index == *pilfer_index {
-                        take_pilfered(pilfer, context)?
+                        Rc::new(take_pilfered(pilfer, context)?)
                     } else {
-                        unwrap_shared(force(&arguments[index], context)?)
+                        force(&arguments[index], context)?
                     };
                     values[index] = Some(value);
                 }
@@ -12587,12 +12633,17 @@ impl TypedExpr {
                     .collect::<Vec<_>>();
                 if values.len() == 1
                     && matches!(builtin_registry()[*builtin].arg_type, Type::Tuple(_))
-                    && matches!(values.first(), Some(Value::Tuple(_)))
+                    && matches!(
+                        values.first().map(|value| value.as_ref()),
+                        Some(Value::Tuple(_))
+                    )
                 {
-                    let Value::Tuple(components) = values.pop().expect("one tuple argument") else {
+                    let Value::Tuple(components) =
+                        unwrap_shared(values.pop().expect("one tuple argument"))
+                    else {
                         unreachable!("tuple shape checked above")
                     };
-                    values = components;
+                    values = components.into_iter().map(Rc::new).collect();
                 }
                 match builtin_registry()[*builtin].run(values, *span, level, context) {
                     Err(Control::Runtime(mut diagnostic)) => {
@@ -12663,15 +12714,19 @@ impl TypedExpr {
                     // BuiltinCall: a tuple argument against a tuple
                     // parameter unpacks before the run.
                     Value::BuiltinFunction { builtin, name } => {
-                        let mut values = vec![unwrap_shared(argument)];
+                        let mut values = vec![argument];
                         if matches!(builtin_registry()[*builtin].arg_type, Type::Tuple(_))
-                            && matches!(values.first(), Some(Value::Tuple(_)))
+                            && matches!(
+                                values.first().map(|value| value.as_ref()),
+                                Some(Value::Tuple(_))
+                            )
                         {
-                            let Value::Tuple(components) = values.pop().expect("one argument")
+                            let Value::Tuple(components) =
+                                unwrap_shared(values.pop().expect("one argument"))
                             else {
                                 unreachable!("tuple shape checked above")
                             };
-                            values = components;
+                            values = components.into_iter().map(Rc::new).collect();
                         }
                         match builtin_registry()[*builtin].run(values, *span, level, context) {
                             Err(Control::Runtime(mut diagnostic)) => {
@@ -13864,7 +13919,12 @@ fn apply_transform(
 ) -> Result<Value, Control> {
     let result = match operation {
         TransformOperation::Builtin(builtin) => builtin_registry()[*builtin]
-            .run(vec![old, operand], span, Level::SingleValue, context)?
+            .run(
+                vec![Rc::new(old), Rc::new(operand)],
+                span,
+                Level::SingleValue,
+                context,
+            )?
             .expect("a transform builtin call yields a single value"),
         TransformOperation::Closure(closure) => unwrap_shared(
             apply_closure(
