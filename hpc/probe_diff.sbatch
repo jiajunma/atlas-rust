@@ -20,6 +20,7 @@ set -u
 submit_dir="${SLURM_SUBMIT_DIR:?SLURM_SUBMIT_DIR is required}"
 probe="${PROBE:?set PROBE to the atlas script path}"
 [[ "$probe" = /* ]] || probe="$submit_dir/$probe"
+[[ -f "$probe" ]] || { echo "PROBE_MISSING $probe"; exit 1; }
 tag="${TAG:-$(basename "$probe" .atlas)}"
 rustbin="${RUSTBIN:-$submit_dir/target/release/atlas-cli}"
 gcc_root="${ATLAS_GCC_ROOT:-/public/software/gcc/gcc-12.1}"
