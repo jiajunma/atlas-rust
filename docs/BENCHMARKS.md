@@ -552,3 +552,17 @@ Associate-variety A2 correctness baseline (3679427,
 probe_associated_variety_a2.atlas): SORTED_MATCH 3606 lines; rust
 0.69s/55.6MB vs oracle 0.26s/14.1MB (A2 is startup-dominated; the large
 AV workload still needs profiling before any optimization there).
+
+## avopt lane baselines @0835205 (2026-09-04, probe-diff, fat/cpu as noted)
+
+All SORTED_MATCH. Jobs 3679584-87:
+- probe_associated_variety_a2: rust 0.80s/56.1MB vs oracle 0.23s/14.1MB
+- probe_unitary_e6: rust 0.66s/43.5MB vs oracle 0.18s/13.0MB
+- probe_unitary_e7 (light, x=0): rust 0.60s/71.4MB vs oracle 0.28s/44.5MB
+- probe_deform_e7_only: rust 18.80s/394MB vs oracle 10.01s/204MB (1.88x wall)
+
+AV oracle-freeze probes (jobs 3679972-80, all SORTED_MATCH, cpu nodes):
+gkfast_{a3,b3,g2,d4}, av_ann_{a3,b3,g2,d4}, av_ann_b2_nonintegral —
+all startup-dominated (rust 0.71-0.98s vs oracle 0.23-0.46s); reference
+outputs frozen as probe_*.{cpp,rust}.out in the HPC lane. E6-scale freezes
+(probe_gkfast_e6 / probe_av_ann_e6, jobs 3679983/3679984, fat 6h) pending.
