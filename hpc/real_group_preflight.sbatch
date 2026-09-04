@@ -9,7 +9,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
-#SBATCH --mem=4G
+#SBATCH --mem=8G
 #SBATCH --time=00:20:00
 #SBATCH --output=atlas-real-group-%j.out
 

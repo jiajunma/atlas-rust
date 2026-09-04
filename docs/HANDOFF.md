@@ -10,16 +10,25 @@ The live XMU configuration is now confirmed, rather than inferred from the
 earlier rejection. `sinfo -Nel` reports CPU nodes `cu[001-389]` as 64 CPUs and
 `256768 MB` each; fat nodes `fat[001-002]` have 64 CPUs and `2063300 MB` each.
 `scontrol show partition -o` reports `DefMemPerCPU=MaxMemPerCPU=4012` on
-`cpu` and `32238` on `fat` (the controller's MB display). `sbatch
---test-only` accepted an exact 4G/4096M boundary for one CPU, 8G with
-`--cpus-per-task=2` and 16G with `=4`, but rejected 4097M with `=1`; the
-effective CPU job ceiling is approximately 4GiB times allocated CPUs, not
-4GB per job. Keep the exact accepted boundary under test because the display
-unit and the `G`/`M` submit conversion differ by a small rounding margin.
-The original error (`requested 8.0GB memory/node exceeds ... 4.0GB`) therefore
-describes the one-CPU request, not node physical capacity. `--mem` is a job
-allocation on one node, and a job cannot safely rely on unallocated memory
-because Slurm enforces RAM through cgroups.
+`cpu` and `32238` on `fat` (the controller's MB display). The site's effective
+admission boundary accepts approximately `4096 MiB * requested CPUs`: 4012M
+with one requested CPU stays at one CPU, while 4013M and 4096M are accepted but real
+jobs receive two CPUs under consumable-memory selection; 8G with two requested
+CPUs and 16G with four are accepted, while the next MiB is rejected. Thus
+the old `requested 8.0GB memory/node exceeds ... 4.0GB` message described a
+one-CPU request, not node capacity. A real allocation must be reported using
+`sacct AllocTRES`/`AllocCPUS`, not only `--cpus-per-task`.
+
+CPU nodes expose 256768 MiB of Slurm `RealMemory` on nominal 256 GB nodes;
+fat nodes expose 2063300 MiB (about 1.97 TiB). Whole-node requests up to those
+`RealMemory` values are schedulable, but unallocated node RAM is not available
+to a job because Slurm enforces the requested allocation with cgroups.
+Both node types are two-socket NUMA machines. Jobs 3677739/3677740 reported
+two NUMA nodes, `Mems_allowed_list=0-1`, and distance 10 local versus 20
+remote; CPU memory split was about 128001/128968 MB and fat about
+1031122/1032179 MB. A process therefore has one unified virtual address space
+but nonuniform physical-memory latency. Large multi-threaded benchmarks need
+the recorded `numactl --show`, CPU affinity, and first-touch placement.
 
 The controller confirms `SelectType=select/cons_tres` with
 `CR_CORE_MEMORY`, `TaskPlugin=task/cgroup`, `ProctrackType=proctrack/cgroup`,
@@ -29,19 +38,25 @@ visible QOS rows impose no additional memory field. The node `RealMemory` is
 confirmed by `sinfo` and `/proc/meminfo`; the running-step cgroup hierarchy and
 job-level accounting are captured by `hpc/memory_snapshot.sbatch`.
 
-The checked-in resource policy now has three separate layers:
+The checked-in resource policy now has four separate layers:
 
-1. Every `cpu` sbatch entry requests a total within the 4012MB-per-CPU
-   partition policy (the two raw-capture jobs use 2G). Heavy E7/E8, real
-   `block_deform`, unitarity, massif, and worker profiling jobs must override
-   the script with `--partition=fat` and a measured request such as
-   `--mem=32G`.
+1. Every `cpu` sbatch entry requests a total within the approximately
+   4096MiB-per-requested-CPU submit policy. The checked-in jobs use 8G for
+   two-CPU work, 16G for four-CPU KGB/corpus work, and exact 4012M for the
+   one-CPU probe. Heavy E7/E8, real `block_deform`, unitarity, massif, and
+   worker profiling jobs must override the script with `--partition=fat` and
+   a measured request such as `--mem=32G`.
 2. `script_corpus_diff.py` defaults each sequential child to
-   `RLIMIT_AS=3 GiB`, below the 4G one-task corpus allocation. This is a per-process
-   **virtual address-space** ceiling, not an RSS ceiling and not a job-wide
-   budget. Fat corpus runs must opt in explicitly, for example
+   `RLIMIT_AS=6 GiB`. This is a per-process **virtual address-space** ceiling,
+   not an RSS ceiling and not a job-wide budget. The 16G CPU corpus request
+   currently yields a 14.4 GiB cgroup hard limit, leaving roughly 8.4 GiB
+   outside one child. Fat corpus runs must opt in explicitly, for example
    `MEM_CAP_GB=24`; an explicit value must never be used with a 4G CPU job.
-3. GNU `time -v` records each interpreter's peak process RSS in KiB, while
+3. CPU compute nodes enforce `AllowedRAMSpace=90`, so the cgroup hard limit is
+   90% of requested memory; fat nodes in the live snapshot use the full
+   request. The task subgroup's unlimited sentinel is not authoritative; the
+   job/step parent is.
+4. GNU `time -v` records each interpreter's peak process RSS in KiB, while
    Slurm `MaxRSS` is job/step accounting. They are related but not identical:
    RSS excludes untouched virtual mappings, and allocator arenas, thread
    stacks, shared libraries, and cgroup accounting can make the numbers
@@ -65,13 +80,16 @@ the cgroup-v1 equivalents). The snapshot is deliberately a 1-CPU/1G CPU job
 and does not perturb benchmark allocations. The first live run on `cu026`
 confirmed cgroup v1 and `ConstrainRAMSpace=yes`; the task cgroup exposed the
 v1 unlimited sentinel, while the job/step parent imposed the actual hard
-limit. Job 3676960 requested 1G and received `966365184` bytes; job 3676961
-requested 8G with two CPUs and received `7730937856` bytes. Both are about
-90% of the nominal request. The controller reports `AllowedRAMSpace=100%`, so
-the snapshot now also records the compute node's `/etc/slurm/cgroup.conf` and
-the v1 soft limit to identify the remaining configuration discrepancy. Its
-cgroup fields are the authoritative answer for enforcement; do not substitute
-a login-node `free` reading.
+limit. CPU jobs 3676960, 3677035, 3676961, and 3677108 measured 1G ->
+966365184 bytes, 4G -> 3865468928 bytes, 8G -> 7730937856 bytes, and 16G ->
+15461879808 bytes. Fat job 3677036 measured 32G -> 34359738368 bytes. The
+CPU compute-node `/etc/slurm/cgroup.conf` contains `AllowedRAMSpace=90`; the
+fat snapshot has no override. Cgroup fields are authoritative for enforcement;
+do not substitute a login-node `free` reading or a task subgroup's unlimited
+sentinel. Updated snapshot jobs 3677739/3677740 also verified that the probe
+stops at its own job cgroup, records requested versus allocated CPUs, emits
+readable `memory.stat`, and captures NUMA/affinity plus Linux overcommit and
+swappiness policy (`overcommit_memory=0`, `swappiness=10`).
 
 ## Current frontier - 2026-09-03 (positive-root index, E7 unitarity pending)
 
@@ -91,10 +109,13 @@ covered by the existing all-pairs equivalence tests.
 
 HPC verification for the isolated commit `5207c154` is green for quick-check
 `3674970`, focused Weyl/InvolutionTable/KGB `3674971`, and the full corpus
-`3674972` (**240/240 MATCH**; 57 within 2x, 0 over 5x). The fat real E7
-unitarity workload `3674973` is still running; do not credit a wall/RSS gain
-or promote the commit to the pushed mainline until its Rust/C++ output and
-benchmark fields are collected.
+`3674972` (**240/240 MATCH**; 57 within 2x, 0 over 5x). Fat E7 unitarity job
+`3674973` completed but is not a valid differential: Rust ran for 79.424s at
+425972 KiB process RSS before failing the rep-context common-deformation
+finals invariant, while C++ exceeded the 1200s per-child timeout and produced
+no process-RSS metric. Slurm's batch-step MaxRSS was 694116 KiB, which cannot
+be assigned to either interpreter. Do not credit a wall/RSS gain or promote
+the isolated commit from this run.
 
 The next unitarity measurement must be an interleaved same-node A/B on
 `hpc/workloads/probe_unitary_e7_heavy.atlas` (`x=20925`, nonzero `nu`). If the

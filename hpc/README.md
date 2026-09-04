@@ -25,14 +25,40 @@ and report checksums.
 
 ## Memory requests and partitions
 
-The current XMU policy reports `DefMemPerCPU=MaxMemPerCPU=4012` on `cpu`.
-An 8 GB request with one CPU was rejected by Slurm with `requested 8.0GB
-memory/node exceeds the allowed 4.0GB for partition 'cpu'`; the same 8 GB
-request is accepted with two CPUs, and 16 GB with four CPUs. The effective
-job ceiling is therefore approximately `4012 MB * allocated CPUs`, subject to
-the account/QOS and node limits. This is not evidence that a CPU node has only
-4 GB of physical RAM. Query `scontrol show partition`, `sinfo`, and the
-account/QOS association when the cluster policy changes.
+The current XMU controller reports `DefMemPerCPU=MaxMemPerCPU=4012` on
+`cpu` and `32238` on `fat`. These are scheduler-side per-CPU limits, not node
+physical sizes. With `select/cons_tres` and `CR_CORE_MEMORY`, memory is a
+consumable resource: a real `--cpus-per-task=1 --mem=4096M` job was charged
+two CPUs, while `4012M` stayed at one CPU. The nodes have one thread per core,
+so this boundary is memory-driven rather than hyperthread rounding. Always
+inspect `sacct AllocTRES`/`AllocCPUS` after a run rather than inferring the
+allocation from the script.
+
+The submit-side CPU boundary is approximately `4096 MiB * requested CPUs`
+at the site's effective admission boundary: `4096M` with one requested CPU,
+`8192M` with two, and `16384M` with four are accepted; the next MiB is rejected. This
+does not mean a CPU node has only 4 GiB. `sinfo -Nel` reports 256768 MiB of
+allocatable memory on nominal 256 GB CPU nodes. A whole-node CPU request up to
+`256768M` is schedulable. Fat nodes report 2063300 MiB (about 1.97 TiB) and
+accept whole-node requests up to their configured `2063300M`.
+
+The scheduler request and runtime hard limit are separate. On CPU compute
+nodes `/etc/slurm/cgroup.conf` currently contains `ConstrainRAMSpace=yes` and
+`AllowedRAMSpace=90`, so the job/step cgroup hard limit is 90% of requested
+`--mem`: measured values were 966365184 bytes for 1G, 3865468928 bytes for
+4G, 7730937856 bytes for 8G, and 15461879808 bytes for 16G. The fat node
+configuration has no `AllowedRAMSpace` override in the live snapshot; a 32G
+request received the full 34359738368-byte hard limit. The task subgroup may
+show the cgroup-v1 unlimited sentinel; the job or step parent carries the
+authoritative limit.
+
+Both node types are two-socket NUMA systems. The live CPU snapshot reported
+about 128001/128968 MB per NUMA node; fat reported 1031122/1032179 MB. A
+process sees one virtual address space and the tested jobs allowed memory from
+both nodes (`Mems_allowed_list=0-1`), but remote-node distance was twice the
+local distance. Large parallel workloads should measure NUMA placement and
+first-touch behavior; a 2 TiB address-space ceiling does not imply uniform
+memory latency or bandwidth.
 
 Large workloads such as E7/E8 deformation, unitarity, massif, or profiling
 must explicitly select `fat` and request the measured memory, for example:
@@ -42,19 +68,19 @@ sbatch --partition=fat --mem=32G --time=06:00:00 hpc/probe_diff.sbatch
 ```
 
 An explicit `--mem` supplied to `sbatch` overrides the script default; it does
-not change the partition's accounting or QOS limits. In particular, do not
-interpret `--mem=4G` as the physical size of a CPU node or as a limit shared by
-all users on that node. It is the allocation for this job; cgroup enforcement
-and the node's actual `RealMemory` must be checked separately. The checked-in
-jobs intentionally request conservative totals (usually 4G with 2-4 CPUs),
-so increasing `--cpus-per-task` does not automatically increase `--mem`.
+not change partition, account, or QOS limits. It is a per-node allocation for
+this job, not a limit shared by all users and not a promise that all physical
+node RAM is available. The checked-in defaults use the measured CPU policy:
+8G for two-CPU jobs, 16G for four-CPU KGB/corpus jobs, and the exact 4012M
+boundary for the one-CPU probe job.
 
 The corpus driver adds another, independent guard: each Rust/C++ child gets a
-`RLIMIT_AS` virtual-address-space cap (`MEM_CAP_GB`, default 3). This prevents
+`RLIMIT_AS` virtual-address-space cap (`MEM_CAP_GB`, default 6). This prevents
 one runaway script from killing the batch job while leaving headroom for the
-Python driver and runtime mappings; it is not a measurement of RSS. Keep it
-below the Slurm allocation for CPU jobs; raise it explicitly only together
-with a fat-partition request, for example
+Python driver and runtime mappings; it is not a measurement of RSS. The
+default corpus job requests 16G and the CPU cgroup exposes about 14.4 GiB, so
+the 6 GiB per-child cap leaves roughly 8.4 GiB for the driver and other
+processes. Raise it explicitly only together with a fat-partition request, for example
 `--export=ALL,MEM_CAP_GB=24` with `--mem=32G`.
 
 Run `hpc/memory_snapshot.sbatch` to capture the live controller, node,

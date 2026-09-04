@@ -18,7 +18,7 @@ the corpus-driven priority list for the next language features.
 
 Usage: script_corpus_diff.py <atlas-binary> <atlas-cli-binary> [globs...]
 Env: REPORT (output json), SIZE_CAP bytes (default 4 MiB), TIMEOUT seconds,
-MEM_CAP_GB (address-space cap per child, default 3 GiB; fat jobs may raise it).
+MEM_CAP_GB (address-space cap per child, default 6 GiB; fat jobs may raise it).
 """
 
 import glob
@@ -36,10 +36,75 @@ import time
 
 TIME_BIN = shutil.which("time")
 USE_GNU_TIME = bool(TIME_BIN and sys.platform != "darwin")
-# The CPU corpus job reserves 4 GiB in total. Leave room for this Python
-# driver, the parent process, and thread/runtime mappings instead of allowing
-# one child to consume the entire cgroup allocation through virtual mappings.
-DEFAULT_MEM_CAP_GB = 3
+# The CPU corpus job reserves 16 GiB and its current compute-node cgroup makes
+# 90% available. Keep each sequential child well below that effective budget
+# so the Python driver and runtime mappings retain ample headroom.
+DEFAULT_MEM_CAP_GB = 6
+CORPUS_DRIVER_HEADROOM_GIB = 2
+
+
+def validate_memory_cap(cap_gib, *, cgroup_limit_bytes=None, headroom_gib=0):
+    """Validate an address-space cap against an optional job hard limit."""
+    try:
+        cap_gib = int(cap_gib)
+    except (TypeError, ValueError) as error:
+        raise ValueError("MEM_CAP_GB must be a positive integer") from error
+    if cap_gib <= 0:
+        raise ValueError("MEM_CAP_GB must be a positive integer")
+    if cgroup_limit_bytes is not None:
+        available_gib = cgroup_limit_bytes / 1024**3
+        if cap_gib + headroom_gib > available_gib:
+            raise ValueError(
+                f"RLIMIT_AS cap {cap_gib} GiB exceeds cgroup budget "
+                f"{available_gib:.3f} GiB after {headroom_gib} GiB headroom"
+            )
+    return cap_gib
+
+
+def _job_cgroup_limit_bytes():
+    """Return this Slurm job/step hard limit, or None outside Slurm."""
+    job_id = os.environ.get("SLURM_JOB_ID")
+    if not job_id:
+        return None
+    candidates = []
+    proc_cgroup = pathlib.Path("/proc/self/cgroup")
+    if proc_cgroup.exists():
+        for line in proc_cgroup.read_text(encoding="utf-8").splitlines():
+            hierarchy, controllers, relative = line.split(":", 2)
+            if hierarchy == "0" and not controllers:
+                candidates.append(pathlib.Path("/sys/fs/cgroup") / relative.lstrip("/"))
+            elif "memory" in controllers.split(","):
+                for mount in (pathlib.Path("/sys/fs/cgroup/memory"), pathlib.Path("/sys/fs/cgroup")):
+                    candidates.append(mount / relative.lstrip("/"))
+    for candidate in candidates:
+        current = candidate
+        while current != current.parent:
+            for name in ("memory.max", "memory.limit_in_bytes"):
+                path = current / name
+                try:
+                    value = path.read_text(encoding="utf-8").strip()
+                except OSError:
+                    continue
+                if value not in {"max", "9223372036854771712"}:
+                    try:
+                        return int(value)
+                    except ValueError:
+                        pass
+            if current.name in {f"job_{job_id}", f"job_{job_id}.scope"}:
+                break
+            current = current.parent
+    return None
+
+
+def apply_memory_limit(cap_gib):
+    """Apply RLIMIT_AS where supported; keep macOS fallback usable."""
+    cap_gib = validate_memory_cap(cap_gib)
+    cap = cap_gib * 1024**3
+    try:
+        resource.setrlimit(resource.RLIMIT_AS, (cap, cap))
+    except (AttributeError, OSError, ValueError):
+        if sys.platform != "darwin":
+            raise
 
 
 def parse_time_metrics(path):
@@ -68,8 +133,16 @@ def measure_command(argv, *, cwd, timeout, input_text=None):
     def limit_memory():
         # Contain runaway allocations (e.g. a diverging lazy list) so one
         # script cannot OOM-kill the whole SLURM job.
-        cap = int(os.environ.get("MEM_CAP_GB", str(DEFAULT_MEM_CAP_GB))) * 1024**3
-        resource.setrlimit(resource.RLIMIT_AS, (cap, cap))
+        configured = os.environ.get("MEM_CAP_GB", str(DEFAULT_MEM_CAP_GB))
+        cap_gib = validate_memory_cap(configured)
+        job_limit = _job_cgroup_limit_bytes()
+        if job_limit is not None:
+            validate_memory_cap(
+                cap_gib,
+                cgroup_limit_bytes=job_limit,
+                headroom_gib=CORPUS_DRIVER_HEADROOM_GIB,
+            )
+        apply_memory_limit(cap_gib)
 
     try:
         completed = subprocess.run(

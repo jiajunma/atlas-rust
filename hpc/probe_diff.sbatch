@@ -7,7 +7,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=4G
+#SBATCH --mem=4012M
 #SBATCH --time=01:00:00
 # Generic rust-vs-oracle probe differential with benchmark capture.
 # Both legs run regardless of failure; outputs land in the submit dir.

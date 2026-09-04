@@ -9,7 +9,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=4G
+#SBATCH --mem=16G
 #SBATCH --time=04:00:00
 #SBATCH --output=atlas-corpus-diff-%j.out
 
