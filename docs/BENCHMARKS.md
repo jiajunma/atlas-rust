@@ -566,3 +566,17 @@ gkfast_{a3,b3,g2,d4}, av_ann_{a3,b3,g2,d4}, av_ann_b2_nonintegral —
 all startup-dominated (rust 0.71-0.98s vs oracle 0.23-0.46s); reference
 outputs frozen as probe_*.{cpp,rust}.out in the HPC lane. E6-scale freezes
 (probe_gkfast_e6 / probe_av_ann_e6, jobs 3679983/3679984, fat 6h) pending.
+
+## Root-sum table (85acd90): verified interleaved A/B vs 0835205
+
+Lazy n×n u16 root-sum table on RootSystem (O(1) combine_roots, subtract via
+negatives table), negatives-table negate_root, work-queue additive_closure.
+Gates: quick_check 3679927 PASS (573 real-group tests); probe-diff
+3679957-59 SORTED_MATCH (unitary_e6, deform_e7_only 46118 lines, av_a2).
+
+- Heavy unitary E7 (probe_unitary_e7_heavy, fat, A/B 3679961, 3 interleaved
+  reps): base 78.69/78.97/78.67s -> tip 37.05/36.85/36.81s = **2.12x**,
+  RSS neutral (~427MB both).
+- deform-only E7 (probe_deform_e7_only, cpu, A/B 3679960): base median
+  20.55s vs tip median 20.42s — neutral as predicted (additive_closure is
+  not hot there); RSS identical.
