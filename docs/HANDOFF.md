@@ -4,6 +4,23 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Current frontier - 2026-09-04e (avopt: simple_factors torus fix unblocks E6 AV)
+
+- Root-caused the E6 interpreted-AV failure: `simple_factors` included torus
+  factors, but upstream simple_factors_wrapper SKIPS them
+  (atlas-types.w:396-403). Chain: order_W (Weylgroup.at:158) maps
+  order_W_simple over simple_factors; order_W_simple calls lt.adjoint
+  (Weylgroup.at:148/154); adjoint with a torus factor is rejected EVEN BY
+  THE ORACLE (probe_adjoint_torus 3680055 SORTED_MATCH: both reject
+  adjoint("T1")/adjoint("A1.T1") — the typed.rs:16399 test claim was right,
+  the divergence was simple_factors). Rust fix `1caa620` filters 'T' +
+  structural unit test. Verification: quick_check 3680059; E6 AV reruns
+  3680060-62 (bisect/gkfast/av_ann, afterok build 3680035).
+- Pipeline caution learned: lane-moving commits race PENDING sbatch jobs —
+  build 3680035 (afterok 3680023@368707a) will build the NEWER 1caa620.
+  Accepted here (simple_factors is not on the deform/unitary hot path; gates
+  catch output changes), but prefer freezing the lane during gate chains.
+
 ## Current frontier - 2026-09-04d (avopt: root-sum table LANDED, prim-slot in flight)
 
 - Root-sum table (`85acd90`) VERIFIED and pushed to codex/continue-atlas-port
