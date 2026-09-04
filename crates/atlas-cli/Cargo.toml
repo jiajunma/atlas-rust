@@ -8,3 +8,4 @@ license.workspace = true
 rayon = "1.10"
 libc = "0.2"
 atlas-core.workspace = true
+mimalloc = "=0.1.52"
