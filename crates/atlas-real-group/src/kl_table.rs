@@ -32,6 +32,20 @@ pub struct MuPair {
     pub coef: MuCoeff,
 }
 
+/// Reusable per-column scratch buffers for the fill loop: a table-wide
+/// fill clears and refills these instead of allocating fresh vectors for
+/// every column.
+#[derive(Default)]
+struct ColumnScratch {
+    /// The row accumulator shared by `recursion_column` and
+    /// `new_recursion_column` (kl.cpp's `row` parameter).
+    working: Vec<KlPol>,
+    /// Extremal elements of the current column (`recursion_column`).
+    extremals: Vec<BlockElt>,
+    /// Down-set element ids of the current column (`down_set` output).
+    downs: Vec<BlockElt>,
+}
+
 /// Storage behind the source-compatible [`KlTable`] alias.
 #[doc(hidden)]
 pub struct KlTableHandle<B: BlockTopology> {
@@ -156,12 +170,15 @@ impl<B: BlockTopology> KlTableHandle<B> {
         } else {
             limit
         };
-        let mut working = Vec::with_capacity(self.support.size());
+        let mut scratch = ColumnScratch {
+            working: Vec::with_capacity(self.support.size()),
+            ..ColumnScratch::default()
+        };
         for y in 0..limit.min(self.support.size()) {
             if !self.holes[y] {
                 continue;
             }
-            self.fill_kl_column(&mut working, y)?;
+            self.fill_kl_column(&mut scratch, y)?;
             self.holes[y] = false;
         }
         Ok(())
@@ -170,7 +187,7 @@ impl<B: BlockTopology> KlTableHandle<B> {
     /// `KL_table::fill_KL_column` (kl.cpp:350-363): compute column `y`.
     fn fill_kl_column(
         &mut self,
-        working: &mut Vec<KlPol>,
+        scratch: &mut ColumnScratch,
         y: BlockElt,
     ) -> Result<(), StructureError> {
         // Prepare the primitive index for y's descent set (kl.cpp:353).
@@ -178,10 +195,10 @@ impl<B: BlockTopology> KlTableHandle<B> {
         self.support.prepare_prim_index(&desc_y);
         let s = self.first_direct_recursion(y);
         if s < self.support.rank() {
-            self.recursion_column(working, y, s)?;
-            self.complete_primitives(working, y)?;
+            self.recursion_column(scratch, y, s)?;
+            self.complete_primitives(scratch, y)?;
         } else {
-            self.new_recursion_column(working, y)?;
+            self.new_recursion_column(scratch, y)?;
         }
         Ok(())
     }
@@ -227,10 +244,11 @@ impl<B: BlockTopology> KlTableHandle<B> {
     /// formula for column `y` with descent `s`, for all extremal `x`.
     fn recursion_column(
         &mut self,
-        working: &mut Vec<KlPol>,
+        scratch: &mut ColumnScratch,
         y: BlockElt,
         s: usize,
     ) -> Result<(), StructureError> {
+        let working = &mut scratch.working;
         working.clear();
         let desc_y = self.support.descent_set(y).clone();
         let sy = match self.support.block().descent(y, s).expect("valid generator") {
@@ -254,14 +272,15 @@ impl<B: BlockTopology> KlTableHandle<B> {
 
         // Increasing list of all extremal elements shorter than y.
         let floor = self.support.length_floor(y);
-        let mut extremals = Vec::new();
+        let extremals = &mut scratch.extremals;
+        extremals.clear();
         for x in 0..floor {
             if self.support.is_extremal(x, &desc_y) {
                 extremals.push(x);
             }
         }
 
-        for &x in &extremals {
+        for &x in extremals.iter() {
             // Upstream only consults `cross(s,x)` in the ComplexDescent and
             // RealTypeII branches (kl.cpp:406-436), and `KL_pol` maps
             // `UndefBlock` to the zero polynomial (kl.cpp:123-130), so a
@@ -339,7 +358,7 @@ impl<B: BlockTopology> KlTableHandle<B> {
             working.push(pxy);
         }
         // μ-correction (kl.cpp:447-448).
-        self.mu_correction(&extremals, &desc_y, sy, s, working)?;
+        self.mu_correction(&scratch.extremals, &desc_y, sy, s, &mut scratch.working)?;
         Ok(())
     }
 
@@ -387,9 +406,10 @@ impl<B: BlockTopology> KlTableHandle<B> {
     /// primitive non-extremal elements.
     fn complete_primitives(
         &mut self,
-        working: &[KlPol],
+        scratch: &mut ColumnScratch,
         y: BlockElt,
     ) -> Result<(), StructureError> {
+        let working = &scratch.working;
         let desc_y = self.support.descent_set(y).clone();
         let prim_slot = self.support.prim_slot(&desc_y);
         let ly = self.support.length(y);
@@ -441,10 +461,11 @@ impl<B: BlockTopology> KlTableHandle<B> {
         }
 
         // Add the down_set of y with μ=1 (kl.cpp:578-585).
-        let downs: Vec<MuPair> = self
-            .down_set(y)?
-            .into_iter()
-            .map(|z| MuPair { x: z, coef: 1 })
+        self.down_set(y, &mut scratch.downs)?;
+        let downs: Vec<MuPair> = scratch
+            .downs
+            .iter()
+            .map(|&z| MuPair { x: z, coef: 1 })
             .collect();
         let mut merged = downs;
         merged.extend(mu_pairs);
@@ -461,25 +482,26 @@ impl<B: BlockTopology> KlTableHandle<B> {
     /// the cross image, a real type I the two inverse-Cayley images, a
     /// real type II the first inverse-Cayley image; imaginary compact
     /// contributes nothing. Used for the μ-pairs of length one less than
-    /// `y` (kl.cpp:578-585, 650-653).
-    fn down_set(&self, y: BlockElt) -> Result<Vec<BlockElt>, StructureError> {
+    /// `y` (kl.cpp:578-585, 650-653). Fills `out` (cleared first) so the
+    /// fill loop can reuse the buffer across columns.
+    fn down_set(&self, y: BlockElt, out: &mut Vec<BlockElt>) -> Result<(), StructureError> {
         let block = self.support.block();
-        let mut result = Vec::new();
+        out.clear();
         for s in 0..self.support.rank() {
             match block.descent(y, s).expect("valid generator") {
                 BlockDescent::ComplexDescent => {
                     let z = block.cross(y, s).expect("complex descent cross");
-                    result.push(z);
+                    out.push(z);
                 }
                 BlockDescent::RealTypeI => {
                     let pair = block
                         .inverse_cayley(y, s)
                         .expect("real type I inverse Cayley");
                     if let Some(z) = pair.0 {
-                        result.push(z);
+                        out.push(z);
                     }
                     if let Some(z) = pair.1 {
-                        result.push(z);
+                        out.push(z);
                     }
                 }
                 BlockDescent::RealTypeII => {
@@ -487,24 +509,25 @@ impl<B: BlockTopology> KlTableHandle<B> {
                         .inverse_cayley(y, s)
                         .expect("real type II inverse Cayley");
                     if let Some(z) = pair.0 {
-                        result.push(z);
+                        out.push(z);
                     }
                 }
                 _ => {}
             }
         }
-        result.sort_unstable();
-        result.dedup();
-        Ok(result)
+        out.sort_unstable();
+        out.dedup();
+        Ok(())
     }
 
     /// `KL_table::new_recursion_column` (kl.cpp:637-791): compute column
     /// `y` when no direct recursion exists.
     fn new_recursion_column(
         &mut self,
-        working: &mut Vec<KlPol>,
+        scratch: &mut ColumnScratch,
         y: BlockElt,
     ) -> Result<(), StructureError> {
+        let working = &mut scratch.working;
         let l_y = self.support.length(y);
         let desc_y = self.support.descent_set(y).clone();
         // The descent set is fixed for the whole column fill: resolve its
@@ -523,11 +546,14 @@ impl<B: BlockTopology> KlTableHandle<B> {
         // in `working`; the loops below borrow the slot instead of cloning.
         let kl_index = |x: BlockElt| self.support.prim_index_at(prim_slot, x);
 
-        let mut mu_pairs: Vec<MuPair> = self
-            .down_set(y)?
-            .into_iter()
-            .map(|z| MuPair { x: z, coef: 1 })
-            .collect();
+        let mut mu_pairs: Vec<MuPair> = {
+            self.down_set(y, &mut scratch.downs)?;
+            scratch
+                .downs
+                .iter()
+                .map(|&z| MuPair { x: z, coef: 1 })
+                .collect()
+        };
         let downs_len = mu_pairs.len();
 
         // Reverse loop through primitive elements.
