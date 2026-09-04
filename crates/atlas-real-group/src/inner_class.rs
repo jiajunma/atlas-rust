@@ -778,6 +778,13 @@ impl InnerClass {
         let mut next: Vec<u8> = Vec::new();
         let packed = orbit_machine.simple_positions.len() <= 16;
         let stride = self.roots.roots().len();
+        // The padded probe tables are a pure function of the orbit machine:
+        // stage them once per inner class instead of once per orbit.
+        let (padded_reflections, inner_images) = if packed && stride <= 256 {
+            Self::padded_reflection_tables(&orbit_machine)?
+        } else {
+            (Vec::new(), Vec::new())
+        };
         for (orbit_index, (representative, representative_permutation)) in representatives
             .into_iter()
             .zip(representative_permutations)
@@ -791,6 +798,8 @@ impl InnerClass {
                 rank,
                 stride,
                 packed,
+                &padded_reflections,
+                &inner_images,
                 &mut seen,
                 &mut packed_seen,
                 &mut next,
@@ -932,12 +941,22 @@ impl InnerClass {
             (0..orbit_count).map(|_| Mutex::new(None)).collect();
         let next_orbit = AtomicUsize::new(0);
         let orbit_machine = &orbit_machine;
+        // Same per-build padded-table staging as the sequential driver (the
+        // parallel path always runs closure-level packed, so only the
+        // permutation width decides).
+        let (padded_reflections, inner_images) = if stride <= 256 {
+            Self::padded_reflection_tables(orbit_machine)?
+        } else {
+            (Vec::new(), Vec::new())
+        };
         let thread_entries = std::thread::scope(|scope| {
             let mut handles = Vec::new();
             for _ in 0..2 {
                 let work = &work;
                 let results = &results;
                 let next_orbit = &next_orbit;
+                let padded_reflections = &padded_reflections;
+                let inner_images = &inner_images;
                 handles.push(scope.spawn(move || {
                     let mut seen = PermutationKeySet::default();
                     let mut packed_seen = PackedKeySet::<T>::new();
@@ -971,6 +990,8 @@ impl InnerClass {
                             rank,
                             stride,
                             true,
+                            padded_reflections,
+                            inner_images,
                             &mut seen,
                             &mut packed_seen,
                             &mut next,
@@ -1054,6 +1075,34 @@ impl InnerClass {
         Ok(())
     }
 
+    /// Stage the simple-reflection tables the padded probe loop reads: each
+    /// reflection copied into a fixed 256-entry table (a u8 index into a
+    /// 256-entry array compiles to NO bounds check) plus the per-generator
+    /// inner gather `inner[g][p] = r_g(alpha_p)`, which keeps one edge probe
+    /// at two gathers per simple position instead of three. A pure function
+    /// of the [`PermutationOrbits`] machine, so the drivers build it once
+    /// per inner class instead of once per orbit.
+    fn padded_reflection_tables(
+        orbit_machine: &PermutationOrbits,
+    ) -> Result<(Vec<[u8; 256]>, Vec<[u8; 16]>), StructureError> {
+        let rank = orbit_machine.simple_reflections.len();
+        let mut padded_reflections = try_capacity(rank)?;
+        for reflection in &orbit_machine.simple_reflections {
+            let mut table = [0_u8; 256];
+            table[..reflection.len()].copy_from_slice(reflection);
+            padded_reflections.push(table);
+        }
+        let mut inner_images = try_capacity(rank)?;
+        for reflection in &padded_reflections {
+            let mut inner = [0_u8; 16];
+            for (slot, &position) in orbit_machine.simple_positions.iter().enumerate() {
+                inner[slot] = reflection[usize::from(position)];
+            }
+            inner_images.push(inner);
+        }
+        Ok((padded_reflections, inner_images))
+    }
+
     /// Profiling-visible extraction of the phase-two per-class BFS.
     ///
     /// Member permutations live in fixed-size chunks; a chunk is released as
@@ -1079,6 +1128,8 @@ impl InnerClass {
         rank: usize,
         stride: usize,
         packed: bool,
+        padded_reflections: &[[u8; 256]],
+        inner_images: &[[u8; 16]],
         seen: &mut PermutationKeySet,
         packed_seen: &mut PackedKeySet<T>,
         next: &mut Vec<u8>,
@@ -1111,12 +1162,19 @@ impl InnerClass {
         // `base` = the number of members in already-released chunks; member
         // `i` lives in `chunks[(i - base) / chunk_members]`.
         let mut base = 0_usize;
-        let mut parents: Vec<(u32, u8)> = vec![(u32::MAX, 0)];
+        // Seed capacity past the small-orbit range: push_slim's 1.5x growth
+        // from capacity 1 reallocs ~9 times for a ~36-member orbit (E6's
+        // average class size); 64 entries (512B) covers small orbits
+        // outright and starts large ones a few growth steps ahead with the
+        // same <=50% end slack.
+        let mut parents: Vec<(u32, u8)> = try_capacity(64)?;
+        parents.push((u32::MAX, 0));
         let mut member_count = 1_usize;
         // Padded fast path (packed keys and a root count that fits the u8
         // encoding — every rank <= 16 case in practice): the per-member
-        // permutation and the simple-reflection tables are staged in
-        // fixed-size [u8; 256] buffers, so every gather inside the probe and
+        // permutation and the simple-reflection tables (staged once per
+        // inner class by the caller) are read through fixed-size
+        // [u8; 256] buffers, so every gather inside the probe and
         // the successor compose indexes a 256-entry array with a u8 and the
         // compiler emits NO bounds checks, and membership probes go to a
         // lean open-addressing u128 table instead of the general hash set.
@@ -1155,27 +1213,6 @@ impl InnerClass {
             seen.insert(seed);
         }
         emit(orbit_index, &representative_permutation, seed_key)?;
-        let mut padded_reflections: Vec<[u8; 256]> = Vec::new();
-        // `inner_images[g][p] = r_g(alpha_p)`: the inner gather of the probe
-        // key hoisted out of the edge loop, so probing one edge costs two
-        // gathers per simple position instead of three.
-        let mut inner_images: Vec<[u8; 16]> = Vec::new();
-        if padded {
-            padded_reflections = try_capacity(rank)?;
-            for reflection in &orbit_machine.simple_reflections {
-                let mut table = [0_u8; 256];
-                table[..reflection.len()].copy_from_slice(reflection);
-                padded_reflections.push(table);
-            }
-            inner_images = try_capacity(rank)?;
-            for reflection in &padded_reflections {
-                let mut inner = [0_u8; 16];
-                for (slot, &position) in orbit_machine.simple_positions.iter().enumerate() {
-                    inner[slot] = reflection[usize::from(position)];
-                }
-                inner_images.push(inner);
-            }
-        }
         let mut current_buf = [0_u8; 256];
         let mut next_buf = [0_u8; 256];
         let simple_count = orbit_machine.simple_positions.len();
@@ -2529,6 +2566,46 @@ mod tests {
             .collect::<Vec<_>>();
         orbit_sizes.sort_unstable();
         assert_eq!(orbit_sizes, vec![1, 3]);
+    }
+
+    #[test]
+    fn a9_split_partition_matches_s10_involution_classes() {
+        // W(A9) = S10, and for the split inner class twisted conjugacy is
+        // ordinary conjugacy, so the classes are the involution cycle types
+        // (2^k 1^(10-2k)) with sizes 10!/(2^k k! (10-2k)!), k = 0..=5.
+        // Semisimple rank 9 (> 8) with 90 roots (<= 256) exercises the
+        // padded u128 closure path end to end.
+        let cartan: Vec<Vec<i32>> = (0..9)
+            .map(|row| {
+                (0..9)
+                    .map(|column| {
+                        if row == column {
+                            2
+                        } else if row + 1 == column || column + 1 == row {
+                            -1
+                        } else {
+                            0
+                        }
+                    })
+                    .collect()
+            })
+            .collect();
+        let datum = BasedRootDatum::standard(cartan).unwrap();
+        let inner_class = InnerClass::new(
+            datum.clone(),
+            LatticeInvolution::identity(&datum).unwrap(),
+            128,
+        )
+        .unwrap();
+
+        let mut orbit_sizes = inner_class
+            .twisted_conjugacy_classes(9496)
+            .unwrap()
+            .iter()
+            .map(|class| class.twisted_involution_count())
+            .collect::<Vec<_>>();
+        orbit_sizes.sort_unstable();
+        assert_eq!(orbit_sizes, vec![1, 45, 630, 945, 3150, 4725]);
     }
 
     #[test]
