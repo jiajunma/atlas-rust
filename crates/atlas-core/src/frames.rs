@@ -47,6 +47,13 @@ impl Frame {
     pub fn slot_snapshot(&self) -> Vec<Option<SharedValue>> {
         self.slots.borrow().clone()
     }
+
+    /// Consume a solely-owned frame into its slot buffer so the for-loop
+    /// traversal can recycle the allocation across iterations; the `next`
+    /// link drops here exactly as it would by dropping the frame.
+    pub(crate) fn into_slot_buffer(self) -> Vec<Option<SharedValue>> {
+        self.slots.into_inner()
+    }
 }
 
 /// The evaluation context: the current head of the frame chain. Empty
@@ -186,11 +193,22 @@ impl EvaluationContext {
         slots: Vec<SharedValue>,
         body: impl FnOnce(&mut Self) -> R,
     ) -> (R, Rc<Frame>) {
+        self.with_frame_traced_slots(slots.into_iter().map(Some).collect(), body)
+    }
+
+    /// Like [`Self::with_frame_traced`], but the slots arrive already
+    /// option-wrapped, so a hot caller (the for-loop traversal) can hand
+    /// in a recycled buffer instead of rebuilding one per iteration.
+    pub fn with_frame_traced_slots<R>(
+        &mut self,
+        slots: Vec<Option<SharedValue>>,
+        body: impl FnOnce(&mut Self) -> R,
+    ) -> (R, Rc<Frame>) {
         debug_assert!(!slots.is_empty(), "empty layers get no frame");
         let saved = self.current.take();
         let frame = Rc::new(Frame {
             next: saved.clone(),
-            slots: RefCell::new(slots.into_iter().map(Some).collect()),
+            slots: RefCell::new(slots),
         });
         self.current = Some(frame.clone());
         let result = body(self);
