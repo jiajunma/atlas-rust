@@ -13,7 +13,22 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 - Standing numbers: gkfast_e6 0.79s (oracle 0.59s, gap 1.34x; session
   start 2.63s = 3.3x total); gkfast_e7 14.2-14.4s vs oracle ~14.0s
   (PARITY); av_ann_e7 15.7s vs 14.2s (1.10x); deform_e7 11.1s vs 11.0s
-  (parity); heavy unitarity E7 rust 47.8s vs oracle >50min (60x+ faster).
+  (parity). The earlier "heavy unitarity E7 rust 47.8s vs oracle >50min
+  (60x+)" claim is RETRACTED: the rust leg crashed at term 780 (later
+  1080), the oracle leg was cut at its 1h limit; no completed
+  head-to-head exists yet. True ratio awaits oracle reference 3680270.
+- ROOT CAUSE of the heavy-unitary term-1080 abort (fixed eb268a9): the
+  inherent `PartialBlock::cross(generator, element)` SHADOWS
+  `BlockTopology::cross(element, generator)`, and the singular
+  ComplexDescent branch of `common_deformation_terms` called it in trait
+  order, so `fields[element]` was indexed and returned UndefBlock once
+  z >= rank. It was NOT a "cross leaves the partial block" case: over a
+  downward-closed interval a complex descent's cross link is always set
+  (partial_block.rs:1520-1537), so None there is a loud bug, never a
+  zero-contribution case. `inverse_cayley` was unaffected (PartialBlock
+  has no inherent one; the trait method resolved correctly). Audit rule:
+  when a type has both an inherent method and a trait method of the same
+  name, verify which one a call site resolves to.
 - KEY DIAGNOSIS (probe_setup_e6, 3680795/3680819): the whole remaining E6
   gap is FIXED SETUP (script parse/interpret + inner-class build): rust
   0.63-0.65s vs oracle 0.40s. The GKfast query leg itself is at parity
