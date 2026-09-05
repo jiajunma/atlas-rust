@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{
     BasedRootDatum, LatticeInvolution, RestrictedRootSystem, RootInvolutionData, RootSystem,
     StructureError, WeylAction,
@@ -28,7 +30,10 @@ use crate::{
 #[derive(Clone, Debug)]
 pub struct TwistedInvolution {
     weyl_action: Option<Box<WeylAction>>,
-    root_involution: RootInvolutionData,
+    /// Shared per-involution data ([`RootSystem::cached_root_involution`]):
+    /// value equality still compares the composed involution alone, and
+    /// `Arc` sharing makes repeat canonicalization lookups allocation-free.
+    root_involution: Arc<RootInvolutionData>,
 }
 
 impl PartialEq for TwistedInvolution {
@@ -83,7 +88,7 @@ impl TwistedInvolution {
                 &distinguished.coweight_matrix().to_vec(),
             )?,
         )?;
-        let root_involution = RootInvolutionData::new(root_system, involution)?;
+        let root_involution = root_system.cached_root_involution(involution)?;
         Ok(Self {
             weyl_action: Some(Box::new(weyl_action)),
             root_involution,
@@ -114,7 +119,7 @@ impl TwistedInvolution {
                 actual: theta.lattice_rank(),
             });
         }
-        let root_involution = RootInvolutionData::from_images(root_system, theta, root_images)?;
+        let root_involution = Arc::new(RootInvolutionData::from_images(root_system, theta, root_images)?);
         Ok(Self {
             weyl_action: None,
             root_involution,
