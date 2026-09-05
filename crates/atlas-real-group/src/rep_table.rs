@@ -966,16 +966,21 @@ impl RepTable {
             }
 
             // Pool extension (repr.cpp:1601-1607): append every row of every
-            // overlapping block, keyed-deduped against the pool.  Identity
+            // overlapping block, deduped against the pool.  Identity
             // relative attitude means shift 0 and `w` the identity, so the
             // stored srms are inserted as-is; a non-identity attitude's rows
-            // are transported by `shift` then `transform<false>` first.  A
-            // stored row whose key already occurs in the pool is the same
-            // param class (upstream's shift-transported row `hash.match`-es
-            // the pooled interval element), so it is skipped rather than
-            // duplicated.
+            // are transported by `shift` then `transform<false>` first.
+            // Upstream dedups with `hash.match(rep)` — RAW StandardReprMod
+            // equality.  Deduping by the ReducedParamKey instead is wrong:
+            // `evs_reduced` is a 32-bit mixed-radix packing that wraps on
+            // overflow both upstream and here, so distinct param classes can
+            // share a key; skipping such a row drops a class from the union
+            // and the block constructor then fails its closure invariant
+            // (observed on the heavy E7 unitarity probe: the transported
+            // cross image of a pooled row was missing).  All pool members
+            // are real_unique-canonical, so raw equality IS class equality.
             let mut pool = interval.clone();
-            let mut pool_keys = interval_keys.clone();
+            let mut pool_members: HashSet<StandardReprMod> = interval.iter().cloned().collect();
             for ((record, _, _), modifier) in overlap.iter().zip(modifiers.iter()) {
                 for row in 0..record.block.size() {
                     let element =
@@ -994,10 +999,7 @@ impl RepTable {
                             rep
                         }
                     };
-                    let key =
-                        Self::canonical_key(rc, &transported, &reduced.locator, &reduced.coroots)?;
-                    if !pool_keys.contains(&key) {
-                        pool_keys.push(key);
+                    if pool_members.insert(transported.clone()) {
                         pool.push(transported);
                     }
                 }
