@@ -4,6 +4,41 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Current frontier - 2026-09-06 morning (avopt de6ee37: +klmove+mixi32+rinvcache)
+
+- Frontier = de6ee37 on agent-avopt (local ~/mycodes/atlas-rust-avopt and
+  HPC /public/home/majj/atlas-rust-avopt synced; GitHub pushed). Merge
+  chain since the section below: klpool 274d8b5 -> reflbuf 06afbf8 ->
+  klmove a9c0d10 -> mixi32 41f1a11 -> rinvcache de6ee37, every gate 7/7
+  SORTED_MATCH (ratio table in docs/BENCHMARKS.md "Morning rounds").
+- rinvcache (267b50e): RootSystem carries
+  `root_involutions: Arc<Mutex<HashMap<Vec<Vec<i32>>, Arc<RootInvolutionData>>>>`,
+  `cached_root_involution` memoizes by weight-matrix key;
+  TwistedInvolution holds Arc<RootInvolutionData>. InnerClass's four
+  RootInvolutionData::new sites deliberately untouched (not hot).
+- IN FLIGHT: loopbuf gate 3684711-18 (4e36fc5: for-loop frame slot
+  buffer recycling via with_frame_traced_slots + Frame::into_slot_buffer
+  + distribute_options; collected row pre-sized). Watch the CORRECT
+  output dir: private_gate.sh cd's into the repo, so build/probe-diff
+  .out files land in /public/home/majj/atlas-rust-avopt/, NOT
+  /public/home/majj/ (one watcher already misfired on that).
+- Heavy legs still running (7h timeout, fat): 3683422 frontier1 /
+  3683423 oracle / 3683443 gj64 / 3683601 f2 / 3683611 f3 / 3684029
+  wallcache / 3684357 frontier4(06afbf8, pre-klmove/mixi32). At ~4h
+  elapsed: oracle Term 1900, frontier1/gj64 Term 2340, f2/f3 Term
+  2240-2260, wallcache Term 2120 @1:17h, frontier4 Term 2040 @41min.
+  Time-at-Term progress is now logged every 10min to
+  .heavytrack/progress.log (local) for exact same-term wall ratios.
+- Heavy-leg correctness so far: every leg's output prefix diffs clean
+  against the oracle at shared line counts (wallcache to Term 1830,
+  frontier4 to Term 1760, f2/f3/gj64 similar).
+- Next: (a) loopbuf gate -> merge; (b) re-profile unitary+av_ann at the
+  new frontier (rinvcache should erase most of apply_flat_into 6.59% +
+  subsystem_simple_roots 1.05% + part of id_of_slice 2.23%);
+  (c) heavy-leg finals -> real E7 multiplier + report; (d) remaining
+  profile targets: lattice::pair 4.25% (already tight i64/i128 dot,
+  call-volume bound), interpreter cluster ~12%, allocator ~8.5%.
+
 ## Current frontier - 2026-09-06 early (avopt e32a957: +flatgj+wallcache+flatmat+klmu)
 
 - Frontier = e32a957 on agent-avopt (local ~/mycodes/atlas-rust-avopt and
