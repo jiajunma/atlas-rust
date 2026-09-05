@@ -390,8 +390,11 @@ pub fn common_deformation_terms(
         match descent {
             None => contribution[z].push((z, 1)),
             Some((s, BlockDescent::ComplexDescent)) => {
+                // Upstream `result[z]=result[block.cross(*it,z)]`
+                // (repr.cpp:1873): `PartialBlock::cross` takes
+                // `(generator, element)`, matching upstream's `cross(s,z)`.
                 let target = block
-                    .cross(z, s)
+                    .cross(s, z)
                     .ok_or(StructureError::BlockInvariantViolation {
                         invariant: "common deformation complex cross",
                     })?;
