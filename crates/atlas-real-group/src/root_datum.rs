@@ -1,6 +1,6 @@
 use malachite::Rational;
 
-use crate::lattice::try_copy_coordinates;
+use crate::lattice::{pair_coordinates, try_copy_coordinates};
 use crate::{pair, Coweight, StructureError, Weight};
 
 /// Validated simple-root data inside a character/cocharacter lattice pair.
@@ -198,6 +198,39 @@ impl BasedRootDatum {
         reflect_coordinates(weight.as_slice(), root.as_slice(), coefficient).map(Weight::new)
     }
 
+    /// `reflect_weight` on bare coordinates into a caller-owned buffer, for
+    /// bulk loops (`pos_to_neg` reflects the whole positive set per word
+    /// letter, and a fresh `Weight` per root fed the allocator cluster,
+    /// perf-unitary-3684013). Same checks and arithmetic, in the same
+    /// order, as [`Self::reflect_weight`].
+    pub(crate) fn reflect_weight_into(
+        &self,
+        generator: usize,
+        coordinates: &[i32],
+        out: &mut Vec<i32>,
+    ) -> Result<(), StructureError> {
+        if coordinates.len() != self.lattice_rank {
+            return Err(StructureError::RankMismatch {
+                expected: self.lattice_rank,
+                actual: coordinates.len(),
+            });
+        }
+        let root = self
+            .simple_roots
+            .get(generator)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: generator,
+                upper_bound: self.semisimple_rank(),
+            })?;
+        // `pair` after the rank check reads as `pair_coordinates` on the
+        // slices: the coroot's rank is `lattice_rank` by construction.
+        let coefficient = i128::from(pair_coordinates(
+            coordinates,
+            self.simple_coroots[generator].as_slice(),
+        )?);
+        reflect_coordinates_into(coordinates, root.as_slice(), coefficient, out)
+    }
+
     /// Dual simple reflection `y - <alpha_generator, y> alpha_generator_vee`
     /// on the cocharacter lattice, mirroring [`Self::reflect_weight`].
     pub fn reflect_coweight(
@@ -267,8 +300,18 @@ fn reflect_coordinates(
     coefficient: i128,
 ) -> Result<Vec<i32>, StructureError> {
     let mut reflected = Vec::new();
-    reflected
-        .try_reserve_exact(values.len())
+    reflect_coordinates_into(values, direction, coefficient, &mut reflected)?;
+    Ok(reflected)
+}
+
+fn reflect_coordinates_into(
+    values: &[i32],
+    direction: &[i32],
+    coefficient: i128,
+    out: &mut Vec<i32>,
+) -> Result<(), StructureError> {
+    out.clear();
+    out.try_reserve_exact(values.len())
         .map_err(|_| StructureError::AllocationFailed {
             requested: values.len(),
         })?;
@@ -279,9 +322,9 @@ fn reflect_coordinates(
         let value = i128::from(coordinate)
             .checked_sub(correction)
             .ok_or(StructureError::ArithmeticOverflow)?;
-        reflected.push(i32::try_from(value).map_err(|_| StructureError::ArithmeticOverflow)?);
+        out.push(i32::try_from(value).map_err(|_| StructureError::ArithmeticOverflow)?);
     }
-    Ok(reflected)
+    Ok(())
 }
 
 fn ensure_lattice_rank(expected: usize, actual: usize) -> Result<(), StructureError> {

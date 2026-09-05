@@ -430,6 +430,7 @@ fn pos_to_neg(system: &RootSystem, word: &[usize]) -> Result<Vec<RootId>, Struct
         .filter(|(id, _, _)| system.is_positive(*id) == Some(true))
         .map(|(id, _, _)| id)
         .collect();
+    let mut image: Vec<i32> = Vec::with_capacity(datum.lattice_rank());
     for &s in word {
         let simple =
             system
@@ -445,14 +446,18 @@ fn pos_to_neg(system: &RootSystem, word: &[usize]) -> Result<Vec<RootId>, Struct
             if beta == simple {
                 continue; // maps to its negative, out of the positive set
             }
-            let image = datum.reflect_weight(
+            datum.reflect_weight_into(
                 s,
-                system.root(beta).ok_or(StructureError::IndexOutOfRange {
-                    index: beta.index(),
-                    upper_bound: system.roots().len(),
-                })?,
+                system
+                    .root(beta)
+                    .ok_or(StructureError::IndexOutOfRange {
+                        index: beta.index(),
+                        upper_bound: system.roots().len(),
+                    })?
+                    .as_slice(),
+                &mut image,
             )?;
-            next.push(system.id_of(&image).ok_or(
+            next.push(system.id_of_slice(&image).ok_or(
                 StructureError::RootSystemInvariantViolation {
                     invariant: "reflected root is a root",
                 },
