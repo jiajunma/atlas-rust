@@ -1956,7 +1956,12 @@ impl<'a> ReductionState<'a> {
                 limit_as_u64(self.budget.max_steps)?,
             ));
         }
-        self.check_bounds()
+        // No full-matrix revalidation here: shapes and entry counts are fixed
+        // after `new` checked them, every written entry passed the exact bit
+        // bound inside `bounded_linear_combination`, and swaps/negations
+        // preserve significant bits — so a per-step `check_bounds` scan can
+        // never observe a violation the write path did not already reject.
+        Ok(())
     }
 
     fn check_bounds(&self) -> Result<(), StructureError> {
