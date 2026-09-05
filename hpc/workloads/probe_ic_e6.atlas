@@ -1,3 +1,4 @@
+<basic.at
 rd : RootDatum
 rd := simply_connected(Lie_type("E6"),true)
 ic : InnerClass
