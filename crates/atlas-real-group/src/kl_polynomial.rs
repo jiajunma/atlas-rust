@@ -19,6 +19,7 @@
 
 use crate::involution_table::MixingHasherBuilder;
 use crate::StructureError;
+use std::hash::{BuildHasher, Hash};
 
 /// A polynomial over ℤ in `q`, least-degree first. The zero polynomial is
 /// the empty vector; otherwise the leading (top) coefficient is nonzero.
@@ -291,37 +292,84 @@ impl KlPol {
 ///
 /// `zero` is always index 0 and `one` (the constant 1) index 1, exactly
 /// like the upstream `KLStore{Zero, One}` initialisation (kl.cpp:100).
-/// The index map uses the fast [`MixingHasherBuilder`]: hashing affects
-/// only bucket layout, never interning order (`match_pol` returns the
-/// existing index on a hit and appends on a miss), so pool indices — and
-/// the raw indices `filekl` serializes — are hasher-independent.
-#[derive(Clone, Debug, Default)]
+/// The index is a lean open-addressing table of pool indices (slot value =
+/// pool index + 1, 0 = empty): the pool is the SINGLE owner of polynomial
+/// storage, so a miss clones the polynomial once (the previous std
+/// HashMap<KlPol, usize> kept a second copy of every key) and a hit is one
+/// hash plus one pool compare. Hashing affects only bucket layout, never
+/// interning order (`match_pol` returns the existing index on a hit and
+/// appends on a miss), so pool indices — and the raw indices `filekl`
+/// serializes — are layout-independent.
+#[derive(Clone, Debug)]
 pub struct KlHashTable {
     pool: Vec<KlPol>,
-    index: std::collections::HashMap<KlPol, usize, MixingHasherBuilder>,
+    /// Power-of-two open-addressing slots; value = pool index + 1.
+    slots: Vec<u32>,
+    mask: usize,
+}
+
+impl Default for KlHashTable {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl KlHashTable {
     pub fn new() -> Self {
-        let mut table = Self::default();
-        let zero = KlPol::zero();
-        table.index.insert(zero.clone(), 0);
-        table.pool.push(zero);
-        let one = KlPol::monomial(0);
-        table.index.insert(one.clone(), 1);
-        table.pool.push(one);
+        let mut table = KlHashTable {
+            pool: Vec::new(),
+            slots: vec![0; 16],
+            mask: 15,
+        };
+        table.match_pol(&KlPol::zero());
+        table.match_pol(&KlPol::monomial(0));
         table
     }
 
     /// The pool index of a polynomial, inserting it if new.
     pub fn match_pol(&mut self, polynomial: &KlPol) -> usize {
-        if let Some(&existing) = self.index.get(polynomial) {
-            return existing;
+        let mut hasher = MixingHasherBuilder::default().build_hasher();
+        polynomial.hash(&mut hasher);
+        let hash = hasher.finish();
+        let mut slot = (hash as usize) & self.mask;
+        loop {
+            let entry = self.slots[slot];
+            if entry == 0 {
+                let index = self.pool.len();
+                debug_assert!(index < u32::MAX as usize);
+                self.pool.push(polynomial.clone());
+                self.slots[slot] = (index + 1) as u32;
+                // Grow at 3/4 load, rehashing from the pool (the only
+                // storage), so no key copies are ever reshuffled.
+                if (self.pool.len() + 1) * 4 > self.slots.len() * 3 {
+                    self.grow();
+                }
+                return index;
+            }
+            let index = usize::try_from(entry - 1).expect("slot fits usize");
+            if self.pool[index] == *polynomial {
+                return index;
+            }
+            slot = (slot + 1) & self.mask;
         }
-        let index = self.pool.len();
-        self.pool.push(polynomial.clone());
-        self.index.insert(polynomial.clone(), index);
-        index
+    }
+
+    fn grow(&mut self) {
+        let new_len = self.slots.len() * 2;
+        let mut slots = vec![0_u32; new_len];
+        let mask = new_len - 1;
+        for (index, polynomial) in self.pool.iter().enumerate() {
+            // A fresh hasher per polynomial: Hasher state accumulates.
+            let mut hasher = MixingHasherBuilder::default().build_hasher();
+            polynomial.hash(&mut hasher);
+            let mut slot = (hasher.finish() as usize) & mask;
+            while slots[slot] != 0 {
+                slot = (slot + 1) & mask;
+            }
+            slots[slot] = (index + 1) as u32;
+        }
+        self.slots = slots;
+        self.mask = mask;
     }
 
     /// The polynomial at a pool index.
@@ -348,6 +396,30 @@ mod tests {
         assert_eq!(table.len(), 2);
         assert!(table.get(0).expect("zero").is_zero());
         assert_eq!(table.get(1).expect("one").as_slice(), &[1]);
+    }
+
+    #[test]
+    fn match_pol_interns_in_first_seen_order_across_growth() {
+        let mut table = KlHashTable::new();
+        assert_eq!(table.match_pol(&KlPol::zero()), 0);
+        assert_eq!(table.match_pol(&KlPol::monomial(0)), 1);
+        // Enough distinct polynomials to force several slot-table growth
+        // rounds (16 initial slots, 3/4 load factor).
+        let polys: Vec<KlPol> = (1..40)
+            .map(|d| {
+                KlPol::from_coefficients(vec![
+                    d, d + 1, d + 2, d + 3, d + 4, d + 5, d + 6, d + 7, d + 8, d + 9,
+                ])
+            })
+            .collect();
+        for (offset, polynomial) in polys.iter().enumerate() {
+            assert_eq!(table.match_pol(polynomial), offset + 2);
+        }
+        // Re-queries after growth return the original indices.
+        for (offset, polynomial) in polys.iter().enumerate() {
+            assert_eq!(table.match_pol(polynomial), offset + 2);
+        }
+        assert_eq!(table.len(), 41);
     }
 
     #[test]
