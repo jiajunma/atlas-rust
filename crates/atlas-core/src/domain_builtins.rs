@@ -5012,6 +5012,147 @@ fn frac_eval_value(root_system: &RootSystem, id: RootId, gamma: &RatVec) -> Opti
     Some((s, denominator))
 }
 
+/// Scalar operations shared by the small dense Gauss-Jordan solvers below,
+/// so each sweep can run on machine-word [`ratfast::SmallRat`] first and
+/// restart on `BigRational` when an intermediate leaves the i128 window
+/// (identical arithmetic — both paths normalize eagerly).
+trait GjScalar: Clone {
+    fn from_i32(value: i32) -> Self;
+    fn is_nonzero(&self) -> bool;
+    /// `*self /= pivot`; `Err(())` only from `SmallRat` overflow.
+    fn div_assign(&mut self, pivot: &Self) -> Result<(), ()>;
+    /// `*self -= pivot_entry * factor`; `Err(())` only from `SmallRat`
+    /// overflow.
+    fn mul_sub_assign(&mut self, pivot_entry: &Self, factor: &Self) -> Result<(), ()>;
+}
+
+impl GjScalar for ratfast::SmallRat {
+    fn from_i32(value: i32) -> Self {
+        ratfast::SmallRat::from_i32(value)
+    }
+    fn is_nonzero(&self) -> bool {
+        !self.is_zero()
+    }
+    fn div_assign(&mut self, pivot: &Self) -> Result<(), ()> {
+        ratfast::SmallRat::div_assign(self, pivot).ok_or(())
+    }
+    fn mul_sub_assign(&mut self, pivot_entry: &Self, factor: &Self) -> Result<(), ()> {
+        ratfast::SmallRat::mul_sub_assign(self, pivot_entry, factor).ok_or(())
+    }
+}
+
+impl GjScalar for BigRational {
+    fn from_i32(value: i32) -> Self {
+        BigRational::from(value)
+    }
+    fn is_nonzero(&self) -> bool {
+        self != &BigRational::from(0)
+    }
+    fn div_assign(&mut self, pivot: &Self) -> Result<(), ()> {
+        *self /= pivot;
+        Ok(())
+    }
+    fn mul_sub_assign(&mut self, pivot_entry: &Self, factor: &Self) -> Result<(), ()> {
+        *self -= pivot_entry.clone() * factor;
+        Ok(())
+    }
+}
+
+/// Normalize the pivot row by the pivot and clear the pivot column above
+/// and below — the shared body of the historical `BigRational` sweeps, in
+/// the same operation order.
+fn gj_normalize_and_clear<T: GjScalar>(
+    matrix: &mut [Vec<T>],
+    rows: usize,
+    pivot_row: usize,
+    column: usize,
+) -> Result<(), ()> {
+    let pivot = matrix[pivot_row][column].clone();
+    for entry in &mut matrix[pivot_row] {
+        entry.div_assign(&pivot)?;
+    }
+    for row in 0..rows {
+        if row == pivot_row || !matrix[row][column].is_nonzero() {
+            continue;
+        }
+        let factor = matrix[row][column].clone();
+        let (pivot_line, target) = if row < pivot_row {
+            let (head, tail) = matrix.split_at_mut(pivot_row);
+            (&tail[0], &mut head[row])
+        } else {
+            let (head, tail) = matrix.split_at_mut(row);
+            (&head[pivot_row], &mut tail[0])
+        };
+        for (target_entry, pivot_entry) in target.iter_mut().zip(pivot_line.iter()) {
+            target_entry.mul_sub_assign(pivot_entry, &factor)?;
+        }
+    }
+    Ok(())
+}
+
+/// The Gauss-Jordan sweep of `simple_coroot_coordinates`: returns
+/// `Ok(false)` when some column has no pivot (the caller's `None`).
+fn simple_coroot_sweep<T: GjScalar>(
+    aug: &mut [Vec<T>],
+    semisimple: usize,
+    ambient: usize,
+) -> Result<bool, ()> {
+    let mut pivot_row = 0;
+    for column in 0..semisimple {
+        let Some(found) = (pivot_row..ambient).find(|&row| aug[row][column].is_nonzero()) else {
+            return Ok(false);
+        };
+        aug.swap(pivot_row, found);
+        gj_normalize_and_clear(aug, ambient, pivot_row, column)?;
+        pivot_row += 1;
+    }
+    Ok(true)
+}
+
+/// The RREF sweep of `labels_for_component`: records each pivot column's
+/// row; columns without a pivot stay `None` (the free variables).
+fn labels_sweep<T: GjScalar>(
+    matrix: &mut [Vec<T>],
+    rows: usize,
+    width: usize,
+    pivot_of_column: &mut [Option<usize>],
+) -> Result<(), ()> {
+    let mut pivot_row = 0;
+    for column in 0..width {
+        if pivot_row >= rows {
+            break;
+        }
+        let Some(found) = (pivot_row..rows).find(|&row| matrix[row][column].is_nonzero()) else {
+            continue;
+        };
+        matrix.swap(pivot_row, found);
+        gj_normalize_and_clear(matrix, rows, pivot_row, column)?;
+        pivot_of_column[column] = Some(pivot_row);
+        pivot_row += 1;
+    }
+    Ok(())
+}
+
+/// The square Gauss-Jordan sweep of `inverse_cartan` over the left half of
+/// the rank x 2*rank augmented matrix; singular columns are skipped.
+fn inverse_cartan_sweep<T: GjScalar>(matrix: &mut [Vec<T>], rank: usize) -> Result<(), ()> {
+    for column in 0..rank {
+        let Some(found) = (column..rank).find(|&row| matrix[row][column].is_nonzero()) else {
+            continue;
+        };
+        matrix.swap(column, found);
+        gj_normalize_and_clear(matrix, rank, column, column)?;
+    }
+    Ok(())
+}
+
+/// Build the scalar matrix the historical bodies built entry-by-entry.
+fn gj_scalars<T: GjScalar>(ints: &[Vec<i32>]) -> Vec<Vec<T>> {
+    ints.iter()
+        .map(|row| row.iter().map(|&entry| T::from_i32(entry)).collect())
+        .collect()
+}
+
 /// Simple-coroot coordinates of a root's coroot: the unique rational
 /// solution of `SimpleCoroots * m = coroot`, integral because every coroot
 /// is an integral combination of the simple coroots.
@@ -5021,42 +5162,31 @@ fn simple_coroot_coordinates(root_system: &RootSystem, id: RootId) -> Option<Vec
     let ambient = datum.lattice_rank();
     let coroot = root_system.coroot(id)?;
     let simple_coroots = datum.simple_coroots();
-    let mut aug: Vec<Vec<BigRational>> = (0..ambient)
+    let ints: Vec<Vec<i32>> = (0..ambient)
         .map(|row| {
-            let mut line: Vec<BigRational> = (0..semisimple)
-                .map(|column| BigRational::from(simple_coroots[column].as_slice()[row]))
+            let mut line: Vec<i32> = (0..semisimple)
+                .map(|column| simple_coroots[column].as_slice()[row])
                 .collect();
-            line.push(BigRational::from(coroot.as_slice()[row]));
+            line.push(coroot.as_slice()[row]);
             line
         })
         .collect();
-    let mut pivot_row = 0;
-    for column in 0..semisimple {
-        let found = (pivot_row..ambient).find(|&row| aug[row][column] != 0)?;
-        aug.swap(pivot_row, found);
-        let pivot = aug[pivot_row][column].clone();
-        for entry in &mut aug[pivot_row] {
-            *entry /= &pivot;
-        }
-        for row in 0..ambient {
-            if row == pivot_row || aug[row][column] == 0 {
-                continue;
-            }
-            let factor = aug[row][column].clone();
-            let (pivot_line, target) = if row < pivot_row {
-                let (head, tail) = aug.split_at_mut(pivot_row);
-                (&tail[0], &mut head[row])
-            } else {
-                let (head, tail) = aug.split_at_mut(row);
-                (&head[pivot_row], &mut tail[0])
-            };
-            for (target_entry, pivot_entry) in target.iter_mut().zip(pivot_line.iter()) {
-                let subtracted = pivot_entry.clone() * &factor;
-                *target_entry -= subtracted;
+    let mut small = gj_scalars::<ratfast::SmallRat>(&ints);
+    let aug: Vec<Vec<BigRational>> = match simple_coroot_sweep(&mut small, semisimple, ambient) {
+        Ok(true) => small
+            .into_iter()
+            .map(|row| row.into_iter().map(|entry| entry.to_rational()).collect())
+            .collect(),
+        Ok(false) => return None,
+        Err(()) => {
+            let mut big = gj_scalars::<BigRational>(&ints);
+            match simple_coroot_sweep(&mut big, semisimple, ambient) {
+                Ok(true) => big,
+                Ok(false) => return None,
+                Err(()) => unreachable!("BigRational elimination cannot overflow"),
             }
         }
-        pivot_row += 1;
-    }
+    };
     // The pivot row of column `c` is row `c`; only after the full
     // Gauss-Jordan sweep is its solution entry final (later column
     // eliminations still rewrite earlier pivot rows).
@@ -5340,49 +5470,27 @@ fn labels_for_component(
     let rows = columns.first().map_or(0, Vec::len);
     // Rational Gauss-Jordan elimination on the transpose; the kernel of A
     // is the solution set of RREF(A) x = 0 with one free variable.
-    let mut matrix: Vec<Vec<BigRational>> = (0..rows)
-        .map(|row| {
-            columns
-                .iter()
-                .map(|column| BigRational::from(column[row]))
-                .collect()
-        })
+    let ints: Vec<Vec<i32>> = (0..rows)
+        .map(|row| columns.iter().map(|column| column[row]).collect())
         .collect();
     let width = columns.len();
     let mut pivot_of_column = vec![None; width];
-    let mut pivot_row = 0;
-    for column in 0..width {
-        if pivot_row >= rows {
-            break;
-        }
-        let Some(found) = (pivot_row..rows).find(|&row| matrix[row][column] != 0) else {
-            continue;
-        };
-        matrix.swap(pivot_row, found);
-        let pivot = matrix[pivot_row][column].clone();
-        for entry in &mut matrix[pivot_row] {
-            *entry /= &pivot;
-        }
-        for row in 0..rows {
-            if row == pivot_row || matrix[row][column] == 0 {
-                continue;
-            }
-            let factor = matrix[row][column].clone();
-            let (pivot_line, target) = if row < pivot_row {
-                let (head, tail) = matrix.split_at_mut(pivot_row);
-                (&tail[0], &mut head[row])
-            } else {
-                let (head, tail) = matrix.split_at_mut(row);
-                (&head[pivot_row], &mut tail[0])
-            };
-            for (target_entry, pivot_entry) in target.iter_mut().zip(pivot_line.iter()) {
-                let subtracted = pivot_entry.clone() * &factor;
-                *target_entry -= subtracted;
+    let mut small = gj_scalars::<ratfast::SmallRat>(&ints);
+    let matrix: Vec<Vec<BigRational>> = match labels_sweep(&mut small, rows, width, &mut pivot_of_column)
+    {
+        Ok(()) => small
+            .into_iter()
+            .map(|row| row.into_iter().map(|entry| entry.to_rational()).collect())
+            .collect(),
+        Err(()) => {
+            pivot_of_column.iter_mut().for_each(|slot| *slot = None);
+            let mut big = gj_scalars::<BigRational>(&ints);
+            match labels_sweep(&mut big, rows, width, &mut pivot_of_column) {
+                Ok(()) => big,
+                Err(()) => unreachable!("BigRational elimination cannot overflow"),
             }
         }
-        pivot_of_column[column] = Some(pivot_row);
-        pivot_row += 1;
-    }
+    };
     let free: Vec<usize> = (0..width)
         .filter(|&col| pivot_of_column[col].is_none())
         .collect();
@@ -5596,46 +5704,33 @@ fn fundamental_alcove_wall_count(datum: &BasedRootDatum) -> usize {
 /// upstream's `C_denom`.
 fn inverse_cartan(cartan: &[Vec<i32>]) -> (Vec<Vec<i64>>, i64) {
     let rank = cartan.len();
-    let mut matrix: Vec<Vec<BigRational>> = (0..rank)
+    let ints: Vec<Vec<i32>> = (0..rank)
         .map(|row| {
             (0..2 * rank)
                 .map(|column| {
                     if column < rank {
-                        BigRational::from(cartan[row][column])
+                        cartan[row][column]
                     } else {
-                        BigRational::from((column - rank == row) as i32)
+                        (column - rank == row) as i32
                     }
                 })
                 .collect()
         })
         .collect();
-    for column in 0..rank {
-        let Some(found) = (column..rank).find(|&row| matrix[row][column] != 0) else {
-            continue;
-        };
-        matrix.swap(column, found);
-        let pivot = matrix[column][column].clone();
-        for entry in &mut matrix[column] {
-            *entry /= &pivot;
-        }
-        for row in 0..rank {
-            if row == column || matrix[row][column] == 0 {
-                continue;
-            }
-            let factor = matrix[row][column].clone();
-            let (pivot_line, target) = if row < column {
-                let (head, tail) = matrix.split_at_mut(column);
-                (&tail[0], &mut head[row])
-            } else {
-                let (head, tail) = matrix.split_at_mut(row);
-                (&head[column], &mut tail[0])
-            };
-            for (target_entry, pivot_entry) in target.iter_mut().zip(pivot_line.iter()) {
-                let subtracted = pivot_entry.clone() * &factor;
-                *target_entry -= subtracted;
+    let mut small = gj_scalars::<ratfast::SmallRat>(&ints);
+    let matrix: Vec<Vec<BigRational>> = match inverse_cartan_sweep(&mut small, rank) {
+        Ok(()) => small
+            .into_iter()
+            .map(|row| row.into_iter().map(|entry| entry.to_rational()).collect())
+            .collect(),
+        Err(()) => {
+            let mut big = gj_scalars::<BigRational>(&ints);
+            match inverse_cartan_sweep(&mut big, rank) {
+                Ok(()) => big,
+                Err(()) => unreachable!("BigRational elimination cannot overflow"),
             }
         }
-    }
+    };
     let mut denominator = 1i64;
     for row in &matrix {
         for entry in &row[rank..] {

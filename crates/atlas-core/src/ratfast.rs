@@ -244,6 +244,79 @@ impl FastSum {
     }
 }
 
+/// Reduce `num/den` (`den != 0`) to lowest terms with a positive
+/// denominator; `None` only on i128 sign-flip overflow.
+fn reduce_i128(num: i128, den: i128) -> Option<(i128, i128)> {
+    debug_assert_ne!(den, 0);
+    let (num, den) = if den < 0 {
+        (num.checked_neg()?, den.checked_neg()?)
+    } else {
+        (num, den)
+    };
+    if num == 0 {
+        return Some((0, 1));
+    }
+    // den > 0 here, so the gcd is positive and divides num; it fits an
+    // i128 because it does not exceed den.
+    let divisor = gcd_u128(num.unsigned_abs(), den as u128) as i128;
+    Some((num / divisor, den / divisor))
+}
+
+/// A mutable machine-word rational for the small dense Gauss-Jordan sweeps
+/// on the interpreted alcove/Cartan path: i128 numerator/denominator,
+/// eagerly reduced with a positive denominator (the same normalization the
+/// malachite operators apply). Every operation is exact; `None` reports
+/// the first i128 overflow so the caller can restart the elimination on
+/// `BigRational` before any output is produced.
+#[derive(Clone, Copy)]
+pub(crate) struct SmallRat {
+    num: i128,
+    // Invariant: den > 0 and gcd(|num|, den) == 1.
+    den: i128,
+}
+
+impl SmallRat {
+    pub(crate) fn from_i32(value: i32) -> Self {
+        Self {
+            num: i128::from(value),
+            den: 1,
+        }
+    }
+
+    pub(crate) fn is_zero(&self) -> bool {
+        self.num == 0
+    }
+
+    /// The canonical rational equal to this value.
+    pub(crate) fn to_rational(&self) -> BigRational {
+        BigRational::from_integers(BigInt::from(self.num), BigInt::from(self.den))
+    }
+
+    /// `*self /= pivot` (the caller only normalizes by a nonzero pivot);
+    /// `None` on i128 overflow.
+    pub(crate) fn div_assign(&mut self, pivot: &Self) -> Option<()> {
+        let num = self.num.checked_mul(pivot.den)?;
+        let den = self.den.checked_mul(pivot.num)?;
+        let (num, den) = reduce_i128(num, den)?;
+        *self = Self { num, den };
+        Some(())
+    }
+
+    /// `*self -= pivot_entry * factor`; `None` on i128 overflow.
+    pub(crate) fn mul_sub_assign(&mut self, pivot_entry: &Self, factor: &Self) -> Option<()> {
+        let product_num = pivot_entry.num.checked_mul(factor.num)?;
+        let product_den = pivot_entry.den.checked_mul(factor.den)?;
+        let num = self
+            .num
+            .checked_mul(product_den)?
+            .checked_sub(product_num.checked_mul(self.den)?)?;
+        let den = self.den.checked_mul(product_den)?;
+        let (num, den) = reduce_i128(num, den)?;
+        *self = Self { num, den };
+        Some(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
