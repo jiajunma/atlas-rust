@@ -65,9 +65,13 @@ impl FileSink for FsSink {
 }
 
 fn print_events(frame: &SessionFrame<FsProvider, FsSink>, events: &[SessionEvent]) {
+    // With ATLAS_STREAM_OUTPUT=1 the Output events already reached stdout
+    // as they were produced; printing the buffer again would duplicate them.
+    let skip_output = atlas_core::frames::EvaluationContext::stream_output();
     for event in events {
         match event {
-            SessionEvent::Output { text, .. } => print!("{text}"),
+            SessionEvent::Output { text, .. } if !skip_output => print!("{text}"),
+            SessionEvent::Output { .. } => {}
             SessionEvent::ReportLine { text, .. } => print!("{text}"),
             SessionEvent::PlainReportLine { text, .. } => print!("{text}"),
             SessionEvent::Diagnostic(diagnostic) => eprintln!("{}", frame.describe(diagnostic)),

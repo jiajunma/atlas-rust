@@ -970,3 +970,29 @@ Probe wall times (rust seconds) and rust/oracle ratio per gate run
   labels_for_component + solve_rational_system (profile 3682286:
   Rational::sub_assign 4.28% self, 2.24% under labels_for_component;
   mul 1.24% same path). Gate pending heavy-elimops (3682963) start.
+
+## rowmask gate (3683288-96, 2026-09-05 evening, machine under heavy fat-leg load)
+
+| probe | rowmask 509543a | oracle same-job | ratio |
+|---|---|---|---|
+| deform_e7_only | 12.18 | 14.23 | 0.856x |
+| gkfast_e6 | 1.68 | 0.60 | (small, noisy) |
+| gkfast_e7 | 15.34 | 13.87 | 1.106x |
+| unitary_e7 | 1.15 | 0.38 | (small fixed cost) |
+| finals_e7 | 9.88 | 8.39 | 1.178x |
+| klsum_e7 | 10.27 | 8.77 | 1.171x |
+| av_ann_e7 | 16.93 | 14.38 | 1.177x |
+
+- rowmask (509543a, merged c1a4142): bitset candidate generation in
+  additive_closure. Justified by closure histogram 3683272: avg 125
+  members/call, 99.9% of calls >32 members, 9.4e9 probed pairs per 8min
+  of the heavy E7 unitary probe. deform improves 15.81 -> 12.18s
+  (-23% vs the sumtab8 round; first probe clearly faster than oracle).
+- intcache (b2dd03d): memoize IntegralDatumTable::int_item by gamma —
+  int_item is pure in gamma and RepTable::reduce calls it per query,
+  while a unitarity run shares one infinitesimal character across all
+  finals (profile 3682964: additive_closure 5.9% + wall_set ~5% cluster
+  all under int_item). Gate 3683307-14.
+- Upstream check: integral_datum_item::data(inv) (subsystem.cpp:220)
+  constructs a fresh codec per call, so our per-call IntegralCodec::new
+  in canonical_key matches upstream structure — no gap to close there.
