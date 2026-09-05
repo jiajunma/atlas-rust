@@ -1073,3 +1073,26 @@ fixed-cost dominated.)
   finish_grow/realloc/malloc_aligned), malachite conversion cluster
   ~4.8%, integer_lattice cluster ~4.4%, wall_set cluster ~4.1%,
   id_of_slice+pack_root_key ~2.3%, hashbrown ~3.3%.
+
+## alcoverat2 gate (3683555-62, 2026-09-05 night, 7/7 SORTED_MATCH)
+
+| probe | alcoverat2 866de39 | oracle same-job | ratio |
+|---|---|---|---|
+| deform_e7_only | 13.00 | 11.18 | 1.163x |
+| gkfast_e7 | 14.35 | 13.92 | 1.031x |
+| finals_e7 | 9.33 | 8.27 | 1.128x |
+| klsum_e7 | 10.08 | 8.64 | 1.167x |
+| av_ann_e7 | 16.37 | 14.17 | 1.155x |
+
+- alcoverat2 (866de39, merged 35e412c): labels_for_component's epilogue
+  (relation assembly, denominator lcm, integer rescale) stays in SmallRat
+  machine words — no per-entry Rational construction. Probe-neutral;
+  attacks the malachite conversion cluster (~4.8% in profile 3683465).
+- smallint (07b4e13, agent-smallint): i64 twin of the saturated_kernel
+  ReductionState — SmallIntMatrix + SmallBezout reproducing malachite's
+  extended-gcd cofactor convention exactly (verified against
+  BezoutTransform::for_entries on 14 cases incl. near-i64::MAX), twin vs
+  generic kernel equality on 91 matrices (11 fixed + 80 LCG). Ok(None) =
+  restart on the bignum path, Err = propagate. Gate 3683593-600.
+- frontier2 heavy leg 3683601 (35e412c = rowmask..smallrat64+alcoverat2),
+  7h, vs frontier1 3683422 and oracle 3683423 legs.
