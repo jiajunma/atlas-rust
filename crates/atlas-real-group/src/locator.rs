@@ -602,7 +602,7 @@ fn additive_closure(
     // every member id is a valid root, so the per-call coordinate fetches
     // and bounds checks there are redundant (perf-unitary-3682206).
     let count = system.roots().len();
-    let table = system.root_sum_table();
+    let tables = system.root_sum_tables();
     // Membership can never exceed the root count (the bitset dedups), so one
     // up-front reservation replaces the per-push try_reserve.
     if count > members.capacity() {
@@ -610,7 +610,7 @@ fn additive_closure(
             .try_reserve_exact(count - members.len())
             .map_err(|_| StructureError::AllocationFailed { requested: count })?;
     }
-    if let Some(table) = table {
+    if let Some(tables) = tables {
         // Candidate generation by bitset: row_masks[left] marks the columns
         // whose sum with `left` is a root, so the members worth probing are
         // `row_masks[left] & bits` — each root forms sums with only a
@@ -619,18 +619,13 @@ fn additive_closure(
         // probed once both sides are members and the later side's turn
         // arrives, exactly the pairs the prefix loop covers; probing a
         // member pushed during this same turn early is harmless because the
-        // bitset dedups.
+        // bitset dedups. The masks are cached on the `RootSystem` next to
+        // the sum table, so this loop no longer rebuilds them O(count^2)
+        // per call.
+        let table = &*tables.sums;
+        let row_masks = &*tables.row_masks;
         let words = count.div_ceil(64);
         debug_assert!(count <= 254, "tabled systems stay under the u8 cap");
-        let mut row_masks = vec![0_u64; count * words];
-        for left in 0..count {
-            let row = &table[left * count..(left + 1) * count];
-            for (column, &entry) in row.iter().enumerate() {
-                if entry != u8::MAX {
-                    row_masks[left * words + column / 64] |= 1_u64 << (column % 64);
-                }
-            }
-        }
         let mut next = 0;
         while next < members.len() {
             let left = members[next].index();
