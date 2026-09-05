@@ -837,3 +837,18 @@ RootSystem, BTreeSet->sorted-Vec in block build.
 - AB 3680807 gkfast_e6 vs 12f115e: base 0.81/0.81/0.80 tip 0.79/0.78/0.80,
   median 0.81s -> 0.79s = **1.025x**. E7 3680808: gkfast_e7 14.18s
   (oracle 13.91).
+
+## agent-klpol (ee96d32) — REJECTED at the gate, kept unmerged locally
+
+- KlPol on SmallVec<[i32;8]> (inline coefficients): all 5 probes
+  SORTED_MATCH, quick_check 3680839 green, but AB 3680846 on
+  probe_finals_e7_term20138 vs 0546294: base 9.27/9.23/9.17 tip
+  10.00/9.89/9.88 — median 9.23s -> 9.89s = **0.93x REGRESSION**.
+- Root cause (disproven hypothesis): "KL polynomials are short, so inline
+  storage kills allocation cost". In this workload the interned pool is NOT
+  short-dominated — E7 μ-correction intermediates are long — so SmallVec
+  spills to the heap anyway, while the fatter 40-byte KlPol (vs 24-byte
+  Vec) makes every pool/index clone a bigger memcpy and thins cache
+  density. klfill's scratch-buffer reuse had already removed the
+  allocation pressure SmallVec was meant to save. Branch agent-klpol
+  stays local; do not retry inline storage for KlPol in this shape.
