@@ -13350,7 +13350,8 @@ fn eval_for_loop(
             if in_reversed {
                 iterations.reverse();
             }
-            for_loop_iterations(shape, names, body, in_reversed, level, context, iterations)?
+            let capacity_hint = iterations.len();
+            for_loop_iterations(shape, names, body, in_reversed, level, context, iterations, capacity_hint)?
         }
         // A shared iterable (the common case: a variable read): borrow the
         // aggregate and build one component per step instead of deep-copying
@@ -13374,7 +13375,7 @@ fn eval_for_loop(
                 };
                 view.component(position, index)
             });
-            for_loop_iterations(shape, names, body, in_reversed, level, context, iterations)?
+            for_loop_iterations(shape, names, body, in_reversed, level, context, iterations, length)?
         }
     };
     // The tilde before `od` reverse-collects the row.
@@ -13387,6 +13388,11 @@ fn eval_for_loop(
 /// The per-iteration half of a for loop, shared by the owned and borrowed
 /// traversals: bind the index slot ahead of the pattern slots, run the
 /// body in a traced frame, and collect the row values.
+///
+/// `capacity_hint` pre-sizes the collected row (both callers know the
+/// iteration count up front), and the frame slot buffer recycles across
+/// iterations: a frame the body never captured comes back solely owned,
+/// so its buffer serves the next iteration instead of a fresh allocation.
 #[allow(clippy::too_many_arguments)]
 fn for_loop_iterations(
     shape: &SlotShape,
@@ -13396,31 +13402,41 @@ fn for_loop_iterations(
     level: Level,
     context: &mut EvaluationContext,
     iterations: impl IntoIterator<Item = (Option<Value>, SharedValue)>,
+    capacity_hint: usize,
 ) -> Result<Vec<SharedValue>, Control> {
-    let mut collected = Vec::new();
+    let mut collected = Vec::with_capacity(if level == Level::SingleValue {
+        capacity_hint
+    } else {
+        0
+    });
+    let mut slot_buf: Vec<Option<SharedValue>> = Vec::new();
     // The trace reports the traversal-order iteration counter
     // (0-based), which differs from the `@` index position
     // under reversed traversal (axis.w:6124-6161).
     for (iteration, (index_value, element)) in iterations.into_iter().enumerate() {
         // The index slot precedes the pattern slots, matching
         // the analysis-time layout (upstream pair wrap).
-        let mut slots = Vec::new();
+        slot_buf.clear();
         if let Some(index_value) = index_value {
-            slots.push(Rc::new(index_value));
+            slot_buf.push(Some(Rc::new(index_value)));
         }
-        distribute(element, shape, &mut slots);
-        let (result, frame) = if slots.is_empty() {
+        distribute_options(element, shape, &mut slot_buf);
+        let (result, frame) = if slot_buf.is_empty() {
             // A pure-discard layer pushes no frame, matching the
             // analysis-time empty-layer rule.
             (body.evaluate(context, Level::SingleValue), None)
         } else {
+            let slots = std::mem::take(&mut slot_buf);
             let (result, frame) = context
-                .with_frame_traced(slots, |context| body.evaluate(context, Level::SingleValue));
+                .with_frame_traced_slots(slots, |context| body.evaluate(context, Level::SingleValue));
             (result, Some(frame))
         };
         match result {
             // Collect only when the caller demands the row value.
             Ok(Some(value)) => {
+                if let Some(Ok(frame)) = frame.map(Rc::try_unwrap) {
+                    slot_buf = frame.into_slot_buffer();
+                }
                 if level == Level::SingleValue {
                     collected.push(value);
                 }
@@ -13697,6 +13713,33 @@ fn distribute(value: SharedValue, shape: &SlotShape, slots: &mut Vec<Rc<Value>>)
             );
             for (value, element) in values.into_iter().zip(elements) {
                 distribute(value, element, slots);
+            }
+        }
+    }
+}
+
+/// [`distribute`] into a recycled frame slot buffer: the for-loop traversal
+/// hands the buffer straight to `with_frame_traced_slots`, skipping the
+/// per-iteration option-wrapping rebuild.
+fn distribute_options(value: SharedValue, shape: &SlotShape, slots: &mut Vec<Option<Rc<Value>>>) {
+    match shape {
+        SlotShape::Leaf => slots.push(Some(value)),
+        SlotShape::Discard => {}
+        SlotShape::Tuple { elements, whole } => {
+            if *whole {
+                slots.push(Some(Rc::clone(&value)));
+            }
+            let values = match unwrap_shared(value) {
+                Value::Tuple(values) => values,
+                other => panic!("analysis let a non-tuple value reach a tuple pattern: {other}"),
+            };
+            assert_eq!(
+                values.len(),
+                elements.len(),
+                "analysis let a tuple arity mismatch through"
+            );
+            for (value, element) in values.into_iter().zip(elements) {
+                distribute_options(value, element, slots);
             }
         }
     }

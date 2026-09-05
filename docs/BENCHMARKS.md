@@ -1160,3 +1160,44 @@ In flight: klpool gate 3684171-78 (move interned KL polynomials into the
 pool instead of cloning), reflbuf gate 3684229-36 (buffer-reusing
 reflection in pos_to_neg), wallcache heavy leg 3684029, av_ann profile
 3684013 (KL-dominated: fill_kl_column 12.3%, sub_shifted_assign 6.9%).
+
+## Morning rounds (2026-09-06): klpool / reflbuf / klmove / mixi32 / rinvcache
+
+Gate probe ratios (rust seconds / oracle seconds, same job; all gates
+7/7 SORTED_MATCH; node classes as above):
+
+| gate | deform | gkfast_e7 | finals | klsum | av_ann |
+|---|---|---|---|---|---|
+| klpool 3684171-78 | 0.988x | 0.978x | 1.027x | 1.095x | 1.138x |
+| reflbuf 3684230-36 | — | — | 1.030x | 1.063x | 1.104x |
+| klmove 3684335-41 | 0.990x | 0.970x | 1.045x | 1.098x | 1.140x |
+| mixi32 3684447-54 | 0.969x | 0.952x | 1.000x | 1.067x | 1.115x |
+| rinvcache 3684662-69 | 0.978x | 0.960x | 1.021x | 1.060x | 1.110x |
+
+- klpool (a702b10, merged 274d8b5): working KL polynomials drain into
+  the pool on column transcription instead of cloning.
+- reflbuf (merged 06afbf8): pos_to_neg reflects coordinates through a
+  reused scratch buffer (attacked reflect_coordinates 1.85% of the
+  av_ann profile 3684013).
+- klmove (merged a9c0d10): KL column moves replace clone-and-clear.
+- mixi32 (9684484, merged 41f1a11): mixed-radix KL hash table keys stay
+  in 32-bit lanes; KlHashTable::probe was 2.69% in av_ann 3684013.
+  finals probe reached 1.000x oracle parity this round.
+- rinvcache (267b50e, merged de6ee37): RootSystem memoizes
+  RootInvolutionData per weight-matrix key
+  (`RootSystem::cached_root_involution`), so the unitarity
+  canonicalization loop's repeated `TwistedInvolution::new` on the same
+  involution is an Arc bump instead of 126 roots x 2 matvecs +
+  subsystem_simple_roots (apply_flat_into was 6.59% self + id_of_slice
+  share in unitary profile 3684314). TwistedInvolution now holds
+  Arc<RootInvolutionData>; InnerClass construction sites unchanged.
+- Unitarty frontier profile 3684314 (274d8b5, LTO=off): apply_flat_into
+  6.59%, SmallRat mul_sub_assign 5.13% + div_assign 1.38% + gj_flat
+  1.41% (real arithmetic), lattice::pair 4.25%, id_of_slice 2.23%,
+  frac_eval_value 1.94%, saturated_kernel 1.61%, allocator cluster
+  ~8.5%, interpreter cluster ~12% (eval_for_loop/force/from_iter per
+  iteration Vec churn). hashbrown/CorootTable cluster gone (wallcache
+  worked); BlockTopology::length cluster gone (klmu worked).
+- In flight: loopbuf gate 3684711-18 (for-loop frame slot buffer
+  recycling + pre-sized collected rows; atlas-core typed.rs/frames.rs);
+  heavy legs 3683422/23, 3683443, 3683601, 3683611, 3684029, 3684357.
