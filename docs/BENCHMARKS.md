@@ -1021,3 +1021,28 @@ Probe wall times (rust seconds) and rust/oracle ratio per gate run
 - frontier after both merges = 27b6507 (rowmask + intcache + streamout
   + gj64). Heavy streaming pair 3683422 (rust frontier1=c879b94) vs
   3683423 (oracle), 7h timeout each, decides the real E7 multiplier.
+
+## summasks gate (3683478-85, 2026-09-05 night, 7/7 SORTED_MATCH; machine loaded)
+
+| probe | summasks cc4a688 | oracle same-job | ratio |
+|---|---|---|---|
+| deform_e7_only | 16.07 | 14.69 | 1.094x |
+| gkfast_e6 | 0.91 | 0.58 | (small) |
+| gkfast_e7 | 13.16 | 13.37 | 0.984x |
+| unitary_e7 | 0.62 | 0.36 | (small) |
+| finals_e7 | 8.44 | 7.62 | 1.108x |
+| klsum_e7 | 10.12 | 8.65 | 1.170x |
+| av_ann_e7 | 16.56 | 14.26 | 1.161x |
+
+- summasks (cc4a688, merged 8ecbfd7): additive_closure's per-call O(count^2)
+  row-mask build moved into the RootSystem lazy cache as
+  RootSumTables{sums,row_masks} — no new struct field (av_ann +54%
+  alcove-OnceLock lesson). Probe-neutral as expected (the target is the
+  heavy unitary path where int_item calls repeat per gamma); within-round
+  ratios consistent with the frontier, gkfast_e7 slightly better.
+- Gate-process fix: `--wrap` jobs must `source /etc/profile` BEFORE
+  `set -u` (HISTCONTROL unbound kills the job otherwise; 3683456 lost).
+- Heavy legs in flight: frontier1 (3683422, c879b94) vs oracle cpp7h
+  (3683423), gj64 (3683443). At ~25min: frontier1 term 1820, gj64 1760,
+  oracle 1430. Common-prefix sorted diff to term 1420 = MATCH (3078
+  lines, byte-identical).
