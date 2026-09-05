@@ -351,6 +351,25 @@ impl KlHashTable {
 
     /// The pool index of a polynomial, inserting it if new.
     pub fn match_pol(&mut self, polynomial: &KlPol) -> usize {
+        match self.probe(polynomial) {
+            Ok(index) => index,
+            Err(slot) => self.insert_at(polynomial.clone(), slot),
+        }
+    }
+
+    /// `match_pol` taking ownership: a miss MOVES the polynomial into the
+    /// pool instead of cloning it (the column-fill path hands over working
+    /// polynomials it will never read again).
+    pub fn match_pol_owned(&mut self, polynomial: KlPol) -> usize {
+        match self.probe(&polynomial) {
+            Ok(index) => index,
+            Err(slot) => self.insert_at(polynomial, slot),
+        }
+    }
+
+    /// The hash-table probe shared by both `match_pol` forms: `Ok(index)`
+    /// on a hit, `Err(slot)` with the empty slot to fill on a miss.
+    fn probe(&self, polynomial: &KlPol) -> Result<usize, usize> {
         let mut hasher = MixingHasherBuilder::default().build_hasher();
         polynomial.hash(&mut hasher);
         let hash = hasher.finish();
@@ -358,23 +377,28 @@ impl KlHashTable {
         loop {
             let entry = self.slots[slot];
             if entry == 0 {
-                let index = self.pool.len();
-                debug_assert!(index < u32::MAX as usize);
-                self.pool.push(polynomial.clone());
-                self.slots[slot] = (index + 1) as u32;
-                // Grow at 3/4 load, rehashing from the pool (the only
-                // storage), so no key copies are ever reshuffled.
-                if (self.pool.len() + 1) * 4 > self.slots.len() * 3 {
-                    self.grow();
-                }
-                return index;
+                return Err(slot);
             }
             let index = usize::try_from(entry - 1).expect("slot fits usize");
             if self.pool[index] == *polynomial {
-                return index;
+                return Ok(index);
             }
             slot = (slot + 1) & self.mask;
         }
+    }
+
+    /// Insert at the empty slot `probe` returned, growing at 3/4 load by
+    /// rehashing from the pool (the only storage), so no key copies are
+    /// ever reshuffled.
+    fn insert_at(&mut self, polynomial: KlPol, slot: usize) -> usize {
+        let index = self.pool.len();
+        debug_assert!(index < u32::MAX as usize);
+        self.pool.push(polynomial);
+        self.slots[slot] = (index + 1) as u32;
+        if (self.pool.len() + 1) * 4 > self.slots.len() * 3 {
+            self.grow();
+        }
+        index
     }
 
     fn grow(&mut self) {

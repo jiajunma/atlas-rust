@@ -464,7 +464,11 @@ impl<B: BlockTopology> KlTableHandle<B> {
         scratch: &mut ColumnScratch,
         y: BlockElt,
     ) -> Result<(), StructureError> {
-        let working = &scratch.working;
+        // Field-split the scratch borrow: `working` is consumed (interned
+        // polynomials move into the pool) while `downs` is refilled.
+        let ColumnScratch {
+            working, downs, ..
+        } = scratch;
         let desc_y = self.support.descent_set(y).clone();
         let prim_slot = self.support.prim_slot(&desc_y);
         let ly = self.support.length(y);
@@ -477,9 +481,8 @@ impl<B: BlockTopology> KlTableHandle<B> {
         // (kl.cpp:578-585); the backward traversal below appends the
         // recursion μ-pairs after them, so the final stable sort keeps
         // the μ=1 entry ahead of any duplicate with the same x.
-        self.down_set(y, &mut scratch.downs)?;
-        let mut mu_pairs: Vec<MuPair> = scratch
-            .downs
+        self.down_set(y, downs)?;
+        let mut mu_pairs: Vec<MuPair> = downs
             .iter()
             .map(|&z| MuPair { x: z, coef: 1 })
             .collect();
@@ -491,15 +494,23 @@ impl<B: BlockTopology> KlTableHandle<B> {
             let position = self.support.prim_index_at(prim_slot, x);
             if self.support.is_extremal(x, &desc_y) {
                 work_index -= 1;
-                let pxy = &working[work_index];
-                let index = self.pool.match_pol(pxy);
-                column[position] = index;
                 let lx = self.support.length(x);
-                if !pxy.is_zero() && ly == lx + 2 * pxy.degree() + 1 {
-                    mu_pairs.push(MuPair {
-                        x,
-                        coef: pxy.coefficient(pxy.degree()),
-                    });
+                let mu_top = {
+                    let pxy = &working[work_index];
+                    if !pxy.is_zero() && ly == lx + 2 * pxy.degree() + 1 {
+                        Some(pxy.coefficient(pxy.degree()))
+                    } else {
+                        None
+                    }
+                };
+                // The working polynomial is interned here and never read
+                // again: move it into the pool on a miss instead of
+                // cloning (the clone stream fed the allocator cluster,
+                // perf-unitary-3684013).
+                let pxy = std::mem::replace(&mut working[work_index], KlPol::zero());
+                column[position] = self.pool.match_pol_owned(pxy);
+                if let Some(coef) = mu_top {
+                    mu_pairs.push(MuPair { x, coef });
                 }
             } else {
                 // Primitive non-extremal: sum of the two cayley images'
@@ -524,7 +535,7 @@ impl<B: BlockTopology> KlTableHandle<B> {
                         let second_pol =
                             self.current_column_pol(&column, prim_slot, second_image, y);
                         pxy.add_assign(second_pol);
-                        self.pool.match_pol(&pxy)
+                        self.pool.match_pol_owned(pxy)
                     }
                     // A missing Cayley image (outside the block)
                     // contributes zero (kl.cpp:127), and the zero
