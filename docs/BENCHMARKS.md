@@ -996,3 +996,28 @@ Probe wall times (rust seconds) and rust/oracle ratio per gate run
 - Upstream check: integral_datum_item::data(inv) (subsystem.cpp:220)
   constructs a fresh codec per call, so our per-call IntegralCodec::new
   in canonical_key matches upstream structure — no gap to close there.
+
+## streamout + gj64 gates (2026-09-05 night; streamout 3683413-21, gj64 3683435-42; both 7/7 SORTED_MATCH)
+
+| probe | streamout c879b94 | ratio | gj64 5a83105 | ratio |
+|---|---|---|---|---|
+| deform_e7_only | 11.21 / 13.42 | 0.835x | 15.95 / 15.55 | 1.026x |
+| gkfast_e6 | 0.95 / 0.61 | (small) | 0.98 / 0.76 | (small) |
+| gkfast_e7 | 14.33 / 13.95 | 1.027x | 14.28 / 14.08 | 1.014x |
+| unitary_e7 | 0.65 / 0.42 | (small) | 0.73 / 0.50 | (small) |
+| finals_e7 | 9.23 / 8.46 | 1.091x | 9.50 / 8.51 | 1.116x |
+| klsum_e7 | 10.13 / 8.67 | 1.168x | 10.08 / 8.62 | 1.169x |
+| av_ann_e7 | 16.41 / 14.20 | 1.156x | 16.45 / 14.20 | 1.158x |
+
+- streamout (c879b94, merged d251678): ATLAS_STREAM_OUTPUT=1 streams
+  printer output live so time-boxed heavy legs keep partial results;
+  default behavior byte-identical. Perf-neutral on probes; deform leg of
+  this round ran on an unloaded node (0.835x) vs gj64 round on a loaded
+  one — cross-round absolute times not comparable.
+- gj64 (5a83105, merged 27b6507): u64 fast path in SmallRat
+  reduce_i128 (profile 3683299: gj_normalize_and_clear 9.04% self incl.
+  inlined u128 gcd). Probe-level neutral (target is the heavy E7
+  unitarity load); heavy leg 3683443 measures the increment there.
+- frontier after both merges = 27b6507 (rowmask + intcache + streamout
+  + gj64). Heavy streaming pair 3683422 (rust frontier1=c879b94) vs
+  3683423 (oracle), 7h timeout each, decides the real E7 multiplier.
