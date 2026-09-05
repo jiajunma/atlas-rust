@@ -8675,3 +8675,44 @@ lower-bound signal for the heavy probe but must be re-measured on av2.
   before then. heavy-alcrat embeds no build either; it depends on
   afterok:build-alcrat. Next slice after alcrat: fresh profile 3682964
   (perf-unitary on the elimops tree, RUNNING).
+
+## Slices 2026-09-05j (avopt: alcrat LANDED; av_ann drift A/B; elfuse gate in flight)
+
+- agent-alcrat MERGED as 6127488 (66f9a54: SmallRat sweeps for alcove
+  labels_for_component + solve_rational_system via new
+  atlas-real-group::smallrat). Gate 3682993-3683001 green, 7/7
+  SORTED_MATCH. Probe ratios vs elimops gate: gkfast_e7 1.014x -> 1.020x
+  (abs 14.12 -> 12.78), finals 1.098 -> 1.13x (9.20 -> 8.10; oracle also
+  moved 8.38 -> 7.17), deform 0.965x (rust FASTER: 11.05 vs 11.45),
+  av_ann flat 1.16x.
+- av_ann drift A/B (3682988, same-job interleaved x3, all outputs
+  IDENTICAL across commits): a869688 14.73/13.81/13.67, 2ce2d15 (fastgj)
+  15.23/14.53/14.57, 76cc35e (elimops) 14.94/14.61/14.56. => fastgj costs
+  av_ann ~+5% consistently (SmallRat eager-reduce overhead on that path),
+  elimops adds nothing. KEPT fastgj: deform -9% / gkfast_e7 -7% offset
+  it; heavy-fastgj (3682850) and heavy-alcrat (3683002) legs give the
+  final word on the target workload. If the heavy legs show the same
+  drag, revisit by restricting SmallRat to the solver shapes that win.
+- Fresh profile 3682964 (elimops tree, LTO=off, 25min heavy unitary):
+  additive_closure STILL 5.90% (f278f4d did not dent it) via
+  IntegralDatumTable::int_item <- RepTable::reduce; malachite
+  try_from_signed 3.63% (!!) — elimops' two-pass prevalidation DOUBLED
+  the per-entry i64::try_from count; integer_lattice cluster ~3.6%
+  (check_combination_bound 1.04 + add_column_multiple 0.97 +
+  combination_value 0.90 + saturated_kernel 0.72). wall_set residue
+  ~5% (contains_difference 1.38 + wall_set 1.38 + frac_eval_value 1.31 +
+  pack_root_key 0.80). labels_for_component 1.92 + solve_rational_system
+  0.62 (pre-alcrat binary). lattice::pair 2.59.
+- agent-elfuse (c80f4bc): fuse the row/col ops back to ONE pass of the
+  restored-fused bounded_linear_combination with immediate in-place
+  writes — budget errors are fatal resource limits, callers drop the
+  matrix, so pristine-on-error was unobservable; the two-pass version
+  doubled i64 conversions for nothing. Build-then-swap reference tests
+  retained. Gate: QC 3683123, build 3683124, probes 3683125-31,
+  heavy-elfuse 3683132 (embedded build).
+- TRAP: `git checkout --detach` on the HPC channel checkout ABORTS
+  silently mid-chain when an untracked file would be overwritten (the
+  scp'd ab_avann_slices.sbatch vs the committed one) — the `| tail -1`
+  pipe masks the failure and the gate then tests the WRONG tree. First
+  elfuse chain (3683106-15) was scancelled for this. Always verify
+  `git log --oneline -1` after the checkout step.
