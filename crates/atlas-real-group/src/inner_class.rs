@@ -632,8 +632,12 @@ impl InnerClass {
         // on two worker threads; everything else keeps the sequential
         // driver (thread setup is not worth it below ~100 roots). Keys fit
         // a u64 slot at semisimple rank <= 8 (E7/E8 included), halving the
-        // per-worker membership table.
-        if packed && self.roots.roots().len() >= 100 {
+        // per-worker membership table. A single-CPU job (SLURM probe slots
+        // are cpus-per-task=1) timeshares the two workers on one core —
+        // setup overhead without parallelism — so stay sequential there.
+        let parallel_worthwhile = std::thread::available_parallelism()
+            .map_or(false, |parallelism| parallelism.get() > 1);
+        if packed && self.roots.roots().len() >= 100 && parallel_worthwhile {
             if simple_positions.len() <= 8 {
                 self.involution_orbits_parallel::<u64>(
                     weyl_budget,
