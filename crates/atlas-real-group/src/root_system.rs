@@ -179,6 +179,21 @@ impl RootSet {
 /// `OnceLock` caches: their content is a deterministic function of
 /// `roots`, so equality compares only the data fields and ignores whether
 /// the caches have been built yet.
+/// The cached pair-sum products of a `RootSystem`: with `n = roots.len()`,
+/// `sums[a * n + b]` is the id of `roots[a] + roots[b]` as `u8`, or the
+/// `u8::MAX` sentinel when that vector is not a root. `row_masks` derives
+/// from `sums`: with `w = n.div_ceil(64)`, `row_masks[a * w + b / 64]` has
+/// bit `b % 64` set exactly when `sums[a * n + b]` is a root id, so
+/// `additive_closure` can gather a member's sum candidates with one AND
+/// against its membership bitset instead of rescanning the n-wide row.
+/// `u8` lanes halve the footprint (E7: 32 KB -> 16 KB, L1-resident; E8:
+/// 115 KB -> 58 KB), which the `additive_closure` gather loop feels.
+#[derive(Clone, Debug)]
+pub(crate) struct RootSumTables {
+    pub(crate) sums: Box<[u8]>,
+    pub(crate) row_masks: Box<[u64]>,
+}
+
 #[derive(Clone, Debug)]
 pub struct RootSystem {
     datum: BasedRootDatum,
@@ -215,15 +230,12 @@ pub struct RootSystem {
     /// entrywise as `w - <w, coroot> * root`, so the permutations are the
     /// same ones `action_permutation` derives).
     simple_reflections: Vec<Vec<RootId>>,
-    /// Lazy flat pair-sum table: with `n = roots.len()`, entry
-    /// `[a * n + b]` is the id of `roots[a] + roots[b]` as `u8`, or the
-    /// `u8::MAX` sentinel when that vector is not a root. Built on first
-    /// `combine_roots` use for `n <= ROOT_SUM_TABLE_MAX_ROOTS`; the outer
-    /// `None` marks systems (oversized, or an abandoned build) that keep
-    /// computing sums per call. Pure cache: equality ignores it. `u8`
-    /// lanes halve the footprint (E7: 32 KB -> 16 KB, L1-resident; E8:
-    /// 115 KB -> 58 KB), which the `additive_closure` gather loop feels.
-    root_sums: OnceLock<Option<Box<[u8]>>>,
+    /// Lazy flat pair-sum table plus its per-row membership masks (see
+    /// `RootSumTables`). Built on first `combine_roots` use for
+    /// `n <= ROOT_SUM_TABLE_MAX_ROOTS`; the outer `None` marks systems
+    /// (oversized, or an abandoned build) that keep computing sums per
+    /// call. Pure cache: equality ignores it.
+    root_sums: OnceLock<Option<Box<RootSumTables>>>,
     /// Lazy coordinate→id index for `id_of_slice`, built once on first use
     /// from `roots`. Unlike `root_sums` it scales linearly with the root
     /// count, so it serves every size (E8 has 240 roots) and carries no
@@ -771,18 +783,26 @@ impl RootSystem {
     /// The lazy pair-sum table (see the `root_sums` field), or `None` when
     /// this system computes root sums per call.
     pub(crate) fn root_sum_table(&self) -> Option<&[u8]> {
+        self.root_sum_tables().map(|tables| &*tables.sums)
+    }
+
+    /// The lazy pair-sum table together with its per-row candidate masks
+    /// (see [`RootSumTables`]), or `None` when this system computes root
+    /// sums per call.
+    pub(crate) fn root_sum_tables(&self) -> Option<&RootSumTables> {
         self.root_sums
             .get_or_init(|| self.build_root_sum_table())
             .as_deref()
     }
 
-    /// Build the flat pair-sum table with fallible allocation throughout.
-    /// Any failure — an oversized system, a failed reservation, or a
-    /// checked-add overflow on coordinates — returns `None` so callers fall
-    /// back to the per-call coordinate path with its original errors.
-    /// Every stored sum is classified with the same `id_of_slice` lookup
-    /// the per-call path uses, reusing one coordinate buffer.
-    fn build_root_sum_table(&self) -> Option<Box<[u8]>> {
+    /// Build the flat pair-sum table and its row masks with fallible
+    /// allocation throughout. Any failure — an oversized system, a failed
+    /// reservation, or a checked-add overflow on coordinates — returns
+    /// `None` so callers fall back to the per-call coordinate path with its
+    /// original errors. Every stored sum is classified with the same
+    /// `id_of_slice` lookup the per-call path uses, reusing one coordinate
+    /// buffer.
+    fn build_root_sum_table(&self) -> Option<Box<RootSumTables>> {
         let count = self.roots.len();
         if count > ROOT_SUM_TABLE_MAX_ROOTS {
             return None;
@@ -822,7 +842,21 @@ impl RootSystem {
                 };
             }
         }
-        Some(table.into_boxed_slice())
+        let words = count.div_ceil(64);
+        let mut row_masks: Vec<u64> = Vec::new();
+        row_masks.try_reserve_exact(count.checked_mul(words)?).ok()?;
+        row_masks.resize(count * words, 0);
+        for (left, row) in table.chunks_exact(count).enumerate() {
+            for (column, &entry) in row.iter().enumerate() {
+                if entry != u8::MAX {
+                    row_masks[left * words + column / 64] |= 1_u64 << (column % 64);
+                }
+            }
+        }
+        Some(Box::new(RootSumTables {
+            sums: table.into_boxed_slice(),
+            row_masks: row_masks.into_boxed_slice(),
+        }))
     }
 
     /// Root permutation of simple reflection `generator` (the table built
