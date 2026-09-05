@@ -598,32 +598,73 @@ fn additive_closure(
             .try_reserve_exact(count - members.len())
             .map_err(|_| StructureError::AllocationFailed { requested: count })?;
     }
-    let mut next = 0;
-    while next < members.len() {
-        let left = members[next];
-        let left_base = left.index() * count;
-        for other in 0..next {
-            let sum = match table {
-                Some(table) => {
-                    let entry = table[left_base + members[other].index()];
-                    if entry == u8::MAX {
-                        None
-                    } else {
-                        Some(RootId::from_usize(usize::from(entry)))
-                    }
-                }
-                None => combine_roots(system, left, members[other], false)?,
-            };
-            if let Some(sum) = sum {
-                let word = sum.index() / 64;
-                let mask = 1_u64 << (sum.index() % 64);
-                if bits[word] & mask == 0 {
-                    bits[word] |= mask;
-                    members.push(sum);
+    if let Some(table) = table {
+        // Candidate generation by bitset: row_masks[left] marks the columns
+        // whose sum with `left` is a root, so the members worth probing are
+        // `row_masks[left] & bits` — each root forms sums with only a
+        // handful of other roots, which skips the O(members^2) prefix sweep
+        // (perf-unitary-3682964: additive_closure 5.9% self). A pair is
+        // probed once both sides are members and the later side's turn
+        // arrives, exactly the pairs the prefix loop covers; probing a
+        // member pushed during this same turn early is harmless because the
+        // bitset dedups.
+        let words = count.div_ceil(64);
+        debug_assert!(count <= 254, "tabled systems stay under the u8 cap");
+        let mut row_masks = vec![0_u64; count * words];
+        for left in 0..count {
+            let row = &table[left * count..(left + 1) * count];
+            for (column, &entry) in row.iter().enumerate() {
+                if entry != u8::MAX {
+                    row_masks[left * words + column / 64] |= 1_u64 << (column % 64);
                 }
             }
         }
-        next += 1;
+        let mut next = 0;
+        while next < members.len() {
+            let left = members[next].index();
+            let mut candidates = [0_u64; 4];
+            for (candidate, (&row_word, &member_word)) in candidates
+                .iter_mut()
+                .zip(row_masks[left * words..(left + 1) * words].iter().zip(bits.iter()))
+                .take(words)
+            {
+                *candidate = row_word & member_word;
+            }
+            // The prefix loop never pairs a root with itself (for
+            // non-reduced systems 2*alpha can be a root); mask it out.
+            candidates[left / 64] &= !(1_u64 << (left % 64));
+            for (word_index, &word) in candidates.iter().enumerate().take(words) {
+                let mut remaining = word;
+                while remaining != 0 {
+                    let column = word_index * 64 + remaining.trailing_zeros() as usize;
+                    remaining &= remaining - 1;
+                    let sum = usize::from(table[left * count + column]);
+                    let sum_word = sum / 64;
+                    let sum_mask = 1_u64 << (sum % 64);
+                    if bits[sum_word] & sum_mask == 0 {
+                        bits[sum_word] |= sum_mask;
+                        members.push(RootId::from_usize(sum));
+                    }
+                }
+            }
+            next += 1;
+        }
+    } else {
+        let mut next = 0;
+        while next < members.len() {
+            let left = members[next];
+            for other in 0..next {
+                if let Some(sum) = combine_roots(system, left, members[other], false)? {
+                    let word = sum.index() / 64;
+                    let mask = 1_u64 << (sum.index() % 64);
+                    if bits[word] & mask == 0 {
+                        bits[word] |= mask;
+                        members.push(sum);
+                    }
+                }
+            }
+            next += 1;
+        }
     }
     let mut closure = Vec::with_capacity(members.len());
     for (word, &bits_word) in bits.iter().enumerate() {
