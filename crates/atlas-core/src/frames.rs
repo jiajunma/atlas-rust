@@ -25,6 +25,15 @@ use crate::value::Value;
 /// A shared runtime value (upstream `shared_value`).
 pub type SharedValue = Rc<Value>;
 
+/// `ATLAS_STREAM_OUTPUT=1` opt-in, read once per process: echo printer
+/// output to stdout as it is produced. Batch runs collect events and print
+/// them at process exit, so a long leg killed at its SLURM time limit
+/// otherwise loses every progress line.
+fn stream_output_enabled() -> bool {
+    static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ENABLED.get_or_init(|| std::env::var_os("ATLAS_STREAM_OUTPUT").is_some_and(|v| v == "1"))
+}
+
 /// One layer of bindings; closures may share tails of the chain.
 pub struct Frame {
     next: Option<Rc<Frame>>,
@@ -82,10 +91,32 @@ impl EvaluationContext {
         Self::default()
     }
 
+    /// Whether printer output streams to stdout as produced. Opt-in via
+    /// `ATLAS_STREAM_OUTPUT=1`; read once per process.
+    pub fn stream_output() -> bool {
+        stream_output_enabled()
+    }
+
     /// Append one printer builtin's output (upstream's unconditional
     /// `*output_stream` writes, e.g. atlas-types.w:8944-8957).
+    ///
+    /// With `ATLAS_STREAM_OUTPUT=1` in the environment the text goes
+    /// straight to stdout instead of the buffer: batch runs collect events
+    /// and print them at process exit, so a long leg killed at its SLURM
+    /// time limit would otherwise lose every progress line. Events created
+    /// later at the session layer (value/definition rendering) are echoed
+    /// at creation and skipped in the final print, so each line appears
+    /// exactly once; only `>file` redirects see a deviation (prints stay on
+    /// stdout), acceptable for this opt-in measurement mode.
     pub fn print_text(&mut self, text: String) {
-        self.printed.push(text);
+        if stream_output_enabled() {
+            use std::io::Write;
+            let mut stdout = std::io::stdout().lock();
+            let _ = stdout.write_all(text.as_bytes());
+            let _ = stdout.flush();
+        } else {
+            self.printed.push(text);
+        }
     }
 
     /// Drain the buffered printer output in production order.

@@ -472,10 +472,9 @@ impl<P: FileProvider, S: FileSink> SessionFrame<P, S> {
                         if compact_matrix_display && matches!(value, crate::value::Value::Matrix(_)) {
                             rendered.pop();
                         }
-                        events.push(SessionEvent::Output {
-                            text: format!("Value: {rendered}\n"),
-                            span,
-                        });
+                        let text = format!("Value: {rendered}\n");
+                        stream_fresh_output(&text);
+                        events.push(SessionEvent::Output { text, span });
                     }
                 }
                 SessionEvent::ReportLine { text, span } => {
@@ -487,12 +486,14 @@ impl<P: FileProvider, S: FileSink> SessionFrame<P, S> {
                         .split_inclusive('\n')
                         .filter(|line| !line.is_empty())
                         .map(|line| format!("{indent}{line}"))
-                        .collect();
+                        .collect::<String>();
+                    stream_fresh_output(&text);
                     events.push(SessionEvent::Output { text, span });
                 }
                 SessionEvent::PlainReportLine { text, span } => {
                     // forget / forget-overload reports skip the indent
                     // (global.w:1241-1261).
+                    stream_fresh_output(&text);
                     events.push(SessionEvent::Output { text, span });
                 }
                 SessionEvent::Diagnostic(diagnostic) => {
@@ -538,7 +539,22 @@ impl<P: FileProvider, S: FileSink> SessionFrame<P, S> {
     }
 }
 
+/// Echo one freshly rendered Output text under `ATLAS_STREAM_OUTPUT=1`
+/// (see [`crate::frames::EvaluationContext::stream_output`]). Only events
+/// CREATED at the session layer come through here — evaluation prints
+/// already streamed inside `EvaluationContext::print_text` when produced,
+/// and pass-through events must not be echoed twice.
+fn stream_fresh_output(text: &str) {
+    if crate::frames::EvaluationContext::stream_output() {
+        use std::io::Write;
+        let mut stdout = std::io::stdout().lock();
+        let _ = stdout.write_all(text.as_bytes());
+        let _ = stdout.flush();
+    }
+}
+
 fn output(text: String) -> SessionEvent {
+    stream_fresh_output(&text);
     SessionEvent::Output {
         text,
         span: SourceText::new("").span(0, 0),

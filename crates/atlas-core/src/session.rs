@@ -124,8 +124,7 @@ pub(crate) fn execute_tokens(
 
 /// Lift one typed-command event to the session layer (the value/report/
 /// output shapes are identical; only the value keeps its void flag).
-fn session_event(event: TypedCommandEvent) -> SessionEvent {
-    match event {
+fn session_event(event: TypedCommandEvent) -> SessionEvent {    match event {
         TypedCommandEvent::Value {
             value,
             type_,

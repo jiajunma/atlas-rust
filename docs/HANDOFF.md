@@ -8716,3 +8716,19 @@ lower-bound signal for the heavy probe but must be re-measured on av2.
   pipe masks the failure and the gate then tests the WRONG tree. First
   elfuse chain (3683106-15) was scancelled for this. Always verify
   `git log --oneline -1` after the checkout step.
+- agent-rowmask (509543a, merged c1a4142, gate 3683288-96 all
+  SORTED_MATCH): bitset candidate generation in additive_closure —
+  row_masks[left] & members_bits, self-pair masked (BC_n 2*alpha).
+  Closure histogram (3683272): avg 125 members, 99.9% >32, so the
+  O(count^2) mask build is always repaid; no hybrid threshold needed.
+  deform 15.81 -> 12.18s (0.856x oracle).
+- agent-intcache (b2dd03d, gate 3683307-14 in flight): memoize
+  IntegralDatumTable::int_item by gamma (RationalWeight is gcd-normalized
+  so value equality is a canonical hash key). reduce() calls it per
+  query; unitarity runs share one gamma across all finals. Gate uses a
+  PRIVATE worktree build + RUSTBIN override (atlas-cli-intcache) so the
+  shared checkout stays on rowmask — pattern reusable when two gates
+  must overlap.
+- intcache probe convention: binary copied to
+  ~/atlas-rust-avopt/atlas-cli-intcache by the build job; delete after
+  the gate concludes.
