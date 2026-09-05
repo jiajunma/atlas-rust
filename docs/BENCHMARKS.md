@@ -1096,3 +1096,24 @@ fixed-cost dominated.)
   restart on the bignum path, Err = propagate. Gate 3683593-600.
 - frontier2 heavy leg 3683601 (35e412c = rowmask..smallrat64+alcoverat2),
   7h, vs frontier1 3683422 and oracle 3683423 legs.
+
+## smallint gate (3683593-600, 2026-09-05 night, 7/7 SORTED_MATCH)
+
+| probe | smallint 07b4e13 | oracle same-job | ratio |
+|---|---|---|---|
+| deform_e7_only | 11.68 | 14.11 | 0.828x |
+| gkfast_e7 | 14.22 | 13.88 | 1.025x |
+| finals_e7 | 9.23 | 8.26 | 1.117x |
+| klsum_e7 | 10.05 | 8.64 | 1.163x |
+| av_ann_e7 | 16.44 | 14.20 | 1.158x |
+
+- smallint merged as f4b042d (frontier3). Probe-level neutral (target:
+  heavy unitary integer_lattice cluster ~4.4%); deform leg ran on an
+  unloaded node again.
+- frontier3 heavy leg 3683611 + profile 3683612 (30min) in flight.
+
+## Slice summary 2026-09-05 night (all gates 7/7 SORTED_MATCH)
+
+Merged stack on agent-avopt: rowmask c1a4142 -> intcache c386a70 ->
+streamout d251678 -> gj64 27b6507 -> summasks 8ecbfd7 -> transpi64
+a729ad2 -> smallrat64 9949765 -> alcoverat2 35e412c -> smallint f4b042d.
