@@ -8567,3 +8567,19 @@ test retained). Gate: quick_check 3681929, build 3681930, 7 probes
 OPEN: the closure/wallset heavy legs 3681407/3681418 still run WITH the
 rejected alcove caches — if they finish, their times are still a valid
 lower-bound signal for the heavy probe but must be re-measured on av2.
+
+## Slices landed 2026-09-05g (agent-avopt = fbf6777, all HPC-gated)
+
+- dcc20f0 corootkey: wall_set membership via per-call packed-u64 hash set
+  (pack_root_key lanes), replacing the boxed-slice BTreeSet whose
+  lexicographic slice compares were ~14% of the post-av2 heavy profile
+  (3681949). Gate 3682118-26 green; av_ann stable 15.73s.
+- 3fb995e numbering: RootNumbering::new is now map-free (position_of
+  array + negatives table) with precomputed per-root heights. Gate
+  3682137/3682140-46 green; av_ann 15.71s.
+- fbf6777 matsum: i64 fast path + i128 fallback in involution
+  apply_matrix_into. Gate 3682183/3682186-92 green; av_ann 15.40s.
+- Malachite Rational cluster attribution (3681949 inverted): sub_assign
+  lands under TypedExpr::evaluate/eval_for_loop — INTERPRETER ratvec
+  arithmetic in deform.at, not the alcove solvers; a Bareiss rewrite of
+  labels_for_component would miss it. Domain-side solver share is small.
