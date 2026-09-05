@@ -29,6 +29,26 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   has no inherent one; the trait method resolved correctly). Audit rule:
   when a type has both an inherent method and a trait method of the same
   name, verify which one a call site resolves to.
+- SECOND heavy-unitary blocker (fixed 4cddc28, gate 3681097 + legs
+  3681098/3681100-107): after the cross fix the probe died at 5:47 with
+  "complex descent inside interval".  Root cause: `Rep_table::lookup`'s
+  union-pool dedup used `ReducedParamKey`, but Reduced_param equality is
+  COARSER than param-class equality by design (repr.cpp:281-292:
+  distinct classes at the same x can share integral-coroot residues —
+  and both codebases pack residues into a wrapping 32-bit
+  `evs_reduced`).  A transported overlap row whose class was absent from
+  the Bruhat interval got key-deduped away, breaking closure.  Diag job
+  3681089 (instrumented build, agent-diag branch) pinpointed it:
+  interval=3 + overlap=2, BlockId(59) held the missing cross image
+  bitwise.  Fix: dedup by raw `StandardReprMod` (HashSet), exactly
+  upstream's `hash.match`.  Lesson: ReducedParamKey is ONLY for
+  place/overlap lookup, never for membership.
+- agent-alcove (0e4686f, awaiting gate after the dedup chain lands):
+  cache alcove RootNumbering + coroot index in RootSystem OnceLocks.
+  Heavy-unitary profile 3681018 (first ever for this probe): BTreeMap
+  insert/compare/get ~23%, combine_roots 5.7%, malachite rationals
+  ~6.4%, additive_closure 3.7%, alcove wall_set family ~3.8% — the
+  per-deform-step alcove_center rebuilt both maps every call.
 - PROCESS TRAP (cost one wasted heavy run, 3680977): quick_check.sbatch
   only runs `cargo check` + `cargo test` (debug) — it NEVER rebuilds
   target/release/atlas-cli. A `--wrap` probe job with
