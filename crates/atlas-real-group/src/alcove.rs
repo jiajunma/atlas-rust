@@ -212,6 +212,19 @@ pub(crate) fn wall_set(
                 .map(|coroot| coroot.as_slice().to_vec())
         })
         .collect();
+    // Coroot slices per numbering index, resolved once: the filtering loop
+    // pairs every surviving root with every wall root.
+    let mut coroots: Vec<&[i32]> = Vec::with_capacity(num_roots);
+    for nbr in 0..num_roots {
+        coroots.push(
+            root_system
+                .coroot(numbering.id(nbr))
+                .ok_or(StructureError::RootSystemInvariantViolation {
+                    invariant: "alcove root has no coroot",
+                })?
+                .as_slice(),
+        );
+    }
     let mut levels = (0..num_roots)
         .map(|nbr| Ok((nbr, frac_eval_value(root_system, numbering.id(nbr), gamma)?)))
         .collect::<Result<Vec<_>, StructureError>>()?;
@@ -223,48 +236,69 @@ pub(crate) fn wall_set(
                 invariant: "nonempty alcove levels",
             },
         )?;
-        levels.sort_by_key(|(_, level)| (*level != min_level) as u8);
-        let mut n_min = levels
-            .iter()
-            .take_while(|(_, level)| *level == min_level)
-            .count();
-        while n_min > 0 && !levels.is_empty() {
-            let (alpha, level) = levels.remove(0);
+        // Upstream's stable front partition: minimal-level roots first.
+        let mut mins: Vec<(usize, (i64, i64))> = Vec::new();
+        let mut rest: Vec<(usize, (i64, i64))> = Vec::new();
+        for item in levels {
+            if item.1 == min_level {
+                mins.push(item);
+            } else {
+                rest.push(item);
+            }
+        }
+        // Process the minimal-level roots in order; each accepted wall
+        // filters every survivor (unprocessed mins included) by whether its
+        // coroot differs from the wall's by a coroot. A filtered-out min
+        // leaves the queue without becoming a wall (upstream's `n_min`
+        // decrement).
+        let mut cursor = 0;
+        while cursor < mins.len() {
+            let (alpha, level) = mins[cursor];
+            cursor += 1;
             if level.0 == 0 {
                 integrals.insert(alpha);
             }
             walls.insert(alpha);
-            n_min -= 1;
-            let alpha_coroot = root_system
-                .coroot(numbering.id(alpha))
-                .ok_or(StructureError::RootSystemInvariantViolation {
-                    invariant: "alcove root has no coroot",
-                })?
-                .as_slice()
-                .to_vec();
-            let mut kept = Vec::new();
-            for item in levels.drain(..) {
-                let beta_coroot = root_system
-                    .coroot(numbering.id(item.0))
-                    .ok_or(StructureError::RootSystemInvariantViolation {
-                        invariant: "alcove root has no coroot",
-                    })?
-                    .as_slice();
-                let difference = alpha_coroot
-                    .iter()
-                    .zip(beta_coroot)
-                    .map(|(&alpha, &beta)| alpha - beta)
-                    .collect::<Vec<_>>();
-                if !coroot_table.contains(&difference) {
-                    kept.push(item);
-                } else if item.1 == min_level {
-                    n_min = n_min.saturating_sub(1);
+            let alpha_coroot = coroots[alpha];
+            let mut kept_mins = Vec::with_capacity(mins.len() - cursor);
+            for &item in &mins[cursor..] {
+                if !coroot_difference_in(&coroot_table, alpha_coroot, coroots[item.0]) {
+                    kept_mins.push(item);
                 }
             }
-            levels = kept;
+            let mut kept_rest = Vec::with_capacity(rest.len());
+            for &item in &rest {
+                if !coroot_difference_in(&coroot_table, alpha_coroot, coroots[item.0]) {
+                    kept_rest.push(item);
+                }
+            }
+            mins = kept_mins;
+            rest = kept_rest;
+            cursor = 0;
         }
+        levels = rest;
     }
     Ok((walls, integrals))
+}
+
+/// Whether `alpha - beta` (coroot coordinates) is tabled as a coroot.
+/// Rank-at-most-32 systems (every finite type; E8 has rank 8) use a stack
+/// buffer instead of a per-pair `Vec`.
+fn coroot_difference_in(table: &BTreeSet<Vec<i32>>, alpha: &[i32], beta: &[i32]) -> bool {
+    let mut buffer = [0_i32; 32];
+    if alpha.len() <= buffer.len() {
+        for (slot, (&a, &b)) in buffer.iter_mut().zip(alpha.iter().zip(beta)) {
+            *slot = a - b;
+        }
+        table.contains(&buffer[..alpha.len()])
+    } else {
+        let difference = alpha
+            .iter()
+            .zip(beta)
+            .map(|(&a, &b)| a - b)
+            .collect::<Vec<_>>();
+        table.contains(&difference)
+    }
 }
 
 fn frac_eval_value(
@@ -865,6 +899,7 @@ fn rational_inverse(matrix: &[Vec<i64>]) -> Result<Option<(Vec<Vec<i64>>, i64)>,
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::BasedRootDatum;
 
     #[test]
     fn denominator_center_bound_handles_signed_shift_boundary() {
@@ -879,5 +914,102 @@ mod tests {
     fn rational_solver_rejects_inconsistent_overdetermined_rows() {
         let rows = vec![(vec![1], 0), (vec![1], 1)];
         assert_eq!(solve_rational_system(&rows, 1), None);
+    }
+
+    /// The pre-partition `wall_set`: per-iteration sort, `remove(0)` queue,
+    /// and per-pair heap-allocated coroot differences.
+    fn reference_wall_set(
+        root_system: &RootSystem,
+        numbering: &RootNumbering,
+        gamma: &RationalWeight,
+    ) -> Result<(BTreeSet<usize>, BTreeSet<usize>), StructureError> {
+        let num_roots = root_system.roots().len();
+        let coroot_table: BTreeSet<Vec<i32>> = (0..num_roots)
+            .filter_map(|index| {
+                root_system
+                    .coroot(RootId::from_usize(index))
+                    .map(|coroot| coroot.as_slice().to_vec())
+            })
+            .collect();
+        let mut levels = (0..num_roots)
+            .map(|nbr| Ok((nbr, frac_eval_value(root_system, numbering.id(nbr), gamma)?)))
+            .collect::<Result<Vec<_>, StructureError>>()?;
+        let mut walls = BTreeSet::new();
+        let mut integrals = BTreeSet::new();
+        while !levels.is_empty() {
+            let min_level = levels.iter().map(|(_, level)| *level).min().unwrap();
+            levels.sort_by_key(|(_, level)| (*level != min_level) as u8);
+            let mut n_min = levels
+                .iter()
+                .take_while(|(_, level)| *level == min_level)
+                .count();
+            while n_min > 0 && !levels.is_empty() {
+                let (alpha, level) = levels.remove(0);
+                if level.0 == 0 {
+                    integrals.insert(alpha);
+                }
+                walls.insert(alpha);
+                n_min -= 1;
+                let alpha_coroot = root_system
+                    .coroot(numbering.id(alpha))
+                    .unwrap()
+                    .as_slice()
+                    .to_vec();
+                let mut kept = Vec::new();
+                for item in levels.drain(..) {
+                    let beta_coroot = root_system.coroot(numbering.id(item.0)).unwrap().as_slice();
+                    let difference = alpha_coroot
+                        .iter()
+                        .zip(beta_coroot)
+                        .map(|(&alpha, &beta)| alpha - beta)
+                        .collect::<Vec<_>>();
+                    if !coroot_table.contains(&difference) {
+                        kept.push(item);
+                    } else if item.1 == min_level {
+                        n_min = n_min.saturating_sub(1);
+                    }
+                }
+                levels = kept;
+            }
+        }
+        Ok((walls, integrals))
+    }
+
+    #[test]
+    fn wall_set_matches_reference_across_gammas() {
+        let systems = [
+            RootSystem::enumerate(
+                &BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap(),
+                6,
+            )
+            .unwrap(),
+            RootSystem::enumerate(
+                &BasedRootDatum::standard(vec![vec![2, -2], vec![-1, 2]]).unwrap(),
+                8,
+            )
+            .unwrap(),
+            RootSystem::enumerate(
+                &BasedRootDatum::standard(vec![vec![2, -1], vec![-3, 2]]).unwrap(),
+                12,
+            )
+            .unwrap(),
+        ];
+        let gammas = [
+            RationalWeight::new(vec![1, 0], 1).unwrap(),
+            RationalWeight::new(vec![3, 5], 2).unwrap(),
+            RationalWeight::new(vec![-2, 7], 3).unwrap(),
+            RationalWeight::new(vec![0, 0], 1).unwrap(),
+            RationalWeight::new(vec![11, -13], 6).unwrap(),
+        ];
+        for system in &systems {
+            let numbering = RootNumbering::new(system);
+            for gamma in &gammas {
+                assert_eq!(
+                    wall_set(system, &numbering, gamma).unwrap(),
+                    reference_wall_set(system, &numbering, gamma).unwrap(),
+                    "gamma={gamma:?}"
+                );
+            }
+        }
     }
 }

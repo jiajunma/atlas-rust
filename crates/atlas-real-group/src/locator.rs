@@ -550,38 +550,49 @@ fn reflect_numerator(
 }
 
 /// `additive_closure<false>` (rootdata.cpp:685-707): close `generators`
-/// under negation and root sums.
+/// under negation and root sums. Returns the members sorted by root id
+/// (the upstream `RootList` set order).
 fn additive_closure(
     system: &RootSystem,
     generators: &BTreeSet<RootId>,
-) -> Result<BTreeSet<RootId>, StructureError> {
-    let mut closure = generators.clone();
-    let mut negatives = Vec::new();
-    negatives.try_reserve_exact(generators.len()).map_err(|_| {
-        StructureError::AllocationFailed {
-            requested: generators.len(),
-        }
-    })?;
+) -> Result<Vec<RootId>, StructureError> {
+    let num_roots = system.roots().len();
+    // Membership is a dense bitset over root ids: the closure loop below
+    // test-and-sets it O(members^2) times per `int_item` call, which made
+    // BTreeSet::insert the top heavy-unitary leaf (perf-unitary-3681134).
+    let mut bits = vec![0_u64; (num_roots + 63) / 64];
+    let mut members: Vec<RootId> = Vec::new();
+    members
+        .try_reserve_exact(2 * generators.len())
+        .map_err(|_| StructureError::AllocationFailed {
+            requested: 2 * generators.len(),
+        })?;
     for &id in generators {
-        negatives.push(negate_root(system, id)?);
+        let negative = negate_root(system, id)?;
+        for root in [id, negative] {
+            let word = root.index() / 64;
+            let mask = 1_u64 << (root.index() % 64);
+            if bits[word] & mask == 0 {
+                bits[word] |= mask;
+                members.push(root);
+            }
+        }
     }
-    closure.extend(negatives);
     // Work-queue fixpoint over insertion order, replacing full O(members^2)
-    // rescan rounds. When a root is appended, processing it tests its sums
-    // with every current member; pairs among earlier members were tested
-    // when the later of the two was processed, so every unordered pair of
-    // distinct roots is covered at least once and the result equals the
-    // rescan fixpoint.
-    let mut members: Vec<RootId> = closure.iter().copied().collect();
+    // rescan rounds. Processing `members[next]` tests its sums against
+    // `members[0..next]` only: root addition is commutative and the pair
+    // {i, j} with i < j is tested when j is processed, so every unordered
+    // pair of distinct members is covered exactly once and the result
+    // equals the rescan fixpoint.
     let mut next = 0;
     while next < members.len() {
         let left = members[next];
-        for other in 0..members.len() {
-            if other == next {
-                continue;
-            }
+        for other in 0..next {
             if let Some(sum) = combine_roots(system, left, members[other], false)? {
-                if closure.insert(sum) {
+                let word = sum.index() / 64;
+                let mask = 1_u64 << (sum.index() % 64);
+                if bits[word] & mask == 0 {
+                    bits[word] |= mask;
                     members
                         .try_reserve(1)
                         .map_err(|_| StructureError::AllocationFailed { requested: 1 })?;
@@ -590,6 +601,15 @@ fn additive_closure(
             }
         }
         next += 1;
+    }
+    let mut closure = Vec::with_capacity(members.len());
+    for (word, &bits_word) in bits.iter().enumerate() {
+        let mut remaining = bits_word;
+        while remaining != 0 {
+            let bit = remaining.trailing_zeros() as usize;
+            remaining &= remaining - 1;
+            closure.push(RootId::from_usize(word * 64 + bit));
+        }
     }
     Ok(closure)
 }
@@ -748,9 +768,13 @@ mod tests {
                 all.iter().copied().collect(),
             ];
             for generators in subsets {
+                let reference: Vec<RootId> = reference_additive_closure(&system, &generators)
+                    .unwrap()
+                    .into_iter()
+                    .collect();
                 assert_eq!(
                     additive_closure(&system, &generators).unwrap(),
-                    reference_additive_closure(&system, &generators).unwrap(),
+                    reference,
                     "generators={generators:?}"
                 );
             }
