@@ -50,6 +50,26 @@ impl GjScalar for SmallRat {
     }
 
     fn div_assign(&mut self, pivot: &Self) -> Result<(), ()> {
+        // i64 fast path: every operand already fits an i64 in the common
+        // case, so the products stay single-instruction; any overflow falls
+        // through to the i128 computation, keeping the overflow contract
+        // identical (only the first i128 overflow reports Err).
+        if let (Ok(num_a), Ok(den_a), Ok(num_b), Ok(den_b)) = (
+            i64::try_from(self.num),
+            i64::try_from(self.den),
+            i64::try_from(pivot.num),
+            i64::try_from(pivot.den),
+        ) {
+            if let (Some(num), Some(den)) = (
+                num_a.checked_mul(den_b),
+                den_a.checked_mul(num_b),
+            ) {
+                if let Some((num, den)) = reduce_i64(num, den) {
+                    *self = Self { num, den };
+                    return Ok(());
+                }
+            }
+        }
         let num = self.num.checked_mul(pivot.den).ok_or(())?;
         let den = self.den.checked_mul(pivot.num).ok_or(())?;
         let (num, den) = reduce_i128(num, den).ok_or(())?;
@@ -58,6 +78,28 @@ impl GjScalar for SmallRat {
     }
 
     fn mul_sub_assign(&mut self, pivot_entry: &Self, factor: &Self) -> Result<(), ()> {
+        if let (Ok(sn), Ok(sd), Ok(pn), Ok(pd), Ok(fnum), Ok(fd)) = (
+            i64::try_from(self.num),
+            i64::try_from(self.den),
+            i64::try_from(pivot_entry.num),
+            i64::try_from(pivot_entry.den),
+            i64::try_from(factor.num),
+            i64::try_from(factor.den),
+        ) {
+            let attempt = || {
+                let product_num = pn.checked_mul(fnum)?;
+                let product_den = pd.checked_mul(fd)?;
+                let num = sn
+                    .checked_mul(product_den)?
+                    .checked_sub(product_num.checked_mul(sd)?)?;
+                let den = sd.checked_mul(product_den)?;
+                reduce_i64(num, den)
+            };
+            if let Some((num, den)) = attempt() {
+                *self = Self { num, den };
+                return Ok(());
+            }
+        }
         let product_num = pivot_entry.num.checked_mul(factor.num).ok_or(())?;
         let product_den = pivot_entry.den.checked_mul(factor.den).ok_or(())?;
         let num = self
@@ -164,6 +206,25 @@ fn reduce_i128(num: i128, den: i128) -> Option<(i128, i128)> {
     Some((num / divisor, den / divisor))
 }
 
+/// i64 twin of [`reduce_i128`] for the fast paths; `None` only on an
+/// i64 sign-flip overflow, which the callers treat as "retry in i128".
+fn reduce_i64(num: i64, den: i64) -> Option<(i128, i128)> {
+    debug_assert_ne!(den, 0);
+    let (num, den) = if den < 0 {
+        (num.checked_neg()?, den.checked_neg()?)
+    } else {
+        (num, den)
+    };
+    if num == 0 {
+        return Some((0, 1));
+    }
+    let anum = num.unsigned_abs();
+    let aden = den as u64;
+    let divisor = gcd_u64(anum, aden);
+    let sign = i128::from(num.signum());
+    Some((i128::from(anum / divisor) * sign, i128::from(aden / divisor)))
+}
+
 fn gcd_u64(mut left: u64, mut right: u64) -> u64 {
     while right != 0 {
         let remainder = left % right;
@@ -243,6 +304,48 @@ mod tests {
                 "{num}/{den}"
             );
             assert!(reduced_den > 0);
+        }
+    }
+
+    #[test]
+    fn narrow_ops_match_rational_ops() {
+        // The i64 fast paths in div_assign/mul_sub_assign must produce the
+        // same reduced values as the Rational operators, including negative
+        // pivot numerators (which flip the intermediate denominator sign).
+        let cases: [(i64, i64, i64, i64); 5] = [
+            (3, 7, -5, 11),
+            (-2, 3, 4, -9),
+            (0, 1, 6, 35),
+            (i64::MAX - 1, 1, 1, 1),
+            (12, 18, 9, 6),
+        ];
+        for (a_num, a_den, b_num, b_den) in cases {
+            let mut narrow = SmallRat {
+                num: i128::from(a_num),
+                den: i128::from(a_den),
+            };
+            let pivot = SmallRat {
+                num: i128::from(b_num),
+                den: i128::from(b_den),
+            };
+            let mut wide = rational(a_num, a_den);
+            let wide_pivot = rational(b_num, b_den);
+            narrow.div_assign(&pivot).unwrap();
+            wide /= wide_pivot.clone();
+            assert_eq!(narrow.to_rational(), wide, "div {a_num}/{a_den} by {b_num}/{b_den}");
+
+            let mut narrow = SmallRat {
+                num: i128::from(a_num),
+                den: i128::from(a_den),
+            };
+            let mut wide = rational(a_num, a_den);
+            narrow.mul_sub_assign(&pivot, &pivot).unwrap();
+            wide -= wide_pivot.clone() * wide_pivot;
+            assert_eq!(
+                narrow.to_rational(),
+                wide,
+                "mul_sub {a_num}/{a_den} by {b_num}/{b_den}^2"
+            );
         }
     }
 
