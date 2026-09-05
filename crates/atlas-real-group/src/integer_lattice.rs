@@ -213,11 +213,15 @@ impl IntegerMatrix {
         }
     }
 
-    // The row/column operations below validate every entry's bit bound
-    // BEFORE writing anything (so a budget failure still leaves the matrix
-    // untouched, exactly as the old build-then-swap version did), then write
-    // in place — each element is read before it is overwritten and the source
-    // line is never a write target, so element order cannot affect results.
+    // The row/column operations below compute each combination and write it
+    // in place in a single pass: every element is read before it is
+    // overwritten and the source line is never a write target, so element
+    // order cannot affect results. A budget failure can leave the target
+    // line partially rewritten; that is unobservable because the error is a
+    // fatal resource limit — every caller propagates it and drops the
+    // matrix. (An intermediate two-pass version prevalidated all bounds
+    // first to keep the matrix pristine on error, but doubling the per-entry
+    // i64 conversions cost more than the saved Vec allocation.)
 
     fn add_row_multiple(
         &mut self,
@@ -227,23 +231,15 @@ impl IntegerMatrix {
         max_coefficient_bits: u64,
     ) -> Result<(), StructureError> {
         for column in 0..self.columns {
-            check_combination_bound(
-                &Integer::ONE,
-                self.entry(target, column),
-                factor,
-                self.entry(source, column),
-                max_coefficient_bits,
-            )?;
-        }
-        for column in 0..self.columns {
             let target_index = self.index(target, column);
             let source_index = self.index(source, column);
-            let value = combination_value(
+            let value = bounded_linear_combination(
                 &Integer::ONE,
                 &self.entries[target_index],
                 factor,
                 &self.entries[source_index],
-            );
+                max_coefficient_bits,
+            )?;
             self.entries[target_index] = value;
         }
         Ok(())
@@ -257,23 +253,15 @@ impl IntegerMatrix {
         max_coefficient_bits: u64,
     ) -> Result<(), StructureError> {
         for row in 0..self.rows {
-            check_combination_bound(
-                &Integer::ONE,
-                self.entry(row, target),
-                factor,
-                self.entry(row, source),
-                max_coefficient_bits,
-            )?;
-        }
-        for row in 0..self.rows {
             let target_index = self.index(row, target);
             let source_index = self.index(row, source);
-            let value = combination_value(
+            let value = bounded_linear_combination(
                 &Integer::ONE,
                 &self.entries[target_index],
                 factor,
                 &self.entries[source_index],
-            );
+                max_coefficient_bits,
+            )?;
             self.entries[target_index] = value;
         }
         Ok(())
@@ -290,38 +278,22 @@ impl IntegerMatrix {
     ) -> Result<(), StructureError> {
         let negative_v = -&transform.v;
         for column in 0..self.columns {
-            let top_value = self.entry(top, column);
-            let bottom_value = self.entry(bottom, column);
-            check_combination_bound(
-                &transform.s,
-                top_value,
-                &transform.t,
-                bottom_value,
-                max_coefficient_bits,
-            )?;
-            check_combination_bound(
-                &negative_v,
-                top_value,
-                &transform.u,
-                bottom_value,
-                max_coefficient_bits,
-            )?;
-        }
-        for column in 0..self.columns {
             let top_index = self.index(top, column);
             let bottom_index = self.index(bottom, column);
-            let top_value = combination_value(
+            let top_value = bounded_linear_combination(
                 &transform.s,
                 &self.entries[top_index],
                 &transform.t,
                 &self.entries[bottom_index],
-            );
-            let bottom_value = combination_value(
+                max_coefficient_bits,
+            )?;
+            let bottom_value = bounded_linear_combination(
                 &negative_v,
                 &self.entries[top_index],
                 &transform.u,
                 &self.entries[bottom_index],
-            );
+                max_coefficient_bits,
+            )?;
             self.entries[top_index] = top_value;
             self.entries[bottom_index] = bottom_value;
         }
@@ -338,38 +310,22 @@ impl IntegerMatrix {
     ) -> Result<(), StructureError> {
         let negative_v = -&transform.v;
         for row in 0..self.rows {
-            let left_value = self.entry(row, left);
-            let right_value = self.entry(row, right);
-            check_combination_bound(
-                &transform.s,
-                left_value,
-                &transform.t,
-                right_value,
-                max_coefficient_bits,
-            )?;
-            check_combination_bound(
-                &negative_v,
-                left_value,
-                &transform.u,
-                right_value,
-                max_coefficient_bits,
-            )?;
-        }
-        for row in 0..self.rows {
             let left_index = self.index(row, left);
             let right_index = self.index(row, right);
-            let left_value = combination_value(
+            let left_value = bounded_linear_combination(
                 &transform.s,
                 &self.entries[left_index],
                 &transform.t,
                 &self.entries[right_index],
-            );
-            let right_value = combination_value(
+                max_coefficient_bits,
+            )?;
+            let right_value = bounded_linear_combination(
                 &negative_v,
                 &self.entries[left_index],
                 &transform.u,
                 &self.entries[right_index],
-            );
+                max_coefficient_bits,
+            )?;
             self.entries[left_index] = left_value;
             self.entries[right_index] = right_value;
         }
@@ -2101,50 +2057,12 @@ fn bounded_linear_combination(
     right_value: &Integer,
     max_coefficient_bits: u64,
 ) -> Result<Integer, StructureError> {
-    check_combination_bound(
-        left_factor,
-        left_value,
-        right_factor,
-        right_value,
-        max_coefficient_bits,
-    )?;
-    Ok(combination_value(
-        left_factor,
-        left_value,
-        right_factor,
-        right_value,
-    ))
-}
-
-/// Validate the bit bound of `left_factor * left_value + right_factor *
-/// right_value` against the coefficient budget, without computing the value.
-/// This is the exact acceptance check of [`bounded_linear_combination`], so
-/// a whole row/column can be prevalidated before any in-place write.
-fn check_combination_bound(
-    left_factor: &Integer,
-    left_value: &Integer,
-    right_factor: &Integer,
-    right_value: &Integer,
-    max_coefficient_bits: u64,
-) -> Result<(), StructureError> {
-    let bound = combination_bit_bound(left_factor, left_value, right_factor, right_value)?;
-    if bound > max_coefficient_bits {
-        return Err(resource_limit("coefficient bits", max_coefficient_bits));
-    }
-    Ok(())
-}
-
-/// Exact bit bound of the combination. Fast path: all four operands fit an
-/// i64 (the common case — lattice entries in involution-table work stay
-/// machine-sized, as upstream's `long`-based lattice.cpp assumes); the i64
-/// bound is the exact image of the generic one, so both paths agree on
-/// acceptance.
-fn combination_bit_bound(
-    left_factor: &Integer,
-    left_value: &Integer,
-    right_factor: &Integer,
-    right_value: &Integer,
-) -> Result<u64, StructureError> {
+    // Fast path: all four operands fit an i64 (the common case — lattice
+    // entries in involution-table work stay machine-sized, as upstream's
+    // `long`-based lattice.cpp assumes). The bound check below is the exact
+    // i64 image of the generic one, so both paths agree on acceptance; the
+    // products fit i128 with room (|i64|^2 < 2^126), and only a result that
+    // outgrows i64 falls through to the generic arithmetic.
     if let (Ok(left_factor), Ok(left_value), Ok(right_factor), Ok(right_value)) = (
         i64::try_from(left_factor),
         i64::try_from(left_value),
@@ -2153,48 +2071,35 @@ fn combination_bit_bound(
     ) {
         let left_bits = product_bit_bound_i64(left_factor, left_value);
         let right_bits = product_bit_bound_i64(right_factor, right_value);
-        return Ok(match (left_bits, right_bits) {
+        let bound = match (left_bits, right_bits) {
             (0, bits) | (bits, 0) => bits,
             // Each side is at most 128, so this cannot overflow.
             (left, right) => left.max(right) + 1,
-        });
-    }
-    let left_bits = product_bit_bound(left_factor, left_value)?;
-    let right_bits = product_bit_bound(right_factor, right_value)?;
-    match (left_bits, right_bits) {
-        (0, bits) | (bits, 0) => Ok(bits),
-        (left, right) => left
-            .max(right)
-            .checked_add(1)
-            .ok_or_else(|| resource_limit("coefficient bits", u64::MAX)),
-    }
-}
-
-/// `left_factor * left_value + right_factor * right_value`; the caller must
-/// already have validated the bound via [`check_combination_bound`]. The
-/// products fit i128 with room (|i64|^2 < 2^126), and only a result that
-/// outgrows i64 falls through to the generic arithmetic.
-fn combination_value(
-    left_factor: &Integer,
-    left_value: &Integer,
-    right_factor: &Integer,
-    right_value: &Integer,
-) -> Integer {
-    if let (Ok(left_factor), Ok(left_value), Ok(right_factor), Ok(right_value)) = (
-        i64::try_from(left_factor),
-        i64::try_from(left_value),
-        i64::try_from(right_factor),
-        i64::try_from(right_value),
-    ) {
+        };
+        if bound > max_coefficient_bits {
+            return Err(resource_limit("coefficient bits", max_coefficient_bits));
+        }
         let value = (left_factor as i128) * (left_value as i128)
             + (right_factor as i128) * (right_value as i128);
         if let Ok(small) = i64::try_from(value) {
-            return Integer::from(small);
+            return Ok(Integer::from(small));
         }
         // Rare: a machine-sized result window was exceeded. Fall through to
         // the generic path, which recomputes the same (already-checked) value.
     }
-    left_factor * left_value + right_factor * right_value
+    let left_bits = product_bit_bound(left_factor, left_value)?;
+    let right_bits = product_bit_bound(right_factor, right_value)?;
+    let bound = match (left_bits, right_bits) {
+        (0, bits) | (bits, 0) => bits,
+        (left, right) => left
+            .max(right)
+            .checked_add(1)
+            .ok_or_else(|| resource_limit("coefficient bits", max_coefficient_bits))?,
+    };
+    if bound > max_coefficient_bits {
+        return Err(resource_limit("coefficient bits", max_coefficient_bits));
+    }
+    Ok(left_factor * left_value + right_factor * right_value)
 }
 
 fn product_bit_bound(left: &Integer, right: &Integer) -> Result<u64, StructureError> {
@@ -2848,18 +2753,17 @@ mod tests {
     }
 
     #[test]
-    fn failed_row_operation_leaves_the_matrix_untouched() {
-        // 16 * 16 has bit bound 10 > 4, so the write pass must never run.
-        let base = matrix(&[&[16, 1], &[3, 16]]);
-        let original = base.clone();
-        let mut in_place = base;
+    fn failed_row_operation_reports_the_budget_error() {
+        // 16 * 16 has bit bound 11 > 4: the operation must fail. The matrix
+        // may be left partially rewritten — the resource-limit error is
+        // fatal to every caller, which drops the matrix.
+        let mut work = matrix(&[&[16, 1], &[3, 16]]);
         assert_eq!(
-            in_place.add_row_multiple(1, 0, &Integer::from(16), 4),
+            work.add_row_multiple(1, 0, &Integer::from(16), 4),
             Err(StructureError::IntegerLatticeResourceLimit {
                 resource: "coefficient bits",
                 limit: 4,
             })
         );
-        assert_eq!(in_place, original);
     }
 }
