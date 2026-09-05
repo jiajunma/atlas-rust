@@ -35,6 +35,12 @@ impl SmallRat {
     pub(crate) fn to_rational(&self) -> Rational {
         Rational::from_integers(Integer::from(self.num), Integer::from(self.den))
     }
+
+    /// The reduced numerator/denominator pair (den > 0), for epilogues
+    /// that scale back to integers without building `Rational`s.
+    pub(crate) fn num_den(&self) -> (i128, i128) {
+        (self.num, self.den)
+    }
 }
 
 impl GjScalar for SmallRat {
