@@ -584,11 +584,28 @@ fn additive_closure(
     // {i, j} with i < j is tested when j is processed, so every unordered
     // pair of distinct members is covered exactly once and the result
     // equals the rescan fixpoint.
+    //
+    // The pair-sum table is hoisted out of `combine_roots` for the loop:
+    // every member id is a valid root, so the per-call coordinate fetches
+    // and bounds checks there are redundant (perf-unitary-3682206).
+    let count = system.roots().len();
+    let table = system.root_sum_table();
     let mut next = 0;
     while next < members.len() {
         let left = members[next];
         for other in 0..next {
-            if let Some(sum) = combine_roots(system, left, members[other], false)? {
+            let sum = match table {
+                Some(table) => {
+                    let entry = table[left.index() * count + members[other].index()];
+                    if entry == u16::MAX {
+                        None
+                    } else {
+                        Some(RootId::from_usize(usize::from(entry)))
+                    }
+                }
+                None => combine_roots(system, left, members[other], false)?,
+            };
+            if let Some(sum) = sum {
                 let word = sum.index() / 64;
                 let mask = 1_u64 << (sum.index() % 64);
                 if bits[word] & mask == 0 {

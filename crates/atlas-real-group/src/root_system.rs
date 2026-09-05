@@ -768,7 +768,7 @@ impl RootSystem {
 
     /// The lazy pair-sum table (see the `root_sums` field), or `None` when
     /// this system computes root sums per call.
-    fn root_sum_table(&self) -> Option<&[u16]> {
+    pub(crate) fn root_sum_table(&self) -> Option<&[u16]> {
         self.root_sums
             .get_or_init(|| self.build_root_sum_table())
             .as_deref()
