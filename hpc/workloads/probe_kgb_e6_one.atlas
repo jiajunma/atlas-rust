@@ -1,0 +1,13 @@
+<basic.at
+rd : RootDatum
+rd := simply_connected(Lie_type("E6"),true)
+ic : InnerClass
+ic := inner_class(rd,[[1,0,0,0,0,0],[0,1,0,0,0,0],[0,0,1,0,0,0],[0,0,0,1,0,0],[0,0,0,0,1,0],[0,0,0,0,0,1]])
+n : int
+n := nr_of_real_forms(ic)
+rf : RealForm
+rf := real_form(ic,n-1)
+prints("kgb0: ",KGB_size(rf),new_line)
+p : Param
+p := param(KGB(rf,0),[1,1,1,1,1,1],[1,1,1,1,1,1]/1)
+prints("param done",new_line)
