@@ -21,6 +21,34 @@ use crate::{BasedRootDatum, Coweight, StructureError, Weight};
 pub struct LatticeInvolution {
     datum: Arc<BasedRootDatum>,
     weight_action: Vec<Vec<i32>>,
+    /// Row-major flat copy of `weight_action`: the apply loops read rows
+    /// from one allocation instead of chasing per-row pointers.
+    weight_flat: Vec<i32>,
+    /// Row-major flat copy of the transpose: the cocharacter apply reads
+    /// the stored matrix down its columns (a strided pointer chase —
+    /// perf-unitary-3683612: apply_matrix_transposed_into 3.90% self);
+    /// with one flat transposed copy it becomes sequential dot products.
+    weight_transposed_flat: Vec<i32>,
+}
+
+fn flatten(matrix: &[Vec<i32>]) -> Vec<i32> {
+    let rank = matrix.len();
+    let mut flat = Vec::with_capacity(rank * rank);
+    for row in matrix {
+        flat.extend_from_slice(row);
+    }
+    flat
+}
+
+fn flatten_transposed(matrix: &[Vec<i32>]) -> Vec<i32> {
+    let rank = matrix.len();
+    let mut flat = vec![0; rank * rank];
+    for (row, entries) in matrix.iter().enumerate() {
+        for (column, &entry) in entries.iter().enumerate() {
+            flat[column * rank + row] = entry;
+        }
+    }
+    flat
 }
 
 impl LatticeInvolution {
@@ -41,17 +69,26 @@ impl LatticeInvolution {
         if !preserves_pairing(&weight_action, &coweight_action)? {
             return Err(StructureError::InvalidRootAutomorphism);
         }
+        let weight_flat = flatten(&weight_action);
+        let weight_transposed_flat = flatten_transposed(&weight_action);
         Ok(Self {
             datum: Arc::new(datum.clone()),
             weight_action,
+            weight_flat,
+            weight_transposed_flat,
         })
     }
 
     pub fn identity(datum: &BasedRootDatum) -> Result<Self, StructureError> {
         let rank = datum.lattice_rank();
+        let weight_action = identity_matrix(rank)?;
+        let weight_flat = flatten(&weight_action);
+        let weight_transposed_flat = weight_flat.clone();
         Ok(Self {
             datum: Arc::new(datum.clone()),
-            weight_action: identity_matrix(rank)?,
+            weight_action,
+            weight_flat,
+            weight_transposed_flat,
         })
     }
 
@@ -83,14 +120,17 @@ impl LatticeInvolution {
         }
         let root = datum.simple_roots()[generator].as_slice();
         let coroot = datum.simple_coroots()[generator].as_slice();
+        let weight_action = crate::weyl::reflection_right(
+            root,
+            coroot,
+            &crate::weyl::reflection_left(root, coroot, &self.weight_action, rank)?,
+            rank,
+        )?;
         Ok(Self {
             datum: Arc::clone(&self.datum),
-            weight_action: crate::weyl::reflection_right(
-                root,
-                coroot,
-                &crate::weyl::reflection_left(root, coroot, &self.weight_action, rank)?,
-                rank,
-            )?,
+            weight_flat: flatten(&weight_action),
+            weight_transposed_flat: flatten_transposed(&weight_action),
+            weight_action,
         })
     }
 
@@ -140,11 +180,12 @@ impl LatticeInvolution {
     }
 
     pub fn act_on_weight(&self, weight: &Weight) -> Result<Weight, StructureError> {
-        apply_matrix(&self.weight_action, weight.as_slice()).map(Weight::new)
+        apply_flat(&self.weight_flat, self.lattice_rank(), weight.as_slice()).map(Weight::new)
     }
 
     pub fn act_on_coweight(&self, coweight: &Coweight) -> Result<Coweight, StructureError> {
-        apply_matrix_transposed(&self.weight_action, coweight.as_slice()).map(Coweight::new)
+        apply_flat(&self.weight_transposed_flat, self.lattice_rank(), coweight.as_slice())
+            .map(Coweight::new)
     }
 
     /// `act_on_weight` into a caller-owned buffer, for bulk loops (the
@@ -154,7 +195,7 @@ impl LatticeInvolution {
         coordinates: &[i32],
         out: &mut Vec<i32>,
     ) -> Result<(), StructureError> {
-        apply_matrix_into(&self.weight_action, coordinates, out)
+        apply_flat_into(&self.weight_flat, self.lattice_rank(), coordinates, out)
     }
 
     /// `act_on_coweight` into a caller-owned buffer (see
@@ -164,7 +205,12 @@ impl LatticeInvolution {
         coordinates: &[i32],
         out: &mut Vec<i32>,
     ) -> Result<(), StructureError> {
-        apply_matrix_transposed_into(&self.weight_action, coordinates, out)
+        apply_flat_into(
+            &self.weight_transposed_flat,
+            self.lattice_rank(),
+            coordinates,
+            out,
+        )
     }
 }
 
@@ -418,95 +464,36 @@ fn preserves_pairing(
     Ok(true)
 }
 
-fn apply_matrix(matrix: &[Vec<i32>], coordinates: &[i32]) -> Result<Vec<i32>, StructureError> {
-    let mut out = Vec::with_capacity(coordinates.len());
-    apply_matrix_into(matrix, coordinates, &mut out)?;
-    Ok(out)
-}
-
-/// Apply the TRANSPOSE of a stored matrix: `out[i] = sum_j matrix[j][i] *
-/// coordinates[j]` — the cocharacter action of a retained character-side
-/// involution (the direction upstream serves with the right product
-/// `v * M` off the same storage). Accumulates each output in `i128` and
-/// converts once, exactly matching [`apply_matrix_into`]'s overflow
-/// behavior.
-fn apply_matrix_transposed(
-    matrix: &[Vec<i32>],
+/// Apply a rank×rank flat row-major matrix: `out[i] = sum_j flat[i*rank+j]
+/// * coordinates[j]`. The transposed direction applies the flat TRANSPOSE
+/// copy, so both directions are sequential row reads. Accumulation uses
+/// `checked_row_sum`'s i64 fast path with exact i128 fallback.
+fn apply_flat(
+    flat: &[i32],
+    rank: usize,
     coordinates: &[i32],
 ) -> Result<Vec<i32>, StructureError> {
-    let mut out = Vec::with_capacity(coordinates.len());
-    apply_matrix_transposed_into(matrix, coordinates, &mut out)?;
+    let mut out = Vec::with_capacity(rank);
+    apply_flat_into(flat, rank, coordinates, &mut out)?;
     Ok(out)
 }
 
-fn apply_matrix_transposed_into(
-    matrix: &[Vec<i32>],
+fn apply_flat_into(
+    flat: &[i32],
+    rank: usize,
     coordinates: &[i32],
     out: &mut Vec<i32>,
 ) -> Result<(), StructureError> {
-    if matrix.len() != coordinates.len() {
+    debug_assert_eq!(flat.len(), rank * rank);
+    if coordinates.len() != rank {
         return Err(StructureError::RankMismatch {
-            expected: matrix.len(),
+            expected: rank,
             actual: coordinates.len(),
         });
     }
     out.clear();
-    for column in 0..coordinates.len() {
-        // Same i64 fast path as `checked_row_sum`, accumulated over the
-        // strided column read. An i64 overflow only widens the accumulator
-        // (the partial sum so far plus the current product carry over
-        // exactly), so the i128 overflow contract is unchanged.
-        let mut sum = 0_i64;
-        let mut wide: Option<i128> = None;
-        for (row, &coordinate) in matrix.iter().zip(coordinates.iter()) {
-            if row.len() != coordinates.len() {
-                return Err(StructureError::InvalidInvolution);
-            }
-            match &mut wide {
-                Some(total) => {
-                    let product = i128::from(row[column])
-                        .checked_mul(i128::from(coordinate))
-                        .ok_or(StructureError::ArithmeticOverflow)?;
-                    *total = total
-                        .checked_add(product)
-                        .ok_or(StructureError::ArithmeticOverflow)?;
-                }
-                None => {
-                    let product = i64::from(row[column]) * i64::from(coordinate);
-                    match sum.checked_add(product) {
-                        Some(next) => sum = next,
-                        None => {
-                            wide = Some(
-                                i128::from(sum)
-                                    + i128::from(row[column]) * i128::from(coordinate),
-                            );
-                        }
-                    }
-                }
-            }
-        }
-        let sum = wide.unwrap_or_else(|| i128::from(sum));
-        out.push(i32::try_from(sum).map_err(|_| StructureError::ArithmeticOverflow)?);
-    }
-    Ok(())
-}
-
-fn apply_matrix_into(
-    matrix: &[Vec<i32>],
-    coordinates: &[i32],
-    out: &mut Vec<i32>,
-) -> Result<(), StructureError> {
-    if matrix.len() != coordinates.len() {
-        return Err(StructureError::RankMismatch {
-            expected: matrix.len(),
-            actual: coordinates.len(),
-        });
-    }
-    out.clear();
-    for row in matrix {
-        if row.len() != coordinates.len() {
-            return Err(StructureError::InvalidInvolution);
-        }
+    // `max(1)`: a rank-0 matrix is empty, so any chunk width yields no rows.
+    for row in flat.chunks(rank.max(1)) {
         out.push(
             i32::try_from(checked_row_sum(row, coordinates)?)
                 .map_err(|_| StructureError::ArithmeticOverflow)?,
