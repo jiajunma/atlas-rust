@@ -868,3 +868,18 @@ RootSystem, BTreeSet->sorted-Vec in block build.
 - AB 3680872 finals_e7_term20138 vs 0546294: base 9.12/9.16/9.24 tip
   8.99/8.95/9.00 — median 9.16s -> 8.99s = **1.019x**, every tip rep
   below every base rep; RSS -12% on the probe.
+
+## agent-mixhash (merged; 62605e1)
+
+- MixingHasher: fmix64 avalanche moved from EVERY write_u64 (3 multiplies
+  per 8 bytes) to finish() (once per key); per-word round is the fx-style
+  rotate-xor-multiply. The lane-D E8 blowup (job 3672155) came from having
+  NO low-bit avalanche; finishing with fmix64 keeps that property.
+- Gates: quick_check 3680892 green; 7 probes SORTED_MATCH incl. the
+  kgb_e7_allforms involution-table canary (3680900, 0.31s, no blowup).
+- AB 3680899 finals_e7_term20138 vs f17d907: base 9.23/9.13/9.06 tip
+  8.99/9.22/9.05 — median 9.13s -> 9.05s = 1.009x, WITHIN NOISE; merged
+  as neutral-but-principled (strictly less per-word work). Cross-job
+  drift note: the same code measured 8.99 as klhash-tip in 3680872 and
+  9.13 as base here — ±1.5% cross-job band; only within-job interleaving
+  is trustworthy.
