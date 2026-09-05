@@ -8524,3 +8524,26 @@ Post-fasthash deform-E7 profile 3680276: fill_kl_column 15.1,
 with_kl_table 10.9, sub_shifted_assign 7.6, kl_pol_at_row 4.5,
 match_pol 3.3 (MixingHasher worked), alloc cluster ~9% (was ~20%),
 id_of_slice gone from top-40 (lazy root map worked).
+
+## Resolution 2026-09-05f: alcove RootSystem-cache slice REJECTED (av_ann +54%)
+
+Same-job interleaved A/B (3681489, 3 reps, outputs identical):
+dedup 4cddc28 av_ann_e7 15.55-15.59s vs alcove 2f0bf8d 23.80-24.02s,
+oracle 14.23s. Flat perf on both release binaries (3681511/3681730):
+the alcove build shifts ~17 points INTO mimalloc arena/bitmap/page churn
+(mi_* cluster ~7% -> ~24.5%) and vdso_clock_gettime appears at 2.2%;
+minor page faults 14001 -> 19870 (+42%) at equal RSS. No alcove symbol
+is hot in either profile, so the mechanism is indirect (codegen/layout
+or allocator-layout perturbation from the two new OnceLock cache fields
+on RootSystem), not the cache logic itself. Since the slice never showed
+a measurable win (deform 11.1 -> 10.93 is noise; the BTreeMap 23% it
+targeted turned out to be additive_closure's, fixed by the closure
+slice), it is REJECTED under the >2% comparable-scale gate.
+Frontier moved to agent-avopt2: 4cddc28 + df37bfe (closure, clean
+cherry-pick) + d7057b9 (partition wall_set keeping the per-call coroot
+BTreeSet membership, hoisted coroot slices, stack diff buffer; reference
+test retained). Gate: quick_check 3681929, build 3681930, 7 probes
+3681931-37 + av_ann double 3681938, heavy fat 3681939.
+OPEN: the closure/wallset heavy legs 3681407/3681418 still run WITH the
+rejected alcove caches — if they finish, their times are still a valid
+lower-bound signal for the heavy probe but must be re-measured on av2.
