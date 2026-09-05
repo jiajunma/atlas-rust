@@ -19,7 +19,7 @@
 
 use crate::involution_table::MixingHasherBuilder;
 use crate::StructureError;
-use std::hash::{BuildHasher, Hash};
+use std::hash::{BuildHasher, Hash, Hasher};
 
 /// A polynomial over ℤ in `q`, least-degree first. The zero polynomial is
 /// the empty vector; otherwise the leading (top) coefficient is nonzero.
