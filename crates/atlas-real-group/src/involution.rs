@@ -452,18 +452,40 @@ fn apply_matrix_transposed_into(
     }
     out.clear();
     for column in 0..coordinates.len() {
-        let mut sum = 0_i128;
+        // Same i64 fast path as `checked_row_sum`, accumulated over the
+        // strided column read. An i64 overflow only widens the accumulator
+        // (the partial sum so far plus the current product carry over
+        // exactly), so the i128 overflow contract is unchanged.
+        let mut sum = 0_i64;
+        let mut wide: Option<i128> = None;
         for (row, &coordinate) in matrix.iter().zip(coordinates.iter()) {
             if row.len() != coordinates.len() {
                 return Err(StructureError::InvalidInvolution);
             }
-            let product = i128::from(row[column])
-                .checked_mul(i128::from(coordinate))
-                .ok_or(StructureError::ArithmeticOverflow)?;
-            sum = sum
-                .checked_add(product)
-                .ok_or(StructureError::ArithmeticOverflow)?;
+            match &mut wide {
+                Some(total) => {
+                    let product = i128::from(row[column])
+                        .checked_mul(i128::from(coordinate))
+                        .ok_or(StructureError::ArithmeticOverflow)?;
+                    *total = total
+                        .checked_add(product)
+                        .ok_or(StructureError::ArithmeticOverflow)?;
+                }
+                None => {
+                    let product = i64::from(row[column]) * i64::from(coordinate);
+                    match sum.checked_add(product) {
+                        Some(next) => sum = next,
+                        None => {
+                            wide = Some(
+                                i128::from(sum)
+                                    + i128::from(row[column]) * i128::from(coordinate),
+                            );
+                        }
+                    }
+                }
+            }
         }
+        let sum = wide.unwrap_or_else(|| i128::from(sum));
         out.push(i32::try_from(sum).map_err(|_| StructureError::ArithmeticOverflow)?);
     }
     Ok(())
