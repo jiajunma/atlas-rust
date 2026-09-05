@@ -29,6 +29,13 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   has no inherent one; the trait method resolved correctly). Audit rule:
   when a type has both an inherent method and a trait method of the same
   name, verify which one a call site resolves to.
+- PROCESS TRAP (cost one wasted heavy run, 3680977): quick_check.sbatch
+  only runs `cargo check` + `cargo test` (debug) — it NEVER rebuilds
+  target/release/atlas-cli. A `--wrap` probe job with
+  `--dependency=afterok:<quick_check>` can silently run a STALE release
+  binary (it did: binary mtime predated the fix). Any probe job must
+  build release itself (`cargo build --release -p atlas-cli`) in the
+  same job before running, and log the binary mtime for audit.
 - KEY DIAGNOSIS (probe_setup_e6, 3680795/3680819): the whole remaining E6
   gap is FIXED SETUP (script parse/interpret + inner-class build): rust
   0.63-0.65s vs oracle 0.40s. The GKfast query leg itself is at parity
@@ -36,8 +43,11 @@ executable and CWEB sources as the behavior oracle. The core remains safe Rust.
   memmove 14% (mostly parser), coercions/typecheck ~3%, parser+lexer ~3%.
 - av_ann_e7 profile 3680833 (the largest big-group gap, 1.10x): KL fill
   dominates — fill_kl_column 15.1%, KlPol::sub_shifted_assign 6.8%,
-  match_pol+MixingHasher 5.9%, allocator ~7%. Next slice agent-klpol
-  (KlPol on SmallVec<[i32;8]>) targets exactly that.
+  match_pol+MixingHasher 5.9%, allocator ~7%. NOTE: profile builds use
+  LTO=off, so cross-crate dispatch symbols (e.g. `Arc<T> as
+  BlockTopology::length` 2.15%) are artifacts; the real release build is
+  lto=fat cgu=1 and inlines them. agent-klpol (KlPol on
+  SmallVec<[i32;8]>) was REJECTED: 0.93x regression (BENCHMARKS.md).
 - Shelved (recorded, do not retry lightly): orbit membership pool-offset
   redesign pays off ONLY combined with WeylElt-keyed BFS dedup (Variant B =
   transducer+membership in one change; explore agent-24: ClassMembership is
