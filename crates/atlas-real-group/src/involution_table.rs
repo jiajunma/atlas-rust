@@ -96,6 +96,15 @@ impl std::hash::Hasher for MixingHasher {
         self.0 = (self.0.rotate_left(5) ^ value).wrapping_mul(0x51_7c_c1_b7_27_22_0a_95);
     }
 
+    fn write_i32(&mut self, value: i32) {
+        // One mix round on the zero-extended bit pattern instead of the
+        // default `to_ne_bytes` + `write()` remainder path — the
+        // per-coefficient hashing of KL polynomials showed at 1.3% self
+        // (perf-unitary-3684013). Bijective per i32, and bucket layout is
+        // semantically invisible (see the type comment).
+        self.write_u64(u64::from(value as u32));
+    }
+
     fn write_usize(&mut self, value: usize) {
         self.write_u64(value as u64);
     }
