@@ -216,12 +216,14 @@ pub struct RootSystem {
     /// same ones `action_permutation` derives).
     simple_reflections: Vec<Vec<RootId>>,
     /// Lazy flat pair-sum table: with `n = roots.len()`, entry
-    /// `[a * n + b]` is the id of `roots[a] + roots[b]` as `u16`, or the
-    /// `u16::MAX` sentinel when that vector is not a root. Built on first
+    /// `[a * n + b]` is the id of `roots[a] + roots[b]` as `u8`, or the
+    /// `u8::MAX` sentinel when that vector is not a root. Built on first
     /// `combine_roots` use for `n <= ROOT_SUM_TABLE_MAX_ROOTS`; the outer
     /// `None` marks systems (oversized, or an abandoned build) that keep
-    /// computing sums per call. Pure cache: equality ignores it.
-    root_sums: OnceLock<Option<Box<[u16]>>>,
+    /// computing sums per call. Pure cache: equality ignores it. `u8`
+    /// lanes halve the footprint (E7: 32 KB -> 16 KB, L1-resident; E8:
+    /// 115 KB -> 58 KB), which the `additive_closure` gather loop feels.
+    root_sums: OnceLock<Option<Box<[u8]>>>,
     /// Lazy coordinate→id index for `id_of_slice`, built once on first use
     /// from `roots`. Unlike `root_sums` it scales linearly with the root
     /// count, so it serves every size (E8 has 240 roots) and carries no
@@ -768,7 +770,7 @@ impl RootSystem {
 
     /// The lazy pair-sum table (see the `root_sums` field), or `None` when
     /// this system computes root sums per call.
-    pub(crate) fn root_sum_table(&self) -> Option<&[u16]> {
+    pub(crate) fn root_sum_table(&self) -> Option<&[u8]> {
         self.root_sums
             .get_or_init(|| self.build_root_sum_table())
             .as_deref()
@@ -780,7 +782,7 @@ impl RootSystem {
     /// back to the per-call coordinate path with its original errors.
     /// Every stored sum is classified with the same `id_of_slice` lookup
     /// the per-call path uses, reusing one coordinate buffer.
-    fn build_root_sum_table(&self) -> Option<Box<[u16]>> {
+    fn build_root_sum_table(&self) -> Option<Box<[u8]>> {
         let count = self.roots.len();
         if count > ROOT_SUM_TABLE_MAX_ROOTS {
             return None;
@@ -788,7 +790,7 @@ impl RootSystem {
         let entries = count.checked_mul(count)?;
         let mut table = Vec::new();
         table.try_reserve_exact(entries).ok()?;
-        table.resize(entries, u16::MAX);
+        table.resize(entries, u8::MAX);
         let ambient_rank = self.roots.first().map_or(0, Weight::rank);
         let mut sum: Vec<i32> = Vec::new();
         sum.try_reserve_exact(ambient_rank).ok()?;
@@ -813,10 +815,10 @@ impl RootSystem {
                     return None;
                 }
                 // `count <= ROOT_SUM_TABLE_MAX_ROOTS` keeps every id below
-                // the `u16::MAX` sentinel.
+                // the `u8::MAX` sentinel.
                 table[left * count + right] = match self.id_of_slice(&sum) {
-                    Some(id) => u16::try_from(id.index()).ok()?,
-                    None => u16::MAX,
+                    Some(id) => u8::try_from(id.index()).ok()?,
+                    None => u8::MAX,
                 };
             }
         }
@@ -1224,10 +1226,9 @@ fn saturated_to_usize(value: u128) -> usize {
 }
 
 /// Memory cap for the lazy pair-sum table: larger systems keep the per-call
-/// coordinate search. Every finite type is far below this (E8 has 240
-/// roots, an 115 KB table); the cap also keeps ids below the `u16::MAX`
-/// sentinel.
-const ROOT_SUM_TABLE_MAX_ROOTS: usize = 2048;
+/// coordinate search. Every finite type fits (E8 has 240 roots, a 58 KB
+/// table); the cap also keeps ids below the `u8::MAX` sentinel.
+const ROOT_SUM_TABLE_MAX_ROOTS: usize = 254;
 
 /// The id of `left + right` (or `left - right`), when that vector is a root.
 pub(crate) fn combine_roots(
@@ -1260,7 +1261,7 @@ pub(crate) fn combine_roots(
             right.0
         };
         let entry = table[left.0 * count + column];
-        return Ok(if entry == u16::MAX {
+        return Ok(if entry == u8::MAX {
             None
         } else {
             Some(RootId(usize::from(entry)))

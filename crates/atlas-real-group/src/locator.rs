@@ -606,7 +606,7 @@ fn additive_closure(
             let sum = match table {
                 Some(table) => {
                     let entry = table[left_base + members[other].index()];
-                    if entry == u16::MAX {
+                    if entry == u8::MAX {
                         None
                     } else {
                         Some(RootId::from_usize(usize::from(entry)))
