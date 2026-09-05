@@ -1117,3 +1117,46 @@ fixed-cost dominated.)
 Merged stack on agent-avopt: rowmask c1a4142 -> intcache c386a70 ->
 streamout d251678 -> gj64 27b6507 -> summasks 8ecbfd7 -> transpi64
 a729ad2 -> smallrat64 9949765 -> alcoverat2 35e412c -> smallint f4b042d.
+
+## Late-night rounds (2026-09-06 early): flatgj / wallcache / flatmat / klmu
+
+Gate probe ratios (rust seconds / oracle seconds, same job; two node
+classes visible: "slow-node" rounds have oracle finals ~8.2s, "fast-node"
+rounds ~7.2s — rust loses relatively more on fast nodes, so only compare
+ratios within the same node class):
+
+| gate | deform | gkfast_e7 | finals | klsum | av_ann |
+|---|---|---|---|---|---|
+| flatgj 3683873-79 (slow node) | 0.939x | 1.024x | 1.133x | 1.148x | 1.145x |
+| wallcache 3683960-66 (fast node) | 1.035x | 1.019x | 1.133x | 1.205x | 1.221x |
+| flatmat 3683997-3684003 (slow node) | 1.029x | 1.032x | 1.124x | 1.162x | 1.153x |
+| "klmu" 3684083-89 (fast node; actually built 64d5af8, see below) | 1.013x | 1.013x | 1.126x | 1.198x | 1.200x |
+
+- flatgj (62d7ec7, merged 12422c4): GJ sweeps on flat row-major GjMatrix
+  (one allocation, cache-adjacent rows) replacing Vec<Vec<T>>; old
+  Vec-based gj_normalize_and_clear/gj_scalars in atlas-real-group removed.
+- wallcache (c9934a3, merged 554e6b6): wall_set's RootNumbering sort and
+  CorootTable build were per-call; now a per-RootSystem OnceLock
+  AlcoveWallCache, and <=512-root systems pre-answer every
+  coroot-difference probe into an n*n bit matrix (hash probe -> bit test).
+  Attacks the 3.8% hashbrown cluster of profile 3683612.
+- flatmat (64d5af8, merged c6b78f1): LatticeInvolution retains flat
+  row-major and flat-transposed copies of weight_action; act_on_* apply
+  loops are sequential reads (apply_matrix_transposed_into 3.90% +
+  apply_matrix_into 2.67% self in profile 3683612 were strided pointer
+  chases). Same checked-arithmetic contract.
+- klmu (e32a957, landed DIRECTLY on agent-avopt by accident: the branch
+  checkout happened before the flatmat merge, so the commit's parent is
+  c6b78f1 and the "klmu gate" jobs rebuilt flatmat's 64d5af8 — klmu is
+  covered transitively by the klpool/reflbuf gates instead): KL
+  mu-correction caches extremal lengths (kills the 2.28% Arc-dispatch
+  length cluster in av_ann profile 3684013), zero-polynomial and
+  multiplier-1 fast paths in the shifted add/sub assign ops.
+- Branch discipline lesson: never interleave a merge (which checks out
+  agent-avopt) with slice edits; verify `git branch --show-current`
+  before every commit.
+
+In flight: klpool gate 3684171-78 (move interned KL polynomials into the
+pool instead of cloning), reflbuf gate 3684229-36 (buffer-reusing
+reflection in pos_to_neg), wallcache heavy leg 3684029, av_ann profile
+3684013 (KL-dominated: fill_kl_column 12.3%, sub_shifted_assign 6.9%).
