@@ -63,6 +63,7 @@ mod root_datum;
 mod root_involution;
 mod root_reflection;
 mod root_system;
+mod smallrat;
 mod strong_real;
 mod tits_element;
 mod topology;
