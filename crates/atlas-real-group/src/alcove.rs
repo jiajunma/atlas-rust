@@ -205,13 +205,6 @@ pub(crate) fn wall_set(
     gamma: &RationalWeight,
 ) -> Result<(BTreeSet<usize>, BTreeSet<usize>), StructureError> {
     let num_roots = root_system.roots().len();
-    let coroot_table: BTreeSet<Vec<i32>> = (0..num_roots)
-        .filter_map(|index| {
-            root_system
-                .coroot(RootId::from_usize(index))
-                .map(|coroot| coroot.as_slice().to_vec())
-        })
-        .collect();
     // Coroot slices per numbering index, resolved once: the filtering loop
     // pairs every surviving root with every wall root.
     let mut coroots: Vec<&[i32]> = Vec::with_capacity(num_roots);
@@ -225,6 +218,12 @@ pub(crate) fn wall_set(
                 .as_slice(),
         );
     }
+    // Membership table for coroot-difference probes. The per-call packed
+    // u64 key set replaces the boxed-slice BTreeSet whose O(log n)
+    // lexicographic slice compares dominated the heavy-unitary profile
+    // (perf-unitary-3681949); systems whose coroots do not pack keep the
+    // BTreeSet.
+    let coroot_table = CorootTable::new(&coroots);
     let mut levels = (0..num_roots)
         .map(|nbr| Ok((nbr, frac_eval_value(root_system, numbering.id(nbr), gamma)?)))
         .collect::<Result<Vec<_>, StructureError>>()?;
@@ -281,10 +280,75 @@ pub(crate) fn wall_set(
     Ok((walls, integrals))
 }
 
+/// Coroot membership table for `wall_set`'s difference probes. Every
+/// finite-type coroot packs into `pack_root_key`'s 8-bit lanes (rank <= 8,
+/// coordinates in [-128, 127]), so the common case is a `u64` hash set;
+/// anything else falls back to the boxed-slice tree.
+enum CorootTable {
+    Packed(std::collections::HashSet<u64, PackedKeyHasherBuilder>),
+    Full(BTreeSet<Vec<i32>>),
+}
+
+impl CorootTable {
+    fn new(coroots: &[&[i32]]) -> Self {
+        let mut packed = std::collections::HashSet::with_capacity_and_hasher(
+            coroots.len(),
+            PackedKeyHasherBuilder,
+        );
+        for coroot in coroots {
+            let Some(key) = crate::root_system::pack_root_key(coroot) else {
+                return Self::Full(coroots.iter().map(|c| c.to_vec()).collect());
+            };
+            packed.insert(key);
+        }
+        Self::Packed(packed)
+    }
+
+    fn contains(&self, coordinates: &[i32]) -> bool {
+        match self {
+            Self::Packed(set) => crate::root_system::pack_root_key(coordinates)
+                .is_some_and(|key| set.contains(&key)),
+            Self::Full(tree) => tree.contains(coordinates),
+        }
+    }
+}
+
+/// murmur3-fmix64 finalizer over the packed coordinate key: the packing
+/// leaves entropy in the low lanes, which hashbrown's low-bit bucket index
+/// would use unmixed.
+#[derive(Clone, Default)]
+struct PackedKeyHasherBuilder;
+
+impl std::hash::BuildHasher for PackedKeyHasherBuilder {
+    type Hasher = PackedKeyHasher;
+    fn build_hasher(&self) -> PackedKeyHasher {
+        PackedKeyHasher(0)
+    }
+}
+
+struct PackedKeyHasher(u64);
+
+impl std::hash::Hasher for PackedKeyHasher {
+    fn finish(&self) -> u64 {
+        let mut x = self.0;
+        x ^= x >> 33;
+        x = x.wrapping_mul(0xff51_afd7_ed55_8ccd);
+        x ^ (x >> 33)
+    }
+    fn write(&mut self, bytes: &[u8]) {
+        for &byte in bytes {
+            self.0 = (self.0 << 8) | u64::from(byte);
+        }
+    }
+    fn write_u64(&mut self, value: u64) {
+        self.0 = value;
+    }
+}
+
 /// Whether `alpha - beta` (coroot coordinates) is tabled as a coroot.
 /// Rank-at-most-32 systems (every finite type; E8 has rank 8) use a stack
 /// buffer instead of a per-pair `Vec`.
-fn coroot_difference_in(table: &BTreeSet<Vec<i32>>, alpha: &[i32], beta: &[i32]) -> bool {
+fn coroot_difference_in(table: &CorootTable, alpha: &[i32], beta: &[i32]) -> bool {
     let mut buffer = [0_i32; 32];
     if alpha.len() <= buffer.len() {
         for (slot, (&a, &b)) in buffer.iter_mut().zip(alpha.iter().zip(beta)) {

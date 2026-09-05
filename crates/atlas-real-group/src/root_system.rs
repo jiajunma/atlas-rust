@@ -249,7 +249,7 @@ struct RootIndex {
 /// Pack simple-basis coordinates into 8-bit lanes biased by +128. `None`
 /// when the length exceeds 8 lanes or a coordinate leaves [-128, 127] (a
 /// query that out-of-range is never a root: every enumerated root packs).
-fn pack_root_key(root: &[i32]) -> Option<u64> {
+pub(crate) fn pack_root_key(root: &[i32]) -> Option<u64> {
     if root.len() > 8 {
         return None;
     }
