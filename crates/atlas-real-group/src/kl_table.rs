@@ -731,10 +731,12 @@ impl<B: BlockTopology> KlTableHandle<B> {
             working[prim_pos] = pxy;
         }
 
-        // Transcribe to d_KL[y].
+        // Transcribe to d_KL[y]. The working polynomials are never read
+        // after this loop (the scratch vector is cleared on the next
+        // column), so they move into the pool instead of cloning.
         let mut column = Vec::with_capacity(height);
-        for polynomial in working.iter().take(height) {
-            column.push(self.pool.match_pol(polynomial));
+        for polynomial in working.drain(..height) {
+            column.push(self.pool.match_pol_owned(polynomial));
         }
         self.columns[y] = column;
 
