@@ -583,24 +583,79 @@ fn labels_for_component(
     let width = columns.len();
     let mut small = gj_scalars::<SmallRat>(&ints);
     let mut pivot_of_column = vec![None; width];
-    let matrix: Vec<Vec<Rational>> = match labels_sweep(&mut small, rows, width, &mut pivot_of_column)
-    {
-        Ok(()) => small
-            .iter()
-            .map(|row| row.iter().map(|entry| entry.to_rational()).collect())
-            .collect(),
-        Err(()) => {
-            // A machine-word intermediate overflowed: restart the identical
-            // sweep on exact bignum rationals.
-            let mut big = gj_scalars::<Rational>(&ints);
-            let mut big_pivots = vec![None; width];
-            match labels_sweep(&mut big, rows, width, &mut big_pivots) {
-                Ok(()) => {
-                    pivot_of_column = big_pivots;
-                    big
-                }
-                Err(()) => unreachable!("Rational elimination cannot overflow"),
+    if labels_sweep(&mut small, rows, width, &mut pivot_of_column).is_ok() {
+        // SmallRat epilogue: relation assembly, common denominator, and the
+        // integer rescaling all stay in machine words — no per-entry
+        // `Rational` construction (the malachite conversion cluster was
+        // ~2% of the heavy-unitary profile, perf-unitary-3683465). Values
+        // are identical: SmallRat and Rational normalize eagerly the same
+        // way.
+        let free = (0..width)
+            .filter(|&column| pivot_of_column[column].is_none())
+            .collect::<Vec<_>>();
+        if free.len() != 1 {
+            return Err(StructureError::RootSystemInvariantViolation {
+                invariant: "alcove wall component must have one coroot relation",
+            });
+        }
+        let free = free[0];
+        let mut relation: Vec<(i128, i128)> = vec![(0, 1); width];
+        relation[free] = (1, 1);
+        for (column, pivot) in pivot_of_column.iter().enumerate() {
+            if let Some(row) = pivot {
+                let (num, den) = small[*row][free].num_den();
+                relation[column] = (
+                    num.checked_neg().ok_or(StructureError::ArithmeticOverflow)?,
+                    den,
+                );
             }
+        }
+        let mut denominator = 1_i64;
+        for &(_, den) in &relation {
+            denominator = checked_lcm(
+                denominator,
+                i64::try_from(den).map_err(|_| StructureError::ArithmeticOverflow)?,
+            )?;
+        }
+        let mut integral = relation
+            .iter()
+            .map(|&(num, den)| {
+                // `denominator` is a multiple of every reduced `den`.
+                let scale = i128::from(denominator) / den;
+                let scaled = num
+                    .checked_mul(scale)
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+                i64::try_from(scaled).map_err(|_| StructureError::ArithmeticOverflow)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let divisor = integral
+            .iter()
+            .fold(0_i64, |divisor, &entry| gcd(divisor, entry));
+        if divisor > 1 {
+            for entry in &mut integral {
+                *entry /= divisor;
+            }
+        }
+        if integral.first().is_some_and(|&first| first < 0) {
+            for entry in &mut integral {
+                *entry = entry
+                    .checked_neg()
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+            }
+        }
+        return Ok(integral);
+    }
+    // A machine-word intermediate overflowed: restart the identical sweep
+    // on exact bignum rationals.
+    let matrix: Vec<Vec<Rational>> = {
+        let mut big = gj_scalars::<Rational>(&ints);
+        let mut big_pivots = vec![None; width];
+        match labels_sweep(&mut big, rows, width, &mut big_pivots) {
+            Ok(()) => {
+                pivot_of_column = big_pivots;
+                big
+            }
+            Err(()) => unreachable!("Rational elimination cannot overflow"),
         }
     };
     let free = (0..width)
