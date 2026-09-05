@@ -116,12 +116,23 @@ impl KlPol {
     /// `self -= q^d * multiplier * other`, in place (kl.cpp:504-512
     /// `safeSubtract(pol, d, mu)`).
     pub fn sub_shifted_assign(&mut self, other: &Self, d: usize, multiplier: i32) {
+        // Subtracting the zero polynomial is the identity — skip the
+        // resize-to-`d` that the generic path pads and then trims away.
+        if other.0.is_empty() {
+            return;
+        }
         let needed = other.0.len() + d;
         if self.0.len() < needed {
             self.0.resize(needed, 0);
         }
-        for (index, &coefficient) in other.0.iter().enumerate() {
-            self.0[index + d] -= coefficient * multiplier;
+        if multiplier == 1 {
+            for (index, &coefficient) in other.0.iter().enumerate() {
+                self.0[index + d] -= coefficient;
+            }
+        } else {
+            for (index, &coefficient) in other.0.iter().enumerate() {
+                self.0[index + d] -= coefficient * multiplier;
+            }
         }
         self.trim_in_place();
     }
@@ -157,6 +168,9 @@ impl KlPol {
 
     /// `self += q^d * other`, in place (polynomials.h `safeAdd(pol, d)`).
     pub fn add_shifted_assign(&mut self, other: &Self, d: usize) {
+        if other.0.is_empty() {
+            return;
+        }
         let needed = other.0.len() + d;
         if self.0.len() < needed {
             self.0.resize(needed, 0);
@@ -206,12 +220,21 @@ impl KlPol {
     /// `self += q^d * multiplier * other`, in place (kl.cpp:834-836
     /// `safeAdd(Pxz, d, mu)`).
     pub fn add_shifted_scaled_assign(&mut self, other: &Self, d: usize, multiplier: i32) {
+        if other.0.is_empty() {
+            return;
+        }
         let needed = other.0.len() + d;
         if self.0.len() < needed {
             self.0.resize(needed, 0);
         }
-        for (index, &coefficient) in other.0.iter().enumerate() {
-            self.0[index + d] += coefficient * multiplier;
+        if multiplier == 1 {
+            for (index, &coefficient) in other.0.iter().enumerate() {
+                self.0[index + d] += coefficient;
+            }
+        } else {
+            for (index, &coefficient) in other.0.iter().enumerate() {
+                self.0[index + d] += coefficient * multiplier;
+            }
         }
         self.trim_in_place();
     }

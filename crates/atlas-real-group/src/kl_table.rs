@@ -42,6 +42,11 @@ struct ColumnScratch {
     working: Vec<KlPol>,
     /// Extremal elements of the current column (`recursion_column`).
     extremals: Vec<BlockElt>,
+    /// Lengths of `extremals`, collected with them: the μ-correction
+    /// inner loop breaks on the length of every (MuPair, extremal) pair,
+    /// and a per-pair `BlockTopology::length` dispatch showed at 2.28%
+    /// self (perf-unitary-3684013).
+    extremal_lengths: Vec<usize>,
     /// Down-set element ids of the current column (`down_set` output).
     downs: Vec<BlockElt>,
 }
@@ -314,9 +319,11 @@ impl<B: BlockTopology> KlTableHandle<B> {
         let floor = self.support.length_floor(y);
         let extremals = &mut scratch.extremals;
         extremals.clear();
+        scratch.extremal_lengths.clear();
         for x in 0..floor {
             if self.support.is_extremal(x, &desc_y) {
                 extremals.push(x);
+                scratch.extremal_lengths.push(self.support.length(x));
             }
         }
 
@@ -398,7 +405,14 @@ impl<B: BlockTopology> KlTableHandle<B> {
             working.push(pxy);
         }
         // μ-correction (kl.cpp:447-448).
-        self.mu_correction(&scratch.extremals, &desc_y, sy, s, &mut scratch.working)?;
+        self.mu_correction(
+            &scratch.extremals,
+            &scratch.extremal_lengths,
+            &desc_y,
+            sy,
+            s,
+            &mut scratch.working,
+        )?;
         Ok(())
     }
 
@@ -407,6 +421,7 @@ impl<B: BlockTopology> KlTableHandle<B> {
     fn mu_correction(
         &self,
         extremals: &[BlockElt],
+        extremal_lengths: &[usize],
         desc_y: &RankFlags,
         sy: BlockElt,
         s: usize,
@@ -424,7 +439,7 @@ impl<B: BlockTopology> KlTableHandle<B> {
             // Column z is fixed for the whole inner loop over extremals.
             let z_slot = self.support.prim_slot(self.support.descent_set(z));
             for (position, &x) in extremals.iter().enumerate() {
-                if self.support.length(x) >= lz {
+                if extremal_lengths[position] >= lz {
                     break;
                 }
                 let pol = self.kl_pol_pool_at(z_slot, x, z)?;
