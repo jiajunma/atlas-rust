@@ -4,6 +4,34 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Current frontier - 2026-09-05d (avopt: closuretab LANDED; heavy legs still open)
+
+- agent-closuretab (95a8062, additive_closure root-sum-table hoist) GATED:
+  quick_check 3682247 green, build 3682248, 7/7 probes SORTED_MATCH
+  (3682249-55). Probe timings vs oracle (s): gkfast_e6 0.99/0.77,
+  gkfast_e7 14.17/13.92, unitary_e7 0.63/0.48, finals 9.40/8.53,
+  klsum 10.20/8.83, av_ann 15.41/14.12, deform 10.96/11.00. No
+  regression vs the matsum baseline; merged into agent-avopt.
+- Heavy-leg TRAP (heavy-ct 3682256, wasted): a `--wrap` heavy leg MUST
+  `cd /public/home/majj/atlasofliegroups-4d3e9449/atlas-scripts` before
+  running — the heavy probe does `<deform.at`, and without the cd it dies
+  in 0.1s with "failed to open input file 'deform.at'" (then
+  "Undefined identifier 'is_unitary'"). Resubmitted as heavy-ct2 3682272.
+- Stacked, awaiting gate (branch agent-latbits, tip b7a05e1):
+  agent-dotprod 73a7224 (lattice pair_coordinates i64 accumulation + cold
+  i128 fallback), agent-latbits b27a186 (ReductionState: dropped the
+  per-step full-matrix check_bounds rescan — redundant with the exact
+  per-entry bit bound already enforced in bounded_linear_combination),
+  possort b7a05e1 (sort_upstream_positive_order decorates heights once
+  per root instead of summing per comparison; equivalence-tested against
+  the old comparator on A2/B2/G2).
+- Heavy fat legs in flight (8h limit, probe_unitary_e7_heavy, E7 sc
+  x=20925 is_unitary): 3681407 (closure), 3681418 (wallset), 3681939
+  (av2), 3682127 (ck), 3682147 (num), 3682193 (ms), 3682272
+  (closuretab); oracle reference 3680270 (up to 8h). Whichever finishes
+  first is the first complete rust heavy-unitarity run; diff its prefix
+  against the oracle's partial. deform A/B 3680165 (6h limit) also open.
+
 ## Current frontier - 2026-09-05c (avopt: rrcnt/rcunion/rootkey LANDED; E7 at oracle parity)
 
 - Merged and pushed (codex tip cf2df18): agent-rrcnt (container elements
