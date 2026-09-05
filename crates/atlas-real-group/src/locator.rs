@@ -591,13 +591,21 @@ fn additive_closure(
     // and bounds checks there are redundant (perf-unitary-3682206).
     let count = system.roots().len();
     let table = system.root_sum_table();
+    // Membership can never exceed the root count (the bitset dedups), so one
+    // up-front reservation replaces the per-push try_reserve.
+    if count > members.capacity() {
+        members
+            .try_reserve_exact(count - members.len())
+            .map_err(|_| StructureError::AllocationFailed { requested: count })?;
+    }
     let mut next = 0;
     while next < members.len() {
         let left = members[next];
+        let left_base = left.index() * count;
         for other in 0..next {
             let sum = match table {
                 Some(table) => {
-                    let entry = table[left.index() * count + members[other].index()];
+                    let entry = table[left_base + members[other].index()];
                     if entry == u16::MAX {
                         None
                     } else {
@@ -611,9 +619,6 @@ fn additive_closure(
                 let mask = 1_u64 << (sum.index() % 64);
                 if bits[word] & mask == 0 {
                     bits[word] |= mask;
-                    members
-                        .try_reserve(1)
-                        .map_err(|_| StructureError::AllocationFailed { requested: 1 })?;
                     members.push(sum);
                 }
             }
