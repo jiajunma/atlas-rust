@@ -486,13 +486,28 @@ fn apply_matrix_into(
             return Err(StructureError::InvalidInvolution);
         }
         out.push(
-            i32::try_from(checked_sum(
-                row.iter().copied().zip(coordinates.iter().copied()),
-            )?)
-            .map_err(|_| StructureError::ArithmeticOverflow)?,
+            i32::try_from(checked_row_sum(row, coordinates)?)
+                .map_err(|_| StructureError::ArithmeticOverflow)?,
         );
     }
     Ok(())
+}
+
+/// Row dot product: i64 fast path (an i32×i32 product never overflows
+/// i64; only the accumulation can), falling back to the exact i128
+/// accumulation on overflow so the overflow contract is unchanged.
+fn checked_row_sum(row: &[i32], coordinates: &[i32]) -> Result<i128, StructureError> {
+    let mut sum = 0_i64;
+    for (&left, &right) in row.iter().zip(coordinates) {
+        let product = i64::from(left) * i64::from(right);
+        match sum.checked_add(product) {
+            Some(next) => sum = next,
+            None => {
+                return checked_sum(row.iter().copied().zip(coordinates.iter().copied()));
+            }
+        }
+    }
+    Ok(i128::from(sum))
 }
 
 fn checked_sum(mut pairs: impl Iterator<Item = (i32, i32)>) -> Result<i128, StructureError> {
