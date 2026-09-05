@@ -71,17 +71,28 @@ pub(crate) fn try_copy_coordinates(values: &[i32]) -> Result<Vec<i32>, Structure
 }
 
 pub(crate) fn pair_coordinates(left: &[i32], right: &[i32]) -> Result<i32, StructureError> {
-    let value = left
-        .iter()
-        .zip(right)
-        .try_fold(0_i128, |sum, (&left, &right)| {
-            let product = i128::from(left)
-                .checked_mul(i128::from(right))
-                .ok_or(StructureError::ArithmeticOverflow)?;
-            sum.checked_add(product)
-                .ok_or(StructureError::ArithmeticOverflow)
-        })?;
-    i32::try_from(value).map_err(|_| StructureError::ArithmeticOverflow)
+    let n = left.len().min(right.len());
+    let mut total = 0_i64;
+    for i in 0..n {
+        // i32 * i32 always fits in i64.
+        let product = i64::from(left[i]) * i64::from(right[i]);
+        match total.checked_add(product) {
+            Some(sum) => total = sum,
+            None => return pair_coordinates_wide(left, right, n),
+        }
+    }
+    i32::try_from(total).map_err(|_| StructureError::ArithmeticOverflow)
+}
+
+/// i128 accumulation for partial sums that leave the i64 window; with i32
+/// inputs this stays exact for any feasible length.
+#[cold]
+fn pair_coordinates_wide(left: &[i32], right: &[i32], n: usize) -> Result<i32, StructureError> {
+    let mut total = 0_i128;
+    for i in 0..n {
+        total += i128::from(left[i]) * i128::from(right[i]);
+    }
+    i32::try_from(total).map_err(|_| StructureError::ArithmeticOverflow)
 }
 
 /// Checked coordinatewise sum of two equal-rank weights.
@@ -140,6 +151,23 @@ mod tests {
         let weight = Weight::new(vec![2, -1]);
         let coweight = Coweight::new(vec![3, 4]);
         assert_eq!(pair(&weight, &coweight), Ok(2));
+    }
+
+    #[test]
+    fn pairing_wide_fallback_recovers_when_partial_sums_leave_i64() {
+        // Products: MAX^2, MAX^2 (2*MAX^2 still fits i64), MIN^2 (partial
+        // sum 3*2^62 - 2^33 + 2 overshoots i64), then three MIN*MAX. The
+        // wide path must return the exact total -2^31 + 2.
+        let value = pair_coordinates(
+            &[i32::MAX, i32::MAX, i32::MIN, i32::MIN, i32::MIN, i32::MIN],
+            &[i32::MAX, i32::MAX, i32::MIN, i32::MAX, i32::MAX, i32::MAX],
+        );
+        assert_eq!(value, Ok(i32::MIN + 2));
+        let out_of_range = pair_coordinates(
+            &[i32::MAX, i32::MAX, i32::MIN, i32::MIN, i32::MIN, i32::MIN, i32::MIN],
+            &[i32::MAX, i32::MAX, i32::MIN, i32::MAX, i32::MAX, i32::MAX, i32::MAX],
+        );
+        assert_eq!(out_of_range, Err(StructureError::ArithmeticOverflow));
     }
 }
 
