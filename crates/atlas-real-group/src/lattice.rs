@@ -201,6 +201,14 @@ impl RationalWeight {
             }
         }
         let divisor = i64::try_from(gcd).map_err(|_| StructureError::ArithmeticOverflow)?;
+        if divisor == 1 {
+            // Already normalized: move the numerator through instead of
+            // copying it into a fresh allocation.
+            return Ok(Self {
+                numerator,
+                denominator,
+            });
+        }
         let mut normalized = Vec::new();
         normalized.try_reserve_exact(numerator.len()).map_err(|_| {
             StructureError::AllocationFailed {
@@ -269,6 +277,26 @@ impl RationalWeight {
                 expected: self.rank(),
                 actual: right.rank(),
             });
+        }
+        if self.denominator == right.denominator {
+            // Equal denominators (the common deform-path case): add the
+            // numerators directly, skipping both cross-scalings.
+            let mut numerator = Vec::new();
+            numerator
+                .try_reserve_exact(self.rank())
+                .map_err(|_| StructureError::AllocationFailed {
+                    requested: self.rank(),
+                })?;
+            for (&left, &right_entry) in self.numerator.iter().zip(&right.numerator) {
+                let scaled_right = right_entry
+                    .checked_mul(sign)
+                    .ok_or(StructureError::ArithmeticOverflow)?;
+                numerator.push(
+                    left.checked_add(scaled_right)
+                        .ok_or(StructureError::ArithmeticOverflow)?,
+                );
+            }
+            return Self::new(numerator, self.denominator);
         }
         let denominator = self
             .denominator
