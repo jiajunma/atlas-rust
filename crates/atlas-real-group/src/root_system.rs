@@ -3,7 +3,10 @@ use std::hash::{BuildHasherDefault, Hasher};
 use std::sync::{Arc, Mutex, OnceLock};
 
 use crate::lattice::{pair_coordinates, try_copy_coordinates};
-use crate::{pair, BasedRootDatum, Coweight, StructureError, Weight, WeylAction};
+use crate::{
+    pair, BasedRootDatum, Coweight, LatticeInvolution, RootInvolutionData, StructureError, Weight,
+    WeylAction,
+};
 use smallvec::SmallVec;
 
 /// Stable identifier for one ordinary root in a deterministically ordered root
@@ -245,6 +248,13 @@ pub struct RootSystem {
     /// coroot-difference probes), a deterministic function of the
     /// enumerated data. Pure cache: equality ignores it.
     alcove_walls: OnceLock<crate::alcove::AlcoveWallCache>,
+    /// Memoized per-involution root actions behind
+    /// [`Self::cached_root_involution`]: unitarity canonicalization rebuilds
+    /// the same involution's data on every lookup, so the matrix-keyed map
+    /// hands out one shared `Arc` per distinct involution. Keyed by the
+    /// weight-space matrix, which fixes the root action once the datum is
+    /// fixed. Pure cache: equality ignores it; clones share it.
+    root_involutions: Arc<Mutex<HashMap<Vec<Vec<i32>>, Arc<RootInvolutionData>>>>,
 }
 
 /// Coordinate→id lookup behind `id_of_slice`. Rank <= 8 systems pack every
@@ -300,6 +310,26 @@ impl PartialEq for RootSystem {
 impl Eq for RootSystem {}
 
 impl RootSystem {
+    /// Shared [`RootInvolutionData`] for `involution`, memoized per root
+    /// system: unitarity canonicalization rebuilds the same involution's
+    /// data on every table lookup, so repeat constructions return the
+    /// cached `Arc`. Failures are not cached.
+    pub(crate) fn cached_root_involution(
+        &self,
+        involution: LatticeInvolution,
+    ) -> Result<Arc<RootInvolutionData>, StructureError> {
+        let mut cache = self
+            .root_involutions
+            .lock()
+            .expect("root-involution cache poisoned");
+        if let Some(cached) = cache.get(involution.weight_matrix()) {
+            return Ok(Arc::clone(cached));
+        }
+        let data = Arc::new(RootInvolutionData::new(self, involution)?);
+        cache.insert(data.involution().weight_matrix().to_vec(), Arc::clone(&data));
+        Ok(data)
+    }
+
     /// Compatibility wrapper preserving the historic root-cardinality budget.
     ///
     /// It derives the remaining limits with [`RootSystemBudget::complete_for`]
@@ -588,6 +618,7 @@ impl RootSystem {
             root_sums: OnceLock::new(),
             root_index: OnceLock::new(),
             alcove_walls: OnceLock::new(),
+            root_involutions: Arc::new(Mutex::new(HashMap::new())),
         };
         // One-time fill straight from the reflection formula. The previous
         // matrix path (a datum clone and two rank×rank matrices per
