@@ -883,3 +883,32 @@ RootSystem, BTreeSet->sorted-Vec in block build.
   drift note: the same code measured 8.99 as klhash-tip in 3680872 and
   9.13 as base here — ±1.5% cross-job band; only within-job interleaving
   is trustworthy.
+
+## agent-seqpar (merged; fc833aa)
+
+- involution_orbits: the >=100-roots parallel driver now also requires
+  available_parallelism > 1. SLURM probe slots run cpus-per-task=1, where
+  two workers timeshare one core and duplicate the per-worker membership
+  tables for nothing.
+- Gates: quick_check 3680913 green; probes 3680915-919 SORTED_MATCH.
+- AB 3680921 probe_setup_e6 at 1 cpu, REPS=5, vs d278e664: base median
+  0.61s tip median 0.60s (wall ~neutral) BUT RSS 150MB -> 106MB (-30%)
+  on the setup probe. Merged for the memory win; wall unchanged means the
+  parallel driver was NOT the E6 setup gap.
+- Setup-gap decomposition (probes 3680906/3680909/3680911): ic-only E6 =
+  0.04s BOTH engines; + real_form/KGB/param = 0.05s rust vs 0.06s oracle
+  (parity); the whole 0.23s gap is in loading the GK/AV script stack
+  (nilpotent_orbits.at + associated_variety_annihilator.at + GKfast.at),
+  whose load triggers ~28 classification builds incl. one E8-scale one.
+
+## probe_unitary_e7_heavy: the 60x oracle claim was FALSE (Sep 4 artifacts)
+
+- The rust leg (47.78s) had CRASHED at term 780 (exit 1, the since-fixed
+  finals-invariant bug); the oracle leg was cancelled at the 1h limit past
+  term 1540, also incomplete. It was half-work vs more-than-full-work —
+  never a like-for-like comparison. Prefix through term 780 is
+  byte-identical, so the completed prefix was CORRECT; the speed claim
+  was the artifact. Partial captures saved as
+  probe_unitary_e7_heavy.{rust.out.sep04-crash,cpp.out.sep04-partial}.
+  The true oracle number awaits fat job 3680270; the post-deformfix rust
+  leg is being re-measured (3680947).
