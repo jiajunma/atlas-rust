@@ -1046,3 +1046,30 @@ Probe wall times (rust seconds) and rust/oracle ratio per gate run
   (3683423), gj64 (3683443). At ~25min: frontier1 term 1820, gj64 1760,
   oracle 1430. Common-prefix sorted diff to term 1420 = MATCH (3078
   lines, byte-identical).
+
+## transpi64 + smallrat64 gates (2026-09-05 night; transpi64 3683503-10, smallrat64 3683533-40; both 7/7 SORTED_MATCH)
+
+| probe | transpi64 4f37e7f | ratio | smallrat64 0356b96 | ratio |
+|---|---|---|---|---|
+| deform_e7_only | 14.63 / 15.66 | 0.934x | 15.64 / 13.67 | 1.144x |
+| gkfast_e7 | 14.18 / 13.33 | 1.064x | 14.35 / 13.84 | 1.037x |
+| finals_e7 | 9.16 / 8.17 | 1.121x | 9.29 / 8.23 | 1.129x |
+| klsum_e7 | 10.03 / 8.68 | 1.156x | 10.02 / 8.62 | 1.162x |
+| av_ann_e7 | 16.42 / 14.27 | 1.151x | 16.32 / 14.20 | 1.149x |
+
+(small probes gkfast_e6 ~0.97/0.60, unitary_e7 ~0.67/0.38 omitted —
+fixed-cost dominated.)
+
+- transpi64 (4f37e7f, merged a729ad2): apply_matrix_transposed_into gets
+  checked_row_sum's i64 fast path (was per-element i128 checked ops).
+  Target: act_on_coweight_into 1.81-2.83% self.
+- smallrat64 (0356b96, merged 9949765): whole SmallRat div/mul_sub in i64
+  when operands fit (single-instruction muls + hardware-div gcd),
+  i128 fallback untouched. Target: gj_normalize_and_clear 11.2% self in
+  profile 3683465 (gj64 only removed the u128 gcd; the i128 mul chains
+  remained). Probe-neutral as expected; the heavy leg is the measure.
+- Frontier profile 3683465 (27b6507, 30min heavy unitary): GJ 11.2%,
+  allocator cluster ~8.7% (try_allocate_in/mi_page_malloc_zero/mi_free/
+  finish_grow/realloc/malloc_aligned), malachite conversion cluster
+  ~4.8%, integer_lattice cluster ~4.4%, wall_set cluster ~4.1%,
+  id_of_slice+pack_root_key ~2.3%, hashbrown ~3.3%.
