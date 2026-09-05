@@ -284,6 +284,15 @@ impl IntegralDatumItem {
 pub struct IntegralDatumTable {
     items: Vec<IntegralDatumItem>,
     ids: HashMap<Vec<RootId>, u32>,
+    /// `gamma -> (int_sys_nr, locator)` memo: `int_item(gamma)` is a pure
+    /// function of the gamma value (the table is owned per inner-class
+    /// context, so the system is fixed), and `RepTable::reduce` calls it
+    /// once per reduced query — over a unitarity run the infinitesimal
+    /// character is shared by every final parameter, so the alcove-vertex,
+    /// dominance, and additive-closure steps were recomputed identically
+    /// millions of times (perf-unitary-3682964: additive_closure 5.9% self
+    /// plus the wall_set cluster ~5%, all under int_item).
+    by_gamma: HashMap<RationalWeight, (u32, BlockLocator)>,
 }
 
 impl IntegralDatumTable {
@@ -323,6 +332,9 @@ impl IntegralDatumTable {
                 expected: system.lattice_rank(),
                 actual: gamma.rank(),
             });
+        }
+        if let Some(cached) = self.by_gamma.get(gamma) {
+            return Ok(cached.clone());
         }
         let datum = system.datum();
         let denominator = gamma.denominator();
@@ -443,15 +455,15 @@ impl IntegralDatumTable {
             )?;
             simple_pi.push(position);
         }
-        Ok((
+        let locator = BlockLocator {
             int_sys,
-            BlockLocator {
-                int_sys,
-                w,
-                simp_int,
-                simple_pi,
-            },
-        ))
+            w,
+            simp_int,
+            simple_pi,
+        };
+        self.by_gamma
+            .insert(gamma.clone(), (int_sys, locator.clone()));
+        Ok((int_sys, locator))
     }
 
     /// `int_hash.match(e)` plus the `int_table.emplace_back` growth
