@@ -238,6 +238,14 @@ pub(crate) fn wall_set(
         .collect::<Result<Vec<_>, StructureError>>()?;
     let mut walls = BTreeSet::new();
     let mut integrals = BTreeSet::new();
+    // Scratch buffers reused across rounds and accepted walls: the per-wall
+    // filter used to rebuild two fresh Vecs per accepted wall (allocator
+    // cluster, perf-unitary-3683465). Order semantics are unchanged —
+    // `kept_*` collect the same survivors in the same order.
+    let mut mins: Vec<(usize, (i64, i64))> = Vec::new();
+    let mut rest: Vec<(usize, (i64, i64))> = Vec::new();
+    let mut kept_mins: Vec<(usize, (i64, i64))> = Vec::new();
+    let mut kept_rest: Vec<(usize, (i64, i64))> = Vec::new();
     while !levels.is_empty() {
         let min_level = levels.iter().map(|(_, level)| *level).min().ok_or(
             StructureError::RootSystemInvariantViolation {
@@ -245,9 +253,9 @@ pub(crate) fn wall_set(
             },
         )?;
         // Upstream's stable front partition: minimal-level roots first.
-        let mut mins: Vec<(usize, (i64, i64))> = Vec::new();
-        let mut rest: Vec<(usize, (i64, i64))> = Vec::new();
-        for item in levels {
+        mins.clear();
+        rest.clear();
+        for item in levels.drain(..) {
             if item.1 == min_level {
                 mins.push(item);
             } else {
@@ -267,23 +275,26 @@ pub(crate) fn wall_set(
                 integrals.insert(alpha);
             }
             walls.insert(alpha);
-            let mut kept_mins = Vec::with_capacity(mins.len() - cursor);
-            for &item in &mins[cursor..] {
-                if !coroot_table.contains_difference(&coroots, alpha, item.0) {
-                    kept_mins.push(item);
-                }
-            }
-            let mut kept_rest = Vec::with_capacity(rest.len());
-            for &item in &rest {
-                if !coroot_table.contains_difference(&coroots, alpha, item.0) {
-                    kept_rest.push(item);
-                }
-            }
-            mins = kept_mins;
-            rest = kept_rest;
+            kept_mins.clear();
+            kept_mins.extend(
+                mins[cursor..]
+                    .iter()
+                    .copied()
+                    .filter(|item| !coroot_table.contains_difference(&coroots, alpha, item.0)),
+            );
+            kept_rest.clear();
+            kept_rest.extend(
+                rest.iter()
+                    .copied()
+                    .filter(|item| !coroot_table.contains_difference(&coroots, alpha, item.0)),
+            );
+            std::mem::swap(&mut mins, &mut kept_mins);
+            std::mem::swap(&mut rest, &mut kept_rest);
             cursor = 0;
         }
-        levels = rest;
+        // Recycle the drained `levels` allocation as the next round's
+        // `rest` scratch.
+        std::mem::swap(&mut levels, &mut rest);
     }
     Ok((walls, integrals))
 }
