@@ -266,16 +266,15 @@ pub(crate) fn wall_set(
                 integrals.insert(alpha);
             }
             walls.insert(alpha);
-            let alpha_coroot = coroots[alpha];
             let mut kept_mins = Vec::with_capacity(mins.len() - cursor);
             for &item in &mins[cursor..] {
-                if !coroot_difference_in(&coroot_table, alpha_coroot, coroots[item.0]) {
+                if !coroot_table.contains_difference(&coroots, alpha, item.0) {
                     kept_mins.push(item);
                 }
             }
             let mut kept_rest = Vec::with_capacity(rest.len());
             for &item in &rest {
-                if !coroot_difference_in(&coroot_table, alpha_coroot, coroots[item.0]) {
+                if !coroot_table.contains_difference(&coroots, alpha, item.0) {
                     kept_rest.push(item);
                 }
             }
@@ -290,10 +289,18 @@ pub(crate) fn wall_set(
 
 /// Coroot membership table for `wall_set`'s difference probes. Every
 /// finite-type coroot packs into `pack_root_key`'s 8-bit lanes (rank <= 8,
-/// coordinates in [-128, 127]), so the common case is a `u64` hash set;
-/// anything else falls back to the boxed-slice tree.
+/// coordinates in [-128, 127]), so the common case is a `u64` hash set
+/// plus the per-root packed keys for SWAR difference probes; systems whose
+/// coroots do not pack keep the BTreeSet.
 enum CorootTable {
-    Packed(std::collections::HashSet<u64, PackedKeyHasherBuilder>),
+    Packed {
+        set: std::collections::HashSet<u64, PackedKeyHasherBuilder>,
+        /// Packed key per coroot, aligned with the `coroots` argument order.
+        keys: Vec<u64>,
+        /// Low `8 * rank` bits set: lanes past the rank stay zero, matching
+        /// how `pack_root_key` pads short vectors.
+        lane_mask: u64,
+    },
     Full(BTreeSet<Vec<i32>>),
 }
 
@@ -303,22 +310,70 @@ impl CorootTable {
             coroots.len(),
             PackedKeyHasherBuilder,
         );
+        let mut keys = Vec::with_capacity(coroots.len());
         for coroot in coroots {
             let Some(key) = crate::root_system::pack_root_key(coroot) else {
                 return Self::Full(coroots.iter().map(|c| c.to_vec()).collect());
             };
             packed.insert(key);
+            keys.push(key);
         }
-        Self::Packed(packed)
+        let rank = coroots.first().map_or(0, |coroot| coroot.len());
+        let lane_mask = if rank >= 8 { u64::MAX } else { (1_u64 << (8 * rank)) - 1 };
+        Self::Packed {
+            set: packed,
+            keys,
+            lane_mask,
+        }
     }
 
-    fn contains(&self, coordinates: &[i32]) -> bool {
+    /// Whether `coroots[alpha] - coroots[beta]` is tabled as a coroot.
+    fn contains_difference(&self, coroots: &[&[i32]], alpha: usize, beta: usize) -> bool {
         match self {
-            Self::Packed(set) => crate::root_system::pack_root_key(coordinates)
+            Self::Packed {
+                set,
+                keys,
+                lane_mask,
+            } => packed_difference_key(keys[alpha], keys[beta], *lane_mask)
                 .is_some_and(|key| set.contains(&key)),
-            Self::Full(tree) => tree.contains(coordinates),
+            Self::Full(tree) => {
+                let difference = coroots[alpha]
+                    .iter()
+                    .zip(coroots[beta])
+                    .map(|(&a, &b)| a - b)
+                    .collect::<Vec<_>>();
+                tree.contains(&difference)
+            }
         }
     }
+}
+
+/// Per-lane biased subtraction of two `pack_root_key` values: with
+/// `x_i = a_i + 128` and `y_i = b_i + 128` in lane `i`, the difference key
+/// needs `a_i - b_i + 128 = x_i - y_i + 128` per lane, which is packable
+/// exactly when `x_i - y_i` lands in [-128, 127]. The high-bit lanes of
+/// `x`/`y` split the cases: equal high bits keep the difference inside
+/// [-127, 127] (always valid); a set high bit only in `x` is valid iff the
+/// low parts differ by at least 1 (then add 128 back); a set high bit only
+/// in `y` is valid iff the low parts do not borrow (then subtract 128).
+/// Valid lanes never carry or borrow across lane boundaries, so the whole
+/// probe is a handful of `u64` ops instead of a per-lane i32 loop plus a
+/// re-validation.
+fn packed_difference_key(x: u64, y: u64, lane_mask: u64) -> Option<u64> {
+    const HIGH: u64 = 0x8080_8080_8080_8080;
+    // Lane i: (x_i | 0x80) - (y_i & 0x7f) is in [1, 255], so no inter-lane
+    // borrow; it equals (x_i mod 128) - (y_i mod 128) + 128.
+    let t = (x | HIGH).wrapping_sub(y & !HIGH);
+    let high_x = x & HIGH;
+    let high_y = y & HIGH;
+    let high_t = t & HIGH;
+    let invalid = (high_x & !high_y & high_t) | (!high_x & high_y & !high_t & HIGH);
+    if invalid & lane_mask != 0 {
+        return None;
+    }
+    let plus = high_x & !high_y & HIGH;
+    let minus = !high_x & high_y & HIGH;
+    Some(t.wrapping_add(plus).wrapping_sub(minus) & lane_mask)
 }
 
 /// murmur3-fmix64 finalizer over the packed coordinate key: the packing
@@ -350,26 +405,6 @@ impl std::hash::Hasher for PackedKeyHasher {
     }
     fn write_u64(&mut self, value: u64) {
         self.0 = value;
-    }
-}
-
-/// Whether `alpha - beta` (coroot coordinates) is tabled as a coroot.
-/// Rank-at-most-32 systems (every finite type; E8 has rank 8) use a stack
-/// buffer instead of a per-pair `Vec`.
-fn coroot_difference_in(table: &CorootTable, alpha: &[i32], beta: &[i32]) -> bool {
-    let mut buffer = [0_i32; 32];
-    if alpha.len() <= buffer.len() {
-        for (slot, (&a, &b)) in buffer.iter_mut().zip(alpha.iter().zip(beta)) {
-            *slot = a - b;
-        }
-        table.contains(&buffer[..alpha.len()])
-    } else {
-        let difference = alpha
-            .iter()
-            .zip(beta)
-            .map(|(&a, &b)| a - b)
-            .collect::<Vec<_>>();
-        table.contains(&difference)
     }
 }
 
@@ -980,6 +1015,58 @@ mod tests {
         assert!(denominator_exceeds_alcove_bound(62, rank_62_bound + 1));
         assert!(!denominator_exceeds_alcove_bound(63, i64::MAX));
         assert!(!denominator_exceeds_alcove_bound(64, i64::MAX));
+    }
+
+    #[test]
+    fn packed_difference_key_matches_coordinate_packing() {
+        fn reference(x: u64, y: u64, rank: usize) -> Option<u64> {
+            let mut difference = Vec::with_capacity(rank);
+            for lane in 0..rank {
+                let a = ((x >> (8 * lane)) & 0xff) as i32 - 128;
+                let b = ((y >> (8 * lane)) & 0xff) as i32 - 128;
+                difference.push(a - b);
+            }
+            crate::root_system::pack_root_key(&difference)
+        }
+
+        let corners = [-128_i32, -127, -2, -1, 0, 1, 2, 3, 126, 127];
+        let pack = |coordinates: &[i32]| crate::root_system::pack_root_key(coordinates).unwrap();
+        for rank in 1..=8_usize {
+            let lane_mask = if rank >= 8 { u64::MAX } else { (1_u64 << (8 * rank)) - 1 };
+            // Corner pairs in every lane position, other lanes pinned to 0.
+            for lane in 0..rank {
+                for &a in &corners {
+                    for &b in &corners {
+                        let mut left = vec![0_i32; rank];
+                        let mut right = vec![0_i32; rank];
+                        left[lane] = a;
+                        right[lane] = b;
+                        assert_eq!(
+                            packed_difference_key(pack(&left), pack(&right), lane_mask),
+                            reference(pack(&left), pack(&right), rank),
+                            "rank={rank} lane={lane} a={a} b={b}"
+                        );
+                    }
+                }
+            }
+            // Deterministic multi-lane fuzz over the full packable range.
+            let mut state = 0x9e3779b97f4a7c15_u64;
+            let mut next = move || {
+                state ^= state << 13;
+                state ^= state >> 7;
+                state ^= state << 17;
+                state
+            };
+            for _ in 0..20_000 {
+                let left: Vec<i32> = (0..rank).map(|_| (next() % 256) as i32 - 128).collect();
+                let right: Vec<i32> = (0..rank).map(|_| (next() % 256) as i32 - 128).collect();
+                assert_eq!(
+                    packed_difference_key(pack(&left), pack(&right), lane_mask),
+                    reference(pack(&left), pack(&right), rank),
+                    "rank={rank} left={left:?} right={right:?}"
+                );
+            }
+        }
     }
 
     #[test]
