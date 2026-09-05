@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use malachite::Rational;
 
-use crate::smallrat::{gj_normalize_and_clear, gj_scalars, GjScalar, SmallRat};
+use crate::smallrat::{gj_normalize_and_clear_flat, GjMatrix, GjScalar, SmallRat};
 use crate::{RationalWeight, RepContext, RootId, RootSystem, StandardRepr, StructureError, Weight};
 
 /// Return the barycentre of the alcove containing `z.gamma()`.
@@ -592,7 +592,7 @@ fn labels_for_component(
         })
         .collect();
     let width = columns.len();
-    let mut small = gj_scalars::<SmallRat>(&ints);
+    let mut small = GjMatrix::<SmallRat>::from_ints(&ints);
     let mut pivot_of_column = vec![None; width];
     if labels_sweep(&mut small, rows, width, &mut pivot_of_column).is_ok() {
         // SmallRat epilogue: relation assembly, common denominator, and the
@@ -614,7 +614,7 @@ fn labels_for_component(
         relation[free] = (1, 1);
         for (column, pivot) in pivot_of_column.iter().enumerate() {
             if let Some(row) = pivot {
-                let (num, den) = small[*row][free].num_den();
+                let (num, den) = small.entry(*row, free).num_den();
                 relation[column] = (
                     num.checked_neg().ok_or(StructureError::ArithmeticOverflow)?,
                     den,
@@ -658,8 +658,8 @@ fn labels_for_component(
     }
     // A machine-word intermediate overflowed: restart the identical sweep
     // on exact bignum rationals.
-    let matrix: Vec<Vec<Rational>> = {
-        let mut big = gj_scalars::<Rational>(&ints);
+    let matrix: GjMatrix<Rational> = {
+        let mut big = GjMatrix::<Rational>::from_ints(&ints);
         let mut big_pivots = vec![None; width];
         match labels_sweep(&mut big, rows, width, &mut big_pivots) {
             Ok(()) => {
@@ -681,7 +681,7 @@ fn labels_for_component(
     relation[free[0]] = Rational::from(1);
     for (column, pivot) in pivot_of_column.iter().enumerate() {
         if let Some(row) = pivot {
-            relation[column] = -matrix[*row][free[0]].clone();
+            relation[column] = -matrix.entry(*row, free[0]).clone();
         }
     }
     let mut denominator = 1_i64;
@@ -720,7 +720,7 @@ fn labels_for_component(
 /// The RREF sweep of `labels_for_component`: records each pivot column's
 /// row; columns without a pivot stay `None` (the free variables).
 fn labels_sweep<T: GjScalar>(
-    matrix: &mut [Vec<T>],
+    matrix: &mut GjMatrix<T>,
     rows: usize,
     width: usize,
     pivot_of_column: &mut [Option<usize>],
@@ -730,11 +730,11 @@ fn labels_sweep<T: GjScalar>(
         if pivot_row >= rows {
             break;
         }
-        let Some(found) = (pivot_row..rows).find(|&row| matrix[row][column].is_nonzero()) else {
+        let Some(found) = (pivot_row..rows).find(|&row| matrix.entry(row, column).is_nonzero()) else {
             continue;
         };
-        matrix.swap(pivot_row, found);
-        gj_normalize_and_clear(matrix, rows, pivot_row, column)?;
+        matrix.swap_rows(pivot_row, found);
+        gj_normalize_and_clear_flat(matrix, rows, pivot_row, column)?;
         pivot_of_column[column] = Some(pivot_row);
         pivot_row += 1;
     }
@@ -753,39 +753,49 @@ fn solve_rational_system(rows: &[(Vec<i64>, i64)], columns: usize) -> Option<Vec
                 .collect()
         })
         .collect();
-    let mut small = gj_scalars::<SmallRat>(&ints);
+    let mut small = GjMatrix::<SmallRat>::from_ints(&ints);
     let mut pivot_rows = Vec::with_capacity(columns);
-    let augmented: Vec<Vec<Rational>> = match solve_sweep(&mut small, row_count, columns, &mut pivot_rows)
-    {
-        Ok(true) => small
-            .iter()
-            .map(|row| row.iter().map(|entry| entry.to_rational()).collect())
-            .collect(),
-        Ok(false) => return None,
-        Err(()) => {
-            // A machine-word intermediate overflowed: restart the identical
-            // sweep on exact bignum rationals.
-            let mut big = gj_scalars::<Rational>(&ints);
-            let mut big_pivots = Vec::with_capacity(columns);
-            match solve_sweep(&mut big, row_count, columns, &mut big_pivots) {
-                Ok(true) => {
-                    pivot_rows = big_pivots;
-                    big
-                }
-                Ok(false) => return None,
-                Err(()) => unreachable!("Rational elimination cannot overflow"),
+    match solve_sweep(&mut small, row_count, columns, &mut pivot_rows) {
+        Ok(true) => {
+            // Zero-row check and solution extraction stay on SmallRat: only
+            // the `columns` solution entries convert to Rational, not the
+            // whole swept matrix.
+            if small
+                .rows()
+                .any(|row| row[..columns].iter().all(|c| !c.is_nonzero()) && row[columns].is_nonzero())
+            {
+                return None;
             }
+            let mut solution = vec![Rational::from(0); columns];
+            for (column, &row) in pivot_rows.iter().enumerate() {
+                solution[column] = small.entry(row, columns).to_rational();
+            }
+            return Some(solution);
         }
+        Ok(false) => return None,
+        Err(()) => {}
+    }
+    // A machine-word intermediate overflowed: restart the identical sweep
+    // on exact bignum rationals.
+    let mut big = GjMatrix::<Rational>::from_ints(&ints);
+    let mut big_pivots = Vec::with_capacity(columns);
+    let augmented = match solve_sweep(&mut big, row_count, columns, &mut big_pivots) {
+        Ok(true) => {
+            pivot_rows = big_pivots;
+            big
+        }
+        Ok(false) => return None,
+        Err(()) => unreachable!("Rational elimination cannot overflow"),
     };
     if augmented
-        .iter()
+        .rows()
         .any(|row| row[..columns].iter().all(|coefficient| coefficient == &0) && row[columns] != 0)
     {
         return None;
     }
     let mut solution = vec![Rational::from(0); columns];
     for (column, &row) in pivot_rows.iter().enumerate() {
-        solution[column] = augmented[row][columns].clone();
+        solution[column] = augmented.entry(row, columns).clone();
     }
     Some(solution)
 }
@@ -793,19 +803,20 @@ fn solve_rational_system(rows: &[(Vec<i64>, i64)], columns: usize) -> Option<Vec
 /// The sweep of `solve_rational_system`: `Ok(false)` when some column has
 /// no pivot (the caller's `None`).
 fn solve_sweep<T: GjScalar>(
-    augmented: &mut [Vec<T>],
+    augmented: &mut GjMatrix<T>,
     row_count: usize,
     columns: usize,
     pivot_rows: &mut Vec<usize>,
 ) -> Result<bool, ()> {
     let mut pivot_row = 0;
     for column in 0..columns {
-        let Some(found) = (pivot_row..row_count).find(|&row| augmented[row][column].is_nonzero())
+        let Some(found) =
+            (pivot_row..row_count).find(|&row| augmented.entry(row, column).is_nonzero())
         else {
             return Ok(false);
         };
-        augmented.swap(pivot_row, found);
-        gj_normalize_and_clear(augmented, row_count, pivot_row, column)?;
+        augmented.swap_rows(pivot_row, found);
+        gj_normalize_and_clear_flat(augmented, row_count, pivot_row, column)?;
         pivot_rows.push(pivot_row);
         pivot_row += 1;
     }

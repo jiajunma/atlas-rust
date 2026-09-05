@@ -140,43 +140,95 @@ impl GjScalar for Rational {
     }
 }
 
+/// Flat row-major scalar matrix for the GJ sweeps: one allocation instead
+/// of rows + 1, and the pivot-clear loop touches cache-adjacent rows
+/// (perf-unitary-3683612: SmallRat mul_sub_assign 4.47% self on scattered
+/// `Vec<Vec>` rows).
+pub(crate) struct GjMatrix<T: GjScalar> {
+    width: usize,
+    data: Vec<T>,
+}
+
+impl<T: GjScalar> GjMatrix<T> {
+    /// The flat image of `ints`; every row must have the same length (the
+    /// callers build them that way).
+    pub(crate) fn from_ints(ints: &[Vec<i64>]) -> Self {
+        let width = ints.first().map_or(0, Vec::len);
+        let mut data = Vec::with_capacity(ints.len() * width);
+        for row in ints {
+            debug_assert_eq!(row.len(), width);
+            data.extend(row.iter().map(|&entry| T::from_i64(entry)));
+        }
+        Self { width, data }
+    }
+
+    pub(crate) fn entry(&self, row: usize, column: usize) -> &T {
+        &self.data[row * self.width + column]
+    }
+
+    pub(crate) fn row(&self, row: usize) -> &[T] {
+        &self.data[row * self.width..(row + 1) * self.width]
+    }
+
+    /// Rows as slices, in order; empty when there is no data (a zero-width
+    /// matrix yields no chunks, so the `max(1)` never fabricates rows).
+    pub(crate) fn rows(&self) -> impl Iterator<Item = &[T]> {
+        self.data.chunks(self.width.max(1))
+    }
+
+    fn row_mut(&mut self, row: usize) -> &mut [T] {
+        &mut self.data[row * self.width..(row + 1) * self.width]
+    }
+
+    pub(crate) fn swap_rows(&mut self, left: usize, right: usize) {
+        if left == right {
+            return;
+        }
+        let width = self.width;
+        let (low, high) = if left < right {
+            (left, right)
+        } else {
+            (right, left)
+        };
+        let (head, tail) = self.data.split_at_mut(high * width);
+        head[low * width..(low + 1) * width].swap_with_slice(&mut tail[..width]);
+    }
+}
+
 /// Normalize the pivot row by the pivot and clear the pivot column above
-/// and below — the shared body of the historical `Rational` sweeps, in
-/// the same operation order.
-pub(crate) fn gj_normalize_and_clear<T: GjScalar>(
-    matrix: &mut [Vec<T>],
+/// and below, in the same operation order as the historical `Rational`
+/// sweeps.
+pub(crate) fn gj_normalize_and_clear_flat<T: GjScalar>(
+    matrix: &mut GjMatrix<T>,
     rows: usize,
     pivot_row: usize,
     column: usize,
 ) -> Result<(), ()> {
-    let pivot = matrix[pivot_row][column].clone();
-    for entry in &mut matrix[pivot_row] {
+    let width = matrix.width;
+    let pivot = matrix.entry(pivot_row, column).clone();
+    for entry in matrix.row_mut(pivot_row) {
         entry.div_assign(&pivot)?;
     }
     for row in 0..rows {
-        if row == pivot_row || !matrix[row][column].is_nonzero() {
+        if row == pivot_row || !matrix.entry(row, column).is_nonzero() {
             continue;
         }
-        let factor = matrix[row][column].clone();
+        let factor = matrix.entry(row, column).clone();
         let (pivot_line, target) = if row < pivot_row {
-            let (head, tail) = matrix.split_at_mut(pivot_row);
-            (&tail[0], &mut head[row])
+            let (head, tail) = matrix.data.split_at_mut(pivot_row * width);
+            (&tail[..width], &mut head[row * width..(row + 1) * width])
         } else {
-            let (head, tail) = matrix.split_at_mut(row);
-            (&head[pivot_row], &mut tail[0])
+            let (head, tail) = matrix.data.split_at_mut(row * width);
+            (
+                &head[pivot_row * width..(pivot_row + 1) * width],
+                &mut tail[..width],
+            )
         };
         for (target_entry, pivot_entry) in target.iter_mut().zip(pivot_line.iter()) {
             target_entry.mul_sub_assign(pivot_entry, &factor)?;
         }
     }
     Ok(())
-}
-
-/// Build the scalar matrix the historical bodies built entry-by-entry.
-pub(crate) fn gj_scalars<T: GjScalar>(ints: &[Vec<i64>]) -> Vec<Vec<T>> {
-    ints.iter()
-        .map(|row| row.iter().map(|&entry| T::from_i64(entry)).collect())
-        .collect()
 }
 
 /// Reduce `num/den` (`den != 0`) to lowest terms with a positive
@@ -266,22 +318,22 @@ mod tests {
             vec![-3, -1, 2, -11],
             vec![-2, 1, 2, -3],
         ];
-        fn sweep<T: GjScalar>(matrix: &mut [Vec<T>]) {
+        fn sweep<T: GjScalar>(matrix: &mut GjMatrix<T>) {
             let mut pivot_row = 0;
             for column in 0..3 {
                 let found = (pivot_row..3)
-                    .find(|&row| matrix[row][column].is_nonzero())
+                    .find(|&row| matrix.entry(row, column).is_nonzero())
                     .unwrap();
-                matrix.swap(pivot_row, found);
-                gj_normalize_and_clear(matrix, 3, pivot_row, column).unwrap();
+                matrix.swap_rows(pivot_row, found);
+                gj_normalize_and_clear_flat(matrix, 3, pivot_row, column).unwrap();
                 pivot_row += 1;
             }
         }
-        let mut small = gj_scalars::<SmallRat>(&ints);
+        let mut small = GjMatrix::<SmallRat>::from_ints(&ints);
         sweep(&mut small);
-        let mut big = gj_scalars::<Rational>(&ints);
+        let mut big = GjMatrix::<Rational>::from_ints(&ints);
         sweep(&mut big);
-        for (small_row, big_row) in small.iter().zip(&big) {
+        for (small_row, big_row) in small.rows().zip(big.rows()) {
             for (small, big) in small_row.iter().zip(big_row) {
                 assert_eq!(&small.to_rational(), big);
             }
