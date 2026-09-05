@@ -27,9 +27,9 @@ pub fn alcove_center(
     let root_system = rc.root_system();
     let rank = datum.lattice_rank();
     let gamma = z.gamma();
-    let numbering = RootNumbering::new(root_system);
-    let (walls, integrals) = wall_set(root_system, &numbering, gamma)?;
-    let fracs = barycentre_eq(root_system, &numbering, &walls, &integrals)?;
+    let numbering = root_system.alcove_wall_cache().numbering();
+    let (walls, integrals) = wall_set(root_system, gamma)?;
+    let fracs = barycentre_eq(root_system, numbering, &walls, &integrals)?;
 
     let mut rows = Vec::new();
     rows.try_reserve_exact(walls.len() + datum.lattice_rank())
@@ -49,7 +49,7 @@ pub fn alcove_center(
             .map(|&coordinate| i64::from(coordinate).checked_mul(scale))
             .collect::<Option<Vec<_>>>()
             .ok_or(StructureError::ArithmeticOverflow)?;
-        let floor = floor_eval_nbr(root_system, &numbering, nbr, gamma)?;
+        let floor = floor_eval_nbr(root_system, numbering, nbr, gamma)?;
         let rhs = floor
             .checked_mul(scale)
             .and_then(|value| value.checked_add(fracs[index].0))
@@ -135,7 +135,7 @@ pub fn denominator_exceeds_alcove_bound(rank: usize, denominator: i64) -> bool {
     rank < i64::BITS as usize - 1 && denominator > (1_i64 << rank)
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct RootNumbering {
     npos: usize,
     by_nbr: Vec<RootId>,
@@ -210,29 +210,40 @@ impl RootNumbering {
 
 pub(crate) fn wall_set(
     root_system: &RootSystem,
-    numbering: &RootNumbering,
     gamma: &RationalWeight,
 ) -> Result<(BTreeSet<usize>, BTreeSet<usize>), StructureError> {
-    let num_roots = root_system.roots().len();
-    // Coroot slices per numbering index, resolved once: the filtering loop
-    // pairs every surviving root with every wall root.
-    let mut coroots: Vec<&[i32]> = Vec::with_capacity(num_roots);
-    for nbr in 0..num_roots {
-        coroots.push(
-            root_system
-                .coroot(numbering.id(nbr))
-                .ok_or(StructureError::RootSystemInvariantViolation {
-                    invariant: "alcove root has no coroot",
-                })?
-                .as_slice(),
-        );
+    let cache = root_system.alcove_wall_cache();
+    let numbering = cache.numbering();
+    if matches!(cache.diff, AlcoveDiff::Missing) {
+        return Err(StructureError::RootSystemInvariantViolation {
+            invariant: "alcove root has no coroot",
+        });
     }
-    // Membership table for coroot-difference probes. The per-call packed
-    // u64 key set replaces the boxed-slice BTreeSet whose O(log n)
-    // lexicographic slice compares dominated the heavy-unitary profile
-    // (perf-unitary-3681949); systems whose coroots do not pack keep the
-    // BTreeSet.
-    let coroot_table = CorootTable::new(&coroots);
+    let num_roots = root_system.roots().len();
+    // Coroot slices per numbering index, resolved once — but only the
+    // fallback table probes read them; the bit matrix answers from the
+    // cache without touching coroot data.
+    let mut coroots: Vec<&[i32]> = Vec::new();
+    if matches!(cache.diff, AlcoveDiff::Table(_)) {
+        coroots.reserve_exact(num_roots);
+        for nbr in 0..num_roots {
+            coroots.push(
+                root_system
+                    .coroot(numbering.id(nbr))
+                    .ok_or(StructureError::RootSystemInvariantViolation {
+                        invariant: "alcove root has no coroot",
+                    })?
+                    .as_slice(),
+            );
+        }
+    }
+    let contains_difference = |alpha: usize, beta: usize| match &cache.diff {
+        AlcoveDiff::Bits { bits, words } => {
+            bits[alpha * words + beta / 64] >> (beta % 64) & 1 == 1
+        }
+        AlcoveDiff::Table(table) => table.contains_difference(&coroots, alpha, beta),
+        AlcoveDiff::Missing => false, // unreachable: the sweep errors above
+    };
     let mut levels = (0..num_roots)
         .map(|nbr| Ok((nbr, frac_eval_value(root_system, numbering.id(nbr), gamma)?)))
         .collect::<Result<Vec<_>, StructureError>>()?;
@@ -280,13 +291,13 @@ pub(crate) fn wall_set(
                 mins[cursor..]
                     .iter()
                     .copied()
-                    .filter(|item| !coroot_table.contains_difference(&coroots, alpha, item.0)),
+                    .filter(|item| !contains_difference(alpha, item.0)),
             );
             kept_rest.clear();
             kept_rest.extend(
                 rest.iter()
                     .copied()
-                    .filter(|item| !coroot_table.contains_difference(&coroots, alpha, item.0)),
+                    .filter(|item| !contains_difference(alpha, item.0)),
             );
             std::mem::swap(&mut mins, &mut kept_mins);
             std::mem::swap(&mut rest, &mut kept_rest);
@@ -304,6 +315,7 @@ pub(crate) fn wall_set(
 /// coordinates in [-128, 127]), so the common case is a `u64` hash set
 /// plus the per-root packed keys for SWAR difference probes; systems whose
 /// coroots do not pack keep the BTreeSet.
+#[derive(Clone, Debug)]
 enum CorootTable {
     Packed {
         set: std::collections::HashSet<u64, PackedKeyHasherBuilder>,
@@ -391,7 +403,7 @@ fn packed_difference_key(x: u64, y: u64, lane_mask: u64) -> Option<u64> {
 /// murmur3-fmix64 finalizer over the packed coordinate key: the packing
 /// leaves entropy in the low lanes, which hashbrown's low-bit bucket index
 /// would use unmixed.
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default)]
 struct PackedKeyHasherBuilder;
 
 impl std::hash::BuildHasher for PackedKeyHasherBuilder {
@@ -417,6 +429,77 @@ impl std::hash::Hasher for PackedKeyHasher {
     }
     fn write_u64(&mut self, value: u64) {
         self.0 = value;
+    }
+}
+
+/// Per-root-system alcove tables: the `wall_set` membership structure is a
+/// deterministic function of the root system, but it used to be rebuilt on
+/// every call (numbering sort plus one hash insert per coroot), and every
+/// difference probe paid a hash lookup (perf-unitary-3683612: CorootTable
+/// contains_key 1.96% + insert 1.38% + equivalent 0.45% self). The cache
+/// builds the numbering and the table once; systems at or below
+/// `ALCOVE_BITS_MAX_ROOTS` also pre-answer every probe into an n×n bit
+/// matrix (row `alpha`, bit `beta` = `contains_difference(alpha, beta)`),
+/// so a probe becomes one bit test.
+#[derive(Clone, Debug)]
+pub(crate) struct AlcoveWallCache {
+    numbering: RootNumbering,
+    diff: AlcoveDiff,
+}
+
+#[derive(Clone, Debug)]
+enum AlcoveDiff {
+    /// Row-major n×n bit matrix: word `alpha * words + beta / 64`, bit
+    /// `beta % 64`, set exactly when the packed coroot difference is a
+    /// coroot — the same answers `CorootTable::Packed` probes give, since
+    /// the matrix is filled by those probes.
+    Bits { bits: Vec<u64>, words: usize },
+    /// Oversized for the bit matrix, or coroots that do not pack: keep the
+    /// per-call table semantics.
+    Table(CorootTable),
+    /// A root without a coroot: `wall_set`'s invariant-error sentinel.
+    Missing,
+}
+
+/// Above this root count the n×n bit matrix exceeds 32 KB and the cache
+/// keeps the hash table instead.
+const ALCOVE_BITS_MAX_ROOTS: usize = 512;
+
+impl AlcoveWallCache {
+    pub(crate) fn new(root_system: &RootSystem) -> Self {
+        let numbering = RootNumbering::new(root_system);
+        let num_roots = root_system.roots().len();
+        let mut coroots: Vec<&[i32]> = Vec::with_capacity(num_roots);
+        for nbr in 0..num_roots {
+            let Some(coroot) = root_system.coroot(numbering.id(nbr)) else {
+                return Self {
+                    numbering,
+                    diff: AlcoveDiff::Missing,
+                };
+            };
+            coroots.push(coroot.as_slice());
+        }
+        let table = CorootTable::new(&coroots);
+        let diff = match &table {
+            CorootTable::Packed { .. } if num_roots <= ALCOVE_BITS_MAX_ROOTS => {
+                let words = num_roots.div_ceil(64);
+                let mut bits = vec![0_u64; num_roots * words];
+                for alpha in 0..num_roots {
+                    for beta in 0..num_roots {
+                        if table.contains_difference(&coroots, alpha, beta) {
+                            bits[alpha * words + beta / 64] |= 1 << (beta % 64);
+                        }
+                    }
+                }
+                AlcoveDiff::Bits { bits, words }
+            }
+            _ => AlcoveDiff::Table(table),
+        };
+        Self { numbering, diff }
+    }
+
+    pub(crate) fn numbering(&self) -> &RootNumbering {
+        &self.numbering
     }
 }
 
@@ -848,10 +931,10 @@ pub(crate) fn root_vertex_of_alcove(
     root_system: &RootSystem,
     gamma: &RationalWeight,
 ) -> Result<Weight, StructureError> {
-    let numbering = RootNumbering::new(root_system);
-    let (walls, _integrals) = wall_set(root_system, &numbering, gamma)?;
+    let numbering = root_system.alcove_wall_cache().numbering();
+    let (walls, _integrals) = wall_set(root_system, gamma)?;
     let mut result = vec![0_i64; root_system.lattice_rank()];
-    for component in root_components(root_system, &numbering, &walls) {
+    for component in root_components(root_system, numbering, &walls) {
         let mut ev_floors = Vec::new();
         ev_floors.try_reserve_exact(component.len()).map_err(|_| {
             StructureError::AllocationFailed {
@@ -869,7 +952,7 @@ pub(crate) fn root_vertex_of_alcove(
             let dot = checked_dot(gamma.numerator(), coroot.as_slice())?;
             ev_floors.push(dot.div_euclid(gamma.denominator()));
         }
-        let vertex = root_vertex_simple(root_system, &numbering, &component, &ev_floors)?;
+        let vertex = root_vertex_simple(root_system, numbering, &component, &ev_floors)?;
         for (entry, &coordinate) in result.iter_mut().zip(vertex.as_slice()) {
             *entry = entry
                 .checked_add(i64::from(coordinate))
@@ -1349,7 +1432,7 @@ mod tests {
             let numbering = RootNumbering::new(system);
             for gamma in &gammas {
                 assert_eq!(
-                    wall_set(system, &numbering, gamma).unwrap(),
+                    wall_set(system, gamma).unwrap(),
                     reference_wall_set(system, &numbering, gamma).unwrap(),
                     "gamma={gamma:?}"
                 );
