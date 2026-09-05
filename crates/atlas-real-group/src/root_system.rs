@@ -241,6 +241,10 @@ pub struct RootSystem {
     /// count, so it serves every size (E8 has 240 roots) and carries no
     /// cap. Pure cache: equality ignores it.
     root_index: OnceLock<RootIndex>,
+    /// Lazy alcove membership tables (`wall_set`'s numbering and
+    /// coroot-difference probes), a deterministic function of the
+    /// enumerated data. Pure cache: equality ignores it.
+    alcove_walls: OnceLock<crate::alcove::AlcoveWallCache>,
 }
 
 /// Coordinate→id lookup behind `id_of_slice`. Rank <= 8 systems pack every
@@ -583,6 +587,7 @@ impl RootSystem {
             simple_reflections: Vec::new(),
             root_sums: OnceLock::new(),
             root_index: OnceLock::new(),
+            alcove_walls: OnceLock::new(),
         };
         // One-time fill straight from the reflection formula. The previous
         // matrix path (a datum clone and two rank×rank matrices per
@@ -734,6 +739,12 @@ impl RootSystem {
             }
         }
         index.full.get(root).copied()
+    }
+
+    /// The shared alcove membership tables, built on first `wall_set` use.
+    pub(crate) fn alcove_wall_cache(&self) -> &crate::alcove::AlcoveWallCache {
+        self.alcove_walls
+            .get_or_init(|| crate::alcove::AlcoveWallCache::new(self))
     }
 
     /// Build the coordinate→id index from `roots`. The binary searches in
