@@ -852,3 +852,19 @@ RootSystem, BTreeSet->sorted-Vec in block build.
   density. klfill's scratch-buffer reuse had already removed the
   allocation pressure SmallVec was meant to save. Branch agent-klpol
   stays local; do not retry inline storage for KlPol in this shape.
+
+## agent-klhash (merged; 0153e07+25c6d19)
+
+- KlHashTable: std HashMap<KlPol, usize> -> open-addressing slot table of
+  pool indices (slot = index+1, 0 = empty); the pool is the single owner
+  of polynomial storage — a miss clones ONCE (was: pool copy + key copy),
+  a hit is one hash + one pool compare. Interning order (= filekl index
+  layout) unchanged; growth rehashes from the pool; new unit test pins
+  first-seen order across growth rounds.
+- Gates: quick_check 3680865 green (first chain exercised the new
+  failure propagation: 3680854 correctly blocked on a missing Hasher
+  import); probes 3680867-871 SORTED_MATCH; E7 3680873/874:
+  av_ann_e7 15.62s, gkfast_e7 14.29s, RSS 690MB (was 780MB).
+- AB 3680872 finals_e7_term20138 vs 0546294: base 9.12/9.16/9.24 tip
+  8.99/8.95/9.00 — median 9.16s -> 8.99s = **1.019x**, every tip rep
+  below every base rep; RSS -12% on the probe.
