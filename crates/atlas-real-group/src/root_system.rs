@@ -1370,6 +1370,40 @@ mod tests {
     }
 
     #[test]
+    fn sort_upstream_positive_order_matches_per_comparison_reference() {
+        fn reference_order(system: &RootSystem, a: RootId, b: RootId) -> std::cmp::Ordering {
+            let coordinates_a = system.simple_coordinates(a).unwrap_or(&[]);
+            let coordinates_b = system.simple_coordinates(b).unwrap_or(&[]);
+            let height_a: i32 = coordinates_a.iter().sum();
+            let height_b: i32 = coordinates_b.iter().sum();
+            height_a.cmp(&height_b).then_with(|| {
+                for i in (0..coordinates_a.len().max(coordinates_b.len())).rev() {
+                    let entry_a = coordinates_a.get(i).copied().unwrap_or(0);
+                    let entry_b = coordinates_b.get(i).copied().unwrap_or(0);
+                    match entry_a.cmp(&entry_b) {
+                        std::cmp::Ordering::Equal => continue,
+                        order => return order,
+                    }
+                }
+                std::cmp::Ordering::Equal
+            })
+        }
+
+        for datum in [
+            a2(),
+            BasedRootDatum::standard(vec![vec![2, -2], vec![-1, 2]]).unwrap(),
+            BasedRootDatum::standard(vec![vec![2, -1], vec![-3, 2]]).unwrap(),
+        ] {
+            let roots = RootSystem::enumerate(&datum, 16).unwrap();
+            let mut decorated = roots.positive_root_ids().to_vec();
+            crate::partial_block::sort_upstream_positive_order(&roots, &mut decorated);
+            let mut reference = roots.positive_root_ids().to_vec();
+            reference.sort_by(|&a, &b| reference_order(&roots, a, b));
+            assert_eq!(decorated, reference);
+        }
+    }
+
+    #[test]
     fn packed_root_key_index_matches_full_lookup() {
         let roots = RootSystem::enumerate(&a2(), 6).unwrap();
         let index = roots.build_root_index();

@@ -23,12 +23,13 @@
 //! `upstream_positive_root_order`); the crate's `RootId` order is ambient
 //! lexicographic.  All locator-facing lists (`simp_int`, item simple roots,
 //! interning keys) are therefore sorted with the upstream order so that
-//! `simple_pi` values are directly comparable with the oracle.
+//! `simple_pi` values are directly comparable with the oracle
+//! (`sort_upstream_positive_order`).
 
 use std::collections::{BTreeSet, HashMap};
 
 use crate::alcove::{checked_dot, root_vertex_of_alcove};
-use crate::partial_block::upstream_positive_root_order;
+use crate::partial_block::sort_upstream_positive_order;
 use crate::root_system::combine_roots;
 use crate::{
     BasedRootDatum, RationalWeight, RootId, RootSystem, StructureError, Weight, WeylElement,
@@ -245,7 +246,7 @@ impl IntegralDatumItem {
             }
             images.push(image);
         }
-        images.sort_by(|&a, &b| upstream_positive_root_order(system, a, b));
+        sort_upstream_positive_order(system, &mut images);
         Ok(images)
     }
 
@@ -392,7 +393,7 @@ impl IntegralDatumTable {
             .into_iter()
             .filter(|&id| system.is_positive(id) == Some(true))
             .collect();
-        posroots.sort_by(|&a, &b| upstream_positive_root_order(system, a, b));
+        sort_upstream_positive_order(system, &mut posroots);
         let int_sys = self.intern(system, posroots)?;
 
         // (f) innerclass.cpp:1161-1179: images of the canonical simple
@@ -422,7 +423,7 @@ impl IntegralDatumTable {
             images.push(image);
         }
         let mut simp_int = images.clone();
-        simp_int.sort_by(|&a, &b| upstream_positive_root_order(system, a, b));
+        sort_upstream_positive_order(system, &mut simp_int);
         debug_assert_eq!(
             simp_int.iter().collect::<BTreeSet<_>>().len(),
             images.len(),

@@ -170,7 +170,7 @@ impl IntegralSubsystem {
         // lexicographic simple coordinates (rootdata.cpp:119-129,172-181
         // with the level-by-level generation). The crate's RootId order is
         // ambient-coordinate lexicographic, so re-sort explicitly.
-        simples.sort_by(|&a, &b| upstream_positive_root_order(system, a, b));
+        sort_upstream_positive_order(system, &mut simples);
         Self::from_simple_roots(system, &simples)
     }
 
@@ -303,30 +303,46 @@ fn pair_weight(weight: &Weight, coroot: &Coweight) -> Result<i64, StructureError
     Ok(total)
 }
 
-/// The upstream positive-root numbering order (RootNbr): increasing
-/// height, ties broken by reverse lexicographic comparison of the simple
-/// coordinates (`root_compare`, rootdata.cpp:119-129). Simple roots come
-/// first in generator order.
-pub(crate) fn upstream_positive_root_order(
+/// Sort positive roots into the upstream positive-root numbering order
+/// (RootNbr): increasing height, ties broken by reverse lexicographic
+/// comparison of the simple coordinates (`root_compare`,
+/// rootdata.cpp:119-129). Simple roots come first in generator order.
+/// Heights are summed once per root instead of per comparison (these sorts
+/// run per integral-system construction on the alcove/unitary path).
+pub(crate) fn sort_upstream_positive_order(system: &RootSystem, roots: &mut [RootId]) {
+    let mut decorated: Vec<(i32, RootId)> = roots
+        .iter()
+        .map(|&id| {
+            let height: i32 = system.simple_coordinates(id).unwrap_or(&[]).iter().sum();
+            (height, id)
+        })
+        .collect();
+    decorated.sort_by(|&(height_a, a), &(height_b, b)| {
+        height_a
+            .cmp(&height_b)
+            .then_with(|| upstream_positive_root_order_tiebreak(system, a, b))
+    });
+    for (slot, &(_, id)) in roots.iter_mut().zip(decorated.iter()) {
+        *slot = id;
+    }
+}
+
+fn upstream_positive_root_order_tiebreak(
     system: &RootSystem,
     a: RootId,
     b: RootId,
 ) -> std::cmp::Ordering {
     let coordinates_a = system.simple_coordinates(a).unwrap_or(&[]);
     let coordinates_b = system.simple_coordinates(b).unwrap_or(&[]);
-    let height_a: i32 = coordinates_a.iter().sum();
-    let height_b: i32 = coordinates_b.iter().sum();
-    height_a.cmp(&height_b).then_with(|| {
-        for i in (0..coordinates_a.len().max(coordinates_b.len())).rev() {
-            let entry_a = coordinates_a.get(i).copied().unwrap_or(0);
-            let entry_b = coordinates_b.get(i).copied().unwrap_or(0);
-            match entry_a.cmp(&entry_b) {
-                std::cmp::Ordering::Equal => continue,
-                order => return order,
-            }
+    for i in (0..coordinates_a.len().max(coordinates_b.len())).rev() {
+        let entry_a = coordinates_a.get(i).copied().unwrap_or(0);
+        let entry_b = coordinates_b.get(i).copied().unwrap_or(0);
+        match entry_a.cmp(&entry_b) {
+            std::cmp::Ordering::Equal => continue,
+            order => return order,
         }
-        std::cmp::Ordering::Equal
-    })
+    }
+    std::cmp::Ordering::Equal
 }
 
 /// `RootSystem::simpleBasis` (rootdata.cpp:621-652): the simple roots of
