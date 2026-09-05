@@ -1201,3 +1201,40 @@ Gate probe ratios (rust seconds / oracle seconds, same job; all gates
 - In flight: loopbuf gate 3684711-18 (for-loop frame slot buffer
   recycling + pre-sized collected rows; atlas-core typed.rs/frames.rs);
   heavy legs 3683422/23, 3683443, 3683601, 3683611, 3684029, 3684357.
+
+## Midday rounds (2026-09-06): ratalloc / framepool + rinvcache profile verdict
+
+| gate | deform | gkfast_e7 | finals | klsum | av_ann |
+|---|---|---|---|---|---|
+| ratalloc 3684729-36 (mixed node) | 1.122x* | 0.945x | 1.000x | 1.044x | 1.115x |
+| framepool 3684747-54 | 0.975x | 0.931x | 1.011x | 1.058x | 1.091x |
+
+*ratalloc deform: the oracle leg drew a fast node (oracle 13.12s vs
+15.5s in adjacent rounds on an IDENTICAL oracle binary); rust's absolute
+deform time IMPROVED to 14.72s (best yet). Read as no regression.
+
+- ratalloc (67a2cea, merged 00c8940): RationalWeight::new moves the
+  numerator through when gcd == 1 (no copy), and combine() fast-paths
+  equal denominators (skip both cross-scalings).
+- framepool (fd05a22, merged 6c2a4e3): EvaluationContext gains a bounded
+  slot-buffer pool; apply_closure and let-group frames take buffers from
+  it and return them via recycle_frame when the finished frame was never
+  captured (Rc::try_unwrap guard). Removes ~2 allocs + 2 frees per
+  closure call / let group. av_ann ratio improved to 1.091x.
+- rinvcache verdict (unitary frontier profile 3684722 at de6ee37,
+  LTO=off): apply_flat_into 6.59% -> GONE from top 40;
+  subsystem_simple_roots 1.05% -> GONE; id_of_slice 2.23% -> 1.50%;
+  Zip::new smear cluster ~5% -> ~2%. New unitary landscape:
+  mul_sub_assign 6.23%, lattice::pair 4.87%, IntegralSubsystem::integral
+  2.42% + BTreeMap iter 1.27% (intsub slice targets), frac_eval_value
+  2.32%, allocator cluster ~9.3%, saturated_kernel 1.82%,
+  RationalWeight::new 1.74% (ratalloc predates this profile build).
+- av_ann frontier profile 3684723: fill_kl_column 15.17% self,
+  sub_shifted_assign 5.99%, KlHashTable::probe 3.42%,
+  reflect_weight_into 2.03%, interpreter ~15% (evaluate 6.80% +
+  with_context 1.86% + apply_closure 1.86% + force/eval_for_loop ~1.4%,
+  pre-framepool build), allocator ~7.9%, MixingHasher::write 1.21% +
+  memcmp 1.25%.
+- In flight: intsub gate 3684830-37 (RootBits bit vector replaces
+  BTreeSet in IntegralSubsystem::integral/simple_basis); frontier5
+  heavy leg 3684764 (SHA 6c2a4e3: rinvcache+loopbuf+ratalloc+framepool).

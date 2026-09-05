@@ -4,6 +4,26 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Current frontier - 2026-09-06 midday (avopt 6c2a4e3: +loopbuf+ratalloc+framepool)
+
+- Frontier = 6c2a4e3 on agent-avopt (local ~/mycodes/atlas-rust-avopt and
+  HPC /public/home/majj/atlas-rust-avopt synced; GitHub pushed). Since
+  the morning section: loopbuf 01eb0b5 (for-loop slot recycling +
+  pre-sized rows), ratalloc 00c8940 (RationalWeight::new move-through +
+  equal-denominator combine), framepool 6c2a4e3 (context slot-buffer
+  pool for closure calls and let groups). All gates 7/7 SORTED_MATCH.
+- rinvcache verdict from frontier unitary profile 3684722: the whole
+  RootInvolutionData rebuild cluster (apply_flat_into 6.59%,
+  subsystem_simple_roots 1.05%) is GONE from the top 40.
+- IN FLIGHT: intsub gate 3684830-37 (a5802f1: RootBits bit vector in
+  IntegralSubsystem::integral/simple_basis); frontier5 heavy leg
+  3684764 at 6c2a4e3; progress curves still logging to
+  .heavytrack/progress.log.
+- Older heavy legs (7h timeout, fat): 3683422/23 frontier1+oracle,
+  3683443 gj64, 3683601 f2, 3683611 f3, 3684029 wallcache, 3684357
+  frontier4. At ~4.3h: oracle Term 1910; frontier1/gj64/f2/f3 ~2340
+  (single-term wall there — all versions crawl); frontier4 2120 @1:12h.
+
 ## Current frontier - 2026-09-06 morning (avopt de6ee37: +klmove+mixi32+rinvcache)
 
 - Frontier = de6ee37 on agent-avopt (local ~/mycodes/atlas-rust-avopt and
