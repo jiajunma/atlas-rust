@@ -4,6 +4,37 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Current frontier - 2026-09-05 night (avopt 27b6507: rowmask+intcache+streamout+gj64)
+
+- Frontier = 27b6507 on agent-avopt (local ~/mycodes/atlas-rust-avopt and
+  HPC /public/home/majj/atlas-rust-avopt synced via bundle
+  avopt-summasks.bundle; HPC branch force-fast-forwarded d278e664..27b6507,
+  verified ancestor first — the old "non-fast-forward" fetch error was a
+  stale-ref false alarm).
+- streamout c879b94 merged (d251678): ATLAS_STREAM_OUTPUT=1 streams
+  printer output live (main.rs print_text bypass + session_frame event
+  echo). Fixes the heavy-leg zero-output trap; default path byte-identical
+  (gate 3683413-21, 7/7 SORTED_MATCH).
+- gj64 5a83105 merged (27b6507): u64 fast path in SmallRat::reduce_i128
+  (gcd_u64) attacking profile-3683299's gj_normalize_and_clear 9.04%.
+  Probe-neutral, heavy leg 3683443 measures it. Gate 3683435-42 7/7 green.
+- IN FLIGHT: heavy streaming pair 3683422 (rust c879b94) vs 3683423
+  (oracle), 7h timeout, ATLAS_STREAM_OUTPUT=1, outputs
+  probe_unitary_e7_heavy.{rust.frontier1,cpp7h}.out under
+  ~/atlas-rust-avopt. At 2min rust was at term 1330 vs oracle 1060.
+  Common-prefix sorted diff = correctness; terms-per-timeout = the real
+  heavy E7 multiplier the user keeps asking for.
+- IN FLIGHT: summasks gate 3683456-63 (cc4a688, agent-summasks): row_masks
+  moved into the RootSystem OnceLock as RootSumTables{sums,row_masks} —
+  NO new struct field (the av_ann +54% alcove-OnceLock lesson), per-call
+  O(count^2) mask build in additive_closure eliminated.
+- IN FLIGHT: frontier profile 3683465 (30min perf on 27b6507, heavy probe)
+  picks the next slice. Post-intcache expectations: allocator cluster
+  ~7.2%, lattice pair/act_on_coweight/apply_matrix ~5.6%, hashbrown ~2.4%.
+- Next-slice candidates after summasks: (a) additive_closure scratch
+  buffers if it stays hot; (b) lattice::pair i64 accumulate;
+  (c) SmallRat full-u64 path if gj64's heavy leg shows a real cut.
+
 ## Current frontier - 2026-09-05e (avopt: closuretab + latstack LANDED)
 
 - agent-closuretab (95a8062, additive_closure root-sum-table hoist) GATED:
