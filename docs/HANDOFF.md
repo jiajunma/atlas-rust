@@ -4,6 +4,45 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
+## Current frontier - 2026-09-06 early (avopt e32a957: +flatgj+wallcache+flatmat+klmu)
+
+- Frontier = e32a957 on agent-avopt (local ~/mycodes/atlas-rust-avopt and
+  HPC /public/home/majj/atlas-rust-avopt synced; GitHub pushed).
+- New merges since the 2026-09-05 night section, all gates 7/7
+  SORTED_MATCH (details and ratio table in docs/BENCHMARKS.md):
+  - flatgj 62d7ec7 (merge 12422c4): flat row-major GjMatrix for the
+    alcove GJ sweeps; deform probe 0.939x oracle (rust faster).
+  - wallcache c9934a3 (merge 554e6b6): per-RootSystem OnceLock
+    AlcoveWallCache — RootNumbering + CorootTable built once, probes as
+    n×n bit matrix for ≤512 roots. Kills the 3.8% hashbrown cluster.
+  - flatmat 64d5af8 (merge c6b78f1): LatticeInvolution flat +
+    transposed-flat matvec storage (was strided pointer chase, ~6.6%).
+  - klmu e32a957 (direct on agent-avopt — see lesson below): KL
+    mu-correction cached extremal lengths + zero-pol/unit-multiplier
+    fast paths.
+- BRANCH DISCIPLINE LESSON: a merge (checkout agent-avopt) interleaved
+  with slice edits put klmu's commit on agent-avopt directly, and the
+  "klmu gate" silently rebuilt the flatmat SHA. klmu is gated
+  transitively by klpool/reflbuf gates. ALWAYS check
+  `git branch --show-current` before committing.
+- IN FLIGHT: klpool gate 3684171-78 (dfc83c8: match_pol_owned moves
+  interned polynomials into the pool, no clone); reflbuf gate
+  3684229-36 (ae31064: reflect_weight_into scratch buffer in
+  pos_to_neg); wallcache heavy leg 3684029; heavy pair 3683422/23 +
+  legs 3683443 (gj64), 3683601 (f2), 3683611 (f3) ~3h in, 7h timeout.
+- Heavy E7 unitarity at 2.8h: rust frontier Term 2230 vs oracle Term
+  1820 → rust ~1.23x ahead; common-prefix sorted diff MATCH to 1420.
+- av_ann profile 3684013 (LTO=off): KL machinery dominates —
+  fill_kl_column 12.3% self / 34.9% children, sub_shifted_assign 6.9%,
+  match_pol 2.8%, BlockTopology::length Arc-dispatch 2.3% (klmu targets
+  it), reflect_coordinates 1.96% via pos_to_neg (reflbuf targets it),
+  interpreter ~12%, mi allocator ~9%.
+- Next-slice candidates: (a) post-klmu/klpool/reflbuf av_ann reprofile;
+  (b) fill_kl_column self residue (descent()/is_extremal/prim_slot
+  inlined bulk); (c) interpreter alloc cluster (eval_for_loop/force/
+  from_iter) — big but risky; (d) heavy-leg 7h results decide whether
+  wallcache/flatmat actually cut heavy unitary.
+
 ## Current frontier - 2026-09-05 night (avopt 27b6507: rowmask+intcache+streamout+gj64)
 
 - Frontier = 27b6507 on agent-avopt (local ~/mycodes/atlas-rust-avopt and
