@@ -912,3 +912,35 @@ RootSystem, BTreeSet->sorted-Vec in block build.
   probe_unitary_e7_heavy.{rust.out.sep04-crash,cpp.out.sep04-partial}.
   The true oracle number awaits fat job 3680270; the post-deformfix rust
   leg is being re-measured (3680947).
+
+## 2026-09-05b: dedup fix + closure/wallset slices; alcove cache slice rejected
+
+All times HPC cpu partition (probe_diff, GNU time -v), oracle = C++ atlas.
+
+Dedup fix 4cddc28 gate (3681101-07), all SORTED_MATCH:
+- deform_e7_only 46118 lines; gkfast_e6/e7 3604; unitary_e7 2930;
+  finals_e7_term20138 2935; klsum_e7_terms 44777; av_ann_e7 3606.
+
+Probe wall times by frontier (rust seconds, oracle ~stable):
+| probe | dedup 4cddc28 | alcove 2f0bf8d | closure 1477116 | wallset 1cd724c | av2 d7057b9 | oracle |
+|---|---|---|---|---|---|---|
+| deform_e7_only | 11.1 (earlier) | 10.93 | 10.45 | 10.39 | 10.93 | 10.4-10.9 |
+| gkfast_e6 | — | — | 1.07 | 0.91 | 0.96 | 0.59-0.77 |
+| gkfast_e7 | ~14.0 | — | 13.78 | 13.67 | 14.28 | 13.2-13.9 |
+| unitary_e7 | 0.68 | — | 0.69 | 0.62 | 0.67 | 0.37-0.50 |
+| finals_e7_term20138 | — | — | 9.29 | 9.35 | 9.60 | 8.40-8.61 |
+| klsum_e7_terms | — | — | 10.09 | 10.14 | 10.45 | 8.65-8.82 |
+| av_ann_e7 | 15.45 | 22.50 | 23.98 | 24.31/24.48 | 15.76/15.74 | 14.0-14.3 |
+
+- av_ann_e7 +54% regression pinned to 2f0bf8d by same-job interleaved A/B
+  (3681489: dedup 15.55-15.59 vs alcove 23.80-24.02 x3 reps, outputs
+  byte-identical after sort; oracle 14.23). Release-flat perf
+  (3681511 vs 3681730): mimalloc arena/bitmap/page cluster 7% -> 24.5%,
+  vdso_clock_gettime 0 -> 2.2%; minor faults 14001 -> 19870 (3681789).
+  No alcove symbol hot in either profile -> indirect mechanism (RootSystem
+  OnceLock cache fields perturb allocator/codegen). Slice REJECTED; av2
+  frontier = dedup + closure + wallset-without-caches restores 15.7s.
+- heavy unitarity: cpu 2:30 legs 3681098/3681132 both TIMEOUT with zero
+  output (batch stdout is whole-script buffered — main.rs:113). Fat 8h
+  legs running: 3681407 (closure+alcove), 3681418 (wallset+alcove),
+  3681939 (av2); oracle reference 3680270 (8h).
