@@ -8617,3 +8617,34 @@ lower-bound signal for the heavy probe but must be re-measured on av2.
   lands under TypedExpr::evaluate/eval_for_loop — INTERPRETER ratvec
   arithmetic in deform.at, not the alcove solvers; a Bareiss rewrite of
   labels_for_component would miss it. Domain-side solver share is small.
+
+## Slices 2026-09-05h (avopt: SWAR gated; fastgj gate in flight; 3680165 cancelled)
+
+- agent-swar LANDED on agent-avopt as f278f4d (additive_closure: hoist row
+  base out of the inner loop + reserve per root count) and a869688 (SWAR
+  packed_difference_key: wall_set membership probes computed directly from
+  the two packed u64 root keys — borrow-free lane subtraction + high-bit
+  pattern bounds check + lane_mask for short vectors; 8-rank x 20k fuzz +
+  corner tests + wall_set reference-equivalence test). GATE GREEN:
+  quick_check 3682665 (CHECK_DONE/TEST_DONE status=0), 7/7 probes
+  SORTED_MATCH (3682667-73), probe times within noise of latstack.
+- deform A/B 3680165 CANCELLED: the tip leg hung 4.9h on a stale
+  intermediate binary (the probe itself is ~35s) — the shared checkout had
+  moved under the pending job, so its result would have been meaningless.
+  Lesson reconfirmed: never leave a pending --wrap job whose binary or
+  checkout can be switched underneath it; heavy legs embed their own build.
+- agent-fastgj (2ce2d15, on a869688): machine-word SmallRat elimination
+  for the three interpreter-layer Gauss-Jordan solvers in
+  domain_builtins.rs (simple_coroot_coordinates, labels_for_component,
+  inverse_cartan) — generalized over a GjScalar trait, SmallRat (i128
+  checked, immediate reduction) first, exact BigRational fallback on first
+  overflow; results still read out as BigRational. Targets the malachite
+  Rational cluster (~12.5% of heavy unitarity, 3682286) attributable to
+  the GJ solvers. Local cargo check + 383/383 atlas-core lib tests green.
+  Gate submitted: quick_check 3682839, build 3682840, 7 probes
+  3682841-47 (TAG=*.fastgj), heavy fat leg 3682850 (heavy-fastgj, 8h).
+- Heavy fat legs still running: 3681407 closure, 3681418 wallset,
+  3681939 av2, 3682127 ck, 3682147 num, 3682193 ms, 3682272 closuretab,
+  3682285 latstack, 3682674 swar; oracle 8h reference 3680270 RUNNING
+  (5h45m elapsed). NOTE 3681407/3681418 carry the REJECTED alcove caches
+  (see 2026-09-05f) — valid lower-bound signal only.
