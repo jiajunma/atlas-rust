@@ -4,27 +4,33 @@ This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.
 
-## Current frontier - 2026-09-05d (avopt: closuretab LANDED; heavy legs still open)
+## Current frontier - 2026-09-05e (avopt: closuretab + latstack LANDED)
 
 - agent-closuretab (95a8062, additive_closure root-sum-table hoist) GATED:
   quick_check 3682247 green, build 3682248, 7/7 probes SORTED_MATCH
   (3682249-55). Probe timings vs oracle (s): gkfast_e6 0.99/0.77,
   gkfast_e7 14.17/13.92, unitary_e7 0.63/0.48, finals 9.40/8.53,
-  klsum 10.20/8.83, av_ann 15.41/14.12, deform 10.96/11.00. No
-  regression vs the matsum baseline; merged into agent-avopt.
+  klsum 10.20/8.83, av_ann 15.41/14.12, deform 10.96/11.00.
+- latstack GATED on b7a05e1 (quick_check 3682276 green, build 3682277,
+  7/7 probes SORTED_MATCH 3682278-84; deform 10.89, gkfast_e6 0.95,
+  gkfast_e7 14.10, unitary 0.63, finals 9.37, klsum 10.23,
+  av_ann 15.44 — all within noise of the closuretab gate) and merged
+  rebased onto the docs commit as 91340d8 (dotprod: lattice
+  pair_coordinates i64 accumulation + cold i128 fallback), 8e8ebf1
+  (latbits: ReductionState dropped the per-step full-matrix check_bounds
+  rescan — redundant with the exact per-entry bit bound in
+  bounded_linear_combination), 1b537f6 (possort:
+  sort_upstream_positive_order decorates heights once per root; A2/B2/G2
+  equivalence test vs the old comparator).
+- Fresh heavy-unitary profile 3682286 (post-latstack, LTO=off) picks the
+  next slice; previous cluster candidates: coroot_difference_in
+  +pack_root_key+contains ~7.8%, combine_roots 6.6%, labels_for_component
+  1.6%.
 - Heavy-leg TRAP (heavy-ct 3682256, wasted): a `--wrap` heavy leg MUST
   `cd /public/home/majj/atlasofliegroups-4d3e9449/atlas-scripts` before
   running — the heavy probe does `<deform.at`, and without the cd it dies
   in 0.1s with "failed to open input file 'deform.at'" (then
   "Undefined identifier 'is_unitary'"). Resubmitted as heavy-ct2 3682272.
-- Stacked, awaiting gate (branch agent-latbits, tip b7a05e1):
-  agent-dotprod 73a7224 (lattice pair_coordinates i64 accumulation + cold
-  i128 fallback), agent-latbits b27a186 (ReductionState: dropped the
-  per-step full-matrix check_bounds rescan — redundant with the exact
-  per-entry bit bound already enforced in bounded_linear_combination),
-  possort b7a05e1 (sort_upstream_positive_order decorates heights once
-  per root instead of summing per comparison; equivalence-tested against
-  the old comparator on A2/B2/G2).
 - Heavy fat legs in flight (8h limit, probe_unitary_e7_heavy, E7 sc
   x=20925 is_unitary): 3681407 (closure), 3681418 (wallset), 3681939
   (av2), 3682127 (ck), 3682147 (num), 3682193 (ms), 3682272
