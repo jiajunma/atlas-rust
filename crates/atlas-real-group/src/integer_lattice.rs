@@ -415,6 +415,21 @@ pub(crate) fn saturated_kernel(
     budget: &IntegerLatticeBudget,
 ) -> Result<IntegralBasis, StructureError> {
     matrix.check_against(budget)?;
+    // Machine-word twin first: identical reduction on i64 entries
+    // (perf-unitary-3683465: the integer_lattice cluster is ~4.4% of the
+    // heavy-unitary profile, all per-entry malachite traffic). `None`
+    // means an intermediate left the i64 window — the generic path then
+    // recomputes the identical result on bignums.
+    if let Some(basis) = try_saturated_kernel_small(matrix, budget)? {
+        return Ok(basis);
+    }
+    saturated_kernel_generic(matrix, budget)
+}
+
+fn saturated_kernel_generic(
+    matrix: &IntegerMatrix,
+    budget: &IntegerLatticeBudget,
+) -> Result<IntegralBasis, StructureError> {
     let mut state = ReductionState::new(matrix, budget)?;
     let diagonal_limit = state.matrix.rows.min(state.matrix.columns);
     let mut diagonal_rank = 0;
@@ -2162,6 +2177,669 @@ fn verify_annihilation(
     Ok(())
 }
 
+// ---- machine-word twin of the saturated-kernel reduction ----
+//
+// Every function below is the i64 image of its generic counterpart above,
+// in the same operation order and with the same budget checks, so both
+// paths accept, reject, and compute identically. The twin speaks
+// `Result<Option<T>, StructureError>`: `Err` is a real (budget/shape)
+// failure to propagate, `Ok(None)` means a value left the i64 window and
+// the caller restarts on the bignum path — the SmallRat pattern.
+
+/// Row-major i64 matrix mirroring [`IntegerMatrix`].
+struct SmallIntMatrix {
+    rows: usize,
+    columns: usize,
+    entries: Vec<i64>,
+}
+
+impl SmallIntMatrix {
+    /// The i64 image of `matrix`, or `None` when an entry does not fit.
+    fn from_integer_matrix(
+        matrix: &IntegerMatrix,
+    ) -> Result<Option<Self>, StructureError> {
+        let mut entries = Vec::new();
+        entries
+            .try_reserve_exact(matrix.entries.len())
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: matrix.entries.len(),
+            })?;
+        for entry in &matrix.entries {
+            match i64::try_from(entry) {
+                Ok(value) => entries.push(value),
+                Err(_) => return Ok(None),
+            }
+        }
+        Ok(Some(Self {
+            rows: matrix.rows,
+            columns: matrix.columns,
+            entries,
+        }))
+    }
+
+    fn identity(rank: usize, budget: &IntegerLatticeBudget) -> Result<Self, StructureError> {
+        let entry_count = checked_shape(rank, rank, budget)?;
+        let mut entries = Vec::new();
+        entries
+            .try_reserve_exact(entry_count)
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: entry_count,
+            })?;
+        entries.resize(entry_count, 0);
+        for index in 0..rank {
+            entries[index * rank + index] = 1;
+        }
+        Ok(Self {
+            rows: rank,
+            columns: rank,
+            entries,
+        })
+    }
+
+    fn entry(&self, row: usize, column: usize) -> i64 {
+        self.entries[row * self.columns + column]
+    }
+
+    fn check_against(&self, budget: &IntegerLatticeBudget) -> Result<(), StructureError> {
+        checked_shape(self.rows, self.columns, budget)?;
+        if self
+            .entries
+            .iter()
+            .any(|&entry| entry != 0 && significant_bits_i64(entry) > budget.max_coefficient_bits)
+        {
+            return Err(resource_limit(
+                "coefficient bits",
+                budget.max_coefficient_bits,
+            ));
+        }
+        Ok(())
+    }
+
+    fn swap_rows(&mut self, left: usize, right: usize) {
+        if left == right {
+            return;
+        }
+        for column in 0..self.columns {
+            self.entries
+                .swap(left * self.columns + column, right * self.columns + column);
+        }
+    }
+
+    fn swap_columns(&mut self, left: usize, right: usize) {
+        if left == right {
+            return;
+        }
+        for row in 0..self.rows {
+            self.entries
+                .swap(row * self.columns + left, row * self.columns + right);
+        }
+    }
+
+    fn negate_row(&mut self, row: usize) -> Option<()> {
+        for column in 0..self.columns {
+            let index = row * self.columns + column;
+            self.entries[index] = self.entries[index].checked_neg()?;
+        }
+        Some(())
+    }
+
+    /// `target += factor * source` per row, one entry at a time (see the
+    /// generic add_row_multiple for why in-place order is safe).
+    fn add_row_multiple(
+        &mut self,
+        target: usize,
+        source: usize,
+        factor: i64,
+        max_coefficient_bits: u64,
+    ) -> Result<Option<()>, StructureError> {
+        for column in 0..self.columns {
+            let target_index = target * self.columns + column;
+            let source_index = source * self.columns + column;
+            let Some(value) = small_bounded_combination(
+                1,
+                self.entries[target_index],
+                factor,
+                self.entries[source_index],
+                max_coefficient_bits,
+            )?
+            else {
+                return Ok(None);
+            };
+            self.entries[target_index] = value;
+        }
+        Ok(Some(()))
+    }
+
+    fn add_column_multiple(
+        &mut self,
+        target: usize,
+        source: usize,
+        factor: i64,
+        max_coefficient_bits: u64,
+    ) -> Result<Option<()>, StructureError> {
+        for row in 0..self.rows {
+            let target_index = row * self.columns + target;
+            let source_index = row * self.columns + source;
+            let Some(value) = small_bounded_combination(
+                1,
+                self.entries[target_index],
+                factor,
+                self.entries[source_index],
+                max_coefficient_bits,
+            )?
+            else {
+                return Ok(None);
+            };
+            self.entries[target_index] = value;
+        }
+        Ok(Some(()))
+    }
+
+    fn bezout_rows(
+        &mut self,
+        top: usize,
+        bottom: usize,
+        transform: &SmallBezout,
+        max_coefficient_bits: u64,
+    ) -> Result<Option<()>, StructureError> {
+        let Some(negative_v) = transform.v.checked_neg() else {
+            return Ok(None);
+        };
+        for column in 0..self.columns {
+            let top_index = top * self.columns + column;
+            let bottom_index = bottom * self.columns + column;
+            let Some(top_value) = small_bounded_combination(
+                transform.s,
+                self.entries[top_index],
+                transform.t,
+                self.entries[bottom_index],
+                max_coefficient_bits,
+            )?
+            else {
+                return Ok(None);
+            };
+            let Some(bottom_value) = small_bounded_combination(
+                negative_v,
+                self.entries[top_index],
+                transform.u,
+                self.entries[bottom_index],
+                max_coefficient_bits,
+            )?
+            else {
+                return Ok(None);
+            };
+            self.entries[top_index] = top_value;
+            self.entries[bottom_index] = bottom_value;
+        }
+        Ok(Some(()))
+    }
+
+    fn bezout_columns(
+        &mut self,
+        left: usize,
+        right: usize,
+        transform: &SmallBezout,
+        max_coefficient_bits: u64,
+    ) -> Result<Option<()>, StructureError> {
+        let Some(negative_v) = transform.v.checked_neg() else {
+            return Ok(None);
+        };
+        for row in 0..self.rows {
+            let left_index = row * self.columns + left;
+            let right_index = row * self.columns + right;
+            let Some(left_value) = small_bounded_combination(
+                transform.s,
+                self.entries[left_index],
+                transform.t,
+                self.entries[right_index],
+                max_coefficient_bits,
+            )?
+            else {
+                return Ok(None);
+            };
+            let Some(right_value) = small_bounded_combination(
+                negative_v,
+                self.entries[left_index],
+                transform.u,
+                self.entries[right_index],
+                max_coefficient_bits,
+            )?
+            else {
+                return Ok(None);
+            };
+            self.entries[left_index] = left_value;
+            self.entries[right_index] = right_value;
+        }
+        Ok(Some(()))
+    }
+}
+
+/// The i64 image of [`BezoutTransform`].
+struct SmallBezout {
+    s: i64,
+    t: i64,
+    u: i64,
+    v: i64,
+}
+
+/// Bézout coefficients of `a`, `b` with the exact malachite convention
+/// (extended Euclid over the absolute values, cofactor signs flipped for
+/// negative inputs — integer/arithmetic/extended_gcd.rs); `None` when a
+/// coefficient leaves the i64 window.
+fn small_bezout(a: i64, b: i64) -> Option<SmallBezout> {
+    let (mut old_r, mut r) = (u128::from(a.unsigned_abs()), u128::from(b.unsigned_abs()));
+    let (mut old_s, mut s) = (1_i128, 0_i128);
+    let (mut old_t, mut t) = (0_i128, 1_i128);
+    while r != 0 {
+        let quotient = old_r / r;
+        (old_r, r) = (r, old_r - quotient * r);
+        let quotient = i128::try_from(quotient).ok()?;
+        (old_s, s) = (s, old_s - quotient * s);
+        (old_t, t) = (t, old_t - quotient * t);
+    }
+    let gcd = i128::from(u64::try_from(old_r).ok()?);
+    let s = if a < 0 { -old_s } else { old_s };
+    let t = if b < 0 { -old_t } else { old_t };
+    Some(SmallBezout {
+        s: i64::try_from(s).ok()?,
+        t: i64::try_from(t).ok()?,
+        u: i64::try_from(i128::from(a) / gcd).ok()?,
+        v: i64::try_from(i128::from(b) / gcd).ok()?,
+    })
+}
+
+/// The i64 image of the [`bounded_linear_combination`] fast path: same bit
+/// bound, same budget error; `None` when the result leaves i64 (the generic
+/// path would widen instead).
+fn small_bounded_combination(
+    left_factor: i64,
+    left_value: i64,
+    right_factor: i64,
+    right_value: i64,
+    max_coefficient_bits: u64,
+) -> Result<Option<i64>, StructureError> {
+    let left_bits = product_bit_bound_i64(left_factor, left_value);
+    let right_bits = product_bit_bound_i64(right_factor, right_value);
+    let bound = match (left_bits, right_bits) {
+        (0, bits) | (bits, 0) => bits,
+        (left, right) => left.max(right) + 1,
+    };
+    if bound > max_coefficient_bits {
+        return Err(resource_limit("coefficient bits", max_coefficient_bits));
+    }
+    let value = i128::from(left_factor) * i128::from(left_value)
+        + i128::from(right_factor) * i128::from(right_value);
+    Ok(i64::try_from(value).ok())
+}
+
+/// The i64 image of [`ReductionState`].
+struct SmallReductionState {
+    source_entries: usize,
+    matrix: SmallIntMatrix,
+    right: SmallIntMatrix,
+    steps: usize,
+}
+
+impl SmallReductionState {
+    fn new(
+        matrix: &IntegerMatrix,
+        budget: &IntegerLatticeBudget,
+    ) -> Result<Option<Self>, StructureError> {
+        let right_entries = matrix
+            .columns
+            .checked_mul(matrix.columns)
+            .ok_or(StructureError::ArithmeticOverflow)?;
+        check_entry_total(
+            &[matrix.entries.len(), matrix.entries.len(), right_entries],
+            budget,
+        )?;
+        let Some(small_matrix) = SmallIntMatrix::from_integer_matrix(matrix)? else {
+            return Ok(None);
+        };
+        let state = Self {
+            source_entries: matrix.entries.len(),
+            matrix: small_matrix,
+            right: SmallIntMatrix::identity(matrix.columns, budget)?,
+            steps: 0,
+        };
+        state.check_bounds(budget)?;
+        Ok(Some(state))
+    }
+
+    fn first_nonzero(&self, start: usize) -> Option<(usize, usize)> {
+        for row in start..self.matrix.rows {
+            for column in start..self.matrix.columns {
+                if self.matrix.entry(row, column) != 0 {
+                    return Some((row, column));
+                }
+            }
+        }
+        None
+    }
+
+    fn nonzero_below(&self, pivot: usize) -> Option<usize> {
+        ((pivot + 1)..self.matrix.rows).find(|&row| self.matrix.entry(row, pivot) != 0)
+    }
+
+    fn nonzero_right(&self, pivot: usize) -> Option<usize> {
+        ((pivot + 1)..self.matrix.columns).find(|&column| self.matrix.entry(pivot, column) != 0)
+    }
+
+    fn swap_rows(
+        &mut self,
+        left: usize,
+        right: usize,
+        budget: &IntegerLatticeBudget,
+    ) -> Result<(), StructureError> {
+        if left == right {
+            return Ok(());
+        }
+        self.matrix.swap_rows(left, right);
+        self.advance(budget)
+    }
+
+    fn swap_columns(
+        &mut self,
+        left: usize,
+        right: usize,
+        budget: &IntegerLatticeBudget,
+    ) -> Result<(), StructureError> {
+        if left == right {
+            return Ok(());
+        }
+        self.matrix.swap_columns(left, right);
+        self.right.swap_columns(left, right);
+        self.advance(budget)
+    }
+
+    fn negate_row(
+        &mut self,
+        row: usize,
+        budget: &IntegerLatticeBudget,
+    ) -> Result<Option<()>, StructureError> {
+        if self.matrix.negate_row(row).is_none() {
+            return Ok(None);
+        }
+        self.advance(budget)?;
+        Ok(Some(()))
+    }
+
+    fn eliminate_below(
+        &mut self,
+        pivot: usize,
+        row: usize,
+        budget: &IntegerLatticeBudget,
+    ) -> Result<Option<()>, StructureError> {
+        let max_coefficient_bits = budget.max_coefficient_bits;
+        let pivot_value = self.matrix.entry(pivot, pivot);
+        let entry = self.matrix.entry(row, pivot);
+        let Some(remainder) = entry.checked_rem(pivot_value) else {
+            return Ok(None);
+        };
+        if remainder == 0 {
+            let Some(factor) = entry
+                .checked_div(pivot_value)
+                .and_then(|quotient| quotient.checked_neg())
+            else {
+                return Ok(None);
+            };
+            self.check_live_entries(self.matrix.columns, budget)?;
+            let Some(()) = self
+                .matrix
+                .add_row_multiple(row, pivot, factor, max_coefficient_bits)?
+            else {
+                return Ok(None);
+            };
+            self.advance(budget)?;
+            return Ok(Some(()));
+        }
+        let Some(transform) = small_bezout(pivot_value, entry) else {
+            return Ok(None);
+        };
+        self.check_live_entries(double_entries(self.matrix.columns)?, budget)?;
+        let Some(()) = self
+            .matrix
+            .bezout_rows(pivot, row, &transform, max_coefficient_bits)?
+        else {
+            return Ok(None);
+        };
+        self.advance(budget)?;
+        Ok(Some(()))
+    }
+
+    fn eliminate_right(
+        &mut self,
+        pivot: usize,
+        column: usize,
+        budget: &IntegerLatticeBudget,
+    ) -> Result<Option<()>, StructureError> {
+        let max_coefficient_bits = budget.max_coefficient_bits;
+        let pivot_value = self.matrix.entry(pivot, pivot);
+        let entry = self.matrix.entry(pivot, column);
+        let Some(remainder) = entry.checked_rem(pivot_value) else {
+            return Ok(None);
+        };
+        if remainder == 0 {
+            let Some(factor) = entry
+                .checked_div(pivot_value)
+                .and_then(|quotient| quotient.checked_neg())
+            else {
+                return Ok(None);
+            };
+            self.check_live_entries(self.matrix.rows.max(self.right.rows), budget)?;
+            let Some(()) = self
+                .matrix
+                .add_column_multiple(column, pivot, factor, max_coefficient_bits)?
+            else {
+                return Ok(None);
+            };
+            let Some(()) = self
+                .right
+                .add_column_multiple(column, pivot, factor, max_coefficient_bits)?
+            else {
+                return Ok(None);
+            };
+            self.advance(budget)?;
+            return Ok(Some(()));
+        }
+        let Some(transform) = small_bezout(pivot_value, entry) else {
+            return Ok(None);
+        };
+        self.check_live_entries(
+            double_entries(self.matrix.rows.max(self.right.rows))?,
+            budget,
+        )?;
+        let Some(()) = self
+            .matrix
+            .bezout_columns(pivot, column, &transform, max_coefficient_bits)?
+        else {
+            return Ok(None);
+        };
+        let Some(()) = self
+            .right
+            .bezout_columns(pivot, column, &transform, max_coefficient_bits)?
+        else {
+            return Ok(None);
+        };
+        self.advance(budget)?;
+        Ok(Some(()))
+    }
+
+    fn advance(&mut self, budget: &IntegerLatticeBudget) -> Result<(), StructureError> {
+        self.steps = self
+            .steps
+            .checked_add(1)
+            .ok_or(StructureError::ArithmeticOverflow)?;
+        if self.steps > budget.max_steps {
+            return Err(resource_limit(
+                "elementary operations",
+                limit_as_u64(budget.max_steps)?,
+            ));
+        }
+        Ok(())
+    }
+
+    fn check_bounds(&self, budget: &IntegerLatticeBudget) -> Result<(), StructureError> {
+        self.matrix.check_against(budget)?;
+        self.right.check_against(budget)?;
+        self.check_live_entries(0, budget)
+    }
+
+    fn check_live_entries(
+        &self,
+        additional: usize,
+        budget: &IntegerLatticeBudget,
+    ) -> Result<(), StructureError> {
+        check_entry_total(
+            &[
+                self.source_entries,
+                self.matrix.entries.len(),
+                self.right.entries.len(),
+                additional,
+            ],
+            budget,
+        )
+    }
+}
+
+/// The machine-word twin of [`saturated_kernel_generic`]; see the module
+/// note above for the `Ok(None)` fallback convention.
+fn try_saturated_kernel_small(
+    matrix: &IntegerMatrix,
+    budget: &IntegerLatticeBudget,
+) -> Result<Option<IntegralBasis>, StructureError> {
+    let Some(mut state) = SmallReductionState::new(matrix, budget)? else {
+        return Ok(None);
+    };
+    let diagonal_limit = state.matrix.rows.min(state.matrix.columns);
+    let mut diagonal_rank = 0;
+
+    while diagonal_rank < diagonal_limit {
+        let Some((pivot_row, pivot_column)) = state.first_nonzero(diagonal_rank) else {
+            break;
+        };
+        state.swap_rows(diagonal_rank, pivot_row, budget)?;
+        state.swap_columns(diagonal_rank, pivot_column, budget)?;
+
+        loop {
+            while let Some(row) = state.nonzero_below(diagonal_rank) {
+                let Some(()) = state.eliminate_below(diagonal_rank, row, budget)? else {
+                    return Ok(None);
+                };
+            }
+            while let Some(column) = state.nonzero_right(diagonal_rank) {
+                let Some(()) = state.eliminate_right(diagonal_rank, column, budget)? else {
+                    return Ok(None);
+                };
+            }
+            if state.nonzero_below(diagonal_rank).is_none()
+                && state.nonzero_right(diagonal_rank).is_none()
+            {
+                break;
+            }
+        }
+
+        if state.matrix.entry(diagonal_rank, diagonal_rank) < 0 {
+            let Some(()) = state.negate_row(diagonal_rank, budget)? else {
+                return Ok(None);
+            };
+        }
+        diagonal_rank += 1;
+    }
+
+    let SmallReductionState {
+        matrix: working_matrix,
+        right,
+        ..
+    } = state;
+    drop(working_matrix);
+    let kernel_rank = right
+        .columns
+        .checked_sub(diagonal_rank)
+        .ok_or(StructureError::IntegerLatticeInvariantViolation)?;
+    let output_entries = right
+        .rows
+        .checked_mul(kernel_rank)
+        .ok_or(StructureError::ArithmeticOverflow)?;
+    check_entry_total(
+        &[matrix.entries.len(), right.entries.len(), output_entries],
+        budget,
+    )?;
+    // `IntegralBasis::kernel_columns`, converting once at the end.
+    let ambient_rank = right.rows;
+    check_entry_total(&[right.entries.len(), output_entries], budget)?;
+    let mut columns = Vec::new();
+    columns
+        .try_reserve_exact(kernel_rank)
+        .map_err(|_| StructureError::AllocationFailed {
+            requested: kernel_rank,
+        })?;
+    for column in diagonal_rank..right.columns {
+        let mut coordinates = try_integer_vec(ambient_rank)?;
+        for row in 0..ambient_rank {
+            coordinates.push(Integer::from(right.entry(row, column)));
+        }
+        columns.push(coordinates);
+    }
+    let basis = IntegralBasis {
+        ambient_rank,
+        columns,
+    };
+    drop(right);
+    verify_annihilation_small(matrix, &basis, budget)?;
+    Ok(Some(basis))
+}
+
+/// The i64 image of [`verify_annihilation`]: the same per-step bit bounds
+/// against `max_coefficient_bits`, accumulating in i128 (the generic path's
+/// wide accumulation agrees on every value that fits). Overflow of the
+/// i128 accumulator is unreachable for budget-bounded inputs.
+fn verify_annihilation_small(
+    matrix: &IntegerMatrix,
+    basis: &IntegralBasis,
+    budget: &IntegerLatticeBudget,
+) -> Result<(), StructureError> {
+    if basis.ambient_rank != matrix.columns {
+        return Err(StructureError::RankMismatch {
+            expected: matrix.columns,
+            actual: basis.ambient_rank,
+        });
+    }
+    for column in &basis.columns {
+        if column.len() != basis.ambient_rank {
+            return Err(StructureError::IntegerLatticeInvariantViolation);
+        }
+        for row in 0..matrix.rows {
+            let mut value = 0_i128;
+            for index in 0..matrix.columns {
+                let coefficient = i64::try_from(matrix.entry(row, index))
+                    .map_err(|_| StructureError::IntegerLatticeInvariantViolation)?;
+                let coordinate = i64::try_from(&column[index])
+                    .map_err(|_| StructureError::IntegerLatticeInvariantViolation)?;
+                let value_bits = if value == 0 {
+                    0
+                } else {
+                    128 - u32::from(value.unsigned_abs().leading_zeros()) as u64
+                };
+                let left_bits = value_bits; // 1 * value
+                let right_bits = product_bit_bound_i64(coefficient, coordinate);
+                let bound = match (left_bits, right_bits) {
+                    (0, bits) | (bits, 0) => bits,
+                    (left, right) => left.max(right) + 1,
+                };
+                if bound > budget.max_coefficient_bits {
+                    return Err(resource_limit("coefficient bits", budget.max_coefficient_bits));
+                }
+                value += i128::from(coefficient) * i128::from(coordinate);
+            }
+            if value != 0 {
+                return Err(StructureError::IntegerLatticeInvariantViolation);
+            }
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2765,5 +3443,72 @@ mod tests {
                 limit: 4,
             })
         );
+    }
+
+    #[test]
+    fn small_bezout_matches_malachite_convention() {
+        let cases: [(i64, i64); 14] = [
+            (6, 9),
+            (6, -9),
+            (-6, 9),
+            (-6, -9),
+            (240, 46),
+            (-111, 300),
+            (3, 5),
+            (5, 5),
+            (10, 5),
+            (5, 10),
+            (1, 1),
+            (-1, -1),
+            (i64::MAX - 1, i64::MAX - 2),
+            (i64::MIN + 1, 3),
+        ];
+        for (a, b) in cases {
+            let small = small_bezout(a, b).expect("all cases fit i64");
+            let reference = BezoutTransform::for_entries(&Integer::from(a), &Integer::from(b));
+            assert_eq!(small.s, i64::try_from(&reference.s).unwrap(), "s {a} {b}");
+            assert_eq!(small.t, i64::try_from(&reference.t).unwrap(), "t {a} {b}");
+            assert_eq!(small.u, i64::try_from(&reference.u).unwrap(), "u {a} {b}");
+            assert_eq!(small.v, i64::try_from(&reference.v).unwrap(), "v {a} {b}");
+        }
+    }
+
+    #[test]
+    fn small_kernel_matches_generic_kernel() {
+        let fixed: Vec<Vec<Vec<i32>>> = vec![
+            vec![vec![1, 0], vec![0, 1]],
+            vec![vec![0, 0], vec![0, 0]],
+            vec![vec![2, 0], vec![0, 3]],
+            vec![vec![1, 1], vec![1, -1]],
+            vec![vec![6, 9], vec![-4, 7]],
+            vec![vec![240, 46, 0], vec![-111, 300, 5]],
+            vec![vec![1, 2, 3], vec![4, 5, 6], vec![7, 8, 9]],
+            vec![vec![-2, 1, 2, -3], vec![-3, -1, 2, -11]],
+            vec![vec![5], vec![-7]],
+            vec![vec![5, -7]],
+        ];
+        let mut matrices: Vec<IntegerMatrix> =
+            fixed.iter().map(|rows| matrix(&rows.iter().map(Vec::as_slice).collect::<Vec<_>>())).collect();
+        // Deterministic LCG batch for volume: mixed-sign 4x4 and 3x5.
+        let mut state = 0x1234_5678_9abc_def0_u64;
+        let mut next = move || {
+            state = state
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            ((state >> 33) % 21) as i32 - 10
+        };
+        for _ in 0..40 {
+            let rows: Vec<Vec<i32>> = (0..4).map(|_| (0..4).map(|_| next()).collect()).collect();
+            matrices.push(matrix(&rows.iter().map(Vec::as_slice).collect::<Vec<_>>()));
+            let rows: Vec<Vec<i32>> = (0..3).map(|_| (0..5).map(|_| next()).collect()).collect();
+            matrices.push(matrix(&rows.iter().map(Vec::as_slice).collect::<Vec<_>>()));
+        }
+        for work in &matrices {
+            let small = try_saturated_kernel_small(work, &budget())
+                .unwrap()
+                .expect("small entries stay in the i64 window");
+            let reference = saturated_kernel_generic(work, &budget()).unwrap();
+            assert_eq!(small, reference, "kernel mismatch for {work:?}");
+        }
     }
 }
