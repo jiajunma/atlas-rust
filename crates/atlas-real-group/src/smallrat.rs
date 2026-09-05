@@ -143,10 +143,34 @@ fn reduce_i128(num: i128, den: i128) -> Option<(i128, i128)> {
     if num == 0 {
         return Some((0, 1));
     }
+    let anum = num.unsigned_abs();
+    let aden = den as u128;
+    // u64 fast path: the overwhelming majority of sweep entries stay
+    // small, and 128-bit modulo/division lower to __divti3 calls while the
+    // 64-bit forms are single hardware instructions (perf-unitary-3683299:
+    // gj_normalize_and_clear 9.0% self including the inlined reduction).
+    if anum <= u128::from(u64::MAX) && aden <= u128::from(u64::MAX) {
+        let (anum, aden) = (anum as u64, aden as u64);
+        let divisor = gcd_u64(anum, aden);
+        let sign = i128::from(num.signum());
+        return Some((
+            i128::from(anum / divisor) * sign,
+            i128::from(aden / divisor),
+        ));
+    }
     // den > 0 here, so the gcd is positive and divides num; it fits an
     // i128 because it does not exceed den.
-    let divisor = gcd_u128(num.unsigned_abs(), den as u128) as i128;
+    let divisor = gcd_u128(anum, aden) as i128;
     Some((num / divisor, den / divisor))
+}
+
+fn gcd_u64(mut left: u64, mut right: u64) -> u64 {
+    while right != 0 {
+        let remainder = left % right;
+        left = right;
+        right = remainder;
+    }
+    left
 }
 
 fn gcd_u128(mut left: u128, mut right: u128) -> u128 {
@@ -194,6 +218,31 @@ mod tests {
             for (small, big) in small_row.iter().zip(big_row) {
                 assert_eq!(&small.to_rational(), big);
             }
+        }
+    }
+
+    #[test]
+    fn reduce_fast_path_matches_wide_path() {
+        // Values below and above the u64 boundary must reduce identically.
+        let cases: [(i128, i128); 6] = [
+            (6, 9),
+            (-6, 9),
+            (6, -9),
+            (i64::MAX as i128 * 3, i64::MAX as i128 * 6),
+            (-(i64::MAX as i128) * 5, i64::MAX as i128 * 10),
+            (1 << 100, 3 << 100),
+        ];
+        for (num, den) in cases {
+            let (reduced_num, reduced_den) = reduce_i128(num, den).unwrap();
+            assert_eq!(
+                Rational::from_integers(
+                    Integer::from(reduced_num),
+                    Integer::from(reduced_den)
+                ),
+                Rational::from_integers(Integer::from(num), Integer::from(den)),
+                "{num}/{den}"
+            );
+            assert!(reduced_den > 0);
         }
     }
 
