@@ -7,7 +7,6 @@
 //! [`root_vertex_of_alcove`] (`alcoves.cpp:414-428`) serves the
 //! fundamental-alcove reduction of the locator slice (`locator.rs`).
 
-use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 
 use malachite::Rational;
@@ -148,29 +147,42 @@ impl RootNumbering {
             .map(RootId::from_usize)
             .filter(|&id| root_system.is_positive(id).unwrap_or(false))
             .collect();
-        positives.sort_by(|&left, &right| {
-            let left_coordinates = root_system.simple_coordinates(left).unwrap_or(&[]);
-            let right_coordinates = root_system.simple_coordinates(right).unwrap_or(&[]);
-            let left_level: i32 = left_coordinates.iter().sum();
-            let right_level: i32 = right_coordinates.iter().sum();
-            left_level.cmp(&right_level).then_with(|| {
-                for index in (0..left_coordinates.len()).rev() {
-                    let difference = left_coordinates[index] - right_coordinates[index];
-                    if difference != 0 {
-                        return difference.cmp(&0);
-                    }
-                }
-                Ordering::Equal
+        // Upstream order: simple-coordinate height first, then the
+        // coordinate tuple compared from the LAST index backward. Heights
+        // are precomputed once per root instead of re-summed per
+        // comparison (this construction runs per `wall_set` caller, i.e.
+        // per `int_item`/`alcove_center` call).
+        let levels: Vec<i32> = (0..total)
+            .map(|index| {
+                root_system
+                    .simple_coordinates(RootId::from_usize(index))
+                    .unwrap_or(&[])
+                    .iter()
+                    .sum()
             })
+            .collect();
+        positives.sort_by(|&left, &right| {
+            levels[left.index()]
+                .cmp(&levels[right.index()])
+                .then_with(|| {
+                    root_system
+                        .simple_coordinates(left)
+                        .unwrap_or(&[])
+                        .iter()
+                        .rev()
+                        .cmp(root_system.simple_coordinates(right).unwrap_or(&[]).iter().rev())
+                })
         });
         let npos = positives.len();
-        let mut positive_index = BTreeMap::new();
+        // Position of each positive root in `positives`, by root id: the
+        // negative-half lookup below resolves `-id` through the negation
+        // table and reads its position directly, replacing the per-call
+        // BTreeMap<Vec<i32>> index (a top BTreeMap get/insert source in
+        // the heavy-unitary profile, perf-unitary-3681949).
+        let mut position_of = vec![usize::MAX; total];
         let mut by_nbr = vec![RootId::from_usize(0); total];
         for (position, &id) in positives.iter().enumerate() {
-            positive_index.insert(
-                root_system.simple_coordinates(id).unwrap_or(&[]).to_vec(),
-                position,
-            );
+            position_of[id.index()] = position;
             by_nbr[npos + position] = id;
         }
         for index in 0..total {
@@ -178,13 +190,9 @@ impl RootNumbering {
             if root_system.is_positive(id).unwrap_or(false) {
                 continue;
             }
-            let negated = root_system
-                .simple_coordinates(id)
-                .unwrap_or(&[])
-                .iter()
-                .map(|&coordinate| -coordinate)
-                .collect::<Vec<_>>();
-            let position = positive_index[&negated];
+            let negated = root_system.negatives()[id.index()];
+            let position = position_of[negated.index()];
+            debug_assert!(position != usize::MAX, "negation of a negative root");
             by_nbr[npos - 1 - position] = id;
         }
         Self { npos, by_nbr }
@@ -1039,9 +1047,85 @@ mod tests {
         Ok((walls, integrals))
     }
 
+    /// The pre-array `RootNumbering::new`: per-comparison level sums and a
+    /// `BTreeMap<Vec<i32>>` positive-root index.
+    fn reference_root_numbering(root_system: &RootSystem) -> RootNumbering {
+        let total = root_system.roots().len();
+        let mut positives: Vec<RootId> = (0..total)
+            .map(RootId::from_usize)
+            .filter(|&id| root_system.is_positive(id).unwrap_or(false))
+            .collect();
+        positives.sort_by(|&left, &right| {
+            let left_coordinates = root_system.simple_coordinates(left).unwrap_or(&[]);
+            let right_coordinates = root_system.simple_coordinates(right).unwrap_or(&[]);
+            let left_level: i32 = left_coordinates.iter().sum();
+            let right_level: i32 = right_coordinates.iter().sum();
+            left_level.cmp(&right_level).then_with(|| {
+                for index in (0..left_coordinates.len()).rev() {
+                    let difference = left_coordinates[index] - right_coordinates[index];
+                    if difference != 0 {
+                        return difference.cmp(&0);
+                    }
+                }
+                std::cmp::Ordering::Equal
+            })
+        });
+        let npos = positives.len();
+        let mut positive_index = BTreeMap::new();
+        let mut by_nbr = vec![RootId::from_usize(0); total];
+        for (position, &id) in positives.iter().enumerate() {
+            positive_index.insert(
+                root_system.simple_coordinates(id).unwrap_or(&[]).to_vec(),
+                position,
+            );
+            by_nbr[npos + position] = id;
+        }
+        for index in 0..total {
+            let id = RootId::from_usize(index);
+            if root_system.is_positive(id).unwrap_or(false) {
+                continue;
+            }
+            let negated = root_system
+                .simple_coordinates(id)
+                .unwrap_or(&[])
+                .iter()
+                .map(|&coordinate| -coordinate)
+                .collect::<Vec<_>>();
+            let position = positive_index[&negated];
+            by_nbr[npos - 1 - position] = id;
+        }
+        RootNumbering { npos, by_nbr }
+    }
+
     #[test]
-    fn wall_set_matches_reference_across_gammas() {
+    fn root_numbering_matches_reference() {
         let systems = [
+            RootSystem::enumerate(
+                &BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap(),
+                6,
+            )
+            .unwrap(),
+            RootSystem::enumerate(
+                &BasedRootDatum::standard(vec![vec![2, -2], vec![-1, 2]]).unwrap(),
+                8,
+            )
+            .unwrap(),
+            RootSystem::enumerate(
+                &BasedRootDatum::standard(vec![vec![2, -1], vec![-3, 2]]).unwrap(),
+                12,
+            )
+            .unwrap(),
+        ];
+        for system in &systems {
+            let expected = reference_root_numbering(system);
+            let actual = RootNumbering::new(system);
+            assert_eq!(actual.npos, expected.npos);
+            assert_eq!(actual.by_nbr, expected.by_nbr);
+        }
+    }
+
+    #[test]
+    fn wall_set_matches_reference_across_gammas() {        let systems = [
             RootSystem::enumerate(
                 &BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap(),
                 6,
