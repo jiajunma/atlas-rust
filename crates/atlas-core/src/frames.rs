@@ -80,6 +80,9 @@ pub struct EvaluationContext {
     /// it), and a while loop reads it after each body evaluation —
     /// `false` ends the loop without collecting that iteration's value.
     while_condition_result: std::cell::Cell<bool>,
+    /// Recycled frame slot buffers (returned by frames that finished
+    /// uncaptured). Bounded; pure allocation reuse, never observable.
+    slot_pool: Vec<Vec<Option<SharedValue>>>,
 }
 
 impl EvaluationContext {
@@ -96,6 +99,29 @@ impl EvaluationContext {
 
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// A recycled frame slot buffer, or a fresh one when the pool is empty.
+    pub(crate) fn take_slot_buffer(&mut self) -> Vec<Option<SharedValue>> {
+        self.slot_pool.pop().unwrap_or_default()
+    }
+
+    /// Return a buffer to the pool (cleared; bounded so a one-off wide
+    /// frame cannot pin memory forever).
+    pub(crate) fn return_slot_buffer(&mut self, mut buffer: Vec<Option<SharedValue>>) {
+        if self.slot_pool.len() < 32 {
+            buffer.clear();
+            self.slot_pool.push(buffer);
+        }
+    }
+
+    /// Recycle a finished frame's slot buffer when nothing captured the
+    /// frame (a closure capture keeps the `Rc` above one, and the buffer
+    /// stays owned by that frame).
+    pub(crate) fn recycle_frame(&mut self, frame: Rc<Frame>) {
+        if let Ok(frame) = Rc::try_unwrap(frame) {
+            self.return_slot_buffer(frame.into_slot_buffer());
+        }
     }
 
     /// Whether printer output streams to stdout as produced. Opt-in via

@@ -12544,14 +12544,15 @@ impl TypedExpr {
                 names,
                 body,
             } => {
-                let mut slots = Vec::new();
+                let mut slots = context.take_slot_buffer();
                 for (shape, initializer) in initializers {
                     let value = force(initializer, context)?;
-                    distribute(value, shape, &mut slots);
+                    distribute_options(value, shape, &mut slots);
                 }
                 // A group of pure discards claims no frame (empty-layer
                 // rule), exactly as analysis counted no layer for it.
                 if slots.is_empty() {
+                    context.return_slot_buffer(slots);
                     body.evaluate(context, level)
                 } else {
                     evaluate_let_frame(slots, names, body, context, level)
@@ -13148,12 +13149,13 @@ fn apply_closure(
 ) -> Result<Option<SharedValue>, Control> {
     // The argument is one value: several parameters split it as a tuple,
     // a single parameter takes it whole. A parameterless call pushes no
-    // frame (empty-layer rule).
+    // frame (empty-layer rule). Slot buffers come from the context pool:
+    // an uncaptured finished frame returns its buffer for the next call.
     let mut slots = match closure.parameters {
         0 => None,
         1 => {
-            let mut slots = Vec::new();
-            distribute(argument, &closure.shapes[0], &mut slots);
+            let mut slots = context.take_slot_buffer();
+            distribute_options(argument, &closure.shapes[0], &mut slots);
             Some(slots)
         }
         _ => match unwrap_shared(argument) {
@@ -13163,9 +13165,9 @@ fn apply_closure(
                     closure.parameters,
                     "analysis let an argument arity mismatch through"
                 );
-                let mut slots = Vec::new();
+                let mut slots = context.take_slot_buffer();
                 for (value, shape) in values.into_iter().zip(closure.shapes.iter()) {
-                    distribute(value, shape, &mut slots);
+                    distribute_options(value, shape, &mut slots);
                 }
                 Some(slots)
             }
@@ -13176,21 +13178,27 @@ fn apply_closure(
     // analysis-time layer rule; a recursive closure still gains one for
     // its self slot below.
     if !closure.recursive {
-        slots = slots.filter(|slots| !slots.is_empty());
+        if let Some(buffer) = slots.take() {
+            if buffer.is_empty() {
+                context.return_slot_buffer(buffer);
+            } else {
+                slots = Some(buffer);
+            }
+        }
     }
     // A recursive closure binds itself at slot 0, ahead of the argument
     // slots (upstream `maybe_push`, axis.w:3548-3560); the new frame is
     // not part of the captured chain, so the Rc structure stays acyclic.
     if closure.recursive {
         slots
-            .get_or_insert_with(Vec::new)
-            .insert(0, Rc::new(Value::Closure(closure.clone())));
+            .get_or_insert_with(|| context.take_slot_buffer())
+            .insert(0, Some(Rc::new(Value::Closure(closure.clone()))));
     }
     context.with_context(closure.frame.clone(), |context| {
         let (result, frame) = match slots {
             Some(slots) => {
                 let (result, frame) = context
-                    .with_frame_traced(slots, |context| closure.body.evaluate(context, level));
+                    .with_frame_traced_slots(slots, |context| closure.body.evaluate(context, level));
                 (result, Some(frame))
             }
             None => (closure.body.evaluate(context, level), None),
@@ -13198,7 +13206,12 @@ fn apply_closure(
         match result {
             // An explicit `return` ends the call and supplies its value
             // (upstream function_return caught in apply, axis.w:3569-3571).
-            Err(Control::Return(value)) => Ok(at_shared(level, &value)),
+            Err(Control::Return(value)) => {
+                if let Some(frame) = frame {
+                    context.recycle_frame(frame);
+                }
+                Ok(at_shared(level, &value))
+            }
             // A runtime error unwinding through a call with named slots
             // earns the local-variable trace line (axis.w:3525-3533);
             // parameterless closures push no frame and no line.
@@ -13210,7 +13223,12 @@ fn apply_closure(
                 }
                 Err(Control::Runtime(diagnostic))
             }
-            other => other,
+            other => {
+                if let Some(frame) = frame {
+                    context.recycle_frame(frame);
+                }
+                other
+            }
         }
     })
 }
@@ -13554,19 +13572,23 @@ impl<'a> IterableView<'a> {
 /// the evaluator's (recursive) stack frame.
 #[inline(never)]
 fn evaluate_let_frame(
-    slots: Vec<Rc<Value>>,
+    slots: Vec<Option<SharedValue>>,
     names: &[String],
     body: &TypedExpr,
     context: &mut EvaluationContext,
     level: Level,
 ) -> Result<Option<SharedValue>, Control> {
-    let (result, frame) = context.with_frame_traced(slots, |context| body.evaluate(context, level));
+    let (result, frame) =
+        context.with_frame_traced_slots(slots, |context| body.evaluate(context, level));
     match result {
         Err(Control::Runtime(mut diagnostic)) => {
             diagnostic.trace(frame_dump(context, names, &frame));
             Err(Control::Runtime(diagnostic))
         }
-        other => other,
+        other => {
+            context.recycle_frame(frame);
+            other
+        }
     }
 }
 
