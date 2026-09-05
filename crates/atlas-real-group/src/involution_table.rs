@@ -49,23 +49,34 @@ pub struct InvolutionTableBudget {
 
 type CrossLinkRow = SmallVec<[InvolutionId; 8]>;
 
-/// FxHash-style hasher with a per-word avalanche (murmur3 fmix64).
+/// Rotate-xor-multiply accumulation with the murmur3 fmix64 avalanche
+/// deferred to `finish`.
 ///
-/// `PermutationHasher`'s rotate-xor-multiply rounds only diffuse key
+/// `PermutationHasher`'s bare rotate-xor-multiply rounds only diffuse key
 /// entropy UPWARD within a round, while hashbrown selects buckets on the
 /// hash's LOW bits: keys whose entropy sits in the high bytes (the compact
 /// `WeylElt` pieces — for E8 the variation lives in bytes 3..7, and the
 /// derived `Hash` spends the first round on the constant length prefix)
 /// collapse onto a handful of buckets (measured ~20x probe blowup on the
-/// E8 involution table, lane D profile job 3672155). fmix64 avalanches all
-/// 64 input bits into the low bits after every word. Collision behavior is
+/// E8 involution table, lane D profile job 3672155). Avalanching at EVERY
+/// word (the previous fmix64-per-word round, 3 multiplies per 8 bytes)
+/// fixed that but cost 2.3% on av_ann_e7 (profile 3680833); the same
+/// avalanche once in `finish` keeps the low-bit diffusion while the
+/// per-word round stays a single multiply. Collision behavior is
 /// irrelevant to semantics: the maps are probed/inserted, never iterated.
 #[derive(Clone, Default)]
 pub(crate) struct MixingHasher(u64);
 
 impl std::hash::Hasher for MixingHasher {
     fn finish(&self) -> u64 {
-        self.0
+        // murmur3 fmix64: avalanche all 64 state bits into the low bits.
+        let mut mixed = self.0;
+        mixed ^= mixed >> 33;
+        mixed = mixed.wrapping_mul(0xff51_afd7_ed55_8ccd);
+        mixed ^= mixed >> 33;
+        mixed = mixed.wrapping_mul(0xc4ce_b9fe_1a85_ec53);
+        mixed ^= mixed >> 33;
+        mixed
     }
 
     fn write(&mut self, bytes: &[u8]) {
@@ -82,13 +93,7 @@ impl std::hash::Hasher for MixingHasher {
     }
 
     fn write_u64(&mut self, value: u64) {
-        let mut mixed = self.0 ^ value;
-        mixed ^= mixed >> 33;
-        mixed = mixed.wrapping_mul(0xff51_afd7_ed55_8ccd);
-        mixed ^= mixed >> 33;
-        mixed = mixed.wrapping_mul(0xc4ce_b9fe_1a85_ec53);
-        mixed ^= mixed >> 33;
-        self.0 = mixed;
+        self.0 = (self.0.rotate_left(5) ^ value).wrapping_mul(0x51_7c_c1_b7_27_22_0a_95);
     }
 
     fn write_usize(&mut self, value: usize) {
