@@ -8648,3 +8648,30 @@ lower-bound signal for the heavy probe but must be re-measured on av2.
   3682285 latstack, 3682674 swar; oracle 8h reference 3680270 RUNNING
   (5h45m elapsed). NOTE 3681407/3681418 carry the REJECTED alcove caches
   (see 2026-09-05f) — valid lower-bound signal only.
+
+## Slices 2026-09-05i (avopt: fastgj + elimops LANDED; alcrat gate queued)
+
+- agent-fastgj MERGED as 3ec01cb. Gate 3682839-47 green. Probe ratios
+  improved where expected (deform 0.99->1.015x noise-level, gkfast_e7
+  1.013->1.066x; absolute deform 10.9->9.97s, gkfast_e7 14.1->13.17s).
+- agent-elimops MERGED as 76cc35e (328bfbd: integer_lattice
+  add_row/column_multiple + bezout_rows/columns now prevalidate bounds in
+  a first pass via the factored check_combination_bound /
+  combination_bit_bound / combination_value and write in place;
+  eliminate_below/right drop the pivot-pair Integer clones. Transactional
+  semantics preserved: budget failure leaves the matrix untouched, pinned
+  by failed_row_operation_leaves_the_matrix_untouched). Gate 3682954-62
+  green; ratios stable or slightly better.
+- Profile 3682286 re-attribution: Rational::sub_assign (4.28% self) is
+  2.24% under atlas_real_group::alcove::labels_for_component (via
+  alcove_center), mul 1.24% same path — NOT eval_for_loop as previously
+  noted. agent-alcrat (66f9a54) ports the SmallRat sweep idiom into
+  atlas-real-group::smallrat (atlas-core depends on atlas-real-group, so
+  ratfast cannot be imported; code duplicated with a comment).
+  solve_rational_system's missing-pivot early-None is preserved as
+  Ok(false). Gate submission scripted to fire once heavy-elimops
+  (3682963, PENDING on the fat queue WITHOUT an embedded build) reaches
+  RUNNING — do not switch the shared checkout or rebuild target/release
+  before then. heavy-alcrat embeds no build either; it depends on
+  afterok:build-alcrat. Next slice after alcrat: fresh profile 3682964
+  (perf-unitary on the elimops tree, RUNNING).

@@ -944,3 +944,29 @@ Probe wall times by frontier (rust seconds, oracle ~stable):
   output (batch stdout is whole-script buffered — main.rs:113). Fat 8h
   legs running: 3681407 (closure+alcove), 3681418 (wallset+alcove),
   3681939 (av2); oracle reference 3680270 (8h).
+
+## 2026-09-05c: swar + fastgj + elimops gates (all 7/7 SORTED_MATCH)
+
+Probe wall times (rust seconds) and rust/oracle ratio per gate run
+(oracle times vary run to run; ratios are the comparable column):
+
+| probe | swar a869688 | fastgj 2ce2d15 | elimops 328bfbd | oracle range |
+|---|---|---|---|---|
+| deform_e7_only | 10.89 (0.99x) | 9.97 (1.015x) | 10.99 (0.995x) | 9.8-11.1 |
+| gkfast_e6 | 0.95 | 1.14 (1.93x) | 1.03 (1.34x) | 0.59-0.77 |
+| gkfast_e7 | 14.10 (1.013x) | 13.17 (1.066x) | 14.12 (1.014x) | 12.4-13.9 |
+| unitary_e7 | 0.63 | 0.73 | 0.64 | 0.36-0.50 |
+| finals_e7 | 9.37 (1.10x) | 9.31 (1.11x) | 9.20 (1.098x) | 8.4-8.5 |
+| klsum_e7 | 10.23 (1.16x) | 10.08 (1.17x) | 10.01 (1.16x) | 8.6-8.8 |
+| av_ann_e7 | 15.44 (1.09x) | 16.29 (1.16x) | 16.50 (1.14x) | 14.1-14.5 |
+
+- fastgj (SmallRat GJ in domain_builtins) clearly helps the
+  rational-heavy probes: deform 10.9 -> 9.97, gkfast_e7 14.1 -> 13.17.
+- elimops (in-place prevalidated integer_lattice row/col ops, no per-call
+  replacement Vec, no pivot-pair clones): ratios stable to slightly
+  better (gkfast_e6 1.93x -> 1.34x, finals/klsum/av_ann a touch down);
+  absolute times within run-to-run noise of the fastgj gate.
+- alcrat (ec80bd5, rebased 66f9a54): SmallRat sweeps for alcove.rs
+  labels_for_component + solve_rational_system (profile 3682286:
+  Rational::sub_assign 4.28% self, 2.24% under labels_for_component;
+  mul 1.24% same path). Gate pending heavy-elimops (3682963) start.
