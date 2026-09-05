@@ -1,0 +1,5 @@
+rd : RootDatum
+rd := simply_connected(Lie_type("E6"),true)
+ic : InnerClass
+ic := inner_class(rd,[[1,0,0,0,0,0],[0,1,0,0,0,0],[0,0,1,0,0,0],[0,0,0,1,0,0],[0,0,0,0,1,0],[0,0,0,0,0,1]])
+prints("ic done",new_line)
