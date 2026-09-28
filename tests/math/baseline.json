@@ -1,0 +1,23 @@
+{
+  "schema": "atlas-math-baseline-v1",
+  "checked_utc": "2026-09-28",
+  "rust": {
+    "repository": "https://github.com/jiajunma/atlas-rust.git",
+    "ref": "refs/heads/main",
+    "commit": "05625c5d2b5f68ffc75c66c3f5f12302d25c7c30",
+    "archive": "rust-source.tar",
+    "archive_sha256": "59b61b167880a76a26b7b60e47dff374e0931d35f59b366cc79bd8d594a9d6aa"
+  },
+  "oracle": {
+    "repository": "https://github.com/jeffreyadams/atlasofliegroups.git",
+    "ref": "refs/heads/master",
+    "commit": "7e1b958c7aa9456769cc9cf09ac1542814b4800a",
+    "archive": "oracle-source.tar",
+    "archive_sha256": "b86ddfdc7581f7139c97820f0cf00dd8a8710afc54dd72741ec07d1b7109a7ea"
+  },
+  "notes": [
+    "Both remote refs were checked directly; local Rust pull --ff-only was already up to date.",
+    "This main baseline is NOT the separate optimized candidate or PGO build.",
+    "Do not reuse old 4d3e9449 oracle outputs as current reference expectations."
+  ]
+}

@@ -1,5 +1,33 @@
 # Remaining builtin coverage (post-language-gate)
 
+## Mathematical validation against latest original — 2026-09-28
+
+Current objective is mathematical correctness, not merely builtin registration.
+All tests/builds/benchmarks run on HPC. `tests/math/catalog.json` tracks72 initial
+classical/exceptional cases plus explicit mandatory gaps. General associated
+cycles must include multiplicities and cutoff justification; AV-ann, orbit
+support and bounded KNilpotent matrices do not close that requirement. Hodge
+grading specialization at one small bound does not prove full filtration
+coverage. Further real forms/isogenies and D6/D8/E7 minute-scale benchmarks are
+still required. Memory is a capacity guardrail, not the priority.
+
+Remote Rust main remains05625c5d after pull. Latest original is7e1b958c, not the
+historical4d3e9449 oracle. Source diff spans257files. Static inspection identifies
+generic `set_type Pair<S,T>` / `any_type` in latest basic.at versus missing main
+grammar; confirm with HPC before deciding the precise compatibility repair.
+Do not silently mix in older optimized/PGO candidate results or alter latest
+original scripts. The shared HPC Rust working checkout is dirty and unrelated
+to this immutable-main baseline; preserve it.
+
+Build3831844 RUNNING at last observation; R2 harness3831893 passed9tests;
+18-case A2/G2 pilot3831897 submitted with afterok dependencies. Full paths,
+input hashes, earlier failed submission-directory attempts and next actions
+are in HANDOFF's 2026-09-28 frontier and
+`tests/reference/hpc/math_suite_submission_2026_09_28.json`. Do not duplicate
+pending jobs. First review complete pilot output, then extend the validated
+templates across the remaining families and fix actual mathematical failures.
+No current mathematical or speed result is claimed for this new library.
+
 ## full_deform common-block recursion verified (2026-08-20)
 
 `full_deform` now looks up the interval-below partial block at each

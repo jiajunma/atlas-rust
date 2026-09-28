@@ -1,0 +1,14 @@
+<K_Nilpotent.at
+set G=split_form(Lie_type("@TYPE@"))
+prints("MATH_BEGIN @ID@")
+{ Compare every bounded entry, not just sizes. This does not turn finite
+  cutoffs or orbit support into a certified associated cycle. }
+for N in [2,4] do
+ let d=fill(initialize_KNilpotent(G,N)) in
+ prints("BOUND",N,"REAL_ORBITS",d.real_orbits,"COMPLEX_ORBITS",d.complex_orbits);
+ prints("PHI_PAIRS",d.pairs);
+ prints("T_MATRICES",d.T_matrices);
+ prints("Y_MATRICES",d.Y_matrices);
+ prints("Q_AND_PX",d.Q_and_P_X_matrices)
+od
+prints("MATH_END @ID@")

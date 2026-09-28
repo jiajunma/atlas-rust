@@ -1,0 +1,4 @@
+{ Exactly one deliberate core runtime rejection, without script loading. }
+set rd=simply_connected(Lie_type("@TYPE@"),true)
+prints("MATH_BEGIN @ID@")
+FPP_numers(rd,null(@RANK@+1))

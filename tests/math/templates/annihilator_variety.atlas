@@ -1,0 +1,17 @@
+<nilpotent_orbits.at
+<associated_variety_annihilator.at
+set G=split_form(Lie_type("@TYPE@"))
+set rd=root_datum(G)
+prints("MATH_BEGIN @ID@")
+set zero=associated_variety_ann(trivial(G))
+assert(zero.dim_nilpotent=0,"finite dimensional trivial module has nonzero annihilator variety")
+prints("TRIVIAL_ORBIT",zero,"H",zero.H,"diagram",zero.diagram,"dimension",zero.dim_nilpotent)
+for i in [0,KGB_size(G)-1] do
+ let p=param(KGB(G,i),ones(@RANK@),ones(@RANK@)/1) then
+ o=associated_variety_ann(p) in
+ assert(o.root_datum=rd,"annihilator variety root datum mismatch");
+ prints("PARAMETER",p,"gamma",infinitesimal_character(p));
+ prints("ORBIT",o,"H",o.H,"diagram",o.diagram,"dimension",o.dim_nilpotent);
+ prints("ORBIT_ROOTS",o.root_datum.simple_roots,"ORBIT_COROOTS",o.root_datum.simple_coroots)
+od
+prints("MATH_END @ID@")

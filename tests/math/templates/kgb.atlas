@@ -1,0 +1,14 @@
+{ Same split simply-connected datum as basic.at:split_form, core only. }
+set rd=simply_connected(Lie_type("@TYPE@"),true)
+set G=quasisplit_form(inner_class(rd,-id_mat(@RANK@)))
+prints("MATH_BEGIN @ID@")
+prints("GROUP",G,"KGB_SIZE",KGB_size(G))
+for i:KGB_size(G) do
+ let x=KGB(G,i) in
+ prints("KGB",i,"length",length(x),"involution",involution(x),"torus",torus_factor(x));
+ for s:@RANK@ do
+   if not (cross(s,cross(s,x))=x) then error("simple cross action is not involutive") fi;
+   prints("EDGE",i,s,"status",status(s,x),"cross",cross(s,x),"Cayley",Cayley(s,x))
+ od
+od
+prints("MATH_END @ID@")

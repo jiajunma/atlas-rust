@@ -1,0 +1,10 @@
+<deform.at
+set G=split_form(Lie_type("@TYPE@"))
+set p=trivial(G)
+prints("MATH_BEGIN @ID@")
+assert(is_unitary(p),"trivial representation must be unitary")
+for q in [p,p*(1/2),p*3] do
+ prints("PARAMETER",q,"gamma",infinitesimal_character(q));
+ prints("IS_UNITARY",is_unitary(q))
+od
+prints("MATH_END @ID@")

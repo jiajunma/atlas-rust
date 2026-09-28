@@ -1,0 +1,11 @@
+{ Core-only FPP entry points; no prelude-language dependency. }
+set rd=simply_connected(Lie_type("@TYPE@"),true)
+{ The small positive coordinates keep these wall/interior points inside
+  the fundamental alcove for every explicitly listed group (rank <= 7). }
+prints("MATH_BEGIN @ID@")
+for gamma in [ratvec:null(@RANK@),ratvec:id_mat(@RANK@)[0]/100,ratvec:ones(@RANK@)/100] do
+ prints("GAMMA",gamma);
+ prints("FPP_NUMERS",FPP_numers(rd,gamma));
+ prints("FPP_W_SHIFTS",FPP_w_shifts(rd,gamma))
+od
+prints("MATH_END @ID@")

@@ -1,0 +1,35 @@
+{
+  "schema": "atlas-math-catalog-v1",
+  "groups": [
+    {"type": "A2", "family": "classical", "rank": 2, "tier": "small"},
+    {"type": "B2", "family": "classical", "rank": 2, "tier": "small"},
+    {"type": "C2", "family": "classical", "rank": 2, "tier": "small"},
+    {"type": "D4", "family": "classical", "rank": 4, "tier": "small"},
+    {"type": "G2", "family": "exceptional", "rank": 2, "tier": "small"},
+    {"type": "F4", "family": "exceptional", "rank": 4, "tier": "medium"},
+    {"type": "E6", "family": "exceptional", "rank": 6, "tier": "large"},
+    {"type": "E7", "family": "exceptional", "rank": 7, "tier": "large"}
+  ],
+  "operations": [
+    {"id": "root_data", "template": "root_data.atlas", "scope": "Full simple root/coroot data, Cartan matrix, duality; exact arithmetic identities."},
+    {"id": "kgb", "template": "kgb.atlas", "scope": "All KGB elements of the split form, every simple-root status/cross/Cayley, involutions and lengths."},
+    {"id": "klv", "template": "klv.atlas", "scope": "Complete partial KL blocks/polynomial pools for trivial and half-scaled trivial parameters."},
+    {"id": "unitarity", "template": "unitarity.atlas", "scope": "Full is_unitary for trivial, half-scaled and outward-scaled trivial parameters; not just deformation."},
+    {"id": "hodge", "template": "hodge.atlas", "scope": "Full standard/irreducible Hodge grading polynomials plus bounded K-type branching and specialization identities; bound 4 is explicit, not a complete filtration claim."},
+    {"id": "fpp", "template": "fpp.atlas", "scope": "Complete FPP_numers and FPP_w_shifts at zero, a wall point and an interior point in the fundamental alcove."},
+    {"id": "annihilator_variety", "template": "annihilator_variety.atlas", "scope": "Full ComplexNilpotent orbit fields for selected actual parameters, plus the zero orbit of the trivial module."},
+    {"id": "cycle_foundation", "template": "cycle_foundation.atlas", "scope": "Full bounded KNilpotent Phi/T/Y/Q/P_X data and orbit labels at bounds 2 and 4. Prerequisite only, NOT associated-cycle multiplicity coverage."}
+  ],
+  "rejections": [
+    {"id": "fpp_rank_rejected", "template": "fpp_rank_rejected.atlas", "diagnostic": "Rank and rational weight size mismatch"}
+  ],
+  "open_requirements": [
+    "General associated cycles: orbit-by-orbit multiplicities, independent rank checks, support and cutoff completeness, for classical AND exceptional groups. No current template closes this requirement.",
+    "Hodge filtration: additional nontrivial irreducibles, singular/nonintegral parameters, higher bounds and positivity, not only trivial-module anchors.",
+    "FPP: add script-level fundamental-parallelepiped applications beyond the complete builtin orbits.",
+    "Real forms/isogenies: compact, nonsplit noncompact, complex, adjoint, torus/product coverage beyond this split simply-connected initial grid.",
+    "Dedicated repeated 60-600 second workloads, including D6/D8 and E7, after correctness and resource calibration.",
+    "Other current Rust development builds must be pinned and reported separately from remote main; historical PGO numbers are not this baseline.",
+    "E8 is not submitted in this grid; existing resource restrictions remain in force."
+  ]
+}

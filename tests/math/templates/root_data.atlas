@@ -1,0 +1,11 @@
+{ Core-only: do not let an upstream script-language load failure hide
+  independent root-data arithmetic coverage. }
+set rd=simply_connected(Lie_type("@TYPE@"),true)
+prints("MATH_BEGIN @ID@")
+prints("ROOTS",simple_roots(rd))
+prints("COROOTS",simple_coroots(rd))
+prints("CARTAN",Cartan_matrix(rd))
+prints("DUAL",simple_roots(dual(rd)),simple_coroots(dual(rd)))
+if not (dual(dual(rd))=rd) then error("root datum duality is not involutive") fi
+if not ((12345678901234567890/7)*7=12345678901234567890) then error("exact rational arithmetic") fi
+prints("MATH_END @ID@")

@@ -1,5 +1,65 @@
 # Atlas-Rust handoff - 2026-08-01 (handoff to next coding agent)
 
+## Current mathematical-validation frontier — 2026-09-28
+
+User objective: pull, update the original, establish a mathematical test AND
+benchmark library spanning classical/exceptional groups, basic/KGB, unitarity,
+Hodge filtration, FPP, associated cycles and annihilator varieties. **All testing
+must run on HPC** (latest user instruction); local work is inspection/edit/sync.
+Do not narrow this to performance or the currently passing subset.
+
+Working branch `codex/math-benchmark-suite`, based on remote main `05625c5d`.
+`git pull --ff-only` was already up to date; direct origin/main check agrees.
+Remote upstream master checked directly at `7e1b958c7aa9456769cc9cf09ac1542814b4800a`.
+`tests/math/baseline.json` pins both full source archives. The shared HPC
+`/public/home/majj/atlas-rust` is a DIFFERENT dirty development checkout; do not
+overwrite, pull, build from or silently substitute its mutable working tree.
+The older optimized/PGO worktrees are also separate candidates, not main.
+
+Library: `tests/math/catalog.json`, nine templates per group, 72 initial cases
+across A2/B2/C2/D4/G2/F4/E6/E7. Root-data/KGB/FPP core calls are separated from
+latest-script loading. High-level Hodge/unitarity/AV use the unmodified latest
+scripts. Raw complete output, status, wall seconds and peak RSS are retained.
+Cycle-foundation matrices are explicitly NOT associated-cycle multiplicities;
+general cycles, broader Hodge bounds/parameters, isogenies/real forms, independent
+identities and minute-scale D6/D8/E7 benchmarks remain mandatory open coverage.
+No E8/fat resource unlock. See `tests/math/README.md` for acceptance rules.
+
+HPC handles (do not duplicate or mutate frozen inputs):
+- Build **3831844**, last observed RUNNING on cu008. Stage
+  `/public/home/majj/atlas-math-baseline-20260928.iMXyKqJ5`;
+  report will be `results/3831844/build.json`. Latest oracle + remote-main Rust,
+  CPU2/8G/55min, compiler invocations and full source/script/binary pins recorded.
+- R2 harness preflight **3831893**, COMPLETED0:0,4s/cu002: all **9** verifier
+  tests pass. Report SHA `573f9d7b8b3391e414e13c2ea88cba655e3ebe45aa2ca3e67d953011375e451a`.
+  This is framework correctness only, not Atlas/math acceptance.
+- Initial differential pilot **3831897**, submitted once with afterok on the
+  two jobs above, array `0-8,36-44%2` (18 A2/G2 cases). Stage
+  `/public/home/majj/atlas-math-suite-r2-20260928.rjGJpUN8`.
+  CPU2/8G/25min each, 300s/engine, child address-space cap6G. Inspect all raw
+  streams before wider submission or claims. Catalog contains all72 cases;
+  unscheduled groups are NOT verified coverage.
+
+Submission metadata: `tests/reference/hpc/math_suite_submission_2026_09_28.json`.
+Next: review build provenance, collect exact pilot handles in batches, separate
+fixture/oracle failures, language-loading failures, numerical differences and
+resource limits, then expand validated templates to all groups. Never infer
+performance from failed math or a single short run. Goal remains ACTIVE.
+
+Important source finding: old oracle `4d3e9449` -> latest `7e1b958c` changes257
+files (20078insertions/13071deletions). Latest basic.at uses `Pair<S,T>` and
+`any_type`; pulled main lacks their grammar and explicitly lexes any_type as
+an identifier. This is a likely major upstream-compatibility gap, pending HPC
+confirmation. Do not rewrite upstream scripts to hide it.
+
+Infrastructure repair:3831840/3831841 failed before test/build because sbatch
+`--chdir` does NOT change `SLURM_SUBMIT_DIR`. Verified sacct/logs showed terminal
+failure; corrected submissions first `cd` to the exact stage. No runtime change.
+Old preflight3831843 passed8tests; R2 adds strict rejection validation and core
+isolation. Preserve both histories. The abandoned slow source rsync was explicitly
+terminated; archives were generated from immutable Git objects on HPC instead,
+with SHA equality to local archives. No existing source checkout was edited.
+
 This is the continuation record for `/Users/hoxide/mycodes/atlas-rust`.
 The goal is source-compatible Atlas language behavior, with the upstream Atlas
 executable and CWEB sources as the behavior oracle. The core remains safe Rust.

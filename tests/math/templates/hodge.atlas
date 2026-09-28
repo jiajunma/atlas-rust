@@ -1,0 +1,14 @@
+<hodge_test.at
+set hodge_test_verbose=false
+set G=split_form(Lie_type("@TYPE@"))
+set p=trivial(G)
+prints("MATH_BEGIN @ID@")
+prints("PARAMETER",p,"gamma",infinitesimal_character(p))
+prints("HODGE_STD",rearrange(hodge_grading_std(p)))
+prints("HODGE_IRR",rearrange(hodge_grading_irreducible(p)))
+prints("HODGE_BRANCH_STD_BOUND_4",rearrange(hodge_branch_std(p,4)))
+prints("HODGE_BRANCH_IRR_BOUND_4",rearrange(hodge_branch_irr(p,4)))
+set (checks,passed)=hodge_test(p,4)
+prints("SPECIALIZATIONS",checks)
+assert(passed,"Hodge specialization identity failed")
+prints("MATH_END @ID@")

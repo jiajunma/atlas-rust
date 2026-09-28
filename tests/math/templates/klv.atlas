@@ -1,0 +1,9 @@
+<deform.at
+set G=split_form(Lie_type("@TYPE@"))
+set p=trivial(G)
+prints("MATH_BEGIN @ID@")
+for q in [p,p*(1/2)] do
+ prints("PARAMETER",q,"gamma",infinitesimal_character(q));
+ prints("PARTIAL_KL",partial_KL_block(q))
+od
+prints("MATH_END @ID@")
