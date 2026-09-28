@@ -59,6 +59,29 @@ by its full Bruhat downward closure and singular condensation. The difference
 must be repaired at the correct parameter/locator boundary, not by hardcoding
 the observed sizes. No runtime change has been made.
 
+Further source audit for the next sequential repair:
+
+1. The existing `partial_block` arm already uses `context.rep.lookup` on the
+   actual parameter, `block_bruhat_hasse` for the full downward closure,
+   `located_singular_flags`, and `located_row_parameter`. Reuse this boundary;
+   `x` alone does not identify a standard representation.
+2. A cached located block may contain more rows after another partial/full
+   query. The selected downset must be computed from `located.raw_row()` on
+   every call, not assumed to be the entire stored block. Add a history-order
+   fixture (partial, full, partial) retaining full parameters and coefficients.
+3. Existing `KL_block` has parameter-adapted singular condensation through
+   `partial_block_finals_for` and `located.with_kl_table`. Its full lookup
+   and all-survivor set must become partial lookup plus the selected downset
+   for the partial operation; do not use descent reachability as a substitute
+   for the Hasse closure.
+4. Latest original atlas-types.w:7219-7246 reserves polynomial indices0/1
+   for zero/one, initializes the index matrix as identity, and interns only
+   strict-upper entries in row order. The faulty partial arm also lacks
+   this convention. Counts alone cannot detect a wrong polynomial pool.
+5. Preserve `test_standard` rejection before lookup and locator transport of
+   each row at the caller's infinitesimal character. Test nonintegral and
+   singular parameters as well as the existing A2/G2 predecessor regressions.
+
 E6's core KLV probe fails earlier in Rust with `real-form order twist-fixed
 generator coordinate invariant was violated`, while the original succeeds.
 E7's original reports `std::bad_alloc` under the6GiB child address-space cap;

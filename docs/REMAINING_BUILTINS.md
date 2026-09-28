@@ -8,9 +8,13 @@ the already-failing D4 wall fixture and new exact root-action unit regression.
 Do not call it fixed until the HPC before/after and differential artifacts pass.
 Subsequent root causes remain partial-KL parameter/Bruhat lookup, E6 construction,
 and latest generic-script compatibility. Record reusable repair lessons.
-FPP candidate preflight3832250 passes36checks; before/after unit + release
-build3832260 is submitted in atlas-math-fpp-repair-20260928.rraUQUz4.
-It is NOT differentially accepted yet. Keep current main baseline separate.
+FPP candidate preflight3832250 passes36checks. Build3832260 failed because
+the after command reused the before test binary via a shared Cargo target;
+both archived source hashes are correct. Replacement3832301 uses independent
+target-before/target-after in atlas-math-fpp-repair-r2-20260928.49AOGABt,
+after preflight3832300. It is IN PROGRESS, NOT differentially accepted.
+See the R2 submission receipt and AGENTS repair guard. Keep the main baseline
+separate; do not rerun the invalid shared-target procedure.
 
 R9 now has103cases with D6/D8 KGB and nontrivial A2/G2 Hodge at half/zero
 scale and bounds4/20. Review3832222 verifies all8 original Hodge failures:

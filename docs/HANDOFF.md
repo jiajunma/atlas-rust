@@ -27,14 +27,33 @@ untouched. Before-unit must fail an executed assertion (not compile), after-unit
 must pass, then the candidate must reproduce full FPP oracle output. Record
 the before/after build and differential results before claiming acceptance.
 Exact repair stage: /public/home/majj/atlas-math-fpp-repair-20260928.rraUQUz4.
-Preflight3832250 passes36checker tests; build3832260 submitted afterok and
-must be collected, not duplicated. Source-only tar archives were generated on
+Preflight3832250 passes36checker tests. Build3832260 is now TERMINAL/FAILED:
+the before test compiled and failed the intended D4 assertion, but the after
+command reused the old test binary from the shared Cargo target (0.7s, no
+compile, same unreversed word), despite correct after-source hashes. Its result
+is NOT evidence against the mathematical repair. Preserve the frozen stage.
+Replacement stage /public/home/majj/atlas-math-fpp-repair-r2-20260928.49AOGABt
+keeps identical source archives and isolates target-before/target-after.
+Preflight3832300 completed; build3832301 is IN PROGRESS, not accepted.
+Collect this exact job; do not duplicate. Input manifest
+cc68314c624aedb60a99a2ebdbf2b7b4740adfd8b310677b9f39460b3de3cbd4;
+review-code SHA d2f939fd84c581681057ef01d998d392320bae375108689f0eec67b39e9c5e40.
+After successful build, run full FPP indices5,14,23,32,41,50,59,68,89 and
+rank rejection indices8,17,26,35,44,53,62,71 in that frozen stage, then an
+independent review pinned to the new build SHA. No runtime acceptance yet.
+Source-only tar archives were generated on
 HPC from the existing immutable baseline plus checksummed small patches.
 Core SHA before9973a807... /after8a52ffb1... agrees exactly with local files.
 The slow local full-tar upload was explicitly terminated; its partial file is
 retained as abandoned-before-upload.partial. HPC GitHub connectivity was
 verified with git ls-remote; origin/main remains05625c5d.
 See AGENTS working convention6: prefer HPC fetch/pinned commits or small patches.
+
+Next partial-KL repair can reuse the already-correct parameter plumbing of
+`partial_block` and condensation/polynomial interning of `KL_block`; see the
+new detailed source checklist in `slices/math_failures_2026-09-28.md`. Do not
+replace actual-parameter lookup with a fresh dual-quasisplit block or merely
+patch the expected counts. Preserve cache-history and singular cases.
 
 NEW R7: broad array3832011 and independent review3832103 are COMPLETE.
 The54-case review SHA is31c0e62d1a6b9b3227cfc2b55fc5ea213a29bb75f82a5f5cb28f1986feea1250,

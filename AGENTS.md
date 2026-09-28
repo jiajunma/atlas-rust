@@ -91,6 +91,20 @@ not a source-level C++ translation.
 
 ## Verified repair guard
 
+### Isolate Cargo outputs for before/after archive builds
+
+- HPC job `3832260` compiled the before source and failed the intended D4
+  assertion, but the after command finished in 0.7 seconds and executed the
+  same old word/binary despite the verified source containing the reversal.
+  Both archive trees preserved timestamps and shared `CARGO_TARGET_DIR`.
+- Never share Cargo target directories between the before and after trees in
+  a regression proof. Use separate fresh `target-before` and `target-after`
+  directories, and record their paths with each command. An exit code alone
+  cannot establish which source was executed.
+- Keep failed build artifacts. The isolated replacement is job `3832301`;
+  it is not mathematical acceptance until its unit and differential gates
+  pass. See `tests/reference/hpc/math_fpp_repair_r2_submission_2026_09_28.json`.
+
 ### Owned `LatticeInvolution` builders
 
 - Root cause: a migration from borrowed to owned involution input left a
