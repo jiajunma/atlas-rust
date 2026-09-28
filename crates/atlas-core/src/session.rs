@@ -184,6 +184,142 @@ mod tests {
     }
 
     #[test]
+    fn generic_projector_calls_freshen_each_instance_and_link_the_result() {
+        // Original captures 3835776/3836236: each call instantiates one whole
+        // signature, with the same substitution for its argument and result.
+        for (source, expected) in [
+            (include_str!("../../../tests/math/generics/constructor_field_instances_valid.atlas"),
+             vec!["FIRST7seven\n", "SECOND3/4[2,3]\n", "FIRST_AGAIN7seven\n"]),
+            (include_str!("../../../tests/math/generics/pair_nested.atlas"),
+             vec!["FIELDS[2,3](3/4,true)\n"]),
+            (include_str!("../../../tests/math/generics/duplicate_formals_instantiated.atlas"),
+             vec!["REPEATED(1,2)12\n"]),
+        ] {
+            let events = run_source(&SourceText::new(source));
+            assert!(!events.iter().any(|e| matches!(e, SessionEvent::Diagnostic(_))), "{events:?}");
+            for expected in expected {
+                assert!(events.iter().any(|e| matches!(e,
+                    SessionEvent::ReportLine { text, .. } if text == expected)), "{events:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn ordinary_generic_rows_recover_after_all_empty_argument_ambiguities() {
+        // Exact original contracts captured in3836455, including recovery.
+        let events = run_source(&SourceText::new(include_str!(
+            "../../../tests/math/generics/row_generic_ambiguities.atlas"
+        )));
+        let errors: Vec<_> = events.iter().filter_map(|e| match e {
+            SessionEvent::Diagnostic(d) => Some(d), _ => None,
+        }).collect();
+        assert_eq!(errors.len(), 5, "{events:?}");
+        assert!(errors.iter().all(|d| d.kind == ErrorKind::Type
+            && d.message.starts_with("Ambiguous argument in function call")), "{events:?}");
+        assert!(events.iter().any(|e| matches!(e,
+            SessionEvent::ReportLine { text, .. } if text == "RECOVER17\n")), "{events:?}");
+
+        let events = run_source(&SourceText::new(include_str!(
+            "../../../tests/math/generics/row_generic_mixed.atlas"
+        )));
+        assert!(!events.iter().any(|e| matches!(e, SessionEvent::Diagnostic(_))), "{events:?}");
+        let lines: Vec<_> = events.iter().filter_map(|e| match e {
+            SessionEvent::ReportLine { text, .. } => Some(text.as_str()), _ => None,
+        }).collect();
+        assert_eq!(lines, ["LEFT[1,2]\n", "RIGHT[1,2]\n"]);
+    }
+
+    #[test]
+    fn generic_and_concrete_exact_overloads_are_ambiguous_and_recover() {
+        let events = run_source(&SourceText::new(include_str!(
+            "../../../tests/math/generics/constructor_projector_ambiguity.atlas")));
+        let errors = events.iter().filter_map(|e| match e {
+            SessionEvent::Diagnostic(d) => Some(d), _ => None,
+        }).collect::<Vec<_>>();
+        assert_eq!(errors.len(), 1, "{events:?}");
+        assert!(errors[0].message.contains("Ambiguous argument in function call"), "{events:?}");
+        assert!(!events.iter().any(|e| matches!(e,
+            SessionEvent::Value { value, .. } if value.to_string() == "99")), "{events:?}");
+        assert!(events.iter().any(|e| matches!(e,
+            SessionEvent::ReportLine { text, .. } if text == "RECOVER3/4\n")), "{events:?}");
+    }
+
+    #[test]
+    fn generic_projector_result_constraint_does_not_rebind_its_argument() {
+        let events = run_source(&SourceText::new(include_str!(
+            "../../../tests/math/generics/constructor_projector_result_rejected.atlas")));
+        let errors = events.iter().filter_map(|e| match e {
+            SessionEvent::Diagnostic(d) => Some(d), _ => None,
+        }).collect::<Vec<_>>();
+        assert_eq!(errors.len(), 1, "{events:?}");
+        assert_eq!(errors[0].message, "found int while string was needed.");
+        assert!(events.iter().any(|e| matches!(e,
+            SessionEvent::ReportLine { text, .. } if text == "RECOVERseven\n")), "{events:?}");
+    }
+
+    #[test]
+    fn field_writes_use_retained_definitions_not_projector_values() {
+        // Original captures3836211/3836306 verify both overwritten functions
+        // and forgotten type names, with complete post-write values.
+        for (source, expected) in [
+            (include_str!("../../../tests/math/generics/constructor_field_assignment.atlas"),
+             vec!["FIELDS_CHANGED(5,7)\n", "INDEPENDENT(11,7)\n", "MONOMORPHIC(13,3)99\n"]),
+            (include_str!("../../../tests/math/generics/field_definition_forgotten.atlas"),
+             vec!["RETAINED(7,3)\n"]),
+        ] {
+            let events = run_source(&SourceText::new(source));
+            assert!(!events.iter().any(|e| matches!(e, SessionEvent::Diagnostic(_))), "{events:?}");
+            for expected in expected {
+                assert!(events.iter().any(|e| matches!(e,
+                    SessionEvent::ReportLine { text, .. } if text == expected)), "{events:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn field_and_tag_metadata_ambiguities_reject_without_mutating_values() {
+        for (source, message, recovery) in [
+            (include_str!("../../../tests/math/generics/field_definition_ambiguity.atlas"),
+             "matches more than one definition with field name 'shared_first'", "RECOVER(2,3)\n"),
+            (include_str!("../../../tests/math/generics/union_definition_ambiguity.atlas"),
+             "Ambiguity in discrimination clause, possible types are:\n    FirstUnion\n    SecondUnion\n", "RECOVER17\n"),
+        ] {
+            let events = run_source(&SourceText::new(source));
+            let errors = events.iter().filter_map(|e| match e {
+                SessionEvent::Diagnostic(d) => Some(d), _ => None,
+            }).collect::<Vec<_>>();
+            assert_eq!(errors.len(), 1, "{events:?}");
+            assert!(errors[0].message.contains(message), "{events:?}");
+            assert!(events.iter().any(|e| matches!(e,
+                SessionEvent::ReportLine { text, .. } if text == recovery)), "{events:?}");
+        }
+    }
+
+    #[test]
+    fn generic_union_injectors_and_tagged_branches_share_type_arguments() {
+        let events = run_source(&SourceText::new(include_str!(
+            "../../../tests/math/generics/constructor_union_context.atlas")));
+        assert!(!events.iter().any(|e| matches!(e, SessionEvent::Diagnostic(_))), "{events:?}");
+        for expected in ["INT8\n", "STRINGseven\n", "NONE0\n", "NONE_STRING0\n"] {
+            assert!(events.iter().any(|e| matches!(e,
+                SessionEvent::ReportLine { text, .. } if text == expected)), "{events:?}");
+        }
+    }
+
+    #[test]
+    fn repeated_injector_arguments_reject_mixed_types_then_recover() {
+        let events = run_source(&SourceText::new(include_str!(
+            "../../../tests/math/generics/constructor_repeated_argument_rejected.atlas")));
+        let errors = events.iter().filter_map(|e| match e {
+            SessionEvent::Diagnostic(d) => Some(d), _ => None,
+        }).collect::<Vec<_>>();
+        assert_eq!(errors.len(), 1, "{events:?}");
+        assert!(errors[0].message.contains("found (int,string)"), "{events:?}");
+        assert!(events.iter().any(|e| matches!(e,
+            SessionEvent::ReportLine { text, .. } if text == "RECOVER16\n")), "{events:?}");
+    }
+
+    #[test]
     fn constructor_arity_rejects_before_conversion_and_recovers_scope() {
         let events = run_source(&SourceText::new(concat!(
             "set_type Pair<S,T> = (S,T) !\n",
@@ -920,8 +1056,10 @@ mod tests {
             events[13],
             SessionEvent::Diagnostic(ref diagnostic)
                 if diagnostic.kind == ErrorKind::Type
-                    && diagnostic.message == "Failed to match '+' with argument type (*,*)"
-        ));
+                    // Current original3836366: independent unknown operands
+                    // unify with both signatures, so this is exact ambiguity.
+                    && diagnostic.message == "Ambiguous argument in function call, argument type (A,B) matches both (int,int) and (rat,int)"
+        ), "{events:?}");
         assert!(matches!(
             events[14],
             SessionEvent::Value { value: Value::Integer(ref value), .. }

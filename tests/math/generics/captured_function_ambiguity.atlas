@@ -1,0 +1,4 @@
+set_type CaptureAmbiguous<T> = (T captured_first,T captured_second) !
+set captured_first(CaptureAmbiguous<int> x)=99
+set f=(CaptureAmbiguous<int>->int):captured_first
+prints("RECOVER",17)

@@ -1,0 +1,5 @@
+set_type RetainedFields<T> = (T retained_first,T retained_second) !
+set fields=RetainedFields<int>:(2,3)
+forget RetainedFields
+fields.retained_first:=7
+prints("RETAINED",fields)

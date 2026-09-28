@@ -648,6 +648,33 @@ mod tests {
     }
 
     #[test]
+    fn field_definition_matching_preserves_rigid_variables_and_forgotten_slots() {
+        let mut table = TypeTable::new();
+        let generic = table.add_simple_constructor(TypeBinding {
+            name: "GenericFields".into(),
+            definition: Type::tuple(vec![var(0), var(0)]),
+            fields: vec![Some("first".into()), Some("second".into())],
+        }, 1);
+        let concrete = table.add_simple(TypeBinding {
+            name: "ConcreteFields".into(),
+            definition: Type::tuple(vec![int(), int()]),
+            fields: vec![Some("first".into()), Some("other".into())],
+        });
+        let rigid = InferredType::wrap(&Type::tuple(vec![var(0), var(0)]), 1).unwrap();
+        assert_eq!(table.matching_bindings(&rigid).unwrap(), vec![generic]);
+        assert!(rigid.is_clean());
+        assert_eq!(rigid.fixed(), 1);
+        assert_eq!(rigid.degree(), 0);
+
+        let receiver = InferredType::wrap(&Type::Applied(generic, vec![int()]), 0).unwrap();
+        assert_eq!(table.matching_bindings(&receiver).unwrap(), vec![generic, concrete]);
+        assert!(table.forget("GenericFields"));
+        assert!(table.lookup("GenericFields").is_none());
+        assert_eq!(table.matching_bindings(&receiver).unwrap(), vec![generic, concrete]);
+        assert_eq!(receiver.bake().unwrap(), Type::Applied(generic, vec![int()]));
+    }
+
+    #[test]
     fn leaving_abstraction_preserves_existing_substitution_slots() {
         let table = TypeTable::new();
         let mut a = TypeAssignment::new(2, 1).unwrap();

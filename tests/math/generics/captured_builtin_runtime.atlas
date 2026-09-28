@@ -1,0 +1,4 @@
+let f=(int->string):ascii in f(31)
+let f=error in int:f("captured failure")
+let f=succ in f([][0])
+prints("RECOVER",17)

@@ -1,0 +1,4 @@
+set_type CapturePair<T> = (T capture_first,T capture_second) !
+prints("DIRECT",(capture_first)(CapturePair<int>:(7,9)))
+prints("LOCAL",let f=capture_first in (f(CapturePair<int>:(2,3)),f(CapturePair<rat>:(3/4,5/4))))
+prints("TUPLE",let (f,g)=(capture_first,capture_second) in (f(CapturePair<int>:(2,3)),g(CapturePair<string>:("a","b"))))

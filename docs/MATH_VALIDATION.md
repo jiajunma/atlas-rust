@@ -55,11 +55,16 @@ each executed separately;155filtered checks and CLI pass). Its62-case capture
 has18 complete original matches, previously15. Explicit generic constructors,
 arity rejection and row/function structural uses are now connected; generated
 projector/injector inference, any_type and latest basic.at loading remain open.
-Member replays expose wrong concrete-overload selection and rejected field
-writes, plus obsolete positional-union syntax still accepted by Rust. Keep
-these failures in the separate generic prerequisite corpus; they do not replace
-the108-case classical/exceptional mathematical catalog. See the indexed
-generic-language slice for exact originals, pins and subsequent captures.
+The subsequent overload/member/row candidate3836533 passes the423-test core
+inventory (421pass, both existing assignment failures separately run,0ignored),
+164filtered checks and CLI. Its88-case capture has27full-stream matches versus19
+for the same corpus with3835776. Generic field/projector and row positive
+controls now agree; rejected diagnostic envelopes, tagged-union stdout,
+any_type/function values and positional-union syntax remain incomplete.
+Function-detail discovery3836975 and isolation3837092 also retain an ORIGINAL
+exit139 on (string->int):succ, never classified as normal rejection. These
+language cases do not replace the108-case classical/exceptional catalog.
+See the indexed generic-language slice for exact pins and retained failures.
 No debug-candidate timings are speed ratios, and no new high-level unitarity,
 Hodge, AV-ann or associated-cycle acceptance is claimed by this language work.
 

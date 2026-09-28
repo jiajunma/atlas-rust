@@ -1,0 +1,2 @@
+prints("LEFT",[]##[1,2])
+prints("RIGHT",[1,2]##[])

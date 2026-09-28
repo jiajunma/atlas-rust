@@ -3,6 +3,114 @@
   "scope": "Latest-original contract discovery for high-level mathematical script loading. Intent is provisional until the exact oracle output is inspected; no blanket rejection equivalence or mathematical acceptance.",
   "cases": [
     {
+      "id": "captured_builtin_display",
+      "intent": "accept",
+      "scope": "Provisional first-class builtin representation contract: value/tuple printing, captured printer and generic tuple packing must retain builtin identity rather than fake closure metadata.",
+      "file": "captured_builtin_display.atlas"
+    },
+    {
+      "id": "captured_builtin_runtime",
+      "intent": "reject",
+      "scope": "Provisional captured builtin error traces: wrapper failures earn a builtin call frame, while callee argument subscription failure stays outside that trace; retain independent-result error context and recovery.",
+      "file": "captured_builtin_runtime.atlas"
+    },
+    {
+      "id": "captured_selection_rejected",
+      "intent": "reject",
+      "scope": "Provisional function-value capture failures: a nonfunction context, a wrong unique signature, and no match among multiple signatures must preserve their distinct original diagnostics.",
+      "file": "captured_selection_rejected.atlas"
+    },
+    {
+      "id": "row_user_overload",
+      "intent": "reject",
+      "scope": "Capture before replacing the historical hidden-cardinality unit: a concrete bool-row overload competes with the ordinary generic scheme, while an inexact ratvec overload does not preempt exact integer-row cardinality.",
+      "file": "row_user_overload.atlas"
+    },
+    {
+      "id": "row_builtin_registry",
+      "intent": "accept",
+      "scope": "Current original registers generic row/printer/error operators as ordinary polymorphic overloads, not hidden fallback specials; retain complete query signatures and order.",
+      "file": "row_builtin_registry.atlas"
+    },
+    {
+      "id": "row_generic_values",
+      "intent": "accept",
+      "scope": "Historical generic row operator positive controls excluding the newly ambiguous empty-argument cases; retain scalar/row/vector/string distinctions.",
+      "file": "row_generic_values.atlas"
+    },
+    {
+      "id": "row_generic_ambiguities",
+      "intent": "reject",
+      "scope": "Empty row arguments can match multiple concrete/generic ordinary signatures; old suffix preference and hidden fallback precedence must not silently select a matrix or row.",
+      "file": "row_generic_ambiguities.atlas"
+    },
+    {
+      "id": "row_generic_mixed",
+      "intent": "accept",
+      "scope": "Ordinary generic row joining unifies independently inferred empty and concrete component types on either side.",
+      "file": "row_generic_mixed.atlas"
+    },
+    {
+      "id": "container_error_phases",
+      "intent": "reject",
+      "scope": "Exact historical typed-container phase cases: unique exact inference can reach a subscription bounds error while ambiguous/mismatched expressions reject before evaluation.",
+      "file": "container_error_phases.atlas"
+    },
+    {
+      "id": "constructor_function_values",
+      "intent": "accept",
+      "scope": "Generic generated projectors captured as direct/local/tuple function values require fresh schemes and linked argument/result inference without depending on any_type parsing.",
+      "file": "constructor_function_values.atlas"
+    },
+    {
+      "id": "captured_result_selection",
+      "intent": "accept",
+      "scope": "Function-value capture uses the complete required signature: distinct return types disambiguate a generic and concrete projector overload with matching argument types.",
+      "file": "captured_result_selection.atlas"
+    },
+    {
+      "id": "captured_builtin_function",
+      "intent": "accept",
+      "scope": "Builtin functions are first-class too: local, returned and tuple captures must execute without pretending that every function value is a user closure.",
+      "file": "captured_builtin_function.atlas"
+    },
+    {
+      "id": "captured_function_ambiguity",
+      "intent": "reject",
+      "scope": "Two complete function signatures matching the capture context are ambiguous; a concrete overload does not win over a generic function value.",
+      "file": "captured_function_ambiguity.atlas"
+    },
+    {
+      "id": "subscription_context",
+      "intent": "reject",
+      "scope": "Exact historical empty-subscription unit: unknown operands must follow current exact unification/ambiguity and first-result-context rules, with every recovery command retained.",
+      "file": "subscription_context.atlas"
+    },
+    {
+      "id": "field_assignment_diagnostics",
+      "intent": "reject",
+      "scope": "Exact historical field-assignment unit: structural tuple lookup, missing field, transform type failure, constness and uninitialized assignment diagnostics with recovery.",
+      "file": "field_assignment_diagnostics.atlas"
+    },
+    {
+      "id": "field_definition_ambiguity",
+      "intent": "reject",
+      "scope": "Field writes must reject multiple matching type definitions even with an explicitly named generic receiver; current projector values do not disambiguate metadata.",
+      "file": "field_definition_ambiguity.atlas"
+    },
+    {
+      "id": "field_definition_forgotten",
+      "intent": "accept",
+      "scope": "Forgetting a type identifier retains its stored field definition for values that still carry that type.",
+      "file": "field_definition_forgotten.atlas"
+    },
+    {
+      "id": "union_definition_ambiguity",
+      "intent": "reject",
+      "scope": "Tagged discrimination filters all retained structurally matching definitions; copying a union and its tags can create metadata ambiguity.",
+      "file": "union_definition_ambiguity.atlas"
+    },
+    {
       "id": "pair_nested",
       "intent": "accept",
       "scope": "Generic constructors substitute nested row/tuple arguments and preserve projectors.",

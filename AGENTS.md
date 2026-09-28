@@ -103,6 +103,56 @@ not a source-level C++ translation.
 
 ## Verified repair guard
 
+### A frozen source archive is not necessarily a complete Git tree
+
+- Overload build3836297 stopped at the exact manifest guard before compiling:
+  the parent archive omitted17 generic fixtures already tracked at the chosen
+  Git base. A git diff therefore supplied no add-file hunks for those files,
+  even though the new source manifest and include_str tests required them.
+- Compare against the parent report's actual file set. Add checksummed
+  /dev/null patches ONLY for missing files not already represented in the Git
+  patch. Preserve submitted stages and keep the strict manifest guard. R2
+  build3836325 passes staging/compilation and the three new overload units.
+- Capture3836306 confirms field writes survive forgotten type names and reject
+  generic/concrete metadata ambiguity. Copying a union's definition and tags
+  can make tagged discrimination ambiguous, even for an explicitly named
+  receiver. Search all retained definitions, not only active names or current
+  projector functions; do not silently pick the receiver's own named slot.
+- Builds3836325/3836333 pass the new overload/member units but expose the
+  historical empty-subscription diagnostic assertion. Capture3836366 runs its
+  exact source: +([][0],[][0]) in int context is ambiguous between(int,int) and
+  (rat,int), with independent variables(A,B). In string context the FIRST
+  result fails before ambiguity is considered. Preserve all recovery values;
+  print the scoped argument body, not legacy independent-star placeholders.
+- Full-core3836397 (416pass/3fail/2filtered) exposes a second migration seam:
+  current global.w registers generic row/printer/error schemes as ordinary
+  overloads. The historical hidden-special fallback wrongly selects a matrix
+  for3#[] after exact inference is activated. Capture3836455 confirms ambiguity
+  for3#[], ##([]) and both viable row extensions; []##[1,2] now succeeds.
+  Preserve linked formal variables and original registration order. Do not
+  restore old suffix priority or waive the full-core failures as stale tests.
+- Capture3836455 runs the exact historical container-error sources: rational
+  remainder with an unknown subscription reaches a runtime bounds error,
+  while ambiguous integer arithmetic rejects statically. Capture3836507
+  confirms concrete bool-row cardinality conflicts with the generic scheme,
+  and a merely coercible ratvec overload does not suppress integer-row length.
+- Function-value ambiguity may appear inside a rejected set command without
+  a Type/Program header. Failed capture3836409 preserves that gap;3836435
+  verifies the corrected classifier against the exact indented envelope and
+  negative controls. Complete stream equality is still a separate gate.
+- Discovery3836975 exits139 in original for the combined function-selection
+  negative fixture. Preserve source/report and isolate the exact trigger;
+  RESOURCE_OR_SIGNAL_FAILURE is not a type rejection or language contract.
+  It is separate from row-build3836533's frozen88-case gate. The current
+  function-detail probe also uses historical lowercase ascii, while latest
+  global.w:4147-4148 registers uppercase ASCII. Keep the rejected discovery
+  source and use a separately captured uppercase companion for runtime traces.
+- Diagnostic subset3837092 isolates original exit139 to (string->int):succ
+  alone. Nonfunction context and no-match among multiple ASCII signatures
+  reject normally; corrected uppercase runtime probes also recover. Keep the
+  five-case isolation catalog explicit, retain the failing single-command
+  source, and do not silently shrink the master91-case contract corpus.
+
 ### Generic declarations and angle tokens have nonstandard boundaries
 
 - Original captures3835190/3835224 show that every comma-separated binding

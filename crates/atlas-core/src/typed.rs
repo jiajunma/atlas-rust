@@ -27,6 +27,7 @@ use crate::syntax::{
     MultiAssignmentExpr, Pattern, TypeSpec,
 };
 use crate::types::{Prim, Type, TypeBinding, TypeNumber, TypeTable};
+use crate::types::polymorphic::{shift, InferredType, TypeError as InferenceError, TypeScheme};
 use crate::value::{Closure, SlotShape, Value};
 use std::cell::RefCell;
 use std::cmp::Ordering;
@@ -420,6 +421,9 @@ pub struct Analysis<'a> {
     /// (mirrors `in_function`; upstream rejects a stray `break` during
     /// analysis, before anything evaluates).
     loop_depth: usize,
+    /// Variables below this lexical threshold are rigid; higher indices in
+    /// an independently inferred expression denote its own free variables.
+    type_floor: usize,
 }
 
 impl<'a> Analysis<'a> {
@@ -432,6 +436,7 @@ impl<'a> Analysis<'a> {
             constant_locals: BTreeSet::new(),
             in_function: false,
             loop_depth: 0,
+            type_floor: 0,
         }
     }
 
@@ -445,6 +450,7 @@ impl<'a> Analysis<'a> {
             constant_locals: self.constant_locals.clone(),
             in_function: self.in_function,
             loop_depth: self.loop_depth + 1,
+            type_floor: self.type_floor,
         }
     }
 }
@@ -2114,7 +2120,31 @@ fn convert_conditional_expression(
     })
 }
 
-/// specialise-else-coerce-else-error (upstream `conform_types`,
+fn inference_error(error: InferenceError, span: SourceSpan) -> Diagnostic {
+    type_error(format!("Invalid type inference scope: {error:?}"), span)
+}
+
+fn inferred_type(type_: &Type, analysis: &Analysis<'_>, span: SourceSpan)
+    -> Result<InferredType, Diagnostic>
+{
+    InferredType::wrap(type_, analysis.type_floor).map_err(|e| inference_error(e, span))
+}
+
+/// Bare types crossing an expression boundary are baked schemes. Free
+/// variables are local to that expression, not shared merely because their
+/// numerical indices happen to agree. Fixed variables keep their lexical IDs.
+fn has_type_variable(type_: &Type) -> bool {
+    match type_ {
+        Type::Variable(_) => true,
+        Type::Row(component) => has_type_variable(component),
+        Type::Function(parts) => has_type_variable(&parts.0) || has_type_variable(&parts.1),
+        Type::Tuple(parts) | Type::Union(parts) | Type::Applied(_, parts) =>
+            parts.iter().any(has_type_variable),
+        Type::Primitive(_) | Type::Tabled(_) | Type::Undetermined => false,
+    }
+}
+
+/// unify-else-coerce-else-error (upstream `conform_types`,
 /// axis-types.w:3095-3100). Coercion to void always succeeds without a
 /// node (the caller voids); otherwise a matching table entry wraps the
 /// converted expression. The error wording is the oracle's uniform
@@ -2130,8 +2160,20 @@ fn conform_types(
     // still the observable type of a successfully converted expression.
     let named_context = matches!(required, Type::Tabled(_) | Type::Applied(_, _))
         .then(|| required.clone());
-    if required.specialise(found, analysis.types) {
-        if let Some(named) = named_context { *required = named; }
+    let matched = if has_type_variable(found) || has_type_variable(required) {
+        let found = inferred_type(found, analysis, span)?;
+        let mut context = inferred_type(required, analysis, span)?;
+        let matched = context.try_unify_to(&found, analysis.types)
+            .map_err(|e| inference_error(e, span))?;
+        if matched {
+            *required = context.bake().map_err(|e| inference_error(e, span))?;
+        }
+        matched
+    } else {
+        required.specialise(found, analysis.types)
+    };
+    if matched {
+        if let Some(named) = named_context.filter(|t| !has_type_variable(t)) { *required = named; }
         return Ok(converted);
     }
     if required.is_void() {
@@ -2615,6 +2657,7 @@ pub fn convert_expr(
                             constant_locals: constant_locals.clone(),
                             in_function: analysis.in_function,
                             loop_depth: analysis.loop_depth,
+                            type_floor: analysis.type_floor,
                         },
                     )?;
                     // The pattern supplies the RHS context first. Omitted
@@ -2683,6 +2726,7 @@ pub fn convert_expr(
                     constant_locals,
                     in_function: analysis.in_function,
                     loop_depth: analysis.loop_depth,
+                    type_floor: analysis.type_floor,
                 },
             )?;
             for (initializers, names) in groups.into_iter().rev() {
@@ -3051,6 +3095,7 @@ pub fn convert_expr(
                     constant_locals,
                     in_function: analysis.in_function,
                     loop_depth: analysis.loop_depth + 1,
+                    type_floor: analysis.type_floor,
                 },
             )?;
             conform_types(
@@ -3075,37 +3120,60 @@ pub fn convert_expr(
             } = case.as_ref();
             let mut subject_type = Type::Undetermined;
             let converted_subject = convert_expr(subject, &mut subject_type, analysis)?;
-            // Both simple and grouped declarations retain the named union
-            // and its injectors; an anonymous structural union has no tags.
-            let tabled_union = match &subject_type {
-                Type::Tabled(number) => match &analysis.types.binding(*number).definition {
-                    Type::Union(variants)
-                        if analysis.types.binding(*number).fields.len() == variants.len()
-                            && analysis
-                                .types
-                                .binding(*number)
-                                .fields
-                                .iter()
-                                .all(Option::is_some) =>
-                    {
-                        Some((
-                            variants.clone(),
-                            analysis.types.binding(*number).fields.clone(),
-                        ))
-                    }
-                    _ => None,
-                },
-                _ => None,
+            let expanded = subject_type.expanded(analysis.types);
+            let Type::Union(variants) = &*expanded else {
+                return Err(type_error(format!("found {} while {} was needed.",
+                    subject_type.display(analysis.types),
+                    Type::union_of(vec![Type::Undetermined; branches.len().max(2)])
+                        .display(analysis.types)), subject.span()));
             };
-            let Some((variants, injector_names)) = tabled_union else {
+            let receiver = inferred_type(&subject_type, analysis, subject.span())?;
+            let mut candidates = analysis.types.matching_bindings(&receiver)
+                .map_err(|e| inference_error(e, *span))?;
+            if candidates.is_empty() {
                 return Err(type_error(
                     format!(
-                        "Discrimination on expression of type {} requires using 'set_type' for \
-                         this type, and naming injectors for it",
+                        "Discrimination on expression of type {} with clause using tags, but none are known.\n  \
+                         Either use 'set_type' with tag names first, or use discrimination clause without tags.",
                         subject_type.display(analysis.types)
                     ),
                     subject.span(),
                 ));
+            }
+            let tags: Vec<_> = branches.iter().filter_map(|b| b.tag.as_ref()).collect();
+            if candidates.len() == 1 {
+                let number = candidates[0];
+                let binding = analysis.types.binding(number);
+                for tag in &tags {
+                    if !binding.fields.iter().any(|f| f.as_deref() == Some(tag.value.as_str())) {
+                        return Err(type_error(format!(
+                            "Identifier {} is not a tag associated with the union type{}{}",
+                            tag.value,
+                            if analysis.types.constructor_arity(number) == 0 { " " } else { " constructor " },
+                            binding.name), *span));
+                    }
+                }
+            }
+            candidates.retain(|number| tags.iter().all(|tag|
+                analysis.types.binding(*number).fields.iter()
+                    .any(|f| f.as_deref() == Some(tag.value.as_str()))));
+            if candidates.is_empty() {
+                return Err(type_error(format!(
+                    "No union definition found to accommodate the tag{}: '{}',\n  used in discrimination clause",
+                    if tags.len() == 1 { "" } else { "s" },
+                    tags.iter().map(|t| t.value.as_str()).collect::<Vec<_>>().join("', '")), *span));
+            }
+            if candidates.len() != 1 {
+                let names = candidates.iter().map(|n|
+                    format!("    {}\n", analysis.types.binding(*n).name)).collect::<String>();
+                return Err(type_error(format!(
+                    "Ambiguity in discrimination clause, possible types are:\n{names}"), *span));
+            }
+            let binding = analysis.types.binding(candidates[0]);
+            let injector_names = &binding.fields;
+            let candidate_type = binding.definition.expanded(analysis.types);
+            let Type::Union(candidate_variants) = &*candidate_type else {
+                unreachable!("a matching union definition expands to a union")
             };
             // Branch bodies share one type pattern, converted in source
             // order: the first body fixes it and a later mismatch reports
@@ -3115,18 +3183,7 @@ pub fn convert_expr(
             let mut fallback = None;
             for branch in branches {
                 let Some(tag) = &branch.tag else {
-                    let mut found = Type::Undetermined;
-                    let body = convert_expr(&branch.body, &mut found, analysis)?;
-                    if !common.specialise(&found, analysis.types) {
-                        return Err(type_error(
-                            format!(
-                                "found {} while {} was needed.",
-                                found.display(analysis.types),
-                                common.display(analysis.types)
-                            ),
-                            branch.body.span(),
-                        ));
-                    }
+                    let body = convert_expr(&branch.body, &mut common, analysis)?;
                     fallback = Some(Box::new(body));
                     continue;
                 };
@@ -3144,7 +3201,14 @@ pub fn convert_expr(
                         Some(tag.span),
                     ));
                 };
-                let payload = variants[index].clone();
+                let mut payload = inferred_type(&variants[index], analysis, *span)?;
+                let tag_type = InferredType::wrap(&candidate_variants[index], 0)
+                    .map_err(|e| inference_error(e, *span))?;
+                if !payload.try_unify_to(&tag_type, analysis.types)
+                    .map_err(|e| inference_error(e, *span))? {
+                    return Err(type_error("Union payload does not match its tag definition".into(), *span));
+                }
+                let payload = payload.bake().map_err(|e| inference_error(e, *span))?;
                 let (shape, leaves) = match &branch.pattern {
                     Some(pattern) => {
                         // Upstream validates a discrimination pattern's
@@ -3200,10 +3264,9 @@ pub fn convert_expr(
                         constant_locals.remove(name);
                     }
                 }
-                let mut found = Type::Undetermined;
                 let body = convert_expr(
                     &branch.body,
-                    &mut found,
+                    &mut common,
                     &Analysis {
                         types: analysis.types,
                         globals: analysis.globals,
@@ -3212,18 +3275,9 @@ pub fn convert_expr(
                         constant_locals,
                         in_function: analysis.in_function,
                         loop_depth: analysis.loop_depth,
+                        type_floor: analysis.type_floor,
                     },
                 )?;
-                if !common.specialise(&found, analysis.types) {
-                    return Err(type_error(
-                        format!(
-                            "found {} while {} was needed.",
-                            found.display(analysis.types),
-                            common.display(analysis.types)
-                        ),
-                        branch.body.span(),
-                    ));
-                }
                 converted_branches.push((index as u16, shape, body));
             }
             conform_types(
@@ -3392,6 +3446,7 @@ pub fn convert_expr(
                     constant_locals,
                     in_function: analysis.in_function,
                     loop_depth: analysis.loop_depth + 1,
+                    type_floor: analysis.type_floor,
                 },
             )?;
             conform_types(
@@ -3617,65 +3672,41 @@ fn component_type_for_assignment(
     Err(type_error(message, span))
 }
 
-/// The projector lookup of a field assignment or transform
-/// (axis.w:8240-8266): the selector must resolve against the EXACT tuple
-/// type (a tabled type compares by its expansion), and the bound value must
-/// be a `set_type`-installed projector closure.
+/// Current axis.w:8824+ uses retained type definitions, not the current value
+/// of a projector function. A copied or generic definition may match as well,
+/// so a named receiver does not by itself disambiguate a field selection.
 fn resolve_projector(
     field: &str,
     tuple_type: &Type,
     span: SourceSpan,
     analysis: &Analysis<'_>,
 ) -> Result<(usize, Type), Diagnostic> {
-    let expanded = match tuple_type {
-        Type::Tabled(number) => analysis.types.expansion(*number).clone(),
-        other => other.clone(),
+    let expanded = tuple_type.expanded(analysis.types);
+    let Type::Tuple(components) = &*expanded else {
+        return Err(type_error("Field assignment with variable of non tuple type".into(), span));
     };
-    let improper = || type_error("Improper selection in field assignment".to_string(), span);
-    let not_projector = || {
-        type_error(
-            "Selector in field assignment is not a projector function".to_string(),
-            span,
-        )
+    let receiver = inferred_type(tuple_type, analysis, span)?;
+    let candidates = analysis.types.matching_bindings(&receiver)
+        .map_err(|e| inference_error(e, span))?;
+    if candidates.is_empty() {
+        return Err(type_error(format!(
+            "Type {} of variable in field assignment has no associated field names",
+            tuple_type.display(analysis.types)), span));
+    }
+    let mut positions = candidates.into_iter().filter_map(|number|
+        analysis.types.binding(number).fields.iter().position(|name| name.as_deref() == Some(field))
+    );
+    let Some(position) = positions.next() else {
+        return Err(type_error(format!(
+            "Type {} of variable in field assignment has no field '{field}'",
+            tuple_type.display(analysis.types)), span));
     };
-    let matches = |argument: &Type| argument.equivalent(tuple_type, analysis.types);
-    // A user (`set`) overload with the exact argument type shadows the plain
-    // global the `set_type` definition installed.
-    let value = analysis
-        .overloads
-        .user_variants(field)
-        .iter()
-        .find(|variant| match &variant.function_type {
-            Type::Function(parts) => matches(&parts.0),
-            _ => false,
-        })
-        .map(|variant| variant.value.clone())
-        .or_else(|| {
-            let (target, cell) = analysis.globals.lookup(field)?;
-            let Type::Function(parts) = &*target.borrow() else {
-                return None;
-            };
-            matches(&parts.0)
-                .then(|| cell.borrow().as_ref().map(|value| value.as_ref().clone()))
-                .flatten()
-        });
-    let Some(value) = value else {
-        return Err(improper());
-    };
-    let Value::Closure(closure) = &value else {
-        return Err(not_projector());
-    };
-    let TypedExpr::TupleProject { index, .. } = closure.body.as_ref() else {
-        return Err(not_projector());
-    };
-    let position = *index;
-    let Type::Tuple(components) = &expanded else {
-        return Err(improper());
-    };
-    let Some(component) = components.get(position) else {
-        return Err(improper());
-    };
-    Ok((position, component.clone()))
+    if positions.next().is_some() {
+        return Err(type_error(format!(
+            "Type {} of variable matches more than one definition with field name '{field}'",
+            tuple_type.display(analysis.types)), span));
+    }
+    Ok((position, components[position].clone()))
 }
 
 /// Factor the converted desugared operator call of a transform assignment
@@ -4455,6 +4486,7 @@ fn convert_lambda_expression(
         // A closure evaluates in its captured context, not the defining
         // loop's; `break` legality starts over at the function boundary.
         loop_depth: 0,
+        type_floor: analysis.type_floor,
     };
     let closure = |body: TypedExpr| TypedExpr::Closure {
         parameters: parameters.len(),
@@ -4571,6 +4603,7 @@ fn convert_rec_lambda_expression(
         // A closure evaluates in its captured context, not the defining
         // loop's; `break` legality starts over at the function boundary.
         loop_depth: 0,
+        type_floor: analysis.type_floor,
     };
     let closure = |body: TypedExpr| TypedExpr::Closure {
         parameters: parameters.len(),
@@ -4601,6 +4634,37 @@ fn convert_rec_lambda_expression(
     Ok(closure(converted))
 }
 
+/// Build a selected call without re-running argument inference. Exact generic
+/// matches already solved the complete argument; reconverting its components
+/// against separate formal types would lose repeated-variable constraints.
+fn overload_call(
+    name: &str,
+    variant: &MergedVariant,
+    arguments: Vec<TypedExpr>,
+    argument_type: &Type,
+    span: SourceSpan,
+    analysis: &Analysis<'_>,
+) -> TypedExpr {
+    let trace_name = format!("{name}@{}", argument_type.display(analysis.types));
+    match variant.origin {
+        OverloadOrigin::Builtin(index) => TypedExpr::BuiltinCall {
+            builtin: index, arguments, name: trace_name, span,
+        },
+        OverloadOrigin::User(user_index) => {
+            let user = &analysis.overloads.user_variants(name)[user_index];
+            let argument = if arguments.len() == 1 {
+                arguments.into_iter().next().expect("one converted argument")
+            } else {
+                TypedExpr::TupleDisplay(arguments)
+            };
+            TypedExpr::FunctionCall {
+                function: Box::new(TypedExpr::Denotation(user.value.clone())),
+                argument: Box::new(argument), name: Some(trace_name), span,
+            }
+        }
+    }
+}
+
 fn convert_overload_application(
     name: &str,
     expressions: &[Expr],
@@ -4610,8 +4674,7 @@ fn convert_overload_application(
     resolve_name_first: bool,
 ) -> Result<TypedExpr, Diagnostic> {
     let variants = merged_variants(name, analysis.overloads, analysis.types);
-    let has_hidden_special = hidden_special_builtin(name).is_some();
-    if resolve_name_first && variants.is_empty() && !has_hidden_special {
+    if resolve_name_first && variants.is_empty() {
         // Atlas resolves the callee before analysing its arguments.  This is
         // observable for `foo(missing)`: the undefined function wins over an
         // error in an argument that would never be evaluated.
@@ -4621,9 +4684,8 @@ fn convert_overload_application(
             Some(span),
         ));
     }
-    // The a-priori-type design (axis.w:1552-1599): convert each argument
-    // once in undetermined context, then choose the first exact or coercible
-    // overload and re-convert divergent arguments against its signature.
+    // Current axis.w:1790-2000: infer arguments independently, import each
+    // free range freshly, and trial every exact (including generic) variant.
     let mut converted = Vec::new();
     let mut a_priori = Vec::new();
     for expression in expressions {
@@ -4632,52 +4694,68 @@ fn convert_overload_application(
         a_priori.push(slot);
     }
     let a_priori_type = Type::tuple(a_priori.clone());
-    // `resolve_overload` first honours an exact ordinary overload, then
-    // recognises the hidden generic row `#`/`##` instances, and only
-    // afterwards considers coercible ordinary overloads (axis.w:2458-2595).
-    let exact = variants
-        .iter()
-        .position(|variant| variant.arg_type.equivalent(&a_priori_type, analysis.types));
-    let hidden = if exact.is_none() {
-        hidden_special_variant(name, &a_priori_type, analysis.types)
-    } else {
-        None
-    };
-    let inexact = if exact.is_none() && hidden.is_none() {
-        variants.iter().position(|variant| {
-            crate::coercions::is_close(&a_priori_type, &variant.arg_type, analysis.types) & 0x1 != 0
-        })
-    } else {
-        None
-    };
-    let position = exact.or(inexact);
-    if position.is_none() && hidden.is_none() {
+    let actual = InferredType::wrap_tuple(
+        a_priori.iter().map(|t| inferred_type(t, analysis, span))
+            .collect::<Result<Vec<_>, _>>()?,
+        analysis.type_floor,
+    ).map_err(|e| inference_error(e, span))?;
+    // Wrap the WHOLE signature, never its halves independently: variables
+    // appearing only in the result still need slots, and repeated ones link.
+    let schemes = variants.iter().map(|variant|
+        TypeScheme::wrap(&Type::function(variant.arg_type.clone(), variant.result_type.clone()), 0)
+            .map_err(|e| inference_error(e, span))
+    ).collect::<Result<Vec<_>, _>>()?;
+    let mut exact = None;
+    let mut first_argument_type: Option<&Type> = None;
+    let mut converted = Some(converted);
+    for (variant, scheme) in variants.iter().zip(&schemes) {
+        let Type::Function(parts) = scheme.body() else { unreachable!("whole function scheme") };
+        let mut trial = actual.clone();
+        let (matched, displacement) = trial.matches(&parts.0, scheme.degree(), analysis.types)
+            .map_err(|e| inference_error(e, span))?;
+        if !matched { continue; }
+        if let Some(previous) = first_argument_type {
+            return Err(type_error(format!(
+                "Ambiguous argument in function call, argument type {} matches both {} and {}",
+                actual.body().display(analysis.types), previous.display(analysis.types),
+                variant.arg_type.display(analysis.types),
+            ), span));
+        }
+        let shifted_result = shift(&parts.1, 0, displacement)
+            .map_err(|e| inference_error(e, span))?;
+        let result_type = trial.assignments().substitution(&shifted_result)
+            .map_err(|e| inference_error(e, span))?;
+        let call = overload_call(name, variant,
+            converted.take().expect("first exact match owns the arguments"),
+            actual.body(), span, analysis);
+        // Original conforms the first result BEFORE looking for a second
+        // match. A wrong return context is not a reason to try another overload.
+        exact = Some(conform_types(&result_type, required, call, span, analysis)?);
+        first_argument_type = Some(&variant.arg_type);
+    }
+    if let Some(call) = exact { return Ok(call); }
+
+    let position = variants.iter().zip(&schemes).position(|(variant, scheme)| {
+        !scheme.is_polymorphic()
+            && crate::coercions::is_close(&a_priori_type, &variant.arg_type, analysis.types) & 0x1 != 0
+    });
+    if position.is_none() {
         let message = if variants.len() == 1 {
             format!(
                 "found {} while {} was needed.",
-                a_priori_type.display(analysis.types),
+                actual.body().display(analysis.types),
                 variants[0].arg_type.display(analysis.types),
             )
         } else {
             format!(
                 "Failed to match '{}' with argument type {}",
                 name,
-                a_priori_type.display(analysis.types),
+                actual.body().display(analysis.types),
             )
         };
         return Err(type_error(message, span));
     }
-    let hidden_variant;
-    let variant = if let Some((index, result_type)) = hidden {
-        hidden_variant = MergedVariant {
-            arg_type: a_priori_type.clone(),
-            result_type,
-            origin: OverloadOrigin::Builtin(index),
-        };
-        &hidden_variant
-    } else {
-        &variants[position.expect("ordinary overload was found")]
-    };
+    let variant = &variants[position.expect("ordinary overload was found")];
     let expected: Vec<Type> = if expressions.len() == 1 {
         vec![variant.arg_type.clone()]
     } else {
@@ -4686,7 +4764,7 @@ fn convert_overload_application(
             single => vec![single.clone()],
         }
     };
-    let arguments = converted
+    let arguments = converted.expect("no exact match consumed the arguments")
         .into_iter()
         .zip(a_priori)
         .zip(expected)
@@ -4699,49 +4777,8 @@ fn convert_overload_application(
             }
         })
         .collect::<Result<Vec<_>, _>>()?;
-    // The resolved call name retained for the error back-trace
-    // (axis.w:1647-1648): the overload name and its argument type, e.g.
-    // `g@int`, `%@(int,int)`, `z@void` for a zero-parameter variant.
-    let trace_name = format!("{name}@{}", variant.arg_type.display(analysis.types));
-    match variant.origin {
-        OverloadOrigin::Builtin(index) => conform_types(
-            &variant.result_type,
-            required,
-            TypedExpr::BuiltinCall {
-                builtin: index,
-                arguments,
-                name: trace_name,
-                span,
-            },
-            span,
-            analysis,
-        ),
-        OverloadOrigin::User(user_index) => {
-            let user = &analysis.overloads.user_variants(name)[user_index];
-            // A user overload applies its closure: the argument is ONE
-            // value, the tuple display for several parameters.
-            let argument = if arguments.len() == 1 {
-                arguments
-                    .into_iter()
-                    .next()
-                    .expect("a single argument was converted")
-            } else {
-                TypedExpr::TupleDisplay(arguments)
-            };
-            conform_types(
-                &variant.result_type,
-                required,
-                TypedExpr::FunctionCall {
-                    function: Box::new(TypedExpr::Denotation(user.value.clone())),
-                    argument: Box::new(argument),
-                    name: Some(trace_name),
-                    span,
-                },
-                span,
-                analysis,
-            )
-        }
-    }
+    let call = overload_call(name, variant, arguments, &variant.arg_type, span, analysis);
+    conform_types(&variant.result_type, required, call, span, analysis)
 }
 
 /// Balance branch expressions to a common type (upstream `balance`,
@@ -4898,9 +4935,8 @@ enum BuiltinImpl {
     /// candidate snapshot the command layer stashed in the evaluation
     /// context by the argument prefix.
     Completions,
-    /// The variadic generic `prints@@T` (axis.w:8773, wrapper :8850-8853):
-    /// a hidden special instance matched by `hidden_special_variant` for any
-    /// a-priori argument type.
+    /// The variadic generic printer, installed as the ordinary scheme
+    /// (T->void) in current global.w:4480.
     Prints,
     /// The variadic generic `print@@T` (axis.w:8767, wrapper :8796-8802):
     /// prints the argument verbatim (strings quoted) and returns it
@@ -5188,23 +5224,6 @@ fn scalar_builtin(
         result,
         hunger,
         overload_visible: true,
-        implementation: BuiltinImpl::Scalar(op),
-    }
-}
-
-fn hidden_scalar_builtin(
-    name: &'static str,
-    arg_type: Type,
-    result: Type,
-    hunger: u8,
-    op: ScalarOp,
-) -> Builtin {
-    Builtin {
-        name,
-        arg_type,
-        result,
-        hunger,
-        overload_visible: false,
         implementation: BuiltinImpl::Scalar(op),
     }
 }
@@ -7992,6 +8011,22 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 0,
                 ScalarOp::StringListConcat,
             ),
+            // Current global.w:4495-4496 installs linked generic schemes
+            // before vector joins. All participate in ordinary ambiguity.
+            scalar_builtin(
+                "##",
+                pair(Type::row(Type::Variable(0))),
+                Type::row(Type::Variable(0)),
+                0,
+                ScalarOp::RowJoinRows,
+            ),
+            scalar_builtin(
+                "##",
+                Type::row(Type::row(Type::Variable(0))),
+                Type::row(Type::Variable(0)),
+                0,
+                ScalarOp::RowJoinRowOfRows,
+            ),
             // join_vectors / join_vector_row (global.w:4398-4399): vec
             // concatenation, pairwise and for a row of vecs.
             scalar_builtin(
@@ -8030,6 +8065,15 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 overload_visible: true,
                 implementation: BuiltinImpl::Completions,
             },
+            // Current global.w:4484 registers generic cardinality before
+            // the concrete instances; this ordering is observable in queries.
+            scalar_builtin(
+                "#",
+                Type::row(Type::Variable(0)),
+                int_type(),
+                0,
+                ScalarOp::ListCardinality,
+            ),
             // sizeof instances (global.w:4392-4395): string byte count, vec
             // and ratvec lengths, and the matrix column count.
             scalar_builtin("#", string_type(), int_type(), 0, ScalarOp::SizeOf),
@@ -8053,6 +8097,22 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 int_type(),
                 0,
                 ScalarOp::SizeOf,
+            ),
+            // Linked row extensions are ordinary overloads, not fallbacks.
+            // Current global.w:4490-4491; capture3836455 covers ambiguity.
+            scalar_builtin(
+                "#",
+                Type::tuple(vec![Type::row(Type::Variable(0)), Type::Variable(0)]),
+                Type::row(Type::Variable(0)),
+                1,
+                ScalarOp::RowSuffixElement,
+            ),
+            scalar_builtin(
+                "#",
+                Type::tuple(vec![Type::Variable(0), Type::row(Type::Variable(0))]),
+                Type::row(Type::Variable(0)),
+                2,
+                ScalarOp::RowPrefixElement,
             ),
             // vector suffix/prefix (global.w:4396-4397).
             scalar_builtin(
@@ -8106,91 +8166,39 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 0,
                 ScalarOp::MatrixColumns,
             ),
-            // Generic row size is a special `#` instance upstream
-            // (axis.w:2542-2550, 8863-8872), rather than an installed
-            // concrete overload.  `[*]` is a registry-local wildcard here.
-            hidden_scalar_builtin(
-                "#",
-                Type::row(Type::Undetermined),
-                int_type(),
-                0,
-                ScalarOp::ListCardinality,
-            ),
-            // The remaining generic row operators are special instances too
-            // (axis.w:2549-2595, 8776-8786): suffix/prefix element extension
-            // on ([*],*)/(*,[*]) and row concatenation on ([*],[*])/[[*]].
-            // Their `[*]` components are registry-local wildcards; the
-            // recognition logic computes the concrete result type.
-            hidden_scalar_builtin(
-                "#",
-                Type::tuple(vec![Type::row(Type::Undetermined), Type::Undetermined]),
-                Type::row(Type::Undetermined),
-                1,
-                ScalarOp::RowSuffixElement,
-            ),
-            hidden_scalar_builtin(
-                "#",
-                Type::tuple(vec![Type::Undetermined, Type::row(Type::Undetermined)]),
-                Type::row(Type::Undetermined),
-                2,
-                ScalarOp::RowPrefixElement,
-            ),
-            hidden_scalar_builtin(
-                "##",
-                Type::tuple(vec![
-                    Type::row(Type::Undetermined),
-                    Type::row(Type::Undetermined),
-                ]),
-                Type::row(Type::Undetermined),
-                0,
-                ScalarOp::RowJoinRows,
-            ),
-            hidden_scalar_builtin(
-                "##",
-                Type::row(Type::row(Type::Undetermined)),
-                Type::row(Type::Undetermined),
-                0,
-                ScalarOp::RowJoinRowOfRows,
-            ),
-            // prints@@T (axis.w:8773): the variadic generic printer is a
-            // hidden special instance; the `*` argument is a registry-local
-            // wildcard matched by `hidden_special_variant` for any a-priori
-            // type, and the result is always void.
+            // Current global.w:4479-4482: ordinary generic signatures.
+            // Print links argument and result; error has an independent
+            // result variable because it throws at every evaluation level.
             Builtin {
                 name: "prints",
-                arg_type: Type::Undetermined,
+                arg_type: Type::Variable(0),
                 result: Type::void(),
                 hunger: 0,
-                overload_visible: false,
+                overload_visible: true,
                 implementation: BuiltinImpl::Prints,
             },
-            // print@@T / to_string@@T / error@@T (axis.w:8767-8771): the
-            // remaining variadic specials, likewise matched by
-            // `hidden_special_variant` for any a-priori type; print's
-            // identity result and error's unknown result are produced
-            // there, not from these placeholder rows.
             Builtin {
                 name: "print",
-                arg_type: Type::Undetermined,
-                result: Type::Undetermined,
+                arg_type: Type::Variable(0),
+                result: Type::Variable(0),
                 hunger: 0,
-                overload_visible: false,
+                overload_visible: true,
                 implementation: BuiltinImpl::Print,
             },
             Builtin {
                 name: "to_string",
-                arg_type: Type::Undetermined,
+                arg_type: Type::Variable(0),
                 result: Type::Primitive(Prim::String),
                 hunger: 0,
-                overload_visible: false,
+                overload_visible: true,
                 implementation: BuiltinImpl::ToString,
             },
             Builtin {
                 name: "error",
-                arg_type: Type::Undetermined,
-                result: Type::Undetermined,
+                arg_type: Type::Variable(0),
+                result: Type::Variable(1),
                 hunger: 0,
-                overload_visible: false,
+                overload_visible: true,
                 implementation: BuiltinImpl::Error,
             },
             // global.w:4478-4493: retain zero-row/zero-column dimensions,
@@ -10399,117 +10407,6 @@ fn overload_variants(name: &str) -> &'static [usize] {
         .get(name)
         .map(Vec::as_slice)
         .unwrap_or(&[])
-}
-
-fn hidden_special_builtin(name: &str) -> Option<usize> {
-    builtin_registry()
-        .iter()
-        .position(|builtin| builtin.name == name && !builtin.overload_visible)
-}
-
-/// Locate a hidden builtin for `name` by its argument pattern.
-fn hidden_builtin_by_pattern(name: &str, pattern: impl Fn(&Type) -> bool) -> Option<usize> {
-    builtin_registry().iter().position(|builtin| {
-        builtin.name == name && !builtin.overload_visible && pattern(&builtin.arg_type)
-    })
-}
-
-/// The generic special operators `#`/`##` (axis.w:2473-2595): recognised
-/// from the a-priori type when no exact ordinary overload matched, taking
-/// precedence over every coercible one. Returns the registry index and the
-/// concrete result type; the a-priori type itself serves as the argument
-/// pattern, since upstream reuses the already-converted arguments unchanged.
-fn hidden_special_variant(
-    name: &str,
-    a_priori_type: &Type,
-    types: &TypeTable,
-) -> Option<(usize, Type)> {
-    match name {
-        "#" => match &*a_priori_type.expanded(types) {
-            // sizeof_row (axis.w:2544-2548): the length of any row value.
-            Type::Row(_) => {
-                let index = hidden_builtin_by_pattern("#", |arg| matches!(arg, Type::Row(_)))?;
-                Some((index, int_type()))
-            }
-            Type::Tuple(components) if components.len() == 2 => {
-                // suffix_element (axis.w:2552-2560), tried before prefix:
-                // ([T],element) where T specialises the element type. A `*`
-                // component adopts the element type, so `[]#3` works
-                // (upstream mutates the a-priori component the same way).
-                if let Type::Row(component) = &*components[0].expanded(types) {
-                    let mut component = component.as_ref().clone();
-                    if component.specialise(&components[1], types) {
-                        let index = hidden_builtin_by_pattern(
-                            "#",
-                            |arg| matches!(arg, Type::Tuple(parts) if matches!(parts.first(), Some(Type::Row(_)))),
-                        )?;
-                        return Some((index, Type::row(component)));
-                    }
-                }
-                // prefix_element (axis.w:2561-2569): (element,[T]).
-                if let Type::Row(component) = &*components[1].expanded(types) {
-                    let mut component = component.as_ref().clone();
-                    if component.specialise(&components[0], types) {
-                        let index = hidden_builtin_by_pattern(
-                            "#",
-                            |arg| matches!(arg, Type::Tuple(parts) if matches!(parts.get(1), Some(Type::Row(_)))),
-                        )?;
-                        return Some((index, Type::row(component)));
-                    }
-                }
-                None
-            }
-            _ => None,
-        },
-        "##" => match &*a_priori_type.expanded(types) {
-            // join_rows_row (axis.w:2577-2582): fold a row of rows.
-            Type::Row(component) if matches!(&*component.expanded(types), Type::Row(_)) => {
-                let index = hidden_builtin_by_pattern(
-                    "##",
-                    |arg| matches!(arg, Type::Row(inner) if matches!(inner.as_ref(), Type::Row(_))),
-                )?;
-                Some((index, component.as_ref().clone()))
-            }
-            // join_rows (axis.w:2583-2595): two rows of the same type.
-            Type::Tuple(components)
-                if components.len() == 2
-                    && matches!(&*components[0].expanded(types), Type::Row(_))
-                    && components[0].equivalent(&components[1], types) =>
-            {
-                let index = hidden_builtin_by_pattern(
-                    "##",
-                    |arg| matches!(arg, Type::Tuple(parts) if parts.iter().all(|part| matches!(part, Type::Row(_)))),
-                )?;
-                Some((index, components[0].clone()))
-            }
-            _ => None,
-        },
-        // prints@@T (axis.w:8773, wrapper :8850-8853): the variadic generic
-        // printer matches any a-priori type; the result is always void.
-        "prints" => {
-            let index = hidden_special_builtin("prints")?;
-            Some((index, Type::void()))
-        }
-        // print@@T (axis.w:8767, selection :6780-6783): identity function
-        // type — the call's result type is the argument type itself.
-        "print" => {
-            let index = hidden_special_builtin("print")?;
-            Some((index, a_priori_type.clone()))
-        }
-        // to_string@@T (axis.w:8769, selection :6788-6790): always string.
-        "to_string" => {
-            let index = hidden_special_builtin("to_string")?;
-            Some((index, string_type()))
-        }
-        // error@@T (axis.w:8771, selection :6791-6794): the upstream result
-        // is unknown_type, fitting every context (the call always throws
-        // before the value is used); Undetermined specialises the same way.
-        "error" => {
-            let index = hidden_special_builtin("error")?;
-            Some((index, Type::Undetermined))
-        }
-        _ => None,
-    }
 }
 
 impl TypedExpr {
@@ -12798,8 +12695,8 @@ mod tests {
         assert_eq!(
             errors,
             [
-                // No `z` projector exists for (int,int) (axis.w:8252).
-                "Improper selection in field assignment",
+                // Current-original capture3836306: lookup uses type metadata.
+                "Type (int,int) of variable in field assignment has no field 'z'",
                 // The operator result must match the component type.
                 "found rat while int was needed.",
                 // The desugared call converts the operator first.
@@ -13593,8 +13490,8 @@ mod tests {
         }
 
         for (source, expected) in [
-            // The empty row cannot resolve to [string] upstream either.
-            ("##([])", "Failed to match '##' with argument type [*]"),
+            // Capture3836455: generic flattening competes with string join.
+            ("##([])", "Ambiguous argument in function call, argument type [A] matches both [string] and [[A]]"),
             ("row(null(2,3), 2)", "row index 2 out of range (0<= . <2)"),
             (
                 "column(null(2,3), 3)",
@@ -14688,22 +14585,22 @@ mod tests {
             .iter()
             .find(|builtin| {
                 builtin.name == "#"
-                    && builtin.arg_type == Type::row(Type::Undetermined)
+                    && builtin.arg_type == Type::row(Type::Variable(0))
                     && builtin.result == int_type()
             })
-            .expect("missing #([*]) -> int");
+            .expect("missing #([A]) -> int");
         assert_eq!(signature.hunger, 0);
         assert!(
             overload_variants("#")
                 .iter()
-                .all(|&index| builtin_registry()[index].arg_type != Type::row(Type::Undetermined)),
-            "the generic row primitive is hidden from the overload table"
+                .any(|&index| builtin_registry()[index].arg_type == Type::row(Type::Variable(0))),
+            "the generic row primitive is an ordinary visible overload"
         );
 
         let mut overloads = OverloadState::default();
         assert!(
-            !overloads.remove("#", &Type::row(Type::Undetermined), &TypeTable::new()),
-            "the hidden primitive cannot be forgotten"
+            overloads.remove("#", &Type::row(Type::Variable(0)), &TypeTable::new()),
+            "ordinary generic variants participate in overload removal"
         );
 
         for (source, expected) in [("#[]", 0), ("#[1,2,3]", 3), ("#[\"x\",\"y\"]", 2)] {
@@ -14741,7 +14638,7 @@ mod tests {
         assert!(matches!(
             &listing[..],
             [TypedCommandEvent::ReportLine { text, .. }]
-                if !text.contains("[*]->int")
+                if text.contains("[A]->int")
         ));
         let show_all = context
             .execute(&command("showall"))
@@ -14749,21 +14646,17 @@ mod tests {
         assert!(matches!(
             &show_all[..],
             [TypedCommandEvent::ReportLine { text, .. }]
-                if !text.contains("#: ([*]->int)")
+                if text.contains("#: ([A]->int)")
         ));
         context
             .execute(&command("set # ([bool] xs) = 99"))
             .expect("install exact row overload");
-        let events = context
+        let error = context
             .execute(&command("#[true,false]"))
-            .expect("exact user overload preempts generic row cardinality");
-        assert!(matches!(
-            &events[..],
-            [TypedCommandEvent::Value {
-                value: Value::Integer(value),
-                ..
-            }] if value == &BigInt::from(99)
-        ));
+            .expect_err("generic and concrete exact matches are ambiguous (3836507)");
+        assert_eq!(error.kind, ErrorKind::Type);
+        assert_eq!(error.message,
+            "Ambiguous argument in function call, argument type [bool] matches both [A] and [bool]");
         context
             .execute(&command("set # (ratvec xs) = 88"))
             .expect("install coercible ordinary overload");
@@ -14780,14 +14673,15 @@ mod tests {
     }
 
     #[test]
-    fn generic_row_operators_resolve_like_the_upstream_special_instances() {
-        // axis.w:2549-2595: the generic `#`/`##` row instances are recognised
-        // from the a-priori type once exact ordinary overloads fail, and win
-        // over coercible ones. Results stay row values and print compactly.
+    fn generic_row_operators_unify_as_ordinary_overloads() {
+        // Current global.w:4490-4496 and capture3836455: generic arguments
+        // share one substitution; exact matches precede coercible variants.
         let int_row = Type::row(int_type());
         for (source, printed) in [
             ("[1,2]##[3,4]", "[1,2,3,4]"),
             ("[]##[]", "[]"),
+            ("[]##[1,2]", "[1,2]"),
+            ("[1,2]##[]", "[1,2]"),
             ("##([[1,2],[3,4]])", "[1,2,3,4]"),
             ("##([[],[]])", "[]"),
             ("[1,2]#3", "[1,2,3]"),
@@ -14806,24 +14700,15 @@ mod tests {
         assert_eq!(type_, int_row);
         assert_eq!(value.to_string(), "[1,2,3,4]");
 
-        // Suffix beats prefix when both rows could serve (axis.w:2533-2541).
-        let (type_, value) = convert_and_run("[[2]]#[]").expect("ambiguous suffix");
-        assert_eq!(value.to_string(), "[[2],[]]");
-        assert_eq!(type_, Type::row(Type::row(int_type())));
-        let (_, value) = convert_and_run("[]#[[2]]").expect("suffix of an empty row");
-        assert_eq!(value.to_string(), "[[[2]]]");
-        let (_, value) = convert_and_run("[]#[]").expect("empty row suffixed by itself");
-        assert_eq!(value.to_string(), "[[]]");
-
-        // A `*` row component adopts the element type (axis.w:2524-2531).
-        for (source, printed) in [("[]#3", "[3]"), ("3#[]", "[3]"), ("[1]#[]", "[[1]]")] {
+        // An unbound row component adopts the element type if unique.
+        for (source, printed) in [("[]#3", "[3]"), ("[1]#[]", "[[1]]")] {
             let (_, value) = convert_and_run(source).expect(source);
             assert_eq!(value.to_string(), printed, "source: {source}");
         }
         let (type_, _) = convert_and_run("[]#3").expect("empty row suffix adopts int");
         assert_eq!(type_, int_row);
 
-        // Exact ordinary overloads still preempt the generics (axis.w:1565-1573).
+        // These concrete signatures are the only exact matches.
         let (type_, value) = convert_and_run("(vec: [1,2]) # 3").expect("exact vec suffix");
         assert_eq!(type_, primitive_type(Prim::Vec));
         assert!(matches!(value, Value::Vector(_)), "vec suffix stays a vec");
@@ -14853,20 +14738,28 @@ mod tests {
                 "[1,2]##(3,4)",
                 "Failed to match '##' with argument type ([int],(int,int))",
             ),
-            // Unequal row pairs match nothing: `==` upstream is structural,
-            // so `[*]` does not join `[int]` (axis.w:2585-2587).
-            (
-                "[]##[1,2]",
-                "Failed to match '##' with argument type ([*],[int])",
-            ),
-            (
-                "[1,2]##[]",
-                "Failed to match '##' with argument type ([int],[*])",
-            ),
         ] {
             let error = convert_and_run(source).expect_err(source);
             assert_eq!(error.kind, ErrorKind::Type, "source: {source}");
             assert_eq!(error.message, message, "source: {source}");
+        }
+    }
+
+    #[test]
+    fn empty_row_overload_ambiguities_never_select_a_matrix_or_suffix() {
+        // Exact before-source and all five messages captured in3836455.
+        for (source, actual, first, second) in [
+            ("##([])", "[A]", "[string]", "[[A]]"),
+            ("3#[]", "(int,[A])", "(A,[A])", "(int,[vec])"),
+            ("[[2]]#[]", "([[int]],[A])", "([A],A)", "(A,[A])"),
+            ("[]#[[2]]", "([A],[[int]])", "([A],A)", "(A,[A])"),
+            ("[]#[]", "([A],[B])", "([A],A)", "(A,[A])"),
+        ] {
+            let error = convert_and_run(source).expect_err(source);
+            assert_eq!(error.kind, ErrorKind::Type, "{source}");
+            assert_eq!(error.message, format!(
+                "Ambiguous argument in function call, argument type {actual} matches both {first} and {second}"
+            ), "{source}");
         }
     }
 

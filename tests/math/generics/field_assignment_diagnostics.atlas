@@ -1,0 +1,16 @@
+set_type Pair = (int x, int y)
+q: (int,int)
+q := (1,2)
+q.x := 7
+q
+q.y +:= 10
+q
+q.z := 7
+q.x /:= 2
+q.x +:= "s"
+set !c = (3,4)
+c.x := 9
+c.x +:= 1
+r: (int,int)
+r.x := 5
+prints("RECOVER",q)

@@ -347,12 +347,13 @@ fn exact_scalar_edges_keep_euclidean_quotients_and_tuple_divmod() {
 #[test]
 fn typed_container_errors_have_the_expected_phase() {
     for (source, expected_kind) in [
-        // Undetermined row components do not match a concrete overload in
-        // the typed Atlas pipeline; this is intentionally a static error.
+        // Capture3836455: unknown components can match concrete overloads.
+        // Ambiguous arithmetic rejects statically, but a unique rational
+        // remainder reaches the subscription's runtime bounds check.
         ("[][0] + 1", ErrorKind::Type),
         ("[[][0], 1]", ErrorKind::Runtime),
         ("[][0] + true", ErrorKind::Type),
-        ("[][0] % (1 / 2)", ErrorKind::Type),
+        ("[][0] % (1 / 2)", ErrorKind::Runtime),
         ("(not [][0]) + 1", ErrorKind::Type),
         ("([][0] and true) + 1", ErrorKind::Type),
         ("([][0] % 1) + true", ErrorKind::Type),

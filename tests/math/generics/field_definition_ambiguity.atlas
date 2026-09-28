@@ -1,0 +1,5 @@
+set_type GenericFields<T> = (T shared_first,T generic_second) !
+set_type ConcreteFields = (int shared_first,int concrete_second)
+set fields=GenericFields<int>:(2,3)
+fields.shared_first:=7
+prints("RECOVER",fields)

@@ -2,6 +2,62 @@
 
 ## Current mathematical-validation frontier — 2026-09-28
 
+CURRENT WAVE:3836397 FAILED5:59, full421-test inventory416pass/3fail/2filtered;
+all163 filtered checks and CLI check pass. Report
+b822046943c022d690d1f4df8acf34d8d5513cec8748625fc808d59bd3a8aaf5.
+The three failures uncover stale empty-row/error-phase assertions AND the real
+hidden-special registry defect: current original registers row/printer/error
+schemes as ordinary overloads. Original captures3836455/3836507 confirm all
+87/88 intents (48accepted), including3#[] ambiguity, mixed empty/concrete row
+joins, and generic/concrete cardinality conflict. Failed source stages and all
+receipts remain preserved alongside the verified replacement.
+Replacement candidate stage atlas-row-build-20260928.cJPjhwE0, pin
+0962e36bda2ea15fbd15b97a07a13e5888ee1b0e4f45687b3501e4162042792d,
+completed as3836533 in14:01. Full423-test inventory:421pass/0ignored, both
+known assignment failures separately executed;164filtered checks and CLI pass.
+Report ad9cd5d815fae466ed5557a40575c192dd3be94065f4a4e0986ddaadf3764188.
+All88 original intents confirmed;27full-stream matches versus19 on the same
+corpus with verified3835776 (3836507), eight gained and none lost. Compared
+with older release3833612, only3 whole matches; do not conflate these baselines.
+The row registry/value/mixed cases and new projector/field positive controls
+match completely. Rejected ambiguities now reject and retain recovery values,
+but stderr differs (Program vs Type envelopes); they are NOT exact diagnostic
+matches. Tagged union context values and binding types match; the remaining
+stdout mismatch is bare whattype ni/ns: original reports identifier kind/type
+and introduction location, Rust only prints Type. This is partial language
+improvement, not basic.at acceptance.
+It removes the hidden fallback and preserves linked variables/query order.
+Keep all failed gates3836297/3836325/3836333/3836397. Function capture3836435
+confirms all82 pre-row intents after the narrowly corrected classifier;
+3836409's invalid report remains. Next after this registry gate: whole-signature
+function-value capture/direct-call inference, then actual any_type/TypeCell
+scope migration. Builtins need a real function value, not a fake user closure.
+No new high-level mathematical acceptance or debug speed ratio. Runtime files
+were rehashed after submission: all99 pinned changed/source fixture bytes match.
+
+NEXT DISCOVERY3836975 FAILED30s: catalog91 (three added function-value details)
+has90 ordinary oracle outcomes and one ORIGINAL exit139 in
+captured_selection_rejected.atlas. Report
+bf964d529142206a2f2b0ebf5ee862e9f2deb7db4a517c9ee6565fd665b87ee1.
+Preserve its source and signal classification; do not turn it into a matching
+rejection or silently remove it from counts. It must be isolated before using
+this enlarged catalog as an acceptance gate; row-build3836533 still uses its
+frozen88 cases. Builtin display succeeds: {succ@int}, {pred@int}, {prints@A};
+captured printers retain tuple packing. Lowercase ascii in the runtime discovery
+is undefined in latest original: global.w:4147-4148 spells it ASCII. Keep that
+negative and capture a separate uppercase companion. No runtime changes made
+for function values yet; all local runtime bytes still match3836533's pin.
+
+Diagnostic subset3837092 FAILED12s isolates the ORIGINAL signal to the single
+command (string->int):succ, without any preceding error or state. Nonfunction
+int:succ and no-match (int->bool):ASCII reject normally. Uppercase captured
+ASCII reaches the expected range error, and all three runtime controls recover.
+The five-case selection_isolation_catalog.json retains the signal case and
+the positive display control; it is explicitly separate from the91-case
+master, not a reduced replacement acceptance suite. Preserve both failures.
+Isolation report SHA
+bc9e813893eb1df0b39cba255ac17ef342546dceab2f84a4824a84a02ee33955.
+
 Current user objective now ALSO requires root-cause analysis and sequential
 repairs of discovered errors, recording reusable lessons in AGENTS/indexed docs.
 Do not stop at inventorying defects. All testing/builds remain HPC-only.

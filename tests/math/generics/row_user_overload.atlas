@@ -1,0 +1,4 @@
+set # ([bool] xs) = 99
+#[true,false]
+set # (ratvec xs) = 88
+prints("COERCIBLE",#[1,2])

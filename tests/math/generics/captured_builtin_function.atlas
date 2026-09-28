@@ -1,0 +1,3 @@
+prints("BUILTIN",let f=succ in f(7))
+prints("RETURNED",(let f=succ in f)(9))
+prints("TUPLE",let (f,g)=(succ,pred) in (f(7),g(7)))

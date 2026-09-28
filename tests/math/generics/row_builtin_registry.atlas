@@ -1,0 +1,6 @@
+whattype # ?
+whattype ## ?
+whattype print ?
+whattype prints ?
+whattype to_string ?
+whattype error ?

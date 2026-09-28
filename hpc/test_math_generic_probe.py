@@ -12,9 +12,9 @@ class GenericContractCaptureTests(unittest.TestCase):
 
     def test_catalog_has_positive_and_rejected_cases(self):
         cases = load_cases(Path(__file__).resolve().parents[1])
-        self.assertEqual(len(cases), 73)
-        self.assertEqual(sum(c["intent"] == "accept" for c in cases), 41)
-        self.assertEqual(len({c["id"] for c in cases}), 73)
+        self.assertEqual(len(cases), 91)
+        self.assertEqual(sum(c["intent"] == "accept" for c in cases), 49)
+        self.assertEqual(len({c["id"] for c in cases}), 91)
         self.assertTrue(all(c["source"].endswith("quit\n") for c in cases))
 
     def test_acceptance_requires_markers_and_empty_diagnostics(self):
@@ -37,6 +37,21 @@ class GenericContractCaptureTests(unittest.TestCase):
         self.assertEqual(observed_category(self.case, failed, (name_error, b"unclassified")), "OTHER_FAILURE")
         self.assertEqual(observed_category(self.case, self.success, (self.output, name_error)), "OTHER_FAILURE")
         self.assertEqual(observed_category(self.case, failed, (self.output, b"Undefined identifier 'missing'")), "OTHER_FAILURE")
+        # Current original3836409 reports capture ambiguity without a Type or
+        # Program heading inside a rejected set command. Require its envelope.
+        ambiguity = (b"Error in expression captured_first at <standard input>:4:35-49\n"
+                     b"  Ambiguous overloaded symbol 'captured_first': its context type (Pair<int>->int) matches\n"
+                     b"  both (Pair<A>->A) and (Pair<int>->int) in overload table\n"
+                     b"Error in 'set' command at <standard input>:4:0-50:\n"
+                     b"Expression analysis failed\n"
+                     b"  Command 'set f' not executed, nothing defined.\n")
+        self.assertEqual(observed_category(self.case, failed, (self.output, ambiguity)),
+                         "REJECTED_OVERLOAD_AMBIGUITY")
+        for record, streams in ((self.success, (self.output, ambiguity)),
+                                (failed, (ambiguity, b"unclassified")),
+                                (failed, (self.output, ambiguity.split(b"\n", 1)[1])),
+                                (failed, (self.output, b"  Ambiguous overloaded symbol 'x'"))):
+            self.assertEqual(observed_category(self.case, record, streams), "OTHER_FAILURE")
 
     def test_timeouts_and_signals_never_become_rejections(self):
         for code, expected in ((124, "TIMEOUT"), (137, "RESOURCE_OR_SIGNAL_FAILURE")):

@@ -63,6 +63,13 @@ def observed_category(case, record, streams):
             and re.search(rb"(?m)^  Undefined identifier '[^'\n]+'$", err)
             and b"Expression analysis failed" in err):
         return "REJECTED_NAME"
+    # Capture3836409: overloaded FUNCTION VALUE ambiguity can appear in a
+    # failed set command without a literal Type/Program error heading.
+    if (code == 1 and re.search(rb"(?m)^Error in expression .+ at .+$", err)
+            and re.search(rb"(?m)^  Ambiguous overloaded symbol '[^'\n]+': its context type .+ matches$", err)
+            and re.search(rb"(?m)^  both \(.+\) and \(.+\) in overload table$", err)
+            and b"Expression analysis failed" in err):
+        return "REJECTED_OVERLOAD_AMBIGUITY"
     return "OTHER_FAILURE"
 
 

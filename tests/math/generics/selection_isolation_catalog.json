@@ -1,0 +1,11 @@
+{
+  "schema": "atlas-generic-language-probes-v1",
+  "scope": "Isolate original exit139 discovered by3836975, retaining a positive function-display control. This diagnostic subset is not the full catalog or language acceptance; a signal remains invalid execution, never an expected type rejection.",
+  "cases": [
+    {"id":"captured_nonfunction_context","intent":"reject","file":"captured_nonfunction_context.atlas","scope":"Isolate the nonfunction required context without the following wrong unique signature."},
+    {"id":"captured_unique_wrong_signature","intent":"reject","file":"captured_unique_wrong_signature.atlas","scope":"Isolate the suspected original crash on a unique builtin with incompatible function signature; do not normalize a signal to rejection."},
+    {"id":"captured_multiple_no_match","intent":"reject","file":"captured_multiple_no_match.atlas","scope":"No complete match among uppercase ASCII's two original signatures, independent of unique-function failure."},
+    {"id":"captured_builtin_runtime_uppercase","intent":"reject","file":"captured_builtin_runtime_uppercase.atlas","scope":"Separate corrected uppercase ASCII companion for wrapper/argument runtime failures; retain the lowercase discovery unchanged."},
+    {"id":"captured_builtin_display","intent":"accept","file":"captured_builtin_display.atlas","scope":"Positive builtin-display/tuple-packing control already successful in3836975."}
+  ]
+}

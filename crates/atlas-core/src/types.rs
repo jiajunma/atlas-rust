@@ -375,6 +375,27 @@ impl TypeTable {
         self.constructors.get(&number.0).map_or(0, |entry| entry.0)
     }
 
+    /// Find field/tag metadata in ALL retained definitions, not just live
+    /// names or the current projector overloads (axis-types.w:1454). A fresh
+    /// formal constructor application is trialled for each binding, preserving
+    /// the receiver's rigid floor and isolating the candidate's free variables.
+    pub fn matching_bindings(&self, receiver: &polymorphic::InferredType)
+        -> Result<Vec<TypeNumber>, polymorphic::TypeError>
+    {
+        let mut receiver = receiver.clone();
+        receiver.wring_out()?;
+        let mut matches = Vec::new();
+        for (index, binding) in self.bindings.iter().enumerate() {
+            if binding.fields.is_empty() { continue; }
+            let number = TypeNumber(index);
+            let arity = self.constructor_arity(number);
+            let formal = if arity == 0 { Type::Tabled(number) }
+                else { Type::Applied(number, (0..arity).map(Type::Variable).collect()) };
+            if receiver.has_unifier(&formal, self)? { matches.push(number); }
+        }
+        Ok(matches)
+    }
+
     pub fn is_recursive(&self, number: TypeNumber) -> bool {
         self.constructors.get(&number.0).is_none_or(|entry| entry.1)
     }

@@ -1,0 +1,4 @@
+set_type CaptureResult<T> = (T select_first,T select_second) !
+set select_first(CaptureResult<int> x)=true
+prints("GENERIC",let f=(CaptureResult<int>->int):select_first in f(CaptureResult<int>:(7,9)))
+prints("CONCRETE",let f=(CaptureResult<int>->bool):select_first in f(CaptureResult<int>:(7,9)))

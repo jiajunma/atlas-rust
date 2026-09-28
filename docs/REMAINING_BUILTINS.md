@@ -2,6 +2,28 @@
 
 ## Mathematical validation against latest original — 2026-09-28
 
+Active overload/member wave3836397 failed full core:416pass/3fail/2filtered
+(all163 filtered checks pass). Original3836455/3836507 confirms the next repair:
+ordinary generic row/printer/error overloads must replace the old hidden
+fallback;3#[] is ambiguous, empty/concrete row joins succeed, concrete bool-row
+cardinality conflicts with generic.88 original intents confirmed48accept40reject.
+Row-build3836533 COMPLETE14:01: full423-test inventory421pass/0ignored, both
+known failures separately executed;164filtered checks/CLI pass.88-case capture
+has27full-stream matches, versus19 for verified3835776 on the same corpus.
+Row registry, mixed joins and projector/field positive controls now match.
+Negative diagnostics and tagged-union stdout still differ; do not claim full
+generic/basic.at compatibility. Pins/all failures are in HANDOFF/the slice.
+Function-value before-capture3836435 verifies all82 pre-row intents;3836409
+remains an invalid earlier classifier run, not a language verdict. any_type,
+TypeCell scopes, function-value capture/direct-call inference and current
+positional union syntax remain before latest basic.at/high-level math.
+Function-detail discovery3836975 adds three probes (catalog91) but FAILS because
+original exits139 in the combined selection-negative fixture. This is not a
+normal rejection; retain it and isolate the trigger. The frozen88-case row
+gate is separate. Captured builtin display/tuple packing succeeds in original;
+the runtime discovery's lowercase ascii must be retained as a name rejection
+and supplemented by uppercase ASCII before making runtime-trace claims.
+
 Constructor R3 candidate3835776 COMPLETE8:34: full413-test inventory confirms
 411pass/0ignored and both known assignment failures separately execute;155
 filtered tests and CLI pass.62-case capture confirms all original intents;

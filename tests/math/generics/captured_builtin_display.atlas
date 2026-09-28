@@ -1,0 +1,6 @@
+set captured_successor = succ
+captured_successor
+prints("SUCC",succ)
+prints("PAIR",(succ,pred))
+prints("PRINTER",let f=prints in to_string(f))
+let f=prints in f("PACKED",(1,2),[3,4])

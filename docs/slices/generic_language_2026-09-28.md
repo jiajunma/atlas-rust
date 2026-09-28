@@ -55,6 +55,147 @@ No repair/after-pass yet. All these jobs are terminal; do not duplicate.
 
 ## Source-backed causes and port order
 
+### Active overload and member integration (current wave)
+
+Candidate3836397 FAILED5:59 in
+`atlas-field-build-r2-20260928.6MfhqijZ`, pin
+`1e8cc74e7cf2b506e1d4bf9d6f1774f59dc1cdce4a64eeb949d66b89305029a7`.
+All163 filtered checks and CLI check pass, but the421-test core inventory has
+416pass/3fail/2filtered; no new CLI build/capture was reached. Report SHA
+`b822046943c022d690d1f4df8acf34d8d5513cec8748625fc808d59bd3a8aaf5`.
+It connects whole-function schemes to actual overload matching, imports each
+argument's free range independently, shares argument/result substitution,
+rejects a second exact match, and excludes polymorphic variants from coercion
+fallback. The first matched result is checked before searching for ambiguity.
+Field writes and tagged cases search all retained type definitions via scoped
+unification; projector function values and active type names are not that map.
+This wave does NOT implement any_type, scheme-carrying TypeCells, full function
+capture/direct-call inference, or the current positional case grammar. The
+Analysis floor is propagated but lexical abstractions remain unconnected.
+
+Before evidence:3836306 COMPLETE32s confirms all77 intents42accept/35reject,
+using the verified3835776 binary. Report
+`ca326fc46eb10146fc0e662c4ae4fca73e5f3d069224a2eab08a069ea67aedd4`.
+Forgotten generic names retain writable fields. Generic/concrete field metadata
+can be ambiguous despite an explicit receiver type. Copying a union with its
+tags produces ambiguity in original, but Rust wrongly accepts it. The exact
+historical field-assignment unit now supplies current missing-field wording.
+
+Preserved failed gates:
+
+- 3836297 FAILED23s before compilation: the frozen archive lacks17 fixtures
+ already tracked at Git base1a08c074. They need explicit add-file patch hunks;
+ adding manifest hashes alone is insufficient. R2 fixes staging, not the guard.
+- 3836325 FAILED3:41:43type/3coercion/48syntax pass,43session pass/1fail;
+ all three new overload regressions pass. No full-core/CLI/capture reached.
+- 3836333 FAILED3:00:43type/3coercion/48syntax pass,47session pass/1fail;
+ all seven new overload/member regressions pass. Same historical assertion
+ blocks full-core/CLI/capture; these filtered passes are not acceptance.
+
+Subscription capture3836366 COMPLETE24s confirms all78 intents42accept/36reject,
+report`b208e9674b9d456ca081ac62637d920e5cd344f0ed227b4b7b0bcce22a23d3f7`.
+Its exact historical source proves unknown operands to + in int context are
+ambiguous between(int,int)/(rat,int), with variables(A,B), not a failed lookup
+with(*,*). In string context the first int result fails BEFORE ambiguity.
+All five recovery values remain. Candidate3836397 updates that assertion and
+prints the scoped actual argument body; it also adds a rigid-floor/forgotten-
+slot type test. The full-core gate then exposed three failures; only the known
+global regression ran before failure, and the local retained test was not yet
+reached. Both remain mandatory separate executions in the replacement gate.
+
+Original row capture3836455 COMPLETE27s confirms87 intents48accept39reject;
+report`94c6cff7b8d57b5b9b1025a3da1e2b4ef16b99a6a90686e5950c93c9fa1256f8`.
+Current global.w:4479-4497 installs generic row/printer/error functions as
+ordinary linked schemes. Keeping the old hidden fallback after exact matching
+wrongly returns a3x0 matrix for3#[], while original rejects generic-prefix vs
+matrix-constructor ambiguity. Original also rejects ##([]), [[2]]#[],
+[]#[[2]], []#[]; the earlier suffix-priority assertions are no longer valid.
+The companion positive fixtures preserve all successful row/vector/string
+results and prove []##[1,2]/[1,2]##[] both return[1,2]. The exact eight historical
+container-phase sources prove rational remainder reaches the subscription
+bounds error; integer ambiguity remains static. No failure was simply waived.
+
+Cardinality override capture3836507 COMPLETE32s confirms88 intents48accept40reject,
+report`3a2703b3f80608ab0a9300e262a33f4c1910245aa655e1bd77195dbd92d0b7ba`.
+Concrete [bool]->int competes with [A]->int, but ratvec's coercible overload
+does not suppress exact generic integer-row cardinality. Recovery prints2.
+Both captures reuse the verified3835776 before binary, not unverified runtime.
+
+Replacement row-build3836533 COMPLETE14:01 at
+`atlas-row-build-20260928.cJPjhwE0`, pin
+`0962e36bda2ea15fbd15b97a07a13e5888ee1b0e4f45687b3501e4162042792d`.
+It removes hidden-special resolution, registers linked Variables in original
+query order, adds exact ambiguity/recovery tests and updates only oracle-backed
+old expectations. Full423-test inventory421pass/0ignored; both known global
+and local polymorphic-assignment failures are separately executed at their
+intended assertions.164filtered checks and CLI check/build pass. Report SHA
+`ad9cd5d815fae466ed5557a40575c192dd3be94065f4a4e0986ddaadf3764188`.
+All88 original intents confirmed;27 complete output matches versus19 with
+verified3835776 in3836507 on the same88 cases (eight gains, no lost matches).
+The release-before arm3833612 has3 matches and is a different baseline.
+New exact matches include generic pair/projector use, field writes with replaced
+projectors, forgotten type fields, mixed row joins and the entire queried builtin
+registry. Negative ambiguity/result/repeated-argument cases retain expected
+rejections/recovery but have different diagnostic envelopes; do not count them
+as exact compatibility. Tagged union context values/binding types match, but
+bare whattype ni/ns is still Type in Rust versus original Identifier metadata
+(variable/type/introduction location); that whole case remains a mismatch.
+Every engine retains time/RSS; the debug candidate
+is not a speed comparison. All99 candidate changed/source fixture hashes were
+rechecked locally after completion and still match the frozen pin.
+
+Next source boundary is axis.w:1630-1770 function-value capture: unlike ordinary
+application, it unifies the ENTIRE required function signature, including the
+result. Generic and concrete matches may thus be distinguishable by result,
+but two whole-signature matches remain ambiguous. Builtin functions need a
+real first-class value/call path too: current Value only represents user
+closures. Do not silently exclude builtins or wrap them in fake user closures
+that change trace/runtime semantics. Direct calls must share argument/result
+assignments, and tuple packing must freshen independent component schemes.
+Four function-value probes first extended the catalog to82cases45accept/37reject.
+Capture3836409 FAILED33s because the ambiguity diagnostic lacks a Type/Program
+heading in a set command. Its raw evidence remains;3836435 COMPLETE27s confirms
+all82 intents after exact-envelope classification and negative controls, report
+`d5b3fff6a64ae013862937aeaa4341387f6e2576598367c5b36f8a63762d2953`.
+These are before contracts, not function-value acceptance of this candidate.
+
+Function-detail discovery3836975 FAILED30s with91 cases.90 ordinary original
+outcomes were captured, but captured_selection_rejected.atlas exits139 after
+the first int:succ name rejection and before its recovery marker. The exact
+failing command must still be isolated. Report SHA
+`bf964d529142206a2f2b0ebf5ee862e9f2deb7db4a517c9ee6565fd665b87ee1`.
+Keep RESOURCE_OR_SIGNAL_FAILURE; do not relax the classifier or treat matching
+Rust errors as a contract. The separate row candidate uses frozen88 cases.
+Builtin display succeeds with {succ@int}/{pred@int}/{prints@A}; a captured
+generic printer preserves PACKED(1,2)[3,4]. Runtime discovery accidentally uses
+lowercase ascii, while current global.w:4147-4148 names both variants ASCII.
+That source remains a name-rejection discovery; a new uppercase companion is
+needed to test the builtin's runtime failure, not an edited golden.
+
+Diagnostic subset3837092 FAILED12s isolates the crash to the single command
+(string->int):succ. Separate int:succ and (int->bool):ASCII inputs reject by
+normal name analysis and recover; the uppercase runtime companion gives range,
+explicit error and subscription diagnostics with recovery. The positive display
+control still succeeds. selection_isolation_catalog.json describes all five
+cases, including the crashing case; it does not replace the91-case master.
+The source of original's signal remains unproven, and no matching rejection
+contract exists for that input. Do not imitate the original crash in Rust.
+Isolation report SHA
+`bc9e813893eb1df0b39cba255ac17ef342546dceab2f84a4824a84a02ee33955`.
+
+First-class port boundary: Identifier must try retained local/global values
+before overload capture, unify the whole signature with context, and preserve
+capture-expression printing separately from value printing. Direct application
+must use InferredType::matches_argument and substitute the linked result.
+Runtime function values must distinguish ordinary/variadic builtins, user
+closures and generated members: original builtins print {name@argument}, use
+single-value arguments when the formal argument is just a variable, and report
+built-in origins. Existing member_closure explicitly lacks projector/injector
+origin metadata; track that separately rather than extending the imitation to
+all builtins. Arguments evaluate outside the traced call body. Tuple-function
+packing still needs independent free-variable ranges; bare TypeCell remains
+the larger scope migration boundary. No implementation of these is claimed.
+
 ### Constructor integration and declaration sequencing (in progress)
 
 Member R4 replay3836236 COMPLETE26s at

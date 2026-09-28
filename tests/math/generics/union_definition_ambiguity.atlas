@@ -1,0 +1,5 @@
+set_type FirstUnion = (int shared_integer | string shared_string)
+set_type SecondUnion = FirstUnion
+set subject=shared_integer(7)
+case subject | shared_integer(x):x | shared_string:0 esac
+prints("RECOVER",17)

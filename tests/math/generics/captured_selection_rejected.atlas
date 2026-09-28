@@ -1,0 +1,4 @@
+int:succ
+(string->int):succ
+(int->bool):ascii
+prints("RECOVER",17)
