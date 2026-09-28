@@ -1,0 +1,4 @@
+set_type MathNestedPair<S,T> = (S probe_fst,T probe_snd) !
+set np = MathNestedPair<[int],(rat,bool)>:([2,3],(3/4,true))
+prints("PAIR",np)
+prints("FIELDS",np.probe_fst,np.probe_snd)

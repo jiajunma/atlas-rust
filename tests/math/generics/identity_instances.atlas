@@ -1,0 +1,5 @@
+any_type T begin
+set probe_id(T x)=T:x
+end
+prints("INSTANCES",probe_id(7),probe_id(3/4),probe_id([2,3]))
+prints("NESTED",probe_id([[2],[3,4]]))

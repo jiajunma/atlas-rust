@@ -20,10 +20,11 @@
   "preflight_sha256": "a3da08aebe5cadc0d116401d16d2eb386a2b509e3f0d238a48a3e838a09d6688",
   "build_job": "3833716",
   "build_dependency": "afterok:3833713",
-  "build_status": "SUBMITTED",
+  "build_status": "COMPLETED_00_10_21",
+  "build_sha256": "62aa96181c87d0ae816928dcbab37b5b7b448d1d1d00632106e28214319b2e63",
   "differential_array": "3833718",
   "differential_dependency": "afterok:3833716",
-  "differential_status": "SUBMITTED",
+  "differential_status": "INDEPENDENTLY_VERIFIED_14_MATH_MATCH_1_REJECTION_CATEGORY_MATCH",
   "indices": [
     75,
     76,
@@ -41,7 +42,10 @@
     106,
     107
   ],
-  "review_status": "SUBMIT_AFTER_EXACT_BUILD_HASH_AVAILABLE",
+  "review_job": "3833739",
+  "review_dependency": "afterany:3833718",
+  "review_status": "COMPLETED_56_CHECKER_TESTS_14_MATH_MATCH_1_REJECTION_CATEGORY_MATCH",
+  "review_sha256": "4a7f3cc2b77832f553977336912ca6dcb2fc6889fa48454f73d40e8dfd6ca98e",
   "scope": "Before endgame candidate3833612 plus unchanged E6 partial-Cayley regression. After changes only optional imaginary-II upward Cayley polynomial contributions to zero in nice-and-real recursion. Required downward links and all formulas unchanged. Original source/scripts/binary unchanged.",
   "acceptance": "Same exact E6 test must execute second-image failure before and pass after at integer/half scale; F4 coefficient/history and prior targeted suites must still pass; full original-backed differential and independent review mandatory. No whole-goal or resource/performance acceptance."
 }

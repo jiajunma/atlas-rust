@@ -1,0 +1,1 @@
+set_type MathDuplicate<T,T> = (T duplicate_fst,T duplicate_snd) !

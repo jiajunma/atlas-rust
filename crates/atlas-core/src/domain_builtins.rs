@@ -3140,76 +3140,6 @@ fn partial_block_finals_for(
     }
 }
 
-/// `Block_base::finals_for` (blocks.cpp:169-201): the survivors reached by
-/// descending through the singular generators' descents from `z`; empty
-/// when an ImaginaryCompact descent is met (the module vanishes).
-fn block_finals_for(
-    block: &BlockValue,
-    z: usize,
-    singular: u32,
-    kl_table: &KlTable<'_>,
-    span: SourceSpan,
-) -> Result<Vec<usize>, Diagnostic> {
-    let mut result = Vec::new();
-    let mut z = z;
-    let rank = kl_table.support().rank();
-    loop {
-        let mut descended = false;
-        for s in 0..rank {
-            if singular & (1 << s) == 0 {
-                continue;
-            }
-            match block.graph.descent_value(z, s) {
-                Some(BlockDescent::ImaginaryCompact) => {
-                    return Ok(Vec::new());
-                }
-                Some(BlockDescent::ComplexDescent) => {
-                    z = block
-                        .graph
-                        .cross(z, s)
-                        .ok_or_else(|| runtime(span, "finals cross"))?;
-                    descended = true;
-                    break;
-                }
-                Some(BlockDescent::RealTypeII) => {
-                    z = block
-                        .graph
-                        .inverse_cayley(z, s)
-                        .and_then(|pair| pair.0)
-                        .ok_or_else(|| runtime(span, "finals inverse Cayley"))?;
-                    descended = true;
-                    break;
-                }
-                Some(BlockDescent::RealTypeI) => {
-                    let pair = block
-                        .graph
-                        .inverse_cayley(z, s)
-                        .ok_or_else(|| runtime(span, "finals inverse"))?;
-                    match pair {
-                        (Some(z0), Some(z1)) => {
-                            result.extend(block_finals_for(block, z0, singular, kl_table, span)?);
-                            z = z1;
-                            descended = true;
-                            break;
-                        }
-                        (Some(z0), None) => {
-                            result.extend(block_finals_for(block, z0, singular, kl_table, span)?);
-                            return Ok(result);
-                        }
-                        (None, _) => {
-                            return Ok(result);
-                        }
-                    }
-                }
-                _ => {}
-            }
-        }
-        if !descended {
-            result.push(z);
-            return Ok(result);
-        }
-    }
-}
 
 /// The members of a parameter's common block: the fibred-product
 /// closure of the parameter's block element under all cross/Cayley/
@@ -5932,7 +5862,7 @@ fn simple_reflect_root_nbr(
 }
 
 /// RootSystem::reflection_word (rootdata.cpp:601-618): descend along the
-/// first descent until simple, then mirror the path.
+/// first descent until simple, then retrace it in reverse for conjugation.
 fn reflection_word(root_system: &RootSystem, numbering: &RootNumbering, nbr: usize) -> Vec<usize> {
     let datum = root_system.datum();
     let rank = datum.semisimple_rank();
@@ -5953,7 +5883,7 @@ fn reflection_word(root_system: &RootSystem, numbering: &RootNumbering, nbr: usi
         alpha = simple_reflect_root_nbr(root_system, numbering, s, alpha);
     }
     word.push(alpha - npos);
-    let mirror: Vec<usize> = word[..word.len() - 1].to_vec();
+    let mirror: Vec<usize> = word[..word.len() - 1].iter().rev().copied().collect();
     word.extend(mirror);
     word
 }
@@ -14849,9 +14779,9 @@ pub(crate) fn call_with_printed(
                 value: Box::new(make_polynomial(terms)),
             })
         }
-        // partial_KL_block (atlas-types.w:6998-7051, repr.cpp:2060-2075):
-        // the condensed KL matrix over the parameter's partial block
-        // survivors, plus the parameter and polynomial lists.
+        // partial_KL_block (atlas-types.w:7254-7300): locate the actual
+        // parameter, select its Bruhat downset in the potentially larger
+        // cached block, then condense at its singular infinitesimal character.
         "partial_KL_block" => {
             arity(name, arguments, 1, span)?;
             let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
@@ -14863,157 +14793,116 @@ pub(crate) fn call_with_printed(
                     ),
                 ));
             };
-            let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
-            let dual_quasisplit = dual_parent.order.quasisplit_external();
-            let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
-            let block = build_block(&parameter.context, &dual_rf, span)?;
-            let mut kl_table =
-                KlTable::new(&block.graph).map_err(|error| structure_diagnostic(error, span))?;
-            kl_table
-                .fill(0)
+            test_standard(
+                parameter,
+                "partial_KL_block requires a standard parameter",
+                span,
+            )?;
+            let located = parameter
+                .context
+                .rep
+                .lookup(&parameter.repr)
                 .map_err(|error| structure_diagnostic(error, span))?;
-            let size = block.graph.size();
-            let datum = parameter.context.parent.root_datum.datum.clone();
-            let rc = rep_context(&parameter.context);
-            let lambda_rho = rc
-                .lambda_rho(&parameter.repr)
-                .map_err(|error| structure_diagnostic(error, span))?;
-            let gamma = parameter.repr.gamma().clone();
-            let z0 = (0..size)
-                .find(|&z| block.graph.x(z) == Some(parameter.repr.x()))
-                .ok_or_else(|| runtime(span, "parameter not in the common block"))?;
-            // Partial block: the KL descent closure of z0 (block_below).
-            let mut subset: Vec<bool> = vec![false; size];
-            let mut stack = vec![z0];
-            subset[z0] = true;
-            while let Some(z) = stack.pop() {
-                let z_x = block.graph.x(z).expect("in-range");
-                for s in 0..datum.semisimple_rank() {
-                    match block.graph.descent_value(z, s) {
-                        Some(BlockDescent::ComplexDescent) => {
-                            if let Some(target) = block.graph.cross(z, s) {
-                                if !subset[target] {
-                                    subset[target] = true;
-                                    stack.push(target);
-                                }
-                            }
-                        }
-                        Some(BlockDescent::RealTypeI) => {
-                            let parity = rc
-                                .is_parity(s, z_x, &lambda_rho, &gamma)
-                                .map_err(|error| structure_diagnostic(error, span))?;
-                            if !parity {
-                                continue;
-                            }
-                            if let Some(pair) = block.graph.inverse_cayley(z, s) {
-                                for target in [pair.0, pair.1].into_iter().flatten() {
-                                    if !subset[target] {
-                                        subset[target] = true;
-                                        stack.push(target);
-                                    }
-                                }
-                            }
-                        }
-                        _ => {}
+            let raw_start = located.raw_row();
+            let block = located.block();
+            // A prior full/containing query may have enlarged this cache
+            // entry. Its entire row set is not this parameter's partial block.
+            let hasse = block_bruhat_hasse(block.as_ref());
+            let mut subset = vec![false; block.size()];
+            let mut stack = vec![raw_start];
+            subset[raw_start] = true;
+            while let Some(raw) = stack.pop() {
+                for &down in &hasse[raw] {
+                    if !subset[down] {
+                        subset[down] = true;
+                        stack.push(down);
                     }
                 }
             }
-            // Singular coroots: <gamma, alpha_s^vee> non-integral.
-            let mut singular = 0_u32;
-            for s in 0..datum.semisimple_rank() {
-                let coroot = &datum.simple_coroots()[s];
-                let numerator = gamma.numerator();
-                let _denominator = gamma.denominator();
-                let mut total: i64 = 0;
-                for (index, &coordinate) in coroot.as_slice().iter().enumerate() {
-                    if coordinate == 0 {
-                        continue;
-                    }
-                    let entry = numerator
-                        .get(index)
-                        .ok_or_else(|| runtime(span, "rational weight rank"))?;
-                    total += i64::from(coordinate) * *entry;
-                }
-                if total == 0 {
-                    singular |= 1 << s;
-                }
-            }
-            // Survivors in subset order (loc[z] = survivors.size()).
-            let mut loc = vec![usize::MAX; size];
-            let mut survivors: Vec<usize> = Vec::new();
-            for z in 0..size {
-                if !subset[z] {
-                    continue;
-                }
-                let mut survives = true;
-                for s in 0..datum.semisimple_rank() {
-                    if singular & (1 << s) != 0
-                        && block
-                            .graph
-                            .descent_value(z, s)
-                            .is_some_and(|d| d.is_descent())
-                    {
-                        survives = false;
-                        break;
-                    }
-                }
-                if survives {
-                    loc[z] = survivors.len();
-                    survivors.push(z);
-                }
+            let singular_flags = located_singular_flags(&parameter.context, &located)
+                .map_err(|error| structure_diagnostic(error, span))?;
+            let singular = singular_flags
+                .iter()
+                .enumerate()
+                .fold(0_u32, |bits, (s, &flag)| bits | (u32::from(flag) << s));
+            let survivors: Vec<usize> = (0..block.size())
+                .filter(|&raw| subset[raw] && block.survives(raw, &singular_flags))
+                .collect();
+            let mut loc = vec![usize::MAX; block.size()];
+            for (position, &raw) in survivors.iter().enumerate() {
+                loc[raw] = position;
             }
             let n = survivors.len();
-            // Condense the KL polynomials into M (atlas-types.w:6922-6948):
-            // M(loc[f], loc[y]) +=/-= KL_pol(x, y) over the finals of x.
-            let mut matrix: Vec<Vec<KlPol>> = vec![vec![KlPol::zero(); n]; n];
-            for x in 0..size {
-                for f in block_finals_for(&block, x, singular, &kl_table, span)? {
-                    let i = loc[f];
-                    if i == usize::MAX {
-                        continue;
-                    }
-                    let sign_even = block.graph.length(x).is_some_and(|lx| {
-                        (lx as i64 - block.graph.length(f).unwrap_or(0) as i64).rem_euclid(2) == 0
-                    });
-                    for (j, &y) in survivors.iter().enumerate() {
-                        let polynomial = kl_pol_at(&kl_table, x, y, span)?;
-                        if polynomial.is_zero() {
-                            continue;
+            let matrix = located
+                .with_kl_table(|kl_table| {
+                    kl_table.fill(0)?;
+                    let mut matrix = vec![vec![KlPol::zero(); n]; n];
+                    for raw_x in 0..block.size() {
+                        for final_raw in partial_block_finals_for(&block, raw_x, singular)? {
+                            let i = loc[final_raw];
+                            if i == usize::MAX {
+                                continue;
+                            }
+                            let raw_length = block.length(raw_x).ok_or(
+                                StructureError::RepInvariantViolation {
+                                    invariant: "common block KL source length",
+                                },
+                            )?;
+                            let final_length = block.length(final_raw).ok_or(
+                                StructureError::RepInvariantViolation {
+                                    invariant: "common block KL final length",
+                                },
+                            )?;
+                            let sign_even =
+                                (raw_length as i64 - final_length as i64).rem_euclid(2) == 0;
+                            for (j, &raw_y) in survivors.iter().enumerate() {
+                                if raw_y < raw_x || i >= j {
+                                    continue;
+                                }
+                                let index = kl_table.kl_pol(raw_x, raw_y)?;
+                                let polynomial = kl_table.pool().get(index).ok_or(
+                                    StructureError::RepInvariantViolation {
+                                        invariant: "representation KL polynomial pool index",
+                                    },
+                                )?;
+                                matrix[i][j] = if sign_even {
+                                    matrix[i][j].add(polynomial)
+                                } else {
+                                    matrix[i][j].sub(polynomial)
+                                };
+                            }
                         }
-                        if sign_even {
-                            matrix[i][j] = matrix[i][j].add(&polynomial);
-                        } else {
-                            matrix[i][j] = matrix[i][j].sub(&polynomial);
-                        }
                     }
-                }
-            }
-            // Distinct polynomials: the oracle's store starts with the zero
-            // polynomial at index 0.
-            let mut polys: Vec<KlPol> = vec![KlPol::zero()];
+                    Ok(matrix)
+                })
+                .map_err(|error| structure_diagnostic(error, span))?;
+            // Upstream's condensed store reserves zero and one before any
+            // strict-upper entry is interned; the matrix starts as identity.
+            let mut polys: Vec<KlPol> = vec![KlPol::zero(), KlPol::monomial(0)];
             let mut index_of: std::collections::HashMap<Vec<i32>, usize> =
                 std::collections::HashMap::new();
             index_of.insert(Vec::new(), 0);
+            index_of.insert(vec![1], 1);
             let mut index_matrix = vec![vec![0_usize; n]; n];
-            for row in 0..n {
-                for column in 0..n {
+            for (row, values) in index_matrix.iter_mut().enumerate() {
+                values[row] = 1;
+                for column in row + 1..n {
                     let coefficients = matrix[row][column].as_slice().to_vec();
                     let index = *index_of.entry(coefficients.clone()).or_insert_with(|| {
                         polys.push(matrix[row][column].clone());
                         polys.len() - 1
                     });
-                    index_matrix[row][column] = index;
+                    values[column] = index;
                 }
             }
             // Parameters of the survivors.
             let mut params = Vec::new();
-            for &z in &survivors {
-                let sr = rc
-                    .sr_gamma(block.graph.x(z).expect("in-range"), &lambda_rho, &gamma)
+            for &raw in &survivors {
+                let repr = located_row_parameter(&parameter.context, &located, raw)
                     .map_err(|error| structure_diagnostic(error, span))?;
                 params.push(Value::Domain(DomainValue::Param(ParamValue {
                     context: parameter.context.clone(),
-                    repr: sr,
+                    repr,
                 })));
             }
             let rows: Vec<Vec<i32>> = index_matrix

@@ -6,16 +6,23 @@ Current user objective now ALSO requires root-cause analysis and sequential
 repairs of discovered errors, recording reusable lessons in AGENTS/indexed docs.
 Do not stop at inventorying defects. All testing/builds remain HPC-only.
 
-LATEST ACTIVE WAVE: E6 imaginary-II Cayley repair at
+LATEST COMPLETED WAVE: E6 imaginary-II Cayley repair at
 /public/home/majj/atlas-math-cayley-repair-20260928.FFGcIkPi.
-Preflight3833713 PASS56 checker tests; build3833716 submitted and dependent
-15-case array3833718 submitted. Collect these exact jobs; independent review
-must be submitted after the exact build hash is available. Input pin
+Preflight3833713 PASS56 checker tests; build3833716 COMPLETE10:21 and
+15-case array3833718 terminal. Independent review3833739 COMPLETE16s,
+56 checker tests pass:14 complete mathematical matches and1 expected rejection.
+E6 core KL81 now matches every output byte; F4 history107 remains exact.
+Build SHA62aa96181c87d0ae816928dcbab37b5b7b448d1d1d00632106e28214319b2e63;
+review SHA4a7f3cc2b77832f553977336912ca6dcb2fc6889fa48454f73d40e8dfd6ca98e.
+Do not duplicate these jobs. Input pin
 545d1a3bf86d0d1a3871bdd41c6b041e5ee79727cae5d38088fb2eb2182a4c9a;
 review-code pin10478f30b2b00cd296abf3085b3abae638d97de47b86a62db00a7d5d406bae04.
 Before = endgame3833612 plus unchanged E6 regression; after changes ONLY
 optional upward imaginary-II Cayley polynomial terms to zero. Core
-4aa28dec...; KL beforef9226ab7.../aftera6d63837.... No after-pass yet.
+4aa28dec...; KL beforef9226ab7.../aftera6d63837.... Same before regression
+executes/fails, after passes at integer/half scale; all targeted unit suites
+and release build pass. Runtime acceptance is limited to retained cases,
+not all real forms, E7, high-level scripts or the full goal.
 Before probe3833624 actually executes/fails at second image, logging absent
 second images (e.g. x1282,s5,Some1344/None). Report SHA
 afda003dfd27b6fd88b99afad00c173c5ba002501e66a996255f37e050c6f11c.
@@ -37,9 +44,8 @@ paths, rejects duplicate/unsafe members and rechecks UNCHANGED original
 archives/builds/results. It lives in atlas-math-endgame-review-r2-20260928.PtUN9kig;
 do not mutate the original endgame stage. No interpreter rerun was needed.
 
-E6 coordinate review3833590 remains retained: all8 KGB cases match;
-the constructor error is gone, but E6 full KL is not accepted until the
-current deeper Cayley regression and complete oracle comparison pass.
+E6 coordinate review3833590 remains retained: all8 KGB cases match.
+The deeper Cayley regression and full E6 core comparison now pass3833739.
 FPP E7 resource/time limits and high-level generic-language gaps remain open.
 
 Next language frontier source audit: latest parser.y has ANY_TYPE command
@@ -49,6 +55,24 @@ Rust lex.rs still explicitly tests any_type as an ordinary identifier. The
 generic gap is not just one missing keyword. Preserve current oracle cases
 72-74; port scoping, type substitution and overload behavior with negative
 fixtures rather than rewriting upstream scripts. No language runtime edited.
+
+Generic contract capture3833740 COMPLETE27s,4 checker tests pass, at
+/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz.
+Pin eafd8bf29b7593bcf0e366a5b8245a1c1f573f9a1d937cd4924cadeb355636dc;
+report3333d195a2b86dd52a0d0a6623041e229e1918364855aa88f0ed81879b08ae01.
+Eleven separate positive/negative probes use unchanged build3833612.
+Original accepts nested pair, identity instances, result context and explicit
+operator scheme, but generic+concrete int overload call is AMBIGUOUS.
+Duplicate formal names are ACCEPTED, contrary to provisional fixture intent.
+Arity errors are explicit analysis rejections lacking a `Type error` label;
+the conservative capture calls them OTHER_FAILURE pending exact review.
+All original successes fail in Rust. Scope escape has syntax errors in both,
+but Rust fails the preceding declaration too; that is NOT equivalence.
+Next review raw streams, freeze evidence-backed expectations and extend the
+duplicate/substitution and overload cases before implementing type schemes.
+Initial8G submission created no job (CPU allowance now4G); overriding to2G
+completed the capture. Do not mutate the frozen capture or assume8G remains
+available. Receipt and raw paths are in tests/reference/hpc/math_generic_*.
 
 ### Earlier wave snapshots (superseded by latest results above)
 

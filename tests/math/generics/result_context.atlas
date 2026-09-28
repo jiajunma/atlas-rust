@@ -1,0 +1,6 @@
+any_type T begin
+set probe_empty()=[T]:[]
+end
+set probe_ints=[int]:probe_empty()
+set probe_rats=[rat]:probe_empty()
+prints("EMPTY",probe_ints,probe_rats)

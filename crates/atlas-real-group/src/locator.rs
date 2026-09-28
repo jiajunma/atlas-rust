@@ -29,7 +29,6 @@ use std::collections::{BTreeSet, HashMap};
 
 use crate::alcove::{checked_dot, root_vertex_of_alcove};
 use crate::partial_block::upstream_positive_root_order;
-use crate::root_system::combine_roots;
 use crate::{
     BasedRootDatum, RationalWeight, RootId, RootSystem, StructureError, Weight, WeylElement,
 };
@@ -549,12 +548,24 @@ fn reflect_numerator(
     Ok(())
 }
 
-/// `additive_closure<false>` (rootdata.cpp:685-707): close `generators`
-/// under negation and root sums.
+/// `additive_closure<true>` (rootdata.cpp:685-707): close `generators`
+/// under negation and coroot sums. The template defaults to `true` in
+/// rootdata.h:131; integral coroots need not be closed under root addition.
 fn additive_closure(
     system: &RootSystem,
     generators: &BTreeSet<RootId>,
 ) -> Result<BTreeSet<RootId>, StructureError> {
+    // Borrow the existing coroot coordinates; the index owns no copies of
+    // those vectors and avoids a full-system scan for every candidate sum.
+    let mut coroot_ids = HashMap::new();
+    coroot_ids.try_reserve(system.roots().len()).map_err(|_| {
+        StructureError::AllocationFailed {
+            requested: system.roots().len(),
+        }
+    })?;
+    for (id, _, coroot) in system.entries() {
+        coroot_ids.insert(coroot.as_slice(), id);
+    }
     let mut closure = generators.clone();
     let mut negatives = Vec::new();
     negatives.try_reserve_exact(generators.len()).map_err(|_| {
@@ -566,12 +577,26 @@ fn additive_closure(
         negatives.push(negate_root(system, id)?);
     }
     closure.extend(negatives);
+    let mut coordinates = Vec::new();
+    coordinates.try_reserve_exact(system.lattice_rank()).map_err(|_| {
+        StructureError::AllocationFailed { requested: system.lattice_rank() }
+    })?;
     loop {
         let members: Vec<RootId> = closure.iter().copied().collect();
         let mut grew = false;
         for left in 0..members.len() {
             for right in (left + 1)..members.len() {
-                if let Some(sum) = combine_roots(system, members[left], members[right], false)? {
+                let a = system.coroot(members[left]).ok_or(StructureError::IndexOutOfRange {
+                    index: members[left].index(), upper_bound: system.roots().len(),
+                })?;
+                let b = system.coroot(members[right]).ok_or(StructureError::IndexOutOfRange {
+                    index: members[right].index(), upper_bound: system.roots().len(),
+                })?;
+                coordinates.clear();
+                for (&a, &b) in a.as_slice().iter().zip(b.as_slice()) {
+                    coordinates.push(a.checked_add(b).ok_or(StructureError::ArithmeticOverflow)?);
+                }
+                if let Some(&sum) = coroot_ids.get(coordinates.as_slice()) {
                     grew |= closure.insert(sum);
                 }
             }

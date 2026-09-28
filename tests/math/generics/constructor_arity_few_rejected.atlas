@@ -1,0 +1,2 @@
+set_type MathArityPair<S,T> = (S arity_fst,T arity_snd) !
+set probe_bad=MathArityPair<int>:(2,3)

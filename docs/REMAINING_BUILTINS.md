@@ -2,14 +2,17 @@
 
 ## Mathematical validation against latest original — 2026-09-28
 
-CURRENT: F4 endgame build3833612 and corrected review3833712 COMPLETE:
-13mathmatches/1rejection/1E6 failure. F4 case107's full coefficients now
-match the original, not just its matrix. Before/after coefficient regression
-also passes. First review3833635 was a retained archive-path harness failure.
-E6 Cayley probe3833624 executes the second-image panic; candidate preflight
-3833713 passes56checks, build3833716 and array3833718 submitted at
-atlas-math-cayley-repair-20260928.FFGcIkPi. Collect them; no after-pass yet.
-Do not duplicate jobs. See the latest HANDOFF and exact submission receipts.
+CURRENT: E6 Cayley build3833716 and independent review3833739 COMPLETE:
+14mathmatches/1rejection across15 retained cases, including complete E6 core
+KL and F4 history coefficients. Unchanged E6 regression executes/fails before
+and passes after at integer/half scale. All targeted units and release pass.
+Do not duplicate completed jobs; see HANDOFF and exact submission receipts.
+High-level language prerequisite capture3833740 now has11 isolated probes:
+four intended positives pass original, generic/concrete overload is ambiguous,
+and duplicate formals are accepted despite the initial rejection hypothesis.
+Rust fails every original-positive case. Freeze actual contracts before porting
+scoped variables/substitution/overload resolution; do not rewrite basic.at.
+All E7/resource, broader group/real-form and upper-level mathematics gates remain.
 
 The following records preserve the earlier progression.
 

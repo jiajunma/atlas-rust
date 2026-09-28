@@ -1,0 +1,4 @@
+any_type T begin
+set probe_choose(T x,T y)=T:x
+end
+prints("BAD",probe_choose(2,"abc"))

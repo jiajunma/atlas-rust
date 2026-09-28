@@ -1,0 +1,3 @@
+set probe_append = #@ T ([[T]],[T])
+prints("APPEND",probe_append([[1]],[2,3]))
+prints("APPEND_STRING",probe_append([["a"]],["b","c"]))

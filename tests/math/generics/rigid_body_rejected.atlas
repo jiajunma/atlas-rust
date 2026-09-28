@@ -1,0 +1,3 @@
+any_type T begin
+set probe_bad(T x)=T:1
+end

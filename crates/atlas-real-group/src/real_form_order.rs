@@ -278,11 +278,12 @@ impl DepthTables {
     }
 }
 
-/// Verify the port-side coordinate parity the complement trick rides on:
-/// every adjoint-fiber basis bit must flip exactly ONE simple-imaginary
-/// position whose root is a twist-fixed SIMPLE generator of the datum, the
-/// induced map must be injective, and it must cover every twist-fixed
-/// generator. Returns the generator index per adjoint bit.
+/// Verify the coordinates required by the partition `specialGrading`
+/// complement/unslice operation. At a distinguished diagram involution,
+/// exchanged coweight coordinates vanish in the fiber quotient, leaving
+/// the fixed fundamental-coweight unit vectors in ascending generator order.
+/// A grading shift can flip several imaginary-subsystem simple roots, some
+/// nonsimple in the ambient datum; their positions are not fiber coordinates.
 fn verified_generator_map(
     inner_class: &InnerClass,
     grading: &CartanGradingData,
@@ -302,7 +303,8 @@ fn verified_generator_map(
             fixed_generators.insert(generator);
         }
     }
-    let dimension = grading.adjoint_fiber().dimension();
+    let adjoint = grading.adjoint_fiber();
+    let dimension = adjoint.dimension();
     if dimension != fixed_generators.len() {
         return Err(StructureError::RealFormOrderInvariantViolation {
             invariant: "twist-fixed coordinate count",
@@ -310,39 +312,20 @@ fn verified_generator_map(
     }
 
     let mut generator_of_bit = try_capacity(dimension)?;
-    let mut seen = BTreeSet::new();
-    for bit in 0..dimension {
-        let shift =
-            grading
-                .grading_shift(bit)
-                .ok_or(StructureError::RealFormOrderInvariantViolation {
-                    invariant: "grading shift",
-                })?;
-        // The oracle's shifts are coroot·root parities (realredgp.cpp:277-280)
-        // and can flip more than one simple-imaginary position (e.g. the
-        // A3 dual's single fiber bit). The tiebreak key only needs one
-        // representative generator, so take the first flipped position.
-        let mut flipped = shift.noncompact_indices();
-        let position = flipped
-            .next()
-            .ok_or(StructureError::RealFormOrderInvariantViolation {
-                invariant: "empty grading shift",
-            })?;
-        let root = grading.imaginary_simple_root(position).ok_or(
-            StructureError::RealFormOrderInvariantViolation {
-                invariant: "grading shift",
-            },
-        )?;
-        let generator = (0..semisimple_rank)
-            .find(|&candidate| {
-                root_system
-                    .root(root)
-                    .is_some_and(|weight| weight == &datum.simple_roots()[candidate])
-            })
+    for (bit, &generator) in fixed_generators.iter().enumerate() {
+        let representative = adjoint
+            .basis_representatives()
+            .get(bit)
             .ok_or(StructureError::RealFormOrderInvariantViolation {
                 invariant: "twist-fixed generator coordinate",
             })?;
-        if !fixed_generators.contains(&generator) || !seen.insert(generator) {
+        // Check the actual ordered basis, not just an abstract bijection:
+        // special_grading_key also compares numeric masks in this order.
+        if representative.dimension() != semisimple_rank
+            || (0..semisimple_rank).any(|coordinate| {
+                representative.bit(coordinate) != Some(coordinate == generator)
+            })
+        {
             return Err(StructureError::RealFormOrderInvariantViolation {
                 invariant: "twist-fixed generator coordinate",
             });

@@ -1,0 +1,4 @@
+any_type T begin
+set probe_local(T x)=T:x
+end
+set probe_escape(T x)=x

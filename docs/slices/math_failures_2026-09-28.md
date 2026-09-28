@@ -6,6 +6,15 @@ normalize away the differences or modify the frozen original scripts.
 
 ## Latest F4 coefficient and E6 recursion frontier
 
+Resolved on retained inputs: build3833716 and independent review3833739
+verify14 complete mathematical matches and1 expected rejection. In particular
+E6 core KL now agrees in every parameter, matrix entry and polynomial; F4
+history remains exact. The unchanged E6 unit fails before and passes after,
+and only optional upward imaginary-II terms are zeroed. Required downward
+links remain checked. The diagnoses below preserve the before-failure history;
+they do not imply these cases are still pending, or that broader E7/high-level
+mathematical coverage is complete.
+
 F4 original-backed regression3833589 executes and fails in BOTH cold-full
 and partial/full history contexts: P(4,334) is[0,0,4,6,5,3] instead of
 [0,0,2,3,3,2]. This refutes a history-only explanation. Preserve the test

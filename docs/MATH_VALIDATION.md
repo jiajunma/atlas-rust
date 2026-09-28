@@ -49,6 +49,28 @@ cases with easier inputs under the same ID.
 
 ## Repair candidates (not remote main)
 
+Latest candidate3833716 is independently reviewed by3833739:
+14 complete mathematical matches and1 expected rejection across15 cases.
+This includes A2/B2/C2/D4/G2/F4/E6 core KL, D4 FPP wall, partial-KL
+history/containment, compact-A1 nonstandard rejection and full F4 history.
+The same E6 missing-Cayley regression executes/fails before and passes after
+at integer/half scale; prior targeted units and release build pass.
+Build SHA62aa96181c87d0ae816928dcbab37b5b7b448d1d1d00632106e28214319b2e63;
+review SHA4a7f3cc2b77832f553977336912ca6dcb2fc6889fa48454f73d40e8dfd6ca98e.
+E6 observed0.8952s/77364KiB original versus1.5082s/135536KiB Rust;
+F4 history0.1811s/9440KiB versus2.1913s/22816KiB. These are single-shot
+small-case timings, not minute-scale repeated speedup benchmarks.
+Scoped correctness fixes can be retained; the complete user objective is open.
+
+Generic capture3833740 records11 independent language probes with time/RSS.
+It disproves concrete-overload preference and duplicate-formal rejection
+hypotheses. Original accepts5 probes; Rust accepts none. Arity diagnostics
+need exact contract review, and equal syntax labels alone are not acceptance.
+High-level unitarity/Hodge/AV/associated-cycle coverage is still blocked by
+latest basic.at, not repaired by the bare-core KL successes above.
+
+Earlier candidate progression (superseded only for the cases covered above):
+
 F4 endgame candidate3833612 now has unchanged-unit before-failure/after-pass
 AND complete retained original-backed history equality. Corrected independent
 review3833712 verifies13mathmatches/1rejection/1E6 failure across15cases,

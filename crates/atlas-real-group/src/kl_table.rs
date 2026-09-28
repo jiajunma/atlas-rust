@@ -262,7 +262,6 @@ impl<B: BlockTopology> KlTableHandle<B> {
         }
 
         for &x in &extremals {
-            let sx = self.support.block().cross(x, s).expect("cross of extremal");
             let value = self.support.block().descent(x, s).expect("valid generator");
             let pxy = match value {
                 BlockDescent::ImaginaryCompact => {
@@ -272,6 +271,11 @@ impl<B: BlockTopology> KlTableHandle<B> {
                 }
                 BlockDescent::ComplexDescent => {
                     // P_{sx,sy} + q.P_{x,sy}
+                    let sx = self
+                        .support
+                        .block()
+                        .cross(x, s)
+                        .expect("complex descent cross inside interval");
                     let first = self.kl_pol_pool(sx, sy)?;
                     let second = self.kl_pol_pool(x, sy)?;
                     first.add_shifted(&second, 1)
@@ -316,7 +320,14 @@ impl<B: BlockTopology> KlTableHandle<B> {
                     };
                     let first = self.kl_pol_pool(first_image, sy)?;
                     let second = self.kl_pol_pool(x, sy)?;
-                    let third = self.kl_pol_pool(sx, sy)?;
+                    // A real-II cross need not lie below the partial block's
+                    // top (blocks.cpp, partial common_block constructor).
+                    // Upstream KL_pol(UndefBlock, sy) is zero. This does not
+                    // relax the required complex/Cayley descent links.
+                    let third = match self.support.block().cross(x, s) {
+                        Some(sx) => self.kl_pol_pool(sx, sy)?,
+                        None => KlPol::zero(),
+                    };
                     first.add_shifted(&second, 1).sub(&third)
                 }
                 _ => {
@@ -546,8 +557,12 @@ impl<B: BlockTopology> KlTableHandle<B> {
                     }
                     BlockDescent::ImaginaryTypeII => {
                         let pair = self.support.block().cayley(x, s).expect("cayley");
-                        let sum = kl_y(working, pair.0.expect("first image"))
-                            .add(&kl_y(working, pair.1.expect("second image")));
+                        // Either upward image may leave a partial block.
+                        // Original KL_y maps UndefBlock through prim_index's
+                        // zero sentinel (klsupport.h:102-105; kl.cpp:646-648).
+                        let first = pair.0.map_or_else(KlPol::zero, |z| kl_y(working, z));
+                        let second = pair.1.map_or_else(KlPol::zero, |z| kl_y(working, z));
+                        let sum = first.add(&second);
                         pxy = pxy.add(&sum);
                         pxy = pxy.sub_shifted(&sum, 1, 1);
                         pxy = pxy.divide_by_2()?;
@@ -653,9 +668,11 @@ impl<B: BlockTopology> KlTableHandle<B> {
             let dy_s = self.support.block().descent(y, s)?;
             let dx_s = self.support.block().descent(x, s)?;
             if dy_s == BlockDescent::RealNonparity && dx_s == BlockDescent::ImaginaryTypeI {
-                let sx = self.support.block().cross(x, s)?;
-                let dsx = self.support.block().descent(sx, s)?;
-                let _ = dsx;
+                // Only an undefined cross image makes the second generator
+                // unnecessary: its polynomial is zero outside a partial block.
+                let Some(sx) = self.support.block().cross(x, s) else {
+                    return Some((s, None));
+                };
                 for t in 0..r {
                     let dy_t = self.support.block().descent(y, t)?;
                     if dy_t != BlockDescent::RealTypeII {
@@ -669,7 +686,8 @@ impl<B: BlockTopology> KlTableHandle<B> {
                         return Some((s, Some(t)));
                     }
                 }
-                return Some((s, None));
+                // A defined cross needs a suitable t. If none exists for this
+                // s, continue the outer search (kl.cpp:318-340).
             }
         }
         None

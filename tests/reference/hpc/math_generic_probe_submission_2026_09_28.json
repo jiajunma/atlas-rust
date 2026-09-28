@@ -1,0 +1,23 @@
+{
+  "schema": "atlas-generic-contract-probe-submission-v1",
+  "stage": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz",
+  "probe_sha256": "eafd8bf29b7593bcf0e366a5b8245a1c1f573f9a1d937cd4924cadeb355636dc",
+  "job": "3833740",
+  "status": "COMPLETED_CAPTURE_REQUIRES_CONTRACT_REVIEW",
+  "report_sha256": "3333d195a2b86dd52a0d0a6623041e229e1918364855aa88f0ed81879b08ae01",
+  "checker_tests": 4,
+  "findings": "Original accepts four intended positive cases and duplicate_formals_rejected; concrete_overload is ambiguous, not concrete-preferred. Arity errors have no literal Type error label and need precise classification. Rust rejects every positive. Equal syntax labels for scope escape do not establish equivalent error locations or successful preceding declarations.",
+  "partition": "cpu",
+  "memory_override": "2G",
+  "previous_submission": {
+    "job_created": false,
+    "requested_memory": "8G",
+    "reason": "Scheduler rejected 8.0GB: current cpu allowance is 4.0GB per node. No test executed; retry overrides memory to 2G without changing frozen inputs."
+  },
+  "build": "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/build.json",
+  "build_sha256": "e2ce570826277bf24377b4e0b627f071f264c8ff8144ae789d04c9692e448b8f",
+  "cases": 11,
+  "provisional_accept_cases": 5,
+  "provisional_reject_cases": 6,
+  "scope": "Discover latest-original generic language contracts with complete raw streams, timings and RSS, source/binary rehash and compute-node checker tests. No generic runtime implementation or feature acceptance; inspect oracle outputs before finalizing expectations."
+}

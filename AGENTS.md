@@ -91,6 +91,30 @@ not a source-level C++ translation.
 
 ## Verified repair guard
 
+### Missing upward Cayley images have a zero polynomial, not a missing descent
+
+- E6 probe3833624 and build3833716's unchanged before test execute the
+  imaginary-II `second image` panic. A partial block can contain only one
+  upward Cayley image; original KL_y(UndefBlock) resolves to its zero slot.
+- Preserve required downward links. Only optional upward imaginary-II
+  contributions are zeroed. The same integer/half-scale test passes after;
+  independent review3833739 verifies complete E6 KL output and retained
+  F4 coefficient/history cases (14 mathematical matches,1 rejection).
+  This does not establish general associated-cycle or E7 correctness.
+
+### Discover polymorphic contracts instead of assuming conventional rules
+
+- Current-original capture3833740 rejects an int call ambiguous between a
+  generic identity and a concrete int overload; do not assume the concrete
+  overload wins. It also ACCEPTS duplicate type formal names. Preserve the
+  discovery inputs and investigate substitution before imposing uniqueness.
+- Constructor-arity rejection lacks the literal `Type error` heading.
+  Bind rejection expectations to the actual diagnostic and failing command;
+  a Rust syntax error before the declaration is not a matching type rejection.
+- CPU submission for that capture rejected8GiB and reported a4GiB allowance.
+  The same small capture completed with a2GiB CLI override. Old8GiB notes
+  are historical, not a guarantee of current partition policy.
+
 ### Compare archive paths in extracted-tree coordinates
 
 - Review3833635 failed before examining mathematics: tar stored ./crates/...

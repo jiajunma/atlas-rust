@@ -1,0 +1,72 @@
+{
+  "schema": "atlas-generic-language-probes-v1",
+  "scope": "Latest-original contract discovery for high-level mathematical script loading. Intent is provisional until the exact oracle output is inspected; no blanket rejection equivalence or mathematical acceptance.",
+  "cases": [
+    {
+      "id": "pair_nested",
+      "intent": "accept",
+      "scope": "Generic constructors substitute nested row/tuple arguments and preserve projectors.",
+      "file": "pair_nested.atlas"
+    },
+    {
+      "id": "identity_instances",
+      "intent": "accept",
+      "scope": "One scoped generic function supports independent int/rat/row instantiations.",
+      "file": "identity_instances.atlas"
+    },
+    {
+      "id": "result_context",
+      "intent": "accept",
+      "scope": "A return-only type variable is instantiated from an explicit result context.",
+      "file": "result_context.atlas"
+    },
+    {
+      "id": "concrete_overload",
+      "intent": "accept",
+      "scope": "A concrete overload and a polymorphic overload coexist; record actual preference.",
+      "file": "concrete_overload.atlas"
+    },
+    {
+      "id": "explicit_operator_scheme",
+      "intent": "accept",
+      "scope": "The generic overload-cast form used by latest basic.at's append definition.",
+      "file": "explicit_operator_scheme.atlas"
+    },
+    {
+      "id": "rigid_body_rejected",
+      "intent": "reject",
+      "scope": "An arbitrary fixed T cannot be equated to int while checking a generic body.",
+      "file": "rigid_body_rejected.atlas"
+    },
+    {
+      "id": "mixed_same_type_rejected",
+      "intent": "reject",
+      "scope": "Repeated occurrences of one T must agree; string cannot satisfy an int instantiation.",
+      "file": "mixed_same_type_rejected.atlas"
+    },
+    {
+      "id": "constructor_arity_few_rejected",
+      "intent": "reject",
+      "scope": "Two-parameter constructor applied to one argument must be rejected.",
+      "file": "constructor_arity_few_rejected.atlas"
+    },
+    {
+      "id": "constructor_arity_many_rejected",
+      "intent": "reject",
+      "scope": "Two-parameter constructor applied to three arguments must be rejected.",
+      "file": "constructor_arity_many_rejected.atlas"
+    },
+    {
+      "id": "scope_escape_rejected",
+      "intent": "reject",
+      "scope": "A formal type name must not survive the end of an any_type scope.",
+      "file": "scope_escape_rejected.atlas"
+    },
+    {
+      "id": "duplicate_formals_rejected",
+      "intent": "reject",
+      "scope": "Duplicate formal type names must not silently alias two independent variables.",
+      "file": "duplicate_formals_rejected.atlas"
+    }
+  ]
+}

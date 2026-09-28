@@ -1,0 +1,5 @@
+any_type T begin
+set probe_select(T x)=T:x
+end
+set probe_select(int x)=int:x+1
+prints("SELECT",probe_select(2),probe_select(3/4),probe_select("abc"))

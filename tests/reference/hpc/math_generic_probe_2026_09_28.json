@@ -1,0 +1,1267 @@
+{
+  "binary_pins": {
+    "oracle": {
+      "path": "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas",
+      "sha256": "093066582e908115022188debf348f77535e10cc7bfb2e06bb32ee5b3a03b71b"
+    },
+    "rust": {
+      "path": "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli",
+      "sha256": "52575708587d568aa6bd58c4f0dddffa927aa6fdd0d97487de031d65bc74aa14"
+    }
+  },
+  "cases": [
+    {
+      "case": {
+        "file": "pair_nested.atlas",
+        "fixture_sha256": "8bfcfc34530c105cb352b60753ab0891394087e553c0776bdaea7b3cb730b5b8",
+        "id": "generic_pair_nested",
+        "intent": "accept",
+        "scope": "Generic constructors substitute nested row/tuple arguments and preserve projectors.",
+        "source_sha256": "3643e9b6fb0d932024703ab97383e98cbafc95caa5cdbf2e9b913b2f0ad2de71"
+      },
+      "categories": {
+        "oracle": "ACCEPTED",
+        "rust": "REJECTED_NAME+SYNTAX"
+      },
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at <stdin>:2:24: syntax error, unexpected $undefined",
+          "  | set_type MathNestedPair<S,T> = (S probe_fst,T probe_snd) !",
+          "  |                        ^",
+          "Syntax error at <stdin>:3:29: syntax error, unexpected ']'",
+          "  | set np = MathNestedPair<[int],(rat,bool)>:([2,3],(3/4,true))",
+          "  |                             ^",
+          "Name error at <stdin>:4:15: Undefined identifier 'np'",
+          "  | prints(\"PAIR\",np)",
+          "  |               ^^",
+          "Name error at <stdin>:5:17: Undefined identifier 'probe_fst'",
+          "  | prints(\"FIELDS\",np.probe_fst,np.probe_snd)",
+          "  |                 ^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 838,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_pair_nested/oracle.metrics",
+              "sha256": "0102630b3db345bcae5e925c8c213193374d9309dfcd0654deb5d8c169e1b40d"
+            },
+            "stderr": {
+              "bytes": 0,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_pair_nested/oracle.stderr",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "stdout": {
+              "bytes": 241,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_pair_nested/oracle.stdout",
+              "sha256": "25663e19723c8ca43e23002ed17049164f46b4cde569ee00d45575d7342aa7fa"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_pair_nested/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3580,
+          "resource_limit_gib": 6,
+          "seconds": 0.046925863018259406,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 887,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_pair_nested/rust.metrics",
+              "sha256": "0e9c1ffc403e7b0f2b14935a3a2f738020a7f28d0481e60fabad269b6f4234d7"
+            },
+            "stderr": {
+              "bytes": 554,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_pair_nested/rust.stderr",
+              "sha256": "c3458f55e252cc1946ee11c8f2e2ad95655b3239d7bce8b7442d4c37188e6446"
+            },
+            "stdout": {
+              "bytes": 65,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_pair_nested/rust.stdout",
+              "sha256": "ee799a9ff72f5c601b21c377aababd5176630f58bfd8cf5646c763aac5859e50"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_pair_nested/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5456,
+          "resource_limit_gib": 6,
+          "seconds": 0.07820801495108753,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    },
+    {
+      "case": {
+        "file": "identity_instances.atlas",
+        "fixture_sha256": "04eea5c53fb3bf494ad60a2590d4e4fb40059636f1527c4ccb53472d34b87d3d",
+        "id": "generic_identity_instances",
+        "intent": "accept",
+        "scope": "One scoped generic function supports independent int/rat/row instantiations.",
+        "source_sha256": "db0b24187497f235510f2b55641c05aa84cc5e895a6d295d821143190774e0f4"
+      },
+      "categories": {
+        "oracle": "ACCEPTED",
+        "rust": "REJECTED_NAME+SYNTAX"
+      },
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at <stdin>:2:10: syntax error, unexpected IDENT",
+          "  | any_type T begin",
+          "  |          ^",
+          "Name error at <stdin>:5:20: Undefined identifier 'probe_id'",
+          "  | prints(\"INSTANCES\",probe_id(7),probe_id(3/4),probe_id([2,3]))",
+          "  |                    ^^^^^^^^^^^",
+          "Name error at <stdin>:6:17: Undefined identifier 'probe_id'",
+          "  | prints(\"NESTED\",probe_id([[2],[3,4]]))",
+          "  |                 ^^^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 838,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_identity_instances/oracle.metrics",
+              "sha256": "acafbc378569aec1bd750e88003ff8c7ffeb5137726866e4e763639f38598239"
+            },
+            "stderr": {
+              "bytes": 0,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_identity_instances/oracle.stderr",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "stdout": {
+              "bytes": 141,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_identity_instances/oracle.stdout",
+              "sha256": "2a86f6a2792fb3ce7e4ad1c4d70418d55b694847dd8faefbb2e3b069dfa8eaf8"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_identity_instances/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3588,
+          "resource_limit_gib": 6,
+          "seconds": 0.042552502010948956,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 888,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_identity_instances/rust.metrics",
+              "sha256": "dc6d64599ead28b5ebbdcfcb08e0544e2b980f2458d0100ba95ac251aa82c326"
+            },
+            "stderr": {
+              "bytes": 403,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_identity_instances/rust.stderr",
+              "sha256": "3d32931fbfc9c40d80015c69e293b1b1ece19008fc37a7fb7dcc3d634ece51a8"
+            },
+            "stdout": {
+              "bytes": 79,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_identity_instances/rust.stdout",
+              "sha256": "55133845c86e10e5671c33d5fc42ee142f1c1483319856fc7f206ef95d81beff"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_identity_instances/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5448,
+          "resource_limit_gib": 6,
+          "seconds": 0.07301757001550868,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    },
+    {
+      "case": {
+        "file": "result_context.atlas",
+        "fixture_sha256": "2f7a12b2e33b80d9ed752a98389b5e9ddccd718fe53bdbc5c4f89599085feb2d",
+        "id": "generic_result_context",
+        "intent": "accept",
+        "scope": "A return-only type variable is instantiated from an explicit result context.",
+        "source_sha256": "415a2063d279be524db62d02c091880b099cdde92ba2e061e4ab06a887ed7126"
+      },
+      "categories": {
+        "oracle": "ACCEPTED",
+        "rust": "REJECTED_NAME+SYNTAX"
+      },
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at <stdin>:2:10: syntax error, unexpected IDENT",
+          "  | any_type T begin",
+          "  |          ^",
+          "Name error at <stdin>:5:22: Undefined identifier 'probe_empty'",
+          "  | set probe_ints=[int]:probe_empty()",
+          "  |                      ^^^^^^^^^^^^^",
+          "Name error at <stdin>:6:22: Undefined identifier 'probe_empty'",
+          "  | set probe_rats=[rat]:probe_empty()",
+          "  |                      ^^^^^^^^^^^^^",
+          "Name error at <stdin>:7:16: Undefined identifier 'probe_ints'",
+          "  | prints(\"EMPTY\",probe_ints,probe_rats)",
+          "  |                ^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 838,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_result_context/oracle.metrics",
+              "sha256": "a31d14e2c13d0e18c7866c0dc802bf123123d020cf4f3e4ec011e4212d158d23"
+            },
+            "stderr": {
+              "bytes": 0,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_result_context/oracle.stderr",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "stdout": {
+              "bytes": 164,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_result_context/oracle.stdout",
+              "sha256": "a80d55464fa2826502b7b3ef375b70316f2a2ac25a2beb29e0cd1ec768133882"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_result_context/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3540,
+          "resource_limit_gib": 6,
+          "seconds": 0.06414742098422721,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 888,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_result_context/rust.metrics",
+              "sha256": "dc91e459783ac89179e2b861f4ed4c58e6f1da1a17ba0f4d0a9da0f3b89ca4da"
+            },
+            "stderr": {
+              "bytes": 513,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_result_context/rust.stderr",
+              "sha256": "2fc78b6c6726300b84da6ffcf78dd82e944ccf9a98efb634f0c3e644377c5d44"
+            },
+            "stdout": {
+              "bytes": 71,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_result_context/rust.stdout",
+              "sha256": "b371e547dd4e095d41631c07551935d7425434ef8818fcd89f96c0adf35c092b"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_result_context/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5480,
+          "resource_limit_gib": 6,
+          "seconds": 0.05107357999077067,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    },
+    {
+      "case": {
+        "file": "concrete_overload.atlas",
+        "fixture_sha256": "7b459a4ae989b8d6964698ae5e2272aa01ca98a6e0614b56d5e0099a33d6505a",
+        "id": "generic_concrete_overload",
+        "intent": "accept",
+        "scope": "A concrete overload and a polymorphic overload coexist; record actual preference.",
+        "source_sha256": "7fcc5e73cc7e14b5797b66f402bd21e42bf922fca83ea516619d9739cda69759"
+      },
+      "categories": {
+        "oracle": "REJECTED_PROGRAM",
+        "rust": "REJECTED_SYNTAX+TYPE"
+      },
+      "first_diagnostics": {
+        "oracle": [
+          "Error in expression probe_select(2) at <standard input>:6:16-31",
+          "  Ambiguous argument in function call, argument type int matches both A and int",
+          "Program error: Expression analysis failed",
+          "Evaluation aborted."
+        ],
+        "rust": [
+          "Syntax error at <stdin>:2:10: syntax error, unexpected IDENT",
+          "  | any_type T begin",
+          "  |          ^",
+          "Type error at <stdin>:6:33: found rat while int was needed.",
+          "  | prints(\"SELECT\",probe_select(2),probe_select(3/4),probe_select(\"abc\"))",
+          "  |                                 ^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 876,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_concrete_overload/oracle.metrics",
+              "sha256": "898eca4ff100696cd345f585cd0a4590e82079147fd99d4ca7b088d078954d5a"
+            },
+            "stderr": {
+              "bytes": 206,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_concrete_overload/oracle.stderr",
+              "sha256": "1864b3e1f1da9d5b8ff02b48a2153da0eacfc37c0bb73f3b52bcdf62fb1b08c4"
+            },
+            "stdout": {
+              "bytes": 155,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_concrete_overload/oracle.stdout",
+              "sha256": "4ac566a5033d4d6fdb650eca4a5695e0f75be8c19190e4870b0bf9ddf6fc413d"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_concrete_overload/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3692,
+          "resource_limit_gib": 6,
+          "seconds": 0.06478948902804404,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 888,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_concrete_overload/rust.metrics",
+              "sha256": "c9a17d001fa4396bf5d044b810d71ff153ace0258be720f37c04f85aad31647e"
+            },
+            "stderr": {
+              "bytes": 286,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_concrete_overload/rust.stderr",
+              "sha256": "9f28647aa318bded96860511ff5e9b423cfc573f744b928cfead0043791979e8"
+            },
+            "stdout": {
+              "bytes": 110,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_concrete_overload/rust.stdout",
+              "sha256": "9b3fccbf02996c445d0c0bf6d4e7f5ddada6338cc94a6c0b4e11ecaec16d828e"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_concrete_overload/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5564,
+          "resource_limit_gib": 6,
+          "seconds": 0.05271293403347954,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": false
+    },
+    {
+      "case": {
+        "file": "explicit_operator_scheme.atlas",
+        "fixture_sha256": "c3670e09e1b9678f50d6221f92e04a5854c103f44b8a9ed14c111e5a0e2fe1d4",
+        "id": "generic_explicit_operator_scheme",
+        "intent": "accept",
+        "scope": "The generic overload-cast form used by latest basic.at's append definition.",
+        "source_sha256": "0a986e8e9567ae28b9a54f19ed9d6d2ad6021730eb259fd92ebcc4f8816bea85"
+      },
+      "categories": {
+        "oracle": "ACCEPTED",
+        "rust": "REJECTED_NAME+SYNTAX"
+      },
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at <stdin>:2:21: syntax error, unexpected $undefined",
+          "  | set probe_append = #@ T ([[T]],[T])",
+          "  |                     ^",
+          "Name error at <stdin>:3:17: Undefined identifier 'probe_append'",
+          "  | prints(\"APPEND\",probe_append([[1]],[2,3]))",
+          "  |                 ^^^^^^^^^^^^^^^^^^^^^^^^^",
+          "Name error at <stdin>:4:24: Undefined identifier 'probe_append'",
+          "  | prints(\"APPEND_STRING\",probe_append([[\"a\"]],[\"b\",\"c\"]))",
+          "  |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 838,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_explicit_operator_scheme/oracle.metrics",
+              "sha256": "533530d7871092a7912424d9e7db5dcd17339433d99f414e1dd722d7327c52ed"
+            },
+            "stderr": {
+              "bytes": 0,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_explicit_operator_scheme/oracle.stderr",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "stdout": {
+              "bytes": 181,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_explicit_operator_scheme/oracle.stdout",
+              "sha256": "3cad23a93891689b504f55252198acd556e4148b1ea954bbd1629895c39b0e18"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_explicit_operator_scheme/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3544,
+          "resource_limit_gib": 6,
+          "seconds": 0.05126670701429248,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 888,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_explicit_operator_scheme/rust.metrics",
+              "sha256": "a0cfef098105b0e45d8d1d3841ca78fa7835a67c1cf9a8ffe6a88b98522f7cb1"
+            },
+            "stderr": {
+              "bytes": 472,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_explicit_operator_scheme/rust.stderr",
+              "sha256": "ea079d7baf6bfdc7cecc068a71f65579ccd35a3e2dfd2f25a7a2d184025cbc6a"
+            },
+            "stdout": {
+              "bytes": 91,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_explicit_operator_scheme/rust.stdout",
+              "sha256": "ef8586ce8da6e061679b7b78b30e4ee8515f8f73d7fe2819d2cbb92be328fdb0"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_explicit_operator_scheme/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5412,
+          "resource_limit_gib": 6,
+          "seconds": 0.07126565201906487,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    },
+    {
+      "case": {
+        "file": "rigid_body_rejected.atlas",
+        "fixture_sha256": "c11c7650881eaa7aea9f9a68efdda698ade7fc6bea791732270ca0b706f54b7a",
+        "id": "generic_rigid_body_rejected",
+        "intent": "reject",
+        "scope": "An arbitrary fixed T cannot be equated to int while checking a generic body.",
+        "source_sha256": "c7dda0f7672dcae36f023d239a1240c5a2cd2517c31d835c42242bb480117a3b"
+      },
+      "categories": {
+        "oracle": "REJECTED_TYPE",
+        "rust": "REJECTED_SYNTAX"
+      },
+      "first_diagnostics": {
+        "oracle": [
+          "Error during analysis of expression at <standard input>:2:0--4:3",
+          "Type error:",
+          "  Subexpression 1 at <standard input>:3:21-22",
+          "  has wrong type: found int while A was needed.",
+          "Error in 'set' command at <standard input>:2:0--4:3:",
+          "Expression analysis failed",
+          "  Command 'set probe_bad' not executed, nothing defined."
+        ],
+        "rust": [
+          "Syntax error at <stdin>:2:10: syntax error, unexpected IDENT",
+          "  | any_type T begin",
+          "  |          ^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": true,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 877,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_rigid_body_rejected/oracle.metrics",
+              "sha256": "2599cd73ad5f3a6fcdd54e3650058ebdfc180a2019e6c99a0f029253bab365f8"
+            },
+            "stderr": {
+              "bytes": 308,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_rigid_body_rejected/oracle.stderr",
+              "sha256": "ba6602a1e5e686e6017b415889b0bfbfbef82cc5377f051cd24a955364ba4b4e"
+            },
+            "stdout": {
+              "bytes": 81,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_rigid_body_rejected/oracle.stdout",
+              "sha256": "c84b6d463459c5ec3943aa40e1150fb951cfff39e5d5e75a1e7b3e033e803bcf"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_rigid_body_rejected/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3660,
+          "resource_limit_gib": 6,
+          "seconds": 0.05269312299787998,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 888,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_rigid_body_rejected/rust.metrics",
+              "sha256": "a6d39bedb221e530bc77d0f158bef6e25dc4fda01878438fa1a104b80d5d7dcc"
+            },
+            "stderr": {
+              "bytes": 97,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_rigid_body_rejected/rust.stderr",
+              "sha256": "e2dbc688d54896c7ea7270c302b68997cdc6224af403c9c03146f91a8487db26"
+            },
+            "stdout": {
+              "bytes": 81,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_rigid_body_rejected/rust.stdout",
+              "sha256": "c84b6d463459c5ec3943aa40e1150fb951cfff39e5d5e75a1e7b3e033e803bcf"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_rigid_body_rejected/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5356,
+          "resource_limit_gib": 6,
+          "seconds": 0.06438568799057975,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    },
+    {
+      "case": {
+        "file": "mixed_same_type_rejected.atlas",
+        "fixture_sha256": "ebdef8774d4588338b9db5fce3dcdd4a25559981c61bb92cb6f5dd41f3860e9d",
+        "id": "generic_mixed_same_type_rejected",
+        "intent": "reject",
+        "scope": "Repeated occurrences of one T must agree; string cannot satisfy an int instantiation.",
+        "source_sha256": "f462eb10a12ad887b79afb181608fc3d3fce61eaec176ee39962b4f68a686cd1"
+      },
+      "categories": {
+        "oracle": "REJECTED_PROGRAM+TYPE",
+        "rust": "REJECTED_NAME+SYNTAX"
+      },
+      "first_diagnostics": {
+        "oracle": [
+          "Error during analysis of expression at <standard input>:5:0-35",
+          "Type error:",
+          "  Subexpression (2,\"abc\") at <standard input>:5:25-34",
+          "  has wrong type: found (int,string) while (A,A) was needed.",
+          "Program error: Expression analysis failed",
+          "Evaluation aborted."
+        ],
+        "rust": [
+          "Syntax error at <stdin>:2:10: syntax error, unexpected IDENT",
+          "  | any_type T begin",
+          "  |          ^",
+          "Name error at <stdin>:5:14: Undefined identifier 'probe_choose'",
+          "  | prints(\"BAD\",probe_choose(2,\"abc\"))",
+          "  |              ^^^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 877,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_mixed_same_type_rejected/oracle.metrics",
+              "sha256": "11d78b47ae8410c62d65e6254efcedd3c3df4bfd2de7c4c97b2baa5c4a254c35"
+            },
+            "stderr": {
+              "bytes": 252,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_mixed_same_type_rejected/oracle.stderr",
+              "sha256": "748a1f5ffaf35126edaef7c9b3052c2daaf59eaa4fd043b0e2c864c0890a1352"
+            },
+            "stdout": {
+              "bytes": 122,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_mixed_same_type_rejected/oracle.stdout",
+              "sha256": "dc9efef28cffc5a13f81d23a5b7d78cfe1a6915d074b91b6bbee4764d7e5cb79"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_mixed_same_type_rejected/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3668,
+          "resource_limit_gib": 6,
+          "seconds": 0.06208192801568657,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 888,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_mixed_same_type_rejected/rust.metrics",
+              "sha256": "a1eb6a121213dace6f19d12ec926ced15cd9432ee56d8ba69a27aa33db7b6360"
+            },
+            "stderr": {
+              "bytes": 240,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_mixed_same_type_rejected/rust.stderr",
+              "sha256": "1598cce391b00908c64017a14ae740fc09ec040b3027791a2f2fcac46051c390"
+            },
+            "stdout": {
+              "bytes": 91,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_mixed_same_type_rejected/rust.stdout",
+              "sha256": "0e732264de84f6e639ccb31c49a54b1f2e6f582eedb12371e5b4568acc9e79a2"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_mixed_same_type_rejected/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5400,
+          "resource_limit_gib": 6,
+          "seconds": 0.0354281350155361,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    },
+    {
+      "case": {
+        "file": "constructor_arity_few_rejected.atlas",
+        "fixture_sha256": "ed6c675cb4ebc1f29e77461036fa637ea2f2acc145dcfaa442de94aef2a4fce2",
+        "id": "generic_constructor_arity_few_rejected",
+        "intent": "reject",
+        "scope": "Two-parameter constructor applied to one argument must be rejected.",
+        "source_sha256": "ea7a9a1d28fbe60fddab95d208714991071fd8a974f5993e116e9607efbe3eee"
+      },
+      "categories": {
+        "oracle": "OTHER_FAILURE",
+        "rust": "REJECTED_SYNTAX"
+      },
+      "first_diagnostics": {
+        "oracle": [
+          "Error during analysis of expression at <standard input>:3:14-38",
+          "  Type constructor 'MathArityPair' called with 1 type arguments, expected 2",
+          "Error in 'set' command at <standard input>:3:0-39:",
+          "Expression analysis failed",
+          "  Command 'set probe_bad' not executed, nothing defined."
+        ],
+        "rust": [
+          "Syntax error at <stdin>:2:23: syntax error, unexpected $undefined",
+          "  | set_type MathArityPair<S,T> = (S arity_fst,T arity_snd) !",
+          "  |                       ^",
+          "Syntax error at <stdin>:3:29: syntax error, unexpected $undefined",
+          "  | set probe_bad=MathArityPair<int>:(2,3)",
+          "  |                             ^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 876,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_constructor_arity_few_rejected/oracle.metrics",
+              "sha256": "664928866674be3d9f9cc9bbe22c22776b29e5e18dfebeccc41b7da596bc1ba4"
+            },
+            "stderr": {
+              "bytes": 275,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_constructor_arity_few_rejected/oracle.stderr",
+              "sha256": "b947e0ad9b1a15ba44ce8fd76f3c9f631a987e7ca910e90b3557f15a1feb9eb4"
+            },
+            "stdout": {
+              "bytes": 187,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_constructor_arity_few_rejected/oracle.stdout",
+              "sha256": "eb878d3daab1d68e0d8a988719b9297891848bc8d2e6c4889ce305998fbbdcf5"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_constructor_arity_few_rejected/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3620,
+          "resource_limit_gib": 6,
+          "seconds": 0.08671073900768533,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 888,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_constructor_arity_few_rejected/rust.metrics",
+              "sha256": "8d292e5efbb0e5087457c66886b37f5568abdf1e333b13edb758ed62224bcac3"
+            },
+            "stderr": {
+              "bytes": 301,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_constructor_arity_few_rejected/rust.stderr",
+              "sha256": "051a23d90377ada30510294ac8e8285ee0a13b30119f28ba2f186b9427efccfa"
+            },
+            "stdout": {
+              "bytes": 103,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_constructor_arity_few_rejected/rust.stdout",
+              "sha256": "1c90cd472fb3551a176f28fc0ec9b8c23328eccf91ad51f59b730b25c05953ab"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_constructor_arity_few_rejected/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5396,
+          "resource_limit_gib": 6,
+          "seconds": 0.06263937900075689,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": false
+    },
+    {
+      "case": {
+        "file": "constructor_arity_many_rejected.atlas",
+        "fixture_sha256": "ed05e9f37a62682e6aec5f45a5d090be68e060e8eacb45c7ae5937d958ffe16f",
+        "id": "generic_constructor_arity_many_rejected",
+        "intent": "reject",
+        "scope": "Two-parameter constructor applied to three arguments must be rejected.",
+        "source_sha256": "1fef11ce9e8d593e839b039db750b53ef93ecd9f4eae3131e2adcc9e8e6b3181"
+      },
+      "categories": {
+        "oracle": "OTHER_FAILURE",
+        "rust": "REJECTED_SYNTAX"
+      },
+      "first_diagnostics": {
+        "oracle": [
+          "Error during analysis of expression at <standard input>:3:14-49",
+          "  Type constructor 'MathArityPair' called with 3 type arguments, expected 2",
+          "Error in 'set' command at <standard input>:3:0-50:",
+          "Expression analysis failed",
+          "  Command 'set probe_bad' not executed, nothing defined."
+        ],
+        "rust": [
+          "Syntax error at <stdin>:2:23: syntax error, unexpected $undefined",
+          "  | set_type MathArityPair<S,T> = (S arity_fst,T arity_snd) !",
+          "  |                       ^",
+          "Syntax error at <stdin>:3:29: syntax error, unexpected $undefined",
+          "  | set probe_bad=MathArityPair<int,rat,bool>:(2,3/4)",
+          "  |                             ^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 877,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_constructor_arity_many_rejected/oracle.metrics",
+              "sha256": "69cc2153a7402586c89273490dc6ca5c036aaf7a2b62337089f87509bc349c75"
+            },
+            "stderr": {
+              "bytes": 275,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_constructor_arity_many_rejected/oracle.stderr",
+              "sha256": "6e29885a5ac87ae0d55cc0f668f8649ff56ab1ae1c38214716415c3d564731e8"
+            },
+            "stdout": {
+              "bytes": 189,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_constructor_arity_many_rejected/oracle.stdout",
+              "sha256": "b630dbb37f90021f92fa1b387b3ec18c245fb345a1632989b003f17387423901"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_constructor_arity_many_rejected/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3620,
+          "resource_limit_gib": 6,
+          "seconds": 0.06753089197445661,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 888,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_constructor_arity_many_rejected/rust.metrics",
+              "sha256": "c4e02f19a367709b273024d06511788b1947e239b7df0a7f047077ff273b6517"
+            },
+            "stderr": {
+              "bytes": 312,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_constructor_arity_many_rejected/rust.stderr",
+              "sha256": "1643c0511be5068ea8f35d302144ec8975c101d20ad49015f9c11e7239ca3ae1"
+            },
+            "stdout": {
+              "bytes": 105,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_constructor_arity_many_rejected/rust.stdout",
+              "sha256": "3f37d36b315c3b5c1cb69091cd47b1fc6c476b8b0c6fea14698d884615e0d4d8"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_constructor_arity_many_rejected/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5396,
+          "resource_limit_gib": 6,
+          "seconds": 0.03772232902701944,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": false
+    },
+    {
+      "case": {
+        "file": "scope_escape_rejected.atlas",
+        "fixture_sha256": "cf52a92d5024d031e1c81ef1099c67a7e46adb05229b36f626700bb324a3adaa",
+        "id": "generic_scope_escape_rejected",
+        "intent": "reject",
+        "scope": "A formal type name must not survive the end of an any_type scope.",
+        "source_sha256": "7e9f4cc52d24ef16dca372e4ba3ba60efb841f7b1a39736b48acef3045c63ff2"
+      },
+      "categories": {
+        "oracle": "REJECTED_SYNTAX",
+        "rust": "REJECTED_SYNTAX"
+      },
+      "first_diagnostics": {
+        "oracle": [
+          "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      ^",
+          "syntax error, unexpected IDENT, expecting ')'"
+        ],
+        "rust": [
+          "Syntax error at <stdin>:2:10: syntax error, unexpected IDENT",
+          "  | any_type T begin",
+          "  |          ^",
+          "Syntax error at <stdin>:5:18: syntax error, unexpected IDENT",
+          "  | set probe_escape(T x)=x",
+          "  |                  ^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 877,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_scope_escape_rejected/oracle.metrics",
+              "sha256": "5f71045183021df5587747191965205a036ab36b89e06fd374173d542b8beb42"
+            },
+            "stderr": {
+              "bytes": 25510,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_scope_escape_rejected/oracle.stderr",
+              "sha256": "8c20bba32d2bf972d21b6b84722c04d9772b3c3766fe9538f06484dc0076903b"
+            },
+            "stdout": {
+              "bytes": 113,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_scope_escape_rejected/oracle.stdout",
+              "sha256": "37b0d7dd05e601b3ed5c050cf54362b45e3d79ec09494e580b4b5ba9e824d1ff"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_scope_escape_rejected/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3504,
+          "resource_limit_gib": 6,
+          "seconds": 0.08775147999403998,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 888,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_scope_escape_rejected/rust.metrics",
+              "sha256": "5833ee5c97e288844d4373203df78b6b2e8b99c0dc62cc7efb2617c55e7a3551"
+            },
+            "stderr": {
+              "bytes": 209,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_scope_escape_rejected/rust.stderr",
+              "sha256": "1e1d7e846ccb1f1d8e175b6f10a881736193219f848f6397add766480739aa3a"
+            },
+            "stdout": {
+              "bytes": 85,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_scope_escape_rejected/rust.stdout",
+              "sha256": "51ca9d624f9bdb4155363047a8ac72852173f7312a5fb3ce2b73fd570a20d6a2"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_scope_escape_rejected/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5376,
+          "resource_limit_gib": 6,
+          "seconds": 0.03144319303100929,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    },
+    {
+      "case": {
+        "file": "duplicate_formals_rejected.atlas",
+        "fixture_sha256": "415b19b51a610127802ecb2c9dff7142a12bfd9c3efb1f3f29506a2211ada868",
+        "id": "generic_duplicate_formals_rejected",
+        "intent": "reject",
+        "scope": "Duplicate formal type names must not silently alias two independent variables.",
+        "source_sha256": "1cda3e988419aa26eac642899c9c78357467d5af7fe1390bd74f0bc4f56b56a8"
+      },
+      "categories": {
+        "oracle": "ACCEPTED",
+        "rust": "REJECTED_SYNTAX"
+      },
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at <stdin>:2:23: syntax error, unexpected $undefined",
+          "  | set_type MathDuplicate<T,T> = (T duplicate_fst,T duplicate_snd) !",
+          "  |                       ^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 838,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_duplicate_formals_rejected/oracle.metrics",
+              "sha256": "e8e234eb92b7f488b0a5f60d9083aecc115bff96c9d97b623e476751df21cbb8"
+            },
+            "stderr": {
+              "bytes": 0,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_duplicate_formals_rejected/oracle.stderr",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "stdout": {
+              "bytes": 187,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_duplicate_formals_rejected/oracle.stdout",
+              "sha256": "07f5e5d2fb1368e5925ef559ee667eab2c336d813183c2926bb267dd7a3956c0"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_duplicate_formals_rejected/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3472,
+          "resource_limit_gib": 6,
+          "seconds": 0.04759206098970026,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 888,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_duplicate_formals_rejected/rust.metrics",
+              "sha256": "f01186042644a910dae48dd8e9623c58269109b368e99ff6deba4cea2e008b3b"
+            },
+            "stderr": {
+              "bytes": 164,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_duplicate_formals_rejected/rust.stderr",
+              "sha256": "dc14eca82fd53d03221c6b85329af67a9f8b37e358f697d675beeea580ed6d64"
+            },
+            "stdout": {
+              "bytes": 95,
+              "path": "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_duplicate_formals_rejected/rust.stdout",
+              "sha256": "03f286784515c5433aca2c0785a7c8982f4c53f990db19627f1789fec3538a90"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz/results/3833740/generic_duplicate_formals_rejected/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5364,
+          "resource_limit_gib": 6,
+          "seconds": 0.05219561600824818,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": false
+    }
+  ],
+  "checker": {
+    "exit_status": 0,
+    "log_sha256": "e986e9f2b78f2296917d6a6eaca660ec7b4f8e277d84b02e4a1e677b1ccf8462"
+  },
+  "job": "3833740",
+  "node": "cu057",
+  "pin": {
+    "build": "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/build.json",
+    "build_sha256": "e2ce570826277bf24377b4e0b627f071f264c8ff8144ae789d04c9692e448b8f",
+    "inputs": {
+      "hpc/math_baseline_build.py": "931ec63f850d2a3769de1d5fb7836fc8eba7097e6d302ea30c2a6e47417c2ed7",
+      "hpc/math_cycle_check.py": "d02f8412972249d18f5bdd98f15df85633c4d676063063041b08186190c61131",
+      "hpc/math_generic_probe.py": "bc32c2d23edf8300fd8fcbe69daad05f362d7bfe90ae64512bd1120a24f0e2db",
+      "hpc/math_generic_probe.sbatch": "c0e227b3be9e21ebf51abe28c3f04a6c2a6c4e027e6aea838dc3d3d514641af9",
+      "hpc/math_suite.py": "dc58a89944b022a2b3406edd25d0192bb421fd5bf828b281f4f1f962ca92f205",
+      "hpc/math_suite_review.py": "6b101f7aa62f1abcfda70b382efd0928a648f4f032e4870f87bfeb5e32084ad8",
+      "hpc/test_math_generic_probe.py": "3fcd14cc5a099a077b1ce40a1ea340c5d53565bd474f494ce437bb219bf09455",
+      "tests/math/baseline.json": "f35d8e463fe3eb0666ebb23c81de59b5fb2d6968aa32dcd1f378b4658d46ec49",
+      "tests/math/generics/catalog.json": "040192e1d948b4c682ed60bcac0f4bf47804551e788aa434b9fd1e9c1739b577",
+      "tests/math/generics/concrete_overload.atlas": "7b459a4ae989b8d6964698ae5e2272aa01ca98a6e0614b56d5e0099a33d6505a",
+      "tests/math/generics/constructor_arity_few_rejected.atlas": "ed6c675cb4ebc1f29e77461036fa637ea2f2acc145dcfaa442de94aef2a4fce2",
+      "tests/math/generics/constructor_arity_many_rejected.atlas": "ed05e9f37a62682e6aec5f45a5d090be68e060e8eacb45c7ae5937d958ffe16f",
+      "tests/math/generics/duplicate_formals_rejected.atlas": "415b19b51a610127802ecb2c9dff7142a12bfd9c3efb1f3f29506a2211ada868",
+      "tests/math/generics/explicit_operator_scheme.atlas": "c3670e09e1b9678f50d6221f92e04a5854c103f44b8a9ed14c111e5a0e2fe1d4",
+      "tests/math/generics/identity_instances.atlas": "04eea5c53fb3bf494ad60a2590d4e4fb40059636f1527c4ccb53472d34b87d3d",
+      "tests/math/generics/mixed_same_type_rejected.atlas": "ebdef8774d4588338b9db5fce3dcdd4a25559981c61bb92cb6f5dd41f3860e9d",
+      "tests/math/generics/pair_nested.atlas": "8bfcfc34530c105cb352b60753ab0891394087e553c0776bdaea7b3cb730b5b8",
+      "tests/math/generics/result_context.atlas": "2f7a12b2e33b80d9ed752a98389b5e9ddccd718fe53bdbc5c4f89599085feb2d",
+      "tests/math/generics/rigid_body_rejected.atlas": "c11c7650881eaa7aea9f9a68efdda698ade7fc6bea791732270ca0b706f54b7a",
+      "tests/math/generics/scope_escape_rejected.atlas": "cf52a92d5024d031e1c81ef1099c67a7e46adb05229b36f626700bb324a3adaa"
+    },
+    "schema": "atlas-generic-contract-probe-pin-v1"
+  },
+  "schema": "atlas-generic-contract-capture-v1",
+  "scope": "All raw streams, time and RSS retained. Reject intent is provisional; a Rust syntax error must not count as matching an oracle type error. This capture is not mathematical or language-feature acceptance.",
+  "source_files_rehashed": {
+    "oracle": 606,
+    "rust": 1212
+  },
+  "status": "CAPTURED_NOT_YET_ACCEPTED_AS_LANGUAGE_CONTRACTS"
+}
