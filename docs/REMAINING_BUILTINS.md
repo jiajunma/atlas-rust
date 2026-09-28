@@ -18,8 +18,11 @@ New original-backed mutation tests preserve concrete siblings, shadowing/rebindi
 and state. Loop repair3837799 passes430core tests, CLI and final integrity;
 loop stdout now matches (whole stderr still differs). Original permits counted
 index assignment contrary to its source comment. Next binding-scope before
-probe3837952 must execute the new assertion failure, while a separate after
-candidate stores defining floors with variable types. any_type grammar remains
+probe3837952 executes its intended assertion failure (global_imported=false).
+After3837985 stores defining floors with variable types;432core all-pass,
+unchanged assertion passes, CLI and final integrity pass. All100input and Rust
+stdout/stderr hashes are unchanged versus3837799, with33whole matches and the
+retained original signal still invalidating full capture. any_type grammar remains
 unported. See HANDOFF and the generic-language slice for exact pins.
 
 Active overload/member wave3836397 failed full core:416pass/3fail/2filtered

@@ -121,6 +121,14 @@ not a source-level C++ translation.
 
 ### Binding constness depends on type scope and actual flag bits
 
+- Binding reads need the DEFINING type-variable floor. Before3837952's new
+  unit compiles then fails: an outer free global row is wrongly treated as
+  inner rigid T (found[A] while[int] needed). After3837985 passes that exact
+  assertion, a local fixed/free independence test and all432core checks, CLI
+  and final integrity. Store the floor at every binding creation site; shift
+  only free variables on an owned read copy, never mutate the stored scheme.
+  All100old Rust streams remain unchanged, but actual any_type grammar is
+  still unported; internal scope tests do not prove source-level abstractions.
 - Original3837531 rejects five global/local polymorphic assignments while
   preserving concrete sibling mutation, atomic multiple-assignment failure,
   monomorphic shadowing and rebinding. global.w::definition_group and

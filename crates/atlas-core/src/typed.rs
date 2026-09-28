@@ -469,7 +469,40 @@ pub struct IdTable {
     const_names: BTreeSet<String>,
 }
 
-pub type TypeCell = Rc<RefCell<Type>>;
+/// A binding's type numbers are interpreted at its DEFINING lexical floor,
+/// not at the floor of whichever expression later reads it. Clones share the
+/// legacy refinement cell, but importing a use never mutates that cell.
+#[derive(Clone, Debug)]
+pub struct TypeCell {
+    value: Rc<RefCell<Type>>,
+    fixed: usize,
+}
+
+impl TypeCell {
+    fn new(value: Type, fixed: usize) -> Self {
+        Self { value: Rc::new(RefCell::new(value)), fixed }
+    }
+
+    pub fn borrow(&self) -> std::cell::Ref<'_, Type> {
+        self.value.borrow()
+    }
+
+    fn borrow_mut(&self) -> std::cell::RefMut<'_, Type> {
+        self.value.borrow_mut()
+    }
+
+    fn import_at(&self, fixed: usize) -> Result<Type, InferenceError> {
+        let count = fixed.checked_sub(self.fixed).ok_or(InferenceError::ScopeCapture)?;
+        if count == 0 {
+            return Ok(self.borrow().clone());
+        }
+        // Bake/re-pack in the defining scope before moving its FREE range.
+        // Fixed outer variables retain their IDs in an inner abstraction.
+        let mut imported = InferredType::wrap(&self.borrow(), self.fixed)?;
+        imported.raise_floor(count)?;
+        imported.bake()
+    }
+}
 
 impl IdTable {
     pub fn new() -> Self {
@@ -482,7 +515,7 @@ impl IdTable {
         // const binding (upstream rebinds the identifier outright).
         self.const_names.remove(&name);
         self.entries
-            .insert(name, (Rc::new(RefCell::new(type_)), cell));
+            .insert(name, (TypeCell::new(type_, 0), cell));
     }
 
     pub fn lookup(&self, name: &str) -> Option<&(TypeCell, GlobalCell)> {
@@ -2429,7 +2462,8 @@ pub fn convert_expr(
         }
         Expr::Identifier { name, span } => {
             if let Some((type_, depth, offset)) = analysis.locals.get(name) {
-                let found = type_.borrow().clone();
+                let found = type_.import_at(analysis.type_floor)
+                    .map_err(|e| inference_error(e, *span))?;
                 return conform_types(
                     &found,
                     required,
@@ -2453,7 +2487,8 @@ pub fn convert_expr(
                     Some(*span),
                 ));
             };
-            let found = type_.borrow().clone();
+            let found = type_.import_at(analysis.type_floor)
+                .map_err(|e| inference_error(e, *span))?;
             conform_types(
                 &found,
                 required,
@@ -2778,7 +2813,7 @@ pub fn convert_expr(
                     for (name, _, constant, binding_type) in leaves {
                         locals.insert(
                             name.clone(),
-                            (Rc::new(RefCell::new(binding_type.clone())), 0, offset),
+                            (TypeCell::new(binding_type.clone(), analysis.type_floor), 0, offset),
                         );
                         if *constant {
                             constant_locals.insert(name.clone());
@@ -3136,7 +3171,7 @@ pub fn convert_expr(
             if let Some(index) = index {
                 locals.insert(
                     index.value.clone(),
-                    (Rc::new(RefCell::new(Type::Primitive(Prim::Int))), 0, offset),
+                    (TypeCell::new(Type::Primitive(Prim::Int), analysis.type_floor), 0, offset),
                 );
                 // axis.w::thread_bindings forces the const bit for ALL
                 // row-loop bindings, including the integer index.
@@ -3146,7 +3181,7 @@ pub fn convert_expr(
             for (name, _, _, leaf_type) in &leaves {
                 locals.insert(
                     name.clone(),
-                    (Rc::new(RefCell::new(leaf_type.clone())), 0, offset),
+                    (TypeCell::new(leaf_type.clone(), analysis.type_floor), 0, offset),
                 );
                 constant_locals.insert(name.clone());
                 offset += 1;
@@ -3335,7 +3370,7 @@ pub fn convert_expr(
                 for (offset, (name, _, constant, leaf_type)) in leaves.iter().enumerate() {
                     locals.insert(
                         name.clone(),
-                        (Rc::new(RefCell::new(leaf_type.clone())), 0, offset),
+                        (TypeCell::new(leaf_type.clone(), analysis.type_floor), 0, offset),
                     );
                     if *constant {
                         constant_locals.insert(name.clone());
@@ -3511,7 +3546,7 @@ pub fn convert_expr(
                 }
                 locals.insert(
                     name.value.clone(),
-                    (Rc::new(RefCell::new(Type::Primitive(Prim::Int))), 0, 0),
+                    (TypeCell::new(Type::Primitive(Prim::Int), analysis.type_floor), 0, 0),
                 );
                 constant_locals.remove(&name.value);
             }
@@ -4561,7 +4596,7 @@ fn convert_lambda_expression(
         shapes.push(shape);
         for (name, _, constant, leaf_type) in leaves {
             param_names.push(name.clone());
-            locals.insert(name.clone(), (Rc::new(RefCell::new(leaf_type)), 0, offset));
+            locals.insert(name.clone(), (TypeCell::new(leaf_type, analysis.type_floor), 0, offset));
             if constant {
                 constant_locals.insert(name.clone());
             } else {
@@ -4669,7 +4704,7 @@ fn convert_rec_lambda_expression(
     }
     locals.insert(
         self_name.clone(),
-        (Rc::new(RefCell::new(function_type.clone())), 0, 0),
+        (TypeCell::new(function_type.clone(), analysis.type_floor), 0, 0),
     );
     let mut offset = 1;
     // Frame slot names in bind order: the self binding at slot 0, then the
@@ -4678,7 +4713,7 @@ fn convert_rec_lambda_expression(
     for (_, _, leaves) in converted_parameters {
         for (name, _, constant, leaf_type) in leaves {
             param_names.push(name.clone());
-            locals.insert(name.clone(), (Rc::new(RefCell::new(leaf_type)), 0, offset));
+            locals.insert(name.clone(), (TypeCell::new(leaf_type, analysis.type_floor), 0, offset));
             if constant {
                 constant_locals.insert(name.clone());
             } else {
@@ -16844,6 +16879,55 @@ mod tests {
         let all = completion_values(&mut context, "");
         assert_eq!(&all[297..], &["myvar", "zfun", "apple"]);
         assert_eq!(completion_values(&mut context, "my"), &["myvar"]);
+    }
+
+    #[test]
+    fn global_polymorphic_binding_import_does_not_capture_inner_fixed_variable() {
+        // Original3837308 imports a global empty row inside an any_type
+        // scope. Exercise that semantic boundary independently of the still
+        // unported abstraction grammar, using the ordinary global definition.
+        let mut context = TypedContext::new();
+        context.execute(&command("set imported_empty=[]")).expect("global empty row");
+        let Command::Expression(expression) = command("imported_empty") else {
+            panic!("identifier expression")
+        };
+        let mut analysis = Analysis::new(&context.types, &context.globals, &context.overloads);
+        analysis.type_floor = 1; // An inner rigid T occupies variable zero.
+        let mut required = Type::row(int_type());
+        let imported = convert_expr(&expression, &mut required, &analysis);
+        eprintln!("BINDING_SCOPE_REGRESSION global_imported={}", imported.is_ok());
+        imported.expect("outer global free variable must not become inner fixed T");
+        assert_eq!(required, Type::row(int_type()));
+        // A use instantiates the binding, never specialises its stored type.
+        let (saved, _) = context.globals.lookup("imported_empty").expect("global retained");
+        assert!(TypeScheme::wrap(&saved.borrow(), 0).unwrap().is_polymorphic());
+    }
+
+    #[test]
+    fn local_binding_import_preserves_outer_fixed_and_freshens_outer_free_variables() {
+        // Original3837308: outer T stays rigid under S, but the empty row
+        // bound in that T scope stays polymorphic. Uses do not specialise it.
+        let table = TypeTable::new();
+        let globals = IdTable::new();
+        let overloads = OverloadState::default();
+        let stored = Type::tuple(vec![Type::Variable(0), Type::row(Type::Variable(1))]);
+        let cell = TypeCell::new(stored.clone(), 1);
+        let mut analysis = Analysis::new(&table, &globals, &overloads);
+        analysis.type_floor = 2;
+        analysis.locals.insert("outer".into(), (cell.clone(), 0, 0));
+        let Command::Expression(expression) = command("outer") else {
+            panic!("identifier expression")
+        };
+        for component in [int_type(), Type::Primitive(Prim::Bool)] {
+            let mut required = Type::tuple(vec![Type::Variable(0), Type::row(component)]);
+            convert_expr(&expression, &mut required, &analysis)
+                .expect("free row component instantiates independently");
+        }
+        let mut wrong = Type::tuple(vec![Type::Variable(1), Type::row(int_type())]);
+        assert!(convert_expr(&expression, &mut wrong, &analysis).is_err(),
+            "outer fixed T must not become inner fixed S");
+        assert_eq!(*cell.borrow(), stored);
+        assert_eq!(cell.import_at(0), Err(InferenceError::ScopeCapture));
     }
 
     // Regression: latest-original global.w:992 makes polymorphic bindings constant.

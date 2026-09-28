@@ -100,7 +100,12 @@ scope, reading a global row with free variable0 reinterprets it as rigid inner
 T. Before probe3837952 adds only one unit to3837799 runtime: ordinary global
 empty-row definition, then analysis under fixed floor1 requiring [int]. It must
 reach global_imported=false and fail its assertion, not fail compilation.
-Original3837308 already establishes the source-level accepted contract.
+Job3837952 does compile and fails the intended assertion after2:30: found[A]
+while[int] was needed,0pass/1fail/430filtered. Original3837308 already
+establishes the source-level accepted contract.
+Before report47569b8880473eb2f6e88fdcae682eb650d37548dd288fefe124e2e339814c01;
+manifest comparison to3837799 changes only typed.rs. Retain the normal driver's
+FAIL status; the intended new assertion, not compilation, caused exit101.
 
 The separate after candidate replaces the Rc alias with a TypeCell carrying
 an immutable defining floor plus its shared refinement storage. All local
@@ -109,7 +114,31 @@ that floor; globals use0. Reads raise only free variables on an owned inference
 copy. A second test keeps outer fixed-T distinct from inner fixed-S while an
 outer free row independently instantiates as int and bool, without mutating its
 stored type. Lower-scope escape rejects. This does NOT implement any_type grammar
-or claim full abstraction support; both candidates require HPC results.
+or claim full abstraction support. After job3837985 finishes all candidate
+checks: global_imported=true,432core all-pass/0skips/0ignored (12.89s), CLI and
+final source/input integrity. Report
+8f90fc2bb0194faa7c974ebfafa7561b66b1e452c5e25dcf83e95567f306e8e6.
+All100input and Rust stdout/stderr hashes match3837799 exactly, retaining33whole
+oracle matches. The master signal keeps overall FAILED7:25/unavailable, not
+full language acceptance. The preceding loop checkpoint is committed9bedb6bc;
+this is its separately verified TypeCell follow-up. Both jobs are terminal.
+
+Next grammar integration must connect both original parser.y forms: expression
+ANY_TYPE typevar_list '(' expr ')' / BEGIN expr END, and command ANY_TYPE
+typevar_list BEGIN polymorphic_declarations END. The declaration body accepts
+one or more SET declarations, not recursively nested command blocks. Its raw
+comma-separated bindings execute individually. Current LetBindings omits operator
+function declarations, handled separately only at top-level Command; basic.at
+uses `set ! (Iterator<T> ...)` INSIDE a generic block, so cover that production.
+Also basic.at uses lambda `(...) T: body`, not only `(...): body`: preserve the
+original expr alternative `(' id_specs ')' cast` while adding the abstraction.
+Typevar_list must install names after opening lookahead pushes its scope, using
+lazy ParserTypes; no whole-command identifier substitution. TypedCommandEvent
+currently has no diagnostic variant, so sequential generic command execution
+needs an ordered event path that retains earlier reports and middle errors,
+drains runtime prints on failure and continues later bindings. Raise the existing
+required type's inference floor for the body and lower it on return; do not
+replace the incoming type with an unconstrained bottom (disproved3837308).
 
 ### Function values, row contexts and abstraction discovery (active)
 

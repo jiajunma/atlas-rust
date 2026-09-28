@@ -16,16 +16,40 @@ still differ. Scheduler FAILED7:20 because the full master retains original's
 signal, with explicit FOUNDATION_UNITS_PASS_ORACLE_UNAVAILABLE status. This is
 not full language/math acceptance. Frozen source is independent of3837694.
 
-NEXT: binding scope before3837952 submitted, stage
+Checkpoint committed as9bedb6bc. Its typed.rs bytes match3837799 exactly;
+the following TypeCell repair is a separate verified checkpoint. No push.
+For future cumulative patches against the canonical3833788 archive, use the
+frozen3837799 stage's candidate.patch PLUS git diff9bedb6bc for new runtime
+changes; its added fixtures are already present in that cumulative patch.
+Do not append the older row patch to a post9bedb6bc-only diff or re-add the
+same /dev/null fixture hunks. Keep the exact manifest guard.
+
+NEXT: binding scope before3837952 FAILED2:30 at its intended assertion, stage
 atlas-binding-scope-before-20260928.pYR0z0ne, pin
 1cab87a46ab7ca84202abd8f34de53dfd4216bde0434d770cee13cea3d18ea40.
-It adds ONLY a global-identifier import assertion to3837799 runtime. Expected
-global_imported=false test failure, not a compile/staging failure. Original
-3837308 already accepts the source-level scope contract. A separate after
-candidate stores each TypeCell's defining floor and imports free variables
-under inner scopes without mutating the binding; pending HPC verification.
-Current local typed.rs contains this UNVERIFIED candidate beyond3837799.
-No any_type grammar has been added and basic.at remains blocked.
+It adds ONLY a global-identifier import assertion to3837799 runtime. The
+compiled test fails0pass/1fail/430filtered: found[A] while[int] was needed.
+This proves the global free variable is incorrectly interpreted as inner fixed
+T. Original3837308 already accepts the source-level scope contract.
+Before report47569b8880473eb2f6e88fdcae682eb650d37548dd288fefe124e2e339814c01;
+marker global_imported=false, exit101 after type44/coercion3 pass. Manifest
+path set equals3837799 and only typed.rs hash changes. Preserve failed report
+and stage; its normal driver reports FAIL and stops before the final rehash.
+AFTER candidate3837985 FAILED7:25 at its explicit unavailable-oracle exit, stage
+atlas-binding-scope-after-20260928.0fWlmRT7, pin
+c22c09521ce46adf72bb4e0c41ac3f225b14ceb8912a1416b6adb6b23958ef6f.
+It stores each TypeCell's defining floor and imports only free variables under
+inner scopes without mutating the binding. Same global assertion plus local
+fixed/free/escape test. Final report confirms unchanged global unit passes with
+global_imported=true, plus all432core pass (0skips/ignored,12.89s). CLI and final
+source/input hashes pass. Report
+8f90fc2bb0194faa7c974ebfafa7561b66b1e452c5e25dcf83e95567f306e8e6.
+All100inputs and all100Rust stdout/stderr hashes match3837799, preserving33whole
+oracle matches. The sole original signal keeps full capture invalid. Current
+typed.rs matches this after pin, with no further runtime edits. Both jobs are
+terminal; do not duplicate them. NEXT is actual any_type expression/command
+grammar, context raising/lowering and ordered sequential command events, as
+specified in the indexed generic-language slice. basic.at remains blocked.
 
 Implicit-constness repair3837694 FAILED7:08 with explicit unavailable-oracle
 status (all build/unit/integrity gates pass), stage

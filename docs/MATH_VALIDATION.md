@@ -59,8 +59,11 @@ original signal keeps full capture invalid. R2's same95-input comparison to
 integrity checks. Four mutation fixtures now reject and match full stdout but
 not stderr presentation; the original signal still invalidates full capture.
 Loop repair3837799 passes430core tests, CLI and final integrity, and now matches
-loop stdout but not stderr. Next binding-scope before3837952 and separate after
-candidate are pending. These are prerequisites for unmodified basic.at, not enlarged
+loop stdout but not stderr. Binding-scope before3837952 executes the intended
+assertion failure; after3837985 has432core all-pass, unchanged assertion passing,
+CLI and final integrity verified. All100Rust streams remain unchanged, and
+full capture still retains original's signal. These are prerequisites
+for unmodified basic.at, not enlarged
 mathematical acceptance or performance evidence. See HANDOFF for exact pins.
 
 Latest script-loading prerequisite: constructor commitadf40792 is verified
